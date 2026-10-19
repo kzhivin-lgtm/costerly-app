@@ -30,13 +30,17 @@ from agents.detection_spatial_inventory import (
 )
 from agents.schemas.detection_registry_schema import (
     REFERENCE_RELATIONSHIP,
-    DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
+    DETECTION_DIMENSION_INVENTORY_JSON_SCHEMA,
+    DETECTION_PAIR_RELATION_FACTS_JSON_SCHEMA,
+    DETECTION_PAIR_RELATION_STATES_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
     DETECTION_SHARED_REFERENCE_GROUP_IDS_JSON_SCHEMA,
     derive_detection_package_decision_audit,
     derive_detection_proof_components,
     derive_detection_standalone_package_group_ids,
+    validate_detection_dimension_inventory,
+    validate_detection_pair_relation_ledger,
     validate_detection_pairwise_merge_proofs,
     validate_detection_registry,
     validate_detection_shared_reference_group_ids,
@@ -60,11 +64,14 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_37_graph_derived_packages_metadata_fallback_temperature_0"
+    "detection_v4_38_complete_pair_ledger_dimension_inventory_temperature_0"
 )
-# V4.37 keeps V4.35's shared-Evidence gate, but derives all package membership
-# from the proof graph even when the descriptive model rows are incomplete.
+# V4.38 keeps one Haiku call and V4.37's graph-derived package membership, but
+# adds a complete compact six-criterion ledger for every object-evidence pair.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
+# The compact V4.38 ledger makes every object-evidence pair explicit.  12,288
+# gives HSL-size drawings room for the added matrix without a second request.
+DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
 # contract as well.
@@ -142,14 +149,17 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": [
-        "visual_groups", "classifications", "proof_edges",
+        "visual_groups", "classifications", "dimension_inventory",
+        "pair_relation_states", "pair_relation_facts",
         "shared_reference_group_ids",
         "page_coverage",
     ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
-        "proof_edges": DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
+        "dimension_inventory": DETECTION_DIMENSION_INVENTORY_JSON_SCHEMA,
+        "pair_relation_states": DETECTION_PAIR_RELATION_STATES_JSON_SCHEMA,
+        "pair_relation_facts": DETECTION_PAIR_RELATION_FACTS_JSON_SCHEMA,
         "shared_reference_group_ids": DETECTION_SHARED_REFERENCE_GROUP_IDS_JSON_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
         "page_coverage": {
@@ -1039,24 +1049,126 @@ def _resolve_component_page_coverage(
     return resolved, graph_page_coverage_supplements
 
 
-def _normalize_pairwise_merge_proof_group_ids(
+def _normalize_pair_relation_inventory_group_ids(
     payload: dict[str, Any], group_id_mapping: dict[str, str],
 ) -> dict[str, Any]:
-    """Keep full-graph edge endpoints aligned with canonical view IDs."""
+    """Keep dimension inventory IDs aligned with canonical visual-group IDs."""
     normalized = copy.deepcopy(payload)
-    proof_edges = normalized.get("proof_edges")
-    if not isinstance(proof_edges, list):
+    dimension_inventory = normalized.get("dimension_inventory")
+    if not isinstance(dimension_inventory, list):
         return normalized
-    for edge in proof_edges:
-        if not isinstance(edge, dict):
+    for row in dimension_inventory:
+        if not isinstance(row, dict):
             continue
-        raw_group_id_a = str(edge.get("group_id_a") or "")
-        raw_group_id_b = str(edge.get("group_id_b") or "")
-        edge["group_id_a"], edge["group_id_b"] = sorted((
-            group_id_mapping.get(raw_group_id_a, raw_group_id_a),
-            group_id_mapping.get(raw_group_id_b, raw_group_id_b),
-        ))
+        raw_group_id = str(row.get("group_id") or "")
+        row["group_id"] = group_id_mapping.get(raw_group_id, raw_group_id)
     return normalized
+
+
+def _normalize_pair_relation_ledger_group_ids(
+    payload: dict[str, Any],
+    *,
+    group_id_mapping: dict[str, str],
+    source_group_ids: set[str],
+) -> dict[str, Any]:
+    """Reorder compact pair rows after canonical visual-group IDs are assigned."""
+    normalized = copy.deepcopy(payload)
+    states = normalized.get("pair_relation_states")
+    facts = normalized.get("pair_relation_facts")
+    source_pairs = _pair_keys(source_group_ids)
+    if not isinstance(states, list) or len(states) != len(source_pairs):
+        return normalized
+    target_group_ids = {
+        group_id_mapping.get(group_id, group_id) for group_id in source_group_ids
+    }
+    target_pairs = _pair_keys(target_group_ids)
+    states_by_target_pair = {
+        tuple(sorted((
+            group_id_mapping.get(group_id_a, group_id_a),
+            group_id_mapping.get(group_id_b, group_id_b),
+        ))): states[index]
+        for index, (group_id_a, group_id_b) in enumerate(source_pairs)
+    }
+    if set(states_by_target_pair) != set(target_pairs):
+        return normalized
+    normalized["pair_relation_states"] = [
+        states_by_target_pair[pair] for pair in target_pairs
+    ]
+    if not isinstance(facts, list):
+        return normalized
+    target_index_by_pair = {
+        pair: index for index, pair in enumerate(target_pairs)
+    }
+    normalized_facts: list[dict[str, Any]] = []
+    for row in facts:
+        if not isinstance(row, dict) or not isinstance(row.get("pair_index"), int):
+            normalized_facts.append(row)
+            continue
+        if not 0 <= row["pair_index"] < len(source_pairs):
+            normalized_facts.append(row)
+            continue
+        group_id_a, group_id_b = source_pairs[row["pair_index"]]
+        target_pair = tuple(sorted((
+            group_id_mapping.get(group_id_a, group_id_a),
+            group_id_mapping.get(group_id_b, group_id_b),
+        )))
+        normalized_row = copy.deepcopy(row)
+        normalized_row["pair_index"] = target_index_by_pair[target_pair]
+        normalized_facts.append(normalized_row)
+    normalized["pair_relation_facts"] = normalized_facts
+    return normalized
+
+
+def _pair_keys(group_ids: set[str]) -> list[tuple[str, str]]:
+    ordered = sorted(group_ids)
+    return [
+        (group_id_a, group_id_b)
+        for index, group_id_a in enumerate(ordered)
+        for group_id_b in ordered[index + 1:]
+    ]
+
+
+def _filter_pair_relation_ledger(
+    payload: dict[str, Any],
+    *,
+    source_group_ids: set[str],
+    retained_group_ids: set[str],
+) -> dict[str, Any]:
+    """Drop forced non-object pairs without losing exact pair-index meaning."""
+    effective = copy.deepcopy(payload)
+    states = effective.get("pair_relation_states")
+    facts = effective.get("pair_relation_facts")
+    source_pairs = _pair_keys(source_group_ids)
+    retained_pairs = _pair_keys(retained_group_ids)
+    if not isinstance(states, list) or len(states) != len(source_pairs):
+        return effective
+    source_index_by_pair = {
+        pair: index for index, pair in enumerate(source_pairs)
+    }
+    effective["pair_relation_states"] = [
+        states[source_index_by_pair[pair]] for pair in retained_pairs
+    ]
+    if not isinstance(facts, list):
+        return effective
+    retained_fact_rows: list[dict[str, Any]] = []
+    retained_index_by_pair = {
+        pair: index for index, pair in enumerate(retained_pairs)
+    }
+    for row in facts:
+        if not isinstance(row, dict) or not isinstance(row.get("pair_index"), int):
+            retained_fact_rows.append(row)
+            continue
+        if not 0 <= row["pair_index"] < len(source_pairs):
+            retained_fact_rows.append(row)
+            continue
+        source_pair = source_pairs[row["pair_index"]]
+        if source_pair not in retained_index_by_pair:
+            continue
+        normalized_row = copy.deepcopy(row)
+        normalized_row["pair_index"] = retained_index_by_pair[source_pair]
+        retained_fact_rows.append(normalized_row)
+    effective["pair_relation_facts"] = retained_fact_rows
+    return effective
 
 
 def _visual_map_from_registry_groups(groups: object) -> dict[str, Any]:
@@ -1150,6 +1262,12 @@ def _discard_non_object_visual_registry_groups(
     discarded_group_ids = {
         str(group.get("group_id") or "") for group in discarded_groups
     }
+    source_object_group_ids = {
+        str(group.get("group_id") or "")
+        for group in groups
+        if isinstance(group, dict)
+        and group.get("evidence_class") == "object_evidence"
+    }
     discarded_pages = {
         group.get("page_number") for group in discarded_groups
         if isinstance(group.get("page_number"), int)
@@ -1165,6 +1283,30 @@ def _discard_non_object_visual_registry_groups(
         for group in effective["visual_groups"]
         if isinstance(group, dict) and isinstance(group.get("page_number"), int)
     }
+    retained_group_ids = {
+        str(group.get("group_id") or "")
+        for group in effective["visual_groups"]
+        if isinstance(group, dict)
+    }
+    classifications = effective.get("classifications")
+    if isinstance(classifications, list):
+        effective["classifications"] = [
+            row for row in classifications
+            if not isinstance(row, dict)
+            or str(row.get("group_id") or "") not in discarded_group_ids
+        ]
+    dimension_inventory = effective.get("dimension_inventory")
+    if isinstance(dimension_inventory, list):
+        effective["dimension_inventory"] = [
+            row for row in dimension_inventory
+            if not isinstance(row, dict)
+            or str(row.get("group_id") or "") not in discarded_group_ids
+        ]
+    effective = _filter_pair_relation_ledger(
+        effective,
+        source_group_ids=source_object_group_ids,
+        retained_group_ids=retained_group_ids,
+    )
 
     page_coverage = effective.get("page_coverage")
     if isinstance(page_coverage, list):
@@ -1344,7 +1486,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         page_images=page_images, regions=regions,
     )
     response, diagnostics = create_claude_message_streamed(
-        get_anthropic_client(), model=selected_model, max_tokens=8192,
+        get_anthropic_client(), model=selected_model,
+        max_tokens=DETECTION_VISUAL_REGISTRY_MAX_TOKENS,
         temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
         system=build_detection_system_content(prompt=prompt),
         messages=[{"role": "user", "content": content}],
@@ -1361,7 +1504,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         failure_diagnostics.update({
             **spatial_audit,
             **_summarize_incomplete_visual_registry_json(
-                raw_text, exc, response, max_tokens=8192,
+                raw_text, exc, response,
+                max_tokens=DETECTION_VISUAL_REGISTRY_MAX_TOKENS,
             ),
             "validation_error": str(exc),
             "validation_stage": "visual_registry_json",
@@ -1370,7 +1514,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "response_text_sha256": _sha256_text(raw_text),
             "stop_reason": str(getattr(response, "stop_reason", "") or ""),
             "stop_sequence": getattr(response, "stop_sequence", None),
-            "max_tokens": 8192,
+            "max_tokens": DETECTION_VISUAL_REGISTRY_MAX_TOKENS,
         })
         failure_usage = build_agent_usage_event(
             agent_name="detection",
@@ -1399,6 +1543,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     registry_decision_audit = copy.deepcopy(payload)
     discarded_non_object_groups: list[dict[str, Any]] = []
     classification_decisions: list[dict[str, Any]] = []
+    dimension_inventory: list[dict[str, Any]] = []
+    pair_relation_ledger: list[dict[str, Any]] = []
+    provisional_package_decisions: list[dict[str, Any]] = []
     fallback_registry_object_ids: list[str] = []
     registry_metadata_audit: dict[str, Any] = {}
     try:
@@ -1413,14 +1560,16 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             # remains complete even when the model leaves them out.
             payload.setdefault("objects", [])
         if not isinstance(payload, dict) or set(payload) != {
-            "visual_groups", "classifications", "proof_edges",
+            "visual_groups", "classifications", "dimension_inventory",
+            "pair_relation_states", "pair_relation_facts",
             "shared_reference_group_ids", "objects", "page_coverage",
         }:
             raise ValueError(
-                "visual registry must contain only visual_groups, classifications, proof_edges, shared_reference_group_ids, objects and page_coverage"
+                "visual registry must contain only visual_groups, classifications, dimension_inventory, pair_relation_states, pair_relation_facts, shared_reference_group_ids, objects and page_coverage"
             )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
+        raw_object_evidence_group_ids = set(raw_group_ids)
         visual_map = validate_detection_visual_map(
             normalize_detection_visual_map_group_ids(
                 _visual_map_from_registry_groups(raw_groups)
@@ -1431,31 +1580,46 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
         payload = _normalize_component_anchor_group_ids(payload, group_id_mapping)
-        payload = _normalize_pairwise_merge_proof_group_ids(
+        payload = _normalize_pair_relation_inventory_group_ids(
             payload, group_id_mapping
+        )
+        payload = _normalize_pair_relation_ledger_group_ids(
+            payload,
+            group_id_mapping=group_id_mapping,
+            source_group_ids=raw_object_evidence_group_ids,
         )
         visual_group_ids = {
             group["group_id"] for group in visual_map["visual_groups"]
         }
+        dimension_inventory = validate_detection_dimension_inventory(
+            payload["dimension_inventory"], visual_group_ids=visual_group_ids,
+        )
+        raw_pairwise_merge_proofs, pair_relation_ledger = (
+            validate_detection_pair_relation_ledger(
+                payload["pair_relation_states"],
+                payload["pair_relation_facts"],
+                object_evidence_group_ids=visual_group_ids,
+                page_count=len(page_images),
+            )
+        )
         reference_links = [
-            proof for proof in payload["proof_edges"]
+            proof for proof in raw_pairwise_merge_proofs
             if proof.get("relationship") == REFERENCE_RELATIONSHIP
         ]
-        pairwise_merge_proofs = validate_detection_pairwise_merge_proofs(
-            payload["proof_edges"],
-            page_count=len(page_images),
-            visual_group_ids=visual_group_ids,
-        )
+        # The complete six-criterion ledger is structurally valid at this
+        # point.  Build provisional packages from its declared graph before
+        # applying the semantic merge threshold below.  This preserves the
+        # user's requested causal order in the persisted audit.
         shared_reference_group_ids = validate_detection_shared_reference_group_ids(
             payload["shared_reference_group_ids"],
-            proofs=pairwise_merge_proofs,
+            proofs=raw_pairwise_merge_proofs,
             visual_group_ids=visual_group_ids,
         )
         commercial_visual_group_ids = (
             visual_group_ids - set(shared_reference_group_ids)
         )
         proof_components = derive_detection_proof_components(
-            pairwise_merge_proofs, visual_group_ids=visual_group_ids,
+            raw_pairwise_merge_proofs, visual_group_ids=visual_group_ids,
         )
         proof_components = [
             component for component in proof_components
@@ -1464,13 +1628,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         standalone_package_group_ids = derive_detection_standalone_package_group_ids(
             proof_components
         )
-        shared_reference_group_ids = validate_detection_shared_reference_group_ids(
-            shared_reference_group_ids,
-            proofs=pairwise_merge_proofs,
-            visual_group_ids=visual_group_ids,
-            commercial_components=proof_components,
-        )
-        package_decisions = derive_detection_package_decision_audit(
+        provisional_package_decisions = derive_detection_package_decision_audit(
             proof_components,
             shared_reference_group_ids=shared_reference_group_ids,
         )
@@ -1506,6 +1664,21 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         registry_objects, reconciled_object_ids = _apply_page_coverage_to_registry(
             registry_objects_input, resolved_page_coverage, page_count=len(page_images),
         )
+        # Semantic proof validation deliberately follows provisional package
+        # construction.  It still rejects an insufficient merge, but the audit
+        # now contains the complete relation ledger and its package impact.
+        pairwise_merge_proofs = validate_detection_pairwise_merge_proofs(
+            raw_pairwise_merge_proofs,
+            page_count=len(page_images),
+            visual_group_ids=visual_group_ids,
+        )
+        shared_reference_group_ids = validate_detection_shared_reference_group_ids(
+            shared_reference_group_ids,
+            proofs=pairwise_merge_proofs,
+            visual_group_ids=visual_group_ids,
+            commercial_components=proof_components,
+        )
+        package_decisions = provisional_package_decisions
         registry_payload = {"objects": registry_objects}
         registry = validate_detection_registry(
             registry_payload,
@@ -1519,6 +1692,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "registry_decision_audit": registry_decision_audit,
             "discarded_non_object_visual_groups": discarded_non_object_groups,
             "classification_decisions": classification_decisions,
+            "dimension_inventory": dimension_inventory,
+            "pair_relation_ledger": pair_relation_ledger,
+            "provisional_package_decisions": provisional_package_decisions,
             "validation_error": str(exc),
             "validation_stage": "visual_registry",
             "attempt_label": "visual_registry_validation_failed",
@@ -1567,6 +1743,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "registry_decision_audit": registry_decision_audit,
         "discarded_non_object_visual_groups": discarded_non_object_groups,
         "classification_decisions": classification_decisions,
+        "dimension_inventory": dimension_inventory,
+        "pair_relation_ledger": pair_relation_ledger,
+        "pair_relation_count": len(pair_relation_ledger),
+        "pair_relation_positive_criterion_count": sum(
+            sum(state == "Y" for state in row["criterion_states"].values())
+            for row in pair_relation_ledger
+        ),
         "pairwise_merge_proofs": pairwise_merge_proofs,
         "pairwise_merge_proof_count": sum(
             proof.get("relationship") != REFERENCE_RELATIONSHIP
@@ -1576,6 +1759,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "reference_link_count": len(reference_links),
         "shared_reference_group_ids": shared_reference_group_ids,
         "package_decisions": package_decisions,
+        "provisional_package_decisions": provisional_package_decisions,
         "standalone_package_group_ids": standalone_package_group_ids,
         "registry_metadata_fallback_object_ids": fallback_registry_object_ids,
         "registry_metadata_audit": registry_metadata_audit,

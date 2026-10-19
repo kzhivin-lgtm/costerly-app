@@ -13,6 +13,22 @@ PAIRWISE_MERGE_EVIDENCE_TYPES = frozenset({
     "unique_geometry",
     "direct_shared_structure",
 })
+PAIRWISE_RELATION_CRITERIA = (
+    "explicit_document_relation",
+    "dimension_equality",
+    "dimension_transform",
+    "matching_topology",
+    "unique_geometry",
+    "direct_shared_structure",
+)
+PAIRWISE_RELATION_STATE_CODES = frozenset({"Y", "N", "C", "U"})
+PAIRWISE_RELATIONSHIP_CODES = {
+    "N": "none",
+    "P": "positive_non_tree_relation",
+    "S": "same_object_view",
+    "D": "object_detail",
+    "R": "reference_link",
+}
 PAIRWISE_EVIDENCE_RELATIONSHIPS = frozenset({
     "same_object_view",
     "object_detail",
@@ -84,6 +100,56 @@ DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
     },
 }
 
+# V4.38 stores a compact, exact-once assessment for every pair of
+# object-evidence groups.  The first character identifies the resulting
+# relation (N none, S same object, D object detail, R reference).  The next
+# six characters follow PAIRWISE_RELATION_CRITERIA and are Y positive, N
+# checked-negative, C conflict, or U unreadable/not comparable.  Detailed
+# observations are emitted only for Y facts below, avoiding a verbose negative
+# prose row for every pair while preserving every negative decision.
+DETECTION_PAIR_RELATION_STATES_JSON_SCHEMA: dict[str, Any] = {
+    "type": "array",
+    "items": {"type": "string"},
+}
+
+DETECTION_PAIR_RELATION_FACTS_JSON_SCHEMA: dict[str, Any] = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "additionalProperties": False,
+        "required": [
+            "pair_index",
+            "evidence_facts",
+            "commercial_inseparability",
+        ],
+        "properties": {
+            "pair_index": {"type": "integer", "minimum": 0},
+            "evidence_facts": copy.deepcopy(
+                DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA["items"]["properties"][
+                    "evidence_facts"
+                ]
+            ),
+            "commercial_inseparability": {"type": "string"},
+        },
+    },
+}
+
+DETECTION_DIMENSION_INVENTORY_JSON_SCHEMA: dict[str, Any] = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["group_id", "dimension_readings"],
+        "properties": {
+            "group_id": {"type": "string"},
+            "dimension_readings": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+        },
+    },
+}
+
 DETECTION_SHARED_REFERENCE_GROUP_IDS_JSON_SCHEMA: dict[str, Any] = {
     "type": "array",
     "items": {"type": "string"},
@@ -148,6 +214,209 @@ class DetectionRegistrySchemaError(ValueError):
     ) -> None:
         super().__init__(message)
         self.details = details or {}
+
+
+def _ordered_pair_ids(group_ids: set[str]) -> list[tuple[str, str]]:
+    ordered_group_ids = sorted(group_ids)
+    return [
+        (group_id_a, group_id_b)
+        for index, group_id_a in enumerate(ordered_group_ids)
+        for group_id_b in ordered_group_ids[index + 1:]
+    ]
+
+
+def _validate_pairwise_evidence_facts(
+    evidence_facts: object,
+    *,
+    page_count: int,
+) -> tuple[set[str], list[dict[str, Any]]]:
+    if not isinstance(evidence_facts, list) or not evidence_facts:
+        raise DetectionRegistrySchemaError("pairwise merge proof evidence facts are invalid")
+    evidence_types: set[str] = set()
+    evidence_fact_keys: set[tuple[str, tuple[int, ...], str]] = set()
+    normalized: list[dict[str, Any]] = []
+    for evidence_fact in evidence_facts:
+        if (
+            not isinstance(evidence_fact, dict)
+            or set(evidence_fact) != {"evidence_type", "evidence_pages", "observation"}
+        ):
+            raise DetectionRegistrySchemaError("pairwise merge proof evidence facts are invalid")
+        evidence_type = evidence_fact["evidence_type"]
+        evidence_pages = evidence_fact["evidence_pages"]
+        observation = str(evidence_fact["observation"] or "").strip()
+        if (
+            not isinstance(evidence_type, str)
+            or evidence_type not in PAIRWISE_MERGE_EVIDENCE_TYPES
+            or not isinstance(evidence_pages, list)
+            or not evidence_pages
+            or len(evidence_pages) != len(set(evidence_pages))
+            or not all(
+                isinstance(page, int) and 1 <= page <= page_count
+                for page in evidence_pages
+            )
+            or not observation
+        ):
+            raise DetectionRegistrySchemaError("pairwise merge proof evidence facts are invalid")
+        evidence_fact_key = (evidence_type, tuple(sorted(evidence_pages)), observation)
+        if evidence_fact_key in evidence_fact_keys:
+            raise DetectionRegistrySchemaError("pairwise merge proof evidence facts are invalid")
+        evidence_fact_keys.add(evidence_fact_key)
+        evidence_types.add(evidence_type)
+        normalized.append({
+            "evidence_type": evidence_type,
+            "evidence_pages": list(evidence_pages),
+            "observation": observation,
+        })
+    return evidence_types, normalized
+
+
+def validate_detection_dimension_inventory(
+    inventory: object,
+    *,
+    visual_group_ids: set[str],
+) -> list[dict[str, Any]]:
+    """Keep every readable dimension once, including an explicit empty row."""
+    if not isinstance(inventory, list):
+        raise DetectionRegistrySchemaError("dimension inventory must be a list")
+    by_group_id: dict[str, dict[str, Any]] = {}
+    for row in inventory:
+        if (
+            not isinstance(row, dict)
+            or set(row) != {"group_id", "dimension_readings"}
+            or not isinstance(row.get("group_id"), str)
+            or row["group_id"] not in visual_group_ids
+            or row["group_id"] in by_group_id
+            or not isinstance(row.get("dimension_readings"), list)
+            or not all(
+                isinstance(reading, str) and reading.strip()
+                for reading in row["dimension_readings"]
+            )
+        ):
+            raise DetectionRegistrySchemaError("dimension inventory is invalid")
+        readings = [reading.strip() for reading in row["dimension_readings"]]
+        if len(readings) != len(set(readings)):
+            raise DetectionRegistrySchemaError("dimension inventory is invalid")
+        by_group_id[row["group_id"]] = {
+            "group_id": row["group_id"],
+            "dimension_readings": readings,
+        }
+    if set(by_group_id) != visual_group_ids:
+        raise DetectionRegistrySchemaError(
+            "dimension inventory must account for every visual group exactly once"
+        )
+    return [by_group_id[group_id] for group_id in sorted(visual_group_ids)]
+
+
+def validate_detection_pair_relation_ledger(
+    pair_relation_states: object,
+    pair_relation_facts: object,
+    *,
+    object_evidence_group_ids: set[str],
+    page_count: int,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Validate every pair and derive the positive proof graph deterministically.
+
+    `pair_relation_states` is deliberately dense and compact.  The model cannot
+    omit a difficult pair, while the persisted expanded audit remains readable.
+    """
+    expected_pairs = _ordered_pair_ids(object_evidence_group_ids)
+    if (
+        not isinstance(pair_relation_states, list)
+        or len(pair_relation_states) != len(expected_pairs)
+        or not all(isinstance(state, str) for state in pair_relation_states)
+    ):
+        raise DetectionRegistrySchemaError(
+            "pair relation ledger must account for every object-evidence pair exactly once"
+        )
+    if not isinstance(pair_relation_facts, list):
+        raise DetectionRegistrySchemaError("pair relation facts must be a list")
+
+    facts_by_pair_index: dict[int, dict[str, Any]] = {}
+    for row in pair_relation_facts:
+        if (
+            not isinstance(row, dict)
+            or set(row) != {
+                "pair_index", "evidence_facts", "commercial_inseparability",
+            }
+            or not isinstance(row.get("pair_index"), int)
+            or not 0 <= row["pair_index"] < len(expected_pairs)
+            or row["pair_index"] in facts_by_pair_index
+            or not isinstance(row.get("commercial_inseparability"), str)
+        ):
+            raise DetectionRegistrySchemaError("pair relation facts are invalid")
+        evidence_types, normalized_facts = _validate_pairwise_evidence_facts(
+            row["evidence_facts"], page_count=page_count
+        )
+        facts_by_pair_index[row["pair_index"]] = {
+            "evidence_types": evidence_types,
+            "evidence_facts": normalized_facts,
+            "commercial_inseparability": row["commercial_inseparability"].strip(),
+        }
+
+    proofs: list[dict[str, Any]] = []
+    expanded_audit: list[dict[str, Any]] = []
+    for pair_index, ((group_id_a, group_id_b), encoded_state) in enumerate(
+        zip(expected_pairs, pair_relation_states, strict=True)
+    ):
+        if (
+            len(encoded_state) != 1 + len(PAIRWISE_RELATION_CRITERIA)
+            or encoded_state[0] not in PAIRWISE_RELATIONSHIP_CODES
+            or any(
+                criterion_state not in PAIRWISE_RELATION_STATE_CODES
+                for criterion_state in encoded_state[1:]
+            )
+        ):
+            raise DetectionRegistrySchemaError("pair relation state is invalid")
+        relation = PAIRWISE_RELATIONSHIP_CODES[encoded_state[0]]
+        criteria_states = dict(zip(
+            PAIRWISE_RELATION_CRITERIA, encoded_state[1:], strict=True
+        ))
+        positive_criteria = {
+            criterion
+            for criterion, state in criteria_states.items()
+            if state == "Y"
+        }
+        facts_row = facts_by_pair_index.get(pair_index)
+        if bool(positive_criteria) != bool(facts_row):
+            raise DetectionRegistrySchemaError(
+                "pair relation facts must record every positive criterion and no negative-only pair"
+            )
+        evidence_facts: list[dict[str, Any]] = []
+        commercial_inseparability = ""
+        if facts_row is not None:
+            evidence_types = facts_row["evidence_types"]
+            if not positive_criteria.issubset(evidence_types) or not evidence_types.issubset(positive_criteria):
+                raise DetectionRegistrySchemaError(
+                    "pair relation facts do not match criterion states"
+                )
+            evidence_facts = facts_row["evidence_facts"]
+            commercial_inseparability = facts_row["commercial_inseparability"]
+        if relation in PAIRWISE_EVIDENCE_RELATIONSHIPS:
+            if not positive_criteria or not commercial_inseparability:
+                raise DetectionRegistrySchemaError(
+                    "positive pair relation needs facts and commercial basis"
+                )
+            proofs.append({
+                "group_id_a": group_id_a,
+                "group_id_b": group_id_b,
+                "relationship": relation,
+                "evidence_facts": evidence_facts,
+                "commercial_inseparability": commercial_inseparability,
+            })
+        elif relation == "positive_non_tree_relation" and not positive_criteria:
+            raise DetectionRegistrySchemaError(
+                "positive non-tree relation needs positive criteria"
+            )
+        expanded_audit.append({
+            "pair_index": pair_index,
+            "group_id_a": group_id_a,
+            "group_id_b": group_id_b,
+            "relationship": relation,
+            "criterion_states": criteria_states,
+            "evidence_facts": evidence_facts,
+            "commercial_inseparability": commercial_inseparability,
+        })
+    return proofs, expanded_audit
 
 
 def validate_detection_registry(
@@ -261,41 +530,10 @@ def validate_detection_pairwise_merge_proofs(
             or proof["relationship"] not in PAIRWISE_EVIDENCE_RELATIONSHIPS
         ):
             raise DetectionRegistrySchemaError("pairwise merge proof relationship is invalid")
+        evidence_types, _ = _validate_pairwise_evidence_facts(
+            proof["evidence_facts"], page_count=page_count
+        )
         evidence_facts = proof["evidence_facts"]
-        if (
-            not isinstance(evidence_facts, list)
-            or not evidence_facts
-        ):
-            raise DetectionRegistrySchemaError("pairwise merge proof evidence facts are invalid")
-        evidence_types: set[str] = set()
-        evidence_fact_keys: set[tuple[str, tuple[int, ...], str]] = set()
-        for evidence_fact in evidence_facts:
-            if (
-                not isinstance(evidence_fact, dict)
-                or set(evidence_fact) != {"evidence_type", "evidence_pages", "observation"}
-            ):
-                raise DetectionRegistrySchemaError("pairwise merge proof evidence facts are invalid")
-            evidence_type = evidence_fact["evidence_type"]
-            evidence_pages = evidence_fact["evidence_pages"]
-            observation = str(evidence_fact["observation"] or "").strip()
-            if (
-                not isinstance(evidence_type, str)
-                or evidence_type not in PAIRWISE_MERGE_EVIDENCE_TYPES
-                or not isinstance(evidence_pages, list)
-                or not evidence_pages
-                or len(evidence_pages) != len(set(evidence_pages))
-                or not all(
-                    isinstance(page, int) and 1 <= page <= page_count
-                    for page in evidence_pages
-                )
-                or not observation
-            ):
-                raise DetectionRegistrySchemaError("pairwise merge proof evidence facts are invalid")
-            evidence_fact_key = (evidence_type, tuple(sorted(evidence_pages)), observation)
-            if evidence_fact_key in evidence_fact_keys:
-                raise DetectionRegistrySchemaError("pairwise merge proof evidence facts are invalid")
-            evidence_fact_keys.add(evidence_fact_key)
-            evidence_types.add(evidence_type)
         relationship = proof["relationship"]
         has_standalone_dimension_transform = (
             "dimension_transform" in evidence_types

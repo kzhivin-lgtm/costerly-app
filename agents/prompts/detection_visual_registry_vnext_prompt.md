@@ -1,4 +1,4 @@
-# DETECTION V4.37 - INVENTORY, CLASSIFY, PROVE, DECIDE, PACKAGE
+# DETECTION V4.38 - INVENTORY, CLASSIFY, COMPLETE GRAPH, DECIDE, PACKAGE
 
 Build the visual representation inventory and commercial-object registry in one
 response. The response has a mandatory causal order:
@@ -8,8 +8,9 @@ response. The response has a mandatory causal order:
 2. after the complete inventory exists, classify every group in the separate
    `classifications` array as `object_evidence` or `document_context`, with a
    factual reason,
-3. after inventory and classifications exist, build the full graph of
-   positive evidence-backed relations between `object_evidence` islands,
+3. after inventory and classifications exist, record every readable dimension,
+   then build the complete six-criterion graph between `object_evidence`
+   islands,
 4. decide the package outcome for every commercial island from that graph,
 5. describe those finished packages and their complete page Evidence.
 
@@ -59,87 +60,65 @@ shows placements. It cannot be `reference_link` or shared Evidence. An
 object-specific plan needs a concrete product identity, construction detail, or
 evidence-backed relation to a particular fabricated package.
 
-## 2. Full proof graph
+## 2. Complete graph, not a sparse graph
 
-Only after returning complete `visual_groups` and `classifications` arrays,
-return `proof_edges`. It is the complete set of positive relations between all
-`object_evidence` groups. An edge may connect any two groups, regardless of
-their output order. Never connect `document_context`.
+Only after returning complete `visual_groups` and `classifications`, return one
+`dimension_inventory` row for every visual group. Preserve every readable
+dimension literally once in its source group, including unit and scope. Use an
+empty `dimension_readings` array only when that island has no readable
+dimensions. Do not silently omit a readable dimension.
 
-Merge edges say the two islands represent one independently quoted fabricated
-product. Return only the minimal spanning forest for merge edges: no duplicate,
-self, cyclic or transitive shortcut edge. A proof edge must name two different
-`group_id` values. A self-edge is not evidence and is never a placeholder for
-an unresolved target. If you cannot name a different target with accepted
-evidence, omit the edge. An island with no proved merge relation becomes a
-singleton package. Do not merge on shared page, room, colour, material,
-proximity or visual impression alone.
+Then return the complete undirected graph across every unordered pair of
+`object_evidence` groups. The canonical pair order is lexicographic over the
+sorted `group_id` list: `(G001,G002)`, `(G001,G003)`, and so on. Return exactly
+one seven-character string in `pair_relation_states` for every pair. The first
+character is the resulting relation: `N` no relation, `P` positive relation
+that is not selected into the minimal proof tree, `S` same object view, `D`
+object detail, `R` shared reference link. The other six characters have
+this exact criterion order: explicit document relation, dimension equality,
+dimension transform, matching topology, unique geometry, direct shared
+structure. For each criterion write `Y` positive, `N` checked-negative, `C`
+comparable conflict, or `U` unreadable or not comparable.
 
-An unproved relation is not an implicit attachment. If the available facts do
-not meet the merge threshold, omit the merge edge. The island must then become
-its own standalone package. It is forbidden to treat a group as "probably part
-of" another product without either an accepted merge edge or a standalone
-package outcome. Do not invent weak evidence merely to avoid a singleton.
+This state ledger is mandatory for every pair, including a pair with no
+positive relation. It is how the runtime verifies that all six criteria were
+actually examined.
 
-Every edge is undirected: write its lexicographically ordered endpoints as
-`group_id_a` and `group_id_b`. It has `same_object_view`, `object_detail`, or
-`reference_link`, typed `evidence_facts`, and a factual
-`commercial_inseparability` explanation. The first two answer: **why do these
-two islands form one quote line?** They are merge edges. A
-`reference_link` answers: **why are these depictions related without forming
-one quote line?** It never merges products or enters a proof component. It has
-no source, target, direction or information-transfer meaning. Reference links
-may form chains.
+For every state string that contains `Y`, return exactly one
+`pair_relation_facts` row with that pair's zero-based index, every positive
+typed `evidence_facts` observation, and a concise factual
+`commercial_inseparability`. Do not return a facts row for an all-negative,
+conflicted or unreadable pair. Every `Y` must have one or more matching typed
+facts. A `dimension_equality` observation names both literal dimensions, their
+unit and physical scope. Two matching dimensions are sufficient merge evidence.
+Three or more are very strong evidence. A conflict is `C` only when both values
+claim the same physical axis and scope after unit and projection normalization.
 
-Use `reference_link` only when one object-specific composite view visibly
-relates several distinct independently quoted products. For every such
-non-commercial composite view, list its ID in
-`shared_reference_group_ids`. It becomes
-shared page-level Evidence for every linked package, not a commercial package
-itself. A group in `shared_reference_group_ids` must have no merge edge and
-must directly reference at least two distinct proven commercial packages. A
-generic floor plan, a room layout, a dimension string, a local construction
-detail or a panel grid cannot be shared Evidence merely because it relates to
-another depiction. It must instead enter a proved merge component or become a
-standalone package. For example, a sheet labelled N57 may show
-kitchen, island and cabinet together in two general views and separately in
-dedicated views. The general views reference-link to all three dedicated
-products, they do not merge kitchen, island and cabinet into one quote line.
+The graph is undirected. `S` means `same_object_view` and `D` means
+`object_detail`; both are merge relations. `R` is a
+`reference_link`: the depictions are related without one quote line, it never
+merges packages and has no source, target, direction or information-transfer
+meaning. A group in `shared_reference_group_ids` has `R` links to at least two distinct proven commercial packages and no `S` or `D` relation. Generic floor
+plans, room layouts, dimension strings, local construction details and panel
+grids cannot be shared Evidence merely because they relate to another depiction.
 
-Every fact names its page(s) and a concrete observation. Evaluate relations
-globally across the complete classified inventory, not incrementally as groups
-are emitted. For every candidate pair of `object_evidence` groups, assess all
-six evidence types below before deciding merge, context link or no relation.
-Do not stop at a first positive fact. The response remains compact: do not
-serialize negative checks. But an accepted merge edge must serialize every
-positive supporting fact found for that pair. `commercial_inseparability` prose
-never substitutes for a typed evidence fact.
+Only after all pair states and positive facts are complete, select only the
+necessary `S` or `D` relations for the minimal proof forest. Record any other
+positive but redundant relation as `P`, never as `N`, so the full evidence graph
+remains inspectable without cycles. Do not use a transitive shortcut or self
+relation. If no proved merge relation joins an island, it is a singleton
+package. Do not merge on shared page, room, colour, material, proximity or
+visual impression alone. Do not invent weak evidence to avoid a singleton.
 
-Apply the evidence types in this priority order:
-
-1. `explicit_document_relation`: same code, callout, view reference, axis or label.
-2. `dimension_equality`: the same readable physical dimension and scope are
-   explicitly equal on both groups without a unit or axis transformation. Name
-   both values, unit and scope.
-3. `dimension_transform`: dimensions agree after a named unit or axis transformation.
-4. `matching_topology`: matching bays, doors, supports, carcasses, frames,
-   appliances, joints or structural elements.
-5. `unique_geometry`: repeated cut-outs, handles, posts, appliance locations,
-   turning parts, mounting points, panel sequence or distinctive frame geometry.
-6. `direct_shared_structure`: visible common frame, track, carcass, joint or
-   physical connection. It can support a merge but cannot establish one alone.
-
-An explicit document relation can prove one edge on its own. One exact
-dimension transform can prove one edge on its own only when the observation
-names both measurements and the precise unit or axis transformation. Otherwise
-an edge needs at least two independent facts and at least one identity-level
-fact, `dimension_equality`, `matching_topology` or `unique_geometry`. One
-`dimension_equality` is a strong positive fact but does not merge alone. Two
-independent `dimension_equality` facts are sufficient dimension proof; three or
-more increase its strength. Different dimensions prohibit a merge only when
-they claim the same physical axis and scope after unit and projection
-normalization. Width versus depth, overall versus local dimensions, different
-scales, quantities and non-comparable projections are not conflicts.
+Every fact names its page(s) and a concrete observation. Evaluate every pair
+globally across the complete classified inventory, never incrementally as
+groups are emitted. Do not stop at the first positive fact. An explicit
+document relation can prove one merge on its own. One exact dimension transform
+can prove one merge only when its observation names both measurements and the
+precise unit or axis transformation. Otherwise an `S` or `D` relation needs at
+least two positive facts, including an identity-level fact: dimension equality,
+matching topology, dimension transform or unique geometry. A single shared
+structure cannot establish a merge on its own.
 
 ## 3. Singleton-package audit
 

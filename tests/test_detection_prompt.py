@@ -75,34 +75,35 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Return exactly one `page_coverage` entry for every upload page" in prompt
     assert "plan, room layout, electrical, plumbing or lighting plan" in prompt
     assert "never enter the graph or Estimation Evidence" in prompt
-    assert "no duplicate,\nself, cyclic or" in prompt
-    assert "A proof edge must name two different\n`group_id` values" in prompt
+    assert "Complete graph, not a sparse graph" in prompt
+    assert "pair_relation_states" in prompt
+    assert "pair_relation_facts" in prompt
+    assert "dimension_inventory" in prompt
+    assert "checked-negative" in prompt
     assert "Perform one final singleton audit" in prompt
     assert "edge merely to avoid a singleton" in prompt
-    assert "assess all\nsix evidence types below" in prompt
+    assert "all six criteria were\nactually examined" in prompt
     assert "`dimension_equality`" in prompt
-    assert "Two\nindependent `dimension_equality` facts are sufficient" in prompt
+    assert "Two matching dimensions are sufficient merge evidence" in prompt
     assert "do not return owner lists or object IDs" in prompt
     assert "merge-proof connected components are packages" in prompt
     assert "component_anchor_group_id" in prompt
     assert "classification_reason" in prompt
-    assert "proof_edges" in prompt
-    assert "why do these\ntwo islands form one quote line?" in prompt
+    assert "proof_edges" not in prompt
     assert "`object_detail`" in prompt
     assert "`reference_link`" in prompt
-    assert "Every edge is undirected" in prompt
+    assert "The graph is undirected" in prompt
     assert "`shared_reference_group_ids`" in prompt
     assert "at least two distinct proven commercial packages" in prompt
     assert "generic floor plan or room layout remains `document_context`" in prompt
-    assert "dimensions agree after a named unit or axis transformation" in prompt
-    assert "One exact\ndimension transform can prove one edge on its own" in prompt
-    assert "Evaluate relations\nglobally across the complete classified" in prompt
-    assert "can support a merge but cannot establish one alone" in prompt
+    assert "dimension transform" in prompt
+    assert "Evaluate every pair\nglobally across the complete classified" in prompt
+    assert "A single shared\nstructure cannot establish a merge on its own" in prompt
     assert "There is no third outcome" in prompt
     assert "second standalone-ID list" in prompt
     assert "standalone_package_group_ids" not in prompt
     assert "evidence_facts" in prompt
     assert "passive recall aid" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_37_graph_derived_packages_metadata_fallback_temperature_0"
+        "detection_v4_38_complete_pair_ledger_dimension_inventory_temperature_0"
     )

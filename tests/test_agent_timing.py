@@ -61,7 +61,7 @@ class _Response:
 
 
 def _visual_registry_payload(payload):
-    """Upgrade legacy Registry fixtures to the V4.37 staged contract."""
+    """Upgrade legacy Registry fixtures to the V4.38 staged contract."""
     if not isinstance(payload, dict) or not {
         "visual_groups", "objects", "page_coverage",
     }.issubset(payload):
@@ -91,7 +91,56 @@ def _visual_registry_payload(payload):
             "classification_reason": classification_reason,
         })
     payload["classifications"] = classifications
-    payload["proof_edges"] = proofs if isinstance(proofs, list) else []
+    object_group_ids = sorted(
+        row["group_id"]
+        for row in classifications
+        if row["evidence_class"] == "object_evidence"
+    )
+    pairs = [
+        (group_id_a, group_id_b)
+        for index, group_id_a in enumerate(object_group_ids)
+        for group_id_b in object_group_ids[index + 1:]
+    ]
+    proof_by_pair = {
+        tuple(sorted((str(proof.get("group_id_a") or ""), str(proof.get("group_id_b") or "")))): proof
+        for proof in proofs
+        if isinstance(proof, dict)
+    } if isinstance(proofs, list) else {}
+    criteria = (
+        "explicit_document_relation", "dimension_equality", "dimension_transform",
+        "matching_topology", "unique_geometry", "direct_shared_structure",
+    )
+    relation_codes = {
+        "same_object_view": "S", "object_detail": "D", "reference_link": "R",
+    }
+    pair_relation_states = []
+    pair_relation_facts = []
+    for pair_index, pair in enumerate(pairs):
+        proof = proof_by_pair.get(pair)
+        if proof is None:
+            pair_relation_states.append("N" + "N" * len(criteria))
+            continue
+        facts = proof.get("evidence_facts", [])
+        fact_types = {
+            fact.get("evidence_type") for fact in facts
+            if isinstance(fact, dict)
+        }
+        pair_relation_states.append(
+            relation_codes.get(proof.get("relationship"), "N")
+            + "".join("Y" if criterion in fact_types else "N" for criterion in criteria)
+        )
+        if fact_types:
+            pair_relation_facts.append({
+                "pair_index": pair_index,
+                "evidence_facts": facts,
+                "commercial_inseparability": proof.get("commercial_inseparability", ""),
+            })
+    payload["dimension_inventory"] = [
+        {"group_id": group["group_id"], "dimension_readings": []}
+        for group in groups if isinstance(group, dict)
+    ]
+    payload["pair_relation_states"] = pair_relation_states
+    payload["pair_relation_facts"] = pair_relation_facts
     payload.pop("standalone_package_group_ids", None)
     payload.setdefault("shared_reference_group_ids", [])
     return payload
@@ -588,7 +637,7 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
             page_images=[b"page"], regions=[], ocr_package=None, model="model",
         )
 
-    assert requested_budgets == [8192]
+    assert requested_budgets == [12288]
     assert requested_temperatures == [0.0]
     assert visual_map["visual_groups"][0]["group_id"] == "view-001"
     assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
@@ -929,7 +978,7 @@ def test_integrated_visual_registry_excludes_non_object_pages_from_estimation_ev
     assert registry["objects"][0]["estimation_evidence_pages"] == [2]
 
 
-def test_integrated_visual_registry_rejects_document_context_in_proof_graph():
+def test_integrated_visual_registry_discards_document_context_before_pair_ledger():
     payload = {
         "visual_groups": [
             {
@@ -979,17 +1028,15 @@ def test_integrated_visual_registry_rejects_document_context_in_proof_graph():
             }),
         ),
         patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
-        pytest.raises(
-            DetectionVisualRegistryValidationError,
-            match="pairwise merge proof groups are invalid",
-        ) as raised,
     ):
-        run_anthropic_detection_visual_registry_agent(
+        visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"plan", b"elevation"], regions=[], ocr_package=None, model="model",
         )
 
-    assert raised.value.usage_event["raw_usage"]["classification_decisions"][0] == {
+    assert [group["page_number"] for group in visual_map["visual_groups"]] == [2]
+    assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
+    assert usage["raw_usage"]["classification_decisions"][0] == {
         "group_id": "generic-plan",
         "page_number": 1,
         "evidence_class": "document_context",
@@ -1162,7 +1209,7 @@ def test_integrated_visual_registry_json_failure_carries_transport_diagnostics()
     assert event["raw_usage"]["validation_stage"] == "visual_registry_json"
     assert event["raw_usage"]["response_character_count"] == len(raw_text)
     assert event["raw_usage"]["response_text_sha256"]
-    assert event["raw_usage"]["max_tokens"] == 8192
+    assert event["raw_usage"]["max_tokens"] == 12288
     assert event["raw_usage"]["raw_response_persisted"] is False
     assert event["raw_usage"]["top_level_sections_started"] == [
         "visual_groups", "classifications",

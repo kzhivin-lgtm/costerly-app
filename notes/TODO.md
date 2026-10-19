@@ -16,7 +16,7 @@ This adds no model call, router, Sonnet route, or file-specific override.
 Preserve object-ID locking, full object evidence, UI-only previews, deferred
 Naming, File Review timing, and TC. Next gate: fresh HSL run must produce the
 11 packages with complete page-4 Evidence, then regress Page 23 and Adda.
-Current model build: `Detection V4.37`, experimental, built on the protected
+Current model build: `Detection V4.38`, experimental, built on the protected
 V4.23 passive OCR cross-check and checkpoint `52c314d`. Comment: V4.12 still
 treated every N76B page-11
 depiction as a partial component, then attempted to attach all three to N76B.
@@ -224,6 +224,18 @@ This adds no model call, router, Sonnet path or relaxation of proof, ownership,
 classification or page-coverage validation. Acceptance: HSL must complete
 without a descriptor/standalone-list validation failure, then regress Page 23
 and Adda before checkpointing.
+V4.38 replaces the sparse provider proof-edge response with a compact,
+exact-once relation ledger. Every `object_evidence` pair has six persisted
+criterion states: positive, checked-negative, conflict or unreadable. Every
+visual group also returns its readable dimensions once. Positive graph facts
+remain concrete and page-cited; two independently recorded dimension equalities
+are sufficient merge evidence and three or more are very strong. Runtime builds
+provisional components and packages only after the complete ledger, then applies
+the semantic proof threshold. This keeps one Haiku call and temperature zero,
+but raises the Registry output ceiling from 8,192 to 12,288 tokens to preserve
+the complete compact ledger. Acceptance: HSL must return a complete pair ledger
+without truncation, preserve every positive dimension fact in its merge graph,
+and then pass Page 23 and Adda regressions.
 
 PENDING, P1, USER REQUEST, Detection Registry output and latency optimisation:
 after the commercial-boundary experiment reaches a valid HSL graph, remove only
