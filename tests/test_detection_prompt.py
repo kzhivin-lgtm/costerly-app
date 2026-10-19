@@ -69,29 +69,29 @@ def test_detection_visual_map_never_decides_objects_or_quantity():
 def test_integrated_visual_registry_keeps_visual_representations_and_commercial_objects_distinct():
     prompt = load_detection_visual_registry_prompt()
 
-    assert "visual representation map and the locked commercial-object registry in one response" in prompt
-    assert "Keep these two levels separate" in prompt
+    assert "visual representation map and commercial-object registry in one response" in prompt
+    assert "strict causal order" in prompt
     assert "There is no arbitrary page-count cap" in prompt
-    assert "For every physical upload page, return exactly one `page_coverage` entry" in prompt
+    assert "Return exactly one `page_coverage` entry for every physical upload page" in prompt
     assert "not a shortlist of pages that appear sufficient for a material calculation" in prompt
-    assert "Do not create a `visual_group` for non-object source material" in prompt
+    assert "Do not create a group for the cover/title page" in prompt
     assert "generic floor plan, room layout, electrical, plumbing or lighting plan" in prompt
-    assert "not Evidence and must not enter an object package or the Estimation handoff" in prompt
-    assert "Never create a placeholder, self-link, empty proof" in prompt
-    assert "ordered non-empty `owner_object_ids`" in prompt
-    assert "sole ownership declaration" in prompt
-    assert "Do not repeat group membership inside an object row" in prompt
-    assert "`object_detail` for a section, node, module or detail" in prompt
-    assert "resolve identity across all visual groups" in prompt
-    assert "Dimensions that agree after a change of axes" in prompt
-    assert "Secondary supporting signals only" in prompt
+    assert "they are not Estimation Evidence" in prompt
+    assert "Never return a self-link, duplicate edge, placeholder or empty proof" in prompt
+    assert "Do not assign any object IDs or owners to a group" in prompt
+    assert "connected proof component as exactly one commercial object" in prompt
+    assert "component_anchor_group_id" in prompt
+    assert "`object_detail` for a detail, section or module" in prompt
+    assert "Start with every visual group separate" in prompt
+    assert "dimensions agree after a change of axes" in prompt
+    assert "Secondary signals" in prompt
     assert "whole-silhouette similarity is not required" in prompt
-    assert "vertical shelving unit, a track-supported door system and a long storage console" in prompt
-    assert "Pairwise merge-proof procedure" in prompt
-    assert "Test commercial separability, not merely visual adjacency" in prompt
-    assert "Direct shared structure may support a merge but cannot be its only evidence" in prompt
+    assert "Different finished envelopes, principal functions or primary dimensions" in prompt
+    assert "Proof graph" in prompt
+    assert "Test commercial separability, not merely visual closeness" in prompt
+    assert "It may support an edge, never establish one alone" in prompt
     assert "evidence_facts" in prompt
     assert "`floor_plan` means generic non-object context and is discarded" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_16_non_object_page_guard_temperature_0"
+        "detection_v4_17_proof_graph_ownership_temperature_0"
     )

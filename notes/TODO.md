@@ -16,7 +16,7 @@ This adds no model call, router, Sonnet route, or file-specific override.
 Preserve object-ID locking, full object evidence, UI-only previews, deferred
 Naming, File Review timing, and TC. Next gate: fresh HSL run must produce the
 11 packages with complete page-4 Evidence, then regress Page 23 and Adda.
-Current model build: `Detection V4.16`, experimental, based on V4.15 and the
+Current model build: `Detection V4.17`, experimental, based on V4.15 and the
 protected checkpoint `52c314d`. Comment: V4.12 still treated every N76B page-11
 depiction as a partial component, then attempted to attach all three to N76B.
 The failure proved that assembly/component was an invalid eligibility gate, not
@@ -38,11 +38,19 @@ V4.16 discards generic floor plans, title pages and title blocks from the
 effective visual-group payload before ownership, proof construction, identity
 pages and Estimation Evidence. An object-specific plan remains eligible only
 as `object_plan`. This adds no model call, router, Sonnet path, Naming or UI
-timing. It is not a
-checkpoint until HSL first produces nine
-valid object packages with complete object-specific evidence, followed by Page
-23 and Adda regression gates. The HSL 11-object boundary split remains a later
-separate gate.
+timing. V4.17 replaces the V4.14 owner ledger as the source of object
+membership. The model now returns only object-specific visual groups, typed
+pairwise merge facts, one component descriptor per proof-graph component, and
+page coverage keyed by that component descriptor. Runtime derives every
+commercial object and its `visual_group_ids` solely from the connected proof
+forest, assigns ordered runtime object IDs, then resolves Evidence coverage.
+An unlinked group is a singleton object, a multi-group object cannot exist
+without its minimal proof tree. A physical page remains reusable Evidence for
+several components, but one visual group cannot be an owner declaration for
+several objects. No model call, router, Sonnet path, Naming or UI timing is
+added. It is not a checkpoint until HSL produces the canonical 11 packages
+with complete object-specific evidence, followed by Page 23 and Adda regression
+gates.
 
 PENDING, P1, USER OBSERVATION, stale Processing cycle after New Estimate:
 investigate the authenticated-browser sequence in which a prior saved estimate

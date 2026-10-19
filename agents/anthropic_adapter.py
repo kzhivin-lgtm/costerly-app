@@ -27,6 +27,7 @@ from agents.schemas.detection_registry_schema import (
     DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
+    derive_detection_proof_components,
     validate_detection_pairwise_merge_proofs,
     validate_detection_registry,
 )
@@ -49,11 +50,11 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_16_non_object_page_guard_temperature_0"
+    "detection_v4_17_proof_graph_ownership_temperature_0"
 )
-# V4.16 retains the V4.15 typed merge facts and V4.14 ownership ledger. Generic
-# floor plans and title material cannot enter either ledger, even if the model
-# mistakenly returns them as visual groups.
+# V4.17 retains V4.15 typed merge facts and V4.16 non-object exclusion, but
+# reverses V4.14's ownership flow. The proof graph, not a model owner ledger,
+# is the sole source of commercial object membership.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
@@ -86,29 +87,41 @@ class DetectionVisualRegistryValidationError(RuntimeError):
         self.usage_event = usage_event
 
 
-DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA = copy.deepcopy(
-    DETECTION_REGISTRY_JSON_SCHEMA["properties"]["objects"]
-)
-DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
-    "estimation_evidence_pages"
-)
-DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
-    "estimation_evidence_pages"
-)
-DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
-    "visual_group_ids"
-)
-DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
-    "visual_group_ids"
-)
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA: dict[str, Any] = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "additionalProperties": False,
+        "required": [
+            "component_anchor_group_id",
+            "transport_label",
+            "quantity",
+            "quantity_explicit",
+            "identity_pages",
+            "visual_identity",
+            "boundary_basis",
+        ],
+        "properties": {
+            "component_anchor_group_id": {"type": "string"},
+            "transport_label": {"type": "string"},
+            "quantity": {"type": "number", "minimum": 0},
+            "quantity_explicit": {"type": "boolean"},
+            "identity_pages": {
+                "type": "array", "items": {"type": "integer", "minimum": 1},
+            },
+            "visual_identity": {"type": "string"},
+            "boundary_basis": {"type": "string"},
+        },
+    },
+}
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA = copy.deepcopy(
     DETECTION_VISUAL_MAP_JSON_SCHEMA["properties"]["visual_groups"]
 )
-DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
-    "owner_object_ids"
-)
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"].pop(
     "evidence_class"
+)
+DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"].pop(
+    "owner_object_ids"
 )
 
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
@@ -124,10 +137,14 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
             "items": {
                 "type": "object",
                 "additionalProperties": False,
-                "required": ["page_number", "object_ids", "evidence_reason"],
+                "required": [
+                    "page_number", "component_anchor_group_ids", "evidence_reason",
+                ],
                 "properties": {
                     "page_number": {"type": "integer", "minimum": 1},
-                    "object_ids": {"type": "array", "items": {"type": "string"}},
+                    "component_anchor_group_ids": {
+                        "type": "array", "items": {"type": "string"},
+                    },
                     "evidence_reason": {"type": "string"},
                 },
             },
@@ -731,48 +748,128 @@ def _apply_page_coverage_to_registry(
     return enriched, reconciled_object_ids
 
 
-def _derive_registry_visual_group_ids(
+def _normalize_component_anchor_group_ids(
+    payload: dict[str, Any], group_id_mapping: dict[str, str],
+) -> dict[str, Any]:
+    """Normalize provider-facing component anchors to canonical view IDs."""
+    normalized = copy.deepcopy(payload)
+    objects = normalized.get("objects")
+    if isinstance(objects, list):
+        for item in objects:
+            if isinstance(item, dict):
+                raw_group_id = str(item.get("component_anchor_group_id") or "")
+                item["component_anchor_group_id"] = group_id_mapping.get(
+                    raw_group_id, raw_group_id
+                )
+    page_coverage = normalized.get("page_coverage")
+    if isinstance(page_coverage, list):
+        for entry in page_coverage:
+            if not isinstance(entry, dict) or not isinstance(
+                entry.get("component_anchor_group_ids"), list
+            ):
+                continue
+            entry["component_anchor_group_ids"] = [
+                group_id_mapping.get(str(group_id), str(group_id))
+                for group_id in entry["component_anchor_group_ids"]
+            ]
+    return normalized
+
+
+def _derive_registry_from_proof_components(
     objects: object,
-    visual_map: dict[str, Any],
+    components: list[list[str]],
+) -> tuple[list[dict[str, Any]], dict[str, str]]:
+    """Derive ordered runtime objects from proof-tree components only."""
+    required = {
+        "component_anchor_group_id", "transport_label", "quantity",
+        "quantity_explicit", "identity_pages", "visual_identity", "boundary_basis",
+    }
+    if not isinstance(objects, list) or not all(
+        isinstance(item, dict) and set(item) == required for item in objects
+    ):
+        raise DetectionRegistrySchemaError("registry object fields do not match contract")
+
+    component_anchor_by_group_id = {
+        group_id: component[0]
+        for component in components
+        for group_id in component
+    }
+    objects_by_component_anchor: dict[str, dict[str, Any]] = {}
+    declared_anchor_by_component_anchor: dict[str, str] = {}
+    for item in objects:
+        declared_anchor = str(item.get("component_anchor_group_id") or "")
+        component_anchor = component_anchor_by_group_id.get(declared_anchor)
+        if not component_anchor or component_anchor in objects_by_component_anchor:
+            raise DetectionRegistrySchemaError("registry component anchors are invalid")
+        objects_by_component_anchor[component_anchor] = item
+        declared_anchor_by_component_anchor[component_anchor] = declared_anchor
+    expected_component_anchors = {component[0] for component in components}
+    if set(objects_by_component_anchor) != expected_component_anchors:
+        raise DetectionRegistrySchemaError(
+            "registry must account for every proof component exactly once",
+            details={
+                "missing_component_anchor_group_ids": sorted(
+                    expected_component_anchors - set(objects_by_component_anchor)
+                ),
+                "unexpected_component_anchor_group_ids": sorted(
+                    set(objects_by_component_anchor) - expected_component_anchors
+                ),
+            },
+        )
+
+    registry_objects: list[dict[str, Any]] = []
+    anchor_to_object_id: dict[str, str] = {}
+    for index, component in enumerate(components, start=1):
+        component_anchor = component[0]
+        source = objects_by_component_anchor[component_anchor]
+        object_id = f"object-{index:03d}"
+        registry_objects.append({
+            "object_id": object_id,
+            "transport_label": source["transport_label"],
+            "quantity": source["quantity"],
+            "quantity_explicit": source["quantity_explicit"],
+            "identity_pages": copy.deepcopy(source["identity_pages"]),
+            "visual_group_ids": component,
+            "visual_identity": source["visual_identity"],
+            "boundary_basis": source["boundary_basis"],
+        })
+        anchor_to_object_id[
+            declared_anchor_by_component_anchor[component_anchor]
+        ] = object_id
+    return registry_objects, anchor_to_object_id
+
+
+def _resolve_component_page_coverage(
+    page_coverage: object,
+    *,
+    anchor_to_object_id: dict[str, str],
 ) -> list[dict[str, Any]]:
-    """Build package membership from the per-group ownership ledger.
-
-    A provider used to state the same ownership twice: once by classifying a
-    visual group and again by selecting groups inside every object. V4.14 keeps
-    the local group-to-owner decision and derives the inverse relation here.
-    A missing, duplicate, unordered, or unknown owner remains a visible
-    validation failure rather than being repaired from page coverage.
-    """
-    if not isinstance(objects, list) or not all(isinstance(item, dict) for item in objects):
-        raise ValueError("registry objects must be a list")
-    groups = visual_map.get("visual_groups")
-    if not isinstance(groups, list):
-        raise ValueError("visual groups must be a list")
-
-    object_ids = [str(item.get("object_id") or "") for item in objects]
-    known_object_ids = set(object_ids)
-    ownership: dict[str, list[str]] = {object_id: [] for object_id in object_ids}
-    for group in groups:
-        group_id = str(group.get("group_id") or "")
-        owner_object_ids = group.get("owner_object_ids")
+    """Resolve evidence coverage anchors after code derives object IDs."""
+    if not isinstance(page_coverage, list):
+        raise ValueError("page coverage and objects must be lists")
+    resolved: list[dict[str, Any]] = []
+    for entry in page_coverage:
+        if not isinstance(entry, dict) or set(entry) != {
+            "page_number", "component_anchor_group_ids", "evidence_reason",
+        }:
+            raise ValueError("page coverage fields do not match contract")
+        anchors = entry["component_anchor_group_ids"]
         if (
-            not isinstance(owner_object_ids, list)
-            or not owner_object_ids
-            or owner_object_ids != sorted(owner_object_ids)
-            or len(owner_object_ids) != len(set(owner_object_ids))
-            or not all(owner_object_id in known_object_ids for owner_object_id in owner_object_ids)
-        ):
-            raise DetectionRegistrySchemaError(
-                "visual group ownership is invalid",
-                details={"group_id": group_id, "owner_object_ids": owner_object_ids},
+            not isinstance(anchors, list)
+            or anchors != sorted(anchors)
+            or len(anchors) != len(set(anchors))
+            or not all(
+                isinstance(anchor, str) and anchor in anchor_to_object_id
+                for anchor in anchors
             )
-        for owner_object_id in owner_object_ids:
-            ownership[owner_object_id].append(group_id)
-
-    derived = copy.deepcopy(objects)
-    for item in derived:
-        item["visual_group_ids"] = ownership[str(item.get("object_id") or "")]
-    return derived
+        ):
+            raise ValueError("page coverage is invalid")
+        resolved.append({
+            "page_number": entry["page_number"],
+            "object_ids": [anchor_to_object_id[anchor] for anchor in anchors],
+            "evidence_reason": entry["evidence_reason"],
+        })
+    return resolved
 
 
 def _normalize_pairwise_merge_proof_group_ids(
@@ -799,7 +896,7 @@ def _discard_non_object_visual_registry_groups(
 
     These pages may help Detection orient itself, but are never object Evidence.
     The model's original output remains in the decision audit. The effective
-    payload cannot pass a generic plan into the ownership ledger, proof tree,
+    payload cannot pass a generic plan into the proof graph, candidate objects,
     identity pages, or Estimation page coverage.
     """
     groups = payload.get("visual_groups")
@@ -838,43 +935,38 @@ def _discard_non_object_visual_registry_groups(
             )
         ]
 
-    retained_owner_ids_by_page: dict[int, set[str]] = {}
-    for group in effective["visual_groups"]:
-        if not isinstance(group, dict) or not isinstance(group.get("page_number"), int):
-            continue
-        owner_object_ids = group.get("owner_object_ids")
-        if isinstance(owner_object_ids, list):
-            retained_owner_ids_by_page.setdefault(group["page_number"], set()).update(
-                str(object_id) for object_id in owner_object_ids
-            )
+    retained_group_pages = {
+        group.get("page_number")
+        for group in effective["visual_groups"]
+        if isinstance(group, dict) and isinstance(group.get("page_number"), int)
+    }
 
     page_coverage = effective.get("page_coverage")
     if isinstance(page_coverage, list):
         for entry in page_coverage:
             if not isinstance(entry, dict) or entry.get("page_number") not in discarded_pages:
                 continue
-            retained_owner_ids = retained_owner_ids_by_page.get(entry["page_number"], set())
-            if isinstance(entry.get("object_ids"), list):
-                entry["object_ids"] = [
-                    object_id for object_id in entry["object_ids"]
-                    if object_id in retained_owner_ids
-                ]
-            if not entry.get("object_ids"):
+            if entry.get("page_number") not in retained_group_pages:
+                entry["component_anchor_group_ids"] = []
                 entry["evidence_reason"] = (
                     "non-object source page excluded from Estimation Evidence"
                 )
 
     objects = effective.get("objects")
     if isinstance(objects, list):
-        for item in objects:
+        effective["objects"] = [
+            item for item in objects
+            if not isinstance(item, dict)
+            or str(item.get("component_anchor_group_id") or "") not in discarded_group_ids
+        ]
+        for item in effective["objects"]:
             if not isinstance(item, dict) or not isinstance(item.get("identity_pages"), list):
                 continue
-            object_id = str(item.get("object_id") or "")
             item["identity_pages"] = [
                 page_number for page_number in item["identity_pages"]
                 if (
                     page_number not in discarded_pages
-                    or object_id in retained_owner_ids_by_page.get(page_number, set())
+                    or page_number in retained_group_pages
                 )
             ]
     return effective, discarded_groups
@@ -921,36 +1013,40 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
             normalize_detection_visual_map_group_ids({"visual_groups": raw_groups}),
-            require_owner_object_ids=True,
         )
         group_id_mapping = {
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
+        payload = _normalize_component_anchor_group_ids(payload, group_id_mapping)
         merge_proofs = _normalize_pairwise_merge_proof_group_ids(
             payload["merge_proofs"], group_id_mapping
         )
-        registry_objects_input = _derive_registry_visual_group_ids(
-            payload["objects"], visual_map,
-        )
-        registry_objects, reconciled_object_ids = _apply_page_coverage_to_registry(
-            registry_objects_input, payload["page_coverage"], page_count=len(page_images),
-        )
-        registry_payload = {"objects": registry_objects}
-        for item in registry_payload["objects"]:
-            item["visual_group_ids"] = [
-                group_id_mapping.get(str(group_id), str(group_id))
-                for group_id in item["visual_group_ids"]
-            ]
-        registry = validate_detection_registry(
-            registry_payload,
-            visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
-            object_evidence_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
-        )
+        visual_group_ids = {
+            group["group_id"] for group in visual_map["visual_groups"]
+        }
         pairwise_merge_proofs = validate_detection_pairwise_merge_proofs(
             merge_proofs,
-            registry=registry,
+            visual_group_ids=visual_group_ids,
             page_count=len(page_images),
+        )
+        proof_components = derive_detection_proof_components(
+            pairwise_merge_proofs, visual_group_ids=visual_group_ids,
+        )
+        registry_objects_input, anchor_to_object_id = _derive_registry_from_proof_components(
+            payload["objects"], proof_components,
+        )
+        resolved_page_coverage = _resolve_component_page_coverage(
+            payload["page_coverage"], anchor_to_object_id=anchor_to_object_id,
+        )
+        registry_objects, reconciled_object_ids = _apply_page_coverage_to_registry(
+            registry_objects_input, resolved_page_coverage, page_count=len(page_images),
+        )
+        registry_payload = {"objects": registry_objects}
+        registry = validate_detection_registry(
+            registry_payload,
+            visual_group_ids=visual_group_ids,
+            object_evidence_group_ids=visual_group_ids,
         )
     except (KeyError, ValueError) as exc:
         failure_diagnostics = dict(diagnostics)
@@ -997,18 +1093,22 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "unassigned_object_evidence_group_count": len(
             object_evidence_group_ids - assigned_visual_group_ids
         ),
-        "visual_group_owner_count": sum(
-            len(group["owner_object_ids"])
-            for group in visual_map["visual_groups"]
-        ),
-        "page_coverage_count": len(payload["page_coverage"]),
+        "proof_component_count": len(proof_components),
+        "page_coverage_count": len(resolved_page_coverage),
         "unassigned_page_count": sum(
-            not entry["object_ids"] for entry in payload["page_coverage"]
+            not entry["object_ids"] for entry in resolved_page_coverage
         ),
         "registry_decision_audit": registry_decision_audit,
         "discarded_non_object_visual_groups": discarded_non_object_groups,
         "pairwise_merge_proofs": pairwise_merge_proofs,
         "pairwise_merge_proof_count": len(pairwise_merge_proofs),
+        "proof_graph_components": [
+            {
+                "canonical_anchor_group_id": component[0],
+                "visual_group_ids": component,
+            }
+            for component in proof_components
+        ],
         "region_count": len(regions),
         "page_count": len(page_images),
         "attempt_label": "visual_registry_integrated",

@@ -490,16 +490,15 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "perspective",
-            "owner_object_ids": ["object-001"],
         }],
         "objects": [{
-            "object_id": "object-001", "transport_label": "Object 1",
+            "component_anchor_group_id": "view_a", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
             "visual_identity": "one cabinet", "boundary_basis": "one complete product",
         }],
         "merge_proofs": [],
         "page_coverage": [{
-            "page_number": 1, "object_ids": ["object-001"],
+            "page_number": 1, "component_anchor_group_ids": ["view_a"],
             "evidence_reason": "cabinet view",
         }],
     }
@@ -541,23 +540,22 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
             {
                 "group_id": "elevation", "page_number": 1, "location_hint": "left",
                 "visual_description": "sliding door system elevation",
-                "representation_kind": "elevation", "owner_object_ids": ["object-001"],
+                "representation_kind": "elevation",
             },
             {
                 "group_id": "plan", "page_number": 1, "location_hint": "right",
                 "visual_description": "sliding door system plan",
-                "representation_kind": "plan", "owner_object_ids": ["object-001"],
+                "representation_kind": "plan",
             },
         ],
         "objects": [{
-            "object_id": "object-001", "transport_label": "D01",
+            "component_anchor_group_id": "elevation", "transport_label": "D01",
             "quantity": 1, "quantity_explicit": True, "identity_pages": [1],
             "visual_identity": "one door system in elevation and plan",
             "boundary_basis": "matching track and three-leaf sequence",
         }],
         "merge_proofs": [{
-            "object_id": "object-001", "from_group_id": "elevation",
-            "to_group_id": "plan",
+            "from_group_id": "elevation", "to_group_id": "plan",
             "relationship": "same_object_view",
             "evidence_facts": [
                 {"evidence_type": "dimension_transform", "evidence_pages": [1], "observation": "The plan track length matches the elevation after the axis change."},
@@ -566,7 +564,7 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
             "commercial_inseparability": "Both views show one common track and frame.",
         }],
         "page_coverage": [{
-            "page_number": 1, "object_ids": ["object-001"],
+            "page_number": 1, "component_anchor_group_ids": ["elevation"],
             "evidence_reason": "both views show D01",
         }],
     }
@@ -593,20 +591,24 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
     assert registry["objects"][0]["visual_group_ids"] == ["view-001", "view-002"]
     assert usage["raw_usage"]["pairwise_merge_proofs"][0]["from_group_id"] == "view-001"
     assert usage["raw_usage"]["pairwise_merge_proofs"][0]["to_group_id"] == "view-002"
+    assert usage["raw_usage"]["proof_graph_components"] == [{
+        "canonical_anchor_group_id": "view-001",
+        "visual_group_ids": ["view-001", "view-002"],
+    }]
 
 
-def test_integrated_visual_registry_rejects_object_without_group_owner():
+def test_integrated_visual_registry_rejects_duplicate_component_anchor():
     payload = {
         "visual_groups": [
-            {"group_id": "view_a", "page_number": 1, "location_hint": "upper left", "visual_description": "shelving", "representation_kind": "elevation", "owner_object_ids": ["object-001"]},
+            {"group_id": "view_a", "page_number": 1, "location_hint": "upper left", "visual_description": "shelving", "representation_kind": "elevation"},
         ],
         "objects": [
-            {"object_id": "object-001", "transport_label": "Object 1", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_identity": "shelving", "boundary_basis": "one complete product"},
-            {"object_id": "object-002", "transport_label": "Object 2", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_identity": "unresolved", "boundary_basis": "unresolved"},
+            {"component_anchor_group_id": "view_a", "transport_label": "Object 1", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_identity": "shelving", "boundary_basis": "one complete product"},
+            {"component_anchor_group_id": "view_a", "transport_label": "Object 2", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_identity": "unresolved", "boundary_basis": "unresolved"},
         ],
         "merge_proofs": [],
         "page_coverage": [{
-            "page_number": 1, "object_ids": ["object-001", "object-002"],
+            "page_number": 1, "component_anchor_group_ids": ["view_a"],
             "evidence_reason": "both are claimed on this page",
         }],
     }
@@ -621,7 +623,7 @@ def test_integrated_visual_registry_rejects_object_without_group_owner():
         patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
         pytest.raises(
             DetectionVisualRegistryValidationError,
-            match="registry visual groups are invalid",
+            match="registry component anchors are invalid",
         ),
     ):
         run_anthropic_detection_visual_registry_agent(
@@ -630,21 +632,21 @@ def test_integrated_visual_registry_rejects_object_without_group_owner():
         )
 
 
-def test_integrated_visual_registry_keeps_empty_group_object_with_evidence_as_error():
+def test_integrated_visual_registry_rejects_unproved_multi_group_membership():
     payload = {
-        "visual_groups": [{
-            "group_id": "view_a", "page_number": 1, "location_hint": "left",
-            "visual_description": "cabinet", "representation_kind": "elevation",
-            "owner_object_ids": ["object-001"],
-        }],
-        "objects": [
-            {"object_id": "object-001", "transport_label": "Object 1", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_identity": "cabinet", "boundary_basis": "one complete product"},
-            {"object_id": "object-002", "transport_label": "Object 2", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_identity": "unresolved", "boundary_basis": "unresolved"},
+        "visual_groups": [
+            {"group_id": "view_a", "page_number": 1, "location_hint": "left", "visual_description": "cabinet elevation", "representation_kind": "elevation"},
+            {"group_id": "view_b", "page_number": 1, "location_hint": "right", "visual_description": "cabinet section", "representation_kind": "section"},
         ],
+        "objects": [{
+            "component_anchor_group_id": "view_a", "transport_label": "N76B",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "visual_identity": "cabinet", "boundary_basis": "claimed one cabinet",
+        }],
         "merge_proofs": [],
         "page_coverage": [{
-            "page_number": 1, "object_ids": ["object-001", "object-002"],
-            "evidence_reason": "both are claimed on this page",
+            "page_number": 1, "component_anchor_group_ids": ["view_a"],
+            "evidence_reason": "cabinet elevation",
         }],
     }
 
@@ -656,7 +658,7 @@ def test_integrated_visual_registry_keeps_empty_group_object_with_evidence_as_er
             "request_finished_at": "2026-10-16T00:00:01+00:00",
         })),
         patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
-        pytest.raises(DetectionVisualRegistryValidationError, match="registry visual groups are invalid"),
+        pytest.raises(DetectionVisualRegistryValidationError, match="account for every proof component"),
     ):
         run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -669,17 +671,16 @@ def test_registry_uses_the_same_atomic_visual_group_contract_for_all_models():
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "perspective",
-            "owner_object_ids": ["object-001"],
         }],
         "objects": [{
-            "object_id": "object-001", "transport_label": "Object 1",
+            "component_anchor_group_id": "view_a", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
             "visual_identity": "one cabinet",
             "boundary_basis": "one complete product",
         }],
         "merge_proofs": [],
         "page_coverage": [{
-            "page_number": 1, "object_ids": ["object-001"],
+            "page_number": 1, "component_anchor_group_ids": ["view_a"],
             "evidence_reason": "cabinet view",
         }],
     }
@@ -723,17 +724,16 @@ def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_pa
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "perspective",
-            "owner_object_ids": ["object-001"],
         }],
         "objects": [{
-            "object_id": "object-001", "transport_label": "Object 1",
+            "component_anchor_group_id": "view_a", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
             "visual_identity": "one cabinet",
             "boundary_basis": "one complete product",
         }],
         "merge_proofs": [],
         "page_coverage": [{
-            "page_number": 1, "object_ids": ["object-001"],
+            "page_number": 1, "component_anchor_group_ids": ["view_a"],
             "evidence_reason": "cabinet view",
         }],
     }
@@ -762,21 +762,20 @@ def test_integrated_visual_registry_excludes_non_object_pages_from_estimation_ev
         "visual_groups": [{
             "group_id": "view_a", "page_number": 2, "location_hint": "center",
             "visual_description": "cabinet elevation", "representation_kind": "elevation",
-            "owner_object_ids": ["object-001"],
         }],
         "objects": [{
-            "object_id": "object-001", "transport_label": "N56",
+            "component_anchor_group_id": "view_a", "transport_label": "N56",
             "quantity": 1, "quantity_explicit": True, "identity_pages": [2],
             "visual_identity": "cabinet", "boundary_basis": "one finished cabinet",
         }],
         "merge_proofs": [],
         "page_coverage": [
             {
-                "page_number": 1, "object_ids": [],
+                "page_number": 1, "component_anchor_group_ids": [],
                 "evidence_reason": "cover page has project metadata only",
             },
             {
-                "page_number": 2, "object_ids": ["object-001"],
+                "page_number": 2, "component_anchor_group_ids": ["view_a"],
                 "evidence_reason": "object-specific cabinet elevation",
             },
         ],
@@ -808,22 +807,22 @@ def test_integrated_visual_registry_discards_generic_floor_plan_before_ownership
             {
                 "group_id": "generic-plan", "page_number": 1,
                 "location_hint": "center", "visual_description": "full floor plan with furniture zones",
-                "representation_kind": "floor_plan", "owner_object_ids": ["object-001"],
+                "representation_kind": "floor_plan",
             },
             {
                 "group_id": "cabinet-elevation", "page_number": 2,
                 "location_hint": "center", "visual_description": "cabinet elevation",
-                "representation_kind": "elevation", "owner_object_ids": ["object-001"],
+                "representation_kind": "elevation",
             },
         ],
         "objects": [{
-            "object_id": "object-001", "transport_label": "N56",
+            "component_anchor_group_id": "cabinet-elevation", "transport_label": "N56",
             "quantity": 1, "quantity_explicit": True, "identity_pages": [1, 2],
             "visual_identity": "one cabinet", "boundary_basis": "one finished cabinet",
         }],
         "merge_proofs": [{
-            "object_id": "object-001", "from_group_id": "generic-plan",
-            "to_group_id": "cabinet-elevation", "relationship": "same_object_view",
+            "from_group_id": "generic-plan", "to_group_id": "cabinet-elevation",
+            "relationship": "same_object_view",
             "evidence_facts": [{
                 "evidence_type": "explicit_document_relation", "evidence_pages": [1, 2],
                 "observation": "The plan and elevation carry the N56 label.",
@@ -832,11 +831,11 @@ def test_integrated_visual_registry_discards_generic_floor_plan_before_ownership
         }],
         "page_coverage": [
             {
-                "page_number": 1, "object_ids": ["object-001"],
+                "page_number": 1, "component_anchor_group_ids": [],
                 "evidence_reason": "generic floor plan",
             },
             {
-                "page_number": 2, "object_ids": ["object-001"],
+                "page_number": 2, "component_anchor_group_ids": ["cabinet-elevation"],
                 "evidence_reason": "object-specific cabinet elevation",
             },
         ],
@@ -873,23 +872,21 @@ def test_integrated_visual_registry_reconciles_missing_object_on_only_page():
             {
                 "group_id": "view_a", "page_number": 1, "location_hint": "left",
                 "visual_description": "cabinet", "representation_kind": "perspective",
-                "owner_object_ids": ["object-001"],
             },
             {
                 "group_id": "view_b", "page_number": 1, "location_hint": "right",
                 "visual_description": "counter", "representation_kind": "perspective",
-                "owner_object_ids": ["object-002"],
             },
         ],
         "objects": [
             {
-                "object_id": "object-001", "transport_label": "Object 1",
+                "component_anchor_group_id": "view_a", "transport_label": "Object 1",
                 "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
                 "visual_identity": "cabinet",
                 "boundary_basis": "separate cabinet",
             },
             {
-                "object_id": "object-002", "transport_label": "Object 2",
+                "component_anchor_group_id": "view_b", "transport_label": "Object 2",
                 "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
                 "visual_identity": "counter",
                 "boundary_basis": "separate counter",
@@ -897,7 +894,7 @@ def test_integrated_visual_registry_reconciles_missing_object_on_only_page():
         ],
         "merge_proofs": [],
         "page_coverage": [{
-            "page_number": 1, "object_ids": ["object-001"],
+            "page_number": 1, "component_anchor_group_ids": ["view_a"],
             "evidence_reason": "cabinet drawing",
         }],
     }
@@ -927,17 +924,16 @@ def test_integrated_visual_registry_validation_failure_carries_structured_audit(
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "cabinet", "representation_kind": "perspective",
-            "owner_object_ids": ["object-001"],
         }],
         "objects": [{
-            "object_id": "object-001", "transport_label": "Object 1",
+            "component_anchor_group_id": "view_a", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
             "visual_identity": "cabinet",
             "boundary_basis": "one cabinet",
         }],
         "merge_proofs": [],
         "page_coverage": [{
-            "page_number": 1, "object_ids": ["object-001"],
+            "page_number": 1, "component_anchor_group_ids": ["view_a"],
             "evidence_reason": "cabinet drawing",
         }],
     }
@@ -966,22 +962,21 @@ def test_integrated_visual_registry_validation_failure_carries_structured_audit(
     assert event["raw_usage"]["registry_decision_audit"] == payload
 
 
-def test_integrated_visual_registry_allows_shared_object_evidence():
+def test_integrated_visual_registry_allows_one_physical_page_for_multiple_components():
     payload = {
-        "visual_groups": [{
-            "group_id": "view_a", "page_number": 1, "location_hint": "center",
-            "visual_description": "two adjacent cabinets", "representation_kind": "elevation",
-            "owner_object_ids": ["object-001", "object-002"],
-        }],
+        "visual_groups": [
+            {"group_id": "view_a", "page_number": 1, "location_hint": "left", "visual_description": "first cabinet elevation", "representation_kind": "elevation"},
+            {"group_id": "view_b", "page_number": 1, "location_hint": "right", "visual_description": "second cabinet elevation", "representation_kind": "elevation"},
+        ],
         "objects": [
             {
-                "object_id": "object-001", "transport_label": "Object 1",
+                "component_anchor_group_id": "view_a", "transport_label": "Object 1",
                 "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
                 "visual_identity": "first cabinet",
                 "boundary_basis": "first complete envelope",
             },
             {
-                "object_id": "object-002", "transport_label": "Object 2",
+                "component_anchor_group_id": "view_b", "transport_label": "Object 2",
                 "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
                 "visual_identity": "second cabinet",
                 "boundary_basis": "second complete envelope",
@@ -989,8 +984,8 @@ def test_integrated_visual_registry_allows_shared_object_evidence():
         ],
         "merge_proofs": [],
         "page_coverage": [{
-            "page_number": 1, "object_ids": ["object-001", "object-002"],
-            "evidence_reason": "shared elevation contains both cabinets",
+            "page_number": 1, "component_anchor_group_ids": ["view_a", "view_b"],
+            "evidence_reason": "one physical sheet contains both separate cabinets",
         }],
     }
 

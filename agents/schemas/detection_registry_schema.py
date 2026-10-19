@@ -1,5 +1,5 @@
 from __future__ import annotations
-from collections import defaultdict, deque
+from collections import deque
 from typing import Any
 
 DETECTION_REGISTRY_JSON_SCHEMA: dict[str, Any] = {"type":"object","additionalProperties":False,"required":["objects"],"properties":{"objects":{"type":"array","items":{"type":"object","additionalProperties":False,"required":["object_id","transport_label","quantity","quantity_explicit","identity_pages","estimation_evidence_pages","visual_group_ids","visual_identity","boundary_basis"],"properties":{"object_id":{"type":"string"},"transport_label":{"type":"string"},"quantity":{"type":"number","minimum":0},"quantity_explicit":{"type":"boolean"},"identity_pages":{"type":"array","items":{"type":"integer","minimum":1}},"estimation_evidence_pages":{"type":"array","items":{"type":"integer","minimum":1}},"visual_group_ids":{"type":"array","minItems":1,"items":{"type":"string"}},"visual_identity":{"type":"string"},"boundary_basis":{"type":"string"}}}}}}
@@ -27,7 +27,6 @@ DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
         "type": "object",
         "additionalProperties": False,
         "required": [
-            "object_id",
             "from_group_id",
             "to_group_id",
             "relationship",
@@ -35,7 +34,6 @@ DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
             "commercial_inseparability",
         ],
         "properties": {
-            "object_id": {"type": "string"},
             "from_group_id": {"type": "string"},
             "to_group_id": {"type": "string"},
             "relationship": {
@@ -149,45 +147,37 @@ def validate_detection_registry(
 def validate_detection_pairwise_merge_proofs(
     proofs: object,
     *,
-    registry: dict[str, Any],
+    visual_group_ids: set[str],
     page_count: int,
 ) -> list[dict[str, Any]]:
-    """Require a minimal, evidence-backed tree for every object-evidence set.
+    """Validate evidence-backed joins before any commercial object exists.
 
-    A proof is needed whenever one commercial object has several visual groups.
-    It records either another representation of that object or a detail that
-    belongs to it. Standalone objects stay evidence-free here, so this remains
-    linear in the number of linked groups rather than a quadratic all-pairs
-    graph.
+    The provider may state only visual groups and pairwise proof edges. Object
+    membership is deliberately absent from this contract: connected proof-tree
+    components are the single source from which runtime derives each commercial
+    object. A singleton visual group is a valid component and needs no edge.
     """
     if not isinstance(proofs, list):
         raise DetectionRegistrySchemaError("pairwise merge proofs must be a list")
-    objects = registry.get("objects") if isinstance(registry, dict) else None
-    if not isinstance(objects, list):
-        raise DetectionRegistrySchemaError("pairwise merge proofs require a registry")
-    groups_by_object = {
-        str(item.get("object_id") or ""): set(item.get("visual_group_ids") or [])
-        for item in objects
-        if isinstance(item, dict)
+    if not visual_group_ids:
+        raise DetectionRegistrySchemaError("pairwise merge proofs require visual groups")
+    seen_edges: set[tuple[str, str]] = set()
+    adjacency: dict[str, set[str]] = {
+        group_id: set() for group_id in visual_group_ids
     }
-    proofs_by_object: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    seen_edges: set[tuple[str, tuple[str, str]]] = set()
     required = {
-        "object_id", "from_group_id", "to_group_id", "relationship",
+        "from_group_id", "to_group_id", "relationship",
         "evidence_facts", "commercial_inseparability",
     }
     for proof in proofs:
         if not isinstance(proof, dict) or set(proof) != required:
             raise DetectionRegistrySchemaError("pairwise merge proof fields do not match contract")
-        object_id = str(proof["object_id"] or "")
-        group_ids = groups_by_object.get(object_id)
         from_group_id = str(proof["from_group_id"] or "")
         to_group_id = str(proof["to_group_id"] or "")
         if (
-            not group_ids
-            or from_group_id == to_group_id
-            or from_group_id not in group_ids
-            or to_group_id not in group_ids
+            from_group_id == to_group_id
+            or from_group_id not in visual_group_ids
+            or to_group_id not in visual_group_ids
         ):
             raise DetectionRegistrySchemaError("pairwise merge proof groups are invalid")
         if (
@@ -241,41 +231,69 @@ def validate_detection_pairwise_merge_proofs(
             not str(proof["commercial_inseparability"] or "").strip()
         ):
             raise DetectionRegistrySchemaError("pairwise merge proof commercial basis is invalid")
-        edge_key = (object_id, tuple(sorted((from_group_id, to_group_id))))
+        edge_key = tuple(sorted((from_group_id, to_group_id)))
         if edge_key in seen_edges:
             raise DetectionRegistrySchemaError("pairwise merge proofs repeat a relation")
         seen_edges.add(edge_key)
-        proofs_by_object[object_id].append(proof)
+        adjacency[from_group_id].add(to_group_id)
+        adjacency[to_group_id].add(from_group_id)
 
-    for object_id, group_ids in groups_by_object.items():
-        object_proofs = proofs_by_object.get(object_id, [])
-        expected_proof_count = max(0, len(group_ids) - 1)
-        if len(object_proofs) != expected_proof_count:
+    visited: set[str] = set()
+    for group_id in sorted(visual_group_ids):
+        if group_id in visited:
+            continue
+        component: set[str] = set()
+        queue = deque([group_id])
+        edge_count = 0
+        while queue:
+            current = queue.popleft()
+            if current in component:
+                continue
+            component.add(current)
+            edge_count += len(adjacency[current])
+            queue.extend(adjacency[current] - component)
+        visited.update(component)
+        if edge_count // 2 != max(0, len(component) - 1):
             raise DetectionRegistrySchemaError(
                 "pairwise merge proofs must form one minimal proof tree",
                 details={
-                    "object_id": object_id,
-                    "expected_proof_count": expected_proof_count,
-                    "actual_proof_count": len(object_proofs),
+                    "group_ids": sorted(component),
+                    "expected_proof_count": max(0, len(component) - 1),
+                    "actual_proof_count": edge_count // 2,
                 },
             )
-        if len(group_ids) < 2:
+
+    return proofs
+
+
+def derive_detection_proof_components(
+    proofs: list[dict[str, Any]],
+    *,
+    visual_group_ids: set[str],
+) -> list[list[str]]:
+    """Return canonical commercial candidates from a validated proof forest."""
+    adjacency: dict[str, set[str]] = {
+        group_id: set() for group_id in visual_group_ids
+    }
+    for proof in proofs:
+        from_group_id = str(proof["from_group_id"])
+        to_group_id = str(proof["to_group_id"])
+        adjacency[from_group_id].add(to_group_id)
+        adjacency[to_group_id].add(from_group_id)
+
+    components: list[list[str]] = []
+    visited: set[str] = set()
+    for group_id in sorted(visual_group_ids):
+        if group_id in visited:
             continue
-        adjacency: dict[str, set[str]] = {group_id: set() for group_id in group_ids}
-        for proof in object_proofs:
-            adjacency[proof["from_group_id"]].add(proof["to_group_id"])
-            adjacency[proof["to_group_id"]].add(proof["from_group_id"])
-        visited: set[str] = set()
-        queue = deque([next(iter(group_ids))])
+        component: list[str] = []
+        queue = deque([group_id])
         while queue:
             current = queue.popleft()
             if current in visited:
                 continue
             visited.add(current)
-            queue.extend(adjacency[current] - visited)
-        if visited != group_ids:
-            raise DetectionRegistrySchemaError(
-                "pairwise merge proofs must connect every linked object-evidence group",
-                details={"object_id": object_id, "unconnected_group_ids": sorted(group_ids - visited)},
-            )
-    return proofs
+            component.append(current)
+            queue.extend(sorted(adjacency[current] - visited))
+        components.append(sorted(component))
+    return components
