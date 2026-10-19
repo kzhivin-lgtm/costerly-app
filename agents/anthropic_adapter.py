@@ -59,33 +59,16 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_30_compact_standalone_packages_temperature_0"
+    "detection_v4_31_object_plan_context_links_temperature_0"
 )
-# V4.30 retains V4.28's context relation and V4.29's binary package outcome,
-# while serializing only singleton IDs and deriving the complete audit in code.
+# V4.31 retains V4.30's compact package outcome. A plan that is object-specific
+# remains graph-eligible regardless of its neutral representation kind; it can
+# enrich one or several packages through an evidence-backed context link.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
 # contract as well.
 DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE = 0.0
-
-_NON_OBJECT_VISUAL_REPRESENTATION_KINDS = frozenset({
-    "cover",
-    "cover_page",
-    "title_page",
-    "title_block",
-    "generic_floor_plan",
-    "floor_plan",
-    "room_layout",
-    "electrical_plan",
-    "plumbing_plan",
-    "lighting_plan",
-    "legend",
-    "administrative_text",
-    "generic_schedule",
-    "navigation_diagram",
-})
-
 
 class DetectionVisualRegistryValidationError(RuntimeError):
     """Expose a DB-ready audit event when Registry output fails validation."""
@@ -1036,12 +1019,13 @@ def _validate_and_apply_visual_registry_classifications(
 def _discard_non_object_visual_registry_groups(
     payload: dict[str, Any],
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """Remove title and generic-plan material before it can claim ownership.
+    """Remove only model-classified non-object material before ownership.
 
-    These pages may help Detection orient itself, but are never object Evidence.
-    The model's original output remains in the decision audit. The effective
-    payload cannot pass a generic plan into the proof graph, candidate objects,
-    identity pages, or Estimation page coverage.
+    A neutral representation kind such as ``floor_plan`` does not decide
+    commercial eligibility. An object-specific plan may locate one or several
+    commercial objects and must remain available to the proof graph and its
+    ``context_reference_link``. The model's exact classification remains in
+    the decision audit.
     """
     groups = payload.get("visual_groups")
     if not isinstance(groups, list):
@@ -1049,11 +1033,7 @@ def _discard_non_object_visual_registry_groups(
     discarded_groups = [
         group for group in groups
         if isinstance(group, dict)
-        and (
-            group.get("evidence_class") == "document_context"
-            or str(group.get("representation_kind") or "").strip().lower()
-            in _NON_OBJECT_VISUAL_REPRESENTATION_KINDS
-        )
+        and group.get("evidence_class") == "document_context"
     ]
     if not discarded_groups:
         return payload, []

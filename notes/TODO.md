@@ -160,6 +160,19 @@ establishes the complementary proven-component outcome and runtime persists the
 complete per-group ledger. This removes duplicate output without raising the
 model budget, adding a call, or relaxing proof validation. The same HSL, Page
 23 and Adda acceptance gates apply.
+V4.31 is the approved narrow correction: `context_reference_link` remains the
+single relation through which an object-specific plan or composite view can
+provide Evidence to one or several independently quoted packages. A neutral
+`floor_plan` or `room_layout` kind is no longer discarded in code ahead of the
+model's explicit classification. `document_context` now means content with no
+specific scope-object Evidence, not every graphical plan. The relation still
+never merges packages, starts no package itself and needs a target-specific
+factual observation. It preserves one Haiku call, temperature 0, full Evidence,
+the V4.30 compact package output, Naming and UI timing. Acceptance: a Registry
+run reaches a complete audit, object-specific plans are retained as Evidence
+through one or more context links rather than falsely classified or discarded,
+then HSL, Page 23 and Adda regressions.
+
 PENDING, P1, USER REQUEST, Detection Registry output and latency optimisation:
 after the commercial-boundary experiment reaches a valid HSL graph, remove only
 proven duplicated model output while preserving all inspectable typed facts and

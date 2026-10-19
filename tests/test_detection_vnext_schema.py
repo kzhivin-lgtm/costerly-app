@@ -331,6 +331,25 @@ def test_context_reference_excludes_a_composite_view_without_merging_its_product
     ]
 
 
+def test_context_reference_can_add_one_object_specific_plan_to_one_package():
+    groups = {"view-001", "view-002"}
+    proofs = [
+        _context_link("view-001", "view-002", [
+            _fact(
+                "explicit_document_relation",
+                "The N76B callout in the placement plan identifies the shelving elevation.",
+            ),
+        ]),
+    ]
+
+    assert validate_detection_pairwise_merge_proofs(
+        proofs, visual_group_ids=groups, page_count=1
+    ) == proofs
+    assert derive_detection_proof_components(proofs, visual_group_ids=groups) == [
+        ["view-002"],
+    ]
+
+
 def test_document_only_upload_needs_no_proof_graph_or_object_package():
     assert validate_detection_pairwise_merge_proofs(
         [], visual_group_ids=set(), page_count=1

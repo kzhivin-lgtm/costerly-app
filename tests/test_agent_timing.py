@@ -697,7 +697,7 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
 def test_integrated_visual_registry_keeps_context_view_out_of_components_and_splits_root_code():
     payload = {
         "visual_groups": [
-            {"group_id": "overview", "page_number": 1, "location_hint": "upper", "visual_description": "kitchen, island and cabinet together", "representation_kind": "plan"},
+            {"group_id": "overview", "page_number": 1, "location_hint": "upper", "visual_description": "kitchen, island and cabinet together", "representation_kind": "floor_plan", "evidence_class": "object_evidence", "classification_reason": "The plan visibly locates the three fabricated products."},
             {"group_id": "kitchen", "page_number": 1, "location_hint": "lower left", "visual_description": "dedicated kitchen elevation", "representation_kind": "elevation"},
             {"group_id": "island", "page_number": 1, "location_hint": "lower center", "visual_description": "dedicated island elevation", "representation_kind": "elevation"},
             {"group_id": "cabinet", "page_number": 1, "location_hint": "lower right", "visual_description": "dedicated cabinet elevation", "representation_kind": "elevation"},

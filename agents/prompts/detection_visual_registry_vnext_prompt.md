@@ -1,4 +1,4 @@
-# DETECTION V4.30 - INVENTORY, CLASSIFY, PROVE, DECIDE, PACKAGE
+# DETECTION V4.31 - INVENTORY, CLASSIFY, PROVE, DECIDE, PACKAGE
 
 Build the visual representation inventory and commercial-object registry in one
 response. The response has a mandatory causal order:
@@ -46,14 +46,17 @@ and a concise factual `classification_reason` answering: **why is this
 object-specific Evidence or document context?** Do not revise, merge or split
 the visual inventory during classification.
 
-Use `document_context` for a cover or title page, title block, generic floor
-plan, room layout, electrical, plumbing or lighting plan, legend,
-administrative text, generic schedule or navigation diagram. These may orient
-Detection but never enter the graph or Estimation Evidence. Use
-`object_evidence` for a depiction that directly identifies, constructs,
-specifies or shows a particular fabricated object, even when it is a section,
-detail, alternate view or object-specific plan. A repeated grid, dimension
-string, bays, slats, shelves or panel divisions is not a table by itself.
+Use `document_context` only for material that provides no Evidence of a
+specific fabricated object: a cover or title page, title block, legend,
+administrative text, generic schedule, navigation diagram, or a truly generic
+architectural, electrical, plumbing or lighting plan that neither depicts nor
+locates an object in this Detection scope. These may orient Detection but never
+enter the graph or Estimation Evidence. Use `object_evidence` for a depiction
+that directly identifies, constructs, specifies, shows or locates one or more
+particular fabricated objects, even when it is a section, detail, alternate
+view, object-specific plan, room layout or general elevation. A repeated grid,
+dimension string, bays, slats, shelves or panel divisions is not a table by
+itself.
 
 ## 2. Full proof graph
 
@@ -83,14 +86,17 @@ individual product view. It answers: **why does this composite depiction supply
 context to that independent product?** It never merges products, never enters
 a proof component, and its source may not have any merge edge.
 
-Use `context_reference_link` when one plan, axonometric view, arrangement or
-general elevation depicts several distinct independently quoted products. Link
-that composite source to each individual product view it visibly references.
-The source becomes shared page-level Evidence for every linked package, not a
-commercial package itself. For example, a sheet labelled N57 may show kitchen,
-island and cabinet together in two general views and separately in dedicated
-views. The general views context-link to all three dedicated products, they do
-not merge kitchen, island and cabinet into one quote line.
+Use `context_reference_link` when one object-specific plan, axonometric view,
+arrangement or general elevation gives location or shared visual context to one
+or more independently quoted products. Link that source to every individual
+product view it visibly references. One link means the source is additional
+Evidence for one package. Several links reuse that same source page as Evidence
+for several packages. The source is never a commercial package itself. For
+example, a sheet labelled N57 may show kitchen, island and cabinet together in
+two general views and separately in dedicated views. The general views
+context-link to all three dedicated products, they do not merge kitchen, island
+and cabinet into one quote line. A link needs a concrete visual or document
+observation about its target, not shared page location alone.
 
 Every fact names its page(s) and a concrete observation. Evaluate relations
 globally across the complete classified inventory, not incrementally as groups
@@ -157,8 +163,10 @@ a visual group or direct object-specific construction, identity, detail, plan,
 section, alternate view or assembly instruction for that component. A page may
 support several components. Give every page a factual `evidence_reason`.
 
-Use an empty anchor list for pages that contain only `document_context`. Such
-pages are never Estimation Evidence. There is no arbitrary page-count cap.
+Include an anchor when the page contains a `context_reference_link` source for
+that component, even though the source is not inside the component itself. Use
+an empty anchor list for pages that contain only `document_context`. Such pages
+are never Estimation Evidence. There is no arbitrary page-count cap.
 
 Do not extract dimensions, materials, pricing or final user-facing names.
 Return schema JSON only.
