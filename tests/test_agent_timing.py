@@ -80,10 +80,7 @@ def _visual_registry_payload(payload):
             "parent_group_id": "ROOT",
             "relationship": "new_object_root",
             "evidence_facts": [],
-            "dimension_assessment": {
-                "status": "not_applicable",
-                "observation": "A root has no proposed parent for dimension comparison.",
-            },
+            "dimension_status": "not_applicable",
             "decision_reason": "No positive relation to an earlier object depiction is evidenced.",
         }
     for proof in proofs if isinstance(proofs, list) else []:
@@ -99,26 +96,23 @@ def _visual_registry_payload(payload):
         ):
             continue
         parent_id, child_id = sorted((left, right), key=group_order.__getitem__)
-        dimension_assessment = proof.get("dimension_assessment")
-        if not isinstance(dimension_assessment, dict):
-            dimension_assessment = {
-                "status": (
-                    "confirmed_match"
-                    if any(
-                        fact.get("evidence_type") == "dimension_transform"
-                        for fact in proof.get("evidence_facts", [])
-                        if isinstance(fact, dict)
-                    )
-                    else "insufficient_dimension_evidence"
-                ),
-                "observation": "Legacy fixture provides no separate dimension comparison.",
-            }
+        dimension_status = proof.get("dimension_status")
+        if not isinstance(dimension_status, str):
+            dimension_status = (
+                "confirmed_match"
+                if any(
+                    fact.get("evidence_type") == "dimension_transform"
+                    for fact in proof.get("evidence_facts", [])
+                    if isinstance(fact, dict)
+                )
+                else "insufficient_dimension_evidence"
+            )
         groups_by_id[child_id]["proof_parent"] = {
             "decision": "attach_to_group",
             "parent_group_id": parent_id,
             "relationship": proof["relationship"],
             "evidence_facts": proof["evidence_facts"],
-            "dimension_assessment": dimension_assessment,
+            "dimension_status": dimension_status,
             "decision_reason": proof["commercial_inseparability"],
         }
     return payload
@@ -608,10 +602,7 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
         "relationship": "new_object_root",
         "decision_reason": "No positive relation to an earlier object depiction is evidenced.",
         "evidence_facts": [],
-        "dimension_assessment": {
-            "status": "not_applicable",
-            "observation": "A root has no proposed parent for dimension comparison.",
-        },
+        "dimension_status": "not_applicable",
     }]
 
 
@@ -1041,6 +1032,34 @@ def test_integrated_visual_registry_validation_failure_carries_structured_audit(
     assert event["run_id"] is None
     assert event["error_message"] == "page coverage must account for every uploaded page exactly once"
     assert event["raw_usage"]["registry_decision_audit"] == payload
+
+
+def test_integrated_visual_registry_json_failure_carries_transport_diagnostics():
+    raw_text = '{"visual_groups": ['
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            return_value=(_Response(), {
+                "request_started_at": "2026-10-16T00:00:00+00:00",
+                "request_finished_at": "2026-10-16T00:00:01+00:00",
+            }),
+        ),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=raw_text),
+        pytest.raises(DetectionVisualRegistryValidationError) as raised,
+    ):
+        run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None, model="model",
+        )
+
+    event = raised.value.usage_event
+    assert event["status"] == "failed"
+    assert event["raw_usage"]["validation_stage"] == "visual_registry_json"
+    assert event["raw_usage"]["response_character_count"] == len(raw_text)
+    assert event["raw_usage"]["response_text_sha256"]
+    assert event["raw_usage"]["max_tokens"] == 8192
 
 
 def test_integrated_visual_registry_allows_one_physical_page_for_multiple_components():

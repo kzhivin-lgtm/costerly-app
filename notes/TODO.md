@@ -75,6 +75,13 @@ measurements in the persisted factual reasoning. Different axes, whole-object
 versus local-detail measurements, quantities, scale or missing readable values
 are explicitly recorded as not comparable or insufficient, never treated as a
 conflict. No model call, router, Sonnet path, Naming or UI timing is added.
+V4.21 retains the same dimension-conflict guard but replaces the verbose nested
+assessment with a compact required `dimension_status`; the existing mandatory
+`decision_reason` remains the factual explanation, including rejected group and
+measurements for a conflict root. This avoids exhausting the Registry output
+budget on repeated explanation. JSON parse failures now persist a failed
+Registry usage event with response length, SHA-256, provider stop reason and
+token budget, so truncation versus malformed provider JSON is observable.
 
 PENDING, P1, USER OBSERVATION, stale Processing cycle after New Estimate:
 investigate the authenticated-browser sequence in which a prior saved estimate

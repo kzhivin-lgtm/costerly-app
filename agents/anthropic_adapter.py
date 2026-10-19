@@ -50,11 +50,10 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_20_dimension_conflict_blocks_merge_temperature_0"
+    "detection_v4_21_compact_dimension_conflict_guard_temperature_0"
 )
-# V4.20 retains V4.18's mandatory root-or-parent proof graph. An exact
-# dimension transform remains a sufficient direct link, but an explicit
-# same-scope dimension conflict is a structural no-merge condition.
+# V4.21 retains V4.20's same-scope dimension conflict guard, but uses a compact
+# enum because the existing decision reason already holds the factual why.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
@@ -940,7 +939,7 @@ def _proof_parent_decision_audit(groups: object) -> list[dict[str, Any]]:
             "relationship": parent.get("relationship"),
             "decision_reason": parent.get("decision_reason"),
             "evidence_facts": copy.deepcopy(parent.get("evidence_facts")),
-            "dimension_assessment": copy.deepcopy(parent.get("dimension_assessment")),
+            "dimension_status": parent.get("dimension_status"),
         })
     return decisions
 
@@ -1038,10 +1037,42 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     # Keep the inference parameter on both accepted and rejected Registry
     # events. The experiment must be comparable even when validation fails.
     diagnostics["temperature"] = DETECTION_VISUAL_REGISTRY_TEMPERATURE
+    raw_text = extract_text_from_claude_response(response)
     try:
-        payload = json.loads(extract_text_from_claude_response(response))
+        payload = json.loads(raw_text)
     except json.JSONDecodeError as exc:
-        raise RuntimeError(f"Detection visual-registry response failed validation: {exc}") from exc
+        failure_diagnostics = dict(diagnostics)
+        failure_diagnostics.update({
+            "validation_error": str(exc),
+            "validation_stage": "visual_registry_json",
+            "attempt_label": "visual_registry_json_parse_failed",
+            "response_character_count": len(raw_text),
+            "response_text_sha256": _sha256_text(raw_text),
+            "stop_reason": str(getattr(response, "stop_reason", "") or ""),
+            "stop_sequence": getattr(response, "stop_sequence", None),
+            "max_tokens": 8192,
+        })
+        failure_usage = build_agent_usage_event(
+            agent_name="detection",
+            operation="rfq_detection_visual_registry",
+            company_id=company_id,
+            run_id=None,
+            file_name=file_name,
+            object_id=None,
+            object_name=None,
+            model=selected_model,
+            prompt_version=prompt_version,
+            response=response,
+            started_at=diagnostics["request_started_at"],
+            finished_at=diagnostics["request_finished_at"],
+            request_diagnostics=failure_diagnostics,
+        )
+        failure_usage["status"] = "failed"
+        failure_usage["error_message"] = str(exc)
+        raise DetectionVisualRegistryValidationError(
+            f"Detection visual-registry response failed validation: {exc}",
+            usage_event=failure_usage,
+        ) from exc
     # Preserve the model's structured boundary decision before the runtime
     # normalizes group IDs or derives evidence-page references. This is an
     # inspectable decision record, not private chain-of-thought.

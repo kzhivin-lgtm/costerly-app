@@ -27,13 +27,9 @@ def _fact(evidence_type, observation, pages=(1,)):
     }
 
 
-def _dimension_assessment(status, observation="No comparable explicit dimensions are available."):
-    return {"status": status, "observation": observation}
-
-
-def _proof(left, right, facts, dimension_assessment=None):
-    if dimension_assessment is None:
-        dimension_assessment = _dimension_assessment(
+def _proof(left, right, facts, dimension_status=None):
+    if dimension_status is None:
+        dimension_status = (
             "confirmed_match"
             if any(fact["evidence_type"] == "dimension_transform" for fact in facts)
             else "insufficient_dimension_evidence"
@@ -43,7 +39,7 @@ def _proof(left, right, facts, dimension_assessment=None):
         "to_group_id": right,
         "relationship": "same_object_view",
         "evidence_facts": facts,
-        "dimension_assessment": dimension_assessment,
+        "dimension_status": dimension_status,
         "commercial_inseparability": "The cited construction evidence establishes one quote line.",
     }
 
@@ -54,16 +50,14 @@ def _root(reason="No positive relation to an earlier group is evidenced."):
         "parent_group_id": "ROOT",
         "relationship": "new_object_root",
         "evidence_facts": [],
-        "dimension_assessment": _dimension_assessment(
-            "not_applicable", "A root has no proposed parent for dimension comparison."
-        ),
+        "dimension_status": "not_applicable",
         "decision_reason": reason,
     }
 
 
-def _attach(parent_group_id, facts, reason="The cited evidence proves one quote line.", dimension_assessment=None):
-    if dimension_assessment is None:
-        dimension_assessment = _dimension_assessment(
+def _attach(parent_group_id, facts, reason="The cited evidence proves one quote line.", dimension_status=None):
+    if dimension_status is None:
+        dimension_status = (
             "confirmed_match"
             if any(fact["evidence_type"] == "dimension_transform" for fact in facts)
             else "insufficient_dimension_evidence"
@@ -73,7 +67,7 @@ def _attach(parent_group_id, facts, reason="The cited evidence proves one quote 
         "parent_group_id": parent_group_id,
         "relationship": "same_object_view",
         "evidence_facts": facts,
-        "dimension_assessment": dimension_assessment,
+        "dimension_status": dimension_status,
         "decision_reason": reason,
     }
 
@@ -187,10 +181,7 @@ def test_proof_graph_rejects_a_confirmed_dimension_conflict():
         "view-001",
         "view-002",
         [_fact("explicit_document_relation", "N76B appears near both depictions.")],
-        _dimension_assessment(
-            "confirmed_conflict",
-            "Both drawings claim the overall elevation width is 1180 mm and 1450 mm.",
-        ),
+        "confirmed_conflict",
     )
 
     with pytest.raises(
@@ -209,10 +200,7 @@ def test_root_can_record_a_dimension_conflict_that_prevents_a_merge():
             **_root(
                 "view-001 states overall width 1180 mm; this elevation states 1450 mm."
             ),
-            "dimension_assessment": _dimension_assessment(
-                "confirmed_conflict",
-                "Overall elevation widths conflict: 1180 mm on view-001, 1450 mm here.",
-            ),
+            "dimension_status": "confirmed_conflict",
         }),
     ]
 
@@ -226,10 +214,7 @@ def test_dimension_transform_requires_a_confirmed_dimension_match():
         "view-001",
         "view-002",
         [_fact("dimension_transform", "The elevation width is said to match the plan depth.")],
-        _dimension_assessment(
-            "not_comparable",
-            "The available values describe different scopes.",
-        ),
+        "not_comparable",
     )
 
     with pytest.raises(

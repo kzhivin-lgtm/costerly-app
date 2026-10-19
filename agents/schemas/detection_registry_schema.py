@@ -38,17 +38,9 @@ _NON_EXPLICIT_MERGE_SUPPORT_TYPES = frozenset({
     "unique_geometry",
 })
 
-DETECTION_DIMENSION_COMPARISON_JSON_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": ["status", "observation"],
-    "properties": {
-        "status": {
-            "type": "string",
-            "enum": sorted(DIMENSION_COMPARISON_STATUSES),
-        },
-        "observation": {"type": "string"},
-    },
+DETECTION_DIMENSION_STATUS_JSON_SCHEMA: dict[str, Any] = {
+    "type": "string",
+    "enum": sorted(DIMENSION_COMPARISON_STATUSES),
 }
 
 DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
@@ -61,7 +53,7 @@ DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
             "to_group_id",
             "relationship",
             "evidence_facts",
-            "dimension_assessment",
+            "dimension_status",
             "commercial_inseparability",
         ],
         "properties": {
@@ -92,9 +84,7 @@ DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
                     },
                 },
             },
-            "dimension_assessment": copy.deepcopy(
-                DETECTION_DIMENSION_COMPARISON_JSON_SCHEMA
-            ),
+            "dimension_status": copy.deepcopy(DETECTION_DIMENSION_STATUS_JSON_SCHEMA),
             "commercial_inseparability": {"type": "string"},
         },
     },
@@ -112,7 +102,7 @@ DETECTION_PROOF_PARENT_JSON_SCHEMA: dict[str, Any] = {
         "parent_group_id",
         "relationship",
         "evidence_facts",
-        "dimension_assessment",
+        "dimension_status",
         "decision_reason",
     ],
     "properties": {
@@ -133,9 +123,7 @@ DETECTION_PROOF_PARENT_JSON_SCHEMA: dict[str, Any] = {
                 ]["items"]
             ),
         },
-        "dimension_assessment": copy.deepcopy(
-            DETECTION_DIMENSION_COMPARISON_JSON_SCHEMA
-        ),
+        "dimension_status": copy.deepcopy(DETECTION_DIMENSION_STATUS_JSON_SCHEMA),
         "decision_reason": {"type": "string"},
     },
 }
@@ -153,22 +141,19 @@ class DetectionRegistrySchemaError(ValueError):
         self.details = details or {}
 
 
-def _dimension_assessment_status(
-    assessment: object,
+def _validate_dimension_status(
+    status: object,
     *,
     allowed_statuses: frozenset[str],
     error_prefix: str,
 ) -> str:
-    """Return a non-empty, permitted dimension comparison result."""
+    """Return a permitted compact result of the required dimension comparison."""
     if (
-        not isinstance(assessment, dict)
-        or set(assessment) != {"status", "observation"}
-        or not isinstance(assessment.get("status"), str)
-        or assessment["status"] not in allowed_statuses
-        or not str(assessment.get("observation") or "").strip()
+        not isinstance(status, str)
+        or status not in allowed_statuses
     ):
-        raise DetectionRegistrySchemaError(f"{error_prefix} dimension assessment is invalid")
-    return assessment["status"]
+        raise DetectionRegistrySchemaError(f"{error_prefix} dimension status is invalid")
+    return status
 
 def validate_detection_registry(
     result: dict[str, Any],
@@ -259,7 +244,7 @@ def validate_detection_pairwise_merge_proofs(
     }
     required = {
         "from_group_id", "to_group_id", "relationship",
-        "evidence_facts", "dimension_assessment", "commercial_inseparability",
+        "evidence_facts", "dimension_status", "commercial_inseparability",
     }
     for proof in proofs:
         if not isinstance(proof, dict) or set(proof) != required:
@@ -283,16 +268,13 @@ def validate_detection_pairwise_merge_proofs(
             or not evidence_facts
         ):
             raise DetectionRegistrySchemaError("pairwise merge proof evidence facts are invalid")
-        dimension_assessment = proof["dimension_assessment"]
-        if (
-            isinstance(dimension_assessment, dict)
-            and dimension_assessment.get("status") == "confirmed_conflict"
-        ):
+        dimension_status = proof["dimension_status"]
+        if dimension_status == "confirmed_conflict":
             raise DetectionRegistrySchemaError(
                 "confirmed dimension conflict blocks attachment"
             )
-        dimension_status = _dimension_assessment_status(
-            dimension_assessment,
+        dimension_status = _validate_dimension_status(
+            dimension_status,
             allowed_statuses=frozenset({
                 "confirmed_match",
                 "not_comparable",
@@ -410,7 +392,7 @@ def derive_detection_pairwise_merge_proofs_from_parent_links(
         "parent_group_id",
         "relationship",
         "evidence_facts",
-        "dimension_assessment",
+        "dimension_status",
         "decision_reason",
     }
     for group in visual_groups:
@@ -424,7 +406,7 @@ def derive_detection_pairwise_merge_proofs_from_parent_links(
         parent_group_id = str(parent["parent_group_id"] or "")
         relationship = parent["relationship"]
         evidence_facts = parent["evidence_facts"]
-        dimension_assessment = parent["dimension_assessment"]
+        dimension_status = parent["dimension_status"]
         decision_reason = str(parent["decision_reason"] or "").strip()
         if not decision_reason:
             raise DetectionRegistrySchemaError("visual group proof-parent requires a factual reason")
@@ -436,8 +418,8 @@ def derive_detection_pairwise_merge_proofs_from_parent_links(
                 or evidence_facts != []
             ):
                 raise DetectionRegistrySchemaError("new-object root proof-parent is invalid")
-            _dimension_assessment_status(
-                dimension_assessment,
+            _validate_dimension_status(
+                dimension_status,
                 allowed_statuses=frozenset({
                     "not_applicable",
                     "confirmed_conflict",
@@ -457,7 +439,7 @@ def derive_detection_pairwise_merge_proofs_from_parent_links(
                 "to_group_id": parent_group_id,
                 "relationship": relationship,
                 "evidence_facts": evidence_facts,
-                "dimension_assessment": dimension_assessment,
+                "dimension_status": dimension_status,
                 "commercial_inseparability": decision_reason,
             })
         else:
