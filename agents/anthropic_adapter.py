@@ -34,13 +34,12 @@ from agents.schemas.detection_registry_schema import (
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
     DETECTION_SHARED_REFERENCE_GROUP_IDS_JSON_SCHEMA,
-    DETECTION_STANDALONE_PACKAGE_GROUP_IDS_JSON_SCHEMA,
     derive_detection_package_decision_audit,
     derive_detection_proof_components,
+    derive_detection_standalone_package_group_ids,
     validate_detection_pairwise_merge_proofs,
     validate_detection_registry,
     validate_detection_shared_reference_group_ids,
-    validate_detection_standalone_package_group_ids,
 )
 from agents.schemas.detection_visual_map_schema import (
     DETECTION_VISUAL_MAP_JSON_SCHEMA,
@@ -61,10 +60,10 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_35_shared_evidence_proven_package_gate_temperature_0"
+    "detection_v4_37_graph_derived_packages_metadata_fallback_temperature_0"
 )
-# V4.35 admits shared Evidence only after the response has proved the distinct
-# commercial packages it directly references.
+# V4.37 keeps V4.35's shared-Evidence gate, but derives all package membership
+# from the proof graph even when the descriptive model rows are incomplete.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
@@ -143,15 +142,14 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": [
-        "visual_groups", "classifications", "proof_edges", "standalone_package_group_ids",
+        "visual_groups", "classifications", "proof_edges",
         "shared_reference_group_ids",
-        "objects", "page_coverage",
+        "page_coverage",
     ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
         "proof_edges": DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
-        "standalone_package_group_ids": DETECTION_STANDALONE_PACKAGE_GROUP_IDS_JSON_SCHEMA,
         "shared_reference_group_ids": DETECTION_SHARED_REFERENCE_GROUP_IDS_JSON_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
         "page_coverage": {
@@ -792,12 +790,6 @@ def _normalize_component_anchor_group_ids(
                 item["component_anchor_group_id"] = group_id_mapping.get(
                     raw_group_id, raw_group_id
                 )
-    standalone_package_group_ids = normalized.get("standalone_package_group_ids")
-    if isinstance(standalone_package_group_ids, list):
-        normalized["standalone_package_group_ids"] = sorted(
-            group_id_mapping.get(str(group_id), str(group_id))
-            for group_id in standalone_package_group_ids
-        )
     shared_reference_group_ids = normalized.get("shared_reference_group_ids")
     if isinstance(shared_reference_group_ids, list):
         normalized["shared_reference_group_ids"] = sorted(
@@ -821,51 +813,107 @@ def _normalize_component_anchor_group_ids(
 def _derive_registry_from_proof_components(
     objects: object,
     components: list[list[str]],
-) -> tuple[list[dict[str, Any]], dict[str, str]]:
-    """Derive ordered runtime objects from proof-tree components only."""
+    *,
+    page_number_by_group_id: dict[str, int],
+    page_count: int,
+) -> tuple[list[dict[str, Any]], dict[str, str], list[str], dict[str, Any]]:
+    """Derive packages from graph components and overlay valid model metadata.
+
+    The proof graph is the sole boundary authority.  ``objects`` can enrich a
+    proven component with a source label and quantity, but it cannot create,
+    remove, or invalidate a package.  This prevents a missing duplicate
+    descriptor from turning a usable Detection result into a failed upload.
+    """
     required = {
         "component_anchor_group_id", "transport_label", "quantity",
         "quantity_explicit", "identity_pages", "visual_identity", "boundary_basis",
     }
-    if not isinstance(objects, list) or not all(
-        isinstance(item, dict) and set(item) == required for item in objects
-    ):
-        raise DetectionRegistrySchemaError("registry object fields do not match contract")
-
     component_anchor_by_group_id = {
         group_id: component[0]
         for component in components
         for group_id in component
     }
     objects_by_component_anchor: dict[str, dict[str, Any]] = {}
-    declared_anchor_by_component_anchor: dict[str, str] = {}
+    discarded_metadata_rows: list[dict[str, str]] = []
+    if not isinstance(objects, list):
+        discarded_metadata_rows.append({
+            "declared_anchor_group_id": "",
+            "reason": "objects metadata is not an array",
+        })
+        objects = []
     for item in objects:
+        if not isinstance(item, dict) or set(item) != required:
+            discarded_metadata_rows.append({
+                "declared_anchor_group_id": "",
+                "reason": "objects metadata fields do not match contract",
+            })
+            continue
         declared_anchor = str(item.get("component_anchor_group_id") or "")
         component_anchor = component_anchor_by_group_id.get(declared_anchor)
-        if not component_anchor or component_anchor in objects_by_component_anchor:
-            raise DetectionRegistrySchemaError("registry component anchors are invalid")
+        if not component_anchor:
+            discarded_metadata_rows.append({
+                "declared_anchor_group_id": declared_anchor,
+                "reason": "metadata anchor is not a proven component group",
+            })
+            continue
+        if component_anchor in objects_by_component_anchor:
+            discarded_metadata_rows.append({
+                "declared_anchor_group_id": declared_anchor,
+                "reason": "duplicate metadata for proven component",
+            })
+            continue
+        quantity = item.get("quantity")
+        identity_pages = item.get("identity_pages")
+        if (
+            not str(item.get("transport_label") or "").strip()
+            or not isinstance(quantity, (int, float))
+            or not math.isfinite(float(quantity))
+            or quantity < 1
+            or not isinstance(item.get("quantity_explicit"), bool)
+            or not isinstance(identity_pages, list)
+            or not identity_pages
+            or not all(
+                isinstance(page, int) and 1 <= page <= page_count
+                for page in identity_pages
+            )
+            or not str(item.get("visual_identity") or "").strip()
+            or not str(item.get("boundary_basis") or "").strip()
+        ):
+            discarded_metadata_rows.append({
+                "declared_anchor_group_id": declared_anchor,
+                "reason": "metadata values are incomplete or invalid",
+            })
+            continue
         objects_by_component_anchor[component_anchor] = item
-        declared_anchor_by_component_anchor[component_anchor] = declared_anchor
-    expected_component_anchors = {component[0] for component in components}
-    if set(objects_by_component_anchor) != expected_component_anchors:
-        raise DetectionRegistrySchemaError(
-            "registry must account for every proof component exactly once",
-            details={
-                "missing_component_anchor_group_ids": sorted(
-                    expected_component_anchors - set(objects_by_component_anchor)
-                ),
-                "unexpected_component_anchor_group_ids": sorted(
-                    set(objects_by_component_anchor) - expected_component_anchors
-                ),
-            },
-        )
 
     registry_objects: list[dict[str, Any]] = []
     anchor_to_object_id: dict[str, str] = {}
+    fallback_object_ids: list[str] = []
+    fallback_component_anchor_group_ids: list[str] = []
     for index, component in enumerate(components, start=1):
         component_anchor = component[0]
-        source = objects_by_component_anchor[component_anchor]
         object_id = f"object-{index:03d}"
+        source = objects_by_component_anchor.get(component_anchor)
+        if source is None:
+            fallback_object_ids.append(object_id)
+            fallback_component_anchor_group_ids.append(component_anchor)
+            source = {
+                "transport_label": "Unlabelled",
+                "quantity": 1,
+                "quantity_explicit": False,
+                "identity_pages": sorted({
+                    page_number_by_group_id[group_id]
+                    for group_id in component
+                    if group_id in page_number_by_group_id
+                }),
+                "visual_identity": (
+                    "Proven graph component without complete descriptive metadata"
+                ),
+                "boundary_basis": (
+                    "Package membership derives only from accepted graph proof; "
+                    "descriptive metadata is incomplete and requires review."
+                ),
+            }
         registry_objects.append({
             "object_id": object_id,
             "transport_label": source["transport_label"],
@@ -876,10 +924,13 @@ def _derive_registry_from_proof_components(
             "visual_identity": source["visual_identity"],
             "boundary_basis": source["boundary_basis"],
         })
-        anchor_to_object_id[
-            declared_anchor_by_component_anchor[component_anchor]
-        ] = object_id
-    return registry_objects, anchor_to_object_id
+        for group_id in component:
+            anchor_to_object_id[group_id] = object_id
+    return registry_objects, anchor_to_object_id, fallback_object_ids, {
+        "accepted_component_anchor_group_ids": sorted(objects_by_component_anchor),
+        "fallback_component_anchor_group_ids": fallback_component_anchor_group_ids,
+        "discarded_metadata_rows": discarded_metadata_rows,
+    }
 
 
 _SOURCE_OBJECT_CODE_RE = re.compile(
@@ -936,8 +987,14 @@ def _resolve_component_page_coverage(
     page_coverage: object,
     *,
     anchor_to_object_id: dict[str, str],
-) -> list[dict[str, Any]]:
-    """Resolve evidence coverage anchors after code derives object IDs."""
+    page_number_by_group_id: dict[str, int],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Resolve coverage and retain every page containing a proven group.
+
+    The model may add further object-specific pages.  It cannot accidentally
+    omit a physical page that visibly contains one of the graph component's
+    own groups, including when that component uses fallback metadata.
+    """
     if not isinstance(page_coverage, list):
         raise ValueError("page coverage and objects must be lists")
     resolved: list[dict[str, Any]] = []
@@ -959,10 +1016,27 @@ def _resolve_component_page_coverage(
             raise ValueError("page coverage is invalid")
         resolved.append({
             "page_number": entry["page_number"],
-            "object_ids": [anchor_to_object_id[anchor] for anchor in anchors],
+            "object_ids": list(dict.fromkeys(
+                anchor_to_object_id[anchor] for anchor in anchors
+            )),
             "evidence_reason": entry["evidence_reason"],
         })
-    return resolved
+    resolved_by_page = {
+        entry["page_number"]: entry for entry in resolved
+        if isinstance(entry.get("page_number"), int)
+    }
+    graph_page_coverage_supplements: list[dict[str, Any]] = []
+    for group_id, object_id in anchor_to_object_id.items():
+        page_number = page_number_by_group_id.get(group_id)
+        entry = resolved_by_page.get(page_number)
+        if entry is not None and object_id not in entry["object_ids"]:
+            entry["object_ids"].append(object_id)
+            graph_page_coverage_supplements.append({
+                "page_number": page_number,
+                "object_id": object_id,
+                "visual_group_id": group_id,
+            })
+    return resolved, graph_page_coverage_supplements
 
 
 def _normalize_pairwise_merge_proof_group_ids(
@@ -1120,12 +1194,6 @@ def _discard_non_object_visual_registry_groups(
                     or page_number in retained_group_pages
                 )
             ]
-    standalone_package_group_ids = effective.get("standalone_package_group_ids")
-    if isinstance(standalone_package_group_ids, list):
-        effective["standalone_package_group_ids"] = [
-            group_id for group_id in standalone_package_group_ids
-            if str(group_id) not in discarded_group_ids
-        ]
     shared_reference_group_ids = effective.get("shared_reference_group_ids")
     if isinstance(shared_reference_group_ids, list):
         effective["shared_reference_group_ids"] = [
@@ -1331,6 +1399,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     registry_decision_audit = copy.deepcopy(payload)
     discarded_non_object_groups: list[dict[str, Any]] = []
     classification_decisions: list[dict[str, Any]] = []
+    fallback_registry_object_ids: list[str] = []
+    registry_metadata_audit: dict[str, Any] = {}
     try:
         if isinstance(payload, dict):
             payload, classification_decisions = (
@@ -1339,12 +1409,15 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             payload, discarded_non_object_groups = (
                 _discard_non_object_visual_registry_groups(payload)
             )
+            # Object descriptors are optional enrichment.  The proof graph
+            # remains complete even when the model leaves them out.
+            payload.setdefault("objects", [])
         if not isinstance(payload, dict) or set(payload) != {
-            "visual_groups", "classifications", "proof_edges", "standalone_package_group_ids",
+            "visual_groups", "classifications", "proof_edges",
             "shared_reference_group_ids", "objects", "page_coverage",
         }:
             raise ValueError(
-                "visual registry must contain only visual_groups, classifications, proof_edges, standalone_package_group_ids, shared_reference_group_ids, objects and page_coverage"
+                "visual registry must contain only visual_groups, classifications, proof_edges, shared_reference_group_ids, objects and page_coverage"
             )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
@@ -1388,10 +1461,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             component for component in proof_components
             if component[0] not in shared_reference_group_ids
         ]
-        standalone_package_group_ids = validate_detection_standalone_package_group_ids(
-            payload["standalone_package_group_ids"],
-            components=proof_components,
-            commercial_visual_group_ids=commercial_visual_group_ids,
+        standalone_package_group_ids = derive_detection_standalone_package_group_ids(
+            proof_components
         )
         shared_reference_group_ids = validate_detection_shared_reference_group_ids(
             shared_reference_group_ids,
@@ -1403,8 +1474,20 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             proof_components,
             shared_reference_group_ids=shared_reference_group_ids,
         )
-        registry_objects_input, anchor_to_object_id = _derive_registry_from_proof_components(
-            payload["objects"], proof_components,
+        page_number_by_group_id = {
+            str(group["group_id"]): int(group["page_number"])
+            for group in visual_map["visual_groups"]
+        }
+        (
+            registry_objects_input,
+            anchor_to_object_id,
+            fallback_registry_object_ids,
+            registry_metadata_audit,
+        ) = _derive_registry_from_proof_components(
+            payload["objects"],
+            proof_components,
+            page_number_by_group_id=page_number_by_group_id,
+            page_count=len(page_images),
         )
         registry_objects_input = _apply_reference_root_suffixes(
             registry_objects_input,
@@ -1412,8 +1495,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             reference_links=reference_links,
             shared_reference_group_ids=set(shared_reference_group_ids),
         )
-        resolved_page_coverage = _resolve_component_page_coverage(
-            payload["page_coverage"], anchor_to_object_id=anchor_to_object_id,
+        (
+            resolved_page_coverage,
+            graph_page_coverage_supplements,
+        ) = _resolve_component_page_coverage(
+            payload["page_coverage"],
+            anchor_to_object_id=anchor_to_object_id,
+            page_number_by_group_id=page_number_by_group_id,
         )
         registry_objects, reconciled_object_ids = _apply_page_coverage_to_registry(
             registry_objects_input, resolved_page_coverage, page_count=len(page_images),
@@ -1489,6 +1577,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "shared_reference_group_ids": shared_reference_group_ids,
         "package_decisions": package_decisions,
         "standalone_package_group_ids": standalone_package_group_ids,
+        "registry_metadata_fallback_object_ids": fallback_registry_object_ids,
+        "registry_metadata_audit": registry_metadata_audit,
+        "graph_page_coverage_supplements": graph_page_coverage_supplements,
         "proof_graph_components": [
             {
                 "canonical_anchor_group_id": component[0],

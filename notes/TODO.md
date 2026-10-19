@@ -16,7 +16,7 @@ This adds no model call, router, Sonnet route, or file-specific override.
 Preserve object-ID locking, full object evidence, UI-only previews, deferred
 Naming, File Review timing, and TC. Next gate: fresh HSL run must produce the
 11 packages with complete page-4 Evidence, then regress Page 23 and Adda.
-Current model build: `Detection V4.34`, experimental, built on the protected
+Current model build: `Detection V4.37`, experimental, built on the protected
 V4.23 passive OCR cross-check and checkpoint `52c314d`. Comment: V4.12 still
 treated every N76B page-11
 depiction as a partial component, then attempted to attach all three to N76B.
@@ -211,6 +211,19 @@ placements, and can never become shared Evidence. This adds no model call,
 router or Sonnet path. Acceptance: HSL must not classify G002 as commercial or
 use G031-G033 as shared Evidence; N76B must instead be proven as its own
 package, followed by Page 23 and Adda regression.
+V4.37 removes the final duplicate package declaration from the one-call
+Registry contract. Runtime derives singleton packages from the accepted proof
+graph, so a model cannot fail the RFQ merely by omitting or miscopying the
+same result into `standalone_package_group_ids`. Model `objects` rows become
+optional descriptive metadata only. A graph component that lacks one valid row
+is preserved as a deterministic quantity-one package, receives every physical
+page containing its proven visual group as Estimation Evidence, and is marked
+`review_required` in File Review. The Registry audit records accepted metadata,
+discarded metadata rows, fallback object IDs and deterministic page supplements.
+This adds no model call, router, Sonnet path or relaxation of proof, ownership,
+classification or page-coverage validation. Acceptance: HSL must complete
+without a descriptor/standalone-list validation failure, then regress Page 23
+and Adda before checkpointing.
 
 PENDING, P1, USER REQUEST, Detection Registry output and latency optimisation:
 after the commercial-boundary experiment reaches a valid HSL graph, remove only

@@ -31,7 +31,6 @@ from agents.anthropic_adapter import (
 )
 from agents.schemas.detection_registry_schema import (
     REFERENCE_RELATIONSHIP,
-    derive_detection_proof_components,
 )
 from agents.ocr_adapter import normalize_mistral_ocr_response
 from ui.processing_stage import processing_stage_html
@@ -62,7 +61,7 @@ class _Response:
 
 
 def _visual_registry_payload(payload):
-    """Upgrade legacy Registry fixtures to the V4.26 staged contract."""
+    """Upgrade legacy Registry fixtures to the V4.37 staged contract."""
     if not isinstance(payload, dict) or not {
         "visual_groups", "objects", "page_coverage",
     }.issubset(payload):
@@ -93,35 +92,8 @@ def _visual_registry_payload(payload):
         })
     payload["classifications"] = classifications
     payload["proof_edges"] = proofs if isinstance(proofs, list) else []
-    if "standalone_package_group_ids" not in payload:
-        group_ids_by_class = {
-            item["group_id"]: item["evidence_class"]
-            for item in classifications
-        }
-        shared_reference_group_ids = set(
-            payload.setdefault("shared_reference_group_ids", [])
-        )
-        commercial_group_ids = {
-            group_id
-            for group_id, evidence_class in group_ids_by_class.items()
-            if evidence_class == "object_evidence"
-            and group_id not in shared_reference_group_ids
-        }
-        try:
-            components = derive_detection_proof_components(
-                payload["proof_edges"], visual_group_ids=group_ids_by_class.keys(),
-            )
-            components = [
-                component for component in components
-                if component[0] not in shared_reference_group_ids
-            ]
-            payload["standalone_package_group_ids"] = sorted(
-                component[0] for component in components if len(component) == 1
-            )
-        except Exception:
-            # Invalid graph fixtures must reach the production graph validator,
-            # rather than fail inside the fixture normalizer.
-            payload["standalone_package_group_ids"] = []
+    payload.pop("standalone_package_group_ids", None)
+    payload.setdefault("shared_reference_group_ids", [])
     return payload
 
 
@@ -745,7 +717,7 @@ def test_integrated_visual_registry_keeps_context_view_out_of_components_and_spl
     assert usage["raw_usage"]["unassigned_object_evidence_group_count"] == 0
 
 
-def test_integrated_visual_registry_rejects_duplicate_component_anchor():
+def test_integrated_visual_registry_discards_duplicate_component_metadata():
     payload = {
         "visual_groups": [
             {"group_id": "view_a", "page_number": 1, "location_hint": "upper left", "visual_description": "shelving", "representation_kind": "elevation"},
@@ -769,18 +741,19 @@ def test_integrated_visual_registry_rejects_duplicate_component_anchor():
             "request_finished_at": "2026-10-16T00:00:01+00:00",
         })),
         patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
-        pytest.raises(
-            DetectionVisualRegistryValidationError,
-            match="registry component anchors are invalid",
-        ),
     ):
-        run_anthropic_detection_visual_registry_agent(
+        _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"page"], regions=[], ocr_package=None, model="model",
         )
+    assert [item["transport_label"] for item in registry["objects"]] == ["Object 1"]
+    assert usage["raw_usage"]["registry_metadata_audit"]["discarded_metadata_rows"] == [{
+        "declared_anchor_group_id": "view-001",
+        "reason": "duplicate metadata for proven component",
+    }]
 
 
-def test_integrated_visual_registry_rejects_unproved_multi_group_membership():
+def test_integrated_visual_registry_keeps_unproved_group_as_review_fallback():
     payload = {
         "visual_groups": [
             {"group_id": "view_a", "page_number": 1, "location_hint": "left", "visual_description": "cabinet elevation", "representation_kind": "elevation"},
@@ -806,12 +779,19 @@ def test_integrated_visual_registry_rejects_unproved_multi_group_membership():
             "request_finished_at": "2026-10-16T00:00:01+00:00",
         })),
         patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
-        pytest.raises(DetectionVisualRegistryValidationError, match="account for every proof component"),
     ):
-        run_anthropic_detection_visual_registry_agent(
+        _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"page"], regions=[], ocr_package=None, model="model",
         )
+    assert [item["visual_group_ids"] for item in registry["objects"]] == [
+        ["view-001"], ["view-002"],
+    ]
+    assert [item["transport_label"] for item in registry["objects"]] == [
+        "N76B", "Unlabelled",
+    ]
+    assert usage["raw_usage"]["registry_metadata_fallback_object_ids"] == ["object-002"]
+    assert usage["raw_usage"]["registry_metadata_audit"]["fallback_component_anchor_group_ids"] == ["view-002"]
 
 
 def test_registry_uses_the_same_atomic_visual_group_contract_for_all_models():
@@ -1104,7 +1084,11 @@ def test_integrated_visual_registry_reconciles_missing_object_on_only_page():
         )
 
     assert [item["estimation_evidence_pages"] for item in registry["objects"]] == [[1], [1]]
-    assert usage["raw_usage"]["single_page_coverage_reconciled_object_ids"] == ["object-002"]
+    assert usage["raw_usage"]["graph_page_coverage_supplements"] == [{
+        "page_number": 1,
+        "object_id": "object-002",
+        "visual_group_id": "view-002",
+    }]
 
 
 def test_integrated_visual_registry_validation_failure_carries_structured_audit():

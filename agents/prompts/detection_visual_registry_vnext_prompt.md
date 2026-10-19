@@ -1,4 +1,4 @@
-# DETECTION V4.35 - INVENTORY, CLASSIFY, PROVE, DECIDE, PACKAGE
+# DETECTION V4.37 - INVENTORY, CLASSIFY, PROVE, DECIDE, PACKAGE
 
 Build the visual representation inventory and commercial-object registry in one
 response. The response has a mandatory causal order:
@@ -94,7 +94,7 @@ may form chains.
 Use `reference_link` only when one object-specific composite view visibly
 relates several distinct independently quoted products. For every such
 non-commercial composite view, list its ID in
-`shared_reference_group_ids`, not `standalone_package_group_ids`. It becomes
+`shared_reference_group_ids`. It becomes
 shared page-level Evidence for every linked package, not a commercial package
 itself. A group in `shared_reference_group_ids` must have no merge edge and
 must directly reference at least two distinct proven commercial packages. A
@@ -141,33 +141,27 @@ they claim the same physical axis and scope after unit and projection
 normalization. Width versus depth, overall versus local dimensions, different
 scales, quantities and non-comparable projections are not conflicts.
 
-## 3. Standalone-package declaration
+## 3. Singleton-package audit
 
-Before writing `standalone_package_group_ids`, perform one final singleton audit
-inside this same response. For every `object_evidence` group with no merge edge
-that is not in `shared_reference_group_ids`, compare it again with every other
+Perform one final singleton audit inside this same response. For every
+`object_evidence` group with no merge edge that is not in
+`shared_reference_group_ids`, compare it again with every other
 `object_evidence` group. If accepted evidence proves a relation to a different
-group, add that edge to the graph. Otherwise declare the group standalone. Do
-not emit an edge merely to avoid a singleton. This audit uses the existing
-package-outcome fields.
-
-After that audit, return `standalone_package_group_ids`: the complete sorted
-list of singleton component anchors. Every `object_evidence` group not on this
-list must belong to an accepted non-singleton merge component or be in
-`shared_reference_group_ids`. Shared reference evidence is not a candidate
-package.
+group, add that edge to the graph. Otherwise leave it unmerged. Do not emit an
+edge merely to avoid a singleton. Runtime derives every singleton package from
+the completed graph, so do not return a second standalone-ID list.
 
 There is no third outcome. A detail that seems related but lacks a proved merge
-is listed as a standalone commercial candidate for review. The runtime derives
-and persists the full per-group package ledger from the graph, so do not repeat
-that ledger in the response.
+is a standalone commercial candidate for review. The runtime derives and
+persists the full per-group package ledger from the graph.
 
 ## 4. Commercial-object packages
 
 After the graph is complete, only merge-proof connected components are packages.
-Groups in `shared_reference_group_ids` are not packages. Return
-exactly one `objects` row per component, using any group inside it as
-`component_anchor_group_id`. Runtime derives the canonical group membership and
+Groups in `shared_reference_group_ids` are not packages. `objects` is optional
+descriptive metadata for already proven components, never a package decision.
+When supplied, return at most one row per component, using any group inside it
+as `component_anchor_group_id`. Runtime derives canonical group membership and
 ordered object ID from the graph, so do not return owner lists or object IDs.
 
 For every package provide the exact printed `transport_label` when present,
@@ -177,10 +171,13 @@ defaults to 1 when not established otherwise. When one printed root code labels
 a composite source but the graph proves multiple independent child packages,
 return that exact same root code for every child package. Runtime preserves the
 root and appends deterministic A/B/C child suffixes in package order. Never add
-the suffix yourself. `boundary_basis` must explain why
-the complete component is one quote line, or for a singleton, why no proved
-relation joins it to another object-evidence island. A shared sheet code never
-merges separate finished assemblies by itself.
+the suffix yourself. `boundary_basis` must explain why the complete component
+is one quote line, or for a singleton, why no proved relation joins it to
+another object-evidence island. A shared sheet code never merges separate
+finished assemblies by itself. If complete descriptive metadata is unavailable,
+omit that `objects` row. Runtime creates a quantity-one review candidate with
+Evidence from the proven component rather than inventing a merge or failing the
+document.
 
 ## 5. Evidence coverage
 

@@ -77,8 +77,8 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "never enter the graph or Estimation Evidence" in prompt
     assert "no duplicate,\nself, cyclic or" in prompt
     assert "A proof edge must name two different\n`group_id` values" in prompt
-    assert "perform one final singleton audit\ninside this same response" in prompt
-    assert "not emit an edge merely to avoid a singleton" in prompt
+    assert "Perform one final singleton audit" in prompt
+    assert "edge merely to avoid a singleton" in prompt
     assert "assess all\nsix evidence types below" in prompt
     assert "`dimension_equality`" in prompt
     assert "Two\nindependent `dimension_equality` facts are sufficient" in prompt
@@ -99,9 +99,10 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Evaluate relations\nglobally across the complete classified" in prompt
     assert "can support a merge but cannot establish one alone" in prompt
     assert "There is no third outcome" in prompt
-    assert "standalone_package_group_ids" in prompt
+    assert "second standalone-ID list" in prompt
+    assert "standalone_package_group_ids" not in prompt
     assert "evidence_facts" in prompt
     assert "passive recall aid" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_35_shared_evidence_proven_package_gate_temperature_0"
+        "detection_v4_37_graph_derived_packages_metadata_fallback_temperature_0"
     )

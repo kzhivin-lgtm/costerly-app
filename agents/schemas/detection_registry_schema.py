@@ -84,11 +84,6 @@ DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
     },
 }
 
-DETECTION_STANDALONE_PACKAGE_GROUP_IDS_JSON_SCHEMA: dict[str, Any] = {
-    "type": "array",
-    "items": {"type": "string"},
-}
-
 DETECTION_SHARED_REFERENCE_GROUP_IDS_JSON_SCHEMA: dict[str, Any] = {
     "type": "array",
     "items": {"type": "string"},
@@ -561,44 +556,18 @@ def validate_detection_shared_reference_group_ids(
     return group_ids
 
 
-def validate_detection_standalone_package_group_ids(
-    group_ids: object,
-    *,
+def derive_detection_standalone_package_group_ids(
     components: list[list[str]],
-    commercial_visual_group_ids: set[str],
 ) -> list[str]:
-    """Require the compact explicit declaration of every singleton package.
+    """Derive singleton-package anchors from the accepted proof graph.
 
-    Graph connectivity already proves the complementary outcome: every
-    commercial group not named here is part of a non-singleton proven component.
-    The runtime derives and persists the full per-group ledger from that graph,
-    avoiding a redundant model row for every member of a merged component.
+    A singleton is an absence of an accepted merge edge, not a second decision
+    the model must repeat in a top-level list.  Deriving it here preserves the
+    exact same audit fact while eliminating a frequent non-semantic failure.
     """
-    component_group_ids = {
-        group_id for component in components for group_id in component
-    }
-    if component_group_ids != commercial_visual_group_ids:
-        raise DetectionRegistrySchemaError(
-            "registry proof components do not cover commercial visual groups"
-        )
-    expected_group_ids = sorted(
+    return sorted(
         component[0] for component in components if len(component) == 1
     )
-    if (
-        not isinstance(group_ids, list)
-        or not all(isinstance(group_id, str) and group_id for group_id in group_ids)
-        or group_ids != sorted(group_ids)
-        or len(group_ids) != len(set(group_ids))
-        or group_ids != expected_group_ids
-    ):
-        raise DetectionRegistrySchemaError(
-            "registry standalone package groups do not match proof graph",
-            details={
-                "expected_standalone_package_group_ids": expected_group_ids,
-                "received_standalone_package_group_ids": group_ids,
-            },
-        )
-    return group_ids
 
 
 def derive_detection_package_decision_audit(

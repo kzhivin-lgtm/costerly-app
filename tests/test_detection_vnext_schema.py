@@ -10,10 +10,10 @@ from agents.schemas.detection_registry_schema import (
     derive_detection_pairwise_merge_proofs_from_parent_links,
     derive_detection_package_decision_audit,
     derive_detection_proof_components,
+    derive_detection_standalone_package_group_ids,
     validate_detection_pairwise_merge_proofs,
     validate_detection_registry,
     validate_detection_shared_reference_group_ids,
-    validate_detection_standalone_package_group_ids,
 )
 from agents.schemas.detection_schema import validate_detection_result
 from agents.schemas.detection_visual_map_schema import (
@@ -418,13 +418,9 @@ def test_singleton_visual_group_becomes_a_singleton_component_without_placeholde
     ]
 
 
-def test_every_commercial_visual_group_is_proven_component_or_declared_standalone():
+def test_every_commercial_visual_group_has_a_graph_derived_package_outcome():
     components = [["view-001", "view-002"], ["view-003"]]
-    assert validate_detection_standalone_package_group_ids(
-        ["view-003"],
-        components=components,
-        commercial_visual_group_ids={"view-001", "view-002", "view-003"},
-    ) == ["view-003"]
+    assert derive_detection_standalone_package_group_ids(components) == ["view-003"]
     assert derive_detection_package_decision_audit(components) == [
         {
             "group_id": "view-001",
@@ -442,20 +438,6 @@ def test_every_commercial_visual_group_is_proven_component_or_declared_standalon
             "component_anchor_group_id": "view-003",
         },
     ]
-
-    with pytest.raises(DetectionRegistrySchemaError, match="standalone package groups do not match"):
-        validate_detection_standalone_package_group_ids(
-            [],
-            components=components,
-            commercial_visual_group_ids={"view-001", "view-002", "view-003"},
-        )
-
-    with pytest.raises(DetectionRegistrySchemaError, match="standalone package groups do not match"):
-        validate_detection_standalone_package_group_ids(
-            ["view-001", "view-003"],
-            components=[["view-003"]],
-            commercial_visual_group_ids={"view-003"},
-        )
 
 
 def test_reference_links_do_not_merge_products_or_create_directional_chains():
@@ -533,7 +515,6 @@ def test_integrated_registry_schema_has_no_model_owner_or_object_id_fields():
     group_properties = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]["visual_groups"]["items"]["properties"]
     object_properties = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]["objects"]["items"]["properties"]
     coverage_properties = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]["page_coverage"]["items"]["properties"]
-    standalone_package_ids_schema = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]["standalone_package_group_ids"]
 
     assert "owner_object_ids" not in group_properties
     assert "evidence_class" not in group_properties
@@ -541,7 +522,8 @@ def test_integrated_registry_schema_has_no_model_owner_or_object_id_fields():
     assert "object_id" not in object_properties
     assert "component_anchor_group_id" in object_properties
     assert "component_anchor_group_ids" in coverage_properties
-    assert standalone_package_ids_schema["items"] == {"type": "string"}
+    assert "standalone_package_group_ids" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
+    assert "objects" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["required"]
     assert "proof_edges" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "classifications" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "merge_proofs" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]

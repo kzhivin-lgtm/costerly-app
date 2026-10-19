@@ -57,6 +57,29 @@ def test_registry_locks_complete_system_quantity_against_component_count():
     assert merged["detected_objects"][0]["quantity_explicit"] is False
 
 
+def test_registry_metadata_fallback_marks_only_that_graph_package_for_review():
+    result = {
+        "detected_objects": [{
+            "object_id": "object-001", "review_required": False,
+            "quantity": 3, "quantity_explicit": True,
+            "evidence_page_refs": [],
+        }],
+    }
+    registry = {"objects": [{
+        "object_id": "object-001", "quantity": 1,
+        "quantity_explicit": False, "estimation_evidence_pages": [1],
+    }]}
+
+    merged = _merge_registry_evidence(
+        result,
+        registry,
+        review_required_object_ids={"object-001"},
+    )
+
+    assert merged["detected_objects"][0]["quantity"] == 1
+    assert merged["detected_objects"][0]["review_required"] is True
+
+
 def test_registry_source_transport_label_overrides_evidence_pass_name():
     result = {"detected_objects": [{
         "object_id": "object-001", "object_name": "Kitchen",
@@ -103,6 +126,7 @@ def test_locked_evidence_handoff_audit_records_final_registry_invariants():
         "registry_evidence_pages": {"object-001": [1, 3]},
         "result_evidence_pages": {"object-001": [1, 3]},
         "evidence_page_contract_preserved": True,
+        "fallback_review_required_object_ids": [],
     }
 
 

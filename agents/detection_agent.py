@@ -52,7 +52,12 @@ def _enforce_shared_track_door_system_quantity(registry: dict) -> dict:
     return registry
 
 
-def _merge_registry_evidence(result: dict, registry: dict) -> dict:
+def _merge_registry_evidence(
+    result: dict,
+    registry: dict,
+    *,
+    review_required_object_ids: set[str] | None = None,
+) -> dict:
     """Preserve the compact visual dossier while retaining Estimation evidence.
 
     The registry intentionally selects only a small set of pages for the
@@ -64,6 +69,7 @@ def _merge_registry_evidence(result: dict, registry: dict) -> dict:
         str(item["object_id"]): item
         for item in registry["objects"]
     }
+    fallback_ids = set(review_required_object_ids or ())
     for detected in result.get("detected_objects") or []:
         if not isinstance(detected, dict):
             continue
@@ -76,6 +82,12 @@ def _merge_registry_evidence(result: dict, registry: dict) -> dict:
         # locked quantity in the final commercial object.
         detected["quantity"] = locked_object["quantity"]
         detected["quantity_explicit"] = locked_object["quantity_explicit"]
+        if str(detected.get("object_id") or "") in fallback_ids:
+            # A proof-graph package exists, but its descriptive Registry row
+            # was unavailable.  Preserve the safe default quantity and make
+            # the uncertainty visible in File Review instead of failing the
+            # entire RFQ cycle.
+            detected["review_required"] = True
         # The Evidence pass may describe the object visually, but it has no
         # authority to replace the Registry's source-label transport. Naming
         # uses this field to retain an architect's exact identifier.
@@ -206,6 +218,7 @@ def _record_locked_evidence_handoff_audit(
     *,
     registry: dict,
     result: dict,
+    fallback_review_required_object_ids: set[str] | None = None,
 ) -> object:
     """Persist the final invariant check after Evidence packaging.
 
@@ -254,6 +267,9 @@ def _record_locked_evidence_handoff_audit(
         "registry_evidence_pages": expected_pages,
         "result_evidence_pages": actual_pages,
         "evidence_page_contract_preserved": actual_pages == expected_pages,
+        "fallback_review_required_object_ids": sorted(
+            fallback_review_required_object_ids or ()
+        ),
     }
     event["raw_usage"] = raw_usage
     return event
@@ -321,6 +337,17 @@ def run_detection_agent(
     if stage_callback:
         stage_callback("Detection Registry completed")
     visual_registry_usage = _attach_detection_model_route(visual_registry_usage, route)
+    fallback_review_required_object_ids = {
+        str(object_id)
+        for object_id in (
+            (visual_registry_usage.get("raw_usage") or {}).get(
+                "registry_metadata_fallback_object_ids", []
+            )
+            if isinstance(visual_registry_usage, dict)
+            else []
+        )
+        if str(object_id)
+    }
     registry = _enforce_shared_track_door_system_quantity(registry)
     _validate_registry_evidence_pages(registry, page_count=len(registry_images))
     evidence_page_numbers = sorted({page for item in registry["objects"] for page in item["estimation_evidence_pages"]})
@@ -343,13 +370,18 @@ def run_detection_agent(
     )
 
     usage_event = _attach_detection_model_route(result.pop("_agent_usage", None), route)
-    result = _merge_registry_evidence(result, registry)
+    result = _merge_registry_evidence(
+        result,
+        registry,
+        review_required_object_ids=fallback_review_required_object_ids,
+    )
     result = _normalize_evidence_source_labels(result, ocr_package)
     validated = validate_detection_result(result)
     usage_event = _record_locked_evidence_handoff_audit(
         usage_event,
         registry=registry,
         result=validated,
+        fallback_review_required_object_ids=fallback_review_required_object_ids,
     )
     if stage_callback:
         stage_callback("Detection Evidence handoff completed")
