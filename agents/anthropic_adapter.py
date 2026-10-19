@@ -32,7 +32,6 @@ from agents.schemas.detection_registry_schema import (
 )
 from agents.schemas.detection_visual_map_schema import (
     DETECTION_VISUAL_MAP_JSON_SCHEMA,
-    derive_detection_visual_map_commercial_roles,
     normalize_detection_visual_map_group_ids,
     validate_detection_visual_map,
 )
@@ -50,11 +49,11 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_12_visual_registry_scope_first_temperature_0"
+    "detection_v4_13_object_evidence_links_temperature_0"
 )
-# V4.12 makes the provider classify each depiction's visible scope first. The
-# runtime, not the provider, derives the commercial role used for ownership and
-# package validation. Pairwise merge proofs remain the identity contract.
+# V4.13 eliminates the brittle assembly/detail gate. The provider classifies
+# visual groups only as object evidence or document context, then preserves
+# proof-backed links between every object-evidence group in an object package.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
@@ -83,10 +82,7 @@ DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA = copy.deepcopy(
     DETECTION_VISUAL_MAP_JSON_SCHEMA["properties"]["visual_groups"]
 )
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
-    "depiction_scope"
-)
-DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
-    "scope_basis"
+    "evidence_class"
 )
 
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
@@ -828,11 +824,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raise ValueError("visual registry must contain only visual_groups, objects, merge_proofs and page_coverage")
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
-        scoped_visual_map = validate_detection_visual_map(
+        visual_map = validate_detection_visual_map(
             normalize_detection_visual_map_group_ids({"visual_groups": raw_groups}),
-            require_depiction_scope=True,
+            require_evidence_class=True,
         )
-        visual_map = derive_detection_visual_map_commercial_roles(scoped_visual_map)
         group_id_mapping = {
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
@@ -857,14 +852,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         registry = validate_detection_registry(
             registry_payload,
             visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
-            visual_group_roles={
-                group["group_id"]: group["commercial_role"]
-                for group in visual_map["visual_groups"]
-            },
-            required_assembly_group_ids={
+            object_evidence_group_ids={
                 group["group_id"]
                 for group in visual_map["visual_groups"]
-                if group["commercial_role"] == "assembly_view"
+                if group["evidence_class"] == "object_evidence"
             },
         )
         pairwise_merge_proofs = validate_detection_pairwise_merge_proofs(
@@ -908,16 +899,24 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         for item in registry["objects"]
         for group_id in item["visual_group_ids"]
     }
+    object_evidence_group_ids = {
+        group["group_id"]
+        for group in visual_map["visual_groups"]
+        if group["evidence_class"] == "object_evidence"
+    }
     diagnostics.update({
         "visual_group_count": len(visual_map["visual_groups"]),
         "registry_object_count": len(registry["objects"]),
         "unassigned_visual_group_count": len({group["group_id"] for group in visual_map["visual_groups"]} - assigned_visual_group_ids),
-        "visual_group_role_counts": {
-            role: sum(
-                group["commercial_role"] == role
+        "unassigned_object_evidence_group_count": len(
+            object_evidence_group_ids - assigned_visual_group_ids
+        ),
+        "visual_group_class_counts": {
+            evidence_class: sum(
+                group["evidence_class"] == evidence_class
                 for group in visual_map["visual_groups"]
             )
-            for role in ("assembly_view", "component_detail", "document_context")
+            for evidence_class in ("object_evidence", "document_context")
         },
         "page_coverage_count": len(payload["page_coverage"]),
         "unassigned_page_count": sum(

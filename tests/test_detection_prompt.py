@@ -74,17 +74,15 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "There is no arbitrary page-count cap" in prompt
     assert "For every physical upload page, return exactly one `page_coverage` entry" in prompt
     assert "not a shortlist of pages that appear sufficient for a material calculation" in prompt
-    assert "textual note, schedule, legend or navigation-only layout" in prompt
-    assert "semantically labelled columns, rows, or record cells" in prompt
+    assert "title block, pure administrative text, legend, schedule, navigation-only floor plan" in prompt
+    assert "semantically headed table" in prompt
     assert "Never create a placeholder, self-link, empty proof" in prompt
-    assert "groups that prove this object's commercial boundary" in prompt
-    assert "exactly one `depiction_scope`" in prompt
-    assert "`scope_basis`" in prompt
-    assert "The runtime derives it to `assembly_view`" in prompt
-    assert "narrow exclusion scope" in prompt
-    assert "component_detail`: supporting page evidence only" in prompt
-    assert "`document_context`, which cannot create an object" in prompt
-    assert "resolve identity across all `assembly_view` groups" in prompt
+    assert "exactly one `evidence_class`" in prompt
+    assert "There are only two classes" in prompt
+    assert "`object_evidence` is any graphical depiction" in prompt
+    assert "`object_detail` for a section, node, module or detail" in prompt
+    assert "A `document_context` never becomes an object" in prompt
+    assert "resolve identity across all relevant object evidence" in prompt
     assert "Dimensions that agree after a change of axes" in prompt
     assert "Secondary supporting signals only" in prompt
     assert "whole-silhouette similarity is not required" in prompt
@@ -93,5 +91,5 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Test commercial separability, not merely visual adjacency" in prompt
     assert "Direct shared structure may support a merge but cannot be its only evidence" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_12_visual_registry_scope_first_temperature_0"
+        "detection_v4_13_object_evidence_links_temperature_0"
     )

@@ -16,16 +16,18 @@ This adds no model call, router, Sonnet route, or file-specific override.
 Preserve object-ID locking, full object evidence, UI-only previews, deferred
 Naming, File Review timing, and TC. Next gate: fresh HSL run must produce the
 11 packages with complete page-4 Evidence, then regress Page 23 and Adda.
-Current model build: `Detection V4.12`, experimental, based on V4.11 and the
-protected checkpoint `52c314d`. Comment: V4.11 correctly stopped HSL when the
-provider called page-11 N76B a component but used it as a commercial boundary.
-V4.12 removes that contradictory provider-owned role: the provider classifies
-each depiction's observable scope, then runtime code deterministically maps it
-to `assembly_view`, `component_detail`, or `document_context`. A partial scope
-now requires an explicit cut, open boundary, or parent reference. This adds no
-model call, router, Sonnet path, Naming, Evidence scope or UI timing. It is not
-a checkpoint until HSL role recall and the Page 23/Adda regression gate are
-accepted.
+Current model build: `Detection V4.13`, experimental, based on V4.12 and the
+protected checkpoint `52c314d`. Comment: V4.12 still treated every N76B page-11
+depiction as a partial component, then attempted to attach all three to N76B.
+The failure proved that assembly/component was an invalid eligibility gate, not
+that their source Evidence was wrong. V4.13 has only `object_evidence` and
+`document_context`. Full views and details may both support an object. The
+proof tree remains strict and now declares whether an edge is another view or
+an object detail. Object Evidence must be linked to at least one commercial
+object, but may be shared where its visible content supports several objects.
+This adds no model call, router, Sonnet path, Naming, Evidence scope or UI
+timing. It is not a checkpoint until HSL passes, followed by Page 23 and Adda
+regression gates.
 
 PENDING, P1, USER OBSERVATION, stale Processing cycle after New Estimate:
 investigate the authenticated-browser sequence in which a prior saved estimate

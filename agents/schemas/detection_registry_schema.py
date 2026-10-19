@@ -11,6 +11,10 @@ PAIRWISE_MERGE_EVIDENCE_TYPES = frozenset({
     "unique_geometry",
     "direct_shared_structure",
 })
+PAIRWISE_EVIDENCE_RELATIONSHIPS = frozenset({
+    "same_object_view",
+    "object_detail",
+})
 _NON_EXPLICIT_MERGE_SUPPORT_TYPES = frozenset({
     "matching_topology",
     "dimension_transform",
@@ -26,6 +30,7 @@ DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
             "object_id",
             "from_group_id",
             "to_group_id",
+            "relationship",
             "evidence_types",
             "evidence_pages",
             "observed_fact",
@@ -35,6 +40,10 @@ DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
             "object_id": {"type": "string"},
             "from_group_id": {"type": "string"},
             "to_group_id": {"type": "string"},
+            "relationship": {
+                "type": "string",
+                "enum": sorted(PAIRWISE_EVIDENCE_RELATIONSHIPS),
+            },
             "evidence_types": {
                 "type": "array",
                 "minItems": 1,
@@ -70,13 +79,12 @@ def validate_detection_registry(
     result: dict[str, Any],
     *,
     visual_group_ids: set[str] | None = None,
-    visual_group_roles: dict[str, str] | None = None,
-    required_assembly_group_ids: set[str] | None = None,
+    object_evidence_group_ids: set[str] | None = None,
 ) -> dict[str, Any]:
     if not isinstance(result, dict) or set(result) != {"objects"} or not isinstance(result["objects"], list):
         raise DetectionRegistrySchemaError("registry must contain only objects")
     required = {"object_id","transport_label","quantity","quantity_explicit","identity_pages","estimation_evidence_pages","visual_group_ids","visual_identity","boundary_basis"}
-    visual_group_owners: dict[str, list[str]] = {}
+    visual_group_references: dict[str, list[str]] = {}
     for index, item in enumerate(result["objects"], start=1):
         if not isinstance(item, dict) or set(item) != required:
             raise DetectionRegistrySchemaError("registry object fields do not match contract")
@@ -103,39 +111,32 @@ def validate_detection_registry(
         ):
             raise DetectionRegistrySchemaError("registry visual groups are invalid")
         for group_id in item["visual_group_ids"]:
-            visual_group_owners.setdefault(group_id, []).append(item["object_id"])
-    assigned_visual_groups = set(visual_group_owners)
+            visual_group_references.setdefault(group_id, []).append(item["object_id"])
+    assigned_visual_groups = set(visual_group_references)
     if visual_group_ids is not None and not assigned_visual_groups.issubset(visual_group_ids):
         raise DetectionRegistrySchemaError("registry references an unknown visual group")
-    if visual_group_roles is not None:
-        non_assembly_group_ids = sorted(
+    if object_evidence_group_ids is not None:
+        non_object_evidence_group_ids = sorted(
             group_id
             for group_id in assigned_visual_groups
-            if visual_group_roles.get(group_id) != "assembly_view"
+            if group_id not in object_evidence_group_ids
         )
-        if non_assembly_group_ids:
+        if non_object_evidence_group_ids:
             raise DetectionRegistrySchemaError(
-                "registry visual groups must be complete assembly views",
-                details={"non_assembly_visual_group_ids": non_assembly_group_ids},
+                "registry visual groups must be object evidence",
+                details={"non_object_evidence_group_ids": non_object_evidence_group_ids},
             )
-    duplicate_ownership = {
-        group_id: owners
-        for group_id, owners in visual_group_owners.items()
-        if len(owners) > 1
-    }
-    if duplicate_ownership:
-        raise DetectionRegistrySchemaError(
-            "registry visual groups must have one commercial-object owner",
-            details={"duplicate_visual_group_owners": duplicate_ownership},
+        unassigned_object_evidence_group_ids = sorted(
+            object_evidence_group_ids - assigned_visual_groups
         )
-    if required_assembly_group_ids is not None:
-        unowned_assembly_group_ids = sorted(
-            required_assembly_group_ids - assigned_visual_groups
-        )
-        if unowned_assembly_group_ids:
+        if unassigned_object_evidence_group_ids:
             raise DetectionRegistrySchemaError(
-                "registry must account for every complete assembly view",
-                details={"unowned_assembly_group_ids": unowned_assembly_group_ids},
+                "registry must account for every object-evidence group",
+                details={
+                    "unassigned_object_evidence_group_ids": (
+                        unassigned_object_evidence_group_ids
+                    ),
+                },
             )
     return result
 
@@ -146,11 +147,13 @@ def validate_detection_pairwise_merge_proofs(
     registry: dict[str, Any],
     page_count: int,
 ) -> list[dict[str, Any]]:
-    """Require a minimal, evidence-backed tree for every visual merge.
+    """Require a minimal, evidence-backed tree for every object-evidence set.
 
-    A proof is needed only when the Registry joins distinct complete assembly
-    views. Standalone objects stay evidence-free here, so this is linear in
-    the number of merged views rather than a quadratic all-pairs graph.
+    A proof is needed whenever one commercial object has several visual groups.
+    It records either another representation of that object or a detail that
+    belongs to it. Standalone objects stay evidence-free here, so this remains
+    linear in the number of linked groups rather than a quadratic all-pairs
+    graph.
     """
     if not isinstance(proofs, list):
         raise DetectionRegistrySchemaError("pairwise merge proofs must be a list")
@@ -165,8 +168,9 @@ def validate_detection_pairwise_merge_proofs(
     proofs_by_object: dict[str, list[dict[str, Any]]] = defaultdict(list)
     seen_edges: set[tuple[str, tuple[str, str]]] = set()
     required = {
-        "object_id", "from_group_id", "to_group_id", "evidence_types",
-        "evidence_pages", "observed_fact", "commercial_inseparability",
+        "object_id", "from_group_id", "to_group_id", "relationship",
+        "evidence_types", "evidence_pages", "observed_fact",
+        "commercial_inseparability",
     }
     for proof in proofs:
         if not isinstance(proof, dict) or set(proof) != required:
@@ -182,6 +186,11 @@ def validate_detection_pairwise_merge_proofs(
             or to_group_id not in group_ids
         ):
             raise DetectionRegistrySchemaError("pairwise merge proof groups are invalid")
+        if (
+            not isinstance(proof["relationship"], str)
+            or proof["relationship"] not in PAIRWISE_EVIDENCE_RELATIONSHIPS
+        ):
+            raise DetectionRegistrySchemaError("pairwise merge proof relationship is invalid")
         evidence_types = proof["evidence_types"]
         if (
             not isinstance(evidence_types, list)
@@ -242,7 +251,7 @@ def validate_detection_pairwise_merge_proofs(
             queue.extend(adjacency[current] - visited)
         if visited != group_ids:
             raise DetectionRegistrySchemaError(
-                "pairwise merge proofs must connect every merged assembly view",
+                "pairwise merge proofs must connect every linked object-evidence group",
                 details={"object_id": object_id, "unconnected_group_ids": sorted(group_ids - visited)},
             )
     return proofs

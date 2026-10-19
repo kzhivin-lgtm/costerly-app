@@ -13,7 +13,6 @@ from agents.schemas.detection_registry_schema import (
 from agents.schemas.detection_schema import validate_detection_result
 from agents.schemas.detection_visual_map_schema import (
     DetectionVisualMapSchemaError,
-    derive_detection_visual_map_commercial_roles,
     normalize_detection_visual_map_group_ids,
     validate_detection_visual_map,
 )
@@ -105,6 +104,7 @@ def test_pairwise_merge_proofs_require_two_independent_signals_and_a_minimal_tre
         {
             "object_id": "object-001", "from_group_id": "view-001",
             "to_group_id": "view-002",
+            "relationship": "same_object_view",
             "evidence_types": ["matching_topology", "unique_geometry"],
             "evidence_pages": [1],
             "observed_fact": "The same three leaves and offset handle sequence recur.",
@@ -113,6 +113,7 @@ def test_pairwise_merge_proofs_require_two_independent_signals_and_a_minimal_tre
         {
             "object_id": "object-001", "from_group_id": "view-002",
             "to_group_id": "view-003",
+            "relationship": "same_object_view",
             "evidence_types": ["dimension_transform", "matching_topology"],
             "evidence_pages": [1, 2],
             "observed_fact": "The elevation width matches the plan after the view-axis change.",
@@ -137,7 +138,8 @@ def test_pairwise_merge_proof_rejects_a_lone_direct_structure_claim():
     }
     proofs = [{
         "object_id": "object-001", "from_group_id": "view-001",
-        "to_group_id": "view-002", "evidence_types": ["direct_shared_structure"],
+        "to_group_id": "view-002", "relationship": "same_object_view",
+        "evidence_types": ["direct_shared_structure"],
         "evidence_pages": [1], "observed_fact": "An L-shaped junction is drawn.",
         "commercial_inseparability": "The furniture appears connected.",
     }]
@@ -147,6 +149,30 @@ def test_pairwise_merge_proof_rejects_a_lone_direct_structure_claim():
         match="needs two independent evidence types",
     ):
         validate_detection_pairwise_merge_proofs(proofs, registry=registry, page_count=1)
+
+
+def test_pairwise_object_detail_proof_accepts_explicit_document_relation():
+    registry = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "N76B",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [11],
+            "estimation_evidence_pages": [11],
+            "visual_group_ids": ["view-001", "view-002"],
+            "visual_identity": "slatted partition and its section",
+            "boundary_basis": "both views carry the N76B drawing code",
+        }],
+    }
+    proofs = [{
+        "object_id": "object-001", "from_group_id": "view-001",
+        "to_group_id": "view-002", "relationship": "object_detail",
+        "evidence_types": ["explicit_document_relation"], "evidence_pages": [11],
+        "observed_fact": "The N76B code applies to the elevation and section.",
+        "commercial_inseparability": "The section specifies construction of the same N76B partition.",
+    }]
+
+    assert validate_detection_pairwise_merge_proofs(
+        proofs, registry=registry, page_count=11
+    ) == proofs
 
 
 def test_pairwise_merge_proof_rejects_singleton_placeholder():
@@ -161,7 +187,7 @@ def test_pairwise_merge_proof_rejects_singleton_placeholder():
     }
     placeholder = [{
         "object_id": "object-001", "from_group_id": "view-001",
-        "to_group_id": "view-001",
+        "to_group_id": "view-001", "relationship": "same_object_view",
         "evidence_types": ["matching_topology"], "evidence_pages": [1],
         "observed_fact": "Single view", "commercial_inseparability": "N/A",
     }]
@@ -201,7 +227,7 @@ def test_visual_map_normalizes_provider_group_ids_before_strict_validation():
     ]
 
 
-def test_registry_rejects_shared_visual_group_ownership_but_keeps_owners_for_audit():
+def test_registry_allows_shared_object_evidence_when_it_supports_both_objects():
     registry = {
         "objects": [
             {"object_id": "object-001", "transport_label": "Object 1", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"], "visual_identity": "first", "boundary_basis": "first"},
@@ -209,20 +235,14 @@ def test_registry_rejects_shared_visual_group_ownership_but_keeps_owners_for_aud
         ],
     }
 
-    with pytest.raises(
-        DetectionRegistrySchemaError,
-        match="must have one commercial-object owner",
-    ) as raised:
-        validate_detection_registry(registry, visual_group_ids={"view-001"})
-
-    assert raised.value.details == {
-        "duplicate_visual_group_owners": {
-            "view-001": ["object-001", "object-002"],
-        },
-    }
+    assert validate_detection_registry(
+        registry,
+        visual_group_ids={"view-001"},
+        object_evidence_group_ids={"view-001"},
+    ) == registry
 
 
-def test_registry_allows_unassigned_navigation_only_visual_groups():
+def test_registry_allows_unassigned_document_context_groups():
     registry = {
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
@@ -236,10 +256,11 @@ def test_registry_allows_unassigned_navigation_only_visual_groups():
     assert validate_detection_registry(
         registry,
         visual_group_ids={"view-001", "view-002"},
+        object_evidence_group_ids={"view-001"},
     ) == registry
 
 
-def test_registry_requires_every_typed_assembly_view_to_have_an_owner():
+def test_registry_requires_every_object_evidence_group_to_be_accounted_for():
     registry = {
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
@@ -251,116 +272,90 @@ def test_registry_requires_every_typed_assembly_view_to_have_an_owner():
 
     with pytest.raises(
         DetectionRegistrySchemaError,
-        match="must account for every complete assembly view",
+        match="must account for every object-evidence group",
     ) as raised:
         validate_detection_registry(
             registry,
             visual_group_ids={"view-001", "view-002"},
-            visual_group_roles={
-                "view-001": "assembly_view",
-                "view-002": "assembly_view",
-            },
-            required_assembly_group_ids={"view-001", "view-002"},
+            object_evidence_group_ids={"view-001", "view-002"},
         )
 
-    assert raised.value.details == {"unowned_assembly_group_ids": ["view-002"]}
+    assert raised.value.details == {
+        "unassigned_object_evidence_group_ids": ["view-002"],
+    }
 
 
-def test_integrated_visual_map_requires_a_depiction_scope_for_each_group():
+def test_integrated_visual_map_requires_an_evidence_class_for_each_group():
     visual_map = {
         "visual_groups": [
             {
                 "group_id": "view-001", "page_number": 1,
                 "location_hint": "left", "visual_description": "cabinet",
                 "representation_kind": "elevation",
-                "depiction_scope": "complete_product_representation",
-                "scope_basis": ["complete_outer_envelope"],
+                "evidence_class": "object_evidence",
             },
             {
                 "group_id": "view-002", "page_number": 1,
                 "location_hint": "title block", "visual_description": "sheet metadata",
                 "representation_kind": "title_block",
-                "depiction_scope": "document_context",
-                "scope_basis": ["administrative_context"],
+                "evidence_class": "document_context",
             },
         ],
     }
 
     assert validate_detection_visual_map(
         visual_map,
-        require_depiction_scope=True,
+        require_evidence_class=True,
     ) == visual_map
 
 
-def test_integrated_registry_structured_output_requires_depiction_scope():
+def test_integrated_registry_structured_output_requires_evidence_class():
     group_schema = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"][
         "visual_groups"
     ]["items"]
 
-    assert "depiction_scope" in group_schema["required"]
-    assert "scope_basis" in group_schema["required"]
-    assert "commercial_role" not in group_schema["required"]
-    assert "role_basis" not in group_schema["required"]
+    assert "evidence_class" in group_schema["required"]
+    assert "depiction_scope" not in group_schema["required"]
+    assert "scope_basis" not in group_schema["required"]
     assert "commercial_role" not in group_schema["properties"]
     assert "role_basis" not in group_schema["properties"]
 
 
-def test_visual_map_rejects_partial_scope_without_positive_fragment_basis():
+def test_visual_map_rejects_unknown_evidence_class():
     visual_map = {
         "visual_groups": [{
             "group_id": "view-001", "page_number": 1,
             "location_hint": "center", "visual_description": "cabinet elevation",
-            "representation_kind": "elevation",
-            "depiction_scope": "partial_component_representation",
-            "scope_basis": ["complete_outer_envelope"],
+            "representation_kind": "elevation", "evidence_class": "unknown",
         }],
     }
 
     with pytest.raises(DetectionVisualMapSchemaError, match="visual group is invalid"):
-        validate_detection_visual_map(visual_map, require_depiction_scope=True)
+        validate_detection_visual_map(visual_map, require_evidence_class=True)
 
 
-def test_scope_first_map_derives_runtime_commercial_roles():
-    scoped_visual_map = {
+def test_object_evidence_class_keeps_details_linkable_to_an_object():
+    visual_map = {
         "visual_groups": [
             {
                 "group_id": "view-001", "page_number": 1,
                 "location_hint": "front", "visual_description": "cabinet elevation",
-                "representation_kind": "elevation",
-                "depiction_scope": "complete_product_representation",
-                "scope_basis": ["complete_outer_envelope", "overall_product_dimensions"],
+                "representation_kind": "elevation", "evidence_class": "object_evidence",
             },
             {
                 "group_id": "view-002", "page_number": 1,
                 "location_hint": "cut", "visual_description": "panel section",
-                "representation_kind": "section",
-                "depiction_scope": "partial_component_representation",
-                "scope_basis": ["explicit_section_cut"],
+                "representation_kind": "section", "evidence_class": "object_evidence",
             },
         ],
     }
 
-    visual_map = derive_detection_visual_map_commercial_roles(
-        validate_detection_visual_map(scoped_visual_map, require_depiction_scope=True)
-    )
-
-    assert visual_map["visual_groups"] == [
-        {
-            "group_id": "view-001", "page_number": 1,
-            "location_hint": "front", "visual_description": "cabinet elevation",
-            "representation_kind": "elevation", "commercial_role": "assembly_view",
-            "role_basis": ["finished_envelope", "overall_product_dimensions"],
-        },
-        {
-            "group_id": "view-002", "page_number": 1,
-            "location_hint": "cut", "visual_description": "panel section",
-            "representation_kind": "section", "commercial_role": "component_detail",
-            "role_basis": ["explicit_section_or_detail"],
-        },
-    ]
+    assert validate_detection_visual_map(
+        visual_map, require_evidence_class=True
+    ) == visual_map
 
 
-def test_registry_rejects_component_detail_as_commercial_boundary_support():
+def test_registry_rejects_document_context_as_object_boundary_support():
     registry = {
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
@@ -372,12 +367,12 @@ def test_registry_rejects_component_detail_as_commercial_boundary_support():
 
     with pytest.raises(
         DetectionRegistrySchemaError,
-        match="must be complete assembly views",
+        match="must be object evidence",
     ) as raised:
         validate_detection_registry(
             registry,
             visual_group_ids={"view-001"},
-            visual_group_roles={"view-001": "component_detail"},
+            object_evidence_group_ids=set(),
         )
 
-    assert raised.value.details == {"non_assembly_visual_group_ids": ["view-001"]}
+    assert raised.value.details == {"non_object_evidence_group_ids": ["view-001"]}

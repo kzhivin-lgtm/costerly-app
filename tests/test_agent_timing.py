@@ -490,8 +490,7 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "perspective",
-            "depiction_scope": "complete_product_representation",
-            "scope_basis": ["complete_outer_envelope"],
+            "evidence_class": "object_evidence",
         }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
@@ -543,12 +542,12 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
             {
                 "group_id": "elevation", "page_number": 1, "location_hint": "left",
                 "visual_description": "sliding door system elevation",
-                "representation_kind": "elevation", "depiction_scope": "complete_product_representation", "scope_basis": ["complete_outer_envelope"],
+                "representation_kind": "elevation", "evidence_class": "object_evidence",
             },
             {
                 "group_id": "plan", "page_number": 1, "location_hint": "right",
                 "visual_description": "sliding door system plan",
-                "representation_kind": "plan", "depiction_scope": "complete_product_representation", "scope_basis": ["complete_outer_envelope"],
+                "representation_kind": "plan", "evidence_class": "object_evidence",
             },
         ],
         "objects": [{
@@ -561,6 +560,7 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
         "merge_proofs": [{
             "object_id": "object-001", "from_group_id": "elevation",
             "to_group_id": "plan",
+            "relationship": "same_object_view",
             "evidence_types": ["matching_topology", "dimension_transform"],
             "evidence_pages": [1],
             "observed_fact": "The plan track length matches the elevation after the axis change.",
@@ -599,10 +599,10 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
 def test_integrated_visual_registry_discards_only_trailing_zero_evidence_orphan():
     payload = {
         "visual_groups": [
-            {"group_id": "view_a", "page_number": 1, "location_hint": "upper left", "visual_description": "shelving", "representation_kind": "elevation", "depiction_scope": "complete_product_representation", "scope_basis": ["complete_outer_envelope"]},
-            {"group_id": "view_b", "page_number": 1, "location_hint": "upper right", "visual_description": "door system", "representation_kind": "elevation", "depiction_scope": "complete_product_representation", "scope_basis": ["complete_outer_envelope"]},
-            {"group_id": "view_c", "page_number": 1, "location_hint": "lower", "visual_description": "TV console", "representation_kind": "perspective", "depiction_scope": "complete_product_representation", "scope_basis": ["complete_outer_envelope"]},
-            {"group_id": "detail_d", "page_number": 1, "location_hint": "shelving detail", "visual_description": "component detail", "representation_kind": "detail", "depiction_scope": "partial_component_representation", "scope_basis": ["explicit_section_cut"]},
+            {"group_id": "view_a", "page_number": 1, "location_hint": "upper left", "visual_description": "shelving", "representation_kind": "elevation", "evidence_class": "object_evidence"},
+            {"group_id": "view_b", "page_number": 1, "location_hint": "upper right", "visual_description": "door system", "representation_kind": "elevation", "evidence_class": "object_evidence"},
+            {"group_id": "view_c", "page_number": 1, "location_hint": "lower", "visual_description": "TV console", "representation_kind": "perspective", "evidence_class": "object_evidence"},
+            {"group_id": "context_d", "page_number": 1, "location_hint": "title block", "visual_description": "sheet metadata", "representation_kind": "title_block", "evidence_class": "document_context"},
         ],
         "objects": [
             {"object_id": "object-001", "transport_label": "Object 1", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_group_ids": ["view_a"], "visual_identity": "shelving", "boundary_basis": "one complete product"},
@@ -643,8 +643,7 @@ def test_integrated_visual_registry_keeps_empty_group_object_with_evidence_as_er
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "cabinet", "representation_kind": "elevation",
-            "depiction_scope": "complete_product_representation",
-            "scope_basis": ["complete_outer_envelope"],
+            "evidence_class": "object_evidence",
         }],
         "objects": [
             {"object_id": "object-001", "transport_label": "Object 1", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_group_ids": ["view_a"], "visual_identity": "cabinet", "boundary_basis": "one complete product"},
@@ -678,8 +677,7 @@ def test_registry_uses_the_same_atomic_visual_group_contract_for_all_models():
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "perspective",
-            "depiction_scope": "complete_product_representation",
-            "scope_basis": ["complete_outer_envelope"],
+            "evidence_class": "object_evidence",
         }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
@@ -733,8 +731,7 @@ def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_pa
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "perspective",
-            "depiction_scope": "complete_product_representation",
-            "scope_basis": ["complete_outer_envelope"],
+            "evidence_class": "object_evidence",
         }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
@@ -774,14 +771,12 @@ def test_integrated_visual_registry_reconciles_missing_object_on_only_page():
             {
                 "group_id": "view_a", "page_number": 1, "location_hint": "left",
                 "visual_description": "cabinet", "representation_kind": "perspective",
-                "depiction_scope": "complete_product_representation",
-                "scope_basis": ["complete_outer_envelope"],
+                "evidence_class": "object_evidence",
             },
             {
                 "group_id": "view_b", "page_number": 1, "location_hint": "right",
                 "visual_description": "counter", "representation_kind": "perspective",
-                "depiction_scope": "complete_product_representation",
-                "scope_basis": ["complete_outer_envelope"],
+                "evidence_class": "object_evidence",
             },
         ],
         "objects": [
@@ -830,8 +825,7 @@ def test_integrated_visual_registry_validation_failure_carries_structured_audit(
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "cabinet", "representation_kind": "perspective",
-            "depiction_scope": "complete_product_representation",
-            "scope_basis": ["complete_outer_envelope"],
+            "evidence_class": "object_evidence",
         }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
@@ -870,13 +864,12 @@ def test_integrated_visual_registry_validation_failure_carries_structured_audit(
     assert event["raw_usage"]["registry_decision_audit"] == payload
 
 
-def test_integrated_visual_registry_persists_duplicate_group_ownership_details():
+def test_integrated_visual_registry_allows_shared_object_evidence():
     payload = {
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "center",
             "visual_description": "two adjacent cabinets", "representation_kind": "elevation",
-            "depiction_scope": "complete_product_representation",
-            "scope_basis": ["complete_outer_envelope"],
+            "evidence_class": "object_evidence",
         }],
         "objects": [
             {
@@ -909,20 +902,16 @@ def test_integrated_visual_registry_persists_duplicate_group_ownership_details()
             }),
         ),
         patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
-        pytest.raises(DetectionVisualRegistryValidationError) as raised,
     ):
-        run_anthropic_detection_visual_registry_agent(
+        _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"page"], regions=[], ocr_package=None, model="model",
         )
 
-    event = raised.value.usage_event
-    assert event["raw_usage"]["registry_decision_audit"] == payload
-    assert event["raw_usage"]["validation_details"] == {
-        "duplicate_visual_group_owners": {
-            "view-001": ["object-001", "object-002"],
-        },
-    }
+    assert [item["object_id"] for item in registry["objects"]] == [
+        "object-001", "object-002",
+    ]
+    assert usage["raw_usage"]["registry_decision_audit"] == payload
 
 
 def test_visual_map_retries_truncated_structured_json_with_larger_budget():
