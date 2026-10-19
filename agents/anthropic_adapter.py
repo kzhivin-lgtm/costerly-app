@@ -23,6 +23,10 @@ from agents.prompt_loader import (
     load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
 )
+from agents.detection_spatial_inventory import (
+    build_detection_spatial_inventory,
+    spatial_inventory_context,
+)
 from agents.schemas.detection_registry_schema import (
     DETECTION_PROOF_PARENT_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
@@ -50,7 +54,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_23_dimension_conflict_search_temperature_0"
+    "detection_v4_24_ocr_graphic_region_coverage_temperature_0"
 )
 # V4.23 uses an exact dimension_transform as the sole positive dimension-match
 # fact. A rejected candidate is recorded only on a new root as blocked_merge.
@@ -128,11 +132,19 @@ DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"][
     "proof_parent"
 ] = DETECTION_PROOF_PARENT_JSON_SCHEMA
+DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
+    "source_region_ids"
+)
+DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"][
+    "source_region_ids"
+] = {"type": "array", "items": {"type": "string"}}
 
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["visual_groups", "objects", "page_coverage"],
+    "required": [
+        "visual_groups", "objects", "page_coverage", "spatial_region_context",
+    ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
@@ -150,6 +162,18 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
                         "type": "array", "items": {"type": "string"},
                     },
                     "evidence_reason": {"type": "string"},
+                },
+            },
+        },
+        "spatial_region_context": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["region_id", "reason"],
+                "properties": {
+                    "region_id": {"type": "string"},
+                    "reason": {"type": "string"},
                 },
             },
         },
@@ -487,8 +511,15 @@ def build_detection_user_text(
     file_name: str,
     company_id: str,
     ocr_package: dict[str, Any] | None = None,
+    *,
+    include_spatial_inventory: bool = False,
 ) -> str:
     ocr_context = build_detection_ocr_context(ocr_package)
+    spatial_context = (
+        "\n\n" + spatial_inventory_context(build_detection_spatial_inventory(ocr_package))
+        if include_spatial_inventory
+        else ""
+    )
 
     return f"""
 You are running the RFQ Detection Agent for a custom fabrication estimate system.
@@ -500,6 +531,7 @@ Uploaded file name:
 {file_name}
 
 {ocr_context}
+{spatial_context}
 
 Task:
 Analyze the attached RFQ / drawing package and return ONLY the structured JSON object required by the schema.
@@ -651,7 +683,9 @@ def append_detection_focus_regions(blocks: list[dict[str, Any]], regions: list[d
 def run_anthropic_detection_visual_map_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
     prompt = load_detection_visual_map_prompt()
-    user_text = build_detection_user_text(file_name=file_name, company_id=company_id, ocr_package=ocr_package)
+    user_text = build_detection_user_text(
+        file_name=file_name, company_id=company_id, ocr_package=ocr_package,
+    )
     schema = strip_schema_for_claude(DETECTION_VISUAL_MAP_JSON_SCHEMA)
     content = build_detection_registry_content_blocks(
         file_name=file_name, file_bytes=file_bytes, user_text=user_text,
@@ -915,6 +949,7 @@ def _visual_map_from_registry_groups(groups: object) -> dict[str, Any]:
         "location_hint",
         "visual_description",
         "representation_kind",
+        "source_region_ids",
     )
     if not isinstance(groups, list):
         return {"visual_groups": groups}
@@ -1026,12 +1061,57 @@ def _discard_non_object_visual_registry_groups(
     return effective, discarded_groups
 
 
+def _validate_spatial_region_coverage(
+    *,
+    groups: object,
+    contextual_regions: object,
+    spatial_regions: list[dict[str, Any]],
+) -> None:
+    """Ensure every OCR graphical region was visibly considered once or more.
+
+    A provider image block can contain several separate depictions, so it may
+    legitimately support several groups. What is forbidden is silently
+    dropping an inventory region. Context regions are mutually exclusive with
+    object-specific groups and remain page-level information only.
+    """
+    expected_ids = {str(region["region_id"]) for region in spatial_regions}
+    if not isinstance(groups, list) or not isinstance(contextual_regions, list):
+        raise ValueError("spatial region coverage is invalid")
+    used_ids = {
+        str(region_id)
+        for group in groups
+        if isinstance(group, dict)
+        for region_id in group.get("source_region_ids") or []
+    }
+    context_ids: list[str] = []
+    for entry in contextual_regions:
+        if not isinstance(entry, dict) or set(entry) != {"region_id", "reason"}:
+            raise ValueError("spatial region context is invalid")
+        region_id = str(entry["region_id"] or "")
+        if not region_id or not str(entry["reason"] or "").strip():
+            raise ValueError("spatial region context is invalid")
+        context_ids.append(region_id)
+    context_set = set(context_ids)
+    if len(context_ids) != len(context_set) or not context_set.issubset(expected_ids):
+        raise ValueError("spatial region context is invalid")
+    if used_ids & context_set or not used_ids.issubset(expected_ids):
+        raise ValueError("spatial region coverage is invalid")
+    if used_ids | context_set != expected_ids:
+        raise ValueError("registry must account for every OCR graphic region")
+
+
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
     prompt = load_detection_visual_registry_prompt()
     prompt_version = DETECTION_VISUAL_REGISTRY_PROMPT_VERSION
-    user_text = build_detection_user_text(file_name=file_name, company_id=company_id, ocr_package=ocr_package)
+    spatial_regions = build_detection_spatial_inventory(ocr_package)
+    user_text = build_detection_user_text(
+        file_name=file_name,
+        company_id=company_id,
+        ocr_package=ocr_package,
+        include_spatial_inventory=True,
+    )
     schema = strip_schema_for_claude(DETECTION_VISUAL_REGISTRY_JSON_SCHEMA)
     content = build_detection_registry_content_blocks(
         file_name=file_name, file_bytes=file_bytes, user_text=user_text,
@@ -1094,14 +1174,18 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             payload
         )
     try:
-        if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects", "page_coverage"}:
-            raise ValueError("visual registry must contain only visual_groups, objects and page_coverage")
+        if not isinstance(payload, dict) or set(payload) != {
+            "visual_groups", "objects", "page_coverage", "spatial_region_context",
+        }:
+            raise ValueError("visual registry must contain visual_groups, objects, page_coverage and spatial_region_context")
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
             normalize_detection_visual_map_group_ids(
                 _visual_map_from_registry_groups(raw_groups)
             ),
+            require_source_region_ids=True,
+            spatial_regions=spatial_regions,
         )
         group_id_mapping = {
             raw_group_id: normalized["group_id"]
@@ -1110,6 +1194,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         payload = _normalize_component_anchor_group_ids(payload, group_id_mapping)
         payload = _normalize_visual_group_proof_parent_ids(
             payload, group_id_mapping
+        )
+        _validate_spatial_region_coverage(
+            groups=payload["visual_groups"],
+            contextual_regions=payload["spatial_region_context"],
+            spatial_regions=spatial_regions,
         )
         proof_parent_decisions = _proof_parent_decision_audit(
             payload["visual_groups"]
@@ -1203,6 +1292,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             for component in proof_components
         ],
         "region_count": len(regions),
+        "ocr_graphic_region_count": len(spatial_regions),
+        "ocr_graphic_regions": spatial_regions,
         "page_count": len(page_images),
         "attempt_label": "visual_registry_integrated",
     })

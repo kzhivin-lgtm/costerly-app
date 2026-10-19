@@ -64,6 +64,7 @@ def _visual_registry_payload(payload):
         return payload
     proofs = payload.pop("merge_proofs", [])
     groups = payload["visual_groups"]
+    payload.setdefault("spatial_region_context", [])
     group_order = {
         str(group.get("group_id")): index
         for index, group in enumerate(groups)
@@ -75,6 +76,7 @@ def _visual_registry_payload(payload):
         if isinstance(group, dict)
     }
     for group in groups_by_id.values():
+        group["source_region_ids"] = []
         group["proof_parent"] = {
             "decision": "new_object_root",
             "parent_group_id": "ROOT",

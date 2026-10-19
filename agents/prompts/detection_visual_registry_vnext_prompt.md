@@ -2,7 +2,7 @@
 
 Build the visual representation map and commercial-object registry in one response. The output has a strict causal order:
 
-1. identify object-specific visual groups,
+1. inspect every OCR graphic region and identify object-specific visual groups,
 2. for every group, state whether it starts a new proof component or attaches to one earlier group, and why,
 3. treat each connected proof component as exactly one commercial object,
 4. describe that component and its complete page Evidence.
@@ -13,7 +13,11 @@ Do not declare an object owner first and add evidence afterwards. A group pair b
 
 Each `visual_group` is one visibly distinct, object-specific source depiction that can help Estimation: overview, alternate perspective, elevation, object plan, section, detail, module, door leaf, panel, track, cabinet bay or assembly fragment. It is not automatically a quote line or quantity.
 
-Give each group a stable ordered `group_id`, physical `page_number`, short `location_hint`, literal visual `visual_description`, neutral `representation_kind`, and required `proof_parent`. It records only one visible depiction. Do not assign any object IDs or owners to a group.
+`OCR GRAPHIC REGION INVENTORY` is a deterministic list of graphical page areas from OCR, each with a page and bounding box. It is an inspection map, not a list of objects and never proof of a merge. Before assigning proof parents, inspect every listed region. Put each inspected object-specific region ID in the matching group's `source_region_ids`. One OCR region may contain several separate depictions and may therefore be cited by several groups. A group on a page that has listed OCR regions must cite at least one from that page. Do not silently omit any listed region: if it is a generic plan, legend, cover or other non-object context, return it once in `spatial_region_context` with a factual reason instead. A contextual region must not appear in a visual group.
+
+OCR text, dimensions, captions, table content and the page sidebar are not graphical-region candidates. They remain literal page-level Evidence. When a page belongs to an object, its full page artifact and complete page OCR, including the sidebar, are handed to Estimation. Do not create a commercial object merely from a sidebar, caption or text block.
+
+Give each group a stable ordered `group_id`, physical `page_number`, short `location_hint`, literal visual `visual_description`, neutral `representation_kind`, `source_region_ids`, and required `proof_parent`. It records only one visible depiction. Do not assign any object IDs or owners to a group.
 
 Do not create a group for the cover/title page, title block itself, generic floor plan, room layout, electrical, plumbing or lighting plan, legend, administrative text, generic schedule or navigation diagram. Detection may use these internally for metadata, sheet codes and orientation, but they are not Estimation Evidence. Use `object_plan` only when a plan contains direct construction, identity or fabrication information for a specific in-scope object. `floor_plan` means generic non-object context and is discarded. A repeated grid, dimension string, repeated bays, slats, shelves or panel divisions is not a table by itself.
 

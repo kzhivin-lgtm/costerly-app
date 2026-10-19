@@ -103,6 +103,10 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "It may support an attachment, never establish one alone" in prompt
     assert "evidence_facts" in prompt
     assert "`floor_plan` means generic non-object context and is discarded" in prompt
+    assert "OCR GRAPHIC REGION INVENTORY" in prompt
+    assert "source_region_ids" in prompt
+    assert "spatial_region_context" in prompt
+    assert "including the sidebar, are handed to Estimation" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_23_dimension_conflict_search_temperature_0"
+        "detection_v4_24_ocr_graphic_region_coverage_temperature_0"
     )
