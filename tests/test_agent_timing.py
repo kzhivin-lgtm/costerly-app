@@ -802,6 +802,71 @@ def test_integrated_visual_registry_excludes_non_object_pages_from_estimation_ev
     assert registry["objects"][0]["estimation_evidence_pages"] == [2]
 
 
+def test_integrated_visual_registry_discards_generic_floor_plan_before_ownership():
+    payload = {
+        "visual_groups": [
+            {
+                "group_id": "generic-plan", "page_number": 1,
+                "location_hint": "center", "visual_description": "full floor plan with furniture zones",
+                "representation_kind": "floor_plan", "owner_object_ids": ["object-001"],
+            },
+            {
+                "group_id": "cabinet-elevation", "page_number": 2,
+                "location_hint": "center", "visual_description": "cabinet elevation",
+                "representation_kind": "elevation", "owner_object_ids": ["object-001"],
+            },
+        ],
+        "objects": [{
+            "object_id": "object-001", "transport_label": "N56",
+            "quantity": 1, "quantity_explicit": True, "identity_pages": [1, 2],
+            "visual_identity": "one cabinet", "boundary_basis": "one finished cabinet",
+        }],
+        "merge_proofs": [{
+            "object_id": "object-001", "from_group_id": "generic-plan",
+            "to_group_id": "cabinet-elevation", "relationship": "same_object_view",
+            "evidence_facts": [{
+                "evidence_type": "explicit_document_relation", "evidence_pages": [1, 2],
+                "observation": "The plan and elevation carry the N56 label.",
+            }],
+            "commercial_inseparability": "The plan and elevation describe one cabinet.",
+        }],
+        "page_coverage": [
+            {
+                "page_number": 1, "object_ids": ["object-001"],
+                "evidence_reason": "generic floor plan",
+            },
+            {
+                "page_number": 2, "object_ids": ["object-001"],
+                "evidence_reason": "object-specific cabinet elevation",
+            },
+        ],
+    }
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            return_value=(_Response(), {
+                "request_started_at": "2026-10-16T00:00:00+00:00",
+                "request_finished_at": "2026-10-16T00:00:01+00:00",
+            }),
+        ),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+    ):
+        visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"plan", b"elevation"], regions=[], ocr_package=None, model="model",
+        )
+
+    assert [group["group_id"] for group in visual_map["visual_groups"]] == ["view-001"]
+    assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
+    assert registry["objects"][0]["identity_pages"] == [2]
+    assert registry["objects"][0]["estimation_evidence_pages"] == [2]
+    assert usage["raw_usage"]["discarded_non_object_visual_groups"] == [
+        payload["visual_groups"][0]
+    ]
+
+
 def test_integrated_visual_registry_reconciles_missing_object_on_only_page():
     payload = {
         "visual_groups": [

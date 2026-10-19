@@ -49,16 +49,33 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_15_typed_merge_evidence_facts_temperature_0"
+    "detection_v4_16_non_object_page_guard_temperature_0"
 )
-# V4.15 retains the V4.14 ownership ledger. It makes each merge signal a
-# separately attributed observation rather than a bare type label, so a proof
-# can be checked without weakening the independent-evidence requirement.
+# V4.16 retains the V4.15 typed merge facts and V4.14 ownership ledger. Generic
+# floor plans and title material cannot enter either ledger, even if the model
+# mistakenly returns them as visual groups.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
 # contract as well.
 DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE = 0.0
+
+_NON_OBJECT_VISUAL_REPRESENTATION_KINDS = frozenset({
+    "cover",
+    "cover_page",
+    "title_page",
+    "title_block",
+    "generic_floor_plan",
+    "floor_plan",
+    "room_layout",
+    "electrical_plan",
+    "plumbing_plan",
+    "lighting_plan",
+    "legend",
+    "administrative_text",
+    "generic_schedule",
+    "navigation_diagram",
+})
 
 
 class DetectionVisualRegistryValidationError(RuntimeError):
@@ -775,6 +792,94 @@ def _normalize_pairwise_merge_proof_group_ids(
     return normalized
 
 
+def _discard_non_object_visual_registry_groups(
+    payload: dict[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Remove title and generic-plan material before it can claim ownership.
+
+    These pages may help Detection orient itself, but are never object Evidence.
+    The model's original output remains in the decision audit. The effective
+    payload cannot pass a generic plan into the ownership ledger, proof tree,
+    identity pages, or Estimation page coverage.
+    """
+    groups = payload.get("visual_groups")
+    if not isinstance(groups, list):
+        return payload, []
+    discarded_groups = [
+        group for group in groups
+        if isinstance(group, dict)
+        and str(group.get("representation_kind") or "").strip().lower()
+        in _NON_OBJECT_VISUAL_REPRESENTATION_KINDS
+    ]
+    if not discarded_groups:
+        return payload, []
+
+    discarded_group_ids = {
+        str(group.get("group_id") or "") for group in discarded_groups
+    }
+    discarded_pages = {
+        group.get("page_number") for group in discarded_groups
+        if isinstance(group.get("page_number"), int)
+    }
+    effective = copy.deepcopy(payload)
+    effective["visual_groups"] = [
+        group for group in groups
+        if not isinstance(group, dict)
+        or str(group.get("group_id") or "") not in discarded_group_ids
+    ]
+    proofs = effective.get("merge_proofs")
+    if isinstance(proofs, list):
+        effective["merge_proofs"] = [
+            proof for proof in proofs
+            if not isinstance(proof, dict)
+            or (
+                str(proof.get("from_group_id") or "") not in discarded_group_ids
+                and str(proof.get("to_group_id") or "") not in discarded_group_ids
+            )
+        ]
+
+    retained_owner_ids_by_page: dict[int, set[str]] = {}
+    for group in effective["visual_groups"]:
+        if not isinstance(group, dict) or not isinstance(group.get("page_number"), int):
+            continue
+        owner_object_ids = group.get("owner_object_ids")
+        if isinstance(owner_object_ids, list):
+            retained_owner_ids_by_page.setdefault(group["page_number"], set()).update(
+                str(object_id) for object_id in owner_object_ids
+            )
+
+    page_coverage = effective.get("page_coverage")
+    if isinstance(page_coverage, list):
+        for entry in page_coverage:
+            if not isinstance(entry, dict) or entry.get("page_number") not in discarded_pages:
+                continue
+            retained_owner_ids = retained_owner_ids_by_page.get(entry["page_number"], set())
+            if isinstance(entry.get("object_ids"), list):
+                entry["object_ids"] = [
+                    object_id for object_id in entry["object_ids"]
+                    if object_id in retained_owner_ids
+                ]
+            if not entry.get("object_ids"):
+                entry["evidence_reason"] = (
+                    "non-object source page excluded from Estimation Evidence"
+                )
+
+    objects = effective.get("objects")
+    if isinstance(objects, list):
+        for item in objects:
+            if not isinstance(item, dict) or not isinstance(item.get("identity_pages"), list):
+                continue
+            object_id = str(item.get("object_id") or "")
+            item["identity_pages"] = [
+                page_number for page_number in item["identity_pages"]
+                if (
+                    page_number not in discarded_pages
+                    or object_id in retained_owner_ids_by_page.get(page_number, set())
+                )
+            ]
+    return effective, discarded_groups
+
+
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
@@ -804,6 +909,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     # normalizes group IDs or derives evidence-page references. This is an
     # inspectable decision record, not private chain-of-thought.
     registry_decision_audit = copy.deepcopy(payload)
+    discarded_non_object_groups: list[dict[str, Any]] = []
+    if isinstance(payload, dict):
+        payload, discarded_non_object_groups = _discard_non_object_visual_registry_groups(
+            payload
+        )
     try:
         if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects", "merge_proofs", "page_coverage"}:
             raise ValueError("visual registry must contain only visual_groups, objects, merge_proofs and page_coverage")
@@ -846,6 +956,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         failure_diagnostics = dict(diagnostics)
         failure_diagnostics.update({
             "registry_decision_audit": registry_decision_audit,
+            "discarded_non_object_visual_groups": discarded_non_object_groups,
             "validation_error": str(exc),
             "validation_stage": "visual_registry",
             "attempt_label": "visual_registry_validation_failed",
@@ -895,6 +1006,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             not entry["object_ids"] for entry in payload["page_coverage"]
         ),
         "registry_decision_audit": registry_decision_audit,
+        "discarded_non_object_visual_groups": discarded_non_object_groups,
         "pairwise_merge_proofs": pairwise_merge_proofs,
         "pairwise_merge_proof_count": len(pairwise_merge_proofs),
         "region_count": len(regions),

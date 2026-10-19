@@ -91,6 +91,7 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Test commercial separability, not merely visual adjacency" in prompt
     assert "Direct shared structure may support a merge but cannot be its only evidence" in prompt
     assert "evidence_facts" in prompt
+    assert "`floor_plan` means generic non-object context and is discarded" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_15_typed_merge_evidence_facts_temperature_0"
+        "detection_v4_16_non_object_page_guard_temperature_0"
     )

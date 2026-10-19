@@ -16,7 +16,7 @@ This adds no model call, router, Sonnet route, or file-specific override.
 Preserve object-ID locking, full object evidence, UI-only previews, deferred
 Naming, File Review timing, and TC. Next gate: fresh HSL run must produce the
 11 packages with complete page-4 Evidence, then regress Page 23 and Adda.
-Current model build: `Detection V4.15`, experimental, based on V4.14 and the
+Current model build: `Detection V4.16`, experimental, based on V4.15 and the
 protected checkpoint `52c314d`. Comment: V4.12 still treated every N76B page-11
 depiction as a partial component, then attempted to attach all three to N76B.
 The failure proved that assembly/component was an invalid eligibility gate, not
@@ -34,7 +34,11 @@ typed, page-attributed visual facts. The evidence order is explicit document
 relation, dimension transform, matching topology, unique geometry, then direct
 shared structure. A non-explicit merge still needs two independent facts and
 at least one identity-level fact; direct shared structure alone cannot merge.
-This adds no model call, router, Sonnet path, Naming or UI timing. It is not a
+V4.16 discards generic floor plans, title pages and title blocks from the
+effective visual-group payload before ownership, proof construction, identity
+pages and Estimation Evidence. An object-specific plan remains eligible only
+as `object_plan`. This adds no model call, router, Sonnet path, Naming or UI
+timing. It is not a
 checkpoint until HSL first produces nine
 valid object packages with complete object-specific evidence, followed by Page
 23 and Adda regression gates. The HSL 11-object boundary split remains a later
