@@ -1,30 +1,38 @@
 # TODO
 
 ACTIVE, P0, Detection V4 commercial-boundary stability: protected checkpoint
-`5a1871a` preserves H1 cross-view correspondence, shared physical-page
-evidence, one-page coverage reconciliation and full Registry decision audits.
-H1 merged Page 23 TV-console views in 9/9 observed runs, but Page 23 is not
-accepted: 8/9 runs gave three objects and two audits reused a visual group
-across commercial objects. The active candidate makes `visual_group_ids`
-exclusive boundary ownership while `page_coverage` remains freely shareable.
-Duplicate ownership rejects the Registry before persistence and stores the
-complete model decision plus deterministic conflict details. It adds no model
-call or file-specific override. Preserve object-ID locking, full object
-evidence, UI-only previews, deferred Naming and File Review TC. Candidate
-prompt versions are Haiku
-`detection_v4_2_visual_registry_haiku_correspondence_ownership_v2` and Sonnet
-`detection_v4_visual_registry_integrated_v5`. Next: production gate of ten
-Page 23 runs, Adda two-object route, Metall separation/code preservation and
-shared-page evidence verification. Contracts and evidence:
-`notes/DETECTION_V4_2_PAGE23_OWNERSHIP_CHECKPOINT_2026_10_17.md` and
-`notes/DETECTION_V4_2_ROUTER_AUDIT_CHECKPOINT_2026_10_17.md`.
+`52c314d` retains accepted Naming, File Review, temperature-zero, complete
+Evidence, and Page 23/Adda boundary behavior. Hassola LIM is the active
+boundary benchmark. Its canonical target is now 11 commercial objects:
+N56, N57A, N57B, N57C, N60, N62, N68, N70, N74, N76, and N76B. N57 is a shared
+sheet-level literal code, not evidence that its kitchen, island, and tall
+cabinet are one product. The active V4 candidate requires every complete
+assembly view to have exactly one object owner, either as primary or as an
+explicit alternate representation. Shared physical-page Evidence remains
+freely reusable. A shared sheet code never merges independent assemblies; when
+no child code is printed, Detection retains the literal base and generates
+deterministic A/B/C child labels with source provenance in `boundary_basis`.
+This adds no model call, router, Sonnet route, or file-specific override.
+Preserve object-ID locking, full object evidence, UI-only previews, deferred
+Naming, File Review timing, and TC. Next gate: fresh HSL run must produce the
+11 packages with complete page-4 Evidence, then regress Page 23 and Adda.
+Current model build: `Detection V4.10`, experimental, based on protected
+checkpoint `52c314d`. Comment: role classification becomes recall-first for
+graphic product representations. `component_detail` and `document_context`
+require affirmative exclusion evidence; every `assembly_view` retains exactly
+one object owner. The model persists controlled `role_basis` observations for
+every role assignment. This build changes no model count, router, Sonnet path,
+Naming, Evidence scope or UI timing. It is not a checkpoint until HSL role
+recall and the Page 23/Adda regression gate are accepted.
 
-H1 checkpoint `1a62549`: four persisted Page 23 runs returned three objects;
-the next run exposed a single-page coverage transport failure. The reliability
-repair now normalizes that narrow invariant and persists the structured audit
-when validation rejects a Registry response. Neither repair changes the
-commercial-boundary decision. Next: five fresh production Page 23 runs to
-close or reject the H1 stability gate.
+PENDING, P1, USER OBSERVATION, stale Processing cycle after New Estimate:
+investigate the authenticated-browser sequence in which a prior saved estimate
+is still visible, the user starts New Estimate, and Processing remains on an
+old cycle until refresh. Do not attribute this to OCR or Detection without
+evidence. Reproduce against the deployed version and distinguish a stale
+browser/session or route state from a genuinely active processing run. The
+acceptance condition is that an old estimate cannot be presented as the active
+new cycle, and a failed or abandoned cycle gives an explicit recoverable state.
 
 DEFERRED, P1, USER DECISION, Detection external envelope dimensions: do not
 make W/D/H extraction a Detection critical-path objective or an Estimation

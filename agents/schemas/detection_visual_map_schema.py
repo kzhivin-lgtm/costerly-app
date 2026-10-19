@@ -8,6 +8,39 @@ COMMERCIAL_VISUAL_GROUP_ROLES = {
     "document_context",
 }
 
+# These are observable reasons, not private chain-of-thought.  Persisting them
+# makes a role decision reviewable without asking the model to restate its full
+# reasoning after an object-boundary failure.
+COMMERCIAL_ROLE_BASIS_TYPES = {
+    "finished_envelope",
+    "overall_product_dimensions",
+    "identifiable_product_graphic",
+    "alternate_product_view",
+    "explicit_section_or_detail",
+    "fragment_without_finished_envelope",
+    "explicit_parent_relation",
+    "administrative_or_navigation_context",
+    "schedule_legend_or_table",
+}
+
+_ROLE_REQUIRED_BASIS_TYPES = {
+    "assembly_view": {
+        "finished_envelope",
+        "overall_product_dimensions",
+        "identifiable_product_graphic",
+        "alternate_product_view",
+    },
+    "component_detail": {
+        "explicit_section_or_detail",
+        "fragment_without_finished_envelope",
+        "explicit_parent_relation",
+    },
+    "document_context": {
+        "administrative_or_navigation_context",
+        "schedule_legend_or_table",
+    },
+}
+
 
 DETECTION_VISUAL_MAP_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -35,6 +68,14 @@ DETECTION_VISUAL_MAP_JSON_SCHEMA: dict[str, Any] = {
                     "commercial_role": {
                         "type": "string",
                         "enum": sorted(COMMERCIAL_VISUAL_GROUP_ROLES),
+                    },
+                    "role_basis": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                            "type": "string",
+                            "enum": sorted(COMMERCIAL_ROLE_BASIS_TYPES),
+                        },
                     },
                 },
             },
@@ -95,7 +136,7 @@ def validate_detection_visual_map(
             "representation_kind",
         }
         if require_commercial_roles:
-            required.add("commercial_role")
+            required.update({"commercial_role", "role_basis"})
         if not isinstance(group, dict) or set(group) != required:
             raise DetectionVisualMapSchemaError("visual group fields do not match contract")
         expected_id = f"view-{index:03d}"
@@ -109,7 +150,19 @@ def validate_detection_visual_map(
             ))
             or (
                 require_commercial_roles
-                and group["commercial_role"] not in COMMERCIAL_VISUAL_GROUP_ROLES
+                and (
+                    group["commercial_role"] not in COMMERCIAL_VISUAL_GROUP_ROLES
+                    or not isinstance(group["role_basis"], list)
+                    or not group["role_basis"]
+                    or not all(isinstance(basis, str) for basis in group["role_basis"])
+                    or len(group["role_basis"]) != len(set(group["role_basis"]))
+                    or not set(group["role_basis"]).issubset(
+                        COMMERCIAL_ROLE_BASIS_TYPES
+                    )
+                    or not set(group["role_basis"]).intersection(
+                        _ROLE_REQUIRED_BASIS_TYPES[group["commercial_role"]]
+                    )
+                )
             )
         ):
             raise DetectionVisualMapSchemaError("visual group is invalid")

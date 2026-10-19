@@ -13,7 +13,6 @@ from agents.anthropic_adapter import (
     DEFAULT_CLAUDE_DETECTION_MODEL,
     DetectionVisualRegistryValidationError,
     DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
-    DETECTION_VISUAL_REGISTRY_MAX_TOKENS,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
     apply_benchmark_run_suffix,
     build_agent_usage_event,
@@ -491,15 +490,15 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "perspective",
-            "commercial_role": "assembly_view",
+            "commercial_role": "assembly_view", "role_basis": ["finished_envelope"],
         }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
-            "quantity": 1, "quantity_explicit": False,
-            "primary_assembly_group_id": "view_a",
-            "assembly_view_group_ids": ["view_a"],
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "visual_group_ids": ["view_a"],
             "visual_identity": "one cabinet", "boundary_basis": "one complete product",
         }],
+        "merge_proofs": [],
         "page_coverage": [{
             "page_number": 1, "object_ids": ["object-001"],
             "evidence_reason": "cabinet view",
@@ -527,67 +526,44 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
             page_images=[b"page"], regions=[], ocr_package=None, model="model",
         )
 
-    assert requested_budgets == [DETECTION_VISUAL_REGISTRY_MAX_TOKENS]
+    assert requested_budgets == [8192]
     assert requested_temperatures == [0.0]
     assert visual_map["visual_groups"][0]["group_id"] == "view-001"
     assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
-    assert registry["objects"][0]["identity_pages"] == [1]
     assert registry["objects"][0]["estimation_evidence_pages"] == [1]
     assert usage["operation"] == "rfq_detection_visual_registry"
     assert usage["raw_usage"]["temperature"] == 0.0
-    assert usage["raw_usage"]["output_token_ceiling"] == DETECTION_VISUAL_REGISTRY_MAX_TOKENS
     assert usage["raw_usage"]["registry_decision_audit"] == payload
 
 
-def test_integrated_visual_registry_persists_truncated_json_diagnostics():
-    response = SimpleNamespace(usage=_Usage(), stop_reason="max_tokens")
-
-    with (
-        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
-        patch(
-            "agents.anthropic_adapter.create_claude_message_streamed",
-            return_value=(response, {
-                "request_started_at": "2026-10-18T00:00:00+00:00",
-                "request_finished_at": "2026-10-18T00:00:01+00:00",
-            }),
-        ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value='{"visual_groups":[{"role_basis":"'),
-        pytest.raises(DetectionVisualRegistryValidationError) as raised,
-    ):
-        run_anthropic_detection_visual_registry_agent(
-            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"page"], regions=[], ocr_package=None, model="model",
-        )
-
-    event = raised.value.usage_event
-    assert event["status"] == "failed"
-    assert event["raw_usage"]["validation_stage"] == "visual_registry_json_parse"
-    assert event["raw_usage"]["response_stop_reason"] == "max_tokens"
-    assert event["raw_usage"]["response_character_count"] == 33
-    assert event["raw_usage"]["output_token_ceiling"] == DETECTION_VISUAL_REGISTRY_MAX_TOKENS
-
-
-def test_integrated_visual_registry_normalizes_one_primary_assembly_anchor():
+def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proofs():
     payload = {
         "visual_groups": [
             {
                 "group_id": "elevation", "page_number": 1, "location_hint": "left",
                 "visual_description": "sliding door system elevation",
-                "representation_kind": "elevation", "commercial_role": "assembly_view",
+                "representation_kind": "elevation", "commercial_role": "assembly_view", "role_basis": ["finished_envelope"],
             },
             {
                 "group_id": "plan", "page_number": 1, "location_hint": "right",
                 "visual_description": "sliding door system plan",
-                "representation_kind": "plan", "commercial_role": "assembly_view",
+                "representation_kind": "plan", "commercial_role": "assembly_view", "role_basis": ["finished_envelope"],
             },
         ],
         "objects": [{
             "object_id": "object-001", "transport_label": "D01",
-            "quantity": 1, "quantity_explicit": True,
-            "primary_assembly_group_id": "elevation",
-            "assembly_view_group_ids": ["elevation", "plan"],
+            "quantity": 1, "quantity_explicit": True, "identity_pages": [1],
+            "visual_group_ids": ["elevation", "plan"],
             "visual_identity": "one door system in elevation and plan",
             "boundary_basis": "matching track and three-leaf sequence",
+        }],
+        "merge_proofs": [{
+            "object_id": "object-001", "from_group_id": "elevation",
+            "to_group_id": "plan",
+            "evidence_types": ["matching_topology", "dimension_transform"],
+            "evidence_pages": [1],
+            "observed_fact": "The plan track length matches the elevation after the axis change.",
+            "commercial_inseparability": "Both views show one common track and frame.",
         }],
         "page_coverage": [{
             "page_number": 1, "object_ids": ["object-001"],
@@ -615,107 +591,17 @@ def test_integrated_visual_registry_normalizes_one_primary_assembly_anchor():
         "view-001", "view-002",
     ]
     assert registry["objects"][0]["visual_group_ids"] == ["view-001", "view-002"]
-    assert usage["raw_usage"]["primary_assembly_anchor_count"] == 1
-    assert usage["raw_usage"]["owned_assembly_view_count"] == 2
-    assert usage["raw_usage"]["non_primary_visual_group_count"] == 1
-
-
-def test_integrated_visual_registry_rejects_component_detail_as_primary_anchor():
-    payload = {
-        "visual_groups": [{
-            "group_id": "detail", "page_number": 1, "location_hint": "center",
-            "visual_description": "cabinet component", "representation_kind": "detail",
-            "commercial_role": "component_detail",
-        }],
-        "objects": [{
-            "object_id": "object-001", "transport_label": "C01",
-            "quantity": 1, "quantity_explicit": False,
-            "primary_assembly_group_id": "detail",
-            "assembly_view_group_ids": ["detail"],
-            "visual_identity": "cabinet", "boundary_basis": "one cabinet",
-        }],
-        "page_coverage": [{
-            "page_number": 1, "object_ids": ["object-001"],
-            "evidence_reason": "cabinet detail",
-        }],
-    }
-
-    with (
-        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
-        patch(
-            "agents.anthropic_adapter.create_claude_message_streamed",
-            return_value=(_Response(), {
-                "request_started_at": "2026-10-18T00:00:00+00:00",
-                "request_finished_at": "2026-10-18T00:00:01+00:00",
-            }),
-        ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
-        pytest.raises(
-            DetectionVisualRegistryValidationError,
-            match="registry visual groups must be complete assembly views",
-        ),
-    ):
-        run_anthropic_detection_visual_registry_agent(
-            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"page"], regions=[], ocr_package=None, model="model",
-        )
-
-
-def test_integrated_visual_registry_rejects_component_detail_in_assembly_view_list():
-    payload = {
-        "visual_groups": [
-            {
-                "group_id": "elevation", "page_number": 1, "location_hint": "left",
-                "visual_description": "cabinet elevation",
-                "representation_kind": "elevation", "commercial_role": "assembly_view",
-            },
-            {
-                "group_id": "section", "page_number": 1, "location_hint": "right",
-                "visual_description": "cabinet section",
-                "representation_kind": "section", "commercial_role": "component_detail",
-            },
-        ],
-        "objects": [{
-            "object_id": "object-001", "transport_label": "C01",
-            "quantity": 1, "quantity_explicit": False,
-            "primary_assembly_group_id": "elevation",
-            "assembly_view_group_ids": ["elevation", "section"],
-            "visual_identity": "cabinet", "boundary_basis": "one cabinet",
-        }],
-        "page_coverage": [{
-            "page_number": 1, "object_ids": ["object-001"],
-            "evidence_reason": "cabinet elevation and section",
-        }],
-    }
-
-    with (
-        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
-        patch(
-            "agents.anthropic_adapter.create_claude_message_streamed",
-            return_value=(_Response(), {
-                "request_started_at": "2026-10-18T00:00:00+00:00",
-                "request_finished_at": "2026-10-18T00:00:01+00:00",
-            }),
-        ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
-        pytest.raises(
-            DetectionVisualRegistryValidationError,
-            match="registry visual groups must be complete assembly views",
-        ),
-    ):
-        run_anthropic_detection_visual_registry_agent(
-            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"page"], regions=[], ocr_package=None, model="model",
-        )
+    assert usage["raw_usage"]["pairwise_merge_proofs"][0]["from_group_id"] == "view-001"
+    assert usage["raw_usage"]["pairwise_merge_proofs"][0]["to_group_id"] == "view-002"
 
 
 def test_integrated_visual_registry_discards_only_trailing_zero_evidence_orphan():
     payload = {
         "visual_groups": [
-            {"group_id": "view_a", "page_number": 1, "location_hint": "upper left", "visual_description": "shelving", "representation_kind": "elevation", "commercial_role": "assembly_view"},
-            {"group_id": "view_b", "page_number": 1, "location_hint": "upper right", "visual_description": "door system", "representation_kind": "elevation", "commercial_role": "assembly_view"},
-            {"group_id": "view_c", "page_number": 1, "location_hint": "lower", "visual_description": "TV console", "representation_kind": "perspective", "commercial_role": "assembly_view"},
-            {"group_id": "detail_d", "page_number": 1, "location_hint": "shelving detail", "visual_description": "component detail", "representation_kind": "detail", "commercial_role": "component_detail"},
+            {"group_id": "view_a", "page_number": 1, "location_hint": "upper left", "visual_description": "shelving", "representation_kind": "elevation", "commercial_role": "assembly_view", "role_basis": ["finished_envelope"]},
+            {"group_id": "view_b", "page_number": 1, "location_hint": "upper right", "visual_description": "door system", "representation_kind": "elevation", "commercial_role": "assembly_view", "role_basis": ["finished_envelope"]},
+            {"group_id": "view_c", "page_number": 1, "location_hint": "lower", "visual_description": "TV console", "representation_kind": "perspective", "commercial_role": "assembly_view", "role_basis": ["finished_envelope"]},
+            {"group_id": "detail_d", "page_number": 1, "location_hint": "shelving detail", "visual_description": "component detail", "representation_kind": "detail", "commercial_role": "component_detail", "role_basis": ["explicit_section_or_detail"]},
         ],
         "objects": [
             {"object_id": "object-001", "transport_label": "Object 1", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_group_ids": ["view_a"], "visual_identity": "shelving", "boundary_basis": "one complete product"},
@@ -756,7 +642,7 @@ def test_integrated_visual_registry_keeps_empty_group_object_with_evidence_as_er
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "cabinet", "representation_kind": "elevation",
-            "commercial_role": "assembly_view",
+            "commercial_role": "assembly_view", "role_basis": ["finished_envelope"],
         }],
         "objects": [
             {"object_id": "object-001", "transport_label": "Object 1", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_group_ids": ["view_a"], "visual_identity": "cabinet", "boundary_basis": "one complete product"},
@@ -790,7 +676,7 @@ def test_registry_uses_the_same_atomic_visual_group_contract_for_all_models():
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "perspective",
-            "commercial_role": "assembly_view",
+            "commercial_role": "assembly_view", "role_basis": ["finished_envelope"],
         }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
@@ -844,7 +730,7 @@ def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_pa
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "perspective",
-            "commercial_role": "assembly_view",
+            "commercial_role": "assembly_view", "role_basis": ["finished_envelope"],
         }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
@@ -884,12 +770,12 @@ def test_integrated_visual_registry_reconciles_missing_object_on_only_page():
             {
                 "group_id": "view_a", "page_number": 1, "location_hint": "left",
                 "visual_description": "cabinet", "representation_kind": "perspective",
-                "commercial_role": "assembly_view",
+                "commercial_role": "assembly_view", "role_basis": ["finished_envelope"],
             },
             {
                 "group_id": "view_b", "page_number": 1, "location_hint": "right",
                 "visual_description": "counter", "representation_kind": "perspective",
-                "commercial_role": "assembly_view",
+                "commercial_role": "assembly_view", "role_basis": ["finished_envelope"],
             },
         ],
         "objects": [
@@ -938,7 +824,7 @@ def test_integrated_visual_registry_validation_failure_carries_structured_audit(
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "cabinet", "representation_kind": "perspective",
-            "commercial_role": "assembly_view",
+            "commercial_role": "assembly_view", "role_basis": ["finished_envelope"],
         }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
@@ -982,7 +868,7 @@ def test_integrated_visual_registry_persists_duplicate_group_ownership_details()
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "center",
             "visual_description": "two adjacent cabinets", "representation_kind": "elevation",
-            "commercial_role": "assembly_view",
+            "commercial_role": "assembly_view", "role_basis": ["finished_envelope"],
         }],
         "objects": [
             {

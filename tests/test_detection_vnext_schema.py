@@ -12,6 +12,7 @@ from agents.schemas.detection_registry_schema import (
 )
 from agents.schemas.detection_schema import validate_detection_result
 from agents.schemas.detection_visual_map_schema import (
+    DetectionVisualMapSchemaError,
     normalize_detection_visual_map_group_ids,
     validate_detection_visual_map,
 )
@@ -156,25 +157,6 @@ def test_registry_schema_requires_at_least_one_visual_group_per_object():
     assert visual_group_ids["minItems"] == 1
 
 
-def test_integrated_registry_requires_a_primary_and_complete_assembly_representation_set():
-    schema = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA
-    object_schema = schema["properties"]["objects"]["items"]
-
-    assert set(schema["required"]) == {"visual_groups", "objects", "page_coverage"}
-    assert "primary_assembly_group_id" in object_schema["required"]
-    assert object_schema["properties"]["primary_assembly_group_id"] == {
-        "type": "string", "minLength": 1,
-    }
-    assert "assembly_view_group_ids" in object_schema["required"]
-    assert object_schema["properties"]["assembly_view_group_ids"] == {
-        "type": "array", "minItems": 1,
-        "items": {"type": "string", "minLength": 1},
-    }
-    assert "identity_pages" not in object_schema["properties"]
-    assert "visual_group_ids" not in object_schema["properties"]
-    assert "merge_proofs" not in object_schema["properties"]
-
-
 def test_visual_map_normalizes_provider_group_ids_before_strict_validation():
     visual_map = {
         "visual_groups": [
@@ -230,35 +212,6 @@ def test_registry_allows_unassigned_navigation_only_visual_groups():
     ) == registry
 
 
-def test_registry_requires_every_complete_assembly_view_to_have_one_owner():
-    registry = {
-        "objects": [{
-            "object_id": "object-001", "transport_label": "N57A",
-            "quantity": 1, "quantity_explicit": False, "identity_pages": [4],
-            "estimation_evidence_pages": [4], "visual_group_ids": ["view-001"],
-            "visual_identity": "kitchen", "boundary_basis": "one complete kitchen",
-        }],
-    }
-
-    with pytest.raises(
-        DetectionRegistrySchemaError,
-        match="must account for every complete assembly view",
-    ) as raised:
-        validate_detection_registry(
-            registry,
-            visual_group_ids={"view-001", "view-002"},
-            visual_group_roles={
-                "view-001": "assembly_view",
-                "view-002": "assembly_view",
-            },
-            required_assembly_group_ids={"view-001", "view-002"},
-        )
-
-    assert raised.value.details == {
-        "unrepresented_assembly_group_ids": ["view-002"],
-    }
-
-
 def test_integrated_visual_map_requires_a_commercial_role_for_each_group():
     visual_map = {
         "visual_groups": [
@@ -266,11 +219,13 @@ def test_integrated_visual_map_requires_a_commercial_role_for_each_group():
                 "group_id": "view-001", "page_number": 1,
                 "location_hint": "left", "visual_description": "cabinet",
                 "representation_kind": "elevation", "commercial_role": "assembly_view",
+                "role_basis": ["finished_envelope"],
             },
             {
                 "group_id": "view-002", "page_number": 1,
                 "location_hint": "title block", "visual_description": "sheet metadata",
                 "representation_kind": "title_block", "commercial_role": "document_context",
+                "role_basis": ["administrative_or_navigation_context"],
             },
         ],
     }
@@ -279,6 +234,29 @@ def test_integrated_visual_map_requires_a_commercial_role_for_each_group():
         visual_map,
         require_commercial_roles=True,
     ) == visual_map
+
+
+def test_integrated_registry_structured_output_requires_role_basis():
+    group_schema = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"][
+        "visual_groups"
+    ]["items"]
+
+    assert "commercial_role" in group_schema["required"]
+    assert "role_basis" in group_schema["required"]
+
+
+def test_visual_map_rejects_component_role_without_positive_detail_basis():
+    visual_map = {
+        "visual_groups": [{
+            "group_id": "view-001", "page_number": 1,
+            "location_hint": "center", "visual_description": "cabinet elevation",
+            "representation_kind": "elevation", "commercial_role": "component_detail",
+            "role_basis": ["identifiable_product_graphic"],
+        }],
+    }
+
+    with pytest.raises(DetectionVisualMapSchemaError, match="visual group is invalid"):
+        validate_detection_visual_map(visual_map, require_commercial_roles=True)
 
 
 def test_registry_rejects_component_detail_as_commercial_boundary_support():
@@ -302,25 +280,3 @@ def test_registry_rejects_component_detail_as_commercial_boundary_support():
         )
 
     assert raised.value.details == {"non_assembly_visual_group_ids": ["view-001"]}
-
-
-def test_registry_keeps_component_details_in_page_coverage_not_anchor_groups():
-    registry = {
-        "objects": [{
-            "object_id": "object-001", "transport_label": "N76B",
-            "quantity": 1, "quantity_explicit": False, "identity_pages": [11],
-            "estimation_evidence_pages": [11], "visual_group_ids": ["view-003"],
-            "visual_identity": "decorative slat partition",
-            "boundary_basis": "dimensioned primary elevation establishes one partition",
-        }],
-    }
-
-    assert validate_detection_registry(
-        registry,
-        visual_group_ids={"view-001", "view-002", "view-003"},
-        visual_group_roles={
-            "view-001": "component_detail",
-            "view-002": "component_detail",
-            "view-003": "assembly_view",
-        },
-    ) == registry

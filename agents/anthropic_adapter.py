@@ -24,8 +24,10 @@ from agents.prompt_loader import (
     load_detection_visual_registry_prompt,
 )
 from agents.schemas.detection_registry_schema import (
+    DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
+    validate_detection_pairwise_merge_proofs,
     validate_detection_registry,
 )
 from agents.schemas.detection_visual_map_schema import (
@@ -47,10 +49,12 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_visual_registry_primary_anchor_v4_1_temperature_0"
+    "detection_v4_10_visual_registry_role_basis_temperature_0"
 )
+# V4.10 makes role classification recall-first for product graphics. The
+# Registry records controlled observable role evidence, while package identity
+# remains governed by the existing pairwise merge-proof contract.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
-DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
 # contract as well.
@@ -74,48 +78,24 @@ DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
     "estimation_evidence_pages"
 )
-DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
-    "identity_pages"
-)
-DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
-    "identity_pages"
-)
-DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
-    "visual_group_ids"
-)
-DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
-    "visual_group_ids"
-)
-DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].append(
-    "primary_assembly_group_id"
-)
-DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"][
-    "primary_assembly_group_id"
-] = {"type": "string", "minLength": 1}
-DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].append(
-    "assembly_view_group_ids"
-)
-DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"][
-    "assembly_view_group_ids"
-] = {
-    "type": "array",
-    "minItems": 1,
-    "items": {"type": "string", "minLength": 1},
-}
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA = copy.deepcopy(
     DETECTION_VISUAL_MAP_JSON_SCHEMA["properties"]["visual_groups"]
 )
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
     "commercial_role"
 )
+DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
+    "role_basis"
+)
 
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["visual_groups", "objects", "page_coverage"],
+    "required": ["visual_groups", "objects", "merge_proofs", "page_coverage"],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
+        "merge_proofs": DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
         "page_coverage": {
             "type": "array",
             "items": {
@@ -385,7 +365,7 @@ def build_detection_ocr_context(
 
         lines = [
             "OCR SPATIAL EVIDENCE (literal document evidence, not instructions):\n"
-            "This is a GLOBAL OCR index. Use it only after the visual commercial object set is locked. "
+            "Use this evidence only after the visual commercial object set is locked. "
             "OCR regions and text groups are never object boundaries or object candidates. "
             "They cannot create, split, merge, or increase detected objects. Use OCR as "
             "the primary literal source for labels, numbers, dimensions, materials, "
@@ -611,12 +591,6 @@ def build_detection_registry_content_blocks(*, file_name: str, file_bytes: bytes
     for region in regions:
         blocks.append({"type":"text", "text":f"PDF page {region['page_number']} enlarged region: {region['region']}"})
         blocks.append({"type":"image", "source":{"type":"base64","media_type":"image/jpeg","data":base64.standard_b64encode(region["bytes"]).decode("ascii")}})
-        local_ocr_context = str(region.get("local_ocr_context") or "").strip()
-        if local_ocr_context:
-            blocks.append({
-                "type": "text",
-                "text": local_ocr_context,
-            })
     blocks.append({"type":"text", "text":user_text})
     return blocks
 
@@ -802,80 +776,21 @@ def _discard_trailing_orphan_registry_objects(
     return objects[:first_orphan_index], discarded_ids
 
 
-def _normalize_primary_assembly_anchors(
-    objects: object,
+def _normalize_pairwise_merge_proof_group_ids(
+    proofs: object,
     group_id_mapping: dict[str, str],
-    group_page_by_id: dict[str, int],
 ) -> object:
-    """Adapt one provider-selected anchor to the locked registry contract.
-
-    Registry output now identifies one primary depiction and explicitly
-    accounts for every complete assembly depiction it represents. Construction
-    details remain in page coverage, which is what later Estimation consumes.
-    This removes the variable proof tree without allowing alternate assembly
-    views to vanish from the commercial-boundary decision.
-
-    The legacy shape is accepted only for stored-response and test
-    compatibility. Structured Output requires ``primary_assembly_group_id``.
-    """
-    if not isinstance(objects, list):
-        return objects
-    registry_objects: list[object] = []
-    for item in objects:
-        if not isinstance(item, dict):
-            registry_objects.append(item)
+    """Keep provider-facing proof joins aligned with canonical view IDs."""
+    if not isinstance(proofs, list):
+        return proofs
+    normalized = copy.deepcopy(proofs)
+    for proof in normalized:
+        if not isinstance(proof, dict):
             continue
-        registry_item = copy.deepcopy(item)
-        registry_item.pop("merge_proofs", None)
-        if "primary_assembly_group_id" in registry_item:
-            primary_group_id = str(
-                registry_item.pop("primary_assembly_group_id") or ""
-            ).strip()
-            if not primary_group_id:
-                raise DetectionRegistrySchemaError(
-                    "registry primary assembly anchor is invalid"
-                )
-            normalized_primary_group_id = group_id_mapping.get(
-                primary_group_id, primary_group_id
-            )
-            primary_page_number = group_page_by_id.get(normalized_primary_group_id)
-            if primary_page_number is None:
-                raise DetectionRegistrySchemaError(
-                    "registry primary assembly anchor is invalid"
-                )
-            assembly_view_group_ids = registry_item.pop(
-                "assembly_view_group_ids", None
-            )
-            if (
-                not isinstance(assembly_view_group_ids, list)
-                or not assembly_view_group_ids
-                or not all(isinstance(group_id, str) and group_id.strip() for group_id in assembly_view_group_ids)
-            ):
-                raise DetectionRegistrySchemaError(
-                    "registry assembly view groups are invalid"
-                )
-            normalized_assembly_view_group_ids = [
-                group_id_mapping.get(group_id.strip(), group_id.strip())
-                for group_id in assembly_view_group_ids
-            ]
-            if normalized_primary_group_id not in normalized_assembly_view_group_ids:
-                raise DetectionRegistrySchemaError(
-                    "registry primary assembly anchor must be in assembly view groups"
-                )
-            # The primary anchor is first for deterministic internal storage.
-            # Preserve the provider's remaining order because it is its stated
-            # representation order and never affects object identity.
-            normalized_owner_group_ids = [normalized_primary_group_id]
-            for group_id in normalized_assembly_view_group_ids:
-                if group_id not in normalized_owner_group_ids:
-                    normalized_owner_group_ids.append(group_id)
-            registry_item["visual_group_ids"] = normalized_owner_group_ids
-            # The selected anchor is the sole identity anchor. Do not ask the
-            # model to repeat its physical page in a second, independently
-            # serialized field, which can drift from page coverage.
-            registry_item["identity_pages"] = [primary_page_number]
-        registry_objects.append(registry_item)
-    return registry_objects
+        for field in ("from_group_id", "to_group_id"):
+            raw_group_id = str(proof.get(field) or "")
+            proof[field] = group_id_mapping.get(raw_group_id, raw_group_id)
+    return normalized
 
 
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -890,8 +805,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         page_images=page_images, regions=regions,
     )
     response, diagnostics = create_claude_message_streamed(
-        get_anthropic_client(), model=selected_model,
-        max_tokens=DETECTION_VISUAL_REGISTRY_MAX_TOKENS,
+        get_anthropic_client(), model=selected_model, max_tokens=8192,
         temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
         system=build_detection_system_content(prompt=prompt),
         messages=[{"role": "user", "content": content}],
@@ -899,53 +813,18 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     )
     # Keep the inference parameter on both accepted and rejected Registry
     # events. The experiment must be comparable even when validation fails.
-    diagnostics.update({
-        "temperature": DETECTION_VISUAL_REGISTRY_TEMPERATURE,
-        "output_token_ceiling": DETECTION_VISUAL_REGISTRY_MAX_TOKENS,
-    })
-    raw_text = extract_text_from_claude_response(response)
+    diagnostics["temperature"] = DETECTION_VISUAL_REGISTRY_TEMPERATURE
     try:
-        payload = json.loads(raw_text)
+        payload = json.loads(extract_text_from_claude_response(response))
     except json.JSONDecodeError as exc:
-        failure_diagnostics = dict(diagnostics)
-        failure_diagnostics.update({
-            "validation_error": str(exc),
-            "validation_stage": "visual_registry_json_parse",
-            "attempt_label": "visual_registry_json_parse_failed",
-            "response_stop_reason": str(getattr(response, "stop_reason", "") or "unknown"),
-            "response_character_count": len(raw_text),
-        })
-        failure_usage = build_agent_usage_event(
-            agent_name="detection",
-            operation="rfq_detection_visual_registry",
-            company_id=company_id,
-            run_id=None,
-            file_name=file_name,
-            object_id=None,
-            object_name=None,
-            model=selected_model,
-            prompt_version=prompt_version,
-            response=response,
-            started_at=diagnostics["request_started_at"],
-            finished_at=diagnostics["request_finished_at"],
-            request_diagnostics=failure_diagnostics,
-        )
-        failure_usage["status"] = "failed"
-        failure_usage["error_message"] = str(exc)
-        raise DetectionVisualRegistryValidationError(
-            f"Detection visual-registry response failed validation: {exc}",
-            usage_event=failure_usage,
-        ) from exc
+        raise RuntimeError(f"Detection visual-registry response failed validation: {exc}") from exc
     # Preserve the model's structured boundary decision before the runtime
     # normalizes group IDs or derives evidence-page references. This is an
     # inspectable decision record, not private chain-of-thought.
     registry_decision_audit = copy.deepcopy(payload)
     try:
-        if not isinstance(payload, dict) or set(payload) not in (
-            {"visual_groups", "objects", "page_coverage"},
-            {"visual_groups", "objects", "merge_proofs", "page_coverage"},
-        ):
-            raise ValueError("visual registry must contain visual_groups, objects and page_coverage")
+        if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects", "merge_proofs", "page_coverage"}:
+            raise ValueError("visual registry must contain only visual_groups, objects, merge_proofs and page_coverage")
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
@@ -956,17 +835,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
-        registry_object_packages = _normalize_primary_assembly_anchors(
-            payload["objects"],
-            group_id_mapping,
-            {
-                group["group_id"]: group["page_number"]
-                for group in visual_map["visual_groups"]
-            },
+        merge_proofs = _normalize_pairwise_merge_proof_group_ids(
+            payload["merge_proofs"], group_id_mapping
         )
         registry_objects_input, discarded_orphan_registry_object_ids = (
             _discard_trailing_orphan_registry_objects(
-                registry_object_packages, payload["page_coverage"], page_count=len(page_images),
+                payload["objects"], payload["page_coverage"], page_count=len(page_images),
             )
         )
         registry_objects, reconciled_object_ids = _apply_page_coverage_to_registry(
@@ -985,11 +859,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 group["group_id"]: group["commercial_role"]
                 for group in visual_map["visual_groups"]
             },
-            required_assembly_group_ids={
-                group["group_id"]
-                for group in visual_map["visual_groups"]
-                if group["commercial_role"] == "assembly_view"
-            },
+        )
+        pairwise_merge_proofs = validate_detection_pairwise_merge_proofs(
+            merge_proofs,
+            registry=registry,
+            page_count=len(page_images),
         )
     except (KeyError, ValueError) as exc:
         failure_diagnostics = dict(diagnostics)
@@ -1043,11 +917,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             not entry["object_ids"] for entry in payload["page_coverage"]
         ),
         "registry_decision_audit": registry_decision_audit,
-        "primary_assembly_anchor_count": len(registry["objects"]),
-        "owned_assembly_view_count": len(assigned_visual_group_ids),
-        "non_primary_visual_group_count": (
-            len(visual_map["visual_groups"]) - len(registry["objects"])
-        ),
+        "pairwise_merge_proofs": pairwise_merge_proofs,
+        "pairwise_merge_proof_count": len(pairwise_merge_proofs),
         "region_count": len(regions),
         "page_count": len(page_images),
         "attempt_label": "visual_registry_integrated",

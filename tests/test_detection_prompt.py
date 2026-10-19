@@ -74,28 +74,21 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "There is no arbitrary page-count cap" in prompt
     assert "For every physical upload page, return exactly one `page_coverage` entry" in prompt
     assert "not a shortlist of pages that appear sufficient for a material calculation" in prompt
-    assert "shared schedule, title block, layout or multi-object context" in prompt
+    assert "textual note, schedule, legend or navigation-only layout" in prompt
+    assert "groups that prove this object's commercial boundary" in prompt
     assert "exactly one `commercial_role`" in prompt
-    assert "cannot be an assembly anchor or independently create an object" in prompt
-    assert "LOCAL OCR FOR THE IMMEDIATELY PRECEDING REGION ONLY" in prompt
-    assert "A dimensioned front elevation with repeated bays, slats, shelves or panels" in prompt
-    assert "resolve complete commercial packages from all relevant representations" in prompt
-    assert "exactly one `primary_assembly_group_id`" in prompt
-    assert "`assembly_view_group_ids`" in prompt
-    assert "must never appear in `assembly_view_group_ids`" in prompt
-    assert "A plan fragment, narrow dimension strip, section, close-up, isolated panel, or schedule" in prompt
+    assert "`role_basis`" in prompt
+    assert "narrow exclusion role" in prompt
+    assert "A `component_detail` never becomes a commercial object" in prompt
+    assert "A `document_context` never becomes an object" in prompt
+    assert "resolve identity across all `assembly_view` groups" in prompt
     assert "Dimensions that agree after a change of axes" in prompt
-    assert "Secondary signals only" in prompt
+    assert "Secondary supporting signals only" in prompt
     assert "whole-silhouette similarity is not required" in prompt
     assert "vertical shelving unit, a track-supported door system and a long storage console" in prompt
-    assert "Pairwise merge-proof procedure" not in prompt
-    assert "merge_proofs" not in prompt
-    assert "Test commercial separability, not visual adjacency" in prompt
-    assert "Different explicit object codes are affirmative separate-object evidence" in prompt
-    assert "A title block may carry an object code" in prompt
-    assert "A shared sheet-level code never proves a merge" in prompt
-    assert "Resolve commercial boundaries code-blind" in prompt
-    assert "The runtime derives its identity page directly from the primary anchor" in prompt
+    assert "Pairwise merge-proof procedure" in prompt
+    assert "Test commercial separability, not merely visual adjacency" in prompt
+    assert "Direct shared structure may support a merge but cannot be its only evidence" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_visual_registry_primary_anchor_v4_1_temperature_0"
+        "detection_v4_10_visual_registry_role_basis_temperature_0"
     )
