@@ -219,7 +219,11 @@ def validate_detection_pairwise_merge_proofs(
     if not isinstance(proofs, list):
         raise DetectionRegistrySchemaError("pairwise merge proofs must be a list")
     if not visual_group_ids:
-        raise DetectionRegistrySchemaError("pairwise merge proofs require visual groups")
+        if proofs:
+            raise DetectionRegistrySchemaError(
+                "pairwise merge proofs cannot reference an empty object-evidence inventory"
+            )
+        return []
     seen_edges: set[tuple[str, str]] = set()
     adjacency: dict[str, set[str]] = {
         group_id: set() for group_id in visual_group_ids

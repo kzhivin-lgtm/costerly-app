@@ -255,6 +255,13 @@ def test_singleton_visual_group_becomes_a_singleton_component_without_placeholde
     ]
 
 
+def test_document_only_upload_needs_no_proof_graph_or_object_package():
+    assert validate_detection_pairwise_merge_proofs(
+        [], visual_group_ids=set(), page_count=1
+    ) == []
+    assert derive_detection_proof_components([], visual_group_ids=set()) == []
+
+
 def test_every_visual_group_must_make_a_reasoned_root_or_parent_decision():
     groups = [
         _group("view-001", _root("This is the first depiction of the cabinet.")),
@@ -304,10 +311,12 @@ def test_integrated_registry_schema_has_no_model_owner_or_object_id_fields():
     coverage_properties = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]["page_coverage"]["items"]["properties"]
 
     assert "owner_object_ids" not in group_properties
-    assert "proof_parent" in group_properties
+    assert "evidence_class" in group_properties
+    assert "classification_reason" in group_properties
     assert "object_id" not in object_properties
     assert "component_anchor_group_id" in object_properties
     assert "component_anchor_group_ids" in coverage_properties
+    assert "proof_edges" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "merge_proofs" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
 
 

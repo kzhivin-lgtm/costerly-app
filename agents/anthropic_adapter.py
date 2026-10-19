@@ -28,11 +28,11 @@ from agents.detection_spatial_inventory import (
     spatial_inventory_context,
 )
 from agents.schemas.detection_registry_schema import (
-    DETECTION_PROOF_PARENT_JSON_SCHEMA,
+    DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
-    derive_detection_pairwise_merge_proofs_from_parent_links,
     derive_detection_proof_components,
+    validate_detection_pairwise_merge_proofs,
     validate_detection_registry,
 )
 from agents.schemas.detection_visual_map_schema import (
@@ -54,10 +54,11 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_23_passive_ocr_crosscheck_temperature_0"
+    "detection_v4_26_classify_graph_package_temperature_0"
 )
-# V4.23 uses an exact dimension_transform as the sole positive dimension-match
-# fact. A rejected candidate is recorded only on a new root as blocked_merge.
+# V4.26 retains V4.23's passive OCR recall aid but makes the Registry response
+# causal: complete island inventory, explicit classification, full proof graph,
+# then packages. An exact dimension_transform remains a sufficient edge fact.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
@@ -121,24 +122,25 @@ DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA = copy.deepcopy(
     DETECTION_VISUAL_MAP_JSON_SCHEMA["properties"]["visual_groups"]
 )
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"].pop(
-    "evidence_class"
-)
-DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"].pop(
     "owner_object_ids"
 )
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
-    "proof_parent"
+    "evidence_class"
 )
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"][
-    "proof_parent"
-] = DETECTION_PROOF_PARENT_JSON_SCHEMA
+    "classification_reason"
+] = {"type": "string"}
+DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
+    "classification_reason"
+)
 
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["visual_groups", "objects", "page_coverage"],
+    "required": ["visual_groups", "proof_edges", "objects", "page_coverage"],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
+        "proof_edges": DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
         "page_coverage": {
             "type": "array",
@@ -889,45 +891,37 @@ def _resolve_component_page_coverage(
     return resolved
 
 
-def _normalize_visual_group_proof_parent_ids(
+def _normalize_pairwise_merge_proof_group_ids(
     payload: dict[str, Any], group_id_mapping: dict[str, str],
 ) -> dict[str, Any]:
-    """Keep every required root-or-parent decision aligned with view IDs."""
+    """Keep full-graph edge endpoints aligned with canonical view IDs."""
     normalized = copy.deepcopy(payload)
-    groups = normalized.get("visual_groups")
-    if not isinstance(groups, list):
+    proof_edges = normalized.get("proof_edges")
+    if not isinstance(proof_edges, list):
         return normalized
-    for group in groups:
-        if not isinstance(group, dict):
+    for edge in proof_edges:
+        if not isinstance(edge, dict):
             continue
-        raw_group_id = str(group.get("group_id") or "")
-        group["group_id"] = group_id_mapping.get(raw_group_id, raw_group_id)
-        if not isinstance(group.get("proof_parent"), dict):
-            continue
-        parent = group["proof_parent"]
-        raw_parent_group_id = str(parent.get("parent_group_id") or "")
-        parent["parent_group_id"] = group_id_mapping.get(
-            raw_parent_group_id, raw_parent_group_id
+        raw_from_group_id = str(edge.get("from_group_id") or "")
+        raw_to_group_id = str(edge.get("to_group_id") or "")
+        edge["from_group_id"] = group_id_mapping.get(
+            raw_from_group_id, raw_from_group_id
         )
-        blocked_merge = parent.get("blocked_merge")
-        if isinstance(blocked_merge, dict):
-            raw_candidate_group_id = str(
-                blocked_merge.get("candidate_parent_group_id") or ""
-            )
-            blocked_merge["candidate_parent_group_id"] = group_id_mapping.get(
-                raw_candidate_group_id, raw_candidate_group_id
-            )
+        edge["to_group_id"] = group_id_mapping.get(
+            raw_to_group_id, raw_to_group_id
+        )
     return normalized
 
 
 def _visual_map_from_registry_groups(groups: object) -> dict[str, Any]:
-    """Drop registry-only parent decisions before validating the visual map."""
+    """Drop Registry-only classification reasoning before map validation."""
     required_visual_fields = (
         "group_id",
         "page_number",
         "location_hint",
         "visual_description",
         "representation_kind",
+        "evidence_class",
     )
     if not isinstance(groups, list):
         return {"visual_groups": groups}
@@ -941,30 +935,41 @@ def _visual_map_from_registry_groups(groups: object) -> dict[str, Any]:
     }
 
 
-def _proof_parent_decision_audit(groups: object) -> list[dict[str, Any]]:
-    """Persist the model's answer to why every depiction starts or joins."""
+def _classification_decision_audit(groups: object) -> list[dict[str, Any]]:
+    """Persist the factual answer to why every island is in its class."""
     if not isinstance(groups, list):
         return []
     decisions: list[dict[str, Any]] = []
     for group in groups:
         if not isinstance(group, dict):
             continue
-        parent = group.get("proof_parent")
-        if not isinstance(parent, dict):
-            continue
-        decision = {
+        decisions.append({
             "group_id": group.get("group_id"),
             "page_number": group.get("page_number"),
-            "decision": parent.get("decision"),
-            "parent_group_id": parent.get("parent_group_id"),
-            "relationship": parent.get("relationship"),
-            "decision_reason": parent.get("decision_reason"),
-            "evidence_facts": copy.deepcopy(parent.get("evidence_facts")),
-        }
-        if "blocked_merge" in parent:
-            decision["blocked_merge"] = copy.deepcopy(parent["blocked_merge"])
-        decisions.append(decision)
+            "evidence_class": group.get("evidence_class"),
+            "representation_kind": group.get("representation_kind"),
+            "classification_reason": group.get("classification_reason"),
+        })
     return decisions
+
+
+def _validate_visual_registry_classifications(groups: object) -> None:
+    """Require an auditable class and reason before context can be discarded."""
+    validate_detection_visual_map(
+        normalize_detection_visual_map_group_ids(
+            _visual_map_from_registry_groups(groups)
+        ),
+        require_evidence_class=True,
+    )
+    if (
+        not isinstance(groups, list)
+        or any(
+            not isinstance(group, dict)
+            or not str(group.get("classification_reason") or "").strip()
+            for group in groups
+        )
+    ):
+        raise ValueError("visual groups require classification reasoning")
 
 
 def _discard_non_object_visual_registry_groups(
@@ -983,8 +988,11 @@ def _discard_non_object_visual_registry_groups(
     discarded_groups = [
         group for group in groups
         if isinstance(group, dict)
-        and str(group.get("representation_kind") or "").strip().lower()
-        in _NON_OBJECT_VISUAL_REPRESENTATION_KINDS
+        and (
+            group.get("evidence_class") == "document_context"
+            or str(group.get("representation_kind") or "").strip().lower()
+            in _NON_OBJECT_VISUAL_REPRESENTATION_KINDS
+        )
     ]
     if not discarded_groups:
         return payload, []
@@ -1111,43 +1119,50 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             f"Detection visual-registry response failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
-    # Preserve the model's structured boundary decision before the runtime
-    # normalizes group IDs or derives evidence-page references. This is an
-    # inspectable decision record, not private chain-of-thought.
+    # Preserve the model's staged classification, full graph and package
+    # decisions before runtime normalizes group IDs or derives Evidence pages.
+    # This is inspectable factual reasoning, not private chain-of-thought.
     registry_decision_audit = copy.deepcopy(payload)
     discarded_non_object_groups: list[dict[str, Any]] = []
-    proof_parent_decisions: list[dict[str, Any]] = []
+    classification_decisions: list[dict[str, Any]] = []
     if isinstance(payload, dict):
-        payload, discarded_non_object_groups = _discard_non_object_visual_registry_groups(
-            payload
+        classification_decisions = _classification_decision_audit(
+            payload.get("visual_groups")
         )
     try:
-        if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects", "page_coverage"}:
-            raise ValueError("visual registry must contain only visual_groups, objects and page_coverage")
+        if isinstance(payload, dict):
+            _validate_visual_registry_classifications(payload.get("visual_groups"))
+            payload, discarded_non_object_groups = (
+                _discard_non_object_visual_registry_groups(payload)
+            )
+        if not isinstance(payload, dict) or set(payload) != {
+            "visual_groups", "proof_edges", "objects", "page_coverage",
+        }:
+            raise ValueError(
+                "visual registry must contain only visual_groups, proof_edges, objects and page_coverage"
+            )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
             normalize_detection_visual_map_group_ids(
                 _visual_map_from_registry_groups(raw_groups)
-            ),
+            ), require_evidence_class=True,
         )
         group_id_mapping = {
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
         payload = _normalize_component_anchor_group_ids(payload, group_id_mapping)
-        payload = _normalize_visual_group_proof_parent_ids(
+        payload = _normalize_pairwise_merge_proof_group_ids(
             payload, group_id_mapping
-        )
-        proof_parent_decisions = _proof_parent_decision_audit(
-            payload["visual_groups"]
         )
         visual_group_ids = {
             group["group_id"] for group in visual_map["visual_groups"]
         }
-        pairwise_merge_proofs = derive_detection_pairwise_merge_proofs_from_parent_links(
-            payload["visual_groups"],
+        pairwise_merge_proofs = validate_detection_pairwise_merge_proofs(
+            payload["proof_edges"],
             page_count=len(page_images),
+            visual_group_ids=visual_group_ids,
         )
         proof_components = derive_detection_proof_components(
             pairwise_merge_proofs, visual_group_ids=visual_group_ids,
@@ -1173,7 +1188,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             **spatial_audit,
             "registry_decision_audit": registry_decision_audit,
             "discarded_non_object_visual_groups": discarded_non_object_groups,
-            "proof_parent_decisions": proof_parent_decisions,
+            "classification_decisions": classification_decisions,
             "validation_error": str(exc),
             "validation_stage": "visual_registry",
             "attempt_label": "visual_registry_validation_failed",
@@ -1221,7 +1236,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         ),
         "registry_decision_audit": registry_decision_audit,
         "discarded_non_object_visual_groups": discarded_non_object_groups,
-        "proof_parent_decisions": proof_parent_decisions,
+        "classification_decisions": classification_decisions,
         "pairwise_merge_proofs": pairwise_merge_proofs,
         "pairwise_merge_proof_count": len(pairwise_merge_proofs),
         "proof_graph_components": [

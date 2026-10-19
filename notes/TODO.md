@@ -16,9 +16,9 @@ This adds no model call, router, Sonnet route, or file-specific override.
 Preserve object-ID locking, full object evidence, UI-only previews, deferred
 Naming, File Review timing, and TC. Next gate: fresh HSL run must produce the
 11 packages with complete page-4 Evidence, then regress Page 23 and Adda.
-Current model build: `Detection V4.23` with passive OCR cross-check,
-experimental, based on V4.15 and the
-protected checkpoint `52c314d`. Comment: V4.12 still treated every N76B page-11
+Current model build: `Detection V4.26`, experimental, built on the protected
+V4.23 passive OCR cross-check and checkpoint `52c314d`. Comment: V4.12 still
+treated every N76B page-11
 depiction as a partial component, then attempted to attach all three to N76B.
 The failure proved that assembly/component was an invalid eligibility gate, not
 that their source Evidence was wrong. V4.13 allowed any full view or detail to
@@ -114,6 +114,16 @@ subsequent files preserved or exceeded their OCR depiction count. Checkpoint:
 `notes/DETECTION_V4_23_PASSIVE_OCR_VISUAL_DISCOVERY_CHECKPOINT_2026_10_19.md`.
 Next gate: diagnose and repair HSL pairwise merge proof failures without
 changing this protected visual-discovery contract.
+V4.26 is the approved one-call structural experiment. It preserves the complete
+visual-island search, passive OCR audit and temperature 0, but replaces the
+incremental `proof_parent` decision with explicit staged output: complete island
+inventory, mandatory `object_evidence` or `document_context` classification
+with a factual reason, full typed proof graph between any object-evidence
+groups, and finally packages derived by code from graph components. A document
+context may not enter the proof graph. The audit persists classification reasons,
+every graph observation and each package's boundary/Evidence reasons on success
+and validation failure. Acceptance requires successful V4.26 runs with this
+audit, then Page 23 and Adda regressions before HSL package quality is judged.
 
 PENDING, P1, USER OBSERVATION, stale Processing cycle after New Estimate:
 investigate the authenticated-browser sequence in which a prior saved estimate

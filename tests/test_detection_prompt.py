@@ -69,41 +69,26 @@ def test_detection_visual_map_never_decides_objects_or_quantity():
 def test_integrated_visual_registry_keeps_visual_representations_and_commercial_objects_distinct():
     prompt = load_detection_visual_registry_prompt()
 
-    assert "visual representation map and commercial-object registry in one response" in prompt
-    assert "strict causal order" in prompt
+    assert "visual representation inventory and commercial-object registry in one" in prompt
+    assert "mandatory causal order" in prompt
     assert "There is no arbitrary page-count cap" in prompt
-    assert "Return exactly one `page_coverage` entry for every physical upload page" in prompt
-    assert "not a shortlist of pages that appear sufficient for a material calculation" in prompt
-    assert "Do not create a group for the cover/title page" in prompt
-    assert "generic floor plan, room layout, electrical, plumbing or lighting plan" in prompt
-    assert "they are not Estimation Evidence" in prompt
-    assert "without self-links, duplicate edges or cycles" in prompt
-    assert "Do not assign any object IDs or owners to a group" in prompt
-    assert "connected proof component as exactly one commercial object" in prompt
+    assert "Return exactly one `page_coverage` entry for every upload page" in prompt
+    assert "plan, room layout, electrical, plumbing or lighting plan" in prompt
+    assert "never enter the graph or Estimation Evidence" in prompt
+    assert "no duplicate, self, cyclic or" in prompt
+    assert "do not return owner lists or object IDs" in prompt
+    assert "connected components are the packages" in prompt
     assert "component_anchor_group_id" in prompt
-    assert "proof_parent" in prompt
-    assert "new_object_root" in prompt
-    assert "attach_to_group" in prompt
-    assert "why is there no positive proof" in prompt
-    assert "why do these two depictions form one independently quoted product" in prompt
-    assert "There is no optional global merge list" in prompt
+    assert "classification_reason" in prompt
+    assert "proof_edges" in prompt
+    assert "why do these\ntwo islands form one quote line?" in prompt
     assert "`object_detail`" in prompt
-    assert "dimensions agree after a change of axes" in prompt
-    assert "One exact `dimension_transform` can also prove an attachment on its own" in prompt
-    assert "Mandatory dimension comparison before every attachment" in prompt
-    assert "confirmed same-scope dimension conflict is a critical no-merge finding" in prompt
-    assert "exact positive match exists only as one `dimension_transform` evidence fact" in prompt
-    assert "Search every earlier object-specific group" in prompt
-    assert "`blocked_merge`" in prompt
-    assert "Secondary signals" in prompt
-    assert "whole-silhouette similarity is not required" in prompt
-    assert "Different finished envelopes, principal functions or primary dimensions" in prompt
-    assert "Required proof-parent decision" in prompt
-    assert "Test commercial separability, not merely visual closeness" in prompt
-    assert "It may support an attachment, never establish one alone" in prompt
+    assert "dimensions agree after a named unit or axis transformation" in prompt
+    assert "One exact\ndimension transform can prove one edge on its own" in prompt
+    assert "Evaluate relations globally across the complete classified" in prompt
+    assert "can support a merge but cannot establish one alone" in prompt
     assert "evidence_facts" in prompt
-    assert "`floor_plan` means generic non-object context and is discarded" in prompt
-    assert "passive recall aid, not an object map or response contract" in prompt
+    assert "passive recall aid" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_23_passive_ocr_crosscheck_temperature_0"
+        "detection_v4_26_classify_graph_package_temperature_0"
     )

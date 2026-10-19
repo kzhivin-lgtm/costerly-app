@@ -57,51 +57,31 @@ class _Response:
 
 
 def _visual_registry_payload(payload):
-    """Upgrade legacy V4.17 test fixtures to the required V4.18 decisions."""
+    """Upgrade legacy Registry fixtures to the V4.26 staged contract."""
     if not isinstance(payload, dict) or not {
         "visual_groups", "objects", "page_coverage",
     }.issubset(payload):
         return payload
-    proofs = payload.pop("merge_proofs", [])
+    proofs = payload.pop("merge_proofs", payload.pop("proof_edges", []))
     groups = payload["visual_groups"]
-    group_order = {
-        str(group.get("group_id")): index
-        for index, group in enumerate(groups)
-        if isinstance(group, dict)
+    non_object_kinds = {
+        "floor_plan", "title_block", "title_page", "cover", "cover_page", "legend",
     }
-    groups_by_id = {
-        str(group.get("group_id")): group
-        for group in groups
-        if isinstance(group, dict)
-    }
-    for group in groups_by_id.values():
-        group["proof_parent"] = {
-            "decision": "new_object_root",
-            "parent_group_id": "ROOT",
-            "relationship": "new_object_root",
-            "evidence_facts": [],
-            "decision_reason": "No positive relation to an earlier object depiction is evidenced.",
-        }
-    for proof in proofs if isinstance(proofs, list) else []:
-        if not isinstance(proof, dict):
+    for group in groups:
+        if not isinstance(group, dict):
             continue
-        left = str(proof.get("from_group_id") or "")
-        right = str(proof.get("to_group_id") or "")
-        if (
-            left not in groups_by_id
-            or right not in groups_by_id
-            or groups_by_id[left].get("representation_kind") == "floor_plan"
-            or groups_by_id[right].get("representation_kind") == "floor_plan"
-        ):
-            continue
-        parent_id, child_id = sorted((left, right), key=group_order.__getitem__)
-        groups_by_id[child_id]["proof_parent"] = {
-            "decision": "attach_to_group",
-            "parent_group_id": parent_id,
-            "relationship": proof["relationship"],
-            "evidence_facts": proof["evidence_facts"],
-            "decision_reason": proof["commercial_inseparability"],
-        }
+        is_document_context = group.get("representation_kind") in non_object_kinds
+        group.setdefault(
+            "evidence_class",
+            "document_context" if is_document_context else "object_evidence",
+        )
+        group.setdefault(
+            "classification_reason",
+            "Generic page context is not object-specific Evidence."
+            if is_document_context
+            else "The depiction directly shows a fabricated object or its construction.",
+        )
+    payload["proof_edges"] = proofs if isinstance(proofs, list) else []
     return payload
 
 
@@ -581,14 +561,12 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
     assert usage["operation"] == "rfq_detection_visual_registry"
     assert usage["raw_usage"]["temperature"] == 0.0
     assert usage["raw_usage"]["registry_decision_audit"] == payload
-    assert usage["raw_usage"]["proof_parent_decisions"] == [{
-        "group_id": "view-001",
+    assert usage["raw_usage"]["classification_decisions"] == [{
+        "group_id": "view_a",
         "page_number": 1,
-        "decision": "new_object_root",
-        "parent_group_id": "ROOT",
-        "relationship": "new_object_root",
-        "decision_reason": "No positive relation to an earlier object depiction is evidenced.",
-        "evidence_facts": [],
+        "evidence_class": "object_evidence",
+        "representation_kind": "perspective",
+        "classification_reason": "The depiction directly shows a fabricated object or its construction.",
     }]
 
 
@@ -647,8 +625,8 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
         "view-001", "view-002",
     ]
     assert registry["objects"][0]["visual_group_ids"] == ["view-001", "view-002"]
-    assert usage["raw_usage"]["pairwise_merge_proofs"][0]["from_group_id"] == "view-002"
-    assert usage["raw_usage"]["pairwise_merge_proofs"][0]["to_group_id"] == "view-001"
+    assert usage["raw_usage"]["pairwise_merge_proofs"][0]["from_group_id"] == "view-001"
+    assert usage["raw_usage"]["pairwise_merge_proofs"][0]["to_group_id"] == "view-002"
     assert usage["raw_usage"]["proof_graph_components"] == [{
         "canonical_anchor_group_id": "view-001",
         "visual_group_ids": ["view-001", "view-002"],
@@ -859,7 +837,7 @@ def test_integrated_visual_registry_excludes_non_object_pages_from_estimation_ev
     assert registry["objects"][0]["estimation_evidence_pages"] == [2]
 
 
-def test_integrated_visual_registry_discards_generic_floor_plan_before_ownership():
+def test_integrated_visual_registry_rejects_document_context_in_proof_graph():
     payload = {
         "visual_groups": [
             {
@@ -909,19 +887,59 @@ def test_integrated_visual_registry_discards_generic_floor_plan_before_ownership
             }),
         ),
         patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
+        pytest.raises(
+            DetectionVisualRegistryValidationError,
+            match="pairwise merge proof groups are invalid",
+        ) as raised,
     ):
-        visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
+        run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"plan", b"elevation"], regions=[], ocr_package=None, model="model",
         )
 
-    assert [group["group_id"] for group in visual_map["visual_groups"]] == ["view-001"]
-    assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
-    assert registry["objects"][0]["identity_pages"] == [2]
-    assert registry["objects"][0]["estimation_evidence_pages"] == [2]
-    assert usage["raw_usage"]["discarded_non_object_visual_groups"] == [
-        payload["visual_groups"][0]
-    ]
+    assert raised.value.usage_event["raw_usage"]["classification_decisions"][0] == {
+        "group_id": "generic-plan",
+        "page_number": 1,
+        "evidence_class": "document_context",
+        "representation_kind": "floor_plan",
+        "classification_reason": "Generic page context is not object-specific Evidence.",
+    }
+
+
+def test_integrated_visual_registry_accepts_document_only_upload_without_object_package():
+    payload = {
+        "visual_groups": [{
+            "group_id": "title", "page_number": 1, "location_hint": "full page",
+            "visual_description": "cover page with project title",
+            "representation_kind": "title_page",
+        }],
+        "objects": [],
+        "merge_proofs": [],
+        "page_coverage": [{
+            "page_number": 1, "component_anchor_group_ids": [],
+            "evidence_reason": "cover page only",
+        }],
+    }
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            return_value=(_Response(), {
+                "request_started_at": "2026-10-16T00:00:00+00:00",
+                "request_finished_at": "2026-10-16T00:00:01+00:00",
+            }),
+        ),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
+    ):
+        visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="cover.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"cover"], regions=[], ocr_package=None, model="model",
+        )
+
+    assert visual_map == {"visual_groups": []}
+    assert registry == {"objects": []}
+    assert usage["raw_usage"]["classification_decisions"][0]["evidence_class"] == "document_context"
 
 
 def test_integrated_visual_registry_reconciles_missing_object_on_only_page():

@@ -1,68 +1,114 @@
-# DETECTION V4 - REQUIRED PROOF-PARENT REGISTRY
+# DETECTION V4.26 - CLASSIFY, PROVE, PACKAGE
 
-Build the visual representation map and commercial-object registry in one response. The output has a strict causal order:
+Build the visual representation inventory and commercial-object registry in one
+response. The response has a mandatory causal order:
 
-1. identify object-specific visual groups directly from the rendered pages,
-2. only after that independent visual search, use the OCR graphic-region inventory as a cross-check and re-inspect a named coordinate if it may contain an omitted depiction,
-3. for every group, state whether it starts a new proof component or attaches to one earlier group, and why,
-4. treat each connected proof component as exactly one commercial object,
-5. describe that component and its complete page Evidence.
+1. identify every visually distinct source island from the rendered pages,
+2. classify every island as `object_evidence` or `document_context`, with a
+   factual reason,
+3. after the complete classified inventory exists, build the full graph of
+   positive evidence-backed relations between `object_evidence` islands,
+4. treat each connected graph component as exactly one commercial-object
+   package,
+5. describe those finished packages and their complete page Evidence.
 
-Do not declare an object owner first and add evidence afterwards. A group pair belongs to one object only through an evidence-backed attachment. Every group must contain a `proof_parent` decision. There is no optional global merge list.
+Do not declare object owners before the graph is complete. Do not add graph
+facts after declaring a package. All reasons and observations are concise,
+factual, inspectable output, not hidden reasoning.
 
-## 1. Visual groups
+## 1. Complete visual-island inventory
 
-Each `visual_group` is one visibly distinct, object-specific source depiction that can help Estimation: overview, alternate perspective, elevation, object plan, section, detail, module, door leaf, panel, track, cabinet bay or assembly fragment. It is not automatically a quote line or quantity.
+Each `visual_group` is one visibly distinct graphical or documentary island:
+an overview, alternate perspective, elevation, object plan, section, detail,
+module, door leaf, panel, track, cabinet bay, assembly fragment, floor plan,
+title block, legend or framed document text. It is one depiction, never yet a
+quote line or quantity.
 
-`OCR GRAPHIC REGION INVENTORY` is a passive recall aid, not an object map or response contract. First enumerate visual groups from the rendered pages. Then compare them with the inventory. If a listed region appears to contain a distinct object-specific depiction that your visual search missed, re-inspect that exact page location and add a group only when the page itself confirms it. If it is a generic floor plan, title block, legend, framed text, or merely overlaps a broader drawing, leave it without a group. Do not invent, split, merge, delete, or fail an object merely to make counts equal. A visually established group without a matching OCR region remains valid. OCR inventory IDs are never returned in the schema and never enter proof, ownership, quantity, or Estimation Evidence.
+First enumerate islands directly from rendered pages. Then use `OCR GRAPHIC
+REGION INVENTORY` only as a passive recall aid. If an OCR coordinate may hold a
+missed island, re-inspect it and add a group only when the page confirms a
+distinct island. OCR cannot create, split, merge, delete or invalidate a group.
+Visual islands without a matching OCR region remain valid. OCR IDs are never
+returned and never enter classification, graph, quantity or Evidence.
 
-Give each group a stable ordered `group_id`, physical `page_number`, short `location_hint`, literal visual `visual_description`, neutral `representation_kind`, and required `proof_parent`. It records only one visible depiction. Do not assign any object IDs or owners to a group.
+Give every group a stable ordered `group_id`, physical `page_number`, short
+`location_hint`, literal `visual_description`, neutral `representation_kind`,
+`evidence_class`, and concise factual `classification_reason` answering:
+**why is this object-specific Evidence or document context?**
 
-Do not create a group for the cover/title page, title block itself, generic floor plan, room layout, electrical, plumbing or lighting plan, legend, administrative text, generic schedule or navigation diagram. Detection may use these internally for metadata, sheet codes and orientation, but they are not Estimation Evidence. Use `object_plan` only when a plan contains direct construction, identity or fabrication information for a specific in-scope object. `floor_plan` means generic non-object context and is discarded. A repeated grid, dimension string, repeated bays, slats, shelves or panel divisions is not a table by itself.
+Use `document_context` for a cover or title page, title block, generic floor
+plan, room layout, electrical, plumbing or lighting plan, legend,
+administrative text, generic schedule or navigation diagram. These may orient
+Detection but never enter the graph or Estimation Evidence. Use
+`object_evidence` for a depiction that directly identifies, constructs,
+specifies or shows a particular fabricated object, even when it is a section,
+detail, alternate view or object-specific plan. A repeated grid, dimension
+string, bays, slats, shelves or panel divisions is not a table by itself.
 
-## 2. Required proof-parent decision, including why
+## 2. Full proof graph
 
-Process groups in the output order. For **every** group, fill its `proof_parent` with exactly one of these actions:
+Only after returning the complete classified `visual_groups` array, return
+`proof_edges`. It is the complete set of positive relations between all
+`object_evidence` groups. An edge may connect any two groups, regardless of
+their output order. Never connect `document_context`.
 
-1. `new_object_root`: this depiction begins a new proof component. Set `parent_group_id` to `ROOT`, `relationship` to `new_object_root`, and `evidence_facts` to `[]`. Write a concise factual `decision_reason` answering: **why is there no positive proof that this group belongs to an earlier group?** If a confirmed same-scope dimension conflict prevented an otherwise plausible attachment, also return `blocked_merge` with the earlier `candidate_parent_group_id`, `conflict_type: dimension_conflict`, and an `observation` naming both incompatible measurements.
-2. `attach_to_group`: this depiction belongs to one earlier emitted group. Set `parent_group_id` to that earlier `group_id`, use `same_object_view` or `object_detail`, provide the required typed `evidence_facts`, and write a concise factual `decision_reason` answering: **why do these two depictions form one independently quoted product?**
+An edge says the two islands represent one independently quoted fabricated
+product. Return only the minimal spanning forest: no duplicate, self, cyclic or
+transitive shortcut edge. An island with no proved relation has no edge and
+becomes a singleton package. Do not merge on shared page, room, colour,
+material, proximity or visual impression alone.
 
-Never omit a decision, use a later group as parent, use an empty reason, or make an attachment without positive evidence. A root does not mean that the depiction is definitely a separately priced product in the abstract. It means that, from the available document evidence, it has no proved link to an earlier depiction and therefore begins its own candidate component. Every later group that has a proved relation must attach to one earlier group. This produces a forest without self-links, duplicate edges or cycles.
+Each edge has `same_object_view` or `object_detail`, typed `evidence_facts`,
+and a factual `commercial_inseparability` explanation answering: **why do these
+two islands form one quote line?** Every fact names its page(s) and a concrete
+observation. Evaluate relations globally across the complete classified
+inventory, not incrementally as groups are emitted.
 
-Resolve an attachment in this priority order:
+Apply the evidence types in this priority order:
 
-1. `explicit_document_relation`: the same code, callout, view reference, axis or label.
-2. `dimension_transform`: dimensions agree after a change of axes or describe compatible portions of one assembly.
-3. `matching_topology`: matching order and count of bays, doors, supports, carcasses, frames, appliances, joints or structural elements.
-4. `unique_geometry`: repeated cut-outs, handles, posts, appliance locations, turning parts, mounting points, panel sequence or distinctive frame geometry.
-5. `direct_shared_structure`: a visible common frame, track, carcass, joint or other physical connection. It may support an attachment, never establish one alone.
+1. `explicit_document_relation`: same code, callout, view reference, axis or label.
+2. `dimension_transform`: dimensions agree after a named unit or axis transformation.
+3. `matching_topology`: matching bays, doors, supports, carcasses, frames,
+   appliances, joints or structural elements.
+4. `unique_geometry`: repeated cut-outs, handles, posts, appliance locations,
+   turning parts, mounting points, panel sequence or distinctive frame geometry.
+5. `direct_shared_structure`: visible common frame, track, carcass, joint or
+   physical connection. It can support a merge but cannot establish one alone.
 
-Secondary signals, including proximity, room name, colour, material and same-sheet location, can reinforce a proven relation but cannot create it. A change of projection can make one item look unlike itself, so whole-silhouette similarity is not required.
+An explicit document relation can prove one edge on its own. One exact
+dimension transform can prove one edge on its own only when the observation
+names both measurements and the precise unit or axis transformation. Otherwise
+an edge needs at least two independent facts and at least one identity-level
+fact, `matching_topology` or `unique_geometry`. Different dimensions prohibit a
+merge only when they claim the same physical axis and scope after unit and
+projection normalization. Width versus depth, overall versus local dimensions,
+different scales, quantities and non-comparable projections are not conflicts.
 
-An explicit same code, callout or view reference can prove one attachment on its own. One exact `dimension_transform` can also prove an attachment on its own, but only when its observation names the measurements on both groups and the exact axis or unit transformation that makes them agree. A vague statement that dimensions are "compatible", a similar scale, or one number appearing in both drawings is not a dimension transform. Without an explicit document relation or an exact dimension transform, an attachment needs at least two independent facts and at least one identity-level fact: `matching_topology` or `unique_geometry`. Two dimension facts are independent only when they cite different dimensions or axes. Every fact has its own pages and concrete observation. `decision_reason` must state the factual commercial basis, not generic phrases such as "one system" or "same sheet".
+## 3. Commercial-object packages
 
-## 2a. Mandatory dimension comparison before every attachment
+After the graph is complete, its connected components are the packages. Return
+exactly one `objects` row per component, using any group inside it as
+`component_anchor_group_id`. Runtime derives the canonical group membership and
+ordered object ID from the graph, so do not return owner lists or object IDs.
 
-Before an `attach_to_group` decision, compare every readable explicit dimension on the candidate and its proposed parent. Normalize the document's units first, then account for the stated projection and axis transformation.
-
-An exact positive match exists only as one `dimension_transform` evidence fact. Its observation must name the measurements on both groups and the exact axis or unit transformation that makes them agree. Do not emit a separate status for a match, missing dimensions or non-comparable axes.
-
-A confirmed same-scope dimension conflict is a critical no-merge finding: if two readable dimensions claim incompatible values for the same physical axis after unit normalization and allowed projection transformation, do not attach them, even if a code, sheet or proximity appears shared. Do not stop at that rejected candidate. Search every earlier object-specific group for another relationship. Attach to another group only with positive required evidence and no known conflict. If none qualifies, make the candidate a `new_object_root` and include `blocked_merge` with the rejected earlier group and both incompatible measurements. Different dimensions alone are not a conflict. Width versus depth, overall envelope versus local component, different axes, quantities, scales, or genuinely different views are not comparable unless the drawing proves they claim the same physical measure.
-
-Test commercial separability, not merely visual closeness. Different finished envelopes, principal functions or primary dimensions are affirmative evidence of separate components. A shared worktop, touching side panels or apparent continuous carcass is only a candidate connection until the source proves commercial inseparability. Adjacent furniture remains separate unless an attachment overcomes that evidence. Conversely, a kitchen, integrated cabinet wall, shelving wall or one continuous door-track system remains one component when the source proves one integrated joinery envelope.
-
-## 3. Component registry
-
-After every required proof-parent decision is complete, each connected component becomes exactly one object row. Its `component_anchor_group_id` must be one group in that component and must be used consistently by the matching page coverage. Do not return `object_id` or `visual_group_ids`: runtime derives the full component from the parent links, selects its canonical ordering, and assigns `object-001`, `object-002`, and so on.
-
-For every component, return one row with its anchor, exact printed `transport_label` when present, otherwise a neutral source label, `quantity`, `quantity_explicit`, `identity_pages`, `visual_identity`, and `boundary_basis`. Quantity defaults to 1 when the document does not establish another quantity. `visual_identity` describes the complete physical product across its views. `boundary_basis` states the factual reason that this proof component is one quote line.
-
-If a sheet carries one shared literal code but depicts several separate finished assemblies, they remain separate components unless attachments establish integration. If there are no child codes, preserve the literal base only as source context. Do not merge merely because the sheet code is shared.
+For every package provide the exact printed `transport_label` when present,
+otherwise a neutral source label, `quantity`, `quantity_explicit`,
+`identity_pages`, `visual_identity`, and factual `boundary_basis`. Quantity
+defaults to 1 when not established otherwise. `boundary_basis` must explain why
+the complete component is one quote line, or for a singleton, why no proved
+relation joins it to another object-evidence island. A shared sheet code never
+merges separate finished assemblies by itself.
 
 ## 4. Evidence coverage
 
-Evidence is complete object-specific source context, not a shortlist of pages that appear sufficient for a material calculation. Return exactly one `page_coverage` entry for every physical upload page. Use `component_anchor_group_ids`, not object IDs. Include a component anchor whenever that page contains a visual group or other direct object-specific construction, identity, detail, plan, section, alternate view or assembly instruction for that component. A page can support several components.
+Return exactly one `page_coverage` entry for every upload page. Use component
+anchors, never object IDs. Include a component anchor whenever the page carries
+a visual group or direct object-specific construction, identity, detail, plan,
+section, alternate view or assembly instruction for that component. A page may
+support several components. Give every page a factual `evidence_reason`.
 
-Use an empty anchor list for a cover/title page, generic floor plan, room layout, electrical, plumbing, lighting, legend or another non-object-specific page. Those pages can guide Detection but are never Evidence for Estimation. Give every page a brief factual `evidence_reason`. The runtime derives each object's `estimation_evidence_pages`, so it cannot silently discard a qualifying page. There is no arbitrary page-count cap.
+Use an empty anchor list for pages that contain only `document_context`. Such
+pages are never Estimation Evidence. There is no arbitrary page-count cap.
 
-Do not extract dimensions, materials, pricing or final user-facing names. Return schema JSON only.
+Do not extract dimensions, materials, pricing or final user-facing names.
+Return schema JSON only.
