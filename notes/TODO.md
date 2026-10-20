@@ -263,28 +263,20 @@ full OCR and page Evidence, without Sonnet or retry calls. Acceptance: HSL
 completes with every retained group assigned exactly once to a package, accepted
 and rejected relations visible in the audit, and all positive equality and
 transform facts persisted; then regress Page 23 and Adda before checkpointing.
-V4.41 is the approved corrective experiment after the first V4.40 HSL run
-completed with 23 packages but emitted no `dimension_equality` or
-`dimension_transform` facts. It retains V4.40's one Haiku call, temperature
-zero, full island discovery, graph-derived packages, page Evidence and safe
-quantity-one standalones. It replaces the uncheckable sparse graph with a
-compact exact-once run-length encoded seven-character ledger for every
-post-classification object-evidence pair. This is deliberately not the failed
-V4.38-V4.39 JSON array of one row per pair: consecutive state rows are merged
-losslessly before the provider responds. The six criterion states are persisted
-for analysis, while factual prose remains only on positive pairs. An incomplete
-ledger does not abort the RFQ: runtime emits review-required standalones and
-records the ledger failure. `quantity_explicit` is true only for a literal
-source count; codes, repeated projections and cabinet-module counts leave
-quantity at its default one. Acceptance: the HSL graph is complete and records
-its observed dimension facts without truncation, packages reach File Review,
-then Page 23 and Adda preserve their protected outcomes before any checkpoint.
-V4.41.1 is the user-approved temporary capacity experiment for that exact
-contract: raise only the Visual Registry output ceiling from 12,288 to 32,768
-tokens. It must first show that HSL reaches packages with N57 permitted as one
-whole MVP object. It is not an accepted performance setting or an architectural
-solution to the pair-ledger growth problem; retain the per-run usage and timing
-evidence before deciding whether to keep, replace or revert it.
+V4.42 replaces the invalid V4.41 full pair ledger with the accepted V4.40
+positive-fact graph. It keeps one Haiku call, temperature zero, full island
+discovery, graph-derived packages, page Evidence and quantity-one standalone
+fallbacks. Before the graph, the model records each retained group's literal
+dimensions once in a linear source index. It then emits only positive typed
+edges: `same_object_view`, `object_detail`, `reference_link`, or
+`supporting_relation`. A supporting relation preserves one positive fact without
+silently merging or sharing Evidence. Packages derive only from accepted merge
+edges; every unmerged object-evidence group becomes review-required standalone.
+An invalid dimension index is observable but cannot abort otherwise proven
+packages. The HSL acceptance target is a completed File Review, every retained
+group assigned once, N57 permitted as one source-root package for MVP, N76B
+retained as its own dimensioned standalone when unconnected, and no quadratic
+negative-pair output. Then regress Page 23 and Adda before checkpointing.
 
 PENDING, P1, USER REQUEST, Detection Registry output and latency optimisation:
 after the commercial-boundary experiment reaches a valid HSL graph, remove only

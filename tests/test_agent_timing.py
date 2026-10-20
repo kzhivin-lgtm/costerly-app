@@ -61,7 +61,7 @@ class _Response:
 
 
 def _visual_registry_payload(payload):
-    """Upgrade legacy Registry fixtures to the V4.41 staged contract."""
+    """Upgrade legacy Registry fixtures to the V4.42 staged contract."""
     if not isinstance(payload, dict) or not {
         "visual_groups", "objects", "page_coverage",
     }.issubset(payload):
@@ -91,55 +91,12 @@ def _visual_registry_payload(payload):
             "classification_reason": classification_reason,
         })
     payload["classifications"] = classifications
-    object_group_ids = sorted(
-        item["group_id"]
+    payload["dimension_inventory"] = [
+        {"group_id": item["group_id"], "dimension_readings": []}
         for item in classifications
         if item["evidence_class"] == "object_evidence"
-    )
-    pairs = [
-        (group_id_a, group_id_b)
-        for index, group_id_a in enumerate(object_group_ids)
-        for group_id_b in object_group_ids[index + 1:]
     ]
-    relation_code = {
-        "same_object_view": "S",
-        "object_detail": "D",
-        "reference_link": "R",
-    }
-    proofs_by_pair = {
-        tuple(sorted((str(proof.get("group_id_a")), str(proof.get("group_id_b"))))): proof
-        for proof in proofs if isinstance(proofs, list) and isinstance(proof, dict)
-    }
-    states = []
-    facts = []
-    criteria = (
-        "explicit_document_relation", "dimension_equality", "dimension_transform",
-        "matching_topology", "unique_geometry", "direct_shared_structure",
-    )
-    for pair_index, pair in enumerate(pairs):
-        proof = proofs_by_pair.get(pair)
-        if proof is None:
-            states.append("NNNNNNN")
-            continue
-        evidence_facts = proof.get("evidence_facts") or []
-        fact_types = {fact.get("evidence_type") for fact in evidence_facts}
-        states.append(
-            relation_code.get(proof.get("relationship"), "N")
-            + "".join("Y" if criterion in fact_types else "N" for criterion in criteria)
-        )
-        facts.append({
-            "pair_index": pair_index,
-            "evidence_facts": evidence_facts,
-            "commercial_inseparability": proof.get("commercial_inseparability", ""),
-        })
-    runs = []
-    for state in states:
-        if runs and runs[-1]["state"] == state:
-            runs[-1]["count"] += 1
-        else:
-            runs.append({"count": 1, "state": state})
-    payload["pair_relation_runs"] = runs
-    payload["pair_relation_facts"] = facts
+    payload["relation_edges"] = proofs
     payload.pop("standalone_package_group_ids", None)
     payload.pop("shared_reference_group_ids", None)
     return payload
@@ -636,7 +593,7 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
             page_images=[b"page"], regions=[], ocr_package=None, model="model",
         )
 
-    assert requested_budgets == [32768]
+    assert requested_budgets == [12288]
     assert requested_temperatures == [0.0]
     assert visual_map["visual_groups"][0]["group_id"] == "view-001"
     assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
@@ -710,23 +667,15 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
     assert registry["objects"][0]["visual_group_ids"] == ["view-001", "view-002"]
     assert usage["raw_usage"]["accepted_merge_edges"][0]["group_id_a"] == "view-001"
     assert usage["raw_usage"]["accepted_merge_edges"][0]["group_id_b"] == "view-002"
-    assert usage["raw_usage"]["pair_relation_ledger_valid"] is True
-    assert usage["raw_usage"]["pair_relation_ledger_pair_count"] == 1
-    assert usage["raw_usage"]["pair_relation_ledger"][0]["criterion_states"] == {
-        "explicit_document_relation": "N",
-        "dimension_equality": "N",
-        "dimension_transform": "Y",
-        "matching_topology": "Y",
-        "unique_geometry": "N",
-        "direct_shared_structure": "N",
-    }
+    assert usage["raw_usage"]["dimension_inventory_valid"] is True
+    assert usage["raw_usage"]["dimension_inventory_group_count"] == 2
     assert usage["raw_usage"]["proof_graph_components"] == [{
         "canonical_anchor_group_id": "view-001",
         "visual_group_ids": ["view-001", "view-002"],
     }]
 
 
-def test_integrated_visual_registry_keeps_upload_actionable_when_pair_ledger_is_incomplete():
+def test_integrated_visual_registry_keeps_upload_actionable_when_dimension_index_is_invalid():
     payload = _visual_registry_payload({
         "visual_groups": [
             {"group_id": "left", "page_number": 1, "location_hint": "left", "visual_description": "cabinet elevation", "representation_kind": "elevation"},
@@ -751,7 +700,7 @@ def test_integrated_visual_registry_keeps_upload_actionable_when_pair_ledger_is_
             "evidence_reason": "cabinet views",
         }],
     })
-    payload["pair_relation_runs"] = []
+    payload["dimension_inventory"] = []
 
     with (
         patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
@@ -770,10 +719,10 @@ def test_integrated_visual_registry_keeps_upload_actionable_when_pair_ledger_is_
         )
 
     assert [item["visual_group_ids"] for item in registry["objects"]] == [
-        ["view-001"], ["view-002"],
+        ["view-001", "view-002"],
     ]
-    assert usage["raw_usage"]["pair_relation_ledger_valid"] is False
-    assert "must account for every object-evidence pair" in usage["raw_usage"]["pair_relation_ledger_error"]
+    assert usage["raw_usage"]["dimension_inventory_valid"] is False
+    assert "must account for every visual group" in usage["raw_usage"]["dimension_inventory_error"]
 
 
 def test_integrated_visual_registry_keeps_reference_link_as_evidence_without_suppressing_standalones():
@@ -1266,7 +1215,7 @@ def test_integrated_visual_registry_json_failure_carries_transport_diagnostics()
     assert event["raw_usage"]["validation_stage"] == "visual_registry_json"
     assert event["raw_usage"]["response_character_count"] == len(raw_text)
     assert event["raw_usage"]["response_text_sha256"]
-    assert event["raw_usage"]["max_tokens"] == 32768
+    assert event["raw_usage"]["max_tokens"] == 12288
     assert event["raw_usage"]["raw_response_persisted"] is False
     assert event["raw_usage"]["top_level_sections_started"] == [
         "visual_groups", "classifications",

@@ -11,10 +11,8 @@ from agents.schemas.detection_registry_schema import (
     derive_detection_package_decision_audit,
     derive_detection_proof_components,
     derive_detection_standalone_package_group_ids,
-    expand_detection_pair_relation_runs,
     partition_detection_relation_edges,
     validate_detection_dimension_inventory,
-    validate_detection_pair_relation_ledger,
     validate_detection_pairwise_merge_proofs,
     validate_detection_registry,
     validate_detection_shared_reference_group_ids,
@@ -144,109 +142,37 @@ def test_proof_graph_derives_one_component_from_two_evidence_backed_edges():
     ]
 
 
-def test_complete_pair_ledger_preserves_negative_states_and_two_dimension_proof():
-    groups = {"view-001", "view-002", "view-003"}
+def test_v4_42_dimension_index_and_one_dimension_supporting_relation_do_not_merge():
+    groups = {"view-001", "view-002"}
     inventory = validate_detection_dimension_inventory([
-        {"group_id": "view-001", "dimension_readings": ["overall width 358 cm", "height 245 cm"]},
-        {"group_id": "view-002", "dimension_readings": ["overall width 358 cm", "height 245 cm"]},
-        {"group_id": "view-003", "dimension_readings": []},
+        {"group_id": "view-001", "dimension_readings": ["overall width 358 cm"]},
+        {"group_id": "view-002", "dimension_readings": ["overall width 358 cm"]},
     ], visual_group_ids=groups)
-    assert [row["group_id"] for row in inventory] == ["view-001", "view-002", "view-003"]
 
-    proofs, ledger = validate_detection_pair_relation_ledger(
-        ["SNYNNNN", "NNNNNNN", "NNNNNNN"],
-        [{
-            "pair_index": 0,
-            "evidence_facts": [
-                _fact("dimension_equality", "overall width 358 cm equals overall width 358 cm", (1, 2)),
-                _fact("dimension_equality", "height 245 cm equals height 245 cm", (1, 2)),
-            ],
-            "commercial_inseparability": "Two matching overall dimensions establish one cabinet.",
-        }],
-        object_evidence_group_ids=groups,
-        page_count=2,
-    )
-
-    assert len(ledger) == 3
-    assert ledger[1]["criterion_states"]["dimension_equality"] == "N"
-    assert validate_detection_pairwise_merge_proofs(
-        proofs, visual_group_ids=groups, page_count=2
-    ) == proofs
-
-
-def test_pair_relation_runs_losslessly_expand_the_complete_pair_ledger():
-    groups = {"view-001", "view-002", "view-003", "view-004"}
-
-    assert expand_detection_pair_relation_runs(
-        [
-            {"count": 2, "state": "NNNNNNN"},
-            {"count": 1, "state": "SNYNNNN"},
-            {"count": 3, "state": "NNNNNNN"},
-        ],
-        object_evidence_group_ids=groups,
-    ) == ["NNNNNNN", "NNNNNNN", "SNYNNNN", "NNNNNNN", "NNNNNNN", "NNNNNNN"]
-
-    with pytest.raises(DetectionRegistrySchemaError, match="adjacent pair relation runs"):
-        expand_detection_pair_relation_runs(
-            [
-                {"count": 1, "state": "NNNNNNN"},
-                {"count": 5, "state": "NNNNNNN"},
-            ],
-            object_evidence_group_ids=groups,
-        )
-
-
-def test_complete_pair_ledger_rejects_an_omitted_pair_or_positive_without_facts():
-    with pytest.raises(DetectionRegistrySchemaError, match="every object-evidence pair"):
-        validate_detection_pair_relation_ledger(
-            ["NNNNNNN"], [],
-            object_evidence_group_ids={"view-001", "view-002", "view-003"},
-            page_count=1,
-        )
-    with pytest.raises(DetectionRegistrySchemaError, match="must record every positive criterion"):
-        validate_detection_pair_relation_ledger(
-            ["SNYNNNN"], [],
-            object_evidence_group_ids={"view-001", "view-002"},
-            page_count=1,
-        )
-
-
-def test_complete_pair_ledger_retains_positive_non_tree_relation_without_cycle():
-    proofs, ledger = validate_detection_pair_relation_ledger(
-        ["PNYNNNN"],
-        [{
-            "pair_index": 0,
-            "evidence_facts": [
-                _fact("dimension_equality", "overall width 358 cm equals overall width 358 cm"),
-            ],
-            "commercial_inseparability": "",
-        }],
-        object_evidence_group_ids={"view-001", "view-002"},
-        page_count=1,
-    )
-
-    assert proofs == []
-    assert ledger[0]["relationship"] == "positive_non_tree_relation"
-
-
-def test_complete_pair_ledger_cannot_hide_a_positive_fact_under_none():
-    with pytest.raises(
-        DetectionRegistrySchemaError,
-        match="positive pair criteria need a non-none relationship",
-    ):
-        validate_detection_pair_relation_ledger(
-            ["NYYNNNN"],
+    edges, accepted_merges, reference_links, rejected = (
+        partition_detection_relation_edges(
             [{
-                "pair_index": 0,
+                "group_id_a": "view-001",
+                "group_id_b": "view-002",
+                "relationship": "supporting_relation",
                 "evidence_facts": [
-                    _fact("explicit_document_relation", "N56 labels both views."),
-                    _fact("dimension_equality", "358 cm width is literal on both views."),
+                    _fact("dimension_equality", "overall width 358 cm is literal on both views."),
                 ],
-                "commercial_inseparability": "",
+                "commercial_inseparability": "One matching dimension is recorded but does not establish one object.",
             }],
-            object_evidence_group_ids={"view-001", "view-002"},
+            visual_group_ids=groups,
             page_count=1,
         )
+    )
+
+    assert [row["group_id"] for row in inventory] == ["view-001", "view-002"]
+    assert len(edges) == 1
+    assert accepted_merges == []
+    assert reference_links == []
+    assert rejected == []
+    assert derive_detection_proof_components(
+        accepted_merges, visual_group_ids=groups
+    ) == [["view-001"], ["view-002"]]
 
 
 def test_v4_40_relation_graph_preserves_positive_dimension_facts_and_isolates_weak_merge():
@@ -686,11 +612,11 @@ def test_integrated_registry_schema_has_no_model_owner_or_object_id_fields():
     assert "component_anchor_group_ids" in coverage_properties
     assert "standalone_package_group_ids" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "objects" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["required"]
-    assert "relation_edges" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
-    assert "pair_relation_runs" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
+    assert "relation_edges" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
+    assert "pair_relation_runs" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "pair_relation_states" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
-    assert "pair_relation_facts" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
-    assert "dimension_inventory" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
+    assert "pair_relation_facts" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
+    assert "dimension_inventory" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "classifications" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "proof_edges" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "merge_proofs" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]

@@ -13,32 +13,18 @@ PAIRWISE_MERGE_EVIDENCE_TYPES = frozenset({
     "unique_geometry",
     "direct_shared_structure",
 })
-PAIRWISE_RELATION_CRITERIA = (
-    "explicit_document_relation",
-    "dimension_equality",
-    "dimension_transform",
-    "matching_topology",
-    "unique_geometry",
-    "direct_shared_structure",
-)
-PAIRWISE_RELATION_STATE_CODES = frozenset({"Y", "N", "C", "U"})
-PAIRWISE_RELATIONSHIP_CODES = {
-    "N": "none",
-    "P": "positive_non_tree_relation",
-    "S": "same_object_view",
-    "D": "object_detail",
-    "R": "reference_link",
-}
 PAIRWISE_EVIDENCE_RELATIONSHIPS = frozenset({
     "same_object_view",
     "object_detail",
     "reference_link",
+    "supporting_relation",
 })
 MERGE_EVIDENCE_RELATIONSHIPS = frozenset({
     "same_object_view",
     "object_detail",
 })
 REFERENCE_RELATIONSHIP = "reference_link"
+SUPPORTING_RELATIONSHIP = "supporting_relation"
 PROOF_PARENT_DECISIONS = frozenset({
     "new_object_root",
     "attach_to_group",
@@ -46,7 +32,8 @@ PROOF_PARENT_DECISIONS = frozenset({
 PROOF_PARENT_ROOT_GROUP_ID = "ROOT"
 PROOF_PARENT_RELATIONSHIPS = frozenset({
     "new_object_root",
-    *PAIRWISE_EVIDENCE_RELATIONSHIPS,
+    *MERGE_EVIDENCE_RELATIONSHIPS,
+    REFERENCE_RELATIONSHIP,
 })
 _NON_EXPLICIT_MERGE_SUPPORT_TYPES = frozenset({
     "dimension_equality",
@@ -95,57 +82,6 @@ DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
                     },
                 },
             },
-            "commercial_inseparability": {"type": "string"},
-        },
-    },
-}
-
-# V4.38 stores a compact, exact-once assessment for every pair of
-# object-evidence groups.  The first character identifies the resulting
-# relation (N none, S same object, D object detail, R reference).  The next
-# six characters follow PAIRWISE_RELATION_CRITERIA and are Y positive, N
-# checked-negative, C conflict, or U unreadable/not comparable.  Detailed
-# observations are emitted only for Y facts below, avoiding a verbose negative
-# prose row for every pair while preserving every negative decision.
-DETECTION_PAIR_RELATION_STATES_JSON_SCHEMA: dict[str, Any] = {
-    "type": "array",
-    "items": {"type": "string"},
-}
-
-# V4.41 returns the complete pair ledger as run-length encoded state rows.
-# The runtime expands it before applying the stable full-ledger validator. This
-# preserves exact pair coverage without spending a JSON array item on every
-# checked-negative pair.
-DETECTION_PAIR_RELATION_RUNS_JSON_SCHEMA: dict[str, Any] = {
-    "type": "array",
-    "items": {
-        "type": "object",
-        "additionalProperties": False,
-        "required": ["count", "state"],
-        "properties": {
-            "count": {"type": "integer", "minimum": 1},
-            "state": {"type": "string"},
-        },
-    },
-}
-
-DETECTION_PAIR_RELATION_FACTS_JSON_SCHEMA: dict[str, Any] = {
-    "type": "array",
-    "items": {
-        "type": "object",
-        "additionalProperties": False,
-        "required": [
-            "pair_index",
-            "evidence_facts",
-            "commercial_inseparability",
-        ],
-        "properties": {
-            "pair_index": {"type": "integer", "minimum": 0},
-            "evidence_facts": copy.deepcopy(
-                DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA["items"]["properties"][
-                    "evidence_facts"
-                ]
-            ),
             "commercial_inseparability": {"type": "string"},
         },
     },
@@ -233,53 +169,6 @@ class DetectionRegistrySchemaError(ValueError):
         self.details = details or {}
 
 
-def _ordered_pair_ids(group_ids: set[str]) -> list[tuple[str, str]]:
-    ordered_group_ids = sorted(group_ids)
-    return [
-        (group_id_a, group_id_b)
-        for index, group_id_a in enumerate(ordered_group_ids)
-        for group_id_b in ordered_group_ids[index + 1:]
-    ]
-
-
-def expand_detection_pair_relation_runs(
-    pair_relation_runs: object,
-    *,
-    object_evidence_group_ids: set[str],
-) -> list[str]:
-    """Expand a compact exact-once pair-state stream for schema validation."""
-    expected_pair_count = len(_ordered_pair_ids(object_evidence_group_ids))
-    if not isinstance(pair_relation_runs, list):
-        raise DetectionRegistrySchemaError("pair relation runs must be a list")
-    states: list[str] = []
-    previous_state: str | None = None
-    for run in pair_relation_runs:
-        if (
-            not isinstance(run, dict)
-            or set(run) != {"count", "state"}
-            or not isinstance(run.get("count"), int)
-            or run["count"] <= 0
-            or not isinstance(run.get("state"), str)
-        ):
-            raise DetectionRegistrySchemaError("pair relation run is invalid")
-        state = run["state"]
-        if state == previous_state:
-            raise DetectionRegistrySchemaError(
-                "adjacent pair relation runs must be combined"
-            )
-        previous_state = state
-        states.extend([state] * run["count"])
-        if len(states) > expected_pair_count:
-            raise DetectionRegistrySchemaError(
-                "pair relation runs exceed the expected pair count"
-            )
-    if len(states) != expected_pair_count:
-        raise DetectionRegistrySchemaError(
-            "pair relation runs must account for every object-evidence pair exactly once"
-        )
-    return states
-
-
 def _validate_pairwise_evidence_facts(
     evidence_facts: object,
     *,
@@ -360,122 +249,6 @@ def validate_detection_dimension_inventory(
             "dimension inventory must account for every visual group exactly once"
         )
     return [by_group_id[group_id] for group_id in sorted(visual_group_ids)]
-
-
-def validate_detection_pair_relation_ledger(
-    pair_relation_states: object,
-    pair_relation_facts: object,
-    *,
-    object_evidence_group_ids: set[str],
-    page_count: int,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Validate every pair and derive the positive proof graph deterministically.
-
-    `pair_relation_states` is deliberately dense and compact.  The model cannot
-    omit a difficult pair, while the persisted expanded audit remains readable.
-    """
-    expected_pairs = _ordered_pair_ids(object_evidence_group_ids)
-    if (
-        not isinstance(pair_relation_states, list)
-        or len(pair_relation_states) != len(expected_pairs)
-        or not all(isinstance(state, str) for state in pair_relation_states)
-    ):
-        raise DetectionRegistrySchemaError(
-            "pair relation ledger must account for every object-evidence pair exactly once"
-        )
-    if not isinstance(pair_relation_facts, list):
-        raise DetectionRegistrySchemaError("pair relation facts must be a list")
-
-    facts_by_pair_index: dict[int, dict[str, Any]] = {}
-    for row in pair_relation_facts:
-        if (
-            not isinstance(row, dict)
-            or set(row) != {
-                "pair_index", "evidence_facts", "commercial_inseparability",
-            }
-            or not isinstance(row.get("pair_index"), int)
-            or not 0 <= row["pair_index"] < len(expected_pairs)
-            or row["pair_index"] in facts_by_pair_index
-            or not isinstance(row.get("commercial_inseparability"), str)
-        ):
-            raise DetectionRegistrySchemaError("pair relation facts are invalid")
-        evidence_types, normalized_facts = _validate_pairwise_evidence_facts(
-            row["evidence_facts"], page_count=page_count
-        )
-        facts_by_pair_index[row["pair_index"]] = {
-            "evidence_types": evidence_types,
-            "evidence_facts": normalized_facts,
-            "commercial_inseparability": row["commercial_inseparability"].strip(),
-        }
-
-    proofs: list[dict[str, Any]] = []
-    expanded_audit: list[dict[str, Any]] = []
-    for pair_index, ((group_id_a, group_id_b), encoded_state) in enumerate(
-        zip(expected_pairs, pair_relation_states, strict=True)
-    ):
-        if (
-            len(encoded_state) != 1 + len(PAIRWISE_RELATION_CRITERIA)
-            or encoded_state[0] not in PAIRWISE_RELATIONSHIP_CODES
-            or any(
-                criterion_state not in PAIRWISE_RELATION_STATE_CODES
-                for criterion_state in encoded_state[1:]
-            )
-        ):
-            raise DetectionRegistrySchemaError("pair relation state is invalid")
-        relation = PAIRWISE_RELATIONSHIP_CODES[encoded_state[0]]
-        criteria_states = dict(zip(
-            PAIRWISE_RELATION_CRITERIA, encoded_state[1:], strict=True
-        ))
-        positive_criteria = {
-            criterion
-            for criterion, state in criteria_states.items()
-            if state == "Y"
-        }
-        facts_row = facts_by_pair_index.get(pair_index)
-        if bool(positive_criteria) != bool(facts_row):
-            raise DetectionRegistrySchemaError(
-                "pair relation facts must record every positive criterion and no negative-only pair"
-            )
-        evidence_facts: list[dict[str, Any]] = []
-        commercial_inseparability = ""
-        if facts_row is not None:
-            evidence_types = facts_row["evidence_types"]
-            if not positive_criteria.issubset(evidence_types) or not evidence_types.issubset(positive_criteria):
-                raise DetectionRegistrySchemaError(
-                    "pair relation facts do not match criterion states"
-                )
-            evidence_facts = facts_row["evidence_facts"]
-            commercial_inseparability = facts_row["commercial_inseparability"]
-        if relation in PAIRWISE_EVIDENCE_RELATIONSHIPS:
-            if not positive_criteria or not commercial_inseparability:
-                raise DetectionRegistrySchemaError(
-                    "positive pair relation needs facts and commercial basis"
-                )
-            proofs.append({
-                "group_id_a": group_id_a,
-                "group_id_b": group_id_b,
-                "relationship": relation,
-                "evidence_facts": evidence_facts,
-                "commercial_inseparability": commercial_inseparability,
-            })
-        elif relation == "positive_non_tree_relation" and not positive_criteria:
-            raise DetectionRegistrySchemaError(
-                "positive non-tree relation needs positive criteria"
-            )
-        elif relation == "none" and positive_criteria:
-            raise DetectionRegistrySchemaError(
-                "positive pair criteria need a non-none relationship"
-            )
-        expanded_audit.append({
-            "pair_index": pair_index,
-            "group_id_a": group_id_a,
-            "group_id_b": group_id_b,
-            "relationship": relation,
-            "criterion_states": criteria_states,
-            "evidence_facts": evidence_facts,
-            "commercial_inseparability": commercial_inseparability,
-        })
-    return proofs, expanded_audit
 
 
 def validate_detection_registry(
@@ -772,6 +545,8 @@ def partition_detection_relation_edges(
         normalized_edges.append(normalized)
         if relationship == REFERENCE_RELATIONSHIP:
             reference_links.append(normalized)
+            continue
+        if relationship == SUPPORTING_RELATIONSHIP:
             continue
         has_accepted_merge_basis = (
             "explicit_document_relation" in evidence_types
