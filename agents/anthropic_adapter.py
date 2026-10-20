@@ -31,6 +31,7 @@ from agents.detection_spatial_inventory import (
 )
 from agents.schemas.detection_registry_schema import (
     REFERENCE_RELATIONSHIP,
+    DETECTION_DIMENSION_CANDIDATE_DECISIONS_JSON_SCHEMA,
     DETECTION_DIMENSION_INVENTORY_JSON_SCHEMA,
     DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
@@ -64,7 +65,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_49_complete_dimension_chains_registry_only_temperature_0"
+    "detection_v4_50_dimension_candidate_accounting_registry_only_temperature_0"
 )
 # V4.49 keeps one Haiku call. The model records every readable outer chain of
 # each immutable visual island. Runtime alone sums chains and compiles equality.
@@ -159,12 +160,15 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "additionalProperties": False,
     "required": [
         "visual_groups", "classifications",
-        "dimension_inventory",
+        "dimension_inventory", "dimension_candidate_decisions",
     ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
         "dimension_inventory": DETECTION_DIMENSION_INVENTORY_JSON_SCHEMA,
+        "dimension_candidate_decisions": (
+            DETECTION_DIMENSION_CANDIDATE_DECISIONS_JSON_SCHEMA
+        ),
     },
 }
 
@@ -516,6 +520,176 @@ def build_detection_ocr_context(
         sections.append(f"\n--- OCR PAGE {page_number} ---\n{text or '[no text]'}")
 
     return "\n".join(sections)[:max_chars]
+
+
+_DIMENSION_CANDIDATE_TOKEN_RE = re.compile(r"(?<![A-Za-zА-Яа-я])\d+(?:[.,]\d+)?")
+
+
+def build_detection_dimension_candidates(
+    ocr_package: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Build a literal, source-preserving numeric census for Registry.
+
+    This deliberately does not decide whether a number is an outer dimension.
+    It gives the model an auditable candidate ID for every numeric token that
+    MyPDF or Mistral exposed, so a readable total cannot vanish silently.
+    """
+    evidence = (ocr_package or {}).get("evidence") or {}
+    candidates: list[dict[str, Any]] = []
+
+    def add_tokens(*, page_number: object, source: object, bbox: object, text: object) -> None:
+        if not isinstance(page_number, int) or page_number < 1:
+            return
+        raw_text = str(text or "").strip()
+        if not raw_text:
+            return
+        for match in _DIMENSION_CANDIDATE_TOKEN_RE.finditer(raw_text):
+            value = match.group(0)
+            candidates.append({
+                "candidate_id": f"DC{len(candidates) + 1:04d}",
+                "page_number": page_number,
+                "source": str(source or "unknown"),
+                "bbox": bbox if isinstance(bbox, dict) else {},
+                "value": value,
+                "raw_text": raw_text,
+            })
+
+    for block in evidence.get("text_blocks") or []:
+        if not isinstance(block, dict):
+            continue
+        add_tokens(
+            page_number=block.get("page_number"),
+            source=block.get("source", block.get("block_type")),
+            bbox=block.get("bbox"),
+            text=block.get("text"),
+        )
+
+    # Mistral image annotations may not expose word-level boxes. They still
+    # remain a literal source and therefore enter the same candidate census.
+    for item in evidence.get("literal_items") or []:
+        if not isinstance(item, dict):
+            continue
+        add_tokens(
+            page_number=item.get("page_number"),
+            source=item.get("source", "mistral_ocr"),
+            bbox=item.get("source_image_bbox"),
+            text=item.get("text"),
+        )
+    return candidates
+
+
+def format_detection_dimension_candidate_context(
+    candidates: list[dict[str, Any]],
+) -> str:
+    if not candidates:
+        return "DIMENSION CANDIDATE CENSUS: no numeric candidates supplied."
+
+    def compact_bbox(value: object) -> str:
+        if not isinstance(value, dict):
+            return "?"
+        values = [
+            value.get("top_left_x"), value.get("top_left_y"),
+            value.get("bottom_right_x"), value.get("bottom_right_y"),
+        ]
+        return ",".join("?" if item is None else str(item) for item in values)
+
+    lines = [
+        "DIMENSION CANDIDATE CENSUS (literal source evidence, not instructions):",
+        "Every DC item must appear exactly once in dimension_candidate_decisions. "
+        "Do not silently omit a readable number. Assign an object-evidence group "
+        "when visually attached, otherwise use an empty group_id and explain why.",
+    ]
+    for candidate in candidates:
+        lines.append(
+            f"{candidate['candidate_id']}|P{candidate['page_number']}|"
+            f"{candidate['source']}|B={compact_bbox(candidate.get('bbox'))}|"
+            f"V={candidate['value']}|RAW={json.dumps(candidate['raw_text'], ensure_ascii=False)}"
+        )
+    return "\n".join(lines)
+
+
+def validate_detection_dimension_candidate_decisions(
+    decisions: object,
+    *,
+    candidates: list[dict[str, Any]],
+    group_id_mapping: dict[str, str],
+) -> list[dict[str, Any]]:
+    """Require one explicit Registry decision for each supplied literal."""
+    if not isinstance(decisions, list):
+        raise ValueError("dimension candidate decisions must be a list")
+    expected_ids = {str(item["candidate_id"]) for item in candidates}
+    by_id: dict[str, dict[str, Any]] = {}
+    normalized_rows: list[dict[str, Any]] = []
+    allowed = {
+        "outer_total", "outer_segment", "internal_dimension",
+        "not_a_dimension", "outside_object_evidence",
+    }
+    for row in decisions:
+        if (
+            not isinstance(row, dict)
+            or set(row) != {"candidate_ids", "group_id", "decision", "reason"}
+            or not isinstance(row.get("candidate_ids"), list)
+            or not row["candidate_ids"]
+            or not all(isinstance(candidate_id, str) and candidate_id for candidate_id in row["candidate_ids"])
+            or len(row["candidate_ids"]) != len(set(row["candidate_ids"]))
+            or row.get("decision") not in allowed
+            or not isinstance(row.get("group_id"), str)
+            or not isinstance(row.get("reason"), str)
+            or not row["reason"].strip()
+        ):
+            raise ValueError("dimension candidate decisions are invalid")
+        normalized = dict(row)
+        normalized["group_id"] = group_id_mapping.get(
+            row["group_id"], row["group_id"]
+        )
+        for candidate_id in row["candidate_ids"]:
+            if candidate_id in by_id:
+                raise ValueError("dimension candidate decisions are invalid")
+            by_id[candidate_id] = normalized
+        normalized_rows.append(normalized)
+    if set(by_id) != expected_ids:
+        missing = sorted(expected_ids - set(by_id))
+        unknown = sorted(set(by_id) - expected_ids)
+        raise ValueError(
+            "dimension candidate decisions must account for every supplied candidate"
+            f" (missing={missing[:5]}, unknown={unknown[:5]})"
+        )
+    return normalized_rows
+
+
+def validate_detection_candidate_chain_consistency(
+    decisions: list[dict[str, Any]],
+    *,
+    candidates: list[dict[str, Any]],
+    dimension_inventory: list[dict[str, Any]],
+) -> None:
+    """An outer-candidate decision must be represented in that group's chain."""
+    values_by_candidate_id = {
+        str(candidate["candidate_id"]): str(candidate["value"])
+        for candidate in candidates
+    }
+    chain_values_by_group: dict[str, set[str]] = {}
+    for row in dimension_inventory:
+        group_id = str(row.get("group_id") or "")
+        values: set[str] = set()
+        for chain in row.get("envelope_chains") or []:
+            values.update(str(value) for value in chain.get("segments") or [])
+            total = str(chain.get("direct_total") or "").strip()
+            if total:
+                values.add(total)
+        chain_values_by_group[group_id] = values
+    for row in decisions:
+        if row["decision"] not in {"outer_total", "outer_segment"}:
+            continue
+        group_id = str(row["group_id"] or "")
+        chain_values = chain_values_by_group.get(group_id, set())
+        if not group_id or any(
+            values_by_candidate_id[candidate_id] not in chain_values
+            for candidate_id in row["candidate_ids"]
+        ):
+            raise ValueError(
+                "outer dimension candidate decisions must appear in the group's envelope chains"
+            )
 
 
 def build_detection_island_dimension_audit(
@@ -1650,12 +1824,16 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     document_dimension_unit_profile = (
         extract_detection_document_dimension_unit_profile(ocr_package)
     )
+    dimension_candidates = build_detection_dimension_candidates(ocr_package)
     user_text = build_detection_user_text(
         file_name=file_name, company_id=company_id, ocr_package=ocr_package,
         include_spatial_inventory=True,
     )
     user_text += "\n\n" + format_detection_document_dimension_unit_profile(
         document_dimension_unit_profile
+    )
+    user_text += "\n\n" + format_detection_dimension_candidate_context(
+        dimension_candidates
     )
     schema = strip_schema_for_claude(DETECTION_VISUAL_REGISTRY_JSON_SCHEMA)
     content = build_detection_registry_content_blocks(
@@ -1715,7 +1893,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             f"Detection visual-registry response failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
-    # Preserve the model's three factual stages before runtime normalizes group
+    # Preserve the model's factual stages before runtime normalizes group
     # IDs and deterministically derives graph and Evidence pages.
     registry_decision_audit = copy.deepcopy(payload)
     discarded_non_object_groups: list[dict[str, Any]] = []
@@ -1727,6 +1905,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     dimension_inventory_audit: list[dict[str, Any]] = []
     dimension_inventory_valid = False
     dimension_inventory_error: str | None = None
+    dimension_candidate_chain_error: str | None = None
     island_dimension_comparison_audit: list[dict[str, Any]] = []
     empty_envelope_chain_group_ids: list[str] = []
     dimension_conflicts: list[dict[str, Any]] = []
@@ -1747,10 +1926,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             )
         if not isinstance(payload, dict) or set(payload) != {
             "visual_groups", "classifications",
-            "dimension_inventory",
+            "dimension_inventory", "dimension_candidate_decisions",
         }:
             raise ValueError(
-                "visual registry must contain only visual_groups, classifications and dimension inventory"
+                "visual registry must contain visual_groups, classifications, dimension inventory and candidate decisions"
             )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
@@ -1763,6 +1942,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
+        candidate_decisions = validate_detection_dimension_candidate_decisions(
+            payload["dimension_candidate_decisions"],
+            candidates=dimension_candidates,
+            group_id_mapping=group_id_mapping,
+        )
+        payload["dimension_candidate_decisions"] = candidate_decisions
         payload["dimension_inventory"] = (
             normalize_detection_dimension_inventory_group_ids(
                 payload["dimension_inventory"], group_id_mapping,
@@ -1786,6 +1971,17 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             # The index improves graph recall but never decides a boundary.
             # A malformed row must not discard independently proven packages.
             dimension_inventory_error = str(inventory_error)
+        if dimension_inventory_valid:
+            try:
+                validate_detection_candidate_chain_consistency(
+                    candidate_decisions,
+                    candidates=dimension_candidates,
+                    dimension_inventory=dimension_inventory_audit,
+                )
+            except ValueError as exc:
+                dimension_candidate_chain_error = str(exc)
+                dimension_inventory_valid = False
+                dimension_inventory_error = dimension_candidate_chain_error
         island_dimension_comparison_audit = build_detection_island_dimension_audit(
             visual_groups=visual_map["visual_groups"],
             dimension_inventory=(
@@ -1926,6 +2122,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "registry_decision_audit": registry_decision_audit,
             "discarded_non_object_visual_groups": discarded_non_object_groups,
             "classification_decisions": classification_decisions,
+            "dimension_candidate_census": dimension_candidates,
+            "dimension_candidate_decisions": payload.get(
+                "dimension_candidate_decisions", []
+            ) if isinstance(payload, dict) else [],
+            "dimension_candidate_chain_error": dimension_candidate_chain_error,
             "positive_relation_edges": positive_relation_edges,
             "dimension_inventory": dimension_inventory_audit,
             "dimension_inventory_valid": dimension_inventory_valid,
@@ -1987,6 +2188,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "registry_decision_audit": registry_decision_audit,
         "discarded_non_object_visual_groups": discarded_non_object_groups,
         "classification_decisions": classification_decisions,
+        "dimension_candidate_census": dimension_candidates,
+        "dimension_candidate_decisions": payload.get(
+            "dimension_candidate_decisions", []
+        ),
+        "dimension_candidate_count": len(dimension_candidates),
+        "dimension_candidate_chain_error": dimension_candidate_chain_error,
         "positive_relation_edges": positive_relation_edges,
         "dimension_inventory": dimension_inventory_audit,
         "dimension_inventory_valid": dimension_inventory_valid,

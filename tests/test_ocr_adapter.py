@@ -1,8 +1,13 @@
 import json
 
+import pytest
+
 from agents.anthropic_adapter import (
+    build_detection_dimension_candidates,
     build_detection_island_dimension_audit,
     build_detection_ocr_context,
+    validate_detection_candidate_chain_consistency,
+    validate_detection_dimension_candidate_decisions,
 )
 from agents.ocr_adapter import normalize_mistral_ocr_response, run_mistral_ocr
 from agents.ocr_contract import OCR_PROFILE_EVIDENCE
@@ -349,6 +354,70 @@ def test_island_dimension_audit_keeps_model_attribution_separate_from_same_page_
             "segments": ["64", "203", "64"], "direct_total": "331",
         }],
     }]
+
+
+def test_dimension_candidate_census_preserves_native_pdf_and_mistral_numbers():
+    candidates = build_detection_dimension_candidates({
+        "evidence": {
+            "text_blocks": [{
+                "page_number": 3, "source": "native_pdf_text", "text": "358",
+                "bbox": {"top_left_x": 10, "top_left_y": 20,
+                         "bottom_right_x": 30, "bottom_right_y": 40},
+            }],
+            "literal_items": [{
+                "page_number": 3, "source": "mistral_ocr", "text": "H=60",
+                "source_image_bbox": {"top_left_x": 1, "top_left_y": 2,
+                                      "bottom_right_x": 3, "bottom_right_y": 4},
+            }],
+        },
+    })
+
+    assert [(row["source"], row["value"]) for row in candidates] == [
+        ("native_pdf_text", "358"), ("mistral_ocr", "60"),
+    ]
+
+
+def test_dimension_candidate_decisions_require_every_supplied_number_once():
+    candidates = [{"candidate_id": "DC0001"}, {"candidate_id": "DC0002"}]
+    decisions = validate_detection_dimension_candidate_decisions(
+        [
+            {"candidate_ids": ["DC0001"], "group_id": "G1",
+             "decision": "outer_total", "reason": "full width"},
+            {"candidate_ids": ["DC0002"], "group_id": "",
+             "decision": "not_a_dimension", "reason": "drawing scale"},
+        ],
+        candidates=candidates,
+        group_id_mapping={"G1": "view-001"},
+    )
+
+    assert decisions[0]["group_id"] == "view-001"
+
+    with pytest.raises(ValueError, match="account for every supplied candidate"):
+        validate_detection_dimension_candidate_decisions(
+            decisions[:1], candidates=candidates, group_id_mapping={},
+        )
+
+
+def test_outer_dimension_candidate_must_be_kept_in_its_chain():
+    decisions = [{
+        "candidate_ids": ["DC0001"], "group_id": "view-001",
+        "decision": "outer_total", "reason": "full width",
+    }]
+    candidates = [{"candidate_id": "DC0001", "value": "358"}]
+
+    validate_detection_candidate_chain_consistency(
+        decisions, candidates=candidates,
+        dimension_inventory=[{"group_id": "view-001", "envelope_chains": [{
+            "chain_id": "width", "axis": "horizontal", "segments": [],
+            "direct_total": "358",
+        }]}],
+    )
+
+    with pytest.raises(ValueError, match="must appear"):
+        validate_detection_candidate_chain_consistency(
+            decisions, candidates=candidates,
+            dimension_inventory=[{"group_id": "view-001", "envelope_chains": []}],
+        )
 
 
 def test_normalized_evidence_preserves_normal_blank_lines():

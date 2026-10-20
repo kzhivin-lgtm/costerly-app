@@ -71,11 +71,12 @@ def test_integrated_visual_registry_returns_facts_for_the_deterministic_graph_co
 
     assert "deterministic commercial-object graph\ncompiler" in prompt
     assert "You do **not** create objects, packages, owner assignments, merge" in prompt
-    assert "Return exactly three stages" in prompt
+    assert "Return exactly four stages" in prompt
     assert "plan, room layout, electrical, plumbing or lighting plan" in prompt
     assert "never become Estimation Evidence" in prompt
     assert "Maximal outer-envelope chain index" in prompt
     assert "dimension_inventory" in prompt
+    assert "dimension_candidate_decisions" in prompt
     assert "classification_reason" in prompt
     assert "passive recall aid" in prompt
     assert "64`, `203`, `64`" in prompt
@@ -84,5 +85,5 @@ def test_integrated_visual_registry_returns_facts_for_the_deterministic_graph_co
     assert "Two separately framed, separately dimensioned or separately positioned views" in prompt
     assert "Do not emit a chain with both `direct_total: \"\"` and\n`segments: []`" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_49_complete_dimension_chains_registry_only_temperature_0"
+        "detection_v4_50_dimension_candidate_accounting_registry_only_temperature_0"
     )

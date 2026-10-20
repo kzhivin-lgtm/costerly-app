@@ -101,6 +101,9 @@ def _visual_registry_payload(payload):
         "visual_groups": groups,
         "classifications": classifications,
         "dimension_inventory": inventory,
+        "dimension_candidate_decisions": payload.get(
+            "dimension_candidate_decisions", []
+        ),
     }
 
 

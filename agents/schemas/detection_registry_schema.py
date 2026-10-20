@@ -129,6 +129,36 @@ DETECTION_DIMENSION_INVENTORY_JSON_SCHEMA: dict[str, Any] = {
     },
 }
 
+# The Registry receives a coordinate-bearing census of literal
+# dimension candidates from both authored PDF text and OCR.  It must account
+# for every entry instead of silently dropping a readable value during its
+# visual interpretation.
+DETECTION_DIMENSION_CANDIDATE_DECISIONS_JSON_SCHEMA: dict[str, Any] = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["candidate_ids", "group_id", "decision", "reason"],
+        "properties": {
+            "candidate_ids": {
+                "type": "array", "minItems": 1, "items": {"type": "string"},
+            },
+            "group_id": {"type": "string"},
+            "decision": {
+                "type": "string",
+                "enum": [
+                    "outer_total",
+                    "outer_segment",
+                    "internal_dimension",
+                    "not_a_dimension",
+                    "outside_object_evidence",
+                ],
+            },
+            "reason": {"type": "string"},
+        },
+    },
+}
+
 DETECTION_SHARED_REFERENCE_GROUP_IDS_JSON_SCHEMA: dict[str, Any] = {
     "type": "array",
     "items": {"type": "string"},
