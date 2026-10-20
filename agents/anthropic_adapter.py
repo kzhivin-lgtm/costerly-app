@@ -63,11 +63,11 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_43_literal_dimensions_deterministic_graph_temperature_0"
+    "detection_v4_44_outer_envelope_equality_graph_temperature_0"
 )
-# V4.43 keeps a single Haiku call. The model extracts islands, classifications
-# and literal dimensions. Runtime compiles every equality and source-root graph
-# relation deterministically, without a quadratic model response.
+# V4.44 keeps one Haiku call. The model extracts islands, classifications and
+# at most one maximal outer envelope chain per visual axis. Runtime alone sums
+# chains and compiles a dimensions-equality graph without a quadratic response.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # The positive graph and per-group source index are linear in island count.
 DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
@@ -92,6 +92,16 @@ _NON_OBJECT_VISUAL_REPRESENTATION_KINDS = frozenset({
     "generic_schedule",
     "navigation_diagram",
 })
+
+_DOCUMENT_DIMENSION_UNIT_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("mm", re.compile(r"(?i)\b[HWD]\s*=\s*\d+(?:[.,]\d+)?\s*mm\b")),
+    ("cm", re.compile(r"(?i)\b[HWD]\s*=\s*\d+(?:[.,]\d+)?\s*cm\b")),
+    ("m", re.compile(r"(?i)\b[HWD]\s*=\s*\d+(?:[.,]\d+)?\s*m\b")),
+    ("in", re.compile(r"(?i)\b[HWD]\s*=\s*\d+(?:[.,]\d+)?\s*in\b")),
+    ("ft", re.compile(r"(?i)\b[HWD]\s*=\s*\d+(?:[.,]\d+)?\s*ft\b")),
+    ("mm", re.compile(r"[HWD]\s*=\s*\d+(?:[.,]\d+)?\s*מ[\"״׳']?מ")),
+    ("cm", re.compile(r"[HWD]\s*=\s*\d+(?:[.,]\d+)?\s*ס[\"״׳']?מ")),
+)
 
 class DetectionVisualRegistryValidationError(RuntimeError):
     """Expose a DB-ready audit event when Registry output fails validation."""
@@ -483,6 +493,84 @@ def build_detection_ocr_context(
         sections.append(f"\n--- OCR PAGE {page_number} ---\n{text or '[no text]'}")
 
     return "\n".join(sections)[:max_chars]
+
+
+def extract_detection_document_dimension_unit_profile(
+    ocr_package: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Read one document-level unit only from explicit OCR dimension markers.
+
+    Bare dimensions inherit the profile only when every explicit marker found
+    in the document agrees. This is deterministic OCR parsing, not a model
+    guess, and intentionally does not convert any value.
+    """
+    matches: dict[str, set[int]] = {}
+    for page in (ocr_package or {}).get("pages") or []:
+        if not isinstance(page, dict):
+            continue
+        try:
+            page_number = int(page.get("page_number"))
+        except (TypeError, ValueError):
+            continue
+        strings = [
+            page.get("header"), page.get("footer"), page.get("markdown"),
+        ]
+        strings.extend(
+            block.get("content")
+            for block in page.get("blocks") or []
+            if isinstance(block, dict)
+        )
+        for image in page.get("images") or []:
+            if not isinstance(image, dict):
+                continue
+            annotation = image.get("image_annotation")
+            if isinstance(annotation, dict):
+                annotation = json.dumps(annotation, ensure_ascii=False)
+            strings.append(annotation)
+        for text in strings:
+            source = str(text or "")
+            for unit, pattern in _DOCUMENT_DIMENSION_UNIT_PATTERNS:
+                if pattern.search(source):
+                    matches.setdefault(unit, set()).add(page_number)
+
+    if len(matches) == 1:
+        unit, pages = next(iter(matches.items()))
+        return {
+            "unit": unit,
+            "status": "one_explicit_document_unit",
+            "evidence_pages": sorted(pages),
+        }
+    if not matches:
+        return {
+            "unit": "unknown",
+            "status": "no_explicit_document_unit",
+            "evidence_pages": [],
+        }
+    return {
+        "unit": "unknown",
+        "status": "conflicting_explicit_document_units",
+        "evidence_pages": sorted({page for pages in matches.values() for page in pages}),
+        "explicit_units": sorted(matches),
+    }
+
+
+def format_detection_document_dimension_unit_profile(
+    profile: dict[str, Any],
+) -> str:
+    """Give Registry a short deterministic unit fact, never a new decision."""
+    unit = str(profile.get("unit") or "unknown")
+    status = str(profile.get("status") or "unknown")
+    pages = ", ".join(str(page) for page in profile.get("evidence_pages") or [])
+    if unit == "unknown":
+        return (
+            "DOCUMENT DIMENSION UNIT PROFILE: unknown. Do not infer a unit; "
+            "return only literal numeric readings."
+        )
+    return (
+        f"DOCUMENT DIMENSION UNIT PROFILE: {unit}, determined from explicit OCR "
+        f"markers on page(s) {pages or '?'}. Bare numeric dimensions in this "
+        "document use this one profile."
+    )
 
 
 def build_detection_user_text(
@@ -1475,9 +1563,15 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             for page_number in range(1, len(page_images) + 1)
         },
     }
+    document_dimension_unit_profile = (
+        extract_detection_document_dimension_unit_profile(ocr_package)
+    )
     user_text = build_detection_user_text(
         file_name=file_name, company_id=company_id, ocr_package=ocr_package,
         include_spatial_inventory=True,
+    )
+    user_text += "\n\n" + format_detection_document_dimension_unit_profile(
+        document_dimension_unit_profile
     )
     schema = strip_schema_for_claude(DETECTION_VISUAL_REGISTRY_JSON_SCHEMA)
     content = build_detection_registry_content_blocks(
@@ -1502,6 +1596,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         failure_diagnostics = dict(diagnostics)
         failure_diagnostics.update({
             **spatial_audit,
+            "document_dimension_unit_profile": document_dimension_unit_profile,
             **_summarize_incomplete_visual_registry_json(
                 raw_text, exc, response,
                 max_tokens=DETECTION_VISUAL_REGISTRY_MAX_TOKENS,
@@ -1606,6 +1701,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                     dimension_inventory_audit,
                     visual_groups=visual_map["visual_groups"],
                     page_drawing_codes=page_drawing_codes,
+                    document_dimension_unit=str(
+                        document_dimension_unit_profile.get("unit") or "unknown"
+                    ),
                 )
             )
         else:
@@ -1613,6 +1711,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             dimension_graph_audit = {
                 "compiler_version": "v1",
                 "pairs_checked": 0,
+                "document_dimension_unit": str(
+                    document_dimension_unit_profile.get("unit") or "unknown"
+                ),
                 "page_drawing_codes": {
                     str(page_number): code
                     for page_number, code in sorted(page_drawing_codes.items())
@@ -1725,6 +1826,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "dimension_inventory": dimension_inventory_audit,
             "dimension_inventory_valid": dimension_inventory_valid,
             "dimension_inventory_error": dimension_inventory_error,
+            "document_dimension_unit_profile": document_dimension_unit_profile,
             "dimension_conflicts": dimension_conflicts,
             "dimension_graph_audit": dimension_graph_audit,
             "accepted_merge_edges": accepted_merge_edges,
@@ -1783,6 +1885,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "dimension_inventory": dimension_inventory_audit,
         "dimension_inventory_valid": dimension_inventory_valid,
         "dimension_inventory_error": dimension_inventory_error,
+        "document_dimension_unit_profile": document_dimension_unit_profile,
         "dimension_inventory_group_count": len(dimension_inventory_audit),
         "dimension_conflicts": dimension_conflicts,
         "dimension_graph_audit": dimension_graph_audit,

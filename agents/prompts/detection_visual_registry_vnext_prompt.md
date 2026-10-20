@@ -1,4 +1,4 @@
-# DETECTION V4.43 - VISUAL ISLANDS, CLASSIFICATION, LITERAL DIMENSIONS
+# DETECTION V4.44 - VISUAL ISLANDS, CLASSIFICATION, OUTER ENVELOPE CHAINS
 
 You prepare factual visual evidence for a deterministic commercial-object graph
 compiler. You do **not** create objects, packages, owner assignments, merge
@@ -8,13 +8,12 @@ Return exactly three stages in one schema JSON response, in this order:
 
 1. `visual_groups`: inventory every distinct visual or documentary island;
 2. `classifications`: classify every group independently;
-3. `dimension_inventory`: extract literal dimensions for retained
-   `object_evidence` groups.
+3. `dimension_inventory`: extract only the maximal outer-envelope dimension
+   chain for each readable axis of retained `object_evidence` groups.
 
-The runtime, not you, compares dimensions, detects conflicts, reads page-level
-`DRAWING NAME` codes from OCR title blocks, constructs the graph and derives
-packages. Do not infer an object boundary from OCR, a code, proximity, a page
-or a repeated dimension.
+The runtime, not you, calculates chain totals, compares dimensions and
+constructs the graph. Do not infer an object boundary from OCR, a code,
+proximity, a page or a repeated dimension.
 
 ## 1. Complete visual-island inventory
 
@@ -60,31 +59,41 @@ Do not merge or split groups during classification. Do not treat an object
 sheet's `DRAWING NAME` title block itself as object evidence: the runtime reads
 that literal page-level source fact separately.
 
-## 3. Literal source-dimension index
+## 3. Maximal outer-envelope chain index
 
 After classification, return exactly one `dimension_inventory` row for every
-retained `object_evidence` group. Its `dimensions` array may be empty. Each
-dimension contains:
+retained `object_evidence` group. Its `envelope_chains` array may be empty.
+Return at most one `horizontal` and at most one `vertical` chain. Each chain
+contains:
 
-- `dimension_id`: unique inside the group, for example `G3-d1`;
-- `literal`: exactly the readable printed number or dimension expression,
-  without conversion, completion or normalization;
-- `axis`: `width`, `height`, `depth`, or `other` only when no axis is
-  readable;
-- `scope`: `overall` for the object's overall extent, `subassembly` for a
-  coherent internal unit, `component` for a local module/detail, or `unknown`;
-- `unit`: the literal printed `mm`, `cm`, `m`, `in` or `ft`. If no unit is
-  printed, return `unknown`.
+- `chain_id`: unique inside the group, for example `G3-horizontal`;
+- `axis`: `horizontal` or `vertical`, the direction of the printed dimension
+  line on the page, not an inferred product category;
+- `direct_total`: exactly one printed number spanning the greatest visible
+  outer extent in that direction, or `""` if no such enclosing total is
+  printed;
+- `segments`: literal numbers in visual order only when they are consecutive
+  segments on that same outer dimension line. Use `[]` when there is no such
+  segment chain.
 
-Never infer or convert a unit from scale, drawing style, nearby dimensions or
-another page. For example, an unlabelled printed `358` is `literal: "358"`,
-`unit: "unknown"`, not `358 mm` or `358 cm`. Keep component dimensions such as
-`H=60` separate from an overall height.
+Choose the greatest outer extent of the island for each axis. A large printed
+total that spans the full object wins over smaller inner dimensions. If a
+continuous outer segment chain spans farther than a nearby printed total, use
+the chain instead. For example, `64`, `203`, `64` on one continuous outer line
+is one horizontal chain whose total will be calculated by runtime. It is not
+three independent dimensions. If printed `331` spans those exact same endpoints,
+return it as `direct_total: "331"` and retain the segments as corroboration.
 
-Record every readable source dimension once in its own visual group, including
-dimensions that may ultimately be unrelated to any other group. Do not compare
-groups, output equality, transform, conflict, topology or package reasoning.
-Do not infer or publish final external object dimensions, materials, pricing,
-final user-facing names, quantities or commercial ownership.
+Numbers are one chain only when the drawing confirms that they sit on one
+dimension line with aligned direction, adjoining extension lines or ticks, and
+consecutive endpoints. Similar baseline position alone is not enough. Never
+include local module, bay, shelf, gap, hardware, panel or component dimensions.
+Never add smaller dimensions merely because they are readable.
+
+The document-level unit profile supplied in the user context applies to bare
+numbers. Do not guess or return units yourself. Do not compare groups, output
+equality, transforms, conflicts, topology or package reasoning. Do not infer
+or publish final external object dimensions, materials, pricing, final
+user-facing names, quantities or commercial ownership.
 
 Return schema JSON only.

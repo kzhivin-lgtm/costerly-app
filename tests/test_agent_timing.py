@@ -24,6 +24,7 @@ from agents.anthropic_adapter import (
     build_uploaded_file_content_block,
     create_claude_message,
     create_claude_message_streamed,
+    extract_detection_document_dimension_unit_profile,
     extract_detection_page_drawing_codes,
     normalize_detection_identity_fields,
     run_anthropic_detection_agent,
@@ -63,7 +64,7 @@ class _Response:
 
 
 def _visual_registry_payload(payload):
-    """Upgrade legacy Registry fixtures to the V4.43 extraction contract."""
+    """Upgrade legacy Registry fixtures to the V4.44 extraction contract."""
     if not isinstance(payload, dict) or "visual_groups" not in payload:
         return payload
     groups = copy.deepcopy(payload["visual_groups"])
@@ -92,7 +93,7 @@ def _visual_registry_payload(payload):
     inventory = payload.get("dimension_inventory")
     if not isinstance(inventory, list):
         inventory = [
-            {"group_id": item["group_id"], "dimensions": []}
+            {"group_id": item["group_id"], "envelope_chains": []}
             for item in classifications
             if item["evidence_class"] == "object_evidence"
         ]
@@ -101,6 +102,31 @@ def _visual_registry_payload(payload):
         "classifications": classifications,
         "dimension_inventory": inventory,
     }
+
+
+def test_document_dimension_unit_profile_requires_one_explicit_unit_across_document():
+    profile = extract_detection_document_dimension_unit_profile({
+        "pages": [
+            {"page_number": 1, "blocks": [{"content": "H=260 ס\"מ; panel thickness 18 mm"}]},
+            {"page_number": 2, "images": [{"image_annotation": {"text": "W=331 cm"}}]},
+        ],
+    })
+
+    assert profile == {
+        "unit": "cm",
+        "status": "one_explicit_document_unit",
+        "evidence_pages": [1, 2],
+    }
+
+    conflicting_profile = extract_detection_document_dimension_unit_profile({
+        "pages": [
+            {"page_number": 1, "blocks": [{"content": "H=260 cm"}]},
+            {"page_number": 2, "blocks": [{"content": "W=331 mm"}]},
+        ],
+    })
+
+    assert conflicting_profile["unit"] == "unknown"
+    assert conflicting_profile["status"] == "conflicting_explicit_document_units"
 
 
 def test_title_block_drawing_code_extractor_accepts_only_one_explicit_code_per_page():
@@ -678,13 +704,13 @@ def test_integrated_visual_registry_uses_two_literal_overall_dimensions_to_merge
 
     response_payload = _visual_registry_payload(payload)
     response_payload["dimension_inventory"] = [
-        {"group_id": "elevation", "dimensions": [
-            {"dimension_id": "e-d1", "literal": "1200", "axis": "width", "scope": "overall", "unit": "mm"},
-            {"dimension_id": "e-d2", "literal": "2400", "axis": "height", "scope": "overall", "unit": "mm"},
+        {"group_id": "elevation", "envelope_chains": [
+            {"chain_id": "e-h", "axis": "horizontal", "segments": [], "direct_total": "1200"},
+            {"chain_id": "e-v", "axis": "vertical", "segments": [], "direct_total": "2400"},
         ]},
-        {"group_id": "plan", "dimensions": [
-            {"dimension_id": "p-d1", "literal": "1200", "axis": "width", "scope": "overall", "unit": "mm"},
-            {"dimension_id": "p-d2", "literal": "2400", "axis": "height", "scope": "overall", "unit": "mm"},
+        {"group_id": "plan", "envelope_chains": [
+            {"chain_id": "p-h", "axis": "horizontal", "segments": [], "direct_total": "1200"},
+            {"chain_id": "p-v", "axis": "vertical", "segments": [], "direct_total": "2400"},
         ]},
     ]
 
@@ -768,7 +794,7 @@ def test_integrated_visual_registry_keeps_upload_actionable_when_dimension_index
     assert "must account for every visual group" in usage["raw_usage"]["dimension_inventory_error"]
 
 
-def test_integrated_visual_registry_uses_title_block_drawing_code_as_review_required_source_root():
+def test_integrated_visual_registry_keeps_title_code_as_label_but_not_graph_edge():
     payload = {
         "visual_groups": [
             {"group_id": "overview", "page_number": 1, "location_hint": "upper", "visual_description": "kitchen, island and cabinet together", "representation_kind": "plan"},
@@ -810,15 +836,17 @@ def test_integrated_visual_registry_uses_title_block_drawing_code_as_review_requ
         )
 
     assert [item["transport_label"] for item in registry["objects"]] == [
-        "N57",
+        "N57", "N57", "N57", "N57",
     ]
-    assert [item["visual_group_ids"] for item in registry["objects"]] == [[
-        "view-001", "view-002", "view-003", "view-004",
-    ]]
+    assert [item["visual_group_ids"] for item in registry["objects"]] == [
+        ["view-001"], ["view-002"], ["view-003"], ["view-004"],
+    ]
     assert usage["raw_usage"]["reference_link_count"] == 0
     assert usage["raw_usage"]["dimension_graph_audit"]["page_drawing_codes"] == {"1": "N57"}
-    assert usage["raw_usage"]["dimension_graph_audit"]["source_root_merge_edge_count"] == 3
-    assert usage["raw_usage"]["registry_graph_review_required_object_ids"] == ["object-001"]
+    assert usage["raw_usage"]["dimension_graph_audit"]["source_root_merge_edge_count"] == 0
+    assert usage["raw_usage"]["registry_graph_review_required_object_ids"] == [
+        "object-001", "object-002", "object-003", "object-004",
+    ]
     assert usage["raw_usage"]["unassigned_object_evidence_group_count"] == 0
 
 

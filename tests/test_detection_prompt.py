@@ -74,12 +74,13 @@ def test_integrated_visual_registry_returns_facts_for_the_deterministic_graph_co
     assert "Return exactly three stages" in prompt
     assert "plan, room layout, electrical, plumbing or lighting plan" in prompt
     assert "never become Estimation Evidence" in prompt
-    assert "Literal source-dimension index" in prompt
+    assert "Maximal outer-envelope chain index" in prompt
     assert "dimension_inventory" in prompt
     assert "classification_reason" in prompt
     assert "passive recall aid" in prompt
-    assert "unit: \"unknown\"" in prompt
-    assert "Do not compare\ngroups, output equality, transform, conflict, topology or package reasoning" in prompt
+    assert "64`, `203`, `64`" in prompt
+    assert "Do not guess or return units yourself" in prompt
+    assert "Do not compare groups, output\nequality, transforms, conflicts, topology or package reasoning" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_43_literal_dimensions_deterministic_graph_temperature_0"
+        "detection_v4_44_outer_envelope_equality_graph_temperature_0"
     )

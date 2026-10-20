@@ -143,23 +143,23 @@ def test_proof_graph_derives_one_component_from_two_evidence_backed_edges():
     ]
 
 
-def test_v4_43_dimension_compiler_retains_one_match_and_merges_two_overall_matches():
+def test_v4_44_envelope_compiler_retains_one_equality_and_merges_two_independent_equalities():
     groups = [
         {"group_id": "view-001", "page_number": 1, "representation_kind": "elevation"},
         {"group_id": "view-002", "page_number": 1, "representation_kind": "section"},
         {"group_id": "view-003", "page_number": 2, "representation_kind": "elevation"},
     ]
     inventory = validate_detection_dimension_inventory([
-        {"group_id": "view-001", "dimensions": [
-            {"dimension_id": "G1-d1", "literal": "358", "axis": "width", "scope": "overall", "unit": "unknown"},
-            {"dimension_id": "G1-d2", "literal": "245", "axis": "height", "scope": "overall", "unit": "unknown"},
+        {"group_id": "view-001", "envelope_chains": [
+            {"chain_id": "G1-h", "axis": "horizontal", "segments": [], "direct_total": "358"},
+            {"chain_id": "G1-v", "axis": "vertical", "segments": [], "direct_total": "245"},
         ]},
-        {"group_id": "view-002", "dimensions": [
-            {"dimension_id": "G2-d1", "literal": "358", "axis": "width", "scope": "overall", "unit": "unknown"},
+        {"group_id": "view-002", "envelope_chains": [
+            {"chain_id": "G2-h", "axis": "horizontal", "segments": [], "direct_total": "358"},
         ]},
-        {"group_id": "view-003", "dimensions": [
-            {"dimension_id": "G3-d1", "literal": "358", "axis": "width", "scope": "overall", "unit": "unknown"},
-            {"dimension_id": "G3-d2", "literal": "245", "axis": "height", "scope": "overall", "unit": "unknown"},
+        {"group_id": "view-003", "envelope_chains": [
+            {"chain_id": "G3-h", "axis": "horizontal", "segments": [], "direct_total": "358"},
+            {"chain_id": "G3-v", "axis": "vertical", "segments": [], "direct_total": "245"},
         ]},
     ], visual_group_ids={group["group_id"] for group in groups})
 
@@ -191,19 +191,17 @@ def test_v4_43_dimension_compiler_retains_one_match_and_merges_two_overall_match
     ) == [["view-001", "view-003"], ["view-002"]]
 
 
-def test_v4_43_dimension_compiler_keeps_source_root_from_overriding_a_direct_conflict():
+def test_v4_44_envelope_compiler_never_uses_source_code_as_a_graph_edge():
     groups = [
         {"group_id": "view-001", "page_number": 1, "representation_kind": "elevation"},
         {"group_id": "view-002", "page_number": 1, "representation_kind": "elevation"},
     ]
     inventory = validate_detection_dimension_inventory([
-        {"group_id": "view-001", "dimensions": [{
-            "dimension_id": "G1-d1", "literal": "358", "axis": "width",
-            "scope": "overall", "unit": "cm",
+        {"group_id": "view-001", "envelope_chains": [{
+            "chain_id": "G1-h", "axis": "horizontal", "segments": [], "direct_total": "358",
         }]},
-        {"group_id": "view-002", "dimensions": [{
-            "dimension_id": "G2-d1", "literal": "349", "axis": "width",
-            "scope": "overall", "unit": "cm",
+        {"group_id": "view-002", "envelope_chains": [{
+            "chain_id": "G2-h", "axis": "horizontal", "segments": [], "direct_total": "349",
         }]},
     ], visual_group_ids={group["group_id"] for group in groups})
 
@@ -212,24 +210,24 @@ def test_v4_43_dimension_compiler_keeps_source_root_from_overriding_a_direct_con
     )
 
     assert edges == []
-    assert conflicts[0]["group_id_a"] == "view-001"
-    assert conflicts[0]["group_id_b"] == "view-002"
-    assert audit["source_root_conflict_exclusion_count"] == 1
+    assert conflicts == []
+    assert audit["source_root_merge_edge_count"] == 0
+    assert audit["source_codes_used_for_graph"] is False
 
 
-def test_v4_43_dimension_compiler_derives_axis_swapped_transform_in_code():
+def test_v4_44_envelope_compiler_records_cross_axis_matches_as_equality_only():
     groups = [
         {"group_id": "view-001", "page_number": 1, "representation_kind": "elevation"},
         {"group_id": "view-002", "page_number": 2, "representation_kind": "plan"},
     ]
     inventory = validate_detection_dimension_inventory([
-        {"group_id": "view-001", "dimensions": [
-            {"dimension_id": "G1-d1", "literal": "358", "axis": "width", "scope": "overall", "unit": "cm"},
-            {"dimension_id": "G1-d2", "literal": "245", "axis": "height", "scope": "overall", "unit": "cm"},
+        {"group_id": "view-001", "envelope_chains": [
+            {"chain_id": "G1-h", "axis": "horizontal", "segments": [], "direct_total": "358"},
+            {"chain_id": "G1-v", "axis": "vertical", "segments": [], "direct_total": "245"},
         ]},
-        {"group_id": "view-002", "dimensions": [
-            {"dimension_id": "G2-d1", "literal": "245", "axis": "width", "scope": "overall", "unit": "cm"},
-            {"dimension_id": "G2-d2", "literal": "358", "axis": "height", "scope": "overall", "unit": "cm"},
+        {"group_id": "view-002", "envelope_chains": [
+            {"chain_id": "G2-h", "axis": "horizontal", "segments": [], "direct_total": "245"},
+            {"chain_id": "G2-v", "axis": "vertical", "segments": [], "direct_total": "358"},
         ]},
     ], visual_group_ids={group["group_id"] for group in groups})
 
@@ -242,11 +240,38 @@ def test_v4_43_dimension_compiler_derives_axis_swapped_transform_in_code():
 
     assert conflicts == []
     assert [fact["evidence_type"] for fact in edges[0]["evidence_facts"]] == [
-        "dimension_transform",
+        "dimension_equality", "dimension_equality",
     ]
     assert len(accepted_merges) == 1
     assert rejected == []
-    assert audit["dimension_transform_fact_count"] == 1
+    assert audit["dimension_transform_fact_count"] == 0
+
+
+def test_v4_44_envelope_compiler_uses_a_larger_segment_sum_and_near_equality():
+    groups = [
+        {"group_id": "view-001", "page_number": 1, "representation_kind": "elevation"},
+        {"group_id": "view-002", "page_number": 2, "representation_kind": "elevation"},
+    ]
+    inventory = validate_detection_dimension_inventory([
+        {"group_id": "view-001", "envelope_chains": [{
+            "chain_id": "G1-h", "axis": "horizontal",
+            "direct_total": "338", "segments": ["64", "203", "81"],
+        }]},
+        {"group_id": "view-002", "envelope_chains": [{
+            "chain_id": "G2-h", "axis": "horizontal",
+            "direct_total": "347", "segments": [],
+        }]},
+    ], visual_group_ids={group["group_id"] for group in groups})
+
+    edges, conflicts, audit = compile_detection_dimension_graph(
+        inventory, visual_groups=groups, page_drawing_codes={}, document_dimension_unit="cm",
+    )
+
+    assert conflicts == []
+    assert edges[0]["relationship"] == "supporting_relation"
+    assert "total 348 (segmented_sum)" in edges[0]["evidence_facts"][0]["observation"]
+    assert audit["near_envelope_equality_fact_count"] == 1
+    assert audit["document_dimension_unit"] == "cm"
 
 
 def test_v4_40_relation_graph_preserves_positive_dimension_facts_and_isolates_weak_merge():
@@ -690,7 +715,7 @@ def test_v4_43_registry_schema_contains_only_model_extracted_facts():
     assert "pair_relation_facts" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "dimension_inventory" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "classifications" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
-    assert "dimensions" in dimension_properties
+    assert "envelope_chains" in dimension_properties
     assert "proof_edges" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "merge_proofs" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
 

@@ -290,6 +290,22 @@ title pages and title blocks remain out of Estimation Evidence. Acceptance:
 HSL completes with N57 as an allowed whole source-root package and N76B
 separate, then Page 23 and Adda retain their protected outcomes.
 
+V4.44 is an approved isolated dimensions-only graph experiment. It preserves
+the V4.43 visual-island and classification stages, one temperature-zero Haiku
+call and full OCR Evidence, but replaces the provider's unbounded local-
+dimension transcript with at most one maximal outer-envelope chain on each
+readable horizontal and vertical axis. A direct outer total wins unless a
+continuous outer segment chain sums to a greater span. Runtime alone sums
+literal segments, compares all retained pairs, and writes only
+`dimension_equality` facts. Equality permits up to one-percent drawing drift,
+including 406 versus 407. The global document unit is read deterministically
+from explicit OCR markers before Registry; bare values inherit it only when all
+visible unit markers agree. No author-code root, transform, topology, conflict
+or other relation type participates in this graph experiment. Acceptance:
+inspect the HSL graph for maximal chains, computed sums and equality edges
+before evaluating object packages, then decide whether this becomes the new
+graph foundation or is reverted to V4.43.
+
 PENDING, P1, USER REQUEST, Detection Registry output and latency optimisation:
 after the commercial-boundary experiment reaches a valid HSL graph, remove only
 proven duplicated model output while preserving all inspectable typed facts and
