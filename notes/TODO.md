@@ -306,6 +306,18 @@ inspect the HSL graph for maximal chains, computed sums and equality edges
 before evaluating object packages, then decide whether this becomes the new
 graph foundation or is reverted to V4.43.
 
+V4.45 follows the failed HSL V4.44 run. It keeps the same one-call,
+dimensions-only graph scope but makes the island to chain binding explicit:
+one separately framed, dimensioned or positioned drawing is one immutable
+visual group, even when it depicts the same product as its neighbour. The
+model may return no chain for an unreadable axis. Runtime canonicalizes only a
+completely empty synthetic chain to that existing no-chain state, preserving
+all literal measurements. The graph remains only deterministic
+`dimension_equality`; no packages, ownership, codes, transforms, topology or
+other proof types are part of this experiment. HSL acceptance: the graph must
+retain valid chains when another group has no readable outer size, and expose
+the obvious external-width comparisons before any later object-assembly work.
+
 PENDING, P1, USER REQUEST, Detection Registry output and latency optimisation:
 after the commercial-boundary experiment reaches a valid HSL graph, remove only
 proven duplicated model output while preserving all inspectable typed facts and

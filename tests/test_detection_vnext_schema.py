@@ -12,6 +12,7 @@ from agents.schemas.detection_registry_schema import (
     derive_detection_package_decision_audit,
     derive_detection_proof_components,
     derive_detection_standalone_package_group_ids,
+    normalize_empty_detection_envelope_chains,
     partition_detection_relation_edges,
     validate_detection_dimension_inventory,
     validate_detection_pairwise_merge_proofs,
@@ -718,6 +719,25 @@ def test_v4_43_registry_schema_contains_only_model_extracted_facts():
     assert "envelope_chains" in dimension_properties
     assert "proof_edges" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "merge_proofs" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
+
+
+def test_empty_envelope_chain_is_canonicalized_without_losing_other_measurements():
+    normalized, empty_group_ids = normalize_empty_detection_envelope_chains([
+        {"group_id": "view-001", "envelope_chains": [{
+            "chain_id": "G1-horizontal", "axis": "horizontal",
+            "segments": [], "direct_total": "",
+        }]},
+        {"group_id": "view-002", "envelope_chains": [{
+            "chain_id": "G2-horizontal", "axis": "horizontal",
+            "segments": ["64", "203", "64"], "direct_total": "358",
+        }]},
+    ])
+
+    assert empty_group_ids == ["view-001"]
+    assert normalized[0]["envelope_chains"] == []
+    assert validate_detection_dimension_inventory(
+        normalized, visual_group_ids={"view-001", "view-002"},
+    )[1]["envelope_chains"][0]["direct_total"] == "358"
 
 
 def test_final_registry_requires_every_object_evidence_group_once():

@@ -39,6 +39,7 @@ from agents.schemas.detection_registry_schema import (
     derive_detection_proof_components,
     derive_detection_standalone_package_group_ids,
     compile_detection_dimension_graph,
+    normalize_empty_detection_envelope_chains,
     normalize_detection_dimension_inventory_group_ids,
     validate_detection_dimension_inventory,
     validate_detection_registry,
@@ -63,11 +64,10 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_44_outer_envelope_equality_graph_temperature_0"
+    "detection_v4_45_island_envelope_equality_graph_temperature_0"
 )
-# V4.44 keeps one Haiku call. The model extracts islands, classifications and
-# at most one maximal outer envelope chain per visual axis. Runtime alone sums
-# chains and compiles a dimensions-equality graph without a quadratic response.
+# V4.45 keeps one Haiku call. The model records one chain per readable axis of
+# each immutable visual island. Runtime alone sums chains and compiles equality.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # The positive graph and per-group source index are linear in island count.
 DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
@@ -1643,6 +1643,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     dimension_inventory_audit: list[dict[str, Any]] = []
     dimension_inventory_valid = False
     dimension_inventory_error: str | None = None
+    empty_envelope_chain_group_ids: list[str] = []
     dimension_conflicts: list[dict[str, Any]] = []
     dimension_graph_audit: dict[str, Any] = {}
     package_decisions: list[dict[str, Any]] = []
@@ -1682,6 +1683,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 payload["dimension_inventory"], group_id_mapping,
             )
         )
+        (
+            payload["dimension_inventory"],
+            empty_envelope_chain_group_ids,
+        ) = normalize_empty_detection_envelope_chains(
+            payload["dimension_inventory"],
+        )
         visual_group_ids = {
             group["group_id"] for group in visual_map["visual_groups"]
         }
@@ -1705,6 +1712,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                         document_dimension_unit_profile.get("unit") or "unknown"
                     ),
                 )
+            )
+            dimension_graph_audit["empty_envelope_chain_group_ids"] = (
+                empty_envelope_chain_group_ids
             )
         else:
             compiled_relation_edges = []
@@ -1826,6 +1836,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "dimension_inventory": dimension_inventory_audit,
             "dimension_inventory_valid": dimension_inventory_valid,
             "dimension_inventory_error": dimension_inventory_error,
+            "empty_envelope_chain_group_ids": empty_envelope_chain_group_ids,
             "document_dimension_unit_profile": document_dimension_unit_profile,
             "dimension_conflicts": dimension_conflicts,
             "dimension_graph_audit": dimension_graph_audit,
@@ -1885,6 +1896,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "dimension_inventory": dimension_inventory_audit,
         "dimension_inventory_valid": dimension_inventory_valid,
         "dimension_inventory_error": dimension_inventory_error,
+        "empty_envelope_chain_group_ids": empty_envelope_chain_group_ids,
         "document_dimension_unit_profile": document_dimension_unit_profile,
         "dimension_inventory_group_count": len(dimension_inventory_audit),
         "dimension_conflicts": dimension_conflicts,

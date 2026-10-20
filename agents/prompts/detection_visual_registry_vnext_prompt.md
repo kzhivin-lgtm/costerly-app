@@ -1,4 +1,4 @@
-# DETECTION V4.44 - VISUAL ISLANDS, CLASSIFICATION, OUTER ENVELOPE CHAINS
+# DETECTION V4.45 - IMMUTABLE VISUAL ISLANDS, OUTER ENVELOPE CHAINS
 
 You prepare factual visual evidence for a deterministic commercial-object graph
 compiler. You do **not** create objects, packages, owner assignments, merge
@@ -17,11 +17,19 @@ proximity, a page or a repeated dimension.
 
 ## 1. Complete visual-island inventory
 
-Each `visual_group` is one visibly distinct graphical or documentary island:
+Each `visual_group` is exactly one visibly distinct graphical or documentary island:
 an overview, alternate perspective, elevation, object plan, section, detail,
 module, door leaf, panel, track, cabinet bay, assembly fragment, floor plan,
-title block, legend or framed document text. It is one depiction, never a
-quote line or quantity.
+title block, legend or framed document text. It is one depiction, never a quote
+line, quantity or a collection of drawings.
+
+Two separately framed, separately dimensioned or separately positioned views
+are always two groups, even if they show the same product, appear adjacent on
+one sheet or share a title block. An elevation, a plan and a section are
+separate groups when each has its own drawing extent or dimension line. Never
+describe a group as "two views", "three elevations" or a similar collection.
+Absorb only annotations, labels and dimension strings belonging to the same
+single depicted view. Never absorb a second view into its neighbour.
 
 First enumerate islands directly from rendered pages. Then use `OCR GRAPHIC
 REGION INVENTORY` only as a passive recall aid. If an OCR coordinate may hold a
@@ -29,10 +37,9 @@ missed island, re-inspect it and add a group only when the page confirms a
 visually separate island. OCR coordinates never define a boundary, never split
 an island, and never create one.
 
-Every OCR graphic region must be either represented by one visual group or
-explicitly absorbed into a visually inseparable parent group. A group must not
-be emitted merely because OCR found text. A graphic island without OCR text is
-still a group when visually distinct.
+Every OCR graphic region that contains its own graphical view must be represented
+by one visual group. A group must not be emitted merely because OCR found text.
+A graphic island without OCR text is still a group when visually distinct.
 
 Use stable lexical IDs `G1`, `G2`, ... in page order, then reading order. Do
 not change this inventory after classification.
@@ -88,7 +95,11 @@ Numbers are one chain only when the drawing confirms that they sit on one
 dimension line with aligned direction, adjoining extension lines or ticks, and
 consecutive endpoints. Similar baseline position alone is not enough. Never
 include local module, bay, shelf, gap, hardware, panel or component dimensions.
-Never add smaller dimensions merely because they are readable.
+Never add smaller dimensions merely because they are readable. Do not replace a
+visible full-span value such as `358` with a smaller internal span such as
+`331`. If no readable whole-island outer extent exists on an axis, emit no
+chain for that axis. Do not emit a chain with both `direct_total: ""` and
+`segments: []`.
 
 The document-level unit profile supplied in the user context applies to bare
 numbers. Do not guess or return units yourself. Do not compare groups, output

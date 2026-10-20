@@ -320,6 +320,42 @@ def normalize_detection_dimension_inventory_group_ids(
     return normalized
 
 
+def normalize_empty_detection_envelope_chains(
+    inventory: object,
+) -> tuple[object, list[str]]:
+    """Canonicalize a provider's empty chain as no readable chain.
+
+    An empty synthetic chain has no factual content: it is the provider's
+    representation of the existing ``envelope_chains: []`` state. Removing
+    only that exact shape preserves every literal measurement and lets the
+    remaining islands enter the deterministic equality comparison.
+    """
+    if not isinstance(inventory, list):
+        return inventory, []
+    normalized = copy.deepcopy(inventory)
+    normalized_group_ids: set[str] = set()
+    required_chain_keys = {"chain_id", "axis", "segments", "direct_total"}
+    for row in normalized:
+        if not isinstance(row, dict) or not isinstance(row.get("envelope_chains"), list):
+            continue
+        retained_chains: list[object] = []
+        for chain in row["envelope_chains"]:
+            is_empty_chain = (
+                isinstance(chain, dict)
+                and set(chain) == required_chain_keys
+                and not str(chain.get("direct_total") or "").strip()
+                and chain.get("segments") == []
+            )
+            if is_empty_chain:
+                group_id = str(row.get("group_id") or "").strip()
+                if group_id:
+                    normalized_group_ids.add(group_id)
+                continue
+            retained_chains.append(chain)
+        row["envelope_chains"] = retained_chains
+    return normalized, sorted(normalized_group_ids)
+
+
 _DIMENSION_LITERAL_RE = re.compile(r"^\s*(\d+(?:[.,]\d+)?)\s*$")
 _ENVELOPE_EQUALITY_TOLERANCE = Decimal("0.01")
 
