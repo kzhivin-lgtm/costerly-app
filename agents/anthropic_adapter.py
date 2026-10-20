@@ -38,6 +38,8 @@ from agents.schemas.detection_registry_schema import (
     DetectionRegistrySchemaError,
     derive_detection_package_decision_audit,
     derive_detection_dimension_package_candidates,
+    compile_detection_semantic_pairwise_ledger,
+    merge_detection_relation_edges,
     derive_detection_proof_components,
     derive_detection_standalone_package_group_ids,
     compile_detection_dimension_graph,
@@ -66,11 +68,11 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_58_registry_dimension_chains_and_candidate_packages_temperature_0"
+    "detection_v4_59_full_same_page_semantic_ledger_temperature_0"
 )
-# V4.58 keeps one Haiku call. Registry identifies Islands, classes and possible
-# dimension chains. Runtime validates source references, calculates similarity
-# and derives dimension-package candidates without final commercial merges.
+# V4.59 keeps one Haiku call. Registry identifies Islands, classes and a
+# complete same-page semantic ledger. Runtime owns dimension fingerprints,
+# similarity, graph union and candidate packages.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # The positive graph and per-group source index are linear in island count.
 DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
@@ -172,17 +174,34 @@ DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA: dict[str, Any] = {
         "properties": {"group_id": {"type": "string"},
             "evidence_class": {"type": "string", "enum": ["document_context", "object_evidence"]},
             "classification_reason": {"type": "string"}}}}
+DETECTION_SEMANTIC_PAIRWISE_LEDGER_SCHEMA: dict[str, Any] = {
+    "type": "array", "items": {"type": "object", "additionalProperties": False,
+        "required": ["group_id_a", "group_id_b", "checks"], "properties": {
+            "group_id_a": {"type": "string"}, "group_id_b": {"type": "string"},
+            "checks": {"type": "array", "items": {"type": "object",
+                "additionalProperties": False,
+                "required": ["evidence_type", "state", "observation"], "properties": {
+                    "evidence_type": {"type": "string", "enum": [
+                        "explicit_document_relation", "dimension_transform",
+                        "matching_topology", "unique_geometry", "direct_shared_structure",
+                    ]},
+                    "state": {"type": "string", "enum": ["present", "absent", "unknown"]},
+                    "observation": {"type": "string"},
+                }},
+            },
+        }},
+}
 
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": [
-        "visual_groups", "classifications", "dimension_inventory",
+        "visual_groups", "classifications", "semantic_pairwise_ledger",
     ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
-        "dimension_inventory": DETECTION_DIMENSION_INVENTORY_JSON_SCHEMA,
+        "semantic_pairwise_ledger": DETECTION_SEMANTIC_PAIRWISE_LEDGER_SCHEMA,
     },
 }
 
@@ -2039,6 +2058,16 @@ def _discard_non_object_visual_registry_groups(
             if not isinstance(row, dict)
             or str(row.get("group_id") or "") in retained_group_ids
         ]
+    semantic_ledger = effective.get("semantic_pairwise_ledger")
+    if isinstance(semantic_ledger, list):
+        effective["semantic_pairwise_ledger"] = [
+            row for row in semantic_ledger
+            if not isinstance(row, dict)
+            or (
+                str(row.get("group_id_a") or "") in retained_group_ids
+                and str(row.get("group_id_b") or "") in retained_group_ids
+            )
+        ]
 
     page_coverage = effective.get("page_coverage")
     if isinstance(page_coverage, list):
@@ -2110,6 +2139,16 @@ def _discard_empty_evidence_visual_registry_groups(
                 if not isinstance(row, dict)
                 or str(row.get("group_id") or "") not in raw_group_ids
             ]
+    ledger = effective.get("semantic_pairwise_ledger")
+    if isinstance(ledger, list):
+        effective["semantic_pairwise_ledger"] = [
+            row for row in ledger
+            if not isinstance(row, dict)
+            or (
+                str(row.get("group_id_a") or "") not in raw_group_ids
+                and str(row.get("group_id_b") or "") not in raw_group_ids
+            )
+        ]
     return effective, discarded_groups
 
 
@@ -2346,6 +2385,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     empty_envelope_chain_group_ids: list[str] = []
     dimension_conflicts: list[dict[str, Any]] = []
     dimension_graph_audit: dict[str, Any] = {}
+    semantic_ledger_audit: dict[str, Any] = {}
     package_decisions: list[dict[str, Any]] = []
     dimension_package_candidate_components: list[list[str]] = []
     dimension_package_candidate_decisions: list[dict[str, Any]] = []
@@ -2363,10 +2403,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 _discard_non_object_visual_registry_groups(payload)
             )
         if not isinstance(payload, dict) or set(payload) != {
-            "visual_groups", "classifications", "dimension_inventory",
+            "visual_groups", "classifications", "semantic_pairwise_ledger",
         }:
             raise ValueError(
-                "visual registry must contain visual groups, classifications and dimensions"
+                "visual registry must contain visual groups, classifications and semantic ledger"
             )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
@@ -2433,8 +2473,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         page_local_view_labels = assign_detection_page_local_view_labels(
             view_evidence_packages
         )
-        payload["dimension_inventory"] = normalize_detection_dimension_inventory_group_ids(
-            payload["dimension_inventory"], group_id_mapping
+        for row in payload["semantic_pairwise_ledger"]:
+            if isinstance(row, dict):
+                row["group_id_a"] = group_id_mapping.get(str(row.get("group_id_a") or ""), str(row.get("group_id_a") or ""))
+                row["group_id_b"] = group_id_mapping.get(str(row.get("group_id_b") or ""), str(row.get("group_id_b") or ""))
+        payload["dimension_inventory"] = build_detection_dimension_fingerprints(
+            view_evidence_packages
         )
         source_fact_ids_by_group = {
             str(package["visual_group_id"]): list(package["source_fact_ids"])
@@ -2459,7 +2503,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         )
         page_drawing_codes = extract_detection_page_drawing_codes(ocr_package)
         if dimension_inventory_valid:
-            compiled_relation_edges, dimension_conflicts, dimension_graph_audit = (
+            dimension_relation_edges, dimension_conflicts, dimension_graph_audit = (
                 compile_detection_dimension_graph(
                     dimension_inventory_audit,
                     visual_groups=visual_map["visual_groups"],
@@ -2473,7 +2517,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 empty_envelope_chain_group_ids
             )
         else:
-            compiled_relation_edges = []
+            dimension_relation_edges = []
             dimension_graph_audit = {
                 "compiler_version": "v1",
                 "pairs_checked": 0,
@@ -2490,6 +2534,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 "dimension_conflicts": [],
                 "skipped_reason": "dimension inventory is invalid",
             }
+        semantic_relation_edges, semantic_ledger_audit = compile_detection_semantic_pairwise_ledger(
+            payload["semantic_pairwise_ledger"],
+            visual_groups=visual_map["visual_groups"], page_count=len(page_images),
+        )
+        compiled_relation_edges = merge_detection_relation_edges(
+            dimension_relation_edges, semantic_relation_edges,
+        )
         (
             positive_relation_edges,
             accepted_merge_edges,
@@ -2609,6 +2660,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "document_dimension_unit_profile": document_dimension_unit_profile,
             "dimension_conflicts": dimension_conflicts,
             "dimension_graph_audit": dimension_graph_audit,
+            "semantic_ledger_audit": semantic_ledger_audit,
             "dimension_package_candidate_components": dimension_package_candidate_components,
             "dimension_package_candidate_decisions": dimension_package_candidate_decisions,
             "accepted_merge_edges": accepted_merge_edges,
@@ -2677,6 +2729,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "dimension_inventory_group_count": len(dimension_inventory_audit),
         "dimension_conflicts": dimension_conflicts,
         "dimension_graph_audit": dimension_graph_audit,
+        "semantic_ledger_audit": semantic_ledger_audit,
         "dimension_package_candidate_components": dimension_package_candidate_components,
         "dimension_package_candidate_decisions": dimension_package_candidate_decisions,
         "positive_relation_edge_count": len(positive_relation_edges),

@@ -74,13 +74,13 @@ def test_integrated_visual_registry_returns_facts_for_the_deterministic_graph_co
     assert "Return exactly three stages" in prompt
     assert "plan, room layout, electrical, plumbing or lighting plan" in prompt
     assert "never become Estimation Evidence" in prompt
-    assert "dimension_inventory" in prompt
-    assert "deterministically attaches the complete same-page source-fact" in prompt
+    assert "semantic_pairwise_ledger" in prompt
+    assert "deterministically attaches the complete same-page\nsource-fact" in prompt
     assert "PAGE EVIDENCE INVENTORY" in prompt
     assert "classification_reason" in prompt
     assert "passive recall aid" in prompt
-    assert "Possible dimension chains" in prompt
+    assert "Dimension Fingerprints" in prompt
     assert "Two separately framed, separately dimensioned or separately positioned views" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_58_registry_dimension_chains_and_candidate_packages_temperature_0"
+        "detection_v4_59_full_same_page_semantic_ledger_temperature_0"
     )

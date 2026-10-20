@@ -64,7 +64,7 @@ class _Response:
 
 
 def _visual_registry_payload(payload):
-    """Upgrade legacy Registry fixtures to the V4.58 three-stage contract."""
+    """Upgrade legacy Registry fixtures to the V4.59 three-stage contract."""
     if not isinstance(payload, dict) or "visual_groups" not in payload:
         return payload
     groups = copy.deepcopy(payload["visual_groups"])
@@ -99,11 +99,20 @@ def _visual_registry_payload(payload):
     return {
         "visual_groups": groups,
         "classifications": classifications,
-        "dimension_inventory": copy.deepcopy(payload.get(
-            "dimension_inventory",
+        "semantic_pairwise_ledger": copy.deepcopy(payload.get(
+            "semantic_pairwise_ledger",
             [
-                {"group_id": group["group_id"], "envelope_chains": []}
-                for group in groups if isinstance(group, dict)
+                {"group_id_a": left["group_id"], "group_id_b": right["group_id"],
+                 "checks": [
+                     {"evidence_type": evidence_type, "state": "absent", "observation": ""}
+                     for evidence_type in (
+                         "explicit_document_relation", "dimension_transform", "matching_topology",
+                         "unique_geometry", "direct_shared_structure",
+                     )
+                 ]}
+                for index, left in enumerate(groups) if isinstance(left, dict)
+                for right in groups[index + 1:] if isinstance(right, dict)
+                and left.get("page_number") == right.get("page_number")
             ],
         )),
     }
@@ -683,12 +692,6 @@ def test_visual_registry_materializes_view_package_from_immutable_source_fact():
             },
         }],
     })
-    payload["dimension_inventory"] = [{
-        "group_id": "cabinet", "envelope_chains": [{
-            "chain_id": "cabinet-width", "axis": "horizontal", "segments": [],
-            "direct_total": "358", "source_fact_ids": ["SF00001"],
-        }],
-    }]
     ocr_package = {"evidence": {"text_blocks": [{
         "page_number": 1, "source": "native_pdf_text",
         "bbox": {"top_left_x": 10, "top_left_y": 20, "bottom_right_x": 40, "bottom_right_y": 30},
@@ -814,16 +817,6 @@ def test_integrated_visual_registry_uses_two_literal_overall_dimensions_to_merge
     }
 
     response_payload = _visual_registry_payload(payload)
-    response_payload["dimension_inventory"] = [
-        {"group_id": "elevation", "envelope_chains": [
-                {"chain_id": "e-h", "axis": "horizontal", "segments": [], "direct_total": "1200", "source_fact_ids": []},
-                {"chain_id": "e-v", "axis": "vertical", "segments": [], "direct_total": "2400", "source_fact_ids": []},
-        ]},
-        {"group_id": "plan", "envelope_chains": [
-                {"chain_id": "p-h", "axis": "horizontal", "segments": [], "direct_total": "1200", "source_fact_ids": []},
-                {"chain_id": "p-v", "axis": "vertical", "segments": [], "direct_total": "2400", "source_fact_ids": []},
-        ]},
-    ]
 
     with (
         patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
@@ -882,7 +875,6 @@ def test_integrated_visual_registry_keeps_upload_actionable_when_dimension_index
             "evidence_reason": "cabinet views",
         }],
     })
-    payload["dimension_inventory"] = []
 
     with (
         patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
@@ -903,10 +895,8 @@ def test_integrated_visual_registry_keeps_upload_actionable_when_dimension_index
     assert [item["visual_group_ids"] for item in registry["objects"]] == [
         ["view-001"], ["view-002"],
     ]
-    assert usage["raw_usage"]["dimension_inventory_valid"] is False
-    assert usage["raw_usage"]["dimension_inventory_error"] == (
-        "dimension inventory must account for every visual group exactly once"
-    )
+    assert usage["raw_usage"]["dimension_inventory_valid"] is True
+    assert usage["raw_usage"]["dimension_inventory_error"] is None
 
 
 def test_integrated_visual_registry_keeps_title_code_as_label_but_not_graph_edge():

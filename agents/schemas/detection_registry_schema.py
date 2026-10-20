@@ -46,6 +46,10 @@ _NON_EXPLICIT_MERGE_SUPPORT_TYPES = frozenset({
     "dimension_transform",
     "unique_geometry",
 })
+SEMANTIC_PAIRWISE_EVIDENCE_TYPES = frozenset({
+    "explicit_document_relation", "dimension_transform", "matching_topology",
+    "unique_geometry", "direct_shared_structure",
+})
 
 DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
     "type": "array",
@@ -1445,6 +1449,102 @@ def derive_detection_dimension_package_candidates(
             queue.extend(sorted(adjacency[current] - visited))
         components.append(sorted(component))
     return components
+
+
+def compile_detection_semantic_pairwise_ledger(
+    ledger: object,
+    *,
+    visual_groups: list[dict[str, Any]],
+    page_count: int,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Validate every same-page semantic comparison and emit positive edges."""
+    if not isinstance(ledger, list):
+        raise DetectionRegistrySchemaError("semantic pairwise ledger is invalid")
+    page_by_group = {
+        str(group.get("group_id") or ""): int(group["page_number"])
+        for group in visual_groups if isinstance(group, dict)
+    }
+    expected_pairs = {
+        (left, right)
+        for left, right in combinations(sorted(page_by_group), 2)
+        if page_by_group[left] == page_by_group[right]
+    }
+    rows_by_pair: dict[tuple[str, str], dict[str, Any]] = {}
+    for row in ledger:
+        if not isinstance(row, dict) or set(row) != {"group_id_a", "group_id_b", "checks"}:
+            raise DetectionRegistrySchemaError("semantic pairwise ledger is invalid")
+        pair = tuple(sorted((
+            str(row["group_id_a"] or ""), str(row["group_id_b"] or ""),
+        )))
+        if pair not in expected_pairs or pair in rows_by_pair or not isinstance(row["checks"], list):
+            raise DetectionRegistrySchemaError("semantic pairwise ledger pairs are invalid")
+        checks: dict[str, dict[str, Any]] = {}
+        for check in row["checks"]:
+            if not isinstance(check, dict) or set(check) != {"evidence_type", "state", "observation"}:
+                raise DetectionRegistrySchemaError("semantic pairwise ledger checks are invalid")
+            evidence_type = str(check["evidence_type"] or "")
+            state = str(check["state"] or "")
+            observation = str(check["observation"] or "").strip()
+            if (
+                evidence_type not in SEMANTIC_PAIRWISE_EVIDENCE_TYPES
+                or evidence_type in checks
+                or state not in {"present", "absent", "unknown"}
+                or (state == "present" and not observation)
+                or (state != "present" and observation)
+            ):
+                raise DetectionRegistrySchemaError("semantic pairwise ledger checks are invalid")
+            checks[evidence_type] = {
+                "evidence_type": evidence_type, "state": state,
+                "observation": observation,
+            }
+        if set(checks) != SEMANTIC_PAIRWISE_EVIDENCE_TYPES:
+            raise DetectionRegistrySchemaError("semantic pairwise ledger must check every evidence type")
+        rows_by_pair[pair] = {"group_id_a": pair[0], "group_id_b": pair[1], "checks": checks}
+    if set(rows_by_pair) != expected_pairs:
+        raise DetectionRegistrySchemaError("semantic pairwise ledger must account for every same-page pair")
+
+    edges: list[dict[str, Any]] = []
+    for pair in sorted(rows_by_pair):
+        row = rows_by_pair[pair]
+        facts = [
+            {"evidence_type": check["evidence_type"],
+             "evidence_pages": [page_by_group[pair[0]]],
+             "observation": check["observation"]}
+            for check in row["checks"].values() if check["state"] == "present"
+        ]
+        if facts:
+            edges.append({
+                "group_id_a": pair[0], "group_id_b": pair[1],
+                "relationship": SUPPORTING_RELATIONSHIP,
+                "evidence_facts": facts,
+                "commercial_inseparability": "Semantic evidence is supporting only until full package review.",
+            })
+    audit = {
+        "same_page_pair_count": len(expected_pairs),
+        "checks_per_pair": len(SEMANTIC_PAIRWISE_EVIDENCE_TYPES),
+        "positive_semantic_edge_count": len(edges),
+        "ledger": [
+            {"group_id_a": row["group_id_a"], "group_id_b": row["group_id_b"],
+             "checks": [row["checks"][kind] for kind in sorted(row["checks"])]}
+            for _, row in sorted(rows_by_pair.items())
+        ],
+    }
+    return edges, audit
+
+
+def merge_detection_relation_edges(*edge_sets: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Union typed facts from independent graph channels into one edge per pair."""
+    merged: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for edges in edge_sets:
+        for edge in edges:
+            pair = (str(edge["group_id_a"]), str(edge["group_id_b"]))
+            merged.setdefault(pair, []).extend(edge.get("evidence_facts") or [])
+    return [{
+        "group_id_a": pair[0], "group_id_b": pair[1],
+        "relationship": SUPPORTING_RELATIONSHIP,
+        "evidence_facts": facts,
+        "commercial_inseparability": "Typed graph evidence is supporting only until full package review.",
+    } for pair, facts in sorted(merged.items())]
 
 
 def validate_detection_shared_reference_group_ids(

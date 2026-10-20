@@ -10,6 +10,7 @@ from agents.schemas.detection_registry_schema import (
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
     compile_detection_dimension_graph,
+    compile_detection_semantic_pairwise_ledger,
     derive_detection_pairwise_merge_proofs_from_parent_links,
     derive_detection_package_decision_audit,
     derive_detection_dimension_package_candidates,
@@ -57,6 +58,46 @@ def _reference_link(first_group, second_group, facts):
             "The general and product views are related, but not a merge."
         ),
     }
+
+
+def test_semantic_ledger_requires_all_same_page_pairs_and_preserves_present_fact():
+    groups = [
+        {"group_id": "view-001", "page_number": 1},
+        {"group_id": "view-002", "page_number": 1},
+        {"group_id": "view-003", "page_number": 2},
+    ]
+    checks = [
+        {"evidence_type": evidence_type, "state": "absent", "observation": ""}
+        for evidence_type in (
+            "explicit_document_relation", "dimension_transform", "matching_topology",
+            "unique_geometry", "direct_shared_structure",
+        )
+    ]
+    checks[2] = {
+        "evidence_type": "matching_topology", "state": "present",
+        "observation": "Both views show the same five-bay cabinet topology.",
+    }
+
+    edges, audit = compile_detection_semantic_pairwise_ledger(
+        [{"group_id_a": "view-002", "group_id_b": "view-001", "checks": checks}],
+        visual_groups=groups, page_count=2,
+    )
+
+    assert audit["same_page_pair_count"] == 1
+    assert audit["checks_per_pair"] == 5
+    assert edges[0]["group_id_a"] == "view-001"
+    assert edges[0]["group_id_b"] == "view-002"
+    assert edges[0]["evidence_facts"] == [_fact(
+        "matching_topology", "Both views show the same five-bay cabinet topology.",
+    )]
+
+    with pytest.raises(
+        DetectionRegistrySchemaError,
+        match="semantic pairwise ledger must account for every same-page pair",
+    ):
+        compile_detection_semantic_pairwise_ledger(
+            [], visual_groups=groups, page_count=2,
+        )
 
 
 def _root(reason="No positive relation to an earlier group is evidenced.", blocked_merge=None):
@@ -882,7 +923,7 @@ def test_v4_54_registry_schema_contains_only_island_and_classification_facts():
     assert "pair_relation_runs" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "pair_relation_states" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "pair_relation_facts" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
-    assert "dimension_inventory" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
+    assert "semantic_pairwise_ledger" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "classifications" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "proof_edges" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "merge_proofs" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
