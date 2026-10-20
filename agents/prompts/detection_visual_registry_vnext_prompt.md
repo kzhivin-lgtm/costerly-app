@@ -1,4 +1,4 @@
-# DETECTION V4.40 - INVENTORY, CLASSIFY, POSITIVE GRAPH, PACKAGE
+# DETECTION V4.41 - INVENTORY, CLASSIFY, COMPLETE COMPACT GRAPH, PACKAGE
 
 Build the visual representation inventory and commercial-object registry in one
 response. The response has this mandatory causal order:
@@ -7,8 +7,9 @@ response. The response has this mandatory causal order:
    assigning a class,
 2. classify every group in the separate `classifications` array as
    `object_evidence` or `document_context`, with a factual reason,
-3. inspect the complete classified inventory globally, then return every
-   positive typed relation in `relation_edges`,
+3. inspect the complete classified inventory globally, record the six-factor
+   result for every pair in `pair_relation_runs`, then return the factual
+   detail only for positive criteria in `pair_relation_facts`,
 4. after the graph is complete, describe the resulting commercial packages and
    their complete page Evidence.
 
@@ -54,7 +55,7 @@ specifies or shows a particular fabricated object, including a section, detail,
 alternate view or object-specific plan. A repeated grid, dimension string, bays,
 slats, shelves or panel divisions is not a table by itself.
 
-## 2. Complete positive relation graph
+## 2. Complete compact relation graph
 
 Only after the inventory and classifications exist, inspect every unordered
 pair of `object_evidence` groups globally across the complete document. Assess
@@ -73,14 +74,27 @@ all six criteria for each pair:
 6. `direct_shared_structure`: visible common frame, track, carcass, joint or
    physical connection.
 
-Return `relation_edges`: the complete set of every positive relation found.
-Do not serialize negative, conflicted, unreadable or no-relation pairs. This is
-not permission to skip their review. A positive edge uses lexically ordered
-`group_id_a`, `group_id_b`, one relationship, every positive supporting
-`evidence_facts` observation, and a concise factual `commercial_inseparability`.
-Return at most one edge per pair. The graph is undirected. Cycles and redundant
-positive edges are valid, because they preserve evidence rather than decide
-package membership directly.
+Generate the exact lexicographic pair order from the `object_evidence`
+`group_id`s: first every pair beginning with the first group, then every pair
+beginning with the second group, and so on. Each pair has a seven-character
+state. Character one is the relationship: `N` none, `P` positive non-merging
+relation, `S` same object view, `D` object detail, or `R` reference link. The
+next six characters are the six criteria above in that exact order. Use `Y`
+positive, `N` checked-negative, `C` conflict, or `U` unreadable/not comparable.
+
+Return the complete sequence losslessly in `pair_relation_runs`, not as one
+JSON row per pair. Every run has `count` and `state`, represents that many
+consecutive pairs in canonical order, and adjacent equal states must be merged
+into one run. The expanded runs must contain exactly one state for every pair.
+This ledger is mandatory. It is the proof that every pair and every criterion
+was considered, not a prose exercise. A `Y` criterion requires exactly one
+corresponding factual row in `pair_relation_facts`; do not return a facts row
+for a pair with no `Y`. Each facts row names its zero-based `pair_index`, all
+positive `evidence_facts`, and a concise factual `commercial_inseparability`.
+For `P`, the commercial basis may be blank because the fact is retained for
+audit only. For `S`, `D`, or `R`, it must state why the relationship is usable.
+The graph is undirected. Cycles and redundant positive edges are valid, because
+they preserve evidence rather than decide package membership directly.
 
 An exact `dimension_equality` fact names both literal dimensions, unit and
 physical scope. An exact `dimension_transform` fact names both literal
@@ -111,7 +125,7 @@ independent finished assemblies. If a connection is not proven, leave the
 groups unmerged. Runtime will create review-required standalone packages rather
 than discard them.
 
-Perform one final singleton audit after all positive relations are emitted. For
+Perform one final singleton audit after the complete ledger is emitted. For
 every `object_evidence` group with no merge candidate, compare it again with
 every other object-evidence group. Add a relation only when the cited evidence
 supports it. Never invent a merge merely to avoid a singleton.
@@ -131,9 +145,14 @@ inventing a merge.
 For every described component provide the exact printed `transport_label` when
 present, otherwise a neutral source label, `quantity`, `quantity_explicit`,
 `identity_pages`, `visual_identity`, and factual `boundary_basis`. Quantity
-defaults to 1 when not established otherwise. A shared sheet code does not by
-itself merge independent finished assemblies. It may remain one package when
-the positive graph proves that single commercial boundary.
+defaults to 1 when not established otherwise. Set `quantity_explicit` true only
+when the source literally establishes a count for that finished assembly. A
+code, repeated view, repeated dimension, cabinet module count, page count or
+similar-looking custom kitchen/cabinet is not an explicit quantity. A bespoke
+kitchen, cabinet, counter or similar finished assembly remains quantity one
+unless the source proves multiple identical finished assemblies. A shared sheet
+code does not by itself merge independent finished assemblies. It may remain
+one package when the positive graph proves that single commercial boundary.
 
 ## 4. Evidence coverage
 

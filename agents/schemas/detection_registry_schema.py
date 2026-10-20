@@ -112,6 +112,23 @@ DETECTION_PAIR_RELATION_STATES_JSON_SCHEMA: dict[str, Any] = {
     "items": {"type": "string"},
 }
 
+# V4.41 returns the complete pair ledger as run-length encoded state rows.
+# The runtime expands it before applying the stable full-ledger validator. This
+# preserves exact pair coverage without spending a JSON array item on every
+# checked-negative pair.
+DETECTION_PAIR_RELATION_RUNS_JSON_SCHEMA: dict[str, Any] = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["count", "state"],
+        "properties": {
+            "count": {"type": "integer", "minimum": 1},
+            "state": {"type": "string"},
+        },
+    },
+}
+
 DETECTION_PAIR_RELATION_FACTS_JSON_SCHEMA: dict[str, Any] = {
     "type": "array",
     "items": {
@@ -223,6 +240,44 @@ def _ordered_pair_ids(group_ids: set[str]) -> list[tuple[str, str]]:
         for index, group_id_a in enumerate(ordered_group_ids)
         for group_id_b in ordered_group_ids[index + 1:]
     ]
+
+
+def expand_detection_pair_relation_runs(
+    pair_relation_runs: object,
+    *,
+    object_evidence_group_ids: set[str],
+) -> list[str]:
+    """Expand a compact exact-once pair-state stream for schema validation."""
+    expected_pair_count = len(_ordered_pair_ids(object_evidence_group_ids))
+    if not isinstance(pair_relation_runs, list):
+        raise DetectionRegistrySchemaError("pair relation runs must be a list")
+    states: list[str] = []
+    previous_state: str | None = None
+    for run in pair_relation_runs:
+        if (
+            not isinstance(run, dict)
+            or set(run) != {"count", "state"}
+            or not isinstance(run.get("count"), int)
+            or run["count"] <= 0
+            or not isinstance(run.get("state"), str)
+        ):
+            raise DetectionRegistrySchemaError("pair relation run is invalid")
+        state = run["state"]
+        if state == previous_state:
+            raise DetectionRegistrySchemaError(
+                "adjacent pair relation runs must be combined"
+            )
+        previous_state = state
+        states.extend([state] * run["count"])
+        if len(states) > expected_pair_count:
+            raise DetectionRegistrySchemaError(
+                "pair relation runs exceed the expected pair count"
+            )
+    if len(states) != expected_pair_count:
+        raise DetectionRegistrySchemaError(
+            "pair relation runs must account for every object-evidence pair exactly once"
+        )
+    return states
 
 
 def _validate_pairwise_evidence_facts(
@@ -406,6 +461,10 @@ def validate_detection_pair_relation_ledger(
         elif relation == "positive_non_tree_relation" and not positive_criteria:
             raise DetectionRegistrySchemaError(
                 "positive non-tree relation needs positive criteria"
+            )
+        elif relation == "none" and positive_criteria:
+            raise DetectionRegistrySchemaError(
+                "positive pair criteria need a non-none relationship"
             )
         expanded_audit.append({
             "pair_index": pair_index,

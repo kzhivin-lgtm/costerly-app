@@ -75,16 +75,19 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Return exactly one `page_coverage` entry for every upload page" in prompt
     assert "plan, room layout, electrical, plumbing or lighting plan" in prompt
     assert "never enter the graph or Estimation Evidence" in prompt
-    assert "Complete positive relation graph" in prompt
-    assert "relation_edges" in prompt
-    assert "Do not serialize negative, conflicted, unreadable or no-relation pairs" in prompt
+    assert "Complete compact relation graph" in prompt
+    assert "pair_relation_runs" in prompt
+    assert "Each pair has a seven-character" in prompt
+    assert "adjacent equal states must be merged" in prompt
     assert "literal source dimensions only to assess graph" in prompt
-    assert "Do not serialize negative" in prompt
+    assert "This ledger is mandatory." in prompt
     assert "Perform one final singleton audit" in prompt
     assert "Never invent a merge merely to avoid a singleton" in prompt
     assert "Assess\nall six criteria" in prompt
     assert "`dimension_equality`" in prompt
     assert "Two independent dimension equalities are sufficient dimension proof" in prompt
+    assert "Set `quantity_explicit` true only" in prompt
+    assert "remains quantity one" in prompt
     assert "Do not return owner lists or object IDs" in prompt
     assert "Runtime derives package membership only from accepted" in prompt
     assert "component_anchor_group_id" in prompt
@@ -100,5 +103,5 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "evidence_facts" in prompt
     assert "passive recall aid" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_40_sparse_positive_relation_graph_standalones_temperature_0"
+        "detection_v4_41_rle_complete_relation_ledger_temperature_0"
     )

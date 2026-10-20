@@ -263,6 +263,22 @@ full OCR and page Evidence, without Sonnet or retry calls. Acceptance: HSL
 completes with every retained group assigned exactly once to a package, accepted
 and rejected relations visible in the audit, and all positive equality and
 transform facts persisted; then regress Page 23 and Adda before checkpointing.
+V4.41 is the approved corrective experiment after the first V4.40 HSL run
+completed with 23 packages but emitted no `dimension_equality` or
+`dimension_transform` facts. It retains V4.40's one Haiku call, temperature
+zero, full island discovery, graph-derived packages, page Evidence and safe
+quantity-one standalones. It replaces the uncheckable sparse graph with a
+compact exact-once run-length encoded seven-character ledger for every
+post-classification object-evidence pair. This is deliberately not the failed
+V4.38-V4.39 JSON array of one row per pair: consecutive state rows are merged
+losslessly before the provider responds. The six criterion states are persisted
+for analysis, while factual prose remains only on positive pairs. An incomplete
+ledger does not abort the RFQ: runtime emits review-required standalones and
+records the ledger failure. `quantity_explicit` is true only for a literal
+source count; codes, repeated projections and cabinet-module counts leave
+quantity at its default one. Acceptance: the HSL graph is complete and records
+its observed dimension facts without truncation, packages reach File Review,
+then Page 23 and Adda preserve their protected outcomes before any checkpoint.
 
 PENDING, P1, USER REQUEST, Detection Registry output and latency optimisation:
 after the commercial-boundary experiment reaches a valid HSL graph, remove only

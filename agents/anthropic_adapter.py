@@ -30,12 +30,16 @@ from agents.detection_spatial_inventory import (
 )
 from agents.schemas.detection_registry_schema import (
     REFERENCE_RELATIONSHIP,
+    DETECTION_PAIR_RELATION_FACTS_JSON_SCHEMA,
+    DETECTION_PAIR_RELATION_RUNS_JSON_SCHEMA,
     DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
     derive_detection_package_decision_audit,
     derive_detection_proof_components,
     derive_detection_standalone_package_group_ids,
+    expand_detection_pair_relation_runs,
+    validate_detection_pair_relation_ledger,
     validate_detection_registry,
     partition_detection_relation_edges,
 )
@@ -58,15 +62,15 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_40_sparse_positive_relation_graph_standalones_temperature_0"
+    "detection_v4_41_rle_complete_relation_ledger_temperature_0"
 )
-# V4.40 keeps one Haiku call and V4.37's graph-derived package membership. It
-# records every positive typed relation, including all observed equality and
-# transform facts, but does not spend the response budget repeating a dense
-# matrix of negative or unreadable pairs.
+# V4.41 keeps one Haiku call and V4.40's graph-derived package membership. A
+# run-length encoded seven-character states make the six-factor review
+# observable without repeating a JSON row for every checked-negative pair.
+# Positive facts remain the only detailed text returned by the model.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
-# Keep the established output ceiling. V4.40 removes the quadratic negative
-# ledger rather than relying on a larger output allowance to conceal it.
+# Keep the established output ceiling. The compact ledger combines contiguous
+# checked-negative states before serialising JSON, not a prose matrix.
 DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
@@ -146,13 +150,14 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "additionalProperties": False,
     "required": [
         "visual_groups", "classifications",
-        "relation_edges",
+        "pair_relation_runs", "pair_relation_facts",
         "page_coverage",
     ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
-        "relation_edges": DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
+        "pair_relation_runs": DETECTION_PAIR_RELATION_RUNS_JSON_SCHEMA,
+        "pair_relation_facts": DETECTION_PAIR_RELATION_FACTS_JSON_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
         "page_coverage": {
             "type": "array",
@@ -1322,6 +1327,15 @@ def _discard_non_object_visual_registry_groups(
     discarded_group_ids = {
         str(group.get("group_id") or "") for group in discarded_groups
     }
+    # The model emits the compact pair ledger after its own classification.
+    # Retain its source order long enough to remove forced non-object pairs
+    # deterministically, instead of making every remaining pair invalid.
+    source_object_evidence_group_ids = {
+        str(group.get("group_id") or "")
+        for group in groups
+        if isinstance(group, dict)
+        and group.get("evidence_class") == "object_evidence"
+    }
     discarded_pages = {
         group.get("page_number") for group in discarded_groups
         if isinstance(group.get("page_number"), int)
@@ -1342,6 +1356,12 @@ def _discard_non_object_visual_registry_groups(
         for group in effective["visual_groups"]
         if isinstance(group, dict)
     }
+    if source_object_evidence_group_ids:
+        effective = _filter_pair_relation_ledger(
+            effective,
+            source_group_ids=source_object_evidence_group_ids,
+            retained_group_ids=retained_group_ids,
+        )
     classifications = effective.get("classifications")
     if isinstance(classifications, list):
         effective["classifications"] = [
@@ -1593,6 +1613,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     accepted_merge_edges: list[dict[str, Any]] = []
     reference_links: list[dict[str, Any]] = []
     rejected_relation_candidates: list[dict[str, Any]] = []
+    pair_relation_ledger_audit: list[dict[str, Any]] = []
+    pair_relation_ledger_valid = False
+    pair_relation_ledger_error: str | None = None
     package_decisions: list[dict[str, Any]] = []
     page_coverage_audit: list[dict[str, Any]] = []
     graph_page_coverage_supplements: list[dict[str, Any]] = []
@@ -1604,6 +1627,23 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             payload, classification_decisions = (
                 _validate_and_apply_visual_registry_classifications(payload)
             )
+            source_object_evidence_group_ids = {
+                str(group.get("group_id") or "")
+                for group in payload.get("visual_groups", [])
+                if isinstance(group, dict)
+                and group.get("evidence_class") == "object_evidence"
+            }
+            try:
+                payload["pair_relation_states"] = expand_detection_pair_relation_runs(
+                    payload.get("pair_relation_runs"),
+                    object_evidence_group_ids=source_object_evidence_group_ids,
+                )
+            except DetectionRegistrySchemaError as ledger_error:
+                # The later full-ledger validation preserves this diagnosis and
+                # safely resolves the document to review-required singletons.
+                payload["pair_relation_states"] = []
+                pair_relation_ledger_error = str(ledger_error)
+            payload.pop("pair_relation_runs", None)
             payload, discarded_non_object_groups = (
                 _discard_non_object_visual_registry_groups(payload)
             )
@@ -1612,10 +1652,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             payload.setdefault("objects", [])
         if not isinstance(payload, dict) or set(payload) != {
             "visual_groups", "classifications",
-            "relation_edges", "objects", "page_coverage",
+            "pair_relation_states", "pair_relation_facts", "objects",
+            "page_coverage",
         }:
             raise ValueError(
-                "visual registry must contain only visual_groups, classifications, relation_edges, objects and page_coverage"
+                "visual registry must contain only visual_groups, classifications, pair relation ledger, objects and page coverage"
             )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
@@ -1629,16 +1670,48 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
         payload = _normalize_component_anchor_group_ids(payload, group_id_mapping)
+        payload = _normalize_pair_relation_ledger_group_ids(
+            payload,
+            group_id_mapping=group_id_mapping,
+            source_group_ids=set(raw_group_ids),
+        )
         visual_group_ids = {
             group["group_id"] for group in visual_map["visual_groups"]
         }
+        try:
+            proof_edges, pair_relation_ledger_audit = (
+                validate_detection_pair_relation_ledger(
+                    payload["pair_relation_states"],
+                    payload["pair_relation_facts"],
+                    object_evidence_group_ids=visual_group_ids,
+                    page_count=len(page_images),
+                )
+            )
+            pair_relation_ledger_valid = True
+        except DetectionRegistrySchemaError as ledger_error:
+            # An incomplete provider ledger is interpretation uncertainty, not
+            # a reason to discard the upload. Emit review-required singletons
+            # rather than treating unverified edges as product boundaries.
+            proof_edges = []
+            pair_relation_ledger_error = pair_relation_ledger_error or str(ledger_error)
+        positive_relation_edges = [
+            {
+                "group_id_a": row["group_id_a"],
+                "group_id_b": row["group_id_b"],
+                "relationship": row["relationship"],
+                "evidence_facts": row["evidence_facts"],
+                "commercial_inseparability": row["commercial_inseparability"],
+            }
+            for row in pair_relation_ledger_audit
+            if row["relationship"] != "none" and row["evidence_facts"]
+        ]
         (
-            positive_relation_edges,
+            _,
             accepted_merge_edges,
             reference_links,
             rejected_relation_candidates,
         ) = partition_detection_relation_edges(
-            payload["relation_edges"],
+            proof_edges,
             visual_group_ids=visual_group_ids,
             page_count=len(page_images),
         )
@@ -1711,6 +1784,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "discarded_non_object_visual_groups": discarded_non_object_groups,
             "classification_decisions": classification_decisions,
             "positive_relation_edges": positive_relation_edges,
+            "pair_relation_ledger": pair_relation_ledger_audit,
+            "pair_relation_ledger_valid": pair_relation_ledger_valid,
+            "pair_relation_ledger_error": pair_relation_ledger_error,
             "accepted_merge_edges": accepted_merge_edges,
             "reference_links": reference_links,
             "rejected_relation_candidates": rejected_relation_candidates,
@@ -1764,6 +1840,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "discarded_non_object_visual_groups": discarded_non_object_groups,
         "classification_decisions": classification_decisions,
         "positive_relation_edges": positive_relation_edges,
+        "pair_relation_ledger": pair_relation_ledger_audit,
+        "pair_relation_ledger_valid": pair_relation_ledger_valid,
+        "pair_relation_ledger_error": pair_relation_ledger_error,
+        "pair_relation_ledger_pair_count": len(pair_relation_ledger_audit),
         "positive_relation_edge_count": len(positive_relation_edges),
         "positive_dimension_equality_count": sum(
             fact.get("evidence_type") == "dimension_equality"
