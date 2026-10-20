@@ -86,5 +86,5 @@ def test_integrated_visual_registry_returns_facts_for_the_deterministic_graph_co
     assert "Two separately framed, separately dimensioned or separately positioned views" in prompt
     assert "Do not emit a chain with both `direct_total: \"\"` and\n`segments: []`" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_52_spatial_view_evidence_packaging_dimension_graph_temperature_0"
+        "detection_v4_53_drop_empty_evidence_islands_dimension_graph_temperature_0"
     )

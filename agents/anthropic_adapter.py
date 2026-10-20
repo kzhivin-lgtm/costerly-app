@@ -65,7 +65,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_52_spatial_view_evidence_packaging_dimension_graph_temperature_0"
+    "detection_v4_53_drop_empty_evidence_islands_dimension_graph_temperature_0"
 )
 # V4.49 keeps one Haiku call. The model records every readable outer chain of
 # each immutable visual island. Runtime alone sums chains and compiles equality.
@@ -1932,6 +1932,48 @@ def _discard_non_object_visual_registry_groups(
     return effective, discarded_groups
 
 
+def _discard_empty_evidence_visual_registry_groups(
+    payload: dict[str, Any],
+    *,
+    raw_group_ids: set[str],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Drop a Registry Island with no deterministic source evidence.
+
+    An Island is proposed by Registry vision, but its evidence package is
+    assembled exclusively from immutable MyPDF and Mistral facts. A package
+    with no facts from either source cannot support a commercial object,
+    dimension chain, or Estimation handoff. Preserve the original Registry
+    response in the decision audit, but remove this false-positive candidate
+    before inventory validation and graph construction.
+    """
+    if not raw_group_ids:
+        return payload, []
+    groups = payload.get("visual_groups")
+    if not isinstance(groups, list):
+        return payload, []
+    discarded_groups = [
+        group for group in groups
+        if isinstance(group, dict) and str(group.get("group_id") or "") in raw_group_ids
+    ]
+    if not discarded_groups:
+        return payload, []
+    effective = copy.deepcopy(payload)
+    effective["visual_groups"] = [
+        group for group in groups
+        if not isinstance(group, dict)
+        or str(group.get("group_id") or "") not in raw_group_ids
+    ]
+    for key in ("classifications", "dimension_inventory"):
+        rows = effective.get(key)
+        if isinstance(rows, list):
+            effective[key] = [
+                row for row in rows
+                if not isinstance(row, dict)
+                or str(row.get("group_id") or "") not in raw_group_ids
+            ]
+    return effective, discarded_groups
+
+
 def _scan_json_object_properties(
     value: str,
 ) -> tuple[list[tuple[str, int, int]], int | None]:
@@ -2149,6 +2191,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     # IDs and deterministically derives graph and Evidence pages.
     registry_decision_audit = copy.deepcopy(payload)
     discarded_non_object_groups: list[dict[str, Any]] = []
+    discarded_empty_evidence_groups: list[dict[str, Any]] = []
     classification_decisions: list[dict[str, Any]] = []
     positive_relation_edges: list[dict[str, Any]] = []
     accepted_merge_edges: list[dict[str, Any]] = []
@@ -2205,6 +2248,47 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
             source_facts=source_facts,
         )
+        empty_evidence_group_ids = {
+            str(package["visual_group_id"])
+            for package in view_evidence_packages
+            if not package["source_fact_ids"]
+        }
+        # No source facts means evidence is unavailable, not that an Island is
+        # disproven. Delete only when MyPDF or Mistral actually supplied an
+        # inventory and this Island still received none.
+        if source_facts and empty_evidence_group_ids:
+            raw_empty_evidence_group_ids = {
+                raw_group_id
+                for raw_group_id, normalized_group_id in group_id_mapping.items()
+                if normalized_group_id in empty_evidence_group_ids
+            }
+            payload, discarded_empty_evidence_groups = (
+                _discard_empty_evidence_visual_registry_groups(
+                    payload, raw_group_ids=raw_empty_evidence_group_ids,
+                )
+            )
+            for group in discarded_empty_evidence_groups:
+                group["discard_reason"] = (
+                    "no MyPDF or Mistral source fact inside island bbox"
+                )
+            # Preserve canonical IDs of retained Islands. Removing G5 must not
+            # rename G6 and every later view, otherwise stable audit records,
+            # source references and package identities would drift mid-cycle.
+            visual_map["visual_groups"] = [
+                group for group in visual_map["visual_groups"]
+                if str(group["group_id"]) not in empty_evidence_group_ids
+            ]
+            group_bboxes = {
+                group_id: bbox for group_id, bbox in group_bboxes.items()
+                if group_id not in empty_evidence_group_ids
+            }
+            view_evidence_packages = [
+                package for package in view_evidence_packages
+                if str(package["visual_group_id"]) not in empty_evidence_group_ids
+            ]
+            visual_group_ids = {
+                group["group_id"] for group in visual_map["visual_groups"]
+            }
         source_fact_ids_by_group = {
             str(package["visual_group_id"]): list(package["source_fact_ids"])
             for package in view_evidence_packages
@@ -2364,6 +2448,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             **spatial_audit,
             "registry_decision_audit": registry_decision_audit,
             "discarded_non_object_visual_groups": discarded_non_object_groups,
+            "discarded_empty_evidence_visual_groups": discarded_empty_evidence_groups,
             "classification_decisions": classification_decisions,
             "page_evidence_source_fact_count": len(source_facts),
             "view_evidence_packages": view_evidence_packages,
@@ -2427,6 +2512,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         ),
         "registry_decision_audit": registry_decision_audit,
         "discarded_non_object_visual_groups": discarded_non_object_groups,
+        "discarded_empty_evidence_visual_groups": discarded_empty_evidence_groups,
         "classification_decisions": classification_decisions,
         "page_evidence_source_fact_count": len(source_facts),
         "view_evidence_packages": view_evidence_packages,

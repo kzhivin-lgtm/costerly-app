@@ -64,7 +64,7 @@ class _Response:
 
 
 def _visual_registry_payload(payload):
-    """Upgrade legacy Registry fixtures to the V4.52 extraction contract."""
+    """Upgrade legacy Registry fixtures to the V4.53 extraction contract."""
     if not isinstance(payload, dict) or "visual_groups" not in payload:
         return payload
     groups = copy.deepcopy(payload["visual_groups"])
@@ -729,6 +729,55 @@ def test_visual_registry_materializes_view_package_from_immutable_source_fact():
         "top_left_x": 0, "top_left_y": 0,
         "bottom_right_x": 50, "bottom_right_y": 50,
     }
+    assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
+
+
+def test_visual_registry_discards_empty_evidence_island_before_graph_construction():
+    payload = _visual_registry_payload({
+        "visual_groups": [
+            {
+                "group_id": "real", "page_number": 1, "location_hint": "left",
+                "visual_description": "cabinet elevation", "representation_kind": "elevation",
+                "bbox": {
+                    "top_left_x": 0, "top_left_y": 0,
+                    "bottom_right_x": 50, "bottom_right_y": 50,
+                },
+            },
+            {
+                "group_id": "empty", "page_number": 1, "location_hint": "right",
+                "visual_description": "apparent section", "representation_kind": "section",
+                "bbox": {
+                    "top_left_x": 60, "top_left_y": 0,
+                    "bottom_right_x": 100, "bottom_right_y": 50,
+                },
+            },
+        ],
+    })
+    ocr_package = {"evidence": {"text_blocks": [{
+        "page_number": 1, "source": "native_pdf_text",
+        "bbox": {"top_left_x": 10, "top_left_y": 20, "bottom_right_x": 40, "bottom_right_y": 30},
+        "text": "358",
+    }]}}
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            return_value=(_Response(), {
+                "request_started_at": "2026-10-16T00:00:00+00:00",
+                "request_finished_at": "2026-10-16T00:00:01+00:00",
+            }),
+        ),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+    ):
+        _, registry, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=ocr_package, model="model",
+        )
+
+    raw_usage = usage["raw_usage"]
+    assert [item["visual_group_id"] for item in raw_usage["view_evidence_packages"]] == ["view-001"]
+    assert [item["group_id"] for item in raw_usage["discarded_empty_evidence_visual_groups"]] == ["empty"]
     assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
 
 

@@ -405,7 +405,12 @@ def normalize_empty_detection_envelope_chains(
         return inventory, []
     normalized = copy.deepcopy(inventory)
     normalized_group_ids: set[str] = set()
-    required_chain_keys = {"chain_id", "axis", "segments", "direct_total"}
+    required_chain_key_sets = {
+        frozenset({"chain_id", "axis", "segments", "direct_total"}),
+        frozenset({
+            "chain_id", "axis", "segments", "direct_total", "source_fact_ids",
+        }),
+    }
     for row in normalized:
         if not isinstance(row, dict) or not isinstance(row.get("envelope_chains"), list):
             continue
@@ -413,9 +418,10 @@ def normalize_empty_detection_envelope_chains(
         for chain in row["envelope_chains"]:
             is_empty_chain = (
                 isinstance(chain, dict)
-                and set(chain) == required_chain_keys
+                and frozenset(chain) in required_chain_key_sets
                 and not str(chain.get("direct_total") or "").strip()
                 and chain.get("segments") == []
+                and not list(chain.get("source_fact_ids") or [])
             )
             if is_empty_chain:
                 group_id = str(row.get("group_id") or "").strip()

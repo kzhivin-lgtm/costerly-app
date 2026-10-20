@@ -738,7 +738,7 @@ def test_empty_envelope_chain_is_canonicalized_without_losing_other_measurements
     normalized, empty_group_ids = normalize_empty_detection_envelope_chains([
         {"group_id": "view-001", "envelope_chains": [{
             "chain_id": "G1-horizontal", "axis": "horizontal",
-            "segments": [], "direct_total": "",
+            "segments": [], "direct_total": "", "source_fact_ids": [],
         }]},
         {"group_id": "view-002", "envelope_chains": [{
             "chain_id": "G2-horizontal", "axis": "horizontal",
