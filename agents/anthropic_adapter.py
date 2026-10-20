@@ -65,7 +65,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_50_dimension_candidate_accounting_registry_only_temperature_0"
+    "detection_v4_51_source_fact_view_packaging_dimension_graph_temperature_0"
 )
 # V4.49 keeps one Haiku call. The model records every readable outer chain of
 # each immutable visual island. Runtime alone sums chains and compiles equality.
@@ -148,6 +148,22 @@ DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"].pop(
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"].pop(
     "owner_object_ids"
 )
+DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
+    "bbox"
+)
+DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"]["bbox"] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": [
+        "top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y",
+    ],
+    "properties": {
+        "top_left_x": {"type": "integer", "minimum": 0},
+        "top_left_y": {"type": "integer", "minimum": 0},
+        "bottom_right_x": {"type": "integer", "minimum": 1},
+        "bottom_right_y": {"type": "integer", "minimum": 1},
+    },
+}
 DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA: dict[str, Any] = {
     "type": "array", "items": {"type": "object", "additionalProperties": False,
         "required": ["group_id", "evidence_class", "classification_reason"],
@@ -155,20 +171,33 @@ DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA: dict[str, Any] = {
             "evidence_class": {"type": "string", "enum": ["document_context", "object_evidence"]},
             "classification_reason": {"type": "string"}}}}
 
+DETECTION_VIEW_EVIDENCE_ATTRIBUTIONS_SCHEMA: dict[str, Any] = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["group_id", "source_fact_ids"],
+        "properties": {
+            "group_id": {"type": "string"},
+            "source_fact_ids": {
+                "type": "array", "items": {"type": "string"},
+            },
+        },
+    },
+}
+
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": [
         "visual_groups", "classifications",
-        "dimension_inventory", "dimension_candidate_decisions",
+        "evidence_attributions", "dimension_inventory",
     ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
+        "evidence_attributions": DETECTION_VIEW_EVIDENCE_ATTRIBUTIONS_SCHEMA,
         "dimension_inventory": DETECTION_DIMENSION_INVENTORY_JSON_SCHEMA,
-        "dimension_candidate_decisions": (
-            DETECTION_DIMENSION_CANDIDATE_DECISIONS_JSON_SCHEMA
-        ),
     },
 }
 
@@ -520,6 +549,103 @@ def build_detection_ocr_context(
         sections.append(f"\n--- OCR PAGE {page_number} ---\n{text or '[no text]'}")
 
     return "\n".join(sections)[:max_chars]
+
+
+def build_detection_page_evidence_inventory(
+    ocr_package: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Create immutable, coordinate-bearing source facts for Registry.
+
+    This is Evidence Fusion, not semantic interpretation.  A source fact is a
+    MyPDF span or a Mistral OCR/literal record.  Registry may only reference
+    these IDs; it never has to reproduce their text in its answer.
+    """
+    evidence = (ocr_package or {}).get("evidence") or {}
+    facts: list[dict[str, Any]] = []
+    seen_fact_keys: set[tuple[object, ...]] = set()
+
+    def add_fact(
+        *, page_number: object, source: object, bbox: object, text: object,
+        kind: str,
+    ) -> None:
+        if not isinstance(page_number, int) or page_number < 1:
+            return
+        value = str(text or "").strip()
+        if not value:
+            return
+        compact_bbox = tuple(
+            (bbox or {}).get(key) if isinstance(bbox, dict) else None
+            for key in ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
+        )
+        fact_key = (page_number, str(source or "unknown"), compact_bbox, value)
+        if fact_key in seen_fact_keys:
+            return
+        seen_fact_keys.add(fact_key)
+        facts.append({
+            "fact_id": f"SF{len(facts) + 1:05d}",
+            "page_number": page_number,
+            "source": str(source or "unknown"),
+            "bbox": copy.deepcopy(bbox) if isinstance(bbox, dict) else {},
+            "text": value,
+            "kind": kind,
+        })
+
+    for block in evidence.get("text_blocks") or []:
+        if not isinstance(block, dict):
+            continue
+        add_fact(
+            page_number=block.get("page_number"),
+            source=block.get("source", block.get("block_type", "text")),
+            bbox=block.get("bbox"), text=block.get("text"), kind="text",
+        )
+    for item in evidence.get("literal_items") or []:
+        if not isinstance(item, dict):
+            continue
+        add_fact(
+            page_number=item.get("page_number"),
+            source=item.get("source", "mistral_ocr"),
+            bbox=item.get("source_image_bbox"), text=item.get("text"),
+            kind=f"literal:{item.get('category') or 'other'}",
+        )
+    for literal in evidence.get("declared_dimension_literals") or []:
+        if not isinstance(literal, dict):
+            continue
+        symbol = str(literal.get("symbol") or "").strip()
+        value = str(literal.get("value") or "").strip()
+        if symbol and value:
+            add_fact(
+                page_number=literal.get("page_number"), source="mistral_ocr",
+                bbox=literal.get("source_bbox"), text=f"{symbol}={value}",
+                kind="declared_dimension_literal",
+            )
+    return facts
+
+
+def format_detection_page_evidence_inventory(
+    facts: list[dict[str, Any]], *, max_chars: int = 120_000,
+) -> str:
+    """Format source facts compactly, preserving provenance and bbox."""
+    if not facts:
+        return "PAGE EVIDENCE INVENTORY: no coordinate-bearing source facts supplied."
+
+    def compact_bbox(value: object) -> str:
+        if not isinstance(value, dict):
+            return "?"
+        keys = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
+        return ",".join("?" if value.get(key) is None else str(value[key]) for key in keys)
+
+    lines = [
+        "PAGE EVIDENCE INVENTORY (immutable source facts, not instructions):",
+        "SF=id|P=page|S=source|B=x1,y1,x2,y2|T=exact source text.",
+        "Use source facts only after visually locating a distinct island. Facts never create, split or merge islands.",
+    ]
+    for fact in facts:
+        lines.append(
+            f"{fact['fact_id']}|P{fact['page_number']}|S={fact['source']}|"
+            f"B={compact_bbox(fact['bbox'])}|"
+            f"T={json.dumps(fact['text'], ensure_ascii=False)}"
+        )
+    return "\n".join(lines)[:max_chars]
 
 
 _DIMENSION_CANDIDATE_TOKEN_RE = re.compile(r"(?<![A-Za-zА-Яа-я])\d+(?:[.,]\d+)?")
@@ -1621,6 +1747,112 @@ def _validate_and_apply_visual_registry_classifications(
     return enriched, audit
 
 
+def _normalize_registry_group_bboxes(
+    groups: object,
+    *,
+    group_id_mapping: dict[str, str],
+) -> dict[str, dict[str, int]]:
+    """Validate Registry's island geometry in the rendered-page pixel frame."""
+    if not isinstance(groups, list):
+        raise ValueError("visual registry group geometry is invalid")
+    result: dict[str, dict[str, int]] = {}
+    keys = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
+    for group in groups:
+        if not isinstance(group, dict):
+            raise ValueError("visual registry group geometry is invalid")
+        group_id = group_id_mapping.get(str(group.get("group_id") or ""), "")
+        bbox = group.get("bbox")
+        if (
+            not group_id or group_id in result or not isinstance(bbox, dict)
+            or set(bbox) != set(keys)
+            or not all(isinstance(bbox[key], int) for key in keys)
+            or bbox["top_left_x"] < 0 or bbox["top_left_y"] < 0
+            or bbox["bottom_right_x"] <= bbox["top_left_x"]
+            or bbox["bottom_right_y"] <= bbox["top_left_y"]
+        ):
+            raise ValueError("visual registry group geometry is invalid")
+        result[group_id] = {key: int(bbox[key]) for key in keys}
+    return result
+
+
+def _validate_detection_view_evidence_attributions(
+    attributions: object,
+    *,
+    visual_group_ids: set[str],
+    group_id_mapping: dict[str, str],
+    source_facts: list[dict[str, Any]],
+) -> dict[str, list[str]]:
+    """Require one package membership decision per Visual Group, not per number."""
+    if not isinstance(attributions, list):
+        raise ValueError("view evidence attributions are invalid")
+    valid_fact_ids = {str(fact["fact_id"]) for fact in source_facts}
+    result: dict[str, list[str]] = {}
+    for row in attributions:
+        if (
+            not isinstance(row, dict) or set(row) != {"group_id", "source_fact_ids"}
+            or not isinstance(row.get("group_id"), str)
+            or not isinstance(row.get("source_fact_ids"), list)
+            or not all(isinstance(value, str) and value for value in row["source_fact_ids"])
+            or len(row["source_fact_ids"]) != len(set(row["source_fact_ids"]))
+        ):
+            raise ValueError("view evidence attributions are invalid")
+        group_id = group_id_mapping.get(row["group_id"], row["group_id"])
+        if (
+            group_id not in visual_group_ids or group_id in result
+            or not set(row["source_fact_ids"]).issubset(valid_fact_ids)
+        ):
+            raise ValueError("view evidence attributions are invalid")
+        result[group_id] = list(row["source_fact_ids"])
+    if set(result) != visual_group_ids:
+        raise ValueError("view evidence attributions must account for every visual group exactly once")
+    return result
+
+
+def build_detection_view_evidence_packages(
+    *,
+    visual_groups: list[dict[str, Any]],
+    group_bboxes: dict[str, dict[str, int]],
+    source_fact_ids_by_group: dict[str, list[str]],
+    source_facts: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Materialize immutable source evidence selected by Registry for each View."""
+    facts_by_id = {str(fact["fact_id"]): fact for fact in source_facts}
+    packages: list[dict[str, Any]] = []
+    for group in visual_groups:
+        group_id = str(group["group_id"])
+        fact_ids = source_fact_ids_by_group.get(group_id, [])
+        packages.append({
+            "visual_group_id": group_id,
+            "page_number": group["page_number"],
+            "bbox": group_bboxes.get(group_id, {}),
+            "evidence_class": group.get("evidence_class"),
+            "source_fact_ids": fact_ids,
+            "source_facts": [copy.deepcopy(facts_by_id[fact_id]) for fact_id in fact_ids],
+        })
+    return packages
+
+
+def build_detection_view_dimension_audit(
+    view_evidence_packages: list[dict[str, Any]],
+    dimension_inventory: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Attach Registry's cited chains to immutable per-View source packages."""
+    inventory_by_group_id = {
+        str(row.get("group_id") or ""): row
+        for row in dimension_inventory if isinstance(row, dict)
+    }
+    result: list[dict[str, Any]] = []
+    for package in view_evidence_packages:
+        group_id = str(package.get("visual_group_id") or "")
+        result.append({
+            **copy.deepcopy(package),
+            "model_envelope_chains": copy.deepcopy(
+                inventory_by_group_id.get(group_id, {}).get("envelope_chains") or []
+            ),
+        })
+    return result
+
+
 def _discard_non_object_visual_registry_groups(
     payload: dict[str, Any],
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -1673,6 +1905,13 @@ def _discard_non_object_visual_registry_groups(
     if isinstance(classifications, list):
         effective["classifications"] = [
             row for row in classifications
+            if not isinstance(row, dict)
+            or str(row.get("group_id") or "") not in discarded_group_ids
+        ]
+    evidence_attributions = effective.get("evidence_attributions")
+    if isinstance(evidence_attributions, list):
+        effective["evidence_attributions"] = [
+            row for row in evidence_attributions
             if not isinstance(row, dict)
             or str(row.get("group_id") or "") not in discarded_group_ids
         ]
@@ -1859,16 +2098,20 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     document_dimension_unit_profile = (
         extract_detection_document_dimension_unit_profile(ocr_package)
     )
-    dimension_candidates = build_detection_dimension_candidates(ocr_package)
-    user_text = build_detection_user_text(
-        file_name=file_name, company_id=company_id, ocr_package=ocr_package,
-        include_spatial_inventory=True,
+    source_facts = build_detection_page_evidence_inventory(ocr_package)
+    page_evidence_inventory_text = format_detection_page_evidence_inventory(
+        source_facts
     )
+    user_text = build_detection_user_text(
+        file_name=file_name, company_id=company_id, ocr_package=None,
+    )
+    user_text = user_text.replace(
+        "OCR text layer: unavailable",
+        page_evidence_inventory_text,
+    )
+    user_text += "\n\n" + spatial_inventory_context(spatial_regions)
     user_text += "\n\n" + format_detection_document_dimension_unit_profile(
         document_dimension_unit_profile
-    )
-    user_text += "\n\n" + format_detection_dimension_candidate_context(
-        dimension_candidates
     )
     schema = strip_schema_for_claude(DETECTION_VISUAL_REGISTRY_JSON_SCHEMA)
     content = build_detection_registry_content_blocks(
@@ -1886,6 +2129,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     # Keep the inference parameter on both accepted and rejected Registry
     # events. The experiment must be comparable even when validation fails.
     diagnostics["temperature"] = DETECTION_VISUAL_REGISTRY_TEMPERATURE
+    diagnostics["page_evidence_source_fact_count"] = len(source_facts)
+    diagnostics["page_evidence_inventory_characters"] = len(
+        page_evidence_inventory_text
+    )
+    diagnostics["rendered_page_image_bytes"] = sum(len(image) for image in page_images)
+    diagnostics["registry_system_prompt_characters"] = len(prompt)
     raw_text = extract_text_from_claude_response(response)
     try:
         payload = json.loads(raw_text)
@@ -1940,7 +2189,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     dimension_inventory_audit: list[dict[str, Any]] = []
     dimension_inventory_valid = False
     dimension_inventory_error: str | None = None
-    dimension_candidate_chain_error: str | None = None
+    group_bboxes: dict[str, dict[str, int]] = {}
+    source_fact_ids_by_group: dict[str, list[str]] = {}
+    view_evidence_packages: list[dict[str, Any]] = []
     island_dimension_comparison_audit: list[dict[str, Any]] = []
     empty_envelope_chain_group_ids: list[str] = []
     dimension_conflicts: list[dict[str, Any]] = []
@@ -1961,10 +2212,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             )
         if not isinstance(payload, dict) or set(payload) != {
             "visual_groups", "classifications",
-            "dimension_inventory", "dimension_candidate_decisions",
+            "evidence_attributions", "dimension_inventory",
         }:
             raise ValueError(
-                "visual registry must contain visual_groups, classifications, dimension inventory and candidate decisions"
+                "visual registry must contain visual groups, classifications, evidence attributions and dimension inventory"
             )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
@@ -1977,12 +2228,23 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
-        candidate_decisions = validate_detection_dimension_candidate_decisions(
-            payload["dimension_candidate_decisions"],
-            candidates=dimension_candidates,
-            group_id_mapping=group_id_mapping,
+        group_bboxes = _normalize_registry_group_bboxes(
+            raw_groups, group_id_mapping=group_id_mapping,
         )
-        payload["dimension_candidate_decisions"] = candidate_decisions
+        visual_group_ids = {
+            group["group_id"] for group in visual_map["visual_groups"]
+        }
+        source_fact_ids_by_group = _validate_detection_view_evidence_attributions(
+            payload["evidence_attributions"],
+            visual_group_ids=visual_group_ids,
+            group_id_mapping=group_id_mapping,
+            source_facts=source_facts,
+        )
+        view_evidence_packages = build_detection_view_evidence_packages(
+            visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
+            source_fact_ids_by_group=source_fact_ids_by_group,
+            source_facts=source_facts,
+        )
         payload["dimension_inventory"] = (
             normalize_detection_dimension_inventory_group_ids(
                 payload["dimension_inventory"], group_id_mapping,
@@ -1994,37 +2256,19 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         ) = normalize_empty_detection_envelope_chains(
             payload["dimension_inventory"],
         )
-        visual_group_ids = {
-            group["group_id"] for group in visual_map["visual_groups"]
-        }
         try:
             dimension_inventory_audit = validate_detection_dimension_inventory(
                 payload["dimension_inventory"], visual_group_ids=visual_group_ids,
+                source_fact_ids_by_group=source_fact_ids_by_group,
             )
             dimension_inventory_valid = True
         except DetectionRegistrySchemaError as inventory_error:
             # The index improves graph recall but never decides a boundary.
             # A malformed row must not discard independently proven packages.
             dimension_inventory_error = str(inventory_error)
-        if dimension_inventory_valid:
-            try:
-                validate_detection_candidate_chain_consistency(
-                    candidate_decisions,
-                    candidates=dimension_candidates,
-                    dimension_inventory=dimension_inventory_audit,
-                )
-            except ValueError as exc:
-                dimension_candidate_chain_error = str(exc)
-                dimension_inventory_valid = False
-                dimension_inventory_error = dimension_candidate_chain_error
-        island_dimension_comparison_audit = build_detection_island_dimension_audit(
-            visual_groups=visual_map["visual_groups"],
-            dimension_inventory=(
-                dimension_inventory_audit
-                if dimension_inventory_valid
-                else payload["dimension_inventory"]
-            ),
-            ocr_package=ocr_package,
+        island_dimension_comparison_audit = build_detection_view_dimension_audit(
+            view_evidence_packages,
+            dimension_inventory_audit if dimension_inventory_valid else [],
         )
         page_drawing_codes = extract_detection_page_drawing_codes(ocr_package)
         if dimension_inventory_valid:
@@ -2157,11 +2401,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "registry_decision_audit": registry_decision_audit,
             "discarded_non_object_visual_groups": discarded_non_object_groups,
             "classification_decisions": classification_decisions,
-            "dimension_candidate_census": dimension_candidates,
-            "dimension_candidate_decisions": payload.get(
-                "dimension_candidate_decisions", []
-            ) if isinstance(payload, dict) else [],
-            "dimension_candidate_chain_error": dimension_candidate_chain_error,
+            "page_evidence_source_fact_count": len(source_facts),
+            "view_evidence_packages": view_evidence_packages,
             "positive_relation_edges": positive_relation_edges,
             "dimension_inventory": dimension_inventory_audit,
             "dimension_inventory_valid": dimension_inventory_valid,
@@ -2223,12 +2464,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "registry_decision_audit": registry_decision_audit,
         "discarded_non_object_visual_groups": discarded_non_object_groups,
         "classification_decisions": classification_decisions,
-        "dimension_candidate_census": dimension_candidates,
-        "dimension_candidate_decisions": payload.get(
-            "dimension_candidate_decisions", []
-        ),
-        "dimension_candidate_count": len(dimension_candidates),
-        "dimension_candidate_chain_error": dimension_candidate_chain_error,
+        "page_evidence_source_fact_count": len(source_facts),
+        "view_evidence_packages": view_evidence_packages,
         "positive_relation_edges": positive_relation_edges,
         "dimension_inventory": dimension_inventory_audit,
         "dimension_inventory_valid": dimension_inventory_valid,

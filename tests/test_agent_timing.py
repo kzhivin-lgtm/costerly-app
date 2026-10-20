@@ -72,9 +72,15 @@ def _visual_registry_payload(payload):
         "floor_plan", "title_block", "title_page", "cover", "cover_page", "legend",
     }
     classifications = []
-    for group in groups:
+    for index, group in enumerate(groups, start=1):
         if not isinstance(group, dict):
             continue
+        group.setdefault("bbox", {
+            "top_left_x": index * 10,
+            "top_left_y": 10,
+            "bottom_right_x": index * 10 + 5,
+            "bottom_right_y": 20,
+        })
         is_document_context = group.get("representation_kind") in non_object_kinds
         evidence_class = group.pop(
             "evidence_class",
@@ -97,13 +103,17 @@ def _visual_registry_payload(payload):
             for item in classifications
             if item["evidence_class"] == "object_evidence"
         ]
+    for row in inventory:
+        for chain in row.get("envelope_chains") or []:
+            chain.setdefault("source_fact_ids", [])
     return {
         "visual_groups": groups,
         "classifications": classifications,
+        "evidence_attributions": [
+            {"group_id": item["group_id"], "source_fact_ids": []}
+            for item in classifications
+        ],
         "dimension_inventory": inventory,
-        "dimension_candidate_decisions": payload.get(
-            "dimension_candidate_decisions", []
-        ),
     }
 
 
@@ -670,6 +680,54 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
     }]
 
 
+def test_visual_registry_materializes_view_package_from_immutable_source_fact():
+    payload = _visual_registry_payload({
+        "visual_groups": [{
+            "group_id": "cabinet", "page_number": 1, "location_hint": "center",
+            "visual_description": "cabinet elevation", "representation_kind": "elevation",
+        }],
+    })
+    payload["evidence_attributions"] = [{
+        "group_id": "cabinet", "source_fact_ids": ["SF00001"],
+    }]
+    payload["dimension_inventory"] = [{
+        "group_id": "cabinet", "envelope_chains": [{
+            "chain_id": "cabinet-width", "axis": "horizontal", "segments": [],
+            "direct_total": "358", "source_fact_ids": ["SF00001"],
+        }],
+    }]
+    ocr_package = {"evidence": {"text_blocks": [{
+        "page_number": 1, "source": "native_pdf_text",
+        "bbox": {"top_left_x": 10, "top_left_y": 20, "bottom_right_x": 40, "bottom_right_y": 30},
+        "text": "358",
+    }]}}
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            return_value=(_Response(), {
+                "request_started_at": "2026-10-16T00:00:00+00:00",
+                "request_finished_at": "2026-10-16T00:00:01+00:00",
+            }),
+        ),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+    ):
+        _, registry, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=ocr_package, model="model",
+        )
+
+    package = usage["raw_usage"]["view_evidence_packages"][0]
+    assert package["source_fact_ids"] == ["SF00001"]
+    assert package["source_facts"][0]["text"] == "358"
+    assert package["bbox"] == {
+        "top_left_x": 10, "top_left_y": 10,
+        "bottom_right_x": 15, "bottom_right_y": 20,
+    }
+    assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
+
+
 def test_integrated_visual_registry_uses_two_literal_overall_dimensions_to_merge():
     payload = {
         "visual_groups": [
@@ -708,12 +766,12 @@ def test_integrated_visual_registry_uses_two_literal_overall_dimensions_to_merge
     response_payload = _visual_registry_payload(payload)
     response_payload["dimension_inventory"] = [
         {"group_id": "elevation", "envelope_chains": [
-            {"chain_id": "e-h", "axis": "horizontal", "segments": [], "direct_total": "1200"},
-            {"chain_id": "e-v", "axis": "vertical", "segments": [], "direct_total": "2400"},
+                {"chain_id": "e-h", "axis": "horizontal", "segments": [], "direct_total": "1200", "source_fact_ids": []},
+                {"chain_id": "e-v", "axis": "vertical", "segments": [], "direct_total": "2400", "source_fact_ids": []},
         ]},
         {"group_id": "plan", "envelope_chains": [
-            {"chain_id": "p-h", "axis": "horizontal", "segments": [], "direct_total": "1200"},
-            {"chain_id": "p-v", "axis": "vertical", "segments": [], "direct_total": "2400"},
+                {"chain_id": "p-h", "axis": "horizontal", "segments": [], "direct_total": "1200", "source_fact_ids": []},
+                {"chain_id": "p-v", "axis": "vertical", "segments": [], "direct_total": "2400", "source_fact_ids": []},
         ]},
     ]
 

@@ -69,14 +69,15 @@ def test_detection_visual_map_never_decides_objects_or_quantity():
 def test_integrated_visual_registry_returns_facts_for_the_deterministic_graph_compiler():
     prompt = load_detection_visual_registry_prompt()
 
-    assert "deterministic commercial-object graph\ncompiler" in prompt
-    assert "You do **not** create objects, packages, owner assignments, merge" in prompt
+    assert "deterministic object-package\nconstruction" in prompt
+    assert "You do not create commercial objects, packages, owner assignments" in prompt
     assert "Return exactly four stages" in prompt
     assert "plan, room layout, electrical, plumbing or lighting plan" in prompt
     assert "never become Estimation Evidence" in prompt
     assert "Maximal outer-envelope chain index" in prompt
     assert "dimension_inventory" in prompt
-    assert "dimension_candidate_decisions" in prompt
+    assert "evidence_attributions" in prompt
+    assert "PAGE EVIDENCE INVENTORY" in prompt
     assert "classification_reason" in prompt
     assert "passive recall aid" in prompt
     assert "64`, `203`, `64`" in prompt
@@ -85,5 +86,5 @@ def test_integrated_visual_registry_returns_facts_for_the_deterministic_graph_co
     assert "Two separately framed, separately dimensioned or separately positioned views" in prompt
     assert "Do not emit a chain with both `direct_total: \"\"` and\n`segments: []`" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_50_dimension_candidate_accounting_registry_only_temperature_0"
+        "detection_v4_51_source_fact_view_packaging_dimension_graph_temperature_0"
     )

@@ -110,6 +110,7 @@ DETECTION_DIMENSION_INVENTORY_JSON_SCHEMA: dict[str, Any] = {
                     "additionalProperties": False,
                     "required": [
                         "chain_id", "axis", "segments", "direct_total",
+                        "source_fact_ids",
                     ],
                     "properties": {
                         "chain_id": {"type": "string"},
@@ -122,6 +123,9 @@ DETECTION_DIMENSION_INVENTORY_JSON_SCHEMA: dict[str, Any] = {
                             "items": {"type": "string"},
                         },
                         "direct_total": {"type": "string"},
+                        "source_fact_ids": {
+                            "type": "array", "items": {"type": "string"},
+                        },
                     },
                 },
             },
@@ -274,6 +278,7 @@ def validate_detection_dimension_inventory(
     inventory: object,
     *,
     visual_group_ids: set[str],
+    source_fact_ids_by_group: dict[str, list[str]] | None = None,
 ) -> list[dict[str, Any]]:
     """Keep every readable outer dimension chain for each axis.
 
@@ -311,16 +316,33 @@ def validate_detection_dimension_inventory(
         chain_ids: set[str] = set()
         envelope_chains: list[dict[str, Any]] = []
         for chain in row["envelope_chains"]:
+            required_chain_fields = {
+                "chain_id", "axis", "segments", "direct_total",
+            }
+            if source_fact_ids_by_group is not None:
+                required_chain_fields.add("source_fact_ids")
             if (
                 not isinstance(chain, dict)
-                or set(chain) != {
-                    "chain_id", "axis", "segments", "direct_total",
-                }
+                or set(chain) != required_chain_fields
                 or not isinstance(chain.get("chain_id"), str)
                 or not chain["chain_id"].strip()
                 or chain.get("axis") not in ENVELOPE_CHAIN_AXES
                 or not isinstance(chain.get("segments"), list)
                 or not isinstance(chain.get("direct_total"), str)
+                or (
+                    source_fact_ids_by_group is not None
+                    and (
+                        not isinstance(chain.get("source_fact_ids"), list)
+                        or not all(
+                            isinstance(value, str) and value.strip()
+                            for value in chain["source_fact_ids"]
+                        )
+                        or len(chain["source_fact_ids"]) != len(set(chain["source_fact_ids"]))
+                        or not set(chain["source_fact_ids"]).issubset(
+                        set(source_fact_ids_by_group.get(row["group_id"], []))
+                        )
+                    )
+                )
                 or chain["chain_id"] in chain_ids
                 or not all(
                     isinstance(value, str) and value.strip()
@@ -338,6 +360,9 @@ def validate_detection_dimension_inventory(
                 "axis": chain["axis"],
                 "segments": [value.strip() for value in chain["segments"]],
                 "direct_total": chain["direct_total"].strip(),
+                "source_fact_ids": [
+                    value.strip() for value in chain.get("source_fact_ids") or []
+                ],
             })
         by_group_id[row["group_id"]] = {
             "group_id": row["group_id"],
