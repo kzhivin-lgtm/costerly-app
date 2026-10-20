@@ -37,6 +37,7 @@ from agents.schemas.detection_registry_schema import (
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
     derive_detection_package_decision_audit,
+    derive_detection_dimension_package_candidates,
     derive_detection_proof_components,
     derive_detection_standalone_package_group_ids,
     compile_detection_dimension_graph,
@@ -65,10 +66,11 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_53_drop_empty_evidence_islands_dimension_graph_temperature_0"
+    "detection_v4_58_registry_dimension_chains_and_candidate_packages_temperature_0"
 )
-# V4.49 keeps one Haiku call. The model records every readable outer chain of
-# each immutable visual island. Runtime alone sums chains and compiles equality.
+# V4.58 keeps one Haiku call. Registry identifies Islands, classes and possible
+# dimension chains. Runtime validates source references, calculates similarity
+# and derives dimension-package candidates without final commercial merges.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # The positive graph and per-group source index are linear in island count.
 DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
@@ -175,8 +177,7 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": [
-        "visual_groups", "classifications",
-        "dimension_inventory",
+        "visual_groups", "classifications", "dimension_inventory",
     ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
@@ -1807,11 +1808,149 @@ def build_detection_view_evidence_packages(
     return packages
 
 
+def assign_detection_page_local_view_labels(
+    view_evidence_packages: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Give each retained View a human-readable number restarting per page.
+
+    ``visual_group_id`` remains the immutable internal key. ``view_label`` is
+    purely a page-local diagnostic reference, so removal of an empty Island
+    does not alter provenance or graph keys while people can read Page 4,
+    View 001 instead of a document-wide counter.
+    """
+    count_by_page: dict[int, int] = {}
+    labels: dict[str, dict[str, Any]] = {}
+    for package in view_evidence_packages:
+        page_number = int(package["page_number"])
+        sequence = count_by_page.get(page_number, 0) + 1
+        count_by_page[page_number] = sequence
+        label = f"View {sequence:03d}"
+        package["view_label"] = label
+        labels[str(package["visual_group_id"])] = {
+            "page_number": page_number,
+            "view_label": label,
+        }
+    return labels
+
+
+_DIMENSION_LITERAL_TEXT_RE = re.compile(r"^\s*(\d+(?:[.,]\d+)?)\s*$")
+
+
+def build_detection_dimension_fingerprints(
+    view_evidence_packages: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Create per-Island numeric fingerprints without model interpretation.
+
+    A Registry Island establishes the spatial boundary.  From that point this
+    routine uses only immutable MyPDF/Mistral facts in its View Evidence
+    Package. Each printed numeric occurrence is retained with its normalized
+    bbox. Near-coincident MyPDF and Mistral readings of the *same* printed
+    occurrence are fused into one occurrence with both provenance IDs, so two
+    OCR sources cannot artificially inflate a similarity score. We deliberately
+    do not infer rows, sums, exterior dimensions or product orientation.
+    """
+    bbox_keys = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
+
+    def numeric_fact(
+        fact: dict[str, Any], *, island_bbox: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        match = _DIMENSION_LITERAL_TEXT_RE.match(str(fact.get("text") or ""))
+        bbox = fact.get("bbox")
+        if (
+            not match
+            or not isinstance(bbox, dict)
+            or not isinstance(island_bbox, dict)
+            or not all(isinstance(bbox.get(key), (int, float)) for key in bbox_keys)
+            or not all(isinstance(island_bbox.get(key), (int, float)) for key in bbox_keys)
+        ):
+            return None
+        width = island_bbox["bottom_right_x"] - island_bbox["top_left_x"]
+        height = island_bbox["bottom_right_y"] - island_bbox["top_left_y"]
+        if width <= 0 or height <= 0:
+            return None
+
+        def normalized_x(value: float) -> float:
+            return round(min(1.0, max(0.0, (value - island_bbox["top_left_x"]) / width)), 6)
+
+        def normalized_y(value: float) -> float:
+            return round(min(1.0, max(0.0, (value - island_bbox["top_left_y"]) / height)), 6)
+
+        normalized_bbox = {
+            "top_left_x": normalized_x(float(bbox["top_left_x"])),
+            "top_left_y": normalized_y(float(bbox["top_left_y"])),
+            "bottom_right_x": normalized_x(float(bbox["bottom_right_x"])),
+            "bottom_right_y": normalized_y(float(bbox["bottom_right_y"])),
+        }
+        if (
+            normalized_bbox["bottom_right_x"] <= normalized_bbox["top_left_x"]
+            or normalized_bbox["bottom_right_y"] <= normalized_bbox["top_left_y"]
+        ):
+            return None
+        return {
+            "fact_id": str(fact["fact_id"]),
+            "value": match.group(1).replace(",", "."),
+            "normalized_bbox": normalized_bbox,
+        }
+
+    def bbox_center(candidate: dict[str, Any]) -> tuple[float, float]:
+        bbox = candidate["normalized_bbox"]
+        return (
+            (bbox["top_left_x"] + bbox["bottom_right_x"]) / 2,
+            (bbox["top_left_y"] + bbox["bottom_right_y"]) / 2,
+        )
+
+    def same_printed_occurrence(
+        left: dict[str, Any], right: dict[str, Any],
+    ) -> bool:
+        """Fuse only same-value readings whose centres are nearly coincident."""
+        if left["value"] != right["value"]:
+            return False
+        left_x, left_y = bbox_center(left)
+        right_x, right_y = bbox_center(right)
+        return abs(left_x - right_x) <= 0.025 and abs(left_y - right_y) <= 0.025
+
+    inventory: list[dict[str, Any]] = []
+    for package in view_evidence_packages:
+        group_id = str(package.get("visual_group_id") or "")
+        island_bbox = package.get("bbox") or {}
+        raw_occurrences = [
+            candidate
+            for fact in package.get("source_facts") or []
+            if isinstance(fact, dict)
+            if (candidate := numeric_fact(fact, island_bbox=island_bbox)) is not None
+        ]
+        raw_occurrences.sort(key=lambda item: (
+            float(item["value"]), *reversed(bbox_center(item)), item["fact_id"],
+        ))
+        occurrences: list[dict[str, Any]] = []
+        for candidate in raw_occurrences:
+            matched = next((
+                occurrence for occurrence in occurrences
+                if same_printed_occurrence(occurrence, candidate)
+            ), None)
+            if matched is None:
+                occurrences.append({**candidate, "source_fact_ids": [candidate["fact_id"]]})
+            else:
+                matched["source_fact_ids"].append(candidate["fact_id"])
+        chains: list[dict[str, Any]] = []
+        for occurrence_index, occurrence in enumerate(occurrences, start=1):
+            chains.append({
+                "chain_id": f"{group_id}-dimension-occurrence-{occurrence_index:03d}",
+                "axis": "unknown",
+                "segments": [],
+                "direct_total": occurrence["value"],
+                "normalized_bbox": occurrence["normalized_bbox"],
+                "source_fact_ids": sorted(set(occurrence["source_fact_ids"])),
+            })
+        inventory.append({"group_id": group_id, "envelope_chains": chains})
+    return inventory
+
+
 def build_detection_view_dimension_audit(
     view_evidence_packages: list[dict[str, Any]],
     dimension_inventory: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Attach Registry's cited chains to immutable per-View source packages."""
+    """Attach deterministic numeric chains to immutable per-View packages."""
     inventory_by_group_id = {
         str(row.get("group_id") or ""): row
         for row in dimension_inventory if isinstance(row, dict)
@@ -1821,7 +1960,7 @@ def build_detection_view_dimension_audit(
         group_id = str(package.get("visual_group_id") or "")
         result.append({
             **copy.deepcopy(package),
-            "model_envelope_chains": copy.deepcopy(
+            "deterministic_dimension_chains": copy.deepcopy(
                 inventory_by_group_id.get(group_id, {}).get("envelope_chains") or []
             ),
         })
@@ -2202,11 +2341,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     dimension_inventory_error: str | None = None
     group_bboxes: dict[str, dict[str, int]] = {}
     view_evidence_packages: list[dict[str, Any]] = []
+    page_local_view_labels: dict[str, dict[str, Any]] = {}
     island_dimension_comparison_audit: list[dict[str, Any]] = []
     empty_envelope_chain_group_ids: list[str] = []
     dimension_conflicts: list[dict[str, Any]] = []
     dimension_graph_audit: dict[str, Any] = {}
     package_decisions: list[dict[str, Any]] = []
+    dimension_package_candidate_components: list[list[str]] = []
+    dimension_package_candidate_decisions: list[dict[str, Any]] = []
     page_coverage_audit: list[dict[str, Any]] = []
     graph_page_coverage_supplements: list[dict[str, Any]] = []
     fallback_registry_object_ids: list[str] = []
@@ -2221,11 +2363,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 _discard_non_object_visual_registry_groups(payload)
             )
         if not isinstance(payload, dict) or set(payload) != {
-            "visual_groups", "classifications",
-            "dimension_inventory",
+            "visual_groups", "classifications", "dimension_inventory",
         }:
             raise ValueError(
-                "visual registry must contain visual groups, classifications and dimension inventory"
+                "visual registry must contain visual groups, classifications and dimensions"
             )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
@@ -2289,21 +2430,19 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             visual_group_ids = {
                 group["group_id"] for group in visual_map["visual_groups"]
             }
+        page_local_view_labels = assign_detection_page_local_view_labels(
+            view_evidence_packages
+        )
+        payload["dimension_inventory"] = normalize_detection_dimension_inventory_group_ids(
+            payload["dimension_inventory"], group_id_mapping
+        )
         source_fact_ids_by_group = {
             str(package["visual_group_id"]): list(package["source_fact_ids"])
             for package in view_evidence_packages
         }
-        payload["dimension_inventory"] = (
-            normalize_detection_dimension_inventory_group_ids(
-                payload["dimension_inventory"], group_id_mapping,
-            )
-        )
         (
-            payload["dimension_inventory"],
-            empty_envelope_chain_group_ids,
-        ) = normalize_empty_detection_envelope_chains(
-            payload["dimension_inventory"],
-        )
+            payload["dimension_inventory"], empty_envelope_chain_group_ids,
+        ) = normalize_empty_detection_envelope_chains(payload["dimension_inventory"])
         try:
             dimension_inventory_audit = validate_detection_dimension_inventory(
                 payload["dimension_inventory"], visual_group_ids=visual_group_ids,
@@ -2360,6 +2499,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             compiled_relation_edges,
             visual_group_ids=visual_group_ids,
             page_count=len(page_images),
+        )
+        dimension_package_candidate_components = (
+            derive_detection_dimension_package_candidates(
+                positive_relation_edges, visual_group_ids=visual_group_ids,
+            )
+        )
+        dimension_package_candidate_decisions = derive_detection_package_decision_audit(
+            dimension_package_candidate_components
         )
         # Only accepted merge edges decide package membership. Every omitted,
         # weak or rejected relation therefore remains a singleton rather than
@@ -2452,6 +2599,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "classification_decisions": classification_decisions,
             "page_evidence_source_fact_count": len(source_facts),
             "view_evidence_packages": view_evidence_packages,
+            "page_local_view_labels": page_local_view_labels,
             "positive_relation_edges": positive_relation_edges,
             "dimension_inventory": dimension_inventory_audit,
             "dimension_inventory_valid": dimension_inventory_valid,
@@ -2461,6 +2609,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "document_dimension_unit_profile": document_dimension_unit_profile,
             "dimension_conflicts": dimension_conflicts,
             "dimension_graph_audit": dimension_graph_audit,
+            "dimension_package_candidate_components": dimension_package_candidate_components,
+            "dimension_package_candidate_decisions": dimension_package_candidate_decisions,
             "accepted_merge_edges": accepted_merge_edges,
             "reference_links": reference_links,
             "rejected_relation_candidates": rejected_relation_candidates,
@@ -2516,6 +2666,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "classification_decisions": classification_decisions,
         "page_evidence_source_fact_count": len(source_facts),
         "view_evidence_packages": view_evidence_packages,
+        "page_local_view_labels": page_local_view_labels,
         "positive_relation_edges": positive_relation_edges,
         "dimension_inventory": dimension_inventory_audit,
         "dimension_inventory_valid": dimension_inventory_valid,
@@ -2526,6 +2677,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "dimension_inventory_group_count": len(dimension_inventory_audit),
         "dimension_conflicts": dimension_conflicts,
         "dimension_graph_audit": dimension_graph_audit,
+        "dimension_package_candidate_components": dimension_package_candidate_components,
+        "dimension_package_candidate_decisions": dimension_package_candidate_decisions,
         "positive_relation_edge_count": len(positive_relation_edges),
         "positive_dimension_equality_count": sum(
             fact.get("evidence_type") == "dimension_equality"

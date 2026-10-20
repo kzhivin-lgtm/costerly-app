@@ -64,7 +64,7 @@ class _Response:
 
 
 def _visual_registry_payload(payload):
-    """Upgrade legacy Registry fixtures to the V4.53 extraction contract."""
+    """Upgrade legacy Registry fixtures to the V4.58 three-stage contract."""
     if not isinstance(payload, dict) or "visual_groups" not in payload:
         return payload
     groups = copy.deepcopy(payload["visual_groups"])
@@ -96,20 +96,16 @@ def _visual_registry_payload(payload):
             "group_id": group["group_id"], "evidence_class": evidence_class,
             "classification_reason": classification_reason,
         })
-    inventory = payload.get("dimension_inventory")
-    if not isinstance(inventory, list):
-        inventory = [
-            {"group_id": item["group_id"], "envelope_chains": []}
-            for item in classifications
-            if item["evidence_class"] == "object_evidence"
-        ]
-    for row in inventory:
-        for chain in row.get("envelope_chains") or []:
-            chain.setdefault("source_fact_ids", [])
     return {
         "visual_groups": groups,
         "classifications": classifications,
-        "dimension_inventory": inventory,
+        "dimension_inventory": copy.deepcopy(payload.get(
+            "dimension_inventory",
+            [
+                {"group_id": group["group_id"], "envelope_chains": []}
+                for group in groups if isinstance(group, dict)
+            ],
+        )),
     }
 
 
@@ -720,6 +716,7 @@ def test_visual_registry_materializes_view_package_from_immutable_source_fact():
         )
 
     package = usage["raw_usage"]["view_evidence_packages"][0]
+    assert package["view_label"] == "View 001"
     assert package["source_fact_ids"] == ["SF00001"]
     assert package["source_facts"][0]["text"] == "358"
     assert package["membership_basis"] == (
@@ -847,15 +844,17 @@ def test_integrated_visual_registry_uses_two_literal_overall_dimensions_to_merge
     assert [group["group_id"] for group in visual_map["visual_groups"]] == [
         "view-001", "view-002",
     ]
-    assert registry["objects"][0]["visual_group_ids"] == ["view-001", "view-002"]
-    assert usage["raw_usage"]["accepted_merge_edges"][0]["group_id_a"] == "view-001"
-    assert usage["raw_usage"]["accepted_merge_edges"][0]["group_id_b"] == "view-002"
+    # V4.54 dimensions are supporting facts only. They cannot merge packages.
+    assert [item["visual_group_ids"] for item in registry["objects"]] == [
+        ["view-001"], ["view-002"],
+    ]
+    assert usage["raw_usage"]["accepted_merge_edges"] == []
     assert usage["raw_usage"]["dimension_inventory_valid"] is True
     assert usage["raw_usage"]["dimension_inventory_group_count"] == 2
-    assert usage["raw_usage"]["proof_graph_components"] == [{
-        "canonical_anchor_group_id": "view-001",
-        "visual_group_ids": ["view-001", "view-002"],
-    }]
+    assert usage["raw_usage"]["proof_graph_components"] == [
+        {"canonical_anchor_group_id": "view-001", "visual_group_ids": ["view-001"]},
+        {"canonical_anchor_group_id": "view-002", "visual_group_ids": ["view-002"]},
+    ]
 
 
 def test_integrated_visual_registry_keeps_upload_actionable_when_dimension_index_is_invalid():
@@ -905,7 +904,9 @@ def test_integrated_visual_registry_keeps_upload_actionable_when_dimension_index
         ["view-001"], ["view-002"],
     ]
     assert usage["raw_usage"]["dimension_inventory_valid"] is False
-    assert "must account for every visual group" in usage["raw_usage"]["dimension_inventory_error"]
+    assert usage["raw_usage"]["dimension_inventory_error"] == (
+        "dimension inventory must account for every visual group exactly once"
+    )
 
 
 def test_integrated_visual_registry_keeps_title_code_as_label_but_not_graph_edge():

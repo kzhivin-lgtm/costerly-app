@@ -2,6 +2,8 @@ import pytest
 
 from agents.anthropic_adapter import (
     DETECTION_VISUAL_REGISTRY_JSON_SCHEMA,
+    assign_detection_page_local_view_labels,
+    build_detection_dimension_fingerprints,
     discard_degenerate_evidence_regions,
 )
 from agents.schemas.detection_registry_schema import (
@@ -10,6 +12,7 @@ from agents.schemas.detection_registry_schema import (
     compile_detection_dimension_graph,
     derive_detection_pairwise_merge_proofs_from_parent_links,
     derive_detection_package_decision_audit,
+    derive_detection_dimension_package_candidates,
     derive_detection_proof_components,
     derive_detection_standalone_package_group_ids,
     normalize_empty_detection_envelope_chains,
@@ -144,7 +147,7 @@ def test_proof_graph_derives_one_component_from_two_evidence_backed_edges():
     ]
 
 
-def test_v4_44_envelope_compiler_retains_one_equality_and_merges_two_independent_equalities():
+def test_v4_54_dimension_compiler_retains_all_equalities_as_supporting_only():
     groups = [
         {"group_id": "view-001", "page_number": 1, "representation_kind": "elevation"},
         {"group_id": "view-002", "page_number": 1, "representation_kind": "section"},
@@ -181,15 +184,169 @@ def test_v4_44_envelope_compiler_retains_one_equality_and_merges_two_independent
     ]
     assert len(edges) == 3
     assert edges[0]["relationship"] == "supporting_relation"
-    assert accepted_merges[0]["group_id_a"] == "view-001"
-    assert accepted_merges[0]["group_id_b"] == "view-003"
+    assert (edges[0]["group_id_a"], edges[0]["group_id_b"]) == (
+        "view-001", "view-002",
+    )
+    assert accepted_merges == []
     assert reference_links == []
     assert rejected == []
     assert conflicts == []
     assert audit["pairs_checked"] == 3
     assert derive_detection_proof_components(
         accepted_merges, visual_group_ids={group["group_id"] for group in groups}
-    ) == [["view-001", "view-003"], ["view-002"]]
+    ) == [["view-001"], ["view-002"], ["view-003"]]
+
+
+def test_v4_56_dimension_fingerprints_preserve_occurrence_count_and_edge_pattern():
+    def fact(fact_id, value, left, top=100):
+        return {
+            "fact_id": fact_id,
+            "text": str(value),
+            "bbox": {
+                "top_left_x": left, "top_left_y": top,
+                "bottom_right_x": left + 20, "bottom_right_y": top + 20,
+            },
+        }
+
+    bbox = {
+        "top_left_x": 0, "top_left_y": 0,
+        "bottom_right_x": 1000, "bottom_right_y": 1000,
+    }
+    packages = [
+        {"visual_group_id": "view-001", "page_number": 1, "bbox": bbox,
+         "source_facts": [
+             fact("a-358", 358, 490), fact("a-64-left", 64, 20),
+             fact("a-64-left-ocr", 64, 22), fact("a-64-right", 64, 960),
+             fact("a-72", 72, 500, 900),
+         ]},
+        {"visual_group_id": "view-002", "page_number": 1, "bbox": bbox,
+         "source_facts": [
+             fact("b-358", 358, 490), fact("b-64", 64, 20),
+             fact("b-72", 72, 500, 900), fact("b-46", 46, 400),
+             fact("b-61", 61, 600),
+         ]},
+        {"visual_group_id": "view-003", "page_number": 1, "bbox": bbox,
+         "source_facts": [
+             fact("c-358", 358, 490), fact("c-64-left", 64, 20),
+             fact("c-64-right", 64, 960), fact("c-46-left", 46, 20),
+             fact("c-46-right", 46, 960), fact("c-61", 61, 600),
+         ]},
+    ]
+    inventory = build_detection_dimension_fingerprints(packages)
+    first_64s = [
+        chain for chain in inventory[0]["envelope_chains"]
+        if chain["direct_total"] == "64"
+    ]
+
+    # The two sources reading the left 64 collapse into one occurrence, while
+    # the physical 64 at the right edge remains a separate occurrence.
+    assert len(first_64s) == 2
+    assert any(set(chain["source_fact_ids"]) == {"a-64-left", "a-64-left-ocr"}
+               for chain in first_64s)
+
+    groups = [
+        {"group_id": item["visual_group_id"], "page_number": 1,
+         "representation_kind": "elevation"}
+        for item in packages
+    ]
+    _, _, audit = compile_detection_dimension_graph(
+        inventory, visual_groups=groups, page_drawing_codes={},
+    )
+    first_to_third = next(
+        item for item in audit["dimension_similarity_candidates"]
+        if (item["group_id_a"], item["group_id_b"]) == ("view-001", "view-003")
+    )
+    repeated_64 = next(
+        feature for feature in first_to_third["features"]
+        if feature["value_pair"] == ["64", "64"]
+    )
+
+    assert repeated_64["matched_occurrence_count"] == 2
+    assert repeated_64["left_occurrence_count"] == 2
+    assert repeated_64["right_occurrence_count"] == 2
+    assert repeated_64["edge_pattern"] is True
+
+
+def test_v4_57_three_common_dimensions_on_one_page_form_supporting_relation():
+    groups = [
+        {"group_id": "view-001", "page_number": 1, "representation_kind": "elevation"},
+        {"group_id": "view-002", "page_number": 1, "representation_kind": "section"},
+    ]
+    inventory = validate_detection_dimension_inventory([
+        {"group_id": "view-001", "envelope_chains": [
+            {"chain_id": "a-60", "axis": "horizontal", "segments": [], "direct_total": "60"},
+            {"chain_id": "a-61", "axis": "horizontal", "segments": [], "direct_total": "61"},
+            {"chain_id": "a-64", "axis": "horizontal", "segments": [], "direct_total": "64"},
+        ]},
+        {"group_id": "view-002", "envelope_chains": [
+            {"chain_id": "b-60", "axis": "horizontal", "segments": [], "direct_total": "60"},
+            {"chain_id": "b-61", "axis": "horizontal", "segments": [], "direct_total": "61"},
+            {"chain_id": "b-64", "axis": "horizontal", "segments": [], "direct_total": "64"},
+        ]},
+    ], visual_group_ids={group["group_id"] for group in groups})
+
+    edges, _, audit = compile_detection_dimension_graph(
+        inventory, visual_groups=groups, page_drawing_codes={1: "N57"},
+    )
+
+    assert len(edges) == 1
+    candidate = audit["dimension_similarity_candidates"][0]
+    assert candidate["same_page_dimension_convergence"] is True
+    assert candidate["distinct_convergent_dimension_values"] == ["60", "61", "64"]
+    assert candidate["passes_graph_threshold"] is True
+
+
+def test_v4_57_two_percent_dimension_tolerance_accepts_91_and_92():
+    groups = [
+        {"group_id": "view-001", "page_number": 1, "representation_kind": "elevation"},
+        {"group_id": "view-002", "page_number": 1, "representation_kind": "section"},
+    ]
+    inventory = validate_detection_dimension_inventory([
+        {"group_id": "view-001", "envelope_chains": [{
+            "chain_id": "a-91", "axis": "horizontal", "segments": [], "direct_total": "91",
+        }]},
+        {"group_id": "view-002", "envelope_chains": [{
+            "chain_id": "b-92", "axis": "horizontal", "segments": [], "direct_total": "92",
+        }]},
+    ], visual_group_ids={group["group_id"] for group in groups})
+
+    _, _, audit = compile_detection_dimension_graph(
+        inventory, visual_groups=groups, page_drawing_codes={1: "N57"},
+    )
+
+    feature = audit["dimension_similarity_candidates"][0]["features"][0]
+    assert feature["value_pair"] == ["91", "92"]
+
+
+def test_v4_58_dimension_candidates_include_connected_and_standalone_views():
+    candidates = derive_detection_dimension_package_candidates(
+        [{
+            "group_id_a": "view-001", "group_id_b": "view-002",
+            "relationship": "supporting_relation", "evidence_facts": [],
+        }],
+        visual_group_ids={"view-001", "view-002", "view-003"},
+    )
+
+    assert candidates == [["view-001", "view-002"], ["view-003"]]
+
+
+def test_page_local_view_labels_restart_per_page_without_renaming_internal_keys():
+    packages = [
+        {"visual_group_id": "view-001", "page_number": 3},
+        {"visual_group_id": "view-002", "page_number": 3},
+        # The empty view-003 was already discarded. Its absence must not make
+        # the retained lower view display as View 004 to a human reader.
+        {"visual_group_id": "view-004", "page_number": 3},
+        {"visual_group_id": "view-005", "page_number": 4},
+    ]
+
+    labels = assign_detection_page_local_view_labels(packages)
+
+    assert [package["view_label"] for package in packages] == [
+        "View 001", "View 002", "View 003", "View 001",
+    ]
+    assert labels["view-004"] == {"page_number": 3, "view_label": "View 003"}
+    assert labels["view-005"] == {"page_number": 4, "view_label": "View 001"}
 
 
 def test_v4_49_dimension_inventory_allows_multiple_chains_on_one_axis():
@@ -229,7 +386,7 @@ def test_v4_44_envelope_compiler_never_uses_source_code_as_a_graph_edge():
     assert audit["source_codes_used_for_graph"] is False
 
 
-def test_v4_44_envelope_compiler_records_cross_axis_matches_as_equality_only():
+def test_v4_54_dimension_compiler_records_cross_axis_matches_as_supporting_only():
     groups = [
         {"group_id": "view-001", "page_number": 1, "representation_kind": "elevation"},
         {"group_id": "view-002", "page_number": 2, "representation_kind": "plan"},
@@ -256,12 +413,12 @@ def test_v4_44_envelope_compiler_records_cross_axis_matches_as_equality_only():
     assert [fact["evidence_type"] for fact in edges[0]["evidence_facts"]] == [
         "dimension_equality", "dimension_equality",
     ]
-    assert len(accepted_merges) == 1
+    assert accepted_merges == []
     assert rejected == []
     assert audit["dimension_transform_fact_count"] == 0
 
 
-def test_v4_44_envelope_compiler_uses_a_larger_segment_sum_and_near_equality():
+def test_v4_55_dimension_fingerprint_does_not_infer_segment_sums():
     groups = [
         {"group_id": "view-001", "page_number": 1, "representation_kind": "elevation"},
         {"group_id": "view-002", "page_number": 2, "representation_kind": "elevation"},
@@ -282,9 +439,8 @@ def test_v4_44_envelope_compiler_uses_a_larger_segment_sum_and_near_equality():
     )
 
     assert conflicts == []
-    assert edges[0]["relationship"] == "supporting_relation"
-    assert "total 348 (segmented_sum)" in edges[0]["evidence_facts"][0]["observation"]
-    assert audit["near_envelope_equality_fact_count"] == 1
+    assert edges == []
+    assert audit["near_envelope_equality_fact_count"] == 0
     assert audit["document_dimension_unit"] == "cm"
 
 
@@ -712,9 +868,8 @@ def test_parent_decision_rejects_missing_reason_and_later_parent():
         )
 
 
-def test_v4_43_registry_schema_contains_only_model_extracted_facts():
+def test_v4_54_registry_schema_contains_only_island_and_classification_facts():
     group_properties = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]["visual_groups"]["items"]["properties"]
-    dimension_properties = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]["dimension_inventory"]["items"]["properties"]
 
     assert "owner_object_ids" not in group_properties
     assert "evidence_class" not in group_properties
@@ -729,7 +884,6 @@ def test_v4_43_registry_schema_contains_only_model_extracted_facts():
     assert "pair_relation_facts" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "dimension_inventory" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "classifications" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
-    assert "envelope_chains" in dimension_properties
     assert "proof_edges" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "merge_proofs" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
 

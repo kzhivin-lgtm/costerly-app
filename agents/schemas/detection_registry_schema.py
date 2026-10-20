@@ -1,5 +1,6 @@
 from __future__ import annotations
 import copy
+import math
 import re
 from collections import deque
 from decimal import Decimal, InvalidOperation
@@ -28,7 +29,7 @@ MERGE_EVIDENCE_RELATIONSHIPS = frozenset({
 })
 REFERENCE_RELATIONSHIP = "reference_link"
 SUPPORTING_RELATIONSHIP = "supporting_relation"
-ENVELOPE_CHAIN_AXES = frozenset({"horizontal", "vertical"})
+ENVELOPE_CHAIN_AXES = frozenset({"horizontal", "vertical", "unknown"})
 PROOF_PARENT_DECISIONS = frozenset({
     "new_object_root",
     "attach_to_group",
@@ -123,6 +124,20 @@ DETECTION_DIMENSION_INVENTORY_JSON_SCHEMA: dict[str, Any] = {
                             "items": {"type": "string"},
                         },
                         "direct_total": {"type": "string"},
+                        "normalized_bbox": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": [
+                                "top_left_x", "top_left_y",
+                                "bottom_right_x", "bottom_right_y",
+                            ],
+                            "properties": {
+                                "top_left_x": {"type": "number", "minimum": 0, "maximum": 1},
+                                "top_left_y": {"type": "number", "minimum": 0, "maximum": 1},
+                                "bottom_right_x": {"type": "number", "minimum": 0, "maximum": 1},
+                                "bottom_right_y": {"type": "number", "minimum": 0, "maximum": 1},
+                            },
+                        },
                         "source_fact_ids": {
                             "type": "array", "items": {"type": "string"},
                         },
@@ -321,9 +336,12 @@ def validate_detection_dimension_inventory(
             }
             if source_fact_ids_by_group is not None:
                 required_chain_fields.add("source_fact_ids")
+            allowed_chain_fields = required_chain_fields | {"normalized_bbox"}
+            normalized_bbox = chain.get("normalized_bbox") if isinstance(chain, dict) else None
             if (
                 not isinstance(chain, dict)
-                or set(chain) != required_chain_fields
+                or not required_chain_fields.issubset(chain)
+                or not set(chain).issubset(allowed_chain_fields)
                 or not isinstance(chain.get("chain_id"), str)
                 or not chain["chain_id"].strip()
                 or chain.get("axis") not in ENVELOPE_CHAIN_AXES
@@ -352,10 +370,26 @@ def validate_detection_dimension_inventory(
                     not chain["direct_total"].strip()
                     and len(chain["segments"]) < 2
                 )
+                or (
+                    normalized_bbox is not None
+                    and (
+                        not isinstance(normalized_bbox, dict)
+                        or set(normalized_bbox) != {
+                            "top_left_x", "top_left_y",
+                            "bottom_right_x", "bottom_right_y",
+                        }
+                        or not all(
+                            isinstance(value, (int, float)) and 0 <= value <= 1
+                            for value in normalized_bbox.values()
+                        )
+                        or normalized_bbox["bottom_right_x"] <= normalized_bbox["top_left_x"]
+                        or normalized_bbox["bottom_right_y"] <= normalized_bbox["top_left_y"]
+                    )
+                )
             ):
                 raise DetectionRegistrySchemaError("dimension inventory is invalid")
             chain_ids.add(chain["chain_id"])
-            envelope_chains.append({
+            normalized_chain = {
                 "chain_id": chain["chain_id"].strip(),
                 "axis": chain["axis"],
                 "segments": [value.strip() for value in chain["segments"]],
@@ -363,7 +397,16 @@ def validate_detection_dimension_inventory(
                 "source_fact_ids": [
                     value.strip() for value in chain.get("source_fact_ids") or []
                 ],
-            })
+            }
+            if normalized_bbox is not None:
+                normalized_chain["normalized_bbox"] = {
+                    key: round(float(normalized_bbox[key]), 6)
+                    for key in (
+                        "top_left_x", "top_left_y",
+                        "bottom_right_x", "bottom_right_y",
+                    )
+                }
+            envelope_chains.append(normalized_chain)
         by_group_id[row["group_id"]] = {
             "group_id": row["group_id"],
             "ocr_literal_ids": list(row.get("ocr_literal_ids") or []),
@@ -434,7 +477,12 @@ def normalize_empty_detection_envelope_chains(
 
 
 _DIMENSION_LITERAL_RE = re.compile(r"^\s*(\d+(?:[.,]\d+)?)\s*$")
-_ENVELOPE_EQUALITY_TOLERANCE = Decimal("0.01")
+_ENVELOPE_EQUALITY_TOLERANCE = Decimal("0.02")
+_DIMENSION_SIMILARITY_GRAPH_THRESHOLD = 0.55
+_SAME_PAGE_DIMENSION_COHORT_MINIMUM = Decimal("150")
+_SAME_PAGE_DIMENSION_COHORT_BONUS = 0.45
+_DIMENSION_CONVERGENCE_MINIMUM = Decimal("20")
+_SAME_PAGE_DIMENSION_CONVERGENCE_MATCHES = 3
 
 
 def _decimal_literal(value: str) -> Decimal | None:
@@ -447,33 +495,23 @@ def _decimal_literal(value: str) -> Decimal | None:
         return None
 
 
-def _outer_envelope_candidate(chain: dict[str, Any]) -> dict[str, Any] | None:
-    """Choose the greatest supported outer extent for one axis.
-
-    The direct total and segmented chain are both literal source readings. If
-    both are present, the greater span wins. This preserves the user's rule
-    that an enclosing chain may exceed a smaller nearby printed dimension.
-    """
+def _dimension_chain_candidates(chain: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return every literal and geometric-sum candidate without ranking one."""
     direct_total = _decimal_literal(chain["direct_total"])
     segments = [_decimal_literal(value) for value in chain["segments"]]
     if any(value is None for value in segments):
-        return None
+        return []
     segmented_total = sum(segments, Decimal("0")) if len(segments) >= 2 else None
-    candidates = [value for value in (direct_total, segmented_total) if value is not None]
-    if not candidates:
-        return None
-    total = max(candidates)
-    if segmented_total is not None and segmented_total == total and direct_total != total:
-        source = "segmented_sum"
-    elif segmented_total is not None and direct_total == segmented_total:
-        source = "direct_total_confirmed_by_segments"
-    else:
-        source = "direct_total"
-    return {**chain, "total": total, "source": source}
+    candidates: list[dict[str, Any]] = []
+    if direct_total is not None:
+        candidates.append({**chain, "total": direct_total, "source": "literal"})
+    if segmented_total is not None:
+        candidates.append({**chain, "total": segmented_total, "source": "segmented_sum"})
+    return candidates
 
 
 def _envelope_values_equal(left: Decimal, right: Decimal) -> tuple[bool, Decimal]:
-    """Allow a conservative one-percent drawing tolerance, including 406/407."""
+    """Allow a two-percent drawing tolerance for rounded drawing dimensions."""
     if left <= 0 or right <= 0:
         return False, abs(left - right)
     difference = abs(left - right)
@@ -482,15 +520,119 @@ def _envelope_values_equal(left: Decimal, right: Decimal) -> tuple[bool, Decimal
 
 def _dimension_equality_observation(
     left: dict[str, Any], right: dict[str, Any], *, difference: Decimal,
+    feature_weight: float, same_page_cohort: bool, matched_occurrence_count: int,
+    left_occurrence_count: int, right_occurrence_count: int, edge_pattern: bool,
 ) -> str:
     comparison = "exactly matches" if not difference else (
-        f"matches within 1% drawing tolerance (difference {difference})"
+        f"matches within 2% drawing tolerance (difference {difference})"
+    )
+    cohort_clause = (
+        " Same-page repeated large-dimension cohort bonus applied."
+        if same_page_cohort else ""
+    )
+    edge_pattern_clause = (
+        " Repeated occurrences span opposite normalized Island bounds."
+        if edge_pattern else ""
     )
     return (
-        f"Outer {left['axis']} envelope {left['chain_id']} total {left['total']} "
-        f"({left['source']}) {comparison} outer {right['axis']} envelope "
-        f"{right['chain_id']} total {right['total']} ({right['source']})."
+        f"Dimension fingerprint value {left['total']} {comparison} value "
+        f"{right['total']}; matched occurrences {matched_occurrence_count}/"
+        f"{left_occurrence_count} and {matched_occurrence_count}/"
+        f"{right_occurrence_count}; feature weight {feature_weight:.3f}."
+        f"{cohort_clause}{edge_pattern_clause}"
     )
+
+
+def _dimension_magnitude_weight(value: Decimal) -> float:
+    """Reduce the influence of common drawing increments and tiny dimensions."""
+    if value < 20:
+        return 0.02
+    if value < 50:
+        return 0.12
+    if value < 100:
+        return 0.25
+    if value < 200:
+        return 0.45
+    if value < 1_000:
+        return 0.80
+    return 1.0
+
+
+def _dimension_specificity(*, document_group_count: int, value_group_count: int) -> float:
+    """Discount ubiquitous increments without making them disappear entirely."""
+    _ = document_group_count
+    if value_group_count < 2:
+        return 0.0
+    return 1.0 / math.sqrt(value_group_count)
+
+
+def _normalized_bbox_center(chain: dict[str, Any]) -> tuple[float, float] | None:
+    bbox = chain.get("normalized_bbox")
+    if not isinstance(bbox, dict):
+        return None
+    try:
+        return (
+            (float(bbox["top_left_x"]) + float(bbox["bottom_right_x"])) / 2,
+            (float(bbox["top_left_y"]) + float(bbox["bottom_right_y"])) / 2,
+        )
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def _matched_occurrences_form_edge_pattern(
+    occurrences: list[tuple[dict[str, Any], dict[str, Any]]],
+) -> bool:
+    """Detect the same repeated value at opposite bounds of both Islands.
+
+    This is a bounded topology bonus, not an object-merge decision. It only
+    applies where at least two independently printed occurrences match and the
+    occurrences span substantially apart left/right or top/bottom in each
+    Island. Absolute page edges are intentionally not required because an
+    Island bbox can include attached annotations or white margin.
+    """
+    if len(occurrences) < 2:
+        return False
+    centres = [(_normalized_bbox_center(left), _normalized_bbox_center(right))
+               for left, right in occurrences]
+    if any(left is None or right is None for left, right in centres):
+        return False
+    for axis in (0, 1):
+        left_positions = [left[axis] for left, _ in centres if left is not None]
+        right_positions = [right[axis] for _, right in centres if right is not None]
+        if (
+            max(left_positions) - min(left_positions) >= 0.45
+            and max(right_positions) - min(right_positions) >= 0.45
+        ):
+            return True
+    return False
+
+
+def _occurrence_feature_weight(
+    *,
+    value: Decimal,
+    value_group_count: int,
+    tolerance_factor: float,
+    same_page_cohort: bool,
+) -> float:
+    """Weight one literal match before multiplicity and topology are applied."""
+    magnitude = _dimension_magnitude_weight(value)
+    specificity = _dimension_specificity(
+        document_group_count=0, value_group_count=value_group_count,
+    )
+    # A ubiquitous dimension remains weak supporting evidence. It is not erased,
+    # because repeated independent occurrences can still form a useful pattern.
+    weight = magnitude * (0.30 + 0.70 * specificity) * tolerance_factor
+    if same_page_cohort:
+        weight += _SAME_PAGE_DIMENSION_COHORT_BONUS * magnitude
+    return min(0.95, round(weight, 6))
+
+
+def _accumulate_independent_feature_weights(weights: list[float]) -> float:
+    """Noisy-OR accumulation: each independent feature raises bounded confidence."""
+    remaining = 1.0
+    for weight in weights:
+        remaining *= 1.0 - min(0.95, max(0.0, weight))
+    return round(1.0 - remaining, 6)
 
 
 def compile_detection_dimension_graph(
@@ -500,17 +642,18 @@ def compile_detection_dimension_graph(
     page_drawing_codes: dict[int, str],
     document_dimension_unit: str = "unknown",
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
-    """Build a dimensions-only graph from maximal outer-envelope chains.
+    """Compile Dimension Fingerprints into a Weighted Similarity graph.
 
-    The model sees the drawing and identifies one maximal visible chain per
-    axis. Runtime performs all arithmetic and comparisons. This experiment
-    intentionally excludes author codes, transforms, topology and conflicts.
+    The result is an undirected supporting-evidence graph. Each literal
+    occurrence is compared once, with its source provenance, multiplicity and
+    normalized Island position preserved. Dimensions alone never merge a
+    package into a commercial object.
     """
-    _ = page_drawing_codes
     candidates_by_group_id = {
         str(row["group_id"]): [
-            candidate for chain in row["envelope_chains"]
-            if (candidate := _outer_envelope_candidate(chain)) is not None
+            candidate
+            for chain in row["envelope_chains"]
+            for candidate in _dimension_chain_candidates(chain)
         ]
         for row in inventory
     }
@@ -521,9 +664,16 @@ def compile_detection_dimension_graph(
     group_ids = sorted(group_by_id)
     pairs_checked = len(group_ids) * (len(group_ids) - 1) // 2
     edge_inputs: dict[tuple[str, str], dict[str, Any]] = {}
+    similarity_candidates: list[dict[str, Any]] = []
+    value_group_counts: dict[Decimal, int] = {}
+    value_groups_by_page: dict[tuple[int, Decimal], set[str]] = {}
+    for group_id, candidates in candidates_by_group_id.items():
+        page_number = int(group_by_id[group_id]["page_number"])
+        for value in {candidate["total"] for candidate in candidates}:
+            value_group_counts[value] = value_group_counts.get(value, 0) + 1
+            value_groups_by_page.setdefault((page_number, value), set()).add(group_id)
     invalid_chain_count = sum(
-        len(row["envelope_chains"])
-        - len(candidates_by_group_id[str(row["group_id"])])
+        sum(not _dimension_chain_candidates(chain) for chain in row["envelope_chains"])
         for row in inventory
     )
 
@@ -533,33 +683,182 @@ def compile_detection_dimension_graph(
             "group_id_a": pair[0],
             "group_id_b": pair[1],
             "facts": [],
-            "equality_pairs": [],
+            "feature_pairs": [],
         })
 
     for group_id_a, group_id_b in combinations(group_ids, 2):
-        equality_pairs: list[tuple[dict[str, Any], dict[str, Any], Decimal]] = []
+        candidate_matches: list[dict[str, Any]] = []
         for chain_a in candidates_by_group_id[group_id_a]:
             for chain_b in candidates_by_group_id[group_id_b]:
                 equal, difference = _envelope_values_equal(
                     chain_a["total"], chain_b["total"],
                 )
-                if equal:
-                    equality_pairs.append((chain_a, chain_b, difference))
-        if equality_pairs:
+                if not equal:
+                    continue
+                frequency = min(
+                    value_group_counts.get(chain_a["total"], 0),
+                    value_group_counts.get(chain_b["total"], 0),
+                )
+                tolerance_factor = float(
+                    1 - difference / max(chain_a["total"], chain_b["total"])
+                )
+                same_page_cohort = (
+                    chain_a["total"] == chain_b["total"]
+                    and chain_a["total"] >= _SAME_PAGE_DIMENSION_COHORT_MINIMUM
+                    and group_by_id[group_id_a]["page_number"]
+                    == group_by_id[group_id_b]["page_number"]
+                    and len(value_groups_by_page.get(
+                        (int(group_by_id[group_id_a]["page_number"]), chain_a["total"]),
+                        set(),
+                    )) >= 2
+                )
+                feature_weight = _occurrence_feature_weight(
+                    value=min(chain_a["total"], chain_b["total"]),
+                    value_group_count=frequency,
+                    tolerance_factor=tolerance_factor,
+                    same_page_cohort=same_page_cohort,
+                )
+                if feature_weight > 0:
+                    candidate_matches.append({
+                        "base_weight": feature_weight,
+                        "chain_a": chain_a,
+                        "chain_b": chain_b,
+                        "difference": difference,
+                        "same_page_cohort": same_page_cohort,
+                    })
+        if candidate_matches:
+            candidate_matches.sort(
+                key=lambda item: (
+                    0 if item["difference"] == 0 else 1,
+                    item["difference"], -item["base_weight"],
+                    item["chain_a"]["chain_id"], item["chain_b"]["chain_id"],
+                )
+            )
+            selected_matches: list[dict[str, Any]] = []
+            used_a: set[str] = set()
+            used_b: set[str] = set()
+            for match in candidate_matches:
+                chain_a = match["chain_a"]
+                chain_b = match["chain_b"]
+                if chain_a["chain_id"] in used_a or chain_b["chain_id"] in used_b:
+                    continue
+                selected_matches.append(match)
+                used_a.add(chain_a["chain_id"])
+                used_b.add(chain_b["chain_id"])
+            matches_by_value_pair: dict[tuple[Decimal, Decimal], list[dict[str, Any]]] = {}
+            for match in selected_matches:
+                key = (match["chain_a"]["total"], match["chain_b"]["total"])
+                matches_by_value_pair.setdefault(key, []).append(match)
+
+            feature_rows: list[dict[str, Any]] = []
+            for value_pair, matches in sorted(matches_by_value_pair.items()):
+                left_value, right_value = value_pair
+                left_occurrence_count = sum(
+                    chain["total"] == left_value
+                    for chain in candidates_by_group_id[group_id_a]
+                )
+                right_occurrence_count = sum(
+                    chain["total"] == right_value
+                    for chain in candidates_by_group_id[group_id_b]
+                )
+                matched_occurrence_count = len(matches)
+                base_weight = max(match["base_weight"] for match in matches)
+                occurrence_weight = 1 - (1 - base_weight) ** matched_occurrence_count
+                coverage = matched_occurrence_count / max(
+                    left_occurrence_count, right_occurrence_count,
+                )
+                edge_pattern = (
+                    min(left_value, right_value) >= Decimal("20")
+                    and _matched_occurrences_form_edge_pattern([
+                        (match["chain_a"], match["chain_b"])
+                        for match in matches
+                    ])
+                )
+                feature_weight = occurrence_weight * (0.70 + 0.30 * coverage)
+                if edge_pattern:
+                    feature_weight += 0.15
+                feature_weight = round(min(0.95, feature_weight), 6)
+                feature_rows.append({
+                    "left": matches[0]["chain_a"],
+                    "right": matches[0]["chain_b"],
+                    "difference": min(match["difference"] for match in matches),
+                    "same_page_cohort": any(
+                        match["same_page_cohort"] for match in matches
+                    ),
+                    "matched_occurrence_count": matched_occurrence_count,
+                    "left_occurrence_count": left_occurrence_count,
+                    "right_occurrence_count": right_occurrence_count,
+                    "edge_pattern": edge_pattern,
+                    "feature_weight": feature_weight,
+                    "value_pair": [str(left_value), str(right_value)],
+                })
+            similarity_score = _accumulate_independent_feature_weights([
+                row["feature_weight"] for row in feature_rows
+            ])
+            same_page = (
+                group_by_id[group_id_a]["page_number"]
+                == group_by_id[group_id_b]["page_number"]
+            )
+            # A single common dimension is weak. Several distinct dimensions
+            # agreeing on one drawing sheet are independent corroboration,
+            # even when each literal is common across the document. Keep this
+            # as a supporting relation only: object/package assembly remains a
+            # later model decision based on all evidence channels.
+            convergent_dimension_values = sorted({
+                str(feature["left"]["total"])
+                for feature in feature_rows
+                if min(feature["left"]["total"], feature["right"]["total"])
+                >= _DIMENSION_CONVERGENCE_MINIMUM
+            }, key=Decimal)
+            convergence_support = (
+                same_page
+                and len(convergent_dimension_values)
+                >= _SAME_PAGE_DIMENSION_CONVERGENCE_MATCHES
+            )
+            passes_graph_threshold = (
+                similarity_score >= _DIMENSION_SIMILARITY_GRAPH_THRESHOLD
+                or convergence_support
+            )
+            similarity_candidates.append({
+                "group_id_a": group_id_a,
+                "group_id_b": group_id_b,
+                "score": similarity_score,
+                "feature_count": len(feature_rows),
+                "matched_occurrence_count": len(selected_matches),
+                "features": [{
+                    key: value for key, value in row.items()
+                    if key not in {"left", "right", "difference", "same_page_cohort"}
+                } for row in feature_rows],
+                "distinct_convergent_dimension_values": convergent_dimension_values,
+                "same_page_dimension_convergence": convergence_support,
+                "passes_graph_threshold": passes_graph_threshold,
+            })
+            # Weak similarities remain visible in the audit, but cannot become
+            # a graph relation that later influences package assembly.
+            if not passes_graph_threshold:
+                continue
             edge = edge_for(group_id_a, group_id_b)
             page_numbers = sorted({
                 int(group_by_id[group_id_a]["page_number"]),
                 int(group_by_id[group_id_b]["page_number"]),
             })
-            for chain_a, chain_b, difference in equality_pairs:
+            for feature in feature_rows:
                 edge["facts"].append({
                     "evidence_type": "dimension_equality",
                     "evidence_pages": page_numbers,
                     "observation": _dimension_equality_observation(
-                        chain_a, chain_b, difference=difference,
+                        feature["left"], feature["right"],
+                        difference=feature["difference"],
+                        feature_weight=feature["feature_weight"],
+                        same_page_cohort=feature["same_page_cohort"],
+                        matched_occurrence_count=feature["matched_occurrence_count"],
+                        left_occurrence_count=feature["left_occurrence_count"],
+                        right_occurrence_count=feature["right_occurrence_count"],
+                        edge_pattern=feature["edge_pattern"],
                     ),
                 })
-                edge["equality_pairs"].append((chain_a, chain_b))
+                edge["feature_pairs"].append(feature)
+            edge["dimension_similarity_score"] = similarity_score
 
     relation_edges: list[dict[str, Any]] = []
     for pair in sorted(edge_inputs):
@@ -572,20 +871,11 @@ def compile_detection_dimension_graph(
         facts = list(facts_by_key.values())
         if not facts:
             continue
-        is_merge = (
-            len({left["chain_id"] for left, _ in edge["equality_pairs"]}) >= 2
-            and len({right["chain_id"] for _, right in edge["equality_pairs"]}) >= 2
+        relationship = "supporting_relation"
+        commercial_basis = (
+            "Dimension-chain similarity is supporting evidence only and does not "
+            "establish one commercial object."
         )
-        relationship = "same_object_view" if is_merge else "supporting_relation"
-        if is_merge:
-            commercial_basis = (
-                "Two independent maximal outer-envelope dimensions are equal."
-            )
-        else:
-            commercial_basis = (
-                "One maximal outer-envelope dimension is equal, but it does not "
-                "establish one commercial object."
-            )
         relation_edges.append({
             "group_id_a": edge["group_id_a"],
             "group_id_b": edge["group_id_b"],
@@ -595,14 +885,17 @@ def compile_detection_dimension_graph(
         })
 
     audit = {
-        "compiler_version": "v2_outer_envelope_equality_only",
+        "compiler_version": "v4_56_occurrence_aware_dimension_fingerprint_weighted_similarity",
         "pairs_checked": pairs_checked,
         "document_dimension_unit": document_dimension_unit,
         "page_drawing_codes": {
             str(page_number): code
             for page_number, code in sorted(page_drawing_codes.items())
         },
-        "envelope_chain_count": sum(
+        "dimension_fingerprint_value_count": sum(
+            len(candidates) for candidates in candidates_by_group_id.values()
+        ),
+        "dimension_fingerprint_occurrence_count": sum(
             len(candidates) for candidates in candidates_by_group_id.values()
         ),
         "invalid_envelope_chain_count": invalid_chain_count,
@@ -617,9 +910,37 @@ def compile_detection_dimension_graph(
         "dimension_conflicts": [],
         "source_codes_used_for_graph": False,
         "near_envelope_equality_fact_count": sum(
-            "1% drawing tolerance" in fact["observation"]
+            "2% drawing tolerance" in fact["observation"]
             for edge in relation_edges
             for fact in edge["evidence_facts"]
+        ),
+        "dimension_similarity_edges": [
+            {
+                "group_id_a": edge["group_id_a"],
+                "group_id_b": edge["group_id_b"],
+                "score": edge["dimension_similarity_score"],
+                "feature_count": len(edge["feature_pairs"]),
+                "matched_occurrence_count": sum(
+                    feature["matched_occurrence_count"]
+                    for feature in edge["feature_pairs"]
+                ),
+            }
+            for edge in sorted(edge_inputs.values(), key=lambda edge: (
+                edge["group_id_a"], edge["group_id_b"],
+            ))
+        ],
+        "dimension_similarity_candidates": sorted(
+            similarity_candidates,
+            key=lambda candidate: (
+                candidate["group_id_a"], candidate["group_id_b"],
+            ),
+        ),
+        "dimension_similarity_graph_threshold": _DIMENSION_SIMILARITY_GRAPH_THRESHOLD,
+        "dimension_equality_tolerance_percent": float(
+            _ENVELOPE_EQUALITY_TOLERANCE * 100
+        ),
+        "same_page_dimension_convergence_minimum": (
+            _SAME_PAGE_DIMENSION_CONVERGENCE_MATCHES
         ),
     }
     return relation_edges, [], audit
@@ -1069,6 +1390,48 @@ def derive_detection_proof_components(
     components: list[list[str]] = []
     visited: set[str] = set()
     for group_id in sorted(component_group_ids):
+        if group_id in visited:
+            continue
+        component: list[str] = []
+        queue = deque([group_id])
+        while queue:
+            current = queue.popleft()
+            if current in visited:
+                continue
+            visited.add(current)
+            component.append(current)
+            queue.extend(sorted(adjacency[current] - visited))
+        components.append(sorted(component))
+    return components
+
+
+def derive_detection_dimension_package_candidates(
+    relation_edges: list[dict[str, Any]],
+    *,
+    visual_group_ids: set[str],
+) -> list[list[str]]:
+    """Return provisional components from Dimension Graph support edges.
+
+    These are investigation candidates only. They deliberately do not change
+    commercial object ownership, which remains reserved for the later graph
+    containing all evidence types.
+    """
+    adjacency: dict[str, set[str]] = {
+        group_id: set() for group_id in visual_group_ids
+    }
+    for edge in relation_edges:
+        if edge.get("relationship") != "supporting_relation":
+            continue
+        group_id_a = str(edge.get("group_id_a") or "")
+        group_id_b = str(edge.get("group_id_b") or "")
+        if group_id_a not in adjacency or group_id_b not in adjacency:
+            continue
+        adjacency[group_id_a].add(group_id_b)
+        adjacency[group_id_b].add(group_id_a)
+
+    components: list[list[str]] = []
+    visited: set[str] = set()
+    for group_id in sorted(visual_group_ids):
         if group_id in visited:
             continue
         component: list[str] = []
