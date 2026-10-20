@@ -89,6 +89,18 @@ the negative conclusion. Use an empty observation only for `unknown`. You must
 check every type for every same-page pair. This is a
 comparison ledger, not an object-merge instruction.
 
+Use `unknown` by default. Set `present` only for direct observable evidence,
+and `absent` only for direct contradictory evidence. Different view types,
+being on the same sheet, adjacency, or lack of an obvious match are not proof
+of either presence or absence. Keep every observation to twelve words or
+fewer. This keeps the complete ledger compact enough to finish.
+
+`explicit_document_relation` is `present` only when the observation names a
+literal shared document code, callout or leader. A page-level drawing code is
+valid only when that sheet itself is explicitly designated as one indexed
+item. "Same page", "both elevations", adjacency, shared style or matching
+representation type are never an explicit document relation.
+
 The document-level unit profile is runtime metadata, not a task for you. Do not
 infer or publish final external object dimensions, materials, pricing,
 user-facing names or quantities.

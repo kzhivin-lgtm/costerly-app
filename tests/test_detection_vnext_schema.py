@@ -91,13 +91,13 @@ def test_semantic_ledger_requires_all_same_page_pairs_and_preserves_present_fact
         "matching_topology", "Both views show the same five-bay cabinet topology.",
     )]
 
-    with pytest.raises(
-        DetectionRegistrySchemaError,
-        match="semantic pairwise ledger must account for every same-page pair",
-    ):
-        compile_detection_semantic_pairwise_ledger(
-            [], visual_groups=groups, page_count=2,
-        )
+    edges, audit = compile_detection_semantic_pairwise_ledger(
+        [], visual_groups=groups, page_count=2,
+    )
+    assert edges == []
+    assert audit["unassessed_same_page_pairs"] == [{
+        "group_id_a": "view-001", "group_id_b": "view-002",
+    }]
 
 
 def test_semantic_ledger_ignores_extra_cross_page_pair_but_not_missing_pair():
@@ -155,6 +155,40 @@ def test_semantic_ledger_keeps_reasoning_for_an_absent_fact_without_edge():
         check for check in audit["ledger"][0]["checks"]
         if check["evidence_type"] == "unique_geometry"
     )["observation"] == "The elevation and section show different geometry."
+
+
+def test_semantic_ledger_requires_the_literal_page_code_for_document_relation():
+    checks = [
+        {"evidence_type": evidence_type, "state": "unknown", "observation": ""}
+        for evidence_type in (
+            "explicit_document_relation", "dimension_transform", "matching_topology",
+            "unique_geometry", "direct_shared_structure",
+        )
+    ]
+    checks[0] = {
+        "evidence_type": "explicit_document_relation", "state": "present",
+        "observation": "Both views are elevations on the same page.",
+    }
+    kwargs = {
+        "ledger": [{"group_id_a": "view-001", "group_id_b": "view-002", "checks": checks}],
+        "visual_groups": [
+            {"group_id": "view-001", "page_number": 1},
+            {"group_id": "view-002", "page_number": 1},
+        ],
+        "page_count": 1,
+        "page_drawing_codes": {1: "N57"},
+    }
+
+    edges, audit = compile_detection_semantic_pairwise_ledger(**kwargs)
+    assert edges == []
+    assert audit["demoted_explicit_document_relation_count"] == 1
+
+    checks[0]["observation"] = "Both views are explicitly labelled N57."
+    edges, audit = compile_detection_semantic_pairwise_ledger(**kwargs)
+    assert edges[0]["evidence_facts"] == [_fact(
+        "explicit_document_relation", "Both views are explicitly labelled N57.",
+    )]
+    assert audit["demoted_explicit_document_relation_count"] == 0
 
 
 def _root(reason="No positive relation to an earlier group is evidenced.", blocked_merge=None):

@@ -1456,6 +1456,7 @@ def compile_detection_semantic_pairwise_ledger(
     *,
     visual_groups: list[dict[str, Any]],
     page_count: int,
+    page_drawing_codes: dict[int, str] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Validate every same-page semantic comparison and emit positive edges."""
     if not isinstance(ledger, list):
@@ -1471,6 +1472,7 @@ def compile_detection_semantic_pairwise_ledger(
     }
     rows_by_pair: dict[tuple[str, str], dict[str, Any]] = {}
     ignored_pairs: list[dict[str, str]] = []
+    page_drawing_codes = page_drawing_codes or {}
     for row in ledger:
         if not isinstance(row, dict) or set(row) != {"group_id_a", "group_id_b", "checks"}:
             raise DetectionRegistrySchemaError("semantic pairwise ledger is invalid")
@@ -1514,18 +1516,55 @@ def compile_detection_semantic_pairwise_ledger(
         if set(checks) != SEMANTIC_PAIRWISE_EVIDENCE_TYPES:
             raise DetectionRegistrySchemaError("semantic pairwise ledger must check every evidence type")
         rows_by_pair[pair] = {"group_id_a": pair[0], "group_id_b": pair[1], "checks": checks}
-    if set(rows_by_pair) != expected_pairs:
-        raise DetectionRegistrySchemaError("semantic pairwise ledger must account for every same-page pair")
+    # A truncated response may omit the last comparisons. Preserve the fact
+    # that Registry did not assess them, but do not reject the RFQ or invent a
+    # semantic relation. Runtime inserts explicit `unknown` checks, so every
+    # graph pair remains inspectable and safely edge-free.
+    unassessed_pairs = sorted(expected_pairs - set(rows_by_pair))
+    for pair in unassessed_pairs:
+        rows_by_pair[pair] = {
+            "group_id_a": pair[0],
+            "group_id_b": pair[1],
+            "checks": {
+                evidence_type: {
+                    "evidence_type": evidence_type,
+                    "state": "unknown",
+                    "observation": "",
+                }
+                for evidence_type in SEMANTIC_PAIRWISE_EVIDENCE_TYPES
+            },
+        }
 
     edges: list[dict[str, Any]] = []
+    demoted_document_relations: list[dict[str, str]] = []
     for pair in sorted(rows_by_pair):
         row = rows_by_pair[pair]
-        facts = [
-            {"evidence_type": check["evidence_type"],
-             "evidence_pages": [page_by_group[pair[0]]],
-             "observation": check["observation"]}
-            for check in row["checks"].values() if check["state"] == "present"
-        ]
+        page_number = page_by_group[pair[0]]
+        source_page_code = re.sub(
+            r"[^A-Z0-9]", "", str(page_drawing_codes.get(page_number) or "").upper()
+        )
+        facts = []
+        for check in row["checks"].values():
+            if check["state"] != "present":
+                continue
+            if check["evidence_type"] == "explicit_document_relation":
+                observation_code = re.sub(
+                    r"[^A-Z0-9]", "", check["observation"].upper()
+                )
+                if not source_page_code or source_page_code not in observation_code:
+                    demoted_document_relations.append({
+                        "group_id_a": pair[0], "group_id_b": pair[1],
+                        "page_number": str(page_number),
+                        "source_page_code": source_page_code,
+                        "observation": check["observation"],
+                        "reason": "explicit_document_relation_requires_literal_page_code",
+                    })
+                    continue
+            facts.append({
+                "evidence_type": check["evidence_type"],
+                "evidence_pages": [page_number],
+                "observation": check["observation"],
+            })
         if facts:
             edges.append({
                 "group_id_a": pair[0], "group_id_b": pair[1],
@@ -1539,6 +1578,13 @@ def compile_detection_semantic_pairwise_ledger(
         "positive_semantic_edge_count": len(edges),
         "ignored_non_same_page_pair_count": len(ignored_pairs),
         "ignored_non_same_page_pairs": ignored_pairs,
+        "unassessed_same_page_pair_count": len(unassessed_pairs),
+        "unassessed_same_page_pairs": [
+            {"group_id_a": pair[0], "group_id_b": pair[1]}
+            for pair in unassessed_pairs
+        ],
+        "demoted_explicit_document_relation_count": len(demoted_document_relations),
+        "demoted_explicit_document_relations": demoted_document_relations,
         "ledger": [
             {"group_id_a": row["group_id_a"], "group_id_b": row["group_id_b"],
              "checks": [row["checks"][kind] for kind in sorted(row["checks"])]}

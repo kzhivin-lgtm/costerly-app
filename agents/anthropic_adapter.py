@@ -2537,6 +2537,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         semantic_relation_edges, semantic_ledger_audit = compile_detection_semantic_pairwise_ledger(
             payload["semantic_pairwise_ledger"],
             visual_groups=visual_map["visual_groups"], page_count=len(page_images),
+            page_drawing_codes=page_drawing_codes,
         )
         compiled_relation_edges = merge_detection_relation_edges(
             dimension_relation_edges, semantic_relation_edges,
