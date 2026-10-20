@@ -11,6 +11,7 @@ from agents.schemas.detection_registry_schema import (
     derive_detection_package_decision_audit,
     derive_detection_proof_components,
     derive_detection_standalone_package_group_ids,
+    partition_detection_relation_edges,
     validate_detection_dimension_inventory,
     validate_detection_pair_relation_ledger,
     validate_detection_pairwise_merge_proofs,
@@ -203,6 +204,59 @@ def test_complete_pair_ledger_retains_positive_non_tree_relation_without_cycle()
 
     assert proofs == []
     assert ledger[0]["relationship"] == "positive_non_tree_relation"
+
+
+def test_v4_40_relation_graph_preserves_positive_dimension_facts_and_isolates_weak_merge():
+    edges = [
+        _proof("view-001", "view-002", [
+            _fact("dimension_equality", "Overall width 358 cm is literal on both views."),
+            _fact("dimension_equality", "Overall height 245 cm is literal on both views."),
+        ]),
+        _proof("view-001", "view-003", [
+            _fact(
+                "dimension_transform",
+                "1180 mm elevation width equals 1180 mm plan depth after axis remapping.",
+            ),
+        ]),
+        _proof("view-002", "view-003", [
+            _fact("dimension_equality", "Overall width 358 cm is literal on both views."),
+            _fact("matching_topology", "The same three cabinet bays recur."),
+        ]),
+        _proof("view-002", "view-004", [
+            _fact("dimension_equality", "A local 600 mm dimension occurs on both views."),
+        ]),
+        _reference_link("view-003", "view-004", [
+            _fact("explicit_document_relation", "The plan locates the separate cabinet."),
+        ]),
+    ]
+
+    relation_edges, accepted_merges, reference_links, rejected = (
+        partition_detection_relation_edges(
+            edges,
+            visual_group_ids={"view-001", "view-002", "view-003", "view-004"},
+            page_count=1,
+        )
+    )
+
+    assert len(relation_edges) == 5
+    assert len(accepted_merges) == 3
+    assert len(reference_links) == 1
+    assert rejected == [{
+        "edge_index": 3,
+        "group_id_a": "view-002",
+        "group_id_b": "view-004",
+        "relationship": "same_object_view",
+        "rejection_stage": "merge_threshold",
+        "reason": "merge needs an explicit document relation, an exact dimension transform, or two independent evidence facts",
+        "evidence_facts": [
+            _fact("dimension_equality", "A local 600 mm dimension occurs on both views."),
+        ],
+        "commercial_inseparability": "The cited construction evidence establishes one quote line.",
+    }]
+    assert derive_detection_proof_components(
+        accepted_merges,
+        visual_group_ids={"view-001", "view-002", "view-003", "view-004"},
+    ) == [["view-001", "view-002", "view-003"], ["view-004"]]
 
 
 def test_shared_reference_evidence_is_undirected_and_not_a_package_component():
@@ -589,8 +643,9 @@ def test_integrated_registry_schema_has_no_model_owner_or_object_id_fields():
     assert "component_anchor_group_ids" in coverage_properties
     assert "standalone_package_group_ids" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "objects" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["required"]
-    assert "pair_relation_states" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
-    assert "pair_relation_facts" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
+    assert "relation_edges" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
+    assert "pair_relation_states" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
+    assert "pair_relation_facts" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "dimension_inventory" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "classifications" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "proof_edges" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]

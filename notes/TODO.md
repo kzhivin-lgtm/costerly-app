@@ -244,6 +244,25 @@ extract dimensions, while preserving the rule that Detection never infers or
 publishes final external object dimensions. It keeps the 12,288-token ceiling
 and one Haiku call. Acceptance: HSL returns valid JSON and its full graph,
 then Page 23 and Adda retain their protected outcomes.
+V4.40 is approved after the V4.38-V4.39 dense pair-ledger experiments proved
+that a complete negative matrix cannot fit HSL within the established response
+ceiling. It restores a sparse positive graph while retaining V4.33's six typed
+facts, especially `dimension_equality`, and requires the model to inspect every
+pair but serialize every positive equality, transform and other typed fact only.
+`dimension_equality` records direct same-axis literal matches;
+`dimension_transform` records a separately named unit or axis remapping. Both
+may be present on one pair. Runtime derives components from accepted merge edges
+only. A weak, cyclic, duplicate or otherwise unusable individual relation is
+persisted as a rejected candidate and cannot fail the RFQ or erase unrelated
+packages. Every unmerged object-evidence group becomes a quantity-one,
+review-required standalone with its physical page Evidence. `reference_link`
+is undirected, non-merging Evidence annotation: it adds linked pages to each
+related package but cannot hide a standalone or block validation. Generic floor
+plans remain `document_context`. This keeps one Haiku call, temperature zero,
+full OCR and page Evidence, without Sonnet or retry calls. Acceptance: HSL
+completes with every retained group assigned exactly once to a package, accepted
+and rejected relations visible in the audit, and all positive equality and
+transform facts persisted; then regress Page 23 and Adda before checkpointing.
 
 PENDING, P1, USER REQUEST, Detection Registry output and latency optimisation:
 after the commercial-boundary experiment reaches a valid HSL graph, remove only

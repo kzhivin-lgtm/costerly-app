@@ -591,6 +591,163 @@ def validate_detection_pairwise_merge_proofs(
     return proofs
 
 
+def partition_detection_relation_edges(
+    relation_edges: object,
+    *,
+    visual_group_ids: set[str],
+    page_count: int,
+) -> tuple[
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+]:
+    """Keep usable positive relations while isolating weak merge candidates.
+
+    V4.40 records the complete *positive* relation graph rather than asking the
+    provider to repeat a quadratic matrix of negative observations. A malformed
+    or semantically weak candidate must remain inspectable, but it must not
+    erase independently valid components or their singleton fallbacks.
+
+    Returns normalized relation edges, accepted merge edges, reference links,
+    and rejected-candidate audit rows, in that order. Structural errors inside
+    an individual relation are isolated in the audit for the same reason.
+    """
+    if not isinstance(relation_edges, list):
+        raise DetectionRegistrySchemaError("relation edges must be a list")
+
+    required = {
+        "group_id_a", "group_id_b", "relationship",
+        "evidence_facts", "commercial_inseparability",
+    }
+    normalized_edges: list[dict[str, Any]] = []
+    accepted_merge_edges: list[dict[str, Any]] = []
+    reference_links: list[dict[str, Any]] = []
+    rejected_candidates: list[dict[str, Any]] = []
+    seen_pairs: set[tuple[str, str]] = set()
+
+    for edge_index, edge in enumerate(relation_edges):
+        rejected_base = {"edge_index": edge_index}
+        if not isinstance(edge, dict) or set(edge) != required:
+            rejected_candidates.append({
+                **rejected_base,
+                "rejection_stage": "structural",
+                "reason": "relation fields do not match contract",
+            })
+            continue
+
+        group_id_a = str(edge.get("group_id_a") or "")
+        group_id_b = str(edge.get("group_id_b") or "")
+        relationship = edge.get("relationship")
+        if (
+            group_id_a >= group_id_b
+            or group_id_a not in visual_group_ids
+            or group_id_b not in visual_group_ids
+        ):
+            rejected_candidates.append({
+                **rejected_base,
+                "group_id_a": group_id_a,
+                "group_id_b": group_id_b,
+                "relationship": str(relationship or ""),
+                "rejection_stage": "structural",
+                "reason": "relation endpoints are not two ordered known groups",
+            })
+            continue
+        if relationship not in PAIRWISE_EVIDENCE_RELATIONSHIPS:
+            rejected_candidates.append({
+                **rejected_base,
+                "group_id_a": group_id_a,
+                "group_id_b": group_id_b,
+                "relationship": str(relationship or ""),
+                "rejection_stage": "structural",
+                "reason": "relation type is invalid",
+            })
+            continue
+        pair = (group_id_a, group_id_b)
+        if pair in seen_pairs:
+            rejected_candidates.append({
+                **rejected_base,
+                "group_id_a": group_id_a,
+                "group_id_b": group_id_b,
+                "relationship": relationship,
+                "rejection_stage": "structural",
+                "reason": "duplicate relation for the same pair",
+            })
+            continue
+        seen_pairs.add(pair)
+        try:
+            evidence_types, evidence_facts = _validate_pairwise_evidence_facts(
+                edge["evidence_facts"], page_count=page_count
+            )
+        except DetectionRegistrySchemaError:
+            rejected_candidates.append({
+                **rejected_base,
+                "group_id_a": group_id_a,
+                "group_id_b": group_id_b,
+                "relationship": relationship,
+                "rejection_stage": "structural",
+                "reason": "relation evidence facts are invalid",
+            })
+            continue
+        commercial_inseparability = str(
+            edge.get("commercial_inseparability") or ""
+        ).strip()
+        if not commercial_inseparability:
+            rejected_candidates.append({
+                **rejected_base,
+                "group_id_a": group_id_a,
+                "group_id_b": group_id_b,
+                "relationship": relationship,
+                "rejection_stage": "structural",
+                "reason": "relation commercial basis is blank",
+            })
+            continue
+
+        normalized = {
+            "group_id_a": group_id_a,
+            "group_id_b": group_id_b,
+            "relationship": relationship,
+            "evidence_facts": evidence_facts,
+            "commercial_inseparability": commercial_inseparability,
+        }
+        normalized_edges.append(normalized)
+        if relationship == REFERENCE_RELATIONSHIP:
+            reference_links.append(normalized)
+            continue
+        has_accepted_merge_basis = (
+            "explicit_document_relation" in evidence_types
+            or "dimension_transform" in evidence_types
+            or (
+                len(evidence_facts) >= 2
+                and bool(set(evidence_types).intersection(
+                    _NON_EXPLICIT_MERGE_SUPPORT_TYPES
+                ))
+            )
+        )
+        if not has_accepted_merge_basis:
+            rejected_candidates.append({
+                **rejected_base,
+                "group_id_a": group_id_a,
+                "group_id_b": group_id_b,
+                "relationship": relationship,
+                "rejection_stage": "merge_threshold",
+                "reason": (
+                    "merge needs an explicit document relation, an exact "
+                    "dimension transform, or two independent evidence facts"
+                ),
+                "evidence_facts": evidence_facts,
+                "commercial_inseparability": commercial_inseparability,
+            })
+            continue
+        accepted_merge_edges.append(normalized)
+    return (
+        normalized_edges,
+        accepted_merge_edges,
+        reference_links,
+        rejected_candidates,
+    )
+
+
 def derive_detection_pairwise_merge_proofs_from_parent_links(
     visual_groups: object,
     *,

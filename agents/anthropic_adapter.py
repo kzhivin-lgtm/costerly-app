@@ -30,18 +30,14 @@ from agents.detection_spatial_inventory import (
 )
 from agents.schemas.detection_registry_schema import (
     REFERENCE_RELATIONSHIP,
-    DETECTION_PAIR_RELATION_FACTS_JSON_SCHEMA,
-    DETECTION_PAIR_RELATION_STATES_JSON_SCHEMA,
+    DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
-    DETECTION_SHARED_REFERENCE_GROUP_IDS_JSON_SCHEMA,
     derive_detection_package_decision_audit,
     derive_detection_proof_components,
     derive_detection_standalone_package_group_ids,
-    validate_detection_pair_relation_ledger,
-    validate_detection_pairwise_merge_proofs,
     validate_detection_registry,
-    validate_detection_shared_reference_group_ids,
+    partition_detection_relation_edges,
 )
 from agents.schemas.detection_visual_map_schema import (
     DETECTION_VISUAL_MAP_JSON_SCHEMA,
@@ -62,16 +58,15 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_39_complete_pair_ledger_source_ocr_dimensions_temperature_0"
+    "detection_v4_40_sparse_positive_relation_graph_standalones_temperature_0"
 )
-# V4.39 keeps one Haiku call and V4.37's graph-derived package membership. It
-# retains the complete six-criterion ledger, but relies on source OCR pages for
-# literal dimension evidence instead of asking the model to duplicate every
-# dimension in a separate response inventory.
+# V4.40 keeps one Haiku call and V4.37's graph-derived package membership. It
+# records every positive typed relation, including all observed equality and
+# transform facts, but does not spend the response budget repeating a dense
+# matrix of negative or unreadable pairs.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
-# The compact V4.39 ledger makes every object-evidence pair explicit without a
-# duplicated per-group dimension transcript. Keep the established cap so the
-# experiment measures the contract reduction, not a larger response allowance.
+# Keep the established output ceiling. V4.40 removes the quadratic negative
+# ledger rather than relying on a larger output allowance to conceal it.
 DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
@@ -151,16 +146,13 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "additionalProperties": False,
     "required": [
         "visual_groups", "classifications",
-        "pair_relation_states", "pair_relation_facts",
-        "shared_reference_group_ids",
+        "relation_edges",
         "page_coverage",
     ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
-        "pair_relation_states": DETECTION_PAIR_RELATION_STATES_JSON_SCHEMA,
-        "pair_relation_facts": DETECTION_PAIR_RELATION_FACTS_JSON_SCHEMA,
-        "shared_reference_group_ids": DETECTION_SHARED_REFERENCE_GROUP_IDS_JSON_SCHEMA,
+        "relation_edges": DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
         "page_coverage": {
             "type": "array",
@@ -776,6 +768,16 @@ def _apply_page_coverage_to_registry(
             if object_id and object_id not in covered_ids:
                 covered_ids.append(object_id)
                 reconciled_object_ids.append(object_id)
+    # Descriptive metadata cannot make an identity page disappear from the
+    # handoff. Add it to Evidence rather than rejecting an otherwise complete
+    # graph because the model forgot to repeat the same page in coverage.
+    for item in objects:
+        object_id = str(item.get("object_id") or "")
+        for page_number in item.get("identity_pages") or []:
+            if object_id and object_id not in coverage_by_page[page_number]:
+                coverage_by_page[page_number].append(object_id)
+                if object_id not in reconciled_object_ids:
+                    reconciled_object_ids.append(object_id)
     enriched = copy.deepcopy(objects)
     for item in enriched:
         object_id = str(item["object_id"])
@@ -800,12 +802,18 @@ def _normalize_component_anchor_group_ids(
                 item["component_anchor_group_id"] = group_id_mapping.get(
                     raw_group_id, raw_group_id
                 )
-    shared_reference_group_ids = normalized.get("shared_reference_group_ids")
-    if isinstance(shared_reference_group_ids, list):
-        normalized["shared_reference_group_ids"] = sorted(
-            group_id_mapping.get(str(group_id), str(group_id))
-            for group_id in shared_reference_group_ids
-        )
+    relation_edges = normalized.get("relation_edges")
+    if isinstance(relation_edges, list):
+        for edge in relation_edges:
+            if not isinstance(edge, dict):
+                continue
+            for field in ("group_id_a", "group_id_b"):
+                raw_group_id = str(edge.get(field) or "")
+                edge[field] = group_id_mapping.get(raw_group_id, raw_group_id)
+            if str(edge.get("group_id_a") or "") > str(edge.get("group_id_b") or ""):
+                edge["group_id_a"], edge["group_id_b"] = (
+                    edge["group_id_b"], edge["group_id_a"],
+                )
     page_coverage = normalized.get("page_coverage")
     if isinstance(page_coverage, list):
         for entry in page_coverage:
@@ -998,55 +1006,123 @@ def _resolve_component_page_coverage(
     *,
     anchor_to_object_id: dict[str, str],
     page_number_by_group_id: dict[str, int],
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Resolve coverage and retain every page containing a proven group.
+    page_count: int,
+    reference_links: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Resolve coverage while making complete Evidence independent of repetition.
 
-    The model may add further object-specific pages.  It cannot accidentally
-    omit a physical page that visibly contains one of the graph component's
-    own groups, including when that component uses fallback metadata.
+    Model coverage remains useful enrichment, but page membership is already
+    known from the accepted graph. A malformed or incomplete coverage row must
+    not discard a commercial package. Every package keeps the pages of its own
+    groups, and a reference link contributes the linked depiction's page to
+    both related packages as shared Evidence.
     """
-    if not isinstance(page_coverage, list):
-        raise ValueError("page coverage and objects must be lists")
-    resolved: list[dict[str, Any]] = []
-    for entry in page_coverage:
-        if not isinstance(entry, dict) or set(entry) != {
-            "page_number", "component_anchor_group_ids", "evidence_reason",
-        }:
-            raise ValueError("page coverage fields do not match contract")
-        anchors = entry["component_anchor_group_ids"]
-        if (
-            not isinstance(anchors, list)
-            or anchors != sorted(anchors)
-            or len(anchors) != len(set(anchors))
-            or not all(
-                isinstance(anchor, str) and anchor in anchor_to_object_id
-                for anchor in anchors
-            )
-        ):
-            raise ValueError("page coverage is invalid")
-        resolved.append({
-            "page_number": entry["page_number"],
-            "object_ids": list(dict.fromkeys(
-                anchor_to_object_id[anchor] for anchor in anchors
-            )),
-            "evidence_reason": entry["evidence_reason"],
-        })
     resolved_by_page = {
-        entry["page_number"]: entry for entry in resolved
-        if isinstance(entry.get("page_number"), int)
+        page_number: {
+            "page_number": page_number,
+            "object_ids": [],
+            "evidence_reason": "No retained object-specific Evidence on this page.",
+        }
+        for page_number in range(1, page_count + 1)
     }
+    coverage_audit: list[dict[str, Any]] = []
+    if not isinstance(page_coverage, list):
+        coverage_audit.append({
+            "row_index": None,
+            "reason": "page coverage is not an array; graph-derived coverage applied",
+        })
+    else:
+        seen_pages: set[int] = set()
+        for row_index, entry in enumerate(page_coverage):
+            if not isinstance(entry, dict) or set(entry) != {
+                "page_number", "component_anchor_group_ids", "evidence_reason",
+            }:
+                coverage_audit.append({
+                    "row_index": row_index,
+                    "reason": "page coverage fields do not match contract",
+                })
+                continue
+            page_number = entry.get("page_number")
+            anchors = entry.get("component_anchor_group_ids")
+            reason = str(entry.get("evidence_reason") or "").strip()
+            if (
+                not isinstance(page_number, int)
+                or page_number not in resolved_by_page
+                or page_number in seen_pages
+                or not isinstance(anchors, list)
+                or not reason
+            ):
+                coverage_audit.append({
+                    "row_index": row_index,
+                    "reason": "page coverage row is incomplete or duplicated",
+                })
+                continue
+            seen_pages.add(page_number)
+            retained_anchors = [
+                anchor for anchor in anchors
+                if isinstance(anchor, str) and anchor in anchor_to_object_id
+            ]
+            if len(retained_anchors) != len(set(retained_anchors)):
+                retained_anchors = list(dict.fromkeys(retained_anchors))
+                coverage_audit.append({
+                    "row_index": row_index,
+                    "reason": "duplicate or unknown coverage anchors were discarded",
+                })
+            entry_out = resolved_by_page[page_number]
+            entry_out["object_ids"] = list(dict.fromkeys(
+                anchor_to_object_id[anchor] for anchor in retained_anchors
+            ))
+            entry_out["evidence_reason"] = reason
+
     graph_page_coverage_supplements: list[dict[str, Any]] = []
-    for group_id, object_id in anchor_to_object_id.items():
-        page_number = page_number_by_group_id.get(group_id)
-        entry = resolved_by_page.get(page_number)
-        if entry is not None and object_id not in entry["object_ids"]:
+
+    def add_object_page(
+        *, page_number: int | None, object_id: str | None,
+        source: str, visual_group_id: str,
+    ) -> None:
+        if page_number not in resolved_by_page or not object_id:
+            return
+        entry = resolved_by_page[page_number]
+        if object_id not in entry["object_ids"]:
             entry["object_ids"].append(object_id)
             graph_page_coverage_supplements.append({
                 "page_number": page_number,
                 "object_id": object_id,
-                "visual_group_id": group_id,
+                "visual_group_id": visual_group_id,
+                "source": source,
             })
-    return resolved, graph_page_coverage_supplements
+
+    for group_id, object_id in anchor_to_object_id.items():
+        add_object_page(
+            page_number=page_number_by_group_id.get(group_id),
+            object_id=object_id,
+            source="component_group",
+            visual_group_id=group_id,
+        )
+    for link in reference_links:
+        group_id_a = str(link.get("group_id_a") or "")
+        group_id_b = str(link.get("group_id_b") or "")
+        object_id_a = anchor_to_object_id.get(group_id_a)
+        object_id_b = anchor_to_object_id.get(group_id_b)
+        if not object_id_a or not object_id_b or object_id_a == object_id_b:
+            continue
+        add_object_page(
+            page_number=page_number_by_group_id.get(group_id_b),
+            object_id=object_id_a,
+            source="reference_link",
+            visual_group_id=group_id_b,
+        )
+        add_object_page(
+            page_number=page_number_by_group_id.get(group_id_a),
+            object_id=object_id_b,
+            source="reference_link",
+            visual_group_id=group_id_a,
+        )
+    return (
+        [resolved_by_page[page_number] for page_number in range(1, page_count + 1)],
+        graph_page_coverage_supplements,
+        coverage_audit,
+    )
 
 
 def _normalize_pair_relation_ledger_group_ids(
@@ -1246,12 +1322,6 @@ def _discard_non_object_visual_registry_groups(
     discarded_group_ids = {
         str(group.get("group_id") or "") for group in discarded_groups
     }
-    source_object_group_ids = {
-        str(group.get("group_id") or "")
-        for group in groups
-        if isinstance(group, dict)
-        and group.get("evidence_class") == "object_evidence"
-    }
     discarded_pages = {
         group.get("page_number") for group in discarded_groups
         if isinstance(group.get("page_number"), int)
@@ -1279,11 +1349,16 @@ def _discard_non_object_visual_registry_groups(
             if not isinstance(row, dict)
             or str(row.get("group_id") or "") not in discarded_group_ids
         ]
-    effective = _filter_pair_relation_ledger(
-        effective,
-        source_group_ids=source_object_group_ids,
-        retained_group_ids=retained_group_ids,
-    )
+    relation_edges = effective.get("relation_edges")
+    if isinstance(relation_edges, list):
+        effective["relation_edges"] = [
+            edge for edge in relation_edges
+            if not isinstance(edge, dict)
+            or (
+                str(edge.get("group_id_a") or "") in retained_group_ids
+                and str(edge.get("group_id_b") or "") in retained_group_ids
+            )
+        ]
 
     page_coverage = effective.get("page_coverage")
     if isinstance(page_coverage, list):
@@ -1313,12 +1388,6 @@ def _discard_non_object_visual_registry_groups(
                     or page_number in retained_group_pages
                 )
             ]
-    shared_reference_group_ids = effective.get("shared_reference_group_ids")
-    if isinstance(shared_reference_group_ids, list):
-        effective["shared_reference_group_ids"] = [
-            group_id for group_id in shared_reference_group_ids
-            if str(group_id) not in discarded_group_ids
-        ]
     return effective, discarded_groups
 
 
@@ -1520,10 +1589,16 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     registry_decision_audit = copy.deepcopy(payload)
     discarded_non_object_groups: list[dict[str, Any]] = []
     classification_decisions: list[dict[str, Any]] = []
-    pair_relation_ledger: list[dict[str, Any]] = []
-    provisional_package_decisions: list[dict[str, Any]] = []
+    positive_relation_edges: list[dict[str, Any]] = []
+    accepted_merge_edges: list[dict[str, Any]] = []
+    reference_links: list[dict[str, Any]] = []
+    rejected_relation_candidates: list[dict[str, Any]] = []
+    package_decisions: list[dict[str, Any]] = []
+    page_coverage_audit: list[dict[str, Any]] = []
+    graph_page_coverage_supplements: list[dict[str, Any]] = []
     fallback_registry_object_ids: list[str] = []
     registry_metadata_audit: dict[str, Any] = {}
+    registry_graph_review_required_object_ids: list[str] = []
     try:
         if isinstance(payload, dict):
             payload, classification_decisions = (
@@ -1537,15 +1612,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             payload.setdefault("objects", [])
         if not isinstance(payload, dict) or set(payload) != {
             "visual_groups", "classifications",
-            "pair_relation_states", "pair_relation_facts",
-            "shared_reference_group_ids", "objects", "page_coverage",
+            "relation_edges", "objects", "page_coverage",
         }:
             raise ValueError(
-                "visual registry must contain only visual_groups, classifications, pair_relation_states, pair_relation_facts, shared_reference_group_ids, objects and page_coverage"
+                "visual registry must contain only visual_groups, classifications, relation_edges, objects and page_coverage"
             )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
-        raw_object_evidence_group_ids = set(raw_group_ids)
         visual_map = validate_detection_visual_map(
             normalize_detection_visual_map_group_ids(
                 _visual_map_from_registry_groups(raw_groups)
@@ -1556,52 +1629,29 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
         payload = _normalize_component_anchor_group_ids(payload, group_id_mapping)
-        payload = _normalize_pair_relation_ledger_group_ids(
-            payload,
-            group_id_mapping=group_id_mapping,
-            source_group_ids=raw_object_evidence_group_ids,
-        )
         visual_group_ids = {
             group["group_id"] for group in visual_map["visual_groups"]
         }
-        raw_pairwise_merge_proofs, pair_relation_ledger = (
-            validate_detection_pair_relation_ledger(
-                payload["pair_relation_states"],
-                payload["pair_relation_facts"],
-                object_evidence_group_ids=visual_group_ids,
-                page_count=len(page_images),
-            )
-        )
-        reference_links = [
-            proof for proof in raw_pairwise_merge_proofs
-            if proof.get("relationship") == REFERENCE_RELATIONSHIP
-        ]
-        # The complete six-criterion ledger is structurally valid at this
-        # point.  Build provisional packages from its declared graph before
-        # applying the semantic merge threshold below.  This preserves the
-        # user's requested causal order in the persisted audit.
-        shared_reference_group_ids = validate_detection_shared_reference_group_ids(
-            payload["shared_reference_group_ids"],
-            proofs=raw_pairwise_merge_proofs,
+        (
+            positive_relation_edges,
+            accepted_merge_edges,
+            reference_links,
+            rejected_relation_candidates,
+        ) = partition_detection_relation_edges(
+            payload["relation_edges"],
             visual_group_ids=visual_group_ids,
+            page_count=len(page_images),
         )
-        commercial_visual_group_ids = (
-            visual_group_ids - set(shared_reference_group_ids)
-        )
+        # Only accepted merge edges decide package membership. Every omitted,
+        # weak or rejected relation therefore remains a singleton rather than
+        # aborting the document or disappearing from Estimation Evidence.
         proof_components = derive_detection_proof_components(
-            raw_pairwise_merge_proofs, visual_group_ids=visual_group_ids,
+            accepted_merge_edges, visual_group_ids=visual_group_ids,
         )
-        proof_components = [
-            component for component in proof_components
-            if component[0] not in shared_reference_group_ids
-        ]
         standalone_package_group_ids = derive_detection_standalone_package_group_ids(
             proof_components
         )
-        provisional_package_decisions = derive_detection_package_decision_audit(
-            proof_components,
-            shared_reference_group_ids=shared_reference_group_ids,
-        )
+        package_decisions = derive_detection_package_decision_audit(proof_components)
         page_number_by_group_id = {
             str(group["group_id"]): int(group["page_number"])
             for group in visual_map["visual_groups"]
@@ -1617,43 +1667,41 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             page_number_by_group_id=page_number_by_group_id,
             page_count=len(page_images),
         )
-        registry_objects_input = _apply_reference_root_suffixes(
-            registry_objects_input,
-            proof_components=proof_components,
-            reference_links=reference_links,
-            shared_reference_group_ids=set(shared_reference_group_ids),
-        )
         (
             resolved_page_coverage,
             graph_page_coverage_supplements,
+            page_coverage_audit,
         ) = _resolve_component_page_coverage(
             payload["page_coverage"],
             anchor_to_object_id=anchor_to_object_id,
             page_number_by_group_id=page_number_by_group_id,
+            page_count=len(page_images),
+            reference_links=reference_links,
         )
         registry_objects, reconciled_object_ids = _apply_page_coverage_to_registry(
             registry_objects_input, resolved_page_coverage, page_count=len(page_images),
         )
-        # Semantic proof validation deliberately follows provisional package
-        # construction.  It still rejects an insufficient merge, but the audit
-        # now contains the complete relation ledger and its package impact.
-        pairwise_merge_proofs = validate_detection_pairwise_merge_proofs(
-            raw_pairwise_merge_proofs,
-            page_count=len(page_images),
-            visual_group_ids=visual_group_ids,
-        )
-        shared_reference_group_ids = validate_detection_shared_reference_group_ids(
-            shared_reference_group_ids,
-            proofs=pairwise_merge_proofs,
-            visual_group_ids=visual_group_ids,
-            commercial_components=proof_components,
-        )
-        package_decisions = provisional_package_decisions
+        registry_graph_review_required_object_ids = sorted({
+            *(
+                anchor_to_object_id[group_id]
+                for group_id in standalone_package_group_ids
+                if group_id in anchor_to_object_id
+            ),
+            *(
+                anchor_to_object_id[group_id]
+                for candidate in rejected_relation_candidates
+                for group_id in (
+                    str(candidate.get("group_id_a") or ""),
+                    str(candidate.get("group_id_b") or ""),
+                )
+                if group_id in anchor_to_object_id
+            ),
+        })
         registry_payload = {"objects": registry_objects}
         registry = validate_detection_registry(
             registry_payload,
-            visual_group_ids=commercial_visual_group_ids,
-            object_evidence_group_ids=commercial_visual_group_ids,
+            visual_group_ids=visual_group_ids,
+            object_evidence_group_ids=visual_group_ids,
         )
     except (KeyError, ValueError) as exc:
         failure_diagnostics = dict(diagnostics)
@@ -1662,8 +1710,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "registry_decision_audit": registry_decision_audit,
             "discarded_non_object_visual_groups": discarded_non_object_groups,
             "classification_decisions": classification_decisions,
-            "pair_relation_ledger": pair_relation_ledger,
-            "provisional_package_decisions": provisional_package_decisions,
+            "positive_relation_edges": positive_relation_edges,
+            "accepted_merge_edges": accepted_merge_edges,
+            "reference_links": reference_links,
+            "rejected_relation_candidates": rejected_relation_candidates,
+            "page_coverage_audit": page_coverage_audit,
             "validation_error": str(exc),
             "validation_stage": "visual_registry",
             "attempt_label": "visual_registry_validation_failed",
@@ -1700,9 +1751,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     diagnostics.update({
         "visual_group_count": len(visual_map["visual_groups"]),
         "registry_object_count": len(registry["objects"]),
-        "unassigned_visual_group_count": len(commercial_visual_group_ids - assigned_visual_group_ids),
+        "unassigned_visual_group_count": len(visual_group_ids - assigned_visual_group_ids),
         "unassigned_object_evidence_group_count": len(
-            commercial_visual_group_ids - assigned_visual_group_ids
+            visual_group_ids - assigned_visual_group_ids
         ),
         "proof_component_count": len(proof_components),
         "page_coverage_count": len(resolved_page_coverage),
@@ -1712,26 +1763,31 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "registry_decision_audit": registry_decision_audit,
         "discarded_non_object_visual_groups": discarded_non_object_groups,
         "classification_decisions": classification_decisions,
-        "pair_relation_ledger": pair_relation_ledger,
-        "pair_relation_count": len(pair_relation_ledger),
-        "pair_relation_positive_criterion_count": sum(
-            sum(state == "Y" for state in row["criterion_states"].values())
-            for row in pair_relation_ledger
+        "positive_relation_edges": positive_relation_edges,
+        "positive_relation_edge_count": len(positive_relation_edges),
+        "positive_dimension_equality_count": sum(
+            fact.get("evidence_type") == "dimension_equality"
+            for edge in positive_relation_edges
+            for fact in edge["evidence_facts"]
         ),
-        "pairwise_merge_proofs": pairwise_merge_proofs,
-        "pairwise_merge_proof_count": sum(
-            proof.get("relationship") != REFERENCE_RELATIONSHIP
-            for proof in pairwise_merge_proofs
+        "positive_dimension_transform_count": sum(
+            fact.get("evidence_type") == "dimension_transform"
+            for edge in positive_relation_edges
+            for fact in edge["evidence_facts"]
         ),
+        "accepted_merge_edges": accepted_merge_edges,
+        "accepted_merge_edge_count": len(accepted_merge_edges),
+        "rejected_relation_candidates": rejected_relation_candidates,
+        "rejected_relation_candidate_count": len(rejected_relation_candidates),
         "reference_links": reference_links,
         "reference_link_count": len(reference_links),
-        "shared_reference_group_ids": shared_reference_group_ids,
         "package_decisions": package_decisions,
-        "provisional_package_decisions": provisional_package_decisions,
         "standalone_package_group_ids": standalone_package_group_ids,
         "registry_metadata_fallback_object_ids": fallback_registry_object_ids,
+        "registry_graph_review_required_object_ids": registry_graph_review_required_object_ids,
         "registry_metadata_audit": registry_metadata_audit,
         "graph_page_coverage_supplements": graph_page_coverage_supplements,
+        "page_coverage_audit": page_coverage_audit,
         "proof_graph_components": [
             {
                 "canonical_anchor_group_id": component[0],

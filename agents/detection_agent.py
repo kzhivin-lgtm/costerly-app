@@ -348,6 +348,17 @@ def run_detection_agent(
         )
         if str(object_id)
     }
+    graph_review_required_object_ids = {
+        str(object_id)
+        for object_id in (
+            (visual_registry_usage.get("raw_usage") or {}).get(
+                "registry_graph_review_required_object_ids", []
+            )
+            if isinstance(visual_registry_usage, dict)
+            else []
+        )
+        if str(object_id)
+    }
     registry = _enforce_shared_track_door_system_quantity(registry)
     _validate_registry_evidence_pages(registry, page_count=len(registry_images))
     evidence_page_numbers = sorted({page for item in registry["objects"] for page in item["estimation_evidence_pages"]})
@@ -373,7 +384,10 @@ def run_detection_agent(
     result = _merge_registry_evidence(
         result,
         registry,
-        review_required_object_ids=fallback_review_required_object_ids,
+        review_required_object_ids=(
+            fallback_review_required_object_ids
+            | graph_review_required_object_ids
+        ),
     )
     result = _normalize_evidence_source_labels(result, ocr_package)
     validated = validate_detection_result(result)
@@ -381,7 +395,10 @@ def run_detection_agent(
         usage_event,
         registry=registry,
         result=validated,
-        fallback_review_required_object_ids=fallback_review_required_object_ids,
+        fallback_review_required_object_ids=(
+            fallback_review_required_object_ids
+            | graph_review_required_object_ids
+        ),
     )
     if stage_callback:
         stage_callback("Detection Evidence handoff completed")

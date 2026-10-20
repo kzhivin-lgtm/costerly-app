@@ -61,7 +61,7 @@ class _Response:
 
 
 def _visual_registry_payload(payload):
-    """Upgrade legacy Registry fixtures to the V4.39 staged contract."""
+    """Upgrade legacy Registry fixtures to the V4.40 staged contract."""
     if not isinstance(payload, dict) or not {
         "visual_groups", "objects", "page_coverage",
     }.issubset(payload):
@@ -91,54 +91,9 @@ def _visual_registry_payload(payload):
             "classification_reason": classification_reason,
         })
     payload["classifications"] = classifications
-    object_group_ids = sorted(
-        row["group_id"]
-        for row in classifications
-        if row["evidence_class"] == "object_evidence"
-    )
-    pairs = [
-        (group_id_a, group_id_b)
-        for index, group_id_a in enumerate(object_group_ids)
-        for group_id_b in object_group_ids[index + 1:]
-    ]
-    proof_by_pair = {
-        tuple(sorted((str(proof.get("group_id_a") or ""), str(proof.get("group_id_b") or "")))): proof
-        for proof in proofs
-        if isinstance(proof, dict)
-    } if isinstance(proofs, list) else {}
-    criteria = (
-        "explicit_document_relation", "dimension_equality", "dimension_transform",
-        "matching_topology", "unique_geometry", "direct_shared_structure",
-    )
-    relation_codes = {
-        "same_object_view": "S", "object_detail": "D", "reference_link": "R",
-    }
-    pair_relation_states = []
-    pair_relation_facts = []
-    for pair_index, pair in enumerate(pairs):
-        proof = proof_by_pair.get(pair)
-        if proof is None:
-            pair_relation_states.append("N" + "N" * len(criteria))
-            continue
-        facts = proof.get("evidence_facts", [])
-        fact_types = {
-            fact.get("evidence_type") for fact in facts
-            if isinstance(fact, dict)
-        }
-        pair_relation_states.append(
-            relation_codes.get(proof.get("relationship"), "N")
-            + "".join("Y" if criterion in fact_types else "N" for criterion in criteria)
-        )
-        if fact_types:
-            pair_relation_facts.append({
-                "pair_index": pair_index,
-                "evidence_facts": facts,
-                "commercial_inseparability": proof.get("commercial_inseparability", ""),
-            })
-    payload["pair_relation_states"] = pair_relation_states
-    payload["pair_relation_facts"] = pair_relation_facts
+    payload["relation_edges"] = proofs if isinstance(proofs, list) else []
     payload.pop("standalone_package_group_ids", None)
-    payload.setdefault("shared_reference_group_ids", [])
+    payload.pop("shared_reference_group_ids", None)
     return payload
 
 
@@ -705,15 +660,15 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
         "view-001", "view-002",
     ]
     assert registry["objects"][0]["visual_group_ids"] == ["view-001", "view-002"]
-    assert usage["raw_usage"]["pairwise_merge_proofs"][0]["group_id_a"] == "view-001"
-    assert usage["raw_usage"]["pairwise_merge_proofs"][0]["group_id_b"] == "view-002"
+    assert usage["raw_usage"]["accepted_merge_edges"][0]["group_id_a"] == "view-001"
+    assert usage["raw_usage"]["accepted_merge_edges"][0]["group_id_b"] == "view-002"
     assert usage["raw_usage"]["proof_graph_components"] == [{
         "canonical_anchor_group_id": "view-001",
         "visual_group_ids": ["view-001", "view-002"],
     }]
 
 
-def test_integrated_visual_registry_keeps_context_view_out_of_components_and_splits_root_code():
+def test_integrated_visual_registry_keeps_reference_link_as_evidence_without_suppressing_standalones():
     payload = {
         "visual_groups": [
             {"group_id": "overview", "page_number": 1, "location_hint": "upper", "visual_description": "kitchen, island and cabinet together", "representation_kind": "plan"},
@@ -731,7 +686,6 @@ def test_integrated_visual_registry_keeps_context_view_out_of_components_and_spl
             {"group_id_a": "island", "group_id_b": "overview", "relationship": "reference_link", "evidence_facts": [{"evidence_type": "matching_topology", "evidence_pages": [1], "observation": "Overview visibly locates the island."}], "commercial_inseparability": "Shared overview reference, not a merge."},
             {"group_id_a": "cabinet", "group_id_b": "overview", "relationship": "reference_link", "evidence_facts": [{"evidence_type": "matching_topology", "evidence_pages": [1], "observation": "Overview visibly locates the cabinet."}], "commercial_inseparability": "Shared overview reference, not a merge."},
         ],
-        "shared_reference_group_ids": ["overview"],
         "page_coverage": [{
             "page_number": 1,
             "component_anchor_group_ids": ["kitchen", "island", "cabinet"],
@@ -753,10 +707,10 @@ def test_integrated_visual_registry_keeps_context_view_out_of_components_and_spl
         )
 
     assert [item["transport_label"] for item in registry["objects"]] == [
-        "N57A", "N57B", "N57C",
+        "Unlabelled", "N57", "N57", "N57",
     ]
     assert [item["visual_group_ids"] for item in registry["objects"]] == [
-        ["view-002"], ["view-003"], ["view-004"],
+        ["view-001"], ["view-002"], ["view-003"], ["view-004"],
     ]
     assert usage["raw_usage"]["reference_link_count"] == 3
     assert usage["raw_usage"]["unassigned_object_evidence_group_count"] == 0
@@ -892,7 +846,7 @@ def test_registry_uses_the_same_atomic_visual_group_contract_for_all_models():
     assert "related_group_ids" not in prompts[0]
 
 
-def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_page():
+def test_integrated_visual_registry_derives_missing_page_coverage_from_graph():
     payload = {
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
@@ -922,12 +876,14 @@ def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_pa
             }),
         ),
         patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
-        pytest.raises(RuntimeError, match="account for every uploaded page exactly once"),
     ):
-        run_anthropic_detection_visual_registry_agent(
+        _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"one", b"two"], regions=[], ocr_package=None, model="model",
         )
+
+    assert registry["objects"][0]["estimation_evidence_pages"] == [1]
+    assert usage["raw_usage"]["page_coverage_count"] == 2
 
 
 def test_integrated_visual_registry_excludes_non_object_pages_from_estimation_evidence():
@@ -1131,10 +1087,11 @@ def test_integrated_visual_registry_reconciles_missing_object_on_only_page():
         "page_number": 1,
         "object_id": "object-002",
         "visual_group_id": "view-002",
+        "source": "component_group",
     }]
 
 
-def test_integrated_visual_registry_validation_failure_carries_structured_audit():
+def test_integrated_visual_registry_keeps_valid_graph_when_page_coverage_is_incomplete():
     payload = {
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
@@ -1163,18 +1120,14 @@ def test_integrated_visual_registry_validation_failure_carries_structured_audit(
             }),
         ),
         patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
-        pytest.raises(DetectionVisualRegistryValidationError) as raised,
     ):
-        run_anthropic_detection_visual_registry_agent(
+        _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"one", b"two"], regions=[], ocr_package=None, model="model",
         )
 
-    event = raised.value.usage_event
-    assert event["status"] == "failed"
-    assert event["run_id"] is None
-    assert event["error_message"] == "page coverage must account for every uploaded page exactly once"
-    assert event["raw_usage"]["registry_decision_audit"] == payload
+    assert registry["objects"][0]["estimation_evidence_pages"] == [1]
+    assert usage["raw_usage"]["page_coverage_count"] == 2
 
 
 def test_integrated_visual_registry_json_failure_carries_transport_diagnostics():

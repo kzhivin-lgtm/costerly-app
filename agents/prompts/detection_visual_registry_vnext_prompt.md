@@ -1,22 +1,20 @@
-# DETECTION V4.39 - INVENTORY, CLASSIFY, COMPLETE GRAPH, DECIDE, PACKAGE
+# DETECTION V4.40 - INVENTORY, CLASSIFY, POSITIVE GRAPH, PACKAGE
 
 Build the visual representation inventory and commercial-object registry in one
-response. The response has a mandatory causal order:
+response. The response has this mandatory causal order:
 
-1. identify every visually distinct source island from the rendered pages in
-   `visual_groups`, without assigning a class,
-2. after the complete inventory exists, classify every group in the separate
-   `classifications` array as `object_evidence` or `document_context`, with a
-   factual reason,
-3. after inventory and classifications exist, inspect literal dimensions in the
-   rendered page and OCR source, then build the complete six-criterion graph
-   between `object_evidence` islands,
-4. decide the package outcome for every commercial island from that graph,
-5. describe those finished packages and their complete page Evidence.
+1. identify every visually distinct source island in `visual_groups`, without
+   assigning a class,
+2. classify every group in the separate `classifications` array as
+   `object_evidence` or `document_context`, with a factual reason,
+3. inspect the complete classified inventory globally, then return every
+   positive typed relation in `relation_edges`,
+4. after the graph is complete, describe the resulting commercial packages and
+   their complete page Evidence.
 
-Do not declare object owners before the graph is complete. Do not add graph
-facts after declaring a package. All reasons and observations are concise,
-factual, inspectable output, not hidden reasoning.
+Do not declare object owners before reviewing the graph. Do not add graph facts
+after declaring a package. All reasons and observations are concise, factual,
+inspectable output, not hidden reasoning.
 
 ## 1. Complete visual-island inventory
 
@@ -42,121 +40,102 @@ into one group merely because they occupy one visual block.
 ## 1a. Classification
 
 After the complete `visual_groups` array, return exactly one `classifications`
-row for every `group_id`. Each row gives `object_evidence` or `document_context`
-and a concise factual `classification_reason` answering: **why is this
-object-specific Evidence or document context?** Do not revise, merge or split
-the visual inventory during classification.
+row for every `group_id`. Each row gives `object_evidence` or
+`document_context` and a concise factual `classification_reason` answering:
+**why is this object-specific Evidence or document context?** Do not revise,
+merge or split the visual inventory during classification.
 
 Use `document_context` for a cover or title page, title block, generic floor
 plan, room layout, electrical, plumbing or lighting plan, legend,
 administrative text, generic schedule or navigation diagram. These may orient
 Detection but never enter the graph or Estimation Evidence. Use
 `object_evidence` for a depiction that directly identifies, constructs,
-specifies or shows a particular fabricated object, even when it is a section,
-detail, alternate view or object-specific plan. A repeated grid, dimension
-string, bays, slats, shelves or panel divisions is not a table by itself.
-A generic floor plan or room layout remains `document_context` even when it
-shows placements. It cannot be `reference_link` or shared Evidence. An
-object-specific plan needs a concrete product identity, construction detail, or
-evidence-backed relation to a particular fabricated package.
+specifies or shows a particular fabricated object, including a section, detail,
+alternate view or object-specific plan. A repeated grid, dimension string, bays,
+slats, shelves or panel divisions is not a table by itself.
 
-## 2. Complete graph, not a sparse graph
+## 2. Complete positive relation graph
 
-Only after returning complete `visual_groups` and `classifications`, inspect
-every readable literal dimension in the rendered page and source OCR that can
-bear on a cross-view relation. Do not return a separate dimension transcript:
-the full source OCR and rendered pages remain the canonical record. Return the
-complete undirected graph across every unordered pair of
-`object_evidence` groups. The canonical pair order is lexicographic over the
-sorted `group_id` list: `(G001,G002)`, `(G001,G003)`, and so on. Return exactly
-one seven-character string in `pair_relation_states` for every pair. The first
-character is the resulting relation: `N` no relation, `P` positive relation
-that is not selected into the minimal proof tree, `S` same object view, `D`
-object detail, `R` shared reference link. The other six characters have
-this exact criterion order: explicit document relation, dimension equality,
-dimension transform, matching topology, unique geometry, direct shared
-structure. For each criterion write `Y` positive, `N` checked-negative, `C`
-comparable conflict, or `U` unreadable or not comparable.
+Only after the inventory and classifications exist, inspect every unordered
+pair of `object_evidence` groups globally across the complete document. Assess
+all six criteria for each pair:
 
-This state ledger is mandatory for every pair, including a pair with no
-positive relation. It is how the runtime verifies that all six criteria were
-actually examined.
+1. `explicit_document_relation`: same code, callout, view reference, axis or
+   label;
+2. `dimension_equality`: the same readable physical dimension, unit and scope
+   are literally equal without conversion or axis remapping;
+3. `dimension_transform`: dimensions agree after a named unit conversion or
+   axis remapping between projections;
+4. `matching_topology`: matching bays, doors, supports, carcasses, frames,
+   appliances, joints or structural elements;
+5. `unique_geometry`: repeated cut-outs, handles, posts, appliance locations,
+   turning parts, mounting points, panel sequence or distinctive frame geometry;
+6. `direct_shared_structure`: visible common frame, track, carcass, joint or
+   physical connection.
 
-For every state string that contains `Y`, return exactly one
-`pair_relation_facts` row with that pair's zero-based index, every positive
-typed `evidence_facts` observation, and a concise factual
-`commercial_inseparability`. Do not return a facts row for an all-negative,
-conflicted or unreadable pair. Every `Y` must have one or more matching typed
-facts. A `dimension_equality` observation names both literal dimensions, their
-unit and physical scope. Two matching dimensions are sufficient merge evidence.
-Three or more are very strong evidence. A conflict is `C` only when both values
-claim the same physical axis and scope after unit and projection normalization.
+Return `relation_edges`: the complete set of every positive relation found.
+Do not serialize negative, conflicted, unreadable or no-relation pairs. This is
+not permission to skip their review. A positive edge uses lexically ordered
+`group_id_a`, `group_id_b`, one relationship, every positive supporting
+`evidence_facts` observation, and a concise factual `commercial_inseparability`.
+Return at most one edge per pair. The graph is undirected. Cycles and redundant
+positive edges are valid, because they preserve evidence rather than decide
+package membership directly.
 
-The graph is undirected. `S` means `same_object_view` and `D` means
-`object_detail`; both are merge relations. `R` is a
-`reference_link`: the depictions are related without one quote line, it never
-merges packages and has no source, target, direction or information-transfer
-meaning. A group in `shared_reference_group_ids` has `R` links to at least two distinct proven commercial packages and no `S` or `D` relation. Generic floor
-plans, room layouts, dimension strings, local construction details and panel
-grids cannot be shared Evidence merely because they relate to another depiction.
+An exact `dimension_equality` fact names both literal dimensions, unit and
+physical scope. An exact `dimension_transform` fact names both literal
+dimensions and the unit or axis transformation. The same pair may have both:
+equality records a direct same-axis match, while transform records an additional
+match after changing axes or units. Return every observed positive equality and
+transform fact, including redundant facts, so the graph remains inspectable.
 
-Only after all pair states and positive facts are complete, select only the
-necessary `S` or `D` relations for the minimal proof forest. Record any other
-positive but redundant relation as `P`, never as `N`, so the full evidence graph
-remains inspectable without cycles. Do not use a transitive shortcut or self
-relation. If no proved merge relation joins an island, it is a singleton
-package. Do not merge on shared page, room, colour, material, proximity or
-visual impression alone. Do not invent weak evidence to avoid a singleton.
+Use `same_object_view` or `object_detail` only when the two islands are
+candidates for one commercial package. An explicit document relation may prove
+one merge. One exact dimension transform may prove one merge only when both
+measurements and the exact transformation are named. Otherwise a merge needs at
+least two independent facts and at least one identity-level fact:
+dimension equality, matching topology, dimension transform or unique geometry.
+Two independent dimension equalities are sufficient dimension proof. One
+equality is strong support but is not enough alone. A single shared structure
+cannot establish a merge alone.
 
-Every fact names its page(s) and a concrete observation. Evaluate every pair
-globally across the complete classified inventory, never incrementally as
-groups are emitted. Do not stop at the first positive fact. An explicit
-document relation can prove one merge on its own. One exact dimension transform
-can prove one merge only when its observation names both measurements and the
-precise unit or axis transformation. Otherwise an `S` or `D` relation needs at
-least two positive facts, including an identity-level fact: dimension equality,
-matching topology, dimension transform or unique geometry. A single shared
-structure cannot establish a merge on its own.
+Use `reference_link` when depictions are related as Evidence but must not become
+one quote line, for example an object-specific general plan showing several
+objects and their dedicated views. A reference link never merges packages. It
+is not directional and cannot suppress a standalone candidate. Do not use a
+generic floor plan or room layout as `reference_link`: it is `document_context`.
 
-## 3. Singleton-package audit
+Do not merge on shared page, room, colour, material, proximity or visual
+impression alone. A printed sheet-level root code alone is not enough to merge
+independent finished assemblies. If a connection is not proven, leave the
+groups unmerged. Runtime will create review-required standalone packages rather
+than discard them.
 
-Perform one final singleton audit inside this same response. For every
-`object_evidence` group with no merge edge that is not in
-`shared_reference_group_ids`, compare it again with every other
-`object_evidence` group. If accepted evidence proves a relation to a different
-group, add that edge to the graph. Otherwise leave it unmerged. Do not emit an
-edge merely to avoid a singleton. Runtime derives every singleton package from
-the completed graph, so do not return a second standalone-ID list.
+Perform one final singleton audit after all positive relations are emitted. For
+every `object_evidence` group with no merge candidate, compare it again with
+every other object-evidence group. Add a relation only when the cited evidence
+supports it. Never invent a merge merely to avoid a singleton.
 
-There is no third outcome. A detail that seems related but lacks a proved merge
-is a standalone commercial candidate for review. The runtime derives and
-persists the full per-group package ledger from the graph.
+## 3. Commercial-object packages
 
-## 4. Commercial-object packages
+Runtime derives package membership only from accepted `same_object_view` and
+`object_detail` edges. Every group without an accepted merge remains a
+quantity-one review-required standalone package. `reference_link` pages are
+attached as Evidence to their linked packages but do not alter their boundary.
 
-After the graph is complete, only merge-proof connected components are packages.
-Groups in `shared_reference_group_ids` are not packages. `objects` is optional
-descriptive metadata for already proven components, never a package decision.
-When supplied, return at most one row per component, using any group inside it
-as `component_anchor_group_id`. Runtime derives canonical group membership and
-ordered object ID from the graph, so do not return owner lists or object IDs.
+`objects` is optional descriptive metadata for the graph-derived components,
+never a package decision. When supplied, return at most one row per component,
+using any group inside it as `component_anchor_group_id`. Do not return owner lists or object IDs. If metadata is unavailable, omit its row rather than
+inventing a merge.
 
-For every package provide the exact printed `transport_label` when present,
-otherwise a neutral source label, `quantity`, `quantity_explicit`,
+For every described component provide the exact printed `transport_label` when
+present, otherwise a neutral source label, `quantity`, `quantity_explicit`,
 `identity_pages`, `visual_identity`, and factual `boundary_basis`. Quantity
-defaults to 1 when not established otherwise. When one printed root code labels
-a composite source but the graph proves multiple independent child packages,
-return that exact same root code for every child package. Runtime preserves the
-root and appends deterministic A/B/C child suffixes in package order. Never add
-the suffix yourself. `boundary_basis` must explain why the complete component
-is one quote line, or for a singleton, why no proved relation joins it to
-another object-evidence island. A shared sheet code never merges separate
-finished assemblies by itself. If complete descriptive metadata is unavailable,
-omit that `objects` row. Runtime creates a quantity-one review candidate with
-Evidence from the proven component rather than inventing a merge or failing the
-document.
+defaults to 1 when not established otherwise. A shared sheet code does not by
+itself merge independent finished assemblies. It may remain one package when
+the positive graph proves that single commercial boundary.
 
-## 5. Evidence coverage
+## 4. Evidence coverage
 
 Return exactly one `page_coverage` entry for every upload page. Use component
 anchors, never object IDs. Include a component anchor whenever the page carries

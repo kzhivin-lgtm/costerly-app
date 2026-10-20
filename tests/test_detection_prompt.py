@@ -75,37 +75,30 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Return exactly one `page_coverage` entry for every upload page" in prompt
     assert "plan, room layout, electrical, plumbing or lighting plan" in prompt
     assert "never enter the graph or Estimation Evidence" in prompt
-    assert "Complete graph, not a sparse graph" in prompt
-    assert "pair_relation_states" in prompt
-    assert "pair_relation_facts" in prompt
-    assert "Do not return a separate dimension transcript" in prompt
-    assert "Do not extract dimensions" not in prompt
+    assert "Complete positive relation graph" in prompt
+    assert "relation_edges" in prompt
+    assert "Do not serialize negative, conflicted, unreadable or no-relation pairs" in prompt
     assert "literal source dimensions only to assess graph" in prompt
-    assert "checked-negative" in prompt
+    assert "Do not serialize negative" in prompt
     assert "Perform one final singleton audit" in prompt
-    assert "edge merely to avoid a singleton" in prompt
-    assert "all six criteria were\nactually examined" in prompt
+    assert "Never invent a merge merely to avoid a singleton" in prompt
+    assert "Assess\nall six criteria" in prompt
     assert "`dimension_equality`" in prompt
-    assert "Two matching dimensions are sufficient merge evidence" in prompt
-    assert "do not return owner lists or object IDs" in prompt
-    assert "merge-proof connected components are packages" in prompt
+    assert "Two independent dimension equalities are sufficient dimension proof" in prompt
+    assert "Do not return owner lists or object IDs" in prompt
+    assert "Runtime derives package membership only from accepted" in prompt
     assert "component_anchor_group_id" in prompt
     assert "classification_reason" in prompt
-    assert "proof_edges" not in prompt
     assert "`object_detail`" in prompt
     assert "`reference_link`" in prompt
     assert "The graph is undirected" in prompt
-    assert "`shared_reference_group_ids`" in prompt
-    assert "at least two distinct proven commercial packages" in prompt
-    assert "generic floor plan or room layout remains `document_context`" in prompt
-    assert "dimension transform" in prompt
-    assert "Evaluate every pair\nglobally across the complete classified" in prompt
-    assert "A single shared\nstructure cannot establish a merge on its own" in prompt
-    assert "There is no third outcome" in prompt
-    assert "second standalone-ID list" in prompt
-    assert "standalone_package_group_ids" not in prompt
+    assert "generic floor plan or room layout as `reference_link`" in prompt
+    assert "`dimension_transform`" in prompt
+    assert "inspect every unordered\npair of `object_evidence` groups globally" in prompt
+    assert "A single shared structure\ncannot establish a merge alone" in prompt
+    assert "review-required standalone packages" in prompt
     assert "evidence_facts" in prompt
     assert "passive recall aid" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_39_complete_pair_ledger_source_ocr_dimensions_temperature_0"
+        "detection_v4_40_sparse_positive_relation_graph_standalones_temperature_0"
     )
