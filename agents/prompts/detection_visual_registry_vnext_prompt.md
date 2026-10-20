@@ -83,9 +83,10 @@ ledger row. Its five checks are `explicit_document_relation`,
 `dimension_transform`, `matching_topology`, `unique_geometry` and
 `direct_shared_structure`.
 
-For each check return `present`, `absent` or `unknown`. Give a short factual
-observation only for `present`; use an empty observation for `absent` and
-`unknown`. You must check every type for every same-page pair. This is a
+For each check return `present`, `absent` or `unknown`. `present` requires a
+short factual observation. `absent` may include a concise reason explaining
+the negative conclusion. Use an empty observation only for `unknown`. You must
+check every type for every same-page pair. This is a
 comparison ledger, not an object-merge instruction.
 
 The document-level unit profile is runtime metadata, not a task for you. Do not

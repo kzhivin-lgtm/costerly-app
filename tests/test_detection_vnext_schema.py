@@ -128,6 +128,35 @@ def test_semantic_ledger_ignores_extra_cross_page_pair_but_not_missing_pair():
     }]
 
 
+def test_semantic_ledger_keeps_reasoning_for_an_absent_fact_without_edge():
+    checks = [
+        {"evidence_type": evidence_type, "state": "unknown", "observation": ""}
+        for evidence_type in (
+            "explicit_document_relation", "dimension_transform", "matching_topology",
+            "unique_geometry", "direct_shared_structure",
+        )
+    ]
+    checks[3] = {
+        "evidence_type": "unique_geometry", "state": "absent",
+        "observation": "The elevation and section show different geometry.",
+    }
+
+    edges, audit = compile_detection_semantic_pairwise_ledger(
+        [{"group_id_a": "view-001", "group_id_b": "view-002", "checks": checks}],
+        visual_groups=[
+            {"group_id": "view-001", "page_number": 1},
+            {"group_id": "view-002", "page_number": 1},
+        ],
+        page_count=1,
+    )
+
+    assert edges == []
+    assert next(
+        check for check in audit["ledger"][0]["checks"]
+        if check["evidence_type"] == "unique_geometry"
+    )["observation"] == "The elevation and section show different geometry."
+
+
 def _root(reason="No positive relation to an earlier group is evidenced.", blocked_merge=None):
     root = {
         "decision": "new_object_root",

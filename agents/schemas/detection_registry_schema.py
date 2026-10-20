@@ -1500,8 +1500,11 @@ def compile_detection_semantic_pairwise_ledger(
                 evidence_type not in SEMANTIC_PAIRWISE_EVIDENCE_TYPES
                 or evidence_type in checks
                 or state not in {"present", "absent", "unknown"}
+                # A negative conclusion may explain why the evidence type is
+                # absent. It is audit reasoning, not a graph fact. `unknown`
+                # must stay blank because no factual conclusion was reached.
                 or (state == "present" and not observation)
-                or (state != "present" and observation)
+                or (state == "unknown" and observation)
             ):
                 raise DetectionRegistrySchemaError("semantic pairwise ledger checks are invalid")
             checks[evidence_type] = {
