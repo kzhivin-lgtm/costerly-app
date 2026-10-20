@@ -1,5 +1,8 @@
+import json
+
 from agents.anthropic_adapter import build_detection_ocr_context
 from agents.ocr_adapter import normalize_mistral_ocr_response, run_mistral_ocr
+from agents.ocr_contract import OCR_PROFILE_EVIDENCE
 
 
 class _FakeResponse:
@@ -52,7 +55,7 @@ def test_normalizes_mistral_response():
         elapsed_seconds=1.2345,
     )
 
-    assert package["contract_version"] == "ocr_v3"
+    assert package["contract_version"] == "ocr_v4"
     assert package["profile"] == "basic"
     assert package["page_count"] == 1
     assert package["pages"][0]["page_number"] == 1
@@ -67,6 +70,7 @@ def test_calls_ocr4_with_structured_page_output():
         file_name="drawing.pdf",
         file_bytes=b"pdf bytes",
         http_client=client,
+        profile=OCR_PROFILE_EVIDENCE,
     )
 
     assert package["page_count"] == 1
@@ -75,6 +79,13 @@ def test_calls_ocr4_with_structured_page_output():
     assert payload["model"] == "mistral-ocr-4-1"
     assert payload["include_blocks"] is True
     assert payload["include_image_base64"] is False
+    annotation_schema = payload["bbox_annotation_format"]["json_schema"]["schema"]
+    assert annotation_schema["required"] == [
+        "text", "declared_dimensions", "page_horizontal", "page_vertical",
+    ]
+    assert annotation_schema["properties"]["page_horizontal"]["properties"]["status"]["enum"] == [
+        "readable", "not_shown_or_unreadable",
+    ]
     assert payload["document"]["document_url"].startswith(
         "data:application/pdf;base64,"
     )
@@ -247,6 +258,47 @@ def test_normalized_evidence_accepts_ocr41_bbox_text():
     assert item["source_image_id"] == "img-0.jpeg"
     assert item["source_image_bbox"]["top_left_x"] == 1
     assert r"4130 mm\nMDF panel 20 mm" in package["raw_response"]["pages"][0]["images"][0]["image_annotation"]
+
+
+def test_normalized_evidence_preserves_structured_dimension_annotations_for_detection():
+    response = _response()
+    response["pages"][0]["images"] = [{
+        "id": "img-0.jpeg",
+        "top_left_x": 1,
+        "top_left_y": 2,
+        "bottom_right_x": 100,
+        "bottom_right_y": 200,
+        "image_annotation": json.dumps({
+            "text": "H=60\n331\n64\n203\n64",
+            "declared_dimensions": [{
+                "symbol": "H", "value": "60", "raw": "H=60",
+            }],
+            "page_horizontal": {
+                "status": "readable", "direct_total": "331",
+                "segments": ["64", "203", "64"],
+            },
+            "page_vertical": {
+                "status": "not_shown_or_unreadable", "direct_total": "",
+                "segments": [],
+            },
+        }),
+    }]
+    package = normalize_mistral_ocr_response(
+        response,
+        file_name="drawing.pdf",
+        file_bytes=b"pdf bytes",
+        model="mistral-ocr-4-1",
+        elapsed_seconds=1,
+    )
+
+    annotation = package["evidence"]["dimension_annotations"][0]
+    assert annotation["declared_dimensions"][0]["raw"] == "H=60"
+    assert annotation["page_horizontal"]["segments"] == ["64", "203", "64"]
+
+    context = build_detection_ocr_context(package)
+    assert "D=H|60|\"H=60\"" in context
+    assert "A=page_horizontal|readable|331|64,203,64" in context
+    assert "A=page_vertical|not_shown_or_unreadable|-|-" in context
 
 
 def test_normalized_evidence_preserves_normal_blank_lines():

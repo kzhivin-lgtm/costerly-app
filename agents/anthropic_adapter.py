@@ -393,7 +393,9 @@ def build_detection_ocr_context(
         return "OCR text layer: unavailable"
 
     evidence = ocr_package.get("evidence")
-    if isinstance(evidence, dict) and evidence.get("literal_items"):
+    if isinstance(evidence, dict) and (
+        evidence.get("literal_items") or evidence.get("dimension_annotations")
+    ):
         regions: dict[tuple[Any, Any], list[dict[str, Any]]] = {}
         region_bboxes: dict[tuple[Any, Any], dict[str, Any]] = {}
         for item in evidence.get("literal_items") or []:
@@ -429,7 +431,10 @@ def build_detection_ocr_context(
             "established object or package metadata. Visually re-read text only to "
             "resolve missing or conflicting OCR.\n\n"
             "Compact format: P=page, R=OCR image region, B=x1,y1,x2,y2, "
-            "E=category|approximate location|occurrences|exact text."
+            "D=declared-symbol|literal-value|raw text, "
+            "A=page-axis|status|direct total|literal segments, "
+            "E=category|approximate location|occurrences|exact text. "
+            "A declaration such as H=60 is not a dimension-line segment."
         ]
         for block in evidence.get("text_blocks") or []:
             if not isinstance(block, dict):
@@ -451,6 +456,38 @@ def build_detection_ocr_context(
                     f'E={item.get("category") or "other"}|{item.get("region") or "center"}|'
                     f'{item.get("occurrences", 1)}|{exact_text}'
                 )
+        for annotation in evidence.get("dimension_annotations") or []:
+            if not isinstance(annotation, dict):
+                continue
+            page_number = annotation.get("page_number", "?")
+            region_id = annotation.get("source_image_id", "?")
+            bbox = compact_bbox(annotation.get("source_image_bbox"))
+            lines.append(f"P{page_number} R={region_id} B={bbox or '?'} DIMENSIONS")
+            for declaration in annotation.get("declared_dimensions") or []:
+                if not isinstance(declaration, dict):
+                    continue
+                symbol = str(declaration.get("symbol") or "").strip()
+                value = str(declaration.get("value") or "").strip()
+                raw = str(declaration.get("raw") or "").strip()
+                if symbol and value:
+                    lines.append(
+                        f"D={symbol}|{value}|{json.dumps(raw, ensure_ascii=False)}"
+                    )
+            for axis_key in ("page_horizontal", "page_vertical"):
+                axis = annotation.get(axis_key)
+                if not isinstance(axis, dict):
+                    continue
+                status = str(axis.get("status") or "").strip()
+                direct_total = str(axis.get("direct_total") or "").strip()
+                segments = axis.get("segments") if isinstance(axis.get("segments"), list) else []
+                rendered_segments = [
+                    str(value).strip() for value in segments if str(value).strip()
+                ]
+                if status:
+                    lines.append(
+                        f"A={axis_key}|{status}|{direct_total or '-'}|"
+                        f"{','.join(rendered_segments) or '-'}"
+                    )
         return "\n".join(lines)[:max_chars]
 
     pages = ocr_package.get("pages") or []

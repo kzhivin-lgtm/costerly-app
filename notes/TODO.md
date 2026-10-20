@@ -318,6 +318,29 @@ other proof types are part of this experiment. HSL acceptance: the graph must
 retain valid chains when another group has no readable outer size, and expose
 the obvious external-width comparisons before any later object-assembly work.
 
+V4.46 keeps V4.45's one OCR pass, one temperature-zero Registry call and
+dimensions-only graph scope, but replaces each OCR image annotation's flat text
+with structured literal geometry. Every image bbox now returns: the complete
+verbatim text, `declared_dimensions` such as `H=60`, and one
+`page_horizontal` plus one `page_vertical` outer-dimension observation. Each
+axis explicitly states `readable` or `not_shown_or_unreadable`; no synthetic
+blank chain is used. `H`, `W`, `D`, `L`, `Ø`, `R`, `T` and `THK` are literal
+source symbols, not inferred object boundaries or chain segments. Detection
+receives those facts separately, so `H=60` cannot be substituted for a nearby
+literal chain segment. Acceptance: on HSL, page 4's `H=60` remains a declared
+height fact while its horizontal `331 = 64 + 203 + 64` chain is independently
+reported; measure the unchanged one-pass OCR timing before any Vision Object
+Detection experiment.
+
+PENDING, P1, USER REQUEST, Detection island-view typology: after the current
+outer-dimension extraction experiment is verified, add a separate, evidence-only
+classification for common fabrication depictions. An elevation, front, end or
+section view should expose width plus height; a plan/top view should expose
+width plus depth. This is not permission to infer a missing measurement or a
+commercial-object boundary. Define the types and their observable criteria,
+then validate them independently against HSL, Page 23 and Adda before allowing
+them to affect equality or later object assembly.
+
 PENDING, P1, USER REQUEST, Detection Registry output and latency optimisation:
 after the commercial-boundary experiment reaches a valid HSL graph, remove only
 proven duplicated model output while preserving all inspectable typed facts and

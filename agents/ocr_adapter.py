@@ -19,7 +19,7 @@ from agents.ocr_contract import (
 
 DEFAULT_MISTRAL_OCR_MODEL = "mistral-ocr-4-1"
 RETIRED_MISTRAL_OCR_MODELS = {"mistral-ocr-4-0"}
-OCR_CONTRACT_VERSION = "ocr_v3"
+OCR_CONTRACT_VERSION = "ocr_v4"
 _HTTP_CLIENT: Any | None = None
 _HTTP_CLIENT_LOCK = threading.Lock()
 _WARMUP_LOCK = threading.Lock()
@@ -154,6 +154,7 @@ def build_ocr_evidence(pages: list[dict[str, Any]]) -> dict[str, Any]:
     """Create a deterministic evidence index without semantic interpretation."""
     text_blocks: list[dict[str, Any]] = []
     literal_items: list[dict[str, Any]] = []
+    dimension_annotations: list[dict[str, Any]] = []
     item_index: dict[tuple[Any, ...], dict[str, Any]] = {}
 
     for page in pages:
@@ -186,6 +187,27 @@ def build_ocr_evidence(pages: list[dict[str, Any]]) -> dict[str, Any]:
                 "bottom_right_x": image_item.get("bottom_right_x"),
                 "bottom_right_y": image_item.get("bottom_right_y"),
             }
+            declared_dimensions = annotation.get("declared_dimensions")
+            horizontal = annotation.get("page_horizontal")
+            vertical = annotation.get("page_vertical")
+            if (
+                isinstance(declared_dimensions, list)
+                or isinstance(horizontal, dict)
+                or isinstance(vertical, dict)
+            ):
+                # These are provider-produced literals associated with the
+                # complete image bbox.  Do not assign a commercial object or
+                # invent per-number coordinates here.
+                dimension_annotations.append({
+                    "page_number": page_number,
+                    "source_image_id": image_item.get("id"),
+                    "source_image_bbox": image_bbox,
+                    "declared_dimensions": (
+                        declared_dimensions if isinstance(declared_dimensions, list) else []
+                    ),
+                    "page_horizontal": horizontal if isinstance(horizontal, dict) else {},
+                    "page_vertical": vertical if isinstance(vertical, dict) else {},
+                })
             raw_items = annotation.get("literal_items") or []
             # OCR 4.1 bbox annotations already carry page/image coordinates in
             # the provider response. Keep the annotation model focused on exact
@@ -230,6 +252,7 @@ def build_ocr_evidence(pages: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "text_blocks": text_blocks,
         "literal_items": literal_items,
+        "dimension_annotations": dimension_annotations,
     }
 
 
