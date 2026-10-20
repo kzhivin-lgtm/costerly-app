@@ -536,8 +536,13 @@ def build_detection_dimension_candidates(
     """
     evidence = (ocr_package or {}).get("evidence") or {}
     candidates: list[dict[str, Any]] = []
+    native_values_by_page: dict[int, set[str]] = {}
+    mistral_values_by_page: dict[int, set[str]] = {}
 
-    def add_tokens(*, page_number: object, source: object, bbox: object, text: object) -> None:
+    def add_tokens(
+        *, page_number: object, source: object, bbox: object, text: object,
+        native: bool,
+    ) -> None:
         if not isinstance(page_number, int) or page_number < 1:
             return
         raw_text = str(text or "").strip()
@@ -545,6 +550,17 @@ def build_detection_dimension_candidates(
             return
         for match in _DIMENSION_CANDIDATE_TOKEN_RE.finditer(raw_text):
             value = match.group(0)
+            if native:
+                native_values_by_page.setdefault(page_number, set()).add(value)
+            elif (
+                value in native_values_by_page.get(page_number, set())
+                or value in mistral_values_by_page.setdefault(page_number, set())
+            ):
+                # MyPDF gives a precise span for the same literal. Mistral's
+                # repeated image annotation adds no new evidence in that case.
+                continue
+            else:
+                mistral_values_by_page.setdefault(page_number, set()).add(value)
             candidates.append({
                 "candidate_id": f"DC{len(candidates) + 1:04d}",
                 "page_number": page_number,
@@ -553,14 +569,33 @@ def build_detection_dimension_candidates(
                 "value": value,
             })
 
-    for block in evidence.get("text_blocks") or []:
-        if not isinstance(block, dict):
+    text_blocks = [
+        block for block in evidence.get("text_blocks") or []
+        if isinstance(block, dict)
+    ]
+    # Process authored PDF text first so OCR contributes only values that the
+    # PDF text layer did not expose on that page.
+    for block in text_blocks:
+        if block.get("source") != "native_pdf_text":
             continue
         add_tokens(
             page_number=block.get("page_number"),
             source=block.get("source", block.get("block_type")),
             bbox=block.get("bbox"),
             text=block.get("text"),
+            native=True,
+        )
+    for block in text_blocks:
+        if not isinstance(block, dict):
+            continue
+        if block.get("source") == "native_pdf_text":
+            continue
+        add_tokens(
+            page_number=block.get("page_number"),
+            source=block.get("source", block.get("block_type")),
+            bbox=block.get("bbox"),
+            text=block.get("text"),
+            native=False,
         )
 
     # Mistral image annotations may not expose word-level boxes. They still
@@ -573,6 +608,7 @@ def build_detection_dimension_candidates(
             source=item.get("source", "mistral_ocr"),
             bbox=item.get("source_image_bbox"),
             text=item.get("text"),
+            native=False,
         )
     return candidates
 

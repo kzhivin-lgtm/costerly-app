@@ -381,6 +381,25 @@ def test_dimension_candidate_census_preserves_native_pdf_and_mistral_numbers():
     assert "RAW=" not in context
 
 
+def test_dimension_candidate_census_prefers_precise_native_value_over_repeated_ocr():
+    candidates = build_detection_dimension_candidates({
+        "evidence": {
+            "text_blocks": [{
+                "page_number": 3, "source": "native_pdf_text", "text": "358",
+                "bbox": {},
+            }],
+            "literal_items": [{
+                "page_number": 3, "source": "mistral_ocr", "text": "358 358 60",
+                "source_image_bbox": {},
+            }],
+        },
+    })
+
+    assert [(row["source"], row["value"]) for row in candidates] == [
+        ("native_pdf_text", "358"), ("mistral_ocr", "60"),
+    ]
+
+
 def test_dimension_candidate_decisions_require_every_supplied_number_once():
     candidates = [{"candidate_id": "DC0001"}, {"candidate_id": "DC0002"}]
     decisions = validate_detection_dimension_candidate_decisions(
