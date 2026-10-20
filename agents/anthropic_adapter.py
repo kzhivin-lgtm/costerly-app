@@ -393,9 +393,7 @@ def build_detection_ocr_context(
         return "OCR text layer: unavailable"
 
     evidence = ocr_package.get("evidence")
-    if isinstance(evidence, dict) and (
-        evidence.get("literal_items") or evidence.get("dimension_annotations")
-    ):
+    if isinstance(evidence, dict) and evidence.get("literal_items"):
         regions: dict[tuple[Any, Any], list[dict[str, Any]]] = {}
         region_bboxes: dict[tuple[Any, Any], dict[str, Any]] = {}
         for item in evidence.get("literal_items") or []:
@@ -431,8 +429,7 @@ def build_detection_ocr_context(
             "established object or package metadata. Visually re-read text only to "
             "resolve missing or conflicting OCR.\n\n"
             "Compact format: P=page, R=OCR image region, B=x1,y1,x2,y2, "
-            "D=declared-symbol|literal-value|raw text, "
-            "A=page-axis|status|direct total|literal segments, "
+            "D=literal-id|declared-symbol|literal-value|raw text, "
             "E=category|approximate location|occurrences|exact text. "
             "A declaration such as H=60 is not a dimension-line segment."
         ]
@@ -456,38 +453,19 @@ def build_detection_ocr_context(
                     f'E={item.get("category") or "other"}|{item.get("region") or "center"}|'
                     f'{item.get("occurrences", 1)}|{exact_text}'
                 )
-        for annotation in evidence.get("dimension_annotations") or []:
-            if not isinstance(annotation, dict):
+        for literal in evidence.get("declared_dimension_literals") or []:
+            if not isinstance(literal, dict):
                 continue
-            page_number = annotation.get("page_number", "?")
-            region_id = annotation.get("source_image_id", "?")
-            bbox = compact_bbox(annotation.get("source_image_bbox"))
-            lines.append(f"P{page_number} R={region_id} B={bbox or '?'} DIMENSIONS")
-            for declaration in annotation.get("declared_dimensions") or []:
-                if not isinstance(declaration, dict):
-                    continue
-                symbol = str(declaration.get("symbol") or "").strip()
-                value = str(declaration.get("value") or "").strip()
-                raw = str(declaration.get("raw") or "").strip()
-                if symbol and value:
-                    lines.append(
-                        f"D={symbol}|{value}|{json.dumps(raw, ensure_ascii=False)}"
-                    )
-            for axis_key in ("page_horizontal", "page_vertical"):
-                axis = annotation.get(axis_key)
-                if not isinstance(axis, dict):
-                    continue
-                status = str(axis.get("status") or "").strip()
-                direct_total = str(axis.get("direct_total") or "").strip()
-                segments = axis.get("segments") if isinstance(axis.get("segments"), list) else []
-                rendered_segments = [
-                    str(value).strip() for value in segments if str(value).strip()
-                ]
-                if status:
-                    lines.append(
-                        f"A={axis_key}|{status}|{direct_total or '-'}|"
-                        f"{','.join(rendered_segments) or '-'}"
-                    )
+            literal_id = str(literal.get("literal_id") or "").strip()
+            symbol = str(literal.get("symbol") or "").strip()
+            value = str(literal.get("value") or "").strip()
+            raw = str(literal.get("raw") or "").strip()
+            if literal_id and symbol and value:
+                bbox = compact_bbox(literal.get("source_bbox"))
+                lines.append(
+                    f"P{literal.get('page_number', '?')} D={literal_id}|{symbol}|{value}|"
+                    f"B={bbox or '?'}|{json.dumps(raw, ensure_ascii=False)}"
+                )
         return "\n".join(lines)[:max_chars]
 
     pages = ocr_package.get("pages") or []
@@ -530,6 +508,67 @@ def build_detection_ocr_context(
         sections.append(f"\n--- OCR PAGE {page_number} ---\n{text or '[no text]'}")
 
     return "\n".join(sections)[:max_chars]
+
+
+def build_detection_island_dimension_audit(
+    *,
+    visual_groups: list[dict[str, Any]],
+    dimension_inventory: list[dict[str, Any]],
+    ocr_package: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Expose OCR literals and the Registry's chains side by side per island.
+
+    OCR literals enter an island only through the Registry's explicit
+    ``ocr_literal_ids`` references.  Same-page literals which the model did
+    not attribute remain visible separately, so this audit never presents a
+    page-level guess as object-specific evidence.
+    """
+    literals_by_id = {
+        str(item.get("literal_id")): item
+        for item in ((ocr_package or {}).get("evidence") or {}).get(
+            "declared_dimension_literals", []
+        )
+        if isinstance(item, dict) and str(item.get("literal_id") or "").strip()
+    }
+    inventory_by_group_id = {
+        str(row.get("group_id")): row
+        for row in dimension_inventory
+        if isinstance(row, dict) and str(row.get("group_id") or "").strip()
+    }
+    result: list[dict[str, Any]] = []
+    for group in visual_groups:
+        if not isinstance(group, dict):
+            continue
+        group_id = str(group.get("group_id") or "")
+        page_number = group.get("page_number")
+        row = inventory_by_group_id.get(group_id, {})
+        literal_ids = [
+            str(value) for value in row.get("ocr_literal_ids") or []
+            if str(value).strip()
+        ]
+        attributed = [
+            literals_by_id[literal_id]
+            for literal_id in literal_ids
+            if literal_id in literals_by_id
+        ]
+        unknown_ids = [
+            literal_id for literal_id in literal_ids if literal_id not in literals_by_id
+        ]
+        same_page_unattributed = [
+            item for item in literals_by_id.values()
+            if item.get("page_number") == page_number
+            and item.get("literal_id") not in literal_ids
+        ]
+        result.append({
+            "visual_group_id": group_id,
+            "page_number": page_number,
+            "location_hint": group.get("location_hint"),
+            "ocr_declared_literals": attributed,
+            "unattributed_ocr_literals_on_page": same_page_unattributed,
+            "unknown_ocr_literal_ids": unknown_ids,
+            "model_envelope_chains": list(row.get("envelope_chains") or []),
+        })
+    return result
 
 
 def extract_detection_document_dimension_unit_profile(
@@ -1680,6 +1719,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     dimension_inventory_audit: list[dict[str, Any]] = []
     dimension_inventory_valid = False
     dimension_inventory_error: str | None = None
+    island_dimension_comparison_audit: list[dict[str, Any]] = []
     empty_envelope_chain_group_ids: list[str] = []
     dimension_conflicts: list[dict[str, Any]] = []
     dimension_graph_audit: dict[str, Any] = {}
@@ -1738,6 +1778,15 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             # The index improves graph recall but never decides a boundary.
             # A malformed row must not discard independently proven packages.
             dimension_inventory_error = str(inventory_error)
+        island_dimension_comparison_audit = build_detection_island_dimension_audit(
+            visual_groups=visual_map["visual_groups"],
+            dimension_inventory=(
+                dimension_inventory_audit
+                if dimension_inventory_valid
+                else payload["dimension_inventory"]
+            ),
+            ocr_package=ocr_package,
+        )
         page_drawing_codes = extract_detection_page_drawing_codes(ocr_package)
         if dimension_inventory_valid:
             compiled_relation_edges, dimension_conflicts, dimension_graph_audit = (
@@ -1873,6 +1922,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "dimension_inventory": dimension_inventory_audit,
             "dimension_inventory_valid": dimension_inventory_valid,
             "dimension_inventory_error": dimension_inventory_error,
+            "island_dimension_comparison_audit": island_dimension_comparison_audit,
             "empty_envelope_chain_group_ids": empty_envelope_chain_group_ids,
             "document_dimension_unit_profile": document_dimension_unit_profile,
             "dimension_conflicts": dimension_conflicts,
@@ -1933,6 +1983,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "dimension_inventory": dimension_inventory_audit,
         "dimension_inventory_valid": dimension_inventory_valid,
         "dimension_inventory_error": dimension_inventory_error,
+        "island_dimension_comparison_audit": island_dimension_comparison_audit,
         "empty_envelope_chain_group_ids": empty_envelope_chain_group_ids,
         "document_dimension_unit_profile": document_dimension_unit_profile,
         "dimension_inventory_group_count": len(dimension_inventory_audit),

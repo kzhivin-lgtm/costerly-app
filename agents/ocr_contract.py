@@ -24,70 +24,8 @@ OCR_EVIDENCE_SCHEMA: dict[str, Any] = {
                 "count products, or group drawing views."
             ),
         },
-        "declared_dimensions": {
-            "type": "array",
-            "description": (
-                "Every explicit symbolic dimension declaration visibly printed "
-                "inside this image, such as H=60, W=331, D=60, L=345, T=2, "
-                "THK=18, Ø12 or R5. Preserve each literal symbol and value. "
-                "H means a declared height, but do not infer its physical scope. "
-                "Do not turn a declaration into an unlabeled segment. Return [] "
-                "when none is legible."
-            ),
-            "items": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": ["symbol", "value", "raw"],
-                "properties": {
-                    "symbol": {"type": "string"},
-                    "value": {"type": "string"},
-                    "raw": {"type": "string"},
-                },
-            },
-        },
-        "page_horizontal": {
-            "type": "object",
-            "description": (
-                "The single maximal outer horizontal dimension line visible in "
-                "this image, in page coordinates. A direct total and segments "
-                "may coexist only when they span the same endpoints."
-            ),
-            "additionalProperties": False,
-            "required": ["status", "direct_total", "segments"],
-            "properties": {
-                "status": {
-                    "type": "string",
-                    "enum": ["readable", "not_shown_or_unreadable"],
-                },
-                "direct_total": {"type": "string"},
-                "segments": {"type": "array", "items": {"type": "string"}},
-            },
-        },
-        "page_vertical": {
-            "type": "object",
-            "description": (
-                "The single maximal outer vertical dimension line visible in "
-                "this image, in page coordinates. A direct total and segments "
-                "may coexist only when they span the same endpoints."
-            ),
-            "additionalProperties": False,
-            "required": ["status", "direct_total", "segments"],
-            "properties": {
-                "status": {
-                    "type": "string",
-                    "enum": ["readable", "not_shown_or_unreadable"],
-                },
-                "direct_total": {"type": "string"},
-                "segments": {"type": "array", "items": {"type": "string"}},
-            },
-        },
     },
-    "required": [
-        "text",
-        "declared_dimensions",
-        "page_horizontal",
-        "page_vertical",
-    ],
+    "required": ["text"],
 }
 
 

@@ -19,7 +19,7 @@ from agents.ocr_contract import (
 
 DEFAULT_MISTRAL_OCR_MODEL = "mistral-ocr-4-1"
 RETIRED_MISTRAL_OCR_MODELS = {"mistral-ocr-4-0"}
-OCR_CONTRACT_VERSION = "ocr_v4"
+OCR_CONTRACT_VERSION = "ocr_v5"
 _HTTP_CLIENT: Any | None = None
 _HTTP_CLIENT_LOCK = threading.Lock()
 _WARMUP_LOCK = threading.Lock()
@@ -150,11 +150,55 @@ def _compact_literal_text(value: Any) -> str:
     return re.sub(r"(?:\r?\n[ \t]*){5,}", "\n\n", str(value or "")).strip()
 
 
+_DECLARED_DIMENSION_PATTERNS = (
+    re.compile(
+        r"(?<![A-Z0-9])(?P<symbol>THK|H|W|D|L|T)\s*(?:=|:)\s*"
+        r"(?P<value>\d+(?:[.,]\d+)?)\b",
+        flags=re.IGNORECASE,
+    ),
+    re.compile(
+        r"(?P<symbol>[Ø⌀R])\s*(?P<value>\d+(?:[.,]\d+)?)\b",
+        flags=re.IGNORECASE,
+    ),
+)
+
+
+def _extract_declared_dimension_literals(
+    *,
+    page_number: int,
+    source_kind: str,
+    source_id: str | None,
+    source_bbox: dict[str, Any],
+    text: str,
+) -> list[dict[str, Any]]:
+    """Extract only literal symbol-value declarations from OCR text.
+
+    This deliberately does not interpret a dimension line, infer an axis, or
+    associate the fact with a commercial object.  Detection remains the only
+    vision stage permitted to make those geometric decisions.
+    """
+    results: list[dict[str, Any]] = []
+    for pattern in _DECLARED_DIMENSION_PATTERNS:
+        for match in pattern.finditer(text):
+            symbol = match.group("symbol").upper().replace("⌀", "Ø")
+            value = match.group("value")
+            results.append({
+                "page_number": page_number,
+                "source_kind": source_kind,
+                "source_id": source_id,
+                "source_bbox": source_bbox,
+                "symbol": symbol,
+                "value": value,
+                "raw": match.group(0),
+            })
+    return results
+
+
 def build_ocr_evidence(pages: list[dict[str, Any]]) -> dict[str, Any]:
     """Create a deterministic evidence index without semantic interpretation."""
     text_blocks: list[dict[str, Any]] = []
     literal_items: list[dict[str, Any]] = []
-    dimension_annotations: list[dict[str, Any]] = []
+    declared_dimension_literals: list[dict[str, Any]] = []
     item_index: dict[tuple[Any, ...], dict[str, Any]] = {}
 
     for page in pages:
@@ -187,27 +231,6 @@ def build_ocr_evidence(pages: list[dict[str, Any]]) -> dict[str, Any]:
                 "bottom_right_x": image_item.get("bottom_right_x"),
                 "bottom_right_y": image_item.get("bottom_right_y"),
             }
-            declared_dimensions = annotation.get("declared_dimensions")
-            horizontal = annotation.get("page_horizontal")
-            vertical = annotation.get("page_vertical")
-            if (
-                isinstance(declared_dimensions, list)
-                or isinstance(horizontal, dict)
-                or isinstance(vertical, dict)
-            ):
-                # These are provider-produced literals associated with the
-                # complete image bbox.  Do not assign a commercial object or
-                # invent per-number coordinates here.
-                dimension_annotations.append({
-                    "page_number": page_number,
-                    "source_image_id": image_item.get("id"),
-                    "source_image_bbox": image_bbox,
-                    "declared_dimensions": (
-                        declared_dimensions if isinstance(declared_dimensions, list) else []
-                    ),
-                    "page_horizontal": horizontal if isinstance(horizontal, dict) else {},
-                    "page_vertical": vertical if isinstance(vertical, dict) else {},
-                })
             raw_items = annotation.get("literal_items") or []
             # OCR 4.1 bbox annotations already carry page/image coordinates in
             # the provider response. Keep the annotation model focused on exact
@@ -249,10 +272,39 @@ def build_ocr_evidence(pages: list[dict[str, Any]]) -> dict[str, Any]:
                 item_index[key] = item
                 literal_items.append(item)
 
+    for block in text_blocks:
+        declared_dimension_literals.extend(_extract_declared_dimension_literals(
+            page_number=block["page_number"],
+            source_kind="text_block",
+            source_id=None,
+            source_bbox=block["bbox"],
+            text=str(block["text"]),
+        ))
+    for item in literal_items:
+        declared_dimension_literals.extend(_extract_declared_dimension_literals(
+            page_number=item["page_number"],
+            source_kind="image_annotation",
+            source_id=str(item.get("source_image_id") or "") or None,
+            source_bbox=item.get("source_image_bbox") or {},
+            text=str(item["text"]),
+        ))
+    deduplicated_literals: list[dict[str, Any]] = []
+    seen_literal_keys: set[tuple[Any, ...]] = set()
+    for literal in declared_dimension_literals:
+        key = (
+            literal["page_number"], literal["source_kind"], literal["source_id"],
+            literal["symbol"], literal["value"], literal["raw"],
+        )
+        if key in seen_literal_keys:
+            continue
+        seen_literal_keys.add(key)
+        literal["literal_id"] = f"DL{len(deduplicated_literals) + 1}"
+        deduplicated_literals.append(literal)
+
     return {
         "text_blocks": text_blocks,
         "literal_items": literal_items,
-        "dimension_annotations": dimension_annotations,
+        "declared_dimension_literals": deduplicated_literals,
     }
 
 

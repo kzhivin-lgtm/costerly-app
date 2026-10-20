@@ -99,6 +99,10 @@ DETECTION_DIMENSION_INVENTORY_JSON_SCHEMA: dict[str, Any] = {
         "required": ["group_id", "envelope_chains"],
         "properties": {
             "group_id": {"type": "string"},
+            "ocr_literal_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
             "envelope_chains": {
                 "type": "array",
                 "items": {
@@ -253,11 +257,25 @@ def validate_detection_dimension_inventory(
     for row in inventory:
         if (
             not isinstance(row, dict)
-            or set(row) != {"group_id", "envelope_chains"}
+            or frozenset(row) not in {
+                frozenset({"group_id", "envelope_chains"}),
+                frozenset({"group_id", "ocr_literal_ids", "envelope_chains"}),
+            }
             or not isinstance(row.get("group_id"), str)
             or row["group_id"] not in visual_group_ids
             or row["group_id"] in by_group_id
             or not isinstance(row.get("envelope_chains"), list)
+            or (
+                "ocr_literal_ids" in row
+                and (
+                    not isinstance(row["ocr_literal_ids"], list)
+                    or not all(
+                        isinstance(value, str) and value.strip()
+                        for value in row["ocr_literal_ids"]
+                    )
+                    or len(row["ocr_literal_ids"]) != len(set(row["ocr_literal_ids"]))
+                )
+            )
         ):
             raise DetectionRegistrySchemaError("dimension inventory is invalid")
         chain_ids: set[str] = set()
@@ -296,6 +314,7 @@ def validate_detection_dimension_inventory(
             })
         by_group_id[row["group_id"]] = {
             "group_id": row["group_id"],
+            "ocr_literal_ids": list(row.get("ocr_literal_ids") or []),
             "envelope_chains": envelope_chains,
         }
     if set(by_group_id) != visual_group_ids:

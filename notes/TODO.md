@@ -332,6 +332,18 @@ height fact while its horizontal `331 = 64 + 203 + 64` chain is independently
 reported; measure the unchanged one-pass OCR timing before any Vision Object
 Detection experiment.
 
+V4.47 rejects V4.46's request that OCR infer horizontal or vertical geometry.
+It restores the prior text-only bbox annotation and deterministically extracts
+only exact symbolic literals from that transcription: `H=`, `W=`, `D=`, `L=`,
+`T=`, `THK=`, `Ø` and `R`. The parser preserves page and source bbox, but does
+not derive a chain, sum values, select an axis or attach a commercial object.
+The Registry still owns all envelope-chain interpretation. Its diagnostics now
+store a page-and-island comparison: model-attributed OCR literal IDs, literal
+candidates on that page not attributed to the island, and the model's own
+horizontal/vertical chains. Acceptance: HSL returns to the V4.45 OCR timing
+range and island recall, while the audit exposes OCR and Registry dimensions
+side by side before any graph or package change.
+
 PENDING, P1, USER REQUEST, Detection island-view typology: after the current
 outer-dimension extraction experiment is verified, add a separate, evidence-only
 classification for common fabrication depictions. An elevation, front, end or

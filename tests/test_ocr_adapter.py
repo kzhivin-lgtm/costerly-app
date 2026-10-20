@@ -1,6 +1,9 @@
 import json
 
-from agents.anthropic_adapter import build_detection_ocr_context
+from agents.anthropic_adapter import (
+    build_detection_island_dimension_audit,
+    build_detection_ocr_context,
+)
 from agents.ocr_adapter import normalize_mistral_ocr_response, run_mistral_ocr
 from agents.ocr_contract import OCR_PROFILE_EVIDENCE
 
@@ -55,7 +58,7 @@ def test_normalizes_mistral_response():
         elapsed_seconds=1.2345,
     )
 
-    assert package["contract_version"] == "ocr_v4"
+    assert package["contract_version"] == "ocr_v5"
     assert package["profile"] == "basic"
     assert package["page_count"] == 1
     assert package["pages"][0]["page_number"] == 1
@@ -80,12 +83,8 @@ def test_calls_ocr4_with_structured_page_output():
     assert payload["include_blocks"] is True
     assert payload["include_image_base64"] is False
     annotation_schema = payload["bbox_annotation_format"]["json_schema"]["schema"]
-    assert annotation_schema["required"] == [
-        "text", "declared_dimensions", "page_horizontal", "page_vertical",
-    ]
-    assert annotation_schema["properties"]["page_horizontal"]["properties"]["status"]["enum"] == [
-        "readable", "not_shown_or_unreadable",
-    ]
+    assert annotation_schema["required"] == ["text"]
+    assert set(annotation_schema["properties"]) == {"text"}
     assert payload["document"]["document_url"].startswith(
         "data:application/pdf;base64,"
     )
@@ -260,7 +259,7 @@ def test_normalized_evidence_accepts_ocr41_bbox_text():
     assert r"4130 mm\nMDF panel 20 mm" in package["raw_response"]["pages"][0]["images"][0]["image_annotation"]
 
 
-def test_normalized_evidence_preserves_structured_dimension_annotations_for_detection():
+def test_normalized_evidence_extracts_literal_dimension_declarations_for_detection():
     response = _response()
     response["pages"][0]["images"] = [{
         "id": "img-0.jpeg",
@@ -270,17 +269,6 @@ def test_normalized_evidence_preserves_structured_dimension_annotations_for_dete
         "bottom_right_y": 200,
         "image_annotation": json.dumps({
             "text": "H=60\n331\n64\n203\n64",
-            "declared_dimensions": [{
-                "symbol": "H", "value": "60", "raw": "H=60",
-            }],
-            "page_horizontal": {
-                "status": "readable", "direct_total": "331",
-                "segments": ["64", "203", "64"],
-            },
-            "page_vertical": {
-                "status": "not_shown_or_unreadable", "direct_total": "",
-                "segments": [],
-            },
         }),
     }]
     package = normalize_mistral_ocr_response(
@@ -291,14 +279,57 @@ def test_normalized_evidence_preserves_structured_dimension_annotations_for_dete
         elapsed_seconds=1,
     )
 
-    annotation = package["evidence"]["dimension_annotations"][0]
-    assert annotation["declared_dimensions"][0]["raw"] == "H=60"
-    assert annotation["page_horizontal"]["segments"] == ["64", "203", "64"]
+    literal = package["evidence"]["declared_dimension_literals"][0]
+    assert literal["raw"] == "H=60"
+    assert literal["symbol"] == "H"
+    assert literal["value"] == "60"
 
     context = build_detection_ocr_context(package)
-    assert "D=H|60|\"H=60\"" in context
-    assert "A=page_horizontal|readable|331|64,203,64" in context
-    assert "A=page_vertical|not_shown_or_unreadable|-|-" in context
+    assert "D=DL1|H|60|" in context
+    assert "page_horizontal" not in context
+
+
+def test_island_dimension_audit_keeps_model_attribution_separate_from_same_page_candidates():
+    audit = build_detection_island_dimension_audit(
+        visual_groups=[{
+            "group_id": "view-001", "page_number": 4, "location_hint": "upper right",
+        }],
+        dimension_inventory=[{
+            "group_id": "view-001", "ocr_literal_ids": ["DL1"],
+            "envelope_chains": [{
+                "chain_id": "G1-horizontal", "axis": "horizontal",
+                "segments": ["64", "203", "64"], "direct_total": "331",
+            }],
+        }],
+        ocr_package={"evidence": {"declared_dimension_literals": [
+            {
+                "literal_id": "DL1", "page_number": 4, "symbol": "H",
+                "value": "60", "raw": "H=60", "source_bbox": {},
+            },
+            {
+                "literal_id": "DL2", "page_number": 4, "symbol": "D",
+                "value": "80", "raw": "D=80", "source_bbox": {},
+            },
+        ]}},
+    )
+
+    assert audit == [{
+        "visual_group_id": "view-001", "page_number": 4,
+        "location_hint": "upper right",
+        "ocr_declared_literals": [{
+            "literal_id": "DL1", "page_number": 4, "symbol": "H",
+            "value": "60", "raw": "H=60", "source_bbox": {},
+        }],
+        "unattributed_ocr_literals_on_page": [{
+            "literal_id": "DL2", "page_number": 4, "symbol": "D",
+            "value": "80", "raw": "D=80", "source_bbox": {},
+        }],
+        "unknown_ocr_literal_ids": [],
+        "model_envelope_chains": [{
+            "chain_id": "G1-horizontal", "axis": "horizontal",
+            "segments": ["64", "203", "64"], "direct_total": "331",
+        }],
+    }]
 
 
 def test_normalized_evidence_preserves_normal_blank_lines():
