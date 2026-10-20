@@ -6,9 +6,11 @@ from agents.detection_agent import (
     _enforce_shared_track_door_system_quantity,
     _merge_registry_evidence,
     _record_locked_evidence_handoff_audit,
+    _registry_to_detection_result,
     run_detection_agent,
 )
 from agents.anthropic_adapter import DetectionVisualRegistryValidationError
+from agents.schemas.detection_schema import validate_detection_result
 from use_cases.rfq_processing import process_uploaded_rfq
 
 
@@ -148,7 +150,7 @@ def test_registry_resolves_shared_track_leaves_to_one_commercial_door_system():
     assert resolved["objects"][0]["quantity_explicit"] is False
 
 
-def test_evidence_packer_receives_every_registry_evidence_page_without_a_dossier_cap():
+def test_registry_only_result_materializes_every_registry_package_without_handoff():
     registry = {"objects": [{
         "object_id": "object-001", "transport_label": "Object 1",
         "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
@@ -156,41 +158,19 @@ def test_evidence_packer_receives_every_registry_evidence_page_without_a_dossier
         "visual_group_ids": ["view-001"], "visual_identity": "one kitchen",
         "boundary_basis": "one integrated kitchen package",
     }]}
-    captured: dict = {}
-    stages: list[str] = []
+    result = _registry_to_detection_result(
+        registry, company_id="001", file_name="kitchen.pdf", page_count=5,
+    )
 
-    def stop_after_capture(**kwargs):
-        captured.update(kwargs)
-        raise RuntimeError("captured evidence packer input")
-
-    with (
-        patch("agents.detection_agent.build_detection_registry_regions", return_value=[]),
-        patch(
-            "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
-            return_value=({"visual_groups": []}, registry, {"event": "visual_registry"}),
-        ),
-        patch(
-            "agents.detection_agent.run_anthropic_detection_agent_with_fallback",
-            side_effect=stop_after_capture,
-        ),
-        pytest.raises(RuntimeError, match="captured evidence packer input"),
-    ):
-        run_detection_agent(
-            file_name="kitchen.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"one", b"two", b"three", b"four", b"five"],
-            stage_callback=stages.append,
-        )
-
-    assert captured["page_image_numbers"] == [1, 2, 3, 4, 5]
-    assert captured["page_images"] == [b"one", b"two", b"three", b"four", b"five"]
-    assert stages == [
-        "Detection Registry started",
-        "Detection Registry completed",
-        "Detection Evidence handoff started",
+    assert result["detected_objects"][0]["evidence_pages"] == "1,2,3,4,5"
+    assert result["detected_objects"][0]["evidence_page_refs"] == [
+        {"page_number": page, "source_label": f"P{page}", "regions": []}
+        for page in range(1, 6)
     ]
+    assert validate_detection_result(result) == result
 
 
-def test_v42_routes_default_registry_and_evidence_packer_to_haiku():
+def test_v49_routes_default_registry_to_haiku_without_evidence_handoff():
     registry = {"objects": [{
         "object_id": "object-001", "transport_label": "Object 1",
         "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
@@ -198,15 +178,10 @@ def test_v42_routes_default_registry_and_evidence_packer_to_haiku():
         "visual_identity": "one object", "boundary_basis": "one envelope",
     }]}
     registry_call: dict = {}
-    evidence_call: dict = {}
 
     def capture_registry(**kwargs):
         registry_call.update(kwargs)
         return {"visual_groups": []}, registry, {"event": "visual_registry"}
-
-    def stop_after_capture(**kwargs):
-        evidence_call.update(kwargs)
-        raise RuntimeError("captured evidence packer model")
 
     with (
         patch("agents.detection_agent.get_secret", side_effect=lambda _name, default: default),
@@ -215,22 +190,17 @@ def test_v42_routes_default_registry_and_evidence_packer_to_haiku():
             "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
             side_effect=capture_registry,
         ),
-        patch(
-            "agents.detection_agent.run_anthropic_detection_agent_with_fallback",
-            side_effect=stop_after_capture,
-        ),
-        pytest.raises(RuntimeError, match="captured evidence packer model"),
     ):
-        run_detection_agent(
+        result = run_detection_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"page"],
         )
 
     assert registry_call["model"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL
-    assert evidence_call["primary_model_override"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL
+    assert len(result["_agent_usage_events"]) == 1
 
 
-def test_v42_routes_only_adda_style_registry_to_sonnet():
+def test_v49_routes_only_adda_style_registry_to_sonnet_without_evidence_handoff():
     registry = {"objects": [{
         "object_id": "object-001", "transport_label": "Object 1",
         "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
@@ -238,15 +208,10 @@ def test_v42_routes_only_adda_style_registry_to_sonnet():
         "visual_identity": "one object", "boundary_basis": "one envelope",
     }]}
     registry_call: dict = {}
-    evidence_call: dict = {}
 
     def capture_registry(**kwargs):
         registry_call.update(kwargs)
         return {"visual_groups": []}, registry, {"event": "visual_registry"}
-
-    def stop_after_capture(**kwargs):
-        evidence_call.update(kwargs)
-        raise RuntimeError("captured evidence packer model")
 
     two_islands_page = {
         "dimensions": {"width": 1000, "height": 1000},
@@ -262,20 +227,15 @@ def test_v42_routes_only_adda_style_registry_to_sonnet():
             "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
             side_effect=capture_registry,
         ),
-        patch(
-            "agents.detection_agent.run_anthropic_detection_agent_with_fallback",
-            side_effect=stop_after_capture,
-        ),
-        pytest.raises(RuntimeError, match="captured evidence packer model"),
     ):
-        run_detection_agent(
+        result = run_detection_agent(
             file_name="adda.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"one", b"two"],
             ocr_package={"pages": [two_islands_page, two_islands_page]},
         )
 
     assert registry_call["model"] == "claude-sonnet-4-6"
-    assert evidence_call["primary_model_override"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL
+    assert len(result["_agent_usage_events"]) == 1
 
 
 def test_processing_persists_visual_registry_validation_audit_before_reraising(monkeypatch):

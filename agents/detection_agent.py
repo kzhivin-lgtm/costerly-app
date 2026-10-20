@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
+from datetime import UTC, datetime
+from uuid import uuid4
 
 from agents.anthropic_adapter import (
     DetectionVisualRegistryValidationError,
-    run_anthropic_detection_agent_with_fallback,
     run_anthropic_detection_visual_registry_agent,
 )
 from agents.detection_model_router import (
@@ -14,10 +15,7 @@ from agents.detection_model_router import (
     detection_v42_model_route,
 )
 from agents.detection_page_images import build_detection_registry_regions, render_detection_pdf_pages
-from agents.prompt_loader import (
-    load_detection_agent_prompt,
-    load_detection_visual_registry_prompt,
-)
+from agents.prompt_loader import load_detection_visual_registry_prompt
 from agents.schemas.detection_schema import validate_detection_result
 
 
@@ -191,6 +189,76 @@ def _normalize_evidence_source_labels(result: dict, ocr_package: dict | None) ->
     return result
 
 
+def _registry_to_detection_result(
+    registry: dict,
+    *,
+    company_id: str,
+    file_name: str,
+    page_count: int,
+    review_required_object_ids: set[str] | None = None,
+) -> dict:
+    """Materialize the Registry's locked packages as the V4 result.
+
+    V4 ends after package construction.  It must not send a second model a
+    narrowed dossier merely to restate object IDs, quantities and pages.  The
+    Registry is already the authority for those fields, so this adapter only
+    supplies the persistent File Review transport shape.
+    """
+    created_at = datetime.now(UTC).isoformat()
+    run_id = f"run_{uuid4().hex}"
+    flagged_ids = set(review_required_object_ids or ())
+    objects = []
+    for item in registry.get("objects") or []:
+        if not isinstance(item, dict):
+            continue
+        object_id = str(item.get("object_id") or "")
+        evidence_pages = sorted({
+            int(page)
+            for page in item.get("estimation_evidence_pages") or []
+            if isinstance(page, int) and 1 <= page <= page_count
+        })
+        if not object_id or not evidence_pages:
+            continue
+        objects.append({
+            "run_id": run_id,
+            "company_id": company_id,
+            "object_id": object_id,
+            "object_name": str(item.get("transport_label") or "Unlabelled"),
+            "quantity": item.get("quantity"),
+            "quantity_explicit": item.get("quantity_explicit"),
+            "review_required": object_id in flagged_ids,
+            "evidence_pages": ",".join(str(page) for page in evidence_pages),
+            "evidence_page_refs": [
+                {"page_number": page, "source_label": f"P{page}", "regions": []}
+                for page in evidence_pages
+            ],
+            "approved": False,
+            "created_at": created_at,
+        })
+    return {
+        "rfq_run": {
+            "run_id": run_id,
+            "company_id": company_id,
+            "project_name": "unknown",
+            "file_name": file_name,
+            "source_type": "pdf" if file_name.lower().endswith(".pdf") else "image",
+            "design_partner": "unknown",
+            "client": "unknown",
+            "author": "unknown",
+            "document_date": "unknown",
+            "pages_detected": page_count,
+            "language": "unknown",
+            "file_quality_level": 2,
+            "file_quality_label": "partial_information",
+            "file_quality_confidence": 0.0,
+            "file_quality_notes": "Registry-only V4 package construction",
+            "status": "intake_parsed",
+            "created_at": created_at,
+        },
+        "detected_objects": objects,
+    }
+
+
 def get_secret(name: str, default: str | None = None) -> str | None:
     try:
         import streamlit as st
@@ -291,8 +359,7 @@ def run_detection_agent(
     Runs the real Claude-backed Detection Agent.
     """
 
-    # Fail loudly if the prompt file is missing or empty.
-    _prompt = load_detection_agent_prompt()
+    # Fail loudly if the active Registry prompt is missing or empty.
     _visual_registry_prompt = load_detection_visual_registry_prompt()
 
     if file_bytes is None:
@@ -361,48 +428,16 @@ def run_detection_agent(
     }
     registry = _enforce_shared_track_door_system_quantity(registry)
     _validate_registry_evidence_pages(registry, page_count=len(registry_images))
-    evidence_page_numbers = sorted({page for item in registry["objects"] for page in item["estimation_evidence_pages"]})
-    evidence_images = [registry_images[page - 1] for page in evidence_page_numbers]
-    evidence_regions = [region for region in regions if region["page_number"] in evidence_page_numbers]
-    if stage_callback:
-        stage_callback("Detection Evidence handoff started")
-    result = run_anthropic_detection_agent_with_fallback(
-        file_name=file_name,
-        company_id=company_id,
-        file_bytes=file_bytes,
-        ocr_package=ocr_package,
-        page_images=evidence_images,
-        page_image_diagnostics=page_image_diagnostics,
-        primary_model_override=route["evidence_model"],
-        locked_registry=registry,
-        allow_sonnet_fallback=False,
-        focus_regions=evidence_regions,
-        page_image_numbers=evidence_page_numbers,
-    )
-
-    usage_event = _attach_detection_model_route(result.pop("_agent_usage", None), route)
-    result = _merge_registry_evidence(
-        result,
+    result = _registry_to_detection_result(
         registry,
+        company_id=company_id,
+        file_name=file_name,
+        page_count=len(registry_images),
         review_required_object_ids=(
-            fallback_review_required_object_ids
-            | graph_review_required_object_ids
+            fallback_review_required_object_ids | graph_review_required_object_ids
         ),
     )
     result = _normalize_evidence_source_labels(result, ocr_package)
     validated = validate_detection_result(result)
-    usage_event = _record_locked_evidence_handoff_audit(
-        usage_event,
-        registry=registry,
-        result=validated,
-        fallback_review_required_object_ids=(
-            fallback_review_required_object_ids
-            | graph_review_required_object_ids
-        ),
-    )
-    if stage_callback:
-        stage_callback("Detection Evidence handoff completed")
-    validated["_agent_usage_events"] = [
-        event for event in (visual_registry_usage, usage_event) if event
-    ]
+    validated["_agent_usage_events"] = [visual_registry_usage] if visual_registry_usage else []
     return validated

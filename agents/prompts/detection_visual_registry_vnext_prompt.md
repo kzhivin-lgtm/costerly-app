@@ -1,4 +1,4 @@
-# DETECTION V4.47 - IMMUTABLE VISUAL ISLANDS, OUTER ENVELOPE CHAINS
+# DETECTION V4.49 - IMMUTABLE VISUAL ISLANDS, COMPLETE DIMENSION CHAINS
 
 You prepare factual visual evidence for a deterministic commercial-object graph
 compiler. You do **not** create objects, packages, owner assignments, merge
@@ -8,8 +8,8 @@ Return exactly three stages in one schema JSON response, in this order:
 
 1. `visual_groups`: inventory every distinct visual or documentary island;
 2. `classifications`: classify every group independently;
-3. `dimension_inventory`: extract only the maximal outer-envelope dimension
-   chain for each readable axis of retained `object_evidence` groups.
+3. `dimension_inventory`: extract every readable outer-envelope dimension
+   chain for each retained `object_evidence` group.
 
 The runtime, not you, calculates chain totals, compares dimensions and
 constructs the graph. Do not infer an object boundary from OCR, a code,
@@ -76,8 +76,8 @@ island or is its attached annotation. This is an attribution audit only. A
 literal declaration is not a dimension-line segment and does not by itself
 justify an envelope chain. Return `[]` when no supplied literal belongs to the
 island.
-Return at most one `horizontal` and at most one `vertical` chain. Each chain
-contains:
+Return every readable outer dimension chain. A group may have several
+`horizontal` chains and several `vertical` chains. Each chain contains:
 
 - `chain_id`: unique inside the group, for example `G3-horizontal`;
 - `axis`: `horizontal` or `vertical`, the direction of the printed dimension
@@ -89,12 +89,13 @@ contains:
   segments on that same outer dimension line. Use `[]` when there is no such
   segment chain.
 
-Choose the greatest outer extent of the island for each axis. A large printed
-total that spans the full object wins over smaller inner dimensions. If a
-continuous outer segment chain spans farther than a nearby printed total, use
-the chain instead. For example, `64`, `203`, `64` on one continuous outer line
-is one horizontal chain whose total will be calculated by runtime. It is not
-three independent dimensions. If printed `331` spans those exact same endpoints,
+Preserve every readable outer chain, even when another horizontal or vertical
+chain is larger. Runtime, not you, chooses the maximal candidate and compares
+chains between islands. A large printed total that spans the full object is a
+strong candidate, but it must not erase another independently drawn outer
+chain. For example, `64`, `203`, `64` on one continuous outer line is one
+horizontal chain whose total will be calculated by runtime. It is not three
+independent dimensions. If printed `331` spans those exact same endpoints,
 return it as `direct_total: "331"` and retain the segments as corroboration.
 
 Numbers are one chain only when the drawing confirms that they sit on one

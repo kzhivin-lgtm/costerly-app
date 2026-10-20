@@ -192,6 +192,19 @@ def test_v4_44_envelope_compiler_retains_one_equality_and_merges_two_independent
     ) == [["view-001", "view-003"], ["view-002"]]
 
 
+def test_v4_49_dimension_inventory_allows_multiple_chains_on_one_axis():
+    inventory = validate_detection_dimension_inventory([
+        {"group_id": "view-001", "envelope_chains": [
+            {"chain_id": "G1-horizontal-top", "axis": "horizontal", "segments": [], "direct_total": "331"},
+            {"chain_id": "G1-horizontal-bottom", "axis": "horizontal", "segments": ["63", "61", "46", "47", "77", "64"], "direct_total": "358"},
+        ]},
+    ], visual_group_ids={"view-001"})
+
+    assert [chain["chain_id"] for chain in inventory[0]["envelope_chains"]] == [
+        "G1-horizontal-top", "G1-horizontal-bottom",
+    ]
+
+
 def test_v4_44_envelope_compiler_never_uses_source_code_as_a_graph_edge():
     groups = [
         {"group_id": "view-001", "page_number": 1, "representation_kind": "elevation"},

@@ -64,9 +64,9 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_45_island_envelope_equality_graph_temperature_0"
+    "detection_v4_49_complete_dimension_chains_registry_only_temperature_0"
 )
-# V4.45 keeps one Haiku call. The model records one chain per readable axis of
+# V4.49 keeps one Haiku call. The model records every readable outer chain of
 # each immutable visual island. Runtime alone sums chains and compiles equality.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # The positive graph and per-group source index are linear in island count.

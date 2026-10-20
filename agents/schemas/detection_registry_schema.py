@@ -245,7 +245,7 @@ def validate_detection_dimension_inventory(
     *,
     visual_group_ids: set[str],
 ) -> list[dict[str, Any]]:
-    """Keep one maximal outer envelope chain for each readable axis.
+    """Keep every readable outer dimension chain for each axis.
 
     The model records visible direct totals and, only where necessary, the
     contiguous segments that span exactly the same outer line.  Runtime alone
@@ -279,7 +279,6 @@ def validate_detection_dimension_inventory(
         ):
             raise DetectionRegistrySchemaError("dimension inventory is invalid")
         chain_ids: set[str] = set()
-        axes: set[str] = set()
         envelope_chains: list[dict[str, Any]] = []
         for chain in row["envelope_chains"]:
             if (
@@ -293,7 +292,6 @@ def validate_detection_dimension_inventory(
                 or not isinstance(chain.get("segments"), list)
                 or not isinstance(chain.get("direct_total"), str)
                 or chain["chain_id"] in chain_ids
-                or chain["axis"] in axes
                 or not all(
                     isinstance(value, str) and value.strip()
                     for value in chain["segments"]
@@ -305,7 +303,6 @@ def validate_detection_dimension_inventory(
             ):
                 raise DetectionRegistrySchemaError("dimension inventory is invalid")
             chain_ids.add(chain["chain_id"])
-            axes.add(chain["axis"])
             envelope_chains.append({
                 "chain_id": chain["chain_id"].strip(),
                 "axis": chain["axis"],
