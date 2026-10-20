@@ -279,6 +279,12 @@ source count; codes, repeated projections and cabinet-module counts leave
 quantity at its default one. Acceptance: the HSL graph is complete and records
 its observed dimension facts without truncation, packages reach File Review,
 then Page 23 and Adda preserve their protected outcomes before any checkpoint.
+V4.41.1 is the user-approved temporary capacity experiment for that exact
+contract: raise only the Visual Registry output ceiling from 12,288 to 32,768
+tokens. It must first show that HSL reaches packages with N57 permitted as one
+whole MVP object. It is not an accepted performance setting or an architectural
+solution to the pair-ledger growth problem; retain the per-run usage and timing
+evidence before deciding whether to keep, replace or revert it.
 
 PENDING, P1, USER REQUEST, Detection Registry output and latency optimisation:
 after the commercial-boundary experiment reaches a valid HSL graph, remove only

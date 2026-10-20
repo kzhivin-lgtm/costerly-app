@@ -62,16 +62,17 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_41_rle_complete_relation_ledger_temperature_0"
+    "detection_v4_41_1_rle_complete_relation_ledger_32768_temporary"
 )
 # V4.41 keeps one Haiku call and V4.40's graph-derived package membership. A
 # run-length encoded seven-character states make the six-factor review
 # observable without repeating a JSON row for every checked-negative pair.
 # Positive facts remain the only detailed text returned by the model.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
-# Keep the established output ceiling. The compact ledger combines contiguous
-# checked-negative states before serialising JSON, not a prose matrix.
-DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
+# V4.41.1 is a bounded diagnostic capacity increase for the HSL graph. It
+# changes no graph rule or model route, and must be reverted or replaced by a
+# compact contract after the current graph result is evaluated.
+DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 32_768
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
 # contract as well.

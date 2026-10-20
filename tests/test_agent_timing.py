@@ -636,7 +636,7 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
             page_images=[b"page"], regions=[], ocr_package=None, model="model",
         )
 
-    assert requested_budgets == [12288]
+    assert requested_budgets == [32768]
     assert requested_temperatures == [0.0]
     assert visual_map["visual_groups"][0]["group_id"] == "view-001"
     assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
@@ -1266,7 +1266,7 @@ def test_integrated_visual_registry_json_failure_carries_transport_diagnostics()
     assert event["raw_usage"]["validation_stage"] == "visual_registry_json"
     assert event["raw_usage"]["response_character_count"] == len(raw_text)
     assert event["raw_usage"]["response_text_sha256"]
-    assert event["raw_usage"]["max_tokens"] == 12288
+    assert event["raw_usage"]["max_tokens"] == 32768
     assert event["raw_usage"]["raw_response_persisted"] is False
     assert event["raw_usage"]["top_level_sections_started"] == [
         "visual_groups", "classifications",
