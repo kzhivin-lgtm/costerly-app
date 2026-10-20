@@ -7,6 +7,7 @@ from agents.anthropic_adapter import (
 from agents.schemas.detection_registry_schema import (
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
+    compile_detection_dimension_graph,
     derive_detection_pairwise_merge_proofs_from_parent_links,
     derive_detection_package_decision_audit,
     derive_detection_proof_components,
@@ -142,37 +143,110 @@ def test_proof_graph_derives_one_component_from_two_evidence_backed_edges():
     ]
 
 
-def test_v4_42_dimension_index_and_one_dimension_supporting_relation_do_not_merge():
-    groups = {"view-001", "view-002"}
+def test_v4_43_dimension_compiler_retains_one_match_and_merges_two_overall_matches():
+    groups = [
+        {"group_id": "view-001", "page_number": 1, "representation_kind": "elevation"},
+        {"group_id": "view-002", "page_number": 1, "representation_kind": "section"},
+        {"group_id": "view-003", "page_number": 2, "representation_kind": "elevation"},
+    ]
     inventory = validate_detection_dimension_inventory([
-        {"group_id": "view-001", "dimension_readings": ["overall width 358 cm"]},
-        {"group_id": "view-002", "dimension_readings": ["overall width 358 cm"]},
-    ], visual_group_ids=groups)
+        {"group_id": "view-001", "dimensions": [
+            {"dimension_id": "G1-d1", "literal": "358", "axis": "width", "scope": "overall", "unit": "unknown"},
+            {"dimension_id": "G1-d2", "literal": "245", "axis": "height", "scope": "overall", "unit": "unknown"},
+        ]},
+        {"group_id": "view-002", "dimensions": [
+            {"dimension_id": "G2-d1", "literal": "358", "axis": "width", "scope": "overall", "unit": "unknown"},
+        ]},
+        {"group_id": "view-003", "dimensions": [
+            {"dimension_id": "G3-d1", "literal": "358", "axis": "width", "scope": "overall", "unit": "unknown"},
+            {"dimension_id": "G3-d2", "literal": "245", "axis": "height", "scope": "overall", "unit": "unknown"},
+        ]},
+    ], visual_group_ids={group["group_id"] for group in groups})
+
+    compiled_edges, conflicts, audit = compile_detection_dimension_graph(
+        inventory, visual_groups=groups, page_drawing_codes={},
+    )
 
     edges, accepted_merges, reference_links, rejected = (
         partition_detection_relation_edges(
-            [{
-                "group_id_a": "view-001",
-                "group_id_b": "view-002",
-                "relationship": "supporting_relation",
-                "evidence_facts": [
-                    _fact("dimension_equality", "overall width 358 cm is literal on both views."),
-                ],
-                "commercial_inseparability": "One matching dimension is recorded but does not establish one object.",
-            }],
-            visual_group_ids=groups,
-            page_count=1,
+            compiled_edges,
+            visual_group_ids={group["group_id"] for group in groups},
+            page_count=2,
         )
     )
 
-    assert [row["group_id"] for row in inventory] == ["view-001", "view-002"]
-    assert len(edges) == 1
-    assert accepted_merges == []
+    assert [row["group_id"] for row in inventory] == [
+        "view-001", "view-002", "view-003",
+    ]
+    assert len(edges) == 3
+    assert edges[0]["relationship"] == "supporting_relation"
+    assert accepted_merges[0]["group_id_a"] == "view-001"
+    assert accepted_merges[0]["group_id_b"] == "view-003"
     assert reference_links == []
     assert rejected == []
+    assert conflicts == []
+    assert audit["pairs_checked"] == 3
     assert derive_detection_proof_components(
-        accepted_merges, visual_group_ids=groups
-    ) == [["view-001"], ["view-002"]]
+        accepted_merges, visual_group_ids={group["group_id"] for group in groups}
+    ) == [["view-001", "view-003"], ["view-002"]]
+
+
+def test_v4_43_dimension_compiler_keeps_source_root_from_overriding_a_direct_conflict():
+    groups = [
+        {"group_id": "view-001", "page_number": 1, "representation_kind": "elevation"},
+        {"group_id": "view-002", "page_number": 1, "representation_kind": "elevation"},
+    ]
+    inventory = validate_detection_dimension_inventory([
+        {"group_id": "view-001", "dimensions": [{
+            "dimension_id": "G1-d1", "literal": "358", "axis": "width",
+            "scope": "overall", "unit": "cm",
+        }]},
+        {"group_id": "view-002", "dimensions": [{
+            "dimension_id": "G2-d1", "literal": "349", "axis": "width",
+            "scope": "overall", "unit": "cm",
+        }]},
+    ], visual_group_ids={group["group_id"] for group in groups})
+
+    edges, conflicts, audit = compile_detection_dimension_graph(
+        inventory, visual_groups=groups, page_drawing_codes={1: "N57"},
+    )
+
+    assert edges == []
+    assert conflicts[0]["group_id_a"] == "view-001"
+    assert conflicts[0]["group_id_b"] == "view-002"
+    assert audit["source_root_conflict_exclusion_count"] == 1
+
+
+def test_v4_43_dimension_compiler_derives_axis_swapped_transform_in_code():
+    groups = [
+        {"group_id": "view-001", "page_number": 1, "representation_kind": "elevation"},
+        {"group_id": "view-002", "page_number": 2, "representation_kind": "plan"},
+    ]
+    inventory = validate_detection_dimension_inventory([
+        {"group_id": "view-001", "dimensions": [
+            {"dimension_id": "G1-d1", "literal": "358", "axis": "width", "scope": "overall", "unit": "cm"},
+            {"dimension_id": "G1-d2", "literal": "245", "axis": "height", "scope": "overall", "unit": "cm"},
+        ]},
+        {"group_id": "view-002", "dimensions": [
+            {"dimension_id": "G2-d1", "literal": "245", "axis": "width", "scope": "overall", "unit": "cm"},
+            {"dimension_id": "G2-d2", "literal": "358", "axis": "height", "scope": "overall", "unit": "cm"},
+        ]},
+    ], visual_group_ids={group["group_id"] for group in groups})
+
+    edges, conflicts, audit = compile_detection_dimension_graph(
+        inventory, visual_groups=groups, page_drawing_codes={},
+    )
+    _, accepted_merges, _, rejected = partition_detection_relation_edges(
+        edges, visual_group_ids={group["group_id"] for group in groups}, page_count=2,
+    )
+
+    assert conflicts == []
+    assert [fact["evidence_type"] for fact in edges[0]["evidence_facts"]] == [
+        "dimension_transform",
+    ]
+    assert len(accepted_merges) == 1
+    assert rejected == []
+    assert audit["dimension_transform_fact_count"] == 1
 
 
 def test_v4_40_relation_graph_preserves_positive_dimension_facts_and_isolates_weak_merge():
@@ -599,25 +673,24 @@ def test_parent_decision_rejects_missing_reason_and_later_parent():
         )
 
 
-def test_integrated_registry_schema_has_no_model_owner_or_object_id_fields():
+def test_v4_43_registry_schema_contains_only_model_extracted_facts():
     group_properties = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]["visual_groups"]["items"]["properties"]
-    object_properties = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]["objects"]["items"]["properties"]
-    coverage_properties = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]["page_coverage"]["items"]["properties"]
+    dimension_properties = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]["dimension_inventory"]["items"]["properties"]
 
     assert "owner_object_ids" not in group_properties
     assert "evidence_class" not in group_properties
     assert "classification_reason" not in group_properties
-    assert "object_id" not in object_properties
-    assert "component_anchor_group_id" in object_properties
-    assert "component_anchor_group_ids" in coverage_properties
     assert "standalone_package_group_ids" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "objects" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["required"]
-    assert "relation_edges" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
+    assert "objects" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
+    assert "relation_edges" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
+    assert "page_coverage" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "pair_relation_runs" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "pair_relation_states" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "pair_relation_facts" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "dimension_inventory" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "classifications" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
+    assert "dimensions" in dimension_properties
     assert "proof_edges" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "merge_proofs" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
 

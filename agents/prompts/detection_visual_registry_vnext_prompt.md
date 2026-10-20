@@ -1,193 +1,90 @@
-# DETECTION V4.42 - INVENTORY, CLASSIFY, FACT INDEX, POSITIVE GRAPH, PACKAGE
+# DETECTION V4.43 - VISUAL ISLANDS, CLASSIFICATION, LITERAL DIMENSIONS
 
-Build the visual representation inventory and commercial-object registry in one
-response. The response has this mandatory causal order:
+You prepare factual visual evidence for a deterministic commercial-object graph
+compiler. You do **not** create objects, packages, owner assignments, merge
+edges, quantities, final dimensions, materials or names.
 
-1. identify every visually distinct source island in `visual_groups`, without
-   assigning a class,
-2. classify every group in the separate `classifications` array as
-   `object_evidence` or `document_context`, with a factual reason,
-3. record each group's literal source dimensions once in `dimension_inventory`,
-4. inspect the complete classified inventory globally and return every positive
-   typed relation in `relation_edges`,
-5. after the graph is complete, describe the resulting commercial packages and
-   their complete page Evidence.
+Return exactly three stages in one schema JSON response, in this order:
 
-Do not declare object owners before reviewing the graph. Do not add graph facts
-after declaring a package. All reasons and observations are concise, factual,
-inspectable output, not hidden reasoning.
+1. `visual_groups`: inventory every distinct visual or documentary island;
+2. `classifications`: classify every group independently;
+3. `dimension_inventory`: extract literal dimensions for retained
+   `object_evidence` groups.
+
+The runtime, not you, compares dimensions, detects conflicts, reads page-level
+`DRAWING NAME` codes from OCR title blocks, constructs the graph and derives
+packages. Do not infer an object boundary from OCR, a code, proximity, a page
+or a repeated dimension.
 
 ## 1. Complete visual-island inventory
 
 Each `visual_group` is one visibly distinct graphical or documentary island:
 an overview, alternate perspective, elevation, object plan, section, detail,
 module, door leaf, panel, track, cabinet bay, assembly fragment, floor plan,
-title block, legend or framed document text. It is one depiction, never yet a
+title block, legend or framed document text. It is one depiction, never a
 quote line or quantity.
 
 First enumerate islands directly from rendered pages. Then use `OCR GRAPHIC
 REGION INVENTORY` only as a passive recall aid. If an OCR coordinate may hold a
 missed island, re-inspect it and add a group only when the page confirms a
-distinct island. OCR cannot create, split, merge, delete or invalidate a group.
-Visual islands without a matching OCR region remain valid. OCR IDs are never
-returned and never enter classification, graph, quantity or Evidence.
+visually separate island. OCR coordinates never define a boundary, never split
+an island, and never create one.
 
-Give every group a stable ordered `group_id`, physical `page_number`, short
-`location_hint`, literal `visual_description`, and neutral `representation_kind`.
-One group records exactly one visibly distinct depiction. Never combine two
-side-by-side elevations, several views, or a dimension annotation and a facade
-into one group merely because they occupy one visual block.
+Every OCR graphic region must be either represented by one visual group or
+explicitly absorbed into a visually inseparable parent group. A group must not
+be emitted merely because OCR found text. A graphic island without OCR text is
+still a group when visually distinct.
 
-## 1a. Classification
+Use stable lexical IDs `G1`, `G2`, ... in page order, then reading order. Do
+not change this inventory after classification.
 
-After the complete `visual_groups` array, return exactly one `classifications`
-row for every `group_id`. Each row gives `object_evidence` or
-`document_context` and a concise factual `classification_reason` answering:
-**why is this object-specific Evidence or document context?** Do not revise,
-merge or split the visual inventory during classification.
+## 2. Independent classification
+
+Return exactly one `classifications` row for every group. It contains
+`object_evidence` or `document_context` and `classification_reason`, a concise
+factual reason answering:
+**why is this object-specific Evidence or document context?**
 
 Use `document_context` for a cover or title page, title block, generic floor
 plan, room layout, electrical, plumbing or lighting plan, legend,
-administrative text, generic schedule or navigation diagram. These may orient
-Detection but never enter the graph or Estimation Evidence. Use
-`object_evidence` for a depiction that directly identifies, constructs,
-specifies or shows a particular fabricated object, including a section, detail,
-alternate view or object-specific plan. A repeated grid, dimension string, bays,
-slats, shelves or panel divisions is not a table by itself.
+administrative text, generic schedule or navigation diagram. They orient
+Detection but never become Estimation Evidence.
 
-## 2. Per-group source-dimension index
+Use `object_evidence` for a depiction that directly constructs, specifies or
+shows a particular fabricated object, including an elevation, object plan,
+section, detail, fabrication diagram, dimensioned panel array, or placement
+plan of a specific object. A repeated grid, dimension string, bays, slats,
+shelves or panel divisions is not a table by itself.
 
-After classification and before the graph, return exactly one
-`dimension_inventory` row for every retained `object_evidence` group. A row
-contains `group_id` and a short `dimension_readings` list. Each reading is a
-literal source fact with its physical scope, for example `overall width 358 cm`
-or `height 2450 mm`; use an empty list when the island has no readable
-dimension. Preserve the printed unit. Do not infer final external dimensions,
-convert units, or include material quantities.
+Do not merge or split groups during classification. Do not treat an object
+sheet's `DRAWING NAME` title block itself as object evidence: the runtime reads
+that literal page-level source fact separately.
 
-This is a linear source index, not a pair matrix. It makes every readable
-dimension available before pair comparison, including dimensions that are not
-used in a merge.
+## 3. Literal source-dimension index
 
-## 3. Complete positive relation graph
+After classification, return exactly one `dimension_inventory` row for every
+retained `object_evidence` group. Its `dimensions` array may be empty. Each
+dimension contains:
 
-Only after the inventory and classifications exist, inspect every unordered
-pair of `object_evidence` groups globally across the complete document. Assess
-all six criteria for each pair:
+- `dimension_id`: unique inside the group, for example `G3-d1`;
+- `literal`: exactly the readable printed number or dimension expression,
+  without conversion, completion or normalization;
+- `axis`: `width`, `height`, `depth`, or `other` only when no axis is
+  readable;
+- `scope`: `overall` for the object's overall extent, `subassembly` for a
+  coherent internal unit, `component` for a local module/detail, or `unknown`;
+- `unit`: the literal printed `mm`, `cm`, `m`, `in` or `ft`. If no unit is
+  printed, return `unknown`.
 
-1. `explicit_document_relation`: same code, callout, view reference, axis or
-   label;
-2. `dimension_equality`: the same readable physical dimension, unit and scope
-   are literally equal without conversion or axis remapping;
-3. `dimension_transform`: dimensions agree after a named unit conversion or
-   axis remapping between projections;
-4. `matching_topology`: matching bays, doors, supports, carcasses, frames,
-   appliances, joints or structural elements;
-5. `unique_geometry`: repeated cut-outs, handles, posts, appliance locations,
-   turning parts, mounting points, panel sequence or distinctive frame geometry;
-6. `direct_shared_structure`: visible common frame, track, carcass, joint or
-   physical connection.
+Never infer or convert a unit from scale, drawing style, nearby dimensions or
+another page. For example, an unlabelled printed `358` is `literal: "358"`,
+`unit: "unknown"`, not `358 mm` or `358 cm`. Keep component dimensions such as
+`H=60` separate from an overall height.
 
-Return `relation_edges`: every positive relation actually found. Do not
-serialize negative, conflicted, unreadable or no-relation pairs. This is not
-permission to skip review. A positive edge uses lexically ordered `group_id_a`,
-`group_id_b`, one relationship, every positive supporting `evidence_facts`,
-and a concise factual `commercial_inseparability`. Return at most one edge per
-pair. The graph is undirected. Cycles and redundant positive edges are valid,
-because they preserve evidence rather than decide package membership directly.
+Record every readable source dimension once in its own visual group, including
+dimensions that may ultimately be unrelated to any other group. Do not compare
+groups, output equality, transform, conflict, topology or package reasoning.
+Do not infer or publish final external object dimensions, materials, pricing,
+final user-facing names, quantities or commercial ownership.
 
-Use `supporting_relation` for a positive fact that is not sufficient to merge
-or share Evidence, such as one matching dimension by itself. It is retained in
-the graph audit only. Use `reference_link` only for an object-specific overview
-or plan whose page is useful Evidence for another established package. Use
-`same_object_view` or `object_detail` only for a proposed package merge.
-
-Before returning edges, compare the complete `dimension_inventory` globally.
-For each two groups with a directly comparable repeated literal dimension,
-record `dimension_equality` in their edge unless it clearly describes different
-physical scope. Two independent dimension equalities are sufficient dimension
-proof for a merge. One matching dimension remains a `supporting_relation`
-unless another positive fact proves the same commercial object. When two
-readings agree only after a named axis or unit change, record
-`dimension_transform`; it may coexist with direct equality on the same pair.
-
-An exact `dimension_equality` fact names both literal dimensions, unit and
-physical scope. An exact `dimension_transform` fact names both literal
-dimensions and the unit or axis transformation. The same pair may have both:
-equality records a direct same-axis match, while transform records an additional
-match after changing axes or units. Return every observed positive equality and
-transform fact, including redundant facts, so the graph remains inspectable.
-
-An explicit document relation may prove one merge. One exact dimension
-transform may prove one merge only when both measurements and the exact
-transformation are named. Otherwise a merge needs at least two independent
-facts and at least one identity-level fact: dimension equality, matching
-topology, dimension transform or unique geometry. A single shared structure
-cannot establish a merge alone.
-
-Use `reference_link` when depictions are related as Evidence but must not become
-one quote line, for example an object-specific general plan showing several
-objects and their dedicated views. A reference link never merges packages. It
-is not directional and cannot suppress a standalone candidate. Do not use a
-generic floor plan or room layout as `reference_link`: it is `document_context`.
-
-Do not merge on shared page, room, colour, material, proximity or visual
-impression alone. A printed sheet-level root code alone is not enough to merge
-independent finished assemblies. However, keep one authored root-code package
-intact when an object-specific overall view connects its depictions and there is
-at least one further factual relation, unless a separate object code or a clear
-dimension conflict proves independent finished assemblies. In this ambiguous
-composite case, preserve the authored whole package with review required rather
-than atomising it into unsupported standalone modules. If a connection is not
-proven, leave the groups unmerged. Runtime will create review-required standalone packages rather than discard them.
-
-A dimensioned, object-specific elevation, plan, section or fabrication view
-with its own code is `object_evidence`, even when it is the sole depiction on a
-page. It must become a standalone package when no proven relation connects it;
-never recast it as `document_context` merely because it is a grid, shelving,
-panel array or a single view.
-
-Perform one final singleton audit after all positive relations are emitted. For
-every `object_evidence` group with no merge candidate, compare it again with
-every other object-evidence group. Add a relation only when the cited evidence
-supports it. Never invent a merge merely to avoid a singleton.
-
-## 4. Commercial-object packages
-
-Runtime derives package membership only from accepted `same_object_view` and
-`object_detail` edges. Every group without an accepted merge remains a
-quantity-one review-required standalone package. `reference_link` pages are
-attached as Evidence to their linked packages but do not alter their boundary.
-
-`objects` is optional descriptive metadata for the graph-derived components,
-never a package decision. When supplied, return at most one row per component,
-using any group inside it as `component_anchor_group_id`. Do not return owner lists or object IDs. If metadata is unavailable, omit its row rather than
-inventing a merge.
-
-For every described component provide the exact printed `transport_label` when
-present, otherwise a neutral source label, `quantity`, `quantity_explicit`,
-`identity_pages`, `visual_identity`, and factual `boundary_basis`. Quantity
-defaults to 1 when not established otherwise. Set `quantity_explicit` true only
-when the source literally establishes a count for that finished assembly. A
-code, repeated view, repeated dimension, cabinet module count, page count or
-similar-looking custom kitchen/cabinet is not an explicit quantity. A bespoke
-kitchen, cabinet, counter or similar finished assembly remains quantity one
-unless the source proves multiple identical finished assemblies. A shared sheet
-code does not by itself merge independent finished assemblies. It may remain
-one package when the positive graph proves that single commercial boundary.
-
-## 5. Evidence coverage
-
-Return exactly one `page_coverage` entry for every upload page. Use component
-anchors, never object IDs. Include a component anchor whenever the page carries
-a visual group or direct object-specific construction, identity, detail, plan,
-section, alternate view or assembly instruction for that component. A page may
-support several components. Give every page a factual `evidence_reason`.
-
-Use an empty anchor list for pages that contain only `document_context`. Such
-pages are never Estimation Evidence. There is no arbitrary page-count cap.
-
-Do not infer or publish final external object dimensions, materials, pricing or
-final user-facing names. Use literal source dimensions only to assess graph
-criteria and record them in positive dimension facts.
 Return schema JSON only.

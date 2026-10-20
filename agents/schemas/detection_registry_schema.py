@@ -1,6 +1,7 @@
 from __future__ import annotations
 import copy
 from collections import deque
+from itertools import combinations
 from typing import Any
 
 DETECTION_REGISTRY_JSON_SCHEMA: dict[str, Any] = {"type":"object","additionalProperties":False,"required":["objects"],"properties":{"objects":{"type":"array","items":{"type":"object","additionalProperties":False,"required":["object_id","transport_label","quantity","quantity_explicit","identity_pages","estimation_evidence_pages","visual_group_ids","visual_identity","boundary_basis"],"properties":{"object_id":{"type":"string"},"transport_label":{"type":"string"},"quantity":{"type":"number","minimum":0},"quantity_explicit":{"type":"boolean"},"identity_pages":{"type":"array","items":{"type":"integer","minimum":1}},"estimation_evidence_pages":{"type":"array","items":{"type":"integer","minimum":1}},"visual_group_ids":{"type":"array","minItems":1,"items":{"type":"string"}},"visual_identity":{"type":"string"},"boundary_basis":{"type":"string"}}}}}}
@@ -25,6 +26,11 @@ MERGE_EVIDENCE_RELATIONSHIPS = frozenset({
 })
 REFERENCE_RELATIONSHIP = "reference_link"
 SUPPORTING_RELATIONSHIP = "supporting_relation"
+DIMENSION_AXES = frozenset({"width", "height", "depth", "other"})
+DIMENSION_SCOPES = frozenset({
+    "overall", "subassembly", "component", "unknown",
+})
+DIMENSION_UNITS = frozenset({"mm", "cm", "m", "in", "ft", "unknown"})
 PROOF_PARENT_DECISIONS = frozenset({
     "new_object_root",
     "attach_to_group",
@@ -92,12 +98,25 @@ DETECTION_DIMENSION_INVENTORY_JSON_SCHEMA: dict[str, Any] = {
     "items": {
         "type": "object",
         "additionalProperties": False,
-        "required": ["group_id", "dimension_readings"],
+        "required": ["group_id", "dimensions"],
         "properties": {
             "group_id": {"type": "string"},
-            "dimension_readings": {
+            "dimensions": {
                 "type": "array",
-                "items": {"type": "string"},
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": [
+                        "dimension_id", "literal", "axis", "scope", "unit",
+                    ],
+                    "properties": {
+                        "dimension_id": {"type": "string"},
+                        "literal": {"type": "string"},
+                        "axis": {"type": "string", "enum": sorted(DIMENSION_AXES)},
+                        "scope": {"type": "string", "enum": sorted(DIMENSION_SCOPES)},
+                        "unit": {"type": "string", "enum": sorted(DIMENSION_UNITS)},
+                    },
+                },
             },
         },
     },
@@ -219,36 +238,378 @@ def validate_detection_dimension_inventory(
     *,
     visual_group_ids: set[str],
 ) -> list[dict[str, Any]]:
-    """Keep every readable dimension once, including an explicit empty row."""
+    """Keep literal, typed source dimensions once for every visual group.
+
+    Detection never converts values or guesses units.  ``literal`` is exactly
+    what was read from the drawing, while axis and scope make later local graph
+    construction inspectable without asking the model to compare pairs again.
+    """
     if not isinstance(inventory, list):
         raise DetectionRegistrySchemaError("dimension inventory must be a list")
     by_group_id: dict[str, dict[str, Any]] = {}
     for row in inventory:
         if (
             not isinstance(row, dict)
-            or set(row) != {"group_id", "dimension_readings"}
+            or set(row) != {"group_id", "dimensions"}
             or not isinstance(row.get("group_id"), str)
             or row["group_id"] not in visual_group_ids
             or row["group_id"] in by_group_id
-            or not isinstance(row.get("dimension_readings"), list)
-            or not all(
-                isinstance(reading, str) and reading.strip()
-                for reading in row["dimension_readings"]
-            )
+            or not isinstance(row.get("dimensions"), list)
         ):
             raise DetectionRegistrySchemaError("dimension inventory is invalid")
-        readings = [reading.strip() for reading in row["dimension_readings"]]
-        if len(readings) != len(set(readings)):
-            raise DetectionRegistrySchemaError("dimension inventory is invalid")
+        dimension_ids: set[str] = set()
+        dimensions: list[dict[str, str]] = []
+        for dimension in row["dimensions"]:
+            if (
+                not isinstance(dimension, dict)
+                or set(dimension) != {
+                    "dimension_id", "literal", "axis", "scope", "unit",
+                }
+                or not isinstance(dimension.get("dimension_id"), str)
+                or not dimension["dimension_id"].strip()
+                or not isinstance(dimension.get("literal"), str)
+                or not dimension["literal"].strip()
+                or dimension.get("axis") not in DIMENSION_AXES
+                or dimension.get("scope") not in DIMENSION_SCOPES
+                or dimension.get("unit") not in DIMENSION_UNITS
+                or dimension["dimension_id"] in dimension_ids
+            ):
+                raise DetectionRegistrySchemaError("dimension inventory is invalid")
+            dimension_ids.add(dimension["dimension_id"])
+            dimensions.append({
+                "dimension_id": dimension["dimension_id"].strip(),
+                "literal": dimension["literal"].strip(),
+                "axis": dimension["axis"],
+                "scope": dimension["scope"],
+                "unit": dimension["unit"],
+            })
         by_group_id[row["group_id"]] = {
             "group_id": row["group_id"],
-            "dimension_readings": readings,
+            "dimensions": dimensions,
         }
     if set(by_group_id) != visual_group_ids:
         raise DetectionRegistrySchemaError(
             "dimension inventory must account for every visual group exactly once"
         )
     return [by_group_id[group_id] for group_id in sorted(visual_group_ids)]
+
+
+def normalize_detection_dimension_inventory_group_ids(
+    inventory: object,
+    group_id_mapping: dict[str, str],
+) -> object:
+    """Map provider-facing group IDs before local graph compilation."""
+    if not isinstance(inventory, list):
+        return inventory
+    normalized = copy.deepcopy(inventory)
+    for row in normalized:
+        if isinstance(row, dict):
+            raw_group_id = str(row.get("group_id") or "")
+            row["group_id"] = group_id_mapping.get(raw_group_id, raw_group_id)
+    return normalized
+
+
+def _dimension_equality_key(dimension: dict[str, str]) -> tuple[str, str, str, str] | None:
+    """Return an exact source comparison key, never a converted measurement."""
+    if (
+        dimension["axis"] == "other"
+        or dimension["scope"] == "unknown"
+    ):
+        return None
+    return (
+        dimension["axis"],
+        dimension["scope"],
+        dimension["literal"].replace(",", ".").strip(),
+        dimension["unit"],
+    )
+
+
+def _dimension_fact_observation(
+    left: dict[str, str], right: dict[str, str],
+) -> str:
+    unit = "" if left["unit"] == "unknown" else f" {left['unit']}"
+    return (
+        f"{left['dimension_id']} and {right['dimension_id']} both state "
+        f"{left['scope']} {left['axis']} {left['literal']}{unit} literally."
+    )
+
+
+def _hard_dimension_conflict(
+    left_dimensions: list[dict[str, str]],
+    right_dimensions: list[dict[str, str]],
+) -> list[dict[str, str]]:
+    """Find direct, same-role overall conflicts without comparing details.
+
+    Different values in a section and an elevation are normal.  A conflict is
+    material only when two same-kind depictions each state incompatible overall
+    dimensions on the same axis and unit.
+    """
+    conflicts: list[dict[str, str]] = []
+    for left in left_dimensions:
+        for right in right_dimensions:
+            if (
+                left["scope"] == right["scope"] == "overall"
+                and left["axis"] == right["axis"] != "other"
+                and left["unit"] == right["unit"]
+                and left["literal"].replace(",", ".").strip()
+                != right["literal"].replace(",", ".").strip()
+            ):
+                conflicts.append({
+                    "dimension_id_a": left["dimension_id"],
+                    "dimension_id_b": right["dimension_id"],
+                    "axis": left["axis"],
+                    "unit": left["unit"],
+                    "literal_a": left["literal"],
+                    "literal_b": right["literal"],
+                })
+    return conflicts
+
+
+def _overall_dimension_transform_pairs(
+    left_dimensions: list[dict[str, str]],
+    right_dimensions: list[dict[str, str]],
+) -> list[tuple[dict[str, str], dict[str, str]]]:
+    """Find literal cross-axis overall matches without unit conversion.
+
+    A transform needs two independent cross-axis readings. One cross-axis
+    number is merely a weak coincidence, while two readings with distinct
+    source IDs establish a rotation or axis-swapped depiction deterministically.
+    """
+    pairs: list[tuple[dict[str, str], dict[str, str]]] = []
+    for left in left_dimensions:
+        for right in right_dimensions:
+            if (
+                left["scope"] == right["scope"] == "overall"
+                and left["axis"] != right["axis"]
+                and left["axis"] != "other"
+                and right["axis"] != "other"
+                and left["unit"] == right["unit"]
+                and left["literal"].replace(",", ".").strip()
+                == right["literal"].replace(",", ".").strip()
+            ):
+                pairs.append((left, right))
+    return pairs
+
+
+def _dimension_transform_fact_observation(
+    pairs: list[tuple[dict[str, str], dict[str, str]]],
+) -> str:
+    readings = "; ".join(
+        f"{left['dimension_id']} {left['axis']} {left['literal']} maps to "
+        f"{right['dimension_id']} {right['axis']} {right['literal']}"
+        for left, right in pairs
+    )
+    return f"Two literal overall cross-axis readings establish a transform: {readings}."
+
+
+def compile_detection_dimension_graph(
+    inventory: list[dict[str, Any]],
+    *,
+    visual_groups: list[dict[str, Any]],
+    page_drawing_codes: dict[int, str],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+    """Build the positive graph locally from literal dimensions and sheet codes.
+
+    The model supplies islands, their classification and literal dimensions.
+    It never decides a package edge.  One exact matching source dimension is
+    recorded as support.  Two distinct matching *overall* dimensions establish
+    a merge.  A verified per-sheet DRAWING NAME code establishes an authored
+    source-root tree for that sheet, unless two same-kind views directly
+    contradict one another on an overall dimension.
+    """
+    dimensions_by_group_id = {
+        str(row["group_id"]): list(row["dimensions"])
+        for row in inventory
+    }
+    group_by_id = {
+        str(group["group_id"]): group
+        for group in visual_groups
+    }
+    group_ids = sorted(group_by_id)
+    pairs_checked = len(group_ids) * (len(group_ids) - 1) // 2
+    edge_inputs: dict[tuple[str, str], dict[str, Any]] = {}
+    conflicts: list[dict[str, Any]] = []
+    conflict_pairs: set[tuple[str, str]] = set()
+    source_root_conflict_exclusion_count = 0
+
+    def edge_for(left_group_id: str, right_group_id: str) -> dict[str, Any]:
+        pair = tuple(sorted((left_group_id, right_group_id)))
+        return edge_inputs.setdefault(pair, {
+            "group_id_a": pair[0],
+            "group_id_b": pair[1],
+            "facts": [],
+            "root_code": None,
+            "overall_equality_count": 0,
+            "overall_transform_count": 0,
+            "hard_conflict": False,
+        })
+
+    for group_id_a, group_id_b in combinations(group_ids, 2):
+        group_a = group_by_id[group_id_a]
+        group_b = group_by_id[group_id_b]
+        dimensions_a = dimensions_by_group_id[group_id_a]
+        dimensions_b = dimensions_by_group_id[group_id_b]
+        same_kind = (
+            str(group_a.get("representation_kind") or "")
+            == str(group_b.get("representation_kind") or "")
+        )
+        pair_conflicts = _hard_dimension_conflict(dimensions_a, dimensions_b)
+        if same_kind and pair_conflicts:
+            conflict_pairs.add(tuple(sorted((group_id_a, group_id_b))))
+            conflicts.append({
+                "group_id_a": group_id_a,
+                "group_id_b": group_id_b,
+                "conflicts": pair_conflicts,
+            })
+
+        equality_pairs: list[tuple[dict[str, str], dict[str, str]]] = []
+        for dimension_a in dimensions_a:
+            key_a = _dimension_equality_key(dimension_a)
+            if key_a is None:
+                continue
+            for dimension_b in dimensions_b:
+                if key_a == _dimension_equality_key(dimension_b):
+                    equality_pairs.append((dimension_a, dimension_b))
+        transform_pairs = _overall_dimension_transform_pairs(
+            dimensions_a, dimensions_b,
+        )
+        independent_transform_pairs = [
+            pair for pair in transform_pairs
+            if len({left["dimension_id"] for left, _ in transform_pairs}) >= 2
+            and len({right["dimension_id"] for _, right in transform_pairs}) >= 2
+        ]
+        if equality_pairs or independent_transform_pairs:
+            edge = edge_for(group_id_a, group_id_b)
+            for dimension_a, dimension_b in equality_pairs:
+                edge["facts"].append({
+                    "evidence_type": "dimension_equality",
+                    "evidence_pages": sorted({
+                        int(group_a["page_number"]), int(group_b["page_number"]),
+                    }),
+                    "observation": _dimension_fact_observation(dimension_a, dimension_b),
+                })
+                if (
+                    dimension_a["scope"] == dimension_b["scope"] == "overall"
+                    and dimension_a["axis"] == dimension_b["axis"]
+                ):
+                    edge["overall_equality_count"] += 1
+            if independent_transform_pairs:
+                edge["facts"].append({
+                    "evidence_type": "dimension_transform",
+                    "evidence_pages": sorted({
+                        int(group_a["page_number"]), int(group_b["page_number"]),
+                    }),
+                    "observation": _dimension_transform_fact_observation(
+                        independent_transform_pairs,
+                    ),
+                })
+                edge["overall_transform_count"] = len(independent_transform_pairs)
+            if same_kind and pair_conflicts:
+                edge["hard_conflict"] = True
+
+    groups_by_page: dict[int, list[str]] = {}
+    for group_id, group in group_by_id.items():
+        groups_by_page.setdefault(int(group["page_number"]), []).append(group_id)
+    for page_number, page_group_ids in groups_by_page.items():
+        drawing_code = page_drawing_codes.get(page_number)
+        if not drawing_code or len(page_group_ids) < 2:
+            continue
+        anchor_group_id = min(page_group_ids)
+        for group_id in sorted(page_group_ids):
+            if group_id == anchor_group_id:
+                continue
+            if tuple(sorted((anchor_group_id, group_id))) in conflict_pairs:
+                source_root_conflict_exclusion_count += 1
+                continue
+            edge = edge_for(anchor_group_id, group_id)
+            edge["root_code"] = drawing_code
+            edge["facts"].append({
+                "evidence_type": "explicit_document_relation",
+                "evidence_pages": [page_number],
+                "observation": (
+                    f"Page {page_number} DRAWING NAME literally identifies "
+                    f"the authored sheet as {drawing_code}."
+                ),
+            })
+
+    relation_edges: list[dict[str, Any]] = []
+    for pair in sorted(edge_inputs):
+        edge = edge_inputs[pair]
+        facts_by_key: dict[tuple[str, tuple[int, ...], str], dict[str, Any]] = {}
+        for fact in edge["facts"]:
+            facts_by_key[(
+                fact["evidence_type"], tuple(fact["evidence_pages"]), fact["observation"],
+            )] = fact
+        facts = list(facts_by_key.values())
+        if not facts:
+            continue
+        is_merge = (
+            bool(edge["root_code"])
+            or (
+                (
+                    edge["overall_equality_count"] >= 2
+                    or edge["overall_transform_count"] >= 2
+                )
+                and not edge["hard_conflict"]
+            )
+        )
+        relationship = "same_object_view" if is_merge else "supporting_relation"
+        if edge["root_code"]:
+            commercial_basis = (
+                f"The literal per-sheet DRAWING NAME {edge['root_code']} establishes "
+                "one authored source-root package; review remains required."
+            )
+        elif edge["overall_transform_count"] >= 2:
+            commercial_basis = (
+                "Two independent literal overall dimensions match after an "
+                "axis swap, without conversion."
+            )
+        elif is_merge:
+            commercial_basis = (
+                "Two independent literal overall dimensions match without conversion."
+            )
+        else:
+            commercial_basis = (
+                "Literal matching dimension is retained as support only; it does not "
+                "establish one commercial object."
+            )
+        relation_edges.append({
+            "group_id_a": edge["group_id_a"],
+            "group_id_b": edge["group_id_b"],
+            "relationship": relationship,
+            "evidence_facts": facts,
+            "commercial_inseparability": commercial_basis,
+        })
+
+    audit = {
+        "compiler_version": "v1",
+        "pairs_checked": pairs_checked,
+        "page_drawing_codes": {
+            str(page_number): code
+            for page_number, code in sorted(page_drawing_codes.items())
+        },
+        "dimension_equality_fact_count": sum(
+            fact["evidence_type"] == "dimension_equality"
+            for edge in relation_edges
+            for fact in edge["evidence_facts"]
+        ),
+        "dimension_transform_fact_count": sum(
+            fact["evidence_type"] == "dimension_transform"
+            for edge in relation_edges
+            for fact in edge["evidence_facts"]
+        ),
+        "source_root_merge_edge_count": sum(
+            any(
+                fact["evidence_type"] == "explicit_document_relation"
+                for fact in edge["evidence_facts"]
+            )
+            for edge in relation_edges
+            if edge["relationship"] == "same_object_view"
+        ),
+        "source_root_conflict_exclusion_count": source_root_conflict_exclusion_count,
+        "dimension_conflicts": conflicts,
+    }
+    return relation_edges, conflicts, audit
 
 
 def validate_detection_registry(

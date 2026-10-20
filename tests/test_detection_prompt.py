@@ -66,42 +66,20 @@ def test_detection_visual_map_never_decides_objects_or_quantity():
     assert "cannot create, split, merge, name, count" in prompt
 
 
-def test_integrated_visual_registry_keeps_visual_representations_and_commercial_objects_distinct():
+def test_integrated_visual_registry_returns_facts_for_the_deterministic_graph_compiler():
     prompt = load_detection_visual_registry_prompt()
 
-    assert "visual representation inventory and commercial-object registry in one" in prompt
-    assert "mandatory causal order" in prompt
-    assert "There is no arbitrary page-count cap" in prompt
-    assert "Return exactly one `page_coverage` entry for every upload page" in prompt
+    assert "deterministic commercial-object graph\ncompiler" in prompt
+    assert "You do **not** create objects, packages, owner assignments, merge" in prompt
+    assert "Return exactly three stages" in prompt
     assert "plan, room layout, electrical, plumbing or lighting plan" in prompt
-    assert "never enter the graph or Estimation Evidence" in prompt
-    assert "Per-group source-dimension index" in prompt
-    assert "Complete positive relation graph" in prompt
+    assert "never become Estimation Evidence" in prompt
+    assert "Literal source-dimension index" in prompt
     assert "dimension_inventory" in prompt
-    assert "supporting_relation" in prompt
-    assert "literal source dimensions only to assess graph" in prompt
-    assert "Do not\nserialize negative" in prompt
-    assert "Perform one final singleton audit" in prompt
-    assert "Never invent a merge merely to avoid a singleton" in prompt
-    assert "Assess\nall six criteria" in prompt
-    assert "`dimension_equality`" in prompt
-    assert "Two independent dimension equalities are sufficient dimension\nproof" in prompt
-    assert "Set `quantity_explicit` true only" in prompt
-    assert "remains quantity one" in prompt
-    assert "Do not return owner lists or object IDs" in prompt
-    assert "Runtime derives package membership only from accepted" in prompt
-    assert "component_anchor_group_id" in prompt
     assert "classification_reason" in prompt
-    assert "`object_detail`" in prompt
-    assert "`reference_link`" in prompt
-    assert "The graph is undirected" in prompt
-    assert "generic floor plan or room layout as `reference_link`" in prompt
-    assert "`dimension_transform`" in prompt
-    assert "inspect every unordered\npair of `object_evidence` groups globally" in prompt
-    assert "A single shared structure\ncannot establish a merge alone" in prompt
-    assert "review-required standalone packages" in prompt
-    assert "evidence_facts" in prompt
     assert "passive recall aid" in prompt
+    assert "unit: \"unknown\"" in prompt
+    assert "Do not compare\ngroups, output equality, transform, conflict, topology or package reasoning" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_42_positive_fact_graph_dimension_index_temperature_0"
+        "detection_v4_43_literal_dimensions_deterministic_graph_temperature_0"
     )

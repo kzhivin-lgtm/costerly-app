@@ -3,20 +3,17 @@
 ACTIVE, P0, Detection V4 commercial-boundary stability: protected checkpoint
 `52c314d` retains accepted Naming, File Review, temperature-zero, complete
 Evidence, and Page 23/Adda boundary behavior. Hassola LIM is the active
-boundary benchmark. Its canonical target is now 11 commercial objects:
-N56, N57A, N57B, N57C, N60, N62, N68, N70, N74, N76, and N76B. N57 is a shared
-sheet-level literal code, not evidence that its kitchen, island, and tall
-cabinet are one product. The active V4 candidate requires every complete
-assembly view to have exactly one object owner, either as primary or as an
-explicit alternate representation. Shared physical-page Evidence remains
-freely reusable. A shared sheet code never merges independent assemblies; when
-no child code is printed, Detection retains the literal base and generates
-deterministic A/B/C child labels with source provenance in `boundary_basis`.
+boundary benchmark. The MVP floor is now 9 commercial packages: N56, N57,
+N60, N62, N68, N70, N74, N76, and N76B. N57 may remain one review-required
+source-root package with all its Evidence, while Estimation later decides
+whether to split kitchen, island and tall cabinet. The active V4 candidate
+requires every retained object-evidence island to have exactly one package.
+Shared physical-page Evidence remains freely reusable.
 This adds no model call, router, Sonnet route, or file-specific override.
 Preserve object-ID locking, full object evidence, UI-only previews, deferred
 Naming, File Review timing, and TC. Next gate: fresh HSL run must produce the
-11 packages with complete page-4 Evidence, then regress Page 23 and Adda.
-Current model build: `Detection V4.39`, experimental, built on the protected
+9 packages with complete page-4 Evidence, then regress Page 23 and Adda.
+Current model build: `Detection V4.43`, experimental, built on the protected
 V4.23 passive OCR cross-check and checkpoint `52c314d`. Comment: V4.12 still
 treated every N76B page-11
 depiction as a partial component, then attempted to attach all three to N76B.
@@ -277,6 +274,21 @@ packages. The HSL acceptance target is a completed File Review, every retained
 group assigned once, N57 permitted as one source-root package for MVP, N76B
 retained as its own dimensioned standalone when unconnected, and no quadratic
 negative-pair output. Then regress Page 23 and Adda before checkpointing.
+V4.43 retains one temperature-zero Haiku call and the V4.42 island and
+classification stages, but removes model-owned graph, package, coverage and
+metadata declarations. The model returns only complete visual islands,
+per-island classification, and literal typed source dimensions without unit
+conversion. Runtime checks every retained pair, records one exact equality as
+support, accepts two independent matching overall dimensions or an independently
+proven two-reading axis transform as a merge, and persists all resulting facts,
+conflicts and graph audit. A single literal
+`DRAWING NAME` code in an OCR title-block table may build a review-required
+source-root tree for its sheet. It cannot override a direct same-kind overall
+dimension conflict. Invalid model dimension inventory yields auditable,
+quantity-one standalone packages rather than an RFQ failure. Generic plans,
+title pages and title blocks remain out of Estimation Evidence. Acceptance:
+HSL completes with N57 as an allowed whole source-root package and N76B
+separate, then Page 23 and Adda retain their protected outcomes.
 
 PENDING, P1, USER REQUEST, Detection Registry output and latency optimisation:
 after the commercial-boundary experiment reaches a valid HSL graph, remove only

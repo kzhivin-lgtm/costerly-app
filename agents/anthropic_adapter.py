@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import copy
+import html
 import hashlib
 import json
 import math
@@ -37,6 +38,8 @@ from agents.schemas.detection_registry_schema import (
     derive_detection_package_decision_audit,
     derive_detection_proof_components,
     derive_detection_standalone_package_group_ids,
+    compile_detection_dimension_graph,
+    normalize_detection_dimension_inventory_group_ids,
     validate_detection_dimension_inventory,
     validate_detection_registry,
     partition_detection_relation_edges,
@@ -60,11 +63,11 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_42_positive_fact_graph_dimension_index_temperature_0"
+    "detection_v4_43_literal_dimensions_deterministic_graph_temperature_0"
 )
-# V4.42 keeps a single Haiku call and V4.40's graph-derived package membership.
-# It records source dimension readings once per group, then returns only
-# positive evidence links. It never serialises a quadratic negative-pair matrix.
+# V4.43 keeps a single Haiku call. The model extracts islands, classifications
+# and literal dimensions. Runtime compiles every equality and source-root graph
+# relation deterministically, without a quadratic model response.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # The positive graph and per-group source index are linear in island count.
 DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
@@ -146,32 +149,12 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "additionalProperties": False,
     "required": [
         "visual_groups", "classifications",
-        "dimension_inventory", "relation_edges",
-        "page_coverage",
+        "dimension_inventory",
     ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
         "dimension_inventory": DETECTION_DIMENSION_INVENTORY_JSON_SCHEMA,
-        "relation_edges": DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
-        "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
-        "page_coverage": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": [
-                    "page_number", "component_anchor_group_ids", "evidence_reason",
-                ],
-                "properties": {
-                    "page_number": {"type": "integer", "minimum": 1},
-                    "component_anchor_group_ids": {
-                        "type": "array", "items": {"type": "string"},
-                    },
-                    "evidence_reason": {"type": "string"},
-                },
-            },
-        },
     },
 }
 
@@ -835,6 +818,7 @@ def _derive_registry_from_proof_components(
     *,
     page_number_by_group_id: dict[str, int],
     page_count: int,
+    source_labels_by_component_anchor: dict[str, str] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, str], list[str], dict[str, Any]]:
     """Derive packages from graph components and overlay valid model metadata.
 
@@ -909,6 +893,7 @@ def _derive_registry_from_proof_components(
     anchor_to_object_id: dict[str, str] = {}
     fallback_object_ids: list[str] = []
     fallback_component_anchor_group_ids: list[str] = []
+    source_labels_by_component_anchor = source_labels_by_component_anchor or {}
     for index, component in enumerate(components, start=1):
         component_anchor = component[0]
         object_id = f"object-{index:03d}"
@@ -916,8 +901,11 @@ def _derive_registry_from_proof_components(
         if source is None:
             fallback_object_ids.append(object_id)
             fallback_component_anchor_group_ids.append(component_anchor)
+            source_label = source_labels_by_component_anchor.get(
+                component_anchor, "Unlabelled",
+            )
             source = {
-                "transport_label": "Unlabelled",
+                "transport_label": source_label,
                 "quantity": 1,
                 "quantity_explicit": False,
                 "identity_pages": sorted({
@@ -948,13 +936,76 @@ def _derive_registry_from_proof_components(
     return registry_objects, anchor_to_object_id, fallback_object_ids, {
         "accepted_component_anchor_group_ids": sorted(objects_by_component_anchor),
         "fallback_component_anchor_group_ids": fallback_component_anchor_group_ids,
+        "source_labels_by_component_anchor": source_labels_by_component_anchor,
         "discarded_metadata_rows": discarded_metadata_rows,
     }
 
 
 _SOURCE_OBJECT_CODE_RE = re.compile(
-    r"(?<![A-Za-zА-Яа-яЁё0-9])(?:[A-Za-zА-Яа-яЁё]{1,4}\s*[- ]?\s*\d+(?:[-./][A-Za-zА-Яа-яЁё0-9]+){0,3}|\d{1,3}[A-ZА-ЯЁ][A-ZА-ЯЁ0-9]*(?:[-./][A-Za-zА-Яа-яЁё0-9]+){0,3})(?![A-Za-zА-Яа-яЁё0-9])"
+    r"(?<![A-Za-zА-Яа-яЁё0-9])(?:[A-Za-zА-Яа-яЁё]{1,4}\s*[- ]?\s*\d+[A-Za-zА-Яа-яЁё]*(?:[-./][A-Za-zА-Яа-яЁё0-9]+){0,3}|\d{1,3}[A-ZА-ЯЁ][A-ZА-ЯЁ0-9]*(?:[-./][A-Za-zА-Яа-яЁё0-9]+){0,3})(?![A-Za-zА-Яа-яЁё0-9])"
 )
+
+_DRAWING_NAME_MARKER_RE = re.compile(
+    r"(?:DRAWING\s*NAME|שם\s*התכנית)", re.IGNORECASE,
+)
+
+
+def _canonical_source_object_code(value: str) -> str:
+    return re.sub(r"\s+", "", value).upper()
+
+
+def extract_detection_page_drawing_codes(
+    ocr_package: dict[str, Any] | None,
+) -> dict[int, str]:
+    """Extract one literal DRAWING NAME code from each OCR title block.
+
+    These are source-root facts, not visual islands and not Estimation Evidence.
+    The extractor deliberately reads only title-block tables with an explicit
+    DRAWING NAME field, never arbitrary component labels such as VEN-01.
+    """
+    if not isinstance(ocr_package, dict):
+        return {}
+    page_codes: dict[int, str] = {}
+    for page in ocr_package.get("pages") or []:
+        if not isinstance(page, dict):
+            continue
+        page_number = page.get("page_number")
+        if not isinstance(page_number, int) or page_number < 1:
+            continue
+        candidates: list[str] = []
+        for block in page.get("blocks") or []:
+            if not isinstance(block, dict) or block.get("type") != "table":
+                continue
+            content = html.unescape(str(block.get("content") or ""))
+            text = re.sub(r"<[^>]+>", " ", content)
+            for marker in _DRAWING_NAME_MARKER_RE.finditer(text):
+                fragment = text[marker.end():marker.end() + 280]
+                for match in _SOURCE_OBJECT_CODE_RE.finditer(fragment):
+                    candidates.append(_canonical_source_object_code(match.group(0)))
+        unique = list(dict.fromkeys(candidates))
+        if len(unique) == 1:
+            page_codes[page_number] = unique[0]
+    return page_codes
+
+
+def _component_source_labels_from_page_codes(
+    components: list[list[str]],
+    *,
+    page_number_by_group_id: dict[str, int],
+    page_drawing_codes: dict[int, str],
+) -> dict[str, str]:
+    """Use a unique page-level drawing code as fallback package label."""
+    labels: dict[str, str] = {}
+    for component in components:
+        codes = {
+            page_drawing_codes[page_number_by_group_id[group_id]]
+            for group_id in component
+            if group_id in page_number_by_group_id
+            and page_number_by_group_id[group_id] in page_drawing_codes
+        }
+        if len(codes) == 1:
+            labels[component[0]] = next(iter(codes))
+    return labels
 
 
 def _apply_reference_root_suffixes(
@@ -1485,9 +1536,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             f"Detection visual-registry response failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
-    # Preserve the model's staged classification, full graph and package
-    # decisions before runtime normalizes group IDs or derives Evidence pages.
-    # This is inspectable factual reasoning, not private chain-of-thought.
+    # Preserve the model's three factual stages before runtime normalizes group
+    # IDs and deterministically derives graph and Evidence pages.
     registry_decision_audit = copy.deepcopy(payload)
     discarded_non_object_groups: list[dict[str, Any]] = []
     classification_decisions: list[dict[str, Any]] = []
@@ -1498,6 +1548,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     dimension_inventory_audit: list[dict[str, Any]] = []
     dimension_inventory_valid = False
     dimension_inventory_error: str | None = None
+    dimension_conflicts: list[dict[str, Any]] = []
+    dimension_graph_audit: dict[str, Any] = {}
     package_decisions: list[dict[str, Any]] = []
     page_coverage_audit: list[dict[str, Any]] = []
     graph_page_coverage_supplements: list[dict[str, Any]] = []
@@ -1512,15 +1564,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             payload, discarded_non_object_groups = (
                 _discard_non_object_visual_registry_groups(payload)
             )
-            # Object descriptors are optional enrichment.  The proof graph
-            # remains complete even when the model leaves them out.
-            payload.setdefault("objects", [])
         if not isinstance(payload, dict) or set(payload) != {
             "visual_groups", "classifications",
-            "dimension_inventory", "relation_edges", "objects", "page_coverage",
+            "dimension_inventory",
         }:
             raise ValueError(
-                "visual registry must contain only visual_groups, classifications, dimension inventory, relation edges, objects and page coverage"
+                "visual registry must contain only visual_groups, classifications and dimension inventory"
             )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
@@ -1533,27 +1582,54 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
-        payload = _normalize_component_anchor_group_ids(payload, group_id_mapping)
+        payload["dimension_inventory"] = (
+            normalize_detection_dimension_inventory_group_ids(
+                payload["dimension_inventory"], group_id_mapping,
+            )
+        )
         visual_group_ids = {
             group["group_id"] for group in visual_map["visual_groups"]
         }
         try:
             dimension_inventory_audit = validate_detection_dimension_inventory(
-                payload["dimension_inventory"],
-                visual_group_ids=set(raw_group_ids),
+                payload["dimension_inventory"], visual_group_ids=visual_group_ids,
             )
             dimension_inventory_valid = True
         except DetectionRegistrySchemaError as inventory_error:
             # The index improves graph recall but never decides a boundary.
             # A malformed row must not discard independently proven packages.
             dimension_inventory_error = str(inventory_error)
+        page_drawing_codes = extract_detection_page_drawing_codes(ocr_package)
+        if dimension_inventory_valid:
+            compiled_relation_edges, dimension_conflicts, dimension_graph_audit = (
+                compile_detection_dimension_graph(
+                    dimension_inventory_audit,
+                    visual_groups=visual_map["visual_groups"],
+                    page_drawing_codes=page_drawing_codes,
+                )
+            )
+        else:
+            compiled_relation_edges = []
+            dimension_graph_audit = {
+                "compiler_version": "v1",
+                "pairs_checked": 0,
+                "page_drawing_codes": {
+                    str(page_number): code
+                    for page_number, code in sorted(page_drawing_codes.items())
+                },
+                "dimension_equality_fact_count": 0,
+                "source_root_merge_edge_count": 0,
+                "source_root_conflict_exclusion_count": 0,
+                "dimension_conflicts": [],
+                "skipped_reason": "dimension inventory is invalid",
+            }
         (
             positive_relation_edges,
             accepted_merge_edges,
             reference_links,
             rejected_relation_candidates,
         ) = partition_detection_relation_edges(
-            payload["relation_edges"],
+            compiled_relation_edges,
             visual_group_ids=visual_group_ids,
             page_count=len(page_images),
         )
@@ -1577,17 +1653,24 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             fallback_registry_object_ids,
             registry_metadata_audit,
         ) = _derive_registry_from_proof_components(
-            payload["objects"],
+            [],
             proof_components,
             page_number_by_group_id=page_number_by_group_id,
             page_count=len(page_images),
+            source_labels_by_component_anchor=(
+                _component_source_labels_from_page_codes(
+                    proof_components,
+                    page_number_by_group_id=page_number_by_group_id,
+                    page_drawing_codes=page_drawing_codes,
+                )
+            ),
         )
         (
             resolved_page_coverage,
             graph_page_coverage_supplements,
             page_coverage_audit,
         ) = _resolve_component_page_coverage(
-            payload["page_coverage"],
+            [],
             anchor_to_object_id=anchor_to_object_id,
             page_number_by_group_id=page_number_by_group_id,
             page_count=len(page_images),
@@ -1611,6 +1694,19 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 )
                 if group_id in anchor_to_object_id
             ),
+            *(
+                anchor_to_object_id[group_id]
+                for edge in accepted_merge_edges
+                if any(
+                    fact.get("evidence_type") == "explicit_document_relation"
+                    for fact in edge.get("evidence_facts") or []
+                )
+                for group_id in (
+                    str(edge.get("group_id_a") or ""),
+                    str(edge.get("group_id_b") or ""),
+                )
+                if group_id in anchor_to_object_id
+            ),
         })
         registry_payload = {"objects": registry_objects}
         registry = validate_detection_registry(
@@ -1629,6 +1725,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "dimension_inventory": dimension_inventory_audit,
             "dimension_inventory_valid": dimension_inventory_valid,
             "dimension_inventory_error": dimension_inventory_error,
+            "dimension_conflicts": dimension_conflicts,
+            "dimension_graph_audit": dimension_graph_audit,
             "accepted_merge_edges": accepted_merge_edges,
             "reference_links": reference_links,
             "rejected_relation_candidates": rejected_relation_candidates,
@@ -1686,6 +1784,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "dimension_inventory_valid": dimension_inventory_valid,
         "dimension_inventory_error": dimension_inventory_error,
         "dimension_inventory_group_count": len(dimension_inventory_audit),
+        "dimension_conflicts": dimension_conflicts,
+        "dimension_graph_audit": dimension_graph_audit,
         "positive_relation_edge_count": len(positive_relation_edges),
         "positive_dimension_equality_count": sum(
             fact.get("evidence_type") == "dimension_equality"

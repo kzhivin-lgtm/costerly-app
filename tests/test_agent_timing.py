@@ -1,3 +1,4 @@
+import copy
 from inspect import getsource
 import json
 from pathlib import Path
@@ -23,6 +24,7 @@ from agents.anthropic_adapter import (
     build_uploaded_file_content_block,
     create_claude_message,
     create_claude_message_streamed,
+    extract_detection_page_drawing_codes,
     normalize_detection_identity_fields,
     run_anthropic_detection_agent,
     run_anthropic_detection_registry_agent,
@@ -61,13 +63,10 @@ class _Response:
 
 
 def _visual_registry_payload(payload):
-    """Upgrade legacy Registry fixtures to the V4.42 staged contract."""
-    if not isinstance(payload, dict) or not {
-        "visual_groups", "objects", "page_coverage",
-    }.issubset(payload):
+    """Upgrade legacy Registry fixtures to the V4.43 extraction contract."""
+    if not isinstance(payload, dict) or "visual_groups" not in payload:
         return payload
-    proofs = payload.pop("merge_proofs", payload.pop("proof_edges", []))
-    groups = payload["visual_groups"]
+    groups = copy.deepcopy(payload["visual_groups"])
     non_object_kinds = {
         "floor_plan", "title_block", "title_page", "cover", "cover_page", "legend",
     }
@@ -90,16 +89,48 @@ def _visual_registry_payload(payload):
             "group_id": group["group_id"], "evidence_class": evidence_class,
             "classification_reason": classification_reason,
         })
-    payload["classifications"] = classifications
-    payload["dimension_inventory"] = [
-        {"group_id": item["group_id"], "dimension_readings": []}
-        for item in classifications
-        if item["evidence_class"] == "object_evidence"
-    ]
-    payload["relation_edges"] = proofs
-    payload.pop("standalone_package_group_ids", None)
-    payload.pop("shared_reference_group_ids", None)
-    return payload
+    inventory = payload.get("dimension_inventory")
+    if not isinstance(inventory, list):
+        inventory = [
+            {"group_id": item["group_id"], "dimensions": []}
+            for item in classifications
+            if item["evidence_class"] == "object_evidence"
+        ]
+    return {
+        "visual_groups": groups,
+        "classifications": classifications,
+        "dimension_inventory": inventory,
+    }
+
+
+def test_title_block_drawing_code_extractor_accepts_only_one_explicit_code_per_page():
+    codes = extract_detection_page_drawing_codes({
+        "pages": [
+            {
+                "page_number": 1,
+                "blocks": [
+                    {"type": "table", "content": (
+                        "<table><tr><td>DRAWING NAME</td><td>N57</td></tr></table>"
+                    )},
+                    {"type": "text", "content": "Component label VEN-01"},
+                ],
+            },
+            {
+                "page_number": 2,
+                "blocks": [{"type": "table", "content": (
+                    "<table><tr><td>DRAWING NAME</td><td>N76B</td></tr></table>"
+                )}],
+            },
+            {
+                "page_number": 3,
+                "blocks": [{"type": "table", "content": (
+                    "<table>DRAWING NAME N57 N58</table>"
+                )}],
+            },
+        ],
+    })
+
+    assert codes == {1: "N57", 2: "N76B"}
 
 
 def test_shared_reference_splits_one_author_root_into_deterministic_child_codes():
@@ -600,7 +631,7 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
     assert registry["objects"][0]["estimation_evidence_pages"] == [1]
     assert usage["operation"] == "rfq_detection_visual_registry"
     assert usage["raw_usage"]["temperature"] == 0.0
-    assert usage["raw_usage"]["registry_decision_audit"] == payload
+    assert usage["raw_usage"]["registry_decision_audit"] == _visual_registry_payload(payload)
     assert usage["raw_usage"]["classification_decisions"] == [{
         "group_id": "view_a",
         "page_number": 1,
@@ -610,7 +641,7 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
     }]
 
 
-def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proofs():
+def test_integrated_visual_registry_uses_two_literal_overall_dimensions_to_merge():
     payload = {
         "visual_groups": [
             {
@@ -645,6 +676,18 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
         }],
     }
 
+    response_payload = _visual_registry_payload(payload)
+    response_payload["dimension_inventory"] = [
+        {"group_id": "elevation", "dimensions": [
+            {"dimension_id": "e-d1", "literal": "1200", "axis": "width", "scope": "overall", "unit": "mm"},
+            {"dimension_id": "e-d2", "literal": "2400", "axis": "height", "scope": "overall", "unit": "mm"},
+        ]},
+        {"group_id": "plan", "dimensions": [
+            {"dimension_id": "p-d1", "literal": "1200", "axis": "width", "scope": "overall", "unit": "mm"},
+            {"dimension_id": "p-d2", "literal": "2400", "axis": "height", "scope": "overall", "unit": "mm"},
+        ]},
+    ]
+
     with (
         patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
         patch(
@@ -654,7 +697,7 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
                 "request_finished_at": "2026-10-16T00:00:01+00:00",
             }),
         ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(response_payload)),
     ):
         visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -719,13 +762,13 @@ def test_integrated_visual_registry_keeps_upload_actionable_when_dimension_index
         )
 
     assert [item["visual_group_ids"] for item in registry["objects"]] == [
-        ["view-001", "view-002"],
+        ["view-001"], ["view-002"],
     ]
     assert usage["raw_usage"]["dimension_inventory_valid"] is False
     assert "must account for every visual group" in usage["raw_usage"]["dimension_inventory_error"]
 
 
-def test_integrated_visual_registry_keeps_reference_link_as_evidence_without_suppressing_standalones():
+def test_integrated_visual_registry_uses_title_block_drawing_code_as_review_required_source_root():
     payload = {
         "visual_groups": [
             {"group_id": "overview", "page_number": 1, "location_hint": "upper", "visual_description": "kitchen, island and cabinet together", "representation_kind": "plan"},
@@ -760,20 +803,26 @@ def test_integrated_visual_registry_keeps_reference_link_as_evidence_without_sup
     ):
         _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"page"], regions=[], ocr_package=None, model="model",
+            page_images=[b"page"], regions=[], ocr_package={"pages": [{
+                "page_number": 1,
+                "blocks": [{"type": "table", "content": "<table>DRAWING NAME N57</table>"}],
+            }]}, model="model",
         )
 
     assert [item["transport_label"] for item in registry["objects"]] == [
-        "Unlabelled", "N57", "N57", "N57",
+        "N57",
     ]
-    assert [item["visual_group_ids"] for item in registry["objects"]] == [
-        ["view-001"], ["view-002"], ["view-003"], ["view-004"],
-    ]
-    assert usage["raw_usage"]["reference_link_count"] == 3
+    assert [item["visual_group_ids"] for item in registry["objects"]] == [[
+        "view-001", "view-002", "view-003", "view-004",
+    ]]
+    assert usage["raw_usage"]["reference_link_count"] == 0
+    assert usage["raw_usage"]["dimension_graph_audit"]["page_drawing_codes"] == {"1": "N57"}
+    assert usage["raw_usage"]["dimension_graph_audit"]["source_root_merge_edge_count"] == 3
+    assert usage["raw_usage"]["registry_graph_review_required_object_ids"] == ["object-001"]
     assert usage["raw_usage"]["unassigned_object_evidence_group_count"] == 0
 
 
-def test_integrated_visual_registry_discards_duplicate_component_metadata():
+def test_integrated_visual_registry_does_not_accept_model_package_metadata():
     payload = {
         "visual_groups": [
             {"group_id": "view_a", "page_number": 1, "location_hint": "upper left", "visual_description": "shelving", "representation_kind": "elevation"},
@@ -802,11 +851,9 @@ def test_integrated_visual_registry_discards_duplicate_component_metadata():
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"page"], regions=[], ocr_package=None, model="model",
         )
-    assert [item["transport_label"] for item in registry["objects"]] == ["Object 1"]
-    assert usage["raw_usage"]["registry_metadata_audit"]["discarded_metadata_rows"] == [{
-        "declared_anchor_group_id": "view-001",
-        "reason": "duplicate metadata for proven component",
-    }]
+    assert [item["transport_label"] for item in registry["objects"]] == ["Unlabelled"]
+    assert usage["raw_usage"]["registry_metadata_fallback_object_ids"] == ["object-001"]
+    assert usage["raw_usage"]["registry_metadata_audit"]["discarded_metadata_rows"] == []
 
 
 def test_integrated_visual_registry_keeps_unproved_group_as_review_fallback():
@@ -844,10 +891,14 @@ def test_integrated_visual_registry_keeps_unproved_group_as_review_fallback():
         ["view-001"], ["view-002"],
     ]
     assert [item["transport_label"] for item in registry["objects"]] == [
-        "N76B", "Unlabelled",
+        "Unlabelled", "Unlabelled",
     ]
-    assert usage["raw_usage"]["registry_metadata_fallback_object_ids"] == ["object-002"]
-    assert usage["raw_usage"]["registry_metadata_audit"]["fallback_component_anchor_group_ids"] == ["view-002"]
+    assert usage["raw_usage"]["registry_metadata_fallback_object_ids"] == [
+        "object-001", "object-002",
+    ]
+    assert usage["raw_usage"]["registry_metadata_audit"]["fallback_component_anchor_group_ids"] == [
+        "view-001", "view-002",
+    ]
 
 
 def test_registry_uses_the_same_atomic_visual_group_contract_for_all_models():
@@ -1142,6 +1193,11 @@ def test_integrated_visual_registry_reconciles_missing_object_on_only_page():
     assert [item["estimation_evidence_pages"] for item in registry["objects"]] == [[1], [1]]
     assert usage["raw_usage"]["graph_page_coverage_supplements"] == [{
         "page_number": 1,
+        "object_id": "object-001",
+        "visual_group_id": "view-001",
+        "source": "component_group",
+    }, {
+        "page_number": 1,
         "object_id": "object-002",
         "visual_group_id": "view-002",
         "source": "component_group",
@@ -1272,7 +1328,7 @@ def test_integrated_visual_registry_allows_one_physical_page_for_multiple_compon
     assert [item["object_id"] for item in registry["objects"]] == [
         "object-001", "object-002",
     ]
-    assert usage["raw_usage"]["registry_decision_audit"] == payload
+    assert usage["raw_usage"]["registry_decision_audit"] == _visual_registry_payload(payload)
 
 
 def test_visual_map_retries_truncated_structured_json_with_larger_budget():
