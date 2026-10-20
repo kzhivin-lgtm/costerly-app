@@ -6,6 +6,7 @@ from agents.anthropic_adapter import (
     build_detection_dimension_candidates,
     build_detection_island_dimension_audit,
     build_detection_ocr_context,
+    format_detection_dimension_candidate_context,
     validate_detection_candidate_chain_consistency,
     validate_detection_dimension_candidate_decisions,
 )
@@ -375,6 +376,9 @@ def test_dimension_candidate_census_preserves_native_pdf_and_mistral_numbers():
     assert [(row["source"], row["value"]) for row in candidates] == [
         ("native_pdf_text", "358"), ("mistral_ocr", "60"),
     ]
+    context = format_detection_dimension_candidate_context(candidates)
+    assert "V=358" in context
+    assert "RAW=" not in context
 
 
 def test_dimension_candidate_decisions_require_every_supplied_number_once():

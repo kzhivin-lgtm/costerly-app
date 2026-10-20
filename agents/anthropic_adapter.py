@@ -551,7 +551,6 @@ def build_detection_dimension_candidates(
                 "source": str(source or "unknown"),
                 "bbox": bbox if isinstance(bbox, dict) else {},
                 "value": value,
-                "raw_text": raw_text,
             })
 
     for block in evidence.get("text_blocks") or []:
@@ -603,7 +602,7 @@ def format_detection_dimension_candidate_context(
         lines.append(
             f"{candidate['candidate_id']}|P{candidate['page_number']}|"
             f"{candidate['source']}|B={compact_bbox(candidate.get('bbox'))}|"
-            f"V={candidate['value']}|RAW={json.dumps(candidate['raw_text'], ensure_ascii=False)}"
+            f"V={candidate['value']}"
         )
     return "\n".join(lines)
 
