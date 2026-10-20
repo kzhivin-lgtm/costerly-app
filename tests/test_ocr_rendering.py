@@ -84,6 +84,42 @@ def test_pdf_pages_are_ocrd_in_order_and_combined():
     assert package["processing_seconds"] >= package["timings"]["pipeline_seconds"]
 
 
+def test_pdf_ocr_merges_native_pdf_text_with_mistral_evidence():
+    def renderer(file_bytes, *, dpi):
+        return [b"page one"]
+
+    def page_ocr(*, file_name, file_bytes, profile):
+        return {
+            "model": "mistral-ocr-4-1",
+            "pages": [{"page_number": 1, "blocks": [], "images": []}],
+            "raw_response": {},
+        }
+
+    package = run_mistral_document_evidence_ocr(
+        file_name="drawing.pdf",
+        file_bytes=b"source pdf",
+        renderer=renderer,
+        page_ocr=page_ocr,
+        native_text_extractor=lambda file_bytes, *, dpi: [{
+            "page_number": 1,
+            "text": "358",
+            "bbox": {"top_left_x": 10, "top_left_y": 20, "bottom_right_x": 30, "bottom_right_y": 40},
+        }],
+    )
+
+    assert package["native_pdf_text"]["status"] == "succeeded"
+    assert package["native_pdf_text"]["span_count"] == 1
+    assert package["native_pdf_text"]["extraction_seconds"] >= 0
+    assert package["native_pdf_text"]["error"] is None
+    assert package["evidence"]["text_blocks"] == [{
+        "page_number": 1,
+        "block_type": "native_pdf_text",
+        "source": "native_pdf_text",
+        "text": "358",
+        "bbox": {"top_left_x": 10, "top_left_y": 20, "bottom_right_x": 30, "bottom_right_y": 40},
+    }]
+
+
 def test_pipeline_starts_ocr_before_all_pages_finish_rendering():
     first_ocr_started = Event()
     events: list[str] = []

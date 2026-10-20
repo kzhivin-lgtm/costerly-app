@@ -19,7 +19,7 @@ from agents.ocr_contract import (
 
 DEFAULT_MISTRAL_OCR_MODEL = "mistral-ocr-4-1"
 RETIRED_MISTRAL_OCR_MODELS = {"mistral-ocr-4-0"}
-OCR_CONTRACT_VERSION = "ocr_v5"
+OCR_CONTRACT_VERSION = "ocr_v6"
 _HTTP_CLIENT: Any | None = None
 _HTTP_CLIENT_LOCK = threading.Lock()
 _WARMUP_LOCK = threading.Lock()
@@ -194,7 +194,11 @@ def _extract_declared_dimension_literals(
     return results
 
 
-def build_ocr_evidence(pages: list[dict[str, Any]]) -> dict[str, Any]:
+def build_ocr_evidence(
+    pages: list[dict[str, Any]],
+    *,
+    native_text_blocks: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     """Create a deterministic evidence index without semantic interpretation."""
     text_blocks: list[dict[str, Any]] = []
     literal_items: list[dict[str, Any]] = []
@@ -211,6 +215,7 @@ def build_ocr_evidence(pages: list[dict[str, Any]]) -> dict[str, Any]:
                 {
                     "page_number": page_number,
                     "block_type": block.get("type"),
+                    "source": "mistral_ocr",
                     "text": content,
                     "bbox": {
                         "top_left_x": block.get("top_left_x"),
@@ -262,6 +267,7 @@ def build_ocr_evidence(pages: list[dict[str, Any]]) -> dict[str, Any]:
                     continue
                 item = {
                     "page_number": page_number,
+                    "source": "mistral_ocr",
                     "source_image_id": image_item.get("id"),
                     "text": text,
                     "category": category,
@@ -271,6 +277,37 @@ def build_ocr_evidence(pages: list[dict[str, Any]]) -> dict[str, Any]:
                 }
                 item_index[key] = item
                 literal_items.append(item)
+
+    # Native PDF text is a separate literal source.  It is extracted before
+    # Mistral OCR, but merged here so Detection consumes one evidence package
+    # with explicit provenance for every fragment.
+    for block in native_text_blocks or []:
+        if not isinstance(block, dict):
+            continue
+        text = str(block.get("text") or "").strip()
+        if not text:
+            continue
+        try:
+            page_number = int(block.get("page_number"))
+        except (TypeError, ValueError):
+            continue
+        if page_number < 1:
+            continue
+        bbox = block.get("bbox") if isinstance(block.get("bbox"), dict) else {}
+        text_blocks.append(
+            {
+                "page_number": page_number,
+                "block_type": "native_pdf_text",
+                "source": "native_pdf_text",
+                "text": text,
+                "bbox": {
+                    "top_left_x": bbox.get("top_left_x"),
+                    "top_left_y": bbox.get("top_left_y"),
+                    "bottom_right_x": bbox.get("bottom_right_x"),
+                    "bottom_right_y": bbox.get("bottom_right_y"),
+                },
+            }
+        )
 
     for block in text_blocks:
         declared_dimension_literals.extend(_extract_declared_dimension_literals(

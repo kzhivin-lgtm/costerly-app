@@ -344,6 +344,20 @@ horizontal/vertical chains. Acceptance: HSL returns to the V4.45 OCR timing
 range and island recall, while the audit exposes OCR and Registry dimensions
 side by side before any graph or package change.
 
+V4.48 is the approved native-PDF-text evidence experiment. It preserves the
+single Mistral OCR pass, the V4.47 text-only annotation, temperature-zero
+Registry, Visual Group discovery and dimensions-only graph scope. While Mistral
+OCR reads rendered pages, runtime extracts authored PDF text spans with their
+rendered-page coordinates. Deterministic code merges both literal sources into
+one ordered OCR evidence package without resolving conflicts, inferring
+geometry, creating object boundaries or changing the graph. Every text span
+retains `native_pdf_text` or `mistral_ocr` provenance. Detection receives both
+conflicting values and must visually resolve them. Scanned or raster-only PDFs
+remain supported because an absent native layer is non-fatal. Acceptance: HSL
+page 3 exposes the second elevation's `63, 61, 46, 47, 77, 64, 358` native
+spans with page-pixel coordinates alongside the existing Mistral output, then
+run the existing HSL Detection benchmark before changing any graph rule.
+
 PENDING, P1, USER REQUEST, Detection island-view typology: after the current
 outer-dimension extraction experiment is verified, add a separate, evidence-only
 classification for common fabrication depictions. An elevation, front, end or

@@ -27,6 +27,63 @@ DEFAULT_RENDER_WORKERS = 4
 DEFAULT_PAGE_WORKERS = 4
 
 
+def extract_native_pdf_text_blocks(
+    file_bytes: bytes,
+    *,
+    dpi: int = DEFAULT_RENDER_DPI,
+) -> list[dict[str, Any]]:
+    """Extract PDF text spans in the same pixel coordinates as rendered pages.
+
+    This is not OCR and makes no semantic claim about a drawing.  It preserves
+    authored text that exists in the PDF text layer, including rotated labels,
+    so Mistral remains a fallback source for scans and raster-only text.
+    """
+    try:
+        import fitz  # PyMuPDF
+    except (ImportError, ModuleNotFoundError):
+        return []
+
+    document = fitz.open(stream=file_bytes, filetype="pdf")
+    try:
+        blocks: list[dict[str, Any]] = []
+        for page_index, page in enumerate(document):
+            # Text coordinates are reported in the unrotated PDF coordinate
+            # system.  The Detection image uses the rotated rendered page.
+            # Apply the page rotation first, then map points to its pixel grid.
+            # Rendering a second pixel image solely to obtain its dimensions
+            # would duplicate the active OCR pipeline's work. PDF points map
+            # to rendered pixels at exactly dpi / 72; rounding happens only at
+            # the final evidence boundary.
+            scale_x = dpi / 72
+            scale_y = dpi / 72
+            page_dict = page.get_text("dict")
+            for source_block in page_dict.get("blocks") or []:
+                for line in source_block.get("lines") or []:
+                    for span in line.get("spans") or []:
+                        text = str(span.get("text") or "").strip()
+                        if not text:
+                            continue
+                        source_bbox = span.get("bbox")
+                        if not isinstance(source_bbox, (list, tuple)) or len(source_bbox) != 4:
+                            continue
+                        rendered_bbox = fitz.Rect(source_bbox) * page.rotation_matrix
+                        blocks.append(
+                            {
+                                "page_number": page_index + 1,
+                                "text": text,
+                                "bbox": {
+                                    "top_left_x": round(rendered_bbox.x0 * scale_x),
+                                    "top_left_y": round(rendered_bbox.y0 * scale_y),
+                                    "bottom_right_x": round(rendered_bbox.x1 * scale_x),
+                                    "bottom_right_y": round(rendered_bbox.y1 * scale_y),
+                                },
+                            }
+                        )
+        return blocks
+    finally:
+        document.close()
+
+
 def direct_pdf_ocr_enabled() -> bool:
     """Enable one-PDF/one-request OCR only for an explicit experiment."""
     if "--ocr-direct-pdf" in sys.argv:
@@ -295,6 +352,7 @@ def run_mistral_document_evidence_ocr(
     renderer: Callable[..., list[bytes]] = render_pdf_pages,
     page_streamer: Callable[..., Any] | None = None,
     page_ocr: Callable[..., dict[str, Any]] = run_mistral_ocr,
+    native_text_extractor: Callable[..., list[dict[str, Any]]] = extract_native_pdf_text_blocks,
 ) -> dict[str, Any]:
     """Render and OCR PDF pages concurrently with an overlapping pipeline."""
     if Path(file_name).suffix.lower() != ".pdf":
@@ -306,6 +364,15 @@ def run_mistral_document_evidence_ocr(
 
     started = time.perf_counter()
     started_at = datetime.now(UTC).isoformat()
+    # Native text extraction is CPU-local and runs alongside the provider OCR.
+    # Failure is observable but never prevents a scanned PDF from proceeding.
+    def extract_native_text() -> tuple[list[dict[str, Any]], float]:
+        extraction_started = time.perf_counter()
+        blocks = native_text_extractor(file_bytes, dpi=dpi)
+        return blocks, time.perf_counter() - extraction_started
+
+    native_executor = ThreadPoolExecutor(max_workers=1)
+    native_text_future = native_executor.submit(extract_native_text)
     warm_mistral_http_client_async()
     render_started = time.perf_counter()
 
@@ -382,6 +449,16 @@ def run_mistral_document_evidence_ocr(
             pages.append(normalized_page)
     assembly_seconds = time.perf_counter() - assembly_started
 
+    native_text_error: str | None = None
+    native_text_seconds = 0.0
+    try:
+        native_text_blocks, native_text_seconds = native_text_future.result()
+    except Exception as exc:
+        native_text_blocks = []
+        native_text_error = str(exc)
+    finally:
+        native_executor.shutdown(wait=True)
+
     finished_at = datetime.now(UTC).isoformat()
     total_seconds = time.perf_counter() - started
     result = {
@@ -431,9 +508,18 @@ def run_mistral_document_evidence_ocr(
             "pages_processed": len(pages),
             "source_doc_size_bytes": len(file_bytes),
         },
+        "native_pdf_text": {
+            "status": "failed" if native_text_error else "succeeded",
+            "span_count": len(native_text_blocks),
+            "extraction_seconds": round(native_text_seconds, 3),
+            "error": native_text_error,
+        },
         "raw_response": {
             "rendered_page_responses": raw_page_responses,
         },
     }
-    result["evidence"] = build_ocr_evidence(pages)
+    result["evidence"] = build_ocr_evidence(
+        pages,
+        native_text_blocks=native_text_blocks,
+    )
     return result

@@ -393,7 +393,13 @@ def build_detection_ocr_context(
         return "OCR text layer: unavailable"
 
     evidence = ocr_package.get("evidence")
-    if isinstance(evidence, dict) and evidence.get("literal_items"):
+    has_native_pdf_text = isinstance(evidence, dict) and any(
+        isinstance(block, dict) and block.get("block_type") == "native_pdf_text"
+        for block in evidence.get("text_blocks") or []
+    )
+    if isinstance(evidence, dict) and (
+        evidence.get("literal_items") or has_native_pdf_text
+    ):
         regions: dict[tuple[Any, Any], list[dict[str, Any]]] = {}
         region_bboxes: dict[tuple[Any, Any], dict[str, Any]] = {}
         for item in evidence.get("literal_items") or []:
@@ -428,7 +434,9 @@ def build_detection_ocr_context(
             "notes, and approximate locations; attach each fact only to a visually "
             "established object or package metadata. Visually re-read text only to "
             "resolve missing or conflicting OCR.\n\n"
-            "Compact format: P=page, R=OCR image region, B=x1,y1,x2,y2, "
+            "TEXT native_pdf_text is authored PDF text with page-pixel coordinates; "
+            "other TEXT and R records originate from Mistral OCR. Compact format: "
+            "P=page, R=OCR image region, B=x1,y1,x2,y2, "
             "D=literal-id|declared-symbol|literal-value|raw text, "
             "E=category|approximate location|occurrences|exact text. "
             "A declaration such as H=60 is not a dimension-line segment."
@@ -441,7 +449,7 @@ def build_detection_ocr_context(
                 continue
             bbox = compact_bbox(block.get("bbox"))
             lines.append(
-                f'P{block.get("page_number", "?")} TEXT {block.get("block_type", "text")} '
+                f'P{block.get("page_number", "?")} TEXT {block.get("source", block.get("block_type", "text"))} '
                 f'B={bbox or "?"} {json.dumps(text, ensure_ascii=False)}'
             )
         for (page_number, region_id), items in regions.items():

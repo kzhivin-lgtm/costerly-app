@@ -58,7 +58,7 @@ def test_normalizes_mistral_response():
         elapsed_seconds=1.2345,
     )
 
-    assert package["contract_version"] == "ocr_v5"
+    assert package["contract_version"] == "ocr_v6"
     assert package["profile"] == "basic"
     assert package["page_count"] == 1
     assert package["pages"][0]["page_number"] == 1
@@ -200,6 +200,24 @@ def test_detection_context_groups_evidence_by_visual_region_without_semantics():
     assert "never object boundaries or object candidates" in context
 
 
+def test_detection_context_keeps_native_pdf_text_coordinates_without_mistral_regions():
+    context = build_detection_ocr_context({
+        "evidence": {
+            "text_blocks": [{
+                "page_number": 3,
+                "block_type": "native_pdf_text",
+                "source": "native_pdf_text",
+                "text": "358",
+                "bbox": {"top_left_x": 100, "top_left_y": 200, "bottom_right_x": 130, "bottom_right_y": 220},
+            }],
+            "literal_items": [],
+        },
+    })
+
+    assert "TEXT native_pdf_text" in context
+    assert 'P3 TEXT native_pdf_text B=100,200,130,220 "358"' in context
+
+
 def test_normalized_evidence_parses_and_compacts_literal_items():
     response = _response()
     response["pages"][0]["images"] = [
@@ -254,6 +272,7 @@ def test_normalized_evidence_accepts_ocr41_bbox_text():
 
     item = package["evidence"]["literal_items"][0]
     assert item["text"] == "4130 mm\nMDF panel 20 mm"
+    assert package["evidence"]["text_blocks"][0]["source"] == "mistral_ocr"
     assert item["source_image_id"] == "img-0.jpeg"
     assert item["source_image_bbox"]["top_left_x"] == 1
     assert r"4130 mm\nMDF panel 20 mm" in package["raw_response"]["pages"][0]["images"][0]["image_annotation"]
