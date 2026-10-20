@@ -65,7 +65,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_51_source_fact_view_packaging_dimension_graph_temperature_0"
+    "detection_v4_52_spatial_view_evidence_packaging_dimension_graph_temperature_0"
 )
 # V4.49 keeps one Haiku call. The model records every readable outer chain of
 # each immutable visual island. Runtime alone sums chains and compiles equality.
@@ -171,32 +171,16 @@ DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA: dict[str, Any] = {
             "evidence_class": {"type": "string", "enum": ["document_context", "object_evidence"]},
             "classification_reason": {"type": "string"}}}}
 
-DETECTION_VIEW_EVIDENCE_ATTRIBUTIONS_SCHEMA: dict[str, Any] = {
-    "type": "array",
-    "items": {
-        "type": "object",
-        "additionalProperties": False,
-        "required": ["group_id", "source_fact_ids"],
-        "properties": {
-            "group_id": {"type": "string"},
-            "source_fact_ids": {
-                "type": "array", "items": {"type": "string"},
-            },
-        },
-    },
-}
-
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": [
         "visual_groups", "classifications",
-        "evidence_attributions", "dimension_inventory",
+        "dimension_inventory",
     ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
-        "evidence_attributions": DETECTION_VIEW_EVIDENCE_ATTRIBUTIONS_SCHEMA,
         "dimension_inventory": DETECTION_DIMENSION_INVENTORY_JSON_SCHEMA,
     },
 }
@@ -1775,59 +1759,50 @@ def _normalize_registry_group_bboxes(
     return result
 
 
-def _validate_detection_view_evidence_attributions(
-    attributions: object,
-    *,
-    visual_group_ids: set[str],
-    group_id_mapping: dict[str, str],
-    source_facts: list[dict[str, Any]],
-) -> dict[str, list[str]]:
-    """Require one package membership decision per Visual Group, not per number."""
-    if not isinstance(attributions, list):
-        raise ValueError("view evidence attributions are invalid")
-    valid_fact_ids = {str(fact["fact_id"]) for fact in source_facts}
-    result: dict[str, list[str]] = {}
-    for row in attributions:
-        if (
-            not isinstance(row, dict) or set(row) != {"group_id", "source_fact_ids"}
-            or not isinstance(row.get("group_id"), str)
-            or not isinstance(row.get("source_fact_ids"), list)
-            or not all(isinstance(value, str) and value for value in row["source_fact_ids"])
-            or len(row["source_fact_ids"]) != len(set(row["source_fact_ids"]))
-        ):
-            raise ValueError("view evidence attributions are invalid")
-        group_id = group_id_mapping.get(row["group_id"], row["group_id"])
-        if (
-            group_id not in visual_group_ids or group_id in result
-            or not set(row["source_fact_ids"]).issubset(valid_fact_ids)
-        ):
-            raise ValueError("view evidence attributions are invalid")
-        result[group_id] = list(row["source_fact_ids"])
-    if set(result) != visual_group_ids:
-        raise ValueError("view evidence attributions must account for every visual group exactly once")
-    return result
-
-
 def build_detection_view_evidence_packages(
     *,
     visual_groups: list[dict[str, Any]],
     group_bboxes: dict[str, dict[str, int]],
-    source_fact_ids_by_group: dict[str, list[str]],
     source_facts: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Materialize immutable source evidence selected by Registry for each View."""
-    facts_by_id = {str(fact["fact_id"]): fact for fact in source_facts}
+    """Build complete per-Island evidence packages by deterministic geometry.
+
+    Registry identifies visual Islands and their bounds. It never owns fact
+    attribution. A source fact belongs to each same-page Island whose bbox
+    contains its bbox centre, which prevents cross-Island leakage.
+    """
+    def fact_is_inside_group(fact: dict[str, Any], group: dict[str, Any]) -> bool:
+        if fact.get("page_number") != group.get("page_number"):
+            return False
+        fact_bbox = fact.get("bbox")
+        group_bbox = group_bboxes.get(str(group.get("group_id") or ""), {})
+        keys = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
+        if not isinstance(fact_bbox, dict) or not all(
+            isinstance(fact_bbox.get(key), (int, float)) for key in keys
+        ) or not all(isinstance(group_bbox.get(key), int) for key in keys):
+            return False
+        centre_x = (fact_bbox["top_left_x"] + fact_bbox["bottom_right_x"]) / 2
+        centre_y = (fact_bbox["top_left_y"] + fact_bbox["bottom_right_y"]) / 2
+        return (
+            group_bbox["top_left_x"] <= centre_x <= group_bbox["bottom_right_x"]
+            and group_bbox["top_left_y"] <= centre_y <= group_bbox["bottom_right_y"]
+        )
+
     packages: list[dict[str, Any]] = []
     for group in visual_groups:
         group_id = str(group["group_id"])
-        fact_ids = source_fact_ids_by_group.get(group_id, [])
+        facts = [
+            copy.deepcopy(fact) for fact in source_facts
+            if fact_is_inside_group(fact, group)
+        ]
         packages.append({
             "visual_group_id": group_id,
             "page_number": group["page_number"],
             "bbox": group_bboxes.get(group_id, {}),
             "evidence_class": group.get("evidence_class"),
-            "source_fact_ids": fact_ids,
-            "source_facts": [copy.deepcopy(facts_by_id[fact_id]) for fact_id in fact_ids],
+            "source_fact_ids": [str(fact["fact_id"]) for fact in facts],
+            "source_facts": facts,
+            "membership_basis": "same_page_source_fact_bbox_center_inside_island_bbox",
         })
     return packages
 
@@ -1905,13 +1880,6 @@ def _discard_non_object_visual_registry_groups(
     if isinstance(classifications, list):
         effective["classifications"] = [
             row for row in classifications
-            if not isinstance(row, dict)
-            or str(row.get("group_id") or "") not in discarded_group_ids
-        ]
-    evidence_attributions = effective.get("evidence_attributions")
-    if isinstance(evidence_attributions, list):
-        effective["evidence_attributions"] = [
-            row for row in evidence_attributions
             if not isinstance(row, dict)
             or str(row.get("group_id") or "") not in discarded_group_ids
         ]
@@ -2190,7 +2158,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     dimension_inventory_valid = False
     dimension_inventory_error: str | None = None
     group_bboxes: dict[str, dict[str, int]] = {}
-    source_fact_ids_by_group: dict[str, list[str]] = {}
     view_evidence_packages: list[dict[str, Any]] = []
     island_dimension_comparison_audit: list[dict[str, Any]] = []
     empty_envelope_chain_group_ids: list[str] = []
@@ -2212,10 +2179,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             )
         if not isinstance(payload, dict) or set(payload) != {
             "visual_groups", "classifications",
-            "evidence_attributions", "dimension_inventory",
+            "dimension_inventory",
         }:
             raise ValueError(
-                "visual registry must contain visual groups, classifications, evidence attributions and dimension inventory"
+                "visual registry must contain visual groups, classifications and dimension inventory"
             )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
@@ -2234,17 +2201,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         visual_group_ids = {
             group["group_id"] for group in visual_map["visual_groups"]
         }
-        source_fact_ids_by_group = _validate_detection_view_evidence_attributions(
-            payload["evidence_attributions"],
-            visual_group_ids=visual_group_ids,
-            group_id_mapping=group_id_mapping,
-            source_facts=source_facts,
-        )
         view_evidence_packages = build_detection_view_evidence_packages(
             visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
-            source_fact_ids_by_group=source_fact_ids_by_group,
             source_facts=source_facts,
         )
+        source_fact_ids_by_group = {
+            str(package["visual_group_id"]): list(package["source_fact_ids"])
+            for package in view_evidence_packages
+        }
         payload["dimension_inventory"] = (
             normalize_detection_dimension_inventory_group_ids(
                 payload["dimension_inventory"], group_id_mapping,

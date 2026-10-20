@@ -64,7 +64,7 @@ class _Response:
 
 
 def _visual_registry_payload(payload):
-    """Upgrade legacy Registry fixtures to the V4.44 extraction contract."""
+    """Upgrade legacy Registry fixtures to the V4.52 extraction contract."""
     if not isinstance(payload, dict) or "visual_groups" not in payload:
         return payload
     groups = copy.deepcopy(payload["visual_groups"])
@@ -109,10 +109,6 @@ def _visual_registry_payload(payload):
     return {
         "visual_groups": groups,
         "classifications": classifications,
-        "evidence_attributions": [
-            {"group_id": item["group_id"], "source_fact_ids": []}
-            for item in classifications
-        ],
         "dimension_inventory": inventory,
     }
 
@@ -685,11 +681,12 @@ def test_visual_registry_materializes_view_package_from_immutable_source_fact():
         "visual_groups": [{
             "group_id": "cabinet", "page_number": 1, "location_hint": "center",
             "visual_description": "cabinet elevation", "representation_kind": "elevation",
+            "bbox": {
+                "top_left_x": 0, "top_left_y": 0,
+                "bottom_right_x": 50, "bottom_right_y": 50,
+            },
         }],
     })
-    payload["evidence_attributions"] = [{
-        "group_id": "cabinet", "source_fact_ids": ["SF00001"],
-    }]
     payload["dimension_inventory"] = [{
         "group_id": "cabinet", "envelope_chains": [{
             "chain_id": "cabinet-width", "axis": "horizontal", "segments": [],
@@ -700,6 +697,10 @@ def test_visual_registry_materializes_view_package_from_immutable_source_fact():
         "page_number": 1, "source": "native_pdf_text",
         "bbox": {"top_left_x": 10, "top_left_y": 20, "bottom_right_x": 40, "bottom_right_y": 30},
         "text": "358",
+    }, {
+        "page_number": 1, "source": "native_pdf_text",
+        "bbox": {"top_left_x": 60, "top_left_y": 20, "bottom_right_x": 70, "bottom_right_y": 30},
+        "text": "outside",
     }]}}
 
     with (
@@ -721,9 +722,12 @@ def test_visual_registry_materializes_view_package_from_immutable_source_fact():
     package = usage["raw_usage"]["view_evidence_packages"][0]
     assert package["source_fact_ids"] == ["SF00001"]
     assert package["source_facts"][0]["text"] == "358"
+    assert package["membership_basis"] == (
+        "same_page_source_fact_bbox_center_inside_island_bbox"
+    )
     assert package["bbox"] == {
-        "top_left_x": 10, "top_left_y": 10,
-        "bottom_right_x": 15, "bottom_right_y": 20,
+        "top_left_x": 0, "top_left_y": 0,
+        "bottom_right_x": 50, "bottom_right_y": 50,
     }
     assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
 
