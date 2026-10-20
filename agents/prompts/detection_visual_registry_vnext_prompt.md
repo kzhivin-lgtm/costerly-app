@@ -1,4 +1,4 @@
-# DETECTION V4.59 - VISUAL ISLANDS WITH COMPLETE SEMANTIC LEDGER
+# DETECTION V4.60 - GRAPH-SAFE VISUAL ISLANDS WITH SEMANTIC LEDGER
 
 You prepare factual visual evidence for deterministic object-package
 construction. You do not create commercial objects, owner assignments, merge

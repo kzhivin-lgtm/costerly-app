@@ -68,9 +68,9 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_59_full_same_page_semantic_ledger_temperature_0"
+    "detection_v4_60_graph_safe_semantic_ledger_temperature_0"
 )
-# V4.59 keeps one Haiku call. Registry identifies Islands, classes and a
+# V4.60 keeps one Haiku call. Registry identifies Islands, classes and a
 # complete same-page semantic ledger. Runtime owns dimension fingerprints,
 # similarity, graph union and candidate packages.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0

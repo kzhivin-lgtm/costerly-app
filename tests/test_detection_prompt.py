@@ -82,5 +82,5 @@ def test_integrated_visual_registry_returns_facts_for_the_deterministic_graph_co
     assert "Dimension Fingerprints" in prompt
     assert "Two separately framed, separately dimensioned or separately positioned views" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_59_full_same_page_semantic_ledger_temperature_0"
+        "detection_v4_60_graph_safe_semantic_ledger_temperature_0"
     )
