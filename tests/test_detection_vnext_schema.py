@@ -100,6 +100,34 @@ def test_semantic_ledger_requires_all_same_page_pairs_and_preserves_present_fact
         )
 
 
+def test_semantic_ledger_ignores_extra_cross_page_pair_but_not_missing_pair():
+    groups = [
+        {"group_id": "view-001", "page_number": 1},
+        {"group_id": "view-002", "page_number": 1},
+        {"group_id": "view-003", "page_number": 2},
+    ]
+    checks = [
+        {"evidence_type": evidence_type, "state": "absent", "observation": ""}
+        for evidence_type in (
+            "explicit_document_relation", "dimension_transform", "matching_topology",
+            "unique_geometry", "direct_shared_structure",
+        )
+    ]
+
+    _, audit = compile_detection_semantic_pairwise_ledger(
+        [
+            {"group_id_a": "view-001", "group_id_b": "view-002", "checks": checks},
+            {"group_id_a": "view-001", "group_id_b": "view-003", "checks": checks},
+        ],
+        visual_groups=groups, page_count=2,
+    )
+
+    assert audit["ignored_non_same_page_pairs"] == [{
+        "group_id_a": "view-001", "group_id_b": "view-003",
+        "reason": "not_a_retained_same_page_pair",
+    }]
+
+
 def _root(reason="No positive relation to an earlier group is evidenced.", blocked_merge=None):
     root = {
         "decision": "new_object_root",

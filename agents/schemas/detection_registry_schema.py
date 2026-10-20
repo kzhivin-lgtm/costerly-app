@@ -1470,13 +1470,24 @@ def compile_detection_semantic_pairwise_ledger(
         if page_by_group[left] == page_by_group[right]
     }
     rows_by_pair: dict[tuple[str, str], dict[str, Any]] = {}
+    ignored_pairs: list[dict[str, str]] = []
     for row in ledger:
         if not isinstance(row, dict) or set(row) != {"group_id_a", "group_id_b", "checks"}:
             raise DetectionRegistrySchemaError("semantic pairwise ledger is invalid")
         pair = tuple(sorted((
             str(row["group_id_a"] or ""), str(row["group_id_b"] or ""),
         )))
-        if pair not in expected_pairs or pair in rows_by_pair or not isinstance(row["checks"], list):
+        if pair not in expected_pairs:
+            # The Registry occasionally compares an adjacent cross-page pair
+            # even though the contract asks only for same-page pairs. It has
+            # no graph effect and must not invalidate an otherwise complete
+            # ledger. Preserve its omission explicitly for run diagnostics.
+            ignored_pairs.append({
+                "group_id_a": pair[0], "group_id_b": pair[1],
+                "reason": "not_a_retained_same_page_pair",
+            })
+            continue
+        if pair in rows_by_pair or not isinstance(row["checks"], list):
             raise DetectionRegistrySchemaError("semantic pairwise ledger pairs are invalid")
         checks: dict[str, dict[str, Any]] = {}
         for check in row["checks"]:
@@ -1523,6 +1534,8 @@ def compile_detection_semantic_pairwise_ledger(
         "same_page_pair_count": len(expected_pairs),
         "checks_per_pair": len(SEMANTIC_PAIRWISE_EVIDENCE_TYPES),
         "positive_semantic_edge_count": len(edges),
+        "ignored_non_same_page_pair_count": len(ignored_pairs),
+        "ignored_non_same_page_pairs": ignored_pairs,
         "ledger": [
             {"group_id_a": row["group_id_a"], "group_id_b": row["group_id_b"],
              "checks": [row["checks"][kind] for kind in sorted(row["checks"])]}
