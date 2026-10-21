@@ -11,6 +11,7 @@ import pandas as pd
 import pytest
 
 from agents.anthropic_adapter import (
+    _validate_and_apply_visual_registry_classifications,
     _apply_reference_root_suffixes,
     DEFAULT_CLAUDE_DETECTION_MODEL,
     DetectionVisualRegistryValidationError,
@@ -99,6 +100,9 @@ def _visual_registry_payload(payload):
     return {
         "visual_groups": groups,
         "classifications": classifications,
+        "candidate_region_exceptions": copy.deepcopy(
+            payload.get("candidate_region_exceptions", [])
+        ),
         "semantic_facts": copy.deepcopy(payload.get("semantic_facts", [])),
     }
 
@@ -666,6 +670,60 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
     }]
 
 
+def test_whole_architectural_floor_plan_is_demoted_to_document_context():
+    payload = _visual_registry_payload({
+        "visual_groups": [{
+            "group_id": "plan", "page_number": 2, "location_hint": "whole page",
+            "visual_description": "Complete whole-level architectural layout with rooms, walls and door swings.",
+            "representation_kind": "floor_plan",
+        }],
+        "classifications": [{
+            "group_id": "plan", "evidence_class": "object_evidence",
+            "classification_reason": "Complete floor plan showing spatial room layout and architectural circulation.",
+        }],
+    })
+    enriched, audit = _validate_and_apply_visual_registry_classifications(payload)
+    assert enriched["visual_groups"][0]["evidence_class"] == "document_context"
+    assert audit[0]["evidence_class"] == "document_context"
+
+
+def test_visual_registry_rejects_semantic_facts_outside_candidate_pair_queue():
+    payload = _visual_registry_payload({
+        "visual_groups": [
+            {"group_id": "VG-A", "page_number": 1, "location_hint": "left",
+             "visual_description": "two-bay cabinet elevation", "representation_kind": "elevation"},
+            {"group_id": "VG-B", "page_number": 1, "location_hint": "right",
+             "visual_description": "matching cabinet section", "representation_kind": "section"},
+        ],
+        "semantic_facts": [{
+            "group_id_a": "VG-A", "group_id_b": "VG-B",
+            "evidence_type": "matching_topology", "strength": "standard",
+            "observation": "The same two-bay carcass and door order recur.",
+            "source_fact_ids": [],
+        }],
+    })
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", return_value=(_Response(), {
+            "request_started_at": "2026-10-16T00:00:00+00:00",
+            "request_finished_at": "2026-10-16T00:00:01+00:00",
+        })),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+    ):
+        _, _, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None, model="model",
+        )
+
+    assert usage["raw_usage"]["semantic_ledger_audit"]["accepted"] == []
+    assert usage["raw_usage"]["semantic_ledger_audit"]["rejected"] == [{
+        "index": 0,
+        "reason": "semantic_fact_outside_candidate_pair_queue",
+        "group_id_a": "view-001",
+        "group_id_b": "view-002",
+    }]
+
+
 def test_visual_registry_materializes_view_package_from_immutable_source_fact():
     payload = _visual_registry_payload({
         "visual_groups": [{
@@ -704,7 +762,7 @@ def test_visual_registry_materializes_view_package_from_immutable_source_fact():
         )
 
     package = usage["raw_usage"]["view_evidence_packages"][0]
-    assert package["view_label"] == "View 001"
+    assert package["page_view_ref"] == "P01.V1"
     assert package["source_fact_ids"] == ["SF00001"]
     assert package["source_facts"][0]["text"] == "358"
     assert package["membership_basis"] == (
@@ -717,7 +775,7 @@ def test_visual_registry_materializes_view_package_from_immutable_source_fact():
     assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
 
 
-def test_visual_registry_discards_empty_evidence_island_before_graph_construction():
+def test_visual_registry_retains_visual_island_without_source_text():
     payload = _visual_registry_payload({
         "visual_groups": [
             {
@@ -761,8 +819,8 @@ def test_visual_registry_discards_empty_evidence_island_before_graph_constructio
         )
 
     raw_usage = usage["raw_usage"]
-    assert [item["visual_group_id"] for item in raw_usage["view_evidence_packages"]] == ["view-001"]
-    assert [item["group_id"] for item in raw_usage["discarded_empty_evidence_visual_groups"]] == ["empty"]
+    assert [item["visual_group_id"] for item in raw_usage["view_evidence_packages"]] == ["view-001", "view-002"]
+    assert raw_usage["discarded_empty_evidence_visual_groups"] == []
     assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
 
 

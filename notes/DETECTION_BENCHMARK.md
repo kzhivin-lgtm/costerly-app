@@ -1,5 +1,34 @@
 # Detection Agent benchmark
 
+## HSL Visual-Island recall gate, owner-defined 2026-10-21
+
+Status: active. Source: private `Hasolelim_Carpentry_Plan_Floor_07.pdf`.
+This gate measures only Visual-Island inventory and classification. It does
+not approve graph links, packages, merges, quantities, or File Review objects.
+
+Expected `object_evidence` Island counts:
+
+| Page | Expected |
+|---|---:|
+| 2 | 0 |
+| 3 | 3 |
+| 4 | 6 or 7 |
+| 5 | 3 |
+| 6 | 3 |
+| 7 | 4 |
+| 8 | 4 |
+| 9 | 3 |
+| 10 | 3 |
+| 11 | 2 or 3 |
+
+Page 11 must retain two `object_evidence` Islands and one or two
+`document_context` Islands. The plan may reasonably be classified either way;
+the title block is context. Pages 9 and 10 must not be inflated to four object
+Islands.
+
+Page 2 is a generic floor plan and must be `document_context`, never an
+object View or Dimension-graph endpoint. Page 1 remains outside this gate.
+
 ## V4 Page 23 release gate, 2026-10-16
 
 Status: accepted for the Page 23 temperature-zero gate on 2026-10-18. The

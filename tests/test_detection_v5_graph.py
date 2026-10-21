@@ -4,6 +4,7 @@ from agents.schemas.detection_registry_schema import (
     compile_detection_v5_semantic_facts,
     validate_detection_v5_final_result,
 )
+from agents.anthropic_adapter import infer_detection_v5_bare_dimension_unit
 
 
 VIEWS = [
@@ -45,12 +46,79 @@ def test_v5_repeated_typical_dimension_is_counted_one_to_one():
     assert "2 paired occurrence(s)" in edges[0]["evidence_facts"][0]["observation"]
 
 
+def test_v5_dimension_queue_closes_only_a_component_created_by_first_links():
+    views = [
+        {"group_id": "view-001", "evidence_class": "object_evidence", "page_number": 1},
+        {"group_id": "view-002", "evidence_class": "object_evidence", "page_number": 1},
+        {"group_id": "view-003", "evidence_class": "object_evidence", "page_number": 1},
+    ]
+    edges, audit = compile_detection_v5_dimension_graph([
+        {"group_id": "view-001", "occurrences": [_occurrence("a", 3310, "SF1")]},
+        {"group_id": "view-002", "occurrences": [_occurrence("b", 3310, "SF2")]},
+        {"group_id": "view-003", "occurrences": [_occurrence("c", 3310, "SF3")]},
+    ], visual_groups=views)
+    assert [(edge["group_id_a"], edge["group_id_b"], edge["cycle"]) for edge in edges] == [
+        ("view-001", "view-002", "discovery"),
+        ("view-001", "view-003", "discovery"),
+        ("view-002", "view-003", "closure"),
+    ]
+    assert audit["dimension_edge_threshold"] == 25.0
+    assert audit["compiler_version"] == "v5_2_two_cycle_dimension_queue_threshold_25"
+    assert audit["provisional_components"] == [["view-001", "view-002", "view-003"]]
+
+
+def test_v5_final_dimension_revalidates_only_candidate_q_pairs():
+    views = [
+        {"group_id": "view-001", "evidence_class": "object_evidence", "page_number": 1},
+        {"group_id": "view-002", "evidence_class": "object_evidence", "page_number": 1},
+        {"group_id": "view-003", "evidence_class": "object_evidence", "page_number": 1},
+    ]
+    inventory = [
+        {"group_id": "view-001", "occurrences": [_occurrence("a", 3310, "SF1")]},
+        {"group_id": "view-002", "occurrences": [_occurrence("b", 3310, "SF2")]},
+        {"group_id": "view-003", "occurrences": [_occurrence("c", 3310, "SF3")]},
+    ]
+    edges, audit = compile_detection_v5_dimension_graph(
+        inventory, visual_groups=views,
+        allowed_pairs={("view-001", "view-002")},
+    )
+    assert [(edge["group_id_a"], edge["group_id_b"]) for edge in edges] == [
+        ("view-001", "view-002"),
+    ]
+    assert audit["compiler_version"] == "v5_3_candidate_q_revalidation_threshold_25"
+
+
+def test_v5_merge_does_not_inspect_pairs_without_existing_q_evidence():
+    views = [
+        {"group_id": "view-001", "evidence_class": "object_evidence", "page_number": 1},
+        {"group_id": "view-002", "evidence_class": "object_evidence", "page_number": 1},
+        {"group_id": "view-003", "evidence_class": "object_evidence", "page_number": 1},
+    ]
+    edges, audit = compile_detection_v5_merge_edges([], [{
+        "group_id_a": "view-001", "group_id_b": "view-002",
+        "evidence_type": "explicit_document_relation", "strength": "direct",
+        "observation": "Author callout A-3 identifies both views.", "source_fact_ids": ["SF1"],
+    }], visual_groups=views)
+    assert [(edge["group_id_a"], edge["group_id_b"]) for edge in edges] == [
+        ("view-001", "view-002"),
+    ]
+    assert all({row["group_id_a"], row["group_id_b"]} != {"view-001", "view-003"} for row in audit["edges"])
+
+
 def test_v5_generic_semantic_fact_is_rejected_without_stopping_graph():
     accepted, audit = compile_detection_v5_semantic_facts([
         {"group_id_a": "view-001", "group_id_b": "view-002", "evidence_type": "matching_topology", "strength": "standard", "observation": "Both are elevations on the same page.", "source_fact_ids": []},
     ], visual_groups=VIEWS, source_facts=[])
     assert accepted == []
     assert audit["rejected"][0]["reason"] == "generic_observation"
+
+
+def test_v5_concrete_topology_is_not_rejected_for_saying_both_elevations():
+    accepted, audit = compile_detection_v5_semantic_facts([
+        {"group_id_a": "view-001", "group_id_b": "view-002", "evidence_type": "matching_topology", "strength": "standard", "observation": "Both elevations share a 358mm width and the same two-bay carcass.", "source_fact_ids": []},
+    ], visual_groups=VIEWS, source_facts=[])
+    assert audit["rejected"] == []
+    assert len(accepted) == 1
 
 
 def test_v5_large_dimension_plus_topology_is_merge_grade():
@@ -63,6 +131,48 @@ def test_v5_large_dimension_plus_topology_is_merge_grade():
     ], visual_groups=VIEWS, source_facts=[])
     edges, _ = compile_detection_v5_merge_edges(dimension_edges, semantic)
     assert edges[0]["relationship"] == "same_object_view"
+
+
+def test_v5_standard_document_relation_is_identity_support_not_an_extra_weight():
+    edges, _ = compile_detection_v5_merge_edges([], [{
+        "group_id_a": "view-001", "group_id_b": "view-002",
+        "evidence_type": "explicit_document_relation", "strength": "standard",
+        "observation": "Plan callout A-3 references the elevation.", "source_fact_ids": ["SF1"],
+    }])
+    assert edges[0]["edge_score"] == 0
+    assert edges[0]["relationship"] == "supporting_relation"
+
+
+def test_v5_progressive_merge_queue_skips_redundant_internal_pair():
+    views = [
+        {"group_id": "view-001", "evidence_class": "object_evidence", "page_number": 1},
+        {"group_id": "view-002", "evidence_class": "object_evidence", "page_number": 1},
+        {"group_id": "view-003", "evidence_class": "object_evidence", "page_number": 1},
+    ]
+    facts = [
+        {"group_id_a": "view-001", "group_id_b": "view-002", "evidence_type": "explicit_document_relation", "strength": "direct", "observation": "Author label A identifies both views.", "source_fact_ids": ["SF1"]},
+        {"group_id_a": "view-001", "group_id_b": "view-003", "evidence_type": "explicit_document_relation", "strength": "direct", "observation": "Author label A identifies the third view.", "source_fact_ids": ["SF2"]},
+        {"group_id_a": "view-002", "group_id_b": "view-003", "evidence_type": "matching_topology", "strength": "standard", "observation": "Same two-bay carcass.", "source_fact_ids": []},
+    ]
+    edges, audit = compile_detection_v5_merge_edges([], facts, visual_groups=views)
+    assert {(edge["group_id_a"], edge["group_id_b"]) for edge in edges} == {
+        ("view-001", "view-002"), ("view-001", "view-003"),
+    }
+    assert any(row.get("skipped") == "internal_package_pair" for row in audit["edges"])
+
+
+def test_v5_infers_centimetres_from_nonstandard_bare_object_dimension():
+    unit, reason = infer_detection_v5_bare_dimension_unit([
+        {"source_facts": [{"text": "331"}, {"text": "60"}]},
+    ], document_unit="unknown")
+    assert (unit, reason) == ("cm", "nonstandard_100_to_600_value")
+
+
+def test_v5_leaves_common_only_bare_values_unresolved():
+    unit, reason = infer_detection_v5_bare_dimension_unit([
+        {"source_facts": [{"text": "600"}, {"text": "60"}]},
+    ], document_unit="unknown")
+    assert (unit, reason) == ("unknown", "insufficient_bare_dimension_context")
 
 
 def test_v5_final_validation_accepts_singleton_packages_and_supporting_edge():

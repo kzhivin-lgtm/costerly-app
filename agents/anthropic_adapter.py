@@ -26,6 +26,11 @@ from agents.prompt_loader import (
     load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
 )
+from agents.detection_fusion_candidate_regions import (
+    build_detection_fusion_candidate_regions,
+    format_detection_candidate_pair_queue,
+    format_detection_fusion_candidate_regions,
+)
 from agents.detection_spatial_inventory import (
     build_detection_spatial_inventory,
     spatial_inventory_context,
@@ -72,7 +77,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v5_0_sparse_semantic_facts_temperature_0"
+    "detection_v5_3_candidate_region_dimension_q_temperature_0"
 )
 # V5.0 keeps one Haiku call. Registry returns Islands, classifications, and
 # sparse positive semantic facts. Runtime owns every graph and package decision.
@@ -190,16 +195,23 @@ DETECTION_V5_SEMANTIC_FACTS_SCHEMA: dict[str, Any] = {
             "source_fact_ids": {"type": "array", "items": {"type": "string"}},
         }},
 }
+DETECTION_V5_CANDIDATE_REGION_EXCEPTIONS_SCHEMA: dict[str, Any] = {
+    "type": "array", "items": {"type": "object", "additionalProperties": False,
+        "required": ["candidate_region_id", "reason"], "properties": {
+            "candidate_region_id": {"type": "string"},
+            "reason": {"type": "string"},
+        }}}
 
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": [
-        "visual_groups", "classifications", "semantic_facts",
+        "visual_groups", "classifications", "candidate_region_exceptions", "semantic_facts",
     ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
+        "candidate_region_exceptions": DETECTION_V5_CANDIDATE_REGION_EXCEPTIONS_SCHEMA,
         "semantic_facts": DETECTION_V5_SEMANTIC_FACTS_SCHEMA,
     },
 }
@@ -1736,16 +1748,39 @@ def _validate_and_apply_visual_registry_classifications(
     if set(by_group_id) != expected:
         raise ValueError("visual registry must classify every visual group exactly once")
     enriched = copy.deepcopy(payload)
+    # A whole-level architectural plan is document navigation, not an object
+    # depiction.  This applies to any document and depends on the Registry's
+    # own declared representation and description, never on a page number.
+    generic_plan_markers = re.compile(
+        r"\b(?:complete|overall|whole|level|room|rooms|layout|spatial|"
+        r"architectural|circulation|walls?|door\s+swings?|multiple\s+spaces?)\b",
+        re.IGNORECASE,
+    )
     for group in enriched["visual_groups"]:
         decision = by_group_id[group["group_id"]]
-        group["evidence_class"] = decision["evidence_class"]
-        group["classification_reason"] = decision["classification_reason"]
+        representation = str(group.get("representation_kind") or "").lower()
+        description = " ".join((
+            str(group.get("visual_description") or ""),
+            str(decision["classification_reason"]),
+        ))
+        generic_plan = (
+            representation in {"floor_plan", "location_plan"}
+            and len(set(generic_plan_markers.findall(description))) >= 3
+        )
+        if decision["evidence_class"] == "object_evidence" and generic_plan:
+            group["evidence_class"] = "document_context"
+            group["classification_reason"] = (
+                "Whole-level architectural plan is document context, not an isolated fabricated item."
+            )
+        else:
+            group["evidence_class"] = decision["evidence_class"]
+            group["classification_reason"] = decision["classification_reason"]
     audit = [
         {"group_id": group["group_id"], "page_number": group["page_number"],
          "representation_kind": group["representation_kind"],
-         "evidence_class": by_group_id[group["group_id"]]["evidence_class"],
-         "classification_reason": by_group_id[group["group_id"]]["classification_reason"]}
-        for group in groups
+         "evidence_class": group["evidence_class"],
+         "classification_reason": group["classification_reason"]}
+        for group in enriched["visual_groups"]
     ]
     return enriched, audit
 
@@ -1776,6 +1811,114 @@ def _normalize_registry_group_bboxes(
             raise ValueError("visual registry group geometry is invalid")
         result[group_id] = {key: int(bbox[key]) for key in keys}
     return result
+
+
+def _bbox_overlaps(left: dict[str, int], right: dict[str, int]) -> bool:
+    return not (
+        left["bottom_right_x"] < right["top_left_x"]
+        or right["bottom_right_x"] < left["top_left_x"]
+        or left["bottom_right_y"] < right["top_left_y"]
+        or right["bottom_right_y"] < left["top_left_y"]
+    )
+
+
+def build_detection_candidate_region_audit(
+    *,
+    candidate_regions: list[dict[str, Any]],
+    candidate_region_exceptions: object,
+    visual_groups: list[dict[str, Any]],
+    group_bboxes: dict[str, dict[str, int]],
+    group_id_mapping: dict[str, str],
+) -> list[dict[str, Any]]:
+    """Account for Fusion recall candidates without making them Islands."""
+    if not isinstance(candidate_region_exceptions, list):
+        raise ValueError("candidate region exceptions are invalid")
+    candidate_ids = {
+        str(candidate["candidate_region_id"])
+        for candidate in candidate_regions
+    }
+    exceptions: dict[str, str] = {}
+    for row in candidate_region_exceptions:
+        if (
+            not isinstance(row, dict)
+            or set(row) != {"candidate_region_id", "reason"}
+            or not isinstance(row.get("candidate_region_id"), str)
+            or row["candidate_region_id"] not in candidate_ids
+            or row["candidate_region_id"] in exceptions
+            or not str(row.get("reason") or "").strip()
+        ):
+            raise ValueError("candidate region exceptions are invalid")
+        exceptions[row["candidate_region_id"]] = str(row["reason"]).strip()
+    page_by_group_id = {
+        group_id_mapping[str(group.get("group_id") or "")]: group.get("page_number")
+        for group in visual_groups if isinstance(group, dict)
+    }
+    audit: list[dict[str, Any]] = []
+    for candidate in candidate_regions:
+        candidate_id = str(candidate["candidate_region_id"])
+        covered_group_ids = sorted(
+            group_id for group_id, bbox in group_bboxes.items()
+            if (
+                page_by_group_id.get(group_id) == candidate["page_number"]
+                and _bbox_overlaps(candidate["bbox"], bbox)
+            )
+        )
+        exception_reason = exceptions.get(candidate_id)
+        audit.append({
+            **copy.deepcopy(candidate),
+            "covered_group_ids": covered_group_ids,
+            "exception_reason": exception_reason,
+            "status": (
+                "covered_by_island" if covered_group_ids
+                else "explained_non_island" if exception_reason
+                else "unexplained"
+            ),
+        })
+    return audit
+
+
+def map_detection_candidate_q_pairs_to_islands(
+    candidate_pairs: list[dict[str, Any]],
+    *,
+    candidate_regions: list[dict[str, Any]],
+    group_bboxes: dict[str, dict[str, int]],
+    page_by_group_id: dict[str, int],
+) -> set[tuple[str, str]]:
+    """Map pre-Registry Q endpoints onto the retained final Island IDs.
+
+    Q is created from Fusion regions before Registry sees the page.  Registry
+    may tighten or split those regions, so a queue pair maps to every
+    same-page final-Island pair whose bounds overlap its two endpoints.  This
+    is a boundary translation, never a new candidate search.
+    """
+    candidate_by_id = {
+        str(row.get("candidate_region_id") or ""): row
+        for row in candidate_regions if isinstance(row, dict)
+    }
+
+    def mapped_groups(candidate_id: str) -> set[str]:
+        candidate = candidate_by_id.get(candidate_id) or {}
+        bbox = candidate.get("bbox") or {}
+        page_number = candidate.get("page_number")
+        if not isinstance(bbox, dict) or not isinstance(page_number, int):
+            return set()
+        return {
+            group_id for group_id, group_bbox in group_bboxes.items()
+            if page_by_group_id.get(group_id) == page_number
+            and _bbox_overlaps(bbox, group_bbox)
+        }
+
+    allowed: set[tuple[str, str]] = set()
+    for row in candidate_pairs:
+        if not isinstance(row, dict):
+            continue
+        left = mapped_groups(str(row.get("group_id_a") or ""))
+        right = mapped_groups(str(row.get("group_id_b") or ""))
+        for left_id in left:
+            for right_id in right:
+                if left_id != right_id:
+                    allowed.add(tuple(sorted((left_id, right_id))))
+    return allowed
 
 
 def build_detection_view_evidence_packages(
@@ -1831,10 +1974,10 @@ def assign_detection_page_local_view_labels(
 ) -> dict[str, dict[str, Any]]:
     """Give each retained View a human-readable number restarting per page.
 
-    ``visual_group_id`` remains the immutable internal key. ``view_label`` is
+    ``visual_group_id`` remains the immutable internal key. ``page_view_ref`` is
     purely a page-local diagnostic reference, so removal of an empty Island
-    does not alter provenance or graph keys while people can read Page 4,
-    View 001 instead of a document-wide counter.
+    does not alter provenance or graph keys while people can read `P04.V1`
+    instead of a document-wide counter.
     """
     count_by_page: dict[int, int] = {}
     labels: dict[str, dict[str, Any]] = {}
@@ -1842,10 +1985,14 @@ def assign_detection_page_local_view_labels(
         page_number = int(package["page_number"])
         sequence = count_by_page.get(page_number, 0) + 1
         count_by_page[page_number] = sequence
-        label = f"View {sequence:03d}"
+        label = f"P{page_number:02d}.V{sequence}"
+        package["page_view_ref"] = label
+        # Transitional display alias. New audit consumers must use
+        # ``page_view_ref``; graph code must use ``visual_group_id``.
         package["view_label"] = label
         labels[str(package["visual_group_id"])] = {
             "page_number": page_number,
+            "page_view_ref": label,
             "view_label": label,
         }
     return labels
@@ -1969,6 +2116,38 @@ _V5_DIMENSION_TEXT_RE = re.compile(
     re.IGNORECASE,
 )
 
+_V5_COMMON_BARE_MM_VALUES = frozenset({300, 400, 450, 500, 600})
+
+
+def infer_detection_v5_bare_dimension_unit(
+    view_evidence_packages: list[dict[str, Any]], *, document_unit: str,
+) -> tuple[str, str]:
+    """Infer only the safe document basis needed for bare V5 dimensions.
+
+    An explicit document marker always wins. A bare value above 600 cannot be
+    centimetres in the furniture-document envelope. Otherwise, a non-standard
+    100..600 value, such as 211 or 331, establishes centimetres for this file.
+    Common-only values remain unresolved rather than being silently inflated.
+    """
+    if document_unit in {"mm", "cm", "m"}:
+        return document_unit, "explicit_document_unit"
+    bare_values: list[Decimal] = []
+    for package in view_evidence_packages:
+        for fact in package.get("source_facts") or []:
+            match = _V5_DIMENSION_TEXT_RE.match(str(fact.get("text") or "").strip())
+            if match and not match.group(2):
+                bare_values.append(Decimal(match.group(1).replace(",", ".")))
+    if any(value > 600 for value in bare_values):
+        return "mm", "bare_value_over_600"
+    if any(
+        Decimal("100") <= value <= Decimal("600")
+        and value == value.to_integral_value()
+        and int(value) not in _V5_COMMON_BARE_MM_VALUES
+        for value in bare_values
+    ):
+        return "cm", "nonstandard_100_to_600_value"
+    return "unknown", "insufficient_bare_dimension_context"
+
 
 def build_detection_v5_dimension_fingerprints(
     view_evidence_packages: list[dict[str, Any]], *, document_unit: str,
@@ -1995,8 +2174,6 @@ def build_detection_v5_dimension_fingerprints(
             explicit_unit = (match.group(2) or "").lower()
             if explicit_unit:
                 value_mm = raw_value * conversion[explicit_unit]
-            elif raw_value > 600:
-                value_mm = raw_value
             elif document_unit in conversion:
                 value_mm = raw_value * conversion[document_unit]
             else:
@@ -2012,7 +2189,7 @@ def build_detection_v5_dimension_fingerprints(
                 "bottom_right_x": round((fact_bbox["bottom_right_x"] - bbox["top_left_x"]) / width, 6),
                 "bottom_right_y": round((fact_bbox["bottom_right_y"] - bbox["top_left_y"]) / height, 6),
             }
-            candidate = {"value_mm": str(value_mm), "original_text": text, "source_fact_ids": [str(fact["fact_id"])], "normalized_bbox": normalized_bbox}
+            candidate = {"value_mm": str(value_mm), "original_text": text, "unit_basis": explicit_unit or document_unit, "source_fact_ids": [str(fact["fact_id"])], "normalized_bbox": normalized_bbox}
             centre = ((normalized_bbox["top_left_x"] + normalized_bbox["bottom_right_x"]) / 2, (normalized_bbox["top_left_y"] + normalized_bbox["bottom_right_y"]) / 2)
             merged = next((item for item in occurrences if item["value_mm"] == candidate["value_mm"] and abs(item["centre"][0] - centre[0]) <= 0.025 and abs(item["centre"][1] - centre[1]) <= 0.025), None)
             if merged:
@@ -2337,21 +2514,43 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
     prompt = load_detection_visual_registry_prompt()
     prompt_version = DETECTION_VISUAL_REGISTRY_PROMPT_VERSION
-    spatial_regions = build_detection_spatial_inventory(ocr_package)
-    spatial_audit = {
-        "ocr_graphic_region_count": len(spatial_regions),
-        "ocr_graphic_regions": spatial_regions,
-        "ocr_graphic_region_counts_by_page": {
-            str(page_number): sum(
-                region["page_number"] == page_number for region in spatial_regions
-            )
-            for page_number in range(1, len(page_images) + 1)
-        },
-    }
     document_dimension_unit_profile = (
         extract_detection_document_dimension_unit_profile(ocr_package)
     )
     source_facts = build_detection_page_evidence_inventory(ocr_package)
+    candidate_regions = build_detection_fusion_candidate_regions(
+        ocr_package, source_facts,
+    )
+    candidate_visual_groups = [{
+        "group_id": str(candidate["candidate_region_id"]),
+        "page_number": candidate["page_number"],
+        "evidence_class": "object_evidence",
+    } for candidate in candidate_regions]
+    candidate_group_bboxes = {
+        str(candidate["candidate_region_id"]): candidate["bbox"]
+        for candidate in candidate_regions
+    }
+    candidate_packages = build_detection_view_evidence_packages(
+        visual_groups=candidate_visual_groups,
+        group_bboxes=candidate_group_bboxes,
+        source_facts=source_facts,
+    )
+    candidate_unit, candidate_unit_reason = infer_detection_v5_bare_dimension_unit(
+        candidate_packages,
+        document_unit=str(document_dimension_unit_profile.get("unit") or "unknown"),
+    )
+    candidate_dimension_inventory = build_detection_v5_dimension_fingerprints(
+        candidate_packages, document_unit=candidate_unit,
+    )
+    _, candidate_dimension_audit = compile_detection_v5_dimension_graph(
+        candidate_dimension_inventory,
+        visual_groups=candidate_visual_groups,
+        group_bboxes=candidate_group_bboxes,
+    )
+    candidate_pair_queue = list(
+        candidate_dimension_audit.get("dimension_similarity_candidates") or []
+    )
+    candidate_region_audit: list[dict[str, Any]] = []
     page_evidence_inventory_text = format_detection_page_evidence_inventory(
         source_facts
     )
@@ -2362,7 +2561,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "OCR text layer: unavailable",
         page_evidence_inventory_text,
     )
-    user_text += "\n\n" + spatial_inventory_context(spatial_regions)
+    user_text += "\n\n" + format_detection_fusion_candidate_regions(
+        candidate_regions
+    )
+    user_text += "\n\n" + format_detection_candidate_pair_queue(
+        candidate_pair_queue
+    )
     user_text += "\n\n" + format_detection_document_dimension_unit_profile(
         document_dimension_unit_profile
     )
@@ -2386,6 +2590,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     diagnostics["page_evidence_inventory_characters"] = len(
         page_evidence_inventory_text
     )
+    diagnostics["fusion_candidate_region_count"] = len(candidate_regions)
+    diagnostics["candidate_pair_queue_count"] = len(candidate_pair_queue)
+    diagnostics["candidate_dimension_unit"] = candidate_unit
+    diagnostics["candidate_dimension_unit_reason"] = candidate_unit_reason
     diagnostics["rendered_page_image_bytes"] = sum(len(image) for image in page_images)
     diagnostics["registry_system_prompt_characters"] = len(prompt)
     raw_text = extract_text_from_claude_response(response)
@@ -2394,7 +2602,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     except json.JSONDecodeError as exc:
         failure_diagnostics = dict(diagnostics)
         failure_diagnostics.update({
-            **spatial_audit,
+            "fusion_candidate_regions": candidate_regions,
             "document_dimension_unit_profile": document_dimension_unit_profile,
             **_summarize_incomplete_visual_registry_json(
                 raw_text, exc, response,
@@ -2459,16 +2667,35 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     fallback_registry_object_ids: list[str] = []
     registry_metadata_audit: dict[str, Any] = {}
     registry_graph_review_required_object_ids: list[str] = []
+    classified_visual_groups: list[dict[str, Any]] = []
     try:
         if isinstance(payload, dict):
             payload, classification_decisions = (
                 _validate_and_apply_visual_registry_classifications(payload)
             )
+            classified_visual_groups = copy.deepcopy(payload["visual_groups"])
+            all_group_bboxes = _normalize_registry_group_bboxes(
+                classified_visual_groups,
+                group_id_mapping={
+                    str(group.get("group_id") or ""): str(group.get("group_id") or "")
+                    for group in classified_visual_groups
+                },
+            )
+            candidate_region_audit = build_detection_candidate_region_audit(
+                candidate_regions=candidate_regions,
+                candidate_region_exceptions=payload["candidate_region_exceptions"],
+                visual_groups=classified_visual_groups,
+                group_bboxes=all_group_bboxes,
+                group_id_mapping={
+                    str(group.get("group_id") or ""): str(group.get("group_id") or "")
+                    for group in classified_visual_groups
+                },
+            )
             payload, discarded_non_object_groups = (
                 _discard_non_object_visual_registry_groups(payload)
             )
         if not isinstance(payload, dict) or set(payload) != {
-            "visual_groups", "classifications", "semantic_facts",
+            "visual_groups", "classifications", "candidate_region_exceptions", "semantic_facts",
         }:
             raise ValueError(
                 "visual registry must contain visual groups, classifications and semantic facts"
@@ -2484,8 +2711,25 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
+        semantic_validation_groups = [
+            {
+                "group_id": group_id_mapping[str(group.get("group_id") or "")],
+                "evidence_class": group.get("evidence_class"),
+            }
+            for group in raw_groups
+        ]
         group_bboxes = _normalize_registry_group_bboxes(
             raw_groups, group_id_mapping=group_id_mapping,
+        )
+        page_by_group_id = {
+            str(group["group_id"]): int(group["page_number"])
+            for group in visual_map["visual_groups"]
+        }
+        candidate_q_final_pairs = map_detection_candidate_q_pairs_to_islands(
+            candidate_pair_queue,
+            candidate_regions=candidate_regions,
+            group_bboxes=group_bboxes,
+            page_by_group_id=page_by_group_id,
         )
         visual_group_ids = {
             group["group_id"] for group in visual_map["visual_groups"]
@@ -2494,57 +2738,32 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
             source_facts=source_facts,
         )
-        empty_evidence_group_ids = {
-            str(package["visual_group_id"])
-            for package in view_evidence_packages
-            if not package["source_fact_ids"]
-        }
-        # No source facts means evidence is unavailable, not that an Island is
-        # disproven. Delete only when MyPDF or Mistral actually supplied an
-        # inventory and this Island still received none.
-        if source_facts and empty_evidence_group_ids:
-            raw_empty_evidence_group_ids = {
-                raw_group_id
-                for raw_group_id, normalized_group_id in group_id_mapping.items()
-                if normalized_group_id in empty_evidence_group_ids
-            }
-            payload, discarded_empty_evidence_groups = (
-                _discard_empty_evidence_visual_registry_groups(
-                    payload, raw_group_ids=raw_empty_evidence_group_ids,
-                )
-            )
-            for group in discarded_empty_evidence_groups:
-                group["discard_reason"] = (
-                    "no MyPDF or Mistral source fact inside island bbox"
-                )
-            # Preserve canonical IDs of retained Islands. Removing G5 must not
-            # rename G6 and every later view, otherwise stable audit records,
-            # source references and package identities would drift mid-cycle.
-            visual_map["visual_groups"] = [
-                group for group in visual_map["visual_groups"]
-                if str(group["group_id"]) not in empty_evidence_group_ids
-            ]
-            group_bboxes = {
-                group_id: bbox for group_id, bbox in group_bboxes.items()
-                if group_id not in empty_evidence_group_ids
-            }
-            view_evidence_packages = [
-                package for package in view_evidence_packages
-                if str(package["visual_group_id"]) not in empty_evidence_group_ids
-            ]
-            visual_group_ids = {
-                group["group_id"] for group in visual_map["visual_groups"]
-            }
         page_local_view_labels = assign_detection_page_local_view_labels(
             view_evidence_packages
         )
-        for row in payload["semantic_facts"]:
+        q_rejected_semantic_facts: list[dict[str, Any]] = []
+        q_semantic_facts: list[dict[str, Any]] = []
+        for index, row in enumerate(payload["semantic_facts"]):
             if isinstance(row, dict):
                 row["group_id_a"] = group_id_mapping.get(str(row.get("group_id_a") or ""), str(row.get("group_id_a") or ""))
                 row["group_id_b"] = group_id_mapping.get(str(row.get("group_id_b") or ""), str(row.get("group_id_b") or ""))
-        payload["dimension_inventory"] = build_detection_v5_dimension_fingerprints(
+                pair = tuple(sorted((str(row["group_id_a"]), str(row["group_id_b"]))))
+                if pair in candidate_q_final_pairs:
+                    q_semantic_facts.append(row)
+                else:
+                    q_rejected_semantic_facts.append({
+                        "index": index,
+                        "reason": "semantic_fact_outside_candidate_pair_queue",
+                        "group_id_a": pair[0],
+                        "group_id_b": pair[1],
+                    })
+        effective_dimension_unit, dimension_unit_reason = infer_detection_v5_bare_dimension_unit(
             view_evidence_packages,
             document_unit=str(document_dimension_unit_profile.get("unit") or "unknown"),
+        )
+        payload["dimension_inventory"] = build_detection_v5_dimension_fingerprints(
+            view_evidence_packages,
+            document_unit=effective_dimension_unit,
         )
         dimension_inventory_audit = payload["dimension_inventory"]
         dimension_inventory_valid = True
@@ -2552,19 +2771,32 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         page_drawing_codes = extract_detection_page_drawing_codes(ocr_package)
         dimension_relation_edges, dimension_graph_audit = compile_detection_v5_dimension_graph(
             dimension_inventory_audit, visual_groups=visual_map["visual_groups"],
+            group_bboxes=group_bboxes,
+            allowed_pairs=candidate_q_final_pairs,
         )
         # Title-block codes remain naming metadata only.  Retain this audit
         # trail to prove they never become identity edges.
         dimension_graph_audit.update({
+            "page_local_view_labels": page_local_view_labels,
+            "effective_document_dimension_unit": effective_dimension_unit,
+            "effective_document_dimension_unit_reason": dimension_unit_reason,
             "page_drawing_codes": {str(page): code for page, code in page_drawing_codes.items()},
             "source_root_merge_edge_count": 0,
+            "candidate_pair_queue_count": len(candidate_pair_queue),
+            "candidate_pair_queue_final_pair_count": len(candidate_q_final_pairs),
+            "candidate_pair_queue_final_pairs": [
+                {"group_id_a": pair[0], "group_id_b": pair[1]}
+                for pair in sorted(candidate_q_final_pairs)
+            ],
         })
         accepted_semantic_facts, semantic_ledger_audit = compile_detection_v5_semantic_facts(
-            payload["semantic_facts"],
-            visual_groups=visual_map["visual_groups"], source_facts=source_facts,
+            q_semantic_facts,
+            visual_groups=semantic_validation_groups, source_facts=source_facts,
         )
+        semantic_ledger_audit["rejected"].extend(q_rejected_semantic_facts)
         positive_relation_edges, v5_merge_audit = compile_detection_v5_merge_edges(
             dimension_relation_edges, accepted_semantic_facts,
+            visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
         )
         accepted_merge_edges = [
             edge for edge in positive_relation_edges
@@ -2670,7 +2902,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     except (KeyError, ValueError) as exc:
         failure_diagnostics = dict(diagnostics)
         failure_diagnostics.update({
-            **spatial_audit,
+            "fusion_candidate_regions": candidate_regions,
+            "candidate_region_audit": candidate_region_audit,
             "registry_decision_audit": registry_decision_audit,
             "discarded_non_object_visual_groups": discarded_non_object_groups,
             "discarded_empty_evidence_visual_groups": discarded_empty_evidence_groups,
@@ -2688,6 +2921,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "dimension_conflicts": dimension_conflicts,
             "dimension_graph_audit": dimension_graph_audit,
             "semantic_ledger_audit": semantic_ledger_audit,
+            "v5_merge_audit": v5_merge_audit,
             "dimension_package_candidate_components": dimension_package_candidate_components,
             "dimension_package_candidate_decisions": dimension_package_candidate_decisions,
             "accepted_merge_edges": accepted_merge_edges,
@@ -2757,6 +2991,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "dimension_conflicts": dimension_conflicts,
         "dimension_graph_audit": dimension_graph_audit,
         "semantic_ledger_audit": semantic_ledger_audit,
+        "v5_merge_audit": v5_merge_audit,
         "dimension_package_candidate_components": dimension_package_candidate_components,
         "dimension_package_candidate_decisions": dimension_package_candidate_decisions,
         "positive_relation_edge_count": len(positive_relation_edges),
@@ -2791,11 +3026,30 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             for component in proof_components
         ],
         "region_count": len(regions),
-        **spatial_audit,
+        "fusion_candidate_regions": candidate_regions,
+        "candidate_region_audit": candidate_region_audit,
+        "unexplained_candidate_region_count": sum(
+            row["status"] == "unexplained" for row in candidate_region_audit
+        ),
         "visual_group_counts_by_page": {
             str(page_number): sum(
                 group["page_number"] == page_number
                 for group in visual_map["visual_groups"]
+            )
+            for page_number in range(1, len(page_images) + 1)
+        },
+        "raw_visual_group_counts_by_page": {
+            str(page_number): sum(
+                group.get("page_number") == page_number
+                for group in classified_visual_groups
+            )
+            for page_number in range(1, len(page_images) + 1)
+        },
+        "raw_object_evidence_counts_by_page": {
+            str(page_number): sum(
+                group.get("page_number") == page_number
+                and group.get("evidence_class") == "object_evidence"
+                for group in classified_visual_groups
             )
             for page_number in range(1, len(page_images) + 1)
         },

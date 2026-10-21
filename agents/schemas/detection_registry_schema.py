@@ -1614,6 +1614,12 @@ _V5_GENERIC_SEMANTIC_RE = re.compile(
     r"same color|same plinth|looks similar|visual impression|same h\s*=?\s*60)\b",
     re.IGNORECASE,
 )
+_V5_HARD_GENERIC_SEMANTIC_RE = re.compile(r"\bsame h\s*=?\s*60\b", re.IGNORECASE)
+_V5_CONCRETE_SEMANTIC_RE = re.compile(
+    r"\d|\b(carcass|bay|door|drawer|shelf|panel|track|frame|"
+    r"compartment|sequence|component|dimension|reference|callout|boundary)\b",
+    re.IGNORECASE,
+)
 _V5_SEMANTIC_POINTS = {
     "dimension_transform": 35,
     "matching_topology": 30,
@@ -1661,7 +1667,10 @@ def compile_detection_v5_semantic_facts(
         if kind != "explicit_document_relation" and strength != "standard":
             rejected.append({"index": index, "reason": "non_document_relation_requires_standard_strength"})
             continue
-        if _V5_GENERIC_SEMANTIC_RE.search(observation):
+        if _V5_HARD_GENERIC_SEMANTIC_RE.search(observation) or (
+            _V5_GENERIC_SEMANTIC_RE.search(observation)
+            and not _V5_CONCRETE_SEMANTIC_RE.search(observation)
+        ):
             rejected.append({"index": index, "reason": "generic_observation", "observation": observation})
             continue
         if not set(cited).issubset(source_ids):
@@ -1688,8 +1697,11 @@ def compile_detection_v5_semantic_facts(
 def compile_detection_v5_merge_edges(
     dimension_edges: list[dict[str, Any]],
     semantic_facts: list[dict[str, Any]],
+    *,
+    visual_groups: list[dict[str, Any]] | None = None,
+    group_bboxes: dict[str, dict[str, float]] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Apply the approved V5 merge rules to typed evidence on one pair."""
+    """Merge only pairs that already have Q-backed evidence."""
     by_pair: dict[tuple[str, str], dict[str, Any]] = {}
     for edge in dimension_edges:
         pair = (str(edge["group_id_a"]), str(edge["group_id_b"]))
@@ -1699,13 +1711,57 @@ def compile_detection_v5_merge_edges(
     for fact in semantic_facts:
         pair = (str(fact["group_id_a"]), str(fact["group_id_b"]))
         by_pair.setdefault(pair, {"dimension_score": 0.0, "semantic_facts": [], "dimension_facts": []})["semantic_facts"].append(fact)
+    groups_by_id = {
+        str(group.get("group_id") or ""): group
+        for group in visual_groups or [] if isinstance(group, dict)
+    }
+    group_ids = sorted(groups_by_id) or sorted({group_id for pair in by_pair for group_id in pair})
+    candidate_pairs = sorted({tuple(sorted(pair)) for pair in by_pair})
+
+    def candidate_key(pair: tuple[str, str]) -> tuple[int, float, int, str, str]:
+        left_group, right_group = groups_by_id.get(pair[0], {}), groups_by_id.get(pair[1], {})
+        left_page = int(left_group.get("page_number") or 0)
+        right_page = int(right_group.get("page_number") or 0)
+        left_box = (group_bboxes or {}).get(pair[0]) or {}
+        right_box = (group_bboxes or {}).get(pair[1]) or {}
+        try:
+            left_x = (float(left_box["top_left_x"]) + float(left_box["bottom_right_x"])) / 2
+            left_y = (float(left_box["top_left_y"]) + float(left_box["bottom_right_y"])) / 2
+            right_x = (float(right_box["top_left_x"]) + float(right_box["bottom_right_x"])) / 2
+            right_y = (float(right_box["top_left_y"]) + float(right_box["bottom_right_y"])) / 2
+            distance = (left_x - right_x) ** 2 + (left_y - right_y) ** 2
+        except (KeyError, TypeError, ValueError):
+            distance = float("inf")
+        return (1 if left_page != right_page else 0, distance, min(left_page, right_page), pair[0], pair[1])
+
     edges: list[dict[str, Any]] = []
     audit: list[dict[str, Any]] = []
-    for pair, row in sorted(by_pair.items()):
+    components: dict[str, str] = {group_id: group_id for group_id in group_ids}
+
+    def root(group_id: str) -> str:
+        components.setdefault(group_id, group_id)
+        while components[group_id] != group_id:
+            components[group_id] = components[components[group_id]]
+            group_id = components[group_id]
+        return group_id
+
+    for pair in sorted(candidate_pairs, key=candidate_key):
+        row = by_pair.get(pair, {"dimension_score": 0.0, "semantic_facts": [], "dimension_facts": []})
+        if root(pair[0]) == root(pair[1]):
+            audit.append({"group_id_a": pair[0], "group_id_b": pair[1], "skipped": "internal_package_pair"})
+            continue
+        if not row["dimension_facts"] and not row["semantic_facts"]:
+            audit.append({"group_id_a": pair[0], "group_id_b": pair[1], "inspected": True, "merge": False})
+            continue
         kinds = {fact["evidence_type"] for fact in row["semantic_facts"]}
         direct_label = any(fact["evidence_type"] == "explicit_document_relation" and fact["strength"] == "direct" for fact in row["semantic_facts"])
         semantic_points = sum(
-            (100 if fact["strength"] == "direct" else 55 if fact["strength"] == "single_object_sheet" else _V5_SEMANTIC_POINTS[fact["evidence_type"]])
+            (
+                100 if fact["strength"] == "direct" else
+                55 if fact["strength"] == "single_object_sheet" else
+                0 if fact["evidence_type"] == "explicit_document_relation" else
+                _V5_SEMANTIC_POINTS[fact["evidence_type"]]
+            )
             for fact in row["semantic_facts"]
         )
         edge_score = min(100.0, row["dimension_score"] + semantic_points)
@@ -1721,6 +1777,9 @@ def compile_detection_v5_merge_edges(
         ]]
         edges.append({
             "group_id_a": pair[0], "group_id_b": pair[1],
+            "page_a": int(groups_by_id.get(pair[0], {}).get("page_number") or 0),
+            "page_b": int(groups_by_id.get(pair[1], {}).get("page_number") or 0),
+            "same_page": int(groups_by_id.get(pair[0], {}).get("page_number") or 0) == int(groups_by_id.get(pair[1], {}).get("page_number") or 0),
             "relationship": "same_object_view" if merge else SUPPORTING_RELATIONSHIP,
             "evidence_facts": facts,
             "commercial_inseparability": "V5 deterministic merge policy",
@@ -1728,7 +1787,13 @@ def compile_detection_v5_merge_edges(
             "edge_score": edge_score,
         })
         audit.append({"group_id_a": pair[0], "group_id_b": pair[1], "dimension_similarity_score": row["dimension_score"], "edge_score": edge_score, "merge": merge})
-    return edges, {"edges": audit}
+        if merge:
+            components[root(pair[1])] = root(pair[0])
+    return edges, {
+        "compiler_version": "v5_3_q_edges_only_merge",
+        "candidate_order": [{"group_id_a": pair[0], "group_id_b": pair[1]} for pair in sorted(candidate_pairs, key=candidate_key)],
+        "edges": audit,
+    }
 
 
 def validate_detection_v5_final_result(
@@ -1774,9 +1839,21 @@ _V5_COMMON_DIMENSIONS_MM = frozenset({300, 400, 450, 500, 600, 800, 900, 1000, 1
 
 def compile_detection_v5_dimension_graph(
     fingerprints: list[dict[str, Any]], *, visual_groups: list[dict[str, Any]],
+    group_bboxes: dict[str, dict[str, float]] | None = None,
+    allowed_pairs: set[tuple[str, str]] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Score source-grounded dimension occurrences with the approved V5 formula."""
-    group_ids = {str(group.get("group_id") or "") for group in visual_groups}
+    """Score Dimension Equality through Q, or build Q for proto-regions.
+
+    ``allowed_pairs`` is the pre-Registry Candidate Pair Queue translated onto
+    final Islands.  When supplied, this function must never discover a new
+    pair.  Without it, it performs the bounded proto-region discovery that
+    creates Q.
+    """
+    groups_by_id = {
+        str(group.get("group_id") or ""): group
+        for group in visual_groups if isinstance(group, dict)
+    }
+    group_ids = set(groups_by_id)
     occurrences = {
         str(row.get("group_id") or ""): [item for item in row.get("occurrences") or [] if item.get("value_mm") is not None]
         for row in fingerprints if str(row.get("group_id") or "") in group_ids
@@ -1803,9 +1880,7 @@ def compile_detection_v5_dimension_graph(
         count = max(frequency.get(left, 1), frequency.get(right, 1))
         return 1.75 if count <= 2 else 1.25 if count <= 5 else 0.8
 
-    edges: list[dict[str, Any]] = []
-    candidates: list[dict[str, Any]] = []
-    for left_id, right_id in combinations(sorted(group_ids), 2):
+    def score_pair(left_id: str, right_id: str) -> tuple[float, list[dict[str, Any]], list[dict[str, Any]]]:
         raw_matches: list[tuple[dict[str, Any], dict[str, Any]]] = []
         for left in occurrences.get(left_id, []):
             for right in occurrences.get(right_id, []):
@@ -1850,12 +1925,129 @@ def compile_detection_v5_dimension_graph(
             facts.append({"evidence_type": "dimension_equality", "evidence_pages": [], "observation": observation, "source_fact_ids": fact_ids})
             feature_rows.append({"left_mm": str(left_value), "right_mm": str(right_value), "matched_occurrences": count, "points": round(points, 3)})
         score = round(min(100.0, score), 3)
-        candidate = {"group_id_a": left_id, "group_id_b": right_id, "dimension_similarity_score": score, "features": feature_rows}
+        return score, facts, feature_rows
+
+    def page(group_id: str) -> int:
+        return int(groups_by_id[group_id].get("page_number") or 0)
+
+    def centre(group_id: str) -> tuple[float, float] | None:
+        bbox = (group_bboxes or {}).get(group_id) or {}
+        try:
+            return (
+                (float(bbox["top_left_x"]) + float(bbox["bottom_right_x"])) / 2,
+                (float(bbox["top_left_y"]) + float(bbox["bottom_right_y"])) / 2,
+            )
+        except (KeyError, TypeError, ValueError):
+            return None
+
+    def candidate_key(seed: str, target: str) -> tuple[int, float, int, float, str]:
+        seed_centre, target_centre = centre(seed), centre(target)
+        distance = (
+            (seed_centre[0] - target_centre[0]) ** 2
+            + (seed_centre[1] - target_centre[1]) ** 2
+            if seed_centre is not None and target_centre is not None
+            else float("inf")
+        )
+        same_page = page(seed) == page(target)
+        return (
+            0 if same_page else 1,
+            distance if same_page else float(abs(page(seed) - page(target))),
+            abs(page(seed) - page(target)), distance, target,
+        )
+
+    threshold = 25.0
+    edges: list[dict[str, Any]] = []
+    candidates: list[dict[str, Any]] = []
+    evaluated_pairs: set[tuple[str, str]] = set()
+    target_group_ids: set[str] = set()
+
+    def record_pair(left_id: str, right_id: str, *, cycle: str) -> float:
+        score, facts, feature_rows = score_pair(left_id, right_id)
+        candidate = {
+            "group_id_a": left_id, "group_id_b": right_id,
+            "page_a": page(left_id), "page_b": page(right_id),
+            "same_page": page(left_id) == page(right_id),
+            "cycle": cycle, "dimension_similarity_score": score,
+            "features": feature_rows,
+        }
         candidates.append(candidate)
-        if score < 15:
-            continue
-        edges.append({"group_id_a": left_id, "group_id_b": right_id, "relationship": SUPPORTING_RELATIONSHIP, "evidence_facts": facts, "commercial_inseparability": "V5 dimension support", "dimension_similarity_score": score})
-    return edges, {"compiler_version": "v5_0_dimension_fingerprint", "dimension_similarity_candidates": candidates, "dimension_similarity_edges": [{key: row[key] for key in ("group_id_a", "group_id_b", "dimension_similarity_score")} for row in candidates if row["dimension_similarity_score"] >= 15]}
+        if score >= threshold:
+            edges.append({
+                "group_id_a": left_id, "group_id_b": right_id,
+                "page_a": page(left_id), "page_b": page(right_id),
+                "same_page": page(left_id) == page(right_id), "cycle": cycle,
+                "relationship": SUPPORTING_RELATIONSHIP, "evidence_facts": facts,
+                "commercial_inseparability": "V5 dimension support",
+                "dimension_similarity_score": score,
+            })
+        return score
+
+    if allowed_pairs is not None:
+        # Final Island fingerprints only revalidate Q.  The queue was already
+        # selected on Fusion Candidate Regions before Registry ran.
+        for left_id, right_id in sorted(allowed_pairs):
+            if left_id not in group_ids or right_id not in group_ids or left_id == right_id:
+                continue
+            pair = tuple(sorted((left_id, right_id)))
+            if pair in evaluated_pairs:
+                continue
+            evaluated_pairs.add(pair)
+            record_pair(left_id, right_id, cycle="q_revalidation")
+    else:
+        # Cycle one: a target can be reused, but never initiates another search.
+        # That creates local stars such as 1--3 and 2--3 without a global graph.
+        for seed in sorted(group_ids):
+            if seed in target_group_ids:
+                continue
+            for target in sorted((group_id for group_id in group_ids if group_id != seed), key=lambda group_id: candidate_key(seed, group_id)):
+                left_id, right_id = sorted((seed, target))
+                pair = (left_id, right_id)
+                if pair in evaluated_pairs:
+                    continue
+                evaluated_pairs.add(pair)
+                score = record_pair(left_id, right_id, cycle="discovery")
+                if score < threshold:
+                    continue
+                target_group_ids.add(target)
+                break
+
+    parents: dict[str, str] = {group_id: group_id for group_id in group_ids}
+
+    def root(group_id: str) -> str:
+        while parents[group_id] != group_id:
+            parents[group_id] = parents[parents[group_id]]
+            group_id = parents[group_id]
+        return group_id
+
+    for edge in edges:
+        parents[root(str(edge["group_id_b"]))] = root(str(edge["group_id_a"]))
+    provisional_components: dict[str, list[str]] = {}
+    for group_id in sorted(group_ids):
+        provisional_components.setdefault(root(group_id), []).append(group_id)
+    closure_components = [
+        component for component in provisional_components.values() if len(component) >= 3
+    ]
+
+    if allowed_pairs is None:
+        # Cycle two: verify only missing pairs inside a component made by cycle one.
+        for component in closure_components:
+            for left_id, right_id in combinations(component, 2):
+                pair = (left_id, right_id)
+                if pair in evaluated_pairs:
+                    continue
+                evaluated_pairs.add(pair)
+                record_pair(left_id, right_id, cycle="closure")
+    return edges, {
+        "compiler_version": (
+            "v5_3_candidate_q_revalidation_threshold_25"
+            if allowed_pairs is not None
+            else "v5_2_two_cycle_dimension_queue_threshold_25"
+        ),
+        "dimension_edge_threshold": threshold,
+        "provisional_components": closure_components,
+        "dimension_similarity_candidates": candidates,
+        "dimension_similarity_edges": [{key: row[key] for key in ("group_id_a", "group_id_b", "page_a", "page_b", "same_page", "cycle", "dimension_similarity_score")} for row in edges],
+    }
 
 
 def validate_detection_shared_reference_group_ids(

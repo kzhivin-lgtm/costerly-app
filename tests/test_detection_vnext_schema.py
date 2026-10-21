@@ -475,10 +475,17 @@ def test_page_local_view_labels_restart_per_page_without_renaming_internal_keys(
     labels = assign_detection_page_local_view_labels(packages)
 
     assert [package["view_label"] for package in packages] == [
-        "View 001", "View 002", "View 003", "View 001",
+        "P03.V1", "P03.V2", "P03.V3", "P04.V1",
     ]
-    assert labels["view-004"] == {"page_number": 3, "view_label": "View 003"}
-    assert labels["view-005"] == {"page_number": 4, "view_label": "View 001"}
+    assert [package["page_view_ref"] for package in packages] == [
+        "P03.V1", "P03.V2", "P03.V3", "P04.V1",
+    ]
+    assert labels["view-004"] == {
+        "page_number": 3, "page_view_ref": "P03.V3", "view_label": "P03.V3",
+    }
+    assert labels["view-005"] == {
+        "page_number": 4, "page_view_ref": "P04.V1", "view_label": "P04.V1",
+    }
 
 
 def test_v4_49_dimension_inventory_allows_multiple_chains_on_one_axis():
@@ -1015,6 +1022,7 @@ def test_v4_54_registry_schema_contains_only_island_and_classification_facts():
     assert "pair_relation_states" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "pair_relation_facts" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "semantic_facts" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
+    assert "candidate_region_exceptions" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "semantic_pairwise_ledger" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "classifications" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "proof_edges" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
