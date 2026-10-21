@@ -69,18 +69,17 @@ def test_detection_visual_map_never_decides_objects_or_quantity():
 def test_integrated_visual_registry_returns_facts_for_the_deterministic_graph_compiler():
     prompt = load_detection_visual_registry_prompt()
 
-    assert "deterministic object-package\nconstruction" in prompt
-    assert "You do not create commercial objects, owner assignments" in prompt
-    assert "Return exactly three stages" in prompt
-    assert "plan, room layout, electrical, plumbing or lighting plan" in prompt
-    assert "never become Estimation Evidence" in prompt
-    assert "semantic_pairwise_ledger" in prompt
-    assert "deterministically attaches the complete same-page\nsource-fact" in prompt
+    assert "deterministic object-package construction" in prompt
+    assert "You do\nnot create objects" in prompt
+    assert "Return exactly three arrays" in prompt
+    assert "document_context" in prompt
+    assert "semantic_facts" in prompt
+    assert "Do not return negatives, unknowns" in prompt
     assert "PAGE EVIDENCE INVENTORY" in prompt
     assert "classification_reason" in prompt
-    assert "passive recall aid" in prompt
+    assert "OCR never creates, splits, merges" in prompt
     assert "Dimension Fingerprints" in prompt
     assert "Two separately framed, separately dimensioned or separately positioned views" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_60_graph_safe_semantic_ledger_temperature_0"
+        "detection_v5_0_sparse_semantic_facts_temperature_0"
     )

@@ -1609,6 +1609,255 @@ def merge_detection_relation_edges(*edge_sets: list[dict[str, Any]]) -> list[dic
     } for pair, facts in sorted(merged.items())]
 
 
+_V5_GENERIC_SEMANTIC_RE = re.compile(
+    r"\b(same page|both elevations?|same room|adjacent|same material|same colour|"
+    r"same color|same plinth|looks similar|visual impression|same h\s*=?\s*60)\b",
+    re.IGNORECASE,
+)
+_V5_SEMANTIC_POINTS = {
+    "dimension_transform": 35,
+    "matching_topology": 30,
+    "unique_geometry": 30,
+    "direct_shared_structure": 20,
+}
+
+
+def compile_detection_v5_semantic_facts(
+    facts: object,
+    *,
+    visual_groups: list[dict[str, Any]],
+    source_facts: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Keep grounded V5 positive facts and audit every rejected candidate."""
+    object_groups = {
+        str(group.get("group_id") or "") for group in visual_groups
+        if group.get("evidence_class") == "object_evidence"
+    }
+    source_ids = {str(fact.get("fact_id") or "") for fact in source_facts}
+    accepted: list[dict[str, Any]] = []
+    rejected: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str, str]] = set()
+    if not isinstance(facts, list):
+        return [], {"accepted": [], "rejected": [{"reason": "semantic_facts_not_list"}]}
+    for index, raw in enumerate(facts):
+        if not isinstance(raw, dict):
+            rejected.append({"index": index, "reason": "fact_not_object"})
+            continue
+        required = {"group_id_a", "group_id_b", "evidence_type", "strength", "observation", "source_fact_ids"}
+        if set(raw) != required:
+            rejected.append({"index": index, "reason": "fact_fields_invalid"})
+            continue
+        left, right = sorted((str(raw["group_id_a"] or ""), str(raw["group_id_b"] or "")))
+        kind = str(raw["evidence_type"] or "")
+        strength = str(raw["strength"] or "")
+        observation = str(raw["observation"] or "").strip()
+        cited = sorted(set(str(value) for value in raw["source_fact_ids"] if str(value))) if isinstance(raw["source_fact_ids"], list) else []
+        if left == right or left not in object_groups or right not in object_groups:
+            rejected.append({"index": index, "reason": "endpoints_not_distinct_object_evidence"})
+            continue
+        if kind not in SEMANTIC_PAIRWISE_EVIDENCE_TYPES or not observation or strength not in {"direct", "single_object_sheet", "standard"}:
+            rejected.append({"index": index, "reason": "type_or_observation_invalid"})
+            continue
+        if kind != "explicit_document_relation" and strength != "standard":
+            rejected.append({"index": index, "reason": "non_document_relation_requires_standard_strength"})
+            continue
+        if _V5_GENERIC_SEMANTIC_RE.search(observation):
+            rejected.append({"index": index, "reason": "generic_observation", "observation": observation})
+            continue
+        if not set(cited).issubset(source_ids):
+            rejected.append({"index": index, "reason": "unknown_source_fact"})
+            continue
+        if kind == "explicit_document_relation" and not cited:
+            rejected.append({"index": index, "reason": "document_relation_requires_source"})
+            continue
+        if kind == "dimension_transform" and (len(cited) < 2 or len(re.findall(r"\d", observation)) < 2):
+            rejected.append({"index": index, "reason": "transform_requires_two_readings"})
+            continue
+        key = (left, right, kind, observation)
+        if key in seen:
+            rejected.append({"index": index, "reason": "duplicate_fact"})
+            continue
+        seen.add(key)
+        accepted.append({
+            "group_id_a": left, "group_id_b": right, "evidence_type": kind,
+            "strength": strength, "observation": observation, "source_fact_ids": cited,
+        })
+    return accepted, {"accepted": accepted, "rejected": rejected}
+
+
+def compile_detection_v5_merge_edges(
+    dimension_edges: list[dict[str, Any]],
+    semantic_facts: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Apply the approved V5 merge rules to typed evidence on one pair."""
+    by_pair: dict[tuple[str, str], dict[str, Any]] = {}
+    for edge in dimension_edges:
+        pair = (str(edge["group_id_a"]), str(edge["group_id_b"]))
+        row = by_pair.setdefault(pair, {"dimension_score": 0.0, "semantic_facts": [], "dimension_facts": []})
+        row["dimension_score"] = max(row["dimension_score"], float(edge.get("dimension_similarity_score") or 0))
+        row["dimension_facts"].extend(edge.get("evidence_facts") or [])
+    for fact in semantic_facts:
+        pair = (str(fact["group_id_a"]), str(fact["group_id_b"]))
+        by_pair.setdefault(pair, {"dimension_score": 0.0, "semantic_facts": [], "dimension_facts": []})["semantic_facts"].append(fact)
+    edges: list[dict[str, Any]] = []
+    audit: list[dict[str, Any]] = []
+    for pair, row in sorted(by_pair.items()):
+        kinds = {fact["evidence_type"] for fact in row["semantic_facts"]}
+        direct_label = any(fact["evidence_type"] == "explicit_document_relation" and fact["strength"] == "direct" for fact in row["semantic_facts"])
+        semantic_points = sum(
+            (100 if fact["strength"] == "direct" else 55 if fact["strength"] == "single_object_sheet" else _V5_SEMANTIC_POINTS[fact["evidence_type"]])
+            for fact in row["semantic_facts"]
+        )
+        edge_score = min(100.0, row["dimension_score"] + semantic_points)
+        identity_fact = bool(kinds.intersection({"explicit_document_relation", "matching_topology", "unique_geometry"}))
+        merge = (
+            direct_label
+            or (row["dimension_score"] >= 85 and bool(kinds))
+            or (edge_score >= 100 and identity_fact)
+        )
+        facts = [*row["dimension_facts"], *[
+            {"evidence_type": fact["evidence_type"], "evidence_pages": [], "observation": fact["observation"], "source_fact_ids": fact["source_fact_ids"]}
+            for fact in row["semantic_facts"]
+        ]]
+        edges.append({
+            "group_id_a": pair[0], "group_id_b": pair[1],
+            "relationship": "same_object_view" if merge else SUPPORTING_RELATIONSHIP,
+            "evidence_facts": facts,
+            "commercial_inseparability": "V5 deterministic merge policy",
+            "dimension_similarity_score": row["dimension_score"],
+            "edge_score": edge_score,
+        })
+        audit.append({"group_id_a": pair[0], "group_id_b": pair[1], "dimension_similarity_score": row["dimension_score"], "edge_score": edge_score, "merge": merge})
+    return edges, {"edges": audit}
+
+
+def validate_detection_v5_final_result(
+    registry: dict[str, Any],
+    *,
+    visual_groups: list[dict[str, Any]],
+    graph_edges: list[dict[str, Any]],
+    source_facts: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Final V5 gate: ownership and accepted graph must be internally real.
+
+    This is deliberately an invariant check, not a second interpretation pass.
+    Weak or rejected facts never reach it; corrupt references stop File Review.
+    """
+    # The caller removes document_context before normalizing the visual map.
+    # At this final gate, every retained group is therefore object Evidence.
+    object_group_ids = {str(group.get("group_id") or "") for group in visual_groups}
+    validate_detection_registry(
+        registry,
+        visual_group_ids=object_group_ids,
+        object_evidence_group_ids=object_group_ids,
+    )
+    source_ids = {str(fact.get("fact_id") or "") for fact in source_facts}
+    for edge in graph_edges:
+        left = str(edge.get("group_id_a") or "")
+        right = str(edge.get("group_id_b") or "")
+        if left == right or left not in object_group_ids or right not in object_group_ids:
+            raise DetectionRegistrySchemaError("V5 graph has invalid endpoints")
+        if edge.get("relationship") not in {"same_object_view", SUPPORTING_RELATIONSHIP}:
+            raise DetectionRegistrySchemaError("V5 graph has invalid relationship")
+        facts = edge.get("evidence_facts")
+        if not isinstance(facts, list) or not facts:
+            raise DetectionRegistrySchemaError("V5 graph edge has no accepted evidence")
+        for fact in facts:
+            cited = fact.get("source_fact_ids") if isinstance(fact, dict) else None
+            if not isinstance(cited, list) or not set(map(str, cited)).issubset(source_ids):
+                raise DetectionRegistrySchemaError("V5 graph cites an unknown source fact")
+    return registry
+
+
+_V5_COMMON_DIMENSIONS_MM = frozenset({300, 400, 450, 500, 600, 800, 900, 1000, 1200})
+
+
+def compile_detection_v5_dimension_graph(
+    fingerprints: list[dict[str, Any]], *, visual_groups: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Score source-grounded dimension occurrences with the approved V5 formula."""
+    group_ids = {str(group.get("group_id") or "") for group in visual_groups}
+    occurrences = {
+        str(row.get("group_id") or ""): [item for item in row.get("occurrences") or [] if item.get("value_mm") is not None]
+        for row in fingerprints if str(row.get("group_id") or "") in group_ids
+    }
+    frequency: dict[Decimal, int] = {}
+    for values in occurrences.values():
+        for value in {Decimal(str(item["value_mm"])) for item in values}:
+            frequency[value] = frequency.get(value, 0) + 1
+
+    def size_points(value: Decimal) -> float:
+        if value < 100: return 2
+        if value < 600: return 5
+        if value < 1200: return 8
+        if value < 2200: return 14
+        return 20
+
+    def precision(left: Decimal, right: Decimal) -> float:
+        difference = abs(left - right)
+        if not difference: return 2.5
+        ratio = difference / max(left, right)
+        return 1.75 if ratio <= Decimal("0.01") else 1.0
+
+    def rarity(left: Decimal, right: Decimal) -> float:
+        count = max(frequency.get(left, 1), frequency.get(right, 1))
+        return 1.75 if count <= 2 else 1.25 if count <= 5 else 0.8
+
+    edges: list[dict[str, Any]] = []
+    candidates: list[dict[str, Any]] = []
+    for left_id, right_id in combinations(sorted(group_ids), 2):
+        raw_matches: list[tuple[dict[str, Any], dict[str, Any]]] = []
+        for left in occurrences.get(left_id, []):
+            for right in occurrences.get(right_id, []):
+                left_value, right_value = Decimal(str(left["value_mm"])), Decimal(str(right["value_mm"]))
+                if left_value <= 0 or right_value <= 0 or abs(left_value - right_value) / max(left_value, right_value) > Decimal("0.02"):
+                    continue
+                raw_matches.append((left, right))
+        raw_matches.sort(key=lambda pair: (abs(Decimal(str(pair[0]["value_mm"])) - Decimal(str(pair[1]["value_mm"]))), str(pair[0]["occurrence_id"]), str(pair[1]["occurrence_id"])))
+        used_left: set[str] = set()
+        used_right: set[str] = set()
+        used_left_slots: set[str] = set()
+        used_right_slots: set[str] = set()
+        matched: list[tuple[dict[str, Any], dict[str, Any]]] = []
+        for left, right in raw_matches:
+            left_slot = str(left.get("ambiguity_key") or left["occurrence_id"])
+            right_slot = str(right.get("ambiguity_key") or right["occurrence_id"])
+            if (
+                left["occurrence_id"] in used_left or right["occurrence_id"] in used_right
+                or left_slot in used_left_slots or right_slot in used_right_slots
+            ):
+                continue
+            used_left.add(left["occurrence_id"])
+            used_right.add(right["occurrence_id"])
+            used_left_slots.add(left_slot)
+            used_right_slots.add(right_slot)
+            matched.append((left, right))
+        by_value: dict[tuple[Decimal, Decimal], list[tuple[dict[str, Any], dict[str, Any]]]] = {}
+        for pair in matched:
+            key = (Decimal(str(pair[0]["value_mm"])), Decimal(str(pair[1]["value_mm"])))
+            by_value.setdefault(key, []).append(pair)
+        score = 0.0
+        facts: list[dict[str, Any]] = []
+        feature_rows: list[dict[str, Any]] = []
+        for (left_value, right_value), value_matches in sorted(by_value.items()):
+            count = len(value_matches)
+            occurrence_factor = 1.0 if count == 1 else 1.25 if count == 2 else 1.5 if count == 3 else 1.75
+            common_factor = 0.8 if int(min(left_value, right_value)) in _V5_COMMON_DIMENSIONS_MM else 1.0
+            points = size_points(min(left_value, right_value)) * precision(left_value, right_value) * rarity(left_value, right_value) * common_factor * occurrence_factor
+            score += points
+            fact_ids = sorted({fact_id for pair in value_matches for item in pair for fact_id in item["source_fact_ids"]})
+            observation = f"{left_value} mm matches {right_value} mm; {count} paired occurrence(s); {points:.2f} points."
+            facts.append({"evidence_type": "dimension_equality", "evidence_pages": [], "observation": observation, "source_fact_ids": fact_ids})
+            feature_rows.append({"left_mm": str(left_value), "right_mm": str(right_value), "matched_occurrences": count, "points": round(points, 3)})
+        score = round(min(100.0, score), 3)
+        candidate = {"group_id_a": left_id, "group_id_b": right_id, "dimension_similarity_score": score, "features": feature_rows}
+        candidates.append(candidate)
+        if score < 15:
+            continue
+        edges.append({"group_id_a": left_id, "group_id_b": right_id, "relationship": SUPPORTING_RELATIONSHIP, "evidence_facts": facts, "commercial_inseparability": "V5 dimension support", "dimension_similarity_score": score})
+    return edges, {"compiler_version": "v5_0_dimension_fingerprint", "dimension_similarity_candidates": candidates, "dimension_similarity_edges": [{key: row[key] for key in ("group_id_a", "group_id_b", "dimension_similarity_score")} for row in candidates if row["dimension_similarity_score"] >= 15]}
+
+
 def validate_detection_shared_reference_group_ids(
     group_ids: object,
     *,

@@ -99,22 +99,7 @@ def _visual_registry_payload(payload):
     return {
         "visual_groups": groups,
         "classifications": classifications,
-        "semantic_pairwise_ledger": copy.deepcopy(payload.get(
-            "semantic_pairwise_ledger",
-            [
-                {"group_id_a": left["group_id"], "group_id_b": right["group_id"],
-                 "checks": [
-                     {"evidence_type": evidence_type, "state": "absent", "observation": ""}
-                     for evidence_type in (
-                         "explicit_document_relation", "dimension_transform", "matching_topology",
-                         "unique_geometry", "direct_shared_structure",
-                     )
-                 ]}
-                for index, left in enumerate(groups) if isinstance(left, dict)
-                for right in groups[index + 1:] if isinstance(right, dict)
-                and left.get("page_number") == right.get("page_number")
-            ],
-        )),
+        "semantic_facts": copy.deepcopy(payload.get("semantic_facts", [])),
     }
 
 

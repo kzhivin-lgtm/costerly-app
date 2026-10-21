@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import copy
+from decimal import Decimal
 import html
 import hashlib
 import json
@@ -38,7 +39,10 @@ from agents.schemas.detection_registry_schema import (
     DetectionRegistrySchemaError,
     derive_detection_package_decision_audit,
     derive_detection_dimension_package_candidates,
-    compile_detection_semantic_pairwise_ledger,
+    compile_detection_v5_semantic_facts,
+    compile_detection_v5_merge_edges,
+    compile_detection_v5_dimension_graph,
+    validate_detection_v5_final_result,
     merge_detection_relation_edges,
     derive_detection_proof_components,
     derive_detection_standalone_package_group_ids,
@@ -68,11 +72,10 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_60_graph_safe_semantic_ledger_temperature_0"
+    "detection_v5_0_sparse_semantic_facts_temperature_0"
 )
-# V4.60 keeps one Haiku call. Registry identifies Islands, classes and a
-# complete same-page semantic ledger. Runtime owns dimension fingerprints,
-# similarity, graph union and candidate packages.
+# V5.0 keeps one Haiku call. Registry returns Islands, classifications, and
+# sparse positive semantic facts. Runtime owns every graph and package decision.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # The positive graph and per-group source index are linear in island count.
 DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
@@ -174,21 +177,17 @@ DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA: dict[str, Any] = {
         "properties": {"group_id": {"type": "string"},
             "evidence_class": {"type": "string", "enum": ["document_context", "object_evidence"]},
             "classification_reason": {"type": "string"}}}}
-DETECTION_SEMANTIC_PAIRWISE_LEDGER_SCHEMA: dict[str, Any] = {
+DETECTION_V5_SEMANTIC_FACTS_SCHEMA: dict[str, Any] = {
     "type": "array", "items": {"type": "object", "additionalProperties": False,
-        "required": ["group_id_a", "group_id_b", "checks"], "properties": {
+        "required": ["group_id_a", "group_id_b", "evidence_type", "strength", "observation", "source_fact_ids"], "properties": {
             "group_id_a": {"type": "string"}, "group_id_b": {"type": "string"},
-            "checks": {"type": "array", "items": {"type": "object",
-                "additionalProperties": False,
-                "required": ["evidence_type", "state", "observation"], "properties": {
-                    "evidence_type": {"type": "string", "enum": [
-                        "explicit_document_relation", "dimension_transform",
-                        "matching_topology", "unique_geometry", "direct_shared_structure",
-                    ]},
-                    "state": {"type": "string", "enum": ["present", "absent", "unknown"]},
-                    "observation": {"type": "string"},
-                }},
-            },
+            "evidence_type": {"type": "string", "enum": [
+                "explicit_document_relation", "dimension_transform",
+                "matching_topology", "unique_geometry", "direct_shared_structure",
+            ]},
+            "strength": {"type": "string", "enum": ["direct", "single_object_sheet", "standard"]},
+            "observation": {"type": "string"},
+            "source_fact_ids": {"type": "array", "items": {"type": "string"}},
         }},
 }
 
@@ -196,12 +195,12 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": [
-        "visual_groups", "classifications", "semantic_pairwise_ledger",
+        "visual_groups", "classifications", "semantic_facts",
     ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
-        "semantic_pairwise_ledger": DETECTION_SEMANTIC_PAIRWISE_LEDGER_SCHEMA,
+        "semantic_facts": DETECTION_V5_SEMANTIC_FACTS_SCHEMA,
     },
 }
 
@@ -1965,6 +1964,72 @@ def build_detection_dimension_fingerprints(
     return inventory
 
 
+_V5_DIMENSION_TEXT_RE = re.compile(
+    r"^\s*(?:[A-Za-z]+\s*=\s*)?(\d+(?:[.,]\d+)?)\s*(mm|cm|m)?\s*$",
+    re.IGNORECASE,
+)
+
+
+def build_detection_v5_dimension_fingerprints(
+    view_evidence_packages: list[dict[str, Any]], *, document_unit: str,
+) -> list[dict[str, Any]]:
+    """Create V5 occurrence fingerprints without chains or inferred W/D/H."""
+    conversion = {"mm": Decimal("1"), "cm": Decimal("10"), "m": Decimal("1000")}
+    bbox_keys = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
+    fingerprints: list[dict[str, Any]] = []
+    for package in view_evidence_packages:
+        bbox = package.get("bbox") or {}
+        width = bbox.get("bottom_right_x", 0) - bbox.get("top_left_x", 0)
+        height = bbox.get("bottom_right_y", 0) - bbox.get("top_left_y", 0)
+        occurrences: list[dict[str, Any]] = []
+        excluded: list[dict[str, str]] = []
+        if width <= 0 or height <= 0:
+            fingerprints.append({"group_id": str(package["visual_group_id"]), "occurrences": [], "excluded": [{"reason": "invalid_view_bbox"}]})
+            continue
+        for fact in package.get("source_facts") or []:
+            text = str(fact.get("text") or "").strip()
+            match = _V5_DIMENSION_TEXT_RE.match(text)
+            if not match:
+                continue
+            raw_value = Decimal(match.group(1).replace(",", "."))
+            explicit_unit = (match.group(2) or "").lower()
+            if explicit_unit:
+                value_mm = raw_value * conversion[explicit_unit]
+            elif raw_value > 600:
+                value_mm = raw_value
+            elif document_unit in conversion:
+                value_mm = raw_value * conversion[document_unit]
+            else:
+                excluded.append({"fact_id": str(fact.get("fact_id") or ""), "reason": "unresolved_unit"})
+                continue
+            fact_bbox = fact.get("bbox") or {}
+            if not all(isinstance(fact_bbox.get(key), (int, float)) for key in bbox_keys):
+                excluded.append({"fact_id": str(fact.get("fact_id") or ""), "reason": "invalid_fact_bbox"})
+                continue
+            normalized_bbox = {
+                "top_left_x": round((fact_bbox["top_left_x"] - bbox["top_left_x"]) / width, 6),
+                "top_left_y": round((fact_bbox["top_left_y"] - bbox["top_left_y"]) / height, 6),
+                "bottom_right_x": round((fact_bbox["bottom_right_x"] - bbox["top_left_x"]) / width, 6),
+                "bottom_right_y": round((fact_bbox["bottom_right_y"] - bbox["top_left_y"]) / height, 6),
+            }
+            candidate = {"value_mm": str(value_mm), "original_text": text, "source_fact_ids": [str(fact["fact_id"])], "normalized_bbox": normalized_bbox}
+            centre = ((normalized_bbox["top_left_x"] + normalized_bbox["bottom_right_x"]) / 2, (normalized_bbox["top_left_y"] + normalized_bbox["bottom_right_y"]) / 2)
+            merged = next((item for item in occurrences if item["value_mm"] == candidate["value_mm"] and abs(item["centre"][0] - centre[0]) <= 0.025 and abs(item["centre"][1] - centre[1]) <= 0.025), None)
+            if merged:
+                merged["source_fact_ids"].extend(candidate["source_fact_ids"])
+                continue
+            candidate["centre"] = centre
+            # OCR providers can disagree on one printed reading.  The same
+            # local slot is an alternative, never two independent matches.
+            candidate["ambiguity_key"] = f"{package['visual_group_id']}:{round(centre[0] / 0.025)}:{round(centre[1] / 0.025)}"
+            occurrences.append(candidate)
+        for index, occurrence in enumerate(occurrences, start=1):
+            occurrence["occurrence_id"] = f"{package['visual_group_id']}-D{index:03d}"
+            occurrence.pop("centre")
+        fingerprints.append({"group_id": str(package["visual_group_id"]), "occurrences": occurrences, "excluded": excluded})
+    return fingerprints
+
+
 def build_detection_view_dimension_audit(
     view_evidence_packages: list[dict[str, Any]],
     dimension_inventory: list[dict[str, Any]],
@@ -2058,10 +2123,10 @@ def _discard_non_object_visual_registry_groups(
             if not isinstance(row, dict)
             or str(row.get("group_id") or "") in retained_group_ids
         ]
-    semantic_ledger = effective.get("semantic_pairwise_ledger")
-    if isinstance(semantic_ledger, list):
-        effective["semantic_pairwise_ledger"] = [
-            row for row in semantic_ledger
+    semantic_facts = effective.get("semantic_facts")
+    if isinstance(semantic_facts, list):
+        effective["semantic_facts"] = [
+            row for row in semantic_facts
             if not isinstance(row, dict)
             or (
                 str(row.get("group_id_a") or "") in retained_group_ids
@@ -2139,10 +2204,10 @@ def _discard_empty_evidence_visual_registry_groups(
                 if not isinstance(row, dict)
                 or str(row.get("group_id") or "") not in raw_group_ids
             ]
-    ledger = effective.get("semantic_pairwise_ledger")
-    if isinstance(ledger, list):
-        effective["semantic_pairwise_ledger"] = [
-            row for row in ledger
+    semantic_facts = effective.get("semantic_facts")
+    if isinstance(semantic_facts, list):
+        effective["semantic_facts"] = [
+            row for row in semantic_facts
             if not isinstance(row, dict)
             or (
                 str(row.get("group_id_a") or "") not in raw_group_ids
@@ -2403,10 +2468,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 _discard_non_object_visual_registry_groups(payload)
             )
         if not isinstance(payload, dict) or set(payload) != {
-            "visual_groups", "classifications", "semantic_pairwise_ledger",
+            "visual_groups", "classifications", "semantic_facts",
         }:
             raise ValueError(
-                "visual registry must contain visual groups, classifications and semantic ledger"
+                "visual registry must contain visual groups, classifications and semantic facts"
             )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
@@ -2473,85 +2538,40 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         page_local_view_labels = assign_detection_page_local_view_labels(
             view_evidence_packages
         )
-        for row in payload["semantic_pairwise_ledger"]:
+        for row in payload["semantic_facts"]:
             if isinstance(row, dict):
                 row["group_id_a"] = group_id_mapping.get(str(row.get("group_id_a") or ""), str(row.get("group_id_a") or ""))
                 row["group_id_b"] = group_id_mapping.get(str(row.get("group_id_b") or ""), str(row.get("group_id_b") or ""))
-        payload["dimension_inventory"] = build_detection_dimension_fingerprints(
-            view_evidence_packages
-        )
-        source_fact_ids_by_group = {
-            str(package["visual_group_id"]): list(package["source_fact_ids"])
-            for package in view_evidence_packages
-        }
-        (
-            payload["dimension_inventory"], empty_envelope_chain_group_ids,
-        ) = normalize_empty_detection_envelope_chains(payload["dimension_inventory"])
-        try:
-            dimension_inventory_audit = validate_detection_dimension_inventory(
-                payload["dimension_inventory"], visual_group_ids=visual_group_ids,
-                source_fact_ids_by_group=source_fact_ids_by_group,
-            )
-            dimension_inventory_valid = True
-        except DetectionRegistrySchemaError as inventory_error:
-            # The index improves graph recall but never decides a boundary.
-            # A malformed row must not discard independently proven packages.
-            dimension_inventory_error = str(inventory_error)
-        island_dimension_comparison_audit = build_detection_view_dimension_audit(
+        payload["dimension_inventory"] = build_detection_v5_dimension_fingerprints(
             view_evidence_packages,
-            dimension_inventory_audit if dimension_inventory_valid else [],
+            document_unit=str(document_dimension_unit_profile.get("unit") or "unknown"),
         )
+        dimension_inventory_audit = payload["dimension_inventory"]
+        dimension_inventory_valid = True
+        island_dimension_comparison_audit = []
         page_drawing_codes = extract_detection_page_drawing_codes(ocr_package)
-        if dimension_inventory_valid:
-            dimension_relation_edges, dimension_conflicts, dimension_graph_audit = (
-                compile_detection_dimension_graph(
-                    dimension_inventory_audit,
-                    visual_groups=visual_map["visual_groups"],
-                    page_drawing_codes=page_drawing_codes,
-                    document_dimension_unit=str(
-                        document_dimension_unit_profile.get("unit") or "unknown"
-                    ),
-                )
-            )
-            dimension_graph_audit["empty_envelope_chain_group_ids"] = (
-                empty_envelope_chain_group_ids
-            )
-        else:
-            dimension_relation_edges = []
-            dimension_graph_audit = {
-                "compiler_version": "v1",
-                "pairs_checked": 0,
-                "document_dimension_unit": str(
-                    document_dimension_unit_profile.get("unit") or "unknown"
-                ),
-                "page_drawing_codes": {
-                    str(page_number): code
-                    for page_number, code in sorted(page_drawing_codes.items())
-                },
-                "dimension_equality_fact_count": 0,
-                "source_root_merge_edge_count": 0,
-                "source_root_conflict_exclusion_count": 0,
-                "dimension_conflicts": [],
-                "skipped_reason": "dimension inventory is invalid",
-            }
-        semantic_relation_edges, semantic_ledger_audit = compile_detection_semantic_pairwise_ledger(
-            payload["semantic_pairwise_ledger"],
-            visual_groups=visual_map["visual_groups"], page_count=len(page_images),
-            page_drawing_codes=page_drawing_codes,
+        dimension_relation_edges, dimension_graph_audit = compile_detection_v5_dimension_graph(
+            dimension_inventory_audit, visual_groups=visual_map["visual_groups"],
         )
-        compiled_relation_edges = merge_detection_relation_edges(
-            dimension_relation_edges, semantic_relation_edges,
+        # Title-block codes remain naming metadata only.  Retain this audit
+        # trail to prove they never become identity edges.
+        dimension_graph_audit.update({
+            "page_drawing_codes": {str(page): code for page, code in page_drawing_codes.items()},
+            "source_root_merge_edge_count": 0,
+        })
+        accepted_semantic_facts, semantic_ledger_audit = compile_detection_v5_semantic_facts(
+            payload["semantic_facts"],
+            visual_groups=visual_map["visual_groups"], source_facts=source_facts,
         )
-        (
-            positive_relation_edges,
-            accepted_merge_edges,
-            reference_links,
-            rejected_relation_candidates,
-        ) = partition_detection_relation_edges(
-            compiled_relation_edges,
-            visual_group_ids=visual_group_ids,
-            page_count=len(page_images),
+        positive_relation_edges, v5_merge_audit = compile_detection_v5_merge_edges(
+            dimension_relation_edges, accepted_semantic_facts,
         )
+        accepted_merge_edges = [
+            edge for edge in positive_relation_edges
+            if edge["relationship"] == "same_object_view"
+        ]
+        reference_links = []
+        rejected_relation_candidates = list(semantic_ledger_audit["rejected"])
         dimension_package_candidate_components = (
             derive_detection_dimension_package_candidates(
                 positive_relation_edges, visual_group_ids=visual_group_ids,
@@ -2640,6 +2660,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             registry_payload,
             visual_group_ids=visual_group_ids,
             object_evidence_group_ids=visual_group_ids,
+        )
+        registry = validate_detection_v5_final_result(
+            registry,
+            visual_groups=visual_map["visual_groups"],
+            graph_edges=positive_relation_edges,
+            source_facts=source_facts,
         )
     except (KeyError, ValueError) as exc:
         failure_diagnostics = dict(diagnostics)
