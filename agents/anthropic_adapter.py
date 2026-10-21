@@ -44,6 +44,7 @@ from agents.schemas.detection_registry_schema import (
     DetectionRegistrySchemaError,
     derive_detection_package_decision_audit,
     derive_detection_dimension_package_candidates,
+    compile_detection_v5_object_hypotheses,
     compile_detection_v5_semantic_facts,
     compile_detection_v5_merge_edges,
     compile_detection_v5_dimension_graph,
@@ -77,7 +78,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v5_3_candidate_region_dimension_q_temperature_0"
+    "detection_v5_6_v4_membership_first_single_call_temperature_0"
 )
 # V5.0 keeps one Haiku call. Registry returns Islands, classifications, and
 # sparse positive semantic facts. Runtime owns every graph and package decision.
@@ -183,7 +184,7 @@ DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA: dict[str, Any] = {
             "evidence_class": {"type": "string", "enum": ["document_context", "object_evidence"]},
             "classification_reason": {"type": "string"}}}}
 DETECTION_V5_SEMANTIC_FACTS_SCHEMA: dict[str, Any] = {
-    "type": "array", "items": {"type": "object", "additionalProperties": False,
+    "type": "array", "maxItems": 48, "items": {"type": "object", "additionalProperties": False,
         "required": ["group_id_a", "group_id_b", "evidence_type", "strength", "observation", "source_fact_ids"], "properties": {
             "group_id_a": {"type": "string"}, "group_id_b": {"type": "string"},
             "evidence_type": {"type": "string", "enum": [
@@ -191,8 +192,8 @@ DETECTION_V5_SEMANTIC_FACTS_SCHEMA: dict[str, Any] = {
                 "matching_topology", "unique_geometry", "direct_shared_structure",
             ]},
             "strength": {"type": "string", "enum": ["direct", "single_object_sheet", "standard"]},
-            "observation": {"type": "string"},
-            "source_fact_ids": {"type": "array", "items": {"type": "string"}},
+            "observation": {"type": "string", "maxLength": 180},
+            "source_fact_ids": {"type": "array", "maxItems": 2, "items": {"type": "string"}},
         }},
 }
 DETECTION_V5_CANDIDATE_REGION_EXCEPTIONS_SCHEMA: dict[str, Any] = {
@@ -202,15 +203,33 @@ DETECTION_V5_CANDIDATE_REGION_EXCEPTIONS_SCHEMA: dict[str, Any] = {
             "reason": {"type": "string"},
         }}}
 
+DETECTION_V5_OBJECT_HYPOTHESES_SCHEMA: dict[str, Any] = {
+    "type": "array", "maxItems": 24,
+    "items": {"type": "object", "additionalProperties": False,
+        "required": ["group_ids", "hypothesis_reason", "evidence"], "properties": {
+            "group_ids": {"type": "array", "minItems": 2, "items": {"type": "string"}},
+            "hypothesis_reason": {"type": "string", "maxLength": 180},
+            "evidence": {"type": "array", "minItems": 1, "maxItems": 3,
+                "items": {"type": "object", "additionalProperties": False,
+                    "required": ["evidence_type", "strength", "observation", "source_fact_ids"],
+                    "properties": {
+                        "evidence_type": {"type": "string", "enum": ["explicit_document_relation", "matching_topology", "unique_geometry", "direct_shared_structure"]},
+                        "strength": {"type": "string", "enum": ["direct", "single_object_sheet", "standard"]},
+                        "observation": {"type": "string", "maxLength": 180},
+                        "source_fact_ids": {"type": "array", "maxItems": 2, "items": {"type": "string"}},
+                    }}},
+        }}}
+
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": [
-        "visual_groups", "classifications", "candidate_region_exceptions", "semantic_facts",
+        "visual_groups", "classifications", "object_hypotheses", "candidate_region_exceptions", "semantic_facts",
     ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
+        "object_hypotheses": DETECTION_V5_OBJECT_HYPOTHESES_SCHEMA,
         "candidate_region_exceptions": DETECTION_V5_CANDIDATE_REGION_EXCEPTIONS_SCHEMA,
         "semantic_facts": DETECTION_V5_SEMANTIC_FACTS_SCHEMA,
     },
@@ -1883,7 +1902,8 @@ def map_detection_candidate_q_pairs_to_islands(
     candidate_regions: list[dict[str, Any]],
     group_bboxes: dict[str, dict[str, int]],
     page_by_group_id: dict[str, int],
-) -> set[tuple[str, str]]:
+    include_audit: bool = False,
+) -> set[tuple[str, str]] | tuple[set[tuple[str, str]], list[dict[str, Any]]]:
     """Map pre-Registry Q endpoints onto the retained final Island IDs.
 
     Q is created from Fusion regions before Registry sees the page.  Registry
@@ -1909,15 +1929,32 @@ def map_detection_candidate_q_pairs_to_islands(
         }
 
     allowed: set[tuple[str, str]] = set()
+    audit: list[dict[str, Any]] = []
     for row in candidate_pairs:
         if not isinstance(row, dict):
             continue
-        left = mapped_groups(str(row.get("group_id_a") or ""))
-        right = mapped_groups(str(row.get("group_id_b") or ""))
-        for left_id in left:
-            for right_id in right:
-                if left_id != right_id:
-                    allowed.add(tuple(sorted((left_id, right_id))))
+        left_candidate_id = str(row.get("group_id_a") or "")
+        right_candidate_id = str(row.get("group_id_b") or "")
+        left = mapped_groups(left_candidate_id)
+        right = mapped_groups(right_candidate_id)
+        mapped_pairs = {
+            tuple(sorted((left_id, right_id)))
+            for left_id in left for right_id in right if left_id != right_id
+        }
+        audit.append({
+            "candidate_group_id_a": left_candidate_id,
+            "candidate_group_id_b": right_candidate_id,
+            "mapped_group_ids_a": sorted(left),
+            "mapped_group_ids_b": sorted(right),
+            "mapped_final_pair_count": len(mapped_pairs),
+            "mapped_final_pairs": [
+                {"group_id_a": pair[0], "group_id_b": pair[1]}
+                for pair in sorted(mapped_pairs)
+            ],
+        })
+        allowed.update(mapped_pairs)
+    if include_audit:
+        return allowed, audit
     return allowed
 
 
@@ -2550,6 +2587,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     candidate_pair_queue = list(
         candidate_dimension_audit.get("dimension_similarity_candidates") or []
     )
+    candidate_dimension_baskets = list(
+        candidate_dimension_audit.get("provisional_components") or []
+    )
     candidate_region_audit: list[dict[str, Any]] = []
     page_evidence_inventory_text = format_detection_page_evidence_inventory(
         source_facts
@@ -2565,7 +2605,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         candidate_regions
     )
     user_text += "\n\n" + format_detection_candidate_pair_queue(
-        candidate_pair_queue
+        candidate_pair_queue, candidate_dimension_baskets,
     )
     user_text += "\n\n" + format_detection_document_dimension_unit_profile(
         document_dimension_unit_profile
@@ -2592,6 +2632,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     )
     diagnostics["fusion_candidate_region_count"] = len(candidate_regions)
     diagnostics["candidate_pair_queue_count"] = len(candidate_pair_queue)
+    diagnostics["candidate_dimension_basket_count"] = len(candidate_dimension_baskets)
     diagnostics["candidate_dimension_unit"] = candidate_unit
     diagnostics["candidate_dimension_unit_reason"] = candidate_unit_reason
     diagnostics["rendered_page_image_bytes"] = sum(len(image) for image in page_images)
@@ -2695,10 +2736,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 _discard_non_object_visual_registry_groups(payload)
             )
         if not isinstance(payload, dict) or set(payload) != {
-            "visual_groups", "classifications", "candidate_region_exceptions", "semantic_facts",
+            "visual_groups", "classifications", "object_hypotheses", "candidate_region_exceptions", "semantic_facts",
         }:
             raise ValueError(
-                "visual registry must contain visual groups, classifications and semantic facts"
+                "visual registry must contain visual groups, classifications, hypotheses and semantic facts"
             )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
@@ -2725,11 +2766,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             str(group["group_id"]): int(group["page_number"])
             for group in visual_map["visual_groups"]
         }
-        candidate_q_final_pairs = map_detection_candidate_q_pairs_to_islands(
+        candidate_q_final_pairs, candidate_q_mapping_audit = map_detection_candidate_q_pairs_to_islands(
             candidate_pair_queue,
             candidate_regions=candidate_regions,
             group_bboxes=group_bboxes,
             page_by_group_id=page_by_group_id,
+            include_audit=True,
         )
         visual_group_ids = {
             group["group_id"] for group in visual_map["visual_groups"]
@@ -2741,21 +2783,32 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         page_local_view_labels = assign_detection_page_local_view_labels(
             view_evidence_packages
         )
-        q_rejected_semantic_facts: list[dict[str, Any]] = []
-        q_semantic_facts: list[dict[str, Any]] = []
-        for index, row in enumerate(payload["semantic_facts"]):
-            if isinstance(row, dict):
-                row["group_id_a"] = group_id_mapping.get(str(row.get("group_id_a") or ""), str(row.get("group_id_a") or ""))
-                row["group_id_b"] = group_id_mapping.get(str(row.get("group_id_b") or ""), str(row.get("group_id_b") or ""))
-                pair = tuple(sorted((str(row["group_id_a"]), str(row["group_id_b"]))))
-                if pair in candidate_q_final_pairs:
-                    q_semantic_facts.append(row)
-                else:
-                    q_rejected_semantic_facts.append({
-                        "index": index,
-                        "reason": "semantic_fact_outside_candidate_pair_queue",
-                        "group_id_a": pair[0],
-                        "group_id_b": pair[1],
+        normalized_hypotheses = []
+        for hypothesis in payload["object_hypotheses"]:
+            if isinstance(hypothesis, dict) and isinstance(hypothesis.get("group_ids"), list):
+                hypothesis = copy.deepcopy(hypothesis)
+                hypothesis["group_ids"] = [
+                    group_id_mapping.get(str(group_id or ""), str(group_id or ""))
+                    for group_id in hypothesis["group_ids"]
+                ]
+            normalized_hypotheses.append(hypothesis)
+        accepted_hypotheses, object_hypothesis_audit = compile_detection_v5_object_hypotheses(
+            normalized_hypotheses, visual_groups=semantic_validation_groups,
+        )
+        semantic_facts_outside_dimension_queue: list[dict[str, Any]] = []
+        semantic_facts: list[dict[str, Any]] = []
+        for hypothesis in accepted_hypotheses:
+            root, *members = hypothesis["group_ids"]
+            for member in members:
+                pair = tuple(sorted((root, member)))
+                for evidence in hypothesis["evidence"]:
+                    semantic_facts.append({
+                        "group_id_a": pair[0], "group_id_b": pair[1], **evidence,
+                    })
+                if pair not in candidate_q_final_pairs:
+                    semantic_facts_outside_dimension_queue.append({
+                        "reason": "derived_semantic_fact_outside_dimension_queue_accepted",
+                        "group_id_a": pair[0], "group_id_b": pair[1],
                     })
         effective_dimension_unit, dimension_unit_reason = infer_detection_v5_bare_dimension_unit(
             view_evidence_packages,
@@ -2784,16 +2837,21 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "source_root_merge_edge_count": 0,
             "candidate_pair_queue_count": len(candidate_pair_queue),
             "candidate_pair_queue_final_pair_count": len(candidate_q_final_pairs),
+            "candidate_pair_queue_mapping_audit": candidate_q_mapping_audit,
             "candidate_pair_queue_final_pairs": [
                 {"group_id_a": pair[0], "group_id_b": pair[1]}
                 for pair in sorted(candidate_q_final_pairs)
             ],
         })
         accepted_semantic_facts, semantic_ledger_audit = compile_detection_v5_semantic_facts(
-            q_semantic_facts,
+            semantic_facts,
             visual_groups=semantic_validation_groups, source_facts=source_facts,
         )
-        semantic_ledger_audit["rejected"].extend(q_rejected_semantic_facts)
+        semantic_ledger_audit["outside_dimension_queue"] = semantic_facts_outside_dimension_queue
+        semantic_ledger_audit["rejected"].extend(
+            object_hypothesis_audit["rejected"]
+        )
+        semantic_ledger_audit["object_hypotheses"] = object_hypothesis_audit
         positive_relation_edges, v5_merge_audit = compile_detection_v5_merge_edges(
             dimension_relation_edges, accepted_semantic_facts,
             visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,

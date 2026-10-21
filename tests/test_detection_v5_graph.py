@@ -1,6 +1,7 @@
 from agents.schemas.detection_registry_schema import (
     compile_detection_v5_dimension_graph,
     compile_detection_v5_merge_edges,
+    compile_detection_v5_object_hypotheses,
     compile_detection_v5_semantic_facts,
     validate_detection_v5_final_result,
 )
@@ -59,8 +60,8 @@ def test_v5_dimension_queue_closes_only_a_component_created_by_first_links():
     ], visual_groups=views)
     assert [(edge["group_id_a"], edge["group_id_b"], edge["cycle"]) for edge in edges] == [
         ("view-001", "view-002", "discovery"),
-        ("view-001", "view-003", "discovery"),
-        ("view-002", "view-003", "closure"),
+        ("view-002", "view-003", "discovery"),
+        ("view-001", "view-003", "closure"),
     ]
     assert audit["dimension_edge_threshold"] == 25.0
     assert audit["compiler_version"] == "v5_2_two_cycle_dimension_queue_threshold_25"
@@ -113,6 +114,23 @@ def test_v5_generic_semantic_fact_is_rejected_without_stopping_graph():
     assert audit["rejected"][0]["reason"] == "generic_observation"
 
 
+def test_v5_object_hypothesis_requires_distinct_non_overlapping_object_views():
+    accepted, audit = compile_detection_v5_object_hypotheses([
+        {"group_ids": ["view-001", "view-002"], "hypothesis_reason": "One cabinet in two projections.", "evidence": [{"evidence_type": "matching_topology"}]},
+        {"group_ids": ["view-002", "view-003"], "hypothesis_reason": "Overlapping proposal.", "evidence": [{"evidence_type": "matching_topology"}]},
+    ], visual_groups=[*VIEWS, {"group_id": "view-003", "evidence_class": "object_evidence"}])
+    assert accepted[0]["group_ids"] == ["view-001", "view-002"]
+    assert audit["rejected"][0]["reason"] == "object_hypothesis_overlaps"
+
+
+def test_v5_direct_shared_structure_cannot_be_generic_material_or_hardware():
+    accepted, audit = compile_detection_v5_semantic_facts([
+        {"group_id_a": "view-001", "group_id_b": "view-002", "evidence_type": "direct_shared_structure", "strength": "standard", "observation": "Both use the same material and hardware specification.", "source_fact_ids": []},
+    ], visual_groups=VIEWS, source_facts=[])
+    assert accepted == []
+    assert audit["rejected"][0]["reason"] == "direct_shared_structure_is_generic_specification"
+
+
 def test_v5_concrete_topology_is_not_rejected_for_saying_both_elevations():
     accepted, audit = compile_detection_v5_semantic_facts([
         {"group_id_a": "view-001", "group_id_b": "view-002", "evidence_type": "matching_topology", "strength": "standard", "observation": "Both elevations share a 358mm width and the same two-bay carcass.", "source_fact_ids": []},
@@ -141,6 +159,16 @@ def test_v5_standard_document_relation_is_identity_support_not_an_extra_weight()
     }])
     assert edges[0]["edge_score"] == 0
     assert edges[0]["relationship"] == "supporting_relation"
+
+
+def test_v5_two_independent_semantic_facts_merge_without_dimension_overlap():
+    facts = [
+        {"group_id_a": "view-001", "group_id_b": "view-002", "evidence_type": "matching_topology", "strength": "standard", "observation": "The same three-bay carcass and door order recur.", "source_fact_ids": []},
+        {"group_id_a": "view-001", "group_id_b": "view-002", "evidence_type": "unique_geometry", "strength": "standard", "observation": "The same offset circular cut-out and handle layout recur.", "source_fact_ids": []},
+    ]
+    edges, audit = compile_detection_v5_merge_edges([], facts, visual_groups=VIEWS)
+    assert edges[0]["relationship"] == "same_object_view"
+    assert audit["compiler_version"] == "v5_5_global_semantic_proof_forest"
 
 
 def test_v5_progressive_merge_queue_skips_redundant_internal_pair():

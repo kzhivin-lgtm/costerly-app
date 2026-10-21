@@ -1615,6 +1615,11 @@ _V5_GENERIC_SEMANTIC_RE = re.compile(
     re.IGNORECASE,
 )
 _V5_HARD_GENERIC_SEMANTIC_RE = re.compile(r"\bsame h\s*=?\s*60\b", re.IGNORECASE)
+_V5_NON_SHARED_STRUCTURE_RE = re.compile(
+    r"\b(same|identical|matching)\s+(material|profile|hardware|specification|construction)|"
+    r"\b(material|hardware)\s+specifications?\b",
+    re.IGNORECASE,
+)
 _V5_CONCRETE_SEMANTIC_RE = re.compile(
     r"\d|\b(carcass|bay|door|drawer|shelf|panel|track|frame|"
     r"compartment|sequence|component|dimension|reference|callout|boundary)\b",
@@ -1626,6 +1631,40 @@ _V5_SEMANTIC_POINTS = {
     "unique_geometry": 30,
     "direct_shared_structure": 20,
 }
+
+
+def compile_detection_v5_object_hypotheses(
+    hypotheses: object,
+    *,
+    visual_groups: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Keep non-overlapping multi-View Registry hypotheses as a semantic search boundary."""
+    object_group_ids = {
+        str(group.get("group_id") or "") for group in visual_groups
+        if group.get("evidence_class") == "object_evidence"
+    }
+    accepted: list[dict[str, Any]] = []
+    rejected: list[dict[str, Any]] = []
+    claimed: set[str] = set()
+    if not isinstance(hypotheses, list):
+        return [], {"accepted": [], "rejected": [{"reason": "object_hypotheses_not_list"}]}
+    for index, raw in enumerate(hypotheses):
+        if not isinstance(raw, dict) or set(raw) != {"group_ids", "hypothesis_reason", "evidence"}:
+            rejected.append({"index": index, "reason": "object_hypothesis_fields_invalid"})
+            continue
+        group_ids = sorted({str(group_id or "") for group_id in raw["group_ids"]}) if isinstance(raw["group_ids"], list) else []
+        reason = str(raw["hypothesis_reason"] or "").strip()
+        evidence = raw["evidence"] if isinstance(raw["evidence"], list) else []
+        if len(group_ids) < 2 or not reason or not evidence or not set(group_ids).issubset(object_group_ids):
+            rejected.append({"index": index, "reason": "object_hypothesis_members_invalid"})
+            continue
+        overlap = sorted(set(group_ids).intersection(claimed))
+        if overlap:
+            rejected.append({"index": index, "reason": "object_hypothesis_overlaps", "group_ids": overlap})
+            continue
+        claimed.update(group_ids)
+        accepted.append({"group_ids": group_ids, "hypothesis_reason": reason, "evidence": evidence})
+    return accepted, {"accepted": accepted, "rejected": rejected}
 
 
 def compile_detection_v5_semantic_facts(
@@ -1667,6 +1706,9 @@ def compile_detection_v5_semantic_facts(
         if kind != "explicit_document_relation" and strength != "standard":
             rejected.append({"index": index, "reason": "non_document_relation_requires_standard_strength"})
             continue
+        if kind == "direct_shared_structure" and _V5_NON_SHARED_STRUCTURE_RE.search(observation):
+            rejected.append({"index": index, "reason": "direct_shared_structure_is_generic_specification"})
+            continue
         if _V5_HARD_GENERIC_SEMANTIC_RE.search(observation) or (
             _V5_GENERIC_SEMANTIC_RE.search(observation)
             and not _V5_CONCRETE_SEMANTIC_RE.search(observation)
@@ -1701,7 +1743,7 @@ def compile_detection_v5_merge_edges(
     visual_groups: list[dict[str, Any]] | None = None,
     group_bboxes: dict[str, dict[str, float]] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Merge only pairs that already have Q-backed evidence."""
+    """Merge from a minimal semantic proof forest plus deterministic Dimensions."""
     by_pair: dict[tuple[str, str], dict[str, Any]] = {}
     for edge in dimension_edges:
         pair = (str(edge["group_id_a"]), str(edge["group_id_b"]))
@@ -1765,9 +1807,14 @@ def compile_detection_v5_merge_edges(
             for fact in row["semantic_facts"]
         )
         edge_score = min(100.0, row["dimension_score"] + semantic_points)
-        identity_fact = bool(kinds.intersection({"explicit_document_relation", "matching_topology", "unique_geometry"}))
+        identity_fact = bool(kinds.intersection({
+            "explicit_document_relation", "matching_topology", "unique_geometry",
+            "direct_shared_structure",
+        }))
+        semantic_proof = len(kinds) >= 2 and identity_fact
         merge = (
             direct_label
+            or semantic_proof
             or (row["dimension_score"] >= 85 and bool(kinds))
             or (edge_score >= 100 and identity_fact)
         )
@@ -1789,8 +1836,45 @@ def compile_detection_v5_merge_edges(
         audit.append({"group_id_a": pair[0], "group_id_b": pair[1], "dimension_similarity_score": row["dimension_score"], "edge_score": edge_score, "merge": merge})
         if merge:
             components[root(pair[1])] = root(pair[0])
+
+    # Grow a confirmed package through existing same-page Q support. This is
+    # the deterministic one-to-batch step: no new pair is searched and a
+    # cross-page edge can never be promoted here.
+    confirmed_roots = {
+        root(str(edge["group_id_a"])) for edge in edges
+        if edge["relationship"] == "same_object_view"
+    }
+    changed = True
+    while changed:
+        changed = False
+        for edge in edges:
+            if edge["relationship"] == "same_object_view" or not edge["same_page"]:
+                continue
+            left_root, right_root = root(str(edge["group_id_a"])), root(str(edge["group_id_b"]))
+            if left_root == right_root:
+                continue
+            anchored = left_root in confirmed_roots or right_root in confirmed_roots
+            semantic_support = any(
+                fact.get("evidence_type") != "dimension_equality"
+                for fact in edge["evidence_facts"]
+            )
+            if not anchored or (edge["dimension_similarity_score"] < 40 and not semantic_support):
+                continue
+            components[right_root] = left_root
+            confirmed_roots.discard(right_root)
+            confirmed_roots.add(left_root)
+            edge["relationship"] = "same_object_view"
+            edge["commercial_inseparability"] = "V5 deterministic batch confirmation"
+            audit.append({
+                "group_id_a": edge["group_id_a"], "group_id_b": edge["group_id_b"],
+                "dimension_similarity_score": edge["dimension_similarity_score"],
+                "edge_score": edge["edge_score"], "merge": True,
+                "batch_confirmation": True,
+            })
+            changed = True
+
     return edges, {
-        "compiler_version": "v5_3_q_edges_only_merge",
+        "compiler_version": "v5_5_global_semantic_proof_forest",
         "candidate_order": [{"group_id_a": pair[0], "group_id_b": pair[1]} for pair in sorted(candidate_pairs, key=candidate_key)],
         "edges": audit,
     }
@@ -1959,7 +2043,13 @@ def compile_detection_v5_dimension_graph(
     edges: list[dict[str, Any]] = []
     candidates: list[dict[str, Any]] = []
     evaluated_pairs: set[tuple[str, str]] = set()
-    target_group_ids: set[str] = set()
+    discovery_parents: dict[str, str] = {group_id: group_id for group_id in group_ids}
+
+    def discovery_root(group_id: str) -> str:
+        while discovery_parents[group_id] != group_id:
+            discovery_parents[group_id] = discovery_parents[discovery_parents[group_id]]
+            group_id = discovery_parents[group_id]
+        return group_id
 
     def record_pair(left_id: str, right_id: str, *, cycle: str) -> float:
         score, facts, feature_rows = score_pair(left_id, right_id)
@@ -1994,12 +2084,14 @@ def compile_detection_v5_dimension_graph(
             evaluated_pairs.add(pair)
             record_pair(left_id, right_id, cycle="q_revalidation")
     else:
-        # Cycle one: a target can be reused, but never initiates another search.
-        # That creates local stars such as 1--3 and 2--3 without a global graph.
+        # Cycle one is page-local. Every candidate may become a seed, allowing
+        # a semantic bridge between two initially separate Dimension pairs.
+        # A cross-page match is allowed only for an otherwise isolated View and
+        # never grows a local closure component.
         for seed in sorted(group_ids):
-            if seed in target_group_ids:
-                continue
-            for target in sorted((group_id for group_id in group_ids if group_id != seed), key=lambda group_id: candidate_key(seed, group_id)):
+            for target in sorted((group_id for group_id in group_ids if group_id != seed and page(group_id) == page(seed)), key=lambda group_id: candidate_key(seed, group_id)):
+                if discovery_root(seed) == discovery_root(target):
+                    continue
                 left_id, right_id = sorted((seed, target))
                 pair = (left_id, right_id)
                 if pair in evaluated_pairs:
@@ -2008,8 +2100,20 @@ def compile_detection_v5_dimension_graph(
                 score = record_pair(left_id, right_id, cycle="discovery")
                 if score < threshold:
                     continue
-                target_group_ids.add(target)
+                discovery_parents[discovery_root(target)] = discovery_root(seed)
                 break
+        for seed in sorted(group_ids):
+            if discovery_root(seed) != seed:
+                continue
+            for target in sorted((group_id for group_id in group_ids if page(group_id) != page(seed)), key=lambda group_id: candidate_key(seed, group_id)):
+                left_id, right_id = sorted((seed, target))
+                pair = (left_id, right_id)
+                if pair in evaluated_pairs:
+                    continue
+                evaluated_pairs.add(pair)
+                score = record_pair(left_id, right_id, cycle="cross_page_discovery")
+                if score >= 85:
+                    break
 
     parents: dict[str, str] = {group_id: group_id for group_id in group_ids}
 
@@ -2020,7 +2124,8 @@ def compile_detection_v5_dimension_graph(
         return group_id
 
     for edge in edges:
-        parents[root(str(edge["group_id_b"]))] = root(str(edge["group_id_a"]))
+        if edge["same_page"]:
+            parents[root(str(edge["group_id_b"]))] = root(str(edge["group_id_a"]))
     provisional_components: dict[str, list[str]] = {}
     for group_id in sorted(group_ids):
         provisional_components.setdefault(root(group_id), []).append(group_id)

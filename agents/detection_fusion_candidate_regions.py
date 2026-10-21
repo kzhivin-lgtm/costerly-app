@@ -104,6 +104,7 @@ def format_detection_fusion_candidate_regions(
 
 def format_detection_candidate_pair_queue(
     candidates: list[dict[str, Any]],
+    baskets: list[list[str]] | None = None,
 ) -> str:
     """Format deterministic proto-region comparisons for the Registry call.
 
@@ -124,4 +125,7 @@ def format_detection_candidate_pair_queue(
             f"DS={float(candidate.get('dimension_similarity_score') or 0):.3f}|"
             f"C={candidate.get('cycle') or 'discovery'}"
         )
+    for index, basket in enumerate(baskets or [], start=1):
+        if len(basket) > 1:
+            lines.append(f"B{index:03d}|MEMBERS={','.join(sorted(basket))}")
     return "\n".join(lines)

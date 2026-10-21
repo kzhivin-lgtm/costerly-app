@@ -100,6 +100,7 @@ def _visual_registry_payload(payload):
     return {
         "visual_groups": groups,
         "classifications": classifications,
+        "object_hypotheses": copy.deepcopy(payload.get("object_hypotheses", [])),
         "candidate_region_exceptions": copy.deepcopy(
             payload.get("candidate_region_exceptions", [])
         ),
@@ -687,7 +688,7 @@ def test_whole_architectural_floor_plan_is_demoted_to_document_context():
     assert audit[0]["evidence_class"] == "document_context"
 
 
-def test_visual_registry_rejects_semantic_facts_outside_candidate_pair_queue():
+def test_visual_registry_keeps_semantic_facts_outside_dimension_queue_for_global_proof_forest():
     payload = _visual_registry_payload({
         "visual_groups": [
             {"group_id": "VG-A", "page_number": 1, "location_hint": "left",
@@ -695,12 +696,16 @@ def test_visual_registry_rejects_semantic_facts_outside_candidate_pair_queue():
             {"group_id": "VG-B", "page_number": 1, "location_hint": "right",
              "visual_description": "matching cabinet section", "representation_kind": "section"},
         ],
-        "semantic_facts": [{
-            "group_id_a": "VG-A", "group_id_b": "VG-B",
-            "evidence_type": "matching_topology", "strength": "standard",
-            "observation": "The same two-bay carcass and door order recur.",
-            "source_fact_ids": [],
+        "object_hypotheses": [{
+            "group_ids": ["VG-A", "VG-B"],
+            "hypothesis_reason": "Both views show the same two-bay cabinet assembly.",
+            "evidence": [{
+                "evidence_type": "matching_topology", "strength": "standard",
+                "observation": "The same two-bay carcass and door order recur.",
+                "source_fact_ids": [],
+            }],
         }],
+        "semantic_facts": [],
     })
     with (
         patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
@@ -715,10 +720,10 @@ def test_visual_registry_rejects_semantic_facts_outside_candidate_pair_queue():
             page_images=[b"page"], regions=[], ocr_package=None, model="model",
         )
 
-    assert usage["raw_usage"]["semantic_ledger_audit"]["accepted"] == []
-    assert usage["raw_usage"]["semantic_ledger_audit"]["rejected"] == [{
-        "index": 0,
-        "reason": "semantic_fact_outside_candidate_pair_queue",
+    assert len(usage["raw_usage"]["semantic_ledger_audit"]["accepted"]) == 1
+    assert usage["raw_usage"]["semantic_ledger_audit"]["rejected"] == []
+    assert usage["raw_usage"]["semantic_ledger_audit"]["outside_dimension_queue"] == [{
+        "reason": "derived_semantic_fact_outside_dimension_queue_accepted",
         "group_id_a": "view-001",
         "group_id_b": "view-002",
     }]

@@ -71,9 +71,10 @@ def test_integrated_visual_registry_returns_facts_for_the_deterministic_graph_co
 
     assert "deterministic object-package construction" in prompt
     assert "You do\nnot create objects" in prompt
-    assert "Return exactly four arrays" in prompt
+    assert "Return exactly five arrays" in prompt
     assert "document_context" in prompt
     assert "semantic_facts" in prompt
+    assert "object_hypotheses" in prompt
     assert "Do not return negatives, unknowns" in prompt
     assert "PAGE EVIDENCE INVENTORY" in prompt
     assert "classification_reason" in prompt
@@ -83,8 +84,9 @@ def test_integrated_visual_registry_returns_facts_for_the_deterministic_graph_co
     assert "A whole-level or whole-room floor plan" in prompt
     assert "Dimension Fingerprints" in prompt
     assert "CANDIDATE PAIR QUEUE (Q" in prompt
-    assert "Q is the only relationship search list" in prompt
+    assert "Q is a high-priority Dimension hypothesis, not a relationship boundary" in prompt
+    assert "smallest proof tree" in prompt
     assert "Two separately framed, separately dimensioned or separately positioned views" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v5_3_candidate_region_dimension_q_temperature_0"
+        "detection_v5_6_v4_membership_first_single_call_temperature_0"
     )
