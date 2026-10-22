@@ -29,6 +29,21 @@ Islands.
 Page 2 is a generic floor plan and must be `document_context`, never an
 object View or Dimension-graph endpoint. Page 1 remains outside this gate.
 
+## V5.7.1 experimental checkpoint, 2026-10-23
+
+Status: **not accepted and not deployed**. Protected base is V5.6.1
+`5de4cf4`; full record is
+`notes/DETECTION_V5_7_1_EXPERIMENTAL_CHECKPOINT_2026_10_23.md`.
+
+The single-call membership-edge experiment passed one local Page 23 run at 4
+Object Islands and 3 packages, and one Adda run at 9 and 2. Metal returned 42
+and 14, which requires visual membership review even though the package count
+is within its historical interpretation range. HSL returned 29 and 10, failing
+this HSL recall gate before graph construction. Its raw Island loss is page 3,
+two rather than three, and its classification loss is page 11, four raw
+Islands but one Object Island. The next experiment must restore the V5.6.1
+Island/classification contract before judging the membership-edge strategy.
+
 ## V4 Page 23 release gate, 2026-10-16
 
 Status: accepted for the Page 23 temperature-zero gate on 2026-10-18. The

@@ -1,6 +1,42 @@
 # TODO
 
-ACTIVE, P0, Detection V4 commercial-boundary stability: protected checkpoint
+CHECKPOINT, experimental, Detection V5.7.1 is recorded in
+`notes/DETECTION_V5_7_1_EXPERIMENTAL_CHECKPOINT_2026_10_23.md`. It is not
+accepted or deployed. The measured membership-edge path passes Page23 and
+Adda in one run, but HSL regresses to 29 Object Islands and 10 packages.
+
+ACTIVE, P0, Detection V5.7.1 MVP boundary experiment: start from protected
+V5.6.1 checkpoint `5de4cf4`. Registry owns one full-page, non-overlapping
+membership proposal for multi-View physical items. Runtime validates typed
+facts, exclusive ownership and exact proof trees, but Dimension Similarity and
+OCR-locality cannot overturn a valid visual membership proposal. First gate is
+Page23 membership, then Adda, HSL and Metal. No extra model call, router,
+Sonnet path or file-specific rule.
+
+ACTIVE, P0, V5.7.1 must preserve both Registry evidence paths: direct
+`semantic_facts` and membership-edge facts. V5.6 silently ignored direct
+facts, so a valid typed criterion could not reach the supporting graph. Keep
+the same validators and audit both paths separately.
+
+RESOLVED, V5.7.1 local benchmark invocation: long runner commands return a
+PTY session after 30 seconds and must be drained until completion. The prior
+missing HSL/Metal reports were orchestration timeouts, not Detection failures.
+
+ACTIVE, P0, HSL V5.7.1 regression: a full run now completes, but produces 29
+object-evidence Islands and 10 packages versus the protected 32/9 benchmark.
+The visible losses are page 3 (2 rather than 3 raw Islands) and page 11 (four
+raw Islands but only one object-evidence Island). Keep the V5.6.1 Island and
+classification contract while isolating the membership-output change. Diagnose
+Island recall and classification before considering V5.7.1 for acceptance.
+
+P1, pending, V5.6.10 semantic criteria: stricter `matching_topology` and
+`direct_shared_structure` wording was not regression-proven. Re-evaluate it
+only after the V5.7.1 boundary strategy is measured across the MVP pack.
+
+Historical V4 notes follow. They are retained for rationale, not the active
+implementation plan.
+
+HISTORICAL, Detection V4 commercial-boundary stability: protected checkpoint
 `52c314d` retains accepted Naming, File Review, temperature-zero, complete
 Evidence, and Page 23/Adda boundary behavior. Hassola LIM is the active
 boundary benchmark. The MVP floor is now 9 commercial packages: N56, N57,

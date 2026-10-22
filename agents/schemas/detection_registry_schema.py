@@ -1667,6 +1667,200 @@ def compile_detection_v5_object_hypotheses(
     return accepted, {"accepted": accepted, "rejected": rejected}
 
 
+def compile_detection_v5_hypothesis_membership_edges(
+    hypotheses: list[dict[str, Any]],
+    semantic_facts: list[dict[str, Any]],
+    *,
+    visual_groups: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Turn validated full-page membership proposals into minimal proof trees.
+
+    Registry is the only stage that can compare complete rendered views.  It
+    proposes one non-overlapping group set per physical item.  Runtime still
+    validates every typed fact and builds the exact ``N - 1`` graph, but does
+    not replace the full-page visual decision with a second threshold based on
+    OCR coverage or dimension similarity.
+    """
+    groups_by_id = {
+        str(group.get("group_id") or ""): group
+        for group in visual_groups
+        if isinstance(group, dict) and group.get("evidence_class") == "object_evidence"
+    }
+    facts_by_pair: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for fact in semantic_facts:
+        pair = tuple(sorted((str(fact["group_id_a"]), str(fact["group_id_b"]))))
+        facts_by_pair.setdefault(pair, []).append(fact)
+
+    edges: list[dict[str, Any]] = []
+    accepted: list[dict[str, Any]] = []
+    rejected: list[dict[str, Any]] = []
+    for index, hypothesis in enumerate(hypotheses):
+        group_ids = list(hypothesis.get("group_ids") or [])
+        root, *members = group_ids
+        proposal_edges: list[dict[str, Any]] = []
+        for member in members:
+            pair = tuple(sorted((str(root), str(member))))
+            facts = facts_by_pair.get(pair) or []
+            if not facts:
+                rejected.append({
+                    "index": index,
+                    "reason": "membership_hypothesis_has_no_validated_visual_fact",
+                    "group_ids": group_ids,
+                    "missing_pair": list(pair),
+                })
+                proposal_edges = []
+                break
+            proposal_edges.append({
+                "group_id_a": pair[0],
+                "group_id_b": pair[1],
+                "page_a": int(groups_by_id[pair[0]].get("page_number") or 0),
+                "page_b": int(groups_by_id[pair[1]].get("page_number") or 0),
+                "same_page": (
+                    int(groups_by_id[pair[0]].get("page_number") or 0)
+                    == int(groups_by_id[pair[1]].get("page_number") or 0)
+                ),
+                "relationship": "same_object_view",
+                "evidence_facts": [
+                    {
+                        "evidence_type": fact["evidence_type"],
+                        "evidence_pages": [],
+                        "observation": fact["observation"],
+                        "source_fact_ids": fact["source_fact_ids"],
+                    }
+                    for fact in facts
+                ],
+                "commercial_inseparability": hypothesis["hypothesis_reason"],
+                "membership_basis": "registry_full_page_hypothesis",
+            })
+        if proposal_edges:
+            edges.extend(proposal_edges)
+            accepted.append({
+                "index": index,
+                "group_ids": group_ids,
+                "edge_count": len(proposal_edges),
+            })
+    return edges, {
+        "compiler_version": "v5_7_registry_membership_proof_tree",
+        "accepted": accepted,
+        "rejected": rejected,
+    }
+
+
+def compile_detection_v5_membership_edges(
+    raw_edges: object,
+    *,
+    visual_groups: list[dict[str, Any]],
+    source_facts: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Validate Registry-selected sparse membership links into a proof forest.
+
+    The Registry sees the complete PNG page and returns only positive links.
+    A link is accepted only when its typed visual evidence passes the existing
+    semantic validator, connects two object-evidence Islands and does not add
+    a redundant cycle. Runtime never enumerates missing pairs or invents a
+    membership edge from OCR or dimension similarity.
+    """
+    groups_by_id = {
+        str(group.get("group_id") or ""): group
+        for group in visual_groups
+        if isinstance(group, dict) and group.get("evidence_class") == "object_evidence"
+    }
+    if not isinstance(raw_edges, list):
+        return [], {
+            "compiler_version": "v5_7_registry_membership_edge_tree",
+            "accepted": [],
+            "rejected": [{"reason": "membership_edges_not_list"}],
+        }
+
+    parent = {group_id: group_id for group_id in groups_by_id}
+
+    def find(group_id: str) -> str:
+        while parent[group_id] != group_id:
+            parent[group_id] = parent[parent[group_id]]
+            group_id = parent[group_id]
+        return group_id
+
+    accepted: list[dict[str, Any]] = []
+    rejected: list[dict[str, Any]] = []
+    edges: list[dict[str, Any]] = []
+    seen_pairs: set[tuple[str, str]] = set()
+    for index, raw in enumerate(raw_edges):
+        if not isinstance(raw, dict) or set(raw) != {
+            "group_id_a", "group_id_b", "membership_reason", "evidence",
+        }:
+            rejected.append({"index": index, "reason": "membership_edge_fields_invalid"})
+            continue
+        left, right = sorted((str(raw["group_id_a"] or ""), str(raw["group_id_b"] or "")))
+        reason = str(raw["membership_reason"] or "").strip()
+        evidence = raw["evidence"] if isinstance(raw["evidence"], list) else []
+        pair = (left, right)
+        if (
+            not reason
+            or not evidence
+            or left == right
+            or not set(pair).issubset(groups_by_id)
+        ):
+            rejected.append({"index": index, "reason": "membership_edge_endpoints_or_evidence_invalid"})
+            continue
+        if pair in seen_pairs:
+            rejected.append({"index": index, "reason": "membership_edge_duplicate", "group_ids": list(pair)})
+            continue
+        fact_candidates = [
+            {"group_id_a": left, "group_id_b": right, **item}
+            for item in evidence
+            if isinstance(item, dict)
+        ]
+        facts, fact_audit = compile_detection_v5_semantic_facts(
+            fact_candidates, visual_groups=visual_groups, source_facts=source_facts,
+        )
+        if not facts:
+            rejected.append({
+                "index": index,
+                "reason": "membership_edge_has_no_validated_visual_fact",
+                "group_ids": list(pair),
+                "evidence_rejected": fact_audit["rejected"],
+            })
+            continue
+        if find(left) == find(right):
+            rejected.append({
+                "index": index,
+                "reason": "membership_edge_creates_cycle",
+                "group_ids": list(pair),
+            })
+            continue
+        parent[find(right)] = find(left)
+        seen_pairs.add(pair)
+        edge = {
+            "group_id_a": left,
+            "group_id_b": right,
+            "page_a": int(groups_by_id[left].get("page_number") or 0),
+            "page_b": int(groups_by_id[right].get("page_number") or 0),
+            "same_page": (
+                int(groups_by_id[left].get("page_number") or 0)
+                == int(groups_by_id[right].get("page_number") or 0)
+            ),
+            "relationship": "same_object_view",
+            "evidence_facts": [
+                {
+                    "evidence_type": fact["evidence_type"],
+                    "evidence_pages": [],
+                    "observation": fact["observation"],
+                    "source_fact_ids": fact["source_fact_ids"],
+                }
+                for fact in facts
+            ],
+            "commercial_inseparability": reason,
+            "membership_basis": "registry_full_page_membership_edge",
+        }
+        edges.append(edge)
+        accepted.append({"index": index, "group_ids": list(pair), "edge_count": 1})
+    return edges, {
+        "compiler_version": "v5_7_registry_membership_edge_tree",
+        "accepted": accepted,
+        "rejected": rejected,
+    }
+
+
 def compile_detection_v5_semantic_facts(
     facts: object,
     *,
@@ -1702,6 +1896,11 @@ def compile_detection_v5_semantic_facts(
             continue
         if kind not in SEMANTIC_PAIRWISE_EVIDENCE_TYPES or not observation or strength not in {"direct", "single_object_sheet", "standard"}:
             rejected.append({"index": index, "reason": "type_or_observation_invalid"})
+            continue
+        if kind == "explicit_document_relation" and strength not in {
+            "direct", "single_object_sheet",
+        }:
+            rejected.append({"index": index, "reason": "document_relation_requires_direct_strength"})
             continue
         if kind != "explicit_document_relation" and strength != "standard":
             rejected.append({"index": index, "reason": "non_document_relation_requires_standard_strength"})
@@ -1742,6 +1941,7 @@ def compile_detection_v5_merge_edges(
     *,
     visual_groups: list[dict[str, Any]] | None = None,
     group_bboxes: dict[str, dict[str, float]] | None = None,
+    allow_runtime_merges: bool = True,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Merge from a minimal semantic proof forest plus deterministic Dimensions."""
     by_pair: dict[tuple[str, str], dict[str, Any]] = {}
@@ -1812,7 +2012,7 @@ def compile_detection_v5_merge_edges(
             "direct_shared_structure",
         }))
         semantic_proof = len(kinds) >= 2 and identity_fact
-        merge = (
+        merge = allow_runtime_merges and (
             direct_label
             or semantic_proof
             or (row["dimension_score"] >= 85 and bool(kinds))
@@ -1874,7 +2074,10 @@ def compile_detection_v5_merge_edges(
             changed = True
 
     return edges, {
-        "compiler_version": "v5_5_global_semantic_proof_forest",
+        "compiler_version": (
+            "v5_5_global_semantic_proof_forest"
+            if allow_runtime_merges else "v5_7_supporting_graph_only"
+        ),
         "candidate_order": [{"group_id_a": pair[0], "group_id_b": pair[1]} for pair in sorted(candidate_pairs, key=candidate_key)],
         "edges": audit,
     }

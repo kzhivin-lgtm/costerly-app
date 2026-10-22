@@ -44,7 +44,7 @@ from agents.schemas.detection_registry_schema import (
     DetectionRegistrySchemaError,
     derive_detection_package_decision_audit,
     derive_detection_dimension_package_candidates,
-    compile_detection_v5_object_hypotheses,
+    compile_detection_v5_membership_edges,
     compile_detection_v5_semantic_facts,
     compile_detection_v5_merge_edges,
     compile_detection_v5_dimension_graph,
@@ -79,7 +79,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v5_6_v4_membership_first_single_call_temperature_0"
+    "detection_v5_7_1_registry_membership_primary_single_call_temperature_0"
 )
 # V5.0 keeps one Haiku call. Registry returns Islands, classifications, and
 # sparse positive semantic facts. Runtime owns every graph and package decision.
@@ -204,12 +204,13 @@ DETECTION_V5_CANDIDATE_REGION_EXCEPTIONS_SCHEMA: dict[str, Any] = {
             "reason": {"type": "string"},
         }}}
 
-DETECTION_V5_OBJECT_HYPOTHESES_SCHEMA: dict[str, Any] = {
+DETECTION_V5_MEMBERSHIP_EDGES_SCHEMA: dict[str, Any] = {
     "type": "array", "maxItems": 24,
     "items": {"type": "object", "additionalProperties": False,
-        "required": ["group_ids", "hypothesis_reason", "evidence"], "properties": {
-            "group_ids": {"type": "array", "minItems": 2, "items": {"type": "string"}},
-            "hypothesis_reason": {"type": "string", "maxLength": 180},
+        "required": ["group_id_a", "group_id_b", "membership_reason", "evidence"], "properties": {
+            "group_id_a": {"type": "string"},
+            "group_id_b": {"type": "string"},
+            "membership_reason": {"type": "string", "maxLength": 180},
             "evidence": {"type": "array", "minItems": 1, "maxItems": 3,
                 "items": {"type": "object", "additionalProperties": False,
                     "required": ["evidence_type", "strength", "observation", "source_fact_ids"],
@@ -225,12 +226,12 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": [
-        "visual_groups", "classifications", "object_hypotheses", "candidate_region_exceptions", "semantic_facts",
+        "visual_groups", "classifications", "membership_edges", "candidate_region_exceptions", "semantic_facts",
     ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
-        "object_hypotheses": DETECTION_V5_OBJECT_HYPOTHESES_SCHEMA,
+        "membership_edges": DETECTION_V5_MEMBERSHIP_EDGES_SCHEMA,
         "candidate_region_exceptions": DETECTION_V5_CANDIDATE_REGION_EXCEPTIONS_SCHEMA,
         "semantic_facts": DETECTION_V5_SEMANTIC_FACTS_SCHEMA,
     },
@@ -2737,10 +2738,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 _discard_non_object_visual_registry_groups(payload)
             )
         if not isinstance(payload, dict) or set(payload) != {
-            "visual_groups", "classifications", "object_hypotheses", "candidate_region_exceptions", "semantic_facts",
+            "visual_groups", "classifications", "membership_edges", "candidate_region_exceptions", "semantic_facts",
         }:
             raise ValueError(
-                "visual registry must contain visual groups, classifications, hypotheses and semantic facts"
+                "visual registry must contain visual groups, classifications, membership edges and semantic facts"
             )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
@@ -2759,6 +2760,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 "evidence_class": group.get("evidence_class"),
             }
             for group in raw_groups
+        ]
+        evidence_class_by_group_id = {
+            str(group["group_id"]): group.get("evidence_class")
+            for group in semantic_validation_groups
+        }
+        membership_visual_groups = [
+            {**group, "evidence_class": evidence_class_by_group_id.get(str(group["group_id"]))}
+            for group in visual_map["visual_groups"]
         ]
         group_bboxes = _normalize_registry_group_bboxes(
             raw_groups, group_id_mapping=group_id_mapping,
@@ -2784,33 +2793,34 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         page_local_view_labels = assign_detection_page_local_view_labels(
             view_evidence_packages
         )
-        normalized_hypotheses = []
-        for hypothesis in payload["object_hypotheses"]:
-            if isinstance(hypothesis, dict) and isinstance(hypothesis.get("group_ids"), list):
-                hypothesis = copy.deepcopy(hypothesis)
-                hypothesis["group_ids"] = [
-                    group_id_mapping.get(str(group_id or ""), str(group_id or ""))
-                    for group_id in hypothesis["group_ids"]
-                ]
-            normalized_hypotheses.append(hypothesis)
-        accepted_hypotheses, object_hypothesis_audit = compile_detection_v5_object_hypotheses(
-            normalized_hypotheses, visual_groups=semantic_validation_groups,
-        )
+        normalized_membership_edges = []
+        for raw_edge in payload["membership_edges"]:
+            if not isinstance(raw_edge, dict):
+                normalized_membership_edges.append(raw_edge)
+                continue
+            edge = copy.deepcopy(raw_edge)
+            for endpoint in ("group_id_a", "group_id_b"):
+                edge[endpoint] = group_id_mapping.get(
+                    str(edge.get(endpoint) or ""), str(edge.get(endpoint) or ""),
+                )
+            normalized_membership_edges.append(edge)
         semantic_facts_outside_dimension_queue: list[dict[str, Any]] = []
+        # The Registry returns sparse pair facts in its own field as well as
+        # group-level evidence within a full-page membership hypothesis. Both
+        # are first-class input to the typed validator. Earlier V5 builds
+        # silently dropped the former, so valid Registry facts could never
+        # reach the supporting graph.
         semantic_facts: list[dict[str, Any]] = []
-        for hypothesis in accepted_hypotheses:
-            root, *members = hypothesis["group_ids"]
-            for member in members:
-                pair = tuple(sorted((root, member)))
-                for evidence in hypothesis["evidence"]:
-                    semantic_facts.append({
-                        "group_id_a": pair[0], "group_id_b": pair[1], **evidence,
-                    })
-                if pair not in candidate_q_final_pairs:
-                    semantic_facts_outside_dimension_queue.append({
-                        "reason": "derived_semantic_fact_outside_dimension_queue_accepted",
-                        "group_id_a": pair[0], "group_id_b": pair[1],
-                    })
+        for raw_fact in payload["semantic_facts"]:
+            if not isinstance(raw_fact, dict):
+                semantic_facts.append(raw_fact)
+                continue
+            fact = copy.deepcopy(raw_fact)
+            for endpoint in ("group_id_a", "group_id_b"):
+                fact[endpoint] = group_id_mapping.get(
+                    str(fact.get(endpoint) or ""), str(fact.get(endpoint) or ""),
+                )
+            semantic_facts.append(fact)
         effective_dimension_unit, dimension_unit_reason = infer_detection_v5_bare_dimension_unit(
             view_evidence_packages,
             document_unit=str(document_dimension_unit_profile.get("unit") or "unknown"),
@@ -2849,18 +2859,18 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             visual_groups=semantic_validation_groups, source_facts=source_facts,
         )
         semantic_ledger_audit["outside_dimension_queue"] = semantic_facts_outside_dimension_queue
-        semantic_ledger_audit["rejected"].extend(
-            object_hypothesis_audit["rejected"]
-        )
-        semantic_ledger_audit["object_hypotheses"] = object_hypothesis_audit
-        positive_relation_edges, v5_merge_audit = compile_detection_v5_merge_edges(
+        supporting_relation_edges, v5_merge_audit = compile_detection_v5_merge_edges(
             dimension_relation_edges, accepted_semantic_facts,
             visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
+            allow_runtime_merges=False,
         )
-        accepted_merge_edges = [
-            edge for edge in positive_relation_edges
-            if edge["relationship"] == "same_object_view"
-        ]
+        membership_edges, membership_audit = compile_detection_v5_membership_edges(
+            normalized_membership_edges, visual_groups=membership_visual_groups,
+            source_facts=source_facts,
+        )
+        semantic_ledger_audit["membership_edges"] = membership_audit
+        positive_relation_edges = [*supporting_relation_edges, *membership_edges]
+        accepted_merge_edges = list(membership_edges)
         base_proof_components = derive_detection_proof_components(
             accepted_merge_edges, visual_group_ids=visual_group_ids,
         )

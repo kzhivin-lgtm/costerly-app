@@ -74,7 +74,7 @@ def test_integrated_visual_registry_returns_facts_for_the_deterministic_graph_co
     assert "Return exactly five arrays" in prompt
     assert "document_context" in prompt
     assert "semantic_facts" in prompt
-    assert "object_hypotheses" in prompt
+    assert "membership_edges" in prompt
     assert "Do not return negatives, unknowns" in prompt
     assert "PAGE EVIDENCE INVENTORY" in prompt
     assert "classification_reason" in prompt
@@ -86,7 +86,8 @@ def test_integrated_visual_registry_returns_facts_for_the_deterministic_graph_co
     assert "CANDIDATE PAIR QUEUE (Q" in prompt
     assert "Q is a high-priority Dimension hypothesis, not a relationship boundary" in prompt
     assert "smallest proof tree" in prompt
+    assert "full-page visual membership decision" in prompt
     assert "Two separately framed, separately dimensioned or separately positioned views" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v5_6_v4_membership_first_single_call_temperature_0"
+        "detection_v5_7_1_registry_membership_primary_single_call_temperature_0"
     )

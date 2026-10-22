@@ -1,6 +1,7 @@
 from agents.schemas.detection_registry_schema import (
     compile_detection_v5_dimension_graph,
     compile_detection_v5_merge_edges,
+    compile_detection_v5_membership_edges,
     compile_detection_v5_object_hypotheses,
     derive_detection_v5_dominant_page_attachment_edges,
     compile_detection_v5_semantic_facts,
@@ -115,6 +116,17 @@ def test_v5_generic_semantic_fact_is_rejected_without_stopping_graph():
     assert audit["rejected"][0]["reason"] == "generic_observation"
 
 
+def test_v5_document_relation_requires_direct_or_single_sheet_strength():
+    accepted, audit = compile_detection_v5_semantic_facts([{
+        "group_id_a": "view-001", "group_id_b": "view-002",
+        "evidence_type": "explicit_document_relation", "strength": "standard",
+        "observation": "The material list specifies plywood and veneer for the cabinet.",
+        "source_fact_ids": ["SF-001"],
+    }], visual_groups=VIEWS, source_facts=[{"fact_id": "SF-001"}])
+    assert accepted == []
+    assert audit["rejected"][0]["reason"] == "document_relation_requires_direct_strength"
+
+
 def test_v5_object_hypothesis_requires_distinct_non_overlapping_object_views():
     accepted, audit = compile_detection_v5_object_hypotheses([
         {"group_ids": ["view-001", "view-002"], "hypothesis_reason": "One cabinet in two projections.", "evidence": [{"evidence_type": "matching_topology"}]},
@@ -122,6 +134,54 @@ def test_v5_object_hypothesis_requires_distinct_non_overlapping_object_views():
     ], visual_groups=[*VIEWS, {"group_id": "view-003", "evidence_class": "object_evidence"}])
     assert accepted[0]["group_ids"] == ["view-001", "view-002"]
     assert audit["rejected"][0]["reason"] == "object_hypothesis_overlaps"
+
+
+def test_v571_single_concrete_visual_fact_builds_membership_proof_tree():
+    edges, audit = compile_detection_v5_membership_edges(
+        [{
+            "group_id_a": "view-001", "group_id_b": "view-002",
+            "membership_reason": "Two projections show the same three-bay cabinet.",
+            "evidence": [{
+                "evidence_type": "matching_topology", "strength": "standard",
+                "observation": "The same three-bay carcass and door order recur.",
+                "source_fact_ids": [],
+            }],
+        }],
+        visual_groups=VIEWS, source_facts=[],
+    )
+    assert [(edge["group_id_a"], edge["group_id_b"]) for edge in edges] == [
+        ("view-001", "view-002"),
+    ]
+    assert edges[0]["relationship"] == "same_object_view"
+    assert edges[0]["membership_basis"] == "registry_full_page_membership_edge"
+    assert audit["rejected"] == []
+
+
+def test_v571_membership_edge_without_validated_fact_stays_unmerged():
+    edges, audit = compile_detection_v5_membership_edges(
+        [{
+            "group_id_a": "view-001", "group_id_b": "view-002",
+            "membership_reason": "One cabinet in two projections.",
+            "evidence": [{"evidence_type": "matching_topology"}],
+        }],
+        visual_groups=VIEWS, source_facts=[],
+    )
+    assert edges == []
+    assert audit["rejected"][0]["reason"] == (
+        "membership_edge_has_no_validated_visual_fact"
+    )
+
+
+def test_v571_supporting_graph_cannot_override_registry_membership():
+    facts = [
+        {"group_id_a": "view-001", "group_id_b": "view-002", "evidence_type": "matching_topology", "strength": "standard", "observation": "The same three-bay carcass and door order recur.", "source_fact_ids": []},
+        {"group_id_a": "view-001", "group_id_b": "view-002", "evidence_type": "unique_geometry", "strength": "standard", "observation": "The same offset circular cut-out and handle layout recur.", "source_fact_ids": []},
+    ]
+    edges, audit = compile_detection_v5_merge_edges(
+        [], facts, visual_groups=VIEWS, allow_runtime_merges=False,
+    )
+    assert edges[0]["relationship"] == "supporting_relation"
+    assert audit["compiler_version"] == "v5_7_supporting_graph_only"
 
 
 def test_v561_dominant_page_attaches_only_one_orphan():

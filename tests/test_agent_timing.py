@@ -100,7 +100,7 @@ def _visual_registry_payload(payload):
     return {
         "visual_groups": groups,
         "classifications": classifications,
-        "object_hypotheses": copy.deepcopy(payload.get("object_hypotheses", [])),
+        "membership_edges": copy.deepcopy(payload.get("membership_edges", [])),
         "candidate_region_exceptions": copy.deepcopy(
             payload.get("candidate_region_exceptions", [])
         ),
@@ -696,9 +696,9 @@ def test_visual_registry_keeps_semantic_facts_outside_dimension_queue_for_global
             {"group_id": "VG-B", "page_number": 1, "location_hint": "right",
              "visual_description": "matching cabinet section", "representation_kind": "section"},
         ],
-        "object_hypotheses": [{
-            "group_ids": ["VG-A", "VG-B"],
-            "hypothesis_reason": "Both views show the same two-bay cabinet assembly.",
+        "membership_edges": [{
+            "group_id_a": "VG-A", "group_id_b": "VG-B",
+            "membership_reason": "Both views show the same two-bay cabinet assembly.",
             "evidence": [{
                 "evidence_type": "matching_topology", "strength": "standard",
                 "observation": "The same two-bay carcass and door order recur.",
@@ -715,18 +715,62 @@ def test_visual_registry_keeps_semantic_facts_outside_dimension_queue_for_global
         })),
         patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
     ):
-        _, _, usage = run_anthropic_detection_visual_registry_agent(
+        _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"page"], regions=[], ocr_package=None, model="model",
         )
 
-    assert len(usage["raw_usage"]["semantic_ledger_audit"]["accepted"]) == 1
+    assert usage["raw_usage"]["semantic_ledger_audit"]["accepted"] == []
     assert usage["raw_usage"]["semantic_ledger_audit"]["rejected"] == []
-    assert usage["raw_usage"]["semantic_ledger_audit"]["outside_dimension_queue"] == [{
-        "reason": "derived_semantic_fact_outside_dimension_queue_accepted",
-        "group_id_a": "view-001",
-        "group_id_b": "view-002",
+    assert usage["raw_usage"]["semantic_ledger_audit"]["membership_edges"]["accepted"] == [{
+        "index": 0,
+        "group_ids": ["view-001", "view-002"],
+        "edge_count": 1,
     }]
+    assert registry["objects"][0]["visual_group_ids"] == ["view-001", "view-002"]
+    membership_edge = next(
+        edge for edge in usage["raw_usage"]["positive_relation_edges"]
+        if edge.get("membership_basis") == "registry_full_page_membership_edge"
+    )
+    assert (membership_edge["page_a"], membership_edge["page_b"]) == (1, 1)
+
+
+def test_visual_registry_keeps_direct_semantic_facts_from_registry_response():
+    payload = _visual_registry_payload({
+        "visual_groups": [
+            {"group_id": "VG-A", "page_number": 1, "location_hint": "left",
+             "visual_description": "two-bay cabinet elevation", "representation_kind": "elevation"},
+            {"group_id": "VG-B", "page_number": 1, "location_hint": "right",
+             "visual_description": "matching cabinet section", "representation_kind": "section"},
+        ],
+        "semantic_facts": [{
+            "group_id_a": "VG-A", "group_id_b": "VG-B",
+            "evidence_type": "matching_topology", "strength": "standard",
+            "observation": "The same two-bay carcass and door order recur.",
+            "source_fact_ids": [],
+        }],
+    })
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", return_value=(_Response(), {
+            "request_started_at": "2026-10-16T00:00:00+00:00",
+            "request_finished_at": "2026-10-16T00:00:01+00:00",
+        })),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+    ):
+        _, registry, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None, model="model",
+        )
+
+    assert usage["raw_usage"]["semantic_ledger_audit"]["accepted"] == [{
+        "group_id_a": "view-001", "group_id_b": "view-002",
+        "evidence_type": "matching_topology", "strength": "standard",
+        "observation": "The same two-bay carcass and door order recur.",
+        "source_fact_ids": [],
+    }]
+    assert usage["raw_usage"]["accepted_merge_edge_count"] == 0
+    assert len(registry["objects"]) == 2
 
 
 def test_visual_registry_materializes_view_package_from_immutable_source_fact():
