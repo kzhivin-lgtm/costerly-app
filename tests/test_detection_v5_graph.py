@@ -2,6 +2,7 @@ from agents.schemas.detection_registry_schema import (
     compile_detection_v5_dimension_graph,
     compile_detection_v5_merge_edges,
     compile_detection_v5_object_hypotheses,
+    derive_detection_v5_dominant_page_attachment_edges,
     compile_detection_v5_semantic_facts,
     validate_detection_v5_final_result,
 )
@@ -121,6 +122,32 @@ def test_v5_object_hypothesis_requires_distinct_non_overlapping_object_views():
     ], visual_groups=[*VIEWS, {"group_id": "view-003", "evidence_class": "object_evidence"}])
     assert accepted[0]["group_ids"] == ["view-001", "view-002"]
     assert audit["rejected"][0]["reason"] == "object_hypothesis_overlaps"
+
+
+def test_v561_dominant_page_attaches_only_one_orphan():
+    views = [
+        {"group_id": f"view-00{index}", "evidence_class": "object_evidence", "page_number": 1}
+        for index in range(1, 8)
+    ]
+    base_components = [[view["group_id"] for view in views[:-1]], [views[-1]["group_id"]]]
+    edges, attachment_audit = derive_detection_v5_dominant_page_attachment_edges(
+        base_components, visual_groups=views,
+    )
+    assert [(edge["group_id_a"], edge["group_id_b"]) for edge in edges] == [("view-001", "view-007")]
+    assert attachment_audit[0]["attached_group_ids"] == ["view-007"]
+
+
+def test_v561_dominant_page_does_not_attach_with_competing_package_or_orphans():
+    views = [
+        {"group_id": f"view-00{index}", "evidence_class": "object_evidence", "page_number": 1}
+        for index in range(1, 9)
+    ]
+    edges, audit = derive_detection_v5_dominant_page_attachment_edges(
+        [["view-001", "view-002", "view-003", "view-004", "view-005", "view-006"], ["view-007"], ["view-008"]],
+        visual_groups=views,
+    )
+    assert edges == []
+    assert audit[0]["attached_group_ids"] == []
 
 
 def test_v5_direct_shared_structure_cannot_be_generic_material_or_hardware():

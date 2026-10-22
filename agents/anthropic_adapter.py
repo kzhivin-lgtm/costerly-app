@@ -52,6 +52,7 @@ from agents.schemas.detection_registry_schema import (
     merge_detection_relation_edges,
     derive_detection_proof_components,
     derive_detection_standalone_package_group_ids,
+    derive_detection_v5_dominant_page_attachment_edges,
     compile_detection_dimension_graph,
     normalize_empty_detection_envelope_chains,
     normalize_detection_dimension_inventory_group_ids,
@@ -2860,6 +2861,17 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             edge for edge in positive_relation_edges
             if edge["relationship"] == "same_object_view"
         ]
+        base_proof_components = derive_detection_proof_components(
+            accepted_merge_edges, visual_group_ids=visual_group_ids,
+        )
+        dominant_page_edges, dominant_page_attachment_audit = (
+            derive_detection_v5_dominant_page_attachment_edges(
+                base_proof_components, visual_groups=visual_map["visual_groups"],
+            )
+        )
+        positive_relation_edges.extend(dominant_page_edges)
+        accepted_merge_edges.extend(dominant_page_edges)
+        semantic_ledger_audit["dominant_page_attachment"] = dominant_page_attachment_audit
         reference_links = []
         rejected_relation_candidates = list(semantic_ledger_audit["rejected"])
         dimension_package_candidate_components = (

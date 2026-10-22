@@ -2244,6 +2244,56 @@ def derive_detection_standalone_package_group_ids(
     )
 
 
+def derive_detection_v5_dominant_page_attachment_edges(
+    proof_components: list[list[str]],
+    *,
+    visual_groups: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Attach the one orphan inside an otherwise dominant same-page package.
+
+    This is a package-completion policy, not a seventh semantic criterion.
+    It does not inspect a new pair, alter Registry membership, or cross pages.
+    """
+    page_by_group = {
+        str(group.get("group_id") or ""): int(group.get("page_number") or 0)
+        for group in visual_groups
+    }
+    edges: list[dict[str, Any]] = []
+    audit: list[dict[str, Any]] = []
+    for page_number in sorted(set(page_by_group.values())):
+        page_groups = {group_id for group_id, page in page_by_group.items() if page == page_number}
+        page_components = [sorted(set(component).intersection(page_groups)) for component in proof_components]
+        page_components = [component for component in page_components if component]
+        confirmed = [component for component in page_components if len(component) >= 2]
+        singletons = [component[0] for component in page_components if len(component) == 1]
+        dominant = max(confirmed, key=lambda component: (len(component), tuple(component)), default=[])
+        competing = sum(len(component) for component in confirmed if component != dominant)
+        attach = []
+        if len(dominant) >= 6 and len(singletons) == 1 and competing == 0:
+            attach = singletons
+            root = dominant[0]
+            orphan = attach[0]
+            edges.append({
+                "group_id_a": min(root, orphan), "group_id_b": max(root, orphan),
+                "page_a": page_number, "page_b": page_number, "same_page": True,
+                "relationship": "same_object_view",
+                "evidence_facts": [{
+                    "evidence_type": "deterministic_page_context",
+                    "evidence_pages": [page_number],
+                    "observation": "One standalone View completes the only dominant same-page package.",
+                    "source_fact_ids": [],
+                }],
+                "commercial_inseparability": "V5.6.1 deterministic dominant-page attachment",
+                "dimension_similarity_score": 0.0, "edge_score": 0.0,
+            })
+        audit.append({
+            "page_number": page_number, "dominant_view_count": len(dominant),
+            "standalone_group_ids": singletons, "competing_view_count": competing,
+            "attached_group_ids": attach,
+        })
+    return edges, audit
+
+
 def derive_detection_package_decision_audit(
     components: list[list[str]],
     *,
