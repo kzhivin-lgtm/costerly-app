@@ -466,19 +466,27 @@ Do not retry this prompt/schema mechanism. The next diagnostic must change the
 visual evidence presented for connected-contour recognition, without restoring
 static crops or treating bbox overlap as a merge decision.
 
-ACTIVE EXPERIMENT, P0, V5.21 source-degraded mandatory boundary ledger:
-user explicitly approved a narrower replacement after V5.20's audit showed
-that the model could leave a continuity candidate unanswered. Keep the same two
-full-page Haiku calls and no crops. For every same-page core-bbox-overlap pair,
-the second Registry call must return exactly one physical-boundary decision:
+PROTECTED EXPERIMENTAL CHECKPOINT, P0, V5.21 source-degraded mandatory
+boundary ledger: user explicitly approved a narrower replacement after V5.20's
+audit showed that the model could leave a continuity candidate unanswered. The
+route keeps two full-page Haiku calls and no crops. For every same-page
+core-bbox-overlap pair, Registry must return one physical-boundary decision:
 `physically_continuous` plus concrete joined geometry, or
 `physically_separate` plus `visible_background_gap`,
 `separate_closed_contour`, or `independent_projection`. The code accepts no
 silent split, unions only attested continuous pairs before roles, and writes
 both the full boundary ledger and resulting consolidation audit. This does not
-make bbox overlap a merge decision and does not alter ordinary V5. Page23 is
-the discriminator: V1/V3 must either consolidate before roles or expose a
-specific claimed separator for review. Provider-quality outcome is pending.
+make bbox overlap a merge decision and does not alter ordinary V5.
+
+Production Page23 run `run_caed454c5f6b49479d300f0b532c85c4` executed the
+V5.21 prompt and supplied the required V1/V3 answer. It incorrectly asserted
+`physically_separate / independent_projection` from different dimensions and
+an alleged lack of common geometry, without identifying a visible separator.
+The run nevertheless produced packages V1, V2 and V4+V5. This is an accepted
+continuation checkpoint, not segmentation-quality acceptance. Preserve the
+boundary ledger and do not add more prompt/schema variations automatically;
+the next approved diagnostic requires independent visual evidence of physical
+continuity. Details: `notes/DETECTION_V5_21_SOURCE_DEGRADED_BOUNDARY_LEDGER_CHECKPOINT_2026_10_24.md`.
 
 BLOCKED QUALITY GATE, V5.9 HSL `v590-hsl-04`: the cross-document run rejects
 the experiment in its current form. It returned 31 raw Visual Groups, 28
