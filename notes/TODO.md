@@ -452,21 +452,6 @@ File Review, one event at a time; abort rather than expose an unauditable
 Detection decision if that write fails. Continue storing OCR and timing
 diagnostics asynchronously. Ordinary V5 decision logic is unchanged.
 
-ACTIVE EXPERIMENT, P0, V5.20 source-degraded continuity consolidation: retain
-V5.19's two full-page Haiku calls, visual-only router gate, no Discovery crops,
-global Registry partition and synchronous decision ledger. The second Registry
-call must explicitly attest only same-page, physically continuous fragments in
-`continuity_groups`. Core-bbox overlap is an advisory visual-review candidate,
-never a deterministic merge. Runtime then consolidates only attested fragments
-before role classification and partition validation, preserving every original
-source group ID and the observation in the audit. This prevents a continuous
-depiction becoming an `assembly_view` plus a discarded `component_detail`.
-It does not change ordinary V5, create a new provider call, or relax object
-membership evidence. First gate is Page23: the shelving and its attached
-angled panel become one effective representation. The doors and console merge
-remain separate gates and do not turn a successful continuity repair into a
-release checkpoint.
-
 BLOCKED QUALITY GATE, V5.9 HSL `v590-hsl-04`: the cross-document run rejects
 the experiment in its current form. It returned 31 raw Visual Groups, 28
 Object-Evidence Islands and 12 packages, rather than the protected HSL 32/9

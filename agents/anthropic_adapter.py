@@ -124,8 +124,8 @@ DETECTION_V5_SOURCE_DEGRADED_ONE_SHOT_REGISTRY_PROMPT_VERSION = (
 DETECTION_V5_SOURCE_DEGRADED_V561_CONSENSUS_PROMPT_VERSION = (
     "detection_v5_16_source_degraded_v561_two_proposal_consensus_experimental_v1"
 )
-DETECTION_V5_SOURCE_DEGRADED_V520_PROMPT_VERSION = (
-    "detection_v5_20_source_degraded_continuity_consolidation_v1"
+DETECTION_V5_SOURCE_DEGRADED_V519_PROMPT_VERSION = (
+    "detection_v5_19_source_degraded_full_page_registry_observability_v1"
 )
 DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_CROP_MAX_SIDE = 1024
 # Registry has already locked object identity, quantity and ordering before this
@@ -327,17 +327,6 @@ DETECTION_V5_SOURCE_DEGRADED_FULL_PAGE_ROLES_SCHEMA: dict[str, Any] = {
         },
     },
 }
-DETECTION_V5_SOURCE_DEGRADED_CONTINUITY_GROUPS_SCHEMA: dict[str, Any] = {
-    "type": "array", "maxItems": 32,
-    "items": {"type": "object", "additionalProperties": False,
-        "required": ["group_ids", "observation"],
-        "properties": {
-            "group_ids": {"type": "array", "minItems": 2, "maxItems": 24,
-                          "items": {"type": "string"}},
-            "observation": {"type": "string", "minLength": 30, "maxLength": 280},
-        },
-    },
-}
 DETECTION_V5_SOURCE_DEGRADED_VISUAL_PARTITIONS_SCHEMA: dict[str, Any] = {
     "type": "array", "minItems": 1, "maxItems": 48,
     "items": {"type": "object", "additionalProperties": False,
@@ -365,9 +354,8 @@ DETECTION_V5_SOURCE_DEGRADED_VISUAL_PARTITIONS_SCHEMA: dict[str, Any] = {
 }
 DETECTION_V5_SOURCE_DEGRADED_FULL_PAGE_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": False,
-    "required": ["continuity_groups", "roles", "partitions"],
+    "required": ["roles", "partitions"],
     "properties": {
-        "continuity_groups": DETECTION_V5_SOURCE_DEGRADED_CONTINUITY_GROUPS_SCHEMA,
         "roles": DETECTION_V5_SOURCE_DEGRADED_FULL_PAGE_ROLES_SCHEMA,
         "partitions": DETECTION_V5_SOURCE_DEGRADED_VISUAL_PARTITIONS_SCHEMA,
     },
@@ -2972,166 +2960,6 @@ def _bbox_overlaps(left: dict[str, int], right: dict[str, int]) -> bool:
     )
 
 
-def build_detection_v5_source_degraded_continuity_candidates(
-    visual_groups: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    """Expose possible same-page fragmentation without deciding it in code.
-
-    Rectangular core boxes cannot prove that two drawings are one Island: a
-    complex drawing can overlap another envelope.  Their overlap is therefore
-    only a bounded visual-review cue for the full-page Registry, which still
-    has to attest physical contour continuity.
-    """
-    candidates: list[dict[str, Any]] = []
-    for left, right in combinations(visual_groups, 2):
-        if left.get("page_number") != right.get("page_number"):
-            continue
-        left_bbox = left.get("core_bbox")
-        right_bbox = right.get("core_bbox")
-        if not isinstance(left_bbox, dict) or not isinstance(right_bbox, dict):
-            continue
-        if not _bbox_overlaps(left_bbox, right_bbox):
-            continue
-        candidates.append({
-            "group_ids": sorted((str(left["group_id"]), str(right["group_id"]))),
-            "reason": "same_page_core_bbox_overlap_requires_visual_continuity_review",
-        })
-    return candidates
-
-
-def consolidate_detection_v5_source_degraded_continuity_groups(
-    visual_groups: list[dict[str, Any]],
-    continuity_groups: object,
-) -> tuple[list[dict[str, Any]], dict[str, str], list[dict[str, Any]]]:
-    """Turn Registry-attested continuous fragments into one effective View.
-
-    This is a segmentation repair, before roles and commercial partitions.  It
-    has no authority to infer continuity from bbox overlap, similarity or page
-    proximity.  The Registry must provide the same-page physical-contour
-    observation for every consolidation.
-    """
-    if not isinstance(continuity_groups, list):
-        raise ValueError("source-degraded continuity groups are invalid")
-    groups_by_id = {
-        str(group.get("group_id") or ""): group
-        for group in visual_groups if isinstance(group, dict)
-    }
-    if not groups_by_id or len(groups_by_id) != len(visual_groups):
-        raise ValueError("source-degraded continuity groups lack visual representations")
-
-    source_to_effective = {group_id: group_id for group_id in groups_by_id}
-    member_ids_by_canonical: dict[str, list[str]] = {}
-    observations_by_canonical: dict[str, str] = {}
-    assigned_ids: set[str] = set()
-    audit: list[dict[str, Any]] = []
-    for index, row in enumerate(continuity_groups, start=1):
-        if (
-            not isinstance(row, dict)
-            or set(row) != {"group_ids", "observation"}
-            or not isinstance(row.get("group_ids"), list)
-            or len(row["group_ids"]) < 2
-            or len(row["group_ids"]) != len(set(row["group_ids"]))
-            or not all(isinstance(group_id, str) and group_id in groups_by_id for group_id in row["group_ids"])
-        ):
-            raise ValueError("source-degraded continuity group references are invalid")
-        member_ids = sorted(row["group_ids"])
-        if assigned_ids.intersection(member_ids):
-            raise ValueError("source-degraded continuity groups overlap")
-        pages = {groups_by_id[group_id].get("page_number") for group_id in member_ids}
-        observation = " ".join(str(row.get("observation") or "").split())
-        if len(pages) != 1 or len(observation) < 30:
-            raise ValueError("source-degraded continuity group lacks same-page physical evidence")
-        canonical_group_id = member_ids[0]
-        assigned_ids.update(member_ids)
-        member_ids_by_canonical[canonical_group_id] = member_ids
-        observations_by_canonical[canonical_group_id] = observation
-        for group_id in member_ids:
-            source_to_effective[group_id] = canonical_group_id
-        audit.append({
-            "continuity_index": index,
-            "canonical_group_id": canonical_group_id,
-            "source_group_ids": member_ids,
-            "observation": observation,
-        })
-
-    effective_groups: list[dict[str, Any]] = []
-    for group in visual_groups:
-        group_id = str(group["group_id"])
-        canonical_group_id = source_to_effective[group_id]
-        if group_id != canonical_group_id:
-            continue
-        member_ids = member_ids_by_canonical.get(canonical_group_id, [canonical_group_id])
-        if len(member_ids) == 1:
-            effective_groups.append(copy.deepcopy(group))
-            continue
-        members = [groups_by_id[member_id] for member_id in member_ids]
-
-        def union_bbox(field: str) -> dict[str, int]:
-            boxes = [member[field] for member in members]
-            return {
-                "top_left_x": min(int(box["top_left_x"]) for box in boxes),
-                "top_left_y": min(int(box["top_left_y"]) for box in boxes),
-                "bottom_right_x": max(int(box["bottom_right_x"]) for box in boxes),
-                "bottom_right_y": max(int(box["bottom_right_y"]) for box in boxes),
-            }
-
-        description_parts = [
-            " ".join(str(member.get("visual_description") or "").split())
-            for member in members
-        ]
-        effective_groups.append({
-            **copy.deepcopy(group),
-            "bbox": union_bbox("bbox"),
-            "core_bbox": union_bbox("core_bbox"),
-            "visual_description": "Continuous depiction: " + " | ".join(description_parts),
-            "representation_kind": "continuous consolidated depiction",
-            "source_group_ids": member_ids,
-            "continuity_observation": observations_by_canonical[canonical_group_id],
-        })
-    return effective_groups, source_to_effective, audit
-
-
-def resolve_detection_v5_source_degraded_continuity_roles(
-    raw_roles: dict[str, str],
-    raw_role_audit: list[dict[str, Any]],
-    effective_groups: list[dict[str, Any]],
-) -> tuple[dict[str, str], list[dict[str, Any]]]:
-    """Assign a role to the effective representation after consolidation."""
-    raw_reason_by_id = {
-        str(row["group_id"]): str(row["classification_reason"])
-        for row in raw_role_audit
-    }
-    roles: dict[str, str] = {}
-    audit: list[dict[str, Any]] = []
-    for group in effective_groups:
-        group_id = str(group["group_id"])
-        source_group_ids = list(group.get("source_group_ids") or [group_id])
-        source_roles = {
-            source_group_id: raw_roles[source_group_id]
-            for source_group_id in source_group_ids
-        }
-        if "assembly_view" in source_roles.values():
-            final_role = "assembly_view"
-        elif "component_detail" in source_roles.values():
-            final_role = "component_detail"
-        else:
-            final_role = "document_context"
-        roles[group_id] = final_role
-        audit.append({
-            "group_id": group_id,
-            "visual_role": final_role,
-            "source_group_ids": source_group_ids,
-            "source_roles": source_roles,
-            "classification_reason": " ".join(
-                raw_reason_by_id[source_group_id]
-                for source_group_id in source_group_ids
-            ),
-            "continuity_consolidated": len(source_group_ids) > 1,
-            "continuity_observation": group.get("continuity_observation"),
-        })
-    return roles, audit
-
-
 def build_detection_candidate_region_audit(
     *,
     candidate_regions: list[dict[str, Any]],
@@ -4457,7 +4285,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     post_discovery_view_crops: bool = False,
     component_only_partition_repair: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Run V5.20's full-page partition with bounded continuity consolidation.
+    """Run V5.14's V4-style global object partition for source-degraded files.
 
     Discovery is deliberately only a navigational visual map.  Review receives
     the complete pages again and owns roles plus the exclusive object partition.
@@ -4559,14 +4387,14 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
             raise ValueError("source-degraded Discovery found no visual representation")
     except (json.JSONDecodeError, KeyError, ValueError, DetectionRegistrySchemaError) as exc:
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.20 Discovery failed validation: {exc}",
+            f"Source-degraded V5.14 Discovery failed validation: {exc}",
             usage_event={
                 "agent_name": "detection",
                 "operation": "rfq_detection_v5_source_degraded_full_page_registry",
                 "file_name": file_name,
                 "company_id": company_id,
                 "status": "failed",
-                "validation_stage": "v5_20_discovery",
+                "validation_stage": "v5_14_discovery",
                 "source_capability": source_capability,
                 "error_message": str(exc),
             },
@@ -4586,14 +4414,9 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
         }
         for group in visual_groups
     ]
-    continuity_candidates = build_detection_v5_source_degraded_continuity_candidates(
-        visual_groups,
-    )
     registry_user_text = (
         "ADVISORY VISUAL REPRESENTATION MAP:\n"
         + json.dumps(registry_map, ensure_ascii=False, separators=(",", ":"))
-        + "\n\nSEGMENTATION-REVIEW CANDIDATES:\n"
-        + json.dumps(continuity_candidates, ensure_ascii=False, separators=(",", ":"))
         + "\n\nSOURCE CAPABILITY: visual-only. Evaluate the complete page "
           "yourself. The map is not an object inventory and its rectangles "
           "are not authority for a boundary."
@@ -4641,15 +4464,14 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     registry_raw_text = extract_text_from_claude_response(registry_response)
     registry_payload: Any = None
     partition_repair_audit: list[dict[str, Any]] = []
-    continuity_audit: list[dict[str, Any]] = []
     try:
         registry_payload = json.loads(registry_raw_text)
         if not isinstance(registry_payload, dict) or set(registry_payload) != {
-            "continuity_groups", "roles", "partitions",
+            "roles", "partitions",
         }:
             raise ValueError("source-degraded full-page Registry response fields are invalid")
 
-        def normalize_raw_group_id(value: object) -> str:
+        def normalize_group_id(value: object) -> str:
             group_id = str(value or "")
             return raw_to_normalized_id.get(group_id, group_id)
 
@@ -4659,46 +4481,19 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                 normalized_roles.append(role)
                 continue
             normalized_role = copy.deepcopy(role)
-            normalized_role["group_id"] = normalize_raw_group_id(role.get("group_id"))
+            normalized_role["group_id"] = normalize_group_id(role.get("group_id"))
             normalized_roles.append(normalized_role)
-        raw_roles, raw_role_audit = validate_detection_v5_source_degraded_full_page_roles(
+        final_roles, role_audit = validate_detection_v5_source_degraded_full_page_roles(
             normalized_roles,
             visual_groups=visual_groups,
         )
-        normalized_continuity_groups: list[dict[str, Any]] = []
-        for row in registry_payload["continuity_groups"]:
-            if not isinstance(row, dict):
-                normalized_continuity_groups.append(row)
-                continue
-            normalized_row = copy.deepcopy(row)
-            normalized_row["group_ids"] = [
-                normalize_raw_group_id(value)
-                for value in row.get("group_ids") or []
-            ]
-            normalized_continuity_groups.append(normalized_row)
-        effective_visual_groups, continuity_group_id_mapping, continuity_audit = (
-            consolidate_detection_v5_source_degraded_continuity_groups(
-                visual_groups,
-                normalized_continuity_groups,
-            )
-        )
-        final_roles, role_audit = resolve_detection_v5_source_degraded_continuity_roles(
-            raw_roles,
-            raw_role_audit,
-            effective_visual_groups,
-        )
-
-        def normalize_group_id(value: object) -> str:
-            raw_group_id = normalize_raw_group_id(value)
-            return continuity_group_id_mapping.get(raw_group_id, raw_group_id)
-
         assembly_groups = [
             {
                 **group,
                 "visual_role": final_roles[str(group["group_id"])],
                 "evidence_class": "object_evidence",
             }
-            for group in effective_visual_groups
+            for group in visual_groups
             if final_roles[str(group["group_id"])] == "assembly_view"
         ]
         if not assembly_groups:
@@ -4710,42 +4505,19 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                 normalized_partitions.append(partition)
                 continue
             normalized_partition = copy.deepcopy(partition)
-            original_group_ids = [
+            normalized_partition["group_ids"] = [
                 normalize_group_id(value) for value in partition.get("group_ids") or []
             ]
-            normalized_partition["group_ids"] = list(dict.fromkeys(original_group_ids))
-            collapsed_to_single_group = (
-                len(original_group_ids) > 1
-                and len(normalized_partition["group_ids"]) == 1
-            )
             normalized_bases: list[dict[str, Any]] = []
             for basis in partition.get("visual_basis") or []:
                 if not isinstance(basis, dict):
                     normalized_bases.append(basis)
                     continue
                 normalized_basis = copy.deepcopy(basis)
-                normalized_basis["view_ids"] = list(dict.fromkeys(
+                normalized_basis["view_ids"] = [
                     normalize_group_id(value) for value in basis.get("view_ids") or []
-                ))
-                normalized_bases.append(normalized_basis)
-            if collapsed_to_single_group:
-                canonical_group_id = normalized_partition["group_ids"][0]
-                continuity_observation = next(
-                    str(row["observation"])
-                    for row in continuity_audit
-                    if row["canonical_group_id"] == canonical_group_id
-                )
-                normalized_bases = [{
-                    "evidence_type": "complete_physical_envelope",
-                    "view_ids": [canonical_group_id],
-                    "observation": continuity_observation,
-                }]
-            elif len(normalized_partition["group_ids"]) > 1:
-                normalized_bases = [
-                    basis for basis in normalized_bases
-                    if not isinstance(basis, dict)
-                    or len(basis.get("view_ids") or []) >= 2
                 ]
+                normalized_bases.append(normalized_basis)
             normalized_partition["visual_basis"] = normalized_bases
             normalized_partitions.append(normalized_partition)
         if component_only_partition_repair:
@@ -4753,7 +4525,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                 drop_detection_visual_only_component_only_partitions(
                     normalized_partitions,
                     known_view_ids={
-                        str(group["group_id"]) for group in effective_visual_groups
+                        str(group["group_id"]) for group in visual_groups
                     },
                     object_view_ids=assembly_ids,
                 )
@@ -4790,7 +4562,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                         "relationship": "same_object_view",
                         "evidence_facts": [],
                         "commercial_inseparability": (
-                            "V5.20 full-page Registry exclusive visual partition."
+                            "V5.14 full-page Registry exclusive visual partition."
                         ),
                     })
                     edge["evidence_facts"].append(fact)
@@ -4813,7 +4585,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                 "identity_pages": pages,
                 "estimation_evidence_pages": pages,
                 "visual_group_ids": group_ids,
-                "visual_identity": "V5.20 full-page visual Registry partition",
+                "visual_identity": "V5.14 full-page visual Registry partition",
                 "boundary_basis": " ".join(
                     str(basis["observation"])
                     for basis in partition["visual_basis"]
@@ -4840,18 +4612,16 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
             object_id=None,
             object_name=None,
             model=selected_model,
-            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V520_PROMPT_VERSION,
+            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V519_PROMPT_VERSION,
             response=registry_response,
             started_at=discovery_diagnostics["request_started_at"],
             finished_at=registry_diagnostics["request_finished_at"],
             request_diagnostics={
-                "validation_stage": "v5_20_full_page_registry",
+                "validation_stage": "v5_19_full_page_registry",
                 "source_capability": source_capability,
                 "page_frame_audit": page_frame_audit,
                 "discovery_decision_audit": discovery_payload,
                 "full_page_registry_decision_audit": registry_payload,
-                "continuity_candidate_audit": continuity_candidates,
-                "continuity_consolidation_audit": continuity_audit,
                 "partition_repair_audit": partition_repair_audit,
                 "error_message": str(exc),
             },
@@ -4859,7 +4629,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
         failure_usage["status"] = "failed"
         failure_usage["error_message"] = str(exc)
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.20 full-page Registry failed validation: {exc}",
+            f"Source-degraded V5.19 full-page Registry failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
 
@@ -4890,7 +4660,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     )
     audit = {
         "operation": "rfq_detection_v5_source_degraded_full_page_registry",
-        "registry_route": "v5_20_source_degraded_continuity_consolidation",
+        "registry_route": "v5_19_source_degraded_full_page_registry_observability",
         "provider_duration_seconds": round(
             float(discovery_summary.get("duration_seconds") or 0)
             + float(registry_summary.get("duration_seconds") or 0),
@@ -4918,8 +4688,6 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
             else "full_rendered_pages_without_discovery_crops_or_overlays"
         ),
         "post_discovery_view_crop_audit": registry_crop_audit,
-        "continuity_candidate_audit": continuity_candidates,
-        "continuity_consolidation_audit": continuity_audit,
         "partition_repair_audit": partition_repair_audit,
         "role_audit": role_audit,
         "positive_relation_edges": positive_relation_edges,
@@ -4935,7 +4703,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
         object_id=None,
         object_name=None,
         model=selected_model,
-        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V520_PROMPT_VERSION,
+        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V519_PROMPT_VERSION,
         response=registry_response,
         started_at=discovery_diagnostics["request_started_at"],
         finished_at=registry_diagnostics["request_finished_at"],
@@ -4957,7 +4725,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     })
     return {
         "route": (
-            "v5_20_source_degraded_continuity_consolidation"
+            "v5_19_source_degraded_full_page_registry_observability"
             if component_only_partition_repair
             else (
                 "v5_17_source_degraded_full_page_registry_post_discovery_crops_experimental"

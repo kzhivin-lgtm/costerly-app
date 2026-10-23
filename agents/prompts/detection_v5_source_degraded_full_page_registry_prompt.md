@@ -1,33 +1,12 @@
-# DETECTION V5.20 - SOURCE-DEGRADED FULL-PAGE VISUAL REGISTRY
+# DETECTION V5.14 - SOURCE-DEGRADED FULL-PAGE VISUAL REGISTRY
 
 The input contains complete rendered pages and an advisory visual representation
 map. The map is navigation only. It may split one depiction, omit document
 context or include details. Do not treat it as an object set.
 
-Return three things: `continuity_groups`, one final role for every mapped
-representation, then one complete partition of the final assembly views into
-fabricated objects. The runtime validates coverage and ownership. It does not
-reinterpret the page.
-
-## Continuity consolidation
-
-First inspect the full rendered page for a false split in the advisory map.
-`continuity_groups` is an optional list. Add one row only when two or more
-mapped representations on the same page are visibly one physically continuous
-depiction: their actual drawn body, rail, panel, support or frame continues
-into the other with no independent drawing boundary. State the concrete joined
-parts and the visible connection.
-
-This is an Island-segmentation decision, before roles and commercial-object
-membership. It is not a same-object relation between separate projections.
-Do not declare continuity from touching or overlapping rectangles, proximity,
-similar construction, material, colour, a shared page or a shared title. A
-blank gap, a separate finished envelope, or merely related components means
-separate representations. When a continuous depiction bends, branches or has
-a non-rectangular silhouette, it is still one representation.
-
-The supplied segmentation-review candidates are advisory only. Inspect the
-pixels and return `[]` when none has a real physical-contour continuation.
+Return two things: one final role for every mapped representation, then one
+complete partition of the final assembly views into fabricated objects. The
+runtime validates coverage and ownership. It does not reinterpret the page.
 
 ## Roles
 
@@ -49,10 +28,8 @@ colour or generic construction. Do not create a role from a rectangle alone.
 An `assembly_view` is a candidate for identity resolution, not a declaration
 that it is a new independent product. A `component_detail` is supporting
 evidence only. It cannot appear in a partition, even when it visibly belongs
-to an assembly. A group named in `continuity_groups` is not an independent
-component: its fragments become one effective representation before this role
-is used for partitioning. After choosing roles, treat that decision as binding:
-the union of all partition `group_ids` must be exactly the set of
+to an assembly. After choosing roles, treat that decision as binding: the
+union of all partition `group_ids` must be exactly the set of
 `assembly_view` IDs, no more and no less.
 
 ## Object partitions

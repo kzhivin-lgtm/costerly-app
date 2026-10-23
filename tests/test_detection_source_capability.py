@@ -4,9 +4,6 @@ from agents.anthropic_adapter import (
     _compile_detection_v516_v561_consensus,
     _match_detection_v516_v561_object_groups,
     _normalize_source_degraded_registry_view_ids,
-    build_detection_v5_source_degraded_continuity_candidates,
-    consolidate_detection_v5_source_degraded_continuity_groups,
-    resolve_detection_v5_source_degraded_continuity_roles,
     validate_detection_v5_source_degraded_full_page_roles,
     validate_detection_v5_source_degraded_role_resolutions,
 )
@@ -33,103 +30,6 @@ def _fact(page, text, left, top, right, bottom):
             "bottom_right_x": right, "bottom_right_y": bottom,
         },
     }
-
-
-def _continuity_group(group_id, left, top, right, bottom, description):
-    return {
-        "group_id": group_id,
-        "page_number": 1,
-        "location_hint": "page area",
-        "visual_description": description,
-        "representation_kind": "technical depiction",
-        "evidence_class": "object_evidence",
-        "bbox": {
-            "top_left_x": left, "top_left_y": top,
-            "bottom_right_x": right, "bottom_right_y": bottom,
-        },
-        "core_bbox": {
-            "top_left_x": left + 5, "top_left_y": top + 5,
-            "bottom_right_x": right - 5, "bottom_right_y": bottom - 5,
-        },
-    }
-
-
-def test_source_degraded_continuity_consolidates_attested_fragments_before_roles():
-    groups = [
-        _continuity_group(
-            "view-001", 10, 10, 200, 200,
-            "Vertical shelving with its attached metal frame.",
-        ),
-        _continuity_group(
-            "view-002", 10, 170, 200, 300,
-            "Angled panel visibly continuous with the shelving frame.",
-        ),
-    ]
-
-    candidates = build_detection_v5_source_degraded_continuity_candidates(groups)
-    assert candidates == [{
-        "group_ids": ["view-001", "view-002"],
-        "reason": "same_page_core_bbox_overlap_requires_visual_continuity_review",
-    }]
-
-    effective_groups, mapping, continuity_audit = (
-        consolidate_detection_v5_source_degraded_continuity_groups(
-            groups,
-            [{
-                "group_ids": ["view-001", "view-002"],
-                "observation": (
-                    "The angled panel is attached directly to the vertical shelving "
-                    "frame with uninterrupted visible structure."
-                ),
-            }],
-        )
-    )
-
-    assert mapping == {"view-001": "view-001", "view-002": "view-001"}
-    assert len(effective_groups) == 1
-    assert effective_groups[0]["source_group_ids"] == ["view-001", "view-002"]
-    assert effective_groups[0]["bbox"] == {
-        "top_left_x": 10, "top_left_y": 10,
-        "bottom_right_x": 200, "bottom_right_y": 300,
-    }
-    assert continuity_audit[0]["canonical_group_id"] == "view-001"
-
-    roles, role_audit = resolve_detection_v5_source_degraded_continuity_roles(
-        {"view-001": "assembly_view", "view-002": "component_detail"},
-        [
-            {
-                "group_id": "view-001", "visual_role": "assembly_view",
-                "classification_reason": "Complete vertical shelving system.",
-            },
-            {
-                "group_id": "view-002", "visual_role": "component_detail",
-                "classification_reason": "Angled panel was wrongly isolated from its frame.",
-            },
-        ],
-        effective_groups,
-    )
-
-    assert roles == {"view-001": "assembly_view"}
-    assert role_audit[0]["source_roles"] == {
-        "view-001": "assembly_view", "view-002": "component_detail",
-    }
-    assert role_audit[0]["continuity_consolidated"] is True
-
-
-def test_source_degraded_continuity_rejects_cross_page_or_overlapping_claims():
-    groups = [
-        _continuity_group("view-001", 10, 10, 100, 100, "First drawing."),
-        {**_continuity_group("view-002", 10, 10, 100, 100, "Second drawing."), "page_number": 2},
-    ]
-
-    with pytest.raises(ValueError, match="same-page physical evidence"):
-        consolidate_detection_v5_source_degraded_continuity_groups(
-            groups,
-            [{
-                "group_ids": ["view-001", "view-002"],
-                "observation": "These drawings are alleged to form one continuous physical depiction.",
-            }],
-        )
 
 
 def test_source_capability_routes_footer_and_single_note_only_document_visual_only():
