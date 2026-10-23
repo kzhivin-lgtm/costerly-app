@@ -248,7 +248,7 @@ def test_v49_routes_only_adda_style_registry_to_sonnet_without_evidence_handoff(
     assert len(result["_agent_usage_events"]) == 1
 
 
-def test_source_degraded_route_uses_v517_and_forces_the_base_model():
+def test_source_degraded_route_uses_v518_without_discovery_crops_and_forces_the_base_model():
     registry = {"objects": [{
         "object_id": "object-001", "transport_label": "Object 1",
         "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
@@ -277,7 +277,8 @@ def test_source_degraded_route_uses_v517_and_forces_the_base_model():
             page_images=[b"page"], ocr_package={"evidence": {"text_blocks": []}},
         )
 
-    assert source_degraded_call["post_discovery_view_crops"] is True
+    assert source_degraded_call["post_discovery_view_crops"] is False
+    assert source_degraded_call["component_only_partition_repair"] is True
     assert source_degraded_call["model"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL
     assert result["detected_objects"][0]["object_id"] == "object-001"
     assert result["_agent_usage_events"][0]["raw_usage"]["detection_v4_2_model_route"]["decision"] == "source_degraded_visual_registry"

@@ -132,6 +132,46 @@ def assess_detection_source_capability(
     }
 
 
+def drop_detection_visual_only_component_only_partitions(
+    partitions: object,
+    *,
+    known_view_ids: set[str],
+    object_view_ids: set[str],
+) -> tuple[object, list[dict[str, Any]]]:
+    """Discard only a model partition made exclusively from known details.
+
+    Roles are authoritative within the visual-only Registry contract: a View
+    classified as ``component_detail`` can inform an assembly but cannot own a
+    commercial object.  This narrow repair handles a contradictory duplicate
+    partition without accepting unknown IDs, mixed detail/assembly groups, or
+    incomplete ownership.  The ordinary partition validator still rejects all
+    of those states.
+    """
+    if not isinstance(partitions, list):
+        return partitions, []
+    component_ids = known_view_ids - object_view_ids
+    retained: list[object] = []
+    audit: list[dict[str, Any]] = []
+    for index, partition in enumerate(partitions, start=1):
+        group_ids = partition.get("group_ids") if isinstance(partition, dict) else None
+        if (
+            isinstance(group_ids, list)
+            and group_ids
+            and all(
+                isinstance(group_id, str) and group_id in component_ids
+                for group_id in group_ids
+            )
+        ):
+            audit.append({
+                "partition_index": index,
+                "dropped_group_ids": list(group_ids),
+                "reason": "component_detail_cannot_own_visual_only_partition",
+            })
+            continue
+        retained.append(partition)
+    return retained, audit
+
+
 def validate_detection_visual_only_partitions(
     partitions: object,
     *,

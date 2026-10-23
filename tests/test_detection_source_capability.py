@@ -9,6 +9,7 @@ from agents.anthropic_adapter import (
 )
 from agents.detection_source_capability import (
     assess_detection_source_capability,
+    drop_detection_visual_only_component_only_partitions,
     validate_detection_visual_only_partitions,
 )
 from agents.schemas.detection_registry_schema import (
@@ -304,6 +305,59 @@ def test_visual_only_partition_rejects_proximity_as_merge_evidence():
                 }],
             },
         ], object_view_ids={"view-001", "view-002"})
+
+
+def test_component_only_partition_is_dropped_but_mixed_or_unknown_ids_are_retained_for_validation():
+    partitions, audit = drop_detection_visual_only_component_only_partitions(
+        [
+            {
+                "group_ids": ["view-003"],
+                "visual_basis": [{
+                    "evidence_type": "matching_unique_structure",
+                    "view_ids": ["view-003", "view-004"],
+                    "observation": "The component is visibly incorporated into view 004.",
+                }],
+            },
+            {
+                "group_ids": ["view-001"],
+                "visual_basis": [{
+                    "evidence_type": "complete_physical_envelope",
+                    "view_ids": ["view-001"],
+                    "observation": "One complete independent physical envelope.",
+                }],
+            },
+            {
+                "group_ids": ["view-002"],
+                "visual_basis": [{
+                    "evidence_type": "complete_physical_envelope",
+                    "view_ids": ["view-002"],
+                    "observation": "One complete independent physical envelope.",
+                }],
+            },
+            {
+                "group_ids": ["view-004"],
+                "visual_basis": [{
+                    "evidence_type": "complete_physical_envelope",
+                    "view_ids": ["view-004"],
+                    "observation": "One complete independent physical envelope.",
+                }],
+            },
+        ],
+        known_view_ids={"view-001", "view-002", "view-003", "view-004"},
+        object_view_ids={"view-001", "view-002", "view-004"},
+    )
+
+    assert audit == [{
+        "partition_index": 1,
+        "dropped_group_ids": ["view-003"],
+        "reason": "component_detail_cannot_own_visual_only_partition",
+    }]
+    assert [partition["group_ids"] for partition in partitions] == [
+        ["view-001"], ["view-002"], ["view-004"],
+    ]
+    assert validate_detection_visual_only_partitions(
+        partitions, object_view_ids={"view-001", "view-002", "view-004"},
+    )
 
 
 def test_direct_shared_structure_requires_specific_physical_witness():

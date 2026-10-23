@@ -39,6 +39,7 @@ from agents.prompt_loader import (
 )
 from agents.detection_source_capability import (
     assess_detection_source_capability,
+    drop_detection_visual_only_component_only_partitions,
     validate_detection_visual_only_partitions,
 )
 from agents.detection_fusion_candidate_regions import (
@@ -122,6 +123,9 @@ DETECTION_V5_SOURCE_DEGRADED_ONE_SHOT_REGISTRY_PROMPT_VERSION = (
 )
 DETECTION_V5_SOURCE_DEGRADED_V561_CONSENSUS_PROMPT_VERSION = (
     "detection_v5_16_source_degraded_v561_two_proposal_consensus_experimental_v1"
+)
+DETECTION_V5_SOURCE_DEGRADED_V518_PROMPT_VERSION = (
+    "detection_v5_18_source_degraded_full_page_registry_partition_repair_v1"
 )
 DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_CROP_MAX_SIDE = 1024
 # Registry has already locked object identity, quantity and ordering before this
@@ -4279,6 +4283,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     ocr_package: dict[str, Any] | None,
     model: str | None,
     post_discovery_view_crops: bool = False,
+    component_only_partition_repair: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Run V5.14's V4-style global object partition for source-degraded files.
 
@@ -4458,6 +4463,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     )
     registry_raw_text = extract_text_from_claude_response(registry_response)
     registry_payload: Any = None
+    partition_repair_audit: list[dict[str, Any]] = []
     try:
         registry_payload = json.loads(registry_raw_text)
         if not isinstance(registry_payload, dict) or set(registry_payload) != {
@@ -4514,6 +4520,16 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                 normalized_bases.append(normalized_basis)
             normalized_partition["visual_basis"] = normalized_bases
             normalized_partitions.append(normalized_partition)
+        if component_only_partition_repair:
+            normalized_partitions, partition_repair_audit = (
+                drop_detection_visual_only_component_only_partitions(
+                    normalized_partitions,
+                    known_view_ids={
+                        str(group["group_id"]) for group in visual_groups
+                    },
+                    object_view_ids=assembly_ids,
+                )
+            )
         partitions = validate_detection_visual_only_partitions(
             normalized_partitions,
             object_view_ids=assembly_ids,
@@ -4599,6 +4615,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                 "source_capability": source_capability,
                 "discovery_decision_audit": discovery_payload,
                 "full_page_registry_decision_audit": registry_payload,
+                "partition_repair_audit": partition_repair_audit,
                 "error_message": str(exc),
             },
         ) from exc
@@ -4630,7 +4647,11 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     )
     usage = {
         "operation": "rfq_detection_v5_source_degraded_full_page_registry",
-        "prompt_version": DETECTION_V5_SOURCE_DEGRADED_FULL_PAGE_REGISTRY_PROMPT_VERSION,
+        "prompt_version": (
+            DETECTION_V5_SOURCE_DEGRADED_V518_PROMPT_VERSION
+            if component_only_partition_repair
+            else DETECTION_V5_SOURCE_DEGRADED_FULL_PAGE_REGISTRY_PROMPT_VERSION
+        ),
         "model": selected_model,
         "duration_seconds": round(
             float(discovery_summary.get("duration_seconds") or 0)
@@ -4659,6 +4680,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
             else "full_rendered_pages_without_discovery_crops_or_overlays"
         ),
         "post_discovery_view_crop_audit": registry_crop_audit,
+        "partition_repair_audit": partition_repair_audit,
         "role_audit": role_audit,
         "positive_relation_edges": positive_relation_edges,
         "discovery_decision_audit": discovery_payload,
@@ -4669,9 +4691,13 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     )
     return {
         "route": (
-            "v5_17_source_degraded_full_page_registry_post_discovery_crops_experimental"
-            if post_discovery_view_crops
-            else "v5_14_source_degraded_full_page_registry_experimental"
+            "v5_18_source_degraded_full_page_registry_partition_repair"
+            if component_only_partition_repair
+            else (
+                "v5_17_source_degraded_full_page_registry_post_discovery_crops_experimental"
+                if post_discovery_view_crops
+                else "v5_14_source_degraded_full_page_registry_experimental"
+            )
         ),
         "visual_groups": assembly_groups,
         "discovery_visual_groups": raw_visual_groups,

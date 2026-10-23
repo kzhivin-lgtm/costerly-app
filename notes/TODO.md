@@ -427,10 +427,20 @@ ordinary V5 path, or source-degraded router gate changes. Crops are created
 only after Discovery and are supplemental detail, never a boundary authority.
 Local structural verification created five valid crops from the historical
 Page23 Discovery map, alongside the original 200-dpi full page; 45 focused
-tests and `git diff --check` pass. The live provider gate remains pending:
+tests and `git diff --check` pass. The live provider gate was not executed:
 this execution environment exposes project keys without DNS and exposes DNS
-without local secrets, so neither Mistral nor Haiku was called. Do not infer a
-Detection outcome, cost, or quality result until one real run completes.
+without local secrets, so neither Mistral nor Haiku was called. V5.18
+supersedes this experiment's crop input.
+
+ACTIVE EXPERIMENT, P0, V5.18 source-degraded full-page partition repair:
+remove V5.17's post-Discovery crops entirely. In the final full-page Registry
+response, discard only a partition whose members are all known Views already
+classified as `component_detail`; persist that deterministic repair in the
+decision audit. Unknown IDs, mixed detail and assembly partitions, duplicate
+or missing assembly ownership, and invalid visual bases remain hard validation
+errors. Ordinary V5 is unchanged. Local structural verification: 57 focused
+tests and `git diff --check` pass. Provider-quality outcome remains pending,
+and this repair must not be represented as a Page23 object-boundary fix.
 
 BLOCKED QUALITY GATE, V5.9 HSL `v590-hsl-04`: the cross-document run rejects
 the experiment in its current form. It returned 31 raw Visual Groups, 28
