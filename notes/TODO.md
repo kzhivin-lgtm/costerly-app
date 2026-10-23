@@ -258,6 +258,21 @@ or unvalidated free-text boundary reasoning. Any successor needs a separately
 approved full-page-first Island authority while keeping Fusion, Dimensions and
 runtime validation.
 
+PENDING, P0, USER DIRECTION, degraded-source visual route: build a separate
+Haiku-only Detection path for drawing packages whose Fusion contains no usable
+spatial source evidence on every substantive page. This is an input-capability
+decision, never a filename, object-count, Page23, document-type or Sonnet
+route. The deterministic gate must distinguish authored, page-local MyPDF or
+OCR text/dimension/graphic facts from page headers, footers and a provider's
+whole-page image placeholder. On a routed file, bypass Candidate Q and
+Dimension Fingerprints as evidence channels, but retain full rendered pages,
+source-quality audit, role classification, exclusive ownership, Detection
+Validation, File Review and later Naming. The alternative Haiku route first
+builds a full-page visual inventory before any rectangular candidate boundary,
+then resolves commercial membership from that inventory. Mixed-evidence files
+remain on the ordinary V5 route until a separate mixed-page contract is
+approved. Acceptance must cover varied zero-source files, not a Page23 rule.
+
 BLOCKED QUALITY GATE, V5.9 HSL `v590-hsl-04`: the cross-document run rejects
 the experiment in its current form. It returned 31 raw Visual Groups, 28
 Object-Evidence Islands and 12 packages, rather than the protected HSL 32/9
