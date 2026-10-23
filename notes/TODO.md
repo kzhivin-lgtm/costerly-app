@@ -238,32 +238,25 @@ variant. Any next repair must give an existing stage an explicit, bounded
 authority to invalidate a false split, or add a deterministic image-continuity
 signal that distinguishes physical body strokes from annotations.
 
-PENDING, P0, USER PROPOSAL, early visual-only Detection router: before Candidate
-Regions, Q and Dimension Fingerprints, classify each page's usable evidence.
-When native PDF spans contain no authored drawing text and Mistral returns no
-interior text block, annotation or literal with a page-local bbox, route that
-page through a bounded visual-only object-discovery contract rather than
-pretending it has a Dimension Fingerprint. Preserve the full PNG, page evidence
-audit, source-frame record, Detection Validation and File Review. Do not turn
-off the ordinary evidence path for other pages in the same document, and do not
-discard the deterministic engine globally. Decide separately whether the
-visual-only route returns direct object candidates or lets the existing Review
-call make a narrowly typed false-split union. Polygon masks are technically
-possible but are not proposed as the first implementation: current crops,
-source ownership, halos and graph locality are rectangle-based, and overlapping
-rectangular evidence envelopes are already valid.
+REJECTED LOCAL EXPERIMENT, V5.11 visual-only alternatives: direct Haiku
+object discovery, high-resolution retry, isolated visual membership review and
+bounded nearest-neighbour visual pairs all failed the Page23 exact grouping
+gate. The pair route was invalidated earlier by incorrect View envelopes, which
+omitted the required console pair and introduced false neighbours. V5.11 was
+never wired into the active Detection path. Do not create a page router, use
+Sonnet, or tune this prompt family further.
 
-NEXT, P0, V5.11 isolated Page23 visual-only router experiment: preserve the
-V5.10.12 normal route as the control. Add a deterministic per-page gate for
-zero usable authored/spatial evidence, then route only such pages to a direct
-visual object-discovery contract. It must preserve full-page PNG evidence,
-page-local view regions, source-mode audit, Detection Validation and File
-Review, while bypassing Candidate Q, Dimension Fingerprints and semantic graph
-for the visual-only page. First acceptance question: Page23 returns shelf,
-door system and two-view TV console as three object candidates without using
-invented dimensions or a file-specific rule. Only after that compare Metal and
-Adda in the evaluation wheel. No Polygon/mask implementation, deployment or
-checkpoint is authorised by this entry.
+RESEARCH RESULT, legacy V3/V4 Page23: the historical stable 3-object outcome
+does not prove a universal mechanism. Both active legacy prompts contain a
+literal example of the Page23 composition, demanding three objects and the
+two-view console merge. The reusable observation is narrower: temperature-zero
+Haiku made one full-page visual inventory before any bbox candidate constrained
+it. It correctly represented the shelf as one complete assembly view, doors as
+one track system and the console as two views. It then applied exclusive
+ownership. Do not restore the old direct Registry, its Page23-shaped example,
+or unvalidated free-text boundary reasoning. Any successor needs a separately
+approved full-page-first Island authority while keeping Fusion, Dimensions and
+runtime validation.
 
 BLOCKED QUALITY GATE, V5.9 HSL `v590-hsl-04`: the cross-document run rejects
 the experiment in its current form. It returned 31 raw Visual Groups, 28
