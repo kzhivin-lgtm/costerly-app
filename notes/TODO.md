@@ -452,6 +452,20 @@ File Review, one event at a time; abort rather than expose an unauditable
 Detection decision if that write fails. Continue storing OCR and timing
 diagnostics asynchronously. Ordinary V5 decision logic is unchanged.
 
+REJECTED EXPERIMENT, P0, V5.20 source-degraded continuity consolidation:
+retain V5.19's two full-page Haiku calls and add an explicit same-page
+`continuity_groups` response before roles. A deterministic core-bbox overlap
+cue correctly surfaced the Page23 shelving and angled-panel pair as the only
+candidate. The full-page Registry nevertheless returned an empty continuity
+list, retained the panel as `component_detail`, falsely merged shelving with
+doors, and left the console projections separate. The runtime consolidation
+and audit behaved as specified, but the provider did not supply the required
+physical-contour observation. Live visual-only Registry cost `$0.015511` for
+6,881 input and 1,726 output tokens in 21.694 seconds. Reverted to V5.19.
+Do not retry this prompt/schema mechanism. The next diagnostic must change the
+visual evidence presented for connected-contour recognition, without restoring
+static crops or treating bbox overlap as a merge decision.
+
 BLOCKED QUALITY GATE, V5.9 HSL `v590-hsl-04`: the cross-document run rejects
 the experiment in its current form. It returned 31 raw Visual Groups, 28
 Object-Evidence Islands and 12 packages, rather than the protected HSL 32/9
