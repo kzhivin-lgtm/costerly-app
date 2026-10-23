@@ -9,6 +9,10 @@ from agents.prompt_loader import (
     load_detection_registry_prompt,
     load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
+    load_detection_v5_discovery_prompt,
+    load_detection_v5_membership_prompt,
+    load_detection_v5_proposal_prompt,
+    load_detection_v5_review_prompt,
 )
 
 
@@ -66,28 +70,17 @@ def test_detection_visual_map_never_decides_objects_or_quantity():
     assert "cannot create, split, merge, name, count" in prompt
 
 
-def test_integrated_visual_registry_returns_facts_for_the_deterministic_graph_compiler():
-    prompt = load_detection_visual_registry_prompt()
+def test_v5_10_3_separates_full_page_discovery_from_membership_review():
+    proposal_prompt = load_detection_v5_proposal_prompt()
+    review_prompt = load_detection_v5_review_prompt()
 
-    assert "deterministic object-package construction" in prompt
-    assert "You do\nnot create objects" in prompt
-    assert "Return exactly five arrays" in prompt
-    assert "document_context" in prompt
-    assert "semantic_facts" in prompt
-    assert "membership_edges" in prompt
-    assert "Do not return negatives, unknowns" in prompt
-    assert "PAGE EVIDENCE INVENTORY" in prompt
-    assert "classification_reason" in prompt
-    assert "Candidate Region recall check" in prompt
-    assert "Sparse text does not make a drawn, dimensioned object detail" in prompt
-    assert "A local dimension-only fragment is also `object_evidence`" in prompt
-    assert "A whole-level or whole-room floor plan" in prompt
-    assert "Dimension Fingerprints" in prompt
-    assert "CANDIDATE PAIR QUEUE (Q" in prompt
-    assert "Q is a high-priority Dimension hypothesis, not a relationship boundary" in prompt
-    assert "smallest proof tree" in prompt
-    assert "full-page visual membership decision" in prompt
-    assert "Two separately framed, separately dimensioned or separately positioned views" in prompt
+    assert "complete visual-Island inventory" in proposal_prompt
+    assert "You do\nnot decide object membership" in proposal_prompt
+    assert "Candidate Regions and Q are recall aids" in proposal_prompt
+    assert "fixed visual-Island inventory" in review_prompt
+    assert "without brackets" in review_prompt
+    assert "cannot create,\nremove, split, reclassify" in review_prompt
+    assert "registry_view:<View ID>" in review_prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v5_7_1_registry_membership_primary_single_call_temperature_0"
+        "detection_v5_10_3_canonical_review_source_ids_temperature_0"
     )

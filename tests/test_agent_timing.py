@@ -20,6 +20,8 @@ from agents.anthropic_adapter import (
     apply_benchmark_run_suffix,
     build_agent_usage_event,
     build_detection_ocr_context,
+    build_detection_v5_membership_page_context_images,
+    build_detection_v5_registry_visual_sources,
     build_detection_system_content,
     build_detection_user_text,
     build_uploaded_file_content_block,
@@ -100,7 +102,7 @@ def _visual_registry_payload(payload):
     return {
         "visual_groups": groups,
         "classifications": classifications,
-        "membership_edges": copy.deepcopy(payload.get("membership_edges", [])),
+        "object_hypotheses": copy.deepcopy(payload.get("object_hypotheses", [])),
         "candidate_region_exceptions": copy.deepcopy(
             payload.get("candidate_region_exceptions", [])
         ),
@@ -131,6 +133,52 @@ def test_document_dimension_unit_profile_requires_one_explicit_unit_across_docum
 
     assert conflicting_profile["unit"] == "unknown"
     assert conflicting_profile["status"] == "conflicting_explicit_document_units"
+
+
+def test_v5_8_registry_visual_sources_are_bounded_to_fixed_object_views():
+    sources = build_detection_v5_registry_visual_sources([
+        {
+            "group_id": "VG-P001-001", "page_number": 1,
+            "evidence_class": "object_evidence",
+            "bbox": {"top_left_x": 10, "top_left_y": 20,
+                     "bottom_right_x": 110, "bottom_right_y": 220},
+            "visual_description": "Dimensioned cabinet elevation.",
+        },
+        {
+            "group_id": "VG-P001-002", "page_number": 1,
+            "evidence_class": "document_context",
+            "bbox": {"top_left_x": 10, "top_left_y": 240,
+                     "bottom_right_x": 110, "bottom_right_y": 300},
+            "visual_description": "Title block.",
+        },
+    ])
+
+    assert sources == [{
+        "fact_id": "registry_view:VG-P001-001",
+        "page_number": 1,
+        "bbox": {"top_left_x": 10, "top_left_y": 20,
+                 "bottom_right_x": 110, "bottom_right_y": 220},
+        "text": "Dimensioned cabinet elevation.",
+        "source": "registry_membership_crop",
+    }]
+
+
+def test_v5_8_membership_page_context_is_low_resolution_and_page_bounded():
+    from io import BytesIO
+    from PIL import Image
+
+    image = Image.new("RGB", (1600, 1200), "white")
+    encoded = BytesIO()
+    image.save(encoded, format="JPEG")
+
+    contexts, audit = build_detection_v5_membership_page_context_images(
+        page_images=[encoded.getvalue()], page_numbers={1, 2},
+    )
+
+    assert audit == [{"page_number": 2, "reason": "page unavailable"}]
+    assert [context["page_number"] for context in contexts] == [1]
+    with Image.open(BytesIO(contexts[0]["bytes"])) as rendered:
+        assert max(rendered.size) == 1024
 
 
 def test_title_block_drawing_code_extractor_accepts_only_one_explicit_code_per_page():
@@ -654,8 +702,8 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
             page_images=[b"page"], regions=[], ocr_package=None, model="model",
         )
 
-    assert requested_budgets == [12288]
-    assert requested_temperatures == [0.0]
+    assert requested_budgets == [8192, 6144]
+    assert requested_temperatures == [0.0, 0.0]
     assert visual_map["visual_groups"][0]["group_id"] == "view-001"
     assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
     assert registry["objects"][0]["estimation_evidence_pages"] == [1]
@@ -696,9 +744,9 @@ def test_visual_registry_keeps_semantic_facts_outside_dimension_queue_for_global
             {"group_id": "VG-B", "page_number": 1, "location_hint": "right",
              "visual_description": "matching cabinet section", "representation_kind": "section"},
         ],
-        "membership_edges": [{
-            "group_id_a": "VG-A", "group_id_b": "VG-B",
-            "membership_reason": "Both views show the same two-bay cabinet assembly.",
+        "object_hypotheses": [{
+            "group_ids": ["VG-A", "VG-B"],
+            "hypothesis_reason": "Both views show the same two-bay cabinet assembly.",
             "evidence": [{
                 "evidence_type": "matching_topology", "strength": "standard",
                 "observation": "The same two-bay carcass and door order recur.",
@@ -715,62 +763,28 @@ def test_visual_registry_keeps_semantic_facts_outside_dimension_queue_for_global
         })),
         patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
     ):
-        _, registry, usage = run_anthropic_detection_visual_registry_agent(
+        _, _, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"page"], regions=[], ocr_package=None, model="model",
         )
 
-    assert usage["raw_usage"]["semantic_ledger_audit"]["accepted"] == []
+    assert len(usage["raw_usage"]["semantic_ledger_audit"]["accepted"]) == 1
     assert usage["raw_usage"]["semantic_ledger_audit"]["rejected"] == []
-    assert usage["raw_usage"]["semantic_ledger_audit"]["membership_edges"]["accepted"] == [{
-        "index": 0,
-        "group_ids": ["view-001", "view-002"],
-        "edge_count": 1,
+    assert usage["raw_usage"]["semantic_ledger_audit"]["outside_dimension_queue"] == [{
+        "reason": "derived_semantic_fact_outside_dimension_queue_accepted",
+        "group_id_a": "view-001",
+        "group_id_b": "view-002",
     }]
-    assert registry["objects"][0]["visual_group_ids"] == ["view-001", "view-002"]
-    membership_edge = next(
-        edge for edge in usage["raw_usage"]["positive_relation_edges"]
-        if edge.get("membership_basis") == "registry_full_page_membership_edge"
+    trace = usage["raw_usage"]
+    assert trace["rendered_page_image_count"] == 1
+    assert trace["registry_crop_image_count"] == 0
+    assert trace["registry_crop_image_bytes"] == 0
+    assert trace["page_evidence_inventory_characters"] > 0
+    assert trace["v5_9_proposal"]["context_characters"] > 0
+    assert trace["v5_9_review"]["context_characters"] > 0
+    assert trace["candidate_pair_queue_audit"]["selected_candidate_count"] == (
+        trace["candidate_pair_queue_count"]
     )
-    assert (membership_edge["page_a"], membership_edge["page_b"]) == (1, 1)
-
-
-def test_visual_registry_keeps_direct_semantic_facts_from_registry_response():
-    payload = _visual_registry_payload({
-        "visual_groups": [
-            {"group_id": "VG-A", "page_number": 1, "location_hint": "left",
-             "visual_description": "two-bay cabinet elevation", "representation_kind": "elevation"},
-            {"group_id": "VG-B", "page_number": 1, "location_hint": "right",
-             "visual_description": "matching cabinet section", "representation_kind": "section"},
-        ],
-        "semantic_facts": [{
-            "group_id_a": "VG-A", "group_id_b": "VG-B",
-            "evidence_type": "matching_topology", "strength": "standard",
-            "observation": "The same two-bay carcass and door order recur.",
-            "source_fact_ids": [],
-        }],
-    })
-    with (
-        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
-        patch("agents.anthropic_adapter.create_claude_message_streamed", return_value=(_Response(), {
-            "request_started_at": "2026-10-16T00:00:00+00:00",
-            "request_finished_at": "2026-10-16T00:00:01+00:00",
-        })),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
-    ):
-        _, registry, usage = run_anthropic_detection_visual_registry_agent(
-            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"page"], regions=[], ocr_package=None, model="model",
-        )
-
-    assert usage["raw_usage"]["semantic_ledger_audit"]["accepted"] == [{
-        "group_id_a": "view-001", "group_id_b": "view-002",
-        "evidence_type": "matching_topology", "strength": "standard",
-        "observation": "The same two-bay carcass and door order recur.",
-        "source_fact_ids": [],
-    }]
-    assert usage["raw_usage"]["accepted_merge_edge_count"] == 0
-    assert len(registry["objects"]) == 2
 
 
 def test_visual_registry_materializes_view_package_from_immutable_source_fact():
@@ -1175,7 +1189,9 @@ def test_registry_uses_the_same_atomic_visual_group_contract_for_all_models():
 
     assert haiku_usage["prompt_version"] == DETECTION_VISUAL_REGISTRY_PROMPT_VERSION
     assert sonnet_usage["prompt_version"] == DETECTION_VISUAL_REGISTRY_PROMPT_VERSION
-    assert prompts[0] == prompts[1]
+    assert prompts[0] == prompts[2]
+    assert prompts[1] == prompts[3]
+    assert prompts[0] != prompts[1]
     assert "related_group_ids" not in prompts[0]
 
 
@@ -1493,10 +1509,10 @@ def test_integrated_visual_registry_json_failure_carries_transport_diagnostics()
 
     event = raised.value.usage_event
     assert event["status"] == "failed"
-    assert event["raw_usage"]["validation_stage"] == "visual_registry_json"
+    assert event["raw_usage"]["validation_stage"] == "v5_9_proposal_json"
     assert event["raw_usage"]["response_character_count"] == len(raw_text)
     assert event["raw_usage"]["response_text_sha256"]
-    assert event["raw_usage"]["max_tokens"] == 12288
+    assert event["raw_usage"]["max_tokens"] == 8192
     assert event["raw_usage"]["raw_response_persisted"] is False
     assert event["raw_usage"]["top_level_sections_started"] == [
         "visual_groups", "classifications",

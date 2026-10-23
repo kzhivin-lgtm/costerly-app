@@ -5,7 +5,7 @@ CHECKPOINT, experimental, Detection V5.7.1 is recorded in
 accepted or deployed. The measured membership-edge path passes Page23 and
 Adda in one run, but HSL regresses to 29 Object Islands and 10 packages.
 
-ACTIVE, P0, Detection V5.7.1 MVP boundary experiment: start from protected
+SUPERSEDED EXPERIMENT, V5.7.1 MVP boundary experiment: start from protected
 V5.6.1 checkpoint `5de4cf4`. Registry owns one full-page, non-overlapping
 membership proposal for multi-View physical items. Runtime validates typed
 facts, exclusive ownership and exact proof trees, but Dimension Similarity and
@@ -13,7 +13,7 @@ OCR-locality cannot overturn a valid visual membership proposal. First gate is
 Page23 membership, then Adda, HSL and Metal. No extra model call, router,
 Sonnet path or file-specific rule.
 
-ACTIVE, P0, V5.7.1 must preserve both Registry evidence paths: direct
+SUPERSEDED EXPERIMENT, V5.7.1 preserved both Registry evidence paths: direct
 `semantic_facts` and membership-edge facts. V5.6 silently ignored direct
 facts, so a valid typed criterion could not reach the supporting graph. Keep
 the same validators and audit both paths separately.
@@ -22,12 +22,237 @@ RESOLVED, V5.7.1 local benchmark invocation: long runner commands return a
 PTY session after 30 seconds and must be drained until completion. The prior
 missing HSL/Metal reports were orchestration timeouts, not Detection failures.
 
-ACTIVE, P0, HSL V5.7.1 regression: a full run now completes, but produces 29
+SUPERSEDED EXPERIMENT, HSL V5.7.1 regression: a full run now completes, but produces 29
 object-evidence Islands and 10 packages versus the protected 32/9 benchmark.
 The visible losses are page 3 (2 rather than 3 raw Islands) and page 11 (four
 raw Islands but only one object-evidence Island). Keep the V5.6.1 Island and
 classification contract while isolating the membership-output change. Diagnose
 Island recall and classification before considering V5.7.1 for acceptance.
+
+SUPERSEDED EXPERIMENT, V5.7.2 isolates the V5.6.1 Registry prompt and JSON contract,
+then deterministically adapts each accepted `object_hypothesis` into N-1
+membership edges. HSL `v572-hsl-03` restored 32 Object Islands, but returned
+10 packages. P04 was split into two complete hypotheses, while V5.6 merged
+their components later through the same-page, 100-score Dimension
+batch-confirmation edge `view-004` to `view-005`. The owner later clarified
+that P04 may legitimately contain one to three products, so this historical
+count is not evidence for either joining or splitting it. Do not use P04's
+package count to justify a deterministic bridge or any other membership rule.
+
+SUPERSEDED EXPERIMENT, V5.7.2 three-file regression evidence: Adda `v572-adda-01` passes
+at 9 Object Islands and 2 packages. Page23 `v572-page23-01` returns 4/4: the
+Registry emitted four forbidden singleton hypotheses, all correctly rejected,
+so it created no membership edges. Metal `v572-metal-01` returns 51/11, not a
+quality pass: it combines distinct marks OM-2 and OM-3 on P03, OM-1 and MP-1
+on P06, and OG-1, OG-2 and OG-3 on P11 into individual hypotheses. Do not run
+more regression documents or promote V5.7.2. Decide a membership contract that
+can retain complete grouping without admitting singletons or merging explicitly
+distinct author marks.
+
+SUPERSEDED EXPERIMENT, V5.7.3 one-call visual-inventory and typed-pair experiment:
+preserve V5.6.1 Island/classification rules, eliminate Registry package and
+membership-tree output, and compile packages only from validated positive
+pair facts plus Dimension Fingerprint/Weighted Similarity. Q is bounded by
+concentric proximity: scored same-page pairs, one same-page fallback for an
+unanchored proto-region, and only >=85 cross-page anchors. Registry output
+must record full-page/crop image counts and bytes, every Registry text block's
+character count, Q before/after counts, input/output tokens and their separate
+costs. Do not change crop selection in this experiment, so a quality change
+has one attributable cause. First benchmark Page23, then HSL, Adda, and a
+membership-level Metal review. Target is a quality gate before a separate
+crop/input-context cost experiment.
+
+BLOCKED EXPERIMENT, V5.7.3 Page23 quality gate failed twice. `v573-page23-01`
+returned 4 Object Islands but 2 packages because a single false
+`direct_shared_structure` joined the independent shelving and door systems.
+After a narrowly worded shared-member guard, `v573-page23-02` regressed to 5
+Object Islands and 2 packages, with three unsupported single semantic merges.
+The prompt-only route is rejected after two attempts. Do not benchmark HSL,
+Adda or Metal on this state. Next diagnostic is deterministic semantic-proof
+strictness: distinguish a real structural/topological identity proof from a
+shared material, frame type, hardware or page-wide dimension before allowing
+one typed fact to create a merge.
+
+SUPERSEDED EXPERIMENT, V5.7.4 MVP recovery restored the exact V5.6.1 membership-first
+Registry output contract, complete non-overlapping `object_hypotheses`, and
+V5.6 deterministic package assembly. Retain Dimension Fingerprint and
+Weighted Similarity as supporting/bridging evidence, not a replacement for
+the Registry's full-page visual grouping. Retain V5.7.3 diagnostic telemetry
+only: full-page and crop counts/bytes, each prompt-context character count,
+Q counts, Anthropic input/output tokens, separate calculated costs and
+duration. Do not add another model call, a router, Sonnet, crop changes, or
+unproven semantic wording. First run Page23, then HSL, Adda and membership
+review of Metal. Do not accept a single successful Page23 run as stability.
+
+BLOCKED QUALITY GATE, V5.7.4 Page23 `v574-page23-02` and `-03` produced the
+same invalid raw Registry response: five Object Islands and five forbidden
+singleton hypotheses, all correctly rejected by runtime into five standalone
+packages. Claude cost was `$0.018720` per completed run: 8,925 input and
+1,959 output tokens; one full page plus three static crops carried 402,136
+JPEG bytes, and text context was 10,821 characters. Historical successful
+V5.6 traces returned hypothesis sizes `[1, 1, 2]`; current runs return
+`[1, 1, 1, 1, 1]`. Do not spend on the remaining pack until the Registry
+prompt explicitly reconciles a physically continuous drawing and alternate
+projections of one fixture before outputting its Island inventory.
+
+BLOCKED EXPERIMENT, V5.7.5 one-call visual-reconciliation experiment preserved the
+V5.6.1 membership-first contract and V5.7.4 telemetry exactly. Before JSON,
+Registry must reconcile a physically continuous depiction as one Island,
+compare alternate projections, and remove singleton `object_hypotheses`.
+No schema, Dimension, crop, package-runtime, router, Sonnet, or extra-call
+change. Page23 `v575-page23-01` passes the narrow gate at four Object Islands
+and three packages. The pack rejects it: HSL `v575-hsl-01` retains only 30
+Object Islands and 10 packages, with P11 classified down to one Object Island;
+Adda `v575-adda-01` retains nine Islands but merges all four sheets into one
+package instead of the protected two; Metal `v575-metal-01` returns 48 Object
+Islands and 10 packages, which is observational only because aggregate Metal
+package count is not an acceptance signal. Do not promote or extend this
+prompt direction. The reconciliation wording is too broad across sheets and
+must not be tuned again without a new causal diagnostic.
+
+BLOCKED EXPERIMENT, P0, V5.8.0 two-pass Registry: retain Fusion, candidate
+Regions, View Evidence Packages, Dimension Fingerprints, Weighted Similarity,
+the V5.6 deterministic graph and standalone fallback. Haiku call one is
+Discovery only: full pages plus fixed enlarged regions, Islands, bboxes,
+classification and Candidate Region recall, with no OCR inventory, Q,
+object hypotheses or semantic facts. Call two is Membership only: fixed
+Object View crops, concise View-local facts and document-context descriptions;
+it cannot create, remove or classify Islands and returns only multi-View
+hypotheses. Page-wide OCR spans are excluded from a View-local membership
+handoff. Persist each call's token, cost, duration, prompt/context characters,
+image count and image bytes, as well as aggregate cost. `v580-page23-03` is
+the first valid end-to-end trace after the Registry crop sources were wired
+through final validation: `$0.016990`, Registry `21.768s`, total `28.719s`.
+It rejects the quality gate despite returning three packages. Discovery emitted
+five Object Islands. Membership incorrectly merged the door elevations with an
+unrelated angled panel, while leaving the physically continuous shelf-and-panel
+depiction separate. Do not spend on Adda or HSL, tune generic semantic wording,
+or promote V5.8 from this trace. The next decision is whether Membership gets
+a bounded full-page visual context in addition to crops, or whether Discovery
+must return explicit continuous-drawing component ownership. No Router or
+Sonnet.
+
+BLOCKED EXPERIMENT, P0, V5.8.1 Membership page-context experiment: retain the V5.8
+two-call responsibilities and every fixed Island/classification boundary. Add
+one JPEG page context, longest side `1024`, only for pages containing fixed
+Object Views, before the existing View crops in the Membership call. It may
+identify continuity and alternate View arrangement, but cannot create, remove,
+merge or reclassify Islands. First gate is Page23 exact grouping: shelf with
+its continuous panel, doors alone, console projections together. Record the
+incremental Membership image bytes, tokens, time and cost before any wider
+benchmark. `v581-page23-01` rejects the exact grouping gate: it repeated the
+false doors-plus-angled-panel merge and split the two console projections after
+the generic direct-shared-structure guard rejected one of their two facts.
+Compared with `v580-page23-03`, page context added 81,365 image bytes, 1,047
+Membership input tokens and `$0.001082`, but did not correct the false link.
+The crop-only-context hypothesis is rejected. Do not run Adda or HSL, tune
+semantic wording, or promote this direction. No Router, Sonnet or extra call.
+
+CHECKPOINT, experimental, V5.10.3 two-call Registry: retain Fusion and the
+deterministic graph, but separate visual discovery from commercial membership.
+Haiku call one receives the rendered pages, Fusion and Candidate Regions, and
+returns only immutable Islands, classifications and candidate exceptions.
+Haiku call two receives the fixed inventory, page overlays, View crops and
+local evidence, then returns only non-singleton multi-View hypotheses. Runtime
+alone validates citation IDs and typed positive facts, computes Dimension
+Similarity, compiles the graph and creates packages. Both calls use Haiku at
+temperature zero. Exact display wrappers such as `[SF00123]` are canonicalised
+only when `SF00123` is a known source ID, with an audit row. This checkpoint is
+not accepted or deployed. Protected evidence and limits are recorded in
+`notes/DETECTION_V5_10_3_TWO_CALL_EXPERIMENTAL_CHECKPOINT_2026_10_23.md`.
+
+ACTIVE, P0, next isolated V5.10.x repair: P02 generic floor-plan classification.
+The V5.10.3 HSL run retained all protected P03-P11 Island inventory but emitted
+P02 as `object_evidence` because it mislabeled `representation_kind` as
+`object_evidence`, bypassing the generic-plan safeguard. Repair this upstream
+classification-contract breach without changing Island membership, graph,
+dimension scoring or P04 package policy. Re-run HSL first, then Page23 before
+any broader regression pack.
+
+BLOCKED QUALITY GATE, V5.9 HSL `v590-hsl-04`: the cross-document run rejects
+the experiment in its current form. It returned 31 raw Visual Groups, 28
+Object-Evidence Islands and 12 packages, rather than the protected HSL 32/9
+orientation. P03 has two rather than three Object Islands; P07 remains four
+single packages; P09 splits into two; P11 has three groups but classifies every
+one as Document Context, leaving no package. The Proposal cost `$0.158686`
+and took `61.559s`; Review cost `$0.027967` and took `22.358s`; combined
+provider time was `84.788s` (`110.223s` end-to-end). Do not tune package merge
+or Semantic facts from this result. The next causal repair, if approved, is
+Island segmentation: one physically continuous visual depiction is exactly one
+Island even if its silhouette bends, branches or is highly non-rectangular.
+Its bbox is only a padded rectangular transport envelope around that complete
+connected depiction. A split continuous shelf and panel is an Island defect,
+not two Views to repair downstream.
+
+CONFIRMED ROOT CAUSE, before any later Island-reconciliation experiment: V5.9
+has no explicit coordinate-frame transform between Fusion and Review. Native
+MyPDF spans and Mistral OCR/graphic Regions are produced at 200 dpi; Registry
+Proposal/Review pages are rendered at 96 dpi. Page23 measures 3308x2339 in
+the Fusion frame and 1588x1123 in the Review frame. Proposal emitted a
+Fusion-frame bbox through x=3265, but Review cropped and overlaid it directly
+on the 1588-pixel image. The second call therefore receives displaced or
+clipped View crops and misplaced Island labels. This invalidates V5.9 Review
+quality conclusions, including its HSL segmentation result. The isolated
+Page23 geometry gate now passes locally: all 200-dpi Fusion bboxes transform
+to their 96-dpi Review locations, including VG-005 x=1600..3265 becoming
+x=768..1567. External run `v590-coordinate-page23-02` independently confirms
+the recorded Mistral 3308x2339 to Review 1588x1123 frame, 4 object Islands and
+3 packages: shelf, doors, and the linked two-view TV console. It costs
+`$0.022186` and takes 32.375 seconds wall time. Coordinate correctness is now
+verified for Page23, but this does not validate HSL segmentation or justify
+continuity unions or semantic tuning.
+
+V5.10 benchmark state, 2026-10-23: Page23 `v590-coordinate-page23-02`
+passes its discriminating boundary at 4 Object Islands and 3 packages. Adda
+`v510-adda-01` produces 8 Object Islands and 2 packages, so its package count
+is compatible with the known two-object case but Island membership still needs
+inspection. Metal `v510-metal-01` fails the universal merge gate: 30 Object
+Islands become 28 packages, including five separate packages each on P04 and
+P05, versus the roughly 13-15 expected commercial objects. HSL `v510-hsl-01`
+did not produce a result, because Proposal JSON truncated in an unterminated
+string after 25,358 characters. This is an output-contract failure, not an
+Island-quality result. V5.10 is not a checkpoint. First recover a complete HSL
+Proposal response without weakening Island or membership evidence, then inspect
+Adda membership and Metal page-level boundaries.
+
+P1, pending, V5.10 benchmark failure-cost observability: the local runner
+currently records only `repr(exc)` after a failed provider call and drops the
+exception's available usage event, so the HSL failed-call cost is unknown in
+its local report. Persist safe usage totals and diagnostics on failure, without
+logging secrets or retrying automatically.
+
+V5.10.1 HSL `v5101-hsl-01` proves that Proposal output compression is safe for
+Island recall: it completes JSON and returns the required page-level Island
+inventory, but all Review facts were rejected because the handoff represented
+an ID and its text as `SF00123:text`. V5.10.2 `v5102-hsl-01` uses bracketed
+source IDs and returns 33 Object Islands, 12 packages, 27 accepted semantic
+facts and 21 merge edges. Page-level HSL Island counts meet the active
+benchmark: P03=3, P04=6, P05=3, P06=3, P07=4, P08=4, P09=3, P10=3, P11=3.
+
+V5.10.3, verified locally without a provider call: canonicalise only a source
+ID in the exact display form `[SF00123]` when the interior `SF00123` is already
+known in that run's evidence. Keep the raw Review response unchanged and write
+every conversion to `source_id_normalizations`; unknown wrappers remain
+rejected. Reprocessing saved HSL Review `v5102-hsl-01` accepts all 65 of its
+semantic rows, records 65 such canonicalisations and leaves zero unknown-source
+rejections. This validates citation transport only, not the commercial merge
+outcome. In particular, P04 may legitimately contain one to three products, so
+its package count is not a quality gate. The next provider run must compare the
+same page-level Island inventory and View membership, not force P04 into one
+package or toward a global count of nine.
+
+V5.10.3 HSL provider run `v5103-hsl-01`, 2026-10-23: the source-ID repair
+holds in the complete cycle. It returns 63 accepted semantic facts, no accepted
+bracketed source IDs and no `unknown_source_fact` rejection. HSL keeps the
+required Object-Island counts on P03-P10, P04=6 and P11=2 Object plus 2 Context
+Islands, which are both within the permitted inventory range. P04 produces one
+package, an allowed outcome. The run is not a checkpoint because P02's generic
+floor plan is again classified as `object_evidence` and published as a singleton
+package. The existing generic-plan safeguard did not apply because Registry
+mislabelled its `representation_kind` as `object_evidence` instead of
+`floor_plan`. Diagnose and repair that classification-contract breach in
+isolation before any package or graph tuning. Timing: 165.346 seconds total,
+Registry cost $0.206013.
 
 P1, pending, V5.6.10 semantic criteria: stricter `matching_topology` and
 `direct_shared_structure` wording was not regression-proven. Re-evaluate it

@@ -13,6 +13,7 @@ import sys
 from threading import Lock
 import time
 from datetime import UTC, datetime
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Callable
 
@@ -25,12 +26,17 @@ from agents.prompt_loader import (
     load_detection_registry_prompt,
     load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
+    load_detection_v5_discovery_prompt,
+    load_detection_v5_membership_prompt,
+    load_detection_v5_proposal_prompt,
+    load_detection_v5_review_prompt,
 )
 from agents.detection_fusion_candidate_regions import (
     build_detection_fusion_candidate_regions,
     format_detection_candidate_pair_queue,
     format_detection_fusion_candidate_regions,
 )
+from agents.detection_page_images import DEFAULT_PAGE_IMAGE_DPI
 from agents.detection_spatial_inventory import (
     build_detection_spatial_inventory,
     spatial_inventory_context,
@@ -44,7 +50,7 @@ from agents.schemas.detection_registry_schema import (
     DetectionRegistrySchemaError,
     derive_detection_package_decision_audit,
     derive_detection_dimension_package_candidates,
-    compile_detection_v5_membership_edges,
+    compile_detection_v5_object_hypotheses,
     compile_detection_v5_semantic_facts,
     compile_detection_v5_merge_edges,
     compile_detection_v5_dimension_graph,
@@ -79,13 +85,18 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v5_7_1_registry_membership_primary_single_call_temperature_0"
+    "detection_v5_10_3_canonical_review_source_ids_temperature_0"
 )
 # V5.0 keeps one Haiku call. Registry returns Islands, classifications, and
 # sparse positive semantic facts. Runtime owns every graph and package decision.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # The positive graph and per-group source index are linear in island count.
 DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
+DETECTION_V5_DISCOVERY_MAX_TOKENS = 8_192
+DETECTION_V5_PROPOSAL_MAX_TOKENS = 8_192
+DETECTION_V5_MEMBERSHIP_MAX_TOKENS = 6_144
+DETECTION_V5_MEMBERSHIP_CROP_MAX_SIDE = 768
+DETECTION_V5_MEMBERSHIP_PAGE_CONTEXT_MAX_SIDE = 1024
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
 # contract as well.
@@ -204,13 +215,12 @@ DETECTION_V5_CANDIDATE_REGION_EXCEPTIONS_SCHEMA: dict[str, Any] = {
             "reason": {"type": "string"},
         }}}
 
-DETECTION_V5_MEMBERSHIP_EDGES_SCHEMA: dict[str, Any] = {
+DETECTION_V5_OBJECT_HYPOTHESES_SCHEMA: dict[str, Any] = {
     "type": "array", "maxItems": 24,
     "items": {"type": "object", "additionalProperties": False,
-        "required": ["group_id_a", "group_id_b", "membership_reason", "evidence"], "properties": {
-            "group_id_a": {"type": "string"},
-            "group_id_b": {"type": "string"},
-            "membership_reason": {"type": "string", "maxLength": 180},
+        "required": ["group_ids", "hypothesis_reason", "evidence"], "properties": {
+            "group_ids": {"type": "array", "minItems": 2, "items": {"type": "string"}},
+            "hypothesis_reason": {"type": "string", "maxLength": 180},
             "evidence": {"type": "array", "minItems": 1, "maxItems": 3,
                 "items": {"type": "object", "additionalProperties": False,
                     "required": ["evidence_type", "strength", "observation", "source_fact_ids"],
@@ -226,15 +236,33 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": [
-        "visual_groups", "classifications", "membership_edges", "candidate_region_exceptions", "semantic_facts",
+        "visual_groups", "classifications", "object_hypotheses", "candidate_region_exceptions", "semantic_facts",
     ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
-        "membership_edges": DETECTION_V5_MEMBERSHIP_EDGES_SCHEMA,
+        "object_hypotheses": DETECTION_V5_OBJECT_HYPOTHESES_SCHEMA,
         "candidate_region_exceptions": DETECTION_V5_CANDIDATE_REGION_EXCEPTIONS_SCHEMA,
         "semantic_facts": DETECTION_V5_SEMANTIC_FACTS_SCHEMA,
     },
+}
+
+DETECTION_V5_DISCOVERY_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["visual_groups", "classifications", "candidate_region_exceptions"],
+    "properties": {
+        "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
+        "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
+        "candidate_region_exceptions": DETECTION_V5_CANDIDATE_REGION_EXCEPTIONS_SCHEMA,
+    },
+}
+
+DETECTION_V5_MEMBERSHIP_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["object_hypotheses"],
+    "properties": {"object_hypotheses": DETECTION_V5_OBJECT_HYPOTHESES_SCHEMA},
 }
 
 _STREAMLIT_SECRET_CACHE: dict[str, str] = {}
@@ -1191,6 +1219,554 @@ def build_detection_registry_content_blocks(*, file_name: str, file_bytes: bytes
         blocks.append({"type":"image", "source":{"type":"base64","media_type":"image/jpeg","data":base64.standard_b64encode(region["bytes"]).decode("ascii")}})
     blocks.append({"type":"text", "text":user_text})
     return blocks
+
+
+def _detection_bbox(value: object) -> dict[str, int] | None:
+    if not isinstance(value, dict):
+        return None
+    keys = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
+    try:
+        bbox = {key: int(value[key]) for key in keys}
+    except (KeyError, TypeError, ValueError):
+        return None
+    if bbox["bottom_right_x"] <= bbox["top_left_x"] or bbox["bottom_right_y"] <= bbox["top_left_y"]:
+        return None
+    return bbox
+
+
+def _detection_bbox_area(bbox: dict[str, int]) -> int:
+    return (bbox["bottom_right_x"] - bbox["top_left_x"]) * (
+        bbox["bottom_right_y"] - bbox["top_left_y"]
+    )
+
+
+def build_detection_v5_review_coordinate_frames(
+    *,
+    ocr_package: dict[str, Any] | None,
+    page_images: list[bytes],
+) -> tuple[dict[int, dict[str, Any]], list[dict[str, Any]]]:
+    """Map Fusion's OCR pixel frame onto the smaller Registry review images.
+
+    Fusion facts, Candidate Regions and Registry bboxes use the Mistral-rendered
+    page frame (normally 200 dpi). Registry pages are deliberately rendered at
+    96 dpi to bound provider input. Review crops and overlays must transform
+    bboxes between those frames rather than treating the coordinates as equal.
+    """
+    try:
+        from PIL import Image
+    except ImportError:
+        return {}, [{"reason": "Pillow unavailable"}]
+
+    source_pages: dict[int, dict[str, Any]] = {}
+    for page in (ocr_package or {}).get("pages") or []:
+        if not isinstance(page, dict):
+            continue
+        try:
+            page_number = int(page.get("page_number"))
+        except (TypeError, ValueError):
+            continue
+        if page_number >= 1:
+            source_pages[page_number] = page
+
+    rendering = (ocr_package or {}).get("rendering") or {}
+    try:
+        fusion_dpi = float(rendering.get("dpi") or 200)
+    except (TypeError, ValueError):
+        fusion_dpi = 200.0
+    frames: dict[int, dict[str, Any]] = {}
+    audit: list[dict[str, Any]] = []
+    for page_number, page_bytes in enumerate(page_images, start=1):
+        try:
+            with Image.open(BytesIO(page_bytes)) as image:
+                review_width, review_height = image.size
+        except Exception as exc:
+            audit.append({
+                "page_number": page_number,
+                "reason": f"review page unavailable: {type(exc).__name__}",
+            })
+            continue
+
+        dimensions = (source_pages.get(page_number) or {}).get("dimensions")
+        try:
+            fusion_width = int(round(float((dimensions or {}).get("width"))))
+            fusion_height = int(round(float((dimensions or {}).get("height"))))
+        except (AttributeError, TypeError, ValueError):
+            fusion_width = fusion_height = 0
+        source = "mistral_page_dimensions"
+        if fusion_width <= 0 or fusion_height <= 0:
+            fusion_width = max(1, round(review_width * fusion_dpi / DEFAULT_PAGE_IMAGE_DPI))
+            fusion_height = max(1, round(review_height * fusion_dpi / DEFAULT_PAGE_IMAGE_DPI))
+            source = "dpi_ratio_fallback"
+
+        frame = {
+            "page_number": page_number,
+            "fusion_dimensions": {"width": fusion_width, "height": fusion_height},
+            "review_dimensions": {"width": review_width, "height": review_height},
+            "scale_x": round(review_width / fusion_width, 9),
+            "scale_y": round(review_height / fusion_height, 9),
+            "source": source,
+        }
+        frames[page_number] = frame
+        audit.append(copy.deepcopy(frame))
+    return frames, audit
+
+
+def format_detection_v5_coordinate_frame_context(
+    frames: dict[int, dict[str, Any]],
+) -> str:
+    """State the output bbox frame explicitly when page images use another dpi."""
+    if not frames:
+        return "PAGE COORDINATE FRAMES: unavailable."
+    lines = [
+        "PAGE COORDINATE FRAMES:",
+        "All returned Island bbox coordinates must use the FUSION frame, not image pixels.",
+        "FRAME=P|FUSION=widthxheight|IMAGE=widthxheight.",
+    ]
+    for page_number, frame in sorted(frames.items()):
+        fusion = frame["fusion_dimensions"]
+        review = frame["review_dimensions"]
+        lines.append(
+            f"P{page_number}|FUSION={fusion['width']}x{fusion['height']}|"
+            f"IMAGE={review['width']}x{review['height']}"
+        )
+    return "\n".join(lines)
+
+
+def _scale_detection_bbox_to_review_image(
+    bbox: dict[str, int],
+    *,
+    frame: dict[str, Any] | None,
+    review_width: int,
+    review_height: int,
+) -> dict[str, int] | None:
+    """Convert one Fusion-frame bbox to a concrete review-image bbox."""
+    if frame is None:
+        return copy.deepcopy(bbox)
+    fusion = frame.get("fusion_dimensions") if isinstance(frame, dict) else None
+    try:
+        fusion_width = float(fusion["width"])
+        fusion_height = float(fusion["height"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if fusion_width <= 0 or fusion_height <= 0:
+        return None
+
+    def scale_x(value: int) -> int:
+        return round(value * review_width / fusion_width)
+
+    def scale_y(value: int) -> int:
+        return round(value * review_height / fusion_height)
+
+    left = max(0, min(review_width - 1, scale_x(bbox["top_left_x"])))
+    top = max(0, min(review_height - 1, scale_y(bbox["top_left_y"])))
+    right = max(left + 1, min(review_width, scale_x(bbox["bottom_right_x"])))
+    bottom = max(top + 1, min(review_height, scale_y(bbox["bottom_right_y"])))
+    return {
+        "top_left_x": left,
+        "top_left_y": top,
+        "bottom_right_x": right,
+        "bottom_right_y": bottom,
+    }
+
+
+def _detection_bbox_centre_inside(
+    inner: dict[str, int], outer: dict[str, int],
+) -> bool:
+    centre_x = (inner["top_left_x"] + inner["bottom_right_x"]) / 2
+    centre_y = (inner["top_left_y"] + inner["bottom_right_y"]) / 2
+    return (
+        outer["top_left_x"] <= centre_x <= outer["bottom_right_x"]
+        and outer["top_left_y"] <= centre_y <= outer["bottom_right_y"]
+    )
+
+
+def build_detection_v5_membership_view_crops(
+    *,
+    page_images: list[bytes],
+    visual_groups: list[dict[str, Any]],
+    coordinate_frames: dict[int, dict[str, Any]] | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Crop fixed Object Views for the membership-only Registry input."""
+    try:
+        from PIL import Image
+    except ImportError:
+        return [], [{"reason": "Pillow unavailable"}]
+
+    crops: list[dict[str, Any]] = []
+    audit: list[dict[str, Any]] = []
+    for group in visual_groups:
+        if group.get("evidence_class") != "object_evidence":
+            continue
+        group_id = str(group.get("group_id") or "")
+        try:
+            page_number = int(group.get("page_number"))
+        except (TypeError, ValueError):
+            audit.append({"group_id": group_id, "reason": "invalid page number"})
+            continue
+        bbox = _detection_bbox(group.get("bbox"))
+        if not group_id or bbox is None or not 1 <= page_number <= len(page_images):
+            audit.append({"group_id": group_id, "reason": "invalid group bbox"})
+            continue
+        try:
+            with Image.open(BytesIO(page_images[page_number - 1])) as image:
+                width, height = image.size
+                review_bbox = _scale_detection_bbox_to_review_image(
+                    bbox,
+                    frame=(coordinate_frames or {}).get(page_number),
+                    review_width=width,
+                    review_height=height,
+                )
+                if review_bbox is None:
+                    raise ValueError("review coordinate frame unavailable")
+                margin_x = max(8, round((review_bbox["bottom_right_x"] - review_bbox["top_left_x"]) * 0.04))
+                margin_y = max(8, round((review_bbox["bottom_right_y"] - review_bbox["top_left_y"]) * 0.04))
+                left = max(0, min(width - 1, review_bbox["top_left_x"] - margin_x))
+                top = max(0, min(height - 1, review_bbox["top_left_y"] - margin_y))
+                right = max(left + 1, min(width, review_bbox["bottom_right_x"] + margin_x))
+                bottom = max(top + 1, min(height, review_bbox["bottom_right_y"] + margin_y))
+                crop = image.crop((left, top, right, bottom))
+                crop.thumbnail(
+                    (DETECTION_V5_MEMBERSHIP_CROP_MAX_SIDE,) * 2,
+                    Image.Resampling.LANCZOS,
+                )
+                output = BytesIO()
+                crop.save(output, format="JPEG", quality=80)
+        except Exception as exc:
+            audit.append({"group_id": group_id, "reason": f"crop unavailable: {type(exc).__name__}"})
+            continue
+        crops.append({
+            "group_id": group_id,
+            "page_number": page_number,
+            "bytes": output.getvalue(),
+        })
+        audit.append({
+            "group_id": group_id,
+            "page_number": page_number,
+            "source_bbox": bbox,
+            "review_bbox": review_bbox,
+            "crop_bbox": {
+                "top_left_x": left, "top_left_y": top,
+                "bottom_right_x": right, "bottom_right_y": bottom,
+            },
+            "crop_dimensions": {"width": crop.width, "height": crop.height},
+            "coordinate_frame": "fusion_to_review",
+        })
+    return crops, audit
+
+
+def build_detection_v5_membership_page_context_images(
+    *,
+    page_images: list[bytes],
+    page_numbers: set[int],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Supply low-resolution page geometry to Membership without new inventory."""
+    try:
+        from PIL import Image
+    except ImportError:
+        return [], [{"reason": "Pillow unavailable"}]
+
+    contexts: list[dict[str, Any]] = []
+    audit: list[dict[str, Any]] = []
+    for page_number in sorted(page_numbers):
+        if not 1 <= page_number <= len(page_images):
+            audit.append({"page_number": page_number, "reason": "page unavailable"})
+            continue
+        try:
+            with Image.open(BytesIO(page_images[page_number - 1])) as image:
+                page = image.convert("RGB")
+                page.thumbnail(
+                    (DETECTION_V5_MEMBERSHIP_PAGE_CONTEXT_MAX_SIDE,) * 2,
+                    Image.Resampling.LANCZOS,
+                )
+                output = BytesIO()
+                page.save(output, format="JPEG", quality=70)
+        except Exception as exc:
+            audit.append({"page_number": page_number, "reason": f"context unavailable: {type(exc).__name__}"})
+            continue
+        contexts.append({"page_number": page_number, "bytes": output.getvalue()})
+    return contexts, audit
+
+
+def build_detection_v5_review_page_context_images(
+    *,
+    page_images: list[bytes],
+    visual_groups: list[dict[str, Any]],
+    coordinate_frames: dict[int, dict[str, Any]] | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Render bounded full-page review context with immutable Island labels."""
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        return [], [{"reason": "Pillow unavailable"}]
+
+    groups_by_page: dict[int, list[dict[str, Any]]] = {}
+    for group in visual_groups:
+        if group.get("evidence_class") != "object_evidence":
+            continue
+        try:
+            page_number = int(group.get("page_number"))
+        except (TypeError, ValueError):
+            continue
+        if _detection_bbox(group.get("bbox")) is not None:
+            groups_by_page.setdefault(page_number, []).append(group)
+
+    contexts: list[dict[str, Any]] = []
+    audit: list[dict[str, Any]] = []
+    palette = ("#D00000", "#0057B8", "#008A2E", "#9B1C9B", "#A15C00", "#006D77")
+    for page_number, groups in sorted(groups_by_page.items()):
+        if not 1 <= page_number <= len(page_images):
+            audit.append({"page_number": page_number, "reason": "page unavailable"})
+            continue
+        try:
+            with Image.open(BytesIO(page_images[page_number - 1])) as image:
+                page = image.convert("RGB")
+                original_width, original_height = page.size
+                page.thumbnail(
+                    (DETECTION_V5_MEMBERSHIP_PAGE_CONTEXT_MAX_SIDE,) * 2,
+                    Image.Resampling.LANCZOS,
+                )
+                scale_x = page.width / original_width
+                scale_y = page.height / original_height
+                draw = ImageDraw.Draw(page)
+                overlay_audit: list[dict[str, Any]] = []
+                for index, group in enumerate(sorted(groups, key=lambda row: str(row.get("group_id") or ""))):
+                    bbox = _detection_bbox(group.get("bbox"))
+                    if bbox is None:
+                        continue
+                    review_bbox = _scale_detection_bbox_to_review_image(
+                        bbox,
+                        frame=(coordinate_frames or {}).get(page_number),
+                        review_width=original_width,
+                        review_height=original_height,
+                    )
+                    if review_bbox is None:
+                        continue
+                    colour = palette[index % len(palette)]
+                    box = (
+                        round(review_bbox["top_left_x"] * scale_x),
+                        round(review_bbox["top_left_y"] * scale_y),
+                        round(review_bbox["bottom_right_x"] * scale_x),
+                        round(review_bbox["bottom_right_y"] * scale_y),
+                    )
+                    draw.rectangle(box, outline=colour, width=3)
+                    label = str(group.get("group_id") or "")
+                    label_box = (box[0], max(0, box[1] - 13), box[0] + max(46, len(label) * 6), box[1])
+                    draw.rectangle(label_box, fill=colour)
+                    draw.text((box[0] + 2, max(0, box[1] - 12)), label, fill="white")
+                    overlay_audit.append({
+                        "group_id": str(group.get("group_id") or ""),
+                        "source_bbox": bbox,
+                        "review_bbox": review_bbox,
+                        "overlay_bbox": {
+                            "top_left_x": box[0], "top_left_y": box[1],
+                            "bottom_right_x": box[2], "bottom_right_y": box[3],
+                        },
+                    })
+                output = BytesIO()
+                page.save(output, format="JPEG", quality=70)
+        except Exception as exc:
+            audit.append({"page_number": page_number, "reason": f"review context unavailable: {type(exc).__name__}"})
+            continue
+        contexts.append({"page_number": page_number, "bytes": output.getvalue()})
+        audit.append({
+            "page_number": page_number,
+            "coordinate_frame": "fusion_to_review",
+            "overlays": overlay_audit,
+        })
+    return contexts, audit
+
+
+def format_detection_v5_membership_handoff(
+    *,
+    visual_groups: list[dict[str, Any]],
+    source_facts: list[dict[str, Any]],
+    max_facts_per_view: int = 6,
+    max_fact_characters: int = 120,
+) -> str:
+    """Make a compact, View-local membership handoff without page-wide OCR."""
+    context_by_page: dict[int, list[str]] = {}
+    object_lines: list[str] = []
+    for group in visual_groups:
+        group_id = str(group.get("group_id") or "")
+        try:
+            page_number = int(group.get("page_number"))
+        except (TypeError, ValueError):
+            continue
+        bbox = _detection_bbox(group.get("bbox"))
+        if not group_id or bbox is None:
+            continue
+        description = " ".join(str(group.get("visual_description") or "").split())[:240]
+        kind = str(group.get("representation_kind") or "")[:80]
+        if group.get("evidence_class") == "document_context":
+            context_by_page.setdefault(page_number, []).append(
+                f"{group_id}|{kind}|{description}"
+            )
+            continue
+        local_facts: list[str] = []
+        for fact in source_facts:
+            if fact.get("page_number") != page_number:
+                continue
+            fact_bbox = _detection_bbox(fact.get("bbox"))
+            if fact_bbox is None or not _detection_bbox_centre_inside(fact_bbox, bbox):
+                continue
+            # A source span substantially larger than the View is page scope,
+            # never local proof for this membership decision.
+            if _detection_bbox_area(fact_bbox) > _detection_bbox_area(bbox) * 2:
+                continue
+            fact_id = str(fact.get("fact_id") or "")
+            text = " ".join(str(fact.get("text") or "").split())[:max_fact_characters]
+            if fact_id and text:
+                local_facts.append(
+                    f"[{fact_id}] {json.dumps(text, ensure_ascii=False)}"
+                )
+            if len(local_facts) >= max_facts_per_view:
+                break
+        object_lines.append(
+            f"{group_id}|P{page_number}|K={kind}|D={description}|"
+            f"SRC=registry_view:{group_id}{';' + ';'.join(local_facts) if local_facts else ''}"
+        )
+    context_lines = [
+        f"P{page_number}|{' || '.join(entries)}"
+        for page_number, entries in sorted(context_by_page.items())
+    ]
+    return "\n".join([
+        "FIXED OBJECT VIEW INVENTORY (IDs are immutable):",
+        *object_lines,
+        "DOCUMENT CONTEXT MAP (orientation only, never identity evidence):",
+        *(context_lines or ["none"]),
+    ])
+
+
+def format_detection_v5_review_handoff(
+    *,
+    visual_groups: list[dict[str, Any]],
+    source_facts: list[dict[str, Any]],
+    draft_hypotheses: object,
+) -> str:
+    """Give review the locked Views and untrusted first-pass group sets."""
+    lines = [format_detection_v5_membership_handoff(
+        visual_groups=visual_groups, source_facts=source_facts,
+    )]
+    proposal_lines: list[str] = []
+    if isinstance(draft_hypotheses, list):
+        for index, hypothesis in enumerate(draft_hypotheses, start=1):
+            group_ids = hypothesis.get("group_ids") if isinstance(hypothesis, dict) else None
+            if isinstance(group_ids, list) and len(group_ids) >= 2:
+                proposal_lines.append(f"H{index:03d}|{'|'.join(str(group_id) for group_id in group_ids)}")
+    lines.extend([
+        "UNTRUSTED DRAFT MULTI-VIEW PROPOSALS (review, do not copy blindly):",
+        *(proposal_lines or ["none"]),
+    ])
+    return "\n".join(lines)
+
+
+def build_detection_v5_membership_content_blocks(
+    *,
+    user_text: str,
+    view_crops: list[dict[str, Any]],
+    page_context_images: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    blocks: list[dict[str, Any]] = []
+    for page in page_context_images:
+        blocks.append({
+            "type": "text",
+            "text": (
+                f"PDF page {page['page_number']} low-resolution context. "
+                "It orients fixed View relationships only."
+            ),
+        })
+        blocks.append({
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": "image/jpeg",
+                "data": base64.standard_b64encode(page["bytes"]).decode("ascii"),
+            },
+        })
+    for crop in view_crops:
+        blocks.append({
+            "type": "text",
+            "text": f"Object View {crop['group_id']}, PDF page {crop['page_number']}",
+        })
+        blocks.append({
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": "image/jpeg",
+                "data": base64.standard_b64encode(crop["bytes"]).decode("ascii"),
+            },
+        })
+    blocks.append({"type": "text", "text": user_text})
+    return blocks
+
+
+def build_detection_v5_registry_visual_sources(
+    visual_groups: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Expose each fixed Object View crop as a traceable semantic source."""
+    sources: list[dict[str, Any]] = []
+    for group in visual_groups:
+        if group.get("evidence_class") != "object_evidence":
+            continue
+        group_id = str(group.get("group_id") or "")
+        bbox = _detection_bbox(group.get("bbox"))
+        try:
+            page_number = int(group.get("page_number"))
+        except (TypeError, ValueError):
+            continue
+        if not group_id or bbox is None:
+            continue
+        sources.append({
+            "fact_id": f"registry_view:{group_id}",
+            "page_number": page_number,
+            "bbox": bbox,
+            "text": " ".join(str(group.get("visual_description") or "").split()),
+            "source": "registry_membership_crop",
+        })
+    return sources
+
+
+def summarize_detection_provider_call(
+    *,
+    response: Any,
+    diagnostics: dict[str, Any],
+    prompt_characters: int,
+    context_characters: int,
+    image_count: int,
+    image_bytes: int,
+) -> dict[str, Any]:
+    """Keep each V5.8 Registry call independently measurable."""
+    usage = getattr(response, "usage", None)
+    input_tokens = int(getattr(usage, "input_tokens", 0) or 0)
+    output_tokens = int(getattr(usage, "output_tokens", 0) or 0)
+    costs = calculate_llm_cost_usd(
+        model=str(getattr(response, "model", "") or DEFAULT_CLAUDE_DETECTION_MODEL),
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+    )
+    started = str(diagnostics.get("request_started_at") or "")
+    finished = str(diagnostics.get("request_finished_at") or "")
+    duration_seconds: float | None = None
+    try:
+        duration_seconds = round(
+            max(0.0, (datetime.fromisoformat(finished) - datetime.fromisoformat(started)).total_seconds()),
+            3,
+        )
+    except ValueError:
+        pass
+    return {
+        "model": str(getattr(response, "model", "") or ""),
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "input_cost_usd": costs["input_cost_usd"],
+        "output_cost_usd": costs["output_cost_usd"],
+        "total_cost_usd": costs["total_cost_usd"],
+        "duration_seconds": duration_seconds,
+        "prompt_characters": prompt_characters,
+        "context_characters": context_characters,
+        "image_count": image_count,
+        "image_bytes": image_bytes,
+    }
 
 def append_detection_focus_regions(blocks: list[dict[str, Any]], regions: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
     if not regions:
@@ -2549,14 +3125,24 @@ def _summarize_incomplete_visual_registry_json(
 
 
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Lock commercial objects while preserving the visual map in one full-document call."""
+    """Run V5.10.1 Island discovery, then a bounded membership review."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
-    prompt = load_detection_visual_registry_prompt()
     prompt_version = DETECTION_VISUAL_REGISTRY_PROMPT_VERSION
+    proposal_prompt = load_detection_v5_proposal_prompt()
+    review_prompt = load_detection_v5_review_prompt()
     document_dimension_unit_profile = (
         extract_detection_document_dimension_unit_profile(ocr_package)
     )
     source_facts = build_detection_page_evidence_inventory(ocr_package)
+    review_coordinate_frames, review_coordinate_frame_audit = (
+        build_detection_v5_review_coordinate_frames(
+            ocr_package=ocr_package,
+            page_images=page_images,
+        )
+    )
+    coordinate_frame_text = format_detection_v5_coordinate_frame_context(
+        review_coordinate_frames
+    )
     candidate_regions = build_detection_fusion_candidate_regions(
         ocr_package, source_facts,
     )
@@ -2589,100 +3175,224 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     candidate_pair_queue = list(
         candidate_dimension_audit.get("dimension_similarity_candidates") or []
     )
+    candidate_pair_queue_audit = {
+        "compiler_version": "v5_7_4_v5_6_concentric_proto_q",
+        "input_candidate_count": len(candidate_pair_queue),
+        "selected_candidate_count": len(candidate_pair_queue),
+        "same_page_selected_count": sum(
+            bool(row.get("same_page")) for row in candidate_pair_queue
+        ),
+        "cross_page_strong_selected_count": sum(
+            not bool(row.get("same_page"))
+            and float(row.get("dimension_similarity_score") or 0) >= 85
+            for row in candidate_pair_queue
+        ),
+        "excluded_candidate_count": 0,
+    }
     candidate_dimension_baskets = list(
         candidate_dimension_audit.get("provisional_components") or []
     )
+    candidate_pair_queue_audit["input_basket_count"] = len(candidate_dimension_baskets)
+    candidate_pair_queue_audit["selected_basket_count"] = len(candidate_dimension_baskets)
     candidate_region_audit: list[dict[str, Any]] = []
-    page_evidence_inventory_text = format_detection_page_evidence_inventory(
-        source_facts
-    )
-    user_text = build_detection_user_text(
-        file_name=file_name, company_id=company_id, ocr_package=None,
-    )
-    user_text = user_text.replace(
-        "OCR text layer: unavailable",
-        page_evidence_inventory_text,
-    )
-    user_text += "\n\n" + format_detection_fusion_candidate_regions(
+    fusion_candidate_region_text = format_detection_fusion_candidate_regions(
         candidate_regions
     )
-    user_text += "\n\n" + format_detection_candidate_pair_queue(
+    page_evidence_inventory_text = format_detection_page_evidence_inventory(source_facts)
+    proposal_user_text = build_detection_user_text(
+        file_name=file_name, company_id=company_id, ocr_package=None,
+    ).replace("OCR text layer: unavailable", page_evidence_inventory_text)
+    proposal_user_text += "\n\n" + fusion_candidate_region_text
+    proposal_user_text += "\n\n" + format_detection_candidate_pair_queue(
         candidate_pair_queue, candidate_dimension_baskets,
     )
-    user_text += "\n\n" + format_detection_document_dimension_unit_profile(
-        document_dimension_unit_profile
+    proposal_user_text += "\n\n" + format_detection_document_dimension_unit_profile(
+        document_dimension_unit_profile,
     )
-    schema = strip_schema_for_claude(DETECTION_VISUAL_REGISTRY_JSON_SCHEMA)
-    content = build_detection_registry_content_blocks(
-        file_name=file_name, file_bytes=file_bytes, user_text=user_text,
+    proposal_user_text += "\n\n" + coordinate_frame_text
+    proposal_content = build_detection_registry_content_blocks(
+        file_name=file_name, file_bytes=file_bytes, user_text=proposal_user_text,
         page_images=page_images, regions=regions,
     )
-    response, diagnostics = create_claude_message_streamed(
+    proposal_response, proposal_diagnostics = create_claude_message_streamed(
         get_anthropic_client(), model=selected_model,
-        max_tokens=DETECTION_VISUAL_REGISTRY_MAX_TOKENS,
+        max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
         temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
-        system=build_detection_system_content(prompt=prompt),
-        messages=[{"role": "user", "content": content}],
-        output_config={"format": {"type": "json_schema", "schema": schema}},
+        system=build_detection_system_content(prompt=proposal_prompt),
+        messages=[{"role": "user", "content": proposal_content}],
+        output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(DETECTION_V5_DISCOVERY_JSON_SCHEMA)}},
     )
-    # Keep the inference parameter on both accepted and rejected Registry
-    # events. The experiment must be comparable even when validation fails.
-    diagnostics["temperature"] = DETECTION_VISUAL_REGISTRY_TEMPERATURE
-    diagnostics["page_evidence_source_fact_count"] = len(source_facts)
-    diagnostics["page_evidence_inventory_characters"] = len(
-        page_evidence_inventory_text
-    )
-    diagnostics["fusion_candidate_region_count"] = len(candidate_regions)
-    diagnostics["candidate_pair_queue_count"] = len(candidate_pair_queue)
-    diagnostics["candidate_dimension_basket_count"] = len(candidate_dimension_baskets)
-    diagnostics["candidate_dimension_unit"] = candidate_unit
-    diagnostics["candidate_dimension_unit_reason"] = candidate_unit_reason
-    diagnostics["rendered_page_image_bytes"] = sum(len(image) for image in page_images)
-    diagnostics["registry_system_prompt_characters"] = len(prompt)
-    raw_text = extract_text_from_claude_response(response)
+    proposal_raw_text = extract_text_from_claude_response(proposal_response)
     try:
-        payload = json.loads(raw_text)
+        proposal_raw_payload = json.loads(proposal_raw_text)
     except json.JSONDecodeError as exc:
-        failure_diagnostics = dict(diagnostics)
+        failure_diagnostics = dict(proposal_diagnostics)
         failure_diagnostics.update({
             "fusion_candidate_regions": candidate_regions,
             "document_dimension_unit_profile": document_dimension_unit_profile,
             **_summarize_incomplete_visual_registry_json(
-                raw_text, exc, response,
-                max_tokens=DETECTION_VISUAL_REGISTRY_MAX_TOKENS,
+                proposal_raw_text, exc, proposal_response,
+                max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
             ),
             "validation_error": str(exc),
-            "validation_stage": "visual_registry_json",
-            "attempt_label": "visual_registry_json_parse_failed",
-            "response_character_count": len(raw_text),
-            "response_text_sha256": _sha256_text(raw_text),
-            "stop_reason": str(getattr(response, "stop_reason", "") or ""),
-            "stop_sequence": getattr(response, "stop_sequence", None),
-            "max_tokens": DETECTION_VISUAL_REGISTRY_MAX_TOKENS,
+            "validation_stage": "v5_9_proposal_json",
+            "attempt_label": "v5_9_proposal_json_parse_failed",
+            "response_character_count": len(proposal_raw_text),
+            "response_text_sha256": _sha256_text(proposal_raw_text),
+            "max_tokens": DETECTION_V5_PROPOSAL_MAX_TOKENS,
         })
         failure_usage = build_agent_usage_event(
-            agent_name="detection",
-            operation="rfq_detection_visual_registry",
-            company_id=company_id,
-            run_id=None,
-            file_name=file_name,
-            object_id=None,
-            object_name=None,
-            model=selected_model,
-            prompt_version=prompt_version,
-            response=response,
-            started_at=diagnostics["request_started_at"],
-            finished_at=diagnostics["request_finished_at"],
+            agent_name="detection", operation="rfq_detection_visual_registry",
+            company_id=company_id, run_id=None, file_name=file_name,
+            object_id=None, object_name=None, model=selected_model,
+            prompt_version=prompt_version, response=proposal_response,
+            started_at=proposal_diagnostics["request_started_at"],
+            finished_at=proposal_diagnostics["request_finished_at"],
             request_diagnostics=failure_diagnostics,
         )
         failure_usage["status"] = "failed"
         failure_usage["error_message"] = str(exc)
         raise DetectionVisualRegistryValidationError(
-            f"Detection visual-registry response failed validation: {exc}",
+            f"Detection proposal response failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
-    # Preserve the model's factual stages before runtime normalizes group
-    # IDs and deterministically derives graph and Evidence pages.
+    discovery_fields = {
+        "visual_groups", "classifications", "candidate_region_exceptions",
+    }
+    legacy_proposal_fields = {
+        *discovery_fields, "object_hypotheses", "semantic_facts",
+    }
+    if not isinstance(proposal_raw_payload, dict) or set(proposal_raw_payload) not in (
+        discovery_fields, legacy_proposal_fields,
+    ):
+        raise DetectionVisualRegistryValidationError(
+            "Detection proposal response failed the V5.10.1 discovery contract"
+        )
+    proposal_discovery_payload = {
+        field: proposal_raw_payload[field] for field in discovery_fields
+    }
+    proposal_for_review, _ = _validate_and_apply_visual_registry_classifications(
+        proposal_discovery_payload
+    )
+    registry_visual_sources = build_detection_v5_registry_visual_sources(
+        proposal_for_review["visual_groups"]
+    )
+    membership_crops, membership_crop_audit = build_detection_v5_membership_view_crops(
+        page_images=page_images, visual_groups=proposal_for_review["visual_groups"],
+        coordinate_frames=review_coordinate_frames,
+    )
+    review_page_context_images, review_page_context_audit = (
+        build_detection_v5_review_page_context_images(
+            page_images=page_images, visual_groups=proposal_for_review["visual_groups"],
+            coordinate_frames=review_coordinate_frames,
+        )
+    )
+    review_handoff = format_detection_v5_review_handoff(
+        visual_groups=proposal_for_review["visual_groups"], source_facts=source_facts,
+        draft_hypotheses=[],
+    )
+    review_content = build_detection_v5_membership_content_blocks(
+        user_text=review_handoff, view_crops=membership_crops,
+        page_context_images=review_page_context_images,
+    )
+    review_response, review_diagnostics = create_claude_message_streamed(
+        get_anthropic_client(), model=selected_model,
+        max_tokens=DETECTION_V5_MEMBERSHIP_MAX_TOKENS,
+        temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+        system=build_detection_system_content(prompt=review_prompt),
+        messages=[{"role": "user", "content": review_content}],
+        output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(DETECTION_V5_MEMBERSHIP_JSON_SCHEMA)}},
+    )
+    review_raw_text = extract_text_from_claude_response(review_response)
+    try:
+        review_raw_payload = json.loads(review_raw_text)
+    except json.JSONDecodeError as exc:
+        failure_diagnostics = dict(review_diagnostics)
+        failure_diagnostics.update({
+            **_summarize_incomplete_visual_registry_json(
+                review_raw_text, exc, review_response,
+                max_tokens=DETECTION_V5_MEMBERSHIP_MAX_TOKENS,
+            ),
+            "validation_error": str(exc),
+            "validation_stage": "v5_9_review_json",
+            "attempt_label": "v5_9_review_json_parse_failed",
+            "response_character_count": len(review_raw_text),
+            "response_text_sha256": _sha256_text(review_raw_text),
+        })
+        failure_usage = build_agent_usage_event(
+            agent_name="detection", operation="rfq_detection_visual_registry",
+            company_id=company_id, run_id=None, file_name=file_name,
+            object_id=None, object_name=None, model=selected_model,
+            prompt_version=prompt_version, response=review_response,
+            started_at=review_diagnostics["request_started_at"],
+            finished_at=review_diagnostics["request_finished_at"],
+            request_diagnostics=failure_diagnostics,
+        )
+        failure_usage["status"] = "failed"
+        failure_usage["error_message"] = str(exc)
+        raise DetectionVisualRegistryValidationError(
+            f"Detection review response failed validation: {exc}",
+            usage_event=failure_usage,
+        ) from exc
+    if not isinstance(review_raw_payload, dict) or not isinstance(
+        review_raw_payload.get("object_hypotheses"), list,
+    ):
+        raise DetectionVisualRegistryValidationError(
+            "Detection review response failed the V5.9 review contract"
+        )
+    payload = {
+        "visual_groups": proposal_raw_payload["visual_groups"],
+        "classifications": proposal_raw_payload["classifications"],
+        "object_hypotheses": review_raw_payload["object_hypotheses"],
+        "candidate_region_exceptions": proposal_discovery_payload["candidate_region_exceptions"],
+        "semantic_facts": [],
+    }
+    diagnostics = dict(review_diagnostics)
+    diagnostics.update({
+        "request_started_at": proposal_diagnostics["request_started_at"],
+        "request_finished_at": review_diagnostics["request_finished_at"],
+        "temperature": DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+        "page_evidence_source_fact_count": len(source_facts),
+        "v5_9_coordinate_frame_audit": review_coordinate_frame_audit,
+        "v5_9_coordinate_frame_context_characters": len(coordinate_frame_text),
+        "v5_9_registry_visual_source_count": len(registry_visual_sources),
+        "page_evidence_inventory_characters": len(page_evidence_inventory_text),
+        "fusion_candidate_region_characters": len(fusion_candidate_region_text),
+        "candidate_pair_queue_characters": len(format_detection_candidate_pair_queue(candidate_pair_queue, candidate_dimension_baskets)),
+        "document_unit_profile_characters": len(format_detection_document_dimension_unit_profile(document_dimension_unit_profile)),
+        "fusion_candidate_region_count": len(candidate_regions),
+        "candidate_pair_queue_count": len(candidate_pair_queue),
+        "candidate_pair_queue_audit": candidate_pair_queue_audit,
+        "candidate_dimension_basket_count": len(candidate_dimension_baskets),
+        "candidate_dimension_unit": candidate_unit,
+        "candidate_dimension_unit_reason": candidate_unit_reason,
+        "rendered_page_image_bytes": sum(len(image) for image in page_images),
+        "rendered_page_image_count": len(page_images),
+        "registry_crop_image_count": len(regions),
+        "registry_crop_image_bytes": sum(len(region.get("bytes") or b"") for region in regions),
+        "registry_system_prompt_characters": len(proposal_prompt) + len(review_prompt),
+        "v5_9_proposal": summarize_detection_provider_call(
+            response=proposal_response, diagnostics=proposal_diagnostics,
+            prompt_characters=len(proposal_prompt), context_characters=len(proposal_user_text),
+            image_count=len(page_images) + len(regions),
+            image_bytes=sum(len(image) for image in page_images) + sum(len(region.get("bytes") or b"") for region in regions),
+        ),
+        "v5_9_review": summarize_detection_provider_call(
+            response=review_response, diagnostics=review_diagnostics,
+            prompt_characters=len(review_prompt), context_characters=len(review_handoff),
+            image_count=len(review_page_context_images) + len(membership_crops),
+            image_bytes=(
+                sum(len(page["bytes"]) for page in review_page_context_images)
+                + sum(len(crop["bytes"]) for crop in membership_crops)
+            ),
+        ),
+        "v5_9_review_crop_audit": membership_crop_audit,
+        "v5_9_review_page_context_audit": review_page_context_audit,
+        "v5_9_proposal_decision_audit": copy.deepcopy(proposal_raw_payload),
+        "v5_9_review_decision_audit": copy.deepcopy(review_raw_payload),
+    })
+    # Preserve the composed decision before runtime normalizes IDs and derives
+    # deterministic graph and Evidence pages.
     registry_decision_audit = copy.deepcopy(payload)
     discarded_non_object_groups: list[dict[str, Any]] = []
     discarded_empty_evidence_groups: list[dict[str, Any]] = []
@@ -2738,10 +3448,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 _discard_non_object_visual_registry_groups(payload)
             )
         if not isinstance(payload, dict) or set(payload) != {
-            "visual_groups", "classifications", "membership_edges", "candidate_region_exceptions", "semantic_facts",
+            "visual_groups", "classifications", "object_hypotheses", "candidate_region_exceptions", "semantic_facts",
         }:
             raise ValueError(
-                "visual registry must contain visual groups, classifications, membership edges and semantic facts"
+                "visual registry must contain visual groups, classifications, hypotheses and semantic facts"
             )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
@@ -2760,14 +3470,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 "evidence_class": group.get("evidence_class"),
             }
             for group in raw_groups
-        ]
-        evidence_class_by_group_id = {
-            str(group["group_id"]): group.get("evidence_class")
-            for group in semantic_validation_groups
-        }
-        membership_visual_groups = [
-            {**group, "evidence_class": evidence_class_by_group_id.get(str(group["group_id"]))}
-            for group in visual_map["visual_groups"]
         ]
         group_bboxes = _normalize_registry_group_bboxes(
             raw_groups, group_id_mapping=group_id_mapping,
@@ -2793,34 +3495,33 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         page_local_view_labels = assign_detection_page_local_view_labels(
             view_evidence_packages
         )
-        normalized_membership_edges = []
-        for raw_edge in payload["membership_edges"]:
-            if not isinstance(raw_edge, dict):
-                normalized_membership_edges.append(raw_edge)
-                continue
-            edge = copy.deepcopy(raw_edge)
-            for endpoint in ("group_id_a", "group_id_b"):
-                edge[endpoint] = group_id_mapping.get(
-                    str(edge.get(endpoint) or ""), str(edge.get(endpoint) or ""),
-                )
-            normalized_membership_edges.append(edge)
+        normalized_hypotheses = []
+        for hypothesis in payload["object_hypotheses"]:
+            if isinstance(hypothesis, dict) and isinstance(hypothesis.get("group_ids"), list):
+                hypothesis = copy.deepcopy(hypothesis)
+                hypothesis["group_ids"] = [
+                    group_id_mapping.get(str(group_id or ""), str(group_id or ""))
+                    for group_id in hypothesis["group_ids"]
+                ]
+            normalized_hypotheses.append(hypothesis)
+        accepted_hypotheses, object_hypothesis_audit = compile_detection_v5_object_hypotheses(
+            normalized_hypotheses, visual_groups=semantic_validation_groups,
+        )
         semantic_facts_outside_dimension_queue: list[dict[str, Any]] = []
-        # The Registry returns sparse pair facts in its own field as well as
-        # group-level evidence within a full-page membership hypothesis. Both
-        # are first-class input to the typed validator. Earlier V5 builds
-        # silently dropped the former, so valid Registry facts could never
-        # reach the supporting graph.
         semantic_facts: list[dict[str, Any]] = []
-        for raw_fact in payload["semantic_facts"]:
-            if not isinstance(raw_fact, dict):
-                semantic_facts.append(raw_fact)
-                continue
-            fact = copy.deepcopy(raw_fact)
-            for endpoint in ("group_id_a", "group_id_b"):
-                fact[endpoint] = group_id_mapping.get(
-                    str(fact.get(endpoint) or ""), str(fact.get(endpoint) or ""),
-                )
-            semantic_facts.append(fact)
+        for hypothesis in accepted_hypotheses:
+            root, *members = hypothesis["group_ids"]
+            for member in members:
+                pair = tuple(sorted((root, member)))
+                for evidence in hypothesis["evidence"]:
+                    semantic_facts.append({
+                        "group_id_a": pair[0], "group_id_b": pair[1], **evidence,
+                    })
+                if pair not in candidate_q_final_pairs:
+                    semantic_facts_outside_dimension_queue.append({
+                        "reason": "derived_semantic_fact_outside_dimension_queue_accepted",
+                        "group_id_a": pair[0], "group_id_b": pair[1],
+                    })
         effective_dimension_unit, dimension_unit_reason = infer_detection_v5_bare_dimension_unit(
             view_evidence_packages,
             document_unit=str(document_dimension_unit_profile.get("unit") or "unknown"),
@@ -2855,22 +3556,22 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             ],
         })
         accepted_semantic_facts, semantic_ledger_audit = compile_detection_v5_semantic_facts(
-            semantic_facts,
-            visual_groups=semantic_validation_groups, source_facts=source_facts,
+            semantic_facts, visual_groups=semantic_validation_groups,
+            source_facts=[*source_facts, *registry_visual_sources],
         )
         semantic_ledger_audit["outside_dimension_queue"] = semantic_facts_outside_dimension_queue
-        supporting_relation_edges, v5_merge_audit = compile_detection_v5_merge_edges(
+        semantic_ledger_audit["rejected"].extend(
+            object_hypothesis_audit["rejected"]
+        )
+        semantic_ledger_audit["object_hypotheses"] = object_hypothesis_audit
+        positive_relation_edges, v5_merge_audit = compile_detection_v5_merge_edges(
             dimension_relation_edges, accepted_semantic_facts,
             visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
-            allow_runtime_merges=False,
         )
-        membership_edges, membership_audit = compile_detection_v5_membership_edges(
-            normalized_membership_edges, visual_groups=membership_visual_groups,
-            source_facts=source_facts,
-        )
-        semantic_ledger_audit["membership_edges"] = membership_audit
-        positive_relation_edges = [*supporting_relation_edges, *membership_edges]
-        accepted_merge_edges = list(membership_edges)
+        accepted_merge_edges = [
+            edge for edge in positive_relation_edges
+            if edge["relationship"] == "same_object_view"
+        ]
         base_proof_components = derive_detection_proof_components(
             accepted_merge_edges, visual_group_ids=visual_group_ids,
         )
@@ -2977,7 +3678,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             registry,
             visual_groups=visual_map["visual_groups"],
             graph_edges=positive_relation_edges,
-            source_facts=source_facts,
+            source_facts=[*source_facts, *registry_visual_sources],
         )
     except (KeyError, ValueError) as exc:
         failure_diagnostics = dict(diagnostics)
@@ -3134,11 +3835,37 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             for page_number in range(1, len(page_images) + 1)
         },
         "page_count": len(page_images),
-        "attempt_label": "visual_registry_integrated",
+        "attempt_label": "v5_9_full_proposal_full_page_review",
     })
     if reconciled_object_ids:
         diagnostics["single_page_coverage_reconciled_object_ids"] = reconciled_object_ids
-    usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=prompt_version,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
+    usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=prompt_version,response=review_response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
+    proposal_usage = diagnostics["v5_9_proposal"]
+    review_usage = diagnostics["v5_9_review"]
+    total_input_tokens = int(proposal_usage["input_tokens"]) + int(review_usage["input_tokens"])
+    total_output_tokens = int(proposal_usage["output_tokens"]) + int(review_usage["output_tokens"])
+    total_costs = calculate_llm_cost_usd(
+        model=selected_model,
+        input_tokens=total_input_tokens,
+        output_tokens=total_output_tokens,
+    )
+    usage.update({
+        "input_tokens": total_input_tokens,
+        "output_tokens": total_output_tokens,
+        "input_cost_usd": total_costs["input_cost_usd"],
+        "output_cost_usd": total_costs["output_cost_usd"],
+        "total_cost_usd": total_costs["total_cost_usd"],
+    })
+    usage["raw_usage"].update({
+        "input_tokens": total_input_tokens,
+        "output_tokens": total_output_tokens,
+        "v5_9_total_provider_duration_seconds": round(
+            sum(float(call.get("duration_seconds") or 0) for call in (
+                proposal_usage, review_usage,
+            )),
+            3,
+        ),
+    })
     return visual_map, registry, usage
 
 

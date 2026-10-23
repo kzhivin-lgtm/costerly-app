@@ -1,5 +1,6 @@
 from agents.schemas.detection_registry_schema import (
     compile_detection_v5_dimension_graph,
+    compile_detection_v5_hypothesis_membership_edges,
     compile_detection_v5_merge_edges,
     compile_detection_v5_membership_edges,
     compile_detection_v5_object_hypotheses,
@@ -127,6 +128,38 @@ def test_v5_document_relation_requires_direct_or_single_sheet_strength():
     assert audit["rejected"][0]["reason"] == "document_relation_requires_direct_strength"
 
 
+def test_v5103_known_bracketed_source_id_is_canonicalized_and_audited():
+    accepted, audit = compile_detection_v5_semantic_facts([{
+        "group_id_a": "view-001", "group_id_b": "view-002",
+        "evidence_type": "matching_topology", "strength": "standard",
+        "observation": "The same 358mm two-bay carcass recurs in both views.",
+        "source_fact_ids": ["[SF00202]"],
+    }], visual_groups=VIEWS, source_facts=[{"fact_id": "SF00202"}])
+
+    assert accepted[0]["source_fact_ids"] == ["SF00202"]
+    assert audit["source_id_normalizations"] == [{
+        "index": 0,
+        "group_id_a": "view-001",
+        "group_id_b": "view-002",
+        "original_source_fact_id": "[SF00202]",
+        "canonical_source_fact_id": "SF00202",
+        "reason": "known_source_id_display_wrapper",
+    }]
+
+
+def test_v5103_unknown_bracketed_source_id_remains_rejected():
+    accepted, audit = compile_detection_v5_semantic_facts([{
+        "group_id_a": "view-001", "group_id_b": "view-002",
+        "evidence_type": "matching_topology", "strength": "standard",
+        "observation": "The same 358mm two-bay carcass recurs in both views.",
+        "source_fact_ids": ["[SF00999]"],
+    }], visual_groups=VIEWS, source_facts=[{"fact_id": "SF00202"}])
+
+    assert accepted == []
+    assert audit["rejected"][0]["reason"] == "unknown_source_fact"
+    assert audit["source_id_normalizations"] == []
+
+
 def test_v5_object_hypothesis_requires_distinct_non_overlapping_object_views():
     accepted, audit = compile_detection_v5_object_hypotheses([
         {"group_ids": ["view-001", "view-002"], "hypothesis_reason": "One cabinet in two projections.", "evidence": [{"evidence_type": "matching_topology"}]},
@@ -170,6 +203,47 @@ def test_v571_membership_edge_without_validated_fact_stays_unmerged():
     assert audit["rejected"][0]["reason"] == (
         "membership_edge_has_no_validated_visual_fact"
     )
+
+
+def test_v572_complete_hypothesis_is_deterministically_adapted_to_tree():
+    views = [
+        {"group_id": "view-001", "evidence_class": "object_evidence", "page_number": 1},
+        {"group_id": "view-002", "evidence_class": "object_evidence", "page_number": 1},
+        {"group_id": "view-003", "evidence_class": "object_evidence", "page_number": 1},
+    ]
+    hypotheses, _ = compile_detection_v5_object_hypotheses([{
+        "group_ids": ["view-001", "view-002", "view-003"],
+        "hypothesis_reason": "Three projections show one three-bay cabinet.",
+        "evidence": [{
+            "evidence_type": "matching_topology", "strength": "standard",
+            "observation": "The same three-bay carcass and door order recur.",
+            "source_fact_ids": [],
+        }],
+    }], visual_groups=views)
+    facts, _ = compile_detection_v5_semantic_facts([
+        {
+            "group_id_a": "view-001", "group_id_b": "view-002",
+            "evidence_type": "matching_topology", "strength": "standard",
+            "observation": "The same three-bay carcass and door order recur.",
+            "source_fact_ids": [],
+        },
+        {
+            "group_id_a": "view-001", "group_id_b": "view-003",
+            "evidence_type": "matching_topology", "strength": "standard",
+            "observation": "The same three-bay carcass and door order recur.",
+            "source_fact_ids": [],
+        },
+    ], visual_groups=views, source_facts=[])
+
+    edges, audit = compile_detection_v5_hypothesis_membership_edges(
+        hypotheses, facts, visual_groups=views,
+    )
+
+    assert [(edge["group_id_a"], edge["group_id_b"]) for edge in edges] == [
+        ("view-001", "view-002"), ("view-001", "view-003"),
+    ]
+    assert all(edge["membership_basis"] == "registry_full_page_hypothesis" for edge in edges)
+    assert audit["compiler_version"] == "v5_7_registry_membership_proof_tree"
 
 
 def test_v571_supporting_graph_cannot_override_registry_membership():

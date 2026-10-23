@@ -1,5 +1,18 @@
 # Done Log
 
+Detection V5.10.3 two-call experimental checkpoint: the first temperature-zero
+Haiku call creates a fixed Visual-Island inventory and classification; the
+second sees full pages, Island overlays, crops and local Fusion evidence, then
+returns only multi-View membership hypotheses. Runtime retains ownership,
+source validation, Dimension Fingerprints, typed semantic validation and the
+deterministic merge graph. HSL `v5103-hsl-01` verifies 63 accepted semantic
+facts with no unknown or bracketed source IDs, and preserves the required
+P03-P11 Island inventory. It is not accepted or deployed because P02's generic
+floor plan is misclassified as an object. P04 is allowed one to three objects,
+so its one-package result is not an acceptance signal. Full evidence and the
+protected next repair: `notes/DETECTION_V5_10_3_TWO_CALL_EXPERIMENTAL_CHECKPOINT_2026_10_23.md`,
+завершена 23.10
+
 Detection V4.27 phased Registry intermediate checkpoint `99a9fa1`: preserves
 one temperature-zero Haiku call and the passive OCR recall aid, while making
 the response causal: island inventory, exact-once classification, proof graph,

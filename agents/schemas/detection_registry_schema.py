@@ -1631,6 +1631,37 @@ _V5_SEMANTIC_POINTS = {
     "unique_geometry": 30,
     "direct_shared_structure": 20,
 }
+_V5_BRACKETED_SOURCE_FACT_ID_RE = re.compile(r"^\[([^\[\]]+)\]$")
+
+
+def _canonical_detection_v5_source_fact_ids(
+    cited_ids: list[str],
+    *,
+    known_source_ids: set[str],
+) -> tuple[list[str], list[dict[str, str]]]:
+    """Canonicalize only a known source ID wrapped once for display.
+
+    The membership handoff renders OCR IDs as ``[SF00001]`` for readability.
+    A Registry response may repeat that wrapper. Accept it only when the
+    unwrapped token is already a known source ID; never guess or rewrite an
+    otherwise unknown citation.
+    """
+    canonical_ids: list[str] = []
+    normalizations: list[dict[str, str]] = []
+    for cited_id in cited_ids:
+        canonical_id = cited_id
+        match = _V5_BRACKETED_SOURCE_FACT_ID_RE.fullmatch(cited_id)
+        if cited_id not in known_source_ids and match:
+            unwrapped = match.group(1)
+            if unwrapped in known_source_ids:
+                canonical_id = unwrapped
+                normalizations.append({
+                    "original_source_fact_id": cited_id,
+                    "canonical_source_fact_id": canonical_id,
+                    "reason": "known_source_id_display_wrapper",
+                })
+        canonical_ids.append(canonical_id)
+    return sorted(set(canonical_ids)), normalizations
 
 
 def compile_detection_v5_object_hypotheses(
@@ -1875,6 +1906,7 @@ def compile_detection_v5_semantic_facts(
     source_ids = {str(fact.get("fact_id") or "") for fact in source_facts}
     accepted: list[dict[str, Any]] = []
     rejected: list[dict[str, Any]] = []
+    source_id_normalizations: list[dict[str, Any]] = []
     seen: set[tuple[str, str, str, str]] = set()
     if not isinstance(facts, list):
         return [], {"accepted": [], "rejected": [{"reason": "semantic_facts_not_list"}]}
@@ -1890,7 +1922,14 @@ def compile_detection_v5_semantic_facts(
         kind = str(raw["evidence_type"] or "")
         strength = str(raw["strength"] or "")
         observation = str(raw["observation"] or "").strip()
-        cited = sorted(set(str(value) for value in raw["source_fact_ids"] if str(value))) if isinstance(raw["source_fact_ids"], list) else []
+        raw_cited = (
+            [str(value) for value in raw["source_fact_ids"] if str(value)]
+            if isinstance(raw["source_fact_ids"], list)
+            else []
+        )
+        cited, normalizations = _canonical_detection_v5_source_fact_ids(
+            raw_cited, known_source_ids=source_ids,
+        )
         if left == right or left not in object_groups or right not in object_groups:
             rejected.append({"index": index, "reason": "endpoints_not_distinct_object_evidence"})
             continue
@@ -1917,6 +1956,12 @@ def compile_detection_v5_semantic_facts(
         if not set(cited).issubset(source_ids):
             rejected.append({"index": index, "reason": "unknown_source_fact"})
             continue
+        source_id_normalizations.extend({
+            "index": index,
+            "group_id_a": left,
+            "group_id_b": right,
+            **normalization,
+        } for normalization in normalizations)
         if kind == "explicit_document_relation" and not cited:
             rejected.append({"index": index, "reason": "document_relation_requires_source"})
             continue
@@ -1932,7 +1977,11 @@ def compile_detection_v5_semantic_facts(
             "group_id_a": left, "group_id_b": right, "evidence_type": kind,
             "strength": strength, "observation": observation, "source_fact_ids": cited,
         })
-    return accepted, {"accepted": accepted, "rejected": rejected}
+    return accepted, {
+        "accepted": accepted,
+        "rejected": rejected,
+        "source_id_normalizations": source_id_normalizations,
+    }
 
 
 def compile_detection_v5_merge_edges(

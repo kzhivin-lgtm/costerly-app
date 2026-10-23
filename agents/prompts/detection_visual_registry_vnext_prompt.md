@@ -1,13 +1,9 @@
-# DETECTION V5.7.1 - MEMBERSHIP-FIRST SINGLE REGISTRY CALL
+# DETECTION V5.7.5 - MEMBERSHIP-FIRST SINGLE REGISTRY CALL
 
 Prepare factual evidence for deterministic object-package construction. You do
-not create objects, quantities, names, final dimensions, or prices. You do
-identify complete physical-item membership from the full PNG pages. Runtime
-validates that membership, derives its minimal proof tree, owns the graph and
-packages, and never lets OCR coverage or Dimension Similarity override your
-full-page visual membership decision.
-Runtime retains Dimension Fingerprints and Weighted Similarity as a separate,
-deterministic supporting channel.
+not create objects, packages, merge edges, quantities, names, final dimensions,
+or prices. Runtime alone builds Dimension Fingerprints, Weighted Similarity, the
+evidence graph, and packages.
 
 Before preparing output, inspect the full PNG pages and internally identify
 the complete fabricated products a contractor would quote. This is only a
@@ -25,13 +21,13 @@ preliminary visual zones. Q is deterministic Dimension evidence between two
 such zones, not an object decision. First locate Islands visually from the PNG,
 then re-check Candidate Regions and Q.
 Complete that Island inventory and all classifications before serializing
-`membership_edges` or semantic facts. Map the complete candidate products
-you already identified onto their final Island IDs. Never omit, merge, or downgrade a
-technical Island merely to shorten the later proof forest. When a local
-technical depiction is ambiguous, preserve it as `object_evidence`; runtime
-can safely keep it standalone. A repeated construction grid, local dimension
-strip, or detail drawing is not a schedule unless it is visibly a generic
-legend or tabular schedule.
+`object_hypotheses` or semantic facts. Map the complete candidate products
+you already identified onto their final Island IDs. Never omit, merge, or
+downgrade a technical Island merely to shorten the later proof forest. When a
+local technical depiction is ambiguous, preserve it as `object_evidence`;
+runtime can safely keep it standalone. A repeated construction grid, local
+dimension strip, or detail drawing is not a schedule unless it is visibly a
+generic legend or tabular schedule.
 
 Sweep every page in reading order before returning JSON. Every separately
 framed elevation, plan, section, or lower/side technical panel is a separate
@@ -43,10 +39,10 @@ Return exactly five arrays, in order:
 1. `visual_groups`: every distinct graphical or documentary Island;
 2. `classifications`: one `object_evidence` or `document_context` decision per
    Island;
-3. `membership_edges`: only positive same-object links. Each records exactly
-   two Island IDs, one concise visual reason, and 1-3 typed concrete facts.
-   For an item with N Islands, return the smallest proof tree of N-1 links,
-   never all pairs and never a singleton entry. Runtime validates it;
+3. `object_hypotheses`: only provisional multi-View physical items, each as a
+   complete set of Island IDs, one concise visual reason, and 1-3 typed,
+   concrete facts true of the whole set. Do not return singleton Islands. This
+   is a hypothesis, not a package or merge decision;
 4. `candidate_region_exceptions`: only Candidate Regions with no returned
    Island, each with its ID and a concise reason;
 5. `semantic_facts`: only concrete positive facts between two object-evidence
@@ -88,44 +84,62 @@ concrete reason: `title block`, `legend/schedule`, `dimension annotations`,
 Do not add exceptions for regions covered by a returned Island. A valid Island
 may have no Candidate Region.
 
+## Mandatory final visual reconciliation
+
+Before serializing JSON, reconcile the Island inventory with each complete
+physical depiction. A geometrically continuous drawing, including an attached
+panel, rail, support, or extension, is one Island even when its dimensions or
+annotations enter a neighbouring visual zone. Do not turn a continuous part
+into a detail Island unless it is separately framed and physically independent.
+
+Then compare each remaining object-evidence Island with alternate projections
+on the same sheet and nearby sheets. When two views show the same distinctive
+envelope, construction sequence, component layout, or labelled fixture,
+include them together in one multi-View `object_hypothesis`, even if one view
+is partial, enlarged, or carries different dimensions.
+
+A standalone Island has no `object_hypotheses` entry. Before returning JSON,
+delete every singleton hypothesis and re-check whether an ungrouped Island is
+an alternate projection or a continuous part of another Island. Do not force a
+merge between independently framed, physically separate products.
+
 ## Positive semantic facts
 
-First inspect all Object Islands and return a complete, non-overlapping sparse
-membership forest in `membership_edges`. Link every View you judge to belong
-to the same physical item, even when a View is sparse. For an item with N
-Views, return exactly N-1 selected links that connect them. One distinctive
-visual identity fact is sufficient when it names the repeated constructive
-sequence or unusual geometry. Never encode a standalone Island in this array.
-Do not split one item merely because a section lacks an individually repeated
-label or dimension: judge the complete set of its page-local projections.
-Do not use `dimension_transform` in group evidence. It is pair-specific and
-runtime evaluates it only after the tree is expanded.
+First inspect all Object Islands and return one complete provisional multi-View
+item in `object_hypotheses` for each proposed physical item. Include every
+View you judge to belong to that item, even when a View is sparse. Give each
+hypothesis 1-3 typed facts that apply to the entire set, not pairwise facts.
+Use two distinct types unless an explicit author relation is `direct`.
+Runtime, not you, expands that evidence into the smallest proof tree. Do not
+split one item merely because a section lacks an individually repeated label
+or dimension: judge the complete set of its page-local projections. Do not
+use `dimension_transform` in group evidence. It is pair-specific and runtime
+evaluates it only after the tree is expanded.
 
 Q is a high-priority Dimension hypothesis, not a relationship boundary. Start
 with Q and its Baskets, then add a non-Q pair only when it is necessary to
-connect two Views inside one declared membership tree. If an endpoint is
+connect two Views inside one declared `object_hypothesis`. If an endpoint is
 document context, has no distinct Island, or both endpoints map to one Island,
 return no relationship fact.
 
-Each membership-edge fact must be concrete for both linked Views. A Q
-dimension score is already the sixth criterion, Dimension Equality. It does
-not by itself prove object identity.
+Each hypothesis fact must be concrete for every listed View. A Q dimension
+score is already the sixth criterion, Dimension Equality. It does not by
+itself prove object identity.
 
 Each `B` row is a Dimension Basket, a stronger hypothesis than one pair. Read
-all its members together before forming a complete membership tree. Never
+all its members together before forming a complete object hypothesis. Never
 use basket membership, page co-location, or dimensions alone as a semantic
 fact.
 
 Keep every observation under 24 words and cite no more than two source facts.
-Use an empty source_fact_ids array for visual topology, unique geometry, or a
-directly visible shared structure. Do not cite a page-wide OCR image region as
-if it belonged to one View. Cite source facts only for a literal author code,
-callout, reference, or pair-specific dimension transform.
+Use an empty source_fact_ids array when the proof is purely visual. This is
+how runtime distinguishes a real semantic identity proof from generic visual
+similarity while keeping the response bounded.
 
-Emit a membership-edge fact only when direct, specific evidence exists. It has one
-type, a concise observation, relevant `source_fact_ids` only when a literal
-source supports it, and `strength`: `direct` for an object-specific author
-label, `single_object_sheet` for an explicitly single-item sheet, or `standard`.
+Emit a hypothesis fact only when direct, specific evidence exists. It has one
+type, a concise observation, relevant `source_fact_ids` when text or dimensions
+support it, and `strength`: `direct` for an object-specific author label,
+`single_object_sheet` for an explicitly single-item sheet, or `standard`.
 
 Allowed types:
 
