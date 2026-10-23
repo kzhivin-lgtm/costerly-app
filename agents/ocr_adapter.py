@@ -19,7 +19,7 @@ from agents.ocr_contract import (
 
 DEFAULT_MISTRAL_OCR_MODEL = "mistral-ocr-4-1"
 RETIRED_MISTRAL_OCR_MODELS = {"mistral-ocr-4-0"}
-OCR_CONTRACT_VERSION = "ocr_v6"
+OCR_CONTRACT_VERSION = "ocr_v8_native_coordinate_blocks"
 _HTTP_CLIENT: Any | None = None
 _HTTP_CLIENT_LOCK = threading.Lock()
 _WARMUP_LOCK = threading.Lock()
@@ -150,6 +150,36 @@ def _compact_literal_text(value: Any) -> str:
     return re.sub(r"(?:\r?\n[ \t]*){5,}", "\n\n", str(value or "")).strip()
 
 
+def _annotation_bbox_to_page_bbox(
+    value: object, *, source_image_bbox: dict[str, Any],
+) -> dict[str, int] | None:
+    """Map Mistral's image-local 0..1000 annotation bbox to page pixels."""
+    if not isinstance(value, dict):
+        return None
+    required = ("x1", "y1", "x2", "y2")
+    if (
+        set(value) != set(required)
+        or not all(isinstance(value[key], int) and 0 <= value[key] <= 1000 for key in required)
+    ):
+        return None
+    if value["x2"] <= value["x1"] or value["y2"] <= value["y1"]:
+        return None
+    keys = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
+    if not all(isinstance(source_image_bbox.get(key), (int, float)) for key in keys):
+        return None
+    left, top = source_image_bbox["top_left_x"], source_image_bbox["top_left_y"]
+    width = source_image_bbox["bottom_right_x"] - left
+    height = source_image_bbox["bottom_right_y"] - top
+    if width <= 0 or height <= 0:
+        return None
+    return {
+        "top_left_x": round(left + width * value["x1"] / 1000),
+        "top_left_y": round(top + height * value["y1"] / 1000),
+        "bottom_right_x": round(left + width * value["x2"] / 1000),
+        "bottom_right_y": round(top + height * value["y2"] / 1000),
+    }
+
+
 _DECLARED_DIMENSION_PATTERNS = (
     re.compile(
         r"(?<![A-Z0-9])(?P<symbol>THK|H|W|D|L|T)\s*(?:=|:)\s*"
@@ -237,9 +267,6 @@ def build_ocr_evidence(
                 "bottom_right_y": image_item.get("bottom_right_y"),
             }
             raw_items = annotation.get("literal_items") or []
-            # OCR 4.1 bbox annotations already carry page/image coordinates in
-            # the provider response. Keep the annotation model focused on exact
-            # transcription instead of asking it to recreate spatial metadata.
             if not raw_items and str(annotation.get("text") or "").strip():
                 raw_items = [
                     {
@@ -261,7 +288,20 @@ def build_ocr_evidence(
                     continue
                 category = str(raw_item.get("category") or "other")
                 region = str(raw_item.get("region") or "center")
-                key = (page_number, image_item.get("id"), text, category, region)
+                item_bbox = _annotation_bbox_to_page_bbox(
+                    raw_item.get("bbox_1000"), source_image_bbox=image_bbox,
+                )
+                coordinate_basis = (
+                    "mistral_annotation_bbox_1000" if item_bbox is not None
+                    else "source_image_bbox_legacy"
+                )
+                item_bbox = item_bbox or image_bbox
+                key = (
+                    page_number, image_item.get("id"), text, category, region,
+                    tuple(item_bbox.get(key) for key in (
+                        "top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y",
+                    )),
+                )
                 if key in item_index:
                     item_index[key]["occurrences"] += 1
                     continue
@@ -272,6 +312,8 @@ def build_ocr_evidence(
                     "text": text,
                     "category": category,
                     "region": region,
+                    "bbox": item_bbox,
+                    "coordinate_basis": coordinate_basis,
                     "source_image_bbox": image_bbox,
                     "occurrences": 1,
                 }
@@ -322,7 +364,7 @@ def build_ocr_evidence(
             page_number=item["page_number"],
             source_kind="image_annotation",
             source_id=str(item.get("source_image_id") or "") or None,
-            source_bbox=item.get("source_image_bbox") or {},
+            source_bbox=item.get("bbox") or item.get("source_image_bbox") or {},
             text=str(item["text"]),
         ))
     deduplicated_literals: list[dict[str, Any]] = []

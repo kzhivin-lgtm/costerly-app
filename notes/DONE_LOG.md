@@ -1,5 +1,18 @@
 # Done Log
 
+Detection V5.10.12 evidence and context experimental checkpoint: preserves the
+V5.10.3 two-call Registry and adds final same-page deterministic Dimension
+comparison, floor-plan Document Context protection, exact-once compact page
+coverage, bounded dimension-halo ownership and Fusion text-cluster recall when
+Mistral has no graphic region. The changed-path suite passed 125 tests, module
+compilation and diff validation passed, and local HSL `v51012-hsl-01` retained
+P02 Context plus the required P03 and P09 joined Views. This is a protected
+evaluation baseline, not acceptance or deployment: Page23 has no usable native
+or Mistral spatial dimensions and still splits one continuous shelf drawing.
+The next isolated experiment is V5.11 visual-only routing for such pages.
+Evidence: `notes/DETECTION_V5_10_12_EVIDENCE_CONTEXT_EXPERIMENTAL_CHECKPOINT_2026_10_23.md`,
+завершена 23.10
+
 Detection V5.10.3 two-call experimental checkpoint: the first temperature-zero
 Haiku call creates a fixed Visual-Island inventory and classification; the
 second sees full pages, Island overlays, crops and local Fusion evidence, then

@@ -6,7 +6,7 @@ from agents.ocr_contract import (
 from agents.ocr_quality import evaluate_ocr_result, score_expected_evidence
 
 
-def test_technical_profile_adds_bbox_schema_only_when_requested():
+def test_technical_profile_uses_native_coordinate_blocks_without_annotation_schema():
     basic = build_mistral_ocr_request(
         model="mistral-ocr-4-0",
         document_url="data:application/pdf;base64,abc",
@@ -19,9 +19,9 @@ def test_technical_profile_adds_bbox_schema_only_when_requested():
     )
 
     assert "bbox_annotation_format" not in basic
-    assert evidence["bbox_annotation_format"]["type"] == "json_schema"
-    schema = evidence["bbox_annotation_format"]["json_schema"]["schema"]
-    assert set(schema["properties"]) == {"text"}
+    assert "bbox_annotation_format" not in evidence
+    assert evidence["include_blocks"] is True
+    assert evidence["confidence_scores_granularity"] == "block"
 
 
 def test_quality_flags_image_only_basic_ocr_for_annotations():

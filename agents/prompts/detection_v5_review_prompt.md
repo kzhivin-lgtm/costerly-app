@@ -1,4 +1,4 @@
-# DETECTION V5.10.2 - FULL-PAGE MEMBERSHIP REVIEW
+# DETECTION V5.10.12 - FULL-PAGE MEMBERSHIP REVIEW
 
 You receive a fixed visual-Island inventory, full-page images with immutable
 Island IDs, and individual View crops. Determine multi-View membership against

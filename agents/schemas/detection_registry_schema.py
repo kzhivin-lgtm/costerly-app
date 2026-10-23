@@ -2324,9 +2324,26 @@ def compile_detection_v5_dimension_graph(
             })
         return score
 
+    # Final, classified Islands are authoritative for same-page comparison.
+    # Fusion Candidate Regions only prioritize cross-page work. They may miss a
+    # real Island, so they must never prevent any final same-page pair from
+    # receiving its deterministic Dimension comparison.
+    for page_number in sorted({page(group_id) for group_id in group_ids}):
+        page_group_ids = sorted(
+            group_id for group_id in group_ids if page(group_id) == page_number
+        )
+        for left_id, right_id in combinations(page_group_ids, 2):
+            pair = (left_id, right_id)
+            evaluated_pairs.add(pair)
+            score = record_pair(
+                left_id, right_id, cycle="same_page_all_to_all",
+            )
+            if score >= threshold:
+                discovery_parents[discovery_root(right_id)] = discovery_root(left_id)
+
     if allowed_pairs is not None:
-        # Final Island fingerprints only revalidate Q.  The queue was already
-        # selected on Fusion Candidate Regions before Registry ran.
+        # Keep the bounded Candidate Q for cross-page revalidation. Same-page
+        # pairs above have already been evaluated from final Registry Islands.
         for left_id, right_id in sorted(allowed_pairs):
             if left_id not in group_ids or right_id not in group_ids or left_id == right_id:
                 continue
@@ -2336,24 +2353,7 @@ def compile_detection_v5_dimension_graph(
             evaluated_pairs.add(pair)
             record_pair(left_id, right_id, cycle="q_revalidation")
     else:
-        # Cycle one is page-local. Every candidate may become a seed, allowing
-        # a semantic bridge between two initially separate Dimension pairs.
-        # A cross-page match is allowed only for an otherwise isolated View and
-        # never grows a local closure component.
-        for seed in sorted(group_ids):
-            for target in sorted((group_id for group_id in group_ids if group_id != seed and page(group_id) == page(seed)), key=lambda group_id: candidate_key(seed, group_id)):
-                if discovery_root(seed) == discovery_root(target):
-                    continue
-                left_id, right_id = sorted((seed, target))
-                pair = (left_id, right_id)
-                if pair in evaluated_pairs:
-                    continue
-                evaluated_pairs.add(pair)
-                score = record_pair(left_id, right_id, cycle="discovery")
-                if score < threshold:
-                    continue
-                discovery_parents[discovery_root(target)] = discovery_root(seed)
-                break
+        # Cross-page discovery remains bounded below.
         for seed in sorted(group_ids):
             if discovery_root(seed) != seed:
                 continue
@@ -2381,27 +2381,17 @@ def compile_detection_v5_dimension_graph(
     provisional_components: dict[str, list[str]] = {}
     for group_id in sorted(group_ids):
         provisional_components.setdefault(root(group_id), []).append(group_id)
-    closure_components = [
+    provisional_components_list = [
         component for component in provisional_components.values() if len(component) >= 3
     ]
-
-    if allowed_pairs is None:
-        # Cycle two: verify only missing pairs inside a component made by cycle one.
-        for component in closure_components:
-            for left_id, right_id in combinations(component, 2):
-                pair = (left_id, right_id)
-                if pair in evaluated_pairs:
-                    continue
-                evaluated_pairs.add(pair)
-                record_pair(left_id, right_id, cycle="closure")
     return edges, {
         "compiler_version": (
-            "v5_3_candidate_q_revalidation_threshold_25"
+            "v5_10_6_final_same_page_all_pairs_q_cross_page_threshold_25"
             if allowed_pairs is not None
-            else "v5_2_two_cycle_dimension_queue_threshold_25"
+            else "v5_10_4_same_page_all_pairs_threshold_25"
         ),
         "dimension_edge_threshold": threshold,
-        "provisional_components": closure_components,
+        "provisional_components": provisional_components_list,
         "dimension_similarity_candidates": candidates,
         "dimension_similarity_edges": [{key: row[key] for key in ("group_id_a", "group_id_b", "page_a", "page_b", "same_page", "cycle", "dimension_similarity_score")} for row in edges],
     }

@@ -1,33 +1,11 @@
 from __future__ import annotations
 
-from typing import Any
-
-
 OCR_PROFILE_BASIC = "basic"
 OCR_PROFILE_EVIDENCE = "evidence"
 OCR_PROFILES = {
     OCR_PROFILE_BASIC,
     OCR_PROFILE_EVIDENCE,
 }
-
-OCR_EVIDENCE_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "additionalProperties": False,
-    "properties": {
-        "text": {
-            "type": "string",
-            "description": (
-                "Transcribe all legible text inside this image exactly as printed. "
-                "Preserve language, spelling, numbers, units, and line breaks. "
-                "Include dimensions, labels, notes, material and finish callouts. "
-                "Never infer missing text, summarize content, identify products, "
-                "count products, or group drawing views."
-            ),
-        },
-    },
-    "required": ["text"],
-}
-
 
 def build_mistral_ocr_request(
     *,
@@ -53,15 +31,9 @@ def build_mistral_ocr_request(
         "extract_footer": True,
         "include_blocks": True,
         "include_image_base64": False,
-        "confidence_scores_granularity": "page",
+        # Native OCR blocks contain both content and page-pixel bbox.  They are
+        # the coordinate contract consumed by Fusion.  A custom per-item bbox
+        # annotation caused P04/P08 provider timeouts on HSL and is excluded.
+        "confidence_scores_granularity": "block",
     }
-    if profile == OCR_PROFILE_EVIDENCE:
-        payload["bbox_annotation_format"] = {
-            "type": "json_schema",
-            "json_schema": {
-                "name": profile,
-                "strict": True,
-                "schema": OCR_EVIDENCE_SCHEMA,
-            },
-        }
     return payload

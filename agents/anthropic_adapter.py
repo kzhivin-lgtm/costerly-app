@@ -85,7 +85,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v5_10_3_canonical_review_source_ids_temperature_0"
+    "detection_v5_10_12_compact_coverage_dimension_halo_min20_fusion_text_recall_temperature_0"
 )
 # V5.0 keeps one Haiku call. Registry returns Islands, classifications, and
 # sparse positive semantic facts. Runtime owns every graph and package decision.
@@ -176,7 +176,23 @@ DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"].pop(
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
     "bbox"
 )
+DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
+    "core_bbox"
+)
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"]["bbox"] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": [
+        "top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y",
+    ],
+    "properties": {
+        "top_left_x": {"type": "integer", "minimum": 0},
+        "top_left_y": {"type": "integer", "minimum": 0},
+        "bottom_right_x": {"type": "integer", "minimum": 1},
+        "bottom_right_y": {"type": "integer", "minimum": 1},
+    },
+}
+DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"]["core_bbox"] = {
     "type": "object",
     "additionalProperties": False,
     "required": [
@@ -232,6 +248,17 @@ DETECTION_V5_OBJECT_HYPOTHESES_SCHEMA: dict[str, Any] = {
                     }}},
         }}}
 
+DETECTION_V5_PAGE_COVERAGE_SCHEMA: dict[str, Any] = {
+    "type": "array", "maxItems": 100,
+    "items": {"type": "object", "additionalProperties": False,
+        "required": ["page_number", "visual_group_ids"],
+        "properties": {
+            "page_number": {"type": "integer", "minimum": 1},
+            "visual_group_ids": {"type": "array", "maxItems": 64,
+                "items": {"type": "string"}},
+        }},
+}
+
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
@@ -250,11 +277,14 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
 DETECTION_V5_DISCOVERY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["visual_groups", "classifications", "candidate_region_exceptions"],
+    "required": [
+        "visual_groups", "classifications", "candidate_region_exceptions", "page_coverage",
+    ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
         "candidate_region_exceptions": DETECTION_V5_CANDIDATE_REGION_EXCEPTIONS_SCHEMA,
+        "page_coverage": DETECTION_V5_PAGE_COVERAGE_SCHEMA,
     },
 }
 
@@ -668,7 +698,7 @@ def build_detection_page_evidence_inventory(
         add_fact(
             page_number=item.get("page_number"),
             source=item.get("source", "mistral_ocr"),
-            bbox=item.get("source_image_bbox"), text=item.get("text"),
+            bbox=item.get("bbox") or item.get("source_image_bbox"), text=item.get("text"),
             kind=f"literal:{item.get('category') or 'other'}",
         )
     for literal in evidence.get("declared_dimension_literals") or []:
@@ -796,7 +826,7 @@ def build_detection_dimension_candidates(
         add_tokens(
             page_number=item.get("page_number"),
             source=item.get("source", "mistral_ocr"),
-            bbox=item.get("source_image_bbox"),
+            bbox=item.get("bbox") or item.get("source_image_bbox"),
             text=item.get("text"),
             native=False,
         )
@@ -2349,7 +2379,7 @@ def _validate_and_apply_visual_registry_classifications(
     # depiction.  This applies to any document and depends on the Registry's
     # own declared representation and description, never on a page number.
     generic_plan_markers = re.compile(
-        r"\b(?:complete|overall|whole|level|room|rooms|layout|spatial|"
+        r"\b(?:complete|overall|whole|level|rooms?|layouts?|spatial|"
         r"architectural|circulation|walls?|door\s+swings?|multiple\s+spaces?)\b",
         re.IGNORECASE,
     )
@@ -2360,10 +2390,17 @@ def _validate_and_apply_visual_registry_classifications(
             str(group.get("visual_description") or ""),
             str(decision["classification_reason"]),
         ))
+        # Registry occasionally emits its evidence-class name in
+        # representation_kind.  A real whole-level floor plan must still be
+        # context, so use the concrete description as a deterministic fallback.
+        describes_floor_plan = bool(re.search(
+            r"\b(?:architectural\s+)?(?:floor|level)\s+plan\b|\broom\s+layouts?\b",
+            description,
+            re.IGNORECASE,
+        ))
         generic_plan = (
-            representation in {"floor_plan", "location_plan"}
-            and len(set(generic_plan_markers.findall(description))) >= 3
-        )
+            representation in {"floor_plan", "location_plan"} or describes_floor_plan
+        ) and len(set(generic_plan_markers.findall(description))) >= 3
         if decision["evidence_class"] == "object_evidence" and generic_plan:
             group["evidence_class"] = "document_context"
             group["classification_reason"] = (
@@ -2380,6 +2417,59 @@ def _validate_and_apply_visual_registry_classifications(
         for group in enriched["visual_groups"]
     ]
     return enriched, audit
+
+
+def validate_detection_v5_discovery_page_coverage(
+    coverage: object,
+    *,
+    visual_groups: object,
+    page_count: int,
+) -> list[dict[str, Any]]:
+    """Require an explicit Island-discovery decision for every supplied page."""
+    if not isinstance(coverage, list) or not isinstance(visual_groups, list):
+        raise ValueError("proposal page coverage is invalid")
+    groups_by_id: dict[str, dict[str, Any]] = {}
+    for group in visual_groups:
+        if not isinstance(group, dict):
+            raise ValueError("proposal visual group is invalid")
+        group_id = str(group.get("group_id") or "")
+        if not group_id or group_id in groups_by_id:
+            raise ValueError("proposal visual group IDs are invalid")
+        groups_by_id[group_id] = group
+
+    expected_pages = set(range(1, page_count + 1))
+    coverage_by_page: dict[int, dict[str, Any]] = {}
+    covered_ids: set[str] = set()
+    audit: list[dict[str, Any]] = []
+    for item in coverage:
+        if not isinstance(item, dict) or set(item) != {"page_number", "visual_group_ids"}:
+            raise ValueError("proposal page coverage entry is invalid")
+        page_number = item.get("page_number")
+        if not isinstance(page_number, int) or page_number not in expected_pages:
+            raise ValueError("proposal page coverage has an invalid page")
+        if page_number in coverage_by_page:
+            raise ValueError("proposal page coverage duplicates a page")
+        group_ids = item.get("visual_group_ids")
+        if not isinstance(group_ids, list) or len(group_ids) != len(set(group_ids)):
+            raise ValueError("proposal page coverage group IDs are invalid")
+        normalized_ids = [str(group_id) for group_id in group_ids]
+        for group_id in normalized_ids:
+            group = groups_by_id.get(group_id)
+            if group is None or int(group.get("page_number") or 0) != page_number:
+                raise ValueError("proposal page coverage references the wrong island")
+            if group_id in covered_ids:
+                raise ValueError("proposal page coverage duplicates an island")
+            covered_ids.add(group_id)
+        coverage_by_page[page_number] = item
+        audit.append({
+            "page_number": page_number,
+            "visual_group_ids": normalized_ids,
+        })
+    if set(coverage_by_page) != expected_pages:
+        raise ValueError("proposal page coverage omits a supplied page")
+    if covered_ids != set(groups_by_id):
+        raise ValueError("proposal page coverage omits or invents an island")
+    return sorted(audit, key=lambda item: item["page_number"])
 
 
 def _normalize_registry_group_bboxes(
@@ -2406,6 +2496,39 @@ def _normalize_registry_group_bboxes(
             or bbox["bottom_right_y"] <= bbox["top_left_y"]
         ):
             raise ValueError("visual registry group geometry is invalid")
+        result[group_id] = {key: int(bbox[key]) for key in keys}
+    return result
+
+
+def _normalize_registry_group_core_bboxes(
+    groups: object,
+    *,
+    group_id_mapping: dict[str, str],
+    evidence_envelopes: dict[str, dict[str, int]],
+) -> dict[str, dict[str, int]]:
+    """Validate physical Island cores inside their Registry evidence envelopes."""
+    if not isinstance(groups, list):
+        raise ValueError("visual registry group core geometry is invalid")
+    result: dict[str, dict[str, int]] = {}
+    keys = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
+    for group in groups:
+        if not isinstance(group, dict):
+            raise ValueError("visual registry group core geometry is invalid")
+        group_id = group_id_mapping.get(str(group.get("group_id") or ""), "")
+        bbox = group.get("core_bbox")
+        envelope = evidence_envelopes.get(group_id) or {}
+        if (
+            not group_id or group_id in result or not isinstance(bbox, dict)
+            or set(bbox) != set(keys)
+            or not all(isinstance(bbox[key], int) for key in keys)
+            or bbox["top_left_x"] < envelope.get("top_left_x", 1)
+            or bbox["top_left_y"] < envelope.get("top_left_y", 1)
+            or bbox["bottom_right_x"] > envelope.get("bottom_right_x", -1)
+            or bbox["bottom_right_y"] > envelope.get("bottom_right_y", -1)
+            or bbox["bottom_right_x"] <= bbox["top_left_x"]
+            or bbox["bottom_right_y"] <= bbox["top_left_y"]
+        ):
+            raise ValueError("visual registry group core geometry is invalid")
         result[group_id] = {key: int(bbox[key]) for key in keys}
     return result
 
@@ -2536,50 +2659,166 @@ def map_detection_candidate_q_pairs_to_islands(
     return allowed
 
 
+_DIMENSION_HALO_TEXT_RE = re.compile(
+    r"^\s*(?:[A-Za-z]+\s*=\s*)?(?P<value>\d+(?:[.,]\d+)?)\s*(?:mm|cm|m)?\s*$",
+    re.IGNORECASE,
+)
+_DIMENSION_HALO_MIN_VALUE = Decimal("20")
+_DIMENSION_HALO_MIN_PX = 80
+_DIMENSION_HALO_MAX_PX = 180
+_DIMENSION_HALO_SHORT_SIDE_RATIO = 0.12
+
+
 def build_detection_view_evidence_packages(
     *,
     visual_groups: list[dict[str, Any]],
     group_bboxes: dict[str, dict[str, int]],
     source_facts: list[dict[str, Any]],
+    group_core_bboxes: dict[str, dict[str, int]] | None = None,
 ) -> list[dict[str, Any]]:
     """Build complete per-Island evidence packages by deterministic geometry.
 
-    Registry identifies visual Islands and their bounds. It never owns fact
-    attribution. A source fact belongs to each same-page Island whose bbox
-    contains its bbox centre, which prevents cross-Island leakage.
+    Registry identifies an Island's physical core and evidence envelope. It
+    never owns fact attribution. Every fact has at most one owner: an envelope
+    match wins when unique, otherwise the core resolves overlap, then a unique
+    nearest core. Exact ties remain unowned instead of being duplicated.
+
+    Printed outer dimensions often sit just outside an otherwise valid evidence
+    envelope. A bounded halo may claim such a numeric fact only when exactly
+    one Island contains it in its halo. The halo never changes Island geometry
+    and never resolves an overlap, so it cannot turn a nearby Island's number
+    into duplicate evidence.
     """
-    def fact_is_inside_group(fact: dict[str, Any], group: dict[str, Any]) -> bool:
-        if fact.get("page_number") != group.get("page_number"):
-            return False
-        fact_bbox = fact.get("bbox")
-        group_bbox = group_bboxes.get(str(group.get("group_id") or ""), {})
-        keys = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
-        if not isinstance(fact_bbox, dict) or not all(
-            isinstance(fact_bbox.get(key), (int, float)) for key in keys
-        ) or not all(isinstance(group_bbox.get(key), int) for key in keys):
-            return False
-        centre_x = (fact_bbox["top_left_x"] + fact_bbox["bottom_right_x"]) / 2
-        centre_y = (fact_bbox["top_left_y"] + fact_bbox["bottom_right_y"]) / 2
+    keys = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
+    core_bboxes = group_core_bboxes or group_bboxes
+
+    def centre(value: dict[str, Any]) -> tuple[float, float] | None:
+        if not all(isinstance(value.get(key), (int, float)) for key in keys):
+            return None
         return (
-            group_bbox["top_left_x"] <= centre_x <= group_bbox["bottom_right_x"]
-            and group_bbox["top_left_y"] <= centre_y <= group_bbox["bottom_right_y"]
+            (value["top_left_x"] + value["bottom_right_x"]) / 2,
+            (value["top_left_y"] + value["bottom_right_y"]) / 2,
         )
+
+    def contains(bbox: dict[str, Any], point: tuple[float, float]) -> bool:
+        return (
+            bbox["top_left_x"] <= point[0] <= bbox["bottom_right_x"]
+            and bbox["top_left_y"] <= point[1] <= bbox["bottom_right_y"]
+        )
+
+    def squared_distance_to_bbox(point: tuple[float, float], bbox: dict[str, Any]) -> float:
+        dx = max(bbox["top_left_x"] - point[0], 0, point[0] - bbox["bottom_right_x"])
+        dy = max(bbox["top_left_y"] - point[1], 0, point[1] - bbox["bottom_right_y"])
+        return dx * dx + dy * dy
+
+    def dimension_halo(bbox: dict[str, Any]) -> dict[str, float] | None:
+        if not all(isinstance(bbox.get(key), (int, float)) for key in keys):
+            return None
+        width = float(bbox["bottom_right_x"] - bbox["top_left_x"])
+        height = float(bbox["bottom_right_y"] - bbox["top_left_y"])
+        if width <= 0 or height <= 0:
+            return None
+        margin = min(
+            _DIMENSION_HALO_MAX_PX,
+            max(_DIMENSION_HALO_MIN_PX, round(min(width, height) * _DIMENSION_HALO_SHORT_SIDE_RATIO)),
+        )
+        return {
+            "top_left_x": bbox["top_left_x"] - margin,
+            "top_left_y": bbox["top_left_y"] - margin,
+            "bottom_right_x": bbox["bottom_right_x"] + margin,
+            "bottom_right_y": bbox["bottom_right_y"] + margin,
+        }
+
+    groups_by_page: dict[int, list[dict[str, Any]]] = {}
+    for group in visual_groups:
+        try:
+            groups_by_page.setdefault(int(group["page_number"]), []).append(group)
+        except (KeyError, TypeError, ValueError):
+            continue
+
+    owned_facts: dict[str, list[dict[str, Any]]] = {
+        str(group["group_id"]): [] for group in visual_groups
+    }
+    halo_fact_ids: dict[str, list[str]] = {
+        str(group["group_id"]): [] for group in visual_groups
+    }
+    for fact in source_facts:
+        if not isinstance(fact, dict):
+            continue
+        point = centre(fact.get("bbox") if isinstance(fact.get("bbox"), dict) else {})
+        if point is None:
+            continue
+        page_groups = groups_by_page.get(fact.get("page_number"), [])
+        envelope_candidates = [
+            group for group in page_groups
+            if (
+                isinstance(group_bboxes.get(str(group.get("group_id") or "")), dict)
+                and contains(group_bboxes[str(group.get("group_id") or "")], point)
+            )
+        ]
+        if len(envelope_candidates) == 1:
+            owner = envelope_candidates[0]
+        elif len(envelope_candidates) > 1:
+            core_candidates = [
+                group for group in envelope_candidates
+                if contains(core_bboxes.get(str(group.get("group_id") or ""), {}), point)
+            ]
+            if len(core_candidates) == 1:
+                owner = core_candidates[0]
+            else:
+                distances = sorted(
+                    (
+                        squared_distance_to_bbox(
+                            point, core_bboxes.get(str(group.get("group_id") or ""), {}),
+                        ),
+                        str(group.get("group_id") or ""), group,
+                    )
+                    for group in envelope_candidates
+                )
+                owner = (
+                    distances[0][2]
+                    if len(distances) == 1 or distances[0][0] < distances[1][0]
+                    else None
+                )
+        else:
+            owner = None
+        halo_owner = False
+        halo_match = _DIMENSION_HALO_TEXT_RE.fullmatch(str(fact.get("text") or ""))
+        if (
+            owner is None
+            and halo_match is not None
+            and Decimal(halo_match["value"].replace(",", ".")) >= _DIMENSION_HALO_MIN_VALUE
+        ):
+            halo_candidates = [
+                group for group in page_groups
+                if (
+                    (halo := dimension_halo(group_bboxes.get(str(group.get("group_id") or ""), {})))
+                    is not None and contains(halo, point)
+                )
+            ]
+            if len(halo_candidates) == 1:
+                owner = halo_candidates[0]
+                halo_owner = True
+        if owner is not None:
+            group_id = str(owner["group_id"])
+            owned_facts[group_id].append(copy.deepcopy(fact))
+            if halo_owner:
+                halo_fact_ids[group_id].append(str(fact["fact_id"]))
 
     packages: list[dict[str, Any]] = []
     for group in visual_groups:
         group_id = str(group["group_id"])
-        facts = [
-            copy.deepcopy(fact) for fact in source_facts
-            if fact_is_inside_group(fact, group)
-        ]
+        facts = owned_facts.get(group_id, [])
         packages.append({
             "visual_group_id": group_id,
             "page_number": group["page_number"],
             "bbox": group_bboxes.get(group_id, {}),
+            "core_bbox": core_bboxes.get(group_id, {}),
             "evidence_class": group.get("evidence_class"),
             "source_fact_ids": [str(fact["fact_id"]) for fact in facts],
             "source_facts": facts,
-            "membership_basis": "same_page_source_fact_bbox_center_inside_island_bbox",
+            "dimension_halo_source_fact_ids": halo_fact_ids.get(group_id, []),
+            "membership_basis": "unique_evidence_envelope_or_core_nearest_owner",
         })
     return packages
 
@@ -3125,7 +3364,7 @@ def _summarize_incomplete_visual_registry_json(
 
 
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Run V5.10.1 Island discovery, then a bounded membership review."""
+    """Run V5.10.12 Island discovery, then a bounded membership review."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
     prompt_version = DETECTION_VISUAL_REGISTRY_PROMPT_VERSION
     proposal_prompt = load_detection_v5_proposal_prompt()
@@ -3176,7 +3415,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         candidate_dimension_audit.get("dimension_similarity_candidates") or []
     )
     candidate_pair_queue_audit = {
-        "compiler_version": "v5_7_4_v5_6_concentric_proto_q",
+        "compiler_version": "v5_10_4_same_page_all_pairs_threshold_25",
         "input_candidate_count": len(candidate_pair_queue),
         "selected_candidate_count": len(candidate_pair_queue),
         "same_page_selected_count": sum(
@@ -3257,10 +3496,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             usage_event=failure_usage,
         ) from exc
     discovery_fields = {
-        "visual_groups", "classifications", "candidate_region_exceptions",
+        "visual_groups", "classifications", "candidate_region_exceptions", "page_coverage",
     }
     legacy_proposal_fields = {
-        *discovery_fields, "object_hypotheses", "semantic_facts",
+        "visual_groups", "classifications", "candidate_region_exceptions",
+        "object_hypotheses", "semantic_facts",
     }
     if not isinstance(proposal_raw_payload, dict) or set(proposal_raw_payload) not in (
         discovery_fields, legacy_proposal_fields,
@@ -3268,8 +3508,19 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         raise DetectionVisualRegistryValidationError(
             "Detection proposal response failed the V5.10.1 discovery contract"
         )
+    if set(proposal_raw_payload) == discovery_fields:
+        proposal_page_coverage = validate_detection_v5_discovery_page_coverage(
+            proposal_raw_payload["page_coverage"],
+            visual_groups=proposal_raw_payload["visual_groups"], page_count=len(page_images),
+        )
+    else:
+        proposal_page_coverage = [{
+            "status": "legacy_response_without_page_coverage",
+            "page_count": len(page_images),
+        }]
     proposal_discovery_payload = {
-        field: proposal_raw_payload[field] for field in discovery_fields
+        field: proposal_raw_payload[field]
+        for field in discovery_fields - {"page_coverage"}
     }
     proposal_for_review, _ = _validate_and_apply_visual_registry_classifications(
         proposal_discovery_payload
@@ -3348,6 +3599,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "semantic_facts": [],
     }
     diagnostics = dict(review_diagnostics)
+    diagnostics["v5_10_proposal_page_coverage"] = proposal_page_coverage
     diagnostics.update({
         "request_started_at": proposal_diagnostics["request_started_at"],
         "request_finished_at": review_diagnostics["request_finished_at"],
@@ -3405,6 +3657,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     dimension_inventory_valid = False
     dimension_inventory_error: str | None = None
     group_bboxes: dict[str, dict[str, int]] = {}
+    group_core_bboxes: dict[str, dict[str, int]] = {}
     view_evidence_packages: list[dict[str, Any]] = []
     page_local_view_labels: dict[str, dict[str, Any]] = {}
     island_dimension_comparison_audit: list[dict[str, Any]] = []
@@ -3474,6 +3727,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         group_bboxes = _normalize_registry_group_bboxes(
             raw_groups, group_id_mapping=group_id_mapping,
         )
+        group_core_bboxes = _normalize_registry_group_core_bboxes(
+            raw_groups,
+            group_id_mapping=group_id_mapping,
+            evidence_envelopes=group_bboxes,
+        )
         page_by_group_id = {
             str(group["group_id"]): int(group["page_number"])
             for group in visual_map["visual_groups"]
@@ -3490,7 +3748,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         }
         view_evidence_packages = build_detection_view_evidence_packages(
             visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
-            source_facts=source_facts,
+            group_core_bboxes=group_core_bboxes, source_facts=source_facts,
         )
         page_local_view_labels = assign_detection_page_local_view_labels(
             view_evidence_packages

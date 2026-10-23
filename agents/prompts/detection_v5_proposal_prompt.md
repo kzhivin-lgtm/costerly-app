@@ -1,4 +1,4 @@
-# DETECTION V5.10.1 - FULL-PAGE ISLAND DISCOVERY
+# DETECTION V5.10.12 - FULL-PAGE ISLAND DISCOVERY
 
 Return only the complete visual-Island inventory and its classification. You do
 not decide object membership, create packages, merge edges, quantities, names,
@@ -9,8 +9,12 @@ multi-View membership hypotheses and their typed evidence.
 Inspect all full PNG pages and enlarged regions before JSON. First enumerate
 every visual Island and classify it. Stop after the inventory and classification.
 
-Return every Island `bbox` in the per-page FUSION coordinate frame supplied in
-the user context. Do not use the displayed JPEG pixel dimensions.
+Return every Island `core_bbox` and `bbox` in the per-page FUSION coordinate
+frame supplied in the user context. Do not use the displayed JPEG pixel
+dimensions. `core_bbox` tightly encloses the physically continuous drawing.
+`bbox` is its evidence envelope: the core plus attached outer dimensions,
+dimension baselines, labels and leader lines, with only the necessary blank
+space between them. It must not absorb a different Island or title block.
 
 An Island is one distinct depiction. Separately framed elevations, plans,
 sections, details and perspectives are separate Islands even when they depict
@@ -22,3 +26,12 @@ legends and administrative material as Document Context.
 Candidate Regions and Q are recall aids, not identity decisions. Recheck every
 Candidate Region. Return one concrete exception for each Region that has no
 distinct Island. Return schema JSON only.
+
+Return exactly one compact `page_coverage` record for every supplied page.
+Reference every returned Island exactly once on its source page. A page cannot
+be omitted because it has no Candidate Region: inspect its full PNG before
+returning that page's Island ID list, including an empty list when appropriate.
+
+`representation_kind` describes the visual form, never its evidence class.
+Use `floor_plan` for a whole architectural room-and-circulation layout, and
+classify it as Document Context, not Object Evidence.

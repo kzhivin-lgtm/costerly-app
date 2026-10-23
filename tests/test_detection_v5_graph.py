@@ -50,7 +50,7 @@ def test_v5_repeated_typical_dimension_is_counted_one_to_one():
     assert "2 paired occurrence(s)" in edges[0]["evidence_facts"][0]["observation"]
 
 
-def test_v5_dimension_queue_closes_only_a_component_created_by_first_links():
+def test_v5_dimension_queue_scores_every_same_page_pair_before_cross_page():
     views = [
         {"group_id": "view-001", "evidence_class": "object_evidence", "page_number": 1},
         {"group_id": "view-002", "evidence_class": "object_evidence", "page_number": 1},
@@ -62,16 +62,16 @@ def test_v5_dimension_queue_closes_only_a_component_created_by_first_links():
         {"group_id": "view-003", "occurrences": [_occurrence("c", 3310, "SF3")]},
     ], visual_groups=views)
     assert [(edge["group_id_a"], edge["group_id_b"], edge["cycle"]) for edge in edges] == [
-        ("view-001", "view-002", "discovery"),
-        ("view-002", "view-003", "discovery"),
-        ("view-001", "view-003", "closure"),
+        ("view-001", "view-002", "same_page_all_to_all"),
+        ("view-001", "view-003", "same_page_all_to_all"),
+        ("view-002", "view-003", "same_page_all_to_all"),
     ]
     assert audit["dimension_edge_threshold"] == 25.0
-    assert audit["compiler_version"] == "v5_2_two_cycle_dimension_queue_threshold_25"
+    assert audit["compiler_version"] == "v5_10_4_same_page_all_pairs_threshold_25"
     assert audit["provisional_components"] == [["view-001", "view-002", "view-003"]]
 
 
-def test_v5_final_dimension_revalidates_only_candidate_q_pairs():
+def test_v5_final_dimension_scores_all_same_page_pairs_despite_candidate_q():
     views = [
         {"group_id": "view-001", "evidence_class": "object_evidence", "page_number": 1},
         {"group_id": "view-002", "evidence_class": "object_evidence", "page_number": 1},
@@ -86,10 +86,12 @@ def test_v5_final_dimension_revalidates_only_candidate_q_pairs():
         inventory, visual_groups=views,
         allowed_pairs={("view-001", "view-002")},
     )
-    assert [(edge["group_id_a"], edge["group_id_b"]) for edge in edges] == [
-        ("view-001", "view-002"),
+    assert [(edge["group_id_a"], edge["group_id_b"], edge["cycle"]) for edge in edges] == [
+        ("view-001", "view-002", "same_page_all_to_all"),
+        ("view-001", "view-003", "same_page_all_to_all"),
+        ("view-002", "view-003", "same_page_all_to_all"),
     ]
-    assert audit["compiler_version"] == "v5_3_candidate_q_revalidation_threshold_25"
+    assert audit["compiler_version"] == "v5_10_6_final_same_page_all_pairs_q_cross_page_threshold_25"
 
 
 def test_v5_merge_does_not_inspect_pairs_without_existing_q_evidence():

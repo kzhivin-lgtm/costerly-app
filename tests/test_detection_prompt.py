@@ -70,17 +70,19 @@ def test_detection_visual_map_never_decides_objects_or_quantity():
     assert "cannot create, split, merge, name, count" in prompt
 
 
-def test_v5_10_3_separates_full_page_discovery_from_membership_review():
+def test_v5_10_11_separates_full_page_discovery_from_membership_review():
     proposal_prompt = load_detection_v5_proposal_prompt()
     review_prompt = load_detection_v5_review_prompt()
 
     assert "complete visual-Island inventory" in proposal_prompt
     assert "You do\nnot decide object membership" in proposal_prompt
     assert "Candidate Regions and Q are recall aids" in proposal_prompt
+    assert "one compact `page_coverage` record for every supplied page" in proposal_prompt
+    assert "evidence envelope" in proposal_prompt
     assert "fixed visual-Island inventory" in review_prompt
     assert "without brackets" in review_prompt
     assert "cannot create,\nremove, split, reclassify" in review_prompt
     assert "registry_view:<View ID>" in review_prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v5_10_3_canonical_review_source_ids_temperature_0"
+        "detection_v5_10_12_compact_coverage_dimension_halo_min20_fusion_text_recall_temperature_0"
     )

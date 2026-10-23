@@ -161,13 +161,109 @@ only when `SF00123` is a known source ID, with an audit row. This checkpoint is
 not accepted or deployed. Protected evidence and limits are recorded in
 `notes/DETECTION_V5_10_3_TWO_CALL_EXPERIMENTAL_CHECKPOINT_2026_10_23.md`.
 
-ACTIVE, P0, next isolated V5.10.x repair: P02 generic floor-plan classification.
+VERIFIED LOCALLY, pending checkpoint, P1, V5.10.6 P02 generic floor-plan classification.
 The V5.10.3 HSL run retained all protected P03-P11 Island inventory but emitted
 P02 as `object_evidence` because it mislabeled `representation_kind` as
 `object_evidence`, bypassing the generic-plan safeguard. Repair this upstream
 classification-contract breach without changing Island membership, graph,
 dimension scoring or P04 package policy. Re-run HSL first, then Page23 before
 any broader regression pack.
+
+CHECKPOINT, experimental, V5.10.12 evidence, context and same-page Dimension
+repair. This is a protected local evaluation baseline, not accepted or deployed.
+V5.10.5 preserved P09.V3 outer dimensions but the final Dimension Graph passed
+`allowed_pairs=Q`, which disabled same-page all-to-all after Registry.
+Candidate Regions omitted the lower P03 and P09 sections, so their final
+Islands received no Dimension pair, semantic fact or graph edge. V5.10.6
+scores every final same-page object-Island pair and uses Candidate Q only for
+bounded cross-page revalidation. Keep the 25 threshold and cross-page >=85
+early stop unchanged. It also demotes a whole architectural floor plan to
+`document_context` from its concrete description when Registry incorrectly
+emits `representation_kind=object_evidence`. V5.10.7 required verbose per-page
+reasoning, which pushed one HSL proposal to its 8,192-token cap. V5.10.8 keeps
+the same validated all-pages/all-Islands invariant in a compact page-to-Island
+ID map. It fixes the silent P09 omission without raising a token budget or
+adding a call. V5.10.8 then restored all P09 Islands, but P09.V3 had no
+Dimension edge because its Registry envelope ended 66 pixels above the printed
+total `407`; the matching `406` was retained by P09.V2. V5.10.9 tried a Review
+completeness instruction and explicitly still classified P09.V3 standalone, so
+that prompt-only change was discarded. V5.10.10 attaches an otherwise-unowned
+numeric fact of at least 20 in a bounded 80-180 px evidence halo only when
+exactly one final Island contains it. This excludes title-block revision rows
+such as 1..10 and cannot duplicate or steal a fact across overlapping halos.
+V5.10.12 fixes the remaining earlier recall failure: where Mistral exposes no
+graphic region on a page, Fusion derives broad, disconnected text/dimension
+clusters as Candidate Regions. They only require Registry to inspect those
+areas, retain the full-page rule, and never decide Islands or object identity.
+Graphic-region pages retain their existing Candidate Region behavior. The
+candidate log records the recall basis, including `fusion_text_cluster`.
+Local HSL `v51012-hsl-01` passed the primary gate: P02 is Document Context,
+P03.V1-V3 are one package, P09.V1-V3 are one package, and P09 has five
+accounted recall regions, including a non-Island revision table. It produced
+32 Islands and 10 packages in 124.481 seconds at $0.208045. This is an
+uncheckpointed local result. Page 23 `v51012-page23-01` confirms this fallback
+did not run on ordinary Mistral graphic-region pages, but exposed an independent
+semantic-validation defect: generic material/frame language incorrectly merged
+door and console Views. It produced five object Islands but the false packages
+`P01.V1+V2` and `P01.V3+V4+V5`. Do not checkpoint or deploy. Next isolated
+audit corrected the causal label for the zero Dimension pairs. This is not a
+Fusion-to-final-Island ownership loss. `page-23.pdf` has only nine native text
+spans, all headers, footer, page number, or two notes, and no authored drawing
+dimensions. The current one-page Mistral response returns one `image` block
+covering the drawing, no interior text blocks, no image annotation, and only
+image Markdown. Fusion therefore never receives dimension literals such as
+4130, 2345, 2695, 1760 or 3610 with usable coordinates. Treat OCR recall and
+locality as a separate early evidence repair. Independently, Registry sees the
+full page in both calls but split the physically continuous left shelving and
+its diagonal extension into P01.V1 and P01.V2. Repair that Island-segmentation
+breach before using semantic facts to mask it. Only then tighten
+`matching_topology` and `direct_shared_structure` around pair-specific topology
+or an actual shared physical structure. Rerun Page 23 before the remaining
+benchmark pack.
+Mistral native coordinate blocks remain the confirmed stable OCR path; do not
+restore the rejected per-item bbox response schema.
+
+REJECTED LOCAL EXPERIMENT, V5.10.13 Page23 OCR crop and Island-water prompt:
+the isolated 200-dpi crop of the complete left shelving unit, including visible
+dimensions 2695, 1760, 1660, 630 and 510, still returned one Mistral image
+block, image Markdown and zero text or dimension facts. Enlarging the image is
+therefore not an OCR recovery path for this provider response. The Proposal
+prompt then required a 10-Fusion-pixel water gap and a continuity recheck before
+creating Islands. Page23 `v51013-water-01` still returned five Object Islands:
+it called the shelf `VG-P1-001` and its visibly attached diagonal extension
+`VG-P1-002` independent components, then Review re-merged them into one object.
+It retained the correct three final packages but did not repair the Island
+boundary. Revert this prompt-only variation. Do not try another wording-only
+variant. Any next repair must give an existing stage an explicit, bounded
+authority to invalidate a false split, or add a deterministic image-continuity
+signal that distinguishes physical body strokes from annotations.
+
+PENDING, P0, USER PROPOSAL, early visual-only Detection router: before Candidate
+Regions, Q and Dimension Fingerprints, classify each page's usable evidence.
+When native PDF spans contain no authored drawing text and Mistral returns no
+interior text block, annotation or literal with a page-local bbox, route that
+page through a bounded visual-only object-discovery contract rather than
+pretending it has a Dimension Fingerprint. Preserve the full PNG, page evidence
+audit, source-frame record, Detection Validation and File Review. Do not turn
+off the ordinary evidence path for other pages in the same document, and do not
+discard the deterministic engine globally. Decide separately whether the
+visual-only route returns direct object candidates or lets the existing Review
+call make a narrowly typed false-split union. Polygon masks are technically
+possible but are not proposed as the first implementation: current crops,
+source ownership, halos and graph locality are rectangle-based, and overlapping
+rectangular evidence envelopes are already valid.
+
+NEXT, P0, V5.11 isolated Page23 visual-only router experiment: preserve the
+V5.10.12 normal route as the control. Add a deterministic per-page gate for
+zero usable authored/spatial evidence, then route only such pages to a direct
+visual object-discovery contract. It must preserve full-page PNG evidence,
+page-local view regions, source-mode audit, Detection Validation and File
+Review, while bypassing Candidate Q, Dimension Fingerprints and semantic graph
+for the visual-only page. First acceptance question: Page23 returns shelf,
+door system and two-view TV console as three object candidates without using
+invented dimensions or a file-specific rule. Only after that compare Metal and
+Adda in the evaluation wheel. No Polygon/mask implementation, deployment or
+checkpoint is authorised by this entry.
 
 BLOCKED QUALITY GATE, V5.9 HSL `v590-hsl-04`: the cross-document run rejects
 the experiment in its current form. It returned 31 raw Visual Groups, 28

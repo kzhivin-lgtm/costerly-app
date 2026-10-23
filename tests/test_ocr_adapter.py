@@ -64,7 +64,7 @@ def test_normalizes_mistral_response():
         elapsed_seconds=1.2345,
     )
 
-    assert package["contract_version"] == "ocr_v6"
+    assert package["contract_version"] == "ocr_v8_native_coordinate_blocks"
     assert package["profile"] == "basic"
     assert package["page_count"] == 1
     assert package["pages"][0]["page_number"] == 1
@@ -88,9 +88,8 @@ def test_calls_ocr4_with_structured_page_output():
     assert payload["model"] == "mistral-ocr-4-1"
     assert payload["include_blocks"] is True
     assert payload["include_image_base64"] is False
-    annotation_schema = payload["bbox_annotation_format"]["json_schema"]["schema"]
-    assert annotation_schema["required"] == ["text"]
-    assert set(annotation_schema["properties"]) == {"text"}
+    assert "bbox_annotation_format" not in payload
+    assert payload["confidence_scores_granularity"] == "block"
     assert payload["document"]["document_url"].startswith(
         "data:application/pdf;base64,"
     )
@@ -235,8 +234,10 @@ def test_normalized_evidence_parses_and_compacts_literal_items():
             "bottom_right_y": 200,
             "image_annotation": (
                 '{"literal_items":['
-                '{"text":"4130","category":"dimension","region":"top-right"},'
-                '{"text":"4130","category":"dimension","region":"top-right"}'
+                '{"text":"4130","category":"dimension","region":"top-right",'
+                '"bbox_1000":{"x1":100,"y1":200,"x2":300,"y2":400}},'
+                '{"text":"4130","category":"dimension","region":"top-right",'
+                '"bbox_1000":{"x1":100,"y1":200,"x2":300,"y2":400}}'
                 "]}"
             ),
         }
@@ -253,6 +254,11 @@ def test_normalized_evidence_parses_and_compacts_literal_items():
     assert evidence["text_blocks"][0]["text"] == "BAR COUNTER"
     assert evidence["literal_items"][0]["text"] == "4130"
     assert evidence["literal_items"][0]["occurrences"] == 2
+    assert evidence["literal_items"][0]["bbox"] == {
+        "top_left_x": 11, "top_left_y": 42,
+        "bottom_right_x": 31, "bottom_right_y": 81,
+    }
+    assert evidence["literal_items"][0]["coordinate_basis"] == "mistral_annotation_bbox_1000"
 
 
 def test_normalized_evidence_accepts_ocr41_bbox_text():

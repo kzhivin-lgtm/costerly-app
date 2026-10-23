@@ -15,6 +15,7 @@ from agents.anthropic_adapter import (
     _apply_reference_root_suffixes,
     DEFAULT_CLAUDE_DETECTION_MODEL,
     DetectionVisualRegistryValidationError,
+    validate_detection_v5_discovery_page_coverage,
     DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
     apply_benchmark_run_suffix,
@@ -84,6 +85,7 @@ def _visual_registry_payload(payload):
             "bottom_right_x": index * 10 + 5,
             "bottom_right_y": 20,
         })
+        group.setdefault("core_bbox", copy.deepcopy(group["bbox"]))
         is_document_context = group.get("representation_kind") in non_object_kinds
         evidence_class = group.pop(
             "evidence_class",
@@ -736,6 +738,46 @@ def test_whole_architectural_floor_plan_is_demoted_to_document_context():
     assert audit[0]["evidence_class"] == "document_context"
 
 
+def test_whole_architectural_floor_plan_is_demoted_when_model_mislabels_representation_kind():
+    payload = _visual_registry_payload({
+        "visual_groups": [{
+            "group_id": "plan", "page_number": 2, "location_hint": "whole page",
+            "visual_description": "Architectural floor plan with room layouts, dimensions and colored zones.",
+            "representation_kind": "object_evidence",
+        }],
+        "classifications": [{
+            "group_id": "plan", "evidence_class": "object_evidence",
+            "classification_reason": "Architectural floor plan depicting room layouts and spatial organization.",
+        }],
+    })
+    enriched, audit = _validate_and_apply_visual_registry_classifications(payload)
+    assert enriched["visual_groups"][0]["evidence_class"] == "document_context"
+    assert audit[0]["classification_reason"] == (
+        "Whole-level architectural plan is document context, not an isolated fabricated item."
+    )
+
+
+def test_v5_discovery_page_coverage_requires_every_page_and_every_island():
+    groups = [
+        {"group_id": "P1.A", "page_number": 1},
+        {"group_id": "P2.A", "page_number": 2},
+    ]
+    coverage = [
+        {"page_number": 1, "visual_group_ids": ["P1.A"]},
+        {"page_number": 2, "visual_group_ids": ["P2.A"]},
+    ]
+
+    audit = validate_detection_v5_discovery_page_coverage(
+        coverage, visual_groups=groups, page_count=2,
+    )
+
+    assert [item["page_number"] for item in audit] == [1, 2]
+    with pytest.raises(ValueError, match="omits a supplied page"):
+        validate_detection_v5_discovery_page_coverage(
+            coverage[:1], visual_groups=groups, page_count=2,
+        )
+
+
 def test_visual_registry_keeps_semantic_facts_outside_dimension_queue_for_global_proof_forest():
     payload = _visual_registry_payload({
         "visual_groups": [
@@ -829,7 +871,7 @@ def test_visual_registry_materializes_view_package_from_immutable_source_fact():
     assert package["source_fact_ids"] == ["SF00001"]
     assert package["source_facts"][0]["text"] == "358"
     assert package["membership_basis"] == (
-        "same_page_source_fact_bbox_center_inside_island_bbox"
+        "unique_evidence_envelope_or_core_nearest_owner"
     )
     assert package["bbox"] == {
         "top_left_x": 0, "top_left_y": 0,
