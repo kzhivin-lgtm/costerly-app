@@ -12,6 +12,7 @@ DETECTION_REGISTRY_JSON_SCHEMA: dict[str, Any] = {"type":"object","additionalPro
 PAIRWISE_MERGE_EVIDENCE_TYPES = frozenset({
     "explicit_document_relation",
     "dimension_equality",
+    "visual_dimension_similarity",
     "matching_topology",
     "dimension_transform",
     "unique_geometry",
@@ -49,6 +50,10 @@ _NON_EXPLICIT_MERGE_SUPPORT_TYPES = frozenset({
 SEMANTIC_PAIRWISE_EVIDENCE_TYPES = frozenset({
     "explicit_document_relation", "dimension_transform", "matching_topology",
     "unique_geometry", "direct_shared_structure",
+})
+SOURCE_DEGRADED_VISUAL_SEMANTIC_EVIDENCE_TYPES = frozenset({
+    *SEMANTIC_PAIRWISE_EVIDENCE_TYPES,
+    "visual_dimension_similarity",
 })
 
 DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
@@ -1617,9 +1622,15 @@ _V5_GENERIC_SEMANTIC_RE = re.compile(
 _V5_HARD_GENERIC_SEMANTIC_RE = re.compile(r"\bsame h\s*=?\s*60\b", re.IGNORECASE)
 _V5_NON_SHARED_STRUCTURE_RE = re.compile(
     r"\b(same|identical|matching)\s+(material|profile|hardware|specification|construction)|"
-    r"\b(material|hardware)\s+specifications?\b",
+    r"\b(material|hardware)\s+specifications?\b|"
+    r"\b(structural|construction)\s+(principle|methodology|method|system|type)\b|"
+    r"\bframe\s+(principle|methodology|method|system|type)\b",
     re.IGNORECASE,
 )
+_V5_STRUCTURAL_WITNESS_KINDS = frozenset({
+    "endpoint_complete_view_contains_partial",
+    "third_view_shows_both",
+})
 _V5_CONCRETE_SEMANTIC_RE = re.compile(
     r"\d|\b(carcass|bay|door|drawer|shelf|panel|track|frame|"
     r"compartment|sequence|component|dimension|reference|callout|boundary)\b",
@@ -1627,6 +1638,7 @@ _V5_CONCRETE_SEMANTIC_RE = re.compile(
 )
 _V5_SEMANTIC_POINTS = {
     "dimension_transform": 35,
+    "visual_dimension_similarity": 45,
     "matching_topology": 30,
     "unique_geometry": 30,
     "direct_shared_structure": 20,
@@ -1897,6 +1909,7 @@ def compile_detection_v5_semantic_facts(
     *,
     visual_groups: list[dict[str, Any]],
     source_facts: list[dict[str, Any]],
+    allowed_evidence_types: frozenset[str] = SEMANTIC_PAIRWISE_EVIDENCE_TYPES,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Keep grounded V5 positive facts and audit every rejected candidate."""
     object_groups = {
@@ -1915,7 +1928,9 @@ def compile_detection_v5_semantic_facts(
             rejected.append({"index": index, "reason": "fact_not_object"})
             continue
         required = {"group_id_a", "group_id_b", "evidence_type", "strength", "observation", "source_fact_ids"}
-        if set(raw) != required:
+        if not required.issubset(raw) or not set(raw).issubset(
+            required | {"structural_witness"}
+        ):
             rejected.append({"index": index, "reason": "fact_fields_invalid"})
             continue
         left, right = sorted((str(raw["group_id_a"] or ""), str(raw["group_id_b"] or "")))
@@ -1933,7 +1948,7 @@ def compile_detection_v5_semantic_facts(
         if left == right or left not in object_groups or right not in object_groups:
             rejected.append({"index": index, "reason": "endpoints_not_distinct_object_evidence"})
             continue
-        if kind not in SEMANTIC_PAIRWISE_EVIDENCE_TYPES or not observation or strength not in {"direct", "single_object_sheet", "standard"}:
+        if kind not in allowed_evidence_types or not observation or strength not in {"direct", "single_object_sheet", "standard"}:
             rejected.append({"index": index, "reason": "type_or_observation_invalid"})
             continue
         if kind == "explicit_document_relation" and strength not in {
@@ -1944,9 +1959,42 @@ def compile_detection_v5_semantic_facts(
         if kind != "explicit_document_relation" and strength != "standard":
             rejected.append({"index": index, "reason": "non_document_relation_requires_standard_strength"})
             continue
-        if kind == "direct_shared_structure" and _V5_NON_SHARED_STRUCTURE_RE.search(observation):
-            rejected.append({"index": index, "reason": "direct_shared_structure_is_generic_specification"})
-            continue
+        structural_witness = raw.get("structural_witness")
+        if kind == "direct_shared_structure":
+            if not isinstance(structural_witness, dict) or set(structural_witness) != {
+                "kind", "witness_view_id", "joined_parts", "connection",
+            }:
+                rejected.append({"index": index, "reason": "direct_shared_structure_requires_physical_witness"})
+                continue
+            witness_kind = str(structural_witness.get("kind") or "")
+            witness_view_id = str(structural_witness.get("witness_view_id") or "")
+            joined_parts = structural_witness.get("joined_parts")
+            connection = str(structural_witness.get("connection") or "").strip()
+            if (
+                witness_kind not in _V5_STRUCTURAL_WITNESS_KINDS
+                or witness_view_id not in object_groups
+                or not isinstance(joined_parts, list)
+                or not 2 <= len(joined_parts) <= 3
+                or not all(isinstance(part, str) and part.strip() for part in joined_parts)
+                or not connection
+            ):
+                rejected.append({"index": index, "reason": "direct_shared_structure_witness_invalid"})
+                continue
+            if (
+                witness_kind == "endpoint_complete_view_contains_partial"
+                and witness_view_id not in {left, right}
+            ) or (
+                witness_kind == "third_view_shows_both"
+                and witness_view_id in {left, right}
+            ):
+                rejected.append({"index": index, "reason": "direct_shared_structure_witness_endpoint_invalid"})
+                continue
+            if f"registry_view:{witness_view_id}" not in cited:
+                rejected.append({"index": index, "reason": "direct_shared_structure_witness_source_missing"})
+                continue
+            if _V5_NON_SHARED_STRUCTURE_RE.search(f"{observation} {connection}"):
+                rejected.append({"index": index, "reason": "direct_shared_structure_is_generic_specification"})
+                continue
         if _V5_HARD_GENERIC_SEMANTIC_RE.search(observation) or (
             _V5_GENERIC_SEMANTIC_RE.search(observation)
             and not _V5_CONCRETE_SEMANTIC_RE.search(observation)
@@ -1968,6 +2016,19 @@ def compile_detection_v5_semantic_facts(
         if kind == "dimension_transform" and (len(cited) < 2 or len(re.findall(r"\d", observation)) < 2):
             rejected.append({"index": index, "reason": "transform_requires_two_readings"})
             continue
+        if kind == "visual_dimension_similarity":
+            endpoint_sources = {
+                f"registry_view:{left}", f"registry_view:{right}",
+            }
+            if (
+                not endpoint_sources.issubset(set(cited))
+                or len(re.findall(r"\d+(?:[.,]\d+)?", observation)) < 2
+            ):
+                rejected.append({
+                    "index": index,
+                    "reason": "visual_dimension_similarity_requires_two_visible_readings",
+                })
+                continue
         key = (left, right, kind, observation)
         if key in seen:
             rejected.append({"index": index, "reason": "duplicate_fact"})
@@ -1976,11 +2037,206 @@ def compile_detection_v5_semantic_facts(
         accepted.append({
             "group_id_a": left, "group_id_b": right, "evidence_type": kind,
             "strength": strength, "observation": observation, "source_fact_ids": cited,
+            **(
+                {"structural_witness": {
+                    "kind": str(structural_witness["kind"]),
+                    "witness_view_id": str(structural_witness["witness_view_id"]),
+                    "joined_parts": [part.strip() for part in structural_witness["joined_parts"]],
+                    "connection": str(structural_witness["connection"]).strip(),
+                }}
+                if kind == "direct_shared_structure" else {}
+            ),
         })
     return accepted, {
         "accepted": accepted,
         "rejected": rejected,
         "source_id_normalizations": source_id_normalizations,
+    }
+
+
+def compile_detection_v5_visual_dimension_conflicts(
+    conflicts: object,
+    *,
+    visual_groups: list[dict[str, Any]],
+    source_facts: list[dict[str, Any]],
+    allowed_pairs: set[tuple[str, str]],
+) -> tuple[dict[tuple[str, str], str], dict[str, Any]]:
+    """Keep only explicit visual dimension contradictions as merge guards.
+
+    This is intentionally not a negative graph channel. A conflict is emitted
+    only when the visual-only Registry can read incompatible measurements in
+    both Views. Missing or unreadable dimensions produce no record.
+    """
+    object_groups = {
+        str(group.get("group_id") or "") for group in visual_groups
+        if group.get("evidence_class") == "object_evidence"
+    }
+    source_ids = {str(fact.get("fact_id") or "") for fact in source_facts}
+    accepted: dict[tuple[str, str], str] = {}
+    rejected: list[dict[str, Any]] = []
+    normalizations: list[dict[str, Any]] = []
+    if not isinstance(conflicts, list):
+        return {}, {"accepted": [], "rejected": [{"reason": "dimension_conflicts_not_list"}]}
+    for index, raw in enumerate(conflicts):
+        if not isinstance(raw, dict) or set(raw) != {
+            "group_id_a", "group_id_b", "readings_a", "readings_b",
+            "observation", "source_fact_ids",
+        }:
+            rejected.append({"index": index, "reason": "dimension_conflict_fields_invalid"})
+            continue
+        left, right = sorted((
+            str(raw.get("group_id_a") or ""),
+            str(raw.get("group_id_b") or ""),
+        ))
+        pair = (left, right)
+        observation = str(raw.get("observation") or "").strip()
+        readings_a = raw.get("readings_a")
+        readings_b = raw.get("readings_b")
+        raw_cited = (
+            [str(value) for value in raw["source_fact_ids"] if str(value)]
+            if isinstance(raw.get("source_fact_ids"), list) else []
+        )
+        cited, fact_normalizations = _canonical_detection_v5_source_fact_ids(
+            raw_cited, known_source_ids=source_ids,
+        )
+        required_sources = {f"registry_view:{left}", f"registry_view:{right}"}
+        readings_are_numeric = (
+            isinstance(readings_a, list)
+            and isinstance(readings_b, list)
+            and all(
+                isinstance(reading, str)
+                and re.fullmatch(
+                    r"\s*\d+(?:[.,]\d+)?\s*(?:mm|cm|m)?\s*",
+                    reading,
+                    re.IGNORECASE,
+                )
+                for reading in [*readings_a, *readings_b]
+            )
+        )
+        if (
+            left == right
+            or not set(pair).issubset(object_groups)
+            or pair not in allowed_pairs
+            or not observation
+            or not isinstance(readings_a, list)
+            or not isinstance(readings_b, list)
+            or not readings_a
+            or not readings_b
+            or not readings_are_numeric
+            or not required_sources.issubset(set(cited))
+            or not set(cited).issubset(source_ids)
+        ):
+            rejected.append({"index": index, "reason": "dimension_conflict_not_grounded"})
+            continue
+        if pair in accepted:
+            rejected.append({"index": index, "reason": "duplicate_dimension_conflict"})
+            continue
+        accepted[pair] = observation
+        normalizations.extend({
+            "index": index,
+            "group_id_a": left,
+            "group_id_b": right,
+            **normalization,
+        } for normalization in fact_normalizations)
+    return accepted, {
+        "accepted": [
+            {"group_id_a": pair[0], "group_id_b": pair[1], "observation": observation}
+            for pair, observation in sorted(accepted.items())
+        ],
+        "rejected": rejected,
+        "source_id_normalizations": normalizations,
+    }
+
+
+def compile_detection_v5_nested_duplicate_islands(
+    duplicates: object,
+    *,
+    visual_groups: list[dict[str, Any]],
+    source_facts: list[dict[str, Any]],
+) -> tuple[dict[str, str], dict[str, Any]]:
+    """Accept only a grounded, visually contained Island fragment.
+
+    The Registry, not rectangle overlap, decides whether a fragment lacks an
+    independent drawing boundary. Runtime merely requires strong containment,
+    same-page geometry and both immutable View sources before removing it.
+    """
+    groups_by_id = {
+        str(group.get("group_id") or ""): group
+        for group in visual_groups
+        if group.get("evidence_class") == "object_evidence"
+    }
+    source_ids = {str(fact.get("fact_id") or "") for fact in source_facts}
+    accepted: dict[str, str] = {}
+    rejected: list[dict[str, Any]] = []
+
+    def core_bbox(group: dict[str, Any]) -> tuple[int, int, int, int] | None:
+        value = group.get("core_bbox")
+        if not isinstance(value, dict):
+            return None
+        keys = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
+        if set(value) != set(keys) or not all(isinstance(value[key], int) for key in keys):
+            return None
+        left, top, right, bottom = (value[key] for key in keys)
+        return (left, top, right, bottom) if right > left and bottom > top else None
+
+    if not isinstance(duplicates, list):
+        return {}, {"accepted": [], "rejected": [{"reason": "nested_duplicates_not_list"}]}
+    for index, raw in enumerate(duplicates):
+        required = {"child_group_id", "parent_group_id", "observation", "source_fact_ids"}
+        if not isinstance(raw, dict) or set(raw) != required:
+            rejected.append({"index": index, "reason": "nested_duplicate_fields_invalid"})
+            continue
+        child_id = str(raw.get("child_group_id") or "")
+        parent_id = str(raw.get("parent_group_id") or "")
+        observation = str(raw.get("observation") or "").strip()
+        raw_cited = raw.get("source_fact_ids")
+        cited, _ = _canonical_detection_v5_source_fact_ids(
+            [str(value) for value in raw_cited if str(value)]
+            if isinstance(raw_cited, list) else [],
+            known_source_ids=source_ids,
+        )
+        child = groups_by_id.get(child_id)
+        parent = groups_by_id.get(parent_id)
+        child_bbox = core_bbox(child) if child else None
+        parent_bbox = core_bbox(parent) if parent else None
+        if (
+            child_id == parent_id
+            or child_id in accepted
+            or child is None
+            or parent is None
+            or not observation
+            or child_bbox is None
+            or parent_bbox is None
+            or int(child.get("page_number") or 0) != int(parent.get("page_number") or 0)
+            or not {
+                f"registry_view:{child_id}", f"registry_view:{parent_id}",
+            }.issubset(set(cited))
+            or not set(cited).issubset(source_ids)
+        ):
+            rejected.append({"index": index, "reason": "nested_duplicate_not_grounded"})
+            continue
+        child_left, child_top, child_right, child_bottom = child_bbox
+        parent_left, parent_top, parent_right, parent_bottom = parent_bbox
+        child_area = (child_right - child_left) * (child_bottom - child_top)
+        parent_area = (parent_right - parent_left) * (parent_bottom - parent_top)
+        overlap_area = max(0, min(child_right, parent_right) - max(child_left, parent_left)) * max(
+            0, min(child_bottom, parent_bottom) - max(child_top, parent_top),
+        )
+        contained_fraction = overlap_area / child_area if child_area else 0.0
+        if parent_area <= child_area or contained_fraction < 0.85:
+            rejected.append({
+                "index": index,
+                "reason": "nested_duplicate_geometry_insufficient",
+                "contained_fraction": round(contained_fraction, 4),
+            })
+            continue
+        accepted[child_id] = parent_id
+    return accepted, {
+        "accepted": [
+            {"child_group_id": child_id, "parent_group_id": parent_id}
+            for child_id, parent_id in sorted(accepted.items())
+        ],
+        "rejected": rejected,
     }
 
 
@@ -1991,6 +2247,8 @@ def compile_detection_v5_merge_edges(
     visual_groups: list[dict[str, Any]] | None = None,
     group_bboxes: dict[str, dict[str, float]] | None = None,
     allow_runtime_merges: bool = True,
+    merge_blocked_pairs: dict[tuple[str, str], str] | None = None,
+    allow_batch_confirmation: bool = True,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Merge from a minimal semantic proof forest plus deterministic Dimensions."""
     by_pair: dict[tuple[str, str], dict[str, Any]] = {}
@@ -2036,6 +2294,11 @@ def compile_detection_v5_merge_edges(
             group_id = components[group_id]
         return group_id
 
+    blocked_pairs = {
+        tuple(sorted(pair)): reason
+        for pair, reason in (merge_blocked_pairs or {}).items()
+    }
+
     for pair in sorted(candidate_pairs, key=candidate_key):
         row = by_pair.get(pair, {"dimension_score": 0.0, "semantic_facts": [], "dimension_facts": []})
         if root(pair[0]) == root(pair[1]):
@@ -2058,17 +2321,26 @@ def compile_detection_v5_merge_edges(
         edge_score = min(100.0, row["dimension_score"] + semantic_points)
         identity_fact = bool(kinds.intersection({
             "explicit_document_relation", "matching_topology", "unique_geometry",
-            "direct_shared_structure",
+            "direct_shared_structure", "visual_dimension_similarity",
         }))
         semantic_proof = len(kinds) >= 2 and identity_fact
-        merge = allow_runtime_merges and (
+        merge = allow_runtime_merges and pair not in blocked_pairs and (
             direct_label
             or semantic_proof
             or (row["dimension_score"] >= 85 and bool(kinds))
             or (edge_score >= 100 and identity_fact)
         )
         facts = [*row["dimension_facts"], *[
-            {"evidence_type": fact["evidence_type"], "evidence_pages": [], "observation": fact["observation"], "source_fact_ids": fact["source_fact_ids"]}
+            {
+                "evidence_type": fact["evidence_type"],
+                "evidence_pages": [],
+                "observation": fact["observation"],
+                "source_fact_ids": fact["source_fact_ids"],
+                **(
+                    {"structural_witness": fact["structural_witness"]}
+                    if "structural_witness" in fact else {}
+                ),
+            }
             for fact in row["semantic_facts"]
         ]]
         edges.append({
@@ -2082,7 +2354,12 @@ def compile_detection_v5_merge_edges(
             "dimension_similarity_score": row["dimension_score"],
             "edge_score": edge_score,
         })
-        audit.append({"group_id_a": pair[0], "group_id_b": pair[1], "dimension_similarity_score": row["dimension_score"], "edge_score": edge_score, "merge": merge})
+        audit.append({
+            "group_id_a": pair[0], "group_id_b": pair[1],
+            "dimension_similarity_score": row["dimension_score"],
+            "edge_score": edge_score, "merge": merge,
+            **({"merge_blocked": blocked_pairs[pair]} if pair in blocked_pairs else {}),
+        })
         if merge:
             components[root(pair[1])] = root(pair[0])
 
@@ -2093,11 +2370,14 @@ def compile_detection_v5_merge_edges(
         root(str(edge["group_id_a"])) for edge in edges
         if edge["relationship"] == "same_object_view"
     }
-    changed = True
+    changed = allow_batch_confirmation
     while changed:
         changed = False
         for edge in edges:
             if edge["relationship"] == "same_object_view" or not edge["same_page"]:
+                continue
+            pair = tuple(sorted((str(edge["group_id_a"]), str(edge["group_id_b"]))))
+            if pair in blocked_pairs:
                 continue
             left_root, right_root = root(str(edge["group_id_a"])), root(str(edge["group_id_b"]))
             if left_root == right_root:

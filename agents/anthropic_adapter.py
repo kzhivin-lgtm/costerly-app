@@ -12,6 +12,7 @@ import re
 import sys
 from threading import Lock
 import time
+from itertools import combinations
 from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
@@ -30,6 +31,15 @@ from agents.prompt_loader import (
     load_detection_v5_membership_prompt,
     load_detection_v5_proposal_prompt,
     load_detection_v5_review_prompt,
+    load_detection_v5_source_degraded_discovery_prompt,
+    load_detection_v5_source_degraded_full_page_registry_prompt,
+    load_detection_v5_source_degraded_membership_prompt,
+    load_detection_v5_source_degraded_one_shot_registry_prompt,
+    load_detection_v5_source_degraded_v561_consensus_prompt,
+)
+from agents.detection_source_capability import (
+    assess_detection_source_capability,
+    validate_detection_visual_only_partitions,
 )
 from agents.detection_fusion_candidate_regions import (
     build_detection_fusion_candidate_regions,
@@ -52,8 +62,10 @@ from agents.schemas.detection_registry_schema import (
     derive_detection_dimension_package_candidates,
     compile_detection_v5_object_hypotheses,
     compile_detection_v5_semantic_facts,
+    compile_detection_v5_visual_dimension_conflicts,
     compile_detection_v5_merge_edges,
     compile_detection_v5_dimension_graph,
+    SOURCE_DEGRADED_VISUAL_SEMANTIC_EVIDENCE_TYPES,
     validate_detection_v5_final_result,
     merge_detection_relation_edges,
     derive_detection_proof_components,
@@ -97,6 +109,21 @@ DETECTION_V5_PROPOSAL_MAX_TOKENS = 8_192
 DETECTION_V5_MEMBERSHIP_MAX_TOKENS = 6_144
 DETECTION_V5_MEMBERSHIP_CROP_MAX_SIDE = 768
 DETECTION_V5_MEMBERSHIP_PAGE_CONTEXT_MAX_SIDE = 1024
+DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_MAX_TOKENS = 6_144
+DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_MAX_TOKENS = 4_096
+DETECTION_V5_SOURCE_DEGRADED_PROMPT_VERSION = (
+    "detection_v5_13_2_source_degraded_v4_representation_map_experimental_v1"
+)
+DETECTION_V5_SOURCE_DEGRADED_FULL_PAGE_REGISTRY_PROMPT_VERSION = (
+    "detection_v5_14_source_degraded_full_page_visual_registry_experimental_v1"
+)
+DETECTION_V5_SOURCE_DEGRADED_ONE_SHOT_REGISTRY_PROMPT_VERSION = (
+    "detection_v5_15_source_degraded_one_shot_visual_registry_experimental_v1"
+)
+DETECTION_V5_SOURCE_DEGRADED_V561_CONSENSUS_PROMPT_VERSION = (
+    "detection_v5_16_source_degraded_v561_two_proposal_consensus_experimental_v1"
+)
+DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_CROP_MAX_SIDE = 1024
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
 # contract as well.
@@ -211,6 +238,23 @@ DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA: dict[str, Any] = {
         "properties": {"group_id": {"type": "string"},
             "evidence_class": {"type": "string", "enum": ["document_context", "object_evidence"]},
             "classification_reason": {"type": "string"}}}}
+DETECTION_V5_STRUCTURAL_WITNESS_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["kind", "witness_view_id", "joined_parts", "connection"],
+    "properties": {
+        "kind": {"type": "string", "enum": [
+            "endpoint_complete_view_contains_partial",
+            "third_view_shows_both",
+        ]},
+        "witness_view_id": {"type": "string"},
+        "joined_parts": {
+            "type": "array", "minItems": 2, "maxItems": 3,
+            "items": {"type": "string", "maxLength": 80},
+        },
+        "connection": {"type": "string", "maxLength": 180},
+    },
+}
 DETECTION_V5_SEMANTIC_FACTS_SCHEMA: dict[str, Any] = {
     "type": "array", "maxItems": 48, "items": {"type": "object", "additionalProperties": False,
         "required": ["group_id_a", "group_id_b", "evidence_type", "strength", "observation", "source_fact_ids"], "properties": {
@@ -221,8 +265,96 @@ DETECTION_V5_SEMANTIC_FACTS_SCHEMA: dict[str, Any] = {
             ]},
             "strength": {"type": "string", "enum": ["direct", "single_object_sheet", "standard"]},
             "observation": {"type": "string", "maxLength": 180},
-            "source_fact_ids": {"type": "array", "maxItems": 2, "items": {"type": "string"}},
+            "source_fact_ids": {"type": "array", "maxItems": 3, "items": {"type": "string"}},
+            "structural_witness": DETECTION_V5_STRUCTURAL_WITNESS_SCHEMA,
         }},
+}
+DETECTION_V5_SOURCE_DEGRADED_SEMANTIC_FACTS_SCHEMA = copy.deepcopy(
+    DETECTION_V5_SEMANTIC_FACTS_SCHEMA,
+)
+DETECTION_V5_SOURCE_DEGRADED_SEMANTIC_FACTS_SCHEMA["items"]["properties"]["evidence_type"]["enum"].append(
+    "visual_dimension_similarity",
+)
+DETECTION_V5_SOURCE_DEGRADED_DIMENSION_CONFLICTS_SCHEMA: dict[str, Any] = {
+    "type": "array", "maxItems": 48,
+    "items": {"type": "object", "additionalProperties": False,
+        "required": [
+            "group_id_a", "group_id_b", "readings_a", "readings_b",
+            "observation", "source_fact_ids",
+        ],
+        "properties": {
+            "group_id_a": {"type": "string"},
+            "group_id_b": {"type": "string"},
+            "readings_a": {"type": "array", "minItems": 1, "maxItems": 8,
+                           "items": {"type": "string", "maxLength": 32}},
+            "readings_b": {"type": "array", "minItems": 1, "maxItems": 8,
+                           "items": {"type": "string", "maxLength": 32}},
+            "observation": {"type": "string", "maxLength": 180},
+            "source_fact_ids": {"type": "array", "maxItems": 3, "items": {"type": "string"}},
+        }},
+}
+DETECTION_V5_SOURCE_DEGRADED_ROLE_RESOLUTIONS_SCHEMA: dict[str, Any] = {
+    "type": "array", "maxItems": 24,
+    "items": {"type": "object", "additionalProperties": False,
+        "required": [
+            "group_id", "visual_role", "parent_group_id", "observation", "source_fact_ids",
+        ],
+        "properties": {
+            "group_id": {"type": "string"},
+            "visual_role": {"type": "string", "enum": [
+                "assembly_view", "component_detail", "document_context",
+            ]},
+            "parent_group_id": {"type": "string"},
+            "observation": {"type": "string", "minLength": 30, "maxLength": 240},
+            "source_fact_ids": {"type": "array", "minItems": 1, "maxItems": 3,
+                                "items": {"type": "string"}},
+        }},
+}
+DETECTION_V5_SOURCE_DEGRADED_FULL_PAGE_ROLES_SCHEMA: dict[str, Any] = {
+    "type": "array", "maxItems": 64,
+    "items": {"type": "object", "additionalProperties": False,
+        "required": ["group_id", "visual_role", "classification_reason"],
+        "properties": {
+            "group_id": {"type": "string"},
+            "visual_role": {"type": "string", "enum": [
+                "assembly_view", "component_detail", "document_context",
+            ]},
+            "classification_reason": {"type": "string", "minLength": 12, "maxLength": 240},
+        },
+    },
+}
+DETECTION_V5_SOURCE_DEGRADED_VISUAL_PARTITIONS_SCHEMA: dict[str, Any] = {
+    "type": "array", "minItems": 1, "maxItems": 48,
+    "items": {"type": "object", "additionalProperties": False,
+        "required": ["group_ids", "visual_basis"],
+        "properties": {
+            "group_ids": {"type": "array", "minItems": 1, "maxItems": 48,
+                          "items": {"type": "string"}},
+            "visual_basis": {"type": "array", "minItems": 1, "maxItems": 24,
+                "items": {"type": "object", "additionalProperties": False,
+                    "required": ["evidence_type", "view_ids", "observation"],
+                    "properties": {
+                        "evidence_type": {"type": "string", "enum": [
+                            "complete_physical_envelope", "direct_continuity",
+                            "alternate_projection", "visible_author_label",
+                            "matching_unique_structure", "compatible_dimensions",
+                        ]},
+                        "view_ids": {"type": "array", "minItems": 1, "maxItems": 48,
+                                     "items": {"type": "string"}},
+                        "observation": {"type": "string", "minLength": 12, "maxLength": 240},
+                    },
+                },
+            },
+        },
+    },
+}
+DETECTION_V5_SOURCE_DEGRADED_FULL_PAGE_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "required": ["roles", "partitions"],
+    "properties": {
+        "roles": DETECTION_V5_SOURCE_DEGRADED_FULL_PAGE_ROLES_SCHEMA,
+        "partitions": DETECTION_V5_SOURCE_DEGRADED_VISUAL_PARTITIONS_SCHEMA,
+    },
 }
 DETECTION_V5_CANDIDATE_REGION_EXCEPTIONS_SCHEMA: dict[str, Any] = {
     "type": "array", "items": {"type": "object", "additionalProperties": False,
@@ -244,7 +376,8 @@ DETECTION_V5_OBJECT_HYPOTHESES_SCHEMA: dict[str, Any] = {
                         "evidence_type": {"type": "string", "enum": ["explicit_document_relation", "matching_topology", "unique_geometry", "direct_shared_structure"]},
                         "strength": {"type": "string", "enum": ["direct", "single_object_sheet", "standard"]},
                         "observation": {"type": "string", "maxLength": 180},
-                        "source_fact_ids": {"type": "array", "maxItems": 2, "items": {"type": "string"}},
+                        "source_fact_ids": {"type": "array", "maxItems": 3, "items": {"type": "string"}},
+                        "structural_witness": DETECTION_V5_STRUCTURAL_WITNESS_SCHEMA,
                     }}},
         }}}
 
@@ -257,6 +390,17 @@ DETECTION_V5_PAGE_COVERAGE_SCHEMA: dict[str, Any] = {
             "visual_group_ids": {"type": "array", "maxItems": 64,
                 "items": {"type": "string"}},
         }},
+}
+
+DETECTION_V5_SOURCE_DEGRADED_ONE_SHOT_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "required": ["visual_groups", "page_coverage", "roles", "partitions"],
+    "properties": {
+        "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
+        "page_coverage": DETECTION_V5_PAGE_COVERAGE_SCHEMA,
+        "roles": DETECTION_V5_SOURCE_DEGRADED_FULL_PAGE_ROLES_SCHEMA,
+        "partitions": DETECTION_V5_SOURCE_DEGRADED_VISUAL_PARTITIONS_SCHEMA,
+    },
 }
 
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
@@ -273,6 +417,19 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
         "semantic_facts": DETECTION_V5_SEMANTIC_FACTS_SCHEMA,
     },
 }
+
+# V5.6.1 predated the core-bbox requirement.  V5.16 deliberately replays its
+# one-call visual contract in an isolated source-degraded experiment, so it
+# must not require geometry the historical contract never requested.
+DETECTION_V5_SOURCE_DEGRADED_V561_CONSENSUS_JSON_SCHEMA = copy.deepcopy(
+    DETECTION_VISUAL_REGISTRY_JSON_SCHEMA
+)
+_V516_CONSENSUS_GROUP_SCHEMA = (
+    DETECTION_V5_SOURCE_DEGRADED_V561_CONSENSUS_JSON_SCHEMA["properties"]
+    ["visual_groups"]["items"]
+)
+_V516_CONSENSUS_GROUP_SCHEMA["required"].remove("core_bbox")
+_V516_CONSENSUS_GROUP_SCHEMA["properties"].pop("core_bbox")
 
 DETECTION_V5_DISCOVERY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -293,6 +450,30 @@ DETECTION_V5_MEMBERSHIP_JSON_SCHEMA: dict[str, Any] = {
     "additionalProperties": False,
     "required": ["object_hypotheses"],
     "properties": {"object_hypotheses": DETECTION_V5_OBJECT_HYPOTHESES_SCHEMA},
+}
+
+DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": [
+        "visual_groups", "page_coverage",
+    ],
+    "properties": {
+        "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
+        "page_coverage": DETECTION_V5_PAGE_COVERAGE_SCHEMA,
+    },
+}
+
+DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "required": [
+        "role_resolutions", "semantic_facts", "dimension_conflicts",
+    ],
+    "properties": {
+        "role_resolutions": DETECTION_V5_SOURCE_DEGRADED_ROLE_RESOLUTIONS_SCHEMA,
+        "semantic_facts": DETECTION_V5_SOURCE_DEGRADED_SEMANTIC_FACTS_SCHEMA,
+        "dimension_conflicts": DETECTION_V5_SOURCE_DEGRADED_DIMENSION_CONFLICTS_SCHEMA,
+    },
 }
 
 _STREAMLIT_SECRET_CACHE: dict[str, str] = {}
@@ -1341,6 +1522,81 @@ def build_detection_v5_review_coordinate_frames(
     return frames, audit
 
 
+def build_detection_v5_visual_page_frames(
+    page_images: list[bytes],
+) -> tuple[dict[int, dict[str, int]], list[dict[str, Any]]]:
+    """Describe the rendered-pixel frame used by the source-degraded route."""
+    try:
+        from PIL import Image
+    except ImportError:
+        return {}, [{"reason": "Pillow unavailable"}]
+    frames: dict[int, dict[str, int]] = {}
+    audit: list[dict[str, Any]] = []
+    for page_number, page_bytes in enumerate(page_images, start=1):
+        try:
+            with Image.open(BytesIO(page_bytes)) as image:
+                frame = {"width": int(image.width), "height": int(image.height)}
+        except Exception as exc:
+            audit.append({
+                "page_number": page_number,
+                "reason": f"rendered page unavailable: {type(exc).__name__}",
+            })
+            continue
+        frames[page_number] = frame
+        audit.append({"page_number": page_number, **frame})
+    return frames, audit
+
+
+def _source_dimensions_by_page(
+    ocr_package: dict[str, Any] | None,
+) -> dict[int, tuple[int, int]]:
+    dimensions: dict[int, tuple[int, int]] = {}
+    for page in (ocr_package or {}).get("pages") or []:
+        if not isinstance(page, dict):
+            continue
+        try:
+            page_number = int(page.get("page_number"))
+            width = int(round(float((page.get("dimensions") or {}).get("width"))))
+            height = int(round(float((page.get("dimensions") or {}).get("height"))))
+        except (TypeError, ValueError):
+            continue
+        if page_number >= 1 and width > 0 and height > 0:
+            dimensions[page_number] = (width, height)
+    return dimensions
+
+
+def _validate_source_degraded_visual_geometry(
+    visual_groups: list[dict[str, Any]],
+    *,
+    page_frames: dict[int, dict[str, int]],
+) -> tuple[dict[str, dict[str, int]], dict[str, dict[str, int]]]:
+    """Keep visual-only Discovery in the explicit rendered-page frame."""
+    identity_mapping = {
+        str(group.get("group_id") or ""): str(group.get("group_id") or "")
+        for group in visual_groups if isinstance(group, dict)
+    }
+    envelopes = _normalize_registry_group_bboxes(
+        visual_groups, group_id_mapping=identity_mapping,
+    )
+    cores = _normalize_registry_group_core_bboxes(
+        visual_groups, group_id_mapping=identity_mapping,
+        evidence_envelopes=envelopes,
+    )
+    for group in visual_groups:
+        group_id = str(group.get("group_id") or "")
+        page_number = group.get("page_number")
+        frame = page_frames.get(page_number) if isinstance(page_number, int) else None
+        bbox = envelopes.get(group_id)
+        if frame is None or bbox is None:
+            raise ValueError("source-degraded visual group has no rendered page frame")
+        if (
+            bbox["bottom_right_x"] > frame["width"]
+            or bbox["bottom_right_y"] > frame["height"]
+        ):
+            raise ValueError("source-degraded visual group bbox exceeds rendered page")
+    return envelopes, cores
+
+
 def format_detection_v5_coordinate_frame_context(
     frames: dict[int, dict[str, Any]],
 ) -> str:
@@ -1415,6 +1671,7 @@ def build_detection_v5_membership_view_crops(
     page_images: list[bytes],
     visual_groups: list[dict[str, Any]],
     coordinate_frames: dict[int, dict[str, Any]] | None = None,
+    max_side: int = DETECTION_V5_MEMBERSHIP_CROP_MAX_SIDE,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Crop fixed Object Views for the membership-only Registry input."""
     try:
@@ -1456,7 +1713,7 @@ def build_detection_v5_membership_view_crops(
                 bottom = max(top + 1, min(height, review_bbox["bottom_right_y"] + margin_y))
                 crop = image.crop((left, top, right, bottom))
                 crop.thumbnail(
-                    (DETECTION_V5_MEMBERSHIP_CROP_MAX_SIDE,) * 2,
+                    (max_side,) * 2,
                     Image.Resampling.LANCZOS,
                 )
                 output = BytesIO()
@@ -1522,6 +1779,7 @@ def build_detection_v5_review_page_context_images(
     page_images: list[bytes],
     visual_groups: list[dict[str, Any]],
     coordinate_frames: dict[int, dict[str, Any]] | None = None,
+    max_side: int = DETECTION_V5_MEMBERSHIP_PAGE_CONTEXT_MAX_SIDE,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Render bounded full-page review context with immutable Island labels."""
     try:
@@ -1551,10 +1809,11 @@ def build_detection_v5_review_page_context_images(
             with Image.open(BytesIO(page_images[page_number - 1])) as image:
                 page = image.convert("RGB")
                 original_width, original_height = page.size
-                page.thumbnail(
-                    (DETECTION_V5_MEMBERSHIP_PAGE_CONTEXT_MAX_SIDE,) * 2,
-                    Image.Resampling.LANCZOS,
-                )
+                if max_side > 0:
+                    page.thumbnail(
+                        (max_side,) * 2,
+                        Image.Resampling.LANCZOS,
+                    )
                 scale_x = page.width / original_width
                 scale_y = page.height / original_height
                 draw = ImageDraw.Draw(page)
@@ -1637,11 +1896,18 @@ def format_detection_v5_membership_handoff(
             if fact.get("page_number") != page_number:
                 continue
             fact_bbox = _detection_bbox(fact.get("bbox"))
-            if fact_bbox is None or not _detection_bbox_centre_inside(fact_bbox, bbox):
+            directly_assigned = str(fact.get("visual_group_id") or "") == group_id
+            if fact_bbox is None or (
+                not directly_assigned
+                and not _detection_bbox_centre_inside(fact_bbox, bbox)
+            ):
                 continue
             # A source span substantially larger than the View is page scope,
             # never local proof for this membership decision.
-            if _detection_bbox_area(fact_bbox) > _detection_bbox_area(bbox) * 2:
+            if (
+                not directly_assigned
+                and _detection_bbox_area(fact_bbox) > _detection_bbox_area(bbox) * 2
+            ):
                 continue
             fact_id = str(fact.get("fact_id") or "")
             text = " ".join(str(fact.get("text") or "").split())[:max_fact_characters]
@@ -1701,7 +1967,7 @@ def build_detection_v5_membership_content_blocks(
         blocks.append({
             "type": "text",
             "text": (
-                f"PDF page {page['page_number']} low-resolution context. "
+                f"PDF page {page['page_number']} full-page context. "
                 "It orients fixed View relationships only."
             ),
         })
@@ -1733,7 +1999,7 @@ def build_detection_v5_membership_content_blocks(
 def build_detection_v5_registry_visual_sources(
     visual_groups: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Expose each fixed Object View crop as a traceable semantic source."""
+    """Expose each fixed Object View as a traceable semantic source."""
     sources: list[dict[str, Any]] = []
     for group in visual_groups:
         if group.get("evidence_class") != "object_evidence":
@@ -2419,6 +2685,154 @@ def _validate_and_apply_visual_registry_classifications(
     return enriched, audit
 
 
+def validate_detection_v5_source_degraded_role_resolutions(
+    resolutions: object,
+    *,
+    visual_groups: list[dict[str, Any]],
+    source_facts: list[dict[str, Any]],
+) -> tuple[dict[str, str], list[dict[str, Any]]]:
+    """Validate Review's one-time role reconciliation before graph creation."""
+    represented_groups = {
+        str(group.get("group_id") or ""): group
+        for group in visual_groups
+    }
+    if not represented_groups or not isinstance(resolutions, list):
+        raise ValueError("source-degraded role resolutions are invalid")
+    source_ids = {
+        str(fact.get("fact_id") or "") for fact in source_facts
+        if isinstance(fact, dict)
+    }
+    by_group_id: dict[str, dict[str, Any]] = {}
+    for item in resolutions:
+        if (
+            not isinstance(item, dict)
+            or set(item) != {
+                "group_id", "visual_role", "parent_group_id", "observation", "source_fact_ids",
+            }
+            or not isinstance(item.get("group_id"), str)
+            or item["group_id"] not in represented_groups
+            or item["group_id"] in by_group_id
+            or item.get("visual_role") not in {
+                "assembly_view", "component_detail", "document_context",
+            }
+            or not isinstance(item.get("parent_group_id"), str)
+            or len(str(item.get("observation") or "").strip()) < 30
+            or not isinstance(item.get("source_fact_ids"), list)
+        ):
+            raise ValueError("source-degraded role resolutions are invalid")
+        cited_ids = [str(value) for value in item["source_fact_ids"] if str(value).strip()]
+        if not cited_ids or any(value not in source_ids for value in cited_ids):
+            raise ValueError("source-degraded role resolution has unknown source")
+        own_source = f"registry_view:{item['group_id']}"
+        if own_source not in cited_ids:
+            raise ValueError("source-degraded role resolution must cite its representation")
+        by_group_id[item["group_id"]] = copy.deepcopy(item)
+    if set(by_group_id) != set(represented_groups):
+        raise ValueError("source-degraded Review must resolve every representation")
+
+    roles = {
+        group_id: str(resolution["visual_role"])
+        for group_id, resolution in by_group_id.items()
+    }
+    audit: list[dict[str, Any]] = []
+    for group_id, resolution in sorted(by_group_id.items()):
+        role = roles[group_id]
+        parent_group_id = str(resolution["parent_group_id"] or "")
+        if role in {"assembly_view", "document_context"}:
+            if parent_group_id:
+                raise ValueError("source-degraded assembly/context role cannot have a parent")
+        else:
+            parent = represented_groups.get(parent_group_id)
+            if (
+                parent is None
+                or parent_group_id == group_id
+                or roles.get(parent_group_id) != "assembly_view"
+                or parent.get("page_number") != represented_groups[group_id].get("page_number")
+            ):
+                raise ValueError("source-degraded component_detail needs one same-page assembly parent")
+            parent_source = f"registry_view:{parent_group_id}"
+            if parent_source not in resolution["source_fact_ids"]:
+                # The explicit parent ID is already the model's relation claim.
+                # Add the matching visual source deterministically so an omitted
+                # redundant token does not turn a recoverable review into a
+                # user-visible failure.
+                resolution["source_fact_ids"].append(parent_source)
+        audit.append({
+            "group_id": group_id,
+            "final_visual_role": role,
+            "parent_group_id": parent_group_id or None,
+            "observation": resolution["observation"],
+            "source_fact_ids": list(resolution["source_fact_ids"]),
+        })
+    if not any(role == "assembly_view" for role in roles.values()):
+        raise ValueError("source-degraded Review found no assembly view")
+    return roles, audit
+
+
+def _normalize_source_degraded_registry_view_ids(
+    source_fact_ids: object,
+    *,
+    group_id_mapping: dict[str, str],
+) -> list[str]:
+    """Normalize a model's exact View shorthand into its visual source ID."""
+    if not isinstance(source_fact_ids, list):
+        return []
+    result: list[str] = []
+    for value in source_fact_ids:
+        source_id = str(value or "").strip()
+        if not source_id:
+            continue
+        if source_id.startswith("registry_view:"):
+            group_id = source_id.removeprefix("registry_view:")
+            result.append(f"registry_view:{group_id_mapping.get(group_id, group_id)}")
+        elif source_id in group_id_mapping:
+            result.append(f"registry_view:{group_id_mapping[source_id]}")
+        else:
+            result.append(source_id)
+    return result
+
+
+def validate_detection_v5_source_degraded_full_page_roles(
+    roles: object,
+    *,
+    visual_groups: list[dict[str, Any]],
+) -> tuple[dict[str, str], list[dict[str, Any]]]:
+    """Validate a complete V4-style representation-role decision."""
+    expected = {
+        str(group.get("group_id") or "") for group in visual_groups
+        if isinstance(group, dict) and str(group.get("group_id") or "")
+    }
+    if not expected or not isinstance(roles, list):
+        raise ValueError("source-degraded full-page roles are invalid")
+    by_group_id: dict[str, dict[str, Any]] = {}
+    allowed_roles = {"assembly_view", "component_detail", "document_context"}
+    for role in roles:
+        if (
+            not isinstance(role, dict)
+            or set(role) != {"group_id", "visual_role", "classification_reason"}
+            or not isinstance(role.get("group_id"), str)
+            or role["group_id"] not in expected
+            or role["group_id"] in by_group_id
+            or role.get("visual_role") not in allowed_roles
+            or len(str(role.get("classification_reason") or "").strip()) < 12
+        ):
+            raise ValueError("source-degraded full-page roles are invalid")
+        by_group_id[role["group_id"]] = copy.deepcopy(role)
+    if set(by_group_id) != expected:
+        raise ValueError("source-degraded full-page Registry must role-classify every representation")
+    return (
+        {group_id: str(role["visual_role"]) for group_id, role in by_group_id.items()},
+        [
+            {
+                "group_id": group_id,
+                "visual_role": role["visual_role"],
+                "classification_reason": role["classification_reason"],
+            }
+            for group_id, role in sorted(by_group_id.items())
+        ],
+    )
+
+
 def validate_detection_v5_discovery_page_coverage(
     coverage: object,
     *,
@@ -2669,6 +3083,32 @@ _DIMENSION_HALO_MAX_PX = 180
 _DIMENSION_HALO_SHORT_SIDE_RATIO = 0.12
 
 
+def _detection_v5_dimension_halo(
+    bbox: dict[str, Any],
+) -> dict[str, float] | None:
+    """Return the bounded whitespace that may hold an outer dimension."""
+    keys = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
+    if not all(isinstance(bbox.get(key), (int, float)) for key in keys):
+        return None
+    width = float(bbox["bottom_right_x"] - bbox["top_left_x"])
+    height = float(bbox["bottom_right_y"] - bbox["top_left_y"])
+    if width <= 0 or height <= 0:
+        return None
+    margin = min(
+        _DIMENSION_HALO_MAX_PX,
+        max(
+            _DIMENSION_HALO_MIN_PX,
+            round(min(width, height) * _DIMENSION_HALO_SHORT_SIDE_RATIO),
+        ),
+    )
+    return {
+        "top_left_x": bbox["top_left_x"] - margin,
+        "top_left_y": bbox["top_left_y"] - margin,
+        "bottom_right_x": bbox["bottom_right_x"] + margin,
+        "bottom_right_y": bbox["bottom_right_y"] + margin,
+    }
+
+
 def build_detection_view_evidence_packages(
     *,
     visual_groups: list[dict[str, Any]],
@@ -2710,24 +3150,6 @@ def build_detection_view_evidence_packages(
         dx = max(bbox["top_left_x"] - point[0], 0, point[0] - bbox["bottom_right_x"])
         dy = max(bbox["top_left_y"] - point[1], 0, point[1] - bbox["bottom_right_y"])
         return dx * dx + dy * dy
-
-    def dimension_halo(bbox: dict[str, Any]) -> dict[str, float] | None:
-        if not all(isinstance(bbox.get(key), (int, float)) for key in keys):
-            return None
-        width = float(bbox["bottom_right_x"] - bbox["top_left_x"])
-        height = float(bbox["bottom_right_y"] - bbox["top_left_y"])
-        if width <= 0 or height <= 0:
-            return None
-        margin = min(
-            _DIMENSION_HALO_MAX_PX,
-            max(_DIMENSION_HALO_MIN_PX, round(min(width, height) * _DIMENSION_HALO_SHORT_SIDE_RATIO)),
-        )
-        return {
-            "top_left_x": bbox["top_left_x"] - margin,
-            "top_left_y": bbox["top_left_y"] - margin,
-            "bottom_right_x": bbox["bottom_right_x"] + margin,
-            "bottom_right_y": bbox["bottom_right_y"] + margin,
-        }
 
     groups_by_page: dict[int, list[dict[str, Any]]] = {}
     for group in visual_groups:
@@ -2792,7 +3214,9 @@ def build_detection_view_evidence_packages(
             halo_candidates = [
                 group for group in page_groups
                 if (
-                    (halo := dimension_halo(group_bboxes.get(str(group.get("group_id") or ""), {})))
+                    (halo := _detection_v5_dimension_halo(
+                        group_bboxes.get(str(group.get("group_id") or ""), {})
+                    ))
                     is not None and contains(halo, point)
                 )
             ]
@@ -3363,6 +3787,1617 @@ def _summarize_incomplete_visual_registry_json(
     }
 
 
+def run_anthropic_detection_v5_source_degraded_visual_experiment(
+    *,
+    file_name: str,
+    company_id: str,
+    file_bytes: bytes,
+    page_images: list[bytes],
+    ocr_package: dict[str, Any] | None,
+    model: str | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Run the isolated V5.13.2 route for documents without spatial evidence.
+
+    This experimental path is deliberately not wired into the product router.
+    It is gated by source capability, not document identity. It bypasses Fusion
+    Candidates. Discovery maps neutral visual representations. Membership
+    resolves their roles before deciding which assembly views may enter the graph, then
+    evaluates visual dimensional similarity without claiming an OCR-like
+    deterministic Dimension Fingerprint where the source does not support it.
+    """
+    if not page_images:
+        raise ValueError("source-degraded visual route requires rendered pages")
+    selected_model = model or get_secret(
+        "CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL,
+    )
+    if "haiku" not in selected_model.lower():
+        raise ValueError("source-degraded visual route requires a Haiku model")
+
+    source_facts = build_detection_page_evidence_inventory(ocr_package)
+    source_capability = assess_detection_source_capability(
+        source_facts=source_facts,
+        page_count=len(page_images),
+        page_dimensions=_source_dimensions_by_page(ocr_package),
+    )
+    if not source_capability["route_eligible"]:
+        raise ValueError(
+            "source-degraded visual route is ineligible: "
+            f"{source_capability['route_reason']}"
+        )
+    page_frames, page_frame_audit = build_detection_v5_visual_page_frames(page_images)
+    if len(page_frames) != len(page_images):
+        raise ValueError("source-degraded visual route cannot inspect every rendered page")
+    coordinate_context = "\n".join([
+        "RENDERED PAGE PIXEL FRAMES:",
+        *(f"P{page_number}|{frame['width']}x{frame['height']}"
+          for page_number, frame in sorted(page_frames.items())),
+    ])
+    discovery_prompt = load_detection_v5_source_degraded_discovery_prompt()
+    membership_prompt = load_detection_v5_source_degraded_membership_prompt()
+    discovery_content = build_detection_content_blocks(
+        file_name=file_name,
+        file_bytes=file_bytes,
+        page_images=page_images,
+        user_text=(
+            "SOURCE CAPABILITY: no page has usable coordinate-bearing evidence. "
+            "Use visual evidence only. Full rendered pages are the sole image "
+            "input.\n\n" + coordinate_context
+        ),
+    )
+    discovery_response, discovery_diagnostics = create_claude_message_streamed(
+        get_anthropic_client(),
+        model=selected_model,
+        max_tokens=DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_MAX_TOKENS,
+        temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+        system=build_detection_system_content(prompt=discovery_prompt),
+        messages=[{"role": "user", "content": discovery_content}],
+        output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
+            DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_JSON_SCHEMA,
+        )}},
+    )
+    discovery_raw_text = extract_text_from_claude_response(discovery_response)
+    try:
+        discovery_payload = json.loads(discovery_raw_text)
+        if not isinstance(discovery_payload, dict) or set(discovery_payload) != {
+            "visual_groups", "page_coverage",
+        }:
+            raise ValueError("source-degraded Discovery response fields are invalid")
+        page_coverage = validate_detection_v5_discovery_page_coverage(
+            discovery_payload["page_coverage"],
+            visual_groups=discovery_payload["visual_groups"],
+            page_count=len(page_images),
+        )
+        raw_visual_groups = discovery_payload["visual_groups"]
+        raw_group_bboxes, raw_group_core_bboxes = _validate_source_degraded_visual_geometry(
+            raw_visual_groups, page_frames=page_frames,
+        )
+        visual_map = validate_detection_visual_map(
+            normalize_detection_visual_map_group_ids(
+                _visual_map_from_registry_groups(raw_visual_groups),
+            ),
+            require_evidence_class=False,
+        )
+        raw_to_normalized_id = {
+            str(raw["group_id"]): normalized["group_id"]
+            for raw, normalized in zip(
+                raw_visual_groups, visual_map["visual_groups"], strict=True,
+            )
+        }
+        view_id_mapping = {
+            **raw_to_normalized_id,
+            **{group_id: group_id for group_id in raw_to_normalized_id.values()},
+        }
+        normalized_visual_groups = []
+        for raw_group, normalized_group in zip(
+            raw_visual_groups, visual_map["visual_groups"], strict=True,
+        ):
+            normalized_visual_groups.append({
+                **copy.deepcopy(raw_group),
+                **copy.deepcopy(normalized_group),
+                # Discovery is deliberately neutral. Every representation is
+                # supplied to Review, including title/context candidates;
+                # Review is the one authority that assigns its final role.
+                "evidence_class": "object_evidence",
+            })
+        normalized_group_bboxes = {
+            raw_to_normalized_id[raw_group_id]: bbox
+            for raw_group_id, bbox in raw_group_bboxes.items()
+        }
+        review_visual_groups = list(normalized_visual_groups)
+        if not review_visual_groups:
+            raise ValueError("source-degraded Discovery found no fabrication representation")
+        semantic_allowed_pairs = {
+            tuple(sorted((left["group_id"], right["group_id"])))
+            for left, right in combinations(review_visual_groups, 2)
+            if left["page_number"] == right["page_number"]
+        }
+        registry_visual_sources = build_detection_v5_registry_visual_sources(
+            review_visual_groups,
+        )
+    except (json.JSONDecodeError, KeyError, ValueError, DetectionRegistrySchemaError) as exc:
+        raise DetectionVisualRegistryValidationError(
+            f"Source-degraded Discovery failed validation: {exc}",
+            usage_event={
+                "agent_name": "detection",
+                "operation": "rfq_detection_v5_source_degraded_visual",
+                "file_name": file_name,
+                "company_id": company_id,
+                "status": "failed",
+                "validation_stage": "v5_13_2_discovery",
+                "source_capability": source_capability,
+                "error_message": str(exc),
+            },
+        ) from exc
+
+    # Source-degraded Discovery has no coordinate authority.  Do not let its
+    # approximate boxes cut or label the full-page evidence before Review.
+    page_context_images = [
+        {"page_number": page_number, "bytes": page_bytes}
+        for page_number, page_bytes in enumerate(page_images, start=1)
+    ]
+    page_context_audit = [
+        {"page_number": page_number, "mode": "full_page_without_discovery_overlay"}
+        for page_number in range(1, len(page_images) + 1)
+    ]
+    membership_crops: list[dict[str, Any]] = []
+    membership_crop_audit = [{
+        "mode": "disabled_source_degraded_discovery_coordinates_not_authoritative",
+    }]
+    membership_handoff = format_detection_v5_membership_handoff(
+        visual_groups=normalized_visual_groups,
+        source_facts=registry_visual_sources,
+    )
+    semantic_pair_text = "\n".join([
+        "ALLOWED SEMANTIC VIEW PAIRS:",
+        *(f"{left}|{right}" for left, right in sorted(semantic_allowed_pairs)),
+    ])
+    membership_content = build_detection_v5_membership_content_blocks(
+        user_text=(
+            membership_handoff
+            + "\n" + semantic_pair_text
+            + "\nSOURCE CAPABILITY: visual-only. registry_view IDs are visual "
+              "sources, not OCR or Fusion facts."
+        ),
+        view_crops=membership_crops,
+        page_context_images=page_context_images,
+    )
+    membership_response, membership_diagnostics = create_claude_message_streamed(
+        get_anthropic_client(),
+        model=selected_model,
+        max_tokens=DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_MAX_TOKENS,
+        temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+        system=build_detection_system_content(prompt=membership_prompt),
+        messages=[{"role": "user", "content": membership_content}],
+        output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
+            DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_JSON_SCHEMA,
+        )}},
+    )
+    membership_raw_text = extract_text_from_claude_response(membership_response)
+    membership_payload: Any = None
+    try:
+        membership_payload = json.loads(membership_raw_text)
+        if not isinstance(membership_payload, dict) or set(membership_payload) != {
+            "role_resolutions", "semantic_facts", "dimension_conflicts",
+        }:
+            raise ValueError("source-degraded Membership response fields are invalid")
+        normalized_role_resolutions: list[dict[str, Any]] = []
+        for resolution in membership_payload["role_resolutions"]:
+            if not isinstance(resolution, dict):
+                normalized_role_resolutions.append(resolution)
+                continue
+            normalized_resolution = copy.deepcopy(resolution)
+            normalized_resolution["group_id"] = raw_to_normalized_id.get(
+                str(resolution.get("group_id") or ""),
+                str(resolution.get("group_id") or ""),
+            )
+            normalized_resolution["parent_group_id"] = raw_to_normalized_id.get(
+                str(resolution.get("parent_group_id") or ""),
+                str(resolution.get("parent_group_id") or ""),
+            )
+            normalized_resolution["source_fact_ids"] = (
+                _normalize_source_degraded_registry_view_ids(
+                    resolution.get("source_fact_ids"),
+                    group_id_mapping=view_id_mapping,
+                )
+            )
+            normalized_role_resolutions.append(normalized_resolution)
+        final_roles, role_resolution_audit = (
+            validate_detection_v5_source_degraded_role_resolutions(
+                normalized_role_resolutions,
+                visual_groups=normalized_visual_groups,
+                source_facts=registry_visual_sources,
+            )
+        )
+        final_object_groups = [
+            {
+                **group,
+                "visual_role": final_roles[str(group["group_id"])],
+                "evidence_class": "object_evidence",
+            }
+            for group in review_visual_groups
+            if final_roles[str(group["group_id"])] == "assembly_view"
+        ]
+        if not final_object_groups:
+            raise ValueError("source-degraded Membership removed every assembly view")
+        final_object_view_ids = {
+            str(group["group_id"]) for group in final_object_groups
+        }
+        final_registry_visual_sources = build_detection_v5_registry_visual_sources(
+            final_object_groups,
+        )
+        final_semantic_allowed_pairs = {
+            tuple(sorted((left["group_id"], right["group_id"])))
+            for left, right in combinations(final_object_groups, 2)
+            if left["page_number"] == right["page_number"]
+        }
+        final_group_bboxes = {
+            group_id: bbox for group_id, bbox in normalized_group_bboxes.items()
+            if group_id in final_object_view_ids
+        }
+        semantic_facts_outside_allowed_pairs: list[dict[str, Any]] = []
+        eligible_semantic_facts: list[dict[str, Any]] = []
+        for index, fact in enumerate(membership_payload["semantic_facts"]):
+            if not isinstance(fact, dict):
+                eligible_semantic_facts.append(fact)
+                continue
+            normalized_fact = copy.deepcopy(fact)
+            normalized_fact["group_id_a"] = raw_to_normalized_id.get(
+                str(fact.get("group_id_a") or ""), str(fact.get("group_id_a") or ""),
+            )
+            normalized_fact["group_id_b"] = raw_to_normalized_id.get(
+                str(fact.get("group_id_b") or ""), str(fact.get("group_id_b") or ""),
+            )
+            normalized_fact["source_fact_ids"] = _normalize_source_degraded_registry_view_ids(
+                fact.get("source_fact_ids"), group_id_mapping=view_id_mapping,
+            )
+            if isinstance(normalized_fact.get("structural_witness"), dict):
+                witness = copy.deepcopy(normalized_fact["structural_witness"])
+                witness["witness_view_id"] = raw_to_normalized_id.get(
+                    str(witness.get("witness_view_id") or ""),
+                    str(witness.get("witness_view_id") or ""),
+                )
+                normalized_fact["structural_witness"] = witness
+            pair = tuple(sorted((
+                str(normalized_fact["group_id_a"] or ""),
+                str(normalized_fact["group_id_b"] or ""),
+            )))
+            if pair not in final_semantic_allowed_pairs:
+                semantic_facts_outside_allowed_pairs.append({
+                    "index": index,
+                    "reason": (
+                        "references_component_detail"
+                        if any(final_roles.get(group_id) == "component_detail" for group_id in pair)
+                        else "outside_visual_semantic_pair_queue"
+                    ),
+                    "group_id_a": pair[0],
+                    "group_id_b": pair[1],
+                })
+                continue
+            eligible_semantic_facts.append(normalized_fact)
+        dimension_conflicts_outside_allowed_pairs: list[dict[str, Any]] = []
+        eligible_dimension_conflicts: list[dict[str, Any]] = []
+        for index, conflict in enumerate(membership_payload["dimension_conflicts"]):
+            if not isinstance(conflict, dict):
+                eligible_dimension_conflicts.append(conflict)
+                continue
+            normalized_conflict = copy.deepcopy(conflict)
+            normalized_conflict["group_id_a"] = raw_to_normalized_id.get(
+                str(conflict.get("group_id_a") or ""), str(conflict.get("group_id_a") or ""),
+            )
+            normalized_conflict["group_id_b"] = raw_to_normalized_id.get(
+                str(conflict.get("group_id_b") or ""), str(conflict.get("group_id_b") or ""),
+            )
+            normalized_conflict["source_fact_ids"] = _normalize_source_degraded_registry_view_ids(
+                conflict.get("source_fact_ids"), group_id_mapping=view_id_mapping,
+            )
+            pair = tuple(sorted((
+                str(normalized_conflict["group_id_a"] or ""),
+                str(normalized_conflict["group_id_b"] or ""),
+            )))
+            if pair not in final_semantic_allowed_pairs:
+                dimension_conflicts_outside_allowed_pairs.append({
+                    "index": index,
+                    "reason": (
+                        "references_component_detail"
+                        if any(final_roles.get(group_id) == "component_detail" for group_id in pair)
+                        else "outside_visual_semantic_pair_queue"
+                    ),
+                    "group_id_a": pair[0],
+                    "group_id_b": pair[1],
+                })
+                continue
+            eligible_dimension_conflicts.append(normalized_conflict)
+        accepted_semantic_facts, semantic_ledger_audit = (
+            compile_detection_v5_semantic_facts(
+                eligible_semantic_facts,
+                visual_groups=final_object_groups,
+                source_facts=final_registry_visual_sources,
+                allowed_evidence_types=SOURCE_DEGRADED_VISUAL_SEMANTIC_EVIDENCE_TYPES,
+            )
+        )
+        dimension_conflict_pairs, dimension_conflict_audit = (
+            compile_detection_v5_visual_dimension_conflicts(
+                eligible_dimension_conflicts,
+                visual_groups=final_object_groups,
+                source_facts=final_registry_visual_sources,
+                allowed_pairs=final_semantic_allowed_pairs,
+            )
+        )
+        semantic_ledger_audit["outside_visual_semantic_pair_queue"] = (
+            semantic_facts_outside_allowed_pairs
+        )
+        dimension_conflict_audit["outside_visual_semantic_pair_queue"] = (
+            dimension_conflicts_outside_allowed_pairs
+        )
+        positive_relation_edges, v5_merge_audit = compile_detection_v5_merge_edges(
+            [],
+            accepted_semantic_facts,
+            visual_groups=final_object_groups,
+            group_bboxes=final_group_bboxes,
+            merge_blocked_pairs=dimension_conflict_pairs,
+            allow_batch_confirmation=False,
+        )
+        accepted_merge_edges = [
+            edge for edge in positive_relation_edges
+            if edge["relationship"] == "same_object_view"
+        ]
+        proof_components = derive_detection_proof_components(
+            accepted_merge_edges, visual_group_ids=final_object_view_ids,
+        )
+        page_number_by_view_id = {
+            group["group_id"]: int(group["page_number"])
+            for group in visual_map["visual_groups"]
+        }
+        registry_objects = []
+        for index, component in enumerate(proof_components, start=1):
+            group_ids = sorted(component)
+            pages = sorted({page_number_by_view_id[group_id] for group_id in group_ids})
+            registry_objects.append({
+                "object_id": f"object-{index:03d}",
+                "transport_label": f"Object {index}",
+                "quantity": 1,
+                "quantity_explicit": False,
+                "identity_pages": pages,
+                "estimation_evidence_pages": pages,
+                "visual_group_ids": group_ids,
+                "visual_identity": "Source-degraded visual evidence graph component",
+                "boundary_basis": (
+                    "Deterministic component from typed visual semantic facts."
+                ),
+            })
+        registry = validate_detection_registry(
+            {"objects": registry_objects},
+            visual_group_ids=final_object_view_ids,
+            object_evidence_group_ids=final_object_view_ids,
+        )
+        registry = validate_detection_v5_final_result(
+            registry,
+            visual_groups=final_object_groups,
+            graph_edges=positive_relation_edges,
+            source_facts=final_registry_visual_sources,
+        )
+    except (json.JSONDecodeError, KeyError, ValueError, DetectionRegistrySchemaError) as exc:
+        raise DetectionVisualRegistryValidationError(
+            f"Source-degraded Membership failed validation: {exc}",
+            usage_event={
+                "agent_name": "detection",
+                "operation": "rfq_detection_v5_source_degraded_visual",
+                "file_name": file_name,
+                "company_id": company_id,
+                "status": "failed",
+                "validation_stage": "v5_13_2_membership",
+                "source_capability": source_capability,
+                "discovery_decision_audit": discovery_payload,
+                "membership_decision_audit": membership_payload,
+                "error_message": str(exc),
+            },
+        ) from exc
+
+    discovery_summary = summarize_detection_provider_call(
+        response=discovery_response,
+        diagnostics=discovery_diagnostics,
+        prompt_characters=len(discovery_prompt),
+        context_characters=len(coordinate_context),
+        image_count=len(page_images),
+        image_bytes=sum(len(image) for image in page_images),
+    )
+    membership_summary = summarize_detection_provider_call(
+        response=membership_response,
+        diagnostics=membership_diagnostics,
+        prompt_characters=len(membership_prompt),
+        context_characters=len(membership_handoff),
+        image_count=len(page_context_images) + len(membership_crops),
+        image_bytes=sum(
+            len(context["bytes"]) for context in page_context_images
+        ) + sum(len(crop["bytes"]) for crop in membership_crops),
+    )
+    duration_seconds = round(
+        float(discovery_summary.get("duration_seconds") or 0)
+        + float(membership_summary.get("duration_seconds") or 0),
+        6,
+    )
+    usage = {
+        "operation": "rfq_detection_v5_source_degraded_visual",
+        "prompt_version": DETECTION_V5_SOURCE_DEGRADED_PROMPT_VERSION,
+        "model": selected_model,
+        "duration_seconds": duration_seconds,
+        "input_tokens": int(discovery_summary.get("input_tokens") or 0)
+        + int(membership_summary.get("input_tokens") or 0),
+        "output_tokens": int(discovery_summary.get("output_tokens") or 0)
+        + int(membership_summary.get("output_tokens") or 0),
+        "input_cost_usd": round(
+            float(discovery_summary.get("input_cost_usd") or 0)
+            + float(membership_summary.get("input_cost_usd") or 0), 8,
+        ),
+        "output_cost_usd": round(
+            float(discovery_summary.get("output_cost_usd") or 0)
+            + float(membership_summary.get("output_cost_usd") or 0), 8,
+        ),
+    }
+    usage["total_cost_usd"] = round(
+        usage["input_cost_usd"] + usage["output_cost_usd"], 8,
+    )
+    usage["source_capability"] = source_capability
+    usage["page_frame_audit"] = page_frame_audit
+    usage["discovery"] = discovery_summary
+    usage["membership"] = membership_summary
+    usage["membership_page_context_audit"] = page_context_audit
+    usage["membership_crop_audit"] = membership_crop_audit
+    usage["visual_dimension_route"] = "model_typed_similarity_and_conflict_only"
+    usage["dimension_conflict_audit"] = dimension_conflict_audit
+    usage["role_resolution_audit"] = role_resolution_audit
+    usage["semantic_ledger_audit"] = semantic_ledger_audit
+    usage["merge_audit"] = v5_merge_audit
+    usage["positive_relation_edges"] = positive_relation_edges
+    usage["discovery_decision_audit"] = discovery_payload
+    usage["membership_decision_audit"] = membership_payload
+    return {
+        "route": "v5_13_2_source_degraded_v4_representation_map_experimental",
+        "visual_groups": final_object_groups,
+        "discovery_visual_groups": raw_visual_groups,
+        "component_detail_groups": [
+            group for group in normalized_visual_groups
+            if final_roles.get(str(group.get("group_id") or "")) == "component_detail"
+        ],
+        "document_context_groups": [
+            group for group in normalized_visual_groups
+            if final_roles.get(str(group.get("group_id") or "")) == "document_context"
+        ],
+        "role_resolution_audit": role_resolution_audit,
+        "page_coverage": page_coverage,
+        "proof_components": proof_components,
+        "registry": registry,
+    }, usage
+
+
+def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
+    *,
+    file_name: str,
+    company_id: str,
+    file_bytes: bytes,
+    page_images: list[bytes],
+    ocr_package: dict[str, Any] | None,
+    model: str | None,
+    post_discovery_view_crops: bool = False,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Run V5.14's V4-style global object partition for source-degraded files.
+
+    Discovery is deliberately only a navigational visual map.  Review receives
+    the complete pages again and owns roles plus the exclusive object partition.
+    The runtime validates that partition and materializes its graph.  This is
+    isolated from ordinary V5, where Fusion and deterministic dimensions remain
+    authoritative inputs to the graph.
+    """
+    if not page_images:
+        raise ValueError("source-degraded full-page Registry requires rendered pages")
+    selected_model = model or get_secret(
+        "CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL,
+    )
+    if "haiku" not in selected_model.lower():
+        raise ValueError("source-degraded full-page Registry requires a Haiku model")
+
+    source_facts = build_detection_page_evidence_inventory(ocr_package)
+    source_capability = assess_detection_source_capability(
+        source_facts=source_facts,
+        page_count=len(page_images),
+        page_dimensions=_source_dimensions_by_page(ocr_package),
+    )
+    if not source_capability["route_eligible"]:
+        raise ValueError(
+            "source-degraded full-page Registry is ineligible: "
+            f"{source_capability['route_reason']}"
+        )
+    page_frames, page_frame_audit = build_detection_v5_visual_page_frames(page_images)
+    if len(page_frames) != len(page_images):
+        raise ValueError("source-degraded full-page Registry cannot inspect every rendered page")
+    coordinate_context = "\n".join([
+        "RENDERED PAGE PIXEL FRAMES:",
+        *(f"P{page_number}|{frame['width']}x{frame['height']}"
+          for page_number, frame in sorted(page_frames.items())),
+    ])
+    discovery_prompt = load_detection_v5_source_degraded_discovery_prompt()
+    registry_prompt = load_detection_v5_source_degraded_full_page_registry_prompt()
+    discovery_content = build_detection_content_blocks(
+        file_name=file_name,
+        file_bytes=file_bytes,
+        page_images=page_images,
+        user_text=(
+            "SOURCE CAPABILITY: no page has usable coordinate-bearing evidence. "
+            "Create only an advisory visual representation map. Full rendered "
+            "pages are the sole image input.\n\n" + coordinate_context
+        ),
+    )
+    discovery_response, discovery_diagnostics = create_claude_message_streamed(
+        get_anthropic_client(),
+        model=selected_model,
+        max_tokens=DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_MAX_TOKENS,
+        temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+        system=build_detection_system_content(prompt=discovery_prompt),
+        messages=[{"role": "user", "content": discovery_content}],
+        output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
+            DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_JSON_SCHEMA,
+        )}},
+    )
+    discovery_raw_text = extract_text_from_claude_response(discovery_response)
+    discovery_payload: Any = None
+    try:
+        discovery_payload = json.loads(discovery_raw_text)
+        if not isinstance(discovery_payload, dict) or set(discovery_payload) != {
+            "visual_groups", "page_coverage",
+        }:
+            raise ValueError("source-degraded Discovery response fields are invalid")
+        page_coverage = validate_detection_v5_discovery_page_coverage(
+            discovery_payload["page_coverage"],
+            visual_groups=discovery_payload["visual_groups"],
+            page_count=len(page_images),
+        )
+        raw_visual_groups = discovery_payload["visual_groups"]
+        _validate_source_degraded_visual_geometry(
+            raw_visual_groups, page_frames=page_frames,
+        )
+        visual_map = validate_detection_visual_map(
+            normalize_detection_visual_map_group_ids(
+                _visual_map_from_registry_groups(raw_visual_groups),
+            ),
+            require_evidence_class=False,
+        )
+        raw_to_normalized_id = {
+            str(raw["group_id"]): normalized["group_id"]
+            for raw, normalized in zip(
+                raw_visual_groups, visual_map["visual_groups"], strict=True,
+            )
+        }
+        visual_groups: list[dict[str, Any]] = []
+        for raw_group, normalized_group in zip(
+            raw_visual_groups, visual_map["visual_groups"], strict=True,
+        ):
+            visual_groups.append({
+                **copy.deepcopy(raw_group),
+                **copy.deepcopy(normalized_group),
+                # The map is neutral.  Only the full-page Registry determines
+                # the final role and which representations are object evidence.
+                "evidence_class": "object_evidence",
+            })
+        if not visual_groups:
+            raise ValueError("source-degraded Discovery found no visual representation")
+    except (json.JSONDecodeError, KeyError, ValueError, DetectionRegistrySchemaError) as exc:
+        raise DetectionVisualRegistryValidationError(
+            f"Source-degraded V5.14 Discovery failed validation: {exc}",
+            usage_event={
+                "agent_name": "detection",
+                "operation": "rfq_detection_v5_source_degraded_full_page_registry",
+                "file_name": file_name,
+                "company_id": company_id,
+                "status": "failed",
+                "validation_stage": "v5_14_discovery",
+                "source_capability": source_capability,
+                "error_message": str(exc),
+            },
+        ) from exc
+
+    # Discovery bboxes are never an authority for an object boundary.  V5.17
+    # may use them only after the map is frozen to supply an auxiliary local
+    # inspection image.  The original full page remains the authoritative
+    # spatial context for the Registry's role and partition decision.
+    registry_map = [
+        {
+            "group_id": group["group_id"],
+            "page_number": group["page_number"],
+            "location_hint": group["location_hint"],
+            "visual_description": group["visual_description"],
+            "representation_kind": group["representation_kind"],
+        }
+        for group in visual_groups
+    ]
+    registry_user_text = (
+        "ADVISORY VISUAL REPRESENTATION MAP:\n"
+        + json.dumps(registry_map, ensure_ascii=False, separators=(",", ":"))
+        + "\n\nSOURCE CAPABILITY: visual-only. Evaluate the complete page "
+          "yourself. The map is not an object inventory and its rectangles "
+          "are not authority for a boundary."
+    )
+    registry_view_crops: list[dict[str, Any]] = []
+    registry_crop_audit: list[dict[str, Any]] = [{
+        "mode": "disabled",
+        "reason": "full_page_registry_baseline",
+    }]
+    registry_page_context_images: list[dict[str, Any]] = []
+    if post_discovery_view_crops:
+        registry_view_crops, registry_crop_audit = (
+            build_detection_v5_membership_view_crops(
+                page_images=page_images,
+                visual_groups=visual_groups,
+            )
+        )
+        registry_page_context_images = [
+            {"page_number": page_number, "bytes": page_bytes}
+            for page_number, page_bytes in enumerate(page_images, start=1)
+        ]
+        registry_content = build_detection_v5_membership_content_blocks(
+            user_text=registry_user_text,
+            page_context_images=registry_page_context_images,
+            view_crops=registry_view_crops,
+        )
+    else:
+        registry_content = build_detection_content_blocks(
+            file_name=file_name,
+            file_bytes=file_bytes,
+            page_images=page_images,
+            user_text=registry_user_text,
+        )
+    registry_response, registry_diagnostics = create_claude_message_streamed(
+        get_anthropic_client(),
+        model=selected_model,
+        max_tokens=DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_MAX_TOKENS,
+        temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+        system=build_detection_system_content(prompt=registry_prompt),
+        messages=[{"role": "user", "content": registry_content}],
+        output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
+            DETECTION_V5_SOURCE_DEGRADED_FULL_PAGE_REGISTRY_JSON_SCHEMA,
+        )}},
+    )
+    registry_raw_text = extract_text_from_claude_response(registry_response)
+    registry_payload: Any = None
+    try:
+        registry_payload = json.loads(registry_raw_text)
+        if not isinstance(registry_payload, dict) or set(registry_payload) != {
+            "roles", "partitions",
+        }:
+            raise ValueError("source-degraded full-page Registry response fields are invalid")
+
+        def normalize_group_id(value: object) -> str:
+            group_id = str(value or "")
+            return raw_to_normalized_id.get(group_id, group_id)
+
+        normalized_roles: list[dict[str, Any]] = []
+        for role in registry_payload["roles"]:
+            if not isinstance(role, dict):
+                normalized_roles.append(role)
+                continue
+            normalized_role = copy.deepcopy(role)
+            normalized_role["group_id"] = normalize_group_id(role.get("group_id"))
+            normalized_roles.append(normalized_role)
+        final_roles, role_audit = validate_detection_v5_source_degraded_full_page_roles(
+            normalized_roles,
+            visual_groups=visual_groups,
+        )
+        assembly_groups = [
+            {
+                **group,
+                "visual_role": final_roles[str(group["group_id"])],
+                "evidence_class": "object_evidence",
+            }
+            for group in visual_groups
+            if final_roles[str(group["group_id"])] == "assembly_view"
+        ]
+        if not assembly_groups:
+            raise ValueError("source-degraded full-page Registry found no assembly view")
+        assembly_ids = {str(group["group_id"]) for group in assembly_groups}
+        normalized_partitions: list[dict[str, Any]] = []
+        for partition in registry_payload["partitions"]:
+            if not isinstance(partition, dict):
+                normalized_partitions.append(partition)
+                continue
+            normalized_partition = copy.deepcopy(partition)
+            normalized_partition["group_ids"] = [
+                normalize_group_id(value) for value in partition.get("group_ids") or []
+            ]
+            normalized_bases: list[dict[str, Any]] = []
+            for basis in partition.get("visual_basis") or []:
+                if not isinstance(basis, dict):
+                    normalized_bases.append(basis)
+                    continue
+                normalized_basis = copy.deepcopy(basis)
+                normalized_basis["view_ids"] = [
+                    normalize_group_id(value) for value in basis.get("view_ids") or []
+                ]
+                normalized_bases.append(normalized_basis)
+            normalized_partition["visual_basis"] = normalized_bases
+            normalized_partitions.append(normalized_partition)
+        partitions = validate_detection_visual_only_partitions(
+            normalized_partitions,
+            object_view_ids=assembly_ids,
+        )
+
+        visual_sources = build_detection_v5_registry_visual_sources(assembly_groups)
+        page_number_by_group_id = {
+            str(group["group_id"]): int(group["page_number"])
+            for group in assembly_groups
+        }
+        edges_by_pair: dict[tuple[str, str], dict[str, Any]] = {}
+        for partition in partitions:
+            for basis in partition["visual_basis"]:
+                view_ids = sorted(str(value) for value in basis["view_ids"])
+                for left, right in combinations(view_ids, 2):
+                    pair = (left, right)
+                    fact = {
+                        "evidence_type": str(basis["evidence_type"]),
+                        "evidence_pages": sorted({
+                            page_number_by_group_id[view_id] for view_id in view_ids
+                        }),
+                        "observation": str(basis["observation"]),
+                        "source_fact_ids": [
+                            f"registry_view:{view_id}" for view_id in view_ids
+                        ],
+                    }
+                    edge = edges_by_pair.setdefault(pair, {
+                        "group_id_a": left,
+                        "group_id_b": right,
+                        "relationship": "same_object_view",
+                        "evidence_facts": [],
+                        "commercial_inseparability": (
+                            "V5.14 full-page Registry exclusive visual partition."
+                        ),
+                    })
+                    edge["evidence_facts"].append(fact)
+        positive_relation_edges = [
+            edges_by_pair[pair] for pair in sorted(edges_by_pair)
+        ]
+        proof_components = derive_detection_proof_components(
+            positive_relation_edges,
+            visual_group_ids=assembly_ids,
+        )
+        registry_objects: list[dict[str, Any]] = []
+        for index, partition in enumerate(partitions, start=1):
+            group_ids = sorted(partition["group_ids"])
+            pages = sorted({page_number_by_group_id[group_id] for group_id in group_ids})
+            registry_objects.append({
+                "object_id": f"object-{index:03d}",
+                "transport_label": f"Object {index}",
+                "quantity": 1,
+                "quantity_explicit": False,
+                "identity_pages": pages,
+                "estimation_evidence_pages": pages,
+                "visual_group_ids": group_ids,
+                "visual_identity": "V5.14 full-page visual Registry partition",
+                "boundary_basis": " ".join(
+                    str(basis["observation"])
+                    for basis in partition["visual_basis"]
+                ),
+            })
+        registry = validate_detection_registry(
+            {"objects": registry_objects},
+            visual_group_ids=assembly_ids,
+            object_evidence_group_ids=assembly_ids,
+        )
+        registry = validate_detection_v5_final_result(
+            registry,
+            visual_groups=assembly_groups,
+            graph_edges=positive_relation_edges,
+            source_facts=visual_sources,
+        )
+    except (json.JSONDecodeError, KeyError, ValueError, DetectionRegistrySchemaError) as exc:
+        raise DetectionVisualRegistryValidationError(
+            f"Source-degraded V5.14 full-page Registry failed validation: {exc}",
+            usage_event={
+                "agent_name": "detection",
+                "operation": "rfq_detection_v5_source_degraded_full_page_registry",
+                "file_name": file_name,
+                "company_id": company_id,
+                "status": "failed",
+                "validation_stage": "v5_14_full_page_registry",
+                "source_capability": source_capability,
+                "discovery_decision_audit": discovery_payload,
+                "full_page_registry_decision_audit": registry_payload,
+                "error_message": str(exc),
+            },
+        ) from exc
+
+    discovery_summary = summarize_detection_provider_call(
+        response=discovery_response,
+        diagnostics=discovery_diagnostics,
+        prompt_characters=len(discovery_prompt),
+        context_characters=len(coordinate_context),
+        image_count=len(page_images),
+        image_bytes=sum(len(image) for image in page_images),
+    )
+    registry_image_count = (
+        len(registry_page_context_images) + len(registry_view_crops)
+        if post_discovery_view_crops else len(page_images)
+    )
+    registry_image_bytes = (
+        sum(len(page["bytes"]) for page in registry_page_context_images)
+        + sum(len(crop["bytes"]) for crop in registry_view_crops)
+        if post_discovery_view_crops else sum(len(image) for image in page_images)
+    )
+    registry_summary = summarize_detection_provider_call(
+        response=registry_response,
+        diagnostics=registry_diagnostics,
+        prompt_characters=len(registry_prompt),
+        context_characters=len(json.dumps(registry_map, ensure_ascii=False)),
+        image_count=registry_image_count,
+        image_bytes=registry_image_bytes,
+    )
+    usage = {
+        "operation": "rfq_detection_v5_source_degraded_full_page_registry",
+        "prompt_version": DETECTION_V5_SOURCE_DEGRADED_FULL_PAGE_REGISTRY_PROMPT_VERSION,
+        "model": selected_model,
+        "duration_seconds": round(
+            float(discovery_summary.get("duration_seconds") or 0)
+            + float(registry_summary.get("duration_seconds") or 0),
+            6,
+        ),
+        "input_tokens": int(discovery_summary.get("input_tokens") or 0)
+        + int(registry_summary.get("input_tokens") or 0),
+        "output_tokens": int(discovery_summary.get("output_tokens") or 0)
+        + int(registry_summary.get("output_tokens") or 0),
+        "input_cost_usd": round(
+            float(discovery_summary.get("input_cost_usd") or 0)
+            + float(registry_summary.get("input_cost_usd") or 0), 8,
+        ),
+        "output_cost_usd": round(
+            float(discovery_summary.get("output_cost_usd") or 0)
+            + float(registry_summary.get("output_cost_usd") or 0), 8,
+        ),
+        "source_capability": source_capability,
+        "page_frame_audit": page_frame_audit,
+        "discovery": discovery_summary,
+        "full_page_registry": registry_summary,
+        "full_page_review_input": (
+            "full_rendered_pages_plus_post_discovery_view_crops"
+            if post_discovery_view_crops
+            else "full_rendered_pages_without_discovery_crops_or_overlays"
+        ),
+        "post_discovery_view_crop_audit": registry_crop_audit,
+        "role_audit": role_audit,
+        "positive_relation_edges": positive_relation_edges,
+        "discovery_decision_audit": discovery_payload,
+        "full_page_registry_decision_audit": registry_payload,
+    }
+    usage["total_cost_usd"] = round(
+        usage["input_cost_usd"] + usage["output_cost_usd"], 8,
+    )
+    return {
+        "route": (
+            "v5_17_source_degraded_full_page_registry_post_discovery_crops_experimental"
+            if post_discovery_view_crops
+            else "v5_14_source_degraded_full_page_registry_experimental"
+        ),
+        "visual_groups": assembly_groups,
+        "discovery_visual_groups": raw_visual_groups,
+        "component_detail_groups": [
+            group for group in visual_groups
+            if final_roles.get(str(group.get("group_id") or "")) == "component_detail"
+        ],
+        "document_context_groups": [
+            group for group in visual_groups
+            if final_roles.get(str(group.get("group_id") or "")) == "document_context"
+        ],
+        "role_audit": role_audit,
+        "page_coverage": page_coverage,
+        "partitions": partitions,
+        "proof_components": proof_components,
+        "registry": registry,
+    }, usage
+
+
+def run_anthropic_detection_v5_source_degraded_one_shot_registry_experiment(
+    *,
+    file_name: str,
+    company_id: str,
+    file_bytes: bytes,
+    page_images: list[bytes],
+    ocr_package: dict[str, Any] | None,
+    model: str | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Run V5.15's single-context V4-style visual Registry.
+
+    In a source-degraded document, a prior model-produced representation map
+    can itself become a false boundary.  This route keeps map, roles and object
+    partition in one full-page visual decision, then validates and materializes
+    the decision deterministically.  It is isolated from normal V5.
+    """
+    if not page_images:
+        raise ValueError("source-degraded one-shot Registry requires rendered pages")
+    selected_model = model or get_secret(
+        "CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL,
+    )
+    if "haiku" not in selected_model.lower():
+        raise ValueError("source-degraded one-shot Registry requires a Haiku model")
+    source_facts = build_detection_page_evidence_inventory(ocr_package)
+    source_capability = assess_detection_source_capability(
+        source_facts=source_facts,
+        page_count=len(page_images),
+        page_dimensions=_source_dimensions_by_page(ocr_package),
+    )
+    if not source_capability["route_eligible"]:
+        raise ValueError(
+            "source-degraded one-shot Registry is ineligible: "
+            f"{source_capability['route_reason']}"
+        )
+    page_frames, page_frame_audit = build_detection_v5_visual_page_frames(page_images)
+    if len(page_frames) != len(page_images):
+        raise ValueError("source-degraded one-shot Registry cannot inspect every rendered page")
+    coordinate_context = "\n".join([
+        "RENDERED PAGE PIXEL FRAMES:",
+        *(f"P{page_number}|{frame['width']}x{frame['height']}"
+          for page_number, frame in sorted(page_frames.items())),
+    ])
+    prompt = load_detection_v5_source_degraded_one_shot_registry_prompt()
+    content = build_detection_content_blocks(
+        file_name=file_name,
+        file_bytes=file_bytes,
+        page_images=page_images,
+        user_text=(
+            "SOURCE CAPABILITY: no page has usable coordinate-bearing evidence. "
+            "Use visual evidence only. Full rendered pages are the sole image "
+            "input.\n\n" + coordinate_context
+        ),
+    )
+    response, diagnostics = create_claude_message_streamed(
+        get_anthropic_client(),
+        model=selected_model,
+        max_tokens=DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_MAX_TOKENS,
+        temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+        system=build_detection_system_content(prompt=prompt),
+        messages=[{"role": "user", "content": content}],
+        output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
+            DETECTION_V5_SOURCE_DEGRADED_ONE_SHOT_REGISTRY_JSON_SCHEMA,
+        )}},
+    )
+    raw_text = extract_text_from_claude_response(response)
+    payload: Any = None
+    try:
+        payload = json.loads(raw_text)
+        if not isinstance(payload, dict) or set(payload) != {
+            "visual_groups", "page_coverage", "roles", "partitions",
+        }:
+            raise ValueError("source-degraded one-shot Registry response fields are invalid")
+        raw_visual_groups = payload["visual_groups"]
+        page_coverage = validate_detection_v5_discovery_page_coverage(
+            payload["page_coverage"],
+            visual_groups=raw_visual_groups,
+            page_count=len(page_images),
+        )
+        _validate_source_degraded_visual_geometry(
+            raw_visual_groups, page_frames=page_frames,
+        )
+        visual_map = validate_detection_visual_map(
+            normalize_detection_visual_map_group_ids(
+                _visual_map_from_registry_groups(raw_visual_groups),
+            ),
+            require_evidence_class=False,
+        )
+        raw_to_normalized_id = {
+            str(raw["group_id"]): normalized["group_id"]
+            for raw, normalized in zip(
+                raw_visual_groups, visual_map["visual_groups"], strict=True,
+            )
+        }
+        visual_groups = [
+            {
+                **copy.deepcopy(raw_group),
+                **copy.deepcopy(normalized_group),
+                "evidence_class": "object_evidence",
+            }
+            for raw_group, normalized_group in zip(
+                raw_visual_groups, visual_map["visual_groups"], strict=True,
+            )
+        ]
+        if not visual_groups:
+            raise ValueError("source-degraded one-shot Registry found no visual representation")
+
+        def normalize_group_id(value: object) -> str:
+            group_id = str(value or "")
+            return raw_to_normalized_id.get(group_id, group_id)
+
+        normalized_roles: list[dict[str, Any]] = []
+        for role in payload["roles"]:
+            if not isinstance(role, dict):
+                normalized_roles.append(role)
+                continue
+            normalized_role = copy.deepcopy(role)
+            normalized_role["group_id"] = normalize_group_id(role.get("group_id"))
+            normalized_roles.append(normalized_role)
+        final_roles, role_audit = validate_detection_v5_source_degraded_full_page_roles(
+            normalized_roles,
+            visual_groups=visual_groups,
+        )
+        assembly_groups = [
+            {
+                **group,
+                "visual_role": final_roles[str(group["group_id"])],
+                "evidence_class": "object_evidence",
+            }
+            for group in visual_groups
+            if final_roles[str(group["group_id"])] == "assembly_view"
+        ]
+        if not assembly_groups:
+            raise ValueError("source-degraded one-shot Registry found no assembly view")
+        assembly_ids = {str(group["group_id"]) for group in assembly_groups}
+        normalized_partitions: list[dict[str, Any]] = []
+        for partition in payload["partitions"]:
+            if not isinstance(partition, dict):
+                normalized_partitions.append(partition)
+                continue
+            normalized_partition = copy.deepcopy(partition)
+            normalized_partition["group_ids"] = [
+                normalize_group_id(value) for value in partition.get("group_ids") or []
+            ]
+            normalized_bases: list[dict[str, Any]] = []
+            for basis in partition.get("visual_basis") or []:
+                if not isinstance(basis, dict):
+                    normalized_bases.append(basis)
+                    continue
+                normalized_basis = copy.deepcopy(basis)
+                normalized_basis["view_ids"] = [
+                    normalize_group_id(value) for value in basis.get("view_ids") or []
+                ]
+                normalized_bases.append(normalized_basis)
+            normalized_partition["visual_basis"] = normalized_bases
+            normalized_partitions.append(normalized_partition)
+        partitions = validate_detection_visual_only_partitions(
+            normalized_partitions,
+            object_view_ids=assembly_ids,
+        )
+        visual_sources = build_detection_v5_registry_visual_sources(assembly_groups)
+        page_number_by_group_id = {
+            str(group["group_id"]): int(group["page_number"])
+            for group in assembly_groups
+        }
+        edges_by_pair: dict[tuple[str, str], dict[str, Any]] = {}
+        for partition in partitions:
+            for basis in partition["visual_basis"]:
+                view_ids = sorted(str(value) for value in basis["view_ids"])
+                for left, right in combinations(view_ids, 2):
+                    pair = (left, right)
+                    fact = {
+                        "evidence_type": str(basis["evidence_type"]),
+                        "evidence_pages": sorted({
+                            page_number_by_group_id[view_id] for view_id in view_ids
+                        }),
+                        "observation": str(basis["observation"]),
+                        "source_fact_ids": [
+                            f"registry_view:{view_id}" for view_id in view_ids
+                        ],
+                    }
+                    edge = edges_by_pair.setdefault(pair, {
+                        "group_id_a": left,
+                        "group_id_b": right,
+                        "relationship": "same_object_view",
+                        "evidence_facts": [],
+                        "commercial_inseparability": (
+                            "V5.15 one-shot Registry exclusive visual partition."
+                        ),
+                    })
+                    edge["evidence_facts"].append(fact)
+        positive_relation_edges = [
+            edges_by_pair[pair] for pair in sorted(edges_by_pair)
+        ]
+        proof_components = derive_detection_proof_components(
+            positive_relation_edges,
+            visual_group_ids=assembly_ids,
+        )
+        registry_objects: list[dict[str, Any]] = []
+        for index, partition in enumerate(partitions, start=1):
+            group_ids = sorted(partition["group_ids"])
+            pages = sorted({page_number_by_group_id[group_id] for group_id in group_ids})
+            registry_objects.append({
+                "object_id": f"object-{index:03d}",
+                "transport_label": f"Object {index}",
+                "quantity": 1,
+                "quantity_explicit": False,
+                "identity_pages": pages,
+                "estimation_evidence_pages": pages,
+                "visual_group_ids": group_ids,
+                "visual_identity": "V5.15 one-shot full-page visual Registry partition",
+                "boundary_basis": " ".join(
+                    str(basis["observation"])
+                    for basis in partition["visual_basis"]
+                ),
+            })
+        registry = validate_detection_registry(
+            {"objects": registry_objects},
+            visual_group_ids=assembly_ids,
+            object_evidence_group_ids=assembly_ids,
+        )
+        registry = validate_detection_v5_final_result(
+            registry,
+            visual_groups=assembly_groups,
+            graph_edges=positive_relation_edges,
+            source_facts=visual_sources,
+        )
+    except (json.JSONDecodeError, KeyError, ValueError, DetectionRegistrySchemaError) as exc:
+        raise DetectionVisualRegistryValidationError(
+            f"Source-degraded V5.15 one-shot Registry failed validation: {exc}",
+            usage_event={
+                "agent_name": "detection",
+                "operation": "rfq_detection_v5_source_degraded_one_shot_registry",
+                "file_name": file_name,
+                "company_id": company_id,
+                "status": "failed",
+                "validation_stage": "v5_15_one_shot_registry",
+                "source_capability": source_capability,
+                "one_shot_registry_decision_audit": payload,
+                "error_message": str(exc),
+            },
+        ) from exc
+
+    summary = summarize_detection_provider_call(
+        response=response,
+        diagnostics=diagnostics,
+        prompt_characters=len(prompt),
+        context_characters=len(coordinate_context),
+        image_count=len(page_images),
+        image_bytes=sum(len(image) for image in page_images),
+    )
+    usage = {
+        "operation": "rfq_detection_v5_source_degraded_one_shot_registry",
+        "prompt_version": DETECTION_V5_SOURCE_DEGRADED_ONE_SHOT_REGISTRY_PROMPT_VERSION,
+        "model": selected_model,
+        "duration_seconds": float(summary.get("duration_seconds") or 0),
+        "input_tokens": int(summary.get("input_tokens") or 0),
+        "output_tokens": int(summary.get("output_tokens") or 0),
+        "input_cost_usd": float(summary.get("input_cost_usd") or 0),
+        "output_cost_usd": float(summary.get("output_cost_usd") or 0),
+        "source_capability": source_capability,
+        "page_frame_audit": page_frame_audit,
+        "one_shot_registry": summary,
+        "full_page_review_input": "full_rendered_pages_without_crops_or_overlays",
+        "role_audit": role_audit,
+        "positive_relation_edges": positive_relation_edges,
+        "one_shot_registry_decision_audit": payload,
+    }
+    usage["total_cost_usd"] = round(
+        usage["input_cost_usd"] + usage["output_cost_usd"], 8,
+    )
+    return {
+        "route": "v5_15_source_degraded_one_shot_registry_experimental",
+        "visual_groups": assembly_groups,
+        "discovery_visual_groups": raw_visual_groups,
+        "component_detail_groups": [
+            group for group in visual_groups
+            if final_roles.get(str(group.get("group_id") or "")) == "component_detail"
+        ],
+        "document_context_groups": [
+            group for group in visual_groups
+            if final_roles.get(str(group.get("group_id") or "")) == "document_context"
+        ],
+        "role_audit": role_audit,
+        "page_coverage": page_coverage,
+        "partitions": partitions,
+        "proof_components": proof_components,
+        "registry": registry,
+    }, usage
+
+
+def _detection_bbox_intersection_area(
+    left: dict[str, int], right: dict[str, int],
+) -> int:
+    width = max(0, min(left["bottom_right_x"], right["bottom_right_x"])
+                - max(left["top_left_x"], right["top_left_x"]))
+    height = max(0, min(left["bottom_right_y"], right["bottom_right_y"])
+                 - max(left["top_left_y"], right["top_left_y"]))
+    return width * height
+
+
+def _detection_bbox_agreement(
+    left: dict[str, int], right: dict[str, int],
+) -> tuple[float, float]:
+    intersection = _detection_bbox_intersection_area(left, right)
+    left_area = _detection_bbox_area(left)
+    right_area = _detection_bbox_area(right)
+    union = left_area + right_area - intersection
+    iou = intersection / union if union else 0.0
+    containment = intersection / min(left_area, right_area) if min(left_area, right_area) else 0.0
+    return round(iou, 6), round(containment, 6)
+
+
+def _normalize_detection_v516_v561_proposal(
+    payload: object,
+    *,
+    page_frames: dict[int, dict[str, int]],
+) -> dict[str, Any]:
+    """Normalize one V5.6.1-style proposal without inventing evidence."""
+    fields = {
+        "visual_groups", "classifications", "object_hypotheses",
+        "candidate_region_exceptions", "semantic_facts",
+    }
+    if not isinstance(payload, dict) or set(payload) != fields:
+        raise ValueError("V5.16 visual proposal has invalid fields")
+    if payload["candidate_region_exceptions"] != []:
+        raise ValueError("V5.16 source-degraded proposal cannot return candidate exceptions")
+    if payload["semantic_facts"] != []:
+        raise ValueError("V5.16 source-degraded proposal cannot return source semantic facts")
+
+    classified, classification_audit = _validate_and_apply_visual_registry_classifications(
+        copy.deepcopy(payload)
+    )
+    raw_groups = classified["visual_groups"]
+    raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
+    visual_map = validate_detection_visual_map(
+        normalize_detection_visual_map_group_ids(
+            _visual_map_from_registry_groups(raw_groups)
+        ),
+        require_evidence_class=False,
+    )
+    group_id_mapping = {
+        raw_group_id: normalized["group_id"]
+        for raw_group_id, normalized in zip(
+            raw_group_ids, visual_map["visual_groups"], strict=True,
+        )
+    }
+    group_bboxes = _normalize_registry_group_bboxes(
+        raw_groups, group_id_mapping=group_id_mapping,
+    )
+    visual_groups: list[dict[str, Any]] = []
+    for raw_group, normalized_group in zip(
+        raw_groups, visual_map["visual_groups"], strict=True,
+    ):
+        group_id = str(normalized_group["group_id"])
+        page_number = int(normalized_group["page_number"])
+        frame = page_frames.get(page_number)
+        bbox = group_bboxes[group_id]
+        if (
+            frame is None
+            or bbox["bottom_right_x"] > frame["width"]
+            or bbox["bottom_right_y"] > frame["height"]
+        ):
+            raise ValueError("V5.16 visual proposal bbox exceeds rendered page")
+        visual_groups.append({
+            **copy.deepcopy(raw_group),
+            **copy.deepcopy(normalized_group),
+            "bbox": copy.deepcopy(bbox),
+            "evidence_class": raw_group["evidence_class"],
+            "classification_reason": raw_group["classification_reason"],
+        })
+
+    normalized_hypotheses: list[dict[str, Any]] = []
+    for hypothesis in classified["object_hypotheses"]:
+        if not isinstance(hypothesis, dict):
+            normalized_hypotheses.append(hypothesis)
+            continue
+        row = copy.deepcopy(hypothesis)
+        if isinstance(row.get("group_ids"), list):
+            row["group_ids"] = [
+                group_id_mapping.get(str(value or ""), str(value or ""))
+                for value in row["group_ids"]
+            ]
+        normalized_hypotheses.append(row)
+    object_groups = [
+        group for group in visual_groups
+        if group["evidence_class"] == "object_evidence"
+    ]
+    accepted_hypotheses, hypothesis_audit = compile_detection_v5_object_hypotheses(
+        normalized_hypotheses, visual_groups=visual_groups,
+    )
+    return {
+        "visual_groups": visual_groups,
+        "object_groups": object_groups,
+        "accepted_hypotheses": accepted_hypotheses,
+        "classification_audit": classification_audit,
+        "hypothesis_audit": hypothesis_audit,
+        "raw_payload": copy.deepcopy(payload),
+    }
+
+
+def _match_detection_v516_v561_object_groups(
+    primary_groups: list[dict[str, Any]],
+    secondary_groups: list[dict[str, Any]],
+) -> tuple[dict[str, str], list[dict[str, Any]]]:
+    """Match only unambiguous same-page Islands across both proposals."""
+    candidates: list[tuple[float, float, str, str, dict[str, Any]]] = []
+    for primary in primary_groups:
+        for secondary in secondary_groups:
+            if primary.get("page_number") != secondary.get("page_number"):
+                continue
+            iou, containment = _detection_bbox_agreement(
+                primary["bbox"], secondary["bbox"],
+            )
+            if iou < 0.50 and containment < 0.80:
+                continue
+            candidates.append((
+                iou, containment, str(primary["group_id"]),
+                str(secondary["group_id"]),
+                {
+                    "primary_group_id": str(primary["group_id"]),
+                    "secondary_group_id": str(secondary["group_id"]),
+                    "page_number": int(primary["page_number"]),
+                    "iou": iou,
+                    "containment": containment,
+                },
+            ))
+    candidates.sort(key=lambda row: (-row[0], -row[1], row[2], row[3]))
+    matched_primary: set[str] = set()
+    matched_secondary: set[str] = set()
+    mapping: dict[str, str] = {}
+    audit: list[dict[str, Any]] = []
+    for _, _, primary_id, secondary_id, row in candidates:
+        if primary_id in matched_primary or secondary_id in matched_secondary:
+            row["status"] = "rejected_ambiguous_or_duplicate"
+            audit.append(row)
+            continue
+        matched_primary.add(primary_id)
+        matched_secondary.add(secondary_id)
+        mapping[secondary_id] = primary_id
+        row["status"] = "accepted"
+        audit.append(row)
+    for group in primary_groups:
+        group_id = str(group["group_id"])
+        if group_id not in matched_primary:
+            audit.append({
+                "primary_group_id": group_id,
+                "page_number": int(group["page_number"]),
+                "status": "unmatched_primary_island",
+            })
+    for group in secondary_groups:
+        group_id = str(group["group_id"])
+        if group_id not in matched_secondary:
+            audit.append({
+                "secondary_group_id": group_id,
+                "page_number": int(group["page_number"]),
+                "status": "unmatched_secondary_island",
+            })
+    return mapping, audit
+
+
+def _detection_v516_hypothesis_pairs(
+    hypotheses: list[dict[str, Any]],
+    *,
+    group_id_mapping: dict[str, str] | None = None,
+) -> set[tuple[str, str]]:
+    pairs: set[tuple[str, str]] = set()
+    for hypothesis in hypotheses:
+        group_ids = [str(value) for value in hypothesis.get("group_ids") or []]
+        if group_id_mapping is not None:
+            if any(group_id not in group_id_mapping for group_id in group_ids):
+                continue
+            group_ids = [group_id_mapping[group_id] for group_id in group_ids]
+        for left, right in combinations(sorted(set(group_ids)), 2):
+            pairs.add((left, right))
+    return pairs
+
+
+def _compile_detection_v516_v561_consensus(
+    *,
+    primary: dict[str, Any],
+    secondary: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Materialize only membership links present in both full-page proposals."""
+    primary_groups = list(primary["object_groups"])
+    secondary_groups = list(secondary["object_groups"])
+    secondary_to_primary, island_agreement = _match_detection_v516_v561_object_groups(
+        primary_groups, secondary_groups,
+    )
+    primary_pairs = _detection_v516_hypothesis_pairs(
+        primary["accepted_hypotheses"],
+    )
+    secondary_pairs = _detection_v516_hypothesis_pairs(
+        secondary["accepted_hypotheses"],
+        group_id_mapping=secondary_to_primary,
+    )
+    consensus_pairs = sorted(primary_pairs.intersection(secondary_pairs))
+    group_by_id = {
+        str(group["group_id"]): group for group in primary_groups
+    }
+    visual_sources = build_detection_v5_registry_visual_sources(primary_groups)
+    edges: list[dict[str, Any]] = []
+    for left, right in consensus_pairs:
+        pages = sorted({
+            int(group_by_id[left]["page_number"]),
+            int(group_by_id[right]["page_number"]),
+        })
+        edges.append({
+            "group_id_a": left,
+            "group_id_b": right,
+            "relationship": "same_object_view",
+            "evidence_facts": [{
+                "evidence_type": "visual_consensus",
+                "evidence_pages": pages,
+                "observation": (
+                    "Both independent V5.6.1-style full-page proposals declared "
+                    "these Islands alternate Views of one item."
+                ),
+                "source_fact_ids": [
+                    f"registry_view:{left}", f"registry_view:{right}",
+                ],
+            }],
+            "commercial_inseparability": (
+                "V5.16 requires independent full-page membership agreement."
+            ),
+        })
+    components = derive_detection_proof_components(
+        edges, visual_group_ids=set(group_by_id),
+    )
+    objects: list[dict[str, Any]] = []
+    for index, group_ids in enumerate(components, start=1):
+        pages = sorted({int(group_by_id[group_id]["page_number"]) for group_id in group_ids})
+        objects.append({
+            "object_id": f"object-{index:03d}",
+            "transport_label": f"Object {index}",
+            "quantity": 1,
+            "quantity_explicit": False,
+            "identity_pages": pages,
+            "estimation_evidence_pages": pages,
+            "visual_group_ids": group_ids,
+            "visual_identity": "V5.16 independent full-page visual consensus",
+            "boundary_basis": (
+                "Independent V5.6.1-style proposals agreed on the retained "
+                "same-object membership edges."
+                if len(group_ids) > 1 else
+                "No same-object membership edge was agreed by both independent proposals."
+            ),
+        })
+    registry = validate_detection_registry(
+        {"objects": objects},
+        visual_group_ids=set(group_by_id),
+        object_evidence_group_ids=set(group_by_id),
+    )
+    registry = validate_detection_v5_final_result(
+        registry,
+        visual_groups=primary_groups,
+        graph_edges=edges,
+        source_facts=visual_sources,
+    )
+    audit = {
+        "compiler_version": "v5_16_two_independent_v561_full_page_proposals",
+        "island_agreement": island_agreement,
+        "primary_hypothesis_pairs": [list(pair) for pair in sorted(primary_pairs)],
+        "secondary_hypothesis_pairs_mapped": [list(pair) for pair in sorted(secondary_pairs)],
+        "consensus_pairs": [list(pair) for pair in consensus_pairs],
+    }
+    return {
+        "visual_groups": primary_groups,
+        "graph_edges": edges,
+        "proof_components": components,
+        "registry": registry,
+    }, audit
+
+
+def run_anthropic_detection_v5_source_degraded_v561_consensus_experiment(
+    *,
+    file_name: str,
+    company_id: str,
+    file_bytes: bytes,
+    page_images: list[bytes],
+    ocr_package: dict[str, Any] | None,
+    model: str | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Run two V5.6.1-style full-page proposals and retain their overlap only.
+
+    This source-degraded experiment has no pre-Discovery crops or effect on
+    ordinary V5. It does not manufacture deterministic source evidence.
+    """
+    if not page_images:
+        raise ValueError("V5.16 source-degraded consensus requires rendered pages")
+    selected_model = model or get_secret(
+        "CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL,
+    )
+    if "haiku" not in selected_model.lower():
+        raise ValueError("V5.16 source-degraded consensus requires a Haiku model")
+    source_facts = build_detection_page_evidence_inventory(ocr_package)
+    source_capability = assess_detection_source_capability(
+        source_facts=source_facts,
+        page_count=len(page_images),
+        page_dimensions=_source_dimensions_by_page(ocr_package),
+    )
+    if not source_capability["route_eligible"]:
+        raise ValueError(
+            "V5.16 source-degraded consensus is ineligible: "
+            f"{source_capability['route_reason']}"
+        )
+    page_frames, page_frame_audit = build_detection_v5_visual_page_frames(page_images)
+    if len(page_frames) != len(page_images):
+        raise ValueError("V5.16 source-degraded consensus cannot inspect every page")
+    prompt = load_detection_v5_source_degraded_v561_consensus_prompt()
+    coordinate_context = "\n".join([
+        "RENDERED PAGE PIXEL FRAMES:",
+        *(f"P{page_number}|{frame['width']}x{frame['height']}"
+          for page_number, frame in sorted(page_frames.items())),
+    ])
+    content = build_detection_content_blocks(
+        file_name=file_name,
+        file_bytes=file_bytes,
+        page_images=page_images,
+        user_text=(
+            "SOURCE CAPABILITY: no page has usable coordinate-bearing evidence. "
+            "Inspect the complete rendered pages. Candidate Regions and "
+            "Dimension Queue are empty in this route.\n\n" + coordinate_context
+        ),
+    )
+
+    proposal_results: list[dict[str, Any]] = []
+    proposal_summaries: list[dict[str, Any]] = []
+    for proposal_number in (1, 2):
+        response, diagnostics = create_claude_message_streamed(
+            get_anthropic_client(),
+            model=selected_model,
+            max_tokens=DETECTION_VISUAL_REGISTRY_MAX_TOKENS,
+            temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+            system=build_detection_system_content(prompt=prompt),
+            messages=[{"role": "user", "content": content}],
+            output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
+                DETECTION_V5_SOURCE_DEGRADED_V561_CONSENSUS_JSON_SCHEMA,
+            )}},
+        )
+        raw_text = extract_text_from_claude_response(response)
+        raw_payload: object = None
+        try:
+            raw_payload = json.loads(raw_text)
+            proposal = _normalize_detection_v516_v561_proposal(
+                raw_payload, page_frames=page_frames,
+            )
+        except (json.JSONDecodeError, ValueError, DetectionRegistrySchemaError) as exc:
+            raise DetectionVisualRegistryValidationError(
+                f"V5.16 proposal {proposal_number} failed validation: {exc}",
+                usage_event={
+                    "agent_name": "detection",
+                    "operation": "rfq_detection_v5_source_degraded_v561_consensus",
+                    "file_name": file_name,
+                    "company_id": company_id,
+                    "status": "failed",
+                    "proposal_number": proposal_number,
+                    "source_capability": source_capability,
+                    "raw_payload": raw_payload,
+                    "error_message": str(exc),
+                },
+            ) from exc
+        proposal_results.append(proposal)
+        proposal_summaries.append(summarize_detection_provider_call(
+            response=response,
+            diagnostics=diagnostics,
+            prompt_characters=len(prompt),
+            context_characters=len(coordinate_context),
+            image_count=len(page_images),
+            image_bytes=sum(len(image) for image in page_images),
+        ))
+
+    consensus, consensus_audit = _compile_detection_v516_v561_consensus(
+        primary=proposal_results[0], secondary=proposal_results[1],
+    )
+    usage = {
+        "operation": "rfq_detection_v5_source_degraded_v561_consensus",
+        "prompt_version": DETECTION_V5_SOURCE_DEGRADED_V561_CONSENSUS_PROMPT_VERSION,
+        "model": selected_model,
+        "proposal_count": 2,
+        "source_capability": source_capability,
+        "page_frame_audit": page_frame_audit,
+        "full_page_review_input": "two_independent_full_rendered_page_proposals_without_crops",
+        "proposals": proposal_summaries,
+        "duration_seconds": round(sum(
+            float(summary.get("duration_seconds") or 0) for summary in proposal_summaries
+        ), 6),
+        "input_tokens": sum(int(summary.get("input_tokens") or 0) for summary in proposal_summaries),
+        "output_tokens": sum(int(summary.get("output_tokens") or 0) for summary in proposal_summaries),
+        "input_cost_usd": round(sum(
+            float(summary.get("input_cost_usd") or 0) for summary in proposal_summaries
+        ), 8),
+        "output_cost_usd": round(sum(
+            float(summary.get("output_cost_usd") or 0) for summary in proposal_summaries
+        ), 8),
+        "consensus_audit": consensus_audit,
+    }
+    usage["total_cost_usd"] = round(
+        usage["input_cost_usd"] + usage["output_cost_usd"], 8,
+    )
+    return {
+        "route": "v5_16_source_degraded_v561_two_proposal_consensus_experimental",
+        "proposal_a": proposal_results[0],
+        "proposal_b": proposal_results[1],
+        **consensus,
+    }, usage
+
+
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Run V5.10.12 Island discovery, then a bounded membership review."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
@@ -3761,6 +5796,21 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                     group_id_mapping.get(str(group_id or ""), str(group_id or ""))
                     for group_id in hypothesis["group_ids"]
                 ]
+                normalized_evidence = []
+                for evidence in hypothesis.get("evidence") or []:
+                    if not isinstance(evidence, dict):
+                        normalized_evidence.append(evidence)
+                        continue
+                    normalized_evidence_row = copy.deepcopy(evidence)
+                    if isinstance(normalized_evidence_row.get("structural_witness"), dict):
+                        witness = copy.deepcopy(normalized_evidence_row["structural_witness"])
+                        witness["witness_view_id"] = group_id_mapping.get(
+                            str(witness.get("witness_view_id") or ""),
+                            str(witness.get("witness_view_id") or ""),
+                        )
+                        normalized_evidence_row["structural_witness"] = witness
+                    normalized_evidence.append(normalized_evidence_row)
+                hypothesis["evidence"] = normalized_evidence
             normalized_hypotheses.append(hypothesis)
         accepted_hypotheses, object_hypothesis_audit = compile_detection_v5_object_hypotheses(
             normalized_hypotheses, visual_groups=semantic_validation_groups,

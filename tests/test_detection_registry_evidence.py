@@ -192,8 +192,11 @@ def test_v49_routes_default_registry_to_haiku_without_evidence_handoff():
         ),
     ):
         result = run_detection_agent(
-            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"page"],
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf", page_images=[b"page"],
+            ocr_package={"evidence": {"text_blocks": [
+                {"page_number": 1, "text": "Cabinet", "bbox": {"top_left_x": 10, "top_left_y": 10, "bottom_right_x": 80, "bottom_right_y": 30}},
+                {"page_number": 1, "text": "Detail", "bbox": {"top_left_x": 400, "top_left_y": 400, "bottom_right_x": 480, "bottom_right_y": 420}},
+            ]}},
         )
 
     assert registry_call["model"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL
@@ -230,12 +233,54 @@ def test_v49_routes_only_adda_style_registry_to_sonnet_without_evidence_handoff(
     ):
         result = run_detection_agent(
             file_name="adda.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"one", b"two"],
-            ocr_package={"pages": [two_islands_page, two_islands_page]},
+            page_images=[b"one", b"two"], ocr_package={
+                "pages": [two_islands_page, two_islands_page],
+                "evidence": {"text_blocks": [
+                    {"page_number": 1, "text": "Object A", "bbox": {"top_left_x": 10, "top_left_y": 10, "bottom_right_x": 80, "bottom_right_y": 30}},
+                    {"page_number": 1, "text": "Object B", "bbox": {"top_left_x": 400, "top_left_y": 400, "bottom_right_x": 480, "bottom_right_y": 420}},
+                    {"page_number": 2, "text": "Object A", "bbox": {"top_left_x": 10, "top_left_y": 10, "bottom_right_x": 80, "bottom_right_y": 30}},
+                    {"page_number": 2, "text": "Object B", "bbox": {"top_left_x": 400, "top_left_y": 400, "bottom_right_x": 480, "bottom_right_y": 420}},
+                ]},
+            },
         )
 
     assert registry_call["model"] == "claude-sonnet-4-6"
     assert len(result["_agent_usage_events"]) == 1
+
+
+def test_source_degraded_route_uses_v517_and_forces_the_base_model():
+    registry = {"objects": [{
+        "object_id": "object-001", "transport_label": "Object 1",
+        "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+        "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
+        "visual_identity": "one visual object", "boundary_basis": "one envelope",
+    }]}
+    source_degraded_call: dict = {}
+
+    def capture_source_degraded(**kwargs):
+        source_degraded_call.update(kwargs)
+        return {"route": "v5_17", "registry": registry}, {"raw_usage": {}}
+
+    with (
+        patch("agents.detection_agent.get_secret", side_effect=lambda _name, default: default),
+        patch(
+            "agents.detection_agent.run_anthropic_detection_v5_source_degraded_full_page_registry_experiment",
+            side_effect=capture_source_degraded,
+        ),
+        patch(
+            "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
+            side_effect=AssertionError("ordinary V5 must not run for source-degraded input"),
+        ),
+    ):
+        result = run_detection_agent(
+            file_name="scan.png", company_id="001", file_bytes=b"image",
+            page_images=[b"page"], ocr_package={"evidence": {"text_blocks": []}},
+        )
+
+    assert source_degraded_call["post_discovery_view_crops"] is True
+    assert source_degraded_call["model"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL
+    assert result["detected_objects"][0]["object_id"] == "object-001"
+    assert result["_agent_usage_events"][0]["raw_usage"]["detection_v4_2_model_route"]["decision"] == "source_degraded_visual_registry"
 
 
 def test_processing_persists_visual_registry_validation_audit_before_reraising(monkeypatch):

@@ -7,8 +7,12 @@ from uuid import uuid4
 
 from agents.anthropic_adapter import (
     DetectionVisualRegistryValidationError,
+    _source_dimensions_by_page,
+    build_detection_page_evidence_inventory,
+    run_anthropic_detection_v5_source_degraded_full_page_registry_experiment,
     run_anthropic_detection_visual_registry_agent,
 )
+from agents.detection_source_capability import assess_detection_source_capability
 from agents.detection_model_router import (
     DEFAULT_CLAUDE_DETECTION_V4_BOUNDARY_MODEL,
     DEFAULT_CLAUDE_DETECTION_V4_MODEL,
@@ -387,15 +391,51 @@ def run_detection_agent(
         registry_images = [file_bytes]
     if not registry_images:
         raise ValueError("Detection registry requires rendered PDF pages.")
-    regions = build_detection_registry_regions(registry_images)
+    source_capability = assess_detection_source_capability(
+        source_facts=build_detection_page_evidence_inventory(ocr_package),
+        page_count=len(registry_images),
+        page_dimensions=_source_dimensions_by_page(ocr_package),
+    )
     if stage_callback:
         stage_callback("Detection Registry started")
     try:
-        _visual_map, registry, visual_registry_usage = run_anthropic_detection_visual_registry_agent(
-            file_name=file_name, company_id=company_id, file_bytes=file_bytes,
-            page_images=registry_images, regions=regions,
-            ocr_package=ocr_package, model=route["registry_model"],
-        )
+        if source_capability["route_eligible"]:
+            # The visual-only route is deliberately a separate contract. It is
+            # reached only when every page lacks usable coordinate evidence, so
+            # it cannot weaken ordinary V5's OCR/Fusion/Dimension path.
+            if file_name.lower().endswith(".pdf"):
+                registry_images, _ = render_detection_pdf_pages(file_bytes, dpi=200)
+            source_degraded_route = {
+                **route,
+                "decision": "source_degraded_visual_registry",
+                "reasons": [
+                    *route.get("reasons", []),
+                    "all_pages_lack_usable_coordinate_evidence",
+                    "source_degraded_route_forces_base_model",
+                ],
+                "registry_model": str(base_model),
+                "source_capability": source_capability,
+            }
+            _visual_map, visual_registry_usage = (
+                run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
+                    file_name=file_name,
+                    company_id=company_id,
+                    file_bytes=file_bytes,
+                    page_images=registry_images,
+                    ocr_package=ocr_package,
+                    model=source_degraded_route["registry_model"],
+                    post_discovery_view_crops=True,
+                )
+            )
+            registry = _visual_map["registry"]
+            route = source_degraded_route
+        else:
+            regions = build_detection_registry_regions(registry_images)
+            _visual_map, registry, visual_registry_usage = run_anthropic_detection_visual_registry_agent(
+                file_name=file_name, company_id=company_id, file_bytes=file_bytes,
+                page_images=registry_images, regions=regions,
+                ocr_package=ocr_package, model=route["registry_model"],
+            )
     except DetectionVisualRegistryValidationError as exc:
         if stage_callback:
             stage_callback("Detection Registry failed")

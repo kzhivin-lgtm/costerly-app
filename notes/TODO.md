@@ -264,14 +264,173 @@ spatial source evidence on every substantive page. This is an input-capability
 decision, never a filename, object-count, Page23, document-type or Sonnet
 route. The deterministic gate must distinguish authored, page-local MyPDF or
 OCR text/dimension/graphic facts from page headers, footers and a provider's
-whole-page image placeholder. On a routed file, bypass Candidate Q and
-Dimension Fingerprints as evidence channels, but retain full rendered pages,
-source-quality audit, role classification, exclusive ownership, Detection
-Validation, File Review and later Naming. The alternative Haiku route first
-builds a full-page visual inventory before any rectangular candidate boundary,
-then resolves commercial membership from that inventory. Mixed-evidence files
-remain on the ordinary V5 route until a separate mixed-page contract is
+whole-page image placeholder. On a routed file, bypass Candidate Q but retain
+visual-source Dimension Fingerprints, typed semantic facts, full rendered
+pages, source-quality audit, role classification, exclusive ownership,
+Detection Validation, File Review and later Naming. The alternative Haiku
+route first builds a full-page visual inventory before any rectangular candidate
+boundary, then resolves commercial membership from that inventory. Mixed-evidence
+files remain on the ordinary V5 route until a separate mixed-page contract is
 approved. Acceptance must cover varied zero-source files, not a Page23 rule.
+
+PENDING, P1, USER DIRECTION, mixed-evidence documents: define a separate
+per-page capability and cross-page ownership contract. A single source-degraded
+page must not discard good Fusion facts from other pages, and a visual-only
+page must still be eligible to join an object evidenced on a structured page.
+Do not begin this work during the V5.12 document-level visual-only experiment.
+
+FAILED QUALITY GATE, V5.12 source-degraded visual route, Page23
+`v512-page23-02`: the document-level capability gate correctly excluded a
+footer address (`100`, `472`) and two adjacent OCR rows of one cable-hole note;
+the document has zero usable coordinate evidence and entered the visual-only
+route. Two Haiku calls returned five Object Islands and five singleton packages
+instead of the required four Islands and three objects. Discovery split the
+physically continuous shelving assembly from its diagonal extension, then
+Membership did not create any false merge. This isolates the current failure to
+full-page visual continuity in Discovery, not Fusion, Dimension Fingerprint,
+or Membership validation. The experiment cost `$0.019223` and took 36.470s
+wall time, including 7.035s Mistral OCR. Do not wire or deploy V5.12 from this
+run. The separate mixed-evidence P1 contract remains deferred.
+
+PENDING EXPERIMENT, P1, USER DIRECTION, ordinary V5 static-crop ablation:
+Proposal currently receives every full page plus three fixed static crops
+(`upper_left`, `upper_right`, `lower`). The static three-zone topology has no
+established advantage and can present one continuous physical depiction as
+separate partial images. Remove only these pre-Discovery crops. Retain Review
+View crops, because they are produced only after the Island inventory is fixed
+and therefore cannot create an Island split. Keep full pages, Fusion, Candidate
+Regions, Dimensions, semantic facts and deterministic graph policy. Compare
+HSL Island inventory and Page23 commercial boundaries, as well as input bytes,
+tokens, cost and duration, before changing the ordinary default.
+
+PENDING DIAGNOSTIC, P0, V5.12.1 source-degraded semantic proof: Page23
+`v5121-page23-02` recovered the required four Islands without any crop, but
+incorrectly merged the shelving assembly with the TV console. The only causal
+semantic fact was `direct_shared_structure` based on a generic claim of the
+same metal-frame "principle" or "construction methodology". Define and test a
+physical-continuity witness for this fact before widening any validator: either
+one View visibly contains both otherwise separate parts as one attached
+assembly, or a partial View is visibly continuous with a complete View of that
+same assembly. Shared material, profile, frame type, construction method or
+similar dimensions are never a witness. Page23 is the first discriminator.
+
+FAILED QUALITY GATE, V5.12.2 source-degraded semantic proof, Page23
+`v5122-page23-01`: the new `direct_shared_structure` witness correctly
+rejected the original generic metal-frame claim, but Review re-labelled the
+same generic resemblance as `matching_topology` and `unique_geometry`. Runtime
+therefore accepted six non-specific facts and merged all four Views into one
+object, rather than the required three. This rules out a type-specific wording
+or blacklist repair. The next approved repair must require a criterion-specific
+structured witness for every semantic fact: literal author relation, paired
+axis/value transform, recurring ordered topology, named distinctive geometry,
+or a physical-structure witness. It must reject generic rectangles, frames,
+materials, construction principles and broad visual resemblance regardless of
+which evidence type the provider selects. Do not repeat Page23 until that
+contract is implemented and unit-tested.
+
+ACTIVE EXPERIMENT, P0, V5.12.5 source-degraded nested-Island resolution:
+the visual-only route no longer fabricates a deterministic Dimension Fingerprint
+from incomplete model transcription. Discovery locks Islands only. Membership
+gets full-page overlays plus post-Island View crops and returns the sixth typed
+criterion `visual_dimension_similarity`, citing both Views and concrete visible
+readings. It also emits only explicit, grounded dimension conflicts, never an
+absent or unknown state. V5.12.4 requires numeric readings separately from both
+endpoints of a conflict and directs Membership to inspect every allowed pair for
+positive proof before returning any conflicts. V5.12.5 additionally permits a
+grounded `nested_duplicate_island` decision: a visually contained fragment with
+no independent drawing boundary is removed before graph construction, while
+ordinary overlapping boxes remain distinct. A conflict blocks that pair; a
+similarity alone remains supporting and must combine with another concrete
+criterion. The special route does not use batch confirmation. First gate is
+Page23: four Islands and exactly three objects, with the two console projections
+merged and no shelf/console merge. This is uncheckpointed and must not affect
+ordinary V5.
+
+RESULT, V5.12.4 Page23 `v5124-page23-04`: the conflict repair worked narrowly.
+Five conflicts with concrete numeric readings from both endpoint Views were
+accepted; two legacy-like conflicts whose second View had only material labels
+were rejected. Discovery still returned five rather than four Islands, and
+Membership returned no positive fact or merge edge, so all five Views remained
+singletons. It also omitted the three potentially relevant console pairs from
+the returned facts and conflicts. The next isolated diagnostic is an exhaustive
+pair-review receipt, separate from the graph, to prove that every allowed pair
+was inspected before changing any merge threshold or Island rule. The run cost
+`$0.022056` and took `41.454s` wall time (`15.213s` Mistral, `25.768s` model).
+
+REJECTED, V5.12.5 nested-Island rule, Page23 `v5125-page23-01`: Discovery
+still returned five groups and Membership returned neither a nested-duplicate
+decision nor semantic facts. The apparent duplicate was not actually contained
+by the immutable core boxes in this run: its overlap with the larger candidate
+was about `68%`, and it extended materially above it. Do not lower the `85%`
+containment guard. The supported diagnosis is a fragmented continuous drawing,
+not a nested duplicate. The next distinct proposal, if approved, is an Island
+reconciliation relation for same-page fragments whose visual contours visibly
+continue into one another. It is a segmentation repair before the object graph,
+not a semantic object merge. V5.12.5 cost `$0.016119` and took `29.157s` wall
+time (`3.867s` Mistral, `24.728s` model).
+
+REJECTED EXPERIMENT, P0, V5.13.2 source-degraded representation-map roles:
+Discovery emitted six representations on Page23 and Review assigned every one
+an explicit role, but still created a false shelving-to-door relation and split
+the two console projections. The isolated route preserved full pages and
+disabled Discovery-coordinate crops because its rendered-frame boxes are not
+authoritative. The failure proves that a role taxonomy followed by pairwise
+semantic facts cannot replace global object partitioning. Do not tune its pair
+prompt further.
+
+REJECTED EXPERIMENT, P0, V5.14 source-degraded full-page Registry partition:
+Discovery remained advisory and a second full-page Haiku call owned all roles
+and one exclusive partition. Its first response correctly labelled a component
+but illegally included it in a partition, which runtime rejected. Its second
+response technically passed but falsely merged shelving with doors and left the
+two console projections separate. The V4-style partition validator, role
+coverage, exclusive ownership and graph materialization worked as intended;
+the visual conclusion did not. Cost was `$0.015468`, total wall time `24.807s`.
+Do not promote or continue prompt-wording variants of this two-call route.
+
+REJECTED EXPERIMENT, P0, V5.15 source-degraded one-shot full-page Registry:
+To remove the two-call map handoff, one Haiku full-page decision produced the
+representation map, roles and exclusive partition together. Page23
+`v515-page23-01` correctly made the continuous shelf-and-panel one assembly,
+kept doors separate, and classified a detail and footer out of ownership, but
+still separated the two alternate console projections. It returned four
+objects, not the required three, at `$0.013936` and `32.676s` wall time. This
+rules out the intermediate map handoff as the sole cause. The historical V4
+Page23 result is not an acceptance target because its prompt contained a
+literal Page23-shaped example. Do not copy that example or promote V5.15.
+Any next source-degraded mechanism needs a document-independent way to ground
+alternate-projection identity beyond free visual prose.
+
+REJECTED EXPERIMENT, P0, V5.16 source-degraded V5.6.1 proposal consensus:
+two independent 200-dpi full-page Haiku calls, with no pre-Discovery crops,
+each returned the same six Object Islands and only forbidden singleton
+hypotheses on Page23. The deterministic consensus correctly retained no merge
+edge, leaving six standalone packages rather than four Islands and three
+objects. Both calls had equal 4,678 input and 2,045 output tokens, and their
+normalized maps and decisions were identical, so an identical second proposal
+does not create independent evidence. The route gate, no-crop input, Island
+matching and consensus materialization behaved as specified, but the quality
+gate failed. The retained report cost was `$0.029806`, with latest recorded
+wall time `50.068s`. An earlier command reused the same label and may have
+overwritten its report, so session-level spend must not be inferred from that
+single artifact. Do not tune this prompt or repeat the same consensus mechanism. The remaining diagnostic is to
+compare the exact historical V5.6 rendered image transport and present visual
+input with no model-contract changes, since V5.6 results cannot be replayed by
+its text contract alone.
+
+ACTIVE EXPERIMENT, P0, V5.17 source-degraded post-Discovery view crops:
+retain V5.14's two distinct roles and its global exclusive partition contract.
+The only changed provider input is that the second call receives the same
+authoritative full rendered pages plus one padded crop for every first-call
+candidate view. No static grid crop, prompt criterion, role rule, graph rule,
+ordinary V5 path, or source-degraded router gate changes. Crops are created
+only after Discovery and are supplemental detail, never a boundary authority.
+Local structural verification created five valid crops from the historical
+Page23 Discovery map, alongside the original 200-dpi full page; 45 focused
+tests and `git diff --check` pass. The live provider gate remains pending:
+this execution environment exposes project keys without DNS and exposes DNS
+without local secrets, so neither Mistral nor Haiku was called. Do not infer a
+Detection outcome, cost, or quality result until one real run completes.
 
 BLOCKED QUALITY GATE, V5.9 HSL `v590-hsl-04`: the cross-document run rejects
 the experiment in its current form. It returned 31 raw Visual Groups, 28

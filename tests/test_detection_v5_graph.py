@@ -291,7 +291,7 @@ def test_v5_direct_shared_structure_cannot_be_generic_material_or_hardware():
         {"group_id_a": "view-001", "group_id_b": "view-002", "evidence_type": "direct_shared_structure", "strength": "standard", "observation": "Both use the same material and hardware specification.", "source_fact_ids": []},
     ], visual_groups=VIEWS, source_facts=[])
     assert accepted == []
-    assert audit["rejected"][0]["reason"] == "direct_shared_structure_is_generic_specification"
+    assert audit["rejected"][0]["reason"] == "direct_shared_structure_requires_physical_witness"
 
 
 def test_v5_concrete_topology_is_not_rejected_for_saying_both_elevations():

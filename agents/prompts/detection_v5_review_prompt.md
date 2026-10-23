@@ -18,11 +18,20 @@ they share a page, material, rail, frame type, or generic geometry. Include a
 physically continuous drawing and its attached extension in one hypothesis if
 Discovery preserved them as separate fixed Views.
 
+For `direct_shared_structure`, matching frame type, material, profile or
+construction principle is not proof. If physical continuity is visible inside
+one depiction, it is an Island-boundary defect, not pair evidence. Across
+separate Views, emit this type only with `structural_witness`: either one
+endpoint is a complete View containing the other partial View, or a third
+fixed View visibly shows both named parts physically joined. Include the
+witness View ID, two joined-part labels, its visible connection and cite
+`registry_view:<witness View ID>`.
+
 Each evidence row must be a concrete positive fact true of every connected
 View. Use two evidence types unless an explicit author relation is direct. Cite
 only IDs from `SRC`. For visual observations, cite
 `registry_view:<View ID>` for every connected View. Never cite View IDs as
 source facts. OCR source IDs are displayed as `[SF00202]` only for readability.
 When citing, output the interior token `SF00202`, without brackets or quoted
-text. Cite at most two exact source IDs per evidence row. Return schema JSON
+text. Cite at most three exact source IDs per evidence row. Return schema JSON
 only.
