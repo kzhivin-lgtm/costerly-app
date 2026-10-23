@@ -466,6 +466,20 @@ Do not retry this prompt/schema mechanism. The next diagnostic must change the
 visual evidence presented for connected-contour recognition, without restoring
 static crops or treating bbox overlap as a merge decision.
 
+ACTIVE EXPERIMENT, P0, V5.21 source-degraded mandatory boundary ledger:
+user explicitly approved a narrower replacement after V5.20's audit showed
+that the model could leave a continuity candidate unanswered. Keep the same two
+full-page Haiku calls and no crops. For every same-page core-bbox-overlap pair,
+the second Registry call must return exactly one physical-boundary decision:
+`physically_continuous` plus concrete joined geometry, or
+`physically_separate` plus `visible_background_gap`,
+`separate_closed_contour`, or `independent_projection`. The code accepts no
+silent split, unions only attested continuous pairs before roles, and writes
+both the full boundary ledger and resulting consolidation audit. This does not
+make bbox overlap a merge decision and does not alter ordinary V5. Page23 is
+the discriminator: V1/V3 must either consolidate before roles or expose a
+specific claimed separator for review. Provider-quality outcome is pending.
+
 BLOCKED QUALITY GATE, V5.9 HSL `v590-hsl-04`: the cross-document run rejects
 the experiment in its current form. It returned 31 raw Visual Groups, 28
 Object-Evidence Islands and 12 packages, rather than the protected HSL 32/9

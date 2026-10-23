@@ -4,7 +4,10 @@ from agents.anthropic_adapter import (
     _compile_detection_v516_v561_consensus,
     _match_detection_v516_v561_object_groups,
     _normalize_source_degraded_registry_view_ids,
+    build_detection_v5_source_degraded_boundary_candidates,
+    consolidate_detection_v5_source_degraded_continuity_groups,
     validate_detection_v5_source_degraded_full_page_roles,
+    validate_detection_v5_source_degraded_boundary_assessments,
     validate_detection_v5_source_degraded_role_resolutions,
 )
 from agents.detection_source_capability import (
@@ -251,6 +254,77 @@ def test_full_page_roles_require_one_final_role_per_visual_representation():
 
     assert roles == {"view-001": "assembly_view", "view-002": "component_detail"}
     assert audit[1]["visual_role"] == "component_detail"
+
+
+def _boundary_group(group_id, left, top, right, bottom):
+    return {
+        "group_id": group_id,
+        "page_number": 1,
+        "bbox": {
+            "top_left_x": left, "top_left_y": top,
+            "bottom_right_x": right, "bottom_right_y": bottom,
+        },
+        "core_bbox": {
+            "top_left_x": left, "top_left_y": top,
+            "bottom_right_x": right, "bottom_right_y": bottom,
+        },
+        "visual_description": f"Depiction {group_id}.",
+        "representation_kind": "technical drawing",
+    }
+
+
+def test_source_degraded_boundary_ledger_requires_every_overlap_to_be_explained():
+    groups = [
+        _boundary_group("view-001", 0, 0, 100, 100),
+        _boundary_group("view-002", 80, 70, 180, 170),
+        _boundary_group("view-003", 240, 0, 340, 100),
+    ]
+    candidates = build_detection_v5_source_degraded_boundary_candidates(groups)
+    assert candidates == [{
+        "group_ids": ["view-001", "view-002"],
+        "reason": "same_page_core_bbox_overlap_requires_boundary_decision",
+    }]
+
+    with pytest.raises(ValueError, match="omits a candidate"):
+        validate_detection_v5_source_degraded_boundary_assessments(
+            [], candidates=candidates,
+        )
+
+    continuity_groups, audit = validate_detection_v5_source_degraded_boundary_assessments(
+        [{
+            "group_ids": ["view-001", "view-002"],
+            "relation": "physically_continuous",
+            "boundary_kind": "continuous_geometry",
+            "observation": "The angled panel visibly continues from the shelf frame without a gap.",
+        }],
+        candidates=candidates,
+    )
+    assert audit[0]["relation"] == "physically_continuous"
+    assert continuity_groups == [{
+        "group_ids": ["view-001", "view-002"],
+        "observation": "The angled panel visibly continues from the shelf frame without a gap.",
+    }]
+
+
+def test_source_degraded_boundary_ledger_unions_only_attested_continuity_before_roles():
+    groups = [
+        _boundary_group("view-001", 0, 0, 100, 100),
+        _boundary_group("view-002", 80, 70, 180, 170),
+        _boundary_group("view-003", 240, 0, 340, 100),
+    ]
+    effective, mapping, audit = consolidate_detection_v5_source_degraded_continuity_groups(
+        groups,
+        [{
+            "group_ids": ["view-001", "view-002"],
+            "observation": "The angled panel visibly continues from the shelf frame without a gap.",
+        }],
+    )
+    assert mapping == {
+        "view-001": "view-001", "view-002": "view-001", "view-003": "view-003",
+    }
+    assert [group["group_id"] for group in effective] == ["view-001", "view-003"]
+    assert effective[0]["source_group_ids"] == ["view-001", "view-002"]
+    assert audit[0]["canonical_group_id"] == "view-001"
 
 
 def test_visual_only_partition_requires_exact_coverage_and_connected_visual_tree():

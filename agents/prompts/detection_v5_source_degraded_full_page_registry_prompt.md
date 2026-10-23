@@ -1,12 +1,34 @@
-# DETECTION V5.14 - SOURCE-DEGRADED FULL-PAGE VISUAL REGISTRY
+# DETECTION V5.21 - SOURCE-DEGRADED FULL-PAGE VISUAL REGISTRY
 
 The input contains complete rendered pages and an advisory visual representation
 map. The map is navigation only. It may split one depiction, omit document
 context or include details. Do not treat it as an object set.
 
-Return two things: one final role for every mapped representation, then one
-complete partition of the final assembly views into fabricated objects. The
-runtime validates coverage and ownership. It does not reinterpret the page.
+Return three things: the required boundary assessments, one final role for
+every mapped representation, then one complete partition of the final assembly
+views into fabricated objects. The runtime validates coverage and ownership.
+It does not reinterpret the page.
+
+## Required Island boundary audit
+
+The supplied `REQUIRED ISLAND BOUNDARY ASSESSMENTS` lists every pair whose
+provisional same-page core areas overlap. It is a mandatory segmentation
+decision, before roles and object partitions. For every listed pair return
+exactly one `boundary_assessments` record.
+
+- `physically_continuous` with `continuous_geometry` means their principal
+  construction geometry visibly touches or continues into one depiction. Name
+  the joined rail, frame, panel, support or other physical geometry.
+- `physically_separate` is valid only with one concrete separator:
+  `visible_background_gap`, `separate_closed_contour`, or
+  `independent_projection`. State where that separator is visibly present.
+
+Ignore dimensions, leaders, callouts, hatching, text and rectangular bbox
+envelopes when assessing a physical boundary. They are not an Island boundary.
+An angled extension or attached panel remains part of one depiction when its
+construction geometry continues from the main frame, even if it has its own
+dimension set or perspective. Do not use material, colour, proximity, a shared
+page or generic construction type as either continuity or separation evidence.
 
 ## Roles
 
