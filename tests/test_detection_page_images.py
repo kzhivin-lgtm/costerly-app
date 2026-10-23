@@ -83,6 +83,7 @@ def test_large_route_skips_mistral_and_keeps_haiku_default(monkeypatch):
     monkeypatch.setattr(rfq_processing, "run_detection_agent", fake_detection)
     monkeypatch.setattr(rfq_processing, "detection_naming_split_enabled", lambda: False)
     monkeypatch.setattr(rfq_processing, "get_supabase_client", object)
+    monkeypatch.setattr(rfq_processing, "insert_agent_usage_event", lambda *_args: None)
     monkeypatch.setattr(rfq_processing, "upsert_rfq_detection_result", lambda *_args: None)
     monkeypatch.setattr(
         rfq_processing._DIAGNOSTICS_EXECUTOR,

@@ -205,6 +205,28 @@ def _persist_rfq_diagnostics(
         print(f"[Usage Ledger] Could not save RFQ diagnostics: {exc}")
 
 
+def _persist_detection_audit_before_file_review(
+    *,
+    client: Any,
+    usage_events: list[dict[str, Any]],
+) -> None:
+    """Durably store the Registry audit before exposing File Review.
+
+    The Registry response contains the only complete record of router choice,
+    Islands, roles, evidence, graph decisions and model reasoning.  It cannot
+    be relegated to the best-effort diagnostics executor, because its failure
+    would leave an apparently successful File Review without an analyzable
+    Detection decision.
+    """
+    for event in usage_events:
+        try:
+            insert_agent_usage_event(client, event)
+        except Exception as exc:
+            raise RuntimeError(
+                "Detection audit could not be saved; File Review was not shown."
+            ) from exc
+
+
 def _persist_runtime_event(event: dict[str, Any]) -> None:
     """Persist a lightweight runtime marker outside the UI render path."""
     try:
@@ -560,6 +582,11 @@ def process_uploaded_rfq(
         )
     run_id = detection_result["rfq_run"]["run_id"]
 
+    _persist_detection_audit_before_file_review(
+        client=client,
+        usage_events=usage_events,
+    )
+
     if progress_callback:
         progress_callback("Saving results", None)
     upsert_rfq_detection_result(client, detection_result)
@@ -653,7 +680,7 @@ def process_uploaded_rfq(
         client=client,
         ocr_package=ocr_package,
         detection_context=detection_context,
-        usage_events=usage_events,
+        usage_events=[],
         naming_event=None,
         cycle_event=cycle_event,
         company_id=company_id,

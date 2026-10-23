@@ -11,7 +11,10 @@ from agents.detection_agent import (
 )
 from agents.anthropic_adapter import DetectionVisualRegistryValidationError
 from agents.schemas.detection_schema import validate_detection_result
-from use_cases.rfq_processing import process_uploaded_rfq
+from use_cases.rfq_processing import (
+    _persist_detection_audit_before_file_review,
+    process_uploaded_rfq,
+)
 
 
 def test_registry_evidence_keeps_full_estimation_set_not_only_visual_dossier():
@@ -248,7 +251,7 @@ def test_v49_routes_only_adda_style_registry_to_sonnet_without_evidence_handoff(
     assert len(result["_agent_usage_events"]) == 1
 
 
-def test_source_degraded_route_uses_v518_without_discovery_crops_and_forces_the_base_model():
+def test_source_degraded_route_uses_v519_without_discovery_crops_and_forces_the_base_model():
     registry = {"objects": [{
         "object_id": "object-001", "transport_label": "Object 1",
         "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
@@ -282,6 +285,35 @@ def test_source_degraded_route_uses_v518_without_discovery_crops_and_forces_the_
     assert source_degraded_call["model"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL
     assert result["detected_objects"][0]["object_id"] == "object-001"
     assert result["_agent_usage_events"][0]["raw_usage"]["detection_v4_2_model_route"]["decision"] == "source_degraded_visual_registry"
+
+
+def test_detection_audit_is_persisted_synchronously_and_must_succeed(monkeypatch):
+    persisted: list[dict] = []
+    event = {
+        "company_id": "001", "run_id": "run-001", "file_name": "drawing.pdf",
+        "agent_name": "detection", "operation": "rfq_detection_visual_registry",
+        "model": "test-model", "prompt_version": "detection_v5_19",
+        "status": "succeeded", "raw_usage": {"route": "source_degraded"},
+    }
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.insert_agent_usage_event",
+        lambda _client, received: persisted.append(received),
+    )
+
+    _persist_detection_audit_before_file_review(
+        client=object(), usage_events=[event],
+    )
+
+    assert persisted == [event]
+
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.insert_agent_usage_event",
+        lambda *_args: (_ for _ in ()).throw(RuntimeError("database unavailable")),
+    )
+    with pytest.raises(RuntimeError, match="Detection audit could not be saved"):
+        _persist_detection_audit_before_file_review(
+            client=object(), usage_events=[event],
+        )
 
 
 def test_processing_persists_visual_registry_validation_audit_before_reraising(monkeypatch):

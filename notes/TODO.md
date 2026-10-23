@@ -442,6 +442,16 @@ errors. Ordinary V5 is unchanged. Local structural verification: 57 focused
 tests and `git diff --check` pass. Provider-quality outcome remains pending,
 and this repair must not be represented as a Page23 object-boundary fix.
 
+ACTIVE RELEASE, P0, V5.19 Detection decision ledger: V5.18's source-degraded
+route returned an internal usage dictionary rather than a database event. Its
+missing required ledger fields caused the asynchronous batch write to lose
+route choice, Islands, roles, partitions and Registry reasoning, while File
+Review still showed final objects. Build a DB-ready, timestamped Detection
+event for both success and validation failure. Persist it synchronously before
+File Review, one event at a time; abort rather than expose an unauditable
+Detection decision if that write fails. Continue storing OCR and timing
+diagnostics asynchronously. Ordinary V5 decision logic is unchanged.
+
 BLOCKED QUALITY GATE, V5.9 HSL `v590-hsl-04`: the cross-document run rejects
 the experiment in its current form. It returned 31 raw Visual Groups, 28
 Object-Evidence Islands and 12 packages, rather than the protected HSL 32/9

@@ -124,8 +124,8 @@ DETECTION_V5_SOURCE_DEGRADED_ONE_SHOT_REGISTRY_PROMPT_VERSION = (
 DETECTION_V5_SOURCE_DEGRADED_V561_CONSENSUS_PROMPT_VERSION = (
     "detection_v5_16_source_degraded_v561_two_proposal_consensus_experimental_v1"
 )
-DETECTION_V5_SOURCE_DEGRADED_V518_PROMPT_VERSION = (
-    "detection_v5_18_source_degraded_full_page_registry_partition_repair_v1"
+DETECTION_V5_SOURCE_DEGRADED_V519_PROMPT_VERSION = (
+    "detection_v5_19_source_degraded_full_page_registry_observability_v1"
 )
 DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_CROP_MAX_SIDE = 1024
 # Registry has already locked object identity, quantity and ordering before this
@@ -4603,21 +4603,34 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
             source_facts=visual_sources,
         )
     except (json.JSONDecodeError, KeyError, ValueError, DetectionRegistrySchemaError) as exc:
-        raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.14 full-page Registry failed validation: {exc}",
-            usage_event={
-                "agent_name": "detection",
-                "operation": "rfq_detection_v5_source_degraded_full_page_registry",
-                "file_name": file_name,
-                "company_id": company_id,
-                "status": "failed",
-                "validation_stage": "v5_14_full_page_registry",
+        failure_usage = build_agent_usage_event(
+            agent_name="detection",
+            operation="rfq_detection_v5_source_degraded_full_page_registry",
+            company_id=company_id,
+            run_id=None,
+            file_name=file_name,
+            object_id=None,
+            object_name=None,
+            model=selected_model,
+            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V519_PROMPT_VERSION,
+            response=registry_response,
+            started_at=discovery_diagnostics["request_started_at"],
+            finished_at=registry_diagnostics["request_finished_at"],
+            request_diagnostics={
+                "validation_stage": "v5_19_full_page_registry",
                 "source_capability": source_capability,
+                "page_frame_audit": page_frame_audit,
                 "discovery_decision_audit": discovery_payload,
                 "full_page_registry_decision_audit": registry_payload,
                 "partition_repair_audit": partition_repair_audit,
                 "error_message": str(exc),
             },
+        )
+        failure_usage["status"] = "failed"
+        failure_usage["error_message"] = str(exc)
+        raise DetectionVisualRegistryValidationError(
+            f"Source-degraded V5.19 full-page Registry failed validation: {exc}",
+            usage_event=failure_usage,
         ) from exc
 
     discovery_summary = summarize_detection_provider_call(
@@ -4645,15 +4658,10 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
         image_count=registry_image_count,
         image_bytes=registry_image_bytes,
     )
-    usage = {
+    audit = {
         "operation": "rfq_detection_v5_source_degraded_full_page_registry",
-        "prompt_version": (
-            DETECTION_V5_SOURCE_DEGRADED_V518_PROMPT_VERSION
-            if component_only_partition_repair
-            else DETECTION_V5_SOURCE_DEGRADED_FULL_PAGE_REGISTRY_PROMPT_VERSION
-        ),
-        "model": selected_model,
-        "duration_seconds": round(
+        "registry_route": "v5_19_source_degraded_full_page_registry_observability",
+        "provider_duration_seconds": round(
             float(discovery_summary.get("duration_seconds") or 0)
             + float(registry_summary.get("duration_seconds") or 0),
             6,
@@ -4686,12 +4694,38 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
         "discovery_decision_audit": discovery_payload,
         "full_page_registry_decision_audit": registry_payload,
     }
-    usage["total_cost_usd"] = round(
-        usage["input_cost_usd"] + usage["output_cost_usd"], 8,
+    usage = build_agent_usage_event(
+        agent_name="detection",
+        operation="rfq_detection_v5_source_degraded_full_page_registry",
+        company_id=company_id,
+        run_id=None,
+        file_name=file_name,
+        object_id=None,
+        object_name=None,
+        model=selected_model,
+        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V519_PROMPT_VERSION,
+        response=registry_response,
+        started_at=discovery_diagnostics["request_started_at"],
+        finished_at=registry_diagnostics["request_finished_at"],
+        request_diagnostics=audit,
     )
+    usage.update({
+        "input_tokens": audit["input_tokens"],
+        "output_tokens": audit["output_tokens"],
+        "input_cost_usd": audit["input_cost_usd"],
+        "output_cost_usd": audit["output_cost_usd"],
+        "total_cost_usd": round(
+            audit["input_cost_usd"] + audit["output_cost_usd"], 8,
+        ),
+    })
+    usage["raw_usage"].update({
+        "input_tokens": audit["input_tokens"],
+        "output_tokens": audit["output_tokens"],
+        "total_cost_usd": usage["total_cost_usd"],
+    })
     return {
         "route": (
-            "v5_18_source_degraded_full_page_registry_partition_repair"
+            "v5_19_source_degraded_full_page_registry_observability"
             if component_only_partition_repair
             else (
                 "v5_17_source_degraded_full_page_registry_post_discovery_crops_experimental"
