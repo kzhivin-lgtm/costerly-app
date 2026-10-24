@@ -1,4 +1,4 @@
-# DETECTION V5.24 - SOURCE-DEGRADED FULL-PAGE VISUAL REGISTRY
+# DETECTION V5.25 - SOURCE-DEGRADED FULL-PAGE VISUAL REGISTRY
 
 The input contains complete rendered pages and an advisory visual representation
 map. The map is navigation only. It may split one depiction, omit document
@@ -11,12 +11,12 @@ It does not reinterpret the page.
 
 ## Required Island boundary audit
 
-The supplied `REQUIRED ISLAND BOUNDARY ASSESSMENTS` lists spatially local
-same-page representation pairs. Each has a `boundary_search_bbox`, a compact
-inspection corridor between their provisional physical cores. It is a
-mandatory segmentation decision, before roles and object partitions. The
-corridor is only where to inspect. It is never proof of a boundary, merge or
-commercial relationship. For every listed pair return exactly one
+The supplied `REQUIRED ISLAND BOUNDARY ASSESSMENTS` lists every pair whose
+provisional same-page core areas overlap. Each has a `boundary_search_bbox`, a
+compact inspection corridor inside that overlap. It is a mandatory segmentation
+decision, before roles and object partitions. The corridor is only where to
+inspect. It is never proof of a boundary, merge or commercial relationship.
+For every listed pair return exactly one
 `boundary_assessments` record with a `witness_bbox` centred on the actual
 physical joint or separator inside that corridor.
 
@@ -43,33 +43,20 @@ page or generic construction type as either continuity or separation evidence.
 
 ## Roles
 
-Use exactly one role for every representation, with one `role_basis` and a
-`parent_group_id`. Use an empty `parent_group_id` unless the basis is
-`fragment_of_same_page_assembly`.
+Use exactly one role for every representation:
 
-- `assembly_view` uses `complete_fabricated_system`: a complete depiction of
-  one fabricated system, including an alternate projection of the same item.
-  A 2D elevation can be complete. Do not require a 3D perspective or a box-like
-  closed carcass. A full track or frame together with its complete leaf, panel,
-  bay or door sequence and overall dimensions is a finished system.
-- `component_detail` uses `fragment_of_same_page_assembly` only when the page
-  visibly shows its parent assembly. Set `parent_group_id` to that
-  `assembly_view` ID and identify the missing whole in the reason.
-- `component_detail` uses `isolated_detail_parent_not_shown` only for an
-  isolated part, joint, section, material swatch, single leaf, panel or
-  hardware detail whose incomplete extent is visible. Explain that concrete
-  incompleteness. Do not use this basis merely because a drawing is 2D,
-  technical, dimensioned, or has a rail, frame, panels or repeated components.
-- `document_context` uses `document_context`: title block, schedule, room
-  plan, legend or administrative material.
+- `assembly_view`: a complete independent depiction, including an alternate
+  projection of the same fabricated item.
+- `component_detail`: a fragment, callout, leaf, panel, track, section,
+  hardware, or incomplete portion. It is never an object by itself.
+- `document_context`: title block, schedule, room plan, legend or
+  administrative material.
 
 Determine the role from the complete page. A complete system with its own
-track, frame, full panel or leaf sequence, system-level dimensions or finished
-configuration is an `assembly_view`, even when it contains components. Do not
-classify a complete system as a detail merely because it is shown as a 2D
-elevation or shares a page, material, colour or generic construction. A rail
-without its finished system may be a detail. A rail carrying the complete
-shown door or panel system is not. Do not create a role from a rectangle alone.
+envelope, track, frame, panel sequence or system-level dimensions is an
+`assembly_view`, even when it contains components. Do not classify a complete
+system as a detail of another assembly because they share a page, material,
+colour or generic construction. Do not create a role from a rectangle alone.
 
 An `assembly_view` is a candidate for identity resolution, not a declaration
 that it is a new independent product. A `component_detail` is supporting

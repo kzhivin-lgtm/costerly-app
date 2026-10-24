@@ -130,8 +130,8 @@ DETECTION_V5_SOURCE_DEGRADED_V519_PROMPT_VERSION = (
 DETECTION_V5_SOURCE_DEGRADED_V521_PROMPT_VERSION = (
     "detection_v5_21_source_degraded_required_boundary_ledger_v1"
 )
-DETECTION_V5_SOURCE_DEGRADED_V524_PROMPT_VERSION = (
-    "detection_v5_24_source_degraded_overlap_guard_v1"
+DETECTION_V5_SOURCE_DEGRADED_V525_PROMPT_VERSION = (
+    "detection_v5_25_source_degraded_physical_overlap_witness_v1"
 )
 DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_CROP_MAX_SIDE = 1024
 # Registry has already locked object identity, quantity and ordering before this
@@ -323,22 +323,12 @@ DETECTION_V5_SOURCE_DEGRADED_ROLE_RESOLUTIONS_SCHEMA: dict[str, Any] = {
 DETECTION_V5_SOURCE_DEGRADED_FULL_PAGE_ROLES_SCHEMA: dict[str, Any] = {
     "type": "array", "maxItems": 64,
     "items": {"type": "object", "additionalProperties": False,
-        "required": [
-            "group_id", "visual_role", "role_basis", "parent_group_id",
-            "classification_reason",
-        ],
+        "required": ["group_id", "visual_role", "classification_reason"],
         "properties": {
             "group_id": {"type": "string"},
             "visual_role": {"type": "string", "enum": [
                 "assembly_view", "component_detail", "document_context",
             ]},
-            "role_basis": {"type": "string", "enum": [
-                "complete_fabricated_system",
-                "fragment_of_same_page_assembly",
-                "isolated_detail_parent_not_shown",
-                "document_context",
-            ]},
-            "parent_group_id": {"type": "string"},
             "classification_reason": {"type": "string", "minLength": 12, "maxLength": 240},
         },
     },
@@ -2849,7 +2839,7 @@ def validate_detection_v5_source_degraded_full_page_roles(
     *,
     visual_groups: list[dict[str, Any]],
 ) -> tuple[dict[str, str], list[dict[str, Any]]]:
-    """Validate a role decision with a concrete basis for every detail."""
+    """Validate a complete V5.21-style representation-role decision."""
     expected = {
         str(group.get("group_id") or "") for group in visual_groups
         if isinstance(group, dict) and str(group.get("group_id") or "")
@@ -2858,62 +2848,26 @@ def validate_detection_v5_source_degraded_full_page_roles(
         raise ValueError("source-degraded full-page roles are invalid")
     by_group_id: dict[str, dict[str, Any]] = {}
     allowed_roles = {"assembly_view", "component_detail", "document_context"}
-    allowed_bases = {
-        "complete_fabricated_system",
-        "fragment_of_same_page_assembly",
-        "isolated_detail_parent_not_shown",
-        "document_context",
-    }
     for role in roles:
         if (
             not isinstance(role, dict)
-            or set(role) != {
-                "group_id", "visual_role", "role_basis", "parent_group_id",
-                "classification_reason",
-            }
+            or set(role) != {"group_id", "visual_role", "classification_reason"}
             or not isinstance(role.get("group_id"), str)
             or role["group_id"] not in expected
             or role["group_id"] in by_group_id
             or role.get("visual_role") not in allowed_roles
-            or role.get("role_basis") not in allowed_bases
-            or not isinstance(role.get("parent_group_id"), str)
             or len(str(role.get("classification_reason") or "").strip()) < 12
         ):
             raise ValueError("source-degraded full-page roles are invalid")
         by_group_id[role["group_id"]] = copy.deepcopy(role)
     if set(by_group_id) != expected:
         raise ValueError("source-degraded full-page Registry must role-classify every representation")
-    for group_id, role in by_group_id.items():
-        visual_role = str(role["visual_role"])
-        role_basis = str(role["role_basis"])
-        parent_group_id = str(role["parent_group_id"])
-        if visual_role == "assembly_view":
-            if role_basis != "complete_fabricated_system" or parent_group_id:
-                raise ValueError("source-degraded assembly role basis is invalid")
-        elif visual_role == "document_context":
-            if role_basis != "document_context" or parent_group_id:
-                raise ValueError("source-degraded document context role basis is invalid")
-        elif role_basis == "fragment_of_same_page_assembly":
-            parent = by_group_id.get(parent_group_id)
-            if (
-                not parent
-                or parent_group_id == group_id
-                or parent["visual_role"] != "assembly_view"
-            ):
-                raise ValueError("source-degraded detail must cite one same-page assembly parent")
-        elif role_basis == "isolated_detail_parent_not_shown":
-            if parent_group_id:
-                raise ValueError("source-degraded isolated detail cannot cite a parent")
-        else:
-            raise ValueError("source-degraded component detail basis is invalid")
     return (
         {group_id: str(role["visual_role"]) for group_id, role in by_group_id.items()},
         [
             {
                 "group_id": group_id,
                 "visual_role": role["visual_role"],
-                "role_basis": role["role_basis"],
-                "parent_group_id": role["parent_group_id"],
                 "classification_reason": role["classification_reason"],
             }
             for group_id, role in sorted(by_group_id.items())
@@ -3126,14 +3080,12 @@ def build_detection_v5_source_degraded_boundary_candidates(
     *,
     page_frames: dict[int, dict[str, int]] | None = None,
 ) -> list[dict[str, Any]]:
-    """Select bounded same-page contour neighbours for mandatory review.
+    """Select same-page core overlaps for mandatory physical-boundary review.
 
-    Every same-page core overlap is mandatory because a split physical drawing
-    can otherwise be silently discarded by a nearest-neighbour cap. A physically
-    connected non-rectangular drawing can also have adjacent, non-overlapping
-    cores, so the two nearest same-page cores for each representation are added
-    as well. This is a local contour queue, not a merge rule and not a
-    whole-page all-to-all comparison.
+    A core overlap is not proof of one depiction. It is a deterministic trigger
+    that prevents the Registry from silently preserving a split without
+    accounting for a physical boundary. Non-overlapping neighbours are outside
+    this V5.21-based experiment.
     """
     groups_by_page: dict[int, list[tuple[str, dict[str, int]]]] = {}
     for group in visual_groups:
@@ -3146,13 +3098,7 @@ def build_detection_v5_source_degraded_boundary_candidates(
         if group_id and bbox is not None and page_number >= 1:
             groups_by_page.setdefault(page_number, []).append((group_id, bbox))
 
-    candidate_reasons: dict[tuple[int, str, str], set[str]] = {}
-    candidate_distances: dict[tuple[int, str, str], float] = {}
-    candidate_boxes: dict[tuple[int, str], dict[str, int]] = {
-        (page_number, group_id): bbox
-        for page_number, groups in groups_by_page.items()
-        for group_id, bbox in groups
-    }
+    candidate_pairs: dict[tuple[int, str, str], tuple[dict[str, int], dict[str, int]]] = {}
     for page_number, groups in groups_by_page.items():
         for index, (group_id, bbox) in enumerate(groups):
             for other_group_id, other_bbox in groups[index + 1:]:
@@ -3160,46 +3106,25 @@ def build_detection_v5_source_degraded_boundary_candidates(
                     continue
                 left_id, right_id = sorted((group_id, other_group_id))
                 key = (page_number, left_id, right_id)
-                candidate_distances[key] = 0.0
-                candidate_reasons.setdefault(key, set()).add(
-                    "same_page_core_overlap_requires_contour_witness"
-                )
-        for group_id, bbox in groups:
-            nearest = sorted(
-                (
-                    (_bbox_minimum_distance(bbox, other_bbox), other_group_id)
-                    for other_group_id, other_bbox in groups
-                    if other_group_id != group_id
-                ),
-                key=lambda row: (row[0], row[1]),
-            )[:2]
-            for distance, other_group_id in nearest:
-                left_id, right_id = sorted((group_id, other_group_id))
-                key = (page_number, left_id, right_id)
-                candidate_distances[key] = min(
-                    candidate_distances.get(key, distance), distance,
-                )
-                reason = (
-                    "same_page_zero_core_gap_requires_contour_witness"
-                    if distance == 0
-                    else "same_page_local_core_neighbour_requires_contour_witness"
-                )
-                candidate_reasons.setdefault(key, set()).add(reason)
+                boxes = {
+                    group_id: bbox,
+                    other_group_id: other_bbox,
+                }
+                candidate_pairs[key] = (boxes[left_id], boxes[right_id])
 
     candidates: list[dict[str, Any]] = []
-    for page_number, left_id, right_id in sorted(candidate_reasons):
-        left = candidate_boxes[(page_number, left_id)]
-        right = candidate_boxes[(page_number, right_id)]
+    for page_number, left_id, right_id in sorted(candidate_pairs):
+        left, right = candidate_pairs[(page_number, left_id, right_id)]
         candidates.append({
             "group_ids": [left_id, right_id],
             "page_number": page_number,
-            "core_distance_px": round(candidate_distances[(page_number, left_id, right_id)], 3),
+            "core_distance_px": 0.0,
             "boundary_search_bbox": _build_detection_v5_source_degraded_boundary_search_bbox(
                 left,
                 right,
                 page_frame=(page_frames or {}).get(page_number),
             ),
-            "reason": "+".join(sorted(candidate_reasons[(page_number, left_id, right_id)])),
+            "reason": "same_page_core_overlap_requires_contour_witness",
         })
     return candidates
 
@@ -4826,7 +4751,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     post_discovery_view_crops: bool = False,
     component_only_partition_repair: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Run V5.24's full-page partition with overlap-safe contour review.
+    """Run V5.25's V5.21 partition with physical overlap witnesses.
 
     Discovery is deliberately only a navigational visual map.  Review receives
     the complete pages again and owns roles plus the exclusive object partition.
@@ -4928,14 +4853,14 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
             raise ValueError("source-degraded Discovery found no visual representation")
     except (json.JSONDecodeError, KeyError, ValueError, DetectionRegistrySchemaError) as exc:
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.24 Discovery failed validation: {exc}",
+            f"Source-degraded V5.25 Discovery failed validation: {exc}",
             usage_event={
                 "agent_name": "detection",
                 "operation": "rfq_detection_v5_source_degraded_full_page_registry",
                 "file_name": file_name,
                 "company_id": company_id,
                 "status": "failed",
-                "validation_stage": "v5_24_discovery",
+                "validation_stage": "v5_25_discovery",
                 "source_capability": source_capability,
                 "error_message": str(exc),
             },
@@ -5032,9 +4957,6 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                 continue
             normalized_role = copy.deepcopy(role)
             normalized_role["group_id"] = normalize_raw_group_id(role.get("group_id"))
-            normalized_role["parent_group_id"] = normalize_raw_group_id(
-                role.get("parent_group_id")
-            )
             normalized_roles.append(normalized_role)
         raw_roles, raw_role_audit = validate_detection_v5_source_degraded_full_page_roles(
             normalized_roles,
@@ -5173,7 +5095,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                         "relationship": "same_object_view",
                         "evidence_facts": [],
                         "commercial_inseparability": (
-                            "V5.24 full-page Registry exclusive visual partition."
+                            "V5.25 full-page Registry exclusive visual partition."
                         ),
                     })
                     edge["evidence_facts"].append(fact)
@@ -5196,7 +5118,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                 "identity_pages": pages,
                 "estimation_evidence_pages": pages,
                 "visual_group_ids": group_ids,
-                "visual_identity": "V5.24 full-page visual Registry partition",
+                "visual_identity": "V5.25 full-page visual Registry partition",
                 "boundary_basis": " ".join(
                     str(basis["observation"])
                     for basis in partition["visual_basis"]
@@ -5223,12 +5145,12 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
             object_id=None,
             object_name=None,
             model=selected_model,
-            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V524_PROMPT_VERSION,
+            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V525_PROMPT_VERSION,
             response=registry_response,
             started_at=discovery_diagnostics["request_started_at"],
             finished_at=registry_diagnostics["request_finished_at"],
             request_diagnostics={
-                "validation_stage": "v5_24_full_page_registry",
+                "validation_stage": "v5_25_full_page_registry",
                 "source_capability": source_capability,
                 "page_frame_audit": page_frame_audit,
                 "discovery_decision_audit": discovery_payload,
@@ -5243,7 +5165,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
         failure_usage["status"] = "failed"
         failure_usage["error_message"] = str(exc)
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.24 full-page Registry failed validation: {exc}",
+            f"Source-degraded V5.25 full-page Registry failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
 
@@ -5277,7 +5199,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     )
     audit = {
         "operation": "rfq_detection_v5_source_degraded_full_page_registry",
-        "registry_route": "v5_24_source_degraded_overlap_guard",
+        "registry_route": "v5_25_source_degraded_physical_overlap_witness",
         "provider_duration_seconds": round(
             float(discovery_summary.get("duration_seconds") or 0)
             + float(registry_summary.get("duration_seconds") or 0),
@@ -5323,7 +5245,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
         object_id=None,
         object_name=None,
         model=selected_model,
-        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V524_PROMPT_VERSION,
+        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V525_PROMPT_VERSION,
         response=registry_response,
         started_at=discovery_diagnostics["request_started_at"],
         finished_at=registry_diagnostics["request_finished_at"],
@@ -5345,7 +5267,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     })
     return {
         "route": (
-            "v5_24_source_degraded_overlap_guard"
+            "v5_25_source_degraded_physical_overlap_witness"
         ),
         "visual_groups": assembly_groups,
         "discovery_visual_groups": raw_visual_groups,

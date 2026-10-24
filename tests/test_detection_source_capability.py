@@ -241,12 +241,10 @@ def test_full_page_roles_require_one_final_role_per_visual_representation():
         [
             {
                 "group_id": "view-001", "visual_role": "assembly_view",
-                "role_basis": "complete_fabricated_system", "parent_group_id": "",
                 "classification_reason": "Complete independent shelving system with one visible envelope.",
             },
             {
                 "group_id": "view-002", "visual_role": "component_detail",
-                "role_basis": "fragment_of_same_page_assembly", "parent_group_id": "view-001",
                 "classification_reason": "A cropped rail detail without an independent fabricated envelope.",
             },
         ],
@@ -258,27 +256,6 @@ def test_full_page_roles_require_one_final_role_per_visual_representation():
 
     assert roles == {"view-001": "assembly_view", "view-002": "component_detail"}
     assert audit[1]["visual_role"] == "component_detail"
-    assert audit[1]["parent_group_id"] == "view-001"
-
-
-def test_full_page_component_detail_needs_a_valid_detail_basis():
-    visual_groups = [{"group_id": "view-001"}, {"group_id": "view-002"}]
-    with pytest.raises(ValueError, match="detail must cite one same-page assembly parent"):
-        validate_detection_v5_source_degraded_full_page_roles(
-            [
-                {
-                    "group_id": "view-001", "visual_role": "component_detail",
-                    "role_basis": "fragment_of_same_page_assembly", "parent_group_id": "view-002",
-                    "classification_reason": "The view is explicitly only a local cut-away fragment.",
-                },
-                {
-                    "group_id": "view-002", "visual_role": "component_detail",
-                    "role_basis": "isolated_detail_parent_not_shown", "parent_group_id": "",
-                    "classification_reason": "An isolated joint section with visibly cropped continuation.",
-                },
-            ],
-            visual_groups=visual_groups,
-        )
 
 
 def _boundary_group(group_id, left, top, right, bottom):
@@ -307,14 +284,8 @@ def test_source_degraded_boundary_ledger_requires_every_local_pair_to_be_explain
     candidates = build_detection_v5_source_degraded_boundary_candidates(groups)
     assert [candidate["group_ids"] for candidate in candidates] == [
         ["view-001", "view-002"],
-        ["view-001", "view-003"],
-        ["view-002", "view-003"],
     ]
-    assert candidates[0]["reason"] == (
-        "same_page_core_overlap_requires_contour_witness"
-        "+same_page_zero_core_gap_requires_contour_witness"
-    )
-    assert candidates[1]["reason"] == "same_page_local_core_neighbour_requires_contour_witness"
+    assert candidates[0]["reason"] == "same_page_core_overlap_requires_contour_witness"
     assert candidates[0]["boundary_search_bbox"] == {
         "top_left_x": 82, "top_left_y": 77,
         "bottom_right_x": 98, "bottom_right_y": 93,
@@ -335,24 +306,6 @@ def test_source_degraded_boundary_ledger_requires_every_local_pair_to_be_explain
                 "bottom_right_x": 95, "bottom_right_y": 90,
             },
             "observation": "The angled panel visibly continues from the shelf frame without a gap.",
-        }, {
-            "group_ids": ["view-001", "view-003"],
-            "relation": "physically_separate",
-            "boundary_kind": "visible_background_gap",
-            "witness_bbox": {
-                "top_left_x": 160, "top_left_y": 45,
-                "bottom_right_x": 180, "bottom_right_y": 55,
-            },
-            "observation": "A broad visible background gap separates the remote independent drawing.",
-        }, {
-            "group_ids": ["view-002", "view-003"],
-            "relation": "physically_separate",
-            "boundary_kind": "visible_background_gap",
-            "witness_bbox": {
-                "top_left_x": 200, "top_left_y": 80,
-                "bottom_right_x": 220, "bottom_right_y": 90,
-            },
-            "observation": "A visible background gap separates the two independent construction drawings.",
         }],
         candidates=candidates,
     )
@@ -366,7 +319,7 @@ def test_source_degraded_boundary_ledger_requires_every_local_pair_to_be_explain
 def test_source_degraded_boundary_ledger_rejects_semantic_projection_as_a_boundary():
     groups = [
         _boundary_group("view-001", 0, 0, 100, 100),
-        _boundary_group("view-002", 105, 0, 205, 100),
+        _boundary_group("view-002", 80, 0, 180, 100),
     ]
     candidates = build_detection_v5_source_degraded_boundary_candidates(groups)
 
