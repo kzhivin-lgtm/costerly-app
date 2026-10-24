@@ -200,13 +200,7 @@ def build_detection_fusion_candidate_regions(
 def build_detection_fusion_page_profile_audit(
     ocr_package: dict[str, Any] | None,
 ) -> list[dict[str, Any]]:
-    """Expose passive per-page PDF capability data beside Fusion's output.
-
-    V6.1 deliberately does not use profiles to add, remove or change a
-    Candidate Region. The audit reaches the same Fusion operation so later
-    routing can be calibrated against real benchmark documents without
-    changing today's Island or package behaviour.
-    """
+    """Return the bounded, deterministic per-page capability profile."""
     return compact_page_profile_audit(ocr_package)
 
 
@@ -228,6 +222,81 @@ def format_detection_fusion_candidate_regions(
             f"B={bbox['top_left_x']},{bbox['top_left_y']},"
             f"{bbox['bottom_right_x']},{bbox['bottom_right_y']}|"
             f"K={candidate['basis']}|SF={facts}"
+        )
+    return "\n".join(lines)
+
+
+def format_detection_fusion_page_profiles(
+    profiles: list[dict[str, Any]],
+) -> str:
+    """Format the complete bounded PDF capability profile for Registry.
+
+    The profile tells the model what evidence the page makes available. It is
+    deliberately not a candidate-region or object-membership mechanism:
+    XObjects, vector counts, density and extraction status cannot create,
+    move, merge or split an Island by themselves.
+    """
+    if not profiles:
+        return "PAGE CAPABILITY PROFILES: unavailable."
+
+    lines = [
+        "PAGE CAPABILITY PROFILES (deterministic PDF-native evidence, not object claims):",
+        "Use this only to calibrate inspection and confidence. Do not treat a Form XObject, "
+        "image placement, vector count, density or eligible mechanism as an object, an Island "
+        "boundary, or a proof that two Views belong together.",
+        "COORD describes raw native text localization only. It is not the Detection router's "
+        "decision about whether a page has usable object-level coordinate evidence.",
+    ]
+    for profile in profiles:
+        page_number = profile.get("page_number")
+        if not isinstance(page_number, int):
+            continue
+        raw = profile.get("raw_metrics") if isinstance(profile.get("raw_metrics"), dict) else {}
+        rendered = profile.get("rendered_page") if isinstance(profile.get("rendered_page"), dict) else {}
+        page_size = profile.get("page_size_points") if isinstance(profile.get("page_size_points"), dict) else {}
+        sources = profile.get("sources") if isinstance(profile.get("sources"), dict) else {}
+        mechanisms = ",".join(str(value) for value in profile.get("eligible_mechanisms") or []) or "none"
+        vector_count = raw.get("vector_path_count")
+        if vector_count is None:
+            vector_count = raw.get("vector_path_count_estimate")
+        source_parts = []
+        for source_name in ("native_text", "image_xobjects", "form_xobjects", "vector_summary"):
+            source = sources.get(source_name) if isinstance(sources.get(source_name), dict) else {}
+            status = source.get("status", "unavailable")
+            seconds = source.get("seconds")
+            source_parts.append(
+                f"{source_name}:{status}{f'@{seconds}s' if seconds is not None else ''}"
+            )
+        form_inventory = raw.get("form_xobject_inventory")
+        form_detail = (
+            f"|FORMS={form_inventory}"
+            if isinstance(form_inventory, list) and form_inventory
+            else ""
+        )
+        lines.append(
+            f"PP-P{page_number:03d}|REP={profile.get('representation', 'unknown')}|"
+            f"TEXT={profile.get('text_layer', 'unknown')}|"
+            f"ANCHORS={profile.get('structural_anchors', 'unknown')}|"
+            f"COORD={profile.get('coordinate_evidence', 'unknown')}|"
+            f"ELIGIBLE={mechanisms}|"
+            f"SIZE_PT={page_size.get('width', '?')}x{page_size.get('height', '?')}|"
+            f"NATIVE_TEXT={raw.get('native_text_span_count', 0)}|"
+            f"IMAGES={raw.get('image_xobject_placement_count', 0)}/"
+            f"{raw.get('image_info_count', 0)}|"
+            f"IMAGE_AREA={raw.get('image_placement_area_ratio', '?')}|"
+            f"FORMS={raw.get('form_xobject_count', 0)}|"
+            f"VECTOR_PATHS={vector_count if vector_count is not None else '?'}|"
+            f"VECTOR_PRIMITIVES={raw.get('vector_primitive_count', '?')}|"
+            f"VECTOR_BYTES={raw.get('vector_content_stream_bytes', '?')}|"
+            f"VECTOR_STATUS={raw.get('vector_summary_status', 'unknown')}|"
+            f"VECTOR_CLUSTERS={raw.get('vector_cluster_count', '?')}/"
+            f"{raw.get('vector_cluster_status', 'unknown')}|"
+            f"VECTOR_AREA={raw.get('vector_path_area_ratio', '?')}|"
+            f"RENDERED={rendered.get('status', 'unknown')}|"
+            f"OCCUPIED={rendered.get('occupied_area_ratio', '?')}|"
+            f"BACKGROUND={rendered.get('dominant_background_rgb', '?')}|"
+            f"SOURCES={','.join(source_parts)}"
+            f"{form_detail}"
         )
     return "\n".join(lines)
 

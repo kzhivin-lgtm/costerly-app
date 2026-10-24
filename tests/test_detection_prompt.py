@@ -84,5 +84,5 @@ def test_v5_10_11_separates_full_page_discovery_from_membership_review():
     assert "cannot create,\nremove, split, reclassify" in review_prompt
     assert "registry_view:<View ID>" in review_prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v5_10_12_compact_coverage_dimension_halo_min20_fusion_text_recall_temperature_0"
+        "detection_v6_2_page_capability_profile_fusion_handoff_temperature_0"
     )

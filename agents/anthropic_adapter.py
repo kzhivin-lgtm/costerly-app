@@ -51,6 +51,7 @@ from agents.detection_fusion_candidate_regions import (
     build_detection_fusion_page_profile_audit,
     format_detection_candidate_pair_queue,
     format_detection_fusion_candidate_regions,
+    format_detection_fusion_page_profiles,
 )
 from agents.detection_visual_embedding import (
     DetectionVisualEmbeddingUnavailable,
@@ -109,7 +110,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v5_10_12_compact_coverage_dimension_halo_min20_fusion_text_recall_temperature_0"
+    "detection_v6_2_page_capability_profile_fusion_handoff_temperature_0"
 )
 # V5.0 keeps one Haiku call. Registry returns Islands, classifications, and
 # sparse positive semantic facts. Runtime owns every graph and package decision.
@@ -7663,6 +7664,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
         prompt_characters=len(audit_system_prompt),
         context_characters=(
             len(json.dumps(fixed_island_map, ensure_ascii=False))
+            + len(coordinate_context)
             + (len(native_graphic_embedding_context) if native_graphic_anchor_route else 0)
         ),
         image_count=len(page_images),
@@ -8258,11 +8260,15 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     fusion_candidate_region_text = format_detection_fusion_candidate_regions(
         candidate_regions
     )
+    fusion_page_profile_text = format_detection_fusion_page_profiles(
+        fusion_page_profiles
+    )
     page_evidence_inventory_text = format_detection_page_evidence_inventory(source_facts)
     proposal_user_text = build_detection_user_text(
         file_name=file_name, company_id=company_id, ocr_package=None,
     ).replace("OCR text layer: unavailable", page_evidence_inventory_text)
     proposal_user_text += "\n\n" + fusion_candidate_region_text
+    proposal_user_text += "\n\n" + fusion_page_profile_text
     proposal_user_text += "\n\n" + format_detection_candidate_pair_queue(
         candidate_pair_queue, candidate_dimension_baskets,
     )
@@ -8363,6 +8369,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         visual_groups=proposal_for_review["visual_groups"], source_facts=source_facts,
         draft_hypotheses=[],
     )
+    review_handoff += "\n\n" + fusion_page_profile_text
     review_content = build_detection_v5_membership_content_blocks(
         user_text=review_handoff, view_crops=membership_crops,
         page_context_images=review_page_context_images,
@@ -8431,6 +8438,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v5_9_registry_visual_source_count": len(registry_visual_sources),
         "page_evidence_inventory_characters": len(page_evidence_inventory_text),
         "fusion_candidate_region_characters": len(fusion_candidate_region_text),
+        "fusion_page_profile_characters": len(fusion_page_profile_text),
         "candidate_pair_queue_characters": len(format_detection_candidate_pair_queue(candidate_pair_queue, candidate_dimension_baskets)),
         "document_unit_profile_characters": len(format_detection_document_dimension_unit_profile(document_dimension_unit_profile)),
         "fusion_candidate_region_count": len(candidate_regions),

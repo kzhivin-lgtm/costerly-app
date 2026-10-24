@@ -780,7 +780,27 @@ Do not alter the Dockerfile or Detection contract for this configuration-only
 issue. The next deployment must still verify its own healthcheck and DINO
 availability during a Detection run.
 
-ACTIVE IMPLEMENTATION, P1, V6.1, USER DIRECTION, Detection document pre-analysis:
+CHECKPOINT, V6.1, Detection document pre-analysis: the passive, page-level
+technical profile is implemented and deployed. It records what each rendered
+PDF page can provide deterministically, but does not change active Detection.
+The profile is persisted in OCR evidence and Fusion diagnostics only. Page23
+retained the protected three objects; HSL retained 10 final objects.
+
+ACTIVE IMPLEMENTATION, P1, V6.2, USER DIRECTION, expanded Fusion handoff:
+pass every page's bounded PDF capability profile to the ordinary Fusion
+handoff only: the full-page Proposal and fixed-Island Membership Review.
+Do not change the source-degraded Island/audit route, router or model choice.
+The model receives representation,
+text/anchor/coordinate capability, eligible mechanisms, page dimensions,
+native image/Form/vector inventory, rendered coverage, extraction status and
+timings. It must treat those data as page-level inspection context only, never
+as an object claim, Island boundary, merge proof or bbox. Retain the V6.1
+parallel extraction path, Mistral contract, router, candidate-region builder,
+embedding rules, deterministic graph and package validation. Record prompt
+characters and compare Page23, HSL and Adda outcomes, Island maps, packages,
+reasoning, cost and duration against V6.1 before accepting a new checkpoint.
+
+SUPERSEDED IMPLEMENTATION, P1, V6.1, USER DIRECTION, Detection document pre-analysis:
 define a non-decisive,
 page-level technical profile that records what each rendered PDF page can
 provide deterministically. It must report native text availability and quality,
