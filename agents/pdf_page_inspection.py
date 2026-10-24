@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections import Counter
 from copy import deepcopy
+from dataclasses import dataclass
 from io import BytesIO
 import multiprocessing
 import re
@@ -510,10 +511,47 @@ def _isolated_native_page_inspection_worker(
         connection.close()
 
 
-def inspect_native_pdf_pages_isolated(
+def _failed_isolated_inspection(error: str) -> dict[str, Any]:
+    return {
+        "sources": {"status": "failed", "error": error},
+        "text_blocks": [], "graphic_regions": [], "page_profiles": [],
+    }
+
+
+@dataclass
+class NativePdfPageInspectionJob:
+    """An already-started isolated PDF traversal.
+
+    The child owns PyMuPDF's vector traversal. The parent can render and send
+    pages to OCR while this work is in flight, then collect one bounded result.
+    """
+
+    process: Any
+    receive: Any
+
+    def collect(self, *, timeout_seconds: float = 45.0) -> dict[str, Any]:
+        try:
+            if not self.receive.poll(timeout_seconds):
+                self.process.terminate()
+                return _failed_isolated_inspection("inspection timeout")
+            try:
+                status, payload = self.receive.recv()
+            except EOFError:
+                return _failed_isolated_inspection(
+                    "inspection worker exited without a result",
+                )
+        finally:
+            self.receive.close()
+            self.process.join(timeout=2)
+        if status == "ok":
+            return payload
+        return _failed_isolated_inspection(str(payload))
+
+
+def start_native_pdf_pages_isolated(
     file_bytes: bytes, *, dpi: int,
-) -> dict[str, Any]:
-    """Contain PyMuPDF vector parsing away from threaded page rendering."""
+) -> NativePdfPageInspectionJob:
+    """Start a PyMuPDF inspection before renderer threads are created."""
     context = multiprocessing.get_context("fork")
     receive, send = context.Pipe(duplex=False)
     process = context.Process(
@@ -522,25 +560,11 @@ def inspect_native_pdf_pages_isolated(
     )
     process.start()
     send.close()
-    try:
-        if not receive.poll(45):
-            process.terminate()
-            return {"sources": {"status": "failed", "error": "inspection timeout"},
-                    "text_blocks": [], "graphic_regions": [], "page_profiles": []}
-        try:
-            status, payload = receive.recv()
-        except EOFError:
-            return {
-                "sources": {
-                    "status": "failed",
-                    "error": "inspection worker exited without a result",
-                },
-                "text_blocks": [], "graphic_regions": [], "page_profiles": [],
-            }
-    finally:
-        receive.close()
-        process.join(timeout=2)
-    if status == "ok":
-        return payload
-    return {"sources": {"status": "failed", "error": str(payload)},
-            "text_blocks": [], "graphic_regions": [], "page_profiles": []}
+    return NativePdfPageInspectionJob(process=process, receive=receive)
+
+
+def inspect_native_pdf_pages_isolated(
+    file_bytes: bytes, *, dpi: int,
+) -> dict[str, Any]:
+    """Contain PyMuPDF vector parsing away from threaded page rendering."""
+    return start_native_pdf_pages_isolated(file_bytes, dpi=dpi).collect()

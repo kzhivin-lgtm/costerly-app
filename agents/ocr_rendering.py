@@ -27,6 +27,7 @@ from agents.pdf_page_inspection import (
     PDF_PAGE_INSPECTION_CONTRACT_VERSION,
     inspect_native_pdf_pages_isolated,
     measure_rendered_page_visual_coverage,
+    start_native_pdf_pages_isolated,
 )
 
 
@@ -471,16 +472,40 @@ def run_mistral_document_evidence_ocr(
         native_text_extractor is not None or native_graphic_extractor is not None
     )
     preflight_native_inspection: dict[str, Any] | None = None
+    native_inspection_future = None
+    native_inspection_executor = None
     preflight_native_embedding_preload: dict[str, Any] = {"status": "not_requested"}
     if not use_legacy_native_extractors:
-        # Complete the PyMuPDF pass before the threaded page renderer starts.
-        # Large vector PDFs can otherwise terminate the process when a second
-        # document traversal follows or overlaps that renderer's lifecycle.
+        # Start the isolated traversal before the renderer creates threads.
+        # The child can parse heavy vector content while the parent renders and
+        # sends pages to OCR, so passive profiling stays off the critical path.
         try:
-            preflight_native_inspection = native_page_inspector(file_bytes, dpi=dpi)
-            preflight_native_embedding_preload = native_embedding_preloader(
-                list(preflight_native_inspection.get("graphic_regions") or [])
-            )
+            if native_page_inspector is inspect_native_pdf_pages_isolated:
+                inspection_job = start_native_pdf_pages_isolated(file_bytes, dpi=dpi)
+
+                def collect_inspection_and_preload() -> tuple[dict[str, Any], dict[str, Any]]:
+                    inspection = inspection_job.collect()
+                    try:
+                        preload = native_embedding_preloader(
+                            list(inspection.get("graphic_regions") or [])
+                        )
+                    except Exception as exc:  # pragma: no cover - optional warm-up
+                        preload = {"status": "failed", "reason": str(exc)}
+                    return inspection, preload
+
+                native_inspection_executor = ThreadPoolExecutor(max_workers=1)
+                native_inspection_future = native_inspection_executor.submit(
+                    collect_inspection_and_preload,
+                )
+            else:
+                # An injected test or experimental inspector keeps its simple,
+                # synchronous contract rather than requiring a process handle.
+                inspection = native_page_inspector(file_bytes, dpi=dpi)
+                preflight_native_embedding_preload = native_embedding_preloader(
+                    list(inspection.get("graphic_regions") or [])
+                )
+                native_inspection_future = None
+                preflight_native_inspection = inspection
         except Exception as exc:
             preflight_native_inspection = {
                 "contract_version": PDF_PAGE_INSPECTION_CONTRACT_VERSION,
@@ -643,8 +668,13 @@ def run_mistral_document_evidence_ocr(
                 native_graphic_error = str(exc)
         else:
             try:
-                native_inspection = dict(preflight_native_inspection or {})
-                native_embedding_preload = preflight_native_embedding_preload
+                if native_inspection_future is not None:
+                    native_inspection, native_embedding_preload = (
+                        native_inspection_future.result()
+                    )
+                else:
+                    native_inspection = dict(preflight_native_inspection or {})
+                    native_embedding_preload = preflight_native_embedding_preload
             except Exception as exc:
                 native_inspection = {
                     "contract_version": PDF_PAGE_INSPECTION_CONTRACT_VERSION,
@@ -667,6 +697,8 @@ def run_mistral_document_evidence_ocr(
     finally:
         if native_executor is not None:
             native_executor.shutdown(wait=True)
+        if native_inspection_executor is not None:
+            native_inspection_executor.shutdown(wait=True)
     page_profiles = []
     for profile in native_inspection.get("page_profiles") or []:
         if not isinstance(profile, dict):
