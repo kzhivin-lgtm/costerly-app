@@ -310,7 +310,10 @@ def test_source_degraded_boundary_ledger_requires_every_local_pair_to_be_explain
         ["view-001", "view-003"],
         ["view-002", "view-003"],
     ]
-    assert candidates[0]["reason"] == "same_page_zero_core_gap_requires_contour_witness"
+    assert candidates[0]["reason"] == (
+        "same_page_core_overlap_requires_contour_witness"
+        "+same_page_zero_core_gap_requires_contour_witness"
+    )
     assert candidates[1]["reason"] == "same_page_local_core_neighbour_requires_contour_witness"
     assert candidates[0]["boundary_search_bbox"] == {
         "top_left_x": 82, "top_left_y": 77,
@@ -470,6 +473,28 @@ def test_source_degraded_boundary_ledger_unions_only_attested_continuity_before_
     assert [group["group_id"] for group in effective] == ["view-001", "view-003"]
     assert effective[0]["source_group_ids"] == ["view-001", "view-002"]
     assert audit[0]["canonical_group_id"] == "view-001"
+
+
+def test_source_degraded_boundary_queue_always_includes_historical_shelf_overlap():
+    # Page23's V5.21 failure split a shelf and its attached angled panel into
+    # these overlapping cores. The pair must stay mandatory even if each core
+    # has nearer or equally near neighbours elsewhere on the page.
+    groups = [
+        _boundary_group("view-001", 80, 30, 500, 360),
+        _boundary_group("view-002", 560, 40, 1150, 360),
+        _boundary_group("view-003", 90, 300, 500, 500),
+        _boundary_group("view-004", 85, 510, 500, 730),
+        _boundary_group("view-005", 570, 410, 1150, 730),
+    ]
+
+    candidates = build_detection_v5_source_degraded_boundary_candidates(groups)
+    shelf_panel = next(
+        candidate for candidate in candidates
+        if candidate["group_ids"] == ["view-001", "view-003"]
+    )
+
+    assert shelf_panel["core_distance_px"] == 0.0
+    assert "same_page_core_overlap_requires_contour_witness" in shelf_panel["reason"]
 
 
 def test_visual_only_partition_requires_exact_coverage_and_connected_visual_tree():

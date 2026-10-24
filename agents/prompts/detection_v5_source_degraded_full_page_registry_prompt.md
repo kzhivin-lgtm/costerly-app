@@ -1,4 +1,4 @@
-# DETECTION V5.23 - SOURCE-DEGRADED FULL-PAGE VISUAL REGISTRY
+# DETECTION V5.24 - SOURCE-DEGRADED FULL-PAGE VISUAL REGISTRY
 
 The input contains complete rendered pages and an advisory visual representation
 map. The map is navigation only. It may split one depiction, omit document

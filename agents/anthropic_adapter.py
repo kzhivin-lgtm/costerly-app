@@ -130,8 +130,8 @@ DETECTION_V5_SOURCE_DEGRADED_V519_PROMPT_VERSION = (
 DETECTION_V5_SOURCE_DEGRADED_V521_PROMPT_VERSION = (
     "detection_v5_21_source_degraded_required_boundary_ledger_v1"
 )
-DETECTION_V5_SOURCE_DEGRADED_V523_PROMPT_VERSION = (
-    "detection_v5_23_source_degraded_role_evidence_v1"
+DETECTION_V5_SOURCE_DEGRADED_V524_PROMPT_VERSION = (
+    "detection_v5_24_source_degraded_overlap_guard_v1"
 )
 DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_CROP_MAX_SIDE = 1024
 # Registry has already locked object identity, quantity and ordering before this
@@ -3128,11 +3128,12 @@ def build_detection_v5_source_degraded_boundary_candidates(
 ) -> list[dict[str, Any]]:
     """Select bounded same-page contour neighbours for mandatory review.
 
-    Core-envelope overlap catches only one layout shape. A physically connected
-    non-rectangular drawing can have adjacent, non-overlapping core envelopes.
-    The two nearest same-page cores for each representation are therefore also
-    review candidates. This is a local contour queue, not a merge rule and not
-    a whole-page all-to-all comparison.
+    Every same-page core overlap is mandatory because a split physical drawing
+    can otherwise be silently discarded by a nearest-neighbour cap. A physically
+    connected non-rectangular drawing can also have adjacent, non-overlapping
+    cores, so the two nearest same-page cores for each representation are added
+    as well. This is a local contour queue, not a merge rule and not a
+    whole-page all-to-all comparison.
     """
     groups_by_page: dict[int, list[tuple[str, dict[str, int]]]] = {}
     for group in visual_groups:
@@ -3153,6 +3154,16 @@ def build_detection_v5_source_degraded_boundary_candidates(
         for group_id, bbox in groups
     }
     for page_number, groups in groups_by_page.items():
+        for index, (group_id, bbox) in enumerate(groups):
+            for other_group_id, other_bbox in groups[index + 1:]:
+                if not _bbox_overlaps(bbox, other_bbox):
+                    continue
+                left_id, right_id = sorted((group_id, other_group_id))
+                key = (page_number, left_id, right_id)
+                candidate_distances[key] = 0.0
+                candidate_reasons.setdefault(key, set()).add(
+                    "same_page_core_overlap_requires_contour_witness"
+                )
         for group_id, bbox in groups:
             nearest = sorted(
                 (
@@ -4815,7 +4826,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     post_discovery_view_crops: bool = False,
     component_only_partition_repair: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Run V5.23's full-page partition with role-basis validation.
+    """Run V5.24's full-page partition with overlap-safe contour review.
 
     Discovery is deliberately only a navigational visual map.  Review receives
     the complete pages again and owns roles plus the exclusive object partition.
@@ -4917,14 +4928,14 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
             raise ValueError("source-degraded Discovery found no visual representation")
     except (json.JSONDecodeError, KeyError, ValueError, DetectionRegistrySchemaError) as exc:
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.23 Discovery failed validation: {exc}",
+            f"Source-degraded V5.24 Discovery failed validation: {exc}",
             usage_event={
                 "agent_name": "detection",
                 "operation": "rfq_detection_v5_source_degraded_full_page_registry",
                 "file_name": file_name,
                 "company_id": company_id,
                 "status": "failed",
-                "validation_stage": "v5_23_discovery",
+                "validation_stage": "v5_24_discovery",
                 "source_capability": source_capability,
                 "error_message": str(exc),
             },
@@ -5162,7 +5173,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                         "relationship": "same_object_view",
                         "evidence_facts": [],
                         "commercial_inseparability": (
-                            "V5.23 full-page Registry exclusive visual partition."
+                            "V5.24 full-page Registry exclusive visual partition."
                         ),
                     })
                     edge["evidence_facts"].append(fact)
@@ -5185,7 +5196,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                 "identity_pages": pages,
                 "estimation_evidence_pages": pages,
                 "visual_group_ids": group_ids,
-                "visual_identity": "V5.23 full-page visual Registry partition",
+                "visual_identity": "V5.24 full-page visual Registry partition",
                 "boundary_basis": " ".join(
                     str(basis["observation"])
                     for basis in partition["visual_basis"]
@@ -5212,12 +5223,12 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
             object_id=None,
             object_name=None,
             model=selected_model,
-            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V523_PROMPT_VERSION,
+            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V524_PROMPT_VERSION,
             response=registry_response,
             started_at=discovery_diagnostics["request_started_at"],
             finished_at=registry_diagnostics["request_finished_at"],
             request_diagnostics={
-                "validation_stage": "v5_23_full_page_registry",
+                "validation_stage": "v5_24_full_page_registry",
                 "source_capability": source_capability,
                 "page_frame_audit": page_frame_audit,
                 "discovery_decision_audit": discovery_payload,
@@ -5232,7 +5243,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
         failure_usage["status"] = "failed"
         failure_usage["error_message"] = str(exc)
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.23 full-page Registry failed validation: {exc}",
+            f"Source-degraded V5.24 full-page Registry failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
 
@@ -5266,7 +5277,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     )
     audit = {
         "operation": "rfq_detection_v5_source_degraded_full_page_registry",
-        "registry_route": "v5_23_source_degraded_role_evidence",
+        "registry_route": "v5_24_source_degraded_overlap_guard",
         "provider_duration_seconds": round(
             float(discovery_summary.get("duration_seconds") or 0)
             + float(registry_summary.get("duration_seconds") or 0),
@@ -5312,7 +5323,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
         object_id=None,
         object_name=None,
         model=selected_model,
-        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V523_PROMPT_VERSION,
+        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V524_PROMPT_VERSION,
         response=registry_response,
         started_at=discovery_diagnostics["request_started_at"],
         finished_at=registry_diagnostics["request_finished_at"],
@@ -5334,7 +5345,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     })
     return {
         "route": (
-            "v5_23_source_degraded_role_evidence"
+            "v5_24_source_degraded_overlap_guard"
         ),
         "visual_groups": assembly_groups,
         "discovery_visual_groups": raw_visual_groups,

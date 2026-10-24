@@ -505,7 +505,7 @@ the shelving frame to its attached angled panel with a witness or expose a
 failed witness in the audit. Record candidate count, witness coordinates,
 pixel audit, roles, partitions, time and cost before broader testing.
 
-ACTIVE EXPERIMENT, P0, V5.23 source-degraded role evidence: retain V5.22's
+SUPERSEDED EXPERIMENT, P0, V5.23 source-degraded role evidence: retain V5.22's
 two full-page calls, no pre-Discovery crop and local contour audit. Change
 only the final role contract. Every `assembly_view` must assert a complete
 fabricated system, which can be a complete 2D elevation rather than a 3D
@@ -517,6 +517,18 @@ Page23 must preserve a single shelving island, retain the door elevation as
 an assembly, retain panel-only detail as supporting evidence, and merge the
 two console projections only through a valid object basis. This is not a
 Dimension Engine, ordinary V5, segmentation, crop or naming change.
+
+ACTIVE EXPERIMENT, P0, V5.24 source-degraded overlap guard: retain V5.23's
+role-evidence contract and V5.22's local contour witness. Make every
+same-page overlapping core pair mandatory for contour review before applying
+the bounded nearest-neighbour queue. This records the proven Page23 shelf
+failure where an attached angled panel overlapped the shelving core and V5.21
+accepted `independent_projection` without a physical separator. The overlap
+guard never merges views itself. Registry must still return a local physical
+witness and deterministic code must still accept only pixel-consistent
+continuity. Regression fixture: the historical V5.21 Page23 V1/V3 boxes must
+always enter the contour queue. This changes neither role semantics, object
+merge, crops, Dimension Engine nor ordinary V5.
 
 DEFERRED, P1, USER REQUEST, Detection Processing provider-outage handling:
 when Mistral OCR is unavailable, exhausted, rate-limited, or times out, the
