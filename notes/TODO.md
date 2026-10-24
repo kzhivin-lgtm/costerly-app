@@ -560,20 +560,39 @@ Review then used that context to falsely merge independent systems. Reject
 static, candidate or pair crops before final inventory. Do not reuse V5.27's
 crop-selection logic, but retain its telemetry as historical evidence.
 
-ACTIVE EXPERIMENT, P0, V5.28 source-degraded direct inventory and independent
-audit: ordinary V5, Fusion, deterministic Dimensions and the source-degraded
-gate remain unchanged. First Haiku call inspects full 200 dpi pages only and
-returns a direct visual inventory, explicit same-page ownership for every
-component detail, and an exclusive product partition. The second Haiku call
-gets the same full pages and the first response only as advisory text. It must
-reinspect the page and may rebuild groups, roles and partitions from scratch.
-No pre-Discovery, candidate, pair or union crops are supplied. Runtime rejects
-an unowned detail, a cross-page detail owner, missing role coverage or an
-incomplete assembly partition, and records both decision ledgers, inputs,
-tokens, cost and duration. First quality gate is five fresh Page23 runs: shelf,
-doors and two console projections must form exactly three objects without a
-validation failure. Then test source-degraded regressions only. This is not a
-general V5 change.
+FAILED QUALITY GATE, P0, V5.28 source-degraded direct inventory and
+independent audit: four audited Page23 runs completed without crops or
+validation errors, but all returned four final packages instead of shelf,
+doors and the two console views as exactly three. Three runs were effectively
+identical, with four assembly views and no positive relation edge at all. The
+fourth made the angled shelving panel a same-page component of the shelf, but
+still left both console views as separate objects. In every run the second
+full-page call copied the first call's groups, roles and singleton partitions
+rather than independently rebuilding the map. Its claimed console distinction
+was vague "different component configuration and detailed labeling", not
+concrete separation evidence. The owner constraint prevented an unowned
+detail but did not establish physical continuity. Reject V5.28 as a quality
+route. Do not tune its wording or re-run it. Its measured average is $0.02341
+and 28.34 provider seconds per Page23 call pair. Ordinary V5, Fusion,
+deterministic Dimensions and the source-degraded gate remain unchanged.
+
+ACTIVE EXPERIMENT, P0, V5.29 source-degraded fixed-Island pairwise audit:
+replace V5.28's duplicated direct inventory/partition decisions with two
+separate full-page Haiku roles. The first call returns only a neutral,
+continuous visual Island map and page coverage. The second call receives that
+fixed map as navigation, cannot alter Islands, assigns roles, and must decide
+every same-page assembly pair as `same_object`, `different_object` or
+`inconclusive` before producing partitions. Only concrete positive
+same-object facts create graph edges. A different-object decision requires a
+concrete physical, dimensional or author-declared separation, not generic
+material, frame, colour, position or configuration prose. Deterministic code
+requires partitions to equal the connected components of those same-object
+edges. No crops, no Sonnet, no change to ordinary V5, Fusion, source
+capability routing or deterministic Dimensions. First gate: Page23 must retain
+the fixed Island map, persist the complete pair ledger and form its three
+commercial objects only through ledger evidence. Record both responses,
+roles, all pair decisions, graph edges, partitions, token/cost/time and
+validation failures before expanding the benchmark.
 
 DEFERRED, P1, USER REQUEST, Detection Processing provider-outage handling:
 when Mistral OCR is unavailable, exhausted, rate-limited, or times out, the

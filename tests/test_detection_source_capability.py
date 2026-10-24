@@ -4,12 +4,14 @@ import pytest
 
 from agents.anthropic_adapter import (
     _compile_detection_v5_source_degraded_direct_registry_payload,
+    _compile_detection_v5_source_degraded_pairwise_registry_payload,
     _compile_detection_v516_v561_consensus,
     _match_detection_v516_v561_object_groups,
     _normalize_source_degraded_registry_view_ids,
     build_detection_v5_source_degraded_boundary_candidates,
     consolidate_detection_v5_source_degraded_continuity_groups,
     validate_detection_v5_source_degraded_direct_roles,
+    validate_detection_v5_source_degraded_pair_ledger,
     validate_detection_v5_source_degraded_full_page_roles,
     validate_detection_v5_source_degraded_boundary_assessments,
     validate_detection_v5_source_degraded_role_resolutions,
@@ -312,6 +314,194 @@ def test_direct_roles_reject_a_detail_without_a_same_page_assembly_owner():
                 {"group_id": "view-002", "page_number": 1},
             ],
         )
+
+
+def test_pair_ledger_requires_every_same_page_assembly_pair():
+    groups = [
+        {"group_id": "view-001", "page_number": 1},
+        {"group_id": "view-002", "page_number": 1},
+        {"group_id": "view-003", "page_number": 1},
+    ]
+    roles = {
+        "view-001": "assembly_view",
+        "view-002": "assembly_view",
+        "view-003": "assembly_view",
+    }
+    complete_ledger = [
+        {
+            "group_id_a": "view-001", "group_id_b": "view-002",
+            "relation": "same_object", "evidence_type": "alternate_projection",
+            "separation_kind": "none",
+            "observation": "Both drawings show the same finished console from distinct projections.",
+        },
+        {
+            "group_id_a": "view-001", "group_id_b": "view-003",
+            "relation": "different_object", "evidence_type": "none",
+            "separation_kind": "different_finished_envelope",
+            "observation": "One complete console and one separate enclosed shelving assembly are shown.",
+        },
+        {
+            "group_id_a": "view-002", "group_id_b": "view-003",
+            "relation": "different_object", "evidence_type": "none",
+            "separation_kind": "different_finished_envelope",
+            "observation": "The alternate console view and the separate shelving assembly have distinct envelopes.",
+        },
+    ]
+
+    ledger = validate_detection_v5_source_degraded_pair_ledger(
+        complete_ledger,
+        visual_groups=groups,
+        roles_by_id=roles,
+    )
+
+    assert [(row["group_id_a"], row["group_id_b"]) for row in ledger] == [
+        ("view-001", "view-002"),
+        ("view-001", "view-003"),
+        ("view-002", "view-003"),
+    ]
+    with pytest.raises(ValueError, match="must decide every same-page assembly pair"):
+        validate_detection_v5_source_degraded_pair_ledger(
+            complete_ledger[:-1],
+            visual_groups=groups,
+            roles_by_id=roles,
+        )
+
+
+def test_pair_ledger_rejects_generic_different_object_reasoning():
+    with pytest.raises(ValueError, match="different-object ledger evidence is invalid"):
+        validate_detection_v5_source_degraded_pair_ledger(
+            [{
+                "group_id_a": "view-001", "group_id_b": "view-002",
+                "relation": "different_object", "evidence_type": "none",
+                "separation_kind": "physical_separation",
+                "observation": "Different configuration and detailed labeling make the views unrelated.",
+            }],
+            visual_groups=[
+                {"group_id": "view-001", "page_number": 1},
+                {"group_id": "view-002", "page_number": 1},
+            ],
+            roles_by_id={
+                "view-001": "assembly_view",
+                "view-002": "assembly_view",
+            },
+        )
+
+
+def test_pairwise_audit_compiles_partitions_from_same_object_edges_only():
+    raw_groups = [
+        {
+            "group_id": "draft-console-front", "page_number": 1,
+            "location_hint": "lower left", "visual_description": "Complete console front elevation.",
+            "representation_kind": "technical assembly",
+            "bbox": {
+                "top_left_x": 10, "top_left_y": 10,
+                "bottom_right_x": 200, "bottom_right_y": 200,
+            },
+            "core_bbox": {
+                "top_left_x": 10, "top_left_y": 10,
+                "bottom_right_x": 200, "bottom_right_y": 200,
+            },
+        },
+        {
+            "group_id": "draft-console-perspective", "page_number": 1,
+            "location_hint": "lower right", "visual_description": "Complete console perspective.",
+            "representation_kind": "technical assembly",
+            "bbox": {
+                "top_left_x": 210, "top_left_y": 10,
+                "bottom_right_x": 400, "bottom_right_y": 200,
+            },
+            "core_bbox": {
+                "top_left_x": 210, "top_left_y": 10,
+                "bottom_right_x": 400, "bottom_right_y": 200,
+            },
+        },
+        {
+            "group_id": "draft-shelf", "page_number": 1,
+            "location_hint": "upper left", "visual_description": "Complete shelving assembly.",
+            "representation_kind": "technical assembly",
+            "bbox": {
+                "top_left_x": 10, "top_left_y": 210,
+                "bottom_right_x": 200, "bottom_right_y": 400,
+            },
+            "core_bbox": {
+                "top_left_x": 10, "top_left_y": 210,
+                "bottom_right_x": 200, "bottom_right_y": 400,
+            },
+        },
+    ]
+    compiled = _compile_detection_v5_source_degraded_pairwise_registry_payload(
+        {
+            "roles": [
+                {
+                    "group_id": "view-001", "visual_role": "assembly_view",
+                    "owner_group_id": "",
+                    "classification_reason": "Complete finished console front elevation.",
+                },
+                {
+                    "group_id": "view-002", "visual_role": "assembly_view",
+                    "owner_group_id": "",
+                    "classification_reason": "Complete perspective representation of the finished console.",
+                },
+                {
+                    "group_id": "view-003", "visual_role": "assembly_view",
+                    "owner_group_id": "",
+                    "classification_reason": "Complete independent shelving fabrication envelope.",
+                },
+            ],
+            "pair_ledger": [
+                {
+                    "group_id_a": "view-001", "group_id_b": "view-002",
+                    "relation": "same_object", "evidence_type": "alternate_projection",
+                    "separation_kind": "none",
+                    "observation": "Both views show the same finished console through front and perspective projections.",
+                },
+                {
+                    "group_id_a": "view-001", "group_id_b": "view-003",
+                    "relation": "different_object", "evidence_type": "none",
+                    "separation_kind": "different_finished_envelope",
+                    "observation": "The console and shelving are separately finished fabricated envelopes.",
+                },
+                {
+                    "group_id_a": "view-002", "group_id_b": "view-003",
+                    "relation": "different_object", "evidence_type": "none",
+                    "separation_kind": "different_finished_envelope",
+                    "observation": "The console perspective and shelving are separately finished fabricated envelopes.",
+                },
+            ],
+            "partitions": [
+                {
+                    "group_ids": ["view-001", "view-002"],
+                    "visual_basis": [{
+                        "evidence_type": "alternate_projection",
+                        "view_ids": ["view-001", "view-002"],
+                        "observation": "Both views show the same finished console through front and perspective projections.",
+                    }],
+                },
+                {
+                    "group_ids": ["view-003"],
+                    "visual_basis": [{
+                        "evidence_type": "complete_physical_envelope",
+                        "view_ids": ["view-003"],
+                        "observation": "Complete independent shelving fabrication envelope.",
+                    }],
+                },
+            ],
+        },
+        raw_visual_groups=raw_groups,
+        raw_page_coverage=[{
+            "page_number": 1,
+            "visual_group_ids": [
+                "draft-console-front", "draft-console-perspective", "draft-shelf",
+            ],
+        }],
+        page_count=1,
+        page_frames={1: {"width": 500, "height": 500}},
+    )
+
+    assert [item["visual_group_ids"] for item in compiled["registry"]["objects"]] == [
+        ["view-001", "view-002"], ["view-003"],
+    ]
+    assert len(compiled["positive_relation_edges"]) == 1
 
 
 def test_direct_inventory_compiles_only_the_final_audited_partition():
