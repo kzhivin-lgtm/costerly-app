@@ -1658,9 +1658,10 @@ def build_detection_v5_review_coordinate_frames(
     """Map Fusion's OCR pixel frame onto the smaller Registry review images.
 
     Fusion facts, Candidate Regions and Registry bboxes use the Mistral-rendered
-    page frame (normally 200 dpi). Registry pages are deliberately rendered at
-    96 dpi to bound provider input. Review crops and overlays must transform
-    bboxes between those frames rather than treating the coordinates as equal.
+    page frame (normally 200 dpi). Registry pages now request the same 200-DPI
+    frame, but actual dimensions can still differ because renderers cap the
+    longest page side. Review crops and overlays must retain the measured
+    transform rather than assume coordinates are equal.
     """
     try:
         from PIL import Image
