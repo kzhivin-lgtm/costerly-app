@@ -10,6 +10,7 @@ from agents.anthropic_adapter import (
     _match_detection_v516_v561_object_groups,
     _normalize_source_degraded_registry_view_ids,
     build_detection_v5_source_degraded_boundary_candidates,
+    complete_detection_v5_source_degraded_missing_pair_ledger_rows,
     consolidate_detection_v5_source_degraded_continuity_groups,
     resolve_detection_v5_source_degraded_pairwise_roles,
     validate_detection_v5_source_degraded_direct_roles,
@@ -435,6 +436,49 @@ def test_pair_ledger_requires_every_same_page_technical_pair():
                 "view-003": "assembly_view",
             },
         )
+
+
+def test_pair_ledger_completion_records_only_an_inconclusive_missing_pair():
+    groups = [
+        {"group_id": "view-001", "page_number": 1},
+        {"group_id": "view-002", "page_number": 1},
+    ]
+    completed, completion_audit = (
+        complete_detection_v5_source_degraded_missing_pair_ledger_rows(
+            [],
+            visual_groups=groups,
+            roles_by_id={
+                "view-001": "assembly_view",
+                "view-002": "assembly_view",
+            },
+        )
+    )
+
+    assert completion_audit == [{
+        "group_id_a": "view-001",
+        "group_id_b": "view-002",
+        "repair": "runtime_completed_missing_pair_ledger_row",
+        "reason": "provider_omitted_required_pair_decision",
+    }]
+    assert validate_detection_v5_source_degraded_pair_ledger(
+        completed,
+        visual_groups=groups,
+        roles_by_id={
+            "view-001": "assembly_view",
+            "view-002": "assembly_view",
+        },
+    ) == [{
+        "group_id_a": "view-001",
+        "group_id_b": "view-002",
+        "relation": "inconclusive",
+        "evidence_type": "none",
+        "separation_kind": "insufficient_visual_evidence",
+        "observation": (
+            "Provider omitted this required pair decision; runtime supplies no "
+            "identity or separation claim."
+        ),
+        "identity_witnesses": [],
+    }]
 
 
 def test_pair_ledger_rejects_generic_different_object_reasoning():

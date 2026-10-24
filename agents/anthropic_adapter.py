@@ -153,6 +153,9 @@ DETECTION_V5_SOURCE_DEGRADED_V529_PROMPT_VERSION = (
 DETECTION_V5_SOURCE_DEGRADED_V532_PROMPT_VERSION = (
     "detection_v5_32_source_degraded_pairwise_structural_admission_audit_v1"
 )
+DETECTION_V5_SOURCE_DEGRADED_V5321_PROMPT_VERSION = (
+    "detection_v5_32_1_source_degraded_pairwise_structural_admission_audit_v1"
+)
 DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_CROP_MAX_SIDE = 1024
 DETECTION_V5_SOURCE_DEGRADED_CONTEXT_PAIR_MAX_DISTANCE_PX = 32
 DETECTION_V5_SOURCE_DEGRADED_CONTEXT_PAIR_MAX_PER_PAGE = 8
@@ -3243,13 +3246,12 @@ def validate_detection_v5_source_degraded_direct_roles(
     return roles_by_id, owner_by_detail_id, audit
 
 
-def validate_detection_v5_source_degraded_pair_ledger(
-    ledger: object,
+def _detection_v5_source_degraded_expected_technical_pairs(
     *,
     visual_groups: list[dict[str, Any]],
     roles_by_id: dict[str, str],
-) -> list[dict[str, Any]]:
-    """Require one explicit same-page decision for every technical pair."""
+) -> set[tuple[str, str]]:
+    """Return every unordered same-page pair that the model must audit."""
     groups_by_id = {
         str(group.get("group_id") or ""): group
         for group in visual_groups
@@ -3260,11 +3262,75 @@ def validate_detection_v5_source_degraded_pair_ledger(
         if role in {"assembly_view", "component_detail"}
         and group_id in groups_by_id
     }
-    expected_pairs = {
+    return {
         tuple(sorted((left, right)))
         for left, right in combinations(sorted(technical_ids), 2)
         if groups_by_id[left].get("page_number") == groups_by_id[right].get("page_number")
     }
+
+
+def complete_detection_v5_source_degraded_missing_pair_ledger_rows(
+    ledger: object,
+    *,
+    visual_groups: list[dict[str, Any]],
+    roles_by_id: dict[str, str],
+) -> tuple[object, list[dict[str, str]]]:
+    """Complete omitted provider rows without inventing visual evidence.
+
+    A missing pair cannot safely become either a positive or a negative graph
+    decision. It is therefore recorded as runtime-supplied `inconclusive`,
+    with no witnesses. Malformed supplied rows still reach the strict validator
+    below and remain failures rather than being silently repaired.
+    """
+    if not isinstance(ledger, list):
+        return ledger, []
+    expected_pairs = _detection_v5_source_degraded_expected_technical_pairs(
+        visual_groups=visual_groups,
+        roles_by_id=roles_by_id,
+    )
+    returned_pairs = {
+        tuple(sorted((str(item.get("group_id_a") or ""), str(item.get("group_id_b") or ""))))
+        for item in ledger
+        if isinstance(item, dict)
+        and tuple(sorted((str(item.get("group_id_a") or ""), str(item.get("group_id_b") or ""))))
+        in expected_pairs
+    }
+    missing_pairs = sorted(expected_pairs - returned_pairs)
+    completed = copy.deepcopy(ledger)
+    completion_audit: list[dict[str, str]] = []
+    for left, right in missing_pairs:
+        completed.append({
+            "group_id_a": left,
+            "group_id_b": right,
+            "relation": "inconclusive",
+            "evidence_type": "none",
+            "separation_kind": "insufficient_visual_evidence",
+            "observation": (
+                "Provider omitted this required pair decision; runtime supplies no "
+                "identity or separation claim."
+            ),
+            "identity_witnesses": [],
+        })
+        completion_audit.append({
+            "group_id_a": left,
+            "group_id_b": right,
+            "repair": "runtime_completed_missing_pair_ledger_row",
+            "reason": "provider_omitted_required_pair_decision",
+        })
+    return completed, completion_audit
+
+
+def validate_detection_v5_source_degraded_pair_ledger(
+    ledger: object,
+    *,
+    visual_groups: list[dict[str, Any]],
+    roles_by_id: dict[str, str],
+) -> list[dict[str, Any]]:
+    """Require one explicit same-page decision for every technical pair."""
+    expected_pairs = _detection_v5_source_degraded_expected_technical_pairs(
+        visual_groups=visual_groups,
+        roles_by_id=roles_by_id,
+    )
     if not isinstance(ledger, list):
         raise ValueError("source-degraded pair ledger is invalid")
     by_pair: dict[tuple[str, str], dict[str, Any]] = {}
@@ -6466,7 +6532,7 @@ def _compile_detection_v5_source_degraded_pairwise_registry_payload(
 ) -> dict[str, Any]:
     """Compile a fixed Island map through a no-loss pairwise audit.
 
-    The second V5.32 call owns roles and pair decisions, never the Island map.
+    The second V5.32.1 call owns roles and pair decisions, never the Island map.
     Runtime derives the package partition from validated same-object edges.
     """
     if not isinstance(payload, dict) or set(payload) != {
@@ -6514,8 +6580,15 @@ def _compile_detection_v5_source_degraded_pairwise_registry_payload(
         normalized_entry["group_id_a"] = normalize_group_id(entry.get("group_id_a"))
         normalized_entry["group_id_b"] = normalize_group_id(entry.get("group_id_b"))
         normalized_pair_ledger.append(normalized_entry)
+    completed_pair_ledger, runtime_completed_pair_ledger_rows = (
+        complete_detection_v5_source_degraded_missing_pair_ledger_rows(
+            normalized_pair_ledger,
+            visual_groups=visual_groups,
+            roles_by_id=roles_by_id,
+        )
+    )
     pair_ledger = validate_detection_v5_source_degraded_pair_ledger(
-        normalized_pair_ledger,
+        completed_pair_ledger,
         visual_groups=visual_groups,
         roles_by_id=roles_by_id,
     )
@@ -6580,7 +6653,7 @@ def _compile_detection_v5_source_degraded_pairwise_registry_payload(
                 ],
             }],
             "commercial_inseparability": (
-                "V5.32 source-degraded pairwise structural admission ledger."
+                "V5.32.1 source-degraded pairwise structural admission ledger."
             ),
         })
     proof_components = derive_detection_proof_components(
@@ -6640,7 +6713,7 @@ def _compile_detection_v5_source_degraded_pairwise_registry_payload(
             "identity_pages": pages,
             "estimation_evidence_pages": pages,
             "visual_group_ids": group_ids,
-            "visual_identity": "V5.32 source-degraded pairwise structural admission Registry partition",
+            "visual_identity": "V5.32.1 source-degraded pairwise structural admission Registry partition",
             "boundary_basis": " ".join(
                 str(basis["observation"])
                 for basis in partition["visual_basis"]
@@ -6675,6 +6748,7 @@ def _compile_detection_v5_source_degraded_pairwise_registry_payload(
         "owner_by_detail_id": resolved_owners,
         "detail_role_repairs": detail_role_repairs,
         "pair_ledger": pair_ledger,
+        "runtime_completed_pair_ledger_rows": runtime_completed_pair_ledger_rows,
         "rejected_positive_relation_edges": rejected_positive_relation_edges,
         "partitions": partitions,
         "positive_relation_edges": positive_relation_edges,
@@ -6941,7 +7015,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
     ocr_package: dict[str, Any] | None,
     model: str | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Run V5.32's fixed-Island map and structural-admission pair audit."""
+    """Run V5.32.1's fixed-Island map and structural-admission pair audit."""
     if not page_images:
         raise ValueError("source-degraded structural-admission Registry requires rendered pages")
     selected_model = model or get_secret(
@@ -7017,12 +7091,12 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
             object_id=None,
             object_name=None,
             model=selected_model,
-            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V532_PROMPT_VERSION,
+            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V5321_PROMPT_VERSION,
             response=inventory_response,
             started_at=inventory_diagnostics["request_started_at"],
             finished_at=inventory_diagnostics["request_finished_at"],
             request_diagnostics={
-                "validation_stage": "v5_32_neutral_island_map",
+                "validation_stage": "v5_32_1_neutral_island_map",
                 "source_capability": source_capability,
                 "page_frame_audit": page_frame_audit,
                 "neutral_island_map_decision_audit": inventory_payload,
@@ -7032,7 +7106,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
         failure_usage["status"] = "failed"
         failure_usage["error_message"] = str(exc)
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.32 neutral Island map failed validation: {exc}",
+            f"Source-degraded V5.32.1 neutral Island map failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
 
@@ -7093,12 +7167,12 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
             object_id=None,
             object_name=None,
             model=selected_model,
-            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V532_PROMPT_VERSION,
+            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V5321_PROMPT_VERSION,
             response=audit_response,
             started_at=inventory_diagnostics["request_started_at"],
             finished_at=audit_diagnostics["request_finished_at"],
             request_diagnostics={
-                "validation_stage": "v5_32_pairwise_structural_admission_audit",
+                "validation_stage": "v5_32_1_pairwise_structural_admission_audit",
                 "source_capability": source_capability,
                 "page_frame_audit": page_frame_audit,
                 "neutral_island_map_decision_audit": inventory_payload,
@@ -7109,7 +7183,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
         failure_usage["status"] = "failed"
         failure_usage["error_message"] = str(exc)
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.32 full-page pairwise audit failed validation: {exc}",
+            f"Source-degraded V5.32.1 full-page pairwise audit failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
 
@@ -7131,7 +7205,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
     )
     audit = {
         "operation": "rfq_detection_v5_source_degraded_pairwise_structural_admission_audit",
-        "registry_route": "v5_32_source_degraded_pairwise_structural_admission_audit",
+        "registry_route": "v5_32_1_source_degraded_pairwise_structural_admission_audit",
         "provider_duration_seconds": round(
             float(inventory_summary.get("duration_seconds") or 0)
             + float(audit_summary.get("duration_seconds") or 0),
@@ -7160,6 +7234,9 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
         "owner_by_detail_id": compiled["owner_by_detail_id"],
         "detail_role_repairs": compiled["detail_role_repairs"],
         "pair_ledger": compiled["pair_ledger"],
+        "runtime_completed_pair_ledger_rows": compiled[
+            "runtime_completed_pair_ledger_rows"
+        ],
         "rejected_positive_relation_edges": compiled["rejected_positive_relation_edges"],
         "positive_relation_edges": compiled["positive_relation_edges"],
     }
@@ -7172,7 +7249,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
         object_id=None,
         object_name=None,
         model=selected_model,
-        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V532_PROMPT_VERSION,
+        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V5321_PROMPT_VERSION,
         response=audit_response,
         started_at=inventory_diagnostics["request_started_at"],
         finished_at=audit_diagnostics["request_finished_at"],
@@ -7193,7 +7270,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
         "total_cost_usd": usage["total_cost_usd"],
     })
     return {
-        "route": "v5_32_source_degraded_pairwise_structural_admission_audit",
+        "route": "v5_32_1_source_degraded_pairwise_structural_admission_audit",
         "visual_groups": compiled["assembly_groups"],
         "discovery_visual_groups": compiled["raw_visual_groups"],
         "component_detail_groups": compiled["component_detail_groups"],
@@ -7201,6 +7278,9 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
         "role_audit": compiled["role_audit"],
         "owner_by_detail_id": compiled["owner_by_detail_id"],
         "detail_role_repairs": compiled["detail_role_repairs"],
+        "runtime_completed_pair_ledger_rows": compiled[
+            "runtime_completed_pair_ledger_rows"
+        ],
         "page_coverage": compiled["page_coverage"],
         "pair_ledger": compiled["pair_ledger"],
         "rejected_positive_relation_edges": compiled["rejected_positive_relation_edges"],

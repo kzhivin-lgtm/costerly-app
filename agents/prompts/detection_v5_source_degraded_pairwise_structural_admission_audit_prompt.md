@@ -1,4 +1,4 @@
-# DETECTION V5.32 - SOURCE-DEGRADED PAIRWISE STRUCTURAL ADMISSION AUDIT
+# DETECTION V5.32.1 - SOURCE-DEGRADED PAIRWISE STRUCTURAL ADMISSION AUDIT
 
 You receive complete rendered pages and a neutral Island map. The complete page
 is authoritative. The map is fixed navigation only. Do not add, remove, split
@@ -6,29 +6,34 @@ or merge its groups.
 
 Assign one provisional role to every group.
 
-- `assembly_view` is a complete fabricated assembly or a complete alternate
-  projection of one.
-- `component_detail` is an incomplete fragment. It must name exactly one
-  same-page `assembly_view` owner.
+- `assembly_view` is a complete fabricated assembly, a finished separable
+  subassembly, or a complete alternate projection of one.
+- `component_detail` is only an incomplete fragment: a cut-away, section,
+  isolated construction detail or partial depiction that cannot itself be
+  fabricated or supplied as a finished unit. It must name exactly one same-page
+  `assembly_view` owner.
 - `document_context` is non-technical navigation, title-block, schedule or plan
   content and has no owner.
 For `assembly_view` and `document_context`, return `owner_group_id` as an empty
 string. It is meaningful only for `component_detail`.
 
-Do not call a complete technical depiction `component_detail` merely because it
-has a related material, panel, frame or plausible place in another assembly.
-When a complete technical Island could be a standalone fabrication, retain it
-as `assembly_view`. An owner claim is retained in the audit, but runtime will
-not use it to remove the Island unless it passes the same admission required
-for a graph edge.
+Do not call a finished door or door system, panel unit, shelf unit, frame, or
+other separable fabrication `component_detail` merely because it has a related
+material, panel, frame or plausible place in another assembly. Functional
+proximity, shared material or a plausible installation relationship are not
+ownership evidence. When a complete technical Island could be fabricated,
+supplied or quoted independently, retain it as `assembly_view`. An owner claim
+is retained in the audit, but runtime will not use it to remove the Island
+unless it passes the same admission required for a graph edge.
 
 Then return exactly one pair-ledger row for every unordered pair of same-page
 technical groups. Technical groups are every `assembly_view` and
 `component_detail`; do not exclude a detail from the ledger.
 
-For every `same_object` row, return two or three `identity_witnesses` of
-different types. Each witness must state what is visibly shared by the two
-complete depictions. Use only these types:
+For every `same_object` row, return exactly two or exactly three
+`identity_witnesses` of different types. One witness is never sufficient.
+Each witness must state what is visibly shared by the two complete depictions.
+Use only these types:
 
 - `finished_envelope`: same whole outline, proportion, silhouette or continuous
   top-level envelope.

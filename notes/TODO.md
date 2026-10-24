@@ -631,6 +631,17 @@ claim to solve the still-separate console views. Record role repairs, witness
 ledger, rejected and admitted graph edges, Islands, packages, tokens, cost and
 time before any next boundary experiment.
 
+ACTIVE EXPERIMENT, P0, V5.32.1 source-degraded role wording and ledger completion:
+preserve V5.32's Island map, two complete-page Haiku calls and structural graph
+admission. Clarify that a finished separable fabrication, including a door or
+door system, cannot become `component_detail` from plausible proximity,
+material or installation alone. If the provider omits a required technical-pair
+row, runtime appends only an audited `inconclusive` row with no visual evidence
+and no graph edge. This prevents a formatting omission from failing a run, but
+does not claim a missing relationship was resolved. First gate: Page23
+completes with a visible runtime completion audit and preserves every technical
+Island for review. Record original provider rows separately from runtime rows.
+
 DEFERRED, P1, USER REQUEST, Detection Processing provider-outage handling:
 when Mistral OCR is unavailable, exhausted, rate-limited, or times out, the
 Processing screen must never remain at its initial elapsed value. Persist a
