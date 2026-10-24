@@ -653,6 +653,18 @@ expected three. V5.32.1 fixes terminal pair-row loss and silent detail loss;
 it does not solve complete-assembly pair interpretation and is not accepted as
 a source-degraded Detection checkpoint.
 
+REJECTED PRE-DEPLOY EXPERIMENT, P0, V5.33 visual embedding candidate prior:
+before changing Detection or Railway, frozen `facebook/dinov2-small` was run
+against the actual V5.32.1 Page23 Island bboxes at 96 dpi. Its intended
+positive pair, the two alternate TV-console projections V3/V4, scored `0.4642`
+and ranked last for both Views. False pairs V1/V4 and V2/V3 scored `0.8180`
+and `0.8296` respectively and were mutual nearest neighbours. The model was
+therefore trained and executable but unsuitable as an attention prior for this
+technical-drawing identity problem. No V5.33 code, dependency, lockfile or
+Railway deployment was retained. Do not retry DINOv2 embedding, tune a score,
+or add it to ordinary V5. Any future visual encoder must first pass this exact
+V3/V4 ranking gate without elevating a false pair.
+
 DEFERRED, P1, USER REQUEST, Detection Processing provider-outage handling:
 when Mistral OCR is unavailable, exhausted, rate-limited, or times out, the
 Processing screen must never remain at its initial elapsed value. Persist a
