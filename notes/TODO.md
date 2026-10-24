@@ -663,7 +663,9 @@ therefore trained and executable but unsuitable as an attention prior for this
 technical-drawing identity problem. No V5.33 code, dependency, lockfile or
 Railway deployment was retained. Do not retry DINOv2 embedding, tune a score,
 or add it to ordinary V5. Any future visual encoder must first pass this exact
-V3/V4 ranking gate without elevating a false pair.
+V3/V4 ranking gate without elevating a false pair. A core-bbox-only rerun
+excluded annotation field and transport padding as the cause: V3/V4 fell to
+`0.2987`, while false V1/V4 remained `0.8196`.
 
 DEFERRED, P1, USER REQUEST, Detection Processing provider-outage handling:
 when Mistral OCR is unavailable, exhausted, rate-limited, or times out, the
