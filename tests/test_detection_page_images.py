@@ -1,13 +1,18 @@
 import base64
+from io import BytesIO
+
+from PIL import Image
 
 from agents.anthropic_adapter import (
     build_detection_content_blocks,
     build_detection_user_text,
 )
 from agents.detection_page_images import (
+    DEFAULT_PAGE_IMAGE_DPI,
     DEFAULT_INLINE_PDF_REQUEST_MAX_BYTES,
     _natural_page_number,
     estimated_inline_pdf_bytes,
+    render_detection_pdf_pages,
     should_use_detection_page_images,
 )
 from pathlib import Path
@@ -33,6 +38,24 @@ def test_large_pdf_router_uses_estimated_base64_size():
 def test_fallback_renderer_sorts_page_numbers_naturally():
     assert _natural_page_number(Path("page-10.jpg")) == 10
     assert _natural_page_number(Path("page-2.jpg")) == 2
+
+
+def test_render_diagnostics_record_the_actual_frame_at_default_dpi(monkeypatch):
+    output = BytesIO()
+    Image.new("RGB", (321, 123), "white").save(output, format="JPEG")
+    monkeypatch.setattr(
+        "agents.detection_page_images._render_with_pymupdf",
+        lambda *_args, **_kwargs: [output.getvalue()],
+    )
+
+    pages, diagnostics = render_detection_pdf_pages(b"pdf")
+
+    assert pages == [output.getvalue()]
+    assert diagnostics["route"] == f"jpeg_pages_{DEFAULT_PAGE_IMAGE_DPI}dpi"
+    assert diagnostics["requested_dpi"] == DEFAULT_PAGE_IMAGE_DPI
+    assert diagnostics["page_frames"] == [
+        {"page_number": 1, "width": 321, "height": 123},
+    ]
 
 
 def test_detection_request_combines_jpeg_pages_without_index_anchor():
@@ -99,7 +122,7 @@ def test_large_route_skips_mistral_and_keeps_haiku_default(monkeypatch):
     assert captured["ocr_package"] is None
     assert captured["model"] is None
     assert result["timings"]["ocr_seconds"] == 0.0
-    assert result["timings"]["document_route"] == "jpeg_pages_96dpi_haiku_4_5"
+    assert result["timings"]["document_route"] == "jpeg_pages_200dpi_haiku_4_5"
 
 
 def test_first_file_review_reuses_normalized_detection_payload():

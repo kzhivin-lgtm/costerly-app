@@ -667,6 +667,17 @@ V3/V4 ranking gate without elevating a false pair. A core-bbox-only rerun
 excluded annotation field and transport padding as the cause: V3/V4 fell to
 `0.2987`, while false V1/V4 remained `0.8196`.
 
+ACTIVE EXPERIMENT, P0, V5.34 unified rendered-page frame and bbox audit:
+the ordinary V5 renderer now requests 200 DPI, matching the existing
+source-degraded request. Rendering remains capped at 2,000 px on the longest
+side. Diagnostics record requested DPI and each actual rendered page frame;
+route labels no longer claim 96 DPI. No Island, crop, Fusion, semantic,
+Dimension or graph rule changes. First evidence gate is a fresh Page23
+source-degraded raw Island map overlaid on the exact 200-DPI JPEG frame. Then
+audit the ordinary V5 proposal, static pre-Discovery regions, Fusion-to-JPEG
+coordinate conversion and Review crops separately. Do not infer an Island
+repair merely from the resolution change.
+
 DEFERRED, P1, USER REQUEST, Detection Processing provider-outage handling:
 when Mistral OCR is unavailable, exhausted, rate-limited, or times out, the
 Processing screen must never remain at its initial elapsed value. Persist a

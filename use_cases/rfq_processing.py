@@ -22,6 +22,7 @@ from agents.anthropic_adapter import (
 )
 from agents.detection_agent import run_detection_agent
 from agents.detection_page_images import (
+    DEFAULT_PAGE_IMAGE_DPI,
     estimated_inline_pdf_bytes,
     render_detection_pdf_pages,
     should_use_detection_page_images,
@@ -615,6 +616,15 @@ def process_uploaded_rfq(
 
     ocr_seconds = float(ocr_package.get("processing_seconds") or 0)
     render_seconds = float(page_image_diagnostics.get("render_seconds") or 0)
+    rendered_page_dpi = int(
+        page_image_diagnostics.get("requested_dpi")
+        or page_image_diagnostics.get("dpi")
+        or DEFAULT_PAGE_IMAGE_DPI
+    )
+    document_route = (
+        f"jpeg_pages_{rendered_page_dpi}dpi_haiku_4_5"
+        if use_page_images else "inline_base64"
+    )
     cycle_finished_at = datetime.now(UTC).isoformat()
     total_seconds = round(time.perf_counter() - cycle_started, 3)
     cycle_event = _runtime_event(
@@ -631,11 +641,7 @@ def process_uploaded_rfq(
         raw_usage={
             "ocr_seconds": ocr_seconds,
             "render_seconds": render_seconds,
-            "document_route": (
-                "jpeg_pages_96dpi_haiku_4_5"
-                if use_page_images
-                else "inline_base64"
-            ),
+            "document_route": document_route,
             "source_bytes": len(file_bytes),
             "estimated_inline_pdf_bytes": estimated_inline_pdf_bytes(file_bytes),
             "page_count": int(page_image_diagnostics.get("page_count") or 0),
@@ -700,11 +706,7 @@ def process_uploaded_rfq(
         "timings": {
             "ocr_seconds": ocr_seconds,
             "render_seconds": render_seconds,
-            "document_route": (
-                "jpeg_pages_96dpi_haiku_4_5"
-                if use_page_images
-                else "inline_base64"
-            ),
+            "document_route": document_route,
             "detection_seconds": detection_seconds,
             "naming_seconds": naming_seconds,
             "token_cost": detection_token_cost,

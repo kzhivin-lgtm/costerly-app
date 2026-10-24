@@ -8895,7 +8895,13 @@ def run_anthropic_detection_agent(
     system_content_sha256 = _sha256_text(_canonical_json(system_content))
     user_text_sha256 = _sha256_text(user_text)
     pdf_sha256 = _sha256_bytes(file_bytes)
-    document_route = "jpeg_pages_96dpi" if page_images else "inline_base64"
+    rendered_dpi = int((page_image_diagnostics or {}).get(
+        "requested_dpi",
+        (page_image_diagnostics or {}).get("dpi", DEFAULT_PAGE_IMAGE_DPI),
+    ) or DEFAULT_PAGE_IMAGE_DPI)
+    document_route = (
+        f"jpeg_pages_{rendered_dpi}dpi" if page_images else "inline_base64"
+    )
     request_fingerprint = _sha256_text(
         _canonical_json(
             {

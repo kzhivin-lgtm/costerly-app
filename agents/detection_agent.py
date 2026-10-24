@@ -18,7 +18,11 @@ from agents.detection_model_router import (
     DEFAULT_CLAUDE_DETECTION_V4_MODEL,
     detection_v42_model_route,
 )
-from agents.detection_page_images import build_detection_registry_regions, render_detection_pdf_pages
+from agents.detection_page_images import (
+    DEFAULT_PAGE_IMAGE_DPI,
+    build_detection_registry_regions,
+    render_detection_pdf_pages,
+)
 from agents.prompt_loader import load_detection_visual_registry_prompt
 from agents.schemas.detection_schema import validate_detection_result
 
@@ -404,7 +408,9 @@ def run_detection_agent(
             # reached only when every page lacks usable coordinate evidence, so
             # it cannot weaken ordinary V5's OCR/Fusion/Dimension path.
             if file_name.lower().endswith(".pdf"):
-                registry_images, _ = render_detection_pdf_pages(file_bytes, dpi=200)
+                registry_images, _ = render_detection_pdf_pages(
+                    file_bytes, dpi=DEFAULT_PAGE_IMAGE_DPI,
+                )
             source_degraded_route = {
                 **route,
                 "decision": "source_degraded_visual_registry",

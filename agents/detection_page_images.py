@@ -11,7 +11,9 @@ from pathlib import Path
 from typing import Any
 
 
-DEFAULT_PAGE_IMAGE_DPI = 96
+# Registry and downstream review now share one 200-DPI page-image contract.
+# The renderer still caps the longest side at 2,000 px for provider safety.
+DEFAULT_PAGE_IMAGE_DPI = 200
 DEFAULT_PAGE_IMAGE_QUALITY = 75
 DEFAULT_PAGE_IMAGE_WORKERS = 4
 DEFAULT_INLINE_PDF_REQUEST_MAX_BYTES = 30_000_000
@@ -129,12 +131,30 @@ def render_detection_pdf_pages(
         raise RuntimeError("PDF contains no renderable pages")
     if len(pages) > ANTHROPIC_MAX_IMAGES_PER_REQUEST:
         raise RuntimeError("PDFs over 100 pages require a separate large-package route")
+    try:
+        from PIL import Image
+        from io import BytesIO
+
+        page_frames = []
+        for page_number, page_bytes in enumerate(pages, start=1):
+            with Image.open(BytesIO(page_bytes)) as image:
+                page_frames.append({
+                    "page_number": page_number,
+                    "width": int(image.width),
+                    "height": int(image.height),
+                })
+    except Exception:
+        # Rendering is valid without Pillow. Omit frame diagnostics rather than
+        # obscuring the document route with a secondary diagnostic failure.
+        page_frames = []
     return pages, {
-        "route": "jpeg_pages_96dpi",
+        "route": f"jpeg_pages_{dpi}dpi",
         "renderer": renderer,
+        "requested_dpi": dpi,
         "dpi": dpi,
         "quality": quality,
         "page_count": len(pages),
+        "page_frames": page_frames,
         "source_bytes": len(file_bytes),
         "estimated_inline_pdf_bytes": estimated_inline_pdf_bytes(file_bytes),
         "rendered_bytes_total": sum(len(page) for page in pages),
