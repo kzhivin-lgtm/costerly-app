@@ -51,6 +51,11 @@ from agents.detection_fusion_candidate_regions import (
     format_detection_candidate_pair_queue,
     format_detection_fusion_candidate_regions,
 )
+from agents.detection_visual_embedding import (
+    DetectionVisualEmbeddingUnavailable,
+    build_detection_native_xobject_embedding_prior,
+    format_detection_native_xobject_embedding_prior,
+)
 from agents.detection_page_images import DEFAULT_PAGE_IMAGE_DPI
 from agents.detection_spatial_inventory import (
     build_detection_spatial_inventory,
@@ -158,6 +163,9 @@ DETECTION_V5_SOURCE_DEGRADED_V5321_PROMPT_VERSION = (
 )
 DETECTION_V5_NATIVE_GRAPHIC_ANCHOR_V535_PROMPT_VERSION = (
     "detection_v5_35_native_graphic_anchor_pairwise_audit_v1"
+)
+DETECTION_V5_NATIVE_GRAPHIC_EMBEDDING_V536_PROMPT_VERSION = (
+    "detection_v5_36_native_graphic_embedding_pairwise_audit_v1"
 )
 DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_CROP_MAX_SIDE = 1024
 DETECTION_V5_SOURCE_DEGRADED_CONTEXT_PAIR_MAX_DISTANCE_PX = 32
@@ -7205,17 +7213,17 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
     )
     native_graphic_anchor_route = native_graphic_anchor_inventory is not None
     operation = (
-        "rfq_detection_v5_native_graphic_anchor_pairwise_audit"
+        "rfq_detection_v5_native_graphic_embedding_pairwise_audit"
         if native_graphic_anchor_route
         else "rfq_detection_v5_source_degraded_pairwise_structural_admission_audit"
     )
     registry_route = (
-        "v5_35_native_graphic_anchor_pairwise_audit"
+        "v5_36_native_graphic_embedding_pairwise_audit"
         if native_graphic_anchor_route
         else "v5_32_1_source_degraded_pairwise_structural_admission_audit"
     )
     prompt_version = (
-        DETECTION_V5_NATIVE_GRAPHIC_ANCHOR_V535_PROMPT_VERSION
+        DETECTION_V5_NATIVE_GRAPHIC_EMBEDDING_V536_PROMPT_VERSION
         if native_graphic_anchor_route
         else DETECTION_V5_SOURCE_DEGRADED_V5321_PROMPT_VERSION
     )
@@ -7318,6 +7326,27 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
                 usage_event=failure_usage,
             ) from exc
 
+    native_graphic_embedding_prior: dict[str, Any] = {
+        "status": "not_applicable",
+        "reason": "native_graphic_anchor_route_inactive",
+    }
+    if native_graphic_anchor_route:
+        try:
+            native_graphic_embedding_prior = build_detection_native_xobject_embedding_prior(
+                file_bytes=file_bytes,
+                visual_groups=inventory_visual_groups,
+            )
+        except DetectionVisualEmbeddingUnavailable as exc:
+            # The source-authored map remains valid. Embedding is an optional
+            # ranking aid, so its local runtime failure cannot erase objects.
+            native_graphic_embedding_prior = {
+                "status": "unavailable",
+                "reason": str(exc),
+            }
+    native_graphic_embedding_context = format_detection_native_xobject_embedding_prior(
+        native_graphic_embedding_prior,
+    )
+
     fixed_island_map = [
         {
             **{
@@ -7387,6 +7416,8 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
             )
             + json.dumps(fixed_island_map, ensure_ascii=False, separators=(",", ":"))
             + "\n\n" + coordinate_context
+            + ("\n\n" + native_graphic_embedding_context
+               if native_graphic_anchor_route else "")
             + "\n\nSOURCE CAPABILITY: visual-only. Inspect each complete page. "
               "Return exactly one ledger decision for every unordered same-page "
               "technical Island pair. Same-object edges need structural identity "
@@ -7394,7 +7425,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
         ),
     })
     audit_system_prompt = audit_prompt + (
-        "\n\nV5.35 NATIVE GRAPHIC ANCHOR RULE: each supplied group is a "
+        "\n\nV5.36 NATIVE GRAPHIC ANCHOR RULE: each supplied group is a "
         "source-authored PDF image placement, not a model-drawn bbox. Its "
         "rectangle and membership are immutable. The labelled full-page overlay "
         "is authoritative for checking every pairwise role and witness."
@@ -7438,7 +7469,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
             finished_at=audit_diagnostics["request_finished_at"],
             request_diagnostics={
                 "validation_stage": (
-                    "v5_35_native_graphic_anchor_pairwise_audit"
+                    "v5_36_native_graphic_embedding_pairwise_audit"
                     if native_graphic_anchor_route
                     else "v5_32_1_pairwise_structural_admission_audit"
                 ),
@@ -7449,6 +7480,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
                     if native_graphic_anchor_inventory else None
                 ),
                 "native_graphic_anchor_overlay_audit": native_anchor_overlay_audit,
+                "native_graphic_embedding_prior": native_graphic_embedding_prior,
                 "neutral_island_map_decision_audit": inventory_payload,
                 "pairwise_audit_decision_audit": audit_payload,
                 "error_message": str(exc),
@@ -7457,7 +7489,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
         failure_usage["status"] = "failed"
         failure_usage["error_message"] = str(exc)
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded {'V5.35' if native_graphic_anchor_route else 'V5.32.1'} "
+            f"Source-degraded {'V5.36' if native_graphic_anchor_route else 'V5.32.1'} "
             f"full-page pairwise audit failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
@@ -7475,7 +7507,10 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
         response=audit_response,
         diagnostics=audit_diagnostics,
         prompt_characters=len(audit_system_prompt),
-        context_characters=len(json.dumps(fixed_island_map, ensure_ascii=False)),
+        context_characters=(
+            len(json.dumps(fixed_island_map, ensure_ascii=False))
+            + (len(native_graphic_embedding_context) if native_graphic_anchor_route else 0)
+        ),
         image_count=len(page_images),
         image_bytes=sum(len(image) for image in page_images),
     )
@@ -7513,6 +7548,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
             if native_graphic_anchor_inventory else None
         ),
         "native_graphic_anchor_overlay_audit": native_anchor_overlay_audit,
+        "native_graphic_embedding_prior": native_graphic_embedding_prior,
         "neutral_island_map_decision_audit": inventory_payload,
         "pairwise_audit_decision_audit": audit_payload,
         "role_audit": compiled["role_audit"],
@@ -7572,6 +7608,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
         "partitions": compiled["partitions"],
         "proof_components": compiled["proof_components"],
         "registry": compiled["registry"],
+        "native_graphic_embedding_prior": native_graphic_embedding_prior,
     }, usage
 
 

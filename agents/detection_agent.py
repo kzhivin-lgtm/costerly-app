@@ -433,13 +433,17 @@ def run_detection_agent(
                 )
             )
             registry = _visual_map["registry"]
-            if _visual_map.get("route") == "v5_35_native_graphic_anchor_pairwise_audit":
+            if _visual_map.get("route") in {
+                "v5_35_native_graphic_anchor_pairwise_audit",
+                "v5_36_native_graphic_embedding_pairwise_audit",
+            }:
                 source_degraded_route = {
                     **source_degraded_route,
-                    "decision": "native_graphic_anchored_visual_registry",
+                    "decision": "native_graphic_anchored_embedding_visual_registry",
                     "reasons": [
                         *source_degraded_route["reasons"],
                         "native_pdf_graphic_xobject_anchor_map",
+                        "native_xobject_embedding_pair_priority",
                     ],
                 }
             route = source_degraded_route

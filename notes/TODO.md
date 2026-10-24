@@ -685,7 +685,7 @@ continuous shelf between `VG_P1_001` and `VG_P1_004`, and misplace
 `VG_P1_003` over the lower left door rather than a TV-console projection. The
 renderer is therefore now auditable but does not repair the primary map.
 
-ACTIVE EXPERIMENT, P0, V5.35 native graphic-anchor Registry: retain the
+SUPERSEDED EXPERIMENT, P0, V5.35 native graphic-anchor Registry: retain the
 source-degraded route only for a PDF where every rendered page contains 2-12
 independent native image XObject placements, each covering 5-70% of the page.
 Extract each source-authored placement into OCR/Fusion evidence with its PDF
@@ -702,6 +702,37 @@ three object packages. Do not treat a correct envelope map alone as a package
 quality pass. Record the route, source-anchor count, rejected placements,
 overlay audit, cost and timing. If it passes, verify that a non-eligible
 source-degraded file still takes V5.32.1 before considering a broader pack.
+
+[verified, 2026-10-24] V5.35 re-ran the previously rejected frozen
+`facebook/dinov2-small` diagnostic against the four source-authored Page23
+XObject envelopes, not the former V5.32.1 model-produced boxes. The intended
+two TV-console projections V3/V4 were mutual top-1 at cosine `0.8278` from
+the native XObjects and `0.8316` from their rendered 200-DPI envelopes.
+The false shelf-to-door pair V1/V2 was `0.4189` and `0.4440` respectively,
+the weakest non-self pair. This reverses the V5.33 ranking failure because
+the earlier input boxes were wrong, not because a score was tuned. The test is
+diagnostic only: no production merge rule, threshold, dependency or deployment
+was added. Before any integration, repeat its exact rank gate on a second
+eligible native-XObject drawing and define an explicit negative rule so an
+embedding can prioritize a pair for review but cannot independently merge it.
+
+ACTIVE EXPERIMENT, P0, V5.36 native-XObject embedding pair priority: retain
+V5.35's immutable source-authored XObject boundaries and all existing role,
+ledger, witness and graph validators. For the narrow native-XObject route only,
+extract the original embedded image bytes, run pinned offline
+`facebook/dinov2-small@ed25f3a31f01632728cabb09d1542f84ab7b0056`, and append
+only the same-page top-two cosine ranking to the existing Haiku pairwise audit.
+The score cannot create a positive or negative relation, enter a witness, or
+merge a package. It is recorded with all pair scores, rankings, model revision,
+load status and elapsed time. Railway fetches its 88 MB DINOv2 assets at build
+time and runtime loads local assets only. Warm model loading starts in the
+native-graphic OCR worker, in parallel with Mistral, so an RFQ does not wait
+for the first CPU initialization after OCR. Local build, offline load and 144
+targeted tests pass. First production gate: Page23 must record an available
+prior with V3/V4 mutual top-1, retain four immutable XObject Islands and never
+publish an embedding-only merge. Do not extend this model to ordinary V5 or use
+it as a numeric threshold until a second eligible native-XObject document
+passes the same rank test.
 
 ACTIVE DIAGNOSIS, P0, Processing to File Review client transition defect:
 the same run completed Registry in 23.28 seconds and server-side File Review

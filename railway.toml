@@ -1,0 +1,5 @@
+$schema = "https://railway.com/railway.schema.json"
+
+[build]
+builder = "RAILPACK"
+buildCommand = "uv sync --locked --no-dev && uv run --no-sync python tools/prefetch_detection_visual_embedding.py"

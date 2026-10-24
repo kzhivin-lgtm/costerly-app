@@ -125,6 +125,9 @@ def test_pdf_ocr_merges_native_pdf_text_with_mistral_evidence():
     assert package["native_pdf_graphics"]["region_count"] == 1
     assert package["native_pdf_graphics"]["error"] is None
     assert package["native_pdf_graphics"]["extraction_seconds"] >= 0
+    assert package["native_pdf_graphics"]["embedding_preload"] == {
+        "status": "not_candidate"
+    }
     assert package["evidence"]["text_blocks"] == [{
         "page_number": 1,
         "block_type": "native_pdf_text",
@@ -143,6 +146,44 @@ def test_pdf_ocr_merges_native_pdf_text_with_mistral_evidence():
         "image_width": 100,
         "image_height": 100,
     }]
+
+
+def test_native_graphic_embedding_preload_is_scheduled_during_ocr_pipeline():
+    def renderer(_file_bytes, *, dpi):
+        assert dpi == 200
+        return [b"page one"]
+
+    def page_ocr(*, file_name, file_bytes, profile):
+        return {
+            "model": "mistral-ocr-4-1",
+            "pages": [{"page_number": 1, "blocks": [], "images": []}],
+            "raw_response": {},
+        }
+
+    scheduled: list[list[str]] = []
+    package = run_mistral_document_evidence_ocr(
+        file_name="drawing.pdf",
+        file_bytes=b"source pdf",
+        renderer=renderer,
+        page_ocr=page_ocr,
+        native_text_extractor=lambda _file_bytes, *, dpi: [],
+        native_graphic_extractor=lambda _file_bytes, *, dpi: [
+            {
+                "graphic_id": "NPIG-P001-X10-I001-R001", "page_number": 1,
+                "bbox": {"top_left_x": 1, "top_left_y": 2, "bottom_right_x": 30, "bottom_right_y": 40},
+            },
+            {
+                "graphic_id": "NPIG-P001-X11-I002-R001", "page_number": 1,
+                "bbox": {"top_left_x": 31, "top_left_y": 2, "bottom_right_x": 60, "bottom_right_y": 40},
+            },
+        ],
+        native_embedding_preloader=lambda regions: (
+            scheduled.append([region["graphic_id"] for region in regions]) or {"status": "scheduled"}
+        ),
+    )
+
+    assert scheduled == [["NPIG-P001-X10-I001-R001", "NPIG-P001-X11-I002-R001"]]
+    assert package["native_pdf_graphics"]["embedding_preload"] == {"status": "scheduled"}
 
 
 def test_pipeline_starts_ocr_before_all_pages_finish_rendering():

@@ -28,6 +28,10 @@ from agents.detection_source_capability import (
     drop_detection_visual_only_component_only_partitions,
     validate_detection_visual_only_partitions,
 )
+from agents.detection_visual_embedding import (
+    build_detection_native_xobject_embedding_prior,
+    format_detection_native_xobject_embedding_prior,
+)
 from agents.schemas.detection_registry_schema import (
     SOURCE_DEGRADED_VISUAL_SEMANTIC_EVIDENCE_TYPES,
     compile_detection_v5_merge_edges,
@@ -177,13 +181,53 @@ def test_native_pdf_graphic_anchor_route_skips_free_boundary_discovery(monkeypat
     )
 
     assert len(calls) == 1
-    assert result["route"] == "v5_35_native_graphic_anchor_pairwise_audit"
-    assert usage["prompt_version"] == "detection_v5_35_native_graphic_anchor_pairwise_audit_v1"
+    assert result["route"] == "v5_36_native_graphic_embedding_pairwise_audit"
+    assert usage["prompt_version"] == "detection_v5_36_native_graphic_embedding_pairwise_audit_v1"
     assert len(result["discovery_visual_groups"]) == 2
     assert len(result["registry"]["objects"]) == 2
     content = calls[0]["messages"][0]["content"]
     assert sum(block.get("type") == "image" for block in content) == 2
     assert "IMMUTABLE NATIVE GRAPHIC ANCHOR MAP" in content[-1]["text"]
+    assert "NATIVE XOBJECT VISUAL-SIMILARITY PRIOR: unavailable." in content[-1]["text"]
+
+
+def test_native_xobject_embedding_prior_ranks_only_same_page_pairs_without_creating_edges():
+    groups = [
+        {"group_id": "V1", "page_number": 1, "native_graphic_region_id": "a"},
+        {"group_id": "V2", "page_number": 1, "native_graphic_region_id": "b"},
+        {"group_id": "V3", "page_number": 1, "native_graphic_region_id": "c"},
+        {"group_id": "V4", "page_number": 1, "native_graphic_region_id": "d"},
+        {"group_id": "P2V1", "page_number": 2, "native_graphic_region_id": "e"},
+        {"group_id": "P2V2", "page_number": 2, "native_graphic_region_id": "f"},
+    ]
+    vectors = {
+        "V1": [1.0, 0.0, 0.0],
+        "V2": [0.0, 1.0, 0.0],
+        "V3": [0.0, 0.0, 1.0],
+        "V4": [0.0, 0.1, 0.995],
+        "P2V1": [1.0, 0.0, 0.0],
+        "P2V2": [0.9, 0.1, 0.0],
+    }
+
+    prior = build_detection_native_xobject_embedding_prior(
+        file_bytes=b"unused",
+        visual_groups=groups,
+        image_extractor=lambda **_kwargs: {group_id: group_id for group_id in vectors},
+        image_encoder=lambda images: [vectors[image] for image in images],
+    )
+
+    assert prior["status"] == "available"
+    assert prior["same_page_pair_count"] == 7
+    rankings = {row["group_id"]: row["ranked_candidates"] for row in prior["rankings"]}
+    assert rankings["V3"][0] == {
+        "group_id": "V4", "cosine_similarity": 0.995, "rank": 1,
+    }
+    assert rankings["V4"][0]["group_id"] == "V3"
+    assert all({row["group_id_a"], row["group_id_b"]} != {"V1", "P2V1"}
+               for row in prior["scores"])
+    text = format_detection_native_xobject_embedding_prior(prior)
+    assert "cannot create a graph edge" in text
+    assert "P1 V3: #1 V4=0.9950" in text
 
 
 def test_source_capability_routes_footer_and_single_note_only_document_visual_only():

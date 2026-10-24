@@ -20,6 +20,9 @@ from agents.ocr_adapter import (
     warm_mistral_http_client_async,
 )
 from agents.ocr_contract import OCR_PROFILE_BASIC, OCR_PROFILE_EVIDENCE
+from agents.detection_visual_embedding import (
+    maybe_preload_detection_native_xobject_encoder,
+)
 
 
 DEFAULT_RENDER_DPI = 200
@@ -426,6 +429,9 @@ def run_mistral_document_evidence_ocr(
     page_ocr: Callable[..., dict[str, Any]] = run_mistral_ocr,
     native_text_extractor: Callable[..., list[dict[str, Any]]] = extract_native_pdf_text_blocks,
     native_graphic_extractor: Callable[..., list[dict[str, Any]]] = extract_native_pdf_graphic_regions,
+    native_embedding_preloader: Callable[[list[dict[str, Any]]], dict[str, Any]] = (
+        maybe_preload_detection_native_xobject_encoder
+    ),
 ) -> dict[str, Any]:
     """Render and OCR PDF pages concurrently with an overlapping pipeline."""
     if Path(file_name).suffix.lower() != ".pdf":
@@ -444,10 +450,16 @@ def run_mistral_document_evidence_ocr(
         blocks = native_text_extractor(file_bytes, dpi=dpi)
         return blocks, time.perf_counter() - extraction_started
 
-    def extract_native_graphics() -> tuple[list[dict[str, Any]], float]:
+    def extract_native_graphics() -> tuple[list[dict[str, Any]], float, dict[str, Any]]:
         extraction_started = time.perf_counter()
         regions = native_graphic_extractor(file_bytes, dpi=dpi)
-        return regions, time.perf_counter() - extraction_started
+        try:
+            # This runs in the native-extraction worker while rendered-page OCR
+            # is still in flight, hiding DINOv2's one-time CPU initialization.
+            embedding_preload = native_embedding_preloader(regions)
+        except Exception as exc:  # pragma: no cover - preload is strictly optional
+            embedding_preload = {"status": "failed", "reason": str(exc)}
+        return regions, time.perf_counter() - extraction_started, embedding_preload
 
     native_executor = ThreadPoolExecutor(max_workers=2)
     native_text_future = native_executor.submit(extract_native_text)
@@ -537,8 +549,13 @@ def run_mistral_document_evidence_ocr(
         native_text_error = str(exc)
     native_graphic_error: str | None = None
     native_graphic_seconds = 0.0
+    native_embedding_preload: dict[str, Any] = {"status": "not_requested"}
     try:
-        native_graphic_regions, native_graphic_seconds = native_graphic_future.result()
+        (
+            native_graphic_regions,
+            native_graphic_seconds,
+            native_embedding_preload,
+        ) = native_graphic_future.result()
     except Exception as exc:
         native_graphic_regions = []
         native_graphic_error = str(exc)
@@ -605,6 +622,7 @@ def run_mistral_document_evidence_ocr(
             "region_count": len(native_graphic_regions),
             "extraction_seconds": round(native_graphic_seconds, 3),
             "error": native_graphic_error,
+            "embedding_preload": native_embedding_preload,
         },
         "raw_response": {
             "rendered_page_responses": raw_page_responses,

@@ -10,3 +10,4 @@ __pycache__/
 backups/
 outputs/ocr_lab/
 .local-deps/
+.models/
