@@ -150,8 +150,8 @@ DETECTION_V5_SOURCE_DEGRADED_V528_PROMPT_VERSION = (
 DETECTION_V5_SOURCE_DEGRADED_V529_PROMPT_VERSION = (
     "detection_v5_29_source_degraded_pairwise_full_page_audit_v1"
 )
-DETECTION_V5_SOURCE_DEGRADED_V530_PROMPT_VERSION = (
-    "detection_v5_30_source_degraded_pairwise_preservation_audit_v1"
+DETECTION_V5_SOURCE_DEGRADED_V5301_PROMPT_VERSION = (
+    "detection_v5_30_1_source_degraded_pairwise_preservation_audit_v1"
 )
 DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_CROP_MAX_SIDE = 1024
 DETECTION_V5_SOURCE_DEGRADED_CONTEXT_PAIR_MAX_DISTANCE_PX = 32
@@ -3117,6 +3117,7 @@ def validate_detection_v5_source_degraded_direct_roles(
     roles: object,
     *,
     visual_groups: list[dict[str, Any]],
+    allow_non_detail_owner: bool = False,
 ) -> tuple[dict[str, str], dict[str, str], list[dict[str, Any]]]:
     """Require every detail to name one concrete assembly owner.
 
@@ -3161,9 +3162,16 @@ def validate_detection_v5_source_degraded_direct_roles(
     for group_id, role in sorted(by_group_id.items()):
         visual_role = roles_by_id[group_id]
         owner_group_id = str(role["owner_group_id"] or "")
+        ignored_owner_group_id: str | None = None
         if visual_role in {"assembly_view", "document_context"}:
-            if owner_group_id:
+            # The schema requires this field for every role, but it has no
+            # semantic meaning outside component_detail. A spurious value from
+            # the provider may be normalized only by the V5.30.1 preservation
+            # route, not by legacy direct-role routes.
+            if owner_group_id and not allow_non_detail_owner:
                 raise ValueError("source-degraded direct assembly/context cannot have an owner")
+            ignored_owner_group_id = owner_group_id or None
+            owner_group_id = ""
         else:
             owner = groups_by_id.get(owner_group_id)
             if (
@@ -3178,6 +3186,7 @@ def validate_detection_v5_source_degraded_direct_roles(
             "group_id": group_id,
             "visual_role": visual_role,
             "owner_group_id": owner_group_id or None,
+            "ignored_owner_group_id": ignored_owner_group_id,
             "classification_reason": role["classification_reason"],
         })
     if not any(role == "assembly_view" for role in roles_by_id.values()):
@@ -6282,7 +6291,7 @@ def _compile_detection_v5_source_degraded_pairwise_registry_payload(
 ) -> dict[str, Any]:
     """Compile a fixed Island map through a no-loss pairwise audit.
 
-    The second V5.30 call owns roles and pair decisions, never the Island map.
+    The second V5.30.1 call owns roles and pair decisions, never the Island map.
     Runtime derives the package partition from validated same-object edges.
     """
     if not isinstance(payload, dict) or set(payload) != {
@@ -6318,6 +6327,7 @@ def _compile_detection_v5_source_degraded_pairwise_registry_payload(
         validate_detection_v5_source_degraded_direct_roles(
             normalized_roles,
             visual_groups=visual_groups,
+            allow_non_detail_owner=True,
         )
     )
     normalized_pair_ledger: list[dict[str, Any]] = []
@@ -6378,7 +6388,7 @@ def _compile_detection_v5_source_degraded_pairwise_registry_payload(
                 ],
             }],
             "commercial_inseparability": (
-                "V5.30 source-degraded pairwise same-object ledger."
+                "V5.30.1 source-degraded pairwise same-object ledger."
             ),
         })
     proof_components = derive_detection_proof_components(
@@ -6438,7 +6448,7 @@ def _compile_detection_v5_source_degraded_pairwise_registry_payload(
             "identity_pages": pages,
             "estimation_evidence_pages": pages,
             "visual_group_ids": group_ids,
-            "visual_identity": "V5.30 source-degraded pairwise visual Registry partition",
+            "visual_identity": "V5.30.1 source-degraded pairwise visual Registry partition",
             "boundary_basis": " ".join(
                 str(basis["observation"])
                 for basis in partition["visual_basis"]
@@ -6738,7 +6748,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_preservation_audit(
     ocr_package: dict[str, Any] | None,
     model: str | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Run V5.30's fixed-Island map and no-loss full-page pair audit."""
+    """Run V5.30.1's fixed-Island map and no-loss full-page pair audit."""
     if not page_images:
         raise ValueError("source-degraded pairwise preservation Registry requires rendered pages")
     selected_model = model or get_secret(
@@ -6814,12 +6824,12 @@ def run_anthropic_detection_v5_source_degraded_pairwise_preservation_audit(
             object_id=None,
             object_name=None,
             model=selected_model,
-            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V530_PROMPT_VERSION,
+            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V5301_PROMPT_VERSION,
             response=inventory_response,
             started_at=inventory_diagnostics["request_started_at"],
             finished_at=inventory_diagnostics["request_finished_at"],
             request_diagnostics={
-                "validation_stage": "v5_30_neutral_island_map",
+                "validation_stage": "v5_30_1_neutral_island_map",
                 "source_capability": source_capability,
                 "page_frame_audit": page_frame_audit,
                 "neutral_island_map_decision_audit": inventory_payload,
@@ -6829,7 +6839,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_preservation_audit(
         failure_usage["status"] = "failed"
         failure_usage["error_message"] = str(exc)
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.30 neutral Island map failed validation: {exc}",
+            f"Source-degraded V5.30.1 neutral Island map failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
 
@@ -6889,12 +6899,12 @@ def run_anthropic_detection_v5_source_degraded_pairwise_preservation_audit(
             object_id=None,
             object_name=None,
             model=selected_model,
-            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V530_PROMPT_VERSION,
+            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V5301_PROMPT_VERSION,
             response=audit_response,
             started_at=inventory_diagnostics["request_started_at"],
             finished_at=audit_diagnostics["request_finished_at"],
             request_diagnostics={
-                "validation_stage": "v5_30_pairwise_preservation_audit",
+                "validation_stage": "v5_30_1_pairwise_preservation_audit",
                 "source_capability": source_capability,
                 "page_frame_audit": page_frame_audit,
                 "neutral_island_map_decision_audit": inventory_payload,
@@ -6905,7 +6915,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_preservation_audit(
         failure_usage["status"] = "failed"
         failure_usage["error_message"] = str(exc)
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.30 full-page pairwise audit failed validation: {exc}",
+            f"Source-degraded V5.30.1 full-page pairwise audit failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
 
@@ -6927,7 +6937,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_preservation_audit(
     )
     audit = {
         "operation": "rfq_detection_v5_source_degraded_pairwise_preservation_audit",
-        "registry_route": "v5_30_source_degraded_pairwise_preservation_audit",
+        "registry_route": "v5_30_1_source_degraded_pairwise_preservation_audit",
         "provider_duration_seconds": round(
             float(inventory_summary.get("duration_seconds") or 0)
             + float(audit_summary.get("duration_seconds") or 0),
@@ -6967,7 +6977,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_preservation_audit(
         object_id=None,
         object_name=None,
         model=selected_model,
-        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V530_PROMPT_VERSION,
+        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V5301_PROMPT_VERSION,
         response=audit_response,
         started_at=inventory_diagnostics["request_started_at"],
         finished_at=audit_diagnostics["request_finished_at"],
@@ -6988,7 +6998,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_preservation_audit(
         "total_cost_usd": usage["total_cost_usd"],
     })
     return {
-        "route": "v5_30_source_degraded_pairwise_preservation_audit",
+        "route": "v5_30_1_source_degraded_pairwise_preservation_audit",
         "visual_groups": compiled["assembly_groups"],
         "discovery_visual_groups": compiled["raw_visual_groups"],
         "component_detail_groups": compiled["component_detail_groups"],

@@ -11,6 +11,8 @@ Assign one provisional role to every group.
   same-page `assembly_view` owner.
 - `document_context` is non-technical navigation, title-block, schedule or plan
   content and has no owner.
+For `assembly_view` and `document_context`, return `owner_group_id` as an empty
+string. It is meaningful only for `component_detail`.
 
 Then return exactly one pair-ledger row for every unordered pair of same-page
 technical groups. Technical groups are every `assembly_view` and

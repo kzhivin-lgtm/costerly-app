@@ -589,7 +589,15 @@ instead of three. The failure is a structural role-to-ledger bypass, not an
 Island-map failure. Measured average: `$0.014472`, `19.25s`. Do not tune the
 V5.29 wording or rerun it as an acceptance candidate.
 
-ACTIVE EXPERIMENT, P0, V5.30 source-degraded pairwise preservation audit:
+FAILED VALIDATION, P0, V5.30 source-degraded pairwise preservation audit:
+the first production run reached the second Haiku response, but a provider
+returned a non-empty `owner_group_id` for an `assembly_view`. The schema
+requires that field for every role, while the former direct-role validator
+treated the irrelevant value as terminal. No Island, graph or package result
+was produced. This is a role-field normalisation defect, not evidence against
+the preservation contract.
+
+ACTIVE EXPERIMENT, P0, V5.30.1 source-degraded pairwise preservation audit:
 keep V5.29's neutral full-page Island map. The second full-page Haiku call
 must ledger every same-page technical pair, including provisional details.
 Runtime permits `component_detail` only with a `same_object` pair to its exact
@@ -597,10 +605,12 @@ owner based on direct continuity or an explicit author label. Otherwise it
 promotes the Island to `assembly_view` rather than silently dropping a
 potential object. Runtime, not the model, derives packages from validated
 same-object edges. No crops, Sonnet, ordinary V5, Fusion, source-capability
-routing or deterministic Dimensions change. First gate: Page23 preserves the
-five-Island map, records all technical pair decisions and yields shelf, doors,
-and the joined console as three packages. Record role repairs, pair ledger,
-graph edges, Islands, packages, tokens, cost and time before broader testing.
+routing or deterministic Dimensions change. A non-empty owner on assembly or
+context is persisted as ignored provider data, not a terminal error. First
+gate: Page23 preserves the five-Island map, records all technical pair
+decisions and yields shelf, doors, and the joined console as three packages.
+Record role repairs, pair ledger, graph edges, Islands, packages, tokens, cost
+and time before broader testing.
 
 DEFERRED, P1, USER REQUEST, Detection Processing provider-outage handling:
 when Mistral OCR is unavailable, exhausted, rate-limited, or times out, the

@@ -295,6 +295,52 @@ def test_direct_roles_require_a_same_page_assembly_owner_for_every_detail():
     assert audit[1]["owner_group_id"] == "view-001"
 
 
+def test_direct_roles_ignore_a_spurious_owner_for_an_assembly_view():
+    roles, owners, audit = validate_detection_v5_source_degraded_direct_roles(
+        [
+            {
+                "group_id": "view-001", "visual_role": "assembly_view",
+                "owner_group_id": "view-002",
+                "classification_reason": "Complete independent shelving assembly with its envelope.",
+            },
+            {
+                "group_id": "view-002", "visual_role": "assembly_view",
+                "owner_group_id": "",
+                "classification_reason": "Complete independent door system with its own finished envelope.",
+            },
+        ],
+        visual_groups=[
+            {"group_id": "view-001", "page_number": 1},
+            {"group_id": "view-002", "page_number": 1},
+        ],
+        allow_non_detail_owner=True,
+    )
+
+    assert roles["view-001"] == "assembly_view"
+    assert owners == {}
+    assert audit[0]["owner_group_id"] is None
+    assert audit[0]["ignored_owner_group_id"] == "view-002"
+
+
+def test_legacy_direct_roles_reject_a_spurious_owner_for_an_assembly_view():
+    with pytest.raises(ValueError, match="assembly/context cannot have an owner"):
+        validate_detection_v5_source_degraded_direct_roles(
+            [{
+                "group_id": "view-001", "visual_role": "assembly_view",
+                "owner_group_id": "view-002",
+                "classification_reason": "Complete independent shelving assembly with its envelope.",
+            }, {
+                "group_id": "view-002", "visual_role": "assembly_view",
+                "owner_group_id": "",
+                "classification_reason": "Complete independent door system with its own finished envelope.",
+            }],
+            visual_groups=[
+                {"group_id": "view-001", "page_number": 1},
+                {"group_id": "view-002", "page_number": 1},
+            ],
+        )
+
+
 def test_direct_roles_reject_a_detail_without_a_same_page_assembly_owner():
     with pytest.raises(ValueError, match="component detail needs one same-page assembly owner"):
         validate_detection_v5_source_degraded_direct_roles(
@@ -495,7 +541,7 @@ def test_pairwise_audit_compiles_partitions_from_same_object_edges_only():
                 },
                 {
                     "group_id": "view-003", "visual_role": "assembly_view",
-                    "owner_group_id": "",
+                    "owner_group_id": "view-001",
                     "classification_reason": "Complete independent shelving fabrication envelope.",
                 },
             ],
@@ -536,6 +582,7 @@ def test_pairwise_audit_compiles_partitions_from_same_object_edges_only():
     ]
     assert len(compiled["positive_relation_edges"]) == 1
     assert compiled["detail_role_repairs"] == []
+    assert compiled["role_audit"][2]["ignored_owner_group_id"] == "view-001"
 
 
 def test_direct_inventory_compiles_only_the_final_audited_partition():
