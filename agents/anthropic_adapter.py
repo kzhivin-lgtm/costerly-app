@@ -130,8 +130,8 @@ DETECTION_V5_SOURCE_DEGRADED_V519_PROMPT_VERSION = (
 DETECTION_V5_SOURCE_DEGRADED_V521_PROMPT_VERSION = (
     "detection_v5_21_source_degraded_required_boundary_ledger_v1"
 )
-DETECTION_V5_SOURCE_DEGRADED_V525_PROMPT_VERSION = (
-    "detection_v5_25_source_degraded_physical_overlap_witness_v1"
+DETECTION_V5_SOURCE_DEGRADED_V526_PROMPT_VERSION = (
+    "detection_v5_26_source_degraded_physical_overlap_witness_v1"
 )
 DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_CROP_MAX_SIDE = 1024
 # Registry has already locked object identity, quantity and ordering before this
@@ -1491,6 +1491,19 @@ def _detection_bbox_area(bbox: dict[str, int]) -> int:
     return (bbox["bottom_right_x"] - bbox["top_left_x"]) * (
         bbox["bottom_right_y"] - bbox["top_left_y"]
     )
+
+
+def _detection_bbox_intersection(
+    left: dict[str, int], right: dict[str, int],
+) -> dict[str, int] | None:
+    """Return the positive-area intersection of two page-coordinate boxes."""
+    result = {
+        "top_left_x": max(left["top_left_x"], right["top_left_x"]),
+        "top_left_y": max(left["top_left_y"], right["top_left_y"]),
+        "bottom_right_x": min(left["bottom_right_x"], right["bottom_right_x"]),
+        "bottom_right_y": min(left["bottom_right_y"], right["bottom_right_y"]),
+    }
+    return result if _detection_bbox(result) is not None else None
 
 
 def build_detection_v5_review_coordinate_frames(
@@ -3245,17 +3258,25 @@ def validate_detection_v5_source_degraded_boundary_assessments(
         ):
             raise ValueError("source-degraded boundary witness is outside its page")
         search_bbox = _detection_bbox(candidate.get("boundary_search_bbox"))
-        witness_centre_x = (witness_bbox["top_left_x"] + witness_bbox["bottom_right_x"]) / 2
-        witness_centre_y = (witness_bbox["top_left_y"] + witness_bbox["bottom_right_y"]) / 2
-        if search_bbox and not (
-            search_bbox["top_left_x"] <= witness_centre_x <= search_bbox["bottom_right_x"]
-            and search_bbox["top_left_y"] <= witness_centre_y <= search_bbox["bottom_right_y"]
-        ):
-            raise ValueError("source-degraded boundary witness is outside its local corridor")
+        effective_witness_bbox = witness_bbox
+        if search_bbox:
+            effective_witness_bbox = _detection_bbox_intersection(
+                witness_bbox, search_bbox,
+            )
+            if (
+                effective_witness_bbox is None
+                or effective_witness_bbox["bottom_right_x"]
+                - effective_witness_bbox["top_left_x"] < 4
+                or effective_witness_bbox["bottom_right_y"]
+                - effective_witness_bbox["top_left_y"] < 4
+            ):
+                raise ValueError(
+                    "source-degraded boundary witness does not materially overlap its local corridor"
+                )
         pixel_audit = _detection_v5_source_degraded_witness_pixel_audit(
             page_images=page_images,
             page_number=page_number,
-            witness_bbox=witness_bbox,
+            witness_bbox=effective_witness_bbox,
             boundary_kind=boundary_kind,
         )
         by_pair[pair] = {
@@ -3263,6 +3284,7 @@ def validate_detection_v5_source_degraded_boundary_assessments(
             "relation": relation,
             "boundary_kind": boundary_kind,
             "witness_bbox": witness_bbox,
+            "effective_witness_bbox": effective_witness_bbox,
             "observation": observation,
             "pixel_audit": pixel_audit,
         }
@@ -4751,7 +4773,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     post_discovery_view_crops: bool = False,
     component_only_partition_repair: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Run V5.25's V5.21 partition with physical overlap witnesses.
+    """Run V5.26's V5.21 partition with physical overlap witnesses.
 
     Discovery is deliberately only a navigational visual map.  Review receives
     the complete pages again and owns roles plus the exclusive object partition.
@@ -4853,14 +4875,14 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
             raise ValueError("source-degraded Discovery found no visual representation")
     except (json.JSONDecodeError, KeyError, ValueError, DetectionRegistrySchemaError) as exc:
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.25 Discovery failed validation: {exc}",
+            f"Source-degraded V5.26 Discovery failed validation: {exc}",
             usage_event={
                 "agent_name": "detection",
                 "operation": "rfq_detection_v5_source_degraded_full_page_registry",
                 "file_name": file_name,
                 "company_id": company_id,
                 "status": "failed",
-                "validation_stage": "v5_25_discovery",
+                "validation_stage": "v5_26_discovery",
                 "source_capability": source_capability,
                 "error_message": str(exc),
             },
@@ -5095,7 +5117,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                         "relationship": "same_object_view",
                         "evidence_facts": [],
                         "commercial_inseparability": (
-                            "V5.25 full-page Registry exclusive visual partition."
+                            "V5.26 full-page Registry exclusive visual partition."
                         ),
                     })
                     edge["evidence_facts"].append(fact)
@@ -5118,7 +5140,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                 "identity_pages": pages,
                 "estimation_evidence_pages": pages,
                 "visual_group_ids": group_ids,
-                "visual_identity": "V5.25 full-page visual Registry partition",
+                "visual_identity": "V5.26 full-page visual Registry partition",
                 "boundary_basis": " ".join(
                     str(basis["observation"])
                     for basis in partition["visual_basis"]
@@ -5145,12 +5167,12 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
             object_id=None,
             object_name=None,
             model=selected_model,
-            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V525_PROMPT_VERSION,
+            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V526_PROMPT_VERSION,
             response=registry_response,
             started_at=discovery_diagnostics["request_started_at"],
             finished_at=registry_diagnostics["request_finished_at"],
             request_diagnostics={
-                "validation_stage": "v5_25_full_page_registry",
+                "validation_stage": "v5_26_full_page_registry",
                 "source_capability": source_capability,
                 "page_frame_audit": page_frame_audit,
                 "discovery_decision_audit": discovery_payload,
@@ -5165,7 +5187,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
         failure_usage["status"] = "failed"
         failure_usage["error_message"] = str(exc)
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.25 full-page Registry failed validation: {exc}",
+            f"Source-degraded V5.26 full-page Registry failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
 
@@ -5199,7 +5221,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     )
     audit = {
         "operation": "rfq_detection_v5_source_degraded_full_page_registry",
-        "registry_route": "v5_25_source_degraded_physical_overlap_witness",
+        "registry_route": "v5_26_source_degraded_physical_overlap_witness",
         "provider_duration_seconds": round(
             float(discovery_summary.get("duration_seconds") or 0)
             + float(registry_summary.get("duration_seconds") or 0),
@@ -5245,7 +5267,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
         object_id=None,
         object_name=None,
         model=selected_model,
-        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V525_PROMPT_VERSION,
+        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V526_PROMPT_VERSION,
         response=registry_response,
         started_at=discovery_diagnostics["request_started_at"],
         finished_at=registry_diagnostics["request_finished_at"],
@@ -5267,7 +5289,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     })
     return {
         "route": (
-            "v5_25_source_degraded_physical_overlap_witness"
+            "v5_26_source_degraded_physical_overlap_witness"
         ),
         "visual_groups": assembly_groups,
         "discovery_visual_groups": raw_visual_groups,

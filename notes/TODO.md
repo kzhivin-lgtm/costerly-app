@@ -530,7 +530,7 @@ continuity. Regression fixture: the historical V5.21 Page23 V1/V3 boxes must
 always enter the contour queue. This changes neither role semantics, object
 merge, crops, Dimension Engine nor ordinary V5.
 
-ACTIVE EXPERIMENT, P0, V5.25 V5.21 plus physical overlap witness: revert the
+SUPERSEDED EXPERIMENT, P0, V5.25 V5.21 plus physical overlap witness: revert the
 source-degraded route's role contract and non-overlap neighbour queue to the
 V5.21 baseline. Retain only the mechanism that addresses the historical
 Page23 shelf split: every overlapping same-page core pair must provide a
@@ -540,6 +540,16 @@ check. V5.21 already queued the historical V1/V3 overlap, so this experiment
 tests the witness contract, not the V5.24 queue extension. First gate: Page23
 must not silently preserve an overlapping shelf/panel split. All role,
 partition, Dimension Engine, crop and ordinary V5 behaviour is V5.21.
+
+ACTIVE EXPERIMENT, P0, V5.26 local-overlap witness projection: preserve V5.25's
+V5.21 roles, partition and overlap-only queue. A model witness may be broader
+than the compact corridor, but must overlap it by at least 4x4 px. Deterministic
+code clips it to that local intersection before pixel audit and records both
+raw and effective bboxes. This fixes the proven V5.25 false terminal failure
+without accepting a remote witness or changing roles, partitions, crops,
+Dimension Engine or ordinary V5. First gate: the V5.25 Page23 `view-003` /
+`view-005` witness (850,380)-(920,450) against corridor (897,407)-(913,423)
+must validate using effective witness (897,407)-(913,423).
 
 DEFERRED, P1, USER REQUEST, Detection Processing provider-outage handling:
 when Mistral OCR is unavailable, exhausted, rate-limited, or times out, the

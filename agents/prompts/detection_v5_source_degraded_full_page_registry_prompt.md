@@ -1,4 +1,4 @@
-# DETECTION V5.25 - SOURCE-DEGRADED FULL-PAGE VISUAL REGISTRY
+# DETECTION V5.26 - SOURCE-DEGRADED FULL-PAGE VISUAL REGISTRY
 
 The input contains complete rendered pages and an advisory visual representation
 map. The map is navigation only. It may split one depiction, omit document
@@ -16,9 +16,10 @@ provisional same-page core areas overlap. Each has a `boundary_search_bbox`, a
 compact inspection corridor inside that overlap. It is a mandatory segmentation
 decision, before roles and object partitions. The corridor is only where to
 inspect. It is never proof of a boundary, merge or commercial relationship.
-For every listed pair return exactly one
-`boundary_assessments` record with a `witness_bbox` centred on the actual
-physical joint or separator inside that corridor.
+For every listed pair return exactly one `boundary_assessments` record with a
+`witness_bbox` that materially covers the actual physical joint or separator
+within that corridor. It may include nearby geometry, but must overlap the
+corridor itself.
 
 - `physically_continuous` with `continuous_geometry` means their principal
   construction geometry visibly touches or continues into one depiction. Its

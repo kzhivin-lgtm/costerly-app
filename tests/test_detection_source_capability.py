@@ -316,6 +316,66 @@ def test_source_degraded_boundary_ledger_requires_every_local_pair_to_be_explain
     }]
 
 
+def test_source_degraded_boundary_ledger_clips_a_broad_witness_to_its_corridor():
+    candidates = [{
+        "group_ids": ["view-003", "view-005"],
+        "page_number": 1,
+        "boundary_search_bbox": {
+            "top_left_x": 897, "top_left_y": 407,
+            "bottom_right_x": 913, "bottom_right_y": 423,
+        },
+    }]
+    continuity_groups, audit = validate_detection_v5_source_degraded_boundary_assessments(
+        [{
+            "group_ids": ["view-003", "view-005"],
+            "relation": "physically_separate",
+            "boundary_kind": "visible_background_gap",
+            "witness_bbox": {
+                "top_left_x": 850, "top_left_y": 380,
+                "bottom_right_x": 920, "bottom_right_y": 450,
+            },
+            "observation": "A visible white background gap separates the two local drawings.",
+        }],
+        candidates=candidates,
+    )
+
+    assert continuity_groups == []
+    assert audit[0]["witness_bbox"] == {
+        "top_left_x": 850, "top_left_y": 380,
+        "bottom_right_x": 920, "bottom_right_y": 450,
+    }
+    assert audit[0]["effective_witness_bbox"] == {
+        "top_left_x": 897, "top_left_y": 407,
+        "bottom_right_x": 913, "bottom_right_y": 423,
+    }
+
+
+def test_source_degraded_boundary_ledger_rejects_a_trivial_corridor_overlap():
+    candidates = [{
+        "group_ids": ["view-001", "view-002"],
+        "page_number": 1,
+        "boundary_search_bbox": {
+            "top_left_x": 100, "top_left_y": 100,
+            "bottom_right_x": 116, "bottom_right_y": 116,
+        },
+    }]
+
+    with pytest.raises(ValueError, match="does not materially overlap"):
+        validate_detection_v5_source_degraded_boundary_assessments(
+            [{
+                "group_ids": ["view-001", "view-002"],
+                "relation": "physically_continuous",
+                "boundary_kind": "continuous_geometry",
+                "witness_bbox": {
+                    "top_left_x": 97, "top_left_y": 100,
+                    "bottom_right_x": 103, "bottom_right_y": 116,
+                },
+                "observation": "The alleged joint only grazes the corridor and is not local evidence.",
+            }],
+            candidates=candidates,
+        )
+
+
 def test_source_degraded_boundary_ledger_rejects_semantic_projection_as_a_boundary():
     groups = [
         _boundary_group("view-001", 0, 0, 100, 100),
