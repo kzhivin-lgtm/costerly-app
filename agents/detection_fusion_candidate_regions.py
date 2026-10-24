@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from agents.pdf_page_inspection import compact_page_profile_audit
+
 
 _BBOX_KEYS = (
     "top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y",
@@ -193,6 +195,19 @@ def build_detection_fusion_candidate_regions(
                 ordinal=ordinal,
             ))
     return candidates
+
+
+def build_detection_fusion_page_profile_audit(
+    ocr_package: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Expose passive per-page PDF capability data beside Fusion's output.
+
+    V6.1 deliberately does not use profiles to add, remove or change a
+    Candidate Region. The audit reaches the same Fusion operation so later
+    routing can be calibrated against real benchmark documents without
+    changing today's Island or package behaviour.
+    """
+    return compact_page_profile_audit(ocr_package)
 
 
 def format_detection_fusion_candidate_regions(

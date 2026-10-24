@@ -23,6 +23,11 @@ from agents.ocr_contract import OCR_PROFILE_BASIC, OCR_PROFILE_EVIDENCE
 from agents.detection_visual_embedding import (
     maybe_preload_detection_native_xobject_encoder,
 )
+from agents.pdf_page_inspection import (
+    PDF_PAGE_INSPECTION_CONTRACT_VERSION,
+    inspect_native_pdf_pages_isolated,
+    measure_rendered_page_visual_coverage,
+)
 
 
 DEFAULT_RENDER_DPI = 200
@@ -174,6 +179,9 @@ def run_mistral_direct_pdf_evidence_ocr(
     document_ocr: Callable[..., dict[str, Any]] = run_mistral_ocr,
 ) -> dict[str, Any]:
     """Send the original document through Mistral's core OCR in one request."""
+    native_inspection = inspect_native_pdf_pages_isolated(
+        file_bytes, dpi=DEFAULT_RENDER_DPI,
+    )
     package = document_ocr(
         file_name=file_name,
         file_bytes=file_bytes,
@@ -203,6 +211,18 @@ def run_mistral_direct_pdf_evidence_ocr(
         "assembly_seconds": 0.0,
         "unattributed_seconds": 0.0,
     }
+    result["native_pdf_inspection"] = {
+        "status": native_inspection.get("sources", {}).get("status", "failed"),
+        "profile_count": len(native_inspection.get("page_profiles") or []),
+        "extraction_seconds": native_inspection.get("sources", {}).get("extraction_seconds"),
+        "error": native_inspection.get("sources", {}).get("error"),
+    }
+    result["evidence"] = build_ocr_evidence(
+        result.get("pages") or [],
+        native_text_blocks=native_inspection.get("text_blocks") or [],
+        native_graphic_regions=native_inspection.get("graphic_regions") or [],
+        page_profiles=native_inspection.get("page_profiles") or [],
+    )
     return result
 
 
@@ -427,8 +447,9 @@ def run_mistral_document_evidence_ocr(
     renderer: Callable[..., list[bytes]] = render_pdf_pages,
     page_streamer: Callable[..., Any] | None = None,
     page_ocr: Callable[..., dict[str, Any]] = run_mistral_ocr,
-    native_text_extractor: Callable[..., list[dict[str, Any]]] = extract_native_pdf_text_blocks,
-    native_graphic_extractor: Callable[..., list[dict[str, Any]]] = extract_native_pdf_graphic_regions,
+    native_text_extractor: Callable[..., list[dict[str, Any]]] | None = None,
+    native_graphic_extractor: Callable[..., list[dict[str, Any]]] | None = None,
+    native_page_inspector: Callable[..., dict[str, Any]] = inspect_native_pdf_pages_isolated,
     native_embedding_preloader: Callable[[list[dict[str, Any]]], dict[str, Any]] = (
         maybe_preload_detection_native_xobject_encoder
     ),
@@ -443,16 +464,43 @@ def run_mistral_document_evidence_ocr(
 
     started = time.perf_counter()
     started_at = datetime.now(UTC).isoformat()
-    # Native text extraction is CPU-local and runs alongside the provider OCR.
-    # Failure is observable but never prevents a scanned PDF from proceeding.
+    # Production uses one PyMuPDF document traversal for text, image
+    # placements, Form XObjects and compact vector profiles. Tests and
+    # experiments may still inject the older individual extractors.
+    use_legacy_native_extractors = (
+        native_text_extractor is not None or native_graphic_extractor is not None
+    )
+    preflight_native_inspection: dict[str, Any] | None = None
+    preflight_native_embedding_preload: dict[str, Any] = {"status": "not_requested"}
+    if not use_legacy_native_extractors:
+        # Complete the PyMuPDF pass before the threaded page renderer starts.
+        # Large vector PDFs can otherwise terminate the process when a second
+        # document traversal follows or overlaps that renderer's lifecycle.
+        try:
+            preflight_native_inspection = native_page_inspector(file_bytes, dpi=dpi)
+            preflight_native_embedding_preload = native_embedding_preloader(
+                list(preflight_native_inspection.get("graphic_regions") or [])
+            )
+        except Exception as exc:
+            preflight_native_inspection = {
+                "contract_version": PDF_PAGE_INSPECTION_CONTRACT_VERSION,
+                "text_blocks": [], "graphic_regions": [], "page_profiles": [],
+                "sources": {"status": "failed", "error": str(exc)},
+            }
+            preflight_native_embedding_preload = {
+                "status": "failed", "reason": str(exc),
+            }
+
     def extract_native_text() -> tuple[list[dict[str, Any]], float]:
         extraction_started = time.perf_counter()
-        blocks = native_text_extractor(file_bytes, dpi=dpi)
+        extractor = native_text_extractor or extract_native_pdf_text_blocks
+        blocks = extractor(file_bytes, dpi=dpi)
         return blocks, time.perf_counter() - extraction_started
 
     def extract_native_graphics() -> tuple[list[dict[str, Any]], float, dict[str, Any]]:
         extraction_started = time.perf_counter()
-        regions = native_graphic_extractor(file_bytes, dpi=dpi)
+        extractor = native_graphic_extractor or extract_native_pdf_graphic_regions
+        regions = extractor(file_bytes, dpi=dpi)
         try:
             # This runs in the native-extraction worker while rendered-page OCR
             # is still in flight, hiding DINOv2's one-time CPU initialization.
@@ -461,11 +509,28 @@ def run_mistral_document_evidence_ocr(
             embedding_preload = {"status": "failed", "reason": str(exc)}
         return regions, time.perf_counter() - extraction_started, embedding_preload
 
-    native_executor = ThreadPoolExecutor(max_workers=2)
-    native_text_future = native_executor.submit(extract_native_text)
-    native_graphic_future = native_executor.submit(extract_native_graphics)
+    native_executor = (
+        ThreadPoolExecutor(max_workers=2) if use_legacy_native_extractors else None
+    )
+    native_text_future = None
+    native_graphic_future = None
+
+    def start_native_extraction_after_render() -> None:
+        """Avoid concurrent PyMuPDF render and vector-content traversals."""
+        nonlocal native_text_future, native_graphic_future
+        if native_text_future is not None:
+            return
+        if use_legacy_native_extractors:
+            assert native_executor is not None
+            native_text_future = native_executor.submit(extract_native_text)
+            native_graphic_future = native_executor.submit(extract_native_graphics)
     warm_mistral_http_client_async()
     render_started = time.perf_counter()
+    # A page render can be much larger than its final OCR request. Measure it
+    # while that one buffer is already live, rather than decoding several full
+    # page PNGs in a second concurrent pool. This keeps density analysis
+    # bounded for large multi-page construction sets.
+    rendered_page_measurements: dict[int, dict[str, Any]] = {}
 
     def recognize(item: tuple[int, bytes]) -> tuple[int, dict[str, Any]]:
         page_index, page_bytes = item
@@ -496,8 +561,12 @@ def run_mistral_document_evidence_ocr(
                     warmup_wait_seconds = time.perf_counter() - warmup_wait_started
                     provider_started = time.perf_counter()
                 rendered_page_sizes[page_index] = len(page_bytes)
+                rendered_page_measurements[page_index + 1] = (
+                    measure_rendered_page_visual_coverage(page_bytes)
+                )
                 ocr_futures.append(executor.submit(recognize, (page_index, page_bytes)))
             render_seconds = time.perf_counter() - render_started
+            start_native_extraction_after_render()
             for future in as_completed(ocr_futures):
                 recognized.append(future.result())
         if not rendered_page_sizes:
@@ -510,10 +579,15 @@ def run_mistral_document_evidence_ocr(
         warmup_wait_seconds = time.perf_counter() - warmup_wait_started
         provider_started = time.perf_counter()
         worker_count = max(1, min(page_workers, len(rendered_pages)))
+        start_native_extraction_after_render()
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
             recognized = list(executor.map(recognize, enumerate(rendered_pages)))
         rendered_page_sizes = {
             page_index: len(page_bytes)
+            for page_index, page_bytes in enumerate(rendered_pages)
+        }
+        rendered_page_measurements = {
+            page_index + 1: measure_rendered_page_visual_coverage(page_bytes)
             for page_index, page_bytes in enumerate(rendered_pages)
         }
     provider_wall_seconds = (
@@ -542,25 +616,67 @@ def run_mistral_document_evidence_ocr(
 
     native_text_error: str | None = None
     native_text_seconds = 0.0
-    try:
-        native_text_blocks, native_text_seconds = native_text_future.result()
-    except Exception as exc:
-        native_text_blocks = []
-        native_text_error = str(exc)
     native_graphic_error: str | None = None
     native_graphic_seconds = 0.0
     native_embedding_preload: dict[str, Any] = {"status": "not_requested"}
+    native_inspection: dict[str, Any] = {
+        "contract_version": PDF_PAGE_INSPECTION_CONTRACT_VERSION,
+        "text_blocks": [], "graphic_regions": [], "page_profiles": [],
+        "sources": {"status": "unavailable"},
+    }
     try:
-        (
-            native_graphic_regions,
-            native_graphic_seconds,
-            native_embedding_preload,
-        ) = native_graphic_future.result()
-    except Exception as exc:
-        native_graphic_regions = []
-        native_graphic_error = str(exc)
+        start_native_extraction_after_render()
+        if use_legacy_native_extractors:
+            try:
+                native_text_blocks, native_text_seconds = native_text_future.result()
+            except Exception as exc:
+                native_text_blocks = []
+                native_text_error = str(exc)
+            try:
+                (
+                    native_graphic_regions,
+                    native_graphic_seconds,
+                    native_embedding_preload,
+                ) = native_graphic_future.result()
+            except Exception as exc:
+                native_graphic_regions = []
+                native_graphic_error = str(exc)
+        else:
+            try:
+                native_inspection = dict(preflight_native_inspection or {})
+                native_embedding_preload = preflight_native_embedding_preload
+            except Exception as exc:
+                native_inspection = {
+                    "contract_version": PDF_PAGE_INSPECTION_CONTRACT_VERSION,
+                    "text_blocks": [], "graphic_regions": [], "page_profiles": [],
+                    "sources": {"status": "failed", "error": str(exc)},
+                }
+            native_text_blocks = list(native_inspection.get("text_blocks") or [])
+            native_graphic_regions = list(native_inspection.get("graphic_regions") or [])
+            source_status = native_inspection.get("sources") or {}
+            native_text_seconds = float(
+                (source_status.get("timings_seconds") or {}).get("native_text") or 0.0
+            )
+            native_graphic_seconds = float(
+                (source_status.get("timings_seconds") or {}).get("image_xobjects") or 0.0
+            )
+            source_error = source_status.get("error")
+            if source_status.get("status") != "succeeded":
+                native_text_error = str(source_error or "native page inspection failed")
+                native_graphic_error = native_text_error
     finally:
-        native_executor.shutdown(wait=True)
+        if native_executor is not None:
+            native_executor.shutdown(wait=True)
+    page_profiles = []
+    for profile in native_inspection.get("page_profiles") or []:
+        if not isinstance(profile, dict):
+            continue
+        profile_with_render = dict(profile)
+        page_number = profile_with_render.get("page_number")
+        profile_with_render["rendered_page"] = rendered_page_measurements.get(
+            page_number, {"status": "unavailable"},
+        )
+        page_profiles.append(profile_with_render)
 
     finished_at = datetime.now(UTC).isoformat()
     total_seconds = time.perf_counter() - started
@@ -624,6 +740,19 @@ def run_mistral_document_evidence_ocr(
             "error": native_graphic_error,
             "embedding_preload": native_embedding_preload,
         },
+        "native_pdf_inspection": {
+            "status": (native_inspection.get("sources") or {}).get(
+                "status", "unavailable",
+            ),
+            "profile_count": len(page_profiles),
+            "extraction_seconds": (native_inspection.get("sources") or {}).get(
+                "extraction_seconds",
+            ),
+            "error": (native_inspection.get("sources") or {}).get("error"),
+            "timings_seconds": (native_inspection.get("sources") or {}).get(
+                "timings_seconds", {},
+            ),
+        },
         "raw_response": {
             "rendered_page_responses": raw_page_responses,
         },
@@ -632,5 +761,6 @@ def run_mistral_document_evidence_ocr(
         pages,
         native_text_blocks=native_text_blocks,
         native_graphic_regions=native_graphic_regions,
+        page_profiles=page_profiles,
     )
     return result

@@ -48,6 +48,7 @@ from agents.detection_source_capability import (
 )
 from agents.detection_fusion_candidate_regions import (
     build_detection_fusion_candidate_regions,
+    build_detection_fusion_page_profile_audit,
     format_detection_candidate_pair_queue,
     format_detection_fusion_candidate_regions,
 )
@@ -8204,6 +8205,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     candidate_regions = build_detection_fusion_candidate_regions(
         ocr_package, source_facts,
     )
+    fusion_page_profiles = build_detection_fusion_page_profile_audit(ocr_package)
     candidate_visual_groups = [{
         "group_id": str(candidate["candidate_region_id"]),
         "page_number": candidate["page_number"],
@@ -8900,6 +8902,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         ],
         "region_count": len(regions),
         "fusion_candidate_regions": candidate_regions,
+        "fusion_page_profiles": fusion_page_profiles,
         "candidate_region_audit": candidate_region_audit,
         "unexplained_candidate_region_count": sum(
             row["status"] == "unexplained" for row in candidate_region_audit

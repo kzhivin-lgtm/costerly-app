@@ -770,6 +770,53 @@ Railway can evict build caches, so only a separately published image could
 guarantee zero refetches after cache loss. This is a deployment-efficiency
 change, not a Detection-rule change.
 
+RESOLVED, USER-REPORTED 2026-10-25, V5.38 Railway Docker start-command override:
+the Docker build, model-prefetch layer and Deploy stage succeeded, but Network
+Healthcheck failed after 60 seconds. Railway Diagnosis attributes this to a
+service-level Start Command overriding the Dockerfile `CMD` and passing the
+literal `$PORT` to Streamlit without a shell. The owner then corrected the
+Railway command configuration and confirmed the V5.38 deployment succeeded.
+Do not alter the Dockerfile or Detection contract for this configuration-only
+issue. The next deployment must still verify its own healthcheck and DINO
+availability during a Detection run.
+
+ACTIVE IMPLEMENTATION, P1, V6.1, USER DIRECTION, Detection document pre-analysis:
+define a non-decisive,
+page-level technical profile that records what each rendered PDF page can
+provide deterministically. It must report native text availability and quality,
+image XObject/Form XObject/vector-drawing inventory, rendered-page properties,
+visual density and structural complexity, coordinate-bearing evidence
+capability, and the cost/timing of every local inspection. The document result
+is a list of immutable page profiles plus a derived summary, never one global
+document type. Run it asynchronously or in parallel with the existing
+PyMuPDF/Mistral work, persist an audit even if it finishes after Registry, and
+do not let failure, output, model choice, Island
+inventory, Dimensions, graph, packages, or File Review change during this
+observation phase. V6.1 explicitly passes the compact profile audit through
+Fusion diagnostics but does not add it to the Registry prompt. Acceptance
+requires no-behavior-change evidence plus measured incremental critical-path
+latency for Page23, HSL and Adda.
+
+Native PDF image XObject placements are already extracted for every PDF in the
+OCR worker and retained as `evidence.graphic_regions`; however, the ordinary
+Fusion candidate builder currently consumes Mistral graphic regions or text
+clusters, not those native placements. Treat every XObject bbox as a
+source-authored graphic envelope and recall/diagnostic input only, never as an
+object boundary or merge proof. The existing V5.37 immutable-anchor gate stays
+separate and narrow: all rendered pages must have 2-12 independent eligible
+image placements, each covering 5-70% of its page. Do not broaden that gate or
+add embedding to ordinary PDFs without a separate approved experiment.
+
+Later decision: replace layered router mutation with one auditable
+`DetectionExecutionPlan` composed from independent axes, including evidence
+path, boundary-risk model, Island-anchor authority and optional embedding
+availability. Do not merge their criteria into one "complex document" score.
+First verification artifact: profiles and no-behavior-change traces for HSL,
+Page23, Adda, and a mixed-evidence PDF, including identical current routing and
+Detection outputs plus measured incremental CPU, memory and critical-path
+latency. Only then decide the mixed-evidence contract and whether native
+XObject recall is admissible in ordinary Fusion.
+
 ACTIVE DIAGNOSIS, P0, Processing to File Review client transition defect:
 the same run completed Registry in 23.28 seconds and server-side File Review
 in 26.67 seconds, while the browser recorded a 15.001-second
