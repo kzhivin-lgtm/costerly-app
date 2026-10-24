@@ -1,8 +1,15 @@
-# DETECTION V5.26 - SOURCE-DEGRADED FULL-PAGE VISUAL REGISTRY
+# DETECTION V5.27 - SOURCE-DEGRADED FULL-PAGE VISUAL REGISTRY
 
 The input contains complete rendered pages and an advisory visual representation
 map. The map is navigation only. It may split one depiction, omit document
 context or include details. Do not treat it as an object set.
+
+The input may also include supplemental enlargements of already mapped
+representations or a locally adjacent mapped pair. They make fine contours and
+dimensions easier to inspect. They are not a new map, an Island boundary, or
+evidence by themselves. The complete rendered page remains authoritative for
+layout, boundary, role and partition decisions. Never treat a crop edge or its
+omitted surroundings as a separator.
 
 Return three things: the required boundary assessments, one final role for
 every mapped representation, then one complete partition of the final assembly

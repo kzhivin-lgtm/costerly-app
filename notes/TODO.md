@@ -541,7 +541,7 @@ tests the witness contract, not the V5.24 queue extension. First gate: Page23
 must not silently preserve an overlapping shelf/panel split. All role,
 partition, Dimension Engine, crop and ordinary V5 behaviour is V5.21.
 
-ACTIVE EXPERIMENT, P0, V5.26 local-overlap witness projection: preserve V5.25's
+SUPERSEDED EXPERIMENT, P0, V5.26 local-overlap witness projection: preserve V5.25's
 V5.21 roles, partition and overlap-only queue. A model witness may be broader
 than the compact corridor, but must overlap it by at least 4x4 px. Deterministic
 code clips it to that local intersection before pixel audit and records both
@@ -550,6 +550,20 @@ without accepting a remote witness or changing roles, partitions, crops,
 Dimension Engine or ordinary V5. First gate: the V5.25 Page23 `view-003` /
 `view-005` witness (850,380)-(920,450) against corridor (897,407)-(913,423)
 must validate using effective witness (897,407)-(913,423).
+
+ACTIVE EXPERIMENT, P0, V5.27 source-degraded post-Discovery visual context:
+preserve V5.26's Discovery, boundary candidate queue, witness validation,
+roles and exclusive partitions. The Review now receives the original complete
+200 dpi page plus padded crops of each frozen representation and a bounded
+union crop for only same-page pairs no more than 32 px apart or overlapping
+(maximum eight pair crops per page). Crops are explicitly supplementary: they
+cannot create a map entry, boundary, continuity claim or object edge. This does
+not alter ordinary V5, the source-degraded router gate, Dimensions or semantic
+decision rules. First gate: five fresh Page23 runs, comparing representation
+map, role/partition result, full-page review input audit, token/cost and
+duration against V5.26. Accept only if it improves or preserves the correct
+three-object outcome without a validation failure or a new boundary claim from
+a crop edge.
 
 DEFERRED, P1, USER REQUEST, Detection Processing provider-outage handling:
 when Mistral OCR is unavailable, exhausted, rate-limited, or times out, the

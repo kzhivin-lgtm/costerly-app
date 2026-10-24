@@ -133,7 +133,12 @@ DETECTION_V5_SOURCE_DEGRADED_V521_PROMPT_VERSION = (
 DETECTION_V5_SOURCE_DEGRADED_V526_PROMPT_VERSION = (
     "detection_v5_26_source_degraded_physical_overlap_witness_v1"
 )
+DETECTION_V5_SOURCE_DEGRADED_V527_PROMPT_VERSION = (
+    "detection_v5_27_source_degraded_post_discovery_visual_context_v1"
+)
 DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_CROP_MAX_SIDE = 1024
+DETECTION_V5_SOURCE_DEGRADED_CONTEXT_PAIR_MAX_DISTANCE_PX = 32
+DETECTION_V5_SOURCE_DEGRADED_CONTEXT_PAIR_MAX_PER_PAGE = 8
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
 # contract as well.
@@ -1796,6 +1801,83 @@ def build_detection_v5_membership_view_crops(
     return crops, audit
 
 
+def build_detection_v5_source_degraded_context_pair_crops(
+    *,
+    page_images: list[bytes],
+    visual_groups: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Create bounded, advisory enlargements for locally adjacent map pairs.
+
+    Discovery remains the only source of the representation map. These crops
+    are merely a second-call magnifier: selecting a pair never schedules a
+    boundary assessment, consolidates an Island, or creates an object edge.
+    """
+    groups_by_page: dict[int, list[tuple[str, dict[str, int]]]] = {}
+    for group in visual_groups:
+        group_id = str(group.get("group_id") or "")
+        bbox = _detection_bbox(group.get("bbox"))
+        try:
+            page_number = int(group.get("page_number"))
+        except (TypeError, ValueError):
+            continue
+        if group_id and bbox is not None and 1 <= page_number <= len(page_images):
+            groups_by_page.setdefault(page_number, []).append((group_id, bbox))
+
+    pair_groups: list[dict[str, Any]] = []
+    pair_metadata_by_crop_id: dict[str, dict[str, Any]] = {}
+    for page_number, groups in sorted(groups_by_page.items()):
+        candidates: list[tuple[float, str, str, dict[str, int]]] = []
+        for index, (left_id, left_bbox) in enumerate(groups):
+            for right_id, right_bbox in groups[index + 1:]:
+                distance = _bbox_minimum_distance(left_bbox, right_bbox)
+                if distance > DETECTION_V5_SOURCE_DEGRADED_CONTEXT_PAIR_MAX_DISTANCE_PX:
+                    continue
+                group_ids = tuple(sorted((left_id, right_id)))
+                union_bbox = {
+                    "top_left_x": min(
+                        left_bbox["top_left_x"], right_bbox["top_left_x"],
+                    ),
+                    "top_left_y": min(
+                        left_bbox["top_left_y"], right_bbox["top_left_y"],
+                    ),
+                    "bottom_right_x": max(
+                        left_bbox["bottom_right_x"], right_bbox["bottom_right_x"],
+                    ),
+                    "bottom_right_y": max(
+                        left_bbox["bottom_right_y"], right_bbox["bottom_right_y"],
+                    ),
+                }
+                candidates.append((distance, *group_ids, union_bbox))
+        for distance, left_id, right_id, union_bbox in sorted(candidates)[:
+            DETECTION_V5_SOURCE_DEGRADED_CONTEXT_PAIR_MAX_PER_PAGE
+        ]:
+            crop_id = f"pair:{left_id}|{right_id}"
+            pair_groups.append({
+                "group_id": crop_id,
+                "page_number": page_number,
+                "evidence_class": "object_evidence",
+                "bbox": union_bbox,
+            })
+            pair_metadata_by_crop_id[crop_id] = {
+                "group_ids": [left_id, right_id],
+                "page_number": page_number,
+                "bbox_distance_px": round(distance, 3),
+                "source_bbox": union_bbox,
+            }
+
+    crops, crop_audit = build_detection_v5_membership_view_crops(
+        page_images=page_images,
+        visual_groups=pair_groups,
+        max_side=DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_CROP_MAX_SIDE,
+    )
+    for crop in crops:
+        crop.update(pair_metadata_by_crop_id[str(crop["group_id"])])
+    for row in crop_audit:
+        if isinstance(row, dict) and row.get("group_id") in pair_metadata_by_crop_id:
+            row.update(pair_metadata_by_crop_id[str(row["group_id"])])
+    return crops, crop_audit
+
+
 def build_detection_v5_membership_page_context_images(
     *,
     page_images: list[bytes],
@@ -2038,6 +2120,62 @@ def build_detection_v5_membership_content_blocks(
         blocks.append({
             "type": "text",
             "text": f"Object View {crop['group_id']}, PDF page {crop['page_number']}",
+        })
+        blocks.append({
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": "image/jpeg",
+                "data": base64.standard_b64encode(crop["bytes"]).decode("ascii"),
+            },
+        })
+    blocks.append({"type": "text", "text": user_text})
+    return blocks
+
+
+def build_detection_v5_source_degraded_registry_content_blocks(
+    *,
+    file_name: str,
+    file_bytes: bytes,
+    page_images: list[bytes],
+    user_text: str,
+    view_crops: list[dict[str, Any]],
+    pair_crops: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Keep full pages authoritative while supplying post-map enlargements."""
+    blocks = build_detection_content_blocks(
+        file_name=file_name,
+        file_bytes=file_bytes,
+        page_images=page_images,
+        user_text="",
+    )
+    blocks.pop()
+    for crop in view_crops:
+        blocks.append({
+            "type": "text",
+            "text": (
+                "Supplemental enlargement of mapped representation "
+                f"{crop['group_id']}, PDF page {crop['page_number']}. "
+                "It is a magnifier only, not an Island boundary or new map entry."
+            ),
+        })
+        blocks.append({
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": "image/jpeg",
+                "data": base64.standard_b64encode(crop["bytes"]).decode("ascii"),
+            },
+        })
+    for crop in pair_crops:
+        group_ids = " and ".join(str(value) for value in crop["group_ids"])
+        blocks.append({
+            "type": "text",
+            "text": (
+                f"Supplemental local enlargement of mapped pair {group_ids}, "
+                f"PDF page {crop['page_number']}. It is a magnifier only, "
+                "not an Island boundary or new map entry."
+            ),
         })
         blocks.append({
             "type": "image",
@@ -4773,11 +4911,12 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     post_discovery_view_crops: bool = False,
     component_only_partition_repair: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Run V5.26's V5.21 partition with physical overlap witnesses.
+    """Run V5.27's V5.21 partition with physical overlap witnesses.
 
     Discovery is deliberately only a navigational visual map.  Review receives
-    the complete pages again and owns roles plus the exclusive object partition.
-    The runtime validates that partition and materializes its graph.  This is
+    the complete pages again, with post-map enlargements as supplementary
+    visual context, and owns roles plus the exclusive object partition. The
+    runtime validates that partition and materializes its graph. This is
     isolated from ordinary V5, where Fusion and deterministic dimensions remain
     authoritative inputs to the graph.
     """
@@ -4875,14 +5014,14 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
             raise ValueError("source-degraded Discovery found no visual representation")
     except (json.JSONDecodeError, KeyError, ValueError, DetectionRegistrySchemaError) as exc:
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.26 Discovery failed validation: {exc}",
+            f"Source-degraded V5.27 Discovery failed validation: {exc}",
             usage_event={
                 "agent_name": "detection",
                 "operation": "rfq_detection_v5_source_degraded_full_page_registry",
                 "file_name": file_name,
                 "company_id": company_id,
                 "status": "failed",
-                "validation_stage": "v5_26_discovery",
+                "validation_stage": "v5_27_discovery",
                 "source_capability": source_capability,
                 "error_message": str(exc),
             },
@@ -4917,26 +5056,36 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
           "are not authority for a boundary."
     )
     registry_view_crops: list[dict[str, Any]] = []
+    registry_pair_crops: list[dict[str, Any]] = []
     registry_crop_audit: list[dict[str, Any]] = [{
         "mode": "disabled",
         "reason": "full_page_registry_baseline",
     }]
-    registry_page_context_images: list[dict[str, Any]] = []
+    registry_pair_crop_audit: list[dict[str, Any]] = [{
+        "mode": "disabled",
+        "reason": "full_page_registry_baseline",
+    }]
     if post_discovery_view_crops:
         registry_view_crops, registry_crop_audit = (
             build_detection_v5_membership_view_crops(
                 page_images=page_images,
                 visual_groups=visual_groups,
+                max_side=DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_CROP_MAX_SIDE,
             )
         )
-        registry_page_context_images = [
-            {"page_number": page_number, "bytes": page_bytes}
-            for page_number, page_bytes in enumerate(page_images, start=1)
-        ]
-        registry_content = build_detection_v5_membership_content_blocks(
+        registry_pair_crops, registry_pair_crop_audit = (
+            build_detection_v5_source_degraded_context_pair_crops(
+                page_images=page_images,
+                visual_groups=visual_groups,
+            )
+        )
+        registry_content = build_detection_v5_source_degraded_registry_content_blocks(
+            file_name=file_name,
+            file_bytes=file_bytes,
+            page_images=page_images,
             user_text=registry_user_text,
-            page_context_images=registry_page_context_images,
             view_crops=registry_view_crops,
+            pair_crops=registry_pair_crops,
         )
     else:
         registry_content = build_detection_content_blocks(
@@ -5117,7 +5266,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                         "relationship": "same_object_view",
                         "evidence_facts": [],
                         "commercial_inseparability": (
-                            "V5.26 full-page Registry exclusive visual partition."
+                            "V5.27 full-page Registry exclusive visual partition."
                         ),
                     })
                     edge["evidence_facts"].append(fact)
@@ -5140,7 +5289,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                 "identity_pages": pages,
                 "estimation_evidence_pages": pages,
                 "visual_group_ids": group_ids,
-                "visual_identity": "V5.26 full-page visual Registry partition",
+                "visual_identity": "V5.27 full-page visual Registry partition",
                 "boundary_basis": " ".join(
                     str(basis["observation"])
                     for basis in partition["visual_basis"]
@@ -5167,12 +5316,12 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
             object_id=None,
             object_name=None,
             model=selected_model,
-            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V526_PROMPT_VERSION,
+            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V527_PROMPT_VERSION,
             response=registry_response,
             started_at=discovery_diagnostics["request_started_at"],
             finished_at=registry_diagnostics["request_finished_at"],
             request_diagnostics={
-                "validation_stage": "v5_26_full_page_registry",
+                "validation_stage": "v5_27_full_page_registry",
                 "source_capability": source_capability,
                 "page_frame_audit": page_frame_audit,
                 "discovery_decision_audit": discovery_payload,
@@ -5181,13 +5330,15 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                 "boundary_audit": boundary_audit,
                 "continuity_consolidation_audit": continuity_consolidation_audit,
                 "partition_repair_audit": partition_repair_audit,
+                "post_discovery_view_crop_audit": registry_crop_audit,
+                "post_discovery_pair_crop_audit": registry_pair_crop_audit,
                 "error_message": str(exc),
             },
         )
         failure_usage["status"] = "failed"
         failure_usage["error_message"] = str(exc)
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.26 full-page Registry failed validation: {exc}",
+            f"Source-degraded V5.27 full-page Registry failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
 
@@ -5200,12 +5351,13 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
         image_bytes=sum(len(image) for image in page_images),
     )
     registry_image_count = (
-        len(registry_page_context_images) + len(registry_view_crops)
+        len(page_images) + len(registry_view_crops) + len(registry_pair_crops)
         if post_discovery_view_crops else len(page_images)
     )
     registry_image_bytes = (
-        sum(len(page["bytes"]) for page in registry_page_context_images)
+        sum(len(image) for image in page_images)
         + sum(len(crop["bytes"]) for crop in registry_view_crops)
+        + sum(len(crop["bytes"]) for crop in registry_pair_crops)
         if post_discovery_view_crops else sum(len(image) for image in page_images)
     )
     registry_summary = summarize_detection_provider_call(
@@ -5221,7 +5373,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     )
     audit = {
         "operation": "rfq_detection_v5_source_degraded_full_page_registry",
-        "registry_route": "v5_26_source_degraded_physical_overlap_witness",
+        "registry_route": "v5_27_source_degraded_post_discovery_visual_context",
         "provider_duration_seconds": round(
             float(discovery_summary.get("duration_seconds") or 0)
             + float(registry_summary.get("duration_seconds") or 0),
@@ -5244,11 +5396,12 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
         "discovery": discovery_summary,
         "full_page_registry": registry_summary,
         "full_page_review_input": (
-            "full_rendered_pages_plus_post_discovery_view_crops"
+            "full_rendered_pages_plus_post_discovery_view_and_pair_crops"
             if post_discovery_view_crops
             else "full_rendered_pages_without_discovery_crops_or_overlays"
         ),
         "post_discovery_view_crop_audit": registry_crop_audit,
+        "post_discovery_pair_crop_audit": registry_pair_crop_audit,
         "boundary_candidates": boundary_candidates,
         "boundary_audit": boundary_audit,
         "continuity_consolidation_audit": continuity_consolidation_audit,
@@ -5267,7 +5420,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
         object_id=None,
         object_name=None,
         model=selected_model,
-        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V526_PROMPT_VERSION,
+        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V527_PROMPT_VERSION,
         response=registry_response,
         started_at=discovery_diagnostics["request_started_at"],
         finished_at=registry_diagnostics["request_finished_at"],
@@ -5289,7 +5442,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     })
     return {
         "route": (
-            "v5_26_source_degraded_physical_overlap_witness"
+            "v5_27_source_degraded_post_discovery_visual_context"
         ),
         "visual_groups": assembly_groups,
         "discovery_visual_groups": raw_visual_groups,

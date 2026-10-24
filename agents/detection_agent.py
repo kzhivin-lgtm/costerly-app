@@ -424,7 +424,7 @@ def run_detection_agent(
                     page_images=registry_images,
                     ocr_package=ocr_package,
                     model=source_degraded_route["registry_model"],
-                    post_discovery_view_crops=False,
+                    post_discovery_view_crops=True,
                     component_only_partition_repair=True,
                 )
             )
