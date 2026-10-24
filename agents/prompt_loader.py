@@ -38,6 +38,9 @@ DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_INVENTORY_PROMPT_PATH = (
 DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_AUDIT_PROMPT_PATH = (
     PROMPTS_DIR / "detection_v5_source_degraded_pairwise_audit_prompt.md"
 )
+DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_PRESERVATION_AUDIT_PROMPT_PATH = (
+    PROMPTS_DIR / "detection_v5_source_degraded_pairwise_preservation_audit_prompt.md"
+)
 DETECTION_V5_SOURCE_DEGRADED_V561_CONSENSUS_PROMPT_PATH = (
     PROMPTS_DIR / "detection_v5_source_degraded_v561_consensus_prompt.md"
 )
@@ -176,6 +179,17 @@ def load_detection_v5_source_degraded_pairwise_audit_prompt() -> str:
     ).strip()
     if not prompt:
         raise ValueError("Detection V5 source-degraded pairwise Audit prompt is empty")
+    return prompt
+
+
+def load_detection_v5_source_degraded_pairwise_preservation_audit_prompt() -> str:
+    prompt = (
+        DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_PRESERVATION_AUDIT_PROMPT_PATH
+        .read_text(encoding="utf-8")
+        .strip()
+    )
+    if not prompt:
+        raise ValueError("Detection V5 source-degraded pairwise preservation prompt is empty")
     return prompt
 
 

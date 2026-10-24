@@ -10,6 +10,7 @@ from agents.anthropic_adapter import (
     _normalize_source_degraded_registry_view_ids,
     build_detection_v5_source_degraded_boundary_candidates,
     consolidate_detection_v5_source_degraded_continuity_groups,
+    resolve_detection_v5_source_degraded_pairwise_roles,
     validate_detection_v5_source_degraded_direct_roles,
     validate_detection_v5_source_degraded_pair_ledger,
     validate_detection_v5_source_degraded_full_page_roles,
@@ -316,7 +317,7 @@ def test_direct_roles_reject_a_detail_without_a_same_page_assembly_owner():
         )
 
 
-def test_pair_ledger_requires_every_same_page_assembly_pair():
+def test_pair_ledger_requires_every_same_page_technical_pair():
     groups = [
         {"group_id": "view-001", "page_number": 1},
         {"group_id": "view-002", "page_number": 1},
@@ -359,11 +360,21 @@ def test_pair_ledger_requires_every_same_page_assembly_pair():
         ("view-001", "view-003"),
         ("view-002", "view-003"),
     ]
-    with pytest.raises(ValueError, match="must decide every same-page assembly pair"):
+    with pytest.raises(ValueError, match="must decide every same-page technical pair"):
         validate_detection_v5_source_degraded_pair_ledger(
             complete_ledger[:-1],
             visual_groups=groups,
             roles_by_id=roles,
+        )
+    with pytest.raises(ValueError, match="must decide every same-page technical pair"):
+        validate_detection_v5_source_degraded_pair_ledger(
+            [complete_ledger[1]],
+            visual_groups=groups,
+            roles_by_id={
+                "view-001": "assembly_view",
+                "view-002": "component_detail",
+                "view-003": "assembly_view",
+            },
         )
 
 
@@ -385,6 +396,46 @@ def test_pair_ledger_rejects_generic_different_object_reasoning():
                 "view-002": "assembly_view",
             },
         )
+
+
+def test_pairwise_role_resolver_promotes_an_unproven_component_detail():
+    roles, owners, audit, repairs = resolve_detection_v5_source_degraded_pairwise_roles(
+        roles_by_id={
+            "view-001": "assembly_view",
+            "view-002": "component_detail",
+        },
+        owner_by_detail_id={"view-002": "view-001"},
+        role_audit=[
+            {
+                "group_id": "view-001", "visual_role": "assembly_view",
+                "owner_group_id": None,
+                "classification_reason": "Complete independent finished cabinet.",
+            },
+            {
+                "group_id": "view-002", "visual_role": "component_detail",
+                "owner_group_id": "view-001",
+                "classification_reason": "Panel view treated as an incomplete component.",
+            },
+        ],
+        pair_ledger=[{
+            "group_id_a": "view-001", "group_id_b": "view-002",
+            "relation": "different_object", "evidence_type": "none",
+            "separation_kind": "different_finished_envelope",
+            "observation": "One enclosed cabinet and one separately finished door system are shown.",
+        }],
+    )
+
+    assert roles["view-002"] == "assembly_view"
+    assert owners == {}
+    assert audit[1]["owner_group_id"] is None
+    assert repairs == [{
+        "group_id": "view-002",
+        "prior_owner_group_id": "view-001",
+        "repair": "promoted_to_assembly_view",
+        "reason": "component_owner_lacks_direct_same_object_proof",
+        "ledger_relation": "different_object",
+        "ledger_evidence_type": "none",
+    }]
 
 
 def test_pairwise_audit_compiles_partitions_from_same_object_edges_only():
@@ -468,24 +519,6 @@ def test_pairwise_audit_compiles_partitions_from_same_object_edges_only():
                     "observation": "The console perspective and shelving are separately finished fabricated envelopes.",
                 },
             ],
-            "partitions": [
-                {
-                    "group_ids": ["view-001", "view-002"],
-                    "visual_basis": [{
-                        "evidence_type": "alternate_projection",
-                        "view_ids": ["view-001", "view-002"],
-                        "observation": "Both views show the same finished console through front and perspective projections.",
-                    }],
-                },
-                {
-                    "group_ids": ["view-003"],
-                    "visual_basis": [{
-                        "evidence_type": "complete_physical_envelope",
-                        "view_ids": ["view-003"],
-                        "observation": "Complete independent shelving fabrication envelope.",
-                    }],
-                },
-            ],
         },
         raw_visual_groups=raw_groups,
         raw_page_coverage=[{
@@ -502,6 +535,7 @@ def test_pairwise_audit_compiles_partitions_from_same_object_edges_only():
         ["view-001", "view-002"], ["view-003"],
     ]
     assert len(compiled["positive_relation_edges"]) == 1
+    assert compiled["detail_role_repairs"] == []
 
 
 def test_direct_inventory_compiles_only_the_final_audited_partition():

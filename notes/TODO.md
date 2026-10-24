@@ -576,23 +576,31 @@ route. Do not tune its wording or re-run it. Its measured average is $0.02341
 and 28.34 provider seconds per Page23 call pair. Ordinary V5, Fusion,
 deterministic Dimensions and the source-degraded gate remain unchanged.
 
-ACTIVE EXPERIMENT, P0, V5.29 source-degraded fixed-Island pairwise audit:
-replace V5.28's duplicated direct inventory/partition decisions with two
-separate full-page Haiku roles. The first call returns only a neutral,
-continuous visual Island map and page coverage. The second call receives that
-fixed map as navigation, cannot alter Islands, assigns roles, and must decide
-every same-page assembly pair as `same_object`, `different_object` or
-`inconclusive` before producing partitions. Only concrete positive
-same-object facts create graph edges. A different-object decision requires a
-concrete physical, dimensional or author-declared separation, not generic
-material, frame, colour, position or configuration prose. Deterministic code
-requires partitions to equal the connected components of those same-object
-edges. No crops, no Sonnet, no change to ordinary V5, Fusion, source
-capability routing or deterministic Dimensions. First gate: Page23 must retain
-the fixed Island map, persist the complete pair ledger and form its three
-commercial objects only through ledger evidence. Record both responses,
-roles, all pair decisions, graph edges, partitions, token/cost/time and
-validation failures before expanding the benchmark.
+FAILED QUALITY GATE, P0, V5.29 source-degraded fixed-Island pairwise audit:
+four Page23 runs were fully stable at five Islands, four technical plus title
+context. The map correctly kept the continuous shelf intact and correctly
+joined the two console projections through a concrete `alternate_projection`
+edge. However, second-pass role assignment called the doors a
+`component_detail` owned by the console without a `same_object` edge, direct
+continuity, author label, matching dimensions or other owner proof. Because
+the ledger compared only `assembly_view` pairs, the role removed doors before
+the graph. All runs therefore returned two packages, shelf and console,
+instead of three. The failure is a structural role-to-ledger bypass, not an
+Island-map failure. Measured average: `$0.014472`, `19.25s`. Do not tune the
+V5.29 wording or rerun it as an acceptance candidate.
+
+ACTIVE EXPERIMENT, P0, V5.30 source-degraded pairwise preservation audit:
+keep V5.29's neutral full-page Island map. The second full-page Haiku call
+must ledger every same-page technical pair, including provisional details.
+Runtime permits `component_detail` only with a `same_object` pair to its exact
+owner based on direct continuity or an explicit author label. Otherwise it
+promotes the Island to `assembly_view` rather than silently dropping a
+potential object. Runtime, not the model, derives packages from validated
+same-object edges. No crops, Sonnet, ordinary V5, Fusion, source-capability
+routing or deterministic Dimensions change. First gate: Page23 preserves the
+five-Island map, records all technical pair decisions and yields shelf, doors,
+and the joined console as three packages. Record role repairs, pair ledger,
+graph edges, Islands, packages, tokens, cost and time before broader testing.
 
 DEFERRED, P1, USER REQUEST, Detection Processing provider-outage handling:
 when Mistral OCR is unavailable, exhausted, rate-limited, or times out, the

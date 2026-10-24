@@ -37,8 +37,8 @@ from agents.prompt_loader import (
     load_detection_v5_source_degraded_full_page_registry_prompt,
     load_detection_v5_source_degraded_membership_prompt,
     load_detection_v5_source_degraded_one_shot_registry_prompt,
-    load_detection_v5_source_degraded_pairwise_audit_prompt,
     load_detection_v5_source_degraded_pairwise_inventory_prompt,
+    load_detection_v5_source_degraded_pairwise_preservation_audit_prompt,
     load_detection_v5_source_degraded_v561_consensus_prompt,
 )
 from agents.detection_source_capability import (
@@ -149,6 +149,9 @@ DETECTION_V5_SOURCE_DEGRADED_V528_PROMPT_VERSION = (
 )
 DETECTION_V5_SOURCE_DEGRADED_V529_PROMPT_VERSION = (
     "detection_v5_29_source_degraded_pairwise_full_page_audit_v1"
+)
+DETECTION_V5_SOURCE_DEGRADED_V530_PROMPT_VERSION = (
+    "detection_v5_30_source_degraded_pairwise_preservation_audit_v1"
 )
 DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_CROP_MAX_SIDE = 1024
 DETECTION_V5_SOURCE_DEGRADED_CONTEXT_PAIR_MAX_DISTANCE_PX = 32
@@ -523,6 +526,14 @@ DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_AUDIT_JSON_SCHEMA: dict[str, Any] = {
         "roles": DETECTION_V5_SOURCE_DEGRADED_DIRECT_ROLES_SCHEMA,
         "pair_ledger": DETECTION_V5_SOURCE_DEGRADED_PAIR_LEDGER_SCHEMA,
         "partitions": DETECTION_V5_SOURCE_DEGRADED_VISUAL_PARTITIONS_SCHEMA,
+    },
+}
+DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_PRESERVATION_AUDIT_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "required": ["roles", "pair_ledger"],
+    "properties": {
+        "roles": DETECTION_V5_SOURCE_DEGRADED_DIRECT_ROLES_SCHEMA,
+        "pair_ledger": DETECTION_V5_SOURCE_DEGRADED_PAIR_LEDGER_SCHEMA,
     },
 }
 
@@ -3180,19 +3191,20 @@ def validate_detection_v5_source_degraded_pair_ledger(
     visual_groups: list[dict[str, Any]],
     roles_by_id: dict[str, str],
 ) -> list[dict[str, Any]]:
-    """Require one explicit same-page decision for every assembly pair."""
+    """Require one explicit same-page decision for every technical pair."""
     groups_by_id = {
         str(group.get("group_id") or ""): group
         for group in visual_groups
         if isinstance(group, dict) and str(group.get("group_id") or "")
     }
-    assembly_ids = {
+    technical_ids = {
         group_id for group_id, role in roles_by_id.items()
-        if role == "assembly_view" and group_id in groups_by_id
+        if role in {"assembly_view", "component_detail"}
+        and group_id in groups_by_id
     }
     expected_pairs = {
         tuple(sorted((left, right)))
-        for left, right in combinations(sorted(assembly_ids), 2)
+        for left, right in combinations(sorted(technical_ids), 2)
         if groups_by_id[left].get("page_number") == groups_by_id[right].get("page_number")
     }
     if not isinstance(ledger, list):
@@ -3266,8 +3278,59 @@ def validate_detection_v5_source_degraded_pair_ledger(
             "observation": observation,
         }
     if set(by_pair) != expected_pairs:
-        raise ValueError("source-degraded pair ledger must decide every same-page assembly pair")
+        raise ValueError("source-degraded pair ledger must decide every same-page technical pair")
     return [by_pair[pair] for pair in sorted(by_pair)]
+
+
+def resolve_detection_v5_source_degraded_pairwise_roles(
+    *,
+    roles_by_id: dict[str, str],
+    owner_by_detail_id: dict[str, str],
+    role_audit: list[dict[str, Any]],
+    pair_ledger: list[dict[str, Any]],
+) -> tuple[dict[str, str], dict[str, str], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Keep a technical Island unless a direct owner proof can remove it.
+
+    A detail classification suppresses a potential commercial object, so it is
+    held to a stricter standard than an ordinary same-object relation. Generic
+    resemblance, dimensions and alternate projection cannot erase that Island.
+    """
+    ledger_by_pair = {
+        tuple(sorted((str(entry["group_id_a"]), str(entry["group_id_b"])))): entry
+        for entry in pair_ledger
+    }
+    resolved_roles = dict(roles_by_id)
+    resolved_owners = dict(owner_by_detail_id)
+    repairs: list[dict[str, Any]] = []
+    owner_evidence_types = {"direct_continuity", "visible_author_label"}
+    for detail_id, owner_id in sorted(owner_by_detail_id.items()):
+        entry = ledger_by_pair.get(tuple(sorted((detail_id, owner_id))))
+        owner_is_proven = bool(
+            entry
+            and entry["relation"] == "same_object"
+            and entry["evidence_type"] in owner_evidence_types
+        )
+        if owner_is_proven:
+            continue
+        resolved_roles[detail_id] = "assembly_view"
+        resolved_owners.pop(detail_id, None)
+        repairs.append({
+            "group_id": detail_id,
+            "prior_owner_group_id": owner_id,
+            "repair": "promoted_to_assembly_view",
+            "reason": "component_owner_lacks_direct_same_object_proof",
+            "ledger_relation": entry["relation"] if entry else None,
+            "ledger_evidence_type": entry["evidence_type"] if entry else None,
+        })
+    resolved_audit = [
+        {
+            **entry,
+            "visual_role": resolved_roles[str(entry["group_id"])],
+            "owner_group_id": resolved_owners.get(str(entry["group_id"])),
+        }
+        for entry in role_audit
+    ]
+    return resolved_roles, resolved_owners, resolved_audit, repairs
 
 
 def validate_detection_v5_discovery_page_coverage(
@@ -6217,14 +6280,13 @@ def _compile_detection_v5_source_degraded_pairwise_registry_payload(
     page_count: int,
     page_frames: dict[int, dict[str, int]],
 ) -> dict[str, Any]:
-    """Compile a fixed Island map through an exhaustive pairwise audit.
+    """Compile a fixed Island map through a no-loss pairwise audit.
 
-    The second V5.29 call owns roles and pair decisions, never the Island map.
-    Its partitions are a presentation of the validated ``same_object`` graph,
-    not an independent way to create a merge edge.
+    The second V5.30 call owns roles and pair decisions, never the Island map.
+    Runtime derives the package partition from validated same-object edges.
     """
     if not isinstance(payload, dict) or set(payload) != {
-        "roles", "pair_ledger", "partitions",
+        "roles", "pair_ledger",
     }:
         raise ValueError("source-degraded pairwise audit response fields are invalid")
 
@@ -6258,17 +6320,6 @@ def _compile_detection_v5_source_degraded_pairwise_registry_payload(
             visual_groups=visual_groups,
         )
     )
-    assembly_groups = [
-        {
-            **group,
-            "visual_role": roles_by_id[str(group["group_id"])],
-            "evidence_class": "object_evidence",
-        }
-        for group in visual_groups
-        if roles_by_id[str(group["group_id"])] == "assembly_view"
-    ]
-    assembly_ids = {str(group["group_id"]) for group in assembly_groups}
-
     normalized_pair_ledger: list[dict[str, Any]] = []
     for entry in payload["pair_ledger"]:
         if not isinstance(entry, dict):
@@ -6283,45 +6334,36 @@ def _compile_detection_v5_source_degraded_pairwise_registry_payload(
         visual_groups=visual_groups,
         roles_by_id=roles_by_id,
     )
-
-    normalized_partitions: list[dict[str, Any]] = []
-    for partition in payload["partitions"]:
-        if not isinstance(partition, dict):
-            normalized_partitions.append(partition)
-            continue
-        normalized_partition = copy.deepcopy(partition)
-        normalized_partition["group_ids"] = list(dict.fromkeys(
-            normalize_group_id(value) for value in partition.get("group_ids") or []
-        ))
-        normalized_bases: list[dict[str, Any]] = []
-        for basis in partition.get("visual_basis") or []:
-            if not isinstance(basis, dict):
-                normalized_bases.append(basis)
-                continue
-            normalized_basis = copy.deepcopy(basis)
-            normalized_basis["view_ids"] = list(dict.fromkeys(
-                normalize_group_id(value) for value in basis.get("view_ids") or []
-            ))
-            normalized_bases.append(normalized_basis)
-        normalized_partition["visual_basis"] = normalized_bases
-        normalized_partitions.append(normalized_partition)
-    partitions = validate_detection_visual_only_partitions(
-        normalized_partitions,
-        object_view_ids=assembly_ids,
+    resolved_roles, resolved_owners, resolved_role_audit, detail_role_repairs = (
+        resolve_detection_v5_source_degraded_pairwise_roles(
+            roles_by_id=roles_by_id,
+            owner_by_detail_id=owner_by_detail_id,
+            role_audit=role_audit,
+            pair_ledger=pair_ledger,
+        )
     )
+    assembly_groups = [
+        {
+            **group,
+            "visual_role": resolved_roles[str(group["group_id"])],
+            "evidence_class": "object_evidence",
+        }
+        for group in visual_groups
+        if resolved_roles[str(group["group_id"])] == "assembly_view"
+    ]
+    assembly_ids = {str(group["group_id"]) for group in assembly_groups}
 
     page_number_by_group_id = {
         str(group["group_id"]): int(group["page_number"])
         for group in assembly_groups
     }
     positive_relation_edges: list[dict[str, Any]] = []
-    same_object_pairs: set[tuple[str, str]] = set()
     for entry in pair_ledger:
         if entry["relation"] != "same_object":
             continue
         left, right = str(entry["group_id_a"]), str(entry["group_id_b"])
-        pair = tuple(sorted((left, right)))
-        same_object_pairs.add(pair)
+        if left not in assembly_ids or right not in assembly_ids:
+            continue
         positive_relation_edges.append({
             "group_id_a": left,
             "group_id_b": right,
@@ -6336,32 +6378,52 @@ def _compile_detection_v5_source_degraded_pairwise_registry_payload(
                 ],
             }],
             "commercial_inseparability": (
-                "V5.29 source-degraded pairwise same-object ledger."
+                "V5.30 source-degraded pairwise same-object ledger."
             ),
         })
     proof_components = derive_detection_proof_components(
         positive_relation_edges,
         visual_group_ids=assembly_ids,
     )
-    expected_component_sets = {
-        frozenset(component) for component in proof_components
+    edge_by_pair = {
+        (str(edge["group_id_a"]), str(edge["group_id_b"])): edge
+        for edge in positive_relation_edges
     }
-    actual_partition_sets = {
-        frozenset(str(group_id) for group_id in partition["group_ids"])
-        for partition in partitions
+    role_reason_by_id = {
+        str(entry["group_id"]): str(entry["classification_reason"])
+        for entry in resolved_role_audit
     }
-    if actual_partition_sets != expected_component_sets:
-        raise ValueError(
-            "source-degraded partitions must equal pair-ledger components",
-        )
-    for partition in partitions:
-        for basis in partition["visual_basis"]:
-            view_ids = sorted(str(view_id) for view_id in basis["view_ids"])
-            for left, right in combinations(view_ids, 2):
-                if (left, right) not in same_object_pairs:
-                    raise ValueError(
-                        "source-degraded partition basis lacks a same-object ledger edge",
-                    )
+    deterministic_partitions: list[dict[str, Any]] = []
+    for component in proof_components:
+        group_ids = sorted(component)
+        if len(group_ids) == 1:
+            group_id = group_ids[0]
+            bases = [{
+                "evidence_type": "complete_physical_envelope",
+                "view_ids": [group_id],
+                "observation": (
+                    "Retained as an independent assembly view: "
+                    + role_reason_by_id[group_id]
+                ),
+            }]
+        else:
+            bases = [
+                {
+                    "evidence_type": str(edge["evidence_facts"][0]["evidence_type"]),
+                    "view_ids": [left, right],
+                    "observation": str(edge["evidence_facts"][0]["observation"]),
+                }
+                for left, right in combinations(group_ids, 2)
+                if (edge := edge_by_pair.get((left, right))) is not None
+            ]
+        deterministic_partitions.append({
+            "group_ids": group_ids,
+            "visual_basis": bases,
+        })
+    partitions = validate_detection_visual_only_partitions(
+        deterministic_partitions,
+        object_view_ids=assembly_ids,
+    )
 
     visual_sources = build_detection_v5_registry_visual_sources(assembly_groups)
     registry_objects: list[dict[str, Any]] = []
@@ -6376,7 +6438,7 @@ def _compile_detection_v5_source_degraded_pairwise_registry_payload(
             "identity_pages": pages,
             "estimation_evidence_pages": pages,
             "visual_group_ids": group_ids,
-            "visual_identity": "V5.29 source-degraded pairwise visual Registry partition",
+            "visual_identity": "V5.30 source-degraded pairwise visual Registry partition",
             "boundary_basis": " ".join(
                 str(basis["observation"])
                 for basis in partition["visual_basis"]
@@ -6400,15 +6462,16 @@ def _compile_detection_v5_source_degraded_pairwise_registry_payload(
         "assembly_groups": assembly_groups,
         "component_detail_groups": [
             group for group in visual_groups
-            if roles_by_id[str(group["group_id"])] == "component_detail"
+            if resolved_roles[str(group["group_id"])] == "component_detail"
         ],
         "document_context_groups": [
             group for group in visual_groups
-            if roles_by_id[str(group["group_id"])] == "document_context"
+            if resolved_roles[str(group["group_id"])] == "document_context"
         ],
         "page_coverage": page_coverage,
-        "role_audit": role_audit,
-        "owner_by_detail_id": owner_by_detail_id,
+        "role_audit": resolved_role_audit,
+        "owner_by_detail_id": resolved_owners,
+        "detail_role_repairs": detail_role_repairs,
         "pair_ledger": pair_ledger,
         "partitions": partitions,
         "positive_relation_edges": positive_relation_edges,
@@ -6666,7 +6729,7 @@ def run_anthropic_detection_v5_source_degraded_direct_inventory_audit(
     }, usage
 
 
-def run_anthropic_detection_v5_source_degraded_pairwise_audit(
+def run_anthropic_detection_v5_source_degraded_pairwise_preservation_audit(
     *,
     file_name: str,
     company_id: str,
@@ -6675,14 +6738,14 @@ def run_anthropic_detection_v5_source_degraded_pairwise_audit(
     ocr_package: dict[str, Any] | None,
     model: str | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Run V5.29's fixed-Island map and exhaustive full-page pair audit."""
+    """Run V5.30's fixed-Island map and no-loss full-page pair audit."""
     if not page_images:
-        raise ValueError("source-degraded pairwise Registry requires rendered pages")
+        raise ValueError("source-degraded pairwise preservation Registry requires rendered pages")
     selected_model = model or get_secret(
         "CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL,
     )
     if "haiku" not in selected_model.lower():
-        raise ValueError("source-degraded pairwise Registry requires a Haiku model")
+        raise ValueError("source-degraded pairwise preservation Registry requires a Haiku model")
     source_facts = build_detection_page_evidence_inventory(ocr_package)
     source_capability = assess_detection_source_capability(
         source_facts=source_facts,
@@ -6691,19 +6754,19 @@ def run_anthropic_detection_v5_source_degraded_pairwise_audit(
     )
     if not source_capability["route_eligible"]:
         raise ValueError(
-            "source-degraded pairwise Registry is ineligible: "
+            "source-degraded pairwise preservation Registry is ineligible: "
             f"{source_capability['route_reason']}",
         )
     page_frames, page_frame_audit = build_detection_v5_visual_page_frames(page_images)
     if len(page_frames) != len(page_images):
-        raise ValueError("source-degraded pairwise Registry cannot inspect every rendered page")
+        raise ValueError("source-degraded pairwise preservation Registry cannot inspect every rendered page")
     coordinate_context = "\n".join([
         "RENDERED PAGE PIXEL FRAMES:",
         *(f"P{page_number}|{frame['width']}x{frame['height']}"
           for page_number, frame in sorted(page_frames.items())),
     ])
     inventory_prompt = load_detection_v5_source_degraded_pairwise_inventory_prompt()
-    audit_prompt = load_detection_v5_source_degraded_pairwise_audit_prompt()
+    audit_prompt = load_detection_v5_source_degraded_pairwise_preservation_audit_prompt()
     inventory_content = build_detection_content_blocks(
         file_name=file_name,
         file_bytes=file_bytes,
@@ -6732,7 +6795,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_audit(
         if not isinstance(inventory_payload, dict) or set(inventory_payload) != {
             "visual_groups", "page_coverage",
         }:
-            raise ValueError("source-degraded pairwise Island map response fields are invalid")
+            raise ValueError("source-degraded pairwise preservation Island map response fields are invalid")
         _page_coverage, inventory_visual_groups, _group_id_mapping = (
             _prepare_detection_v5_source_degraded_visual_inventory(
                 raw_visual_groups=inventory_payload["visual_groups"],
@@ -6744,19 +6807,19 @@ def run_anthropic_detection_v5_source_degraded_pairwise_audit(
     except (json.JSONDecodeError, KeyError, ValueError, DetectionRegistrySchemaError) as exc:
         failure_usage = build_agent_usage_event(
             agent_name="detection",
-            operation="rfq_detection_v5_source_degraded_pairwise_audit",
+            operation="rfq_detection_v5_source_degraded_pairwise_preservation_audit",
             company_id=company_id,
             run_id=None,
             file_name=file_name,
             object_id=None,
             object_name=None,
             model=selected_model,
-            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V529_PROMPT_VERSION,
+            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V530_PROMPT_VERSION,
             response=inventory_response,
             started_at=inventory_diagnostics["request_started_at"],
             finished_at=inventory_diagnostics["request_finished_at"],
             request_diagnostics={
-                "validation_stage": "v5_29_neutral_island_map",
+                "validation_stage": "v5_30_neutral_island_map",
                 "source_capability": source_capability,
                 "page_frame_audit": page_frame_audit,
                 "neutral_island_map_decision_audit": inventory_payload,
@@ -6766,7 +6829,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_audit(
         failure_usage["status"] = "failed"
         failure_usage["error_message"] = str(exc)
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.29 neutral Island map failed validation: {exc}",
+            f"Source-degraded V5.30 neutral Island map failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
 
@@ -6790,8 +6853,8 @@ def run_anthropic_detection_v5_source_degraded_pairwise_audit(
             + json.dumps(fixed_island_map, ensure_ascii=False, separators=(",", ":"))
             + "\n\n" + coordinate_context
             + "\n\nSOURCE CAPABILITY: visual-only. Inspect each complete page. "
-              "After assigning roles, return exactly one ledger decision for every "
-              "unordered same-page assembly-view pair before deriving partitions."
+              "Return exactly one ledger decision for every unordered same-page "
+              "technical Island pair. Runtime derives partitions from that ledger."
         ),
     )
     audit_response, audit_diagnostics = create_claude_message_streamed(
@@ -6802,7 +6865,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_audit(
         system=build_detection_system_content(prompt=audit_prompt),
         messages=[{"role": "user", "content": audit_content}],
         output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
-            DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_AUDIT_JSON_SCHEMA,
+            DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_PRESERVATION_AUDIT_JSON_SCHEMA,
         )}},
     )
     audit_raw_text = extract_text_from_claude_response(audit_response)
@@ -6819,19 +6882,19 @@ def run_anthropic_detection_v5_source_degraded_pairwise_audit(
     except (json.JSONDecodeError, KeyError, ValueError, DetectionRegistrySchemaError) as exc:
         failure_usage = build_agent_usage_event(
             agent_name="detection",
-            operation="rfq_detection_v5_source_degraded_pairwise_audit",
+            operation="rfq_detection_v5_source_degraded_pairwise_preservation_audit",
             company_id=company_id,
             run_id=None,
             file_name=file_name,
             object_id=None,
             object_name=None,
             model=selected_model,
-            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V529_PROMPT_VERSION,
+            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V530_PROMPT_VERSION,
             response=audit_response,
             started_at=inventory_diagnostics["request_started_at"],
             finished_at=audit_diagnostics["request_finished_at"],
             request_diagnostics={
-                "validation_stage": "v5_29_pairwise_audit",
+                "validation_stage": "v5_30_pairwise_preservation_audit",
                 "source_capability": source_capability,
                 "page_frame_audit": page_frame_audit,
                 "neutral_island_map_decision_audit": inventory_payload,
@@ -6842,7 +6905,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_audit(
         failure_usage["status"] = "failed"
         failure_usage["error_message"] = str(exc)
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.29 full-page pairwise audit failed validation: {exc}",
+            f"Source-degraded V5.30 full-page pairwise audit failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
 
@@ -6863,8 +6926,8 @@ def run_anthropic_detection_v5_source_degraded_pairwise_audit(
         image_bytes=sum(len(image) for image in page_images),
     )
     audit = {
-        "operation": "rfq_detection_v5_source_degraded_pairwise_audit",
-        "registry_route": "v5_29_source_degraded_pairwise_full_page_audit",
+        "operation": "rfq_detection_v5_source_degraded_pairwise_preservation_audit",
+        "registry_route": "v5_30_source_degraded_pairwise_preservation_audit",
         "provider_duration_seconds": round(
             float(inventory_summary.get("duration_seconds") or 0)
             + float(audit_summary.get("duration_seconds") or 0),
@@ -6891,19 +6954,20 @@ def run_anthropic_detection_v5_source_degraded_pairwise_audit(
         "pairwise_audit_decision_audit": audit_payload,
         "role_audit": compiled["role_audit"],
         "owner_by_detail_id": compiled["owner_by_detail_id"],
+        "detail_role_repairs": compiled["detail_role_repairs"],
         "pair_ledger": compiled["pair_ledger"],
         "positive_relation_edges": compiled["positive_relation_edges"],
     }
     usage = build_agent_usage_event(
         agent_name="detection",
-        operation="rfq_detection_v5_source_degraded_pairwise_audit",
+        operation="rfq_detection_v5_source_degraded_pairwise_preservation_audit",
         company_id=company_id,
         run_id=None,
         file_name=file_name,
         object_id=None,
         object_name=None,
         model=selected_model,
-        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V529_PROMPT_VERSION,
+        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V530_PROMPT_VERSION,
         response=audit_response,
         started_at=inventory_diagnostics["request_started_at"],
         finished_at=audit_diagnostics["request_finished_at"],
@@ -6924,13 +6988,14 @@ def run_anthropic_detection_v5_source_degraded_pairwise_audit(
         "total_cost_usd": usage["total_cost_usd"],
     })
     return {
-        "route": "v5_29_source_degraded_pairwise_full_page_audit",
+        "route": "v5_30_source_degraded_pairwise_preservation_audit",
         "visual_groups": compiled["assembly_groups"],
         "discovery_visual_groups": compiled["raw_visual_groups"],
         "component_detail_groups": compiled["component_detail_groups"],
         "document_context_groups": compiled["document_context_groups"],
         "role_audit": compiled["role_audit"],
         "owner_by_detail_id": compiled["owner_by_detail_id"],
+        "detail_role_repairs": compiled["detail_role_repairs"],
         "page_coverage": compiled["page_coverage"],
         "pair_ledger": compiled["pair_ledger"],
         "partitions": compiled["partitions"],

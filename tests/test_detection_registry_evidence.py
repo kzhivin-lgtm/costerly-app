@@ -251,7 +251,7 @@ def test_v49_routes_only_adda_style_registry_to_sonnet_without_evidence_handoff(
     assert len(result["_agent_usage_events"]) == 1
 
 
-def test_source_degraded_route_uses_v529_pairwise_audit_and_forces_the_base_model():
+def test_source_degraded_route_uses_v530_pairwise_preservation_audit_and_forces_the_base_model():
     registry = {"objects": [{
         "object_id": "object-001", "transport_label": "Object 1",
         "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
@@ -262,12 +262,12 @@ def test_source_degraded_route_uses_v529_pairwise_audit_and_forces_the_base_mode
 
     def capture_source_degraded(**kwargs):
         source_degraded_call.update(kwargs)
-        return {"route": "v5_29", "registry": registry}, {"raw_usage": {}}
+        return {"route": "v5_30", "registry": registry}, {"raw_usage": {}}
 
     with (
         patch("agents.detection_agent.get_secret", side_effect=lambda _name, default: default),
         patch(
-            "agents.detection_agent.run_anthropic_detection_v5_source_degraded_pairwise_audit",
+            "agents.detection_agent.run_anthropic_detection_v5_source_degraded_pairwise_preservation_audit",
             side_effect=capture_source_degraded,
         ),
         patch(
