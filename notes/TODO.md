@@ -488,6 +488,17 @@ boundary ledger and do not add more prompt/schema variations automatically;
 the next approved diagnostic requires independent visual evidence of physical
 continuity. Details: `notes/DETECTION_V5_21_SOURCE_DEGRADED_BOUNDARY_LEDGER_CHECKPOINT_2026_10_24.md`.
 
+DEFERRED, P1, USER REQUEST, Detection Processing provider-outage handling:
+when Mistral OCR is unavailable, exhausted, rate-limited, or times out, the
+Processing screen must never remain at its initial elapsed value. Persist a
+safe early lifecycle marker before OCR, record a terminal OCR failure/timeout
+with its stage and duration, and show truthful pending/fallback state while
+the bounded no-OCR route runs. If the run cannot continue, expose a retryable
+terminal state rather than an infinite Processing screen. Preserve the normal
+parallel OCR path and do not add a second Detection call. Acceptance requires
+a forced Mistral 402 and a forced timeout to reach an observable terminal or
+explicit fallback state without leaking credentials or file content.
+
 BLOCKED QUALITY GATE, V5.9 HSL `v590-hsl-04`: the cross-document run rejects
 the experiment in its current form. It returned 31 raw Visual Groups, 28
 Object-Evidence Islands and 12 packages, rather than the protected HSL 32/9
