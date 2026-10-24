@@ -716,7 +716,7 @@ was added. Before any integration, repeat its exact rank gate on a second
 eligible native-XObject drawing and define an explicit negative rule so an
 embedding can prioritize a pair for review but cannot independently merge it.
 
-ACTIVE EXPERIMENT, P0, V5.36 native-XObject embedding pair priority: retain
+SUPERSEDED EXPERIMENT, P0, V5.36 native-XObject embedding pair priority: retain
 V5.35's immutable source-authored XObject boundaries and all existing role,
 ledger, witness and graph validators. For the narrow native-XObject route only,
 extract the original embedded image bytes, run pinned offline
@@ -734,7 +734,9 @@ publish an embedding-only merge. Do not extend this model to ordinary V5 or use
 it as a numeric threshold until a second eligible native-XObject document
 passes the same rank test.
 
-ACTIVE EXPERIMENT, P0, V5.37 native-XObject embedding witness: retain V5.36
+CHECKPOINT, protected production, P0, V5.37 native-XObject embedding witness:
+full record is `notes/DETECTION_V5_37_NATIVE_XOBJECT_EMBEDDING_WITNESS_CHECKPOINT_2026_10_24.md`.
+V5.37 retains V5.36
 native-XObject extraction, immutable Island map, role ledger and graph
 validators. A conservative same-page mutual-top-1 pair with cosine at least
 `0.80` and margin at least `0.10` over each member's next candidate becomes
@@ -748,6 +750,23 @@ alone. First gate: Page23 V3/V4 must cite `native_mutual_top1:0.8278`, produce
 an admitted alternate-projection edge with a visible witness, retain four
 immutable XObject Islands, and avoid a false V1/V2 or V1/V3 edge. This is
 native-XObject-route-only, not an ordinary V5 rule.
+
+[verified, 2026-10-24] Six independent production Page23 V5.37 runs were
+identical: four native-XObject Islands, one admitted V3/V4
+`alternate_projection` edge with exact `native_mutual_top1:0.8278`, and three
+packages. V2's claimed V2/V4 ownership was rejected and V2 safely promoted to
+standalone in every run. The package boundaries are accepted for Page23;
+provider reasoning and naming for V2 are not. This checkpoint does not extend
+the rule beyond the native-XObject route or establish cross-document validity.
+
+ACTIVE IMPLEMENTATION, P0, V5.38 Railway DINO artifact caching: retain the
+exact V5.37 Detection contract and model revision. Move the pinned DINO build
+artifact into a deployment layer whose cache key is only the model revision and
+model-download script, before application-source copy. A normal code commit
+must not redownload the approximately 84 MB DINO weights. Verify the build
+image contains the three required files, local-only runtime loading still works,
+the V5.37 test suite passes, and a source-only deployment reuses the model
+layer. This is a deployment-efficiency change, not a Detection-rule change.
 
 ACTIVE DIAGNOSIS, P0, Processing to File Review client transition defect:
 the same run completed Registry in 23.28 seconds and server-side File Review

@@ -1,5 +1,16 @@
 # Done Log
 
+Detection V5.37 native-XObject embedding witness checkpoint `8dbf34e`: preserves
+source-authored XObject Islands and adds a bounded DINOv2 witness rule only for
+the eligible native-XObject route. Six independent production Page23 runs were
+identical: four islands, one cited V3/V4 alternate-projection edge at
+`native_mutual_top1:0.8278`, and the expected three package boundaries. The
+V2/V4 claim is safely rejected, but V2's provider reasoning and name remain
+wrong. This is a protected Page23 repeatability checkpoint, not universal
+acceptance. Full evidence:
+`notes/DETECTION_V5_37_NATIVE_XOBJECT_EMBEDDING_WITNESS_CHECKPOINT_2026_10_24.md`,
+завершена 24.10
+
 Detection V5.10.12 evidence and context experimental checkpoint: preserves the
 V5.10.3 two-call Registry and adds final same-page deterministic Dimension
 comparison, floor-plan Document Context protection, exact-once compact page
