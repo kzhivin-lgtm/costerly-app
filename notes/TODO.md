@@ -488,6 +488,23 @@ boundary ledger and do not add more prompt/schema variations automatically;
 the next approved diagnostic requires independent visual evidence of physical
 continuity. Details: `notes/DETECTION_V5_21_SOURCE_DEGRADED_BOUNDARY_LEDGER_CHECKPOINT_2026_10_24.md`.
 
+ACTIVE EXPERIMENT, P0, V5.22 source-degraded local contour witness: retain
+V5.21's two full-page Haiku calls and no pre-Discovery crop. Replace its
+overlap-only boundary queue with a bounded local same-page core-neighbour
+queue. For every selected pair, Registry must supply a coordinate-bearing
+physical witness inside a deterministic local inspection corridor. A continuous
+claim names and locates the visible construction joint. A separate claim names
+and locates a visible background gap or separate closed contour.
+`independent_projection`, dimensions, material, annotations and differing
+perspective are prohibited as local-boundary evidence. Deterministic code
+records whether the witness agrees with the rendered pixels and unions only
+pixel-consistent continuous claims before roles. This is a source-degraded
+segmentation experiment only, not an ordinary V5/Fusion/Dimension change.
+First gate: Page23 must account for every local contour pair and either join
+the shelving frame to its attached angled panel with a witness or expose a
+failed witness in the audit. Record candidate count, witness coordinates,
+pixel audit, roles, partitions, time and cost before broader testing.
+
 DEFERRED, P1, USER REQUEST, Detection Processing provider-outage handling:
 when Mistral OCR is unavailable, exhausted, rate-limited, or times out, the
 Processing screen must never remain at its initial elapsed value. Persist a

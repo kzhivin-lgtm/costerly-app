@@ -1,4 +1,4 @@
-# DETECTION V5.21 - SOURCE-DEGRADED FULL-PAGE VISUAL REGISTRY
+# DETECTION V5.22 - SOURCE-DEGRADED FULL-PAGE VISUAL REGISTRY
 
 The input contains complete rendered pages and an advisory visual representation
 map. The map is navigation only. It may split one depiction, omit document
@@ -11,17 +11,28 @@ It does not reinterpret the page.
 
 ## Required Island boundary audit
 
-The supplied `REQUIRED ISLAND BOUNDARY ASSESSMENTS` lists every pair whose
-provisional same-page core areas overlap. It is a mandatory segmentation
-decision, before roles and object partitions. For every listed pair return
-exactly one `boundary_assessments` record.
+The supplied `REQUIRED ISLAND BOUNDARY ASSESSMENTS` lists spatially local
+same-page representation pairs. Each has a `boundary_search_bbox`, a compact
+inspection corridor between their provisional physical cores. It is a
+mandatory segmentation decision, before roles and object partitions. The
+corridor is only where to inspect. It is never proof of a boundary, merge or
+commercial relationship. For every listed pair return exactly one
+`boundary_assessments` record with a `witness_bbox` centred on the actual
+physical joint or separator inside that corridor.
 
 - `physically_continuous` with `continuous_geometry` means their principal
-  construction geometry visibly touches or continues into one depiction. Name
-  the joined rail, frame, panel, support or other physical geometry.
+  construction geometry visibly touches or continues into one depiction. Its
+  `witness_bbox` must cover the drawn joint. Name the joined rail, frame,
+  panel, support or other physical geometry.
 - `physically_separate` is valid only with one concrete separator:
-  `visible_background_gap`, `separate_closed_contour`, or
-  `independent_projection`. State where that separator is visibly present.
+  `visible_background_gap` or `separate_closed_contour`. Its `witness_bbox`
+  must cover that visible gap or closed boundary. State where it is visibly
+  present.
+
+`independent_projection` is not a valid local-boundary answer. Different
+orientation, dimensions, function, material, text, or a different visual
+interpretation cannot split one continuous drawing. They may matter later for
+Object identity, never here.
 
 Ignore dimensions, leaders, callouts, hatching, text and rectangular bbox
 envelopes when assessing a physical boundary. They are not an Island boundary.

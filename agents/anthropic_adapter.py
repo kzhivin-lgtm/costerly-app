@@ -130,6 +130,9 @@ DETECTION_V5_SOURCE_DEGRADED_V519_PROMPT_VERSION = (
 DETECTION_V5_SOURCE_DEGRADED_V521_PROMPT_VERSION = (
     "detection_v5_21_source_degraded_required_boundary_ledger_v1"
 )
+DETECTION_V5_SOURCE_DEGRADED_V522_PROMPT_VERSION = (
+    "detection_v5_22_source_degraded_local_contour_witness_v1"
+)
 DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_CROP_MAX_SIDE = 1024
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
@@ -331,9 +334,11 @@ DETECTION_V5_SOURCE_DEGRADED_FULL_PAGE_ROLES_SCHEMA: dict[str, Any] = {
     },
 }
 DETECTION_V5_SOURCE_DEGRADED_BOUNDARY_ASSESSMENTS_SCHEMA: dict[str, Any] = {
-    "type": "array", "maxItems": 64,
+    "type": "array", "maxItems": 96,
     "items": {"type": "object", "additionalProperties": False,
-        "required": ["group_ids", "relation", "boundary_kind", "observation"],
+        "required": [
+            "group_ids", "relation", "boundary_kind", "witness_bbox", "observation",
+        ],
         "properties": {
             "group_ids": {"type": "array", "minItems": 2, "maxItems": 2,
                           "items": {"type": "string"}},
@@ -342,8 +347,19 @@ DETECTION_V5_SOURCE_DEGRADED_BOUNDARY_ASSESSMENTS_SCHEMA: dict[str, Any] = {
             ]},
             "boundary_kind": {"type": "string", "enum": [
                 "continuous_geometry", "visible_background_gap",
-                "separate_closed_contour", "independent_projection",
+                "separate_closed_contour",
             ]},
+            "witness_bbox": {"type": "object", "additionalProperties": False,
+                "required": [
+                    "top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y",
+                ],
+                "properties": {
+                    "top_left_x": {"type": "integer", "minimum": 0},
+                    "top_left_y": {"type": "integer", "minimum": 0},
+                    "bottom_right_x": {"type": "integer", "minimum": 1},
+                    "bottom_right_y": {"type": "integer", "minimum": 1},
+                },
+            },
             "observation": {"type": "string", "minLength": 30, "maxLength": 280},
         },
     },
@@ -2982,49 +2998,229 @@ def _bbox_overlaps(left: dict[str, int], right: dict[str, int]) -> bool:
     )
 
 
+def _bbox_minimum_distance(left: dict[str, int], right: dict[str, int]) -> float:
+    """Return the Euclidean gap between two rectangular transport envelopes."""
+    dx = max(
+        left["top_left_x"] - right["bottom_right_x"],
+        right["top_left_x"] - left["bottom_right_x"],
+        0,
+    )
+    dy = max(
+        left["top_left_y"] - right["bottom_right_y"],
+        right["top_left_y"] - left["bottom_right_y"],
+        0,
+    )
+    return math.hypot(dx, dy)
+
+
+def _nearest_axis_points(
+    left_start: int,
+    left_end: int,
+    right_start: int,
+    right_end: int,
+) -> tuple[int, int]:
+    if left_end < right_start:
+        return left_end, right_start
+    if right_end < left_start:
+        return left_start, right_end
+    overlap_start = max(left_start, right_start)
+    overlap_end = min(left_end, right_end)
+    midpoint = round((overlap_start + overlap_end) / 2)
+    return midpoint, midpoint
+
+
+def _build_detection_v5_source_degraded_boundary_search_bbox(
+    left: dict[str, int],
+    right: dict[str, int],
+    *,
+    page_frame: dict[str, int] | None,
+) -> dict[str, int]:
+    """Create a compact inspection corridor between two provisional cores.
+
+    This is only where Registry should look for a real joint or a real gap.
+    It is never itself evidence that two drawings are one depiction.
+    """
+    left_x, right_x = _nearest_axis_points(
+        left["top_left_x"], left["bottom_right_x"],
+        right["top_left_x"], right["bottom_right_x"],
+    )
+    left_y, right_y = _nearest_axis_points(
+        left["top_left_y"], left["bottom_right_y"],
+        right["top_left_y"], right["bottom_right_y"],
+    )
+    shortest_core_side = min(
+        left["bottom_right_x"] - left["top_left_x"],
+        left["bottom_right_y"] - left["top_left_y"],
+        right["bottom_right_x"] - right["top_left_x"],
+        right["bottom_right_y"] - right["top_left_y"],
+    )
+    padding = min(32, max(8, round(shortest_core_side * 0.05)))
+    result = {
+        "top_left_x": min(left_x, right_x) - padding,
+        "top_left_y": min(left_y, right_y) - padding,
+        "bottom_right_x": max(left_x, right_x) + padding,
+        "bottom_right_y": max(left_y, right_y) + padding,
+    }
+    if page_frame:
+        result = {
+            "top_left_x": max(0, result["top_left_x"]),
+            "top_left_y": max(0, result["top_left_y"]),
+            "bottom_right_x": min(int(page_frame["width"]), result["bottom_right_x"]),
+            "bottom_right_y": min(int(page_frame["height"]), result["bottom_right_y"]),
+        }
+    if result["bottom_right_x"] <= result["top_left_x"]:
+        result["bottom_right_x"] = result["top_left_x"] + 1
+    if result["bottom_right_y"] <= result["top_left_y"]:
+        result["bottom_right_y"] = result["top_left_y"] + 1
+    return result
+
+
 def build_detection_v5_source_degraded_boundary_candidates(
     visual_groups: list[dict[str, Any]],
+    *,
+    page_frames: dict[int, dict[str, int]] | None = None,
 ) -> list[dict[str, Any]]:
-    """Select same-page geometry collisions for mandatory boundary review.
+    """Select bounded same-page contour neighbours for mandatory review.
 
-    A core-bbox collision is not proof that two depictions are connected.  It
-    is only a deterministic trigger that prevents the Registry from silently
-    preserving a split without first accounting for the physical boundary.
+    Core-envelope overlap catches only one layout shape. A physically connected
+    non-rectangular drawing can have adjacent, non-overlapping core envelopes.
+    The two nearest same-page cores for each representation are therefore also
+    review candidates. This is a local contour queue, not a merge rule and not
+    a whole-page all-to-all comparison.
     """
+    groups_by_page: dict[int, list[tuple[str, dict[str, int]]]] = {}
+    for group in visual_groups:
+        group_id = str(group.get("group_id") or "")
+        bbox = _detection_bbox(group.get("core_bbox"))
+        try:
+            page_number = int(group.get("page_number"))
+        except (TypeError, ValueError):
+            continue
+        if group_id and bbox is not None and page_number >= 1:
+            groups_by_page.setdefault(page_number, []).append((group_id, bbox))
+
+    candidate_reasons: dict[tuple[int, str, str], set[str]] = {}
+    candidate_distances: dict[tuple[int, str, str], float] = {}
+    candidate_boxes: dict[tuple[int, str], dict[str, int]] = {
+        (page_number, group_id): bbox
+        for page_number, groups in groups_by_page.items()
+        for group_id, bbox in groups
+    }
+    for page_number, groups in groups_by_page.items():
+        for group_id, bbox in groups:
+            nearest = sorted(
+                (
+                    (_bbox_minimum_distance(bbox, other_bbox), other_group_id)
+                    for other_group_id, other_bbox in groups
+                    if other_group_id != group_id
+                ),
+                key=lambda row: (row[0], row[1]),
+            )[:2]
+            for distance, other_group_id in nearest:
+                left_id, right_id = sorted((group_id, other_group_id))
+                key = (page_number, left_id, right_id)
+                candidate_distances[key] = min(
+                    candidate_distances.get(key, distance), distance,
+                )
+                reason = (
+                    "same_page_zero_core_gap_requires_contour_witness"
+                    if distance == 0
+                    else "same_page_local_core_neighbour_requires_contour_witness"
+                )
+                candidate_reasons.setdefault(key, set()).add(reason)
+
     candidates: list[dict[str, Any]] = []
-    for left, right in combinations(visual_groups, 2):
-        if left.get("page_number") != right.get("page_number"):
-            continue
-        left_bbox = left.get("core_bbox")
-        right_bbox = right.get("core_bbox")
-        if not isinstance(left_bbox, dict) or not isinstance(right_bbox, dict):
-            continue
-        if not _bbox_overlaps(left_bbox, right_bbox):
-            continue
+    for page_number, left_id, right_id in sorted(candidate_reasons):
+        left = candidate_boxes[(page_number, left_id)]
+        right = candidate_boxes[(page_number, right_id)]
         candidates.append({
-            "group_ids": sorted((str(left["group_id"]), str(right["group_id"]))),
-            "reason": "same_page_core_bbox_overlap_requires_boundary_decision",
+            "group_ids": [left_id, right_id],
+            "page_number": page_number,
+            "core_distance_px": round(candidate_distances[(page_number, left_id, right_id)], 3),
+            "boundary_search_bbox": _build_detection_v5_source_degraded_boundary_search_bbox(
+                left,
+                right,
+                page_frame=(page_frames or {}).get(page_number),
+            ),
+            "reason": "+".join(sorted(candidate_reasons[(page_number, left_id, right_id)])),
         })
     return candidates
+
+
+def _detection_v5_source_degraded_witness_pixel_audit(
+    *,
+    page_images: list[bytes] | None,
+    page_number: int,
+    witness_bbox: dict[str, int],
+    boundary_kind: str,
+) -> dict[str, Any]:
+    """Check that a claimed contour witness agrees with the rendered pixels.
+
+    The test deliberately remains weak. It can reject a purported blank gap
+    that is visibly full of ink, or a purported geometric join placed in empty
+    paper. It cannot replace visual interpretation of technical annotations.
+    """
+    if not page_images or not 1 <= page_number <= len(page_images):
+        return {"checked": False, "consistent": None, "reason": "page_unavailable"}
+    try:
+        from PIL import Image
+        with Image.open(BytesIO(page_images[page_number - 1])) as image:
+            page = image.convert("L")
+            width, height = page.size
+            left = max(0, min(width - 1, witness_bbox["top_left_x"]))
+            top = max(0, min(height - 1, witness_bbox["top_left_y"]))
+            right = max(left + 1, min(width, witness_bbox["bottom_right_x"]))
+            bottom = max(top + 1, min(height, witness_bbox["bottom_right_y"]))
+            values = list(page.crop((left, top, right, bottom)).get_flattened_data())
+    except Exception as exc:
+        return {
+            "checked": False,
+            "consistent": None,
+            "reason": f"pixel_read_failed:{type(exc).__name__}",
+        }
+    if not values:
+        return {"checked": False, "consistent": None, "reason": "empty_witness"}
+    dark_fraction = round(sum(value < 245 for value in values) / len(values), 6)
+    if boundary_kind == "visible_background_gap":
+        consistent = dark_fraction <= 0.12
+        expected = "predominantly_background"
+    else:
+        consistent = dark_fraction >= 0.003
+        expected = "visible_ink"
+    return {
+        "checked": True,
+        "consistent": consistent,
+        "expected": expected,
+        "dark_pixel_fraction": dark_fraction,
+        "sampled_pixels": len(values),
+    }
 
 
 def validate_detection_v5_source_degraded_boundary_assessments(
     assessments: object,
     *,
     candidates: list[dict[str, Any]],
+    page_frames: dict[int, dict[str, int]] | None = None,
+    page_images: list[bytes] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Require one concrete visual-boundary decision for every candidate."""
+    """Require a local, coordinate-bearing physical-boundary decision."""
     if not isinstance(assessments, list):
         raise ValueError("source-degraded boundary assessments are invalid")
     expected_pairs = {
         tuple(sorted(str(group_id) for group_id in candidate["group_ids"]))
         for candidate in candidates
     }
+    candidate_by_pair = {
+        tuple(sorted(str(group_id) for group_id in candidate["group_ids"])): candidate
+        for candidate in candidates
+    }
     by_pair: dict[tuple[str, str], dict[str, Any]] = {}
     for row in assessments:
         if (
             not isinstance(row, dict)
-            or set(row) != {"group_ids", "relation", "boundary_kind", "observation"}
+            or set(row) != {
+                "group_ids", "relation", "boundary_kind", "witness_bbox", "observation",
+            }
             or not isinstance(row.get("group_ids"), list)
             or len(row["group_ids"]) != 2
             or len(set(row["group_ids"])) != 2
@@ -3032,7 +3228,7 @@ def validate_detection_v5_source_degraded_boundary_assessments(
             or row.get("relation") not in {"physically_continuous", "physically_separate"}
             or row.get("boundary_kind") not in {
                 "continuous_geometry", "visible_background_gap",
-                "separate_closed_contour", "independent_projection",
+                "separate_closed_contour",
             }
         ):
             raise ValueError("source-degraded boundary assessment is invalid")
@@ -3042,19 +3238,51 @@ def validate_detection_v5_source_degraded_boundary_assessments(
             raise ValueError("source-degraded boundary assessment coverage is invalid")
         relation = str(row["relation"])
         boundary_kind = str(row["boundary_kind"])
+        witness_bbox = _detection_bbox(row.get("witness_bbox"))
+        candidate = candidate_by_pair[pair]
+        try:
+            page_number = int(candidate["page_number"])
+        except (KeyError, TypeError, ValueError):
+            page_number = 0
+        page_frame = (page_frames or {}).get(page_number)
         if (
             relation == "physically_continuous"
             and boundary_kind != "continuous_geometry"
         ) or (
             relation == "physically_separate"
-            and boundary_kind == "continuous_geometry"
+            and boundary_kind not in {"visible_background_gap", "separate_closed_contour"}
         ):
             raise ValueError("source-degraded boundary assessment contradicts its boundary kind")
+        if witness_bbox is None or page_number < 1:
+            raise ValueError("source-degraded boundary witness is invalid")
+        if page_frame and (
+            witness_bbox["top_left_x"] < 0
+            or witness_bbox["top_left_y"] < 0
+            or witness_bbox["bottom_right_x"] > int(page_frame["width"])
+            or witness_bbox["bottom_right_y"] > int(page_frame["height"])
+        ):
+            raise ValueError("source-degraded boundary witness is outside its page")
+        search_bbox = _detection_bbox(candidate.get("boundary_search_bbox"))
+        witness_centre_x = (witness_bbox["top_left_x"] + witness_bbox["bottom_right_x"]) / 2
+        witness_centre_y = (witness_bbox["top_left_y"] + witness_bbox["bottom_right_y"]) / 2
+        if search_bbox and not (
+            search_bbox["top_left_x"] <= witness_centre_x <= search_bbox["bottom_right_x"]
+            and search_bbox["top_left_y"] <= witness_centre_y <= search_bbox["bottom_right_y"]
+        ):
+            raise ValueError("source-degraded boundary witness is outside its local corridor")
+        pixel_audit = _detection_v5_source_degraded_witness_pixel_audit(
+            page_images=page_images,
+            page_number=page_number,
+            witness_bbox=witness_bbox,
+            boundary_kind=boundary_kind,
+        )
         by_pair[pair] = {
             "group_ids": list(pair),
             "relation": relation,
             "boundary_kind": boundary_kind,
+            "witness_bbox": witness_bbox,
             "observation": observation,
+            "pixel_audit": pixel_audit,
         }
     if set(by_pair) != expected_pairs:
         raise ValueError("source-degraded boundary assessment omits a candidate")
@@ -3063,7 +3291,10 @@ def validate_detection_v5_source_degraded_boundary_assessments(
     adjacency: dict[str, set[str]] = {}
     observations: dict[tuple[str, str], str] = {}
     for row in audit:
-        if row["relation"] != "physically_continuous":
+        if (
+            row["relation"] != "physically_continuous"
+            or row["pixel_audit"].get("consistent") is False
+        ):
             continue
         left, right = row["group_ids"]
         adjacency.setdefault(left, set()).add(right)
@@ -4538,7 +4769,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     post_discovery_view_crops: bool = False,
     component_only_partition_repair: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Run V5.21's full-page partition with mandatory boundary accounting.
+    """Run V5.22's full-page partition with local contour witnesses.
 
     Discovery is deliberately only a navigational visual map.  Review receives
     the complete pages again and owns roles plus the exclusive object partition.
@@ -4640,14 +4871,14 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
             raise ValueError("source-degraded Discovery found no visual representation")
     except (json.JSONDecodeError, KeyError, ValueError, DetectionRegistrySchemaError) as exc:
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.21 Discovery failed validation: {exc}",
+            f"Source-degraded V5.22 Discovery failed validation: {exc}",
             usage_event={
                 "agent_name": "detection",
                 "operation": "rfq_detection_v5_source_degraded_full_page_registry",
                 "file_name": file_name,
                 "company_id": company_id,
                 "status": "failed",
-                "validation_stage": "v5_21_discovery",
+                "validation_stage": "v5_22_discovery",
                 "source_capability": source_capability,
                 "error_message": str(exc),
             },
@@ -4669,12 +4900,14 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     ]
     boundary_candidates = build_detection_v5_source_degraded_boundary_candidates(
         visual_groups,
+        page_frames=page_frames,
     )
     registry_user_text = (
         "ADVISORY VISUAL REPRESENTATION MAP:\n"
         + json.dumps(registry_map, ensure_ascii=False, separators=(",", ":"))
         + "\n\nREQUIRED ISLAND BOUNDARY ASSESSMENTS:\n"
         + json.dumps(boundary_candidates, ensure_ascii=False, separators=(",", ":"))
+        + "\n\n" + coordinate_context
         + "\n\nSOURCE CAPABILITY: visual-only. Evaluate the complete page "
           "yourself. The map is not an object inventory and its rectangles "
           "are not authority for a boundary."
@@ -4762,6 +4995,8 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
             validate_detection_v5_source_degraded_boundary_assessments(
                 normalized_boundary_assessments,
                 candidates=boundary_candidates,
+                page_frames=page_frames,
+                page_images=page_images,
             )
         )
         effective_visual_groups, boundary_group_id_mapping, continuity_consolidation_audit = (
@@ -4878,7 +5113,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                         "relationship": "same_object_view",
                         "evidence_facts": [],
                         "commercial_inseparability": (
-                            "V5.21 full-page Registry exclusive visual partition."
+                            "V5.22 full-page Registry exclusive visual partition."
                         ),
                     })
                     edge["evidence_facts"].append(fact)
@@ -4901,7 +5136,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                 "identity_pages": pages,
                 "estimation_evidence_pages": pages,
                 "visual_group_ids": group_ids,
-                "visual_identity": "V5.21 full-page visual Registry partition",
+                "visual_identity": "V5.22 full-page visual Registry partition",
                 "boundary_basis": " ".join(
                     str(basis["observation"])
                     for basis in partition["visual_basis"]
@@ -4928,12 +5163,12 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
             object_id=None,
             object_name=None,
             model=selected_model,
-            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V521_PROMPT_VERSION,
+            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V522_PROMPT_VERSION,
             response=registry_response,
             started_at=discovery_diagnostics["request_started_at"],
             finished_at=registry_diagnostics["request_finished_at"],
             request_diagnostics={
-                "validation_stage": "v5_21_full_page_registry",
+                "validation_stage": "v5_22_full_page_registry",
                 "source_capability": source_capability,
                 "page_frame_audit": page_frame_audit,
                 "discovery_decision_audit": discovery_payload,
@@ -4948,7 +5183,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
         failure_usage["status"] = "failed"
         failure_usage["error_message"] = str(exc)
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.21 full-page Registry failed validation: {exc}",
+            f"Source-degraded V5.22 full-page Registry failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
 
@@ -4982,7 +5217,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     )
     audit = {
         "operation": "rfq_detection_v5_source_degraded_full_page_registry",
-        "registry_route": "v5_21_source_degraded_required_boundary_ledger",
+        "registry_route": "v5_22_source_degraded_local_contour_witness",
         "provider_duration_seconds": round(
             float(discovery_summary.get("duration_seconds") or 0)
             + float(registry_summary.get("duration_seconds") or 0),
@@ -5028,7 +5263,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
         object_id=None,
         object_name=None,
         model=selected_model,
-        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V521_PROMPT_VERSION,
+        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V522_PROMPT_VERSION,
         response=registry_response,
         started_at=discovery_diagnostics["request_started_at"],
         finished_at=registry_diagnostics["request_finished_at"],
@@ -5050,7 +5285,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     })
     return {
         "route": (
-            "v5_21_source_degraded_required_boundary_ledger"
+            "v5_22_source_degraded_local_contour_witness"
         ),
         "visual_groups": assembly_groups,
         "discovery_visual_groups": raw_visual_groups,

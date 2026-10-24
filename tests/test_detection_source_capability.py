@@ -1,3 +1,5 @@
+from io import BytesIO
+
 import pytest
 
 from agents.anthropic_adapter import (
@@ -273,17 +275,24 @@ def _boundary_group(group_id, left, top, right, bottom):
     }
 
 
-def test_source_degraded_boundary_ledger_requires_every_overlap_to_be_explained():
+def test_source_degraded_boundary_ledger_requires_every_local_pair_to_be_explained():
     groups = [
         _boundary_group("view-001", 0, 0, 100, 100),
         _boundary_group("view-002", 80, 70, 180, 170),
         _boundary_group("view-003", 240, 0, 340, 100),
     ]
     candidates = build_detection_v5_source_degraded_boundary_candidates(groups)
-    assert candidates == [{
-        "group_ids": ["view-001", "view-002"],
-        "reason": "same_page_core_bbox_overlap_requires_boundary_decision",
-    }]
+    assert [candidate["group_ids"] for candidate in candidates] == [
+        ["view-001", "view-002"],
+        ["view-001", "view-003"],
+        ["view-002", "view-003"],
+    ]
+    assert candidates[0]["reason"] == "same_page_zero_core_gap_requires_contour_witness"
+    assert candidates[1]["reason"] == "same_page_local_core_neighbour_requires_contour_witness"
+    assert candidates[0]["boundary_search_bbox"] == {
+        "top_left_x": 82, "top_left_y": 77,
+        "bottom_right_x": 98, "bottom_right_y": 93,
+    }
 
     with pytest.raises(ValueError, match="omits a candidate"):
         validate_detection_v5_source_degraded_boundary_assessments(
@@ -295,7 +304,29 @@ def test_source_degraded_boundary_ledger_requires_every_overlap_to_be_explained(
             "group_ids": ["view-001", "view-002"],
             "relation": "physically_continuous",
             "boundary_kind": "continuous_geometry",
+            "witness_bbox": {
+                "top_left_x": 85, "top_left_y": 80,
+                "bottom_right_x": 95, "bottom_right_y": 90,
+            },
             "observation": "The angled panel visibly continues from the shelf frame without a gap.",
+        }, {
+            "group_ids": ["view-001", "view-003"],
+            "relation": "physically_separate",
+            "boundary_kind": "visible_background_gap",
+            "witness_bbox": {
+                "top_left_x": 160, "top_left_y": 45,
+                "bottom_right_x": 180, "bottom_right_y": 55,
+            },
+            "observation": "A broad visible background gap separates the remote independent drawing.",
+        }, {
+            "group_ids": ["view-002", "view-003"],
+            "relation": "physically_separate",
+            "boundary_kind": "visible_background_gap",
+            "witness_bbox": {
+                "top_left_x": 200, "top_left_y": 80,
+                "bottom_right_x": 220, "bottom_right_y": 90,
+            },
+            "observation": "A visible background gap separates the two independent construction drawings.",
         }],
         candidates=candidates,
     )
@@ -304,6 +335,97 @@ def test_source_degraded_boundary_ledger_requires_every_overlap_to_be_explained(
         "group_ids": ["view-001", "view-002"],
         "observation": "The angled panel visibly continues from the shelf frame without a gap.",
     }]
+
+
+def test_source_degraded_boundary_ledger_rejects_semantic_projection_as_a_boundary():
+    groups = [
+        _boundary_group("view-001", 0, 0, 100, 100),
+        _boundary_group("view-002", 105, 0, 205, 100),
+    ]
+    candidates = build_detection_v5_source_degraded_boundary_candidates(groups)
+
+    with pytest.raises(ValueError, match="boundary assessment is invalid"):
+        validate_detection_v5_source_degraded_boundary_assessments(
+            [{
+                "group_ids": ["view-001", "view-002"],
+                "relation": "physically_separate",
+                "boundary_kind": "independent_projection",
+                "witness_bbox": {
+                    "top_left_x": 98, "top_left_y": 45,
+                    "bottom_right_x": 112, "bottom_right_y": 55,
+                },
+                "observation": "The two depictions use different orientation and dimensions only.",
+            }],
+            candidates=candidates,
+        )
+
+
+def test_source_degraded_boundary_continuity_requires_ink_at_the_local_witness():
+    image_module = pytest.importorskip("PIL.Image")
+    draw_module = pytest.importorskip("PIL.ImageDraw")
+    image = image_module.new("L", (220, 120), color=255)
+    draw_module.Draw(image).line((92, 50, 108, 50), fill=0, width=2)
+    output = BytesIO()
+    image.save(output, format="PNG")
+    groups = [
+        _boundary_group("view-001", 0, 0, 100, 100),
+        _boundary_group("view-002", 100, 0, 200, 100),
+    ]
+    candidates = build_detection_v5_source_degraded_boundary_candidates(
+        groups,
+        page_frames={1: {"width": 220, "height": 120}},
+    )
+    continuity_groups, audit = validate_detection_v5_source_degraded_boundary_assessments(
+        [{
+            "group_ids": ["view-001", "view-002"],
+            "relation": "physically_continuous",
+            "boundary_kind": "continuous_geometry",
+            "witness_bbox": {
+                "top_left_x": 94, "top_left_y": 44,
+                "bottom_right_x": 106, "bottom_right_y": 56,
+            },
+            "observation": "The black frame line visibly crosses from the shelf into the angled panel.",
+        }],
+        candidates=candidates,
+        page_frames={1: {"width": 220, "height": 120}},
+        page_images=[output.getvalue()],
+    )
+
+    assert audit[0]["pixel_audit"]["consistent"] is True
+    assert continuity_groups[0]["group_ids"] == ["view-001", "view-002"]
+
+
+def test_source_degraded_boundary_does_not_consolidate_a_continuity_witness_on_blank_paper():
+    image_module = pytest.importorskip("PIL.Image")
+    image = image_module.new("L", (220, 120), color=255)
+    output = BytesIO()
+    image.save(output, format="PNG")
+    groups = [
+        _boundary_group("view-001", 0, 0, 100, 100),
+        _boundary_group("view-002", 100, 0, 200, 100),
+    ]
+    candidates = build_detection_v5_source_degraded_boundary_candidates(
+        groups,
+        page_frames={1: {"width": 220, "height": 120}},
+    )
+    continuity_groups, audit = validate_detection_v5_source_degraded_boundary_assessments(
+        [{
+            "group_ids": ["view-001", "view-002"],
+            "relation": "physically_continuous",
+            "boundary_kind": "continuous_geometry",
+            "witness_bbox": {
+                "top_left_x": 94, "top_left_y": 44,
+                "bottom_right_x": 106, "bottom_right_y": 56,
+            },
+            "observation": "The alleged joint is deliberately placed on blank paper for this test only.",
+        }],
+        candidates=candidates,
+        page_frames={1: {"width": 220, "height": 120}},
+        page_images=[output.getvalue()],
+    )
+
+    assert audit[0]["pixel_audit"]["consistent"] is False
+    assert continuity_groups == []
 
 
 def test_source_degraded_boundary_ledger_unions_only_attested_continuity_before_roles():
