@@ -631,7 +631,7 @@ claim to solve the still-separate console views. Record role repairs, witness
 ledger, rejected and admitted graph edges, Islands, packages, tokens, cost and
 time before any next boundary experiment.
 
-ACTIVE EXPERIMENT, P0, V5.32.1 source-degraded role wording and ledger completion:
+COMPLETE EXPERIMENT, NOT A RELEASE CHECKPOINT, P0, V5.32.1 source-degraded role wording and ledger completion:
 preserve V5.32's Island map, two complete-page Haiku calls and structural graph
 admission. Clarify that a finished separable fabrication, including a door or
 door system, cannot become `component_detail` from plausible proximity,
@@ -641,6 +641,17 @@ and no graph edge. This prevents a formatting omission from failing a run, but
 does not claim a missing relationship was resolved. First gate: Page23
 completes with a visible runtime completion audit and preserves every technical
 Island for review. Record original provider rows separately from runtime rows.
+
+[verified, 2026-10-24] Five Page23 production runs were identical: five
+Islands, four technical packages and one title context. Every provider response
+contained all six technical-pair rows, so runtime completion was unused. The
+model still called the door elevation a detail of one console; V5.32.1 promoted
+it to an independent assembly because its claimed relation failed structural
+admission. The two complete console projections remained `inconclusive`, so
+the graph had no positive edge and published four objects instead of the
+expected three. V5.32.1 fixes terminal pair-row loss and silent detail loss;
+it does not solve complete-assembly pair interpretation and is not accepted as
+a source-degraded Detection checkpoint.
 
 DEFERRED, P1, USER REQUEST, Detection Processing provider-outage handling:
 when Mistral OCR is unavailable, exhausted, rate-limited, or times out, the
