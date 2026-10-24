@@ -84,6 +84,78 @@ def extract_native_pdf_text_blocks(
         document.close()
 
 
+def extract_native_pdf_graphic_regions(
+    file_bytes: bytes,
+    *,
+    dpi: int = DEFAULT_RENDER_DPI,
+) -> list[dict[str, Any]]:
+    """Extract native PDF image placements without assigning object meaning.
+
+    PDF image XObjects carry a source-authored placement rectangle.  They are
+    graphic geometry, not OCR text and not detected objects.  Later Fusion and
+    Registry stages may use them as bounded candidate regions when the PDF has
+    a small number of independent placed drawings.
+    """
+    try:
+        import fitz  # PyMuPDF
+    except (ImportError, ModuleNotFoundError):
+        return []
+
+    document = fitz.open(stream=file_bytes, filetype="pdf")
+    try:
+        regions: list[dict[str, Any]] = []
+        for page_index, page in enumerate(document):
+            scale = dpi / 72
+            rotated_page = page.rect * page.rotation_matrix
+            seen_placements: set[tuple[int, float, float, float, float]] = set()
+            for image_index, image in enumerate(page.get_images(full=True), start=1):
+                xref = int(image[0])
+                image_width = int(image[2])
+                image_height = int(image[3])
+                for placement_index, source_rect in enumerate(
+                    page.get_image_rects(xref, transform=False), start=1,
+                ):
+                    rendered_rect = source_rect * page.rotation_matrix
+                    if rendered_rect.width <= 0 or rendered_rect.height <= 0:
+                        continue
+                    placement_key = (
+                        xref,
+                        round(rendered_rect.x0, 6),
+                        round(rendered_rect.y0, 6),
+                        round(rendered_rect.x1, 6),
+                        round(rendered_rect.y1, 6),
+                    )
+                    if placement_key in seen_placements:
+                        continue
+                    seen_placements.add(placement_key)
+                    regions.append({
+                        "graphic_id": (
+                            f"NPIG-P{page_index + 1:03d}-"
+                            f"X{xref}-I{image_index:03d}-R{placement_index:03d}"
+                        ),
+                        "page_number": page_index + 1,
+                        "bbox": {
+                            "top_left_x": round(rendered_rect.x0 * scale),
+                            "top_left_y": round(rendered_rect.y0 * scale),
+                            "bottom_right_x": round(rendered_rect.x1 * scale),
+                            "bottom_right_y": round(rendered_rect.y1 * scale),
+                        },
+                        "source_bbox_points": {
+                            "top_left_x": round(rendered_rect.x0, 6),
+                            "top_left_y": round(rendered_rect.y0, 6),
+                            "bottom_right_x": round(rendered_rect.x1, 6),
+                            "bottom_right_y": round(rendered_rect.y1, 6),
+                        },
+                        "source_page_width_points": round(rotated_page.width, 6),
+                        "source_page_height_points": round(rotated_page.height, 6),
+                        "image_width": image_width,
+                        "image_height": image_height,
+                    })
+        return regions
+    finally:
+        document.close()
+
+
 def direct_pdf_ocr_enabled() -> bool:
     """Enable one-PDF/one-request OCR only for an explicit experiment."""
     if "--ocr-direct-pdf" in sys.argv:
@@ -353,6 +425,7 @@ def run_mistral_document_evidence_ocr(
     page_streamer: Callable[..., Any] | None = None,
     page_ocr: Callable[..., dict[str, Any]] = run_mistral_ocr,
     native_text_extractor: Callable[..., list[dict[str, Any]]] = extract_native_pdf_text_blocks,
+    native_graphic_extractor: Callable[..., list[dict[str, Any]]] = extract_native_pdf_graphic_regions,
 ) -> dict[str, Any]:
     """Render and OCR PDF pages concurrently with an overlapping pipeline."""
     if Path(file_name).suffix.lower() != ".pdf":
@@ -371,8 +444,14 @@ def run_mistral_document_evidence_ocr(
         blocks = native_text_extractor(file_bytes, dpi=dpi)
         return blocks, time.perf_counter() - extraction_started
 
-    native_executor = ThreadPoolExecutor(max_workers=1)
+    def extract_native_graphics() -> tuple[list[dict[str, Any]], float]:
+        extraction_started = time.perf_counter()
+        regions = native_graphic_extractor(file_bytes, dpi=dpi)
+        return regions, time.perf_counter() - extraction_started
+
+    native_executor = ThreadPoolExecutor(max_workers=2)
     native_text_future = native_executor.submit(extract_native_text)
+    native_graphic_future = native_executor.submit(extract_native_graphics)
     warm_mistral_http_client_async()
     render_started = time.perf_counter()
 
@@ -456,6 +535,13 @@ def run_mistral_document_evidence_ocr(
     except Exception as exc:
         native_text_blocks = []
         native_text_error = str(exc)
+    native_graphic_error: str | None = None
+    native_graphic_seconds = 0.0
+    try:
+        native_graphic_regions, native_graphic_seconds = native_graphic_future.result()
+    except Exception as exc:
+        native_graphic_regions = []
+        native_graphic_error = str(exc)
     finally:
         native_executor.shutdown(wait=True)
 
@@ -514,6 +600,12 @@ def run_mistral_document_evidence_ocr(
             "extraction_seconds": round(native_text_seconds, 3),
             "error": native_text_error,
         },
+        "native_pdf_graphics": {
+            "status": "failed" if native_graphic_error else "succeeded",
+            "region_count": len(native_graphic_regions),
+            "extraction_seconds": round(native_graphic_seconds, 3),
+            "error": native_graphic_error,
+        },
         "raw_response": {
             "rendered_page_responses": raw_page_responses,
         },
@@ -521,5 +613,6 @@ def run_mistral_document_evidence_ocr(
     result["evidence"] = build_ocr_evidence(
         pages,
         native_text_blocks=native_text_blocks,
+        native_graphic_regions=native_graphic_regions,
     )
     return result

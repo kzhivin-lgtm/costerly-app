@@ -156,9 +156,16 @@ DETECTION_V5_SOURCE_DEGRADED_V532_PROMPT_VERSION = (
 DETECTION_V5_SOURCE_DEGRADED_V5321_PROMPT_VERSION = (
     "detection_v5_32_1_source_degraded_pairwise_structural_admission_audit_v1"
 )
+DETECTION_V5_NATIVE_GRAPHIC_ANCHOR_V535_PROMPT_VERSION = (
+    "detection_v5_35_native_graphic_anchor_pairwise_audit_v1"
+)
 DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_CROP_MAX_SIDE = 1024
 DETECTION_V5_SOURCE_DEGRADED_CONTEXT_PAIR_MAX_DISTANCE_PX = 32
 DETECTION_V5_SOURCE_DEGRADED_CONTEXT_PAIR_MAX_PER_PAGE = 8
+DETECTION_V5_NATIVE_GRAPHIC_ANCHOR_MIN_AREA_RATIO = 0.05
+DETECTION_V5_NATIVE_GRAPHIC_ANCHOR_MAX_AREA_RATIO = 0.70
+DETECTION_V5_NATIVE_GRAPHIC_ANCHOR_MIN_PER_PAGE = 2
+DETECTION_V5_NATIVE_GRAPHIC_ANCHOR_MAX_PER_PAGE = 12
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
 # contract as well.
@@ -1795,6 +1802,155 @@ def _validate_source_degraded_visual_geometry(
         ):
             raise ValueError("source-degraded visual group bbox exceeds rendered page")
     return envelopes, cores
+
+
+def build_detection_v535_native_graphic_anchor_inventory(
+    *,
+    ocr_package: dict[str, Any] | None,
+    page_frames: dict[int, dict[str, int]],
+) -> dict[str, Any] | None:
+    """Build an immutable source-authored placement map when it is decisive.
+
+    This route is intentionally narrow. A PDF image XObject placement is a
+    graphic envelope, not an object claim. It becomes an anchor only when a
+    page contains a small set of independent, substantial placements. That
+    distinguishes composite technical sheets from a single scanned page or a
+    document whose images are merely decorative assets.
+    """
+    evidence = (ocr_package or {}).get("evidence") or {}
+    raw_regions = evidence.get("graphic_regions") or []
+    anchors_by_page: dict[int, list[dict[str, Any]]] = {}
+    rejected: list[dict[str, Any]] = []
+
+    for region in raw_regions:
+        if not isinstance(region, dict) or region.get("source") != "native_pdf_image_xobject":
+            continue
+        try:
+            page_number = int(region.get("page_number"))
+            source_width = float(region.get("source_page_width_points"))
+            source_height = float(region.get("source_page_height_points"))
+        except (TypeError, ValueError):
+            continue
+        frame = page_frames.get(page_number)
+        source_bbox = region.get("source_bbox_points")
+        if (
+            frame is None
+            or source_width <= 0
+            or source_height <= 0
+            or not isinstance(source_bbox, dict)
+        ):
+            rejected.append({
+                "graphic_id": str(region.get("graphic_id") or ""),
+                "page_number": page_number,
+                "reason": "missing_source_or_rendered_frame",
+            })
+            continue
+        try:
+            left = round(float(source_bbox["top_left_x"]) / source_width * frame["width"])
+            top = round(float(source_bbox["top_left_y"]) / source_height * frame["height"])
+            right = round(float(source_bbox["bottom_right_x"]) / source_width * frame["width"])
+            bottom = round(float(source_bbox["bottom_right_y"]) / source_height * frame["height"])
+        except (KeyError, TypeError, ValueError):
+            rejected.append({
+                "graphic_id": str(region.get("graphic_id") or ""),
+                "page_number": page_number,
+                "reason": "invalid_source_bbox",
+            })
+            continue
+        bbox = {
+            "top_left_x": max(0, left),
+            "top_left_y": max(0, top),
+            "bottom_right_x": min(frame["width"], right),
+            "bottom_right_y": min(frame["height"], bottom),
+        }
+        if bbox["bottom_right_x"] <= bbox["top_left_x"] or bbox["bottom_right_y"] <= bbox["top_left_y"]:
+            rejected.append({
+                "graphic_id": str(region.get("graphic_id") or ""),
+                "page_number": page_number,
+                "reason": "empty_rendered_bbox",
+            })
+            continue
+        area_ratio = _detection_bbox_area(bbox) / float(frame["width"] * frame["height"])
+        if not (
+            DETECTION_V5_NATIVE_GRAPHIC_ANCHOR_MIN_AREA_RATIO
+            <= area_ratio
+            <= DETECTION_V5_NATIVE_GRAPHIC_ANCHOR_MAX_AREA_RATIO
+        ):
+            rejected.append({
+                "graphic_id": str(region.get("graphic_id") or ""),
+                "page_number": page_number,
+                "reason": "area_ratio_outside_anchor_range",
+                "area_ratio": round(area_ratio, 6),
+            })
+            continue
+        anchors_by_page.setdefault(page_number, []).append({
+            "graphic_id": str(region.get("graphic_id") or ""),
+            "bbox": bbox,
+            "area_ratio": round(area_ratio, 6),
+            "source_bbox_points": copy.deepcopy(source_bbox),
+        })
+
+    expected_pages = set(page_frames)
+    if not expected_pages or set(anchors_by_page) != expected_pages:
+        return None
+    if any(
+        not DETECTION_V5_NATIVE_GRAPHIC_ANCHOR_MIN_PER_PAGE
+        <= len(anchors_by_page[page_number])
+        <= DETECTION_V5_NATIVE_GRAPHIC_ANCHOR_MAX_PER_PAGE
+        for page_number in expected_pages
+    ):
+        return None
+
+    raw_visual_groups: list[dict[str, Any]] = []
+    raw_page_coverage: list[dict[str, Any]] = []
+    for page_number in sorted(expected_pages):
+        group_ids: list[str] = []
+        for index, anchor in enumerate(
+            sorted(
+                anchors_by_page[page_number],
+                key=lambda item: (
+                    item["bbox"]["top_left_y"],
+                    item["bbox"]["top_left_x"],
+                    item["graphic_id"],
+                ),
+            ),
+            start=1,
+        ):
+            group_id = f"native-graphic-p{page_number:03d}-{index:03d}"
+            group_ids.append(group_id)
+            raw_visual_groups.append({
+                "group_id": group_id,
+                "page_number": page_number,
+                "location_hint": (
+                    f"source-authored PDF image placement {anchor['graphic_id']}"
+                ),
+                "visual_description": (
+                    "Native PDF graphic placement. Inspect the complete page to "
+                    "determine its technical role and relations."
+                ),
+                "representation_kind": "native_pdf_graphic_placement",
+                "bbox": anchor["bbox"],
+                "core_bbox": anchor["bbox"],
+                "native_graphic_region_id": anchor["graphic_id"],
+                "native_graphic_area_ratio": anchor["area_ratio"],
+                "source_bbox_points": anchor["source_bbox_points"],
+            })
+        raw_page_coverage.append({
+            "page_number": page_number,
+            "visual_group_ids": group_ids,
+        })
+    return {
+        "raw_visual_groups": raw_visual_groups,
+        "raw_page_coverage": raw_page_coverage,
+        "source_audit": {
+            "source": "native_pdf_image_xobject",
+            "eligible_page_count": len(expected_pages),
+            "anchor_count": len(raw_visual_groups),
+            "min_area_ratio": DETECTION_V5_NATIVE_GRAPHIC_ANCHOR_MIN_AREA_RATIO,
+            "max_area_ratio": DETECTION_V5_NATIVE_GRAPHIC_ANCHOR_MAX_AREA_RATIO,
+            "rejected_regions": rejected,
+        },
+    }
 
 
 def format_detection_v5_coordinate_frame_context(
@@ -7043,37 +7199,37 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
         *(f"P{page_number}|{frame['width']}x{frame['height']}"
           for page_number, frame in sorted(page_frames.items())),
     ])
+    native_graphic_anchor_inventory = build_detection_v535_native_graphic_anchor_inventory(
+        ocr_package=ocr_package,
+        page_frames=page_frames,
+    )
+    native_graphic_anchor_route = native_graphic_anchor_inventory is not None
+    operation = (
+        "rfq_detection_v5_native_graphic_anchor_pairwise_audit"
+        if native_graphic_anchor_route
+        else "rfq_detection_v5_source_degraded_pairwise_structural_admission_audit"
+    )
+    registry_route = (
+        "v5_35_native_graphic_anchor_pairwise_audit"
+        if native_graphic_anchor_route
+        else "v5_32_1_source_degraded_pairwise_structural_admission_audit"
+    )
+    prompt_version = (
+        DETECTION_V5_NATIVE_GRAPHIC_ANCHOR_V535_PROMPT_VERSION
+        if native_graphic_anchor_route
+        else DETECTION_V5_SOURCE_DEGRADED_V5321_PROMPT_VERSION
+    )
     inventory_prompt = load_detection_v5_source_degraded_pairwise_inventory_prompt()
     audit_prompt = load_detection_v5_source_degraded_pairwise_structural_admission_audit_prompt()
-    inventory_content = build_detection_content_blocks(
-        file_name=file_name,
-        file_bytes=file_bytes,
-        page_images=page_images,
-        user_text=(
-            "SOURCE CAPABILITY: no page has usable coordinate-bearing PDF or OCR "
-            "evidence. Build only a neutral visual Island map. Complete rendered "
-            "pages are the sole image input.\n\n" + coordinate_context
-        ),
-    )
-    inventory_response, inventory_diagnostics = create_claude_message_streamed(
-        get_anthropic_client(),
-        model=selected_model,
-        max_tokens=DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_INVENTORY_MAX_TOKENS,
-        temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
-        system=build_detection_system_content(prompt=inventory_prompt),
-        messages=[{"role": "user", "content": inventory_content}],
-        output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
-            DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_JSON_SCHEMA,
-        )}},
-    )
-    inventory_raw_text = extract_text_from_claude_response(inventory_response)
+    inventory_response: Any = None
     inventory_payload: Any = None
-    try:
-        inventory_payload = json.loads(inventory_raw_text)
-        if not isinstance(inventory_payload, dict) or set(inventory_payload) != {
-            "visual_groups", "page_coverage",
-        }:
-            raise ValueError("source-degraded structural-admission Island map response fields are invalid")
+    inventory_summary: dict[str, Any]
+
+    if native_graphic_anchor_route:
+        inventory_payload = {
+            "visual_groups": native_graphic_anchor_inventory["raw_visual_groups"],
+            "page_coverage": native_graphic_anchor_inventory["raw_page_coverage"],
+        }
         _page_coverage, inventory_visual_groups, _group_id_mapping = (
             _prepare_detection_v5_source_degraded_visual_inventory(
                 raw_visual_groups=inventory_payload["visual_groups"],
@@ -7082,52 +7238,153 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
                 page_frames=page_frames,
             )
         )
-    except (json.JSONDecodeError, KeyError, ValueError, DetectionRegistrySchemaError) as exc:
-        failure_usage = build_agent_usage_event(
-            agent_name="detection",
-            operation="rfq_detection_v5_source_degraded_pairwise_structural_admission_audit",
-            company_id=company_id,
-            run_id=None,
+        timestamp = datetime.now(UTC).isoformat()
+        inventory_diagnostics = {
+            "request_started_at": timestamp,
+            "request_finished_at": timestamp,
+        }
+        inventory_summary = {
+            "provider": "deterministic_native_pdf",
+            "duration_seconds": 0.0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "input_cost_usd": 0.0,
+            "output_cost_usd": 0.0,
+            "anchored_region_count": len(inventory_visual_groups),
+        }
+    else:
+        inventory_content = build_detection_content_blocks(
             file_name=file_name,
-            object_id=None,
-            object_name=None,
-            model=selected_model,
-            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V5321_PROMPT_VERSION,
-            response=inventory_response,
-            started_at=inventory_diagnostics["request_started_at"],
-            finished_at=inventory_diagnostics["request_finished_at"],
-            request_diagnostics={
-                "validation_stage": "v5_32_1_neutral_island_map",
-                "source_capability": source_capability,
-                "page_frame_audit": page_frame_audit,
-                "neutral_island_map_decision_audit": inventory_payload,
-                "error_message": str(exc),
-            },
+            file_bytes=file_bytes,
+            page_images=page_images,
+            user_text=(
+                "SOURCE CAPABILITY: no page has usable coordinate-bearing PDF or OCR "
+                "evidence. Build only a neutral visual Island map. Complete rendered "
+                "pages are the sole image input.\n\n" + coordinate_context
+            ),
         )
-        failure_usage["status"] = "failed"
-        failure_usage["error_message"] = str(exc)
-        raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.32.1 neutral Island map failed validation: {exc}",
-            usage_event=failure_usage,
-        ) from exc
+        inventory_response, inventory_diagnostics = create_claude_message_streamed(
+            get_anthropic_client(),
+            model=selected_model,
+            max_tokens=DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_INVENTORY_MAX_TOKENS,
+            temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+            system=build_detection_system_content(prompt=inventory_prompt),
+            messages=[{"role": "user", "content": inventory_content}],
+            output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
+                DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_JSON_SCHEMA,
+            )}},
+        )
+        inventory_raw_text = extract_text_from_claude_response(inventory_response)
+        try:
+            inventory_payload = json.loads(inventory_raw_text)
+            if not isinstance(inventory_payload, dict) or set(inventory_payload) != {
+                "visual_groups", "page_coverage",
+            }:
+                raise ValueError("source-degraded structural-admission Island map response fields are invalid")
+            _page_coverage, inventory_visual_groups, _group_id_mapping = (
+                _prepare_detection_v5_source_degraded_visual_inventory(
+                    raw_visual_groups=inventory_payload["visual_groups"],
+                    raw_page_coverage=inventory_payload["page_coverage"],
+                    page_count=len(page_images),
+                    page_frames=page_frames,
+                )
+            )
+        except (json.JSONDecodeError, KeyError, ValueError, DetectionRegistrySchemaError) as exc:
+            failure_usage = build_agent_usage_event(
+                agent_name="detection",
+                operation=operation,
+                company_id=company_id,
+                run_id=None,
+                file_name=file_name,
+                object_id=None,
+                object_name=None,
+                model=selected_model,
+                prompt_version=prompt_version,
+                response=inventory_response,
+                started_at=inventory_diagnostics["request_started_at"],
+                finished_at=inventory_diagnostics["request_finished_at"],
+                request_diagnostics={
+                    "validation_stage": "v5_32_1_neutral_island_map",
+                    "source_capability": source_capability,
+                    "page_frame_audit": page_frame_audit,
+                    "neutral_island_map_decision_audit": inventory_payload,
+                    "error_message": str(exc),
+                },
+            )
+            failure_usage["status"] = "failed"
+            failure_usage["error_message"] = str(exc)
+            raise DetectionVisualRegistryValidationError(
+                f"Source-degraded V5.32.1 neutral Island map failed validation: {exc}",
+                usage_event=failure_usage,
+            ) from exc
 
     fixed_island_map = [
         {
-            "group_id": str(group["group_id"]),
-            "page_number": int(group["page_number"]),
-            "location_hint": str(group.get("location_hint") or ""),
-            "visual_description": str(group.get("visual_description") or ""),
-            "representation_kind": str(group.get("representation_kind") or ""),
+            **{
+                "group_id": str(group["group_id"]),
+                "page_number": int(group["page_number"]),
+                "location_hint": str(group.get("location_hint") or ""),
+                "visual_description": str(group.get("visual_description") or ""),
+                "representation_kind": str(group.get("representation_kind") or ""),
+            },
+            **({
+                "bbox": copy.deepcopy(group["bbox"]),
+                "native_graphic_region_id": str(group.get("native_graphic_region_id") or ""),
+            } if native_graphic_anchor_route else {}),
         }
         for group in inventory_visual_groups
     ]
+    native_anchor_overlays: list[dict[str, Any]] = []
+    native_anchor_overlay_audit: list[dict[str, Any]] = []
+    if native_graphic_anchor_route:
+        native_anchor_overlays, native_anchor_overlay_audit = (
+            build_detection_v5_review_page_context_images(
+                page_images=page_images,
+                visual_groups=inventory_visual_groups,
+            )
+        )
+        if len(native_anchor_overlays) != len(page_images):
+            raise ValueError(
+                "native graphic anchor route could not produce every immutable overlay"
+            )
+
     audit_content = build_detection_content_blocks(
         file_name=file_name,
         file_bytes=file_bytes,
         page_images=page_images,
-        user_text=(
-            "FIXED NEUTRAL ISLAND MAP. It is navigation only. Do not change its "
-            "members, IDs or boundaries:\n"
+        user_text="",
+    )
+    audit_content.pop()
+    if native_graphic_anchor_route:
+        for overlay in native_anchor_overlays:
+            audit_content.append({
+                "type": "text",
+                "text": (
+                    "IMMUTABLE NATIVE GRAPHIC ANCHOR OVERLAY for PDF page "
+                    f"{overlay['page_number']}. Labels and rectangles are exact "
+                    "source-authored PDF placements."
+                ),
+            })
+            audit_content.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": "image/jpeg",
+                    "data": base64.standard_b64encode(overlay["bytes"]).decode("ascii"),
+                },
+            })
+    audit_content.append({
+        "type": "text",
+        "text": (
+            (
+                "IMMUTABLE NATIVE GRAPHIC ANCHOR MAP. Each group bbox is an exact "
+                "source-authored PDF image placement. The map is navigation only: "
+                "do not add, remove, split, merge, move or replace groups or their "
+                "boundaries. Assign roles and pair-ledger decisions only.\n"
+                if native_graphic_anchor_route else
+                "FIXED NEUTRAL ISLAND MAP. It is navigation only. Do not change its "
+                "members, IDs or boundaries:\n"
+            )
             + json.dumps(fixed_island_map, ensure_ascii=False, separators=(",", ":"))
             + "\n\n" + coordinate_context
             + "\n\nSOURCE CAPABILITY: visual-only. Inspect each complete page. "
@@ -7135,13 +7392,20 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
               "technical Island pair. Same-object edges need structural identity "
               "witnesses. Runtime derives partitions from that ledger."
         ),
+    })
+    audit_system_prompt = audit_prompt + (
+        "\n\nV5.35 NATIVE GRAPHIC ANCHOR RULE: each supplied group is a "
+        "source-authored PDF image placement, not a model-drawn bbox. Its "
+        "rectangle and membership are immutable. The labelled full-page overlay "
+        "is authoritative for checking every pairwise role and witness."
+        if native_graphic_anchor_route else ""
     )
     audit_response, audit_diagnostics = create_claude_message_streamed(
         get_anthropic_client(),
         model=selected_model,
         max_tokens=DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_AUDIT_MAX_TOKENS,
         temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
-        system=build_detection_system_content(prompt=audit_prompt),
+        system=build_detection_system_content(prompt=audit_system_prompt),
         messages=[{"role": "user", "content": audit_content}],
         output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
             DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_STRUCTURAL_AUDIT_JSON_SCHEMA,
@@ -7161,21 +7425,30 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
     except (json.JSONDecodeError, KeyError, ValueError, DetectionRegistrySchemaError) as exc:
         failure_usage = build_agent_usage_event(
             agent_name="detection",
-            operation="rfq_detection_v5_source_degraded_pairwise_structural_admission_audit",
+            operation=operation,
             company_id=company_id,
             run_id=None,
             file_name=file_name,
             object_id=None,
             object_name=None,
             model=selected_model,
-            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V5321_PROMPT_VERSION,
+            prompt_version=prompt_version,
             response=audit_response,
             started_at=inventory_diagnostics["request_started_at"],
             finished_at=audit_diagnostics["request_finished_at"],
             request_diagnostics={
-                "validation_stage": "v5_32_1_pairwise_structural_admission_audit",
+                "validation_stage": (
+                    "v5_35_native_graphic_anchor_pairwise_audit"
+                    if native_graphic_anchor_route
+                    else "v5_32_1_pairwise_structural_admission_audit"
+                ),
                 "source_capability": source_capability,
                 "page_frame_audit": page_frame_audit,
+                "native_graphic_anchor_audit": (
+                    native_graphic_anchor_inventory.get("source_audit")
+                    if native_graphic_anchor_inventory else None
+                ),
+                "native_graphic_anchor_overlay_audit": native_anchor_overlay_audit,
                 "neutral_island_map_decision_audit": inventory_payload,
                 "pairwise_audit_decision_audit": audit_payload,
                 "error_message": str(exc),
@@ -7184,29 +7457,31 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
         failure_usage["status"] = "failed"
         failure_usage["error_message"] = str(exc)
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.32.1 full-page pairwise audit failed validation: {exc}",
+            f"Source-degraded {'V5.35' if native_graphic_anchor_route else 'V5.32.1'} "
+            f"full-page pairwise audit failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
 
-    inventory_summary = summarize_detection_provider_call(
-        response=inventory_response,
-        diagnostics=inventory_diagnostics,
-        prompt_characters=len(inventory_prompt),
-        context_characters=len(coordinate_context),
-        image_count=len(page_images),
-        image_bytes=sum(len(image) for image in page_images),
-    )
+    if not native_graphic_anchor_route:
+        inventory_summary = summarize_detection_provider_call(
+            response=inventory_response,
+            diagnostics=inventory_diagnostics,
+            prompt_characters=len(inventory_prompt),
+            context_characters=len(coordinate_context),
+            image_count=len(page_images),
+            image_bytes=sum(len(image) for image in page_images),
+        )
     audit_summary = summarize_detection_provider_call(
         response=audit_response,
         diagnostics=audit_diagnostics,
-        prompt_characters=len(audit_prompt),
+        prompt_characters=len(audit_system_prompt),
         context_characters=len(json.dumps(fixed_island_map, ensure_ascii=False)),
         image_count=len(page_images),
         image_bytes=sum(len(image) for image in page_images),
     )
     audit = {
-        "operation": "rfq_detection_v5_source_degraded_pairwise_structural_admission_audit",
-        "registry_route": "v5_32_1_source_degraded_pairwise_structural_admission_audit",
+        "operation": operation,
+        "registry_route": registry_route,
         "provider_duration_seconds": round(
             float(inventory_summary.get("duration_seconds") or 0)
             + float(audit_summary.get("duration_seconds") or 0),
@@ -7228,7 +7503,16 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
         "page_frame_audit": page_frame_audit,
         "neutral_island_map": inventory_summary,
         "pairwise_audit": audit_summary,
-        "full_page_review_input": "full_rendered_pages_without_crops_or_overlays",
+        "full_page_review_input": (
+            "full_rendered_pages_plus_immutable_native_graphic_anchor_overlays"
+            if native_graphic_anchor_route
+            else "full_rendered_pages_without_crops_or_overlays"
+        ),
+        "native_graphic_anchor_audit": (
+            native_graphic_anchor_inventory.get("source_audit")
+            if native_graphic_anchor_inventory else None
+        ),
+        "native_graphic_anchor_overlay_audit": native_anchor_overlay_audit,
         "neutral_island_map_decision_audit": inventory_payload,
         "pairwise_audit_decision_audit": audit_payload,
         "role_audit": compiled["role_audit"],
@@ -7243,14 +7527,14 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
     }
     usage = build_agent_usage_event(
         agent_name="detection",
-        operation="rfq_detection_v5_source_degraded_pairwise_structural_admission_audit",
+        operation=operation,
         company_id=company_id,
         run_id=None,
         file_name=file_name,
         object_id=None,
         object_name=None,
         model=selected_model,
-        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V5321_PROMPT_VERSION,
+        prompt_version=prompt_version,
         response=audit_response,
         started_at=inventory_diagnostics["request_started_at"],
         finished_at=audit_diagnostics["request_finished_at"],
@@ -7271,7 +7555,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
         "total_cost_usd": usage["total_cost_usd"],
     })
     return {
-        "route": "v5_32_1_source_degraded_pairwise_structural_admission_audit",
+        "route": registry_route,
         "visual_groups": compiled["assembly_groups"],
         "discovery_visual_groups": compiled["raw_visual_groups"],
         "component_detail_groups": compiled["component_detail_groups"],

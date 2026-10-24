@@ -228,6 +228,7 @@ def build_ocr_evidence(
     pages: list[dict[str, Any]],
     *,
     native_text_blocks: list[dict[str, Any]] | None = None,
+    native_graphic_regions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Create a deterministic evidence index without semantic interpretation."""
     text_blocks: list[dict[str, Any]] = []
@@ -380,10 +381,49 @@ def build_ocr_evidence(
         literal["literal_id"] = f"DL{len(deduplicated_literals) + 1}"
         deduplicated_literals.append(literal)
 
+    graphic_regions: list[dict[str, Any]] = []
+    for region in native_graphic_regions or []:
+        if not isinstance(region, dict):
+            continue
+        try:
+            page_number = int(region.get("page_number"))
+        except (TypeError, ValueError):
+            continue
+        bbox = region.get("bbox") if isinstance(region.get("bbox"), dict) else {}
+        try:
+            left = int(bbox["top_left_x"])
+            top = int(bbox["top_left_y"])
+            right = int(bbox["bottom_right_x"])
+            bottom = int(bbox["bottom_right_y"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if page_number < 1 or right <= left or bottom <= top:
+            continue
+        graphic_id = str(region.get("graphic_id") or "").strip()
+        if not graphic_id:
+            continue
+        graphic_regions.append({
+            "graphic_id": graphic_id,
+            "page_number": page_number,
+            "source": "native_pdf_image_xobject",
+            "bbox": {
+                "top_left_x": left,
+                "top_left_y": top,
+                "bottom_right_x": right,
+                "bottom_right_y": bottom,
+            },
+            "source_page_width_points": region.get("source_page_width_points"),
+            "source_page_height_points": region.get("source_page_height_points"),
+            "source_bbox_points": region.get("source_bbox_points"),
+            "image_width": region.get("image_width"),
+            "image_height": region.get("image_height"),
+        })
+
     return {
         "text_blocks": text_blocks,
         "literal_items": literal_items,
         "declared_dimension_literals": deduplicated_literals,
+        "graphic_regions": graphic_regions,
     }
 
 

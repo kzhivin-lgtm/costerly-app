@@ -685,6 +685,24 @@ continuous shelf between `VG_P1_001` and `VG_P1_004`, and misplace
 `VG_P1_003` over the lower left door rather than a TV-console projection. The
 renderer is therefore now auditable but does not repair the primary map.
 
+ACTIVE EXPERIMENT, P0, V5.35 native graphic-anchor Registry: retain the
+source-degraded route only for a PDF where every rendered page contains 2-12
+independent native image XObject placements, each covering 5-70% of the page.
+Extract each source-authored placement into OCR/Fusion evidence with its PDF
+point rectangle and map it deterministically into the actual capped rendered
+frame. These are immutable candidate envelopes, not object claims: Registry
+may assign their role and pairwise identity only, never draw, move, split or
+replace their boundaries. The free Haiku Island-discovery call is skipped for
+this source class. The remaining Haiku audit receives the whole page plus an
+immutable labelled overlay, then returns the existing roles and same-page pair
+ledger. Other PDFs, scans and ordinary V5 remain on their current routes.
+First gate: Page23 must expose exactly the four authored drawing envelopes,
+then yield shelf plus continuous panel, door system and two console views as
+three object packages. Do not treat a correct envelope map alone as a package
+quality pass. Record the route, source-anchor count, rejected placements,
+overlay audit, cost and timing. If it passes, verify that a non-eligible
+source-degraded file still takes V5.32.1 before considering a broader pack.
+
 ACTIVE DIAGNOSIS, P0, Processing to File Review client transition defect:
 the same run completed Registry in 23.28 seconds and server-side File Review
 in 26.67 seconds, while the browser recorded a 15.001-second

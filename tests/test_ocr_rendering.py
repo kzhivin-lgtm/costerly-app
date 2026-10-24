@@ -105,18 +105,43 @@ def test_pdf_ocr_merges_native_pdf_text_with_mistral_evidence():
             "text": "358",
             "bbox": {"top_left_x": 10, "top_left_y": 20, "bottom_right_x": 30, "bottom_right_y": 40},
         }],
+        native_graphic_extractor=lambda file_bytes, *, dpi: [{
+            "graphic_id": "NPIG-P001-X10-I001-R001",
+            "page_number": 1,
+            "bbox": {"top_left_x": 1, "top_left_y": 2, "bottom_right_x": 30, "bottom_right_y": 40},
+            "source_bbox_points": {"top_left_x": 1.0, "top_left_y": 2.0, "bottom_right_x": 30.0, "bottom_right_y": 40.0},
+            "source_page_width_points": 100.0,
+            "source_page_height_points": 100.0,
+            "image_width": 100,
+            "image_height": 100,
+        }],
     )
 
     assert package["native_pdf_text"]["status"] == "succeeded"
     assert package["native_pdf_text"]["span_count"] == 1
     assert package["native_pdf_text"]["extraction_seconds"] >= 0
     assert package["native_pdf_text"]["error"] is None
+    assert package["native_pdf_graphics"]["status"] == "succeeded"
+    assert package["native_pdf_graphics"]["region_count"] == 1
+    assert package["native_pdf_graphics"]["error"] is None
+    assert package["native_pdf_graphics"]["extraction_seconds"] >= 0
     assert package["evidence"]["text_blocks"] == [{
         "page_number": 1,
         "block_type": "native_pdf_text",
         "source": "native_pdf_text",
         "text": "358",
         "bbox": {"top_left_x": 10, "top_left_y": 20, "bottom_right_x": 30, "bottom_right_y": 40},
+    }]
+    assert package["evidence"]["graphic_regions"] == [{
+        "graphic_id": "NPIG-P001-X10-I001-R001",
+        "page_number": 1,
+        "source": "native_pdf_image_xobject",
+        "bbox": {"top_left_x": 1, "top_left_y": 2, "bottom_right_x": 30, "bottom_right_y": 40},
+        "source_page_width_points": 100.0,
+        "source_page_height_points": 100.0,
+        "source_bbox_points": {"top_left_x": 1.0, "top_left_y": 2.0, "bottom_right_x": 30.0, "bottom_right_y": 40.0},
+        "image_width": 100,
+        "image_height": 100,
     }]
 
 

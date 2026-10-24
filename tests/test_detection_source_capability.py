@@ -1,4 +1,6 @@
 from io import BytesIO
+import json
+from types import SimpleNamespace
 
 import pytest
 
@@ -9,6 +11,7 @@ from agents.anthropic_adapter import (
     _compile_detection_v516_v561_consensus,
     _match_detection_v516_v561_object_groups,
     _normalize_source_degraded_registry_view_ids,
+    build_detection_v535_native_graphic_anchor_inventory,
     build_detection_v5_source_degraded_boundary_candidates,
     complete_detection_v5_source_degraded_missing_pair_ledger_rows,
     consolidate_detection_v5_source_degraded_continuity_groups,
@@ -18,6 +21,7 @@ from agents.anthropic_adapter import (
     validate_detection_v5_source_degraded_full_page_roles,
     validate_detection_v5_source_degraded_boundary_assessments,
     validate_detection_v5_source_degraded_role_resolutions,
+    run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_audit,
 )
 from agents.detection_source_capability import (
     assess_detection_source_capability,
@@ -42,6 +46,144 @@ def _fact(page, text, left, top, right, bottom):
             "bottom_right_x": right, "bottom_right_y": bottom,
         },
     }
+
+
+def test_native_pdf_graphic_anchor_inventory_preserves_authored_placement_geometry():
+    result = build_detection_v535_native_graphic_anchor_inventory(
+        ocr_package={"evidence": {"graphic_regions": [
+            {
+                "graphic_id": "NPIG-P001-X10-I001-R001",
+                "source": "native_pdf_image_xobject",
+                "page_number": 1,
+                "source_bbox_points": {
+                    "top_left_x": 10, "top_left_y": 10,
+                    "bottom_right_x": 50, "bottom_right_y": 60,
+                },
+                "source_page_width_points": 100,
+                "source_page_height_points": 100,
+            },
+            {
+                "graphic_id": "NPIG-P001-X11-I002-R001",
+                "source": "native_pdf_image_xobject",
+                "page_number": 1,
+                "source_bbox_points": {
+                    "top_left_x": 55, "top_left_y": 10,
+                    "bottom_right_x": 95, "bottom_right_y": 60,
+                },
+                "source_page_width_points": 100,
+                "source_page_height_points": 100,
+            },
+        ]}},
+        page_frames={1: {"width": 1000, "height": 800}},
+    )
+
+    assert result is not None
+    groups = result["raw_visual_groups"]
+    assert [group["native_graphic_region_id"] for group in groups] == [
+        "NPIG-P001-X10-I001-R001", "NPIG-P001-X11-I002-R001",
+    ]
+    assert groups[0]["bbox"] == {
+        "top_left_x": 100, "top_left_y": 80,
+        "bottom_right_x": 500, "bottom_right_y": 480,
+    }
+    assert groups[0]["core_bbox"] == groups[0]["bbox"]
+    assert result["raw_page_coverage"] == [{
+        "page_number": 1,
+        "visual_group_ids": ["native-graphic-p001-001", "native-graphic-p001-002"],
+    }]
+
+
+def test_native_pdf_graphic_anchor_inventory_refuses_a_single_page_sized_placement():
+    result = build_detection_v535_native_graphic_anchor_inventory(
+        ocr_package={"evidence": {"graphic_regions": [{
+            "graphic_id": "NPIG-P001-X10-I001-R001",
+            "source": "native_pdf_image_xobject",
+            "page_number": 1,
+            "source_bbox_points": {
+                "top_left_x": 0, "top_left_y": 0,
+                "bottom_right_x": 100, "bottom_right_y": 100,
+            },
+            "source_page_width_points": 100,
+            "source_page_height_points": 100,
+        }]}},
+        page_frames={1: {"width": 1000, "height": 800}},
+    )
+
+    assert result is None
+
+
+def test_native_pdf_graphic_anchor_route_skips_free_boundary_discovery(monkeypatch):
+    from PIL import Image
+
+    image = Image.new("RGB", (1000, 800), "white")
+    image_bytes = BytesIO()
+    image.save(image_bytes, format="JPEG")
+    response_payload = {
+        "roles": [
+            {
+                "group_id": "view-001", "visual_role": "assembly_view",
+                "owner_group_id": "",
+                "classification_reason": "A complete independently fabricable first representation.",
+            },
+            {
+                "group_id": "view-002", "visual_role": "assembly_view",
+                "owner_group_id": "",
+                "classification_reason": "A complete independently fabricable second representation.",
+            },
+        ],
+        "pair_ledger": [{
+            "group_id_a": "view-001", "group_id_b": "view-002",
+            "relation": "different_object", "evidence_type": "none",
+            "separation_kind": "different_finished_envelope",
+            "observation": "The two complete representations have distinct finished envelopes and no shared assembly.",
+            "identity_witnesses": [],
+        }],
+    }
+    response = SimpleNamespace(
+        model="claude-haiku-4-5-20251001",
+        usage=SimpleNamespace(input_tokens=12, output_tokens=8),
+        content=[SimpleNamespace(type="text", text=json.dumps(response_payload))],
+    )
+    calls: list[dict] = []
+    diagnostics = {
+        "request_started_at": "2026-10-24T00:00:00+00:00",
+        "request_finished_at": "2026-10-24T00:00:01+00:00",
+    }
+
+    def capture_call(*args, **kwargs):
+        calls.append(kwargs)
+        return response, diagnostics
+
+    monkeypatch.setattr("agents.anthropic_adapter.get_anthropic_client", lambda: object())
+    monkeypatch.setattr("agents.anthropic_adapter.create_claude_message_streamed", capture_call)
+    result, usage = run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_audit(
+        file_name="native-placements.pdf",
+        company_id="company-001",
+        file_bytes=b"pdf",
+        page_images=[image_bytes.getvalue()],
+        ocr_package={"evidence": {"graphic_regions": [
+            {
+                "graphic_id": "A", "source": "native_pdf_image_xobject", "page_number": 1,
+                "source_bbox_points": {"top_left_x": 10, "top_left_y": 10, "bottom_right_x": 50, "bottom_right_y": 60},
+                "source_page_width_points": 100, "source_page_height_points": 100,
+            },
+            {
+                "graphic_id": "B", "source": "native_pdf_image_xobject", "page_number": 1,
+                "source_bbox_points": {"top_left_x": 55, "top_left_y": 10, "bottom_right_x": 95, "bottom_right_y": 60},
+                "source_page_width_points": 100, "source_page_height_points": 100,
+            },
+        ]}},
+        model="claude-haiku-4-5-20251001",
+    )
+
+    assert len(calls) == 1
+    assert result["route"] == "v5_35_native_graphic_anchor_pairwise_audit"
+    assert usage["prompt_version"] == "detection_v5_35_native_graphic_anchor_pairwise_audit_v1"
+    assert len(result["discovery_visual_groups"]) == 2
+    assert len(result["registry"]["objects"]) == 2
+    content = calls[0]["messages"][0]["content"]
+    assert sum(block.get("type") == "image" for block in content) == 2
+    assert "IMMUTABLE NATIVE GRAPHIC ANCHOR MAP" in content[-1]["text"]
 
 
 def test_source_capability_routes_footer_and_single_note_only_document_visual_only():

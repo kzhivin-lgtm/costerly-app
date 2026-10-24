@@ -433,6 +433,15 @@ def run_detection_agent(
                 )
             )
             registry = _visual_map["registry"]
+            if _visual_map.get("route") == "v5_35_native_graphic_anchor_pairwise_audit":
+                source_degraded_route = {
+                    **source_degraded_route,
+                    "decision": "native_graphic_anchored_visual_registry",
+                    "reasons": [
+                        *source_degraded_route["reasons"],
+                        "native_pdf_graphic_xobject_anchor_map",
+                    ],
+                }
             route = source_degraded_route
         else:
             regions = build_detection_registry_regions(registry_images)
