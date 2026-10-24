@@ -241,10 +241,12 @@ def test_full_page_roles_require_one_final_role_per_visual_representation():
         [
             {
                 "group_id": "view-001", "visual_role": "assembly_view",
+                "role_basis": "complete_fabricated_system", "parent_group_id": "",
                 "classification_reason": "Complete independent shelving system with one visible envelope.",
             },
             {
                 "group_id": "view-002", "visual_role": "component_detail",
+                "role_basis": "fragment_of_same_page_assembly", "parent_group_id": "view-001",
                 "classification_reason": "A cropped rail detail without an independent fabricated envelope.",
             },
         ],
@@ -256,6 +258,27 @@ def test_full_page_roles_require_one_final_role_per_visual_representation():
 
     assert roles == {"view-001": "assembly_view", "view-002": "component_detail"}
     assert audit[1]["visual_role"] == "component_detail"
+    assert audit[1]["parent_group_id"] == "view-001"
+
+
+def test_full_page_component_detail_needs_a_valid_detail_basis():
+    visual_groups = [{"group_id": "view-001"}, {"group_id": "view-002"}]
+    with pytest.raises(ValueError, match="detail must cite one same-page assembly parent"):
+        validate_detection_v5_source_degraded_full_page_roles(
+            [
+                {
+                    "group_id": "view-001", "visual_role": "component_detail",
+                    "role_basis": "fragment_of_same_page_assembly", "parent_group_id": "view-002",
+                    "classification_reason": "The view is explicitly only a local cut-away fragment.",
+                },
+                {
+                    "group_id": "view-002", "visual_role": "component_detail",
+                    "role_basis": "isolated_detail_parent_not_shown", "parent_group_id": "",
+                    "classification_reason": "An isolated joint section with visibly cropped continuation.",
+                },
+            ],
+            visual_groups=visual_groups,
+        )
 
 
 def _boundary_group(group_id, left, top, right, bottom):

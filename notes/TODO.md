@@ -488,7 +488,7 @@ boundary ledger and do not add more prompt/schema variations automatically;
 the next approved diagnostic requires independent visual evidence of physical
 continuity. Details: `notes/DETECTION_V5_21_SOURCE_DEGRADED_BOUNDARY_LEDGER_CHECKPOINT_2026_10_24.md`.
 
-ACTIVE EXPERIMENT, P0, V5.22 source-degraded local contour witness: retain
+SUPERSEDED EXPERIMENT, P0, V5.22 source-degraded local contour witness: retain
 V5.21's two full-page Haiku calls and no pre-Discovery crop. Replace its
 overlap-only boundary queue with a bounded local same-page core-neighbour
 queue. For every selected pair, Registry must supply a coordinate-bearing
@@ -504,6 +504,19 @@ First gate: Page23 must account for every local contour pair and either join
 the shelving frame to its attached angled panel with a witness or expose a
 failed witness in the audit. Record candidate count, witness coordinates,
 pixel audit, roles, partitions, time and cost before broader testing.
+
+ACTIVE EXPERIMENT, P0, V5.23 source-degraded role evidence: retain V5.22's
+two full-page calls, no pre-Discovery crop and local contour audit. Change
+only the final role contract. Every `assembly_view` must assert a complete
+fabricated system, which can be a complete 2D elevation rather than a 3D
+carcass. Every `component_detail` must either cite a same-page assembly parent
+or state an explicit isolated-fragment basis. A full track/frame plus its
+complete leaf, panel, bay or door sequence and system dimensions cannot be
+discarded as a detail solely because it is technical or 2D. First gate:
+Page23 must preserve a single shelving island, retain the door elevation as
+an assembly, retain panel-only detail as supporting evidence, and merge the
+two console projections only through a valid object basis. This is not a
+Dimension Engine, ordinary V5, segmentation, crop or naming change.
 
 DEFERRED, P1, USER REQUEST, Detection Processing provider-outage handling:
 when Mistral OCR is unavailable, exhausted, rate-limited, or times out, the

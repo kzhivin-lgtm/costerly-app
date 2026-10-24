@@ -130,8 +130,8 @@ DETECTION_V5_SOURCE_DEGRADED_V519_PROMPT_VERSION = (
 DETECTION_V5_SOURCE_DEGRADED_V521_PROMPT_VERSION = (
     "detection_v5_21_source_degraded_required_boundary_ledger_v1"
 )
-DETECTION_V5_SOURCE_DEGRADED_V522_PROMPT_VERSION = (
-    "detection_v5_22_source_degraded_local_contour_witness_v1"
+DETECTION_V5_SOURCE_DEGRADED_V523_PROMPT_VERSION = (
+    "detection_v5_23_source_degraded_role_evidence_v1"
 )
 DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_CROP_MAX_SIDE = 1024
 # Registry has already locked object identity, quantity and ordering before this
@@ -323,12 +323,22 @@ DETECTION_V5_SOURCE_DEGRADED_ROLE_RESOLUTIONS_SCHEMA: dict[str, Any] = {
 DETECTION_V5_SOURCE_DEGRADED_FULL_PAGE_ROLES_SCHEMA: dict[str, Any] = {
     "type": "array", "maxItems": 64,
     "items": {"type": "object", "additionalProperties": False,
-        "required": ["group_id", "visual_role", "classification_reason"],
+        "required": [
+            "group_id", "visual_role", "role_basis", "parent_group_id",
+            "classification_reason",
+        ],
         "properties": {
             "group_id": {"type": "string"},
             "visual_role": {"type": "string", "enum": [
                 "assembly_view", "component_detail", "document_context",
             ]},
+            "role_basis": {"type": "string", "enum": [
+                "complete_fabricated_system",
+                "fragment_of_same_page_assembly",
+                "isolated_detail_parent_not_shown",
+                "document_context",
+            ]},
+            "parent_group_id": {"type": "string"},
             "classification_reason": {"type": "string", "minLength": 12, "maxLength": 240},
         },
     },
@@ -2839,7 +2849,7 @@ def validate_detection_v5_source_degraded_full_page_roles(
     *,
     visual_groups: list[dict[str, Any]],
 ) -> tuple[dict[str, str], list[dict[str, Any]]]:
-    """Validate a complete V4-style representation-role decision."""
+    """Validate a role decision with a concrete basis for every detail."""
     expected = {
         str(group.get("group_id") or "") for group in visual_groups
         if isinstance(group, dict) and str(group.get("group_id") or "")
@@ -2848,26 +2858,62 @@ def validate_detection_v5_source_degraded_full_page_roles(
         raise ValueError("source-degraded full-page roles are invalid")
     by_group_id: dict[str, dict[str, Any]] = {}
     allowed_roles = {"assembly_view", "component_detail", "document_context"}
+    allowed_bases = {
+        "complete_fabricated_system",
+        "fragment_of_same_page_assembly",
+        "isolated_detail_parent_not_shown",
+        "document_context",
+    }
     for role in roles:
         if (
             not isinstance(role, dict)
-            or set(role) != {"group_id", "visual_role", "classification_reason"}
+            or set(role) != {
+                "group_id", "visual_role", "role_basis", "parent_group_id",
+                "classification_reason",
+            }
             or not isinstance(role.get("group_id"), str)
             or role["group_id"] not in expected
             or role["group_id"] in by_group_id
             or role.get("visual_role") not in allowed_roles
+            or role.get("role_basis") not in allowed_bases
+            or not isinstance(role.get("parent_group_id"), str)
             or len(str(role.get("classification_reason") or "").strip()) < 12
         ):
             raise ValueError("source-degraded full-page roles are invalid")
         by_group_id[role["group_id"]] = copy.deepcopy(role)
     if set(by_group_id) != expected:
         raise ValueError("source-degraded full-page Registry must role-classify every representation")
+    for group_id, role in by_group_id.items():
+        visual_role = str(role["visual_role"])
+        role_basis = str(role["role_basis"])
+        parent_group_id = str(role["parent_group_id"])
+        if visual_role == "assembly_view":
+            if role_basis != "complete_fabricated_system" or parent_group_id:
+                raise ValueError("source-degraded assembly role basis is invalid")
+        elif visual_role == "document_context":
+            if role_basis != "document_context" or parent_group_id:
+                raise ValueError("source-degraded document context role basis is invalid")
+        elif role_basis == "fragment_of_same_page_assembly":
+            parent = by_group_id.get(parent_group_id)
+            if (
+                not parent
+                or parent_group_id == group_id
+                or parent["visual_role"] != "assembly_view"
+            ):
+                raise ValueError("source-degraded detail must cite one same-page assembly parent")
+        elif role_basis == "isolated_detail_parent_not_shown":
+            if parent_group_id:
+                raise ValueError("source-degraded isolated detail cannot cite a parent")
+        else:
+            raise ValueError("source-degraded component detail basis is invalid")
     return (
         {group_id: str(role["visual_role"]) for group_id, role in by_group_id.items()},
         [
             {
                 "group_id": group_id,
                 "visual_role": role["visual_role"],
+                "role_basis": role["role_basis"],
+                "parent_group_id": role["parent_group_id"],
                 "classification_reason": role["classification_reason"],
             }
             for group_id, role in sorted(by_group_id.items())
@@ -4769,7 +4815,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     post_discovery_view_crops: bool = False,
     component_only_partition_repair: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Run V5.22's full-page partition with local contour witnesses.
+    """Run V5.23's full-page partition with role-basis validation.
 
     Discovery is deliberately only a navigational visual map.  Review receives
     the complete pages again and owns roles plus the exclusive object partition.
@@ -4871,14 +4917,14 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
             raise ValueError("source-degraded Discovery found no visual representation")
     except (json.JSONDecodeError, KeyError, ValueError, DetectionRegistrySchemaError) as exc:
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.22 Discovery failed validation: {exc}",
+            f"Source-degraded V5.23 Discovery failed validation: {exc}",
             usage_event={
                 "agent_name": "detection",
                 "operation": "rfq_detection_v5_source_degraded_full_page_registry",
                 "file_name": file_name,
                 "company_id": company_id,
                 "status": "failed",
-                "validation_stage": "v5_22_discovery",
+                "validation_stage": "v5_23_discovery",
                 "source_capability": source_capability,
                 "error_message": str(exc),
             },
@@ -4975,6 +5021,9 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                 continue
             normalized_role = copy.deepcopy(role)
             normalized_role["group_id"] = normalize_raw_group_id(role.get("group_id"))
+            normalized_role["parent_group_id"] = normalize_raw_group_id(
+                role.get("parent_group_id")
+            )
             normalized_roles.append(normalized_role)
         raw_roles, raw_role_audit = validate_detection_v5_source_degraded_full_page_roles(
             normalized_roles,
@@ -5113,7 +5162,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                         "relationship": "same_object_view",
                         "evidence_facts": [],
                         "commercial_inseparability": (
-                            "V5.22 full-page Registry exclusive visual partition."
+                            "V5.23 full-page Registry exclusive visual partition."
                         ),
                     })
                     edge["evidence_facts"].append(fact)
@@ -5136,7 +5185,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
                 "identity_pages": pages,
                 "estimation_evidence_pages": pages,
                 "visual_group_ids": group_ids,
-                "visual_identity": "V5.22 full-page visual Registry partition",
+                "visual_identity": "V5.23 full-page visual Registry partition",
                 "boundary_basis": " ".join(
                     str(basis["observation"])
                     for basis in partition["visual_basis"]
@@ -5163,12 +5212,12 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
             object_id=None,
             object_name=None,
             model=selected_model,
-            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V522_PROMPT_VERSION,
+            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V523_PROMPT_VERSION,
             response=registry_response,
             started_at=discovery_diagnostics["request_started_at"],
             finished_at=registry_diagnostics["request_finished_at"],
             request_diagnostics={
-                "validation_stage": "v5_22_full_page_registry",
+                "validation_stage": "v5_23_full_page_registry",
                 "source_capability": source_capability,
                 "page_frame_audit": page_frame_audit,
                 "discovery_decision_audit": discovery_payload,
@@ -5183,7 +5232,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
         failure_usage["status"] = "failed"
         failure_usage["error_message"] = str(exc)
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded V5.22 full-page Registry failed validation: {exc}",
+            f"Source-degraded V5.23 full-page Registry failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
 
@@ -5217,7 +5266,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     )
     audit = {
         "operation": "rfq_detection_v5_source_degraded_full_page_registry",
-        "registry_route": "v5_22_source_degraded_local_contour_witness",
+        "registry_route": "v5_23_source_degraded_role_evidence",
         "provider_duration_seconds": round(
             float(discovery_summary.get("duration_seconds") or 0)
             + float(registry_summary.get("duration_seconds") or 0),
@@ -5263,7 +5312,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
         object_id=None,
         object_name=None,
         model=selected_model,
-        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V522_PROMPT_VERSION,
+        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V523_PROMPT_VERSION,
         response=registry_response,
         started_at=discovery_diagnostics["request_started_at"],
         finished_at=registry_diagnostics["request_finished_at"],
@@ -5285,7 +5334,7 @@ def run_anthropic_detection_v5_source_degraded_full_page_registry_experiment(
     })
     return {
         "route": (
-            "v5_22_source_degraded_local_contour_witness"
+            "v5_23_source_degraded_role_evidence"
         ),
         "visual_groups": assembly_groups,
         "discovery_visual_groups": raw_visual_groups,
