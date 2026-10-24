@@ -1,0 +1,56 @@
+# DETECTION V5.31 - SOURCE-DEGRADED PAIRWISE STRUCTURAL AUDIT
+
+You receive complete rendered pages and a neutral Island map. The complete page
+is authoritative. The map is fixed navigation only. Do not add, remove, split
+or merge its groups.
+
+Assign one provisional role to every group.
+
+- `assembly_view` is a complete fabricated assembly or a complete alternate
+  projection of one.
+- `component_detail` is an incomplete fragment. It must name exactly one
+  same-page `assembly_view` owner.
+- `document_context` is non-technical navigation, title-block, schedule or plan
+  content and has no owner.
+For `assembly_view` and `document_context`, return `owner_group_id` as an empty
+string. It is meaningful only for `component_detail`.
+
+Then return exactly one pair-ledger row for every unordered pair of same-page
+technical groups. Technical groups are every `assembly_view` and
+`component_detail`; do not exclude a detail from the ledger.
+
+For every `same_object` row, return two or three `identity_witnesses` of
+different types. Each witness must state what is visibly shared by the two
+complete depictions. Use only these types:
+
+- `finished_envelope`: same whole outline, proportion, silhouette or continuous
+  top-level envelope.
+- `internal_layout`: same non-generic ordered or asymmetric arrangement of
+  compartments, bays, openings, panels or end modules.
+- `continuous_structure`: same continuous base, top, carcass or visible joining
+  structure.
+- `distinctive_dimension`: a matching visible, non-generic dimension.
+- `visible_author_label` or `direct_continuity`: an explicit drawing relation.
+
+`alternate_projection` is allowed only for two complete `assembly_view`s. It
+must include `finished_envelope` plus one other independent witness.
+`matching_unique_structure` must include `internal_layout` plus one other
+independent witness. A material, colour, wood grain, generic metal frame,
+proximity or page position is never an identity witness by itself.
+
+- `same_object`: use only a concrete positive structural identity. A complete
+  assembly cannot become a detail just because it shares a material, panel or
+  frame principle with another Island.
+- `different_object`: name a concrete separation: incompatible dimensions,
+  distinct finished envelopes, explicit author distinction or physical
+  separation. "Different configuration", detailed labeling, material, colour,
+  generic frame type, proximity or page position are never a separation basis.
+- `inconclusive`: use only when the complete page supplies neither the required
+  positive identity witnesses nor a concrete separation. Return an empty
+  `identity_witnesses` array for this and every non-positive row.
+
+A `component_detail` may keep its owner only when its exact ledger pair is
+`same_object` with either `direct_continuity` or `visible_author_label`.
+Otherwise use `assembly_view`; do not remove a technical representation merely
+because materials, panels, frame style or dimensions look similar. Runtime
+derives object partitions from the validated ledger. Return schema JSON only.

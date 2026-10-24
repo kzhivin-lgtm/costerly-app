@@ -9,7 +9,7 @@ from agents.anthropic_adapter import (
     DetectionVisualRegistryValidationError,
     _source_dimensions_by_page,
     build_detection_page_evidence_inventory,
-    run_anthropic_detection_v5_source_degraded_pairwise_preservation_audit,
+    run_anthropic_detection_v5_source_degraded_pairwise_structural_audit,
     run_anthropic_detection_visual_registry_agent,
 )
 from agents.detection_source_capability import assess_detection_source_capability
@@ -417,7 +417,7 @@ def run_detection_agent(
                 "source_capability": source_capability,
             }
             _visual_map, visual_registry_usage = (
-                run_anthropic_detection_v5_source_degraded_pairwise_preservation_audit(
+                run_anthropic_detection_v5_source_degraded_pairwise_structural_audit(
                     file_name=file_name,
                     company_id=company_id,
                     file_bytes=file_bytes,

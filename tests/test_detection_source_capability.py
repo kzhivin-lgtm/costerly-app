@@ -5,6 +5,7 @@ import pytest
 from agents.anthropic_adapter import (
     _compile_detection_v5_source_degraded_direct_registry_payload,
     _compile_detection_v5_source_degraded_pairwise_registry_payload,
+    assess_detection_v5_source_degraded_structural_edge_admissibility,
     _compile_detection_v516_v561_consensus,
     _match_detection_v516_v561_object_groups,
     _normalize_source_degraded_registry_view_ids,
@@ -380,18 +381,30 @@ def test_pair_ledger_requires_every_same_page_technical_pair():
             "relation": "same_object", "evidence_type": "alternate_projection",
             "separation_kind": "none",
             "observation": "Both drawings show the same finished console from distinct projections.",
+            "identity_witnesses": [
+                {
+                    "witness_type": "finished_envelope",
+                    "observation": "Both show the full horizontal console envelope from opposite projections.",
+                },
+                {
+                    "witness_type": "internal_layout",
+                    "observation": "Both preserve the left-to-right order of the open bay and enclosed end module.",
+                },
+            ],
         },
         {
             "group_id_a": "view-001", "group_id_b": "view-003",
             "relation": "different_object", "evidence_type": "none",
             "separation_kind": "different_finished_envelope",
             "observation": "One complete console and one separate enclosed shelving assembly are shown.",
+            "identity_witnesses": [],
         },
         {
             "group_id_a": "view-002", "group_id_b": "view-003",
             "relation": "different_object", "evidence_type": "none",
             "separation_kind": "different_finished_envelope",
             "observation": "The alternate console view and the separate shelving assembly have distinct envelopes.",
+            "identity_witnesses": [],
         },
     ]
 
@@ -432,6 +445,7 @@ def test_pair_ledger_rejects_generic_different_object_reasoning():
                 "relation": "different_object", "evidence_type": "none",
                 "separation_kind": "physical_separation",
                 "observation": "Different configuration and detailed labeling make the views unrelated.",
+                "identity_witnesses": [],
             }],
             visual_groups=[
                 {"group_id": "view-001", "page_number": 1},
@@ -468,6 +482,7 @@ def test_pairwise_role_resolver_promotes_an_unproven_component_detail():
             "relation": "different_object", "evidence_type": "none",
             "separation_kind": "different_finished_envelope",
             "observation": "One enclosed cabinet and one separately finished door system are shown.",
+            "identity_witnesses": [],
         }],
     )
 
@@ -482,6 +497,100 @@ def test_pairwise_role_resolver_promotes_an_unproven_component_detail():
         "ledger_relation": "different_object",
         "ledger_evidence_type": "none",
     }]
+
+
+def test_structural_pair_admission_requires_two_original_assemblies_and_typed_witnesses():
+    admitted, rejected = assess_detection_v5_source_degraded_structural_edge_admissibility(
+        [
+            {
+                "group_id_a": "view-001",
+                "group_id_b": "view-002",
+                "relation": "same_object",
+                "evidence_type": "alternate_projection",
+                "identity_witnesses": [
+                    {
+                        "witness_type": "finished_envelope",
+                        "observation": "Both show the full cabinet envelope from opposite viewpoints.",
+                    },
+                    {
+                        "witness_type": "continuous_structure",
+                        "observation": "Both show the continuous base rail below the cabinet.",
+                    },
+                ],
+            },
+            {
+                "group_id_a": "view-003",
+                "group_id_b": "view-004",
+                "relation": "same_object",
+                "evidence_type": "alternate_projection",
+                "identity_witnesses": [
+                    {
+                        "witness_type": "finished_envelope",
+                        "observation": "Both show the full horizontal console envelope from opposite projections.",
+                    },
+                    {
+                        "witness_type": "internal_layout",
+                        "observation": "Both preserve the left-to-right order of the open bay and enclosed end module.",
+                    },
+                ],
+            },
+        ],
+        original_roles_by_id={
+            "view-001": "assembly_view",
+            "view-002": "component_detail",
+            "view-003": "assembly_view",
+            "view-004": "assembly_view",
+        },
+    )
+
+    assert admitted == {("view-003", "view-004")}
+    assert rejected == [{
+        "group_id_a": "view-001",
+        "group_id_b": "view-002",
+        "relation": "same_object",
+        "evidence_type": "alternate_projection",
+        "identity_witnesses": [
+            {
+                "witness_type": "finished_envelope",
+                "observation": "Both show the full cabinet envelope from opposite viewpoints.",
+            },
+            {
+                "witness_type": "continuous_structure",
+                "observation": "Both show the continuous base rail below the cabinet.",
+            },
+        ],
+        "reasons": ["same_object_requires_two_original_assembly_views"],
+    }]
+
+
+def test_structural_pair_admission_rejects_an_alternate_projection_without_envelope_witness():
+    admitted, rejected = assess_detection_v5_source_degraded_structural_edge_admissibility(
+        [{
+            "group_id_a": "view-001",
+            "group_id_b": "view-002",
+            "relation": "same_object",
+            "evidence_type": "alternate_projection",
+            "identity_witnesses": [
+                {
+                    "witness_type": "internal_layout",
+                    "observation": "Both preserve the left-to-right order of the open bay and enclosed end module.",
+                },
+                {
+                    "witness_type": "continuous_structure",
+                    "observation": "Both show the continuous base rail below the cabinet.",
+                },
+            ],
+        }],
+        original_roles_by_id={
+            "view-001": "assembly_view",
+            "view-002": "assembly_view",
+        },
+    )
+
+    assert admitted == set()
+    assert rejected[0]["reasons"] == [
+        "alternate_projection_requires_finished_envelope_witness",
+    ]
 
 
 def test_pairwise_audit_compiles_partitions_from_same_object_edges_only():
@@ -551,18 +660,30 @@ def test_pairwise_audit_compiles_partitions_from_same_object_edges_only():
                     "relation": "same_object", "evidence_type": "alternate_projection",
                     "separation_kind": "none",
                     "observation": "Both views show the same finished console through front and perspective projections.",
+                    "identity_witnesses": [
+                        {
+                            "witness_type": "finished_envelope",
+                            "observation": "Both show the full horizontal console envelope from opposite projections.",
+                        },
+                        {
+                            "witness_type": "internal_layout",
+                            "observation": "Both preserve the left-to-right order of the open bay and enclosed end module.",
+                        },
+                    ],
                 },
                 {
                     "group_id_a": "view-001", "group_id_b": "view-003",
                     "relation": "different_object", "evidence_type": "none",
                     "separation_kind": "different_finished_envelope",
                     "observation": "The console and shelving are separately finished fabricated envelopes.",
+                    "identity_witnesses": [],
                 },
                 {
                     "group_id_a": "view-002", "group_id_b": "view-003",
                     "relation": "different_object", "evidence_type": "none",
                     "separation_kind": "different_finished_envelope",
                     "observation": "The console perspective and shelving are separately finished fabricated envelopes.",
+                    "identity_witnesses": [],
                 },
             ],
         },

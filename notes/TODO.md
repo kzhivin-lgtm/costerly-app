@@ -597,20 +597,31 @@ treated the irrelevant value as terminal. No Island, graph or package result
 was produced. This is a role-field normalisation defect, not evidence against
 the preservation contract.
 
-ACTIVE EXPERIMENT, P0, V5.30.1 source-degraded pairwise preservation audit:
-keep V5.29's neutral full-page Island map. The second full-page Haiku call
-must ledger every same-page technical pair, including provisional details.
-Runtime permits `component_detail` only with a `same_object` pair to its exact
-owner based on direct continuity or an explicit author label. Otherwise it
-promotes the Island to `assembly_view` rather than silently dropping a
-potential object. Runtime, not the model, derives packages from validated
-same-object edges. No crops, Sonnet, ordinary V5, Fusion, source-capability
-routing or deterministic Dimensions change. A non-empty owner on assembly or
-context is persisted as ignored provider data, not a terminal error. First
-gate: Page23 preserves the five-Island map, records all technical pair
-decisions and yields shelf, doors, and the joined console as three packages.
-Record role repairs, pair ledger, graph edges, Islands, packages, tokens, cost
-and time before broader testing.
+FAILED QUALITY GATE, P0, V5.30.1 source-degraded pairwise preservation audit:
+five Page23 production runs were stable at five Islands, four technical plus a
+title context. The normalisation repair succeeded, but each graph linked shelf
+to doors from a false `same_object` relation and left the two alternate console
+views separate. The second call called the consoles merely similar and did not
+record the full-object structural correspondence that V4.2 had used. The
+route is not accepted. Preserve its neutral full-page map, no-loss role repair,
+two Haiku calls and audit shape as V5.31's base.
+
+ACTIVE EXPERIMENT, P0, V5.31 source-degraded pairwise structural audit:
+the fixed-Island map and two complete-page Haiku calls remain unchanged. A
+`same_object` graph edge now requires two original `assembly_view` endpoints
+and at least two distinct, typed structural witnesses. Those witnesses can
+prove a shared finished envelope, non-generic internal layout, continuous
+structure, distinctive visible dimension, explicit author label or direct
+continuity. Material, colour, generic frame principle, proximity and page
+position cannot count. A rejected positive relation is recorded in audit and
+omitted from the graph, never made terminal. The existing V5.30.1 detail-owner
+repair remains: only direct continuity or an explicit author label may retain a
+component owner. No crops, Sonnet, ordinary V5, Fusion, source-capability
+routing or deterministic Dimensions change. First gate: Page23 keeps five
+Islands, rejects the shelf-door false edge, admits a structurally witnessed
+console edge, and yields shelf, doors and the joined console as three packages.
+Record role repairs, witness ledger, rejected and admitted graph edges, Islands,
+packages, tokens, cost and time before broader testing.
 
 DEFERRED, P1, USER REQUEST, Detection Processing provider-outage handling:
 when Mistral OCR is unavailable, exhausted, rate-limited, or times out, the
