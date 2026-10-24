@@ -1,7 +1,8 @@
-"""Deterministic image-similarity priors for native PDF graphic placements.
+"""Deterministic visual-similarity evidence for native PDF graphic placements.
 
-The feature extractor never creates an object or a graph edge.  It only ranks
-same-page native-XObject pairs for the Registry's existing visual review.
+The feature extractor never creates an object or graph edge on its own. It can
+require the Registry to account for a conservative same-page mutual match, then
+that model decision still needs a pair-specific visual witness before admission.
 """
 from __future__ import annotations
 
@@ -17,6 +18,8 @@ from typing import Any, Callable
 
 DETECTION_VISUAL_EMBEDDING_MODEL_ID = "facebook/dinov2-small"
 DETECTION_VISUAL_EMBEDDING_MODEL_REVISION = "ed25f3a31f01632728cabb09d1542f84ab7b0056"
+DETECTION_NATIVE_XOBJECT_STRONG_EMBEDDING_MIN_COSINE = 0.80
+DETECTION_NATIVE_XOBJECT_STRONG_EMBEDDING_MIN_MARGIN = 0.10
 DETECTION_VISUAL_EMBEDDING_MODEL_DIR_ENV = "DETECTION_VISUAL_EMBEDDING_MODEL_DIR"
 _GRAPHIC_XREF_PATTERN = re.compile(r"^NPIG-P\d{3}-X(?P<xref>\d+)-I\d{3}-R\d{3}$")
 _ENCODER_LOCK = Lock()
@@ -85,7 +88,7 @@ def maybe_preload_detection_native_xobject_encoder(
     """Warm DINOv2 while Mistral OCR is still in flight when likely useful.
 
     This is deliberately only a preload. It does not select the route and does
-    not inspect user images. V5.36 later checks the strict page-level anchor
+    not inspect user images. The native-XObject route later checks the strict page-level anchor
     gate before using any embedding.
     """
     global _PRELOAD_ERROR, _PRELOAD_THREAD
@@ -304,18 +307,126 @@ def build_detection_native_xobject_embedding_prior(
     }
 
 
-def format_detection_native_xobject_embedding_prior(prior: dict[str, Any]) -> str:
-    """Format a non-decisive prior for the existing pairwise Registry call."""
+def derive_detection_native_xobject_strong_mutual_pairs(
+    prior: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Return conservative, same-page mutual-top-one visual evidence.
+
+    A DINO score is not a graph edge. This gate merely identifies pairs for
+    which the Registry must account for a materially stronger-than-alternative
+    visual resemblance. The Registry still needs a concrete visible witness to
+    admit a same-object edge.
+    """
     if prior.get("status") != "available":
-        return "NATIVE XOBJECT VISUAL-SIMILARITY PRIOR: unavailable."
+        return []
+    rankings_by_group = {
+        str(row.get("group_id") or ""): list(row.get("ranked_candidates") or [])
+        for row in prior.get("rankings") or []
+        if isinstance(row, dict) and str(row.get("group_id") or "")
+    }
+    page_by_group = {
+        str(row.get("group_id") or ""): int(row.get("page_number") or 0)
+        for row in prior.get("rankings") or []
+        if isinstance(row, dict) and str(row.get("group_id") or "")
+    }
+    strong_pairs: list[dict[str, Any]] = []
+    seen_pairs: set[tuple[str, str]] = set()
+    for group_id, candidates in sorted(rankings_by_group.items()):
+        if not candidates:
+            continue
+        top = candidates[0]
+        other_id = str(top.get("group_id") or "")
+        other_candidates = rankings_by_group.get(other_id) or []
+        if not other_id or not other_candidates:
+            continue
+        reciprocal = other_candidates[0]
+        if str(reciprocal.get("group_id") or "") != group_id:
+            continue
+        pair = tuple(sorted((group_id, other_id)))
+        if pair in seen_pairs or page_by_group.get(group_id) != page_by_group.get(other_id):
+            continue
+        score = float(top.get("cosine_similarity") or 0.0)
+        reciprocal_score = float(reciprocal.get("cosine_similarity") or 0.0)
+        if abs(score - reciprocal_score) > 0.000001:
+            continue
+        next_scores = [
+            float(candidates[1].get("cosine_similarity") or 0.0)
+            if len(candidates) > 1 else None,
+            float(other_candidates[1].get("cosine_similarity") or 0.0)
+            if len(other_candidates) > 1 else None,
+        ]
+        margins = [score - value for value in next_scores if value is not None]
+        if not margins:
+            # With only two graphic placements there is no alternative against
+            # which to establish a preference margin. Keep that pair ranked,
+            # but do not elevate it to strong typed evidence.
+            continue
+        min_margin = min(margins)
+        if score < DETECTION_NATIVE_XOBJECT_STRONG_EMBEDDING_MIN_COSINE:
+            continue
+        if min_margin < DETECTION_NATIVE_XOBJECT_STRONG_EMBEDDING_MIN_MARGIN:
+            continue
+        seen_pairs.add(pair)
+        strong_pairs.append({
+            "page_number": page_by_group[group_id],
+            "group_id_a": pair[0],
+            "group_id_b": pair[1],
+            "cosine_similarity": round(score, 6),
+            "minimum_margin_to_next_candidate": round(min_margin, 6),
+            "embedding_reference": f"native_mutual_top1:{score:.4f}",
+        })
+    return strong_pairs
+
+
+def format_detection_native_xobject_embedding_prior(
+    prior: dict[str, Any],
+    *,
+    strong_pairs: list[dict[str, Any]] | None = None,
+) -> str:
+    """Format typed visual-similarity evidence for the pairwise Registry call."""
+    if prior.get("status") != "available":
+        return (
+            "NATIVE XOBJECT VISUAL-SIMILARITY EVIDENCE: unavailable. For every "
+            "ledger row use embedding_reference=not_applicable and "
+            "embedding_assessment=not_applicable."
+        )
+    strong_pairs = strong_pairs if strong_pairs is not None else (
+        derive_detection_native_xobject_strong_mutual_pairs(prior)
+    )
     lines = [
-        "NATIVE XOBJECT VISUAL-SIMILARITY PRIOR:",
+        "NATIVE XOBJECT VISUAL-SIMILARITY EVIDENCE:",
         "DINOv2 compared the source-authored graphic images, not page crops.",
-        "This ranking is navigation only. It is not an identity witness, cannot "
-        "justify same_object or different_object, and cannot create a graph edge.",
-        "Use it to inspect highly ranked pairs carefully, then decide only from "
-        "the required visible identity witnesses on the complete page.",
+        "A listed strong mutual pair is typed evidence of visual identity, but "
+        "cannot independently create a graph edge. A same_object decision still "
+        "needs one concrete, pair-specific visible identity witness.",
     ]
+    if strong_pairs:
+        lines.append("STRONG MUTUAL TOP-1 PAIRS, REQUIRED LEDGER ACCOUNTING:")
+        for pair in strong_pairs:
+            margin = pair.get("minimum_margin_to_next_candidate")
+            margin_text = (
+                f", next-margin={float(margin):.4f}" if margin is not None else ""
+            )
+            lines.append(
+                f"P{int(pair['page_number'])} {pair['group_id_a']} <-> "
+                f"{pair['group_id_b']}: reference={pair['embedding_reference']}"
+                f"{margin_text}."
+            )
+        lines.extend([
+            "For each listed pair, copy its exact embedding_reference and set "
+            "embedding_assessment to supports_same_object or "
+            "contradicted_by_visible_separation.",
+            "A different_object decision for a listed pair is valid only with an "
+            "explicit author distinction, incompatible visible dimensions, or "
+            "physical separation of two completed products. A generic envelope, "
+            "material, frame, or functional difference is not a contradiction.",
+        ])
+    else:
+        lines.append("No pair meets the strong mutual-top-1 evidence gate.")
+    lines.append(
+        "For every pair not listed above use embedding_reference=not_applicable "
+        "and embedding_assessment=not_applicable."
+    )
     for row in prior.get("rankings") or []:
         candidates = list(row.get("ranked_candidates") or [])[:2]
         rendered = ", ".join(

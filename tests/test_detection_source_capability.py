@@ -30,6 +30,7 @@ from agents.detection_source_capability import (
 )
 from agents.detection_visual_embedding import (
     build_detection_native_xobject_embedding_prior,
+    derive_detection_native_xobject_strong_mutual_pairs,
     format_detection_native_xobject_embedding_prior,
 )
 from agents.schemas.detection_registry_schema import (
@@ -141,6 +142,8 @@ def test_native_pdf_graphic_anchor_route_skips_free_boundary_discovery(monkeypat
             "separation_kind": "different_finished_envelope",
             "observation": "The two complete representations have distinct finished envelopes and no shared assembly.",
             "identity_witnesses": [],
+            "embedding_reference": "not_applicable",
+            "embedding_assessment": "not_applicable",
         }],
     }
     response = SimpleNamespace(
@@ -181,17 +184,17 @@ def test_native_pdf_graphic_anchor_route_skips_free_boundary_discovery(monkeypat
     )
 
     assert len(calls) == 1
-    assert result["route"] == "v5_36_native_graphic_embedding_pairwise_audit"
-    assert usage["prompt_version"] == "detection_v5_36_native_graphic_embedding_pairwise_audit_v1"
+    assert result["route"] == "v5_37_native_graphic_embedding_witness_pairwise_audit"
+    assert usage["prompt_version"] == "detection_v5_37_native_graphic_embedding_witness_pairwise_audit_v1"
     assert len(result["discovery_visual_groups"]) == 2
     assert len(result["registry"]["objects"]) == 2
     content = calls[0]["messages"][0]["content"]
     assert sum(block.get("type") == "image" for block in content) == 2
     assert "IMMUTABLE NATIVE GRAPHIC ANCHOR MAP" in content[-1]["text"]
-    assert "NATIVE XOBJECT VISUAL-SIMILARITY PRIOR: unavailable." in content[-1]["text"]
+    assert "NATIVE XOBJECT VISUAL-SIMILARITY EVIDENCE: unavailable." in content[-1]["text"]
 
 
-def test_native_xobject_embedding_prior_ranks_only_same_page_pairs_without_creating_edges():
+def test_native_xobject_embedding_evidence_requires_a_mutual_rank_and_margin():
     groups = [
         {"group_id": "V1", "page_number": 1, "native_graphic_region_id": "a"},
         {"group_id": "V2", "page_number": 1, "native_graphic_region_id": "b"},
@@ -225,8 +228,21 @@ def test_native_xobject_embedding_prior_ranks_only_same_page_pairs_without_creat
     assert rankings["V4"][0]["group_id"] == "V3"
     assert all({row["group_id_a"], row["group_id_b"]} != {"V1", "P2V1"}
                for row in prior["scores"])
-    text = format_detection_native_xobject_embedding_prior(prior)
-    assert "cannot create a graph edge" in text
+    strong_pairs = derive_detection_native_xobject_strong_mutual_pairs(prior)
+    assert strong_pairs == [{
+        "page_number": 1,
+        "group_id_a": "V3",
+        "group_id_b": "V4",
+        "cosine_similarity": 0.995,
+        "minimum_margin_to_next_candidate": 0.895,
+        "embedding_reference": "native_mutual_top1:0.9950",
+    }]
+    text = format_detection_native_xobject_embedding_prior(
+        prior,
+        strong_pairs=strong_pairs,
+    )
+    assert "cannot independently create a graph edge" in text
+    assert "reference=native_mutual_top1:0.9950" in text
     assert "P1 V3: #1 V4=0.9950" in text
 
 
@@ -686,6 +702,81 @@ def test_pair_ledger_rejects_generic_different_object_reasoning():
                 "view-002": "assembly_view",
             },
         )
+
+
+def test_strong_embedding_pair_requires_an_exact_citation_and_visible_witness():
+    groups = [
+        {"group_id": "view-001", "page_number": 1},
+        {"group_id": "view-002", "page_number": 1},
+    ]
+    strong_pairs = {("view-001", "view-002"): 0.827787}
+    ledger = [{
+        "group_id_a": "view-001", "group_id_b": "view-002",
+        "relation": "same_object", "evidence_type": "alternate_projection",
+        "separation_kind": "none",
+        "observation": "The paired views show the same finished console from front and perspective projections.",
+        "identity_witnesses": [{
+            "witness_type": "finished_envelope",
+            "observation": "Both show the full horizontal console envelope from alternate projections.",
+        }],
+        "embedding_reference": "native_mutual_top1:0.8278",
+        "embedding_assessment": "supports_same_object",
+    }]
+
+    validated = validate_detection_v5_source_degraded_pair_ledger(
+        ledger,
+        visual_groups=groups,
+        roles_by_id={
+            "view-001": "assembly_view",
+            "view-002": "assembly_view",
+        },
+        strong_embedding_pairs=strong_pairs,
+    )
+    admitted, rejected = assess_detection_v5_source_degraded_structural_edge_admissibility(
+        validated,
+        original_roles_by_id={
+            "view-001": "assembly_view",
+            "view-002": "assembly_view",
+        },
+        strong_embedding_pairs=strong_pairs,
+    )
+
+    assert admitted == {("view-001", "view-002")}
+    assert rejected == []
+    invalid = {**ledger[0], "embedding_reference": "not_applicable"}
+    with pytest.raises(ValueError, match="embedding reference is invalid"):
+        validate_detection_v5_source_degraded_pair_ledger(
+            [invalid],
+            visual_groups=groups,
+            roles_by_id={
+                "view-001": "assembly_view",
+                "view-002": "assembly_view",
+            },
+            strong_embedding_pairs=strong_pairs,
+        )
+
+
+def test_strong_embedding_does_not_merge_without_an_independent_visible_witness():
+    admitted, rejected = assess_detection_v5_source_degraded_structural_edge_admissibility(
+        [{
+            "group_id_a": "view-001", "group_id_b": "view-002",
+            "relation": "same_object", "evidence_type": "alternate_projection",
+            "identity_witnesses": [],
+            "embedding_reference": "native_mutual_top1:0.8278",
+            "embedding_assessment": "supports_same_object",
+        }],
+        original_roles_by_id={
+            "view-001": "assembly_view",
+            "view-002": "assembly_view",
+        },
+        strong_embedding_pairs={("view-001", "view-002"): 0.827787},
+    )
+
+    assert admitted == set()
+    assert rejected[0]["reasons"] == [
+        "alternate_projection_requires_finished_envelope_witness",
+        "strong_embedding_requires_independent_identity_witness",
+    ]
 
 
 def test_pairwise_role_resolver_promotes_an_unproven_component_detail():

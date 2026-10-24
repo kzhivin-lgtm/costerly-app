@@ -436,6 +436,7 @@ def run_detection_agent(
             if _visual_map.get("route") in {
                 "v5_35_native_graphic_anchor_pairwise_audit",
                 "v5_36_native_graphic_embedding_pairwise_audit",
+                "v5_37_native_graphic_embedding_witness_pairwise_audit",
             }:
                 source_degraded_route = {
                     **source_degraded_route,
@@ -443,7 +444,7 @@ def run_detection_agent(
                     "reasons": [
                         *source_degraded_route["reasons"],
                         "native_pdf_graphic_xobject_anchor_map",
-                        "native_xobject_embedding_pair_priority",
+                        "native_xobject_embedding_witness_evidence",
                     ],
                 }
             route = source_degraded_route

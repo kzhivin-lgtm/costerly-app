@@ -734,6 +734,21 @@ publish an embedding-only merge. Do not extend this model to ordinary V5 or use
 it as a numeric threshold until a second eligible native-XObject document
 passes the same rank test.
 
+ACTIVE EXPERIMENT, P0, V5.37 native-XObject embedding witness: retain V5.36
+native-XObject extraction, immutable Island map, role ledger and graph
+validators. A conservative same-page mutual-top-1 pair with cosine at least
+`0.80` and margin at least `0.10` over each member's next candidate becomes
+typed evidence. The Registry must return its exact `embedding_reference` and
+an assessment for every ledger row. For a strong pair, `different_object`
+requires an explicit author distinction, incompatible visible dimensions or
+physical separation of completed products. `same_object` may count the
+embedding as one evidence item, but still needs a concrete independent visual
+witness and two original assembly views. Embedding never creates a graph edge
+alone. First gate: Page23 V3/V4 must cite `native_mutual_top1:0.8278`, produce
+an admitted alternate-projection edge with a visible witness, retain four
+immutable XObject Islands, and avoid a false V1/V2 or V1/V3 edge. This is
+native-XObject-route-only, not an ordinary V5 rule.
+
 ACTIVE DIAGNOSIS, P0, Processing to File Review client transition defect:
 the same run completed Registry in 23.28 seconds and server-side File Review
 in 26.67 seconds, while the browser recorded a 15.001-second

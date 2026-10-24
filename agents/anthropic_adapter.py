@@ -54,6 +54,7 @@ from agents.detection_fusion_candidate_regions import (
 from agents.detection_visual_embedding import (
     DetectionVisualEmbeddingUnavailable,
     build_detection_native_xobject_embedding_prior,
+    derive_detection_native_xobject_strong_mutual_pairs,
     format_detection_native_xobject_embedding_prior,
 )
 from agents.detection_page_images import DEFAULT_PAGE_IMAGE_DPI
@@ -166,6 +167,9 @@ DETECTION_V5_NATIVE_GRAPHIC_ANCHOR_V535_PROMPT_VERSION = (
 )
 DETECTION_V5_NATIVE_GRAPHIC_EMBEDDING_V536_PROMPT_VERSION = (
     "detection_v5_36_native_graphic_embedding_pairwise_audit_v1"
+)
+DETECTION_V5_NATIVE_GRAPHIC_EMBEDDING_V537_PROMPT_VERSION = (
+    "detection_v5_37_native_graphic_embedding_witness_pairwise_audit_v1"
 )
 DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_CROP_MAX_SIDE = 1024
 DETECTION_V5_SOURCE_DEGRADED_CONTEXT_PAIR_MAX_DISTANCE_PX = 32
@@ -578,6 +582,25 @@ DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_STRUCTURAL_LEDGER_SCHEMA: dict[str, Any] =
         },
     },
 }
+DETECTION_V5_NATIVE_GRAPHIC_EMBEDDING_PAIRWISE_STRUCTURAL_LEDGER_SCHEMA = (
+    copy.deepcopy(DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_STRUCTURAL_LEDGER_SCHEMA)
+)
+DETECTION_V5_NATIVE_GRAPHIC_EMBEDDING_PAIRWISE_STRUCTURAL_LEDGER_SCHEMA[
+    "items"
+]["required"].extend([
+    "embedding_reference",
+    "embedding_assessment",
+])
+DETECTION_V5_NATIVE_GRAPHIC_EMBEDDING_PAIRWISE_STRUCTURAL_LEDGER_SCHEMA[
+    "items"
+]["properties"].update({
+    "embedding_reference": {"type": "string", "minLength": 1, "maxLength": 64},
+    "embedding_assessment": {"type": "string", "enum": [
+        "supports_same_object",
+        "contradicted_by_visible_separation",
+        "not_applicable",
+    ]},
+})
 DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_AUDIT_JSON_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": False,
     "required": ["roles", "pair_ledger", "partitions"],
@@ -601,6 +624,14 @@ DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_STRUCTURAL_AUDIT_JSON_SCHEMA: dict[str, An
     "properties": {
         "roles": DETECTION_V5_SOURCE_DEGRADED_DIRECT_ROLES_SCHEMA,
         "pair_ledger": DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_STRUCTURAL_LEDGER_SCHEMA,
+    },
+}
+DETECTION_V5_NATIVE_GRAPHIC_EMBEDDING_PAIRWISE_STRUCTURAL_AUDIT_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "required": ["roles", "pair_ledger"],
+    "properties": {
+        "roles": DETECTION_V5_SOURCE_DEGRADED_DIRECT_ROLES_SCHEMA,
+        "pair_ledger": DETECTION_V5_NATIVE_GRAPHIC_EMBEDDING_PAIRWISE_STRUCTURAL_LEDGER_SCHEMA,
     },
 }
 
@@ -3434,11 +3465,26 @@ def _detection_v5_source_degraded_expected_technical_pairs(
     }
 
 
+def _detection_v5_native_embedding_reference(
+    pair: tuple[str, str],
+    *,
+    strong_embedding_pairs: dict[tuple[str, str], float] | None,
+) -> str | None:
+    """Return the exact typed reference expected for one pair-ledger row."""
+    if strong_embedding_pairs is None:
+        return None
+    score = strong_embedding_pairs.get(pair)
+    if score is None:
+        return "not_applicable"
+    return f"native_mutual_top1:{float(score):.4f}"
+
+
 def complete_detection_v5_source_degraded_missing_pair_ledger_rows(
     ledger: object,
     *,
     visual_groups: list[dict[str, Any]],
     roles_by_id: dict[str, str],
+    strong_embedding_pairs: dict[tuple[str, str], float] | None = None,
 ) -> tuple[object, list[dict[str, str]]]:
     """Complete omitted provider rows without inventing visual evidence.
 
@@ -3464,7 +3510,8 @@ def complete_detection_v5_source_degraded_missing_pair_ledger_rows(
     completed = copy.deepcopy(ledger)
     completion_audit: list[dict[str, str]] = []
     for left, right in missing_pairs:
-        completed.append({
+        pair = (left, right)
+        row: dict[str, Any] = {
             "group_id_a": left,
             "group_id_b": right,
             "relation": "inconclusive",
@@ -3475,7 +3522,17 @@ def complete_detection_v5_source_degraded_missing_pair_ledger_rows(
                 "identity or separation claim."
             ),
             "identity_witnesses": [],
-        })
+        }
+        embedding_reference = _detection_v5_native_embedding_reference(
+            pair,
+            strong_embedding_pairs=strong_embedding_pairs,
+        )
+        if embedding_reference is not None:
+            row.update({
+                "embedding_reference": embedding_reference,
+                "embedding_assessment": "not_applicable",
+            })
+        completed.append(row)
         completion_audit.append({
             "group_id_a": left,
             "group_id_b": right,
@@ -3490,6 +3547,7 @@ def validate_detection_v5_source_degraded_pair_ledger(
     *,
     visual_groups: list[dict[str, Any]],
     roles_by_id: dict[str, str],
+    strong_embedding_pairs: dict[tuple[str, str], float] | None = None,
 ) -> list[dict[str, Any]]:
     """Require one explicit same-page decision for every technical pair."""
     expected_pairs = _detection_v5_source_degraded_expected_technical_pairs(
@@ -3518,13 +3576,16 @@ def validate_detection_v5_source_degraded_pair_ledger(
         "finished_envelope", "internal_layout", "continuous_structure",
         "distinctive_dimension", "visible_author_label", "direct_continuity",
     }
+    expected_keys = {
+        "group_id_a", "group_id_b", "relation", "evidence_type",
+        "separation_kind", "observation", "identity_witnesses",
+    }
+    if strong_embedding_pairs is not None:
+        expected_keys.update({"embedding_reference", "embedding_assessment"})
     for item in ledger:
         if (
             not isinstance(item, dict)
-            or set(item) != {
-                "group_id_a", "group_id_b", "relation", "evidence_type",
-                "separation_kind", "observation", "identity_witnesses",
-            }
+            or set(item) != expected_keys
         ):
             raise ValueError("source-degraded pair ledger is invalid")
         left = str(item.get("group_id_a") or "")
@@ -3584,7 +3645,34 @@ def validate_detection_v5_source_degraded_pair_ledger(
             raise ValueError("source-degraded inconclusive ledger evidence is invalid")
         if relation != "same_object" and identity_witnesses:
             raise ValueError("source-degraded non-positive ledger cannot have identity witnesses")
-        by_pair[pair] = {
+        embedding_reference = _detection_v5_native_embedding_reference(
+            pair,
+            strong_embedding_pairs=strong_embedding_pairs,
+        )
+        embedding_assessment = str(item.get("embedding_assessment") or "")
+        if embedding_reference is not None:
+            if str(item.get("embedding_reference") or "") != embedding_reference:
+                raise ValueError("source-degraded pair ledger embedding reference is invalid")
+            if embedding_reference == "not_applicable":
+                if embedding_assessment != "not_applicable":
+                    raise ValueError("source-degraded non-strong pair embedding assessment is invalid")
+            else:
+                if relation == "same_object":
+                    if embedding_assessment != "supports_same_object":
+                        raise ValueError("source-degraded strong embedding same-object assessment is invalid")
+                elif relation == "different_object":
+                    if (
+                        embedding_assessment != "contradicted_by_visible_separation"
+                        or separation_kind not in {
+                            "incompatible_dimensions",
+                            "explicit_author_distinction",
+                            "physical_separation",
+                        }
+                    ):
+                        raise ValueError("source-degraded strong embedding contradiction is invalid")
+                else:
+                    raise ValueError("source-degraded strong embedding pair needs a decision")
+        normalized_entry: dict[str, Any] = {
             "group_id_a": pair[0],
             "group_id_b": pair[1],
             "relation": relation,
@@ -3593,6 +3681,12 @@ def validate_detection_v5_source_degraded_pair_ledger(
             "observation": observation,
             "identity_witnesses": identity_witnesses,
         }
+        if embedding_reference is not None:
+            normalized_entry.update({
+                "embedding_reference": embedding_reference,
+                "embedding_assessment": embedding_assessment,
+            })
+        by_pair[pair] = normalized_entry
     if set(by_pair) != expected_pairs:
         raise ValueError("source-degraded pair ledger must decide every same-page technical pair")
     return [by_pair[pair] for pair in sorted(by_pair)]
@@ -3602,6 +3696,7 @@ def assess_detection_v5_source_degraded_structural_edge_admissibility(
     pair_ledger: list[dict[str, Any]],
     *,
     original_roles_by_id: dict[str, str],
+    strong_embedding_pairs: dict[tuple[str, str], float] | None = None,
 ) -> tuple[set[tuple[str, str]], list[dict[str, Any]]]:
     """Admit only structural proofs between two original assembly views.
 
@@ -3633,8 +3728,22 @@ def assess_detection_v5_source_degraded_structural_edge_admissibility(
             reasons.append("same_object_requires_two_original_assembly_views")
         witnesses = entry["identity_witnesses"]
         witness_types = {str(witness["witness_type"]) for witness in witnesses}
-        if len(witnesses) < 2 or len(witness_types) < 2:
-            reasons.append("same_object_requires_two_distinct_identity_witnesses")
+        embedding_supports_same_object = bool(
+            strong_embedding_pairs is not None
+            and pair in strong_embedding_pairs
+            and entry.get("embedding_assessment") == "supports_same_object"
+        )
+        minimum_witness_count = 1 if embedding_supports_same_object else 2
+        minimum_witness_type_count = 1 if embedding_supports_same_object else 2
+        if (
+            len(witnesses) < minimum_witness_count
+            or len(witness_types) < minimum_witness_type_count
+        ):
+            reasons.append(
+                "strong_embedding_requires_independent_identity_witness"
+                if embedding_supports_same_object
+                else "same_object_requires_two_distinct_identity_witnesses"
+            )
         evidence_type = str(entry["evidence_type"])
         if (
             evidence_type == "alternate_projection"
@@ -6694,6 +6803,7 @@ def _compile_detection_v5_source_degraded_pairwise_registry_payload(
     raw_page_coverage: object,
     page_count: int,
     page_frames: dict[int, dict[str, int]],
+    strong_embedding_pairs: dict[tuple[str, str], float] | None = None,
 ) -> dict[str, Any]:
     """Compile a fixed Island map through a no-loss pairwise audit.
 
@@ -6750,17 +6860,20 @@ def _compile_detection_v5_source_degraded_pairwise_registry_payload(
             normalized_pair_ledger,
             visual_groups=visual_groups,
             roles_by_id=roles_by_id,
+            strong_embedding_pairs=strong_embedding_pairs,
         )
     )
     pair_ledger = validate_detection_v5_source_degraded_pair_ledger(
         completed_pair_ledger,
         visual_groups=visual_groups,
         roles_by_id=roles_by_id,
+        strong_embedding_pairs=strong_embedding_pairs,
     )
     admitted_same_object_pairs, rejected_positive_relation_edges = (
         assess_detection_v5_source_degraded_structural_edge_admissibility(
             pair_ledger,
             original_roles_by_id=roles_by_id,
+            strong_embedding_pairs=strong_embedding_pairs,
         )
     )
     resolved_roles, resolved_owners, resolved_role_audit, detail_role_repairs = (
@@ -6807,6 +6920,15 @@ def _compile_detection_v5_source_degraded_pairwise_registry_payload(
                 "evidence_pages": [page_number_by_group_id[left]],
                 "observation": " ".join([
                     str(entry["observation"]),
+                    *(
+                        [
+                            "Native visual embedding "
+                            + str(entry["embedding_reference"])
+                            + " supports this pair."
+                        ]
+                        if entry.get("embedding_assessment") == "supports_same_object"
+                        else []
+                    ),
                     *(
                         str(witness["observation"])
                         for witness in entry["identity_witnesses"]
@@ -7213,17 +7335,17 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
     )
     native_graphic_anchor_route = native_graphic_anchor_inventory is not None
     operation = (
-        "rfq_detection_v5_native_graphic_embedding_pairwise_audit"
+        "rfq_detection_v5_native_graphic_embedding_witness_pairwise_audit"
         if native_graphic_anchor_route
         else "rfq_detection_v5_source_degraded_pairwise_structural_admission_audit"
     )
     registry_route = (
-        "v5_36_native_graphic_embedding_pairwise_audit"
+        "v5_37_native_graphic_embedding_witness_pairwise_audit"
         if native_graphic_anchor_route
         else "v5_32_1_source_degraded_pairwise_structural_admission_audit"
     )
     prompt_version = (
-        DETECTION_V5_NATIVE_GRAPHIC_EMBEDDING_V536_PROMPT_VERSION
+        DETECTION_V5_NATIVE_GRAPHIC_EMBEDDING_V537_PROMPT_VERSION
         if native_graphic_anchor_route
         else DETECTION_V5_SOURCE_DEGRADED_V5321_PROMPT_VERSION
     )
@@ -7330,6 +7452,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
         "status": "not_applicable",
         "reason": "native_graphic_anchor_route_inactive",
     }
+    native_graphic_embedding_strong_pairs: list[dict[str, Any]] = []
     if native_graphic_anchor_route:
         try:
             native_graphic_embedding_prior = build_detection_native_xobject_embedding_prior(
@@ -7343,8 +7466,23 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
                 "status": "unavailable",
                 "reason": str(exc),
             }
+        native_graphic_embedding_strong_pairs = (
+            derive_detection_native_xobject_strong_mutual_pairs(
+                native_graphic_embedding_prior,
+            )
+        )
+        native_graphic_embedding_prior["strong_mutual_pairs"] = (
+            native_graphic_embedding_strong_pairs
+        )
+    native_graphic_embedding_pairs_by_id = {
+        tuple(sorted((str(pair["group_id_a"]), str(pair["group_id_b"])))): float(
+            pair["cosine_similarity"],
+        )
+        for pair in native_graphic_embedding_strong_pairs
+    }
     native_graphic_embedding_context = format_detection_native_xobject_embedding_prior(
         native_graphic_embedding_prior,
+        strong_pairs=native_graphic_embedding_strong_pairs,
     )
 
     fixed_island_map = [
@@ -7421,14 +7559,21 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
             + "\n\nSOURCE CAPABILITY: visual-only. Inspect each complete page. "
               "Return exactly one ledger decision for every unordered same-page "
               "technical Island pair. Same-object edges need structural identity "
-              "witnesses. Runtime derives partitions from that ledger."
+              "witnesses. For native-graphic routes, every row must also return "
+              "embedding_reference and embedding_assessment exactly as required "
+              "by the visual-similarity evidence. Runtime derives partitions "
+              "from that ledger."
         ),
     })
     audit_system_prompt = audit_prompt + (
-        "\n\nV5.36 NATIVE GRAPHIC ANCHOR RULE: each supplied group is a "
+        "\n\nV5.37 NATIVE GRAPHIC ANCHOR RULE: each supplied group is a "
         "source-authored PDF image placement, not a model-drawn bbox. Its "
         "rectangle and membership are immutable. The labelled full-page overlay "
-        "is authoritative for checking every pairwise role and witness."
+        "is authoritative for checking every pairwise role and witness. For a "
+        "listed strong embedding pair, do not assign component_detail solely "
+        "from general resemblance, material, or layout. Both complete finished "
+        "representations remain assembly_view unless a concrete same-page owner "
+        "relation is visibly proved."
         if native_graphic_anchor_route else ""
     )
     audit_response, audit_diagnostics = create_claude_message_streamed(
@@ -7439,7 +7584,11 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
         system=build_detection_system_content(prompt=audit_system_prompt),
         messages=[{"role": "user", "content": audit_content}],
         output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
-            DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_STRUCTURAL_AUDIT_JSON_SCHEMA,
+            (
+                DETECTION_V5_NATIVE_GRAPHIC_EMBEDDING_PAIRWISE_STRUCTURAL_AUDIT_JSON_SCHEMA
+                if native_graphic_anchor_route
+                else DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_STRUCTURAL_AUDIT_JSON_SCHEMA
+            ),
         )}},
     )
     audit_raw_text = extract_text_from_claude_response(audit_response)
@@ -7452,6 +7601,10 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
             raw_page_coverage=inventory_payload["page_coverage"],
             page_count=len(page_images),
             page_frames=page_frames,
+            strong_embedding_pairs=(
+                native_graphic_embedding_pairs_by_id
+                if native_graphic_anchor_route else None
+            ),
         )
     except (json.JSONDecodeError, KeyError, ValueError, DetectionRegistrySchemaError) as exc:
         failure_usage = build_agent_usage_event(
@@ -7469,7 +7622,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
             finished_at=audit_diagnostics["request_finished_at"],
             request_diagnostics={
                 "validation_stage": (
-                    "v5_36_native_graphic_embedding_pairwise_audit"
+                    "v5_37_native_graphic_embedding_witness_pairwise_audit"
                     if native_graphic_anchor_route
                     else "v5_32_1_pairwise_structural_admission_audit"
                 ),
@@ -7489,7 +7642,7 @@ def run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_aud
         failure_usage["status"] = "failed"
         failure_usage["error_message"] = str(exc)
         raise DetectionVisualRegistryValidationError(
-            f"Source-degraded {'V5.36' if native_graphic_anchor_route else 'V5.32.1'} "
+            f"Source-degraded {'V5.37' if native_graphic_anchor_route else 'V5.32.1'} "
             f"full-page pairwise audit failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
