@@ -606,22 +606,30 @@ record the full-object structural correspondence that V4.2 had used. The
 route is not accepted. Preserve its neutral full-page map, no-loss role repair,
 two Haiku calls and audit shape as V5.31's base.
 
-ACTIVE EXPERIMENT, P0, V5.31 source-degraded pairwise structural audit:
-the fixed-Island map and two complete-page Haiku calls remain unchanged. A
-`same_object` graph edge now requires two original `assembly_view` endpoints
-and at least two distinct, typed structural witnesses. Those witnesses can
-prove a shared finished envelope, non-generic internal layout, continuous
-structure, distinctive visible dimension, explicit author label or direct
-continuity. Material, colour, generic frame principle, proximity and page
-position cannot count. A rejected positive relation is recorded in audit and
-omitted from the graph, never made terminal. The existing V5.30.1 detail-owner
-repair remains: only direct continuity or an explicit author label may retain a
-component owner. No crops, Sonnet, ordinary V5, Fusion, source-capability
-routing or deterministic Dimensions change. First gate: Page23 keeps five
-Islands, rejects the shelf-door false edge, admits a structurally witnessed
-console edge, and yields shelf, doors and the joined console as three packages.
-Record role repairs, witness ledger, rejected and admitted graph edges, Islands,
-packages, tokens, cost and time before broader testing.
+FAILED QUALITY GATE, P0, V5.31 source-degraded pairwise structural audit:
+four Page23 runs were identical at five Islands and exactly three published
+objects, but the count concealed a wrong partition: shelf, console view one
+and console view two. The model called doors a `component_detail` owned by one
+console through a false `direct_continuity` claim, then called the two console
+views distinct. The structural edge validator correctly rejected the
+detail-console relation for graph insertion, but the older role resolver did
+not consume that rejection and still removed the door Island before the graph.
+The run therefore proves an ordering defect between role resolution and edge
+admission, not a volatile visual-model result. V5.31 is not accepted.
+
+ACTIVE EXPERIMENT, P0, V5.32 source-degraded structural admission for roles:
+retain V5.31's fixed five-Island map, two complete-page Haiku calls, typed
+structural witnesses and graph admission unchanged. A `component_detail` may
+now suppress a technical Island only if its exact owner relation has passed the
+same deterministic structural admission used for a graph edge. A rejected or
+unadmitted direct-continuity claim promotes the Island to `assembly_view` and
+records a role repair. No crops, Sonnet, ordinary V5, Fusion,
+source-capability routing or deterministic Dimensions change. First gate:
+Page23 retains doors as an independent technical object rather than silently
+removing them. This is intentionally a one-factor recall repair; it does not
+claim to solve the still-separate console views. Record role repairs, witness
+ledger, rejected and admitted graph edges, Islands, packages, tokens, cost and
+time before any next boundary experiment.
 
 DEFERRED, P1, USER REQUEST, Detection Processing provider-outage handling:
 when Mistral OCR is unavailable, exhausted, rate-limited, or times out, the

@@ -484,6 +484,7 @@ def test_pairwise_role_resolver_promotes_an_unproven_component_detail():
             "observation": "One enclosed cabinet and one separately finished door system are shown.",
             "identity_witnesses": [],
         }],
+        admitted_same_object_pairs=set(),
     )
 
     assert roles["view-002"] == "assembly_view"
@@ -493,10 +494,53 @@ def test_pairwise_role_resolver_promotes_an_unproven_component_detail():
         "group_id": "view-002",
         "prior_owner_group_id": "view-001",
         "repair": "promoted_to_assembly_view",
-        "reason": "component_owner_lacks_direct_same_object_proof",
+        "reason": "component_owner_lacks_admitted_structural_proof",
         "ledger_relation": "different_object",
         "ledger_evidence_type": "none",
     }]
+
+
+def test_pairwise_role_resolver_promotes_detail_when_its_raw_direct_continuity_is_rejected():
+    roles, owners, _audit, repairs = resolve_detection_v5_source_degraded_pairwise_roles(
+        roles_by_id={
+            "view-001": "assembly_view",
+            "view-002": "component_detail",
+        },
+        owner_by_detail_id={"view-002": "view-001"},
+        role_audit=[
+            {
+                "group_id": "view-001", "visual_role": "assembly_view",
+                "owner_group_id": None,
+                "classification_reason": "Complete independent finished cabinet.",
+            },
+            {
+                "group_id": "view-002", "visual_role": "component_detail",
+                "owner_group_id": "view-001",
+                "classification_reason": "Elevation proposed as an owned component.",
+            },
+        ],
+        pair_ledger=[{
+            "group_id_a": "view-001", "group_id_b": "view-002",
+            "relation": "same_object", "evidence_type": "direct_continuity",
+            "separation_kind": "none",
+            "observation": "The elevation is claimed to be a component within the nearby cabinet.",
+            "identity_witnesses": [
+                {
+                    "witness_type": "direct_continuity",
+                    "observation": "The elevation is claimed to be integrated into the nearby cabinet.",
+                },
+                {
+                    "witness_type": "finished_envelope",
+                    "observation": "Both show the full rectangular panel envelope of the proposed component.",
+                },
+            ],
+        }],
+        admitted_same_object_pairs=set(),
+    )
+
+    assert roles["view-002"] == "assembly_view"
+    assert owners == {}
+    assert repairs[0]["reason"] == "component_owner_lacks_admitted_structural_proof"
 
 
 def test_structural_pair_admission_requires_two_original_assemblies_and_typed_witnesses():

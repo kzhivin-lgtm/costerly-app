@@ -44,6 +44,9 @@ DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_PRESERVATION_AUDIT_PROMPT_PATH = (
 DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_STRUCTURAL_AUDIT_PROMPT_PATH = (
     PROMPTS_DIR / "detection_v5_source_degraded_pairwise_structural_audit_prompt.md"
 )
+DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_STRUCTURAL_ADMISSION_AUDIT_PROMPT_PATH = (
+    PROMPTS_DIR / "detection_v5_source_degraded_pairwise_structural_admission_audit_prompt.md"
+)
 DETECTION_V5_SOURCE_DEGRADED_V561_CONSENSUS_PROMPT_PATH = (
     PROMPTS_DIR / "detection_v5_source_degraded_v561_consensus_prompt.md"
 )
@@ -204,6 +207,17 @@ def load_detection_v5_source_degraded_pairwise_structural_audit_prompt() -> str:
     )
     if not prompt:
         raise ValueError("Detection V5 source-degraded pairwise structural prompt is empty")
+    return prompt
+
+
+def load_detection_v5_source_degraded_pairwise_structural_admission_audit_prompt() -> str:
+    prompt = (
+        DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_STRUCTURAL_ADMISSION_AUDIT_PROMPT_PATH
+        .read_text(encoding="utf-8")
+        .strip()
+    )
+    if not prompt:
+        raise ValueError("Detection V5 source-degraded structural admission prompt is empty")
     return prompt
 
 
