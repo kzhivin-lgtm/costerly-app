@@ -3,11 +3,13 @@ from io import BytesIO
 import pytest
 
 from agents.anthropic_adapter import (
+    _compile_detection_v5_source_degraded_direct_registry_payload,
     _compile_detection_v516_v561_consensus,
     _match_detection_v516_v561_object_groups,
     _normalize_source_degraded_registry_view_ids,
     build_detection_v5_source_degraded_boundary_candidates,
     consolidate_detection_v5_source_degraded_continuity_groups,
+    validate_detection_v5_source_degraded_direct_roles,
     validate_detection_v5_source_degraded_full_page_roles,
     validate_detection_v5_source_degraded_boundary_assessments,
     validate_detection_v5_source_degraded_role_resolutions,
@@ -256,6 +258,110 @@ def test_full_page_roles_require_one_final_role_per_visual_representation():
 
     assert roles == {"view-001": "assembly_view", "view-002": "component_detail"}
     assert audit[1]["visual_role"] == "component_detail"
+
+
+def test_direct_roles_require_a_same_page_assembly_owner_for_every_detail():
+    groups = [
+        {"group_id": "view-001", "page_number": 1},
+        {"group_id": "view-002", "page_number": 1},
+        {"group_id": "view-003", "page_number": 1},
+    ]
+    roles, owners, audit = validate_detection_v5_source_degraded_direct_roles(
+        [
+            {
+                "group_id": "view-001", "visual_role": "assembly_view",
+                "owner_group_id": "",
+                "classification_reason": "Complete independent shelving assembly with its envelope.",
+            },
+            {
+                "group_id": "view-002", "visual_role": "component_detail",
+                "owner_group_id": "view-001",
+                "classification_reason": "Visible close-up of the same shelving assembly frame joint.",
+            },
+            {
+                "group_id": "view-003", "visual_role": "document_context",
+                "owner_group_id": "",
+                "classification_reason": "Project title block and drawing administration only.",
+            },
+        ],
+        visual_groups=groups,
+    )
+
+    assert roles["view-001"] == "assembly_view"
+    assert owners == {"view-002": "view-001"}
+    assert audit[1]["owner_group_id"] == "view-001"
+
+
+def test_direct_roles_reject_a_detail_without_a_same_page_assembly_owner():
+    with pytest.raises(ValueError, match="component detail needs one same-page assembly owner"):
+        validate_detection_v5_source_degraded_direct_roles(
+            [
+                {
+                    "group_id": "view-001", "visual_role": "assembly_view",
+                    "owner_group_id": "",
+                    "classification_reason": "Complete independent shelving assembly with its envelope.",
+                },
+                {
+                    "group_id": "view-002", "visual_role": "component_detail",
+                    "owner_group_id": "",
+                    "classification_reason": "An incomplete technical fragment with no named assembly.",
+                },
+            ],
+            visual_groups=[
+                {"group_id": "view-001", "page_number": 1},
+                {"group_id": "view-002", "page_number": 1},
+            ],
+        )
+
+
+def test_direct_inventory_compiles_only_the_final_audited_partition():
+    compiled = _compile_detection_v5_source_degraded_direct_registry_payload(
+        {
+            "visual_groups": [
+                {
+                    "group_id": "draft-shelf", "page_number": 1,
+                    "location_hint": "upper left",
+                    "visual_description": "Complete shelving assembly.",
+                    "representation_kind": "technical assembly",
+                    "bbox": {
+                        "top_left_x": 10, "top_left_y": 10,
+                        "bottom_right_x": 200, "bottom_right_y": 200,
+                    },
+                    "core_bbox": {
+                        "top_left_x": 10, "top_left_y": 10,
+                        "bottom_right_x": 200, "bottom_right_y": 200,
+                    },
+                },
+            ],
+            "page_coverage": [
+                {"page_number": 1, "visual_group_ids": ["draft-shelf"]},
+            ],
+            "roles": [
+                {
+                    "group_id": "draft-shelf", "visual_role": "assembly_view",
+                    "owner_group_id": "",
+                    "classification_reason": "Complete independent shelving fabrication.",
+                },
+            ],
+            "partitions": [
+                {
+                    "group_ids": ["draft-shelf"],
+                    "visual_basis": [
+                        {
+                            "evidence_type": "complete_physical_envelope",
+                            "view_ids": ["draft-shelf"],
+                            "observation": "Complete independent shelving fabrication.",
+                        },
+                    ],
+                },
+            ],
+        },
+        page_count=1,
+        page_frames={1: {"width": 500, "height": 500}},
+    )
+
+    assert compiled["registry"]["objects"][0]["visual_group_ids"] == ["view-001"]
+    assert compiled["owner_by_detail_id"] == {}
 
 
 def _boundary_group(group_id, left, top, right, bottom):

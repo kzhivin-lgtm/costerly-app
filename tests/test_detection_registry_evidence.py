@@ -251,7 +251,7 @@ def test_v49_routes_only_adda_style_registry_to_sonnet_without_evidence_handoff(
     assert len(result["_agent_usage_events"]) == 1
 
 
-def test_source_degraded_route_uses_v527_post_discovery_crops_and_forces_the_base_model():
+def test_source_degraded_route_uses_v528_direct_inventory_audit_and_forces_the_base_model():
     registry = {"objects": [{
         "object_id": "object-001", "transport_label": "Object 1",
         "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
@@ -262,12 +262,12 @@ def test_source_degraded_route_uses_v527_post_discovery_crops_and_forces_the_bas
 
     def capture_source_degraded(**kwargs):
         source_degraded_call.update(kwargs)
-        return {"route": "v5_17", "registry": registry}, {"raw_usage": {}}
+        return {"route": "v5_28", "registry": registry}, {"raw_usage": {}}
 
     with (
         patch("agents.detection_agent.get_secret", side_effect=lambda _name, default: default),
         patch(
-            "agents.detection_agent.run_anthropic_detection_v5_source_degraded_full_page_registry_experiment",
+            "agents.detection_agent.run_anthropic_detection_v5_source_degraded_direct_inventory_audit",
             side_effect=capture_source_degraded,
         ),
         patch(
@@ -280,8 +280,8 @@ def test_source_degraded_route_uses_v527_post_discovery_crops_and_forces_the_bas
             page_images=[b"page"], ocr_package={"evidence": {"text_blocks": []}},
         )
 
-    assert source_degraded_call["post_discovery_view_crops"] is True
-    assert source_degraded_call["component_only_partition_repair"] is True
+    assert "post_discovery_view_crops" not in source_degraded_call
+    assert "component_only_partition_repair" not in source_degraded_call
     assert source_degraded_call["model"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL
     assert result["detected_objects"][0]["object_id"] == "object-001"
     assert result["_agent_usage_events"][0]["raw_usage"]["detection_v4_2_model_route"]["decision"] == "source_degraded_visual_registry"

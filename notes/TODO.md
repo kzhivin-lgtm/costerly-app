@@ -551,19 +551,29 @@ Dimension Engine or ordinary V5. First gate: the V5.25 Page23 `view-003` /
 `view-005` witness (850,380)-(920,450) against corridor (897,407)-(913,423)
 must validate using effective witness (897,407)-(913,423).
 
-ACTIVE EXPERIMENT, P0, V5.27 source-degraded post-Discovery visual context:
-preserve V5.26's Discovery, boundary candidate queue, witness validation,
-roles and exclusive partitions. The Review now receives the original complete
-200 dpi page plus padded crops of each frozen representation and a bounded
-union crop for only same-page pairs no more than 32 px apart or overlapping
-(maximum eight pair crops per page). Crops are explicitly supplementary: they
-cannot create a map entry, boundary, continuity claim or object edge. This does
-not alter ordinary V5, the source-degraded router gate, Dimensions or semantic
-decision rules. First gate: five fresh Page23 runs, comparing representation
-map, role/partition result, full-page review input audit, token/cost and
-duration against V5.26. Accept only if it improves or preserves the correct
-three-object outcome without a validation failure or a new boundary claim from
-a crop edge.
+REJECTED EXPERIMENT, P0, V5.27 source-degraded post-Discovery visual context:
+the second call received padded candidate and nearby-pair crops beside the
+complete 200 dpi page. Five Page23 runs produced the exact required grouping
+only once. The crop queue used model-produced transport bboxes, so its claimed
+adjacencies were false, including shelf plus lower console at zero pixels.
+Review then used that context to falsely merge independent systems. Reject
+static, candidate or pair crops before final inventory. Do not reuse V5.27's
+crop-selection logic, but retain its telemetry as historical evidence.
+
+ACTIVE EXPERIMENT, P0, V5.28 source-degraded direct inventory and independent
+audit: ordinary V5, Fusion, deterministic Dimensions and the source-degraded
+gate remain unchanged. First Haiku call inspects full 200 dpi pages only and
+returns a direct visual inventory, explicit same-page ownership for every
+component detail, and an exclusive product partition. The second Haiku call
+gets the same full pages and the first response only as advisory text. It must
+reinspect the page and may rebuild groups, roles and partitions from scratch.
+No pre-Discovery, candidate, pair or union crops are supplied. Runtime rejects
+an unowned detail, a cross-page detail owner, missing role coverage or an
+incomplete assembly partition, and records both decision ledgers, inputs,
+tokens, cost and duration. First quality gate is five fresh Page23 runs: shelf,
+doors and two console projections must form exactly three objects without a
+validation failure. Then test source-degraded regressions only. This is not a
+general V5 change.
 
 DEFERRED, P1, USER REQUEST, Detection Processing provider-outage handling:
 when Mistral OCR is unavailable, exhausted, rate-limited, or times out, the

@@ -32,6 +32,8 @@ from agents.prompt_loader import (
     load_detection_v5_proposal_prompt,
     load_detection_v5_review_prompt,
     load_detection_v5_source_degraded_discovery_prompt,
+    load_detection_v5_source_degraded_direct_audit_prompt,
+    load_detection_v5_source_degraded_direct_inventory_prompt,
     load_detection_v5_source_degraded_full_page_registry_prompt,
     load_detection_v5_source_degraded_membership_prompt,
     load_detection_v5_source_degraded_one_shot_registry_prompt,
@@ -112,6 +114,8 @@ DETECTION_V5_MEMBERSHIP_CROP_MAX_SIDE = 768
 DETECTION_V5_MEMBERSHIP_PAGE_CONTEXT_MAX_SIDE = 1024
 DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_MAX_TOKENS = 6_144
 DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_MAX_TOKENS = 4_096
+DETECTION_V5_SOURCE_DEGRADED_DIRECT_INVENTORY_MAX_TOKENS = 6_144
+DETECTION_V5_SOURCE_DEGRADED_DIRECT_AUDIT_MAX_TOKENS = 6_144
 DETECTION_V5_SOURCE_DEGRADED_PROMPT_VERSION = (
     "detection_v5_13_2_source_degraded_v4_representation_map_experimental_v1"
 )
@@ -135,6 +139,9 @@ DETECTION_V5_SOURCE_DEGRADED_V526_PROMPT_VERSION = (
 )
 DETECTION_V5_SOURCE_DEGRADED_V527_PROMPT_VERSION = (
     "detection_v5_27_source_degraded_post_discovery_visual_context_v1"
+)
+DETECTION_V5_SOURCE_DEGRADED_V528_PROMPT_VERSION = (
+    "detection_v5_28_source_degraded_direct_inventory_audit_v1"
 )
 DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_CROP_MAX_SIDE = 1024
 DETECTION_V5_SOURCE_DEGRADED_CONTEXT_PAIR_MAX_DISTANCE_PX = 32
@@ -338,6 +345,22 @@ DETECTION_V5_SOURCE_DEGRADED_FULL_PAGE_ROLES_SCHEMA: dict[str, Any] = {
         },
     },
 }
+DETECTION_V5_SOURCE_DEGRADED_DIRECT_ROLES_SCHEMA: dict[str, Any] = {
+    "type": "array", "maxItems": 64,
+    "items": {"type": "object", "additionalProperties": False,
+        "required": [
+            "group_id", "visual_role", "owner_group_id", "classification_reason",
+        ],
+        "properties": {
+            "group_id": {"type": "string"},
+            "visual_role": {"type": "string", "enum": [
+                "assembly_view", "component_detail", "document_context",
+            ]},
+            "owner_group_id": {"type": "string"},
+            "classification_reason": {"type": "string", "minLength": 12, "maxLength": 240},
+        },
+    },
+}
 DETECTION_V5_SOURCE_DEGRADED_BOUNDARY_ASSESSMENTS_SCHEMA: dict[str, Any] = {
     "type": "array", "maxItems": 96,
     "items": {"type": "object", "additionalProperties": False,
@@ -446,6 +469,16 @@ DETECTION_V5_SOURCE_DEGRADED_ONE_SHOT_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "page_coverage": DETECTION_V5_PAGE_COVERAGE_SCHEMA,
         "roles": DETECTION_V5_SOURCE_DEGRADED_FULL_PAGE_ROLES_SCHEMA,
+        "partitions": DETECTION_V5_SOURCE_DEGRADED_VISUAL_PARTITIONS_SCHEMA,
+    },
+}
+DETECTION_V5_SOURCE_DEGRADED_DIRECT_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "required": ["visual_groups", "page_coverage", "roles", "partitions"],
+    "properties": {
+        "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
+        "page_coverage": DETECTION_V5_PAGE_COVERAGE_SCHEMA,
+        "roles": DETECTION_V5_SOURCE_DEGRADED_DIRECT_ROLES_SCHEMA,
         "partitions": DETECTION_V5_SOURCE_DEGRADED_VISUAL_PARTITIONS_SCHEMA,
     },
 }
@@ -3024,6 +3057,78 @@ def validate_detection_v5_source_degraded_full_page_roles(
             for group_id, role in sorted(by_group_id.items())
         ],
     )
+
+
+def validate_detection_v5_source_degraded_direct_roles(
+    roles: object,
+    *,
+    visual_groups: list[dict[str, Any]],
+) -> tuple[dict[str, str], dict[str, str], list[dict[str, Any]]]:
+    """Require every detail to name one concrete assembly owner.
+
+    This is deliberately stricter than the historic full-page role contract:
+    source-degraded Review may not remove a visible drawing by merely calling
+    it a component. It must either be document context or support one returned
+    assembly on the same page.
+    """
+    groups_by_id = {
+        str(group.get("group_id") or ""): group
+        for group in visual_groups
+        if isinstance(group, dict) and str(group.get("group_id") or "")
+    }
+    if not groups_by_id or not isinstance(roles, list):
+        raise ValueError("source-degraded direct roles are invalid")
+    by_group_id: dict[str, dict[str, Any]] = {}
+    allowed_roles = {"assembly_view", "component_detail", "document_context"}
+    for role in roles:
+        if (
+            not isinstance(role, dict)
+            or set(role) != {
+                "group_id", "visual_role", "owner_group_id", "classification_reason",
+            }
+            or not isinstance(role.get("group_id"), str)
+            or role["group_id"] not in groups_by_id
+            or role["group_id"] in by_group_id
+            or role.get("visual_role") not in allowed_roles
+            or not isinstance(role.get("owner_group_id"), str)
+            or len(str(role.get("classification_reason") or "").strip()) < 12
+        ):
+            raise ValueError("source-degraded direct roles are invalid")
+        by_group_id[role["group_id"]] = copy.deepcopy(role)
+    if set(by_group_id) != set(groups_by_id):
+        raise ValueError("source-degraded direct Registry must role-classify every representation")
+
+    roles_by_id = {
+        group_id: str(role["visual_role"])
+        for group_id, role in by_group_id.items()
+    }
+    owner_by_detail_id: dict[str, str] = {}
+    audit: list[dict[str, Any]] = []
+    for group_id, role in sorted(by_group_id.items()):
+        visual_role = roles_by_id[group_id]
+        owner_group_id = str(role["owner_group_id"] or "")
+        if visual_role in {"assembly_view", "document_context"}:
+            if owner_group_id:
+                raise ValueError("source-degraded direct assembly/context cannot have an owner")
+        else:
+            owner = groups_by_id.get(owner_group_id)
+            if (
+                owner is None
+                or owner_group_id == group_id
+                or roles_by_id.get(owner_group_id) != "assembly_view"
+                or owner.get("page_number") != groups_by_id[group_id].get("page_number")
+            ):
+                raise ValueError("source-degraded direct component detail needs one same-page assembly owner")
+            owner_by_detail_id[group_id] = owner_group_id
+        audit.append({
+            "group_id": group_id,
+            "visual_role": visual_role,
+            "owner_group_id": owner_group_id or None,
+            "classification_reason": role["classification_reason"],
+        })
+    if not any(role == "assembly_view" for role in roles_by_id.values()):
+        raise ValueError("source-degraded direct Registry found no assembly view")
+    return roles_by_id, owner_by_detail_id, audit
 
 
 def validate_detection_v5_discovery_page_coverage(
@@ -5749,6 +5854,448 @@ def run_anthropic_detection_v5_source_degraded_one_shot_registry_experiment(
         "partitions": partitions,
         "proof_components": proof_components,
         "registry": registry,
+    }, usage
+
+
+def _compile_detection_v5_source_degraded_direct_registry_payload(
+    payload: object,
+    *,
+    page_count: int,
+    page_frames: dict[int, dict[str, int]],
+) -> dict[str, Any]:
+    """Validate one direct visual inventory without inheriting an earlier map."""
+    required_fields = {"visual_groups", "page_coverage", "roles", "partitions"}
+    if not isinstance(payload, dict) or set(payload) != required_fields:
+        raise ValueError("source-degraded direct Registry response fields are invalid")
+
+    raw_visual_groups = payload["visual_groups"]
+    page_coverage = validate_detection_v5_discovery_page_coverage(
+        payload["page_coverage"],
+        visual_groups=raw_visual_groups,
+        page_count=page_count,
+    )
+    _validate_source_degraded_visual_geometry(
+        raw_visual_groups, page_frames=page_frames,
+    )
+    visual_map = validate_detection_visual_map(
+        normalize_detection_visual_map_group_ids(
+            _visual_map_from_registry_groups(raw_visual_groups),
+        ),
+        require_evidence_class=False,
+    )
+    raw_to_normalized_id = {
+        str(raw["group_id"]): normalized["group_id"]
+        for raw, normalized in zip(
+            raw_visual_groups, visual_map["visual_groups"], strict=True,
+        )
+    }
+    visual_groups = [
+        {
+            **copy.deepcopy(raw_group),
+            **copy.deepcopy(normalized_group),
+            "evidence_class": "object_evidence",
+        }
+        for raw_group, normalized_group in zip(
+            raw_visual_groups, visual_map["visual_groups"], strict=True,
+        )
+    ]
+    if not visual_groups:
+        raise ValueError("source-degraded direct Registry found no visual representation")
+
+    def normalize_group_id(value: object) -> str:
+        group_id = str(value or "")
+        return raw_to_normalized_id.get(group_id, group_id)
+
+    normalized_roles: list[dict[str, Any]] = []
+    for role in payload["roles"]:
+        if not isinstance(role, dict):
+            normalized_roles.append(role)
+            continue
+        normalized_role = copy.deepcopy(role)
+        normalized_role["group_id"] = normalize_group_id(role.get("group_id"))
+        normalized_role["owner_group_id"] = normalize_group_id(
+            role.get("owner_group_id"),
+        )
+        normalized_roles.append(normalized_role)
+    roles_by_id, owner_by_detail_id, role_audit = (
+        validate_detection_v5_source_degraded_direct_roles(
+            normalized_roles,
+            visual_groups=visual_groups,
+        )
+    )
+    assembly_groups = [
+        {
+            **group,
+            "visual_role": roles_by_id[str(group["group_id"])],
+            "evidence_class": "object_evidence",
+        }
+        for group in visual_groups
+        if roles_by_id[str(group["group_id"])] == "assembly_view"
+    ]
+    assembly_ids = {str(group["group_id"]) for group in assembly_groups}
+
+    normalized_partitions: list[dict[str, Any]] = []
+    for partition in payload["partitions"]:
+        if not isinstance(partition, dict):
+            normalized_partitions.append(partition)
+            continue
+        normalized_partition = copy.deepcopy(partition)
+        normalized_partition["group_ids"] = list(dict.fromkeys(
+            normalize_group_id(value) for value in partition.get("group_ids") or []
+        ))
+        normalized_bases: list[dict[str, Any]] = []
+        for basis in partition.get("visual_basis") or []:
+            if not isinstance(basis, dict):
+                normalized_bases.append(basis)
+                continue
+            normalized_basis = copy.deepcopy(basis)
+            normalized_basis["view_ids"] = list(dict.fromkeys(
+                normalize_group_id(value) for value in basis.get("view_ids") or []
+            ))
+            normalized_bases.append(normalized_basis)
+        normalized_partition["visual_basis"] = normalized_bases
+        normalized_partitions.append(normalized_partition)
+    partitions = validate_detection_visual_only_partitions(
+        normalized_partitions,
+        object_view_ids=assembly_ids,
+    )
+
+    visual_sources = build_detection_v5_registry_visual_sources(assembly_groups)
+    page_number_by_group_id = {
+        str(group["group_id"]): int(group["page_number"])
+        for group in assembly_groups
+    }
+    edges_by_pair: dict[tuple[str, str], dict[str, Any]] = {}
+    for partition in partitions:
+        for basis in partition["visual_basis"]:
+            view_ids = sorted(str(value) for value in basis["view_ids"])
+            for left, right in combinations(view_ids, 2):
+                pair = (left, right)
+                fact = {
+                    "evidence_type": str(basis["evidence_type"]),
+                    "evidence_pages": sorted({
+                        page_number_by_group_id[view_id] for view_id in view_ids
+                    }),
+                    "observation": str(basis["observation"]),
+                    "source_fact_ids": [
+                        f"registry_view:{view_id}" for view_id in view_ids
+                    ],
+                }
+                edge = edges_by_pair.setdefault(pair, {
+                    "group_id_a": left,
+                    "group_id_b": right,
+                    "relationship": "same_object_view",
+                    "evidence_facts": [],
+                    "commercial_inseparability": (
+                        "V5.28 direct Registry exclusive visual partition."
+                    ),
+                })
+                edge["evidence_facts"].append(fact)
+    positive_relation_edges = [
+        edges_by_pair[pair] for pair in sorted(edges_by_pair)
+    ]
+    proof_components = derive_detection_proof_components(
+        positive_relation_edges,
+        visual_group_ids=assembly_ids,
+    )
+    registry_objects: list[dict[str, Any]] = []
+    for index, partition in enumerate(partitions, start=1):
+        group_ids = sorted(partition["group_ids"])
+        pages = sorted({page_number_by_group_id[group_id] for group_id in group_ids})
+        registry_objects.append({
+            "object_id": f"object-{index:03d}",
+            "transport_label": f"Object {index}",
+            "quantity": 1,
+            "quantity_explicit": False,
+            "identity_pages": pages,
+            "estimation_evidence_pages": pages,
+            "visual_group_ids": group_ids,
+            "visual_identity": "V5.28 direct full-page visual Registry partition",
+            "boundary_basis": " ".join(
+                str(basis["observation"])
+                for basis in partition["visual_basis"]
+            ),
+        })
+    registry = validate_detection_registry(
+        {"objects": registry_objects},
+        visual_group_ids=assembly_ids,
+        object_evidence_group_ids=assembly_ids,
+    )
+    registry = validate_detection_v5_final_result(
+        registry,
+        visual_groups=assembly_groups,
+        graph_edges=positive_relation_edges,
+        source_facts=visual_sources,
+    )
+    return {
+        "registry": registry,
+        "raw_visual_groups": raw_visual_groups,
+        "visual_groups": visual_groups,
+        "assembly_groups": assembly_groups,
+        "component_detail_groups": [
+            group for group in visual_groups
+            if roles_by_id[str(group["group_id"])] == "component_detail"
+        ],
+        "document_context_groups": [
+            group for group in visual_groups
+            if roles_by_id[str(group["group_id"])] == "document_context"
+        ],
+        "page_coverage": page_coverage,
+        "role_audit": role_audit,
+        "owner_by_detail_id": owner_by_detail_id,
+        "partitions": partitions,
+        "positive_relation_edges": positive_relation_edges,
+        "proof_components": proof_components,
+    }
+
+
+def run_anthropic_detection_v5_source_degraded_direct_inventory_audit(
+    *,
+    file_name: str,
+    company_id: str,
+    file_bytes: bytes,
+    page_images: list[bytes],
+    ocr_package: dict[str, Any] | None,
+    model: str | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Run V5.28's direct-inventory and independent full-page audit route."""
+    if not page_images:
+        raise ValueError("source-degraded direct Registry requires rendered pages")
+    selected_model = model or get_secret(
+        "CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL,
+    )
+    if "haiku" not in selected_model.lower():
+        raise ValueError("source-degraded direct Registry requires a Haiku model")
+    source_facts = build_detection_page_evidence_inventory(ocr_package)
+    source_capability = assess_detection_source_capability(
+        source_facts=source_facts,
+        page_count=len(page_images),
+        page_dimensions=_source_dimensions_by_page(ocr_package),
+    )
+    if not source_capability["route_eligible"]:
+        raise ValueError(
+            "source-degraded direct Registry is ineligible: "
+            f"{source_capability['route_reason']}"
+        )
+    page_frames, page_frame_audit = build_detection_v5_visual_page_frames(page_images)
+    if len(page_frames) != len(page_images):
+        raise ValueError("source-degraded direct Registry cannot inspect every rendered page")
+    coordinate_context = "\n".join([
+        "RENDERED PAGE PIXEL FRAMES:",
+        *(f"P{page_number}|{frame['width']}x{frame['height']}"
+          for page_number, frame in sorted(page_frames.items())),
+    ])
+    inventory_prompt = load_detection_v5_source_degraded_direct_inventory_prompt()
+    audit_prompt = load_detection_v5_source_degraded_direct_audit_prompt()
+    inventory_content = build_detection_content_blocks(
+        file_name=file_name,
+        file_bytes=file_bytes,
+        page_images=page_images,
+        user_text=(
+            "SOURCE CAPABILITY: no page has usable coordinate-bearing evidence. "
+            "Use visual evidence only. Complete rendered pages are the sole image "
+            "input.\n\n" + coordinate_context
+        ),
+    )
+    inventory_response, inventory_diagnostics = create_claude_message_streamed(
+        get_anthropic_client(),
+        model=selected_model,
+        max_tokens=DETECTION_V5_SOURCE_DEGRADED_DIRECT_INVENTORY_MAX_TOKENS,
+        temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+        system=build_detection_system_content(prompt=inventory_prompt),
+        messages=[{"role": "user", "content": inventory_content}],
+        output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
+            DETECTION_V5_SOURCE_DEGRADED_DIRECT_REGISTRY_JSON_SCHEMA,
+        )}},
+    )
+    inventory_raw_text = extract_text_from_claude_response(inventory_response)
+    inventory_payload: Any = None
+    try:
+        inventory_payload = json.loads(inventory_raw_text)
+        if not isinstance(inventory_payload, dict) or set(inventory_payload) != {
+            "visual_groups", "page_coverage", "roles", "partitions",
+        }:
+            raise ValueError("source-degraded direct inventory response fields are invalid")
+    except (json.JSONDecodeError, ValueError) as exc:
+        failure_usage = build_agent_usage_event(
+            agent_name="detection",
+            operation="rfq_detection_v5_source_degraded_direct_inventory_audit",
+            company_id=company_id,
+            run_id=None,
+            file_name=file_name,
+            object_id=None,
+            object_name=None,
+            model=selected_model,
+            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V528_PROMPT_VERSION,
+            response=inventory_response,
+            started_at=inventory_diagnostics["request_started_at"],
+            finished_at=inventory_diagnostics["request_finished_at"],
+            request_diagnostics={
+                "validation_stage": "v5_28_direct_inventory",
+                "source_capability": source_capability,
+                "page_frame_audit": page_frame_audit,
+                "direct_inventory_decision_audit": inventory_payload,
+                "error_message": str(exc),
+            },
+        )
+        failure_usage["status"] = "failed"
+        failure_usage["error_message"] = str(exc)
+        raise DetectionVisualRegistryValidationError(
+            f"Source-degraded V5.28 direct Inventory failed validation: {exc}",
+            usage_event=failure_usage,
+        ) from exc
+
+    audit_content = build_detection_content_blocks(
+        file_name=file_name,
+        file_bytes=file_bytes,
+        page_images=page_images,
+        user_text=(
+            "ADVISORY DIRECT OBJECT INVENTORY FROM ANOTHER PASS:\n"
+            + json.dumps(inventory_payload, ensure_ascii=False, separators=(",", ":"))
+            + "\n\n" + coordinate_context
+            + "\n\nSOURCE CAPABILITY: visual-only. Reinspect the complete page "
+              "yourself. The draft may omit a drawing, split one depiction, "
+              "or merge unrelated products. It is not a fixed map or boundary."
+        ),
+    )
+    audit_response, audit_diagnostics = create_claude_message_streamed(
+        get_anthropic_client(),
+        model=selected_model,
+        max_tokens=DETECTION_V5_SOURCE_DEGRADED_DIRECT_AUDIT_MAX_TOKENS,
+        temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+        system=build_detection_system_content(prompt=audit_prompt),
+        messages=[{"role": "user", "content": audit_content}],
+        output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
+            DETECTION_V5_SOURCE_DEGRADED_DIRECT_REGISTRY_JSON_SCHEMA,
+        )}},
+    )
+    audit_raw_text = extract_text_from_claude_response(audit_response)
+    audit_payload: Any = None
+    try:
+        audit_payload = json.loads(audit_raw_text)
+        compiled = _compile_detection_v5_source_degraded_direct_registry_payload(
+            audit_payload,
+            page_count=len(page_images),
+            page_frames=page_frames,
+        )
+    except (json.JSONDecodeError, KeyError, ValueError, DetectionRegistrySchemaError) as exc:
+        failure_usage = build_agent_usage_event(
+            agent_name="detection",
+            operation="rfq_detection_v5_source_degraded_direct_inventory_audit",
+            company_id=company_id,
+            run_id=None,
+            file_name=file_name,
+            object_id=None,
+            object_name=None,
+            model=selected_model,
+            prompt_version=DETECTION_V5_SOURCE_DEGRADED_V528_PROMPT_VERSION,
+            response=audit_response,
+            started_at=inventory_diagnostics["request_started_at"],
+            finished_at=audit_diagnostics["request_finished_at"],
+            request_diagnostics={
+                "validation_stage": "v5_28_direct_audit",
+                "source_capability": source_capability,
+                "page_frame_audit": page_frame_audit,
+                "direct_inventory_decision_audit": inventory_payload,
+                "direct_audit_decision_audit": audit_payload,
+                "error_message": str(exc),
+            },
+        )
+        failure_usage["status"] = "failed"
+        failure_usage["error_message"] = str(exc)
+        raise DetectionVisualRegistryValidationError(
+            f"Source-degraded V5.28 direct Audit failed validation: {exc}",
+            usage_event=failure_usage,
+        ) from exc
+
+    inventory_summary = summarize_detection_provider_call(
+        response=inventory_response,
+        diagnostics=inventory_diagnostics,
+        prompt_characters=len(inventory_prompt),
+        context_characters=len(coordinate_context),
+        image_count=len(page_images),
+        image_bytes=sum(len(image) for image in page_images),
+    )
+    audit_summary = summarize_detection_provider_call(
+        response=audit_response,
+        diagnostics=audit_diagnostics,
+        prompt_characters=len(audit_prompt),
+        context_characters=len(json.dumps(inventory_payload, ensure_ascii=False)),
+        image_count=len(page_images),
+        image_bytes=sum(len(image) for image in page_images),
+    )
+    audit = {
+        "operation": "rfq_detection_v5_source_degraded_direct_inventory_audit",
+        "registry_route": "v5_28_source_degraded_direct_inventory_audit",
+        "provider_duration_seconds": round(
+            float(inventory_summary.get("duration_seconds") or 0)
+            + float(audit_summary.get("duration_seconds") or 0),
+            6,
+        ),
+        "input_tokens": int(inventory_summary.get("input_tokens") or 0)
+        + int(audit_summary.get("input_tokens") or 0),
+        "output_tokens": int(inventory_summary.get("output_tokens") or 0)
+        + int(audit_summary.get("output_tokens") or 0),
+        "input_cost_usd": round(
+            float(inventory_summary.get("input_cost_usd") or 0)
+            + float(audit_summary.get("input_cost_usd") or 0), 8,
+        ),
+        "output_cost_usd": round(
+            float(inventory_summary.get("output_cost_usd") or 0)
+            + float(audit_summary.get("output_cost_usd") or 0), 8,
+        ),
+        "source_capability": source_capability,
+        "page_frame_audit": page_frame_audit,
+        "direct_inventory": inventory_summary,
+        "direct_audit": audit_summary,
+        "full_page_review_input": "full_rendered_pages_without_crops_or_overlays",
+        "direct_inventory_decision_audit": inventory_payload,
+        "direct_audit_decision_audit": audit_payload,
+        "role_audit": compiled["role_audit"],
+        "owner_by_detail_id": compiled["owner_by_detail_id"],
+        "positive_relation_edges": compiled["positive_relation_edges"],
+    }
+    usage = build_agent_usage_event(
+        agent_name="detection",
+        operation="rfq_detection_v5_source_degraded_direct_inventory_audit",
+        company_id=company_id,
+        run_id=None,
+        file_name=file_name,
+        object_id=None,
+        object_name=None,
+        model=selected_model,
+        prompt_version=DETECTION_V5_SOURCE_DEGRADED_V528_PROMPT_VERSION,
+        response=audit_response,
+        started_at=inventory_diagnostics["request_started_at"],
+        finished_at=audit_diagnostics["request_finished_at"],
+        request_diagnostics=audit,
+    )
+    usage.update({
+        "input_tokens": audit["input_tokens"],
+        "output_tokens": audit["output_tokens"],
+        "input_cost_usd": audit["input_cost_usd"],
+        "output_cost_usd": audit["output_cost_usd"],
+        "total_cost_usd": round(
+            audit["input_cost_usd"] + audit["output_cost_usd"], 8,
+        ),
+    })
+    usage["raw_usage"].update({
+        "input_tokens": audit["input_tokens"],
+        "output_tokens": audit["output_tokens"],
+        "total_cost_usd": usage["total_cost_usd"],
+    })
+    return {
+        "route": "v5_28_source_degraded_direct_inventory_audit",
+        "visual_groups": compiled["assembly_groups"],
+        "discovery_visual_groups": compiled["raw_visual_groups"],
+        "component_detail_groups": compiled["component_detail_groups"],
+        "document_context_groups": compiled["document_context_groups"],
+        "role_audit": compiled["role_audit"],
+        "owner_by_detail_id": compiled["owner_by_detail_id"],
+        "page_coverage": compiled["page_coverage"],
+        "partitions": compiled["partitions"],
+        "proof_components": compiled["proof_components"],
+        "registry": compiled["registry"],
     }, usage
 
 
