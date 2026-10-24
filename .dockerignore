@@ -1,0 +1,15 @@
+.git
+.gitignore
+.venv
+.models
+.pytest_cache
+__pycache__
+**/__pycache__
+*.pyc
+.streamlit/secrets.toml
+.env
+.env.*
+*.log
+backups
+outputs
+.local-deps

@@ -760,13 +760,15 @@ provider reasoning and naming for V2 are not. This checkpoint does not extend
 the rule beyond the native-XObject route or establish cross-document validity.
 
 ACTIVE IMPLEMENTATION, P0, V5.38 Railway DINO artifact caching: retain the
-exact V5.37 Detection contract and model revision. Move the pinned DINO build
-artifact into a deployment layer whose cache key is only the model revision and
-model-download script, before application-source copy. A normal code commit
-must not redownload the approximately 84 MB DINO weights. Verify the build
-image contains the three required files, local-only runtime loading still works,
-the V5.37 test suite passes, and a source-only deployment reuses the model
-layer. This is a deployment-efficiency change, not a Detection-rule change.
+exact V5.37 Detection contract and model revision. Build the pinned DINO
+artifact after the locked runtime layer and before application-source copy. A
+normal code commit must not redownload the approximately 84 MB DINO weights
+when Railway's standard layer cache is available. Verify the build image
+contains the three required files, local-only runtime loading still works, the
+V5.37 test suite passes, and a source-only deployment reuses the model layer.
+Railway can evict build caches, so only a separately published image could
+guarantee zero refetches after cache loss. This is a deployment-efficiency
+change, not a Detection-rule change.
 
 ACTIVE DIAGNOSIS, P0, Processing to File Review client transition defect:
 the same run completed Registry in 23.28 seconds and server-side File Review

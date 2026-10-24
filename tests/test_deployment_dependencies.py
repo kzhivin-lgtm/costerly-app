@@ -38,3 +38,22 @@ def test_production_dependencies_are_exactly_pinned() -> None:
         "url": "https://download.pytorch.org/whl/cpu",
         "explicit": True,
     }]
+
+
+def test_railway_model_artifact_is_before_application_source() -> None:
+    railway = tomllib.loads((ROOT / "railway.toml").read_text())
+    dockerfile = (ROOT / "Dockerfile").read_text()
+    dockerignore = (ROOT / ".dockerignore").read_text().splitlines()
+
+    assert railway["build"] == {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "Dockerfile",
+    }
+    assert "python:3.13.15-slim-bookworm" in dockerfile
+    assert "ghcr.io/astral-sh/uv:0.13.5" in dockerfile
+    assert "DETECTION_VISUAL_EMBEDDING_MODEL_DIR=/opt/costerly-models/dinov2-small" in dockerfile
+    assert "uv sync --locked --no-dev --no-install-project" in dockerfile
+    assert "tools/prefetch_detection_visual_embedding.py" in dockerfile
+    assert dockerfile.index("tools/prefetch_detection_visual_embedding.py") < dockerfile.index("COPY . /app")
+    assert ".models" in dockerignore
+    assert ".streamlit/secrets.toml" in dockerignore
