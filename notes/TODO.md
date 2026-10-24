@@ -678,6 +678,27 @@ audit the ordinary V5 proposal, static pre-Discovery regions, Fusion-to-JPEG
 coordinate conversion and Review crops separately. Do not infer an Island
 repair merely from the resolution change.
 
+[verified, 2026-10-24] Fresh production Page23 run
+`run_583c26209c264ac08040afad3b5dd66f` confirms the source-degraded page frame
+is `1985x1404` at requested 200 DPI. Its five raw boxes still split the one
+continuous shelf between `VG_P1_001` and `VG_P1_004`, and misplace
+`VG_P1_003` over the lower left door rather than a TV-console projection. The
+renderer is therefore now auditable but does not repair the primary map.
+
+ACTIVE DIAGNOSIS, P0, Processing to File Review client transition defect:
+the same run completed Registry in 23.28 seconds and server-side File Review
+in 26.67 seconds, while the browser recorded a 15.001-second
+`processing_to_file_review` timeout. The current browser readiness predicate
+requires `.file-review-card`, but the renderer produces
+`.file-review-summary-card-marker` instead. This prevents the browser from
+acknowledging the already-rendered File Review and leaves the Processing shell
+visible. Do not alter Detection, OCR, or provider timeouts. The repair must
+align the browser predicate with the actual File Review marker, retain the
+existing 120 ms handoff, and be verified in an authenticated production cycle
+by a terminal `browser.transition_ready` rather than only a server render.
+The marker-contract repair and regression test are implemented locally. Production
+verification remains required before this item can be closed.
+
 DEFERRED, P1, USER REQUEST, Detection Processing provider-outage handling:
 when Mistral OCR is unavailable, exhausted, rate-limited, or times out, the
 Processing screen must never remain at its initial elapsed value. Persist a

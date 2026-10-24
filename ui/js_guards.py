@@ -3661,7 +3661,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         return Boolean(controls && controls.querySelectorAll('button').length >= 2);
                     };
                     const fileReviewReady = () => Boolean(
-                        document.querySelector('.file-review-card') &&
+                        document.querySelector('.file-review-summary-card-marker') &&
                         document.querySelector('.file-review-detected-title') &&
                         controlsReady()
                     );

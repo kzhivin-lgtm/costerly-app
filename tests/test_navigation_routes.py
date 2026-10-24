@@ -637,3 +637,10 @@ def test_file_review_transitions_follow_the_current_editable_summary_marker():
     assert 'return ".file-review-summary-card-marker"' in source
     assert 'parentDocument.querySelector(\n                            ".file-review-summary-card-marker"' in source
     assert 'cardStyle.borderTopLeftRadius === "16px"' in source
+
+    handoff_start = source.index("function reportFileReviewStyled")
+    handoff_end = source.index("function startWatcher", handoff_start)
+    handoff_source = source[handoff_start:handoff_end]
+    assert "const fileReviewReady" in handoff_source
+    assert "document.querySelector('.file-review-summary-card-marker')" in handoff_source
+    assert "document.querySelector('.file-review-card')" not in handoff_source
