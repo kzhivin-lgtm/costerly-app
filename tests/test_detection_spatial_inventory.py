@@ -1,8 +1,13 @@
+import pytest
+
 from agents.anthropic_adapter import (
     apply_detection_v67_mistral_anchor_admission,
+    build_detection_v69_reconciliation_matrix,
     build_detection_v68_pairwise_membership_matrix,
     build_detection_candidate_region_audit,
     build_detection_view_evidence_packages,
+    normalize_detection_v69_pair_criteria_decisions,
+    normalize_detection_v69_reconciliation_decisions,
     normalize_detection_v68_pairwise_decisions,
 )
 from agents.detection_fusion_candidate_regions import build_detection_fusion_candidate_regions
@@ -138,6 +143,79 @@ def test_v68_pairwise_normalizer_requires_full_coverage_and_keeps_only_positive_
     assert [row["disposition"] for row in audit] == [
         "same_object", "different_objects", "insufficient_evidence",
     ]
+
+
+def _v69_criteria(*, topology: str, geometry: str, disposition: str = "same_object") -> list[dict]:
+    return [
+        {"criterion": "identifier", "assessment": "not_visible", "observation": "No literal object-specific identifier is visible in both views."},
+        {"criterion": "topology", "assessment": topology, "observation": "The three-bay arrangement is visible in both compared views."},
+        {"criterion": "geometry", "assessment": geometry, "observation": "The uncommon L-shaped return is visible in both compared views."},
+        {"criterion": "dimensions", "assessment": "not_visible", "observation": "A second complete dimensional reading is not visible in this pair."},
+        {"criterion": "construction", "assessment": "not_visible", "observation": "No separate physical continuity witness is visible for this pair."},
+    ]
+
+
+def _v69_evidence() -> list[dict]:
+    return [{
+        "evidence_type": "matching_topology", "strength": "standard",
+        "observation": "Both views show the same three-bay arrangement ending at an L return.",
+        "source_fact_ids": [],
+    }, {
+        "evidence_type": "unique_geometry", "strength": "standard",
+        "observation": "Both views show the same uncommon L-shaped 1830 by 1188 return.",
+        "source_fact_ids": [],
+    }]
+
+
+def test_v69_requires_all_criteria_before_a_preliminary_link_can_be_strong():
+    facts, audit = normalize_detection_v69_pair_criteria_decisions([{
+        "group_id_a": "a", "group_id_b": "b", "disposition": "same_object",
+        "reason": "Two independent structural correspondences are visible.",
+        "criteria": _v69_criteria(topology="supports_same_object", geometry="supports_same_object"),
+        "evidence": _v69_evidence(),
+    }], expected_pairs=[("a", "b")])
+
+    assert len(facts) == 2
+    assert audit[0]["computed_strength"] == "strong"
+
+    with pytest.raises(ValueError, match="criteria"):
+        normalize_detection_v69_pair_criteria_decisions([{
+            "group_id_a": "a", "group_id_b": "b", "disposition": "same_object",
+            "reason": "An incomplete evidence card cannot establish identity.",
+            "criteria": _v69_criteria(topology="supports_same_object", geometry="not_visible")[:-1],
+            "evidence": _v69_evidence(),
+        }], expected_pairs=[("a", "b")])
+
+
+def test_v69_reconciles_every_unproven_island_against_each_proven_component():
+    matrix, components = build_detection_v69_reconciliation_matrix(
+        group_ids={"p1a", "p1b", "counter2", "counter3", "counter4", "l2", "l3", "l4"},
+        criteria_audit=[
+            {"group_id_a": "counter2", "group_id_b": "counter3", "disposition": "same_object", "computed_strength": "strong"},
+            {"group_id_a": "counter3", "group_id_b": "counter4", "disposition": "same_object", "computed_strength": "strong"},
+            {"group_id_a": "l2", "group_id_b": "l3", "disposition": "same_object", "computed_strength": "strong"},
+            {"group_id_a": "l3", "group_id_b": "l4", "disposition": "same_object", "computed_strength": "strong"},
+            {"group_id_a": "p1a", "group_id_b": "p1b", "disposition": "same_object", "computed_strength": "weak"},
+        ],
+    )
+
+    assert sorted(components.values()) == [
+        ["counter2", "counter3", "counter4"], ["l2", "l3", "l4"],
+    ]
+    assert {(row["candidate_group_id"], row["reference_component_id"]) for row in matrix} == {
+        ("p1a", "RC001"), ("p1a", "RC002"), ("p1b", "RC001"), ("p1b", "RC002"),
+    }
+
+    facts, audit = normalize_detection_v69_reconciliation_decisions([{
+        "candidate_group_id": "p1a", "reference_component_id": "RC002", "comparison_group_id": "l2",
+        "disposition": "same_object", "reason": "The candidate matches the L-shaped component on two independent criteria.",
+        "criteria": _v69_criteria(topology="supports_same_object", geometry="supports_same_object"),
+        "evidence": _v69_evidence(),
+    }], expected_matrix=[{"candidate_group_id": "p1a", "reference_component_id": "RC002"}],
+       components=components)
+
+    assert {(fact["group_id_a"], fact["group_id_b"]) for fact in facts} == {("l2", "p1a")}
+    assert audit[0]["computed_strength"] == "strong"
 
 
 def test_candidate_region_without_island_requires_a_registry_explanation_in_audit():

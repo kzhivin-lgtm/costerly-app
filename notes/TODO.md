@@ -895,7 +895,7 @@ membership contract that reconciles P1-like perspective Views against existing
 cross-page components, and rejects shared-sheet/composition continuity as an
 author relation.
 
-ACTIVE EXPERIMENT, P0, V6.8, bounded complete pair membership for the V6.7
+SUPERSEDED EXPERIMENT, P0, V6.8, bounded complete pair membership for the V6.7
 Mistral-anchor route only: if the admitted object-evidence inventory has 2-10
 Views, Membership Review receives the complete unordered matrix and must return
 exactly one disposition for every pair: `same_object`, `different_objects`, or
@@ -910,6 +910,29 @@ not a filename rule and does not activate for ordinary Haiku, Page23 or other
 non-V6.7 routes. First and only live gate: run Adda, compare the two expected
 four-View components with V6.7, then measure additional Review duration,
 tokens, and cost before considering any broader route.
+
+ACTIVE EXPERIMENT, P0, V6.9, criteria-then-reconciliation for the V6.7
+Mistral-anchor route only: preserve Discovery and page-local Mistral boundary
+authority. Membership now has three bounded stages. First, Review emits sparse
+`preliminary_links`, each naming the exact pair and the first criterion that
+made the pair worth testing. Second, Review must audit every preliminary pair
+against all five criteria: identifier, topology, geometry, dimensions and
+construction. Each criterion is explicitly `supports_same_object`,
+`contradicts_same_object` or `not_visible`. Runtime, not model confidence,
+computes a strong link: no contradiction plus either a direct supported author
+relation or two supported discriminative criteria with two independent typed
+evidence facts. Only strong links form transient reference components. Third,
+every Island outside those components is compared to every reference component;
+Review chooses a concrete member View for each candidate/component comparison
+and again audits all five criteria. A final merge remains valid only through
+accepted, cited pair evidence. General View titles, shared page, adjacency,
+composition continuity, shared material, lighting and strokes cannot support a
+criterion. This is not all-to-all and not a page-number rule. First gate is
+Adda: retain all eight Mistral boxes, record the sparse preliminary links and
+their five-criterion cards, create exactly four P1-to-component reconciliation
+rows for a 3+3+2 preliminary result, and return the exact Counter and L-shaped
+four-View memberships. Compare Review duration, tokens and cost with V6.7 and
+V6.8 before extending any route.
 
 SUPERSEDED INPUT CONTRACT, V6.5, no static pre-Discovery crops: remove the three
 fixed `upper_left`, `upper_right`, and `lower` images from the Adda

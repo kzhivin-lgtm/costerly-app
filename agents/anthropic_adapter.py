@@ -117,6 +117,9 @@ DETECTION_V67_MISTRAL_ANCHOR_ADMISSION_PROMPT_VERSION = (
 DETECTION_V68_BOUNDED_ALL_PAIR_MEMBERSHIP_PROMPT_VERSION = (
     "detection_v6_8_bounded_all_pair_membership"
 )
+DETECTION_V69_CRITERIA_RECONCILIATION_PROMPT_VERSION = (
+    "detection_v6_9_criteria_then_reconciliation"
+)
 # V5.0 keeps one Haiku call. Registry returns Islands, classifications, and
 # sparse positive semantic facts. Runtime owns every graph and package decision.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
@@ -126,6 +129,7 @@ DETECTION_V5_DISCOVERY_MAX_TOKENS = 8_192
 DETECTION_V5_PROPOSAL_MAX_TOKENS = 8_192
 DETECTION_V5_MEMBERSHIP_MAX_TOKENS = 6_144
 DETECTION_V68_ALL_PAIR_MEMBERSHIP_MAX_ISLANDS = 10
+DETECTION_V69_RECONCILIATION_MAX_ISLANDS = 10
 DETECTION_V5_MEMBERSHIP_CROP_MAX_SIDE = 768
 DETECTION_V5_MEMBERSHIP_PAGE_CONTEXT_MAX_SIDE = 1024
 DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_MAX_TOKENS = 6_144
@@ -760,6 +764,89 @@ DETECTION_V68_MEMBERSHIP_JSON_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": False,
     "required": ["pairwise_decisions"],
     "properties": {"pairwise_decisions": DETECTION_V68_PAIRWISE_DECISIONS_SCHEMA},
+}
+
+# V6.9 deliberately keeps a preliminary membership grouping separate from the
+# evidence that is allowed to make it final.  Every examined pair must expose
+# all five criteria, including criteria that are absent or contradictory, so
+# the runtime can derive strength instead of trusting a model confidence word.
+DETECTION_V69_CRITERION_NAMES = (
+    "identifier", "topology", "geometry", "dimensions", "construction",
+)
+DETECTION_V69_PRELIMINARY_LINK_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "required": ["group_id_a", "group_id_b", "trigger_criterion", "reason"],
+    "properties": {
+        "group_id_a": {"type": "string"},
+        "group_id_b": {"type": "string"},
+        "trigger_criterion": {"type": "string", "enum": list(DETECTION_V69_CRITERION_NAMES)},
+        "reason": {"type": "string", "minLength": 8, "maxLength": 180},
+    },
+}
+DETECTION_V69_PRELIMINARY_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "required": ["preliminary_links"],
+    "properties": {"preliminary_links": {"type": "array", "minItems": 1,
+        "maxItems": 20, "items": DETECTION_V69_PRELIMINARY_LINK_SCHEMA}},
+}
+DETECTION_V69_PAIR_CRITERION_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "required": ["criterion", "assessment", "observation"],
+    "properties": {
+        "criterion": {"type": "string", "enum": list(DETECTION_V69_CRITERION_NAMES)},
+        "assessment": {"type": "string", "enum": [
+            "supports_same_object", "contradicts_same_object", "not_visible",
+        ]},
+        "observation": {"type": "string", "minLength": 8, "maxLength": 180},
+    },
+}
+DETECTION_V69_PAIR_DECISION_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "required": ["group_id_a", "group_id_b", "disposition", "reason", "criteria", "evidence"],
+    "properties": {
+        "group_id_a": {"type": "string"},
+        "group_id_b": {"type": "string"},
+        "disposition": {"type": "string", "enum": [
+            "same_object", "different_objects", "insufficient_evidence",
+        ]},
+        "reason": {"type": "string", "minLength": 8, "maxLength": 180},
+        "criteria": {"type": "array", "minItems": 5, "maxItems": 5,
+                     "items": DETECTION_V69_PAIR_CRITERION_SCHEMA},
+        "evidence": {"type": "array", "maxItems": 4,
+                     "items": DETECTION_V68_PAIRWISE_DECISION_EVIDENCE_SCHEMA},
+    },
+}
+DETECTION_V69_CRITERIA_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "required": ["pairwise_decisions"],
+    "properties": {"pairwise_decisions": {"type": "array", "minItems": 1,
+        "maxItems": 20, "items": DETECTION_V69_PAIR_DECISION_SCHEMA}},
+}
+DETECTION_V69_RECONCILIATION_DECISION_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "required": [
+        "candidate_group_id", "reference_component_id", "comparison_group_id",
+        "disposition", "reason", "criteria", "evidence",
+    ],
+    "properties": {
+        "candidate_group_id": {"type": "string"},
+        "reference_component_id": {"type": "string"},
+        "comparison_group_id": {"type": "string"},
+        "disposition": {"type": "string", "enum": [
+            "same_object", "different_objects", "insufficient_evidence",
+        ]},
+        "reason": {"type": "string", "minLength": 8, "maxLength": 180},
+        "criteria": {"type": "array", "minItems": 5, "maxItems": 5,
+                     "items": DETECTION_V69_PAIR_CRITERION_SCHEMA},
+        "evidence": {"type": "array", "maxItems": 4,
+                     "items": DETECTION_V68_PAIRWISE_DECISION_EVIDENCE_SCHEMA},
+    },
+}
+DETECTION_V69_RECONCILIATION_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "required": ["reconciliation_decisions"],
+    "properties": {"reconciliation_decisions": {"type": "array", "minItems": 1,
+        "maxItems": 50, "items": DETECTION_V69_RECONCILIATION_DECISION_SCHEMA}},
 }
 
 DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_JSON_SCHEMA: dict[str, Any] = {
@@ -2652,6 +2739,344 @@ def normalize_detection_v68_pairwise_decisions(
             f"missing={missing}, extra={extra}"
         )
     return semantic_facts, audit
+
+
+def normalize_detection_v69_preliminary_links(links: object) -> list[tuple[str, str]]:
+    """Keep explicit sparse pair proposals as verification candidates only."""
+    pairs: set[tuple[str, str]] = set()
+    if not isinstance(links, list):
+        raise ValueError("V6.9 preliminary_links must be a list")
+    for raw in links:
+        if not isinstance(raw, dict) or set(raw) != {
+            "group_id_a", "group_id_b", "trigger_criterion", "reason",
+        }:
+            raise ValueError("V6.9 preliminary link fields are invalid")
+        left, right = sorted((str(raw.get("group_id_a") or ""), str(raw.get("group_id_b") or "")))
+        if (
+            not left or left == right
+            or str(raw.get("trigger_criterion") or "") not in DETECTION_V69_CRITERION_NAMES
+            or len(" ".join(str(raw.get("reason") or "").split())) < 8
+            or (left, right) in pairs
+        ):
+            raise ValueError("V6.9 preliminary link is invalid")
+        pairs.add((left, right))
+    return sorted(pairs)
+
+
+def format_detection_v69_pair_criteria_matrix(
+    pairs: list[tuple[str, str]],
+) -> str:
+    lines = [
+        "V6.9 REQUIRED PRELIMINARY-LINK CRITERIA MATRIX:",
+        "Each row is a preliminary link, not a final merge. Return exactly one "
+        "pairwise_decisions row per pair and exactly these five criteria in each "
+        "row: identifier, topology, geometry, dimensions, construction.",
+        "For every criterion say supports_same_object, contradicts_same_object, "
+        "or not_visible. Do not turn a General View title, shared page, adjacency, "
+        "composition continuity, material, lighting or strokes into support for any "
+        "criterion. same_object is allowed only when the criteria and concrete cited "
+        "evidence support it. A positive evidence row needs sources from both endpoints.",
+        "PAIR=id|A=View|B=View",
+    ]
+    lines.extend(
+        f"P{index:03d}|A={left}|B={right}"
+        for index, (left, right) in enumerate(pairs, start=1)
+    )
+    return "\n".join(lines)
+
+
+def _normalize_detection_v69_criteria(
+    raw_criteria: object,
+) -> tuple[list[dict[str, str]], set[str], set[str]]:
+    if not isinstance(raw_criteria, list) or len(raw_criteria) != len(DETECTION_V69_CRITERION_NAMES):
+        raise ValueError("V6.9 pair criteria must contain every required criterion exactly once")
+    by_name: dict[str, dict[str, str]] = {}
+    for raw in raw_criteria:
+        if not isinstance(raw, dict) or set(raw) != {"criterion", "assessment", "observation"}:
+            raise ValueError("V6.9 criterion fields are invalid")
+        name = str(raw.get("criterion") or "")
+        assessment = str(raw.get("assessment") or "")
+        observation = " ".join(str(raw.get("observation") or "").split())
+        if (
+            name not in DETECTION_V69_CRITERION_NAMES
+            or name in by_name
+            or assessment not in {"supports_same_object", "contradicts_same_object", "not_visible"}
+            or len(observation) < 8
+        ):
+            raise ValueError("V6.9 criterion value is invalid")
+        by_name[name] = {
+            "criterion": name, "assessment": assessment, "observation": observation,
+        }
+    if set(by_name) != set(DETECTION_V69_CRITERION_NAMES):
+        raise ValueError("V6.9 criterion coverage is incomplete")
+    supporting = {
+        name for name, row in by_name.items()
+        if row["assessment"] == "supports_same_object"
+    }
+    contradictory = {
+        name for name, row in by_name.items()
+        if row["assessment"] == "contradicts_same_object"
+    }
+    return [by_name[name] for name in DETECTION_V69_CRITERION_NAMES], supporting, contradictory
+
+
+def _normalize_detection_v69_pair_decision(
+    raw: object,
+    *,
+    left: str,
+    right: str,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Turn one fully-audited V6.9 pair into conditional semantic facts."""
+    if not isinstance(raw, dict) or set(raw) != {
+        "group_id_a", "group_id_b", "disposition", "reason", "criteria", "evidence",
+    }:
+        raise ValueError("V6.9 pair decision fields are invalid")
+    returned_pair = tuple(sorted((str(raw.get("group_id_a") or ""), str(raw.get("group_id_b") or ""))))
+    expected_pair = tuple(sorted((left, right)))
+    disposition = str(raw.get("disposition") or "")
+    reason = " ".join(str(raw.get("reason") or "").split())
+    if returned_pair != expected_pair or disposition not in {
+        "same_object", "different_objects", "insufficient_evidence",
+    } or len(reason) < 8:
+        raise ValueError("V6.9 pair decision identity is invalid")
+    criteria, supporting, contradictory = _normalize_detection_v69_criteria(raw.get("criteria"))
+    evidence = raw.get("evidence")
+    if not isinstance(evidence, list):
+        raise ValueError("V6.9 pair decision evidence is invalid")
+    if disposition != "same_object" and evidence:
+        raise ValueError("V6.9 negative pair decision cannot carry positive evidence")
+    evidence_types = {
+        str(fact.get("evidence_type") or "")
+        for fact in evidence if isinstance(fact, dict)
+    }
+    direct_document_relation = any(
+        isinstance(fact, dict)
+        and fact.get("evidence_type") == "explicit_document_relation"
+        and fact.get("strength") == "direct"
+        for fact in evidence
+    )
+    # Strength is deterministic. A claimed link cannot be strong when any
+    # criterion directly conflicts, or when it rests on one generic-looking
+    # positive criterion. Evidence type count is included so an unsupported
+    # model assertion cannot make a component a reconciliation reference.
+    strong = (
+        disposition == "same_object"
+        and not contradictory
+        and bool(evidence)
+        and (direct_document_relation or (
+            len(supporting.intersection({"topology", "geometry", "dimensions", "construction"})) >= 2
+            and len(evidence_types) >= 2
+        ))
+    )
+    strength = "strong" if strong else (
+        "weak" if disposition == "same_object" and not contradictory and supporting else "unproved"
+    )
+    semantic_facts: list[dict[str, Any]] = []
+    if strong:
+        for fact in evidence:
+            if not isinstance(fact, dict):
+                raise ValueError("V6.9 positive pair evidence is invalid")
+            semantic_facts.append({
+                "group_id_a": expected_pair[0], "group_id_b": expected_pair[1],
+                **copy.deepcopy(fact),
+            })
+    return semantic_facts, {
+        "group_id_a": expected_pair[0], "group_id_b": expected_pair[1],
+        "disposition": disposition, "reason": reason,
+        "criteria": criteria, "supporting_criteria": sorted(supporting),
+        "contradicting_criteria": sorted(contradictory),
+        "evidence_count": len(evidence), "evidence_types": sorted(evidence_types),
+        "computed_strength": strength,
+    }
+
+
+def normalize_detection_v69_pair_criteria_decisions(
+    decisions: object,
+    *,
+    expected_pairs: list[tuple[str, str]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    if not isinstance(decisions, list):
+        raise ValueError("V6.9 pairwise_decisions must be a list")
+    expected = {tuple(sorted(pair)) for pair in expected_pairs}
+    seen: set[tuple[str, str]] = set()
+    facts: list[dict[str, Any]] = []
+    audit: list[dict[str, Any]] = []
+    for raw in decisions:
+        if not isinstance(raw, dict):
+            raise ValueError("V6.9 pair decision is invalid")
+        pair = tuple(sorted((str(raw.get("group_id_a") or ""), str(raw.get("group_id_b") or ""))))
+        if pair not in expected or pair in seen:
+            raise ValueError("V6.9 pair decision is outside or repeats the criteria matrix")
+        seen.add(pair)
+        pair_facts, pair_audit = _normalize_detection_v69_pair_decision(
+            raw, left=pair[0], right=pair[1],
+        )
+        facts.extend(pair_facts)
+        audit.append(pair_audit)
+    if seen != expected:
+        raise ValueError(f"V6.9 criteria matrix coverage is incomplete: missing={sorted(expected - seen)}")
+    return facts, audit
+
+
+def build_detection_v69_reconciliation_matrix(
+    *,
+    group_ids: set[str],
+    criteria_audit: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, list[str]]]:
+    """Compare every non-proven Island against every proven component.
+
+    This is component-level coverage, not a new architectural identity type.
+    A component exists only transiently in the V6.9 audit and only from direct
+    strong preliminary links.
+    """
+    parents = {group_id: group_id for group_id in group_ids}
+
+    def find(group_id: str) -> str:
+        while parents[group_id] != group_id:
+            parents[group_id] = parents[parents[group_id]]
+            group_id = parents[group_id]
+        return group_id
+
+    def union(left: str, right: str) -> None:
+        left_root, right_root = find(left), find(right)
+        if left_root != right_root:
+            parents[right_root] = left_root
+
+    for row in criteria_audit:
+        if row.get("disposition") == "same_object" and row.get("computed_strength") == "strong":
+            left, right = str(row["group_id_a"]), str(row["group_id_b"])
+            if left in parents and right in parents:
+                union(left, right)
+    components_by_root: dict[str, list[str]] = {}
+    for group_id in sorted(group_ids):
+        components_by_root.setdefault(find(group_id), []).append(group_id)
+    reference_components = [
+        members for members in components_by_root.values() if len(members) >= 2
+    ]
+    reference_components.sort(key=lambda members: tuple(members))
+    components = {
+        f"RC{index:03d}": members
+        for index, members in enumerate(reference_components, start=1)
+    }
+    reference_members = {member for members in components.values() for member in members}
+    candidates = sorted(group_ids - reference_members)
+    matrix = [
+        {"candidate_group_id": candidate, "reference_component_id": component_id}
+        for candidate in candidates
+        for component_id in sorted(components)
+    ]
+    return matrix, components
+
+
+def format_detection_v69_reconciliation_matrix(
+    *,
+    matrix: list[dict[str, Any]],
+    components: dict[str, list[str]],
+) -> str:
+    lines = [
+        "V6.9 REQUIRED RECONCILIATION MATRIX:",
+        "Each reference component is already held together by separately audited "
+        "strong direct links. For every required row, compare the candidate against "
+        "the complete component, choose one comparison_group_id inside it, and return "
+        "all five criteria for that exact candidate/comparison View pair. Do not merge "
+        "on shared page, General View, adjacency, composition continuity, material, "
+        "lighting or strokes. A same_object row needs concrete evidence from both endpoints.",
+        "REFERENCE_COMPONENT=id|MEMBERS=Views",
+        *(f"{component_id}|{'|'.join(members)}" for component_id, members in sorted(components.items())),
+        "RECONCILE=id|CANDIDATE=View|REFERENCE_COMPONENT=id",
+    ]
+    lines.extend(
+        f"R{index:03d}|CANDIDATE={row['candidate_group_id']}|REFERENCE_COMPONENT={row['reference_component_id']}"
+        for index, row in enumerate(matrix, start=1)
+    )
+    return "\n".join(lines)
+
+
+def normalize_detection_v69_reconciliation_decisions(
+    decisions: object,
+    *,
+    expected_matrix: list[dict[str, Any]],
+    components: dict[str, list[str]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    if not isinstance(decisions, list):
+        raise ValueError("V6.9 reconciliation_decisions must be a list")
+    expected = {
+        (str(row["candidate_group_id"]), str(row["reference_component_id"]))
+        for row in expected_matrix
+    }
+    seen: set[tuple[str, str]] = set()
+    facts: list[dict[str, Any]] = []
+    audit: list[dict[str, Any]] = []
+    for raw in decisions:
+        if not isinstance(raw, dict) or set(raw) != {
+            "candidate_group_id", "reference_component_id", "comparison_group_id",
+            "disposition", "reason", "criteria", "evidence",
+        }:
+            raise ValueError("V6.9 reconciliation decision fields are invalid")
+        candidate = str(raw.get("candidate_group_id") or "")
+        component_id = str(raw.get("reference_component_id") or "")
+        comparison = str(raw.get("comparison_group_id") or "")
+        key = (candidate, component_id)
+        if key not in expected or key in seen or comparison not in components.get(component_id, []):
+            raise ValueError("V6.9 reconciliation decision is outside its matrix")
+        seen.add(key)
+        pair_raw = {
+            "group_id_a": candidate, "group_id_b": comparison,
+            "disposition": raw["disposition"], "reason": raw["reason"],
+            "criteria": raw["criteria"], "evidence": raw["evidence"],
+        }
+        pair_facts, pair_audit = _normalize_detection_v69_pair_decision(
+            pair_raw, left=candidate, right=comparison,
+        )
+        pair_audit.update({
+            "candidate_group_id": candidate,
+            "reference_component_id": component_id,
+            "comparison_group_id": comparison,
+        })
+        facts.extend(pair_facts)
+        audit.append(pair_audit)
+    if seen != expected:
+        raise ValueError(f"V6.9 reconciliation coverage is incomplete: missing={sorted(expected - seen)}")
+    return facts, audit
+
+
+def normalize_detection_v69_semantic_fact_ids(
+    facts: list[dict[str, Any]],
+    *,
+    group_id_mapping: dict[str, str],
+) -> list[dict[str, Any]]:
+    """Map V6.9 raw endpoint IDs while preserving stable source citations."""
+    normalized: list[dict[str, Any]] = []
+    for raw in facts:
+        fact = copy.deepcopy(raw)
+        for field in ("group_id_a", "group_id_b"):
+            fact[field] = group_id_mapping.get(str(fact.get(field) or ""), str(fact.get(field) or ""))
+        # Registry source IDs were minted before visual-map normalization and
+        # remain stable provenance keys. Map endpoints, never citations.
+        if isinstance(fact.get("structural_witness"), dict):
+            witness = copy.deepcopy(fact["structural_witness"])
+            witness["witness_view_id"] = group_id_mapping.get(
+                str(witness.get("witness_view_id") or ""),
+                str(witness.get("witness_view_id") or ""),
+            )
+            fact["structural_witness"] = witness
+        normalized.append(fact)
+    return normalized
+
+
+def normalize_detection_v69_audit_ids(
+    audit: list[dict[str, Any]],
+    *,
+    group_id_mapping: dict[str, str],
+) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for raw in audit:
+        row = copy.deepcopy(raw)
+        for field in ("group_id_a", "group_id_b", "candidate_group_id", "comparison_group_id"):
+            if field in row:
+                row[field] = group_id_mapping.get(str(row.get(field) or ""), str(row.get(field) or ""))
+        normalized.append(row)
+    return normalized
 
 
 def build_detection_v5_membership_content_blocks(
@@ -8626,7 +9051,7 @@ def run_anthropic_detection_v5_source_degraded_v561_consensus_experiment(
 
 
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None, mistral_anchor_admission: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Run V5.10.12 Island discovery, then a bounded membership review."""
+    """Run Island discovery, then the route-scoped bounded membership review."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
     proposal_prompt = load_detection_v5_proposal_prompt()
     review_prompt = load_detection_v5_review_prompt()
@@ -8838,20 +9263,19 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     proposal_for_review, _ = _validate_and_apply_visual_registry_classifications(
         proposal_discovery_payload
     )
-    # V6.8 is intentionally not a new general route.  It is a bounded audit
-    # inside the existing V6.7 Mistral-anchor path: when its locked object
-    # inventory is small, Review must state a disposition for every possible
-    # pair instead of silently omitting the cross-page alternatives.
-    v68_pairwise_membership_matrix = (
-        build_detection_v68_pairwise_membership_matrix(
-            proposal_for_review["visual_groups"]
-        )
-        if mistral_anchor_admission_active
-        else []
+    # V6.9 is intentionally scoped to the existing V6.7 Mistral-anchor path.
+    # It replaces V6.8's costly complete pair matrix with a preliminary group,
+    # full-criteria audit of only its direct links, then component-level
+    # reconciliation for any View not held by a proven link.
+    v69_criteria_reconciliation_active = bool(
+        mistral_anchor_admission_active
+        and 2 <= len([
+            group for group in proposal_for_review["visual_groups"]
+            if group.get("evidence_class") == "object_evidence"
+        ]) <= DETECTION_V69_RECONCILIATION_MAX_ISLANDS
     )
-    v68_all_pair_membership_active = bool(v68_pairwise_membership_matrix)
-    if v68_all_pair_membership_active:
-        prompt_version = DETECTION_V68_BOUNDED_ALL_PAIR_MEMBERSHIP_PROMPT_VERSION
+    if v69_criteria_reconciliation_active:
+        prompt_version = DETECTION_V69_CRITERIA_RECONCILIATION_PROMPT_VERSION
     registry_visual_sources = build_detection_v5_registry_visual_sources(
         proposal_for_review["visual_groups"]
     )
@@ -8869,23 +9293,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         visual_groups=proposal_for_review["visual_groups"], source_facts=source_facts,
         draft_hypotheses=[],
     )
-    if v68_all_pair_membership_active:
-        review_handoff += "\n\n" + format_detection_v68_pairwise_membership_matrix(
-            v68_pairwise_membership_matrix
-        )
     review_prompt_with_membership_contract = review_prompt
-    if v68_all_pair_membership_active:
+    if v69_criteria_reconciliation_active:
         review_prompt_with_membership_contract += (
-            "\n\nV6.8 BOUNDED ALL-PAIR MEMBERSHIP CONTRACT:\n"
-            "The user context gives the complete, immutable pair matrix. Return "
-            "pairwise_decisions only, with exactly one row for every matrix pair "
-            "and no object_hypotheses. Do not infer a positive relation from a "
-            "General View title, a shared page, adjacency, composition overlap, "
-            "shared material, lighting or continuous strokes. For same_object, "
-            "supply only typed, cited positive evidence. Unless a direct document "
-            "relation names the pairing, supply at least two independent evidence "
-            "types. For different_objects or "
-            "insufficient_evidence, evidence must be an empty list.\n"
+            "\n\nV6.9 PRELIMINARY MEMBERSHIP CONTRACT:\n"
+            "Return preliminary_links only, never object_hypotheses. Each row names "
+            "one exact View pair and the first criterion that made it worth testing. "
+            "These links are candidates only and will be audited pair by pair before "
+            "any merge is allowed. Do not assume a first plausible relation is final.\n"
         )
     review_content = build_detection_v5_membership_content_blocks(
         user_text=review_handoff, view_crops=membership_crops,
@@ -8898,8 +9313,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         system=build_detection_system_content(prompt=review_prompt_with_membership_contract),
         messages=[{"role": "user", "content": review_content}],
         output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
-            DETECTION_V68_MEMBERSHIP_JSON_SCHEMA
-            if v68_all_pair_membership_active
+            DETECTION_V69_PRELIMINARY_JSON_SCHEMA
+            if v69_criteria_reconciliation_active
             else DETECTION_V5_MEMBERSHIP_JSON_SCHEMA,
         )}},
     )
@@ -8938,16 +9353,15 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         isinstance(review_raw_payload, dict)
         and isinstance(
             review_raw_payload.get(
-                "pairwise_decisions"
-                if v68_all_pair_membership_active
+                "preliminary_links"
+                if v69_criteria_reconciliation_active
                 else "object_hypotheses"
             ),
             list,
         )
         and (
-            set(review_raw_payload) == {"pairwise_decisions"}
-            if v68_all_pair_membership_active
-            else True
+            (set(review_raw_payload) == {"preliminary_links"})
+            if v69_criteria_reconciliation_active else True
         )
     )
     if not review_contract_valid:
@@ -8958,7 +9372,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "attempt_label": "membership_review_contract_failed",
             "response_character_count": len(review_raw_text),
             "response_text_sha256": _sha256_text(review_raw_text),
-            "v6_8_all_pair_membership_active": v68_all_pair_membership_active,
+            "v6_9_criteria_reconciliation_active": v69_criteria_reconciliation_active,
         })
         failure_usage = build_agent_usage_event(
             agent_name="detection", operation="rfq_detection_visual_registry",
@@ -8975,21 +9389,145 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "Detection review response failed the membership review contract",
             usage_event=failure_usage,
         )
+    v69_preliminary_pairs: list[tuple[str, str]] = []
+    v69_criteria_facts: list[dict[str, Any]] = []
+    v69_criteria_audit: list[dict[str, Any]] = []
+    v69_reconciliation_matrix: list[dict[str, Any]] = []
+    v69_reference_components: dict[str, list[str]] = {}
+    v69_reconciliation_facts: list[dict[str, Any]] = []
+    v69_reconciliation_audit: list[dict[str, Any]] = []
+    v69_criteria_response: Any | None = None
+    v69_criteria_diagnostics: dict[str, Any] | None = None
+    v69_reconciliation_response: Any | None = None
+    v69_reconciliation_diagnostics: dict[str, Any] | None = None
+    v69_criteria_handoff = ""
+    v69_criteria_prompt = ""
+    v69_reconciliation_handoff = ""
+    v69_reconciliation_prompt = ""
+    if v69_criteria_reconciliation_active:
+        v69_preliminary_pairs = normalize_detection_v69_preliminary_links(
+            review_raw_payload["preliminary_links"]
+        )
+        if v69_preliminary_pairs:
+            v69_criteria_handoff = (
+                review_handoff + "\n\n"
+                + format_detection_v69_pair_criteria_matrix(v69_preliminary_pairs)
+            )
+            v69_criteria_prompt = review_prompt + (
+                "\n\nV6.9 FULL-CRITERIA AUDIT CONTRACT:\n"
+                "Do not repeat or revise groups. Audit only the supplied preliminary "
+                "links. Each pair must receive all five criterion rows. A criterion "
+                "that is absent is not supporting evidence. Positive evidence must "
+                "be concrete, pair-specific and cited from both endpoint Views.\n"
+            )
+            criteria_content = build_detection_v5_membership_content_blocks(
+                user_text=v69_criteria_handoff, view_crops=membership_crops,
+                page_context_images=review_page_context_images,
+            )
+            v69_criteria_response, v69_criteria_diagnostics = create_claude_message_streamed(
+                get_anthropic_client(), model=selected_model,
+                max_tokens=DETECTION_V5_MEMBERSHIP_MAX_TOKENS,
+                temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+                system=build_detection_system_content(prompt=v69_criteria_prompt),
+                messages=[{"role": "user", "content": criteria_content}],
+                output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
+                    DETECTION_V69_CRITERIA_JSON_SCHEMA,
+                )}},
+            )
+            try:
+                criteria_payload = json.loads(extract_text_from_claude_response(v69_criteria_response))
+                if not isinstance(criteria_payload, dict) or set(criteria_payload) != {"pairwise_decisions"}:
+                    raise ValueError("V6.9 criteria response fields are invalid")
+                v69_criteria_facts, v69_criteria_audit = (
+                    normalize_detection_v69_pair_criteria_decisions(
+                        criteria_payload["pairwise_decisions"],
+                        expected_pairs=v69_preliminary_pairs,
+                    )
+                )
+            except (json.JSONDecodeError, ValueError) as exc:
+                raise DetectionVisualRegistryValidationError(
+                    f"V6.9 criteria review failed validation: {exc}",
+                ) from exc
+            object_group_ids_raw = {
+                str(group.get("group_id") or "")
+                for group in proposal_for_review["visual_groups"]
+                if group.get("evidence_class") == "object_evidence"
+                and str(group.get("group_id") or "")
+            }
+            v69_reconciliation_matrix, v69_reference_components = (
+                build_detection_v69_reconciliation_matrix(
+                    group_ids=object_group_ids_raw,
+                    criteria_audit=v69_criteria_audit,
+                )
+            )
+            if v69_reconciliation_matrix:
+                v69_reconciliation_handoff = (
+                    review_handoff + "\n\n"
+                    + format_detection_v69_reconciliation_matrix(
+                        matrix=v69_reconciliation_matrix,
+                        components=v69_reference_components,
+                    )
+                )
+                v69_reconciliation_prompt = review_prompt + (
+                    "\n\nV6.9 RECONCILIATION CONTRACT:\n"
+                    "Do not create a relation merely because the candidate was previously "
+                    "grouped elsewhere. For each required candidate/component alternative, "
+                    "select a comparison View inside that component and audit all five "
+                    "criteria. A same_object result can move the candidate only with "
+                    "concrete, pair-specific, cited positive evidence.\n"
+                )
+                reconciliation_content = build_detection_v5_membership_content_blocks(
+                    user_text=v69_reconciliation_handoff, view_crops=membership_crops,
+                    page_context_images=review_page_context_images,
+                )
+                v69_reconciliation_response, v69_reconciliation_diagnostics = (
+                    create_claude_message_streamed(
+                        get_anthropic_client(), model=selected_model,
+                        max_tokens=DETECTION_V5_MEMBERSHIP_MAX_TOKENS,
+                        temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+                        system=build_detection_system_content(prompt=v69_reconciliation_prompt),
+                        messages=[{"role": "user", "content": reconciliation_content}],
+                        output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
+                            DETECTION_V69_RECONCILIATION_JSON_SCHEMA,
+                        )}},
+                    )
+                )
+                try:
+                    reconciliation_payload = json.loads(
+                        extract_text_from_claude_response(v69_reconciliation_response)
+                    )
+                    if not isinstance(reconciliation_payload, dict) or set(reconciliation_payload) != {"reconciliation_decisions"}:
+                        raise ValueError("V6.9 reconciliation response fields are invalid")
+                    v69_reconciliation_facts, v69_reconciliation_audit = (
+                        normalize_detection_v69_reconciliation_decisions(
+                            reconciliation_payload["reconciliation_decisions"],
+                            expected_matrix=v69_reconciliation_matrix,
+                            components=v69_reference_components,
+                        )
+                    )
+                except (json.JSONDecodeError, ValueError) as exc:
+                    raise DetectionVisualRegistryValidationError(
+                        f"V6.9 reconciliation review failed validation: {exc}",
+                    ) from exc
     payload = {
         "visual_groups": proposal_discovery_payload["visual_groups"],
         "classifications": proposal_discovery_payload["classifications"],
         "object_hypotheses": (
-            [] if v68_all_pair_membership_active
-            else review_raw_payload["object_hypotheses"]
+            [] if v69_criteria_reconciliation_active else review_raw_payload["object_hypotheses"]
         ),
         "candidate_region_exceptions": proposal_discovery_payload["candidate_region_exceptions"],
         "semantic_facts": [],
     }
-    diagnostics = dict(review_diagnostics)
+    v69_terminal_diagnostics = (
+        v69_reconciliation_diagnostics
+        or v69_criteria_diagnostics
+        or review_diagnostics
+    )
+    diagnostics = dict(v69_terminal_diagnostics)
     diagnostics["v5_10_proposal_page_coverage"] = proposal_page_coverage
     diagnostics.update({
         "request_started_at": proposal_diagnostics["request_started_at"],
-        "request_finished_at": review_diagnostics["request_finished_at"],
+        "request_finished_at": v69_terminal_diagnostics["request_finished_at"],
         "temperature": DETECTION_VISUAL_REGISTRY_TEMPERATURE,
         "page_evidence_source_fact_count": len(source_facts),
         "v5_9_coordinate_frame_audit": review_coordinate_frame_audit,
@@ -9015,15 +9553,20 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "registry_system_prompt_characters": (
             len(proposal_prompt_with_anchor_contract)
             + len(review_prompt_with_membership_contract)
+            + len(v69_criteria_prompt)
+            + len(v69_reconciliation_prompt)
         ),
         "v6_7_mistral_anchor_admission_active": mistral_anchor_admission_active,
         "v6_7_mistral_anchor_admission_audit": mistral_anchor_admission_audit,
-        "v6_8_all_pair_membership_active": v68_all_pair_membership_active,
-        "v6_8_all_pair_membership_pair_count": len(v68_pairwise_membership_matrix),
-        "v6_8_all_pair_membership_matrix": [
+        "v6_9_criteria_reconciliation_active": v69_criteria_reconciliation_active,
+        "v6_9_preliminary_pair_count": len(v69_preliminary_pairs),
+        "v6_9_preliminary_pairs": [
             {"group_id_a": left, "group_id_b": right}
-            for left, right in v68_pairwise_membership_matrix
+            for left, right in v69_preliminary_pairs
         ],
+        "v6_9_reconciliation_pair_count": len(v69_reconciliation_matrix),
+        "v6_9_reconciliation_matrix": copy.deepcopy(v69_reconciliation_matrix),
+        "v6_9_reference_components": copy.deepcopy(v69_reference_components),
         "v5_9_proposal": summarize_detection_provider_call(
             response=proposal_response, diagnostics=proposal_diagnostics,
             prompt_characters=len(proposal_prompt_with_anchor_contract), context_characters=len(proposal_user_text),
@@ -9039,10 +9582,30 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 + sum(len(crop["bytes"]) for crop in membership_crops)
             ),
         ),
+        "v6_9_criteria_review": (
+            summarize_detection_provider_call(
+                response=v69_criteria_response, diagnostics=v69_criteria_diagnostics,
+                prompt_characters=len(v69_criteria_prompt), context_characters=len(v69_criteria_handoff),
+                image_count=len(review_page_context_images) + len(membership_crops),
+                image_bytes=(sum(len(page["bytes"]) for page in review_page_context_images)
+                             + sum(len(crop["bytes"]) for crop in membership_crops)),
+            ) if v69_criteria_response is not None and v69_criteria_diagnostics is not None else None
+        ),
+        "v6_9_reconciliation_review": (
+            summarize_detection_provider_call(
+                response=v69_reconciliation_response, diagnostics=v69_reconciliation_diagnostics,
+                prompt_characters=len(v69_reconciliation_prompt), context_characters=len(v69_reconciliation_handoff),
+                image_count=len(review_page_context_images) + len(membership_crops),
+                image_bytes=(sum(len(page["bytes"]) for page in review_page_context_images)
+                             + sum(len(crop["bytes"]) for crop in membership_crops)),
+            ) if v69_reconciliation_response is not None and v69_reconciliation_diagnostics is not None else None
+        ),
         "v5_9_review_crop_audit": membership_crop_audit,
         "v5_9_review_page_context_audit": review_page_context_audit,
         "v5_9_proposal_decision_audit": proposal_model_payload,
         "v5_9_review_decision_audit": copy.deepcopy(review_raw_payload),
+        "v6_9_criteria_decision_audit": copy.deepcopy(v69_criteria_audit),
+        "v6_9_reconciliation_decision_audit": copy.deepcopy(v69_reconciliation_audit),
     })
     # Preserve the composed decision before runtime normalizes IDs and derives
     # deterministic graph and Evidence pages.
@@ -9075,8 +9638,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     registry_metadata_audit: dict[str, Any] = {}
     registry_graph_review_required_object_ids: list[str] = []
     classified_visual_groups: list[dict[str, Any]] = []
-    v68_pairwise_decision_audit: list[dict[str, Any]] = []
-    v68_same_object_pairs: set[tuple[str, str]] = set()
+    v69_pairwise_decision_audit: list[dict[str, Any]] = []
+    v69_same_object_pairs: set[tuple[str, str]] = set()
+    v5_merge_audit: dict[str, Any] = {}
     try:
         if isinstance(payload, dict):
             payload, classification_decisions = (
@@ -9157,34 +9721,36 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             view_evidence_packages
         )
         semantic_facts_outside_dimension_queue: list[dict[str, Any]] = []
-        if v68_all_pair_membership_active:
-            semantic_facts, v68_pairwise_decision_audit = (
-                normalize_detection_v68_pairwise_decisions(
-                    review_raw_payload["pairwise_decisions"],
-                    expected_pairs=v68_pairwise_membership_matrix,
-                    group_id_mapping=group_id_mapping,
-                )
+        if v69_criteria_reconciliation_active:
+            semantic_facts = normalize_detection_v69_semantic_fact_ids(
+                [*v69_criteria_facts, *v69_reconciliation_facts],
+                group_id_mapping=group_id_mapping,
             )
-            v68_same_object_pairs = {
-                tuple(sorted((
-                    str(row["group_id_a"]), str(row["group_id_b"]),
-                )))
-                for row in v68_pairwise_decision_audit
-                if row["disposition"] == "same_object"
+            v69_pairwise_decision_audit = [
+                *normalize_detection_v69_audit_ids(
+                    v69_criteria_audit, group_id_mapping=group_id_mapping,
+                ),
+                *normalize_detection_v69_audit_ids(
+                    v69_reconciliation_audit, group_id_mapping=group_id_mapping,
+                ),
+            ]
+            v69_same_object_pairs = {
+                tuple(sorted((str(fact["group_id_a"]), str(fact["group_id_b"]))))
+                for fact in semantic_facts
             }
             accepted_hypotheses = []
             object_hypothesis_audit = {
                 "accepted": [],
                 "rejected": [],
-                "mode": "v6_8_complete_pairwise_membership_matrix",
+                "mode": "v6_9_criteria_then_reconciliation",
             }
             semantic_facts_outside_dimension_queue = [
                 {
-                    "reason": "v6_8_pairwise_same_object_outside_dimension_queue",
+                    "reason": "v6_9_pairwise_same_object_outside_dimension_queue",
                     "group_id_a": left,
                     "group_id_b": right,
                 }
-                for left, right in sorted(v68_same_object_pairs)
+                for left, right in sorted(v69_same_object_pairs)
                 if (left, right) not in candidate_q_final_pairs
             ]
         else:
@@ -9245,8 +9811,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             dimension_inventory_audit, visual_groups=visual_map["visual_groups"],
             group_bboxes=group_bboxes,
             allowed_pairs=(
-                v68_same_object_pairs
-                if v68_all_pair_membership_active
+                v69_same_object_pairs
+                if v69_criteria_reconciliation_active
                 else candidate_q_final_pairs
             ),
         )
@@ -9270,7 +9836,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             semantic_facts, visual_groups=semantic_validation_groups,
             source_facts=[*source_facts, *registry_visual_sources],
         )
-        if v68_all_pair_membership_active:
+        if v69_criteria_reconciliation_active:
             accepted_pairs = {
                 tuple(sorted((
                     str(fact["group_id_a"]), str(fact["group_id_b"]),
@@ -9278,17 +9844,17 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 for fact in accepted_semantic_facts
             }
             unsupported_same_object_pairs = sorted(
-                v68_same_object_pairs - accepted_pairs
+                v69_same_object_pairs - accepted_pairs
             )
             if unsupported_same_object_pairs:
                 raise ValueError(
-                    "V6.8 same_object pair has no accepted typed evidence: "
+                    "V6.9 same_object pair has no accepted typed evidence: "
                     f"{unsupported_same_object_pairs}"
                 )
         semantic_ledger_audit["outside_dimension_queue"] = semantic_facts_outside_dimension_queue
-        if v68_all_pair_membership_active:
-            semantic_ledger_audit["v6_8_pairwise_decisions"] = (
-                v68_pairwise_decision_audit
+        if v69_criteria_reconciliation_active:
+            semantic_ledger_audit["v6_9_pairwise_decisions"] = (
+                v69_pairwise_decision_audit
             )
         semantic_ledger_audit["rejected"].extend(
             object_hypothesis_audit["rejected"]
@@ -9455,7 +10021,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             object_name=None,
             model=selected_model,
             prompt_version=prompt_version,
-            response=response,
+            response=(v69_reconciliation_response or v69_criteria_response or review_response),
             started_at=diagnostics["request_started_at"],
             finished_at=diagnostics["request_finished_at"],
             request_diagnostics=failure_diagnostics,
