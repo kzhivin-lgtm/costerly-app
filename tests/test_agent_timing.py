@@ -17,6 +17,7 @@ from agents.anthropic_adapter import (
     DetectionVisualRegistryValidationError,
     validate_detection_v5_discovery_page_coverage,
     DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
+    DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
     apply_benchmark_run_suffix,
     build_agent_usage_event,
@@ -705,6 +706,58 @@ def test_registry_retries_truncated_structured_json_with_larger_budget():
     assert result == registry
     assert requested_budgets == [5000, 8192]
     assert usage["raw_usage"]["retry_after_truncated_json"] is True
+
+
+def test_integrated_visual_registry_retries_only_a_proven_truncated_proposal():
+    proposal = _visual_registry_payload({
+        "visual_groups": [{
+            "group_id": "view_a", "page_number": 1, "location_hint": "left",
+            "visual_description": "one cabinet", "representation_kind": "elevation",
+        }],
+    })
+    requested_budgets = []
+
+    def response_with_output_tokens(output_tokens):
+        return SimpleNamespace(
+            usage=SimpleNamespace(input_tokens=100, output_tokens=output_tokens),
+            model="claude-haiku-4-5-20251001",
+        )
+
+    def fake_create(*_args, max_tokens, **_kwargs):
+        requested_budgets.append(max_tokens)
+        output_tokens = 8192 if len(requested_budgets) == 1 else 20
+        return response_with_output_tokens(output_tokens), {
+            "request_started_at": "2026-10-16T00:00:00+00:00",
+            "request_finished_at": "2026-10-16T00:00:01+00:00",
+        }
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
+        patch(
+            "agents.anthropic_adapter.extract_text_from_claude_response",
+            side_effect=[
+                '{"visual_groups":[{"group_id":"partial',
+                json.dumps(proposal),
+                json.dumps({"object_hypotheses": []}),
+            ],
+        ),
+    ):
+        _, _, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None, model="model",
+        )
+
+    assert requested_budgets == [
+        8192,
+        DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+        6144,
+    ]
+    retry = usage["raw_usage"]["v6_13_proposal_truncation_retry"]
+    assert retry["attempted"] is True
+    assert retry["reason"] == "initial_response_hit_budget_inside_json_string"
+    assert len(retry["attempts"]) == 2
+    assert usage["output_tokens"] == 8232
 
 
 def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call():
@@ -1752,7 +1805,7 @@ def test_integrated_visual_registry_json_failure_carries_transport_diagnostics()
                 "request_started_at": "2026-10-16T00:00:00+00:00",
                 "request_finished_at": "2026-10-16T00:00:01+00:00",
             }),
-        ),
+        ) as create_message,
         patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=raw_text),
         pytest.raises(DetectionVisualRegistryValidationError) as raised,
     ):
@@ -1775,6 +1828,7 @@ def test_integrated_visual_registry_json_failure_carries_transport_diagnostics()
     assert event["raw_usage"]["terminal_json_property_key"] == "classification_reason"
     assert event["raw_usage"]["terminal_response_ends_inside_string"] is True
     assert event["raw_usage"]["output_token_budget_utilization_percent"] > 0
+    create_message.assert_called_once()
 
 
 def test_integrated_visual_registry_allows_one_physical_page_for_multiple_components():

@@ -130,6 +130,10 @@ DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
 DETECTION_V5_DISCOVERY_MAX_TOKENS = 8_192
 DETECTION_V5_PROPOSAL_MAX_TOKENS = 8_192
+# A proposal retry is allowed only for a provider response proven to be cut off
+# at the normal budget while still inside a JSON string.  It keeps the same
+# discovery contract and is intentionally not a general validation retry.
+DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS = 12_288
 DETECTION_V5_MEMBERSHIP_MAX_TOKENS = 6_144
 DETECTION_V68_ALL_PAIR_MEMBERSHIP_MAX_ISLANDS = 10
 DETECTION_V69_RECONCILIATION_MAX_ISLANDS = 10
@@ -6350,6 +6354,23 @@ def _summarize_incomplete_visual_registry_json(
     }
 
 
+def _is_retryable_visual_registry_json_truncation(
+    raw_text: str,
+    response: Any,
+    *,
+    max_tokens: int,
+) -> bool:
+    """Return true only for a response demonstrably cut off mid-string."""
+    usage = getattr(response, "usage", None)
+    output_tokens = int(getattr(usage, "output_tokens", 0) or 0)
+    _, open_string_start = _scan_json_object_properties(raw_text)
+    return bool(
+        max_tokens
+        and output_tokens == max_tokens
+        and open_string_start is not None
+    )
+
+
 def run_anthropic_detection_v5_source_degraded_visual_experiment(
     *,
     file_name: str,
@@ -9401,6 +9422,28 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         file_name=file_name, file_bytes=file_bytes, user_text=proposal_user_text,
         page_images=page_images, regions=regions,
     )
+
+    def summarize_proposal_attempt(
+        response: Any,
+        diagnostics: dict[str, Any],
+        *,
+        max_tokens: int,
+    ) -> dict[str, Any]:
+        return {
+            "max_tokens": max_tokens,
+            **summarize_detection_provider_call(
+                response=response,
+                diagnostics=diagnostics,
+                prompt_characters=len(proposal_prompt_with_anchor_contract),
+                context_characters=len(proposal_user_text),
+                image_count=len(page_images) + len(regions),
+                image_bytes=(
+                    sum(len(image) for image in page_images)
+                    + sum(len(region.get("bytes") or b"") for region in regions)
+                ),
+            ),
+        }
+
     proposal_response, proposal_diagnostics = create_claude_message_streamed(
         get_anthropic_client(), model=selected_model,
         max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
@@ -9414,39 +9457,112 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         )}},
     )
     proposal_raw_text = extract_text_from_claude_response(proposal_response)
+    proposal_attempt_summaries = [summarize_proposal_attempt(
+        proposal_response,
+        proposal_diagnostics,
+        max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
+    )]
+    proposal_retry_reason: str | None = None
     try:
         proposal_raw_payload = json.loads(proposal_raw_text)
-    except json.JSONDecodeError as exc:
-        failure_diagnostics = dict(proposal_diagnostics)
-        failure_diagnostics.update({
-            "fusion_candidate_regions": candidate_regions,
-            "document_dimension_unit_profile": document_dimension_unit_profile,
-            **_summarize_incomplete_visual_registry_json(
-                proposal_raw_text, exc, proposal_response,
-                max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
-            ),
-            "validation_error": str(exc),
-            "validation_stage": "v5_9_proposal_json",
-            "attempt_label": "v5_9_proposal_json_parse_failed",
-            "response_character_count": len(proposal_raw_text),
-            "response_text_sha256": _sha256_text(proposal_raw_text),
-            "max_tokens": DETECTION_V5_PROPOSAL_MAX_TOKENS,
-        })
-        failure_usage = build_agent_usage_event(
-            agent_name="detection", operation="rfq_detection_visual_registry",
-            company_id=company_id, run_id=None, file_name=file_name,
-            object_id=None, object_name=None, model=selected_model,
-            prompt_version=prompt_version, response=proposal_response,
-            started_at=proposal_diagnostics["request_started_at"],
-            finished_at=proposal_diagnostics["request_finished_at"],
-            request_diagnostics=failure_diagnostics,
-        )
-        failure_usage["status"] = "failed"
-        failure_usage["error_message"] = str(exc)
-        raise DetectionVisualRegistryValidationError(
-            f"Detection proposal response failed validation: {exc}",
-            usage_event=failure_usage,
-        ) from exc
+    except json.JSONDecodeError as initial_error:
+        proposal_json_error: json.JSONDecodeError | None = initial_error
+        if _is_retryable_visual_registry_json_truncation(
+            proposal_raw_text,
+            proposal_response,
+            max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
+        ):
+            proposal_retry_reason = "initial_response_hit_budget_inside_json_string"
+            proposal_response, proposal_diagnostics = create_claude_message_streamed(
+                get_anthropic_client(), model=selected_model,
+                max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+                temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+                system=build_detection_system_content(
+                    prompt=proposal_prompt_with_anchor_contract,
+                ),
+                messages=[{"role": "user", "content": proposal_content}],
+                output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
+                    DETECTION_V67_MISTRAL_ANCHOR_DISCOVERY_JSON_SCHEMA
+                    if mistral_anchor_admission_active
+                    else DETECTION_V5_DISCOVERY_JSON_SCHEMA,
+                )}},
+            )
+            proposal_raw_text = extract_text_from_claude_response(proposal_response)
+            proposal_attempt_summaries.append(summarize_proposal_attempt(
+                proposal_response,
+                proposal_diagnostics,
+                max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+            ))
+            try:
+                proposal_raw_payload = json.loads(proposal_raw_text)
+            except json.JSONDecodeError as retry_error:
+                proposal_json_error = retry_error
+            else:
+                proposal_json_error = None
+        if proposal_json_error is not None:
+            exc = proposal_json_error
+            failure_diagnostics = dict(proposal_diagnostics)
+            failure_diagnostics.update({
+                "fusion_candidate_regions": candidate_regions,
+                "document_dimension_unit_profile": document_dimension_unit_profile,
+                **_summarize_incomplete_visual_registry_json(
+                    proposal_raw_text, exc, proposal_response,
+                    max_tokens=proposal_attempt_summaries[-1]["max_tokens"],
+                ),
+                "validation_error": str(exc),
+                "validation_stage": "v5_9_proposal_json",
+                "attempt_label": "v5_9_proposal_json_parse_failed",
+                "response_character_count": len(proposal_raw_text),
+                "response_text_sha256": _sha256_text(proposal_raw_text),
+                "max_tokens": proposal_attempt_summaries[-1]["max_tokens"],
+                "v6_13_proposal_truncation_retry": {
+                    "attempted": proposal_retry_reason is not None,
+                    "reason": proposal_retry_reason,
+                    "attempts": proposal_attempt_summaries,
+                },
+            })
+            failure_usage = build_agent_usage_event(
+                agent_name="detection", operation="rfq_detection_visual_registry",
+                company_id=company_id, run_id=None, file_name=file_name,
+                object_id=None, object_name=None, model=selected_model,
+                prompt_version=prompt_version, response=proposal_response,
+                started_at=proposal_diagnostics["request_started_at"],
+                finished_at=proposal_diagnostics["request_finished_at"],
+                request_diagnostics=failure_diagnostics,
+            )
+            total_input_tokens = sum(
+                int(call["input_tokens"]) for call in proposal_attempt_summaries
+            )
+            total_output_tokens = sum(
+                int(call["output_tokens"]) for call in proposal_attempt_summaries
+            )
+            total_costs = calculate_llm_cost_usd(
+                model=selected_model,
+                input_tokens=total_input_tokens,
+                output_tokens=total_output_tokens,
+            )
+            failure_usage.update({
+                "input_tokens": total_input_tokens,
+                "output_tokens": total_output_tokens,
+                "input_cost_usd": total_costs["input_cost_usd"],
+                "output_cost_usd": total_costs["output_cost_usd"],
+                "total_cost_usd": total_costs["total_cost_usd"],
+            })
+            failure_usage["raw_usage"].update({
+                "input_tokens": total_input_tokens,
+                "output_tokens": total_output_tokens,
+                "v5_9_total_provider_duration_seconds": round(
+                    sum(float(call.get("duration_seconds") or 0)
+                        for call in proposal_attempt_summaries),
+                    3,
+                ),
+            })
+            failure_usage["status"] = "failed"
+            failure_usage["error_message"] = str(exc)
+            raise DetectionVisualRegistryValidationError(
+                f"Detection proposal response failed validation: {exc}",
+                usage_event=failure_usage,
+            ) from exc
     discovery_fields = {
         "visual_groups", "classifications", "candidate_region_exceptions", "page_coverage",
         "document_scope",
@@ -9781,12 +9897,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v6_10_reconciliation_pair_count": len(v69_reconciliation_matrix),
         "v6_10_reconciliation_matrix": copy.deepcopy(v69_reconciliation_matrix),
         "v6_10_reference_components": copy.deepcopy(v69_reference_components),
-        "v5_9_proposal": summarize_detection_provider_call(
-            response=proposal_response, diagnostics=proposal_diagnostics,
-            prompt_characters=len(proposal_prompt_with_anchor_contract), context_characters=len(proposal_user_text),
-            image_count=len(page_images) + len(regions),
-            image_bytes=sum(len(image) for image in page_images) + sum(len(region.get("bytes") or b"") for region in regions),
-        ),
+        # Keep the historical key as the accepted proposal attempt, while the
+        # V6.13 audit preserves every charged retry attempt separately.
+        "v5_9_proposal": proposal_attempt_summaries[-1],
+        "v6_13_proposal_truncation_retry": {
+            "attempted": proposal_retry_reason is not None,
+            "reason": proposal_retry_reason,
+            "attempts": proposal_attempt_summaries,
+        },
         "v5_9_review": summarize_detection_provider_call(
             response=review_response, diagnostics=review_diagnostics,
             prompt_characters=len(review_prompt_with_membership_contract), context_characters=len(review_handoff),
@@ -10359,7 +10477,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         diagnostics["single_page_coverage_reconciled_object_ids"] = reconciled_object_ids
     usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=prompt_version,response=review_response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
     provider_call_usages = [
-        diagnostics["v5_9_proposal"],
+        *diagnostics["v6_13_proposal_truncation_retry"]["attempts"],
         diagnostics["v5_9_review"],
     ]
     reconciliation_usage = diagnostics.get("v6_10_reconciliation_review")

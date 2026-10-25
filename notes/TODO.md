@@ -1020,6 +1020,17 @@ Adda -> Ada/Sonnet, and HSL -> ordinary/Haiku. Audit each gate for category,
 model, timing, cost, Island inventory and final Objects before considering any
 membership work.
 
+IMPLEMENTED, pending live HSL confirmation, V6.13 ordinary-proposal truncation
+recovery: preserve the V6.12 category and model route. Retry Discovery exactly
+once only when the initial proposal both consumes its 8,192-token budget and
+ends inside a JSON string. The retry reuses the identical prompt, evidence and
+images with a 12,288-token ceiling. All other invalid JSON fails immediately.
+Persist both provider attempts and aggregate their measured time, tokens and
+cost, so a recovered run cannot conceal the retry. First live gate: ordinary
+Hasolelim HSL completes with the usual Haiku route, 35 Candidate Regions and a
+valid proposal JSON. Do not treat this transport recovery as a change to
+Fusion, Candidate Q, Island boundaries, routing, or membership.
+
 SUPERSEDED INPUT CONTRACT, V6.5, no static pre-Discovery crops: remove the three
 fixed `upper_left`, `upper_right`, and `lower` images from the Adda
 `sonnet_boundary_risk` route as well as the ordinary Haiku route. Retain the
