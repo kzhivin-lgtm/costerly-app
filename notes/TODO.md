@@ -858,6 +858,22 @@ despite the single-boundary contract. This rejects the one-bbox contract as
 currently specified. Next diagnostic is a deterministic non-overlap/foreign-
 Island admission audit before another prompt or routing change.
 
+ACTIVE EXPERIMENT, P0, V6.7, Mistral graphic-anchor admission on the existing
+`sonnet_boundary_risk` route: preserve the complete-page 200-DPI input, Mistral
+OCR, Fusion, router, Candidate Q and Review, but elevate only Mistral `image`
+blocks to initial page-local boundary anchors. Proposal returns one explicit
+decision per anchor: `accept`, `tighten`, `expand`, or `reject`. `accept`
+forces both effective Core and Envelope to the immutable Mistral bbox. A
+`tighten` or `expand` needs cited page-local source facts and is rejected back
+to the Mistral bbox if it captures another anchor centre or lacks the required
+local evidence. `reject` requires the existing Candidate Region exception.
+The raw Sonnet proposal and the deterministic admission audit are both retained.
+This is a boundary contract only, not an object-identity, split or merge rule.
+It must not activate for text-cluster candidates, ordinary Haiku or the
+source-degraded/Page23 route. First live gate: repeat Adda and inspect all eight
+anchor decisions, Island geometry, exact Counter/L-shaped View membership, and
+two non-overlapping components before testing HSL or V-cabinet.
+
 SUPERSEDED INPUT CONTRACT, V6.5, no static pre-Discovery crops: remove the three
 fixed `upper_left`, `upper_right`, and `lower` images from the Adda
 `sonnet_boundary_risk` route as well as the ordinary Haiku route. Retain the

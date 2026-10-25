@@ -204,6 +204,7 @@ def test_v49_routes_default_registry_to_haiku_without_evidence_handoff():
 
     assert registry_call["model"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL
     assert registry_call["regions"] == []
+    assert registry_call["mistral_anchor_admission"] is False
     regions_builder.assert_not_called()
     assert len(result["_agent_usage_events"]) == 1
 
@@ -253,6 +254,7 @@ def test_v65_routes_adda_style_registry_to_sonnet_without_static_discovery_crops
 
     assert registry_call["model"] == "claude-sonnet-4-6"
     assert registry_call["regions"] == []
+    assert registry_call["mistral_anchor_admission"] is True
     regions_builder.assert_not_called()
     assert len(result["_agent_usage_events"]) == 1
 

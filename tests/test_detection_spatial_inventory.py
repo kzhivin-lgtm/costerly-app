@@ -1,4 +1,5 @@
 from agents.anthropic_adapter import (
+    apply_detection_v67_mistral_anchor_admission,
     build_detection_candidate_region_audit,
     build_detection_view_evidence_packages,
 )
@@ -93,6 +94,130 @@ def test_candidate_region_without_island_requires_a_registry_explanation_in_audi
         visual_groups=[], group_bboxes={}, group_id_mapping={},
     )
     assert audit[0]["status"] == "explained_non_island"
+
+
+def _v67_anchor_payload(*, bbox: dict, core_bbox: dict, decision: dict) -> dict:
+    return {
+        "visual_groups": [{
+            "group_id": "VG-P001-001", "page_number": 1,
+            "bbox": bbox, "core_bbox": core_bbox,
+        }],
+        "candidate_region_exceptions": [],
+        "candidate_region_decisions": [decision],
+    }
+
+
+def _v67_mistral_anchor() -> dict:
+    return {
+        "candidate_region_id": "CR-P001-001", "page_number": 1,
+        "bbox": {
+            "top_left_x": 100, "top_left_y": 100,
+            "bottom_right_x": 300, "bottom_right_y": 300,
+        },
+        "basis": "mistral_graphic_region", "source_fact_ids": ["SF-IN"],
+    }
+
+
+def test_v67_accept_uses_mistral_graphic_anchor_over_model_bbox():
+    model_bbox = {
+        "top_left_x": 20, "top_left_y": 20,
+        "bottom_right_x": 380, "bottom_right_y": 380,
+    }
+    payload, audit = apply_detection_v67_mistral_anchor_admission(
+        payload=_v67_anchor_payload(
+            bbox=model_bbox, core_bbox=model_bbox,
+            decision={
+                "candidate_region_id": "CR-P001-001", "decision": "accept",
+                "group_id": "VG-P001-001", "reason": "The Mistral region exactly encloses the single elevation.",
+                "source_fact_ids": [],
+            },
+        ),
+        candidate_regions=[_v67_mistral_anchor()],
+        source_facts=[{
+            "fact_id": "SF-IN", "page_number": 1,
+            "bbox": {"top_left_x": 150, "top_left_y": 150,
+                     "bottom_right_x": 160, "bottom_right_y": 160},
+        }],
+    )
+
+    assert payload["visual_groups"][0]["bbox"] == _v67_mistral_anchor()["bbox"]
+    assert payload["visual_groups"][0]["core_bbox"] == _v67_mistral_anchor()["bbox"]
+    assert audit[0]["status"] == "accepted_anchor"
+    assert "candidate_region_decisions" not in payload
+
+
+def test_v67_unsupported_expansion_falls_back_to_mistral_anchor():
+    proposed_bbox = {
+        "top_left_x": 80, "top_left_y": 80,
+        "bottom_right_x": 480, "bottom_right_y": 320,
+    }
+    foreign_anchor = {
+        "candidate_region_id": "CR-P001-002", "page_number": 1,
+        "bbox": {
+            "top_left_x": 350, "top_left_y": 100,
+            "bottom_right_x": 460, "bottom_right_y": 300,
+        },
+        "basis": "mistral_graphic_region", "source_fact_ids": [],
+    }
+    raw_payload = _v67_anchor_payload(
+            bbox=proposed_bbox, core_bbox=proposed_bbox,
+            decision={
+                "candidate_region_id": "CR-P001-001", "decision": "expand",
+                "group_id": "VG-P001-001", "reason": "The outer dimension is visibly attached to the elevation.",
+                "source_fact_ids": ["SF-OUT"],
+            },
+        )
+    raw_payload["candidate_region_decisions"].append({
+        "candidate_region_id": "CR-P001-002", "decision": "reject",
+        "group_id": "", "reason": "This small graphic region is a non-object annotation.",
+        "source_fact_ids": [],
+    })
+    raw_payload["candidate_region_exceptions"] = [{
+        "candidate_region_id": "CR-P001-002",
+        "reason": "This small graphic region is a non-object annotation.",
+    }]
+    payload, audit = apply_detection_v67_mistral_anchor_admission(
+        payload=raw_payload,
+        candidate_regions=[_v67_mistral_anchor(), foreign_anchor],
+        source_facts=[{
+            "fact_id": "SF-OUT", "page_number": 1,
+            "bbox": {"top_left_x": 320, "top_left_y": 180,
+                     "bottom_right_x": 330, "bottom_right_y": 190},
+        }],
+    )
+
+    assert payload["visual_groups"][0]["bbox"] == _v67_mistral_anchor()["bbox"]
+    assert audit[0]["status"] == "rejected_to_mistral_fallback"
+
+
+def test_v67_source_grounded_expansion_is_admitted_without_foreign_anchor():
+    proposed_bbox = {
+        "top_left_x": 80, "top_left_y": 80,
+        "bottom_right_x": 340, "bottom_right_y": 320,
+    }
+    payload, audit = apply_detection_v67_mistral_anchor_admission(
+        payload=_v67_anchor_payload(
+            bbox=proposed_bbox,
+            core_bbox={
+                "top_left_x": 110, "top_left_y": 110,
+                "bottom_right_x": 290, "bottom_right_y": 290,
+            },
+            decision={
+                "candidate_region_id": "CR-P001-001", "decision": "expand",
+                "group_id": "VG-P001-001", "reason": "The cited dimension baseline is attached outside the graphic region.",
+                "source_fact_ids": ["SF-OUT"],
+            },
+        ),
+        candidate_regions=[_v67_mistral_anchor()],
+        source_facts=[{
+            "fact_id": "SF-OUT", "page_number": 1,
+            "bbox": {"top_left_x": 320, "top_left_y": 180,
+                     "bottom_right_x": 330, "bottom_right_y": 190},
+        }],
+    )
+
+    assert payload["visual_groups"][0]["bbox"] == proposed_bbox
+    assert audit[0]["status"] == "accepted_sonnet_change"
 
 
 def test_evidence_envelope_keeps_external_dimension_with_its_single_island():

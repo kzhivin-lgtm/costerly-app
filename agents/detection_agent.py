@@ -458,6 +458,13 @@ def run_detection_agent(
                 file_name=file_name, company_id=company_id, file_bytes=file_bytes,
                 page_images=registry_images, regions=regions,
                 ocr_package=ocr_package, model=route["registry_model"],
+                # V6.7 is router-scoped. Only the documented boundary-risk
+                # route can elevate real Mistral graphic blocks into initial
+                # Island anchors; ordinary Haiku and source-degraded routes
+                # retain their established contracts.
+                mistral_anchor_admission=(
+                    route.get("decision") == "sonnet_boundary_risk"
+                ),
             )
     except DetectionVisualRegistryValidationError as exc:
         if stage_callback:

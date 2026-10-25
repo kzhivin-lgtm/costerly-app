@@ -111,6 +111,9 @@ DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visua
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
     "detection_v5_10_12_compact_coverage_dimension_halo_min20_fusion_text_recall_temperature_0"
 )
+DETECTION_V67_MISTRAL_ANCHOR_ADMISSION_PROMPT_VERSION = (
+    "detection_v6_7_mistral_graphic_anchor_admission"
+)
 # V5.0 keeps one Haiku call. Registry returns Islands, classifications, and
 # sparse positive semantic facts. Runtime owns every graph and package decision.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
@@ -677,6 +680,40 @@ DETECTION_V5_DISCOVERY_JSON_SCHEMA: dict[str, Any] = {
         "page_coverage": DETECTION_V5_PAGE_COVERAGE_SCHEMA,
     },
 }
+
+# V6.7 is deliberately restricted to the Sonnet boundary-risk route and only
+# to real Mistral image blocks. A text-cluster recall box is not a Mistral
+# layout observation and must not receive the same authority.
+DETECTION_V67_MISTRAL_ANCHOR_DECISIONS_SCHEMA: dict[str, Any] = {
+    "type": "array", "maxItems": 64,
+    "items": {"type": "object", "additionalProperties": False,
+        "required": [
+            "candidate_region_id", "decision", "group_id", "reason",
+            "source_fact_ids",
+        ],
+        "properties": {
+            "candidate_region_id": {"type": "string"},
+            "decision": {"type": "string", "enum": [
+                "accept", "tighten", "expand", "reject",
+            ]},
+            "group_id": {"type": "string"},
+            "reason": {"type": "string", "minLength": 12, "maxLength": 240},
+            "source_fact_ids": {
+                "type": "array", "maxItems": 4,
+                "items": {"type": "string"},
+            },
+        },
+    },
+}
+DETECTION_V67_MISTRAL_ANCHOR_DISCOVERY_JSON_SCHEMA = copy.deepcopy(
+    DETECTION_V5_DISCOVERY_JSON_SCHEMA
+)
+DETECTION_V67_MISTRAL_ANCHOR_DISCOVERY_JSON_SCHEMA["required"].append(
+    "candidate_region_decisions"
+)
+DETECTION_V67_MISTRAL_ANCHOR_DISCOVERY_JSON_SCHEMA["properties"][
+    "candidate_region_decisions"
+] = DETECTION_V67_MISTRAL_ANCHOR_DECISIONS_SCHEMA
 
 DETECTION_V5_MEMBERSHIP_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -1695,6 +1732,17 @@ def _detection_bbox_intersection(
         "bottom_right_y": min(left["bottom_right_y"], right["bottom_right_y"]),
     }
     return result if _detection_bbox(result) is not None else None
+
+
+def _detection_bbox_contains(
+    outer: dict[str, int], inner: dict[str, int],
+) -> bool:
+    return (
+        outer["top_left_x"] <= inner["top_left_x"]
+        and outer["top_left_y"] <= inner["top_left_y"]
+        and outer["bottom_right_x"] >= inner["bottom_right_x"]
+        and outer["bottom_right_y"] >= inner["bottom_right_y"]
+    )
 
 
 def build_detection_v5_review_coordinate_frames(
@@ -4471,6 +4519,222 @@ def build_detection_candidate_region_audit(
             ),
         })
     return audit
+
+
+def format_detection_v67_mistral_graphic_anchors(
+    candidates: list[dict[str, Any]],
+) -> str:
+    """Describe the bounded V6.7 anchor contract to Proposal.
+
+    This is intentionally not emitted for broad text-cluster recall boxes. The
+    contract only elevates Mistral's actual graphic layout observations.
+    """
+    anchors = [
+        candidate for candidate in candidates
+        if candidate.get("basis") == "mistral_graphic_region"
+    ]
+    if not anchors:
+        return ""
+    lines = [
+        "MISTRAL GRAPHIC ANCHORS, INITIAL BOUNDARY AUTHORITY:",
+        "For every MGA below, return exactly one candidate_region_decision.",
+        "accept: group_id is one Island and runtime will use the Mistral bbox.",
+        "tighten: proposed group bbox is wholly inside the anchor, covers at least 70 percent of it, and cites a source fact inside the proposed box.",
+        "expand: proposed group bbox contains the whole anchor, cites a source fact in the added area, and must not contain the centre of another MGA.",
+        "reject: only for material that is not a distinct Island, with group_id and source_fact_ids empty. Also list it in candidate_region_exceptions.",
+        "Do not use object identity, a cross-page similarity, or a generic visual impression as a boundary reason. Do not silently redraw an MGA.",
+        "MGA=id|P=page|B=x1,y1,x2,y2|SF=source facts inside the anchor.",
+    ]
+    for candidate in anchors:
+        bbox = candidate["bbox"]
+        source_fact_ids = ",".join(candidate.get("source_fact_ids") or []) or "-"
+        lines.append(
+            "MGA={id}|P={page}|B={x1},{y1},{x2},{y2}|SF={facts}".format(
+                id=candidate["candidate_region_id"],
+                page=candidate["page_number"],
+                x1=bbox["top_left_x"], y1=bbox["top_left_y"],
+                x2=bbox["bottom_right_x"], y2=bbox["bottom_right_y"],
+                facts=source_fact_ids,
+            )
+        )
+    return "\n".join(lines)
+
+
+def apply_detection_v67_mistral_anchor_admission(
+    *,
+    payload: dict[str, Any],
+    candidate_regions: list[dict[str, Any]],
+    source_facts: list[dict[str, Any]],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Admit a Sonnet boundary change only against an explicit Mistral anchor.
+
+    The model still sees the complete page and may reject a non-object graphic
+    region. It cannot, however, replace a Mistral graphic bbox with a freehand
+    one: unsafe edits fall back to the immutable anchor and remain in the run
+    audit. This is a boundary contract, not an object-identity or merge rule.
+    """
+    effective = copy.deepcopy(payload)
+    decisions = effective.pop("candidate_region_decisions", None)
+    if not isinstance(decisions, list):
+        raise ValueError("Mistral anchor decisions are invalid")
+    anchors = [
+        candidate for candidate in candidate_regions
+        if candidate.get("basis") == "mistral_graphic_region"
+    ]
+    anchors_by_id = {
+        str(candidate["candidate_region_id"]): candidate for candidate in anchors
+    }
+    groups = effective.get("visual_groups")
+    if not isinstance(groups, list):
+        raise ValueError("Mistral anchor visual groups are invalid")
+    groups_by_id = {
+        str(group.get("group_id") or ""): group
+        for group in groups if isinstance(group, dict)
+    }
+    if not groups_by_id or len(groups_by_id) != len(groups):
+        raise ValueError("Mistral anchor visual group IDs are invalid")
+
+    exceptions = {
+        str(row.get("candidate_region_id") or ""): str(row.get("reason") or "").strip()
+        for row in effective.get("candidate_region_exceptions") or []
+        if isinstance(row, dict)
+    }
+    facts_by_id = {
+        str(fact.get("fact_id") or ""): fact
+        for fact in source_facts if isinstance(fact, dict) and fact.get("fact_id")
+    }
+    decisions_by_candidate: dict[str, dict[str, Any]] = {}
+    for decision in decisions:
+        if not isinstance(decision, dict) or set(decision) != {
+            "candidate_region_id", "decision", "group_id", "reason", "source_fact_ids",
+        }:
+            raise ValueError("Mistral anchor decision shape is invalid")
+        candidate_id = str(decision.get("candidate_region_id") or "")
+        if candidate_id not in anchors_by_id or candidate_id in decisions_by_candidate:
+            raise ValueError("Mistral anchor decision candidate is invalid")
+        if decision.get("decision") not in {"accept", "tighten", "expand", "reject"}:
+            raise ValueError("Mistral anchor decision type is invalid")
+        if not str(decision.get("reason") or "").strip():
+            raise ValueError("Mistral anchor decision reason is invalid")
+        source_fact_ids = decision.get("source_fact_ids")
+        if (
+            not isinstance(source_fact_ids, list)
+            or len(source_fact_ids) != len(set(source_fact_ids))
+            or any(str(fact_id) not in facts_by_id for fact_id in source_fact_ids)
+        ):
+            raise ValueError("Mistral anchor decision source facts are invalid")
+        decisions_by_candidate[candidate_id] = copy.deepcopy(decision)
+    if set(decisions_by_candidate) != set(anchors_by_id):
+        raise ValueError("Mistral anchor decisions must cover every graphic region")
+
+    claimed_group_ids: set[str] = set()
+    audit: list[dict[str, Any]] = []
+    for candidate in anchors:
+        candidate_id = str(candidate["candidate_region_id"])
+        decision = decisions_by_candidate[candidate_id]
+        decision_kind = str(decision["decision"])
+        group_id = str(decision.get("group_id") or "")
+        candidate_bbox = copy.deepcopy(candidate["bbox"])
+        audit_entry = {
+            "candidate_region_id": candidate_id,
+            "page_number": candidate["page_number"],
+            "mistral_bbox": candidate_bbox,
+            "decision": decision_kind,
+            "group_id": group_id or None,
+            "reason": str(decision["reason"]).strip(),
+            "source_fact_ids": list(decision["source_fact_ids"]),
+        }
+        if decision_kind == "reject":
+            if group_id or decision["source_fact_ids"] or not exceptions.get(candidate_id):
+                raise ValueError("Mistral anchor rejection must have a matching exception")
+            audit.append({
+                **audit_entry,
+                "status": "accepted_rejection",
+                "canonical_bbox_source": "none",
+            })
+            continue
+        if not group_id or group_id not in groups_by_id or group_id in claimed_group_ids:
+            raise ValueError("Mistral anchor decision group is invalid")
+        group = groups_by_id[group_id]
+        if int(group.get("page_number") or 0) != int(candidate["page_number"]):
+            raise ValueError("Mistral anchor decision crosses pages")
+        claimed_group_ids.add(group_id)
+        proposed_bbox = _detection_bbox(group.get("bbox"))
+        proposed_core_bbox = _detection_bbox(group.get("core_bbox"))
+        if proposed_bbox is None or proposed_core_bbox is None or not _detection_bbox_contains(
+            proposed_bbox, proposed_core_bbox,
+        ):
+            raise ValueError("Mistral anchor proposed geometry is invalid")
+
+        if decision_kind == "accept":
+            if decision["source_fact_ids"]:
+                raise ValueError("Mistral anchor acceptance cannot cite a replacement fact")
+            group["bbox"] = copy.deepcopy(candidate_bbox)
+            group["core_bbox"] = copy.deepcopy(candidate_bbox)
+            audit.append({
+                **audit_entry,
+                "status": "accepted_anchor",
+                "canonical_bbox_source": "mistral_graphic_anchor",
+                "proposed_bbox": proposed_bbox,
+            })
+            continue
+
+        cited_facts = [facts_by_id[str(fact_id)] for fact_id in decision["source_fact_ids"]]
+        same_page_cited_bboxes = [
+            fact_bbox for fact in cited_facts
+            if int(fact.get("page_number") or 0) == int(candidate["page_number"])
+            if (fact_bbox := _detection_bbox(fact.get("bbox"))) is not None
+        ]
+        foreign_anchor_centre_captured = any(
+            other["candidate_region_id"] != candidate_id
+            and int(other["page_number"]) == int(candidate["page_number"])
+            and _detection_bbox_centre_inside(other["bbox"], proposed_bbox)
+            for other in anchors
+        )
+        safe_change = False
+        if decision_kind == "tighten":
+            coverage = _detection_bbox_intersection_area(
+                candidate_bbox, proposed_bbox,
+            ) / _detection_bbox_area(candidate_bbox)
+            safe_change = (
+                _detection_bbox_contains(candidate_bbox, proposed_bbox)
+                and coverage >= 0.70
+                and any(_detection_bbox_centre_inside(fact_bbox, proposed_bbox)
+                        for fact_bbox in same_page_cited_bboxes)
+                and not foreign_anchor_centre_captured
+            )
+        elif decision_kind == "expand":
+            safe_change = (
+                _detection_bbox_contains(proposed_bbox, candidate_bbox)
+                and any(
+                    _detection_bbox_centre_inside(fact_bbox, proposed_bbox)
+                    and not _detection_bbox_centre_inside(fact_bbox, candidate_bbox)
+                    for fact_bbox in same_page_cited_bboxes
+                )
+                and not foreign_anchor_centre_captured
+            )
+        if safe_change:
+            audit.append({
+                **audit_entry,
+                "status": "accepted_sonnet_change",
+                "canonical_bbox_source": "sonnet_change_with_mistral_anchor",
+                "proposed_bbox": proposed_bbox,
+            })
+            continue
+
+        # A change that lacks page-local, source-grounded support never erases
+        # the Mistral observation. Preserve it for Review and expose why the
+        # model proposal was not admitted.
+        group["bbox"] = copy.deepcopy(candidate_bbox)
+        group["core_bbox"] = copy.deepcopy(candidate_bbox)
+        audit.append({
+            **audit_entry,
+            "status": "rejected_to_mistral_fallback",
+            "canonical_bbox_source": "mistral_graphic_anchor",
+            "proposed_bbox": proposed_bbox,
+            "rejection_reason": "missing_local_fact_or_foreign_anchor_capture",
+        })
+    return effective, audit
 
 
 def map_detection_candidate_q_pairs_to_islands(
@@ -8184,10 +8448,9 @@ def run_anthropic_detection_v5_source_degraded_v561_consensus_experiment(
     }, usage
 
 
-def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
+def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None, mistral_anchor_admission: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
     """Run V5.10.12 Island discovery, then a bounded membership review."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
-    prompt_version = DETECTION_VISUAL_REGISTRY_PROMPT_VERSION
     proposal_prompt = load_detection_v5_proposal_prompt()
     review_prompt = load_detection_v5_review_prompt()
     document_dimension_unit_profile = (
@@ -8206,6 +8469,30 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     candidate_regions = build_detection_fusion_candidate_regions(
         ocr_package, source_facts,
     )
+    mistral_anchor_admission_active = bool(
+        mistral_anchor_admission and any(
+            candidate.get("basis") == "mistral_graphic_region"
+            for candidate in candidate_regions
+        )
+    )
+    prompt_version = (
+        DETECTION_V67_MISTRAL_ANCHOR_ADMISSION_PROMPT_VERSION
+        if mistral_anchor_admission_active
+        else DETECTION_VISUAL_REGISTRY_PROMPT_VERSION
+    )
+    mistral_anchor_text = format_detection_v67_mistral_graphic_anchors(
+        candidate_regions,
+    ) if mistral_anchor_admission_active else ""
+    proposal_prompt_with_anchor_contract = proposal_prompt
+    if mistral_anchor_text:
+        proposal_prompt_with_anchor_contract += (
+            "\n\nV6.7 MISTRAL ANCHOR ADMISSION:\n"
+            "For Mistral graphic anchors named in the user context, this "
+            "supersedes the generic Candidate Region recall-aid instruction. "
+            "They are the initial boundary authority. You may propose only "
+            "the constrained decisions supplied in the user context. Runtime "
+            "will reject an unsupported change and keep the Mistral bbox.\n"
+        )
     fusion_page_profiles = build_detection_fusion_page_profile_audit(ocr_package)
     candidate_visual_groups = [{
         "group_id": str(candidate["candidate_region_id"]),
@@ -8264,6 +8551,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         file_name=file_name, company_id=company_id, ocr_package=None,
     ).replace("OCR text layer: unavailable", page_evidence_inventory_text)
     proposal_user_text += "\n\n" + fusion_candidate_region_text
+    if mistral_anchor_text:
+        proposal_user_text += "\n\n" + mistral_anchor_text
     proposal_user_text += "\n\n" + format_detection_candidate_pair_queue(
         candidate_pair_queue, candidate_dimension_baskets,
     )
@@ -8279,9 +8568,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         get_anthropic_client(), model=selected_model,
         max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
         temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
-        system=build_detection_system_content(prompt=proposal_prompt),
+        system=build_detection_system_content(prompt=proposal_prompt_with_anchor_contract),
         messages=[{"role": "user", "content": proposal_content}],
-        output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(DETECTION_V5_DISCOVERY_JSON_SCHEMA)}},
+        output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
+            DETECTION_V67_MISTRAL_ANCHOR_DISCOVERY_JSON_SCHEMA
+            if mistral_anchor_admission_active
+            else DETECTION_V5_DISCOVERY_JSON_SCHEMA,
+        )}},
     )
     proposal_raw_text = extract_text_from_claude_response(proposal_response)
     try:
@@ -8320,17 +8613,26 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     discovery_fields = {
         "visual_groups", "classifications", "candidate_region_exceptions", "page_coverage",
     }
+    anchor_discovery_fields = {
+        *discovery_fields, "candidate_region_decisions",
+    }
     legacy_proposal_fields = {
         "visual_groups", "classifications", "candidate_region_exceptions",
         "object_hypotheses", "semantic_facts",
     }
-    if not isinstance(proposal_raw_payload, dict) or set(proposal_raw_payload) not in (
-        discovery_fields, legacy_proposal_fields,
-    ):
+    expected_discovery_fields = (
+        anchor_discovery_fields if mistral_anchor_admission_active else discovery_fields
+    )
+    allowed_response_fields = (
+        (expected_discovery_fields,)
+        if mistral_anchor_admission_active
+        else (discovery_fields, legacy_proposal_fields)
+    )
+    if not isinstance(proposal_raw_payload, dict) or set(proposal_raw_payload) not in allowed_response_fields:
         raise DetectionVisualRegistryValidationError(
             "Detection proposal response failed the V5.10.1 discovery contract"
         )
-    if set(proposal_raw_payload) == discovery_fields:
+    if set(proposal_raw_payload) in (discovery_fields, anchor_discovery_fields):
         proposal_page_coverage = validate_detection_v5_discovery_page_coverage(
             proposal_raw_payload["page_coverage"],
             visual_groups=proposal_raw_payload["visual_groups"], page_count=len(page_images),
@@ -8340,10 +8642,22 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "status": "legacy_response_without_page_coverage",
             "page_count": len(page_images),
         }]
-    proposal_discovery_payload = {
-        field: proposal_raw_payload[field]
-        for field in discovery_fields - {"page_coverage"}
-    }
+    proposal_model_payload = copy.deepcopy(proposal_raw_payload)
+    mistral_anchor_admission_audit: list[dict[str, Any]] = []
+    if mistral_anchor_admission_active:
+        proposal_discovery_payload, mistral_anchor_admission_audit = (
+            apply_detection_v67_mistral_anchor_admission(
+                payload=proposal_raw_payload,
+                candidate_regions=candidate_regions,
+                source_facts=source_facts,
+            )
+        )
+        proposal_discovery_payload.pop("page_coverage", None)
+    else:
+        proposal_discovery_payload = {
+            field: proposal_raw_payload[field]
+            for field in discovery_fields - {"page_coverage"}
+        }
     proposal_for_review, _ = _validate_and_apply_visual_registry_classifications(
         proposal_discovery_payload
     )
@@ -8414,8 +8728,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "Detection review response failed the V5.9 review contract"
         )
     payload = {
-        "visual_groups": proposal_raw_payload["visual_groups"],
-        "classifications": proposal_raw_payload["classifications"],
+        "visual_groups": proposal_discovery_payload["visual_groups"],
+        "classifications": proposal_discovery_payload["classifications"],
         "object_hypotheses": review_raw_payload["object_hypotheses"],
         "candidate_region_exceptions": proposal_discovery_payload["candidate_region_exceptions"],
         "semantic_facts": [],
@@ -8447,10 +8761,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "rendered_page_image_count": len(page_images),
         "registry_crop_image_count": len(regions),
         "registry_crop_image_bytes": sum(len(region.get("bytes") or b"") for region in regions),
-        "registry_system_prompt_characters": len(proposal_prompt) + len(review_prompt),
+        "registry_system_prompt_characters": len(proposal_prompt_with_anchor_contract) + len(review_prompt),
+        "v6_7_mistral_anchor_admission_active": mistral_anchor_admission_active,
+        "v6_7_mistral_anchor_admission_audit": mistral_anchor_admission_audit,
         "v5_9_proposal": summarize_detection_provider_call(
             response=proposal_response, diagnostics=proposal_diagnostics,
-            prompt_characters=len(proposal_prompt), context_characters=len(proposal_user_text),
+            prompt_characters=len(proposal_prompt_with_anchor_contract), context_characters=len(proposal_user_text),
             image_count=len(page_images) + len(regions),
             image_bytes=sum(len(image) for image in page_images) + sum(len(region.get("bytes") or b"") for region in regions),
         ),
@@ -8465,7 +8781,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         ),
         "v5_9_review_crop_audit": membership_crop_audit,
         "v5_9_review_page_context_audit": review_page_context_audit,
-        "v5_9_proposal_decision_audit": copy.deepcopy(proposal_raw_payload),
+        "v5_9_proposal_decision_audit": proposal_model_payload,
         "v5_9_review_decision_audit": copy.deepcopy(review_raw_payload),
     })
     # Preserve the composed decision before runtime normalizes IDs and derives

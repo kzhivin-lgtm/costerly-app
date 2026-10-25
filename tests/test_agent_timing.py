@@ -721,6 +721,68 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
     }]
 
 
+def test_v67_mistral_anchor_contract_replaces_a_freehand_proposal_bbox():
+    proposal = _visual_registry_payload({
+        "visual_groups": [{
+            "group_id": "view_a", "page_number": 1, "location_hint": "centre",
+            "visual_description": "one cabinet elevation", "representation_kind": "elevation",
+            "bbox": {"top_left_x": 10, "top_left_y": 10,
+                     "bottom_right_x": 980, "bottom_right_y": 980},
+            "core_bbox": {"top_left_x": 10, "top_left_y": 10,
+                          "bottom_right_x": 980, "bottom_right_y": 980},
+        }],
+    })
+    proposal.pop("object_hypotheses")
+    proposal.pop("semantic_facts")
+    proposal["page_coverage"] = [{
+        "page_number": 1, "visual_group_ids": ["view_a"],
+    }]
+    proposal["candidate_region_decisions"] = [{
+        "candidate_region_id": "CR-P001-001", "decision": "accept",
+        "group_id": "view_a",
+        "reason": "The Mistral graphic region exactly encloses this elevation.",
+        "source_fact_ids": [],
+    }]
+    ocr_package = {"pages": [{
+        "page_number": 1,
+        "blocks": [{
+            "type": "image", "content": "cabinet elevation",
+            "top_left_x": 100, "top_left_y": 120,
+            "bottom_right_x": 800, "bottom_right_y": 850,
+        }],
+    }]}
+
+    def fake_create(*_args, **_kwargs):
+        return _Response(), {
+            "request_started_at": "2026-10-16T00:00:00+00:00",
+            "request_finished_at": "2026-10-16T00:00:01+00:00",
+        }
+
+    with (
+        patch("agents.anthropic_adapter.get_secret", return_value="model"),
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
+        patch(
+            "agents.anthropic_adapter.extract_text_from_claude_response",
+            side_effect=[json.dumps(proposal), json.dumps({"object_hypotheses": []})],
+        ),
+    ):
+        visual_map, _, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=ocr_package,
+            model="claude-sonnet-4-6", mistral_anchor_admission=True,
+        )
+
+    expected_bbox = {
+        "top_left_x": 100, "top_left_y": 120,
+        "bottom_right_x": 800, "bottom_right_y": 850,
+    }
+    assert visual_map["visual_groups"][0]["group_id"] == "view-001"
+    assert usage["raw_usage"]["registry_decision_audit"]["visual_groups"][0]["bbox"] == expected_bbox
+    assert usage["prompt_version"] == "detection_v6_7_mistral_graphic_anchor_admission"
+    assert usage["raw_usage"]["v6_7_mistral_anchor_admission_audit"][0]["status"] == "accepted_anchor"
+
+
 def test_whole_architectural_floor_plan_is_demoted_to_document_context():
     payload = _visual_registry_payload({
         "visual_groups": [{
