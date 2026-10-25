@@ -786,19 +786,22 @@ PDF page can provide deterministically, but does not change active Detection.
 The profile is persisted in OCR evidence and Fusion diagnostics only. Page23
 retained the protected three objects; HSL retained 10 final objects.
 
-ACTIVE IMPLEMENTATION, P1, V6.2, USER DIRECTION, expanded Fusion handoff:
-pass every page's bounded PDF capability profile to the ordinary Fusion
-handoff only: the full-page Proposal and fixed-Island Membership Review.
-Do not change the source-degraded Island/audit route, router or model choice.
-The model receives representation,
-text/anchor/coordinate capability, eligible mechanisms, page dimensions,
-native image/Form/vector inventory, rendered coverage, extraction status and
-timings. It must treat those data as page-level inspection context only, never
-as an object claim, Island boundary, merge proof or bbox. Retain the V6.1
-parallel extraction path, Mistral contract, router, candidate-region builder,
-embedding rules, deterministic graph and package validation. Record prompt
-characters and compare Page23, HSL and Adda outcomes, Island maps, packages,
-reasoning, cost and duration against V6.1 before accepting a new checkpoint.
+SUPERSEDED EXPERIMENT, P1, V6.2, expanded Fusion handoff: every bounded
+page capability profile was sent to the ordinary Fusion Proposal and fixed-
+Island Membership Review. The experiment did not demonstrate a quality gain
+and added prompt volume. The active contract returns to V6.1: profiles remain
+in the immutable OCR evidence and returned Fusion audit, but are not supplied
+to either model call. The source-degraded route, router, models, candidate
+regions, Candidate Q, embedding rules, deterministic graph and packages stay
+unchanged.
+
+DEFERRED, P2, USER DIRECTION, Detection input and cost optimisation: begin
+only after the owner concludes the current correctness experiment. Assess the
+full-page Evidence Inventory, Candidate Pair Q prompt rendering, static crops,
+review images, output budgets and any other input/output reduction by isolated
+benchmark, while retaining the underlying evidence, Q calculation and
+deterministic graph unless separately approved. Do not treat HSL's currently
+unreferenced facts as globally removable.
 
 SUPERSEDED IMPLEMENTATION, P1, V6.1, USER DIRECTION, Detection document pre-analysis:
 define a non-decisive,

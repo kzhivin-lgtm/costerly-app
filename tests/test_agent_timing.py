@@ -822,6 +822,7 @@ def test_visual_registry_keeps_semantic_facts_outside_dimension_queue_for_global
     assert trace["registry_crop_image_count"] == 0
     assert trace["registry_crop_image_bytes"] == 0
     assert trace["page_evidence_inventory_characters"] > 0
+    assert trace["fusion_page_profile_characters"] == 0
     assert trace["v5_9_proposal"]["context_characters"] > 0
     assert trace["v5_9_review"]["context_characters"] > 0
     assert trace["candidate_pair_queue_audit"]["selected_candidate_count"] == (
