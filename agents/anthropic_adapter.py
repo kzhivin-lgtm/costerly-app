@@ -9521,7 +9521,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                     )
                 )
                 v69_reconciliation_prompt = review_prompt + (
-                    "\n\nV6.9 RECONCILIATION CONTRACT:\n"
+                    "\n\nV6.10 RECONCILIATION CONTRACT:\n"
                     "Do not create a relation merely because the candidate was previously "
                     "grouped elsewhere. For each required candidate/component alternative, "
                     "select a comparison View inside that component and audit all five "
@@ -9549,7 +9549,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                         extract_text_from_claude_response(v69_reconciliation_response)
                     )
                     if not isinstance(reconciliation_payload, dict) or set(reconciliation_payload) != {"reconciliation_decisions"}:
-                        raise ValueError("V6.9 reconciliation response fields are invalid")
+                        raise ValueError("V6.10 reconciliation response fields are invalid")
                     v69_reconciliation_facts, v69_reconciliation_audit = (
                         normalize_detection_v69_reconciliation_decisions(
                             reconciliation_payload["reconciliation_decisions"],
@@ -9559,7 +9559,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                     )
                 except (json.JSONDecodeError, ValueError) as exc:
                     raise DetectionVisualRegistryValidationError(
-                        f"V6.9 reconciliation review failed validation: {exc}",
+                        f"V6.10 reconciliation review failed validation: {exc}",
                     ) from exc
     payload = {
         "visual_groups": proposal_discovery_payload["visual_groups"],
@@ -9644,7 +9644,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                              + sum(len(crop["bytes"]) for crop in membership_crops)),
             ) if v69_criteria_reconciliation_active else None
         ),
-        "v6_9_reconciliation_review": (
+        "v6_10_reconciliation_review": (
             summarize_detection_provider_call(
                 response=v69_reconciliation_response, diagnostics=v69_reconciliation_diagnostics,
                 prompt_characters=len(v69_reconciliation_prompt), context_characters=len(v69_reconciliation_handoff),
@@ -10190,10 +10190,15 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     if reconciled_object_ids:
         diagnostics["single_page_coverage_reconciled_object_ids"] = reconciled_object_ids
     usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=prompt_version,response=review_response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
-    proposal_usage = diagnostics["v5_9_proposal"]
-    review_usage = diagnostics["v5_9_review"]
-    total_input_tokens = int(proposal_usage["input_tokens"]) + int(review_usage["input_tokens"])
-    total_output_tokens = int(proposal_usage["output_tokens"]) + int(review_usage["output_tokens"])
+    provider_call_usages = [
+        diagnostics["v5_9_proposal"],
+        diagnostics["v5_9_review"],
+    ]
+    reconciliation_usage = diagnostics.get("v6_10_reconciliation_review")
+    if isinstance(reconciliation_usage, dict):
+        provider_call_usages.append(reconciliation_usage)
+    total_input_tokens = sum(int(call["input_tokens"]) for call in provider_call_usages)
+    total_output_tokens = sum(int(call["output_tokens"]) for call in provider_call_usages)
     total_costs = calculate_llm_cost_usd(
         model=selected_model,
         input_tokens=total_input_tokens,
@@ -10210,9 +10215,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "input_tokens": total_input_tokens,
         "output_tokens": total_output_tokens,
         "v5_9_total_provider_duration_seconds": round(
-            sum(float(call.get("duration_seconds") or 0) for call in (
-                proposal_usage, review_usage,
-            )),
+            sum(float(call.get("duration_seconds") or 0) for call in provider_call_usages),
             3,
         ),
     })
