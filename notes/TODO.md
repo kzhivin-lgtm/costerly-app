@@ -962,6 +962,21 @@ object membership is correct. Diagnose the source of local display ordering
 without changing Mistral boxes, pair evidence, graph membership or package
 boundaries merely to make labels look uniform.
 
+PENDING DESIGN GATE, P1, document-scoped assembly classification: establish a
+generic pre-membership category for drawings that describe one commissioned
+assembly through an overview plus sections, component details, installation
+context and hardware rather than multiple independently quotable products. The
+first witness is `V_Cabiner.pdf`, a six-page vector-rich Order 1208 drawing
+set. Do not route from filename, project/order number, repeated material or
+page count. Require a root assembly/overview and a cited `part_of` graph from
+each proposed component detail to that root. A page or Island without such a
+relationship remains a separate candidate or `unresolved`, never forcibly
+merged into the document scope. Detection must preserve the component graph,
+source facts, quantities and confidence for Estimation, while publishing one
+commercial assembly only when all included members are evidenced. Decide the
+contract and benchmark before assigning an implementation version or changing
+any current HSL, Page23 or Adda route.
+
 SUPERSEDED INPUT CONTRACT, V6.5, no static pre-Discovery crops: remove the three
 fixed `upper_left`, `upper_right`, and `lower` images from the Adda
 `sonnet_boundary_risk` route as well as the ordinary Haiku route. Retain the
