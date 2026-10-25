@@ -129,7 +129,7 @@ def test_v67_accept_uses_mistral_graphic_anchor_over_model_bbox():
             decision={
                 "candidate_region_id": "CR-P001-001", "decision": "accept",
                 "group_id": "VG-P001-001", "reason": "The Mistral region exactly encloses the single elevation.",
-                "source_fact_ids": [],
+                "source_fact_ids": ["SF-IN"],
             },
         ),
         candidate_regions=[_v67_mistral_anchor()],

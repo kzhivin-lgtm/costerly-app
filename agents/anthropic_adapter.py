@@ -4667,8 +4667,8 @@ def apply_detection_v67_mistral_anchor_admission(
             raise ValueError("Mistral anchor proposed geometry is invalid")
 
         if decision_kind == "accept":
-            if decision["source_fact_ids"]:
-                raise ValueError("Mistral anchor acceptance cannot cite a replacement fact")
+            # A cited fact may explain why the model accepts an anchor. It is
+            # evidence only: the canonical geometry remains the Mistral box.
             group["bbox"] = copy.deepcopy(candidate_bbox)
             group["core_bbox"] = copy.deepcopy(candidate_bbox)
             audit.append({
