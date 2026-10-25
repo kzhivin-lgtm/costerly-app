@@ -837,7 +837,7 @@ regions for Adda. Railway deployment titles for this and every later Detection
 version must include the version identifier, using the versioned commit
 subject as the deployment title.
 
-ACTIVE EXPERIMENT, P0, V6.6, single canonical View bbox on the Sonnet
+REJECTED EXPERIMENT, P0, V6.6, single canonical View bbox on the Sonnet
 boundary-risk route: retain V6.5 complete-page Discovery and post-Discovery
 Review crops, but ask Discovery for only one `bbox` per Island. It is the
 smallest View boundary containing the continuous drawing and directly attached
@@ -846,8 +846,17 @@ dimensions, labels and leader lines. The runtime mirrors it to the legacy
 ownership use the same canonical geometry. Candidate Regions remain recall
 aids, never bbox authority. This is router-scoped, not a filename rule: first
 gate is Adda's exact two-object View membership, geometry and non-overlap.
-Only after that gate may ordinary Haiku documents be considered. Record the
-contract in usage as `v6_6_single_canonical_view_bbox`.
+The code is reverted to V6.5 after its first Adda gate. Do not extend this
+contract to Haiku.
+
+V6.6 Adda `run_e00376bd61e14f07a5e76d21a7d1bc49` fails that first gate: it
+retains eight Object-Evidence Islands but produces four components, not the
+protected two. Review correctly joins P2.V1/P4.V1 and P2.V2/P3.V2/P4.V2, but
+leaves P1.V1 standalone and falsely joins P1.V2/P3.V1. Discovery also emits
+overlapping canonical bboxes for the two P1 Islands and for the two P4 Islands,
+despite the single-boundary contract. This rejects the one-bbox contract as
+currently specified. Next diagnostic is a deterministic non-overlap/foreign-
+Island admission audit before another prompt or routing change.
 
 SUPERSEDED INPUT CONTRACT, V6.5, no static pre-Discovery crops: remove the three
 fixed `upper_left`, `upper_right`, and `lower` images from the Adda

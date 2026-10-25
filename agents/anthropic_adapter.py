@@ -31,7 +31,6 @@ from agents.prompt_loader import (
     load_detection_v5_membership_prompt,
     load_detection_v5_proposal_prompt,
     load_detection_v5_review_prompt,
-    load_detection_v6_6_single_bbox_proposal_prompt,
     load_detection_v5_source_degraded_discovery_prompt,
     load_detection_v5_source_degraded_direct_audit_prompt,
     load_detection_v5_source_degraded_direct_inventory_prompt,
@@ -678,20 +677,6 @@ DETECTION_V5_DISCOVERY_JSON_SCHEMA: dict[str, Any] = {
         "page_coverage": DETECTION_V5_PAGE_COVERAGE_SCHEMA,
     },
 }
-
-# V6.6 asks Discovery for one canonical View boundary. The runtime still
-# materializes ``core_bbox`` equal to that boundary at its compatibility edge,
-# so downstream evidence and package contracts do not change during the
-# experiment.
-DETECTION_V6_6_SINGLE_BBOX_DISCOVERY_JSON_SCHEMA = copy.deepcopy(
-    DETECTION_V5_DISCOVERY_JSON_SCHEMA
-)
-_V66_SINGLE_BBOX_GROUP_SCHEMA = (
-    DETECTION_V6_6_SINGLE_BBOX_DISCOVERY_JSON_SCHEMA["properties"]
-    ["visual_groups"]["items"]
-)
-_V66_SINGLE_BBOX_GROUP_SCHEMA["required"].remove("core_bbox")
-_V66_SINGLE_BBOX_GROUP_SCHEMA["properties"].pop("core_bbox")
 
 DETECTION_V5_MEMBERSHIP_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -8199,15 +8184,11 @@ def run_anthropic_detection_v5_source_degraded_v561_consensus_experiment(
     }, usage
 
 
-def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None, single_view_bbox_contract: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
+def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Run V5.10.12 Island discovery, then a bounded membership review."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
     prompt_version = DETECTION_VISUAL_REGISTRY_PROMPT_VERSION
-    proposal_prompt = (
-        load_detection_v6_6_single_bbox_proposal_prompt()
-        if single_view_bbox_contract
-        else load_detection_v5_proposal_prompt()
-    )
+    proposal_prompt = load_detection_v5_proposal_prompt()
     review_prompt = load_detection_v5_review_prompt()
     document_dimension_unit_profile = (
         extract_detection_document_dimension_unit_profile(ocr_package)
@@ -8300,11 +8281,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
         system=build_detection_system_content(prompt=proposal_prompt),
         messages=[{"role": "user", "content": proposal_content}],
-        output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
-            DETECTION_V6_6_SINGLE_BBOX_DISCOVERY_JSON_SCHEMA
-            if single_view_bbox_contract
-            else DETECTION_V5_DISCOVERY_JSON_SCHEMA
-        )}},
+        output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(DETECTION_V5_DISCOVERY_JSON_SCHEMA)}},
     )
     proposal_raw_text = extract_text_from_claude_response(proposal_response)
     try:
@@ -8353,14 +8330,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         raise DetectionVisualRegistryValidationError(
             "Detection proposal response failed the V5.10.1 discovery contract"
         )
-    if single_view_bbox_contract:
-        # The single boundary is canonical for both crop generation and
-        # evidence ownership. Keep the legacy field only at this adapter
-        # boundary while downstream contracts still name it ``core_bbox``.
-        proposal_raw_payload = copy.deepcopy(proposal_raw_payload)
-        for group in proposal_raw_payload.get("visual_groups") or []:
-            if isinstance(group, dict) and isinstance(group.get("bbox"), dict):
-                group["core_bbox"] = copy.deepcopy(group["bbox"])
     if set(proposal_raw_payload) == discovery_fields:
         proposal_page_coverage = validate_detection_v5_discovery_page_coverage(
             proposal_raw_payload["page_coverage"],
@@ -8454,11 +8423,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     diagnostics = dict(review_diagnostics)
     diagnostics["v5_10_proposal_page_coverage"] = proposal_page_coverage
     diagnostics.update({
-        "bbox_contract": (
-            "v6_6_single_canonical_view_bbox"
-            if single_view_bbox_contract
-            else "v5_core_and_evidence_envelope"
-        ),
         "request_started_at": proposal_diagnostics["request_started_at"],
         "request_finished_at": review_diagnostics["request_finished_at"],
         "temperature": DETECTION_VISUAL_REGISTRY_TEMPERATURE,

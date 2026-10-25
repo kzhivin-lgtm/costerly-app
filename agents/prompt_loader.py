@@ -13,9 +13,6 @@ DETECTION_VISUAL_REGISTRY_VNEXT_PROMPT_PATH = PROMPTS_DIR / "detection_visual_re
 DETECTION_V5_DISCOVERY_PROMPT_PATH = PROMPTS_DIR / "detection_v5_discovery_prompt.md"
 DETECTION_V5_MEMBERSHIP_PROMPT_PATH = PROMPTS_DIR / "detection_v5_membership_prompt.md"
 DETECTION_V5_PROPOSAL_PROMPT_PATH = PROMPTS_DIR / "detection_v5_proposal_prompt.md"
-DETECTION_V6_6_SINGLE_BBOX_PROPOSAL_PROMPT_PATH = (
-    PROMPTS_DIR / "detection_v6_6_single_bbox_proposal_prompt.md"
-)
 DETECTION_V5_REVIEW_PROMPT_PATH = PROMPTS_DIR / "detection_v5_review_prompt.md"
 DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_PROMPT_PATH = (
     PROMPTS_DIR / "detection_v5_source_degraded_discovery_prompt.md"
@@ -109,15 +106,6 @@ def load_detection_v5_proposal_prompt() -> str:
     prompt = DETECTION_V5_PROPOSAL_PROMPT_PATH.read_text(encoding="utf-8").strip()
     if not prompt:
         raise ValueError("Detection V5 proposal prompt is empty")
-    return prompt
-
-
-def load_detection_v6_6_single_bbox_proposal_prompt() -> str:
-    prompt = DETECTION_V6_6_SINGLE_BBOX_PROPOSAL_PROMPT_PATH.read_text(
-        encoding="utf-8"
-    ).strip()
-    if not prompt:
-        raise ValueError("Detection V6.6 single-bbox proposal prompt is empty")
     return prompt
 
 
