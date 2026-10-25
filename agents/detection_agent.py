@@ -449,7 +449,16 @@ def run_detection_agent(
                 }
             route = source_degraded_route
         else:
-            regions = build_detection_registry_regions(registry_images)
+            # Fixed pre-Discovery crops duplicate one full page-equivalent of
+            # pixels. They remain only for the deterministic Adda-style
+            # boundary-risk route, where the protected benchmark shows they
+            # preserve cross-page commercial grouping. Ordinary Haiku routes
+            # receive the complete rendered pages and Fusion evidence alone.
+            regions = (
+                build_detection_registry_regions(registry_images)
+                if route.get("decision") == "sonnet_boundary_risk"
+                else []
+            )
             _visual_map, registry, visual_registry_usage = run_anthropic_detection_visual_registry_agent(
                 file_name=file_name, company_id=company_id, file_bytes=file_bytes,
                 page_images=registry_images, regions=regions,

@@ -823,6 +823,20 @@ boundaries regress. This experiment is rejected and the fixed Discovery crops
 are restored. A later replacement must prove that post-discovery object/View
 crops preserve Adda's cross-page grouping before it can eliminate them.
 
+ACTIVE EXPERIMENT, P0, V6.4, route-scoped fixed pre-discovery crops: preserve
+the V6.3 baseline for the deterministic `sonnet_boundary_risk` route only,
+which is the unlabelled repeated-multiple-drawing-region condition that Adda
+meets. Ordinary `haiku_default` Registry runs must pass `regions=[]` and no
+longer construct JPEG crops. The router itself, model choice, Fusion, Page23
+source-degraded route, 200-DPI rendered page input, Candidate Q, graph and
+post-discovery Review crops are out of scope. Acceptance requires Adda retain
+its protected two cross-page commercial objects, HSL retain the active Island
+inventory, Page23 retain its protected source-degraded three-object result,
+and usage confirm zero `pre_discovery_region_count` for HSL but retained
+regions for Adda. Railway deployment titles for this and every later Detection
+version must include the version identifier, using the versioned commit
+subject as the deployment title.
+
 DEFERRED, P2, USER DIRECTION, Detection input and cost optimisation: begin
 only after the owner concludes the current correctness experiment. Assess the
 full-page Evidence Inventory, Candidate Pair Q prompt rendering, static crops,
