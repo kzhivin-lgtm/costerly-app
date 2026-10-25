@@ -199,9 +199,13 @@ def test_v610_combined_review_keeps_trigger_and_requires_complete_criteria():
         "trigger_criterion": "geometry",
         "disposition": "same_object",
         "reason": "Two independent structural correspondences are visible.",
-        "criteria": _v69_criteria(
-            topology="supports_same_object", geometry="supports_same_object",
-        ),
+        "criteria": {
+            "identifier": "not_visible",
+            "topology": "supports_same_object",
+            "geometry": "supports_same_object",
+            "dimensions": "not_visible",
+            "construction": "not_visible",
+        },
         "evidence": _v69_evidence(),
     }], allowed_group_ids={"left", "right"})
 
@@ -216,9 +220,13 @@ def test_v610_combined_review_keeps_trigger_and_requires_complete_criteria():
             "trigger_criterion": "geometry",
             "disposition": "same_object",
             "reason": "Two independent structural correspondences are visible.",
-            "criteria": _v69_criteria(
-                topology="supports_same_object", geometry="supports_same_object",
-            ),
+            "criteria": {
+                "identifier": "not_visible",
+                "topology": "supports_same_object",
+                "geometry": "supports_same_object",
+                "dimensions": "not_visible",
+                "construction": "not_visible",
+            },
             "evidence": _v69_evidence(),
         }], allowed_group_ids={"left", "right"})
 

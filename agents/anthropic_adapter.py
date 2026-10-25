@@ -826,10 +826,19 @@ DETECTION_V69_CRITERIA_JSON_SCHEMA: dict[str, Any] = {
         "maxItems": 20, "items": DETECTION_V69_PAIR_DECISION_SCHEMA}},
 }
 # V6.10 keeps the V6.9 proof rule, but makes Review emit the candidate trigger
-# and its complete five-criterion card in one response.  This avoids a second
-# visual pass over the same page contexts and crops.
-DETECTION_V610_PAIR_CRITERION_SCHEMA = copy.deepcopy(DETECTION_V69_PAIR_CRITERION_SCHEMA)
-DETECTION_V610_PAIR_CRITERION_SCHEMA["properties"]["observation"]["maxLength"] = 56
+# and its complete five-criterion card in one response. The five statuses are
+# deliberately enum-only: verbose criterion prose previously exhausted the
+# response budget before valid JSON could close.
+DETECTION_V610_CRITERIA_STATUS_SCHEMA = {
+    "type": "object", "additionalProperties": False,
+    "required": list(DETECTION_V69_CRITERION_NAMES),
+    "properties": {
+        name: {"type": "string", "enum": [
+            "supports_same_object", "contradicts_same_object", "not_visible",
+        ]}
+        for name in DETECTION_V69_CRITERION_NAMES
+    },
+}
 DETECTION_V610_PAIR_EVIDENCE_SCHEMA = copy.deepcopy(DETECTION_V68_PAIRWISE_DECISION_EVIDENCE_SCHEMA)
 DETECTION_V610_PAIR_EVIDENCE_SCHEMA["properties"]["observation"]["maxLength"] = 72
 DETECTION_V610_PAIR_DECISION_SCHEMA: dict[str, Any] = {
@@ -846,9 +855,8 @@ DETECTION_V610_PAIR_DECISION_SCHEMA: dict[str, Any] = {
             "same_object", "different_objects", "insufficient_evidence",
         ]},
         "reason": {"type": "string", "minLength": 8, "maxLength": 72},
-        "criteria": {"type": "array", "minItems": 5, "maxItems": 5,
-                     "items": DETECTION_V610_PAIR_CRITERION_SCHEMA},
-        "evidence": {"type": "array", "maxItems": 4,
+        "criteria": DETECTION_V610_CRITERIA_STATUS_SCHEMA,
+        "evidence": {"type": "array", "maxItems": 2,
                      "items": DETECTION_V610_PAIR_EVIDENCE_SCHEMA},
     },
 }
@@ -2983,14 +2991,32 @@ def normalize_detection_v610_evidence_review_decisions(
             or (left, right) in seen
         ):
             raise ValueError("V6.10 evidence review pair is invalid")
+        compact_criteria = raw.get("criteria")
+        if (
+            not isinstance(compact_criteria, dict)
+            or set(compact_criteria) != set(DETECTION_V69_CRITERION_NAMES)
+            or any(
+                compact_criteria[name] not in {
+                    "supports_same_object", "contradicts_same_object", "not_visible",
+                }
+                for name in DETECTION_V69_CRITERION_NAMES
+            )
+        ):
+            raise ValueError("V6.10 compact criteria are invalid")
         seen.add((left, right))
         pairs.append((left, right))
         triggers[(left, right)] = trigger
-        stripped_decisions.append({
+        decision = {
             key: copy.deepcopy(value)
             for key, value in raw.items()
             if key != "trigger_criterion"
-        })
+        }
+        decision["criteria"] = [{
+            "criterion": name,
+            "assessment": compact_criteria[name],
+            "observation": "Compact V6.10 criterion status.",
+        } for name in DETECTION_V69_CRITERION_NAMES]
+        stripped_decisions.append(decision)
     facts, audit = normalize_detection_v69_pair_criteria_decisions(
         stripped_decisions, expected_pairs=pairs,
     )

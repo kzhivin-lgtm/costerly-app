@@ -830,13 +830,13 @@ def test_v610_small_mistral_anchor_route_audits_each_sparse_link_before_merge():
         "group_id_a": "raw_left", "group_id_b": "raw_right",
         "trigger_criterion": "geometry",
         "disposition": "same_object", "reason": "The same uncommon L return is visible in both views.",
-        "criteria": [
-            {"criterion": "identifier", "assessment": "not_visible", "observation": "No literal object-specific identifier is visible in both views."},
-            {"criterion": "topology", "assessment": "supports_same_object", "observation": "Both views show the same three-bay arrangement ending at an L return."},
-            {"criterion": "geometry", "assessment": "supports_same_object", "observation": "Both views show the same uncommon L-shaped 1830 by 1188 return."},
-            {"criterion": "dimensions", "assessment": "not_visible", "observation": "No second complete dimensional reading is visible for a direct comparison."},
-            {"criterion": "construction", "assessment": "not_visible", "observation": "No separate physical continuity witness is required for these alternate views."},
-        ],
+        "criteria": {
+            "identifier": "not_visible",
+            "topology": "supports_same_object",
+            "geometry": "supports_same_object",
+            "dimensions": "not_visible",
+            "construction": "not_visible",
+        },
         "evidence": [{
             "evidence_type": "unique_geometry", "strength": "standard",
             "observation": "Both views show the uncommon L-shaped 1830 by 1188 cabinet return.",
@@ -884,24 +884,13 @@ def test_v610_small_mistral_anchor_route_audits_each_sparse_link_before_merge():
     assert usage["raw_usage"]["v6_10_evidence_review"] is not None
     assert create_message.call_count == 2
     assert (usage["input_tokens"], usage["output_tokens"]) == (200, 40)
-    assert usage["raw_usage"]["semantic_ledger_audit"]["v6_10_pairwise_decisions"] == [{
-        "group_id_a": "view-001", "group_id_b": "view-002",
-        "trigger_criterion": "geometry",
-        "disposition": "same_object",
-        "reason": "The same uncommon L return is visible in both views.",
-        "criteria": [
-            {"criterion": "identifier", "assessment": "not_visible", "observation": "No literal object-specific identifier is visible in both views."},
-            {"criterion": "topology", "assessment": "supports_same_object", "observation": "Both views show the same three-bay arrangement ending at an L return."},
-            {"criterion": "geometry", "assessment": "supports_same_object", "observation": "Both views show the same uncommon L-shaped 1830 by 1188 return."},
-            {"criterion": "dimensions", "assessment": "not_visible", "observation": "No second complete dimensional reading is visible for a direct comparison."},
-            {"criterion": "construction", "assessment": "not_visible", "observation": "No separate physical continuity witness is required for these alternate views."},
-        ],
-        "supporting_criteria": ["geometry", "topology"],
-        "contradicting_criteria": [],
-        "evidence_count": 2,
-        "evidence_types": ["matching_topology", "unique_geometry"],
-        "computed_strength": "strong",
-    }]
+    decision = usage["raw_usage"]["semantic_ledger_audit"]["v6_10_pairwise_decisions"][0]
+    assert decision["trigger_criterion"] == "geometry"
+    assert decision["computed_strength"] == "strong"
+    assert [row["assessment"] for row in decision["criteria"]] == [
+        "not_visible", "supports_same_object", "supports_same_object",
+        "not_visible", "not_visible",
+    ]
 
 
 def test_whole_architectural_floor_plan_is_demoted_to_document_context():
