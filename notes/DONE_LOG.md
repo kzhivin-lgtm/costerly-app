@@ -1,5 +1,18 @@
 # Done Log
 
+Detection V6.10 combined Evidence Review experimental checkpoint `27e7e22`:
+the bounded V6.7 Sonnet Mistral-anchor route replaces V6.9's sequential
+preliminary-link and criteria calls with one compact, fully auditable evidence
+review. Adda run `run_c2ddd6be0c5b4add910d317382691d54` retained the eight
+Mistral boxes and returned the required two four-View objects. Detection took
+98.857 seconds at `$0.167211`, 31.1 percent faster and 29.5 percent cheaper
+than V6.9's true three-call total. Reconciliation did not run in this complete
+strong-graph result, so the checkpoint does not accept it live. The page-1
+local View-label order remains an audit defect. This is a protected experiment,
+not a universal route acceptance. Full evidence:
+`notes/DETECTION_V6_10_COMBINED_EVIDENCE_REVIEW_EXPERIMENTAL_CHECKPOINT_2026_10_25.md`,
+завершена 25.10
+
 Detection V5.37 native-XObject embedding witness checkpoint `8dbf34e`: preserves
 source-authored XObject Islands and adds a bounded DINOv2 witness rule only for
 the eligible native-XObject route. Six independent production Page23 runs were

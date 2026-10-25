@@ -1,5 +1,23 @@
 # Detection Agent benchmark
 
+## V6.10 Adda combined Evidence Review checkpoint, 2026-10-25
+
+Status: protected experimental result, not a universal acceptance. Source is
+the private Adda drawing. V6.10 applies only to the bounded V6.7 Sonnet
+Mistral-anchor route with two to ten object-evidence Islands. It leaves the
+ordinary Haiku, Page23 and source-degraded paths unchanged.
+
+Adda `run_c2ddd6be0c5b4add910d317382691d54` retained eight Mistral groups and
+returned the expected two four-View commercial components: the L-shaped cabinet
+owns P1-right, P2-right, P3-right and P4-right, while the counter owns P1-left,
+P2-left, P3-left and P4-left. Combined Evidence Review used 98.857 Detection
+seconds, 23,557 input tokens, 6,436 output tokens and `$0.167211`, compared
+with V6.9's 143.445 seconds and `$0.237150` for the equivalent correct result.
+Conditional reconciliation was not exercised because all eight selected links
+were already strong. Page-1 positional View labels remain locally reversed
+relative to pages 2 through 4, but membership is correct. Full audit:
+`notes/DETECTION_V6_10_COMBINED_EVIDENCE_REVIEW_EXPERIMENTAL_CHECKPOINT_2026_10_25.md`.
+
 ## HSL Visual-Island recall gate, owner-defined 2026-10-21
 
 Status: active. Source: private `Hasolelim_Carpentry_Plan_Floor_07.pdf`.

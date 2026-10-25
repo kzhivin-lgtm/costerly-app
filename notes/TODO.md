@@ -911,7 +911,7 @@ non-V6.7 routes. First and only live gate: run Adda, compare the two expected
 four-View components with V6.7, then measure additional Review duration,
 tokens, and cost before considering any broader route.
 
-ACTIVE EXPERIMENT, P0, V6.9, criteria-then-reconciliation for the V6.7
+SUPERSEDED EXPERIMENT, P0, V6.9, criteria-then-reconciliation for the V6.7
 Mistral-anchor route only: preserve Discovery and page-local Mistral boundary
 authority. Membership now has three bounded stages. First, Review emits sparse
 `preliminary_links`, each naming the exact pair and the first criterion that
@@ -934,19 +934,33 @@ rows for a 3+3+2 preliminary result, and return the exact Counter and L-shaped
 four-View memberships. Compare Review duration, tokens and cost with V6.7 and
 V6.8 before extending any route.
 
-ACTIVE EXPERIMENT, P0, V6.10, combined evidence review for the V6.7
-Mistral-anchor route only: preserve V6.9's sparse, universal pair selection,
-all five criterion assessments per proposed pair, deterministic strong rule,
-and conditional reconciliation. Replace only the two sequential Membership
-Review calls with one response: every sparse candidate row includes its first
-trigger criterion and its complete five-criterion card. Do not prune candidate
-links because they are graph-redundant in Adda or any other document. The
-runtime must continue to audit every proposed pair, and reconciliation remains
-available only after the combined cards are evaluated. First gate is Adda:
-retain the eight Mistral boxes and exact two four-View memberships, then
-compare actual provider-call count, full-cycle duration, tokens, and cost with
-V6.9. The aggregate usage event must include both Proposal and the combined
-Evidence Review so that cost is not underreported.
+PROTECTED EXPERIMENTAL CHECKPOINT, P0, V6.10, combined evidence review for the
+V6.7 Mistral-anchor route only. Implementation is `1bd3c6e`, `c447b5c`,
+`27e7e22`; full record is
+`notes/DETECTION_V6_10_COMBINED_EVIDENCE_REVIEW_EXPERIMENTAL_CHECKPOINT_2026_10_25.md`.
+Adda `run_c2ddd6be0c5b4add910d317382691d54` retained all eight Mistral boxes
+and the exact two four-View memberships. It used two provider calls, 98.857
+Detection seconds, 23,557 input tokens, 6,436 output tokens and `$0.167211`.
+This is 31.1 percent faster and 29.5 percent cheaper than V6.9's true
+three-call sum, while retaining the correct result. The aggregate event now
+includes Proposal plus Combined Evidence Review. Conditional reconciliation did
+not execute because every selected link was already strong. Do not generalize
+this result, prune candidates, tune the prompt, or alter boundaries from this
+one successful Adda run.
+
+PENDING LIVE GATE, P0, V6.10 conditional reconciliation: before changing the
+combined Evidence Review contract or expanding its route, run a document whose
+sparse strong graph leaves an Island or component for reconciliation. Verify
+the chosen reference member, all five criterion cards, exact final membership,
+provider-call count, latency, tokens and cost. This is the first safe next
+experiment after the protected Adda checkpoint.
+
+OPEN DIAGNOSTIC, P1, V6.10 Adda local View-label ordering: page 1 assigns
+`P01.V1` to the right/upper L-shaped view and `P01.V2` to the left/lower
+counter, while pages 2 through 4 use the opposite positional order. Current
+object membership is correct. Diagnose the source of local display ordering
+without changing Mistral boxes, pair evidence, graph membership or package
+boundaries merely to make labels look uniform.
 
 SUPERSEDED INPUT CONTRACT, V6.5, no static pre-Discovery crops: remove the three
 fixed `upper_left`, `upper_right`, and `lower` images from the Adda
