@@ -968,14 +968,21 @@ assembly through an overview plus sections, component details, installation
 context and hardware rather than multiple independently quotable products. The
 first witness is `V_Cabiner.pdf`, a six-page vector-rich Order 1208 drawing
 set. Do not route from filename, project/order number, repeated material or
-page count. Require a root assembly/overview and a cited `part_of` graph from
-each proposed component detail to that root. A page or Island without such a
-relationship remains a separate candidate or `unresolved`, never forcibly
-merged into the document scope. Detection must preserve the component graph,
-source facts, quantities and confidence for Estimation, while publishing one
-commercial assembly only when all included members are evidenced. Decide the
-contract and benchmark before assigning an implementation version or changing
-any current HSL, Page23 or Adda route.
+page count. Existing `component_detail` is deliberately same-page-only and
+must not be widened. Introduce a separate cross-page `part_of` relation within
+an `assembly_dossier` scope, whose root may be one overview or a connected root
+set. Dimension mismatch between an overall envelope and a carcass, module or
+hardware detail is `non_comparable`, never negative evidence. A dimension may
+contradict `part_of` only when both cited views explicitly claim incompatible
+finished overall envelopes. Require a cited relationship graph from each
+proposed member to the scope, using authored cross-references, visual
+structural correspondence, component role, or other pair-specific evidence.
+A page or Island without such a relationship remains a separate candidate or
+`unresolved`, never forcibly merged into the document scope. Detection must
+preserve the component graph, source facts, quantities and confidence for
+Estimation, while publishing one commercial assembly only when all included
+members are evidenced. Decide the contract and benchmark before assigning an
+implementation version or changing any current HSL, Page23 or Adda route.
 
 SUPERSEDED INPUT CONTRACT, V6.5, no static pre-Discovery crops: remove the three
 fixed `upper_left`, `upper_right`, and `lower` images from the Adda
