@@ -20,6 +20,7 @@ from agents.detection_model_router import (
 )
 from agents.detection_page_images import (
     DEFAULT_PAGE_IMAGE_DPI,
+    build_detection_registry_regions,
     render_detection_pdf_pages,
 )
 from agents.prompt_loader import load_detection_visual_registry_prompt
@@ -448,12 +449,10 @@ def run_detection_agent(
                 }
             route = source_degraded_route
         else:
+            regions = build_detection_registry_regions(registry_images)
             _visual_map, registry, visual_registry_usage = run_anthropic_detection_visual_registry_agent(
                 file_name=file_name, company_id=company_id, file_bytes=file_bytes,
-                # A fixed page quadrant is neither an Island nor an authored
-                # graphic boundary.  Discovery must see complete pages only;
-                # later review may use a crop only after a View bbox exists.
-                page_images=registry_images, regions=[],
+                page_images=registry_images, regions=regions,
                 ocr_package=ocr_package, model=route["registry_model"],
             )
     except DetectionVisualRegistryValidationError as exc:

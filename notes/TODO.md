@@ -795,25 +795,33 @@ to either model call. The source-degraded route, router, models, candidate
 regions, Candidate Q, embedding rules, deterministic graph and packages stay
 unchanged.
 
-ACTIVE EXPERIMENT, P0, V6.3, no fixed pre-discovery page crops: ordinary
-Registry Discovery now receives only complete 200-DPI pages plus its existing
-Fusion text. The old fixed `upper_left`, `upper_right`, and `lower` crop set is
-removed. It was not sourced from an Island, View or author-issued PDF boundary,
-could show a physically continuous depiction in fragments, and duplicated one
-full page-equivalent of pixels per page. Preserve 200-DPI rendering, Mistral,
-Fusion, router choice, Candidate Regions, Candidate Q, the source-degraded
-Page23 route and post-discovery View crops. A post-discovery crop may remain a
-second-pass magnifier only, never create, split or move an Island boundary.
+REJECTED EXPERIMENT, P0, V6.3, no fixed pre-discovery page crops: ordinary
+Registry Discovery briefly received only complete 200-DPI pages plus existing
+Fusion text. The change removed the fixed `upper_left`, `upper_right`, and
+`lower` crop set. It was not sourced from an Island, View or author-issued PDF
+boundary, could show a physically continuous depiction in fragments, and
+duplicated one full page-equivalent of pixels per page. The protected crop
+contract is restored after the Adda regression below. Preserve 200-DPI
+rendering, Mistral, Fusion, router choice, Candidate Regions, Candidate Q, the
+source-degraded Page23 route and post-discovery View crops. A post-discovery
+crop may remain a second-pass magnifier only, never create, split or move an
+Island boundary.
 
-Current 200-DPI local input measurement: HSL has 11 full pages and formerly
+Current 200-DPI local input measurement: HSL has 11 full pages and
 added 33 fixed crops, 29,680,851 duplicated pixels and 2,854,649 JPEG bytes;
 Adda has four pages and formerly added 12 crops, 11,312,000 duplicated pixels
 and 830,268 JPEG bytes. These byte and pixel figures are not provider-token
-estimates. Verification requires fresh HSL and Adda runs with the same active
-contract, recording Proposal and Review input/output tokens, cost, duration,
-Island/classification inventory, packages and `pre_discovery_region_count=0`.
-Do not accept token savings alone if the protected page-local inventory or
-commercial boundaries regress.
+estimates. Fresh production V6.3 runs confirmed `pre_discovery_region_count=0`.
+HSL retained its active Island inventory, 10 packages and the same ten
+review-required File Review rows. Versus the directly comparable fixed-crop
+run, it saved 34,526 input tokens (142,539 to 108,013) and $0.036291
+($0.187694 to $0.151403). Adda saved 12,120 input tokens (33,865 to 21,745)
+and $0.041010 ($0.160950 to $0.119940), but regressed from two cross-page
+commercial objects to eight page-local, review-required objects. Do not accept
+token savings alone if the protected page-local inventory or commercial
+boundaries regress. This experiment is rejected and the fixed Discovery crops
+are restored. A later replacement must prove that post-discovery object/View
+crops preserve Adda's cross-page grouping before it can eliminate them.
 
 DEFERRED, P2, USER DIRECTION, Detection input and cost optimisation: begin
 only after the owner concludes the current correctness experiment. Assess the

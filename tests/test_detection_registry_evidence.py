@@ -188,6 +188,7 @@ def test_v49_routes_default_registry_to_haiku_without_evidence_handoff():
 
     with (
         patch("agents.detection_agent.get_secret", side_effect=lambda _name, default: default),
+        patch("agents.detection_agent.build_detection_registry_regions", return_value=[]),
         patch(
             "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
             side_effect=capture_registry,
@@ -202,7 +203,6 @@ def test_v49_routes_default_registry_to_haiku_without_evidence_handoff():
         )
 
     assert registry_call["model"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL
-    assert registry_call["regions"] == []
     assert len(result["_agent_usage_events"]) == 1
 
 
@@ -228,6 +228,7 @@ def test_v49_routes_only_adda_style_registry_to_sonnet_without_evidence_handoff(
     }
     with (
         patch("agents.detection_agent.get_secret", side_effect=lambda _name, default: default),
+        patch("agents.detection_agent.build_detection_registry_regions", return_value=[]),
         patch(
             "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
             side_effect=capture_registry,
@@ -247,7 +248,6 @@ def test_v49_routes_only_adda_style_registry_to_sonnet_without_evidence_handoff(
         )
 
     assert registry_call["model"] == "claude-sonnet-4-6"
-    assert registry_call["regions"] == []
     assert len(result["_agent_usage_events"]) == 1
 
 
