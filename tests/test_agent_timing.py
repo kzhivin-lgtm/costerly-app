@@ -149,7 +149,7 @@ def test_v611_document_scope_candidate_needs_a_real_view_relationship():
         {"group_id": "detail", "page_number": 2},
     ]
     decision = validate_detection_v611_document_scope({
-        "classification": "assembly_dossier_candidate",
+        "classification": "assembly_set_candidate",
         "root_group_ids": ["overview"],
         "witnesses": [{
             "kind": "overview_detail_hierarchy",
@@ -158,7 +158,7 @@ def test_v611_document_scope_candidate_needs_a_real_view_relationship():
         }],
     }, visual_groups=groups)
 
-    assert decision["decision"] == "assembly_dossier_candidate"
+    assert decision["decision"] == "assembly_set_candidate"
     assert decision["affects_membership"] is False
     assert decision["dimension_mismatch_policy"] == (
         "non_comparable_unless_finished_envelopes_conflict"
@@ -166,7 +166,7 @@ def test_v611_document_scope_candidate_needs_a_real_view_relationship():
 
     with pytest.raises(ValueError, match="lacks a relationship witness"):
         validate_detection_v611_document_scope({
-            "classification": "assembly_dossier_candidate",
+            "classification": "assembly_set_candidate",
             "root_group_ids": ["overview"],
             "witnesses": [{
                 "kind": "document_set_continuity",

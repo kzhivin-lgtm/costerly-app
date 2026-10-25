@@ -970,15 +970,15 @@ first witness is `V_Cabiner.pdf`, a six-page vector-rich Order 1208 drawing
 set. Do not route from filename, project/order number, repeated material or
 page count. Existing `component_detail` is deliberately same-page-only and
 must not be widened. Introduce a separate cross-page `part_of` relation within
-an `assembly_dossier` scope, whose root may be one overview or a connected root
+an `assembly_set` scope, whose root may be one overview or a connected root
 set. Dimension mismatch between an overall envelope and a carcass, module or
 hardware detail is `non_comparable`, never negative evidence. A dimension may
 contradict `part_of` only when both cited views explicitly claim incompatible
 finished overall envelopes. Require a cited relationship graph from each
 proposed member to the scope, using authored cross-references, visual
 structural correspondence, component role, or other pair-specific evidence.
-A page or Island without such a relationship remains a separate candidate or
-`unresolved`, never forcibly merged into the document scope. Detection must
+A page or Island without such a relationship remains a separate candidate,
+never forcibly merged into the document scope. Detection must
 preserve the component graph, source facts, quantities and confidence for
 Estimation, while publishing one commercial assembly only when all included
 members are evidenced. Decide the contract and benchmark before assigning an
@@ -986,21 +986,39 @@ implementation version or changing any current HSL, Page23 or Adda route.
 
 ACTIVE EXPERIMENT, P0, V6.11 document-scope observation before Membership
 Review: extend the existing full-page Discovery response with one validated,
-compact `document_scope` decision. It is the semantic router between Discovery
-and Membership Review, not a pre-OCR heuristic and not a fourth final route.
-Allowed decisions are `assembly_dossier_candidate`, `ordinary_object_set` and
-`unresolved`; an assembly candidate needs a root/root-set and a cited hierarchy,
+compact `document_scope` decision. It is a semantic scope observation between
+Discovery and Membership Review, not a pre-OCR router and not a fourth final route.
+Allowed decisions are `assembly_set_candidate` and `ordinary_object_set`; an
+assembly candidate needs a root/root-set and a cited hierarchy,
 cross-reference or visual-component witness. Shared client/order metadata,
 date, material, title block, page numbering and page count remain insufficient.
 The decision is audit-only in V6.11: it must not affect Island boundaries,
 Candidate Q, Dimensions, merge graph, commercial Objects or Estimation output.
 Dimension mismatch is `non_comparable` unless two cited views explicitly claim
 incompatible finished outer envelopes. First live gate: V_Cabiner returns an
-auditable `assembly_dossier_candidate` with valid root and View witnesses;
+auditable `assembly_set_candidate` with valid root and View witnesses;
 inspect the resulting Island inventory and Objects explicitly, while no runtime
 downstream decision may consume this field. Only after this shadow gate and
-negative controls may a V6.12 specialised `part_of` Membership Review be
-proposed.
+negative controls may a specialised `part_of` Membership Review be proposed.
+
+ACTIVE EXPERIMENT, P0, V6.12 pre-Sonnet document categorization: replace the
+former V4.2 binary model router with a deterministic scenario classifier that
+consumes completed MyPDF/Mistral/Fusion evidence before any Detection-model
+call. Categories are `source_degraded_visual`, `page23_native_graphic_pack`,
+`assembly_set`, `ada_sparse_multi_object`, and `ordinary_object_set`; there is
+no unresolved route, so all non-evidenced special cases default to ordinary.
+`source_degraded_visual` remains a capability override for pages with no usable
+coordinate evidence, while a source-degraded PDF with multiple native graphic
+anchors retains the Page23 category. `assembly_set` is a routing class, not
+proof of one final commercial object: its V1 gate is a continuous document
+identifier across a majority of three or more structured technical pages, and
+it must use Haiku. Only the remaining Ada-shaped boundary-risk category may
+select Sonnet. V6.12 must not change Island boundaries, Candidate Q, graph
+membership, scope observation, quantities or Estimation output. First live
+route gates are V_Cabiner -> assembly_set/Haiku, Page23 -> native graphic pack,
+Adda -> Ada/Sonnet, and HSL -> ordinary/Haiku. Audit each gate for category,
+model, timing, cost, Island inventory and final Objects before considering any
+membership work.
 
 SUPERSEDED INPUT CONTRACT, V6.5, no static pre-Discovery crops: remove the three
 fixed `upper_left`, `upper_right`, and `lower` images from the Adda

@@ -13,10 +13,10 @@ from agents.anthropic_adapter import (
     run_anthropic_detection_visual_registry_agent,
 )
 from agents.detection_source_capability import assess_detection_source_capability
-from agents.detection_model_router import (
-    DEFAULT_CLAUDE_DETECTION_V4_BOUNDARY_MODEL,
-    DEFAULT_CLAUDE_DETECTION_V4_MODEL,
-    detection_v42_model_route,
+from agents.detection_document_classifier import (
+    DEFAULT_CLAUDE_DETECTION_BOUNDARY_MODEL,
+    DEFAULT_CLAUDE_DETECTION_MODEL,
+    classify_detection_document,
 )
 from agents.detection_page_images import (
     DEFAULT_PAGE_IMAGE_DPI,
@@ -25,6 +25,11 @@ from agents.detection_page_images import (
 )
 from agents.prompt_loader import load_detection_visual_registry_prompt
 from agents.schemas.detection_schema import validate_detection_result
+
+# Preserve the established import surface while V6.12 replaces the old binary
+# router with scenario categorization. The configured secret names remain V4.
+DEFAULT_CLAUDE_DETECTION_V4_MODEL = DEFAULT_CLAUDE_DETECTION_MODEL
+DEFAULT_CLAUDE_DETECTION_V4_BOUNDARY_MODEL = DEFAULT_CLAUDE_DETECTION_BOUNDARY_MODEL
 
 
 def _enforce_shared_track_door_system_quantity(registry: dict) -> dict:
@@ -280,11 +285,11 @@ def get_secret(name: str, default: str | None = None) -> str | None:
 
 
 def _attach_detection_model_route(event: object, route: dict) -> object:
-    """Persist the deterministic routing basis beside the provider usage."""
+    """Persist the deterministic scenario category beside provider usage."""
     if not isinstance(event, dict):
         return event
     raw_usage = dict(event.get("raw_usage") or {})
-    raw_usage["detection_v4_2_model_route"] = route
+    raw_usage["detection_v6_12_document_category"] = route
     event["raw_usage"] = raw_usage
     return event
 
@@ -375,19 +380,12 @@ def run_detection_agent(
 
     base_model = get_secret(
         "CLAUDE_DETECTION_V4_MODEL",
-        DEFAULT_CLAUDE_DETECTION_V4_MODEL,
+        DEFAULT_CLAUDE_DETECTION_MODEL,
     )
     boundary_model = get_secret(
         "CLAUDE_DETECTION_V4_BOUNDARY_MODEL",
-        DEFAULT_CLAUDE_DETECTION_V4_BOUNDARY_MODEL,
+        DEFAULT_CLAUDE_DETECTION_BOUNDARY_MODEL,
     )
-    route = detection_v42_model_route(
-        ocr_package=ocr_package,
-        base_model=str(base_model),
-        boundary_model=str(boundary_model),
-        explicit_model=model,
-    )
-
     registry_images = page_images
     if registry_images is None and file_name.lower().endswith(".pdf"):
         registry_images, _ = render_detection_pdf_pages(file_bytes)
@@ -399,6 +397,13 @@ def run_detection_agent(
         source_facts=build_detection_page_evidence_inventory(ocr_package),
         page_count=len(registry_images),
         page_dimensions=_source_dimensions_by_page(ocr_package),
+    )
+    route = classify_detection_document(
+        ocr_package=ocr_package,
+        source_capability=source_capability,
+        base_model=str(base_model),
+        boundary_model=str(boundary_model),
+        explicit_model=model,
     )
     if stage_callback:
         stage_callback("Detection Registry started")
@@ -458,13 +463,11 @@ def run_detection_agent(
                 file_name=file_name, company_id=company_id, file_bytes=file_bytes,
                 page_images=registry_images, regions=regions,
                 ocr_package=ocr_package, model=route["registry_model"],
-                # V6.7 is router-scoped. Only the documented boundary-risk
-                # route can elevate real Mistral graphic blocks into initial
-                # Island anchors; ordinary Haiku and source-degraded routes
-                # retain their established contracts.
-                mistral_anchor_admission=(
-                    route.get("decision") == "sonnet_boundary_risk"
-                ),
+                # V6.12 is scenario-scoped. Only the documented Ada boundary
+                # scenario can elevate real Mistral graphic blocks into initial
+                # Island anchors; ordinary, assembly-set and source-degraded
+                # scenarios retain their established contracts.
+                mistral_anchor_admission=(route.get("category") == "ada_sparse_multi_object"),
             )
     except DetectionVisualRegistryValidationError as exc:
         if stage_callback:

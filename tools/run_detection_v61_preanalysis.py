@@ -24,7 +24,10 @@ REPORT_PATH = Path("/private/tmp") / f"detection_v61_{PDF_PATH.stem}_{RUN_LABEL}
 def _compact_detection_audit(event: dict) -> dict:
     raw = event.get("raw_usage") or {}
     return {
-        "route": raw.get("detection_v4_2_model_route"),
+        "route": (
+            raw.get("detection_v6_12_document_category")
+            or raw.get("detection_v4_2_model_route")
+        ),
         "visual_group_counts_by_page": raw.get("visual_group_counts_by_page"),
         "raw_visual_group_counts_by_page": raw.get("raw_visual_group_counts_by_page"),
         "registry_object_count": raw.get("registry_object_count"),

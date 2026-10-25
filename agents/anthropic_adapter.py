@@ -698,9 +698,8 @@ DETECTION_V5_DISCOVERY_JSON_SCHEMA: dict[str, Any] = {
                 "classification": {
                     "type": "string",
                     "enum": [
-                        "assembly_dossier_candidate",
+                        "assembly_set_candidate",
                         "ordinary_object_set",
-                        "unresolved",
                     ],
                 },
                 "root_group_ids": {
@@ -4035,7 +4034,7 @@ def validate_detection_v611_document_scope(
         not isinstance(scope, dict)
         or set(scope) != {"classification", "root_group_ids", "witnesses"}
         or scope.get("classification") not in {
-            "assembly_dossier_candidate", "ordinary_object_set", "unresolved",
+            "assembly_set_candidate", "ordinary_object_set",
         }
         or not isinstance(scope.get("root_group_ids"), list)
         or not isinstance(scope.get("witnesses"), list)
@@ -4075,9 +4074,9 @@ def validate_detection_v611_document_scope(
             "group_ids": witness_ids,
             "observation": " ".join(str(witness["observation"]).split()),
         })
-    if scope["classification"] == "assembly_dossier_candidate":
+    if scope["classification"] == "assembly_set_candidate":
         if not root_group_ids:
-            raise ValueError("V6.11 assembly dossier needs a root")
+            raise ValueError("V6.11 assembly set needs a root")
         if not any(
             witness["kind"] in {
                 "overview_detail_hierarchy", "authored_cross_reference",
@@ -4086,7 +4085,7 @@ def validate_detection_v611_document_scope(
             and witness["group_ids"]
             for witness in normalized_witnesses
         ):
-            raise ValueError("V6.11 assembly dossier lacks a relationship witness")
+            raise ValueError("V6.11 assembly set lacks a relationship witness")
     elif root_group_ids:
         raise ValueError("V6.11 non-assembly scope cannot name a root")
     return {

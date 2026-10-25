@@ -538,8 +538,8 @@ def process_uploaded_rfq(
             ocr_package=detection_ocr_package,
             page_images=page_images,
             page_image_diagnostics=page_image_diagnostics,
-            # V4.2 normally uses Haiku. Its deterministic OCR-layout router may
-            # select Sonnet only for a high-risk commercial-boundary Registry.
+            # V6.12 categorizes the completed OCR/Fusion package before any
+            # Detection model call and selects the scenario-owned model.
             model=None,
             stage_callback=(
                 (lambda label: progress_callback(label, page_count))

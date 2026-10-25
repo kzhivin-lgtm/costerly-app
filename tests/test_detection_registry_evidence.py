@@ -292,7 +292,7 @@ def test_source_degraded_route_uses_v532_pairwise_structural_admission_audit_and
     assert "component_only_partition_repair" not in source_degraded_call
     assert source_degraded_call["model"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL
     assert result["detected_objects"][0]["object_id"] == "object-001"
-    assert result["_agent_usage_events"][0]["raw_usage"]["detection_v4_2_model_route"]["decision"] == "source_degraded_visual_registry"
+    assert result["_agent_usage_events"][0]["raw_usage"]["detection_v6_12_document_category"]["category"] == "source_degraded_visual"
 
 
 def test_detection_audit_is_persisted_synchronously_and_must_succeed(monkeypatch):
