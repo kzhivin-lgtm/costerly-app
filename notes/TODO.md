@@ -1031,7 +1031,7 @@ Hasolelim HSL completes with the usual Haiku route, 35 Candidate Regions and a
 valid proposal JSON. Do not treat this transport recovery as a change to
 Fusion, Candidate Q, Island boundaries, routing, or membership.
 
-IMPLEMENTED, pending ordinary HSL confirmation, V6.14 route-scoped scope
+VERIFIED, protected ordinary HSL checkpoint, V6.14 route-scoped scope
 observation: V6.12 categorization has already selected the document scenario
 before any Detection-model request, so ordinary, Page23, Ada and degraded
 routes must not ask Discovery to re-classify document scope. Remove
@@ -1040,10 +1040,12 @@ provider response. Preserve it only for `assembly_set`, where V6.11 continues
 as an audit-only observation and runtime now enforces its four roots, four
 witnesses, four IDs per witness and 180-character observation bounds. Keep
 V6.13's one-time truncation recovery as a rare transport safeguard, not a
-normal ordinary-path cost. First live gate: Hasolelim HSL stays
-`ordinary_object_set`/Haiku and completes without a proposal retry; compare
-its Detection cost, provider attempts, Island inventory and commercial
-Objects with the V6.12 baseline before accepting quality.
+normal ordinary-path cost. HSL `run_e8006a40e1fe4c68846b59b44dacaf4c` stayed
+`ordinary_object_set`/Haiku, completed without retry at `$0.151403` Detection
+cost, and retained 32 object-evidence Islands in ten components. Its page-2
+floor plan was discarded document context. This protects the ordinary route
+only. Deferred Naming and Preview defects remain separate, and future HSL
+audits must preserve the full inventory, membership and cost evidence.
 
 SUPERSEDED INPUT CONTRACT, V6.5, no static pre-Discovery crops: remove the three
 fixed `upper_left`, `upper_right`, and `lower` images from the Adda

@@ -1,5 +1,17 @@
 # Detection Agent benchmark
 
+## V6.14 ordinary HSL cost and membership checkpoint, 2026-10-25
+
+Status: protected live checkpoint for the ordinary HSL route, not universal
+Detection acceptance. `run_e8006a40e1fe4c68846b59b44dacaf4c` selected
+`ordinary_object_set` and Haiku, retained 32 object-evidence Islands in ten
+proof-graph components, and completed without a V6.13 proposal retry. Its
+Detection cost was `$0.151403` for 66.514 seconds, while the known Detection
+plus Naming total was `$0.175261`. The page-2 floor plan was classified as
+`document_context` and discarded before membership, not saved as a commercial
+object. File Review names remain an independent deferred-Naming defect. Full
+record: `notes/DETECTION_V6_14_ORDINARY_HSL_CHECKPOINT_2026_10_25.md`.
+
 ## V6.10 Adda combined Evidence Review checkpoint, 2026-10-25
 
 Status: protected experimental result, not a universal acceptance. Source is
