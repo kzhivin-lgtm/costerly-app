@@ -984,6 +984,24 @@ Estimation, while publishing one commercial assembly only when all included
 members are evidenced. Decide the contract and benchmark before assigning an
 implementation version or changing any current HSL, Page23 or Adda route.
 
+ACTIVE EXPERIMENT, P0, V6.11 document-scope observation before Membership
+Review: extend the existing full-page Discovery response with one validated,
+compact `document_scope` decision. It is the semantic router between Discovery
+and Membership Review, not a pre-OCR heuristic and not a fourth final route.
+Allowed decisions are `assembly_dossier_candidate`, `ordinary_object_set` and
+`unresolved`; an assembly candidate needs a root/root-set and a cited hierarchy,
+cross-reference or visual-component witness. Shared client/order metadata,
+date, material, title block, page numbering and page count remain insufficient.
+The decision is audit-only in V6.11: it must not affect Island boundaries,
+Candidate Q, Dimensions, merge graph, commercial Objects or Estimation output.
+Dimension mismatch is `non_comparable` unless two cited views explicitly claim
+incompatible finished outer envelopes. First live gate: V_Cabiner returns an
+auditable `assembly_dossier_candidate` with valid root and View witnesses;
+inspect the resulting Island inventory and Objects explicitly, while no runtime
+downstream decision may consume this field. Only after this shadow gate and
+negative controls may a V6.12 specialised `part_of` Membership Review be
+proposed.
+
 SUPERSEDED INPUT CONTRACT, V6.5, no static pre-Discovery crops: remove the three
 fixed `upper_left`, `upper_right`, and `lower` images from the Adda
 `sonnet_boundary_risk` route as well as the ordinary Haiku route. Retain the

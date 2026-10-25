@@ -683,12 +683,57 @@ DETECTION_V5_DISCOVERY_JSON_SCHEMA: dict[str, Any] = {
     "additionalProperties": False,
     "required": [
         "visual_groups", "classifications", "candidate_region_exceptions", "page_coverage",
+        "document_scope",
     ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
         "candidate_region_exceptions": DETECTION_V5_CANDIDATE_REGION_EXCEPTIONS_SCHEMA,
         "page_coverage": DETECTION_V5_PAGE_COVERAGE_SCHEMA,
+        "document_scope": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["classification", "root_group_ids", "witnesses"],
+            "properties": {
+                "classification": {
+                    "type": "string",
+                    "enum": [
+                        "assembly_dossier_candidate",
+                        "ordinary_object_set",
+                        "unresolved",
+                    ],
+                },
+                "root_group_ids": {
+                    "type": "array", "maxItems": 4,
+                    "items": {"type": "string"},
+                },
+                "witnesses": {
+                    "type": "array", "maxItems": 4,
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["kind", "group_ids", "observation"],
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "overview_detail_hierarchy",
+                                    "authored_cross_reference",
+                                    "visual_component_structure",
+                                    "document_set_continuity",
+                                    "independent_finished_product",
+                                ],
+                            },
+                            "group_ids": {
+                                "type": "array", "maxItems": 4,
+                                "items": {"type": "string"},
+                            },
+                            "observation": {"type": "string", "maxLength": 180},
+                        },
+                    },
+                },
+            },
+        },
     },
 }
 
@@ -3969,6 +4014,90 @@ def _validate_and_apply_visual_registry_classifications(
         for group in enriched["visual_groups"]
     ]
     return enriched, audit
+
+
+def validate_detection_v611_document_scope(
+    scope: object,
+    *,
+    visual_groups: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Validate the V6.11 scope observation without changing object identity.
+
+    A scope candidate may later choose a specialised Review contract. It cannot
+    merge, discard, or reclassify an Island in this observability release.
+    """
+    group_ids = {
+        str(group.get("group_id") or "")
+        for group in visual_groups
+        if isinstance(group, dict) and str(group.get("group_id") or "")
+    }
+    if (
+        not isinstance(scope, dict)
+        or set(scope) != {"classification", "root_group_ids", "witnesses"}
+        or scope.get("classification") not in {
+            "assembly_dossier_candidate", "ordinary_object_set", "unresolved",
+        }
+        or not isinstance(scope.get("root_group_ids"), list)
+        or not isinstance(scope.get("witnesses"), list)
+    ):
+        raise ValueError("V6.11 document scope is invalid")
+    root_group_ids = [str(value) for value in scope["root_group_ids"] if str(value)]
+    if (
+        len(root_group_ids) != len(scope["root_group_ids"])
+        or len(root_group_ids) != len(set(root_group_ids))
+        or any(group_id not in group_ids for group_id in root_group_ids)
+    ):
+        raise ValueError("V6.11 document scope roots are invalid")
+    normalized_witnesses: list[dict[str, Any]] = []
+    allowed_kinds = {
+        "overview_detail_hierarchy", "authored_cross_reference",
+        "visual_component_structure", "document_set_continuity",
+        "independent_finished_product",
+    }
+    for witness in scope["witnesses"]:
+        if (
+            not isinstance(witness, dict)
+            or set(witness) != {"kind", "group_ids", "observation"}
+            or witness.get("kind") not in allowed_kinds
+            or not isinstance(witness.get("group_ids"), list)
+            or not str(witness.get("observation") or "").strip()
+        ):
+            raise ValueError("V6.11 document scope witness is invalid")
+        witness_ids = [str(value) for value in witness["group_ids"] if str(value)]
+        if (
+            len(witness_ids) != len(witness["group_ids"])
+            or len(witness_ids) != len(set(witness_ids))
+            or any(group_id not in group_ids for group_id in witness_ids)
+        ):
+            raise ValueError("V6.11 document scope witness references an unknown group")
+        normalized_witnesses.append({
+            "kind": str(witness["kind"]),
+            "group_ids": witness_ids,
+            "observation": " ".join(str(witness["observation"]).split()),
+        })
+    if scope["classification"] == "assembly_dossier_candidate":
+        if not root_group_ids:
+            raise ValueError("V6.11 assembly dossier needs a root")
+        if not any(
+            witness["kind"] in {
+                "overview_detail_hierarchy", "authored_cross_reference",
+                "visual_component_structure",
+            }
+            and witness["group_ids"]
+            for witness in normalized_witnesses
+        ):
+            raise ValueError("V6.11 assembly dossier lacks a relationship witness")
+    elif root_group_ids:
+        raise ValueError("V6.11 non-assembly scope cannot name a root")
+    return {
+        "version": "detection_v6_11_document_scope_observation",
+        "decision": str(scope["classification"]),
+        "root_group_ids": root_group_ids,
+        "witnesses": normalized_witnesses,
+        "affects_membership": False,
+        "affects_object_boundaries": False,
+        "dimension_mismatch_policy": "non_comparable_unless_finished_envelopes_conflict",
+    }
 
 
 def validate_detection_v5_source_degraded_role_resolutions(
@@ -9321,13 +9450,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         ) from exc
     discovery_fields = {
         "visual_groups", "classifications", "candidate_region_exceptions", "page_coverage",
+        "document_scope",
     }
     anchor_discovery_fields = {
         *discovery_fields, "candidate_region_decisions",
     }
     legacy_proposal_fields = {
         "visual_groups", "classifications", "candidate_region_exceptions",
-        "object_hypotheses", "semantic_facts",
+        "object_hypotheses", "semantic_facts", "document_scope",
     }
     expected_discovery_fields = (
         anchor_discovery_fields if mistral_anchor_admission_active else discovery_fields
@@ -9352,11 +9482,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "page_count": len(page_images),
         }]
     proposal_model_payload = copy.deepcopy(proposal_raw_payload)
+    proposal_scope_payload = proposal_raw_payload["document_scope"]
+    proposal_boundary_payload = copy.deepcopy(proposal_raw_payload)
+    proposal_boundary_payload.pop("document_scope", None)
     mistral_anchor_admission_audit: list[dict[str, Any]] = []
     if mistral_anchor_admission_active:
         proposal_discovery_payload, mistral_anchor_admission_audit = (
             apply_detection_v67_mistral_anchor_admission(
-                payload=proposal_raw_payload,
+                payload=proposal_boundary_payload,
                 candidate_regions=candidate_regions,
                 source_facts=source_facts,
             )
@@ -9365,10 +9498,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     else:
         proposal_discovery_payload = {
             field: proposal_raw_payload[field]
-            for field in discovery_fields - {"page_coverage"}
+            for field in discovery_fields - {"page_coverage", "document_scope"}
         }
     proposal_for_review, _ = _validate_and_apply_visual_registry_classifications(
         proposal_discovery_payload
+    )
+    document_scope = validate_detection_v611_document_scope(
+        proposal_scope_payload,
+        visual_groups=proposal_for_review["visual_groups"],
     )
     # V6.10 is intentionally scoped to the existing V6.7 Mistral-anchor path.
     # It replaces V6.8's costly complete pair matrix with sparse candidate
@@ -9685,10 +9822,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v5_9_review_decision_audit": copy.deepcopy(review_raw_payload),
         "v6_10_pairwise_decision_audit": copy.deepcopy(v69_criteria_audit),
         "v6_10_reconciliation_decision_audit": copy.deepcopy(v69_reconciliation_audit),
+        "v6_11_document_scope": copy.deepcopy(document_scope),
     })
     # Preserve the composed decision before runtime normalizes IDs and derives
     # deterministic graph and Evidence pages.
-    registry_decision_audit = copy.deepcopy(payload)
+    registry_decision_audit = {
+        **copy.deepcopy(payload),
+        "document_scope": copy.deepcopy(proposal_scope_payload),
+    }
     discarded_non_object_groups: list[dict[str, Any]] = []
     discarded_empty_evidence_groups: list[dict[str, Any]] = []
     classification_decisions: list[dict[str, Any]] = []
@@ -10060,6 +10201,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         failure_diagnostics.update({
             "fusion_candidate_regions": candidate_regions,
             "candidate_region_audit": candidate_region_audit,
+            "v6_11_document_scope": document_scope,
             "registry_decision_audit": registry_decision_audit,
             "discarded_non_object_visual_groups": discarded_non_object_groups,
             "discarded_empty_evidence_visual_groups": discarded_empty_evidence_groups,
@@ -10130,6 +10272,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             not entry["object_ids"] for entry in resolved_page_coverage
         ),
         "registry_decision_audit": registry_decision_audit,
+        "v6_11_document_scope": document_scope,
         "discarded_non_object_visual_groups": discarded_non_object_groups,
         "discarded_empty_evidence_visual_groups": discarded_empty_evidence_groups,
         "classification_decisions": classification_decisions,

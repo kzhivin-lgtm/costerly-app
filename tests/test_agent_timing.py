@@ -35,6 +35,7 @@ from agents.anthropic_adapter import (
     run_anthropic_detection_registry_agent,
     run_anthropic_detection_visual_map_agent,
     run_anthropic_detection_visual_registry_agent,
+    validate_detection_v611_document_scope,
 )
 from agents.schemas.detection_registry_schema import (
     REFERENCE_RELATIONSHIP,
@@ -109,6 +110,11 @@ def _visual_registry_payload(payload):
             payload.get("candidate_region_exceptions", [])
         ),
         "semantic_facts": copy.deepcopy(payload.get("semantic_facts", [])),
+        "document_scope": copy.deepcopy(payload.get("document_scope", {
+            "classification": "ordinary_object_set",
+            "root_group_ids": [],
+            "witnesses": [],
+        })),
     }
 
 
@@ -135,6 +141,39 @@ def test_document_dimension_unit_profile_requires_one_explicit_unit_across_docum
 
     assert conflicting_profile["unit"] == "unknown"
     assert conflicting_profile["status"] == "conflicting_explicit_document_units"
+
+
+def test_v611_document_scope_candidate_needs_a_real_view_relationship():
+    groups = [
+        {"group_id": "overview", "page_number": 1},
+        {"group_id": "detail", "page_number": 2},
+    ]
+    decision = validate_detection_v611_document_scope({
+        "classification": "assembly_dossier_candidate",
+        "root_group_ids": ["overview"],
+        "witnesses": [{
+            "kind": "overview_detail_hierarchy",
+            "group_ids": ["overview", "detail"],
+            "observation": "The second drawing is an interior carcass detail of the overall cabinet.",
+        }],
+    }, visual_groups=groups)
+
+    assert decision["decision"] == "assembly_dossier_candidate"
+    assert decision["affects_membership"] is False
+    assert decision["dimension_mismatch_policy"] == (
+        "non_comparable_unless_finished_envelopes_conflict"
+    )
+
+    with pytest.raises(ValueError, match="lacks a relationship witness"):
+        validate_detection_v611_document_scope({
+            "classification": "assembly_dossier_candidate",
+            "root_group_ids": ["overview"],
+            "witnesses": [{
+                "kind": "document_set_continuity",
+                "group_ids": ["overview", "detail"],
+                "observation": "The sheets share one title block.",
+            }],
+        }, visual_groups=groups)
 
 
 def test_v5_8_registry_visual_sources_are_bounded_to_fixed_object_views():
