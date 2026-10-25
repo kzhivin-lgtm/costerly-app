@@ -803,6 +803,93 @@ benchmark, while retaining the underlying evidence, Q calculation and
 deterministic graph unless separately approved. Do not treat HSL's currently
 unreferenced facts as globally removable.
 
+DEFERRED WORKING BLOCK, P1, USER DIRECTION, visual matching, geometry evidence
+and Estimation preparation: begin only after the owner accepts the current
+Detection correctness experiment. This is research and a benchmark plan, not an
+approved replacement of Detection, Fusion, routing, DINO, Candidate Q or the
+Estimation contract.
+
+Current verified system map:
+- Candidate Regions are recall bounding boxes, not a similarity engine. They
+  originate from Mistral `image` blocks, or broad spatial clusters of evidence
+  facts if no graphic block exists. They never identify objects or compare
+  views.
+- Candidate Pair Q / Dimension Fingerprint / Weighted Similarity is the
+  deterministic mathematical comparison channel. It evaluates normalized
+  dimension-chain values, occurrence, page context and normalized Island
+  placement. It supplies supporting evidence only and cannot merge a commercial
+  object by itself.
+- The current DINO channel is `facebook/dinov2-small`, 384-dimensional global
+  CLS embeddings of source-authored PDF image XObjects. It is limited to the
+  narrow source-degraded native-anchor route, compares same-page placements,
+  and requires mutual top-1, cosine >= 0.80 and margin >= 0.10. It remains
+  visual supporting evidence and never creates an edge alone.
+- Current Mistral is `mistral-ocr-4-1`, with `include_blocks=true` and block
+  confidence requested. Its raw blocks, page confidence and provider response
+  are retained. Normalized Fusion text facts currently retain block type, text
+  and bbox, but do not copy each block's confidence values into the derived
+  facts. This is a possible later quality signal only, never geometry proof.
+- V6.1 PyMuPDF inspection already inventories text, image XObjects, Form
+  XObjects and bounded vector summaries. `get_cdrawings()` / `cluster_drawings()`
+  are not semantic dimension-line extraction and must not be sent as raw vector
+  dumps to a model.
+
+Research evaluated:
+- DINOv2 can also yield patch features. Test only as a bounded local-
+  correspondence supplement for already eligible, visually similar 2D views;
+  it must not become an embedding-only merge rule.
+- DINOv3 may be benchmarked against DINOv2 only after a license/product review
+  and a measured CPU/Railway artifact experiment. It is not a current upgrade.
+- LightGlue is a local-feature matcher, not a semantic or 3D-view matcher. It
+  may help only with near-duplicate, scaled or rotated 2D depictions after a
+  licensed detector and geometric inlier validation are chosen. It is not a
+  general solution for front/side/top orthographic views.
+- SigLIP 2 is potentially useful later for broad semantic retrieval or
+  classification, not commercial-object identity, dimensions, materials or
+  quantity.
+- SAM 3 could create optional candidate masks in raster-heavy pages, but there
+  is no evidence it is a strong vector technical-drawing solution. Its model
+  license and resource requirements require separate review.
+- MASt3R is excluded from product implementation: its published license is
+  CC BY-NC-SA 4.0 and its evidence concerns photographic multi-view matching,
+  not engineering projections.
+
+Highest-value proposed research direction: an object-bound, line-aware
+geometry-evidence extractor inspired by Martin Riegelnegg's 2024 TU Wien
+diploma thesis, "Automated extraction of complexity measures from engineering
+drawings." The thesis uses entity segmentation, arrowhead / dimension-line
+processing, object-view segmentation, orthographic view-grid reconstruction,
+axis assignment and OCR-to-pixel consistency. Its reported 0.731% mean
+absolute external-dimension percentage error applies to 81 of 84 selected
+detail drawings after excluding three OCR-failed cases. It is not evidence of
+accuracy for Costerly's multi-object carpentry sheets, plans, schedules,
+perspectives or incomplete drawings.
+
+Target boundary, not current behavior:
+Detection locks commercial-object identity, quantity and cited evidence pages;
+then an eligible object-specific geometry stage emits auditable candidates;
+then Estimation interprets construction / Material Demand; Resolver, Material
+Engine and Labor Engine remain deterministic. Geometry output must preserve
+page reference, object/view bbox, dimension-line bbox, linked OCR literal,
+arrow/line orientation, scale-ratio consistency, axis hypothesis and conflicts.
+It returns `not_applicable` or `review_required` rather than invented W/H/D,
+materials, BOM or labor facts. Presentation Preview remains UI-only.
+
+Eligibility and verification before any integration:
+- operate only on object-bound technical detail/elevation/section evidence with
+  readable dimensions and adequate raster or vector geometry; exclude schedules,
+  title blocks, whole floor plans and unsupported perspectives by default;
+- create a manually labelled geometry benchmark of object-bound furniture
+  detail views, not Page23 alone; record source line to dimension literal,
+  external axis/value, unavailable cases and false associations;
+- compare current literal-only evidence against the line-aware candidate output;
+  define precision, recall, conflict and `not_applicable` acceptance criteria
+  before coding; do not promote a value to Estimation merely because it is
+  numerically plausible;
+- independently measure CPU, memory, latency, model artifact size, provider
+  tokens/cost, license fit, HSL / Adda / Page23 regressions, and evidence-package
+  compatibility before any product decision.
+
 SUPERSEDED IMPLEMENTATION, P1, V6.1, USER DIRECTION, Detection document pre-analysis:
 define a non-decisive,
 page-level technical profile that records what each rendered PDF page can
