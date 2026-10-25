@@ -7,6 +7,7 @@ from agents.anthropic_adapter import (
     build_detection_candidate_region_audit,
     build_detection_view_evidence_packages,
     normalize_detection_v69_pair_criteria_decisions,
+    normalize_detection_v69_preliminary_links,
     normalize_detection_v69_reconciliation_decisions,
     normalize_detection_v68_pairwise_decisions,
 )
@@ -185,6 +186,10 @@ def test_v69_requires_all_criteria_before_a_preliminary_link_can_be_strong():
             "criteria": _v69_criteria(topology="supports_same_object", geometry="not_visible")[:-1],
             "evidence": _v69_evidence(),
         }], expected_pairs=[("a", "b")])
+
+
+def test_v69_allows_no_preliminary_links_instead_of_forcing_a_hallucinated_pair():
+    assert normalize_detection_v69_preliminary_links([]) == []
 
 
 def test_v69_reconciles_every_unproven_island_against_each_proven_component():

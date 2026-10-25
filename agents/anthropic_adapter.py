@@ -786,7 +786,7 @@ DETECTION_V69_PRELIMINARY_LINK_SCHEMA: dict[str, Any] = {
 DETECTION_V69_PRELIMINARY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": False,
     "required": ["preliminary_links"],
-    "properties": {"preliminary_links": {"type": "array", "minItems": 1,
+    "properties": {"preliminary_links": {"type": "array", "minItems": 0,
         "maxItems": 20, "items": DETECTION_V69_PRELIMINARY_LINK_SCHEMA}},
 }
 DETECTION_V69_PAIR_CRITERION_SCHEMA: dict[str, Any] = {
