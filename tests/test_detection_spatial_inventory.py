@@ -9,6 +9,7 @@ from agents.anthropic_adapter import (
     normalize_detection_v69_pair_criteria_decisions,
     normalize_detection_v69_preliminary_links,
     normalize_detection_v69_reconciliation_decisions,
+    normalize_detection_v610_evidence_review_decisions,
     normalize_detection_v68_pairwise_decisions,
 )
 from agents.detection_fusion_candidate_regions import build_detection_fusion_candidate_regions
@@ -190,6 +191,44 @@ def test_v69_requires_all_criteria_before_a_preliminary_link_can_be_strong():
 
 def test_v69_allows_no_preliminary_links_instead_of_forcing_a_hallucinated_pair():
     assert normalize_detection_v69_preliminary_links([]) == []
+
+
+def test_v610_combined_review_keeps_trigger_and_requires_complete_criteria():
+    pairs, facts, audit = normalize_detection_v610_evidence_review_decisions([{
+        "group_id_a": "left", "group_id_b": "right",
+        "trigger_criterion": "geometry",
+        "disposition": "same_object",
+        "reason": "Two independent structural correspondences are visible.",
+        "criteria": _v69_criteria(
+            topology="supports_same_object", geometry="supports_same_object",
+        ),
+        "evidence": _v69_evidence(),
+    }], allowed_group_ids={"left", "right"})
+
+    assert pairs == [("left", "right")]
+    assert len(facts) == 2
+    assert audit[0]["trigger_criterion"] == "geometry"
+    assert audit[0]["computed_strength"] == "strong"
+
+    with pytest.raises(ValueError, match="pair"):
+        normalize_detection_v610_evidence_review_decisions([{
+            "group_id_a": "left", "group_id_b": "unknown",
+            "trigger_criterion": "geometry",
+            "disposition": "same_object",
+            "reason": "Two independent structural correspondences are visible.",
+            "criteria": _v69_criteria(
+                topology="supports_same_object", geometry="supports_same_object",
+            ),
+            "evidence": _v69_evidence(),
+        }], allowed_group_ids={"left", "right"})
+
+
+def test_v610_allows_no_candidate_links_without_forcing_a_hallucinated_pair():
+    pairs, facts, audit = normalize_detection_v610_evidence_review_decisions(
+        [], allowed_group_ids={"left", "right"},
+    )
+
+    assert (pairs, facts, audit) == ([], [], [])
 
 
 def test_v69_reconciles_every_unproven_island_against_each_proven_component():

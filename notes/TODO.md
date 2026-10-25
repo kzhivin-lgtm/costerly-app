@@ -934,6 +934,20 @@ rows for a 3+3+2 preliminary result, and return the exact Counter and L-shaped
 four-View memberships. Compare Review duration, tokens and cost with V6.7 and
 V6.8 before extending any route.
 
+ACTIVE EXPERIMENT, P0, V6.10, combined evidence review for the V6.7
+Mistral-anchor route only: preserve V6.9's sparse, universal pair selection,
+all five criterion assessments per proposed pair, deterministic strong rule,
+and conditional reconciliation. Replace only the two sequential Membership
+Review calls with one response: every sparse candidate row includes its first
+trigger criterion and its complete five-criterion card. Do not prune candidate
+links because they are graph-redundant in Adda or any other document. The
+runtime must continue to audit every proposed pair, and reconciliation remains
+available only after the combined cards are evaluated. First gate is Adda:
+retain the eight Mistral boxes and exact two four-View memberships, then
+compare actual provider-call count, full-cycle duration, tokens, and cost with
+V6.9. The aggregate usage event must include both Proposal and the combined
+Evidence Review so that cost is not underreported.
+
 SUPERSEDED INPUT CONTRACT, V6.5, no static pre-Discovery crops: remove the three
 fixed `upper_left`, `upper_right`, and `lower` images from the Adda
 `sonnet_boundary_risk` route as well as the ordinary Haiku route. Retain the

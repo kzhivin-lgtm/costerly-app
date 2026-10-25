@@ -120,6 +120,9 @@ DETECTION_V68_BOUNDED_ALL_PAIR_MEMBERSHIP_PROMPT_VERSION = (
 DETECTION_V69_CRITERIA_RECONCILIATION_PROMPT_VERSION = (
     "detection_v6_9_criteria_then_reconciliation"
 )
+DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION = (
+    "detection_v6_10_combined_evidence_review"
+)
 # V5.0 keeps one Haiku call. Registry returns Islands, classifications, and
 # sparse positive semantic facts. Runtime owns every graph and package decision.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
@@ -821,6 +824,39 @@ DETECTION_V69_CRITERIA_JSON_SCHEMA: dict[str, Any] = {
     "required": ["pairwise_decisions"],
     "properties": {"pairwise_decisions": {"type": "array", "minItems": 1,
         "maxItems": 20, "items": DETECTION_V69_PAIR_DECISION_SCHEMA}},
+}
+# V6.10 keeps the V6.9 proof rule, but makes Review emit the candidate trigger
+# and its complete five-criterion card in one response.  This avoids a second
+# visual pass over the same page contexts and crops.
+DETECTION_V610_PAIR_CRITERION_SCHEMA = copy.deepcopy(DETECTION_V69_PAIR_CRITERION_SCHEMA)
+DETECTION_V610_PAIR_CRITERION_SCHEMA["properties"]["observation"]["maxLength"] = 56
+DETECTION_V610_PAIR_EVIDENCE_SCHEMA = copy.deepcopy(DETECTION_V68_PAIRWISE_DECISION_EVIDENCE_SCHEMA)
+DETECTION_V610_PAIR_EVIDENCE_SCHEMA["properties"]["observation"]["maxLength"] = 72
+DETECTION_V610_PAIR_DECISION_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "required": [
+        "group_id_a", "group_id_b", "trigger_criterion", "disposition",
+        "reason", "criteria", "evidence",
+    ],
+    "properties": {
+        "group_id_a": {"type": "string"},
+        "group_id_b": {"type": "string"},
+        "trigger_criterion": {"type": "string", "enum": list(DETECTION_V69_CRITERION_NAMES)},
+        "disposition": {"type": "string", "enum": [
+            "same_object", "different_objects", "insufficient_evidence",
+        ]},
+        "reason": {"type": "string", "minLength": 8, "maxLength": 72},
+        "criteria": {"type": "array", "minItems": 5, "maxItems": 5,
+                     "items": DETECTION_V610_PAIR_CRITERION_SCHEMA},
+        "evidence": {"type": "array", "maxItems": 4,
+                     "items": DETECTION_V610_PAIR_EVIDENCE_SCHEMA},
+    },
+}
+DETECTION_V610_EVIDENCE_REVIEW_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "required": ["pairwise_decisions"],
+    "properties": {"pairwise_decisions": {"type": "array", "minItems": 0,
+        "maxItems": 20, "items": DETECTION_V610_PAIR_DECISION_SCHEMA}},
 }
 DETECTION_V69_RECONCILIATION_DECISION_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": False,
@@ -2916,6 +2952,51 @@ def normalize_detection_v69_pair_criteria_decisions(
     if seen != expected:
         raise ValueError(f"V6.9 criteria matrix coverage is incomplete: missing={sorted(expected - seen)}")
     return facts, audit
+
+
+def normalize_detection_v610_evidence_review_decisions(
+    decisions: object,
+    *,
+    allowed_group_ids: set[str],
+) -> tuple[list[tuple[str, str]], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Validate sparse candidate links and their complete cards in one response."""
+    if not isinstance(decisions, list):
+        raise ValueError("V6.10 pairwise_decisions must be a list")
+    pairs: list[tuple[str, str]] = []
+    stripped_decisions: list[dict[str, Any]] = []
+    triggers: dict[tuple[str, str], str] = {}
+    seen: set[tuple[str, str]] = set()
+    expected_fields = {
+        "group_id_a", "group_id_b", "trigger_criterion", "disposition",
+        "reason", "criteria", "evidence",
+    }
+    for raw in decisions:
+        if not isinstance(raw, dict) or set(raw) != expected_fields:
+            raise ValueError("V6.10 evidence review decision fields are invalid")
+        left, right = sorted((
+            str(raw.get("group_id_a") or ""), str(raw.get("group_id_b") or ""),
+        ))
+        trigger = str(raw.get("trigger_criterion") or "")
+        if (
+            not left or left == right or left not in allowed_group_ids
+            or right not in allowed_group_ids or trigger not in DETECTION_V69_CRITERION_NAMES
+            or (left, right) in seen
+        ):
+            raise ValueError("V6.10 evidence review pair is invalid")
+        seen.add((left, right))
+        pairs.append((left, right))
+        triggers[(left, right)] = trigger
+        stripped_decisions.append({
+            key: copy.deepcopy(value)
+            for key, value in raw.items()
+            if key != "trigger_criterion"
+        })
+    facts, audit = normalize_detection_v69_pair_criteria_decisions(
+        stripped_decisions, expected_pairs=pairs,
+    )
+    for row in audit:
+        row["trigger_criterion"] = triggers[(row["group_id_a"], row["group_id_b"])]
+    return sorted(pairs), facts, audit
 
 
 def build_detection_v69_reconciliation_matrix(
@@ -9263,10 +9344,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     proposal_for_review, _ = _validate_and_apply_visual_registry_classifications(
         proposal_discovery_payload
     )
-    # V6.9 is intentionally scoped to the existing V6.7 Mistral-anchor path.
-    # It replaces V6.8's costly complete pair matrix with a preliminary group,
-    # full-criteria audit of only its direct links, then component-level
-    # reconciliation for any View not held by a proven link.
+    # V6.10 is intentionally scoped to the existing V6.7 Mistral-anchor path.
+    # It replaces V6.8's costly complete pair matrix with sparse candidate
+    # links, each emitted together with its complete criteria audit, then
+    # component-level reconciliation for any View not held by a proven link.
     v69_criteria_reconciliation_active = bool(
         mistral_anchor_admission_active
         and 2 <= len([
@@ -9275,7 +9356,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         ]) <= DETECTION_V69_RECONCILIATION_MAX_ISLANDS
     )
     if v69_criteria_reconciliation_active:
-        prompt_version = DETECTION_V69_CRITERIA_RECONCILIATION_PROMPT_VERSION
+        prompt_version = DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION
     registry_visual_sources = build_detection_v5_registry_visual_sources(
         proposal_for_review["visual_groups"]
     )
@@ -9296,11 +9377,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     review_prompt_with_membership_contract = review_prompt
     if v69_criteria_reconciliation_active:
         review_prompt_with_membership_contract += (
-            "\n\nV6.9 PRELIMINARY MEMBERSHIP CONTRACT:\n"
-            "Return preliminary_links only, never object_hypotheses. Each row names "
-            "one exact View pair and the first criterion that made it worth testing. "
-            "These links are candidates only and will be audited pair by pair before "
-            "any merge is allowed. Do not assume a first plausible relation is final.\n"
+            "\n\nV6.10 COMBINED EVIDENCE REVIEW CONTRACT:\n"
+            "Return pairwise_decisions only, never object_hypotheses. Emit a row only "
+            "for a View pair whose first visible criterion makes it worth testing. "
+            "That same row must immediately audit all five criteria: identifier, "
+            "topology, geometry, dimensions and construction. These links are "
+            "candidates only. Do not assume a first plausible relation is final. "
+            "Use concise factual observations, never explanatory prose.\n"
         )
     review_content = build_detection_v5_membership_content_blocks(
         user_text=review_handoff, view_crops=membership_crops,
@@ -9313,7 +9396,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         system=build_detection_system_content(prompt=review_prompt_with_membership_contract),
         messages=[{"role": "user", "content": review_content}],
         output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
-            DETECTION_V69_PRELIMINARY_JSON_SCHEMA
+            DETECTION_V610_EVIDENCE_REVIEW_JSON_SCHEMA
             if v69_criteria_reconciliation_active
             else DETECTION_V5_MEMBERSHIP_JSON_SCHEMA,
         )}},
@@ -9353,14 +9436,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         isinstance(review_raw_payload, dict)
         and isinstance(
             review_raw_payload.get(
-                "preliminary_links"
+                "pairwise_decisions"
                 if v69_criteria_reconciliation_active
                 else "object_hypotheses"
             ),
             list,
         )
         and (
-            (set(review_raw_payload) == {"preliminary_links"})
+            (set(review_raw_payload) == {"pairwise_decisions"})
             if v69_criteria_reconciliation_active else True
         )
     )
@@ -9372,7 +9455,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "attempt_label": "membership_review_contract_failed",
             "response_character_count": len(review_raw_text),
             "response_text_sha256": _sha256_text(review_raw_text),
-            "v6_9_criteria_reconciliation_active": v69_criteria_reconciliation_active,
+            "v6_10_combined_evidence_review_active": v69_criteria_reconciliation_active,
         })
         failure_usage = build_agent_usage_event(
             agent_name="detection", operation="rfq_detection_visual_registry",
@@ -9405,55 +9488,24 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     v69_reconciliation_handoff = ""
     v69_reconciliation_prompt = ""
     if v69_criteria_reconciliation_active:
-        v69_preliminary_pairs = normalize_detection_v69_preliminary_links(
-            review_raw_payload["preliminary_links"]
-        )
-        if v69_preliminary_pairs:
-            v69_criteria_handoff = (
-                review_handoff + "\n\n"
-                + format_detection_v69_pair_criteria_matrix(v69_preliminary_pairs)
-            )
-            v69_criteria_prompt = review_prompt + (
-                "\n\nV6.9 FULL-CRITERIA AUDIT CONTRACT:\n"
-                "Do not repeat or revise groups. Audit only the supplied preliminary "
-                "links. Each pair must receive all five criterion rows. A criterion "
-                "that is absent is not supporting evidence. Positive evidence must "
-                "be concrete, pair-specific and cited from both endpoint Views.\n"
-            )
-            criteria_content = build_detection_v5_membership_content_blocks(
-                user_text=v69_criteria_handoff, view_crops=membership_crops,
-                page_context_images=review_page_context_images,
-            )
-            v69_criteria_response, v69_criteria_diagnostics = create_claude_message_streamed(
-                get_anthropic_client(), model=selected_model,
-                max_tokens=DETECTION_V5_MEMBERSHIP_MAX_TOKENS,
-                temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
-                system=build_detection_system_content(prompt=v69_criteria_prompt),
-                messages=[{"role": "user", "content": criteria_content}],
-                output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
-                    DETECTION_V69_CRITERIA_JSON_SCHEMA,
-                )}},
-            )
-            try:
-                criteria_payload = json.loads(extract_text_from_claude_response(v69_criteria_response))
-                if not isinstance(criteria_payload, dict) or set(criteria_payload) != {"pairwise_decisions"}:
-                    raise ValueError("V6.9 criteria response fields are invalid")
-                v69_criteria_facts, v69_criteria_audit = (
-                    normalize_detection_v69_pair_criteria_decisions(
-                        criteria_payload["pairwise_decisions"],
-                        expected_pairs=v69_preliminary_pairs,
-                    )
+        object_group_ids_raw = {
+            str(group.get("group_id") or "")
+            for group in proposal_for_review["visual_groups"]
+            if group.get("evidence_class") == "object_evidence"
+            and str(group.get("group_id") or "")
+        }
+        try:
+            v69_preliminary_pairs, v69_criteria_facts, v69_criteria_audit = (
+                normalize_detection_v610_evidence_review_decisions(
+                    review_raw_payload["pairwise_decisions"],
+                    allowed_group_ids=object_group_ids_raw,
                 )
-            except (json.JSONDecodeError, ValueError) as exc:
-                raise DetectionVisualRegistryValidationError(
-                    f"V6.9 criteria review failed validation: {exc}",
-                ) from exc
-            object_group_ids_raw = {
-                str(group.get("group_id") or "")
-                for group in proposal_for_review["visual_groups"]
-                if group.get("evidence_class") == "object_evidence"
-                and str(group.get("group_id") or "")
-            }
+            )
+        except ValueError as exc:
+            raise DetectionVisualRegistryValidationError(
+                f"V6.10 combined evidence review failed validation: {exc}",
+            ) from exc
+        if v69_preliminary_pairs:
             v69_reconciliation_matrix, v69_reference_components = (
                 build_detection_v69_reconciliation_matrix(
                     group_ids=object_group_ids_raw,
@@ -9558,15 +9610,15 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         ),
         "v6_7_mistral_anchor_admission_active": mistral_anchor_admission_active,
         "v6_7_mistral_anchor_admission_audit": mistral_anchor_admission_audit,
-        "v6_9_criteria_reconciliation_active": v69_criteria_reconciliation_active,
-        "v6_9_preliminary_pair_count": len(v69_preliminary_pairs),
-        "v6_9_preliminary_pairs": [
+        "v6_10_combined_evidence_review_active": v69_criteria_reconciliation_active,
+        "v6_10_candidate_pair_count": len(v69_preliminary_pairs),
+        "v6_10_candidate_pairs": [
             {"group_id_a": left, "group_id_b": right}
             for left, right in v69_preliminary_pairs
         ],
-        "v6_9_reconciliation_pair_count": len(v69_reconciliation_matrix),
-        "v6_9_reconciliation_matrix": copy.deepcopy(v69_reconciliation_matrix),
-        "v6_9_reference_components": copy.deepcopy(v69_reference_components),
+        "v6_10_reconciliation_pair_count": len(v69_reconciliation_matrix),
+        "v6_10_reconciliation_matrix": copy.deepcopy(v69_reconciliation_matrix),
+        "v6_10_reference_components": copy.deepcopy(v69_reference_components),
         "v5_9_proposal": summarize_detection_provider_call(
             response=proposal_response, diagnostics=proposal_diagnostics,
             prompt_characters=len(proposal_prompt_with_anchor_contract), context_characters=len(proposal_user_text),
@@ -9582,14 +9634,15 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 + sum(len(crop["bytes"]) for crop in membership_crops)
             ),
         ),
-        "v6_9_criteria_review": (
+        "v6_10_evidence_review": (
             summarize_detection_provider_call(
-                response=v69_criteria_response, diagnostics=v69_criteria_diagnostics,
-                prompt_characters=len(v69_criteria_prompt), context_characters=len(v69_criteria_handoff),
+                response=review_response, diagnostics=review_diagnostics,
+                prompt_characters=len(review_prompt_with_membership_contract),
+                context_characters=len(review_handoff),
                 image_count=len(review_page_context_images) + len(membership_crops),
                 image_bytes=(sum(len(page["bytes"]) for page in review_page_context_images)
                              + sum(len(crop["bytes"]) for crop in membership_crops)),
-            ) if v69_criteria_response is not None and v69_criteria_diagnostics is not None else None
+            ) if v69_criteria_reconciliation_active else None
         ),
         "v6_9_reconciliation_review": (
             summarize_detection_provider_call(
@@ -9604,8 +9657,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v5_9_review_page_context_audit": review_page_context_audit,
         "v5_9_proposal_decision_audit": proposal_model_payload,
         "v5_9_review_decision_audit": copy.deepcopy(review_raw_payload),
-        "v6_9_criteria_decision_audit": copy.deepcopy(v69_criteria_audit),
-        "v6_9_reconciliation_decision_audit": copy.deepcopy(v69_reconciliation_audit),
+        "v6_10_pairwise_decision_audit": copy.deepcopy(v69_criteria_audit),
+        "v6_10_reconciliation_decision_audit": copy.deepcopy(v69_reconciliation_audit),
     })
     # Preserve the composed decision before runtime normalizes IDs and derives
     # deterministic graph and Evidence pages.
@@ -9742,11 +9795,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             object_hypothesis_audit = {
                 "accepted": [],
                 "rejected": [],
-                "mode": "v6_9_criteria_then_reconciliation",
+                "mode": "v6_10_combined_evidence_review",
             }
             semantic_facts_outside_dimension_queue = [
                 {
-                    "reason": "v6_9_pairwise_same_object_outside_dimension_queue",
+                    "reason": "v6_10_pairwise_same_object_outside_dimension_queue",
                     "group_id_a": left,
                     "group_id_b": right,
                 }
@@ -9848,12 +9901,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             )
             if unsupported_same_object_pairs:
                 raise ValueError(
-                    "V6.9 same_object pair has no accepted typed evidence: "
+                    "V6.10 same_object pair has no accepted typed evidence: "
                     f"{unsupported_same_object_pairs}"
                 )
         semantic_ledger_audit["outside_dimension_queue"] = semantic_facts_outside_dimension_queue
         if v69_criteria_reconciliation_active:
-            semantic_ledger_audit["v6_9_pairwise_decisions"] = (
+            semantic_ledger_audit["v6_10_pairwise_decisions"] = (
                 v69_pairwise_decision_audit
             )
         semantic_ledger_audit["rejected"].extend(

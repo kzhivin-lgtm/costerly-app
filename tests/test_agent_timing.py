@@ -610,7 +610,10 @@ def test_locked_evidence_handoff_uses_temperature_zero_and_records_it():
     with (
         patch("agents.anthropic_adapter.get_secret", return_value="model"),
         patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
-        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            side_effect=fake_create,
+        ),
         patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
     ):
         result = run_anthropic_detection_agent(
@@ -783,7 +786,7 @@ def test_v67_mistral_anchor_contract_replaces_a_freehand_proposal_bbox():
     assert usage["raw_usage"]["v6_7_mistral_anchor_admission_audit"][0]["status"] == "accepted_anchor"
 
 
-def test_v69_small_mistral_anchor_route_audits_each_preliminary_link_before_merge():
+def test_v610_small_mistral_anchor_route_audits_each_sparse_link_before_merge():
     proposal = _visual_registry_payload({
         "visual_groups": [
             {
@@ -823,13 +826,9 @@ def test_v69_small_mistral_anchor_route_audits_each_preliminary_link_before_merg
             "source_fact_ids": [],
         },
     ]
-    preliminary_review = {"preliminary_links": [{
+    evidence_review = {"pairwise_decisions": [{
         "group_id_a": "raw_left", "group_id_b": "raw_right",
         "trigger_criterion": "geometry",
-        "reason": "The same uncommon L-shaped return makes this pair worth auditing.",
-    }]}
-    criteria_review = {"pairwise_decisions": [{
-        "group_id_a": "raw_left", "group_id_b": "raw_right",
         "disposition": "same_object", "reason": "The same uncommon L return is visible in both views.",
         "criteria": [
             {"criterion": "identifier", "assessment": "not_visible", "observation": "No literal object-specific identifier is visible in both views."},
@@ -864,10 +863,13 @@ def test_v69_small_mistral_anchor_route_audits_each_preliminary_link_before_merg
     with (
         patch("agents.anthropic_adapter.get_secret", return_value="model"),
         patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
-        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            side_effect=fake_create,
+        ) as create_message,
         patch(
             "agents.anthropic_adapter.extract_text_from_claude_response",
-            side_effect=[json.dumps(proposal), json.dumps(preliminary_review), json.dumps(criteria_review)],
+            side_effect=[json.dumps(proposal), json.dumps(evidence_review)],
         ),
     ):
         _, registry, usage = run_anthropic_detection_visual_registry_agent(
@@ -877,10 +879,14 @@ def test_v69_small_mistral_anchor_route_audits_each_preliminary_link_before_merg
         )
 
     assert registry["objects"][0]["visual_group_ids"] == ["view-001", "view-002"]
-    assert usage["prompt_version"] == "detection_v6_9_criteria_then_reconciliation"
-    assert usage["raw_usage"]["v6_9_preliminary_pair_count"] == 1
-    assert usage["raw_usage"]["semantic_ledger_audit"]["v6_9_pairwise_decisions"] == [{
+    assert usage["prompt_version"] == "detection_v6_10_combined_evidence_review"
+    assert usage["raw_usage"]["v6_10_candidate_pair_count"] == 1
+    assert usage["raw_usage"]["v6_10_evidence_review"] is not None
+    assert create_message.call_count == 2
+    assert (usage["input_tokens"], usage["output_tokens"]) == (200, 40)
+    assert usage["raw_usage"]["semantic_ledger_audit"]["v6_10_pairwise_decisions"] == [{
         "group_id_a": "view-001", "group_id_b": "view-002",
+        "trigger_criterion": "geometry",
         "disposition": "same_object",
         "reason": "The same uncommon L return is visible in both views.",
         "criteria": [
