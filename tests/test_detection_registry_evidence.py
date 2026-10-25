@@ -208,7 +208,7 @@ def test_v49_routes_default_registry_to_haiku_without_evidence_handoff():
     assert len(result["_agent_usage_events"]) == 1
 
 
-def test_v49_routes_only_adda_style_registry_to_sonnet_without_evidence_handoff():
+def test_v65_routes_adda_style_registry_to_sonnet_without_static_discovery_crops():
     registry = {"objects": [{
         "object_id": "object-001", "transport_label": "Object 1",
         "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
@@ -228,12 +228,10 @@ def test_v49_routes_only_adda_style_registry_to_sonnet_without_evidence_handoff(
             {"top_left_x": 500, "top_left_y": 0, "bottom_right_x": 900, "bottom_right_y": 400},
         ],
     }
-    sonnet_regions = [{"page_number": 1, "region": "upper_left", "bytes": b"crop"}]
     with (
         patch("agents.detection_agent.get_secret", side_effect=lambda _name, default: default),
         patch(
             "agents.detection_agent.build_detection_registry_regions",
-            return_value=sonnet_regions,
         ) as regions_builder,
         patch(
             "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
@@ -254,8 +252,8 @@ def test_v49_routes_only_adda_style_registry_to_sonnet_without_evidence_handoff(
         )
 
     assert registry_call["model"] == "claude-sonnet-4-6"
-    assert registry_call["regions"] == sonnet_regions
-    regions_builder.assert_called_once_with([b"one", b"two"])
+    assert registry_call["regions"] == []
+    regions_builder.assert_not_called()
     assert len(result["_agent_usage_events"]) == 1
 
 

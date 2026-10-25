@@ -823,7 +823,7 @@ boundaries regress. This experiment is rejected and the fixed Discovery crops
 are restored. A later replacement must prove that post-discovery object/View
 crops preserve Adda's cross-page grouping before it can eliminate them.
 
-ACTIVE EXPERIMENT, P0, V6.4, route-scoped fixed pre-discovery crops: preserve
+SUPERSEDED EXPERIMENT, P0, V6.4, route-scoped fixed pre-discovery crops: preserve
 the V6.3 baseline for the deterministic `sonnet_boundary_risk` route only,
 which is the unlabelled repeated-multiple-drawing-region condition that Adda
 meets. Ordinary `haiku_default` Registry runs must pass `regions=[]` and no
@@ -836,6 +836,39 @@ and usage confirm zero `pre_discovery_region_count` for HSL but retained
 regions for Adda. Railway deployment titles for this and every later Detection
 version must include the version identifier, using the versioned commit
 subject as the deployment title.
+
+ACTIVE EXPERIMENT, P0, V6.5, no static pre-Discovery crops: remove the three
+fixed `upper_left`, `upper_right`, and `lower` images from the Adda
+`sonnet_boundary_risk` route as well as the ordinary Haiku route. Retain the
+same 200-DPI complete rendered pages, Fusion, Candidate Regions, router,
+model route, Candidate Q, Review page contexts and post-Discovery View crops.
+This isolates whether a page grid which cuts an authored drawing before its
+Island is known causes the unstable Adda proposal/review result. First gate is
+Adda: exactly two non-overlapping commercial components with counter Views
+`P1.V2,P2.V1,P3.V1,P4.V1` and L-shaped cabinet Views
+`P1.V1,P2.V2,P3.V2,P4.V2`. The next gates are unchanged Page23 and HSL
+protected inventories. A no-crop result with two objects alone is insufficient:
+the exact View membership and per-page Island geometry must also pass.
+
+OPEN DIAGNOSTIC, P0, V6.4 Adda Registry instability: compare completed Adda
+runs `run_d76e1c6d03374581aa84936676a5d8ad`,
+`run_6776dd3ea03040c9b38f8d060863001a`, and
+`run_f35b802961ce49d094759890fd42e7cc` before changing the active contract.
+Mistral Candidate Regions are byte-for-byte stable at the correct page-local
+boxes for pages 2 and 3, but Discovery redraws its own `visual_groups` boxes
+from the full page plus static crops. The second proposal's page-2 L-shaped
+envelope begins at x=490 instead of the candidate x=913, while the latest
+proposal returns a corrected core. Review receives only those model-drawn
+groups and their derived crops, so it cannot recover a discarded candidate
+boundary. The latest Review also emits an overlapping counter hypothesis;
+runtime rejects that duplicate, retains its earlier incomplete three-view
+hypothesis, and consequently packages the missing page-1 counter view as a
+third standalone object. Establish, by a narrow A/B, whether the fixed
+upper-left/upper-right crop boundary, which cuts the page-2 L-shaped drawing,
+is causal, and then propose a candidate-region-to-Island admission contract.
+Do not treat image XObjects as object boxes: Adda has zero Form XObjects and
+only small raster placements; its object-level candidate boxes come from
+Mistral graphic regions.
 
 DEFERRED, P2, USER DIRECTION, Detection input and cost optimisation: begin
 only after the owner concludes the current correctness experiment. Assess the
