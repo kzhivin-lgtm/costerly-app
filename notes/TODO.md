@@ -837,7 +837,19 @@ regions for Adda. Railway deployment titles for this and every later Detection
 version must include the version identifier, using the versioned commit
 subject as the deployment title.
 
-ACTIVE EXPERIMENT, P0, V6.5, no static pre-Discovery crops: remove the three
+ACTIVE EXPERIMENT, P0, V6.6, single canonical View bbox on the Sonnet
+boundary-risk route: retain V6.5 complete-page Discovery and post-Discovery
+Review crops, but ask Discovery for only one `bbox` per Island. It is the
+smallest View boundary containing the continuous drawing and directly attached
+dimensions, labels and leader lines. The runtime mirrors it to the legacy
+`core_bbox` only at the compatibility boundary, so Review crops and evidence
+ownership use the same canonical geometry. Candidate Regions remain recall
+aids, never bbox authority. This is router-scoped, not a filename rule: first
+gate is Adda's exact two-object View membership, geometry and non-overlap.
+Only after that gate may ordinary Haiku documents be considered. Record the
+contract in usage as `v6_6_single_canonical_view_bbox`.
+
+SUPERSEDED INPUT CONTRACT, V6.5, no static pre-Discovery crops: remove the three
 fixed `upper_left`, `upper_right`, and `lower` images from the Adda
 `sonnet_boundary_risk` route as well as the ordinary Haiku route. Retain the
 same 200-DPI complete rendered pages, Fusion, Candidate Regions, router,
