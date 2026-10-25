@@ -740,6 +740,31 @@ DETECTION_V5_DISCOVERY_JSON_SCHEMA: dict[str, Any] = {
     },
 }
 
+DETECTION_V611_ASSEMBLY_SCOPE_PROMPT = """
+
+ASSEMBLY-SET SCOPE OBSERVATION:
+Return one compact `document_scope` observation. This is scope evidence only,
+not an object decision: it cannot merge, remove or reclassify an Island. Name
+at most four root Island IDs. Return at most four witnesses, each citing at
+most four Island IDs with an observation of at most 180 characters. Use
+`assembly_set_candidate` only when the PDF documents one commissioned assembly
+through a cited overview or root set plus connected sections, carcasses,
+modules, components or hardware. Common client/order metadata, date, material,
+title block, page numbering or page count can never establish assembly scope
+alone. Use `ordinary_object_set` otherwise.
+"""
+
+
+def detection_v5_discovery_json_schema(
+    *, include_document_scope: bool,
+) -> dict[str, Any]:
+    """Return the Discovery schema for the pre-classified document category."""
+    schema = copy.deepcopy(DETECTION_V5_DISCOVERY_JSON_SCHEMA)
+    if not include_document_scope:
+        schema["required"].remove("document_scope")
+        schema["properties"].pop("document_scope")
+    return schema
+
 # V6.7 is deliberately restricted to the Sonnet boundary-risk route and only
 # to real Mistral image blocks. A text-cluster recall box is not a Mistral
 # layout observation and must not receive the same authority.
@@ -4048,6 +4073,7 @@ def validate_detection_v611_document_scope(
     if (
         len(root_group_ids) != len(scope["root_group_ids"])
         or len(root_group_ids) != len(set(root_group_ids))
+        or len(root_group_ids) > 4
         or any(group_id not in group_ids for group_id in root_group_ids)
     ):
         raise ValueError("V6.11 document scope roots are invalid")
@@ -4070,9 +4096,12 @@ def validate_detection_v611_document_scope(
         if (
             len(witness_ids) != len(witness["group_ids"])
             or len(witness_ids) != len(set(witness_ids))
+            or len(witness_ids) > 4
             or any(group_id not in group_ids for group_id in witness_ids)
         ):
             raise ValueError("V6.11 document scope witness references an unknown group")
+        if len(normalized_witnesses) >= 4 or len(str(witness["observation"])) > 180:
+            raise ValueError("V6.11 document scope exceeds its compact contract")
         normalized_witnesses.append({
             "kind": str(witness["kind"]),
             "group_ids": witness_ids,
@@ -9306,10 +9335,19 @@ def run_anthropic_detection_v5_source_degraded_v561_consensus_experiment(
     }, usage
 
 
-def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None, mistral_anchor_admission: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
+def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None, mistral_anchor_admission: bool = False, document_category: str | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Run Island discovery, then the route-scoped bounded membership review."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
     proposal_prompt = load_detection_v5_proposal_prompt()
+    # Direct test callers retain the V6.11 contract until they specify a
+    # category. Product callers always specify one after V6.12 classification.
+    document_scope_enabled = (
+        document_category == "assembly_set"
+        if document_category is not None
+        else True
+    )
+    if document_scope_enabled:
+        proposal_prompt += DETECTION_V611_ASSEMBLY_SCOPE_PROMPT
     review_prompt = load_detection_v5_review_prompt()
     document_dimension_unit_profile = (
         extract_detection_document_dimension_unit_profile(ocr_package)
@@ -9351,6 +9389,16 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "the constrained decisions supplied in the user context. Runtime "
             "will reject an unsupported change and keep the Mistral bbox.\n"
         )
+    proposal_schema = (
+        copy.deepcopy(DETECTION_V67_MISTRAL_ANCHOR_DISCOVERY_JSON_SCHEMA)
+        if mistral_anchor_admission_active
+        else detection_v5_discovery_json_schema(
+            include_document_scope=document_scope_enabled,
+        )
+    )
+    if mistral_anchor_admission_active and not document_scope_enabled:
+        proposal_schema["required"].remove("document_scope")
+        proposal_schema["properties"].pop("document_scope")
     fusion_page_profiles = build_detection_fusion_page_profile_audit(ocr_package)
     candidate_visual_groups = [{
         "group_id": str(candidate["candidate_region_id"]),
@@ -9451,9 +9499,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         system=build_detection_system_content(prompt=proposal_prompt_with_anchor_contract),
         messages=[{"role": "user", "content": proposal_content}],
         output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
-            DETECTION_V67_MISTRAL_ANCHOR_DISCOVERY_JSON_SCHEMA
-            if mistral_anchor_admission_active
-            else DETECTION_V5_DISCOVERY_JSON_SCHEMA,
+            proposal_schema,
         )}},
     )
     proposal_raw_text = extract_text_from_claude_response(proposal_response)
@@ -9482,9 +9528,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 ),
                 messages=[{"role": "user", "content": proposal_content}],
                 output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
-                    DETECTION_V67_MISTRAL_ANCHOR_DISCOVERY_JSON_SCHEMA
-                    if mistral_anchor_admission_active
-                    else DETECTION_V5_DISCOVERY_JSON_SCHEMA,
+                    proposal_schema,
                 )}},
             )
             proposal_raw_text = extract_text_from_claude_response(proposal_response)
@@ -9565,15 +9609,18 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             ) from exc
     discovery_fields = {
         "visual_groups", "classifications", "candidate_region_exceptions", "page_coverage",
-        "document_scope",
     }
+    if document_scope_enabled:
+        discovery_fields.add("document_scope")
     anchor_discovery_fields = {
         *discovery_fields, "candidate_region_decisions",
     }
     legacy_proposal_fields = {
         "visual_groups", "classifications", "candidate_region_exceptions",
-        "object_hypotheses", "semantic_facts", "document_scope",
+        "object_hypotheses", "semantic_facts",
     }
+    if document_scope_enabled:
+        legacy_proposal_fields.add("document_scope")
     expected_discovery_fields = (
         anchor_discovery_fields if mistral_anchor_admission_active else discovery_fields
     )
@@ -9597,9 +9644,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "page_count": len(page_images),
         }]
     proposal_model_payload = copy.deepcopy(proposal_raw_payload)
-    proposal_scope_payload = proposal_raw_payload["document_scope"]
     proposal_boundary_payload = copy.deepcopy(proposal_raw_payload)
-    proposal_boundary_payload.pop("document_scope", None)
+    proposal_scope_payload: dict[str, Any] | None = None
+    document_scope: dict[str, Any] | None = None
+    if document_scope_enabled:
+        proposal_scope_payload = proposal_boundary_payload.pop("document_scope")
     mistral_anchor_admission_audit: list[dict[str, Any]] = []
     if mistral_anchor_admission_active:
         proposal_discovery_payload, mistral_anchor_admission_audit = (
@@ -9618,10 +9667,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     proposal_for_review, _ = _validate_and_apply_visual_registry_classifications(
         proposal_discovery_payload
     )
-    document_scope = validate_detection_v611_document_scope(
-        proposal_scope_payload,
-        visual_groups=proposal_for_review["visual_groups"],
-    )
+    if document_scope_enabled:
+        document_scope = validate_detection_v611_document_scope(
+            proposal_scope_payload,
+            visual_groups=proposal_for_review["visual_groups"],
+        )
     # V6.10 is intentionally scoped to the existing V6.7 Mistral-anchor path.
     # It replaces V6.8's costly complete pair matrix with sparse candidate
     # links, each emitted together with its complete criteria audit, then
@@ -9940,13 +9990,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v6_10_pairwise_decision_audit": copy.deepcopy(v69_criteria_audit),
         "v6_10_reconciliation_decision_audit": copy.deepcopy(v69_reconciliation_audit),
         "v6_11_document_scope": copy.deepcopy(document_scope),
+        "v6_14_document_scope_requested": document_scope_enabled,
     })
     # Preserve the composed decision before runtime normalizes IDs and derives
     # deterministic graph and Evidence pages.
-    registry_decision_audit = {
-        **copy.deepcopy(payload),
-        "document_scope": copy.deepcopy(proposal_scope_payload),
-    }
+    registry_decision_audit = copy.deepcopy(payload)
+    if document_scope_enabled:
+        registry_decision_audit["document_scope"] = copy.deepcopy(proposal_scope_payload)
     discarded_non_object_groups: list[dict[str, Any]] = []
     discarded_empty_evidence_groups: list[dict[str, Any]] = []
     classification_decisions: list[dict[str, Any]] = []
@@ -10390,6 +10440,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         ),
         "registry_decision_audit": registry_decision_audit,
         "v6_11_document_scope": document_scope,
+        "v6_14_document_scope_requested": document_scope_enabled,
         "discarded_non_object_visual_groups": discarded_non_object_groups,
         "discarded_empty_evidence_visual_groups": discarded_empty_evidence_groups,
         "classification_decisions": classification_decisions,

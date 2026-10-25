@@ -816,6 +816,46 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
     }]
 
 
+def test_integrated_visual_registry_omits_scope_from_ordinary_contract():
+    payload = _visual_registry_payload({
+        "visual_groups": [{
+            "group_id": "view_a", "page_number": 1, "location_hint": "left",
+            "visual_description": "one cabinet", "representation_kind": "perspective",
+        }],
+    })
+    payload.pop("document_scope")
+    provider_calls = []
+
+    def fake_create(*_args, **kwargs):
+        provider_calls.append(kwargs)
+        return _Response(), {
+            "request_started_at": "2026-10-16T00:00:00+00:00",
+            "request_finished_at": "2026-10-16T00:00:01+00:00",
+        }
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
+        patch(
+            "agents.anthropic_adapter.extract_text_from_claude_response",
+            side_effect=[json.dumps(payload), json.dumps({"object_hypotheses": []})],
+        ),
+    ):
+        _, _, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None, model="model",
+            document_category="ordinary_object_set",
+        )
+
+    proposal_call = provider_calls[0]
+    proposal_schema = proposal_call["output_config"]["format"]["schema"]
+    assert "document_scope" not in proposal_schema["required"]
+    assert "document_scope" not in proposal_schema["properties"]
+    assert "document_scope" not in json.dumps(proposal_call["system"])
+    assert usage["raw_usage"]["v6_11_document_scope"] is None
+    assert usage["raw_usage"]["v6_14_document_scope_requested"] is False
+
+
 def test_v67_mistral_anchor_contract_replaces_a_freehand_proposal_bbox():
     proposal = _visual_registry_payload({
         "visual_groups": [{

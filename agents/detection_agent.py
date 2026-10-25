@@ -468,6 +468,10 @@ def run_detection_agent(
                 # Island anchors; ordinary, assembly-set and source-degraded
                 # scenarios retain their established contracts.
                 mistral_anchor_admission=(route.get("category") == "ada_sparse_multi_object"),
+                # V6.14 keeps the assembly scope observation out of every
+                # ordinary route. The deterministic pre-model category has
+                # already made that routing decision.
+                document_category=str(route.get("category") or ""),
             )
     except DetectionVisualRegistryValidationError as exc:
         if stage_callback:

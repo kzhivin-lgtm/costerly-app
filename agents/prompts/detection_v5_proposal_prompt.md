@@ -32,20 +32,6 @@ Reference every returned Island exactly once on its source page. A page cannot
 be omitted because it has no Candidate Region: inspect its full PNG before
 returning that page's Island ID list, including an empty list when appropriate.
 
-Also return one `document_scope` observation. This is scope evidence only,
-not an object decision: it cannot merge, remove or reclassify an Island. Use
-`assembly_set_candidate` only when this PDF appears to document one
-commissioned assembly through one overview or root set plus connected sections,
-carcasses, modules, components or hardware. Name the root Island IDs and cite
-at least one concrete hierarchy, cross-reference or visual component witness.
-Common client/order metadata, date, material, title block, page numbering or
-page count may support document continuity but can never establish an assembly
-scope alone. Use `ordinary_object_set` for independently quotable products and
-also when the document relationship is unclear. Different dimensions between an
-overall view and its internal carcass, door, drawer, module or hardware detail
-are non-comparable, not evidence against one assembly. Only two explicitly
-incompatible finished overall envelopes are a scope conflict.
-
 `representation_kind` describes the visual form, never its evidence class.
 Use `floor_plan` for a whole architectural room-and-circulation layout, and
 classify it as Document Context, not Object Evidence.
