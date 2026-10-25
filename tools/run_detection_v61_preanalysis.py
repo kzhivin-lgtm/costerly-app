@@ -35,6 +35,27 @@ def _compact_detection_audit(event: dict) -> dict:
             "unassigned_object_evidence_group_count"
         ),
         "fusion_page_profiles": raw.get("fusion_page_profiles"),
+        "pre_discovery_region_count": raw.get("region_count"),
+        "pre_discovery_region_image_bytes": raw.get("registry_crop_image_bytes"),
+    }
+
+
+def _compact_provider_usage(event: dict) -> dict:
+    raw = event.get("raw_usage") or {}
+    return {
+        key: event.get(key)
+        for key in (
+            "model",
+            "input_tokens",
+            "output_tokens",
+            "input_cost_usd",
+            "output_cost_usd",
+            "total_cost_usd",
+            "duration_seconds",
+        )
+    } | {
+        "proposal": raw.get("v5_9_proposal"),
+        "review": raw.get("v5_9_review"),
     }
 
 
@@ -72,6 +93,7 @@ def main() -> None:
             "native_page_inspection": ocr.get("native_pdf_inspection"),
         },
         "page_profiles": compact_page_profile_audit(ocr),
+        "provider_usage": _compact_provider_usage(event),
         "detected_objects": [
             {
                 "object_id": item.get("object_id"),

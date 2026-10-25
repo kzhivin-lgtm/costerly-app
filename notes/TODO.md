@@ -795,6 +795,26 @@ to either model call. The source-degraded route, router, models, candidate
 regions, Candidate Q, embedding rules, deterministic graph and packages stay
 unchanged.
 
+ACTIVE EXPERIMENT, P0, V6.3, no fixed pre-discovery page crops: ordinary
+Registry Discovery now receives only complete 200-DPI pages plus its existing
+Fusion text. The old fixed `upper_left`, `upper_right`, and `lower` crop set is
+removed. It was not sourced from an Island, View or author-issued PDF boundary,
+could show a physically continuous depiction in fragments, and duplicated one
+full page-equivalent of pixels per page. Preserve 200-DPI rendering, Mistral,
+Fusion, router choice, Candidate Regions, Candidate Q, the source-degraded
+Page23 route and post-discovery View crops. A post-discovery crop may remain a
+second-pass magnifier only, never create, split or move an Island boundary.
+
+Current 200-DPI local input measurement: HSL has 11 full pages and formerly
+added 33 fixed crops, 29,680,851 duplicated pixels and 2,854,649 JPEG bytes;
+Adda has four pages and formerly added 12 crops, 11,312,000 duplicated pixels
+and 830,268 JPEG bytes. These byte and pixel figures are not provider-token
+estimates. Verification requires fresh HSL and Adda runs with the same active
+contract, recording Proposal and Review input/output tokens, cost, duration,
+Island/classification inventory, packages and `pre_discovery_region_count=0`.
+Do not accept token savings alone if the protected page-local inventory or
+commercial boundaries regress.
+
 DEFERRED, P2, USER DIRECTION, Detection input and cost optimisation: begin
 only after the owner concludes the current correctness experiment. Assess the
 full-page Evidence Inventory, Candidate Pair Q prompt rendering, static crops,
