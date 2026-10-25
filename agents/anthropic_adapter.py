@@ -114,6 +114,9 @@ DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
 DETECTION_V67_MISTRAL_ANCHOR_ADMISSION_PROMPT_VERSION = (
     "detection_v6_7_mistral_graphic_anchor_admission"
 )
+DETECTION_V68_BOUNDED_ALL_PAIR_MEMBERSHIP_PROMPT_VERSION = (
+    "detection_v6_8_bounded_all_pair_membership"
+)
 # V5.0 keeps one Haiku call. Registry returns Islands, classifications, and
 # sparse positive semantic facts. Runtime owns every graph and package decision.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
@@ -122,6 +125,7 @@ DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
 DETECTION_V5_DISCOVERY_MAX_TOKENS = 8_192
 DETECTION_V5_PROPOSAL_MAX_TOKENS = 8_192
 DETECTION_V5_MEMBERSHIP_MAX_TOKENS = 6_144
+DETECTION_V68_ALL_PAIR_MEMBERSHIP_MAX_ISLANDS = 10
 DETECTION_V5_MEMBERSHIP_CROP_MAX_SIDE = 768
 DETECTION_V5_MEMBERSHIP_PAGE_CONTEXT_MAX_SIDE = 1024
 DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_MAX_TOKENS = 6_144
@@ -720,6 +724,42 @@ DETECTION_V5_MEMBERSHIP_JSON_SCHEMA: dict[str, Any] = {
     "additionalProperties": False,
     "required": ["object_hypotheses"],
     "properties": {"object_hypotheses": DETECTION_V5_OBJECT_HYPOTHESES_SCHEMA},
+}
+
+DETECTION_V68_PAIRWISE_DECISION_EVIDENCE_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "required": ["evidence_type", "strength", "observation", "source_fact_ids"],
+    "properties": {
+        "evidence_type": {"type": "string", "enum": [
+            "explicit_document_relation", "matching_topology", "unique_geometry",
+            "direct_shared_structure",
+        ]},
+        "strength": {"type": "string", "enum": ["direct", "single_object_sheet", "standard"]},
+        "observation": {"type": "string", "maxLength": 180},
+        "source_fact_ids": {"type": "array", "maxItems": 3, "items": {"type": "string"}},
+        "structural_witness": DETECTION_V5_STRUCTURAL_WITNESS_SCHEMA,
+    },
+}
+DETECTION_V68_PAIRWISE_DECISIONS_SCHEMA: dict[str, Any] = {
+    "type": "array", "minItems": 1, "maxItems": 45,
+    "items": {"type": "object", "additionalProperties": False,
+        "required": ["group_id_a", "group_id_b", "disposition", "reason", "evidence"],
+        "properties": {
+            "group_id_a": {"type": "string"},
+            "group_id_b": {"type": "string"},
+            "disposition": {"type": "string", "enum": [
+                "same_object", "different_objects", "insufficient_evidence",
+            ]},
+            "reason": {"type": "string", "minLength": 8, "maxLength": 180},
+            "evidence": {"type": "array", "maxItems": 3,
+                "items": DETECTION_V68_PAIRWISE_DECISION_EVIDENCE_SCHEMA},
+        },
+    },
+}
+DETECTION_V68_MEMBERSHIP_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "required": ["pairwise_decisions"],
+    "properties": {"pairwise_decisions": DETECTION_V68_PAIRWISE_DECISIONS_SCHEMA},
 }
 
 DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_JSON_SCHEMA: dict[str, Any] = {
@@ -2475,6 +2515,143 @@ def format_detection_v5_review_handoff(
         *(proposal_lines or ["none"]),
     ])
     return "\n".join(lines)
+
+
+def build_detection_v68_pairwise_membership_matrix(
+    visual_groups: list[dict[str, Any]],
+) -> list[tuple[str, str]]:
+    """Return the complete unordered object-View matrix for the small-route audit."""
+    group_ids = sorted(
+        str(group.get("group_id") or "")
+        for group in visual_groups
+        if group.get("evidence_class") == "object_evidence"
+        and str(group.get("group_id") or "")
+    )
+    if not 2 <= len(group_ids) <= DETECTION_V68_ALL_PAIR_MEMBERSHIP_MAX_ISLANDS:
+        return []
+    return list(combinations(group_ids, 2))
+
+
+def format_detection_v68_pairwise_membership_matrix(
+    pairs: list[tuple[str, str]],
+) -> str:
+    """Give a bounded Review its complete, auditable commercial-identity matrix."""
+    if not pairs:
+        return ""
+    lines = [
+        "V6.8 REQUIRED COMMERCIAL-IDENTITY PAIR MATRIX:",
+        "Return exactly one pairwise_decisions row for every unordered pair below.",
+        "same_object means one commercially estimable fabricated object, not merely "
+        "one installation, one general-view sheet, adjacency or continuous perspective lines.",
+        "different_objects means the Views depict distinct commercial objects. "
+        "insufficient_evidence means the material does not justify either conclusion.",
+        "A same_object decision needs concrete typed evidence and valid SRC citations. "
+        "Unless an explicit document relation directly states the pairing, provide "
+        "at least two independent evidence types so the deterministic merge policy "
+        "can accept it. "
+        "For different_objects or insufficient_evidence, evidence must be empty. "
+        "A sheet title such as General View, shared page, composition overlap, shared "
+        "material, lighting or continuous drawing strokes are never same_object proof.",
+        "PAIR=id|A=View|B=View",
+    ]
+    lines.extend(
+        f"M{index:03d}|A={left}|B={right}"
+        for index, (left, right) in enumerate(pairs, start=1)
+    )
+    return "\n".join(lines)
+
+
+def normalize_detection_v68_pairwise_decisions(
+    decisions: object,
+    *,
+    expected_pairs: list[tuple[str, str]],
+    group_id_mapping: dict[str, str],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Require exact matrix coverage and return only positive, mapped pair facts."""
+    if not isinstance(decisions, list):
+        raise ValueError(
+            "V6.8 pairwise_decisions must be a list"
+        )
+    expected = {tuple(sorted(pair)) for pair in expected_pairs}
+    seen: set[tuple[str, str]] = set()
+    semantic_facts: list[dict[str, Any]] = []
+    audit: list[dict[str, Any]] = []
+    for index, raw in enumerate(decisions):
+        if not isinstance(raw, dict) or set(raw) != {
+            "group_id_a", "group_id_b", "disposition", "reason", "evidence",
+        }:
+            raise ValueError(
+                f"V6.8 pairwise decision {index} has invalid fields"
+            )
+        left_raw, right_raw = sorted((
+            str(raw.get("group_id_a") or ""), str(raw.get("group_id_b") or ""),
+        ))
+        pair_raw = (left_raw, right_raw)
+        disposition = str(raw.get("disposition") or "")
+        reason = str(raw.get("reason") or "").strip()
+        evidence = raw.get("evidence")
+        if (
+            pair_raw not in expected or pair_raw in seen or not reason
+            or disposition not in {
+                "same_object", "different_objects", "insufficient_evidence",
+            }
+            or not isinstance(evidence, list)
+        ):
+            raise ValueError(
+                f"V6.8 pairwise decision {index} is invalid or outside the matrix"
+            )
+        seen.add(pair_raw)
+        left = group_id_mapping.get(left_raw, left_raw)
+        right = group_id_mapping.get(right_raw, right_raw)
+        audit_row = {
+            "group_id_a": left,
+            "group_id_b": right,
+            "disposition": disposition,
+            "reason": reason,
+            "evidence_count": len(evidence),
+        }
+        if disposition != "same_object":
+            if evidence:
+                raise ValueError(
+                    f"V6.8 {disposition} decision {index} must not carry positive evidence"
+                )
+            audit.append(audit_row)
+            continue
+        if not evidence:
+            raise ValueError(
+                f"V6.8 same_object decision {index} requires positive evidence"
+            )
+        evidence_types = {
+            str(fact.get("evidence_type") or "")
+            for fact in evidence if isinstance(fact, dict)
+        }
+        has_direct_document_relation = any(
+            isinstance(fact, dict)
+            and fact.get("evidence_type") == "explicit_document_relation"
+            and fact.get("strength") == "direct"
+            for fact in evidence
+        )
+        if not has_direct_document_relation and len(evidence_types) < 2:
+            raise ValueError(
+                f"V6.8 same_object decision {index} needs two independent evidence types"
+            )
+        for fact in evidence:
+            if not isinstance(fact, dict):
+                raise ValueError(
+                    f"V6.8 same_object decision {index} has invalid evidence"
+                )
+            semantic_facts.append({
+                "group_id_a": left, "group_id_b": right, **copy.deepcopy(fact),
+            })
+        audit.append(audit_row)
+    if seen != expected:
+        missing = sorted(expected - seen)
+        extra = sorted(seen - expected)
+        raise ValueError(
+            "V6.8 pairwise matrix coverage is incomplete or unexpected: "
+            f"missing={missing}, extra={extra}"
+        )
+    return semantic_facts, audit
 
 
 def build_detection_v5_membership_content_blocks(
@@ -8661,6 +8838,20 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     proposal_for_review, _ = _validate_and_apply_visual_registry_classifications(
         proposal_discovery_payload
     )
+    # V6.8 is intentionally not a new general route.  It is a bounded audit
+    # inside the existing V6.7 Mistral-anchor path: when its locked object
+    # inventory is small, Review must state a disposition for every possible
+    # pair instead of silently omitting the cross-page alternatives.
+    v68_pairwise_membership_matrix = (
+        build_detection_v68_pairwise_membership_matrix(
+            proposal_for_review["visual_groups"]
+        )
+        if mistral_anchor_admission_active
+        else []
+    )
+    v68_all_pair_membership_active = bool(v68_pairwise_membership_matrix)
+    if v68_all_pair_membership_active:
+        prompt_version = DETECTION_V68_BOUNDED_ALL_PAIR_MEMBERSHIP_PROMPT_VERSION
     registry_visual_sources = build_detection_v5_registry_visual_sources(
         proposal_for_review["visual_groups"]
     )
@@ -8678,6 +8869,24 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         visual_groups=proposal_for_review["visual_groups"], source_facts=source_facts,
         draft_hypotheses=[],
     )
+    if v68_all_pair_membership_active:
+        review_handoff += "\n\n" + format_detection_v68_pairwise_membership_matrix(
+            v68_pairwise_membership_matrix
+        )
+    review_prompt_with_membership_contract = review_prompt
+    if v68_all_pair_membership_active:
+        review_prompt_with_membership_contract += (
+            "\n\nV6.8 BOUNDED ALL-PAIR MEMBERSHIP CONTRACT:\n"
+            "The user context gives the complete, immutable pair matrix. Return "
+            "pairwise_decisions only, with exactly one row for every matrix pair "
+            "and no object_hypotheses. Do not infer a positive relation from a "
+            "General View title, a shared page, adjacency, composition overlap, "
+            "shared material, lighting or continuous strokes. For same_object, "
+            "supply only typed, cited positive evidence. Unless a direct document "
+            "relation names the pairing, supply at least two independent evidence "
+            "types. For different_objects or "
+            "insufficient_evidence, evidence must be an empty list.\n"
+        )
     review_content = build_detection_v5_membership_content_blocks(
         user_text=review_handoff, view_crops=membership_crops,
         page_context_images=review_page_context_images,
@@ -8686,9 +8895,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         get_anthropic_client(), model=selected_model,
         max_tokens=DETECTION_V5_MEMBERSHIP_MAX_TOKENS,
         temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
-        system=build_detection_system_content(prompt=review_prompt),
+        system=build_detection_system_content(prompt=review_prompt_with_membership_contract),
         messages=[{"role": "user", "content": review_content}],
-        output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(DETECTION_V5_MEMBERSHIP_JSON_SCHEMA)}},
+        output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
+            DETECTION_V68_MEMBERSHIP_JSON_SCHEMA
+            if v68_all_pair_membership_active
+            else DETECTION_V5_MEMBERSHIP_JSON_SCHEMA,
+        )}},
     )
     review_raw_text = extract_text_from_claude_response(review_response)
     try:
@@ -8721,16 +8934,54 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             f"Detection review response failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
-    if not isinstance(review_raw_payload, dict) or not isinstance(
-        review_raw_payload.get("object_hypotheses"), list,
-    ):
+    review_contract_valid = (
+        isinstance(review_raw_payload, dict)
+        and isinstance(
+            review_raw_payload.get(
+                "pairwise_decisions"
+                if v68_all_pair_membership_active
+                else "object_hypotheses"
+            ),
+            list,
+        )
+        and (
+            set(review_raw_payload) == {"pairwise_decisions"}
+            if v68_all_pair_membership_active
+            else True
+        )
+    )
+    if not review_contract_valid:
+        failure_diagnostics = dict(review_diagnostics)
+        failure_diagnostics.update({
+            "validation_error": "membership review payload does not match its route contract",
+            "validation_stage": "membership_review_contract",
+            "attempt_label": "membership_review_contract_failed",
+            "response_character_count": len(review_raw_text),
+            "response_text_sha256": _sha256_text(review_raw_text),
+            "v6_8_all_pair_membership_active": v68_all_pair_membership_active,
+        })
+        failure_usage = build_agent_usage_event(
+            agent_name="detection", operation="rfq_detection_visual_registry",
+            company_id=company_id, run_id=None, file_name=file_name,
+            object_id=None, object_name=None, model=selected_model,
+            prompt_version=prompt_version, response=review_response,
+            started_at=review_diagnostics["request_started_at"],
+            finished_at=review_diagnostics["request_finished_at"],
+            request_diagnostics=failure_diagnostics,
+        )
+        failure_usage["status"] = "failed"
+        failure_usage["error_message"] = failure_diagnostics["validation_error"]
         raise DetectionVisualRegistryValidationError(
-            "Detection review response failed the V5.9 review contract"
+            "Detection review response failed the membership review contract",
+            usage_event=failure_usage,
         )
     payload = {
         "visual_groups": proposal_discovery_payload["visual_groups"],
         "classifications": proposal_discovery_payload["classifications"],
-        "object_hypotheses": review_raw_payload["object_hypotheses"],
+        "object_hypotheses": (
+            [] if v68_all_pair_membership_active
+            else review_raw_payload["object_hypotheses"]
+        ),
         "candidate_region_exceptions": proposal_discovery_payload["candidate_region_exceptions"],
         "semantic_facts": [],
     }
@@ -8761,9 +9012,18 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "rendered_page_image_count": len(page_images),
         "registry_crop_image_count": len(regions),
         "registry_crop_image_bytes": sum(len(region.get("bytes") or b"") for region in regions),
-        "registry_system_prompt_characters": len(proposal_prompt_with_anchor_contract) + len(review_prompt),
+        "registry_system_prompt_characters": (
+            len(proposal_prompt_with_anchor_contract)
+            + len(review_prompt_with_membership_contract)
+        ),
         "v6_7_mistral_anchor_admission_active": mistral_anchor_admission_active,
         "v6_7_mistral_anchor_admission_audit": mistral_anchor_admission_audit,
+        "v6_8_all_pair_membership_active": v68_all_pair_membership_active,
+        "v6_8_all_pair_membership_pair_count": len(v68_pairwise_membership_matrix),
+        "v6_8_all_pair_membership_matrix": [
+            {"group_id_a": left, "group_id_b": right}
+            for left, right in v68_pairwise_membership_matrix
+        ],
         "v5_9_proposal": summarize_detection_provider_call(
             response=proposal_response, diagnostics=proposal_diagnostics,
             prompt_characters=len(proposal_prompt_with_anchor_contract), context_characters=len(proposal_user_text),
@@ -8772,7 +9032,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         ),
         "v5_9_review": summarize_detection_provider_call(
             response=review_response, diagnostics=review_diagnostics,
-            prompt_characters=len(review_prompt), context_characters=len(review_handoff),
+            prompt_characters=len(review_prompt_with_membership_contract), context_characters=len(review_handoff),
             image_count=len(review_page_context_images) + len(membership_crops),
             image_bytes=(
                 sum(len(page["bytes"]) for page in review_page_context_images)
@@ -8815,6 +9075,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     registry_metadata_audit: dict[str, Any] = {}
     registry_graph_review_required_object_ids: list[str] = []
     classified_visual_groups: list[dict[str, Any]] = []
+    v68_pairwise_decision_audit: list[dict[str, Any]] = []
+    v68_same_object_pairs: set[tuple[str, str]] = set()
     try:
         if isinstance(payload, dict):
             payload, classification_decisions = (
@@ -8894,48 +9156,79 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         page_local_view_labels = assign_detection_page_local_view_labels(
             view_evidence_packages
         )
-        normalized_hypotheses = []
-        for hypothesis in payload["object_hypotheses"]:
-            if isinstance(hypothesis, dict) and isinstance(hypothesis.get("group_ids"), list):
-                hypothesis = copy.deepcopy(hypothesis)
-                hypothesis["group_ids"] = [
-                    group_id_mapping.get(str(group_id or ""), str(group_id or ""))
-                    for group_id in hypothesis["group_ids"]
-                ]
-                normalized_evidence = []
-                for evidence in hypothesis.get("evidence") or []:
-                    if not isinstance(evidence, dict):
-                        normalized_evidence.append(evidence)
-                        continue
-                    normalized_evidence_row = copy.deepcopy(evidence)
-                    if isinstance(normalized_evidence_row.get("structural_witness"), dict):
-                        witness = copy.deepcopy(normalized_evidence_row["structural_witness"])
-                        witness["witness_view_id"] = group_id_mapping.get(
-                            str(witness.get("witness_view_id") or ""),
-                            str(witness.get("witness_view_id") or ""),
-                        )
-                        normalized_evidence_row["structural_witness"] = witness
-                    normalized_evidence.append(normalized_evidence_row)
-                hypothesis["evidence"] = normalized_evidence
-            normalized_hypotheses.append(hypothesis)
-        accepted_hypotheses, object_hypothesis_audit = compile_detection_v5_object_hypotheses(
-            normalized_hypotheses, visual_groups=semantic_validation_groups,
-        )
         semantic_facts_outside_dimension_queue: list[dict[str, Any]] = []
-        semantic_facts: list[dict[str, Any]] = []
-        for hypothesis in accepted_hypotheses:
-            root, *members = hypothesis["group_ids"]
-            for member in members:
-                pair = tuple(sorted((root, member)))
-                for evidence in hypothesis["evidence"]:
-                    semantic_facts.append({
-                        "group_id_a": pair[0], "group_id_b": pair[1], **evidence,
-                    })
-                if pair not in candidate_q_final_pairs:
-                    semantic_facts_outside_dimension_queue.append({
-                        "reason": "derived_semantic_fact_outside_dimension_queue_accepted",
-                        "group_id_a": pair[0], "group_id_b": pair[1],
-                    })
+        if v68_all_pair_membership_active:
+            semantic_facts, v68_pairwise_decision_audit = (
+                normalize_detection_v68_pairwise_decisions(
+                    review_raw_payload["pairwise_decisions"],
+                    expected_pairs=v68_pairwise_membership_matrix,
+                    group_id_mapping=group_id_mapping,
+                )
+            )
+            v68_same_object_pairs = {
+                tuple(sorted((
+                    str(row["group_id_a"]), str(row["group_id_b"]),
+                )))
+                for row in v68_pairwise_decision_audit
+                if row["disposition"] == "same_object"
+            }
+            accepted_hypotheses = []
+            object_hypothesis_audit = {
+                "accepted": [],
+                "rejected": [],
+                "mode": "v6_8_complete_pairwise_membership_matrix",
+            }
+            semantic_facts_outside_dimension_queue = [
+                {
+                    "reason": "v6_8_pairwise_same_object_outside_dimension_queue",
+                    "group_id_a": left,
+                    "group_id_b": right,
+                }
+                for left, right in sorted(v68_same_object_pairs)
+                if (left, right) not in candidate_q_final_pairs
+            ]
+        else:
+            normalized_hypotheses = []
+            for hypothesis in payload["object_hypotheses"]:
+                if isinstance(hypothesis, dict) and isinstance(hypothesis.get("group_ids"), list):
+                    hypothesis = copy.deepcopy(hypothesis)
+                    hypothesis["group_ids"] = [
+                        group_id_mapping.get(str(group_id or ""), str(group_id or ""))
+                        for group_id in hypothesis["group_ids"]
+                    ]
+                    normalized_evidence = []
+                    for evidence in hypothesis.get("evidence") or []:
+                        if not isinstance(evidence, dict):
+                            normalized_evidence.append(evidence)
+                            continue
+                        normalized_evidence_row = copy.deepcopy(evidence)
+                        if isinstance(normalized_evidence_row.get("structural_witness"), dict):
+                            witness = copy.deepcopy(normalized_evidence_row["structural_witness"])
+                            witness["witness_view_id"] = group_id_mapping.get(
+                                str(witness.get("witness_view_id") or ""),
+                                str(witness.get("witness_view_id") or ""),
+                            )
+                            normalized_evidence_row["structural_witness"] = witness
+                        normalized_evidence.append(normalized_evidence_row)
+                    hypothesis["evidence"] = normalized_evidence
+                normalized_hypotheses.append(hypothesis)
+            accepted_hypotheses, object_hypothesis_audit = compile_detection_v5_object_hypotheses(
+                normalized_hypotheses, visual_groups=semantic_validation_groups,
+            )
+            semantic_facts = []
+            for hypothesis in accepted_hypotheses:
+                root, *members = hypothesis["group_ids"]
+                for member in members:
+                    pair = tuple(sorted((root, member)))
+                    for evidence in hypothesis["evidence"]:
+                        semantic_facts.append({
+                            "group_id_a": pair[0], "group_id_b": pair[1], **evidence,
+                        })
+                    if pair not in candidate_q_final_pairs:
+                        semantic_facts_outside_dimension_queue.append({
+                            "reason": "derived_semantic_fact_outside_dimension_queue_accepted",
+                            "group_id_a": pair[0], "group_id_b": pair[1],
+                        })
         effective_dimension_unit, dimension_unit_reason = infer_detection_v5_bare_dimension_unit(
             view_evidence_packages,
             document_unit=str(document_dimension_unit_profile.get("unit") or "unknown"),
@@ -8951,7 +9244,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         dimension_relation_edges, dimension_graph_audit = compile_detection_v5_dimension_graph(
             dimension_inventory_audit, visual_groups=visual_map["visual_groups"],
             group_bboxes=group_bboxes,
-            allowed_pairs=candidate_q_final_pairs,
+            allowed_pairs=(
+                v68_same_object_pairs
+                if v68_all_pair_membership_active
+                else candidate_q_final_pairs
+            ),
         )
         # Title-block codes remain naming metadata only.  Retain this audit
         # trail to prove they never become identity edges.
@@ -8973,7 +9270,26 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             semantic_facts, visual_groups=semantic_validation_groups,
             source_facts=[*source_facts, *registry_visual_sources],
         )
+        if v68_all_pair_membership_active:
+            accepted_pairs = {
+                tuple(sorted((
+                    str(fact["group_id_a"]), str(fact["group_id_b"]),
+                )))
+                for fact in accepted_semantic_facts
+            }
+            unsupported_same_object_pairs = sorted(
+                v68_same_object_pairs - accepted_pairs
+            )
+            if unsupported_same_object_pairs:
+                raise ValueError(
+                    "V6.8 same_object pair has no accepted typed evidence: "
+                    f"{unsupported_same_object_pairs}"
+                )
         semantic_ledger_audit["outside_dimension_queue"] = semantic_facts_outside_dimension_queue
+        if v68_all_pair_membership_active:
+            semantic_ledger_audit["v6_8_pairwise_decisions"] = (
+                v68_pairwise_decision_audit
+            )
         semantic_ledger_audit["rejected"].extend(
             object_hypothesis_audit["rejected"]
         )

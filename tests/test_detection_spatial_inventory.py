@@ -1,7 +1,9 @@
 from agents.anthropic_adapter import (
     apply_detection_v67_mistral_anchor_admission,
+    build_detection_v68_pairwise_membership_matrix,
     build_detection_candidate_region_audit,
     build_detection_view_evidence_packages,
+    normalize_detection_v68_pairwise_decisions,
 )
 from agents.detection_fusion_candidate_regions import build_detection_fusion_candidate_regions
 
@@ -78,6 +80,64 @@ def test_fusion_text_clusters_are_recall_fallback_when_no_graphic_region_exists(
         and row["bbox"]["bottom_right_y"] > row["bbox"]["top_left_y"]
         for row in candidates
     )
+
+
+def test_v68_small_anchor_route_builds_complete_pair_matrix_only_through_ten_islands():
+    groups = [
+        {"group_id": f"view-{index:03d}", "evidence_class": "object_evidence"}
+        for index in range(1, 11)
+    ]
+
+    pairs = build_detection_v68_pairwise_membership_matrix(groups)
+
+    assert len(pairs) == 45
+    assert pairs[0] == ("view-001", "view-002")
+    assert pairs[-1] == ("view-009", "view-010")
+    assert build_detection_v68_pairwise_membership_matrix(groups + [{
+        "group_id": "view-011", "evidence_class": "object_evidence",
+    }]) == []
+
+
+def test_v68_pairwise_normalizer_requires_full_coverage_and_keeps_only_positive_facts():
+    expected_pairs = [("raw-a", "raw-b"), ("raw-a", "raw-c"), ("raw-b", "raw-c")]
+    decisions = [
+        {
+            "group_id_a": "raw-a", "group_id_b": "raw-b",
+            "disposition": "same_object", "reason": "Unique matching return profile.",
+            "evidence": [{
+                "evidence_type": "unique_geometry", "strength": "standard",
+                "observation": "The same uncommon return profile appears in both views.",
+                "source_fact_ids": [],
+            }, {
+                "evidence_type": "matching_topology", "strength": "standard",
+                "observation": "The same three-bay arrangement appears in both views.",
+                "source_fact_ids": [],
+            }],
+        },
+        {
+            "group_id_a": "raw-a", "group_id_b": "raw-c",
+            "disposition": "different_objects", "reason": "Different cabinet layouts.",
+            "evidence": [],
+        },
+        {
+            "group_id_a": "raw-b", "group_id_b": "raw-c",
+            "disposition": "insufficient_evidence", "reason": "No reliable relation is visible.",
+            "evidence": [],
+        },
+    ]
+
+    facts, audit = normalize_detection_v68_pairwise_decisions(
+        decisions, expected_pairs=expected_pairs,
+        group_id_mapping={"raw-a": "view-001", "raw-b": "view-002", "raw-c": "view-003"},
+    )
+
+    assert {(fact["group_id_a"], fact["group_id_b"]) for fact in facts} == {
+        ("view-001", "view-002"),
+    }
+    assert len(facts) == 2
+    assert [row["disposition"] for row in audit] == [
+        "same_object", "different_objects", "insufficient_evidence",
+    ]
 
 
 def test_candidate_region_without_island_requires_a_registry_explanation_in_audit():

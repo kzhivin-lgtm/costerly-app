@@ -783,6 +783,98 @@ def test_v67_mistral_anchor_contract_replaces_a_freehand_proposal_bbox():
     assert usage["raw_usage"]["v6_7_mistral_anchor_admission_audit"][0]["status"] == "accepted_anchor"
 
 
+def test_v68_small_mistral_anchor_route_requires_and_records_complete_pair_matrix():
+    proposal = _visual_registry_payload({
+        "visual_groups": [
+            {
+                "group_id": "raw_left", "page_number": 1, "location_hint": "left",
+                "visual_description": "L-shaped cabinet 1830 by 1188 return",
+                "representation_kind": "perspective",
+                "bbox": {"top_left_x": 100, "top_left_y": 100,
+                         "bottom_right_x": 700, "bottom_right_y": 800},
+                "core_bbox": {"top_left_x": 100, "top_left_y": 100,
+                              "bottom_right_x": 700, "bottom_right_y": 800},
+            },
+            {
+                "group_id": "raw_right", "page_number": 1, "location_hint": "right",
+                "visual_description": "second view of L-shaped cabinet 1830 by 1188 return",
+                "representation_kind": "elevation",
+                "bbox": {"top_left_x": 900, "top_left_y": 100,
+                         "bottom_right_x": 1500, "bottom_right_y": 800},
+                "core_bbox": {"top_left_x": 900, "top_left_y": 100,
+                              "bottom_right_x": 1500, "bottom_right_y": 800},
+            },
+        ],
+    })
+    proposal.pop("object_hypotheses")
+    proposal.pop("semantic_facts")
+    proposal["page_coverage"] = [{
+        "page_number": 1, "visual_group_ids": ["raw_left", "raw_right"],
+    }]
+    proposal["candidate_region_decisions"] = [
+        {
+            "candidate_region_id": "CR-P001-001", "decision": "accept",
+            "group_id": "raw_left", "reason": "The Mistral graphic anchor encloses the left cabinet view.",
+            "source_fact_ids": [],
+        },
+        {
+            "candidate_region_id": "CR-P001-002", "decision": "accept",
+            "group_id": "raw_right", "reason": "The Mistral graphic anchor encloses the right cabinet view.",
+            "source_fact_ids": [],
+        },
+    ]
+    review = {"pairwise_decisions": [{
+        "group_id_a": "raw_left", "group_id_b": "raw_right",
+        "disposition": "same_object", "reason": "The same uncommon L return is visible in both views.",
+        "evidence": [{
+            "evidence_type": "unique_geometry", "strength": "standard",
+            "observation": "Both views show the uncommon L-shaped 1830 by 1188 cabinet return.",
+            "source_fact_ids": ["registry_view:raw_left", "registry_view:raw_right"],
+        }, {
+            "evidence_type": "matching_topology", "strength": "standard",
+            "observation": "Both views show three equal drawer bays ending at the same L-shaped 1830 by 1188 return.",
+            "source_fact_ids": ["registry_view:raw_left", "registry_view:raw_right"],
+        }],
+    }]}
+    ocr_package = {"pages": [{"page_number": 1, "blocks": [
+        {"type": "image", "content": "left cabinet", "top_left_x": 100, "top_left_y": 100,
+         "bottom_right_x": 700, "bottom_right_y": 800},
+        {"type": "image", "content": "right cabinet", "top_left_x": 900, "top_left_y": 100,
+         "bottom_right_x": 1500, "bottom_right_y": 800},
+    ]}]}
+
+    def fake_create(*_args, **_kwargs):
+        return _Response(), {
+            "request_started_at": "2026-10-16T00:00:00+00:00",
+            "request_finished_at": "2026-10-16T00:00:01+00:00",
+        }
+
+    with (
+        patch("agents.anthropic_adapter.get_secret", return_value="model"),
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
+        patch(
+            "agents.anthropic_adapter.extract_text_from_claude_response",
+            side_effect=[json.dumps(proposal), json.dumps(review)],
+        ),
+    ):
+        _, registry, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=ocr_package,
+            model="claude-sonnet-4-6", mistral_anchor_admission=True,
+        )
+
+    assert registry["objects"][0]["visual_group_ids"] == ["view-001", "view-002"]
+    assert usage["prompt_version"] == "detection_v6_8_bounded_all_pair_membership"
+    assert usage["raw_usage"]["v6_8_all_pair_membership_pair_count"] == 1
+    assert usage["raw_usage"]["semantic_ledger_audit"]["v6_8_pairwise_decisions"] == [{
+        "group_id_a": "view-001", "group_id_b": "view-002",
+        "disposition": "same_object",
+        "reason": "The same uncommon L return is visible in both views.",
+        "evidence_count": 2,
+    }]
+
+
 def test_whole_architectural_floor_plan_is_demoted_to_document_context():
     payload = _visual_registry_payload({
         "visual_groups": [{

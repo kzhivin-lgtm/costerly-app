@@ -874,6 +874,43 @@ source-degraded/Page23 route. First live gate: repeat Adda and inspect all eight
 anchor decisions, Island geometry, exact Counter/L-shaped View membership, and
 two non-overlapping components before testing HSL or V-cabinet.
 
+ACTIVE DIAGNOSIS, V6.7 first Adda gate: the successful live run
+`run_632a5422f8264797901a286953aceb85` accepts all eight Mistral graphic
+anchors and restores the intended applied P1/P4 boundaries. It still returns
+three components: P2.V1/P3.V1/P4.V1 and P2.V2/P3.V2/P4.V2 are each correct,
+while Review falsely merges P1.V1 and P1.V2 as one general-view installation.
+This is not a V6.7 regression: pre-V6.7 run
+`run_a51ffdbabcc64e79851ea8890e3a7bf5` made the same merge, while the earlier
+correct run `run_d76e1c6d03374581aa84936676a5d8ad` produced the intended two
+four-View components. Candidate Q contains all 28 final pairs, including every
+P1-to-P2/P3/P4 pairing, but is supplied only to Discovery. Membership Review
+receives no pair queue or draft hypotheses and records no negative decision for
+the omitted P1 cross-page links. It instead gives the local P1 relationship a
+direct, 100-point merge through an invalid "General View" explicit-document
+relation. The review prompt is also internally contradictory: it asks to merge
+continuous drawing extensions, then says continuity within one depiction is an
+Island-boundary defect rather than pair evidence. Do not add an Adda-specific
+ban. Before any identity repair, choose and test a general commercial-object
+membership contract that reconciles P1-like perspective Views against existing
+cross-page components, and rejects shared-sheet/composition continuity as an
+author relation.
+
+ACTIVE EXPERIMENT, P0, V6.8, bounded complete pair membership for the V6.7
+Mistral-anchor route only: if the admitted object-evidence inventory has 2-10
+Views, Membership Review receives the complete unordered matrix and must return
+exactly one disposition for every pair: `same_object`, `different_objects`, or
+`insufficient_evidence`. Only `same_object` may carry evidence. It needs a
+direct cited document relationship or at least two independent typed facts, and
+the existing deterministic semantic-ledger and merge policy validate those
+facts before package membership changes. Dimensions may reinforce only a pair
+that Review marked `same_object`; Candidate Q remains collected and audited but
+is no longer the membership authority for this bounded gate. The pair matrix,
+all dispositions, evidence counts, and timing remain in the run audit. This is
+not a filename rule and does not activate for ordinary Haiku, Page23 or other
+non-V6.7 routes. First and only live gate: run Adda, compare the two expected
+four-View components with V6.7, then measure additional Review duration,
+tokens, and cost before considering any broader route.
+
 SUPERSEDED INPUT CONTRACT, V6.5, no static pre-Discovery crops: remove the three
 fixed `upper_left`, `upper_right`, and `lower` images from the Adda
 `sonnet_boundary_risk` route as well as the ordinary Haiku route. Retain the
