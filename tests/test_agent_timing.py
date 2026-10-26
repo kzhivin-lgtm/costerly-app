@@ -35,6 +35,7 @@ from agents.anthropic_adapter import (
     extract_detection_page_drawing_codes,
     normalize_detection_identity_fields,
     normalize_detection_v610_evidence_review_decisions,
+    normalize_detection_v69_reconciliation_decisions,
     normalize_detection_v611_document_scope_group_ids,
     run_anthropic_detection_agent,
     run_anthropic_detection_registry_agent,
@@ -1205,6 +1206,34 @@ def test_v610_negative_pair_discards_misplaced_positive_evidence():
     assert audit[0]["disposition"] == "different_objects"
     assert audit[0]["evidence_count"] == 0
     assert audit[0]["discarded_negative_evidence_count"] == 1
+
+
+def test_v610_reconciliation_ignores_outside_row_and_falls_back_for_required_row():
+    facts, audit = normalize_detection_v69_reconciliation_decisions(
+        [{
+            "candidate_group_id": "view-x",
+            "reference_component_id": "RC001",
+            "comparison_group_id": "view-a",
+            "disposition": "same_object",
+            "reason": "This row is addressed to the wrong candidate.",
+            "criteria": [{
+                "criterion": name,
+                "assessment": "supports_same_object",
+                "observation": "Irrelevant because this row is outside the matrix.",
+            } for name in ("identifier", "topology", "geometry", "dimensions", "construction")],
+            "evidence": [],
+        }],
+        expected_matrix=[{
+            "candidate_group_id": "view-c", "reference_component_id": "RC001",
+        }],
+        components={"RC001": ["view-a", "view-b"]},
+    )
+
+    assert facts == []
+    assert audit[0]["status"] == "ignored_outside_reconciliation_matrix"
+    assert audit[1]["status"] == "runtime_fallback_missing_reconciliation_row"
+    assert audit[1]["candidate_group_id"] == "view-c"
+    assert audit[1]["disposition"] == "insufficient_evidence"
 
 
 def test_v633_ada_uses_haiku_for_discovery_and_sonnet_for_review():

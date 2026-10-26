@@ -3360,6 +3360,9 @@ def format_detection_v69_reconciliation_matrix(
         "all five criteria for that exact candidate/comparison View pair. Do not merge "
         "on shared page, General View, adjacency, composition continuity, material, "
         "lighting or strokes. A same_object row needs concrete evidence from both endpoints.",
+        "Return one row for every RECONCILE line and no other row. Copy its CANDIDATE "
+        "and REFERENCE_COMPONENT identifiers exactly. comparison_group_id must be one "
+        "of that component's MEMBERS.",
         "REFERENCE_COMPONENT=id|MEMBERS=Views",
         *(f"{component_id}|{'|'.join(members)}" for component_id, members in sorted(components.items())),
         "RECONCILE=id|CANDIDATE=View|REFERENCE_COMPONENT=id",
@@ -3397,7 +3400,18 @@ def normalize_detection_v69_reconciliation_decisions(
         comparison = str(raw.get("comparison_group_id") or "")
         key = (candidate, component_id)
         if key not in expected or key in seen or comparison not in components.get(component_id, []):
-            raise ValueError("V6.9 reconciliation decision is outside its matrix")
+            # The reconciliation matrix is runtime-owned. An extra or
+            # misaddressed provider row has no authority to create a merge and
+            # must not make the entire RFQ fail. Keep it auditable, then emit
+            # a neutral fallback for its required matrix row below.
+            audit.append({
+                "candidate_group_id": candidate,
+                "reference_component_id": component_id,
+                "comparison_group_id": comparison,
+                "disposition": str(raw.get("disposition") or ""),
+                "status": "ignored_outside_reconciliation_matrix",
+            })
+            continue
         seen.add(key)
         pair_raw = {
             "group_id_a": candidate, "group_id_b": comparison,
@@ -3414,8 +3428,26 @@ def normalize_detection_v69_reconciliation_decisions(
         })
         facts.extend(pair_facts)
         audit.append(pair_audit)
-    if seen != expected:
-        raise ValueError(f"V6.9 reconciliation coverage is incomplete: missing={sorted(expected - seen)}")
+    for candidate, component_id in sorted(expected - seen):
+        comparison = components[component_id][0]
+        audit.append({
+            "candidate_group_id": candidate,
+            "reference_component_id": component_id,
+            "comparison_group_id": comparison,
+            "disposition": "insufficient_evidence",
+            "reason": "Runtime fallback: model omitted the required reconciliation row.",
+            "criteria": [{
+                "criterion": name,
+                "assessment": "not_visible",
+                "observation": "Runtime fallback after an omitted reconciliation row.",
+            } for name in DETECTION_V69_CRITERION_NAMES],
+            "supporting_criteria": [],
+            "contradicting_criteria": [],
+            "evidence_count": 0,
+            "evidence_types": [],
+            "computed_strength": "unproved",
+            "status": "runtime_fallback_missing_reconciliation_row",
+        })
     return facts, audit
 
 
