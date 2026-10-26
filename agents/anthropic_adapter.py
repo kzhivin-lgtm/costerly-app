@@ -10363,28 +10363,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             graph_edges=positive_relation_edges,
             source_facts=[*source_facts, *registry_visual_sources],
         )
-        # The normalized public visual map deliberately omits Discovery bbox
-        # geometry and evidence classes.  Keep a private, post-Registry
-        # sidecar for deferred Naming only.  It is derived after object
-        # membership is immutable and is never fed back to Discovery, Review
-        # or graph construction.
-        registry_owned_group_ids = {
-            str(group_id)
-            for item in registry["objects"]
-            for group_id in item.get("visual_group_ids") or []
-            if str(group_id)
-        }
-        registry_owned_evidence = [
-            {
-                "group_id": group_id,
-                "page_number": page_by_group_id[group_id],
-                "bbox": dict(group_bboxes[group_id]),
-            }
-            for group_id in sorted(registry_owned_group_ids)
-            if group_id in page_by_group_id and group_id in group_bboxes
-        ]
-        if registry_owned_evidence:
-            visual_map["_registry_owned_evidence"] = registry_owned_evidence
     except (KeyError, ValueError) as exc:
         failure_diagnostics = dict(diagnostics)
         failure_diagnostics.update({

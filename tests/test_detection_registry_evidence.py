@@ -173,30 +173,6 @@ def test_registry_only_result_materializes_every_registry_package_without_handof
     assert validate_detection_result(result) == result
 
 
-def test_v616_registry_materializes_only_registry_owned_bbox_regions():
-    registry = {"objects": [{
-        "object_id": "object-001", "transport_label": "N57",
-        "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-        "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
-        "visual_identity": "one cabinet", "boundary_basis": "one envelope",
-    }]}
-    result = _registry_to_detection_result(
-        registry, company_id="001", file_name="cabinet.pdf", page_count=1,
-        visual_map={"_registry_owned_evidence": [{
-            "group_id": "view-001", "page_number": 1,
-            "bbox": {
-                "top_left_x": 10, "top_left_y": 20,
-                "bottom_right_x": 300, "bottom_right_y": 400,
-            },
-        }]},
-    )
-
-    assert result["detected_objects"][0]["evidence_page_refs"][0]["regions"] == [{
-        "top_left_x": 10.0, "top_left_y": 20.0,
-        "bottom_right_x": 300.0, "bottom_right_y": 400.0,
-    }]
-
-
 def test_v49_routes_default_registry_to_haiku_without_evidence_handoff():
     registry = {"objects": [{
         "object_id": "object-001", "transport_label": "Object 1",

@@ -514,36 +514,6 @@ def update_rfq_run_project_name_if_unchanged(
     )
 
 
-def update_rfq_run_field_if_unchanged(
-    client: Client,
-    *,
-    run_id: str,
-    field: str,
-    expected_value: str,
-    value: str,
-) -> bool:
-    """Publish one deferred document field without replacing a user edit."""
-    allowed_fields = {
-        "project_name", "design_partner", "client", "author", "document_date",
-    }
-    if field not in allowed_fields:
-        raise ValueError("RFQ run field is not eligible for deferred metadata")
-    response = (
-        client.table("rfq_runs")
-        .update({field: value})
-        .eq("run_id", run_id)
-        .eq(field, expected_value)
-        .select(f"run_id,{field}")
-        .execute()
-    )
-    rows = response.data or []
-    return (
-        len(rows) == 1
-        and str(rows[0].get("run_id") or "") == run_id
-        and str(rows[0].get(field) or "") == value
-    )
-
-
 def upsert_rfq_estimate_shell(
     client: Client,
     *,

@@ -21,10 +21,6 @@ from agents.anthropic_adapter import (
     get_secret,
 )
 from agents.detection_agent import run_detection_agent
-from agents.document_identity import (
-    DOCUMENT_IDENTITY_VERSION,
-    run_document_identity_call,
-)
 from agents.detection_page_images import (
     DEFAULT_PAGE_IMAGE_DPI,
     estimated_inline_pdf_bytes,
@@ -56,7 +52,6 @@ from db.repositories import (
     update_rfq_detected_object,
     update_rfq_detected_object_name_if_unchanged,
     update_rfq_run,
-    update_rfq_run_field_if_unchanged,
     update_rfq_run_project_name_if_unchanged,
     upsert_rfq_detection_result,
 )
@@ -129,7 +124,7 @@ def _runtime_event(
     usage["duration_seconds"] = duration_seconds
     usage["cost_category"] = agent_cost_category(agent_name)
     costs = {"input_cost_usd": None, "output_cost_usd": None, "total_cost_usd": None}
-    if agent_name in {"naming", "document_identity"}:
+    if agent_name == "naming":
         costs = calculate_llm_cost_usd(
             model=model,
             input_tokens=int(usage.get("input_tokens") or 0),
@@ -288,7 +283,6 @@ def _run_deferred_naming(
     file_name: str,
     file_bytes: bytes = b"",
     page_images: list[bytes] | None = None,
-    object_crops_by_id: dict[str, list[dict[str, Any]]] | None = None,
     provisional_project_name: str | None = None,
 ) -> dict[str, Any]:
     """Name locked objects after File Review is allowed to open."""
@@ -316,16 +310,8 @@ def _run_deferred_naming(
             if number <= len(source_pages)
         }
         naming_result = (
-            run_naming_lab_call(
-                locked_objects,
-                visual_pages_by_number=visual_pages,
-                object_crops_by_id=object_crops_by_id,
-            )
-            if object_crops_by_id is not None
-            else (
-                run_naming_lab_call(locked_objects, visual_pages_by_number=visual_pages)
-                if visual_pages else run_naming_lab_call(locked_objects)
-            )
+            run_naming_lab_call(locked_objects, visual_pages_by_number=visual_pages)
+            if visual_pages else run_naming_lab_call(locked_objects)
         )
         apply_name_mapping(detected_objects, locked_objects, naming_result)
         names: dict[str, str] = {}
@@ -466,81 +452,6 @@ def _run_deferred_naming(
         }
 
 
-def _run_deferred_document_identity(
-    *,
-    client: Any,
-    company_id: str,
-    run_id: str,
-    file_name: str,
-    page_images: list[bytes] | None,
-) -> dict[str, Any]:
-    """Fill explicit document fields after File Review is already available."""
-    started_at = datetime.now(UTC).isoformat()
-    started = time.perf_counter()
-    persistence_audit: list[dict[str, Any]] = []
-    try:
-        result = run_document_identity_call(page_images=page_images or [])
-        identity = result["identity"]
-        for field, evidence in identity.items():
-            value = str(evidence.get("value") or "unknown")
-            if value == "unknown":
-                persistence_audit.append({"field": field, "value": value, "persisted": False})
-                continue
-            persisted = update_rfq_run_field_if_unchanged(
-                client,
-                run_id=run_id,
-                field=field,
-                expected_value="unknown",
-                value=value,
-            )
-            persistence_audit.append({"field": field, "value": value, "persisted": persisted})
-        event = _runtime_event(
-            agent_name="document_identity",
-            operation="document_identity_deferred",
-            company_id=company_id,
-            run_id=run_id,
-            file_name=file_name,
-            model=str(result["model"]),
-            prompt_version=DOCUMENT_IDENTITY_VERSION,
-            started_at=started_at,
-            finished_at=datetime.now(UTC).isoformat(),
-            duration_seconds=float(result["duration_seconds"]),
-            raw_usage={
-                "input_tokens": result["input_tokens"],
-                "output_tokens": result["output_tokens"],
-                "identity": identity,
-                "crop_audit": result["crop_audit"],
-                "persistence_audit": persistence_audit,
-                "deferred": True,
-            },
-        )
-        insert_agent_usage_event(client, event)
-        return {"status": "succeeded", "identity": identity}
-    except Exception as exc:
-        duration_seconds = round(time.perf_counter() - started, 3)
-        error = str(exc)
-        print(f"[Document Identity] Deferred metadata failed for run {run_id}: {error}")
-        event = _runtime_event(
-            agent_name="document_identity",
-            operation="document_identity_deferred",
-            company_id=company_id,
-            run_id=run_id,
-            file_name=file_name,
-            model="unknown",
-            prompt_version=DOCUMENT_IDENTITY_VERSION,
-            started_at=started_at,
-            finished_at=datetime.now(UTC).isoformat(),
-            duration_seconds=duration_seconds,
-            raw_usage={"deferred": True, "error": error, "persistence_audit": persistence_audit},
-            status="failed",
-        )
-        try:
-            insert_agent_usage_event(client, event)
-        except Exception as telemetry_exc:
-            print(f"[Document Identity] Could not persist failure telemetry: {telemetry_exc}")
-        return {"status": "failed", "error": error}
-
-
 def assign_server_run_id(detection_result: dict[str, Any]) -> str:
     """Replace a model-generated RFQ key with a globally unique server key."""
     run_id = f"run_{uuid4().hex}"
@@ -646,7 +557,6 @@ def process_uploaded_rfq(
             )
         raise
     detection_seconds = round(time.perf_counter() - detection_started, 3)
-    naming_object_crops = detection_result.pop("_naming_object_crops", None)
     usage_events = detection_result.pop("_agent_usage_events", [])
     legacy_usage_event = detection_result.pop("_agent_usage", None)
     if isinstance(legacy_usage_event, dict):
@@ -664,7 +574,6 @@ def process_uploaded_rfq(
     detection_token_cost = _usage_cost_total(usage_events)
     naming_seconds = 0.0
     naming_future = None
-    document_identity_future = None
     locked_objects = None
     if detection_naming_split_enabled() and detection_result["detected_objects"]:
         ensure_unique_object_ids(detection_result["detected_objects"])
@@ -691,15 +600,6 @@ def process_uploaded_rfq(
             objects=deepcopy(detection_result["detected_objects"]),
             ocr_package=deepcopy(ocr_package), page_images=page_images,
         )
-    if page_images:
-        document_identity_future = _NAMING_EXECUTOR.submit(
-            _run_deferred_document_identity,
-            client=client,
-            company_id=company_id,
-            run_id=run_id,
-            file_name=file_name,
-            page_images=deepcopy(page_images),
-        )
     if locked_objects is not None:
         naming_future = _NAMING_EXECUTOR.submit(
             _run_deferred_naming,
@@ -711,8 +611,6 @@ def process_uploaded_rfq(
             file_name=file_name,
             file_bytes=file_bytes,
             page_images=deepcopy(page_images) if page_images else None,
-            object_crops_by_id=deepcopy(naming_object_crops)
-            if isinstance(naming_object_crops, dict) else None,
             provisional_project_name=str(detection_result["rfq_run"].get("project_name") or ""),
         )
 
@@ -750,7 +648,6 @@ def process_uploaded_rfq(
             "detection_seconds": detection_seconds,
             "naming_seconds": naming_seconds,
             "naming_deferred": naming_future is not None,
-            "document_identity_deferred": document_identity_future is not None,
             "preview_deferred": preview_future is not None,
             "object_lock_log": _object_lock_log(detection_result["detected_objects"]),
         },
@@ -805,7 +702,6 @@ def process_uploaded_rfq(
         "ocr_event_id": ocr_event_id,
         "original": original,
         "naming_future": naming_future,
-        "document_identity_future": document_identity_future,
         "preview_future": preview_future,
         "timings": {
             "ocr_seconds": ocr_seconds,
