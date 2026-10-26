@@ -16,7 +16,7 @@ whose category decisions can cite object-bound visual/OCR evidence. Reassess
 the P11 object split separately from Naming: it is a locked Detection-boundary
 question, not a name rewrite.
 
-ACTIVE, V6.20 Naming publication and cost lifecycle: preserve the V6.14
+RESOLVED, V6.20 Naming publication and cost lifecycle: preserve the V6.14
 Detection checkpoint while repairing the V6.19 deferred Naming worker call,
 show `TC1` for completed OCR plus Detection and `TC2` only after terminal
 Naming, and keep File Review labels as neutral `Object NN` until one Naming
