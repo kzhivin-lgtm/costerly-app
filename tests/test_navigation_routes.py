@@ -411,8 +411,8 @@ def test_file_review_publishes_persisted_naming_once_without_reloading_review():
         object_id: {"stale_name": "Object 1", "published_name": "Shelving unit"},
     }
     assert st.session_state.current_agent_timings["naming_seconds"] == 1.2
-    assert "TC unavailable" in file_review._timing_html({"total_seconds": 1.2})
-    assert "TC 0.024" in file_review._timing_html({"total_seconds": 1.2, "token_cost": 0.024166})
+    assert "TC1 unavailable" in file_review._timing_html({"total_seconds": 1.2})
+    assert "TC1 0.024" in file_review._timing_html({"total_seconds": 1.2, "token_cost": 0.024166})
     assert file_review._publish_persisted_naming(
         run_id,
         {"status": "succeeded", "names": {object_id: "Different name"}},

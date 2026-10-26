@@ -1,5 +1,15 @@
 # TODO
 
+ACTIVE, V6.20 Naming publication and cost lifecycle: preserve the V6.14
+Detection checkpoint while repairing the V6.19 deferred Naming worker call,
+show `TC1` for completed OCR plus Detection and `TC2` only after terminal
+Naming, and keep File Review labels as neutral `Object NN` until one Naming
+publication atomically applies the source index with the category name.
+Acceptance: HSL performs one terminal Naming call, Naming cost/time appear in
+the ledger and File Review, and the locked Detection object identity, count,
+order, and evidence remain unchanged. File Review polling must not remount
+visible metadata or object cards while no deferred work changes state.
+
 CHECKPOINT, experimental, Detection V5.7.1 is recorded in
 `notes/DETECTION_V5_7_1_EXPERIMENTAL_CHECKPOINT_2026_10_23.md`. It is not
 accepted or deployed. The measured membership-edge path passes Page23 and
@@ -1153,6 +1163,21 @@ Detection usage event. First live gate is HSL: ordinary Haiku Detection remains
 contains one annotated page per Registry-Island page rather than one crop per
 View. Compare Naming duration, tokens and cost with V6.14 before extending the
 experiment to Page23 or Adda.
+
+LIVE AUDIT, V6.19 HSL `run_a209ce477a914e63a277ade7a6577e2e`: Detection
+preserved the protected ordinary Haiku result, 32 Registry-owned Views and ten
+objects. The overlay contract also materialized correctly: nine annotated
+source pages (P3-P11), 32 overlays, ten object labels and 2,139,216 encoded
+image bytes. However, no `locked_object_naming_deferred` terminal event exists,
+neither success nor failure. The current File Review therefore shows only
+deterministic source indices, not a semantic Naming result. Do not evaluate
+V6.19 naming quality or cost from this run. The immediate diagnostic must add
+nonblocking durable lifecycle evidence that distinguishes submitted, worker
+started, provider returned and terminally persisted Naming. Separately, File
+Review has two unconditional `run_every=2.0` fragments. The dynamic fragment
+refreshes even without deferred work, and the metadata branch never marks its
+document-identity flag complete. This is the supported cause of its perpetual
+two-second refresh cycle; repair that UI lifecycle independently from Naming.
 
 SUPERSEDED INPUT CONTRACT, V6.5, no static pre-Discovery crops: remove the three
 fixed `upper_left`, `upper_right`, and `lower` images from the Adda

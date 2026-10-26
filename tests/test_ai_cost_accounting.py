@@ -1,4 +1,4 @@
-from config import agent_cost_category
+from config import agent_cost_category, calculate_ocr_page_cost_usd
 from use_cases.rfq_processing import _runtime_event
 
 
@@ -7,6 +7,16 @@ def test_all_agent_version_families_have_a_dashboard_cost_category():
     assert agent_cost_category("estimation_v3_material_facts") == "estimation"
     assert agent_cost_category("price_source_v3") == "price_source"
     assert agent_cost_category("new_external_worker") == "detection"
+
+
+def test_mistral_ocr_cost_uses_provider_reported_page_count():
+    assert calculate_ocr_page_cost_usd(
+        model="mistral-ocr-4-1", pages_processed=11,
+    ) == {
+        "input_cost_usd": None,
+        "output_cost_usd": None,
+        "total_cost_usd": "0.044000",
+    }
 
 
 def test_naming_uses_anthropic_token_rate_without_pricing_ocr():

@@ -258,14 +258,20 @@ def _timing_html(timings: dict[str, object] | None) -> str:
 
     def token_cost() -> str:
         try:
-            value = float(timings.get("token_cost"))
+            completed = timings.get("full_cost")
+            if completed is not None:
+                return f"TC2 {float(completed):.3f}"
+            value = float(timings.get("detection_cost", timings.get("token_cost")))
         except (TypeError, ValueError):
-            return "TC unavailable"
-        return f"TC {value:.3f}"
+            return "TC1 unavailable"
+        return f"TC1 {value:.3f}"
 
     naming_html = ""
     try:
-        if float(timings.get("naming_seconds") or 0) > 0:
+        naming_status = str(timings.get("naming_status") or "")
+        if naming_status == "pending":
+            naming_html = '<span>Naming <strong>pending</strong></span>'
+        elif float(timings.get("naming_seconds") or 0) > 0:
             naming_html = f'<span>Naming background <strong>{seconds("naming_seconds")}</strong></span>'
     except (TypeError, ValueError):
         pass
@@ -297,12 +303,15 @@ def _merged_timings(
         result["naming_seconds"] = max(persisted_naming, session_naming)
     except (AttributeError, TypeError, ValueError):
         pass
-    try:
-        persisted_cost = float((persisted or {}).get("token_cost") or 0)
-        session_cost = float((in_session or {}).get("token_cost") or 0)
-        result["token_cost"] = max(persisted_cost, session_cost) or None
-    except (AttributeError, TypeError, ValueError):
-        pass
+    for key in ("token_cost", "detection_cost", "full_cost"):
+        try:
+            persisted_cost = float((persisted or {}).get(key) or 0)
+            session_cost = float((in_session or {}).get(key) or 0)
+            result[key] = max(persisted_cost, session_cost) or None
+        except (AttributeError, TypeError, ValueError):
+            pass
+    if (in_session or {}).get("naming_status"):
+        result["naming_status"] = (in_session or {})["naming_status"]
     return result
 
 
@@ -365,18 +374,20 @@ def _sync_durable_document_identity_once(run_id: str) -> None:
     if str(result.get("status") or "pending") == "pending":
         return
     _publish_persisted_document_identity(run_id, result)
+    _mark_deferred_work_complete(run_id, "document_identity")
     st.session_state[synced_key] = True
 
 
-@st.fragment(run_every=2.0)
 def _render_file_review_metadata_inputs(run_id: str) -> None:
     """Render editable metadata and publish title-block results in place."""
     work = st.session_state.get("file_review_deferred_work")
     if isinstance(work, dict) and work.get("run_id") == run_id and work.get("document_identity"):
-        _publish_persisted_document_identity(
+        published = _publish_persisted_document_identity(
             run_id,
             load_file_review_document_identity_publication(run_id),
         )
+        if published:
+            _mark_deferred_work_complete(run_id, "document_identity")
     else:
         _sync_durable_document_identity_once(run_id)
 
@@ -585,6 +596,11 @@ def _publish_persisted_naming(
         return False
     st.session_state[published_key] = True
 
+    timings = st.session_state.get("current_agent_timings")
+    if isinstance(timings, dict):
+        timings["naming_seconds"] = float(result.get("naming_seconds") or 0)
+        timings["naming_status"] = status
+
     if status != "succeeded":
         st.session_state[f"file_review_naming_terminal.{run_id}"] = str(
             result.get("error") or "Naming did not complete."
@@ -622,14 +638,14 @@ def _publish_persisted_naming(
                     st.session_state[widget_key] = new_name
             item["name"] = new_name
 
-    timings = st.session_state.get("current_agent_timings")
     if isinstance(timings, dict):
-        timings["naming_seconds"] = float(result.get("naming_seconds") or 0)
         naming_cost = result.get("token_cost")
         if naming_cost is not None:
             try:
-                timings["token_cost"] = round(
-                    float(timings.get("token_cost") or 0) + float(naming_cost), 6
+                timings["full_cost"] = round(
+                    float(timings.get("detection_cost", timings.get("token_cost")) or 0)
+                    + float(naming_cost),
+                    6,
                 )
             except (TypeError, ValueError):
                 pass
@@ -650,6 +666,7 @@ def _sync_durable_naming_once(run_id: str) -> None:
     if str(result.get("status") or "pending") == "pending":
         return
     _publish_persisted_naming(run_id, result, allow_refresh=True)
+    _mark_deferred_work_complete(run_id, "naming")
     st.session_state[synced_key] = True
 
 
@@ -721,9 +738,8 @@ def _publish_deferred_file_review_work(run_id: str) -> None:
     # navigation rail while Streamlit reconciles File Review.
 
 
-@st.fragment(run_every=2.0)
 def _render_file_review_dynamic_content(run_id: str) -> None:
-    """Refresh only object cards while deferred artifacts become available."""
+    """Render object cards from the stable File Review snapshot."""
     # Naming updates a keyed text input. It must complete before this fragment
     # creates that input, otherwise Streamlit rejects the session-state write.
     # Preview publication also invalidates the cached object snapshot, so load
@@ -767,6 +783,37 @@ def _render_file_review_dynamic_content(run_id: str) -> None:
     for item in data["objects"]:
         _render_object_card(item)
     _render_missing_object_search()
+
+
+@st.fragment(run_every=2.0)
+def _poll_file_review_deferred_work(run_id: str) -> None:
+    """Poll off-screen only while work is pending, then make one full refresh.
+
+    The visible widgets stay outside the polling fragment. This prevents the
+    former two-second remount of metadata, object cards and timing rows.
+    """
+    work = st.session_state.get("file_review_deferred_work")
+    if not isinstance(work, dict) or work.get("run_id") != run_id:
+        return
+
+    terminal = False
+    if work.get("naming"):
+        terminal = (
+            str(load_file_review_naming_publication(run_id).get("status") or "pending")
+            != "pending"
+        )
+    if not terminal and work.get("document_identity"):
+        terminal = (
+            str(load_file_review_document_identity_publication(run_id).get("status") or "pending")
+            != "pending"
+        )
+    if not terminal and work.get("preview"):
+        terminal = (
+            str(load_file_review_preview_publication(run_id).get("status") or "pending")
+            != "pending"
+        )
+    if terminal:
+        st.rerun(scope="app")
 
 
 def _file_review_edits_changed(
@@ -970,6 +1017,7 @@ def render_file_review_screen(
     install_workflow_header_alignment_guard()
 
     _render_file_review_dynamic_content(run_id)
+    _poll_file_review_deferred_work(run_id)
 
     col_back, col_next = st.columns(2, gap="small")
 

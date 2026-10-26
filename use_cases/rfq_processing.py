@@ -44,7 +44,7 @@ from agents.ocr_rendering import (
     run_mistral_document_evidence_ocr,
 )
 from agents.ocr_adapter import DEFAULT_MISTRAL_OCR_MODEL
-from config import agent_cost_category, calculate_llm_cost_usd
+from config import agent_cost_category, calculate_llm_cost_usd, calculate_ocr_page_cost_usd
 from db.repositories import (
     fetch_deferred_naming_status,
     fetch_deferred_document_identity_status,
@@ -137,6 +137,18 @@ def _runtime_event(
             model=model,
             input_tokens=int(usage.get("input_tokens") or 0),
             output_tokens=int(usage.get("output_tokens") or 0),
+        )
+    elif agent_name == "ocr":
+        provider_usage = usage.get("provider_usage")
+        if not isinstance(provider_usage, dict):
+            provider_usage = {}
+        try:
+            pages_processed = int(provider_usage.get("pages_processed") or 0)
+        except (TypeError, ValueError):
+            pages_processed = -1
+        costs = calculate_ocr_page_cost_usd(
+            model=model,
+            pages_processed=pages_processed,
         )
     return {
         "company_id": company_id,
@@ -329,7 +341,9 @@ def _run_deferred_naming(
         names: dict[str, str] = {}
         for provisional, named in zip(locked_objects, detected_objects, strict=True):
             object_id = str(named.get("object_id") or "")
-            old_name = str(provisional.get("current_name") or "")
+            old_name = str(
+                provisional.get("persisted_name") or provisional.get("current_name") or ""
+            )
             new_name = str(named.get("object_name") or old_name)
             persisted = update_rfq_detected_object_name_if_unchanged(
                 client,
@@ -667,9 +681,19 @@ def process_uploaded_rfq(
     if detection_naming_split_enabled() and detection_result["detected_objects"]:
         ensure_unique_object_ids(detection_result["detected_objects"])
         ensure_provisional_object_names(detection_result["detected_objects"])
-        assign_ocr_drawing_indices(detection_result["detected_objects"], ocr_package)
-        locked_objects = build_locked_naming_input(
+        # Source codes are useful Naming evidence, but not an interim File
+        # Review label. Keep persisted Detection objects neutral until terminal
+        # Naming applies the code and category together.
+        naming_source_objects = deepcopy(detection_result["detected_objects"])
+        for source, persisted in zip(
+            naming_source_objects,
             detection_result["detected_objects"],
+            strict=True,
+        ):
+            source["_persisted_object_name"] = str(persisted.get("object_name") or "")
+        assign_ocr_drawing_indices(naming_source_objects, ocr_package)
+        locked_objects = build_locked_naming_input(
+            naming_source_objects,
             ocr_package,
         )
     run_id = detection_result["rfq_run"]["run_id"]
@@ -710,7 +734,6 @@ def process_uploaded_rfq(
             run_id=run_id,
             file_name=file_name,
             file_bytes=file_bytes,
-            ocr_package=deepcopy(ocr_package),
             annotated_visual_pages_by_number=deepcopy(naming_annotated_pages)
             if isinstance(naming_annotated_pages, dict) else None,
             provisional_project_name=str(detection_result["rfq_run"].get("project_name") or ""),
@@ -769,6 +792,8 @@ def process_uploaded_rfq(
         raw_usage=_ocr_storage_usage(ocr_package, detection_context=detection_context),
         status="failed" if ocr_package.get("status") == "failed" else "succeeded",
     )
+    ocr_cost = _usage_cost_total([ocr_event])
+    tc1 = round((detection_token_cost or 0) + (ocr_cost or 0), 6)
     ocr_event_id = None
     try:
         ocr_event_id = insert_agent_usage_event_returning_id(client, ocr_event)
@@ -813,7 +838,11 @@ def process_uploaded_rfq(
             "document_route": document_route,
             "detection_seconds": detection_seconds,
             "naming_seconds": naming_seconds,
-            "token_cost": detection_token_cost,
+            # Backwards-compatible alias. TC1 covers every completed
+            # Detection request, including page-priced OCR.
+            "token_cost": tc1,
+            "detection_cost": tc1,
+            "naming_status": "pending" if naming_future is not None else "not_started",
             "total_seconds": total_seconds,
         },
     }
@@ -1063,12 +1092,32 @@ def _latest_runtime_timings(usage_df: pd.DataFrame) -> dict[str, float] | None:
                 naming_seconds = float(candidate)
 
     usage_events = [row.to_dict() for _, row in usage_df.iterrows()]
+    def is_naming_event(event: dict[str, Any]) -> bool:
+        return (
+            str(event.get("agent_name") or "") == "naming"
+            or str(event.get("operation") or "") == "locked_object_naming_deferred"
+        )
+
+    detection_events = [event for event in usage_events if not is_naming_event(event)]
+    detection_cost = _usage_cost_total(detection_events)
+    naming_cost = _usage_cost_total([event for event in usage_events if is_naming_event(event)])
+    naming_status = "pending"
+    if not naming_rows.empty:
+        naming_status = str(naming_rows.iloc[-1].get("status") or "failed")
+    elif not bool(raw_usage.get("naming_deferred")):
+        naming_status = "not_started"
+    full_cost = None
+    if naming_status == "succeeded" and detection_cost is not None:
+        full_cost = round(detection_cost + (naming_cost or 0), 6)
 
     return {
         "ocr_seconds": float(raw_usage.get("ocr_seconds") or 0),
         "detection_seconds": float(raw_usage.get("detection_seconds") or 0),
         "naming_seconds": naming_seconds,
-        "token_cost": _usage_cost_total(usage_events),
+        "token_cost": detection_cost,
+        "detection_cost": detection_cost,
+        "full_cost": full_cost,
+        "naming_status": naming_status,
         "total_seconds": float(total_seconds or 0),
     }
 

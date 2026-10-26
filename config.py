@@ -15,6 +15,16 @@ DEFAULT_CLAUDE_MODEL_PRICING: dict[str, dict[str, str]] = {
     "default": {"input": "1", "output": "5"},
 }
 
+# USD per processed page. OCR is billed by page, so its provider response has
+# no token count from which a truthful cost could be derived. The default is
+# the standard OCR 4.1 API price current when V6.20 was introduced; a deployed
+# contract may replace it with MISTRAL_OCR_PAGE_PRICING_JSON.
+DEFAULT_MISTRAL_OCR_PAGE_PRICING: dict[str, str] = {
+    "mistral-ocr-4-1": "0.004",
+    "mistral-ocr-latest": "0.004",
+    "default": "0.004",
+}
+
 AI_COST_CATEGORIES = {"detection", "estimation", "price_source"}
 
 
@@ -90,6 +100,32 @@ def calculate_llm_cost_usd(
         "output_cost_usd": money(output_cost),
         "total_cost_usd": money(total_cost),
     }
+
+
+def calculate_ocr_page_cost_usd(
+    *,
+    model: str,
+    pages_processed: int,
+) -> dict[str, str | None]:
+    """Calculate a page-priced OCR request from provider-reported pages."""
+    if pages_processed < 0:
+        return {"input_cost_usd": None, "output_cost_usd": None, "total_cost_usd": None}
+
+    pricing = DEFAULT_MISTRAL_OCR_PAGE_PRICING
+    raw = get_optional_secret("MISTRAL_OCR_PAGE_PRICING_JSON")
+    if raw:
+        try:
+            override: dict[str, Any] = json.loads(raw)
+            pricing = {**DEFAULT_MISTRAL_OCR_PAGE_PRICING, **override}
+        except Exception:
+            pricing = DEFAULT_MISTRAL_OCR_PAGE_PRICING
+
+    per_page = pricing.get(model) or pricing.get("default")
+    if per_page is None:
+        return {"input_cost_usd": None, "output_cost_usd": None, "total_cost_usd": None}
+    total = Decimal(str(pages_processed)) * Decimal(str(per_page))
+    money = str(total.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP))
+    return {"input_cost_usd": None, "output_cost_usd": None, "total_cost_usd": money}
 
 
 def agent_cost_category(agent_name: str) -> str:

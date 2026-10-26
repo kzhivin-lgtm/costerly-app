@@ -99,6 +99,27 @@ def test_recovers_title_block_drawing_index_for_a_locked_object_page():
     assert objects[0]["object_name"] == "N57"
 
 
+def test_private_naming_code_does_not_replace_neutral_persisted_label():
+    objects = [{
+        "object_id": "object-001",
+        "object_name": "N57",
+        "_persisted_object_name": "Object 01",
+        "evidence_page_refs": [{"page_number": 4}],
+    }]
+
+    locked = build_locked_naming_input(objects, {"evidence": {}})
+    apply_name_mapping(
+        objects,
+        locked,
+        {"names": [{
+            "object_id": "object-001", "name_en": "Display cabinet", "name_original": "",
+        }]},
+    )
+
+    assert locked[0]["persisted_name"] == "Object 01"
+    assert objects[0]["object_name"] == "N57 Display cabinet"
+
+
 def test_does_not_turn_transport_placeholders_into_suffix_codes():
     assert extract_object_index("Object 3") == ""
     assert extract_object_index("Object 3 — TV console") == ""
@@ -140,6 +161,7 @@ def test_builds_minimal_locked_input_without_mutable_object_fields():
             "object_id": "lp-1",
             "object_index": "ЛП-1",
             "current_name": "ЛП-1 — Metal platform",
+            "persisted_name": "ЛП-1 — Metal platform",
             "evidence_pages": [1],
             "evidence_regions": [{
                 "page_number": 1,

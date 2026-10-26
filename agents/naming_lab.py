@@ -212,6 +212,11 @@ def build_locked_naming_input(
             "object_id": str(item.get("object_id") or ""),
             "object_index": extract_object_index(item.get("object_name")),
             "current_name": str(item.get("object_name") or ""),
+            # The OCR code can exist only in this private Naming copy. The
+            # compare-and-set write must protect the neutral File Review label.
+            "persisted_name": str(
+                item.get("_persisted_object_name") or item.get("object_name") or ""
+            ),
             "evidence_pages": [ref["page_number"] for ref in evidence_regions],
             # These are retrieval pointers for the supplied full pages.  They
             # make the multimodal naming pass object-specific without passing
@@ -436,6 +441,10 @@ def run_naming_lab_call(
     )
     client = get_anthropic_client()
     started = time.perf_counter()
+    model_locked_objects = [
+        {key: value for key, value in item.items() if key != "persisted_name"}
+        for item in locked_objects
+    ]
     content = [
         {
             "type": "text",
@@ -444,7 +453,7 @@ def run_naming_lab_call(
                 "as incomplete until you identify its product category from the Detection context "
                 "and local OCR. Source pages are labelled by physical page number. "
                 "Return only schema JSON:\n"
-                + json.dumps(locked_objects, ensure_ascii=False, separators=(",", ":"))
+                + json.dumps(model_locked_objects, ensure_ascii=False, separators=(",", ":"))
             ),
         }
     ]

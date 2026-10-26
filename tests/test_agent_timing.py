@@ -2328,7 +2328,10 @@ def test_file_review_timings_restore_deferred_naming_duration_and_cycle_tc():
         "ocr_seconds": 1.2,
         "detection_seconds": 9.1,
         "naming_seconds": 1.557,
-        "token_cost": 0.013605,
+        "token_cost": 0.010311,
+        "detection_cost": 0.010311,
+        "full_cost": 0.013605,
+        "naming_status": "succeeded",
         "total_seconds": 12.3,
     }
 
