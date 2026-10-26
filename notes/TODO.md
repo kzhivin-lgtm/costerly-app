@@ -123,6 +123,24 @@ remain on Sonnet and retain its two-object boundary; Stair must still compile
 one all-page Assembly Set. The threshold is an experiment, not calibrated
 universal policy.
 
+REJECTED EXPERIMENT, P0, V6.31 ordinary Sonnet Membership Review: Lev_1
+proved that Sonnet can semantically join its six Views into one correct Object,
+but ordinary must remain the inexpensive, stable Haiku scenario. V6.31 is
+reverted before the next test. Its result is evidence about the required
+reasoning capability, not approval to make ordinary a mixed-model contract.
+
+ACTIVE EXPERIMENT, P0, V6.32 direct Ada classification from Mistral graphic
+regions: retain exactly three scenarios, Page 23, ordinary, and Ada. Before
+Claude, route an unlabelled one-page mixed/vector technical sheet to existing
+Ada only when Mistral already exposes four through ten bounded graphic regions
+on that page. This repairs the Lev_1 blind spot where the legacy image
+inventory says one drawing but Fusion has six graphic candidates. Preserve Ada
+directly and skip the scope scout for this evidenced boundary risk. The rule
+does not identify commercial Objects, create a scenario, or alter Ada's
+existing Sonnet/Mistral-anchor/V6.10 contract. Gates: Lev_1 must route directly
+to Ada and assemble correctly; HSL stays ordinary; Adda stays direct Ada; Page
+23 keeps its source-degraded route.
+
 RESOLVED, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
 deferred Naming lifecycle and locked Detection object contract. Build optional
 `page_title_fields` during OCR/Fusion from explicit title-field label-to-value

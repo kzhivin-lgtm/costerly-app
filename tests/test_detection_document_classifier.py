@@ -61,6 +61,36 @@ def test_classifier_routes_unlabelled_repeated_multi_object_risk_to_sonnet():
     assert route["evidence_model"] == "haiku"
 
 
+def test_classifier_routes_sparse_single_page_mistral_graphic_regions_to_ada():
+    blocks = [
+        {
+            "type": "image",
+            "top_left_x": 20 + index * 150,
+            "top_left_y": 20,
+            "bottom_right_x": 140 + index * 150,
+            "bottom_right_y": 260,
+        }
+        for index in range(6)
+    ]
+    route = classify_detection_document(
+        ocr_package={
+            "pages": [{"page_number": 1, "blocks": blocks}],
+            "evidence": {
+                "page_profiles": [{"page_number": 1, "representation": "mixed"}],
+            },
+        },
+        source_capability=_capable_source(1),
+        base_model="haiku",
+        boundary_model="sonnet",
+    )
+
+    assert route["category"] == "ada_sparse_multi_object"
+    assert route["decision"] == "ada_single_page_mistral_graphic_region_risk"
+    assert route["registry_model"] == "sonnet"
+    assert route["signals"]["mistral_graphic_regions_by_page"] == {1: 6}
+    assert route["signals"]["v6_32_single_page_mistral_graphic_region_risk"] is True
+
+
 def test_classifier_keeps_labelled_multi_drawing_document_on_ordinary_haiku():
     page = _two_islands_page()
     page["markdown"] = "OM 15-1 Stair railing"

@@ -598,6 +598,69 @@ def test_v629_sparse_native_graphics_preserve_adda_before_scope_scout():
     assert "v6_29_sparse_native_graphics_preserve_ada" in route["reasons"]
 
 
+def test_v632_sparse_single_page_mistral_regions_preserve_adda_before_scope_scout():
+    registry = {"objects": [{
+        "object_id": "object-001", "transport_label": "Object 1",
+        "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+        "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
+        "visual_identity": "one object", "boundary_basis": "one envelope",
+    }]}
+    registry_call: dict = {}
+
+    def capture_registry(**kwargs):
+        registry_call.update(kwargs)
+        return {"visual_groups": []}, registry, {"event": "visual_registry"}
+
+    blocks = [
+        {
+            "type": "image",
+            "top_left_x": 20 + index * 150,
+            "top_left_y": 20,
+            "bottom_right_x": 140 + index * 150,
+            "bottom_right_y": 260,
+        }
+        for index in range(6)
+    ]
+    with (
+        patch("agents.detection_agent.get_secret", side_effect=lambda _name, default: default),
+        patch(
+            "agents.detection_agent.assess_detection_source_capability",
+            return_value={
+                "route_eligible": False,
+                "route_reason": "ordinary",
+                "page_count": 1,
+                "source_fact_count": 16,
+            },
+        ),
+        patch(
+            "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
+            side_effect=capture_registry,
+        ),
+        patch(
+            "agents.detection_agent.run_anthropic_detection_v627_scope_scout",
+            side_effect=AssertionError("V6.32 direct Ada route must not call the scope scout"),
+        ),
+    ):
+        result = run_detection_agent(
+            file_name="lev.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], ocr_package={
+                "pages": [{"page_number": 1, "blocks": blocks}],
+                "evidence": {
+                    "page_profiles": [{"page_number": 1, "representation": "mixed"}],
+                },
+            },
+        )
+
+    assert registry_call["model"] == "claude-sonnet-4-6"
+    assert registry_call["mistral_anchor_admission"] is True
+    route = result["_agent_usage_events"][0]["raw_usage"]["detection_v6_12_document_category"]
+    assert route["decision"] == "ada_boundary_risk_single_page_mistral_graphics"
+    assert "v6_32_single_page_mistral_graphics_preserve_ada" in route["reasons"]
+    assert route["signals"]["v6_32_scope_scout"] == {
+        "classification": "not_run_single_page_mistral_graphics",
+    }
+
+
 def test_source_degraded_route_uses_v532_pairwise_structural_admission_audit_and_forces_the_base_model():
     registry = {"objects": [{
         "object_id": "object-001", "transport_label": "Object 1",

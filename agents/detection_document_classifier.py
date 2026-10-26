@@ -142,6 +142,34 @@ def _native_graphic_anchor_count(ocr_package: dict[str, Any] | None) -> int:
     )
 
 
+def _mistral_graphic_regions_by_page(
+    ocr_package: dict[str, Any] | None,
+) -> dict[int, int]:
+    """Count bounded Mistral graphic blocks without assigning object identity.
+
+    This is the same page-local source inventory later used by Fusion for
+    ``mistral_graphic_region`` recall candidates. It is available before a
+    Claude call, unlike Discovery Islands.
+    """
+    counts: dict[int, int] = {}
+    for index, page in enumerate((ocr_package or {}).get("pages") or [], start=1):
+        if not isinstance(page, dict):
+            continue
+        page_number = page.get("page_number", index)
+        if not isinstance(page_number, int) or page_number < 1:
+            continue
+        count = sum(
+            1
+            for block in page.get("blocks") or []
+            if isinstance(block, dict)
+            and str(block.get("type") or "").casefold() == "image"
+            and _bbox_area(block) is not None
+        )
+        if count:
+            counts[page_number] = count
+    return counts
+
+
 def classify_detection_document(
     *,
     ocr_package: dict[str, Any] | None,
@@ -165,6 +193,7 @@ def classify_detection_document(
     page_count = max(len(pages), int(source_capability.get("page_count") or 0))
     shared_identifiers = _shared_document_identifiers(page_texts)
     technical_page_count = _technical_page_count(ocr_package)
+    mistral_graphic_regions_by_page = _mistral_graphic_regions_by_page(ocr_package)
 
     large_drawing_count = 0
     pages_with_multiple_large_drawings = 0
@@ -188,6 +217,11 @@ def classify_detection_document(
         "ocr_page_count": page_count,
         "technical_page_count": technical_page_count,
         "native_graphic_anchor_count": _native_graphic_anchor_count(ocr_package),
+        "mistral_graphic_regions_by_page": mistral_graphic_regions_by_page,
+        "mistral_graphic_region_count": sum(mistral_graphic_regions_by_page.values()),
+        "maximum_mistral_graphic_regions_on_page": max(
+            mistral_graphic_regions_by_page.values(), default=0,
+        ),
         "shared_document_identifiers": shared_identifiers,
         "large_drawing_count": large_drawing_count,
         "pages_with_multiple_large_drawings": pages_with_multiple_large_drawings,
@@ -257,22 +291,45 @@ def classify_detection_document(
         pages_with_multiple_large_drawings >= MIN_REPEATED_MULTI_DRAWING_PAGES
     )
     single_page_multi_drawing = len(pages) == 1 and maximum_large_drawings_on_page >= 2
+    # Some authored sheets expose several distinct Mistral graphic regions in
+    # ``blocks`` while their legacy ``images`` inventory reports only one large
+    # drawing. These are exactly the sparse, unlabelled multi-view sheets for
+    # which the existing Ada boundary contract is intended. Bound the trigger
+    # to Ada's small-view review capacity, never infer commercial objects here.
+    single_page_mistral_graphic_region_risk = (
+        page_count == 1
+        and technical_page_count >= 1
+        and 4 <= signals["maximum_mistral_graphic_regions_on_page"] <= 10
+    )
     if signals["strong_source_code_count"] == 0 and (
-        repeated_multi_drawing_pages or single_page_multi_drawing
+        repeated_multi_drawing_pages
+        or single_page_multi_drawing
+        or single_page_mistral_graphic_region_risk
     ):
         reasons = ["no_strong_source_object_code"]
         if repeated_multi_drawing_pages:
             reasons.append("repeated_multiple_large_drawing_regions")
         if single_page_multi_drawing:
             reasons.append("multiple_large_drawing_regions_on_single_page")
+        if single_page_mistral_graphic_region_risk:
+            reasons.append("multiple_mistral_graphic_regions_on_single_technical_page")
         return {
             "version": "detection_v6_12_document_category_v1",
             "category": "ada_sparse_multi_object",
-            "decision": "ada_boundary_risk",
+            "decision": (
+                "ada_single_page_mistral_graphic_region_risk"
+                if single_page_mistral_graphic_region_risk
+                else "ada_boundary_risk"
+            ),
             "reasons": reasons,
             "registry_model": boundary_model,
             "evidence_model": base_model,
-            "signals": signals,
+            "signals": {
+                **signals,
+                "v6_32_single_page_mistral_graphic_region_risk": (
+                    single_page_mistral_graphic_region_risk
+                ),
+            },
         }
     return {
         "version": "detection_v6_12_document_category_v1",
