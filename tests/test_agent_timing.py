@@ -34,6 +34,7 @@ from agents.anthropic_adapter import (
     extract_detection_document_dimension_unit_profile,
     extract_detection_page_drawing_codes,
     normalize_detection_identity_fields,
+    normalize_detection_v610_evidence_review_decisions,
     normalize_detection_v611_document_scope_group_ids,
     run_anthropic_detection_agent,
     run_anthropic_detection_registry_agent,
@@ -1174,6 +1175,36 @@ def test_v610_small_mistral_anchor_route_audits_each_sparse_link_before_merge():
         "not_visible", "supports_same_object", "supports_same_object",
         "not_visible", "not_visible",
     ]
+
+
+def test_v610_negative_pair_discards_misplaced_positive_evidence():
+    pairs, facts, audit = normalize_detection_v610_evidence_review_decisions(
+        [{
+            "group_id_a": "view-a", "group_id_b": "view-b",
+            "trigger_criterion": "geometry",
+            "disposition": "different_objects",
+            "reason": "The finished envelopes are visibly different.",
+            "criteria": {
+                "identifier": "not_visible",
+                "topology": "contradicts_same_object",
+                "geometry": "supports_same_object",
+                "dimensions": "not_visible",
+                "construction": "not_visible",
+            },
+            "evidence": [{
+                "evidence_type": "unique_geometry", "strength": "standard",
+                "observation": "Both views have a similar shallow return.",
+                "source_fact_ids": ["registry_view:view-a", "registry_view:view-b"],
+            }],
+        }],
+        allowed_group_ids={"view-a", "view-b"},
+    )
+
+    assert pairs == [("view-a", "view-b")]
+    assert facts == []
+    assert audit[0]["disposition"] == "different_objects"
+    assert audit[0]["evidence_count"] == 0
+    assert audit[0]["discarded_negative_evidence_count"] == 1
 
 
 def test_v633_ada_uses_haiku_for_discovery_and_sonnet_for_review():

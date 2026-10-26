@@ -3226,6 +3226,7 @@ def normalize_detection_v610_evidence_review_decisions(
     pairs: list[tuple[str, str]] = []
     stripped_decisions: list[dict[str, Any]] = []
     triggers: dict[tuple[str, str], str] = {}
+    discarded_negative_evidence: dict[tuple[str, str], int] = {}
     seen: set[tuple[str, str]] = set()
     expected_fields = {
         "group_id_a", "group_id_b", "trigger_criterion", "disposition",
@@ -3259,11 +3260,26 @@ def normalize_detection_v610_evidence_review_decisions(
         seen.add((left, right))
         pairs.append((left, right))
         triggers[(left, right)] = trigger
+        disposition = str(raw.get("disposition") or "")
+        raw_evidence = raw.get("evidence")
+        # Evidence has a positive-only schema. A negative disposition can
+        # still carry it when the model describes a superficial similarity
+        # before rejecting the commercial identity. It must never become a
+        # merge fact, so retain the decision and criteria but discard only the
+        # contradictory evidence with an explicit audit count.
+        if (
+            disposition in {"different_objects", "insufficient_evidence"}
+            and isinstance(raw_evidence, list)
+            and raw_evidence
+        ):
+            discarded_negative_evidence[(left, right)] = len(raw_evidence)
         decision = {
             key: copy.deepcopy(value)
             for key, value in raw.items()
             if key != "trigger_criterion"
         }
+        if (left, right) in discarded_negative_evidence:
+            decision["evidence"] = []
         decision["criteria"] = [{
             "criterion": name,
             "assessment": compact_criteria[name],
@@ -3275,6 +3291,9 @@ def normalize_detection_v610_evidence_review_decisions(
     )
     for row in audit:
         row["trigger_criterion"] = triggers[(row["group_id_a"], row["group_id_b"])]
+        row["discarded_negative_evidence_count"] = discarded_negative_evidence.get(
+            (row["group_id_a"], row["group_id_b"]), 0,
+        )
     return sorted(pairs), facts, audit
 
 
@@ -10041,7 +10060,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "That same row must immediately audit all five criteria: identifier, "
             "topology, geometry, dimensions and construction. These links are "
             "candidates only. Do not assume a first plausible relation is final. "
-            "Use concise factual observations, never explanatory prose.\n"
+            "Use concise factual observations, never explanatory prose. For "
+            "different_objects or insufficient_evidence, evidence must be an empty "
+            "array because that field is positive merge evidence only.\n"
         )
     review_content = build_detection_v5_membership_content_blocks(
         user_text=review_handoff, view_crops=membership_crops,
@@ -10204,7 +10225,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                     "grouped elsewhere. For each required candidate/component alternative, "
                     "select a comparison View inside that component and audit all five "
                     "criteria. A same_object result can move the candidate only with "
-                    "concrete, pair-specific, cited positive evidence.\n"
+                    "concrete, pair-specific, cited positive evidence. For "
+                    "different_objects or insufficient_evidence, evidence must be an "
+                    "empty array.\n"
                 )
                 reconciliation_content = build_detection_v5_membership_content_blocks(
                     user_text=v69_reconciliation_handoff, view_crops=membership_crops,
