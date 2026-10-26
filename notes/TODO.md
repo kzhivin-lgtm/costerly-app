@@ -123,25 +123,6 @@ remain on Sonnet and retain its two-object boundary; Stair must still compile
 one all-page Assembly Set. The threshold is an experiment, not calibrated
 universal policy.
 
-REJECTED EXPERIMENT, P0, V6.30 ordinary small-Island complete pair audit:
-ordinary files with at most six Object Evidence Views were made to emit every
-pair with all five criteria. Lev_1 fulfilled the matrix mechanically, 15 of 15
-pairs, but created five Objects and cost $0.027928 in 34.093 s. The visual
-expectation was one joined system, so exhaustive Haiku pair enumeration is not
-an accepted ordinary behavior. V6.30 is reverted wholesale to V6.29 before the
-next experiment. It must not become a fourth route or a permanent small-file
-branch.
-
-ACTIVE EXPERIMENT, P0, V6.31 ordinary Sonnet Membership Review: retain the
-exact V6.29 ordinary route, Discovery contract, bbox, Fusion, graph, and
-Membership Review schema. Only replace Haiku with Sonnet for the existing
-ordinary Membership Review after Haiku Discovery. Ada, Page 23, Assembly Set,
-and the router stay unchanged. Usage must preserve model per provider call and
-sum mixed-model costs rather than pricing both calls as one model. Gates: Lev_1
-must improve semantic grouping without the V6.30 all-pair branch; HSL must
-retain its accepted ordinary behavior. This is a model-capability experiment,
-not a new scenario or checkpoint.
-
 RESOLVED, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
 deferred Naming lifecycle and locked Detection object contract. Build optional
 `page_title_fields` during OCR/Fusion from explicit title-field label-to-value
