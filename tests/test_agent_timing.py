@@ -18,6 +18,8 @@ from agents.anthropic_adapter import (
     validate_detection_v5_discovery_page_coverage,
     DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
     DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+    DETECTION_V633_ADA_DISCOVERY_MODEL,
+    DETECTION_V633_ADA_HAIKU_DISCOVERY_SONNET_REVIEW_PROMPT_VERSION,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
     apply_benchmark_run_suffix,
     build_agent_usage_event,
@@ -1172,6 +1174,77 @@ def test_v610_small_mistral_anchor_route_audits_each_sparse_link_before_merge():
         "not_visible", "supports_same_object", "supports_same_object",
         "not_visible", "not_visible",
     ]
+
+
+def test_v633_ada_uses_haiku_for_discovery_and_sonnet_for_review():
+    proposal = _visual_registry_payload({
+        "visual_groups": [{
+            "group_id": "raw_view", "page_number": 1, "location_hint": "centre",
+            "visual_description": "one freestanding cabinet elevation",
+            "representation_kind": "elevation",
+            "bbox": {"top_left_x": 100, "top_left_y": 120,
+                     "bottom_right_x": 800, "bottom_right_y": 850},
+            "core_bbox": {"top_left_x": 100, "top_left_y": 120,
+                          "bottom_right_x": 800, "bottom_right_y": 850},
+        }],
+    })
+    proposal.pop("object_hypotheses")
+    proposal.pop("semantic_facts")
+    proposal.pop("document_scope")
+    proposal["page_coverage"] = [{
+        "page_number": 1, "visual_group_ids": ["raw_view"],
+    }]
+    proposal["candidate_region_decisions"] = [{
+        "candidate_region_id": "CR-P001-001", "decision": "accept",
+        "group_id": "raw_view",
+        "reason": "The Mistral graphic anchor encloses this cabinet elevation.",
+        "source_fact_ids": [],
+    }]
+    ocr_package = {"pages": [{"page_number": 1, "blocks": [{
+        "type": "image", "content": "cabinet elevation",
+        "top_left_x": 100, "top_left_y": 120,
+        "bottom_right_x": 800, "bottom_right_y": 850,
+    }]}]}
+
+    def fake_create(*_args, **_kwargs):
+        return _Response(), {
+            "request_started_at": "2026-10-16T00:00:00+00:00",
+            "request_finished_at": "2026-10-16T00:00:01+00:00",
+        }
+
+    with (
+        patch("agents.anthropic_adapter.get_secret", return_value="model"),
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            side_effect=fake_create,
+        ) as create_message,
+        patch(
+            "agents.anthropic_adapter.extract_text_from_claude_response",
+            side_effect=[json.dumps(proposal), json.dumps({"object_hypotheses": []})],
+        ),
+    ):
+        _, _, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=ocr_package,
+            model="claude-sonnet-4-6", mistral_anchor_admission=True,
+            document_category="ada_sparse_multi_object",
+        )
+
+    assert [call.kwargs["model"] for call in create_message.call_args_list] == [
+        DETECTION_V633_ADA_DISCOVERY_MODEL,
+        "claude-sonnet-4-6",
+    ]
+    assert usage["prompt_version"] == (
+        DETECTION_V633_ADA_HAIKU_DISCOVERY_SONNET_REVIEW_PROMPT_VERSION
+    )
+    assert usage["raw_usage"]["v6_33_ada_haiku_discovery_sonnet_review_active"] is True
+    assert usage["raw_usage"]["v5_9_proposal"]["model"] == DETECTION_V633_ADA_DISCOVERY_MODEL
+    assert usage["raw_usage"]["v5_9_review"]["model"] == "claude-sonnet-4-6"
+    assert (usage["input_tokens"], usage["output_tokens"]) == (200, 40)
+    assert usage["input_cost_usd"] == "0.000400"
+    assert usage["output_cost_usd"] == "0.000400"
+    assert usage["total_cost_usd"] == "0.000800"
 
 
 def test_whole_architectural_floor_plan_is_demoted_to_document_context():

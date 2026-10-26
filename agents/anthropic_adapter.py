@@ -123,6 +123,10 @@ DETECTION_V69_CRITERIA_RECONCILIATION_PROMPT_VERSION = (
 DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION = (
     "detection_v6_10_combined_evidence_review"
 )
+DETECTION_V633_ADA_HAIKU_DISCOVERY_SONNET_REVIEW_PROMPT_VERSION = (
+    "detection_v6_33_ada_haiku_discovery_sonnet_review"
+)
+DETECTION_V633_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
 # V5.0 keeps one Haiku call. Registry returns Islands, classifications, and
 # sparse positive semantic facts. Runtime owns every graph and package decision.
@@ -3565,13 +3569,16 @@ def summarize_detection_provider_call(
     context_characters: int,
     image_count: int,
     image_bytes: int,
+    requested_model: str | None = None,
 ) -> dict[str, Any]:
     """Keep each V5.8 Registry call independently measurable."""
     usage = getattr(response, "usage", None)
     input_tokens = int(getattr(usage, "input_tokens", 0) or 0)
     output_tokens = int(getattr(usage, "output_tokens", 0) or 0)
+    response_model = str(getattr(response, "model", "") or "")
+    effective_model = requested_model or response_model or DEFAULT_CLAUDE_DETECTION_MODEL
     costs = calculate_llm_cost_usd(
-        model=str(getattr(response, "model", "") or DEFAULT_CLAUDE_DETECTION_MODEL),
+        model=effective_model,
         input_tokens=input_tokens,
         output_tokens=output_tokens,
     )
@@ -3586,7 +3593,7 @@ def summarize_detection_provider_call(
     except ValueError:
         pass
     return {
-        "model": str(getattr(response, "model", "") or ""),
+        "model": effective_model,
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
         "input_cost_usd": costs["input_cost_usd"],
@@ -9607,6 +9614,21 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             for candidate in candidate_regions
         )
     )
+    # V6.33 keeps the existing Ada contract but separates the bounded visual
+    # inventory from the costly pairwise judgment. Mistral remains the anchor
+    # boundary authority, Haiku performs Discovery, and Sonnet remains the
+    # only model deciding V6.10 membership links and reconciliation.
+    v633_ada_haiku_discovery_sonnet_review_active = bool(
+        document_category == "ada_sparse_multi_object"
+        and mistral_anchor_admission_active
+        and "sonnet" in selected_model.lower()
+    )
+    discovery_model = (
+        DETECTION_V633_ADA_DISCOVERY_MODEL
+        if v633_ada_haiku_discovery_sonnet_review_active
+        else selected_model
+    )
+    review_model = selected_model
     prompt_version = (
         DETECTION_V67_MISTRAL_ANCHOR_ADMISSION_PROMPT_VERSION
         if mistral_anchor_admission_active
@@ -9718,6 +9740,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             **summarize_detection_provider_call(
                 response=response,
                 diagnostics=diagnostics,
+                requested_model=discovery_model,
                 prompt_characters=len(proposal_prompt_with_anchor_contract),
                 context_characters=len(proposal_user_text),
                 image_count=len(page_images) + len(regions),
@@ -9729,7 +9752,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         }
 
     proposal_response, proposal_diagnostics = create_claude_message_streamed(
-        get_anthropic_client(), model=selected_model,
+        get_anthropic_client(), model=discovery_model,
         max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
         temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
         system=build_detection_system_content(prompt=proposal_prompt_with_anchor_contract),
@@ -9756,7 +9779,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         ):
             proposal_retry_reason = "initial_response_hit_budget_inside_json_string"
             proposal_response, proposal_diagnostics = create_claude_message_streamed(
-                get_anthropic_client(), model=selected_model,
+                get_anthropic_client(), model=discovery_model,
                 max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
                 temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
                 system=build_detection_system_content(
@@ -9804,7 +9827,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             failure_usage = build_agent_usage_event(
                 agent_name="detection", operation="rfq_detection_visual_registry",
                 company_id=company_id, run_id=None, file_name=file_name,
-                object_id=None, object_name=None, model=selected_model,
+                object_id=None, object_name=None, model=discovery_model,
                 prompt_version=prompt_version, response=proposal_response,
                 started_at=proposal_diagnostics["request_started_at"],
                 finished_at=proposal_diagnostics["request_finished_at"],
@@ -9817,7 +9840,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 int(call["output_tokens"]) for call in proposal_attempt_summaries
             )
             total_costs = calculate_llm_cost_usd(
-                model=selected_model,
+                model=discovery_model,
                 input_tokens=total_input_tokens,
                 output_tokens=total_output_tokens,
             )
@@ -9923,7 +9946,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         ]) <= DETECTION_V69_RECONCILIATION_MAX_ISLANDS
     )
     if v69_criteria_reconciliation_active:
-        prompt_version = DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION
+        prompt_version = (
+            DETECTION_V633_ADA_HAIKU_DISCOVERY_SONNET_REVIEW_PROMPT_VERSION
+            if v633_ada_haiku_discovery_sonnet_review_active
+            else DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION
+        )
+    elif v633_ada_haiku_discovery_sonnet_review_active:
+        prompt_version = DETECTION_V633_ADA_HAIKU_DISCOVERY_SONNET_REVIEW_PROMPT_VERSION
     registry_visual_sources = build_detection_v5_registry_visual_sources(
         proposal_for_review["visual_groups"]
     )
@@ -9957,7 +9986,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         page_context_images=review_page_context_images,
     )
     review_response, review_diagnostics = create_claude_message_streamed(
-        get_anthropic_client(), model=selected_model,
+        get_anthropic_client(), model=review_model,
         max_tokens=DETECTION_V5_MEMBERSHIP_MAX_TOKENS,
         temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
         system=build_detection_system_content(prompt=review_prompt_with_membership_contract),
@@ -9987,7 +10016,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         failure_usage = build_agent_usage_event(
             agent_name="detection", operation="rfq_detection_visual_registry",
             company_id=company_id, run_id=None, file_name=file_name,
-            object_id=None, object_name=None, model=selected_model,
+            object_id=None, object_name=None, model=review_model,
             prompt_version=prompt_version, response=review_response,
             started_at=review_diagnostics["request_started_at"],
             finished_at=review_diagnostics["request_finished_at"],
@@ -10027,7 +10056,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         failure_usage = build_agent_usage_event(
             agent_name="detection", operation="rfq_detection_visual_registry",
             company_id=company_id, run_id=None, file_name=file_name,
-            object_id=None, object_name=None, model=selected_model,
+            object_id=None, object_name=None, model=review_model,
             prompt_version=prompt_version, response=review_response,
             started_at=review_diagnostics["request_started_at"],
             finished_at=review_diagnostics["request_finished_at"],
@@ -10101,7 +10130,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 )
                 v69_reconciliation_response, v69_reconciliation_diagnostics = (
                     create_claude_message_streamed(
-                        get_anthropic_client(), model=selected_model,
+                        get_anthropic_client(), model=review_model,
                         max_tokens=DETECTION_V5_MEMBERSHIP_MAX_TOKENS,
                         temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
                         system=build_detection_system_content(prompt=v69_reconciliation_prompt),
@@ -10178,6 +10207,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v6_7_mistral_anchor_admission_active": mistral_anchor_admission_active,
         "v6_7_mistral_anchor_admission_audit": mistral_anchor_admission_audit,
         "v6_10_combined_evidence_review_active": v69_criteria_reconciliation_active,
+        "v6_33_ada_haiku_discovery_sonnet_review_active": (
+            v633_ada_haiku_discovery_sonnet_review_active
+        ),
+        "v6_33_discovery_model": discovery_model,
+        "v6_33_membership_review_model": review_model,
         "v6_10_candidate_pair_count": len(v69_preliminary_pairs),
         "v6_10_candidate_pairs": [
             {"group_id_a": left, "group_id_b": right}
@@ -10196,6 +10230,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         },
         "v5_9_review": summarize_detection_provider_call(
             response=review_response, diagnostics=review_diagnostics,
+            requested_model=review_model,
             prompt_characters=len(review_prompt_with_membership_contract), context_characters=len(review_handoff),
             image_count=len(review_page_context_images) + len(membership_crops),
             image_bytes=(
@@ -10206,6 +10241,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v6_10_evidence_review": (
             summarize_detection_provider_call(
                 response=review_response, diagnostics=review_diagnostics,
+                requested_model=review_model,
                 prompt_characters=len(review_prompt_with_membership_contract),
                 context_characters=len(review_handoff),
                 image_count=len(review_page_context_images) + len(membership_crops),
@@ -10216,6 +10252,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v6_10_reconciliation_review": (
             summarize_detection_provider_call(
                 response=v69_reconciliation_response, diagnostics=v69_reconciliation_diagnostics,
+                requested_model=review_model,
                 prompt_characters=len(v69_reconciliation_prompt), context_characters=len(v69_reconciliation_handoff),
                 image_count=len(review_page_context_images) + len(membership_crops),
                 image_bytes=(sum(len(page["bytes"]) for page in review_page_context_images)
@@ -10690,7 +10727,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             file_name=file_name,
             object_id=None,
             object_name=None,
-            model=selected_model,
+            model=review_model,
             prompt_version=prompt_version,
             response=(v69_reconciliation_response or v69_criteria_response or review_response),
             started_at=diagnostics["request_started_at"],
@@ -10810,7 +10847,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     })
     if reconciled_object_ids:
         diagnostics["single_page_coverage_reconciled_object_ids"] = reconciled_object_ids
-    usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=prompt_version,response=review_response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
+    usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=review_model,prompt_version=prompt_version,response=review_response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
     provider_call_usages = [
         *diagnostics["v6_13_proposal_truncation_retry"]["attempts"],
         diagnostics["v5_9_review"],
@@ -10820,17 +10857,29 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         provider_call_usages.append(reconciliation_usage)
     total_input_tokens = sum(int(call["input_tokens"]) for call in provider_call_usages)
     total_output_tokens = sum(int(call["output_tokens"]) for call in provider_call_usages)
-    total_costs = calculate_llm_cost_usd(
-        model=selected_model,
-        input_tokens=total_input_tokens,
-        output_tokens=total_output_tokens,
+    def summed_provider_cost(field: str) -> str | None:
+        values = [call.get(field) for call in provider_call_usages]
+        if any(value is None for value in values):
+            return None
+        return str(sum(Decimal(str(value)) for value in values).quantize(
+            Decimal("0.000001")
+        ))
+
+    total_input_cost = summed_provider_cost("input_cost_usd")
+    total_output_cost = summed_provider_cost("output_cost_usd")
+    total_cost = (
+        str((Decimal(total_input_cost) + Decimal(total_output_cost)).quantize(
+            Decimal("0.000001")
+        ))
+        if total_input_cost is not None and total_output_cost is not None
+        else None
     )
     usage.update({
         "input_tokens": total_input_tokens,
         "output_tokens": total_output_tokens,
-        "input_cost_usd": total_costs["input_cost_usd"],
-        "output_cost_usd": total_costs["output_cost_usd"],
-        "total_cost_usd": total_costs["total_cost_usd"],
+        "input_cost_usd": total_input_cost,
+        "output_cost_usd": total_output_cost,
+        "total_cost_usd": total_cost,
     })
     usage["raw_usage"].update({
         "input_tokens": total_input_tokens,
