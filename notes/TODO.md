@@ -1047,6 +1047,25 @@ floor plan was discarded document context. This protects the ordinary route
 only. Deferred Naming and Preview defects remain separate, and future HSL
 audits must preserve the full inventory, membership and cost evidence.
 
+IMPLEMENTED, pending live regression, V6.15 document metadata and
+object-bound Naming evidence: retain the existing Naming prompt, locked object
+identity, quantities, route selection, Discovery/Review sequence and
+Estimation package. The existing Discovery response now carries one compact,
+source-fact-cited sidecar for `project_name`, `design_partner`, `client`,
+`author` and `document_date`; unknown is valid only without a citation. The
+run record materializes those values while the citation audit stays in the
+Detection usage event. After Registry locks its Islands, each object's final
+Island bbox is added to its evidence refs and produces ephemeral Naming crops
+in the same coordinate frame. Deferred Naming receives those object-bound
+crops and only spatial OCR whose centre falls inside a locked Island. It no
+longer receives full document pages on the V6.15 path. Explicit administrative
+labels such as `Revision log` and `Surface schedule` are rejected as object
+names. This must not change Island boundaries, object membership, quantities,
+the Naming prompt, or the ordinary HSL route. Live gates: HSL must retain
+ordinary/Haiku, 32 object-evidence Islands and ten components while filling
+source-supported document fields and avoiding sheet-administration names;
+then Page23 and Adda must retain their protected object boundaries.
+
 SUPERSEDED INPUT CONTRACT, V6.5, no static pre-Discovery crops: remove the three
 fixed `upper_left`, `upper_right`, and `lower` images from the Adda
 `sonnet_boundary_risk` route as well as the ordinary Haiku route. Retain the

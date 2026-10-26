@@ -9,8 +9,11 @@ from agents.anthropic_adapter import (
     DetectionVisualRegistryValidationError,
     _source_dimensions_by_page,
     build_detection_page_evidence_inventory,
+    build_detection_v5_membership_view_crops,
+    build_detection_v5_review_coordinate_frames,
     run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_audit,
     run_anthropic_detection_visual_registry_agent,
+    unknown_detection_v615_document_metadata,
 )
 from agents.detection_source_capability import assess_detection_source_capability
 from agents.detection_document_classifier import (
@@ -150,6 +153,57 @@ def _validate_registry_evidence_pages(registry: dict, *, page_count: int) -> Non
                 )
 
 
+def _build_registry_naming_crops(
+    *,
+    registry: dict,
+    visual_map: dict,
+    ocr_package: dict | None,
+    page_images: list[bytes],
+) -> tuple[dict[str, list[dict]], dict]:
+    """Make object-bound Naming crops only after Registry locks Island ownership."""
+    visual_groups = [
+        group for group in (visual_map.get("visual_groups") or [])
+        if isinstance(group, dict)
+    ]
+    coordinate_frames, frame_audit = build_detection_v5_review_coordinate_frames(
+        ocr_package=ocr_package,
+        page_images=page_images,
+    )
+    crops, crop_audit = build_detection_v5_membership_view_crops(
+        page_images=page_images,
+        visual_groups=visual_groups,
+        coordinate_frames=coordinate_frames,
+    )
+    crops_by_group_id = {
+        str(crop.get("group_id") or ""): crop
+        for crop in crops
+        if isinstance(crop, dict) and str(crop.get("group_id") or "")
+    }
+    object_crops: dict[str, list[dict]] = {}
+    for item in registry.get("objects") or []:
+        if not isinstance(item, dict):
+            continue
+        object_id = str(item.get("object_id") or "")
+        if not object_id:
+            continue
+        object_crops[object_id] = [
+            {
+                "group_id": group_id,
+                "page_number": int(crop["page_number"]),
+                "bytes": crop["bytes"],
+            }
+            for group_id in item.get("visual_group_ids") or []
+            if isinstance(crops_by_group_id.get(str(group_id) or ""), dict)
+            for crop in [crops_by_group_id[str(group_id)]]
+        ]
+    return object_crops, {
+        "coordinate_frame_audit": frame_audit,
+        "crop_audit": crop_audit,
+        "crop_count": len(crops),
+        "objects_with_crop_count": sum(bool(value) for value in object_crops.values()),
+    }
+
+
 def _literal_page_texts(ocr_package: dict | None) -> dict[int, str]:
     """Index OCR text by physical page without adding model interpretation."""
     evidence = (ocr_package or {}).get("evidence")
@@ -208,6 +262,8 @@ def _registry_to_detection_result(
     company_id: str,
     file_name: str,
     page_count: int,
+    visual_map: dict | None = None,
+    document_metadata: dict | None = None,
     review_required_object_ids: set[str] | None = None,
 ) -> dict:
     """Materialize the Registry's locked packages as the V4 result.
@@ -220,6 +276,21 @@ def _registry_to_detection_result(
     created_at = datetime.now(UTC).isoformat()
     run_id = f"run_{uuid4().hex}"
     flagged_ids = set(review_required_object_ids or ())
+    fallback_metadata = unknown_detection_v615_document_metadata()
+    metadata = document_metadata if isinstance(document_metadata, dict) else fallback_metadata
+
+    def metadata_value(field: str) -> str:
+        value = metadata.get(field)
+        if not isinstance(value, dict):
+            return "unknown"
+        result = " ".join(str(value.get("value") or "").split())
+        return result or "unknown"
+
+    visual_groups_by_id = {
+        str(group.get("group_id") or ""): group
+        for group in (visual_map or {}).get("visual_groups") or []
+        if isinstance(group, dict) and str(group.get("group_id") or "")
+    }
     objects = []
     for item in registry.get("objects") or []:
         if not isinstance(item, dict):
@@ -232,6 +303,29 @@ def _registry_to_detection_result(
         })
         if not object_id or not evidence_pages:
             continue
+        regions_by_page: dict[int, list[dict]] = {}
+        for group_id in item.get("visual_group_ids") or []:
+            group = visual_groups_by_id.get(str(group_id) or "")
+            if not isinstance(group, dict):
+                continue
+            try:
+                page_number = int(group.get("page_number"))
+            except (TypeError, ValueError):
+                continue
+            bbox = group.get("bbox")
+            if (
+                page_number not in evidence_pages
+                or not isinstance(bbox, dict)
+                or set(bbox) != {
+                    "top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y",
+                }
+            ):
+                continue
+            regions_by_page.setdefault(page_number, []).append({
+                key: float(bbox[key]) for key in (
+                    "top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y",
+                )
+            })
         objects.append({
             "run_id": run_id,
             "company_id": company_id,
@@ -242,7 +336,11 @@ def _registry_to_detection_result(
             "review_required": object_id in flagged_ids,
             "evidence_pages": ",".join(str(page) for page in evidence_pages),
             "evidence_page_refs": [
-                {"page_number": page, "source_label": f"P{page}", "regions": []}
+                {
+                    "page_number": page,
+                    "source_label": f"P{page}",
+                    "regions": regions_by_page.get(page, []),
+                }
                 for page in evidence_pages
             ],
             "approved": False,
@@ -252,13 +350,13 @@ def _registry_to_detection_result(
         "rfq_run": {
             "run_id": run_id,
             "company_id": company_id,
-            "project_name": "unknown",
+            "project_name": metadata_value("project_name"),
             "file_name": file_name,
             "source_type": "pdf" if file_name.lower().endswith(".pdf") else "image",
-            "design_partner": "unknown",
-            "client": "unknown",
-            "author": "unknown",
-            "document_date": "unknown",
+            "design_partner": metadata_value("design_partner"),
+            "client": metadata_value("client"),
+            "author": metadata_value("author"),
+            "document_date": metadata_value("document_date"),
             "pages_detected": page_count,
             "language": "unknown",
             "file_quality_level": 2,
@@ -505,16 +603,36 @@ def run_detection_agent(
     }
     registry = _enforce_shared_track_door_system_quantity(registry)
     _validate_registry_evidence_pages(registry, page_count=len(registry_images))
+    document_metadata = unknown_detection_v615_document_metadata()
+    if isinstance(visual_registry_usage, dict):
+        observed_metadata = (visual_registry_usage.get("raw_usage") or {}).get(
+            "v6_15_document_metadata"
+        )
+        if isinstance(observed_metadata, dict):
+            document_metadata = observed_metadata
     result = _registry_to_detection_result(
         registry,
         company_id=company_id,
         file_name=file_name,
         page_count=len(registry_images),
+        visual_map=_visual_map,
+        document_metadata=document_metadata,
         review_required_object_ids=(
             fallback_review_required_object_ids | graph_review_required_object_ids
         ),
     )
     result = _normalize_evidence_source_labels(result, ocr_package)
     validated = validate_detection_result(result)
+    naming_crops, naming_crop_audit = _build_registry_naming_crops(
+        registry=registry,
+        visual_map=_visual_map,
+        ocr_package=ocr_package,
+        page_images=registry_images,
+    )
+    if isinstance(visual_registry_usage, dict):
+        raw_usage = dict(visual_registry_usage.get("raw_usage") or {})
+        raw_usage["v6_15_naming_bound_evidence"] = naming_crop_audit
+        visual_registry_usage["raw_usage"] = raw_usage
+    validated["_naming_object_crops"] = naming_crops
     validated["_agent_usage_events"] = [visual_registry_usage] if visual_registry_usage else []
     return validated

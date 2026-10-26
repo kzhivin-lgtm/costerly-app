@@ -283,6 +283,7 @@ def _run_deferred_naming(
     file_name: str,
     file_bytes: bytes = b"",
     page_images: list[bytes] | None = None,
+    object_crops_by_id: dict[str, list[dict[str, Any]]] | None = None,
     provisional_project_name: str | None = None,
 ) -> dict[str, Any]:
     """Name locked objects after File Review is allowed to open."""
@@ -310,8 +311,16 @@ def _run_deferred_naming(
             if number <= len(source_pages)
         }
         naming_result = (
-            run_naming_lab_call(locked_objects, visual_pages_by_number=visual_pages)
-            if visual_pages else run_naming_lab_call(locked_objects)
+            run_naming_lab_call(
+                locked_objects,
+                visual_pages_by_number=visual_pages,
+                object_crops_by_id=object_crops_by_id,
+            )
+            if object_crops_by_id is not None
+            else (
+                run_naming_lab_call(locked_objects, visual_pages_by_number=visual_pages)
+                if visual_pages else run_naming_lab_call(locked_objects)
+            )
         )
         apply_name_mapping(detected_objects, locked_objects, naming_result)
         names: dict[str, str] = {}
@@ -557,6 +566,7 @@ def process_uploaded_rfq(
             )
         raise
     detection_seconds = round(time.perf_counter() - detection_started, 3)
+    naming_object_crops = detection_result.pop("_naming_object_crops", None)
     usage_events = detection_result.pop("_agent_usage_events", [])
     legacy_usage_event = detection_result.pop("_agent_usage", None)
     if isinstance(legacy_usage_event, dict):
@@ -611,6 +621,8 @@ def process_uploaded_rfq(
             file_name=file_name,
             file_bytes=file_bytes,
             page_images=deepcopy(page_images) if page_images else None,
+            object_crops_by_id=deepcopy(naming_object_crops)
+            if isinstance(naming_object_crops, dict) else None,
             provisional_project_name=str(detection_result["rfq_run"].get("project_name") or ""),
         )
 

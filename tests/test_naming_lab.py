@@ -87,6 +87,42 @@ def test_ocr_snippets_prefer_exact_index_and_fallback_to_evidence_page():
     assert relevant_ocr_snippets(unindexed, ocr) == ["Стеллаж с полками"]
 
 
+def test_ocr_snippets_exclude_page_administration_outside_object_bound_region():
+    ocr = {
+        "evidence": {
+            "literal_items": [
+                {
+                    "page_number": 1, "text": "Revision log",
+                    "bbox": {
+                        "top_left_x": 800, "top_left_y": 10,
+                        "bottom_right_x": 980, "bottom_right_y": 80,
+                    },
+                },
+                {
+                    "page_number": 1, "text": "Wall cabinet",
+                    "bbox": {
+                        "top_left_x": 40, "top_left_y": 80,
+                        "bottom_right_x": 180, "bottom_right_y": 120,
+                    },
+                },
+            ],
+        },
+    }
+    detected = {
+        "object_name": "Object 1",
+        "evidence_pages": "1",
+        "evidence_page_refs": [{
+            "page_number": 1,
+            "regions": [{
+                "top_left_x": 0, "top_left_y": 0,
+                "bottom_right_x": 300, "bottom_right_y": 300,
+            }],
+        }],
+    }
+
+    assert relevant_ocr_snippets(detected, ocr) == ["Wall cabinet"]
+
+
 def test_builds_minimal_locked_input_without_mutable_object_fields():
     objects = [
         {
@@ -229,6 +265,22 @@ def test_rejects_transport_placeholder_as_a_final_name():
     assert validation == {
         "accepted": False,
         "violations": [{"object_id": "a", "field": "name_en", "reason": "transport_placeholder"}],
+    }
+
+
+def test_rejects_administrative_label_as_a_final_name():
+    locked = [{"object_id": "a", "object_index": "", "current_name": "Object 1"}]
+
+    validation = validate_locked_name_mapping(
+        locked,
+        {"names": [{"object_id": "a", "name_en": "Revision log", "name_original": ""}]},
+    )
+
+    assert validation == {
+        "accepted": False,
+        "violations": [{
+            "object_id": "a", "field": "name_en", "reason": "administrative_label",
+        }],
     }
 
 

@@ -687,7 +687,7 @@ DETECTION_V5_DISCOVERY_JSON_SCHEMA: dict[str, Any] = {
     "additionalProperties": False,
     "required": [
         "visual_groups", "classifications", "candidate_region_exceptions", "page_coverage",
-        "document_scope",
+        "document_scope", "document_metadata",
     ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
@@ -737,6 +737,30 @@ DETECTION_V5_DISCOVERY_JSON_SCHEMA: dict[str, Any] = {
                 },
             },
         },
+        "document_metadata": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": [
+                "project_name", "design_partner", "client", "author", "document_date",
+            ],
+            "properties": {
+                field: {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["value", "source_fact_ids"],
+                    "properties": {
+                        "value": {"type": "string", "minLength": 1, "maxLength": 160},
+                        "source_fact_ids": {
+                            "type": "array", "maxItems": 3,
+                            "items": {"type": "string"},
+                        },
+                    },
+                }
+                for field in (
+                    "project_name", "design_partner", "client", "author", "document_date",
+                )
+            },
+        },
     },
 }
 
@@ -752,6 +776,21 @@ through a cited overview or root set plus connected sections, carcasses,
 modules, components or hardware. Common client/order metadata, date, material,
 title block, page numbering or page count can never establish assembly scope
 alone. Use `ordinary_object_set` otherwise.
+"""
+
+
+DETECTION_V615_DOCUMENT_METADATA_PROMPT = """
+
+DOCUMENT METADATA SIDE-CAR:
+Return one compact `document_metadata` record for the whole upload. It is
+audit-only and cannot create, remove, split, merge, classify or name an Island.
+For each of `project_name`, `design_partner`, `client`, `author`, and
+`document_date`, return the exact source value and one to three supporting
+`source_fact_ids`. Use `unknown` with an empty `source_fact_ids` list when the
+role is not explicitly supported. Do not infer a role from a title block's
+position, a filename, a page number, a revision row or a generic company mark.
+Keep an explicitly written date in its source form. A design partner is the
+authored designer, architect, or issuing firm, not automatically the client.
 """
 
 
@@ -4130,6 +4169,68 @@ def validate_detection_v611_document_scope(
         "affects_object_boundaries": False,
         "dimension_mismatch_policy": "non_comparable_unless_finished_envelopes_conflict",
     }
+
+
+_DETECTION_V615_DOCUMENT_METADATA_FIELDS = (
+    "project_name", "design_partner", "client", "author", "document_date",
+)
+
+
+def unknown_detection_v615_document_metadata() -> dict[str, dict[str, Any]]:
+    """Return the persisted unknown value without fabricating document facts."""
+    return {
+        field: {"value": "unknown", "source_fact_ids": []}
+        for field in _DETECTION_V615_DOCUMENT_METADATA_FIELDS
+    }
+
+
+def validate_detection_v615_document_metadata(
+    metadata: object,
+    *,
+    source_facts: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Require each populated document field to cite immutable OCR evidence."""
+    if not isinstance(metadata, dict) or set(metadata) != set(
+        _DETECTION_V615_DOCUMENT_METADATA_FIELDS
+    ):
+        raise ValueError("V6.15 document metadata is invalid")
+    available_fact_ids = {
+        str(fact.get("fact_id") or "")
+        for fact in source_facts
+        if isinstance(fact, dict) and str(fact.get("fact_id") or "")
+    }
+    normalized: dict[str, dict[str, Any]] = {}
+    for field in _DETECTION_V615_DOCUMENT_METADATA_FIELDS:
+        entry = metadata.get(field)
+        if not isinstance(entry, dict) or set(entry) != {"value", "source_fact_ids"}:
+            raise ValueError("V6.15 document metadata field is invalid")
+        value = " ".join(str(entry.get("value") or "").split())
+        source_fact_ids = entry.get("source_fact_ids")
+        if (
+            not value
+            or len(value) > 160
+            or not isinstance(source_fact_ids, list)
+            or len(source_fact_ids) > 3
+        ):
+            raise ValueError("V6.15 document metadata value is invalid")
+        normalized_ids = [str(fact_id) for fact_id in source_fact_ids if str(fact_id)]
+        if (
+            len(normalized_ids) != len(source_fact_ids)
+            or len(normalized_ids) != len(set(normalized_ids))
+            or any(fact_id not in available_fact_ids for fact_id in normalized_ids)
+        ):
+            raise ValueError("V6.15 document metadata citations are invalid")
+        if value.casefold() == "unknown":
+            if normalized_ids:
+                raise ValueError("V6.15 unknown metadata cannot cite a source fact")
+            value = "unknown"
+        elif not normalized_ids:
+            raise ValueError("V6.15 populated metadata requires a source fact")
+        normalized[field] = {
+            "value": value,
+            "source_fact_ids": normalized_ids,
+        }
+    return normalized
 
 
 def validate_detection_v5_source_degraded_role_resolutions(
@@ -9338,7 +9439,7 @@ def run_anthropic_detection_v5_source_degraded_v561_consensus_experiment(
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None, mistral_anchor_admission: bool = False, document_category: str | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Run Island discovery, then the route-scoped bounded membership review."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
-    proposal_prompt = load_detection_v5_proposal_prompt()
+    proposal_prompt = load_detection_v5_proposal_prompt() + DETECTION_V615_DOCUMENT_METADATA_PROMPT
     # Direct test callers retain the V6.11 contract until they specify a
     # category. Product callers always specify one after V6.12 classification.
     document_scope_enabled = (
@@ -9609,6 +9710,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             ) from exc
     discovery_fields = {
         "visual_groups", "classifications", "candidate_region_exceptions", "page_coverage",
+        "document_metadata",
     }
     if document_scope_enabled:
         discovery_fields.add("document_scope")
@@ -9617,7 +9719,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     }
     legacy_proposal_fields = {
         "visual_groups", "classifications", "candidate_region_exceptions",
-        "object_hypotheses", "semantic_facts",
+        "object_hypotheses", "semantic_facts", "document_metadata",
     }
     if document_scope_enabled:
         legacy_proposal_fields.add("document_scope")
@@ -9647,6 +9749,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     proposal_boundary_payload = copy.deepcopy(proposal_raw_payload)
     proposal_scope_payload: dict[str, Any] | None = None
     document_scope: dict[str, Any] | None = None
+    proposal_metadata_payload = proposal_boundary_payload.pop("document_metadata")
+    document_metadata = validate_detection_v615_document_metadata(
+        proposal_metadata_payload,
+        source_facts=source_facts,
+    )
     if document_scope_enabled:
         proposal_scope_payload = proposal_boundary_payload.pop("document_scope")
     mistral_anchor_admission_audit: list[dict[str, Any]] = []
@@ -9662,7 +9769,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     else:
         proposal_discovery_payload = {
             field: proposal_raw_payload[field]
-            for field in discovery_fields - {"page_coverage", "document_scope"}
+            for field in discovery_fields - {
+                "page_coverage", "document_scope", "document_metadata",
+            }
         }
     proposal_for_review, _ = _validate_and_apply_visual_registry_classifications(
         proposal_discovery_payload
@@ -10369,6 +10478,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "fusion_candidate_regions": candidate_regions,
             "candidate_region_audit": candidate_region_audit,
             "v6_11_document_scope": document_scope,
+            "v6_15_document_metadata": document_metadata,
             "registry_decision_audit": registry_decision_audit,
             "discarded_non_object_visual_groups": discarded_non_object_groups,
             "discarded_empty_evidence_visual_groups": discarded_empty_evidence_groups,
@@ -10441,6 +10551,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "registry_decision_audit": registry_decision_audit,
         "v6_11_document_scope": document_scope,
         "v6_14_document_scope_requested": document_scope_enabled,
+        "v6_15_document_metadata": document_metadata,
         "discarded_non_object_visual_groups": discarded_non_object_groups,
         "discarded_empty_evidence_visual_groups": discarded_empty_evidence_groups,
         "classification_decisions": classification_decisions,
