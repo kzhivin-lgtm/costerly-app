@@ -1246,6 +1246,36 @@ def test_v633_ada_uses_haiku_for_discovery_and_sonnet_for_review():
     assert usage["output_cost_usd"] == "0.000400"
     assert usage["total_cost_usd"] == "0.000800"
 
+    invalid_proposal = copy.deepcopy(proposal)
+    invalid_proposal.pop("candidate_region_decisions")
+    with (
+        patch("agents.anthropic_adapter.get_secret", return_value="model"),
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            side_effect=fake_create,
+        ),
+        patch(
+            "agents.anthropic_adapter.extract_text_from_claude_response",
+            return_value=json.dumps(invalid_proposal),
+        ),
+        pytest.raises(DetectionVisualRegistryValidationError) as raised,
+    ):
+        run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=ocr_package,
+            model="claude-sonnet-4-6", mistral_anchor_admission=True,
+            document_category="ada_sparse_multi_object",
+        )
+
+    assert str(raised.value) == (
+        "Detection proposal response failed the V5.10.1 discovery contract"
+    )
+    assert raised.value.usage_event["model"] == DETECTION_V633_ADA_DISCOVERY_MODEL
+    assert raised.value.usage_event["raw_usage"]["validation_stage"] == (
+        "v5_10_1_discovery_contract"
+    )
+
 
 def test_whole_architectural_floor_plan_is_demoted_to_document_context():
     payload = _visual_registry_payload({

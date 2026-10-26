@@ -9889,8 +9889,70 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         else (discovery_fields, legacy_proposal_fields)
     )
     if not isinstance(proposal_raw_payload, dict) or set(proposal_raw_payload) not in allowed_response_fields:
-        raise DetectionVisualRegistryValidationError(
+        received_fields = (
+            sorted(str(field) for field in proposal_raw_payload)
+            if isinstance(proposal_raw_payload, dict)
+            else None
+        )
+        failure_diagnostics = dict(proposal_diagnostics)
+        failure_diagnostics.update({
+            "validation_error": "proposal payload does not match discovery contract",
+            "validation_stage": "v5_10_1_discovery_contract",
+            "attempt_label": "v5_10_1_discovery_contract_failed",
+            "raw_payload_type": type(proposal_raw_payload).__name__,
+            "raw_payload_fields": received_fields,
+            "expected_field_sets": [sorted(fields) for fields in allowed_response_fields],
+            "response_character_count": len(proposal_raw_text),
+            "response_text_sha256": _sha256_text(proposal_raw_text),
+            "v6_13_proposal_truncation_retry": {
+                "attempted": proposal_retry_reason is not None,
+                "reason": proposal_retry_reason,
+                "attempts": proposal_attempt_summaries,
+            },
+        })
+        failure_usage = build_agent_usage_event(
+            agent_name="detection", operation="rfq_detection_visual_registry",
+            company_id=company_id, run_id=None, file_name=file_name,
+            object_id=None, object_name=None, model=discovery_model,
+            prompt_version=prompt_version, response=proposal_response,
+            started_at=proposal_diagnostics["request_started_at"],
+            finished_at=proposal_diagnostics["request_finished_at"],
+            request_diagnostics=failure_diagnostics,
+        )
+        total_input_tokens = sum(
+            int(call["input_tokens"]) for call in proposal_attempt_summaries
+        )
+        total_output_tokens = sum(
+            int(call["output_tokens"]) for call in proposal_attempt_summaries
+        )
+        total_costs = calculate_llm_cost_usd(
+            model=discovery_model,
+            input_tokens=total_input_tokens,
+            output_tokens=total_output_tokens,
+        )
+        failure_usage.update({
+            "input_tokens": total_input_tokens,
+            "output_tokens": total_output_tokens,
+            "input_cost_usd": total_costs["input_cost_usd"],
+            "output_cost_usd": total_costs["output_cost_usd"],
+            "total_cost_usd": total_costs["total_cost_usd"],
+        })
+        failure_usage["raw_usage"].update({
+            "input_tokens": total_input_tokens,
+            "output_tokens": total_output_tokens,
+            "v5_9_total_provider_duration_seconds": round(
+                sum(float(call.get("duration_seconds") or 0)
+                    for call in proposal_attempt_summaries),
+                3,
+            ),
+        })
+        failure_usage["status"] = "failed"
+        failure_usage["error_message"] = (
             "Detection proposal response failed the V5.10.1 discovery contract"
+        )
+        raise DetectionVisualRegistryValidationError(
+            "Detection proposal response failed the V5.10.1 discovery contract",
+            usage_event=failure_usage,
         )
     if set(proposal_raw_payload) in (discovery_fields, anchor_discovery_fields):
         proposal_page_coverage = validate_detection_v5_discovery_page_coverage(
