@@ -59,6 +59,26 @@ successful when object-name persistence and read-back succeeded. The patch is
 unit-tested and deployed, but needs one production re-run to verify removal of
 the banner.
 
+## Cost comparison limitation
+
+The Cabineter screen's `TC1 $0.105` is not a completed total: it consists of
+$0.024 OCR and $0.081277 Haiku Detection. The pre-V6.26.2 false Naming failure
+discarded that worker's model/token usage from the ledger, even though it did
+persist the object name. Its final cost therefore cannot be inferred from this
+run.
+
+`V_Stair.pdf` is not a like-for-like cost comparison. It took the
+`ada_sparse_multi_object` route and used Sonnet for Detection: $0.020 OCR,
+$0.201828 Sonnet Detection, and $0.011962 Haiku Naming, total $0.233790. The
+Stair document had fewer pages and 7 Views, while Cabineter had 6 pages and 17
+Views, so page count and View count do not explain the difference. The
+dominant factor is the router-selected model, with Sonnet Detection accounting
+for 86% of the Stair total. This opens a focused route-classification audit:
+V_Stair is a visually coherent overview-plus-detail assembly, but its current
+pre-router facts are indistinguishable from Adda's Ada-risk shape. Do not
+weaken the Ada guard before a shadow benchmark that proves the proposed
+assembly/ordinary contract preserves Adda's two-object boundary.
+
 ## Negative guard
 
 Production run `run_0ed1e59ae0ee43f4ade975ebbcef2826` on `V_Stair.pdf`

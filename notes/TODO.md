@@ -61,6 +61,14 @@ DEFERRED, P1, assembly-set breadth validation: test a second genuinely
 multi-sheet built-in/cabinet dossier after the V6.26.2 deploy, plus protected
 Adda, HSL, and Page23 regressions. Do not expand the compiler rule from one
 accepted V_Cabineter dossier or use object count alone as quality evidence.
+`V_Stair.pdf` cost is not comparable to Cabineter: the former selected
+`ada_sparse_multi_object` and Sonnet Detection, while Cabineter selected
+`assembly_set` and Haiku. The latter's pre-V6.26.2 failed Naming event did not
+record model tokens/cost, so `TC1 $0.105` is incomplete rather than a final
+ten-cent total. The Ada boundary criterion is now under focused review because
+V_Stair is visually a single overview-plus-detail assembly but selected the
+costly Ada route. Do not alter the guard before a shadow comparison of
+V_Stair and Adda under the proposed assembly/ordinary contract.
 
 RESOLVED, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
 deferred Naming lifecycle and locked Detection object contract. Build optional
