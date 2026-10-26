@@ -404,15 +404,29 @@ def _run_deferred_naming(
         )
         if is_generic_one_object_project:
             object_name = names.get(str(detected_objects[0].get("object_id") or ""), "")
-            if object_name and not update_rfq_run_project_name_if_unchanged(
-                client,
-                run_id=run_id,
-                expected_project_name=str(provisional_project_name),
-                project_name=object_name,
-            ):
-                raise RuntimeError(
-                    "Naming result was not persisted because the provisional project name changed."
+            if object_name:
+                project_name_persisted = update_rfq_run_project_name_if_unchanged(
+                    client,
+                    run_id=run_id,
+                    expected_project_name=str(provisional_project_name),
+                    project_name=object_name,
                 )
+                # Naming's project fallback is intentionally non-authoritative.
+                # Document Identity or a user edit may have supplied a stronger
+                # project fact while Naming was running.  The Object names have
+                # already been durably persisted and must not be reported as a
+                # failed Naming operation merely because this fallback declined
+                # to overwrite that newer value.
+                persistence_audit["project_name_fallback"] = {
+                    "requested_name": object_name,
+                    "expected_project_name": str(provisional_project_name),
+                    "accepted": project_name_persisted,
+                    "reason": (
+                        "published"
+                        if project_name_persisted
+                        else "preserved_newer_project_identity"
+                    ),
+                }
 
         naming_seconds = float(naming_result["duration_seconds"])
         naming_event = _runtime_event(

@@ -45,6 +45,10 @@ V6.26.1 maps those cited scope references before compilation. The same patch
 also promotes a repeated explicit `Order`/`Заказ` code to a project identifier
 only when no explicit Project field exists and it occurs on a strict document
 majority. It must not infer client or partner facts.
+V6.26.2 treats a rejected one-object Naming project fallback as a successful
+Naming completion when Document Identity has concurrently published a stronger
+project value. The fallback remains non-authoritative and its refusal is kept
+in the Naming audit rather than surfaced as a false failure.
 
 RESOLVED, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
 deferred Naming lifecycle and locked Detection object contract. Build optional
