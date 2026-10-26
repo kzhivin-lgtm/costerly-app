@@ -4145,6 +4145,40 @@ def validate_detection_v611_document_scope(
     }
 
 
+def normalize_detection_v611_document_scope_group_ids(
+    scope: dict[str, Any] | None,
+    *,
+    group_id_mapping: dict[str, str],
+) -> dict[str, Any] | None:
+    """Map Discovery's scope references onto Registry's canonical View IDs.
+
+    Discovery emits provider-facing Island IDs.  Registry canonicalizes those
+    IDs to stable ``view-NNN`` values before proof compilation.  Scope is an
+    audit observation, so preserve an unmapped ID for the later safe refusal
+    instead of treating a discarded context view as a runtime error.
+    """
+    if scope is None:
+        return None
+    normalized = copy.deepcopy(scope)
+    normalized["root_group_ids"] = [
+        group_id_mapping.get(str(group_id), str(group_id))
+        for group_id in scope.get("root_group_ids") or []
+    ]
+    normalized_witnesses: list[dict[str, Any]] = []
+    for witness in scope.get("witnesses") or []:
+        if not isinstance(witness, dict):
+            normalized_witnesses.append(witness)
+            continue
+        row = copy.deepcopy(witness)
+        row["group_ids"] = [
+            group_id_mapping.get(str(group_id), str(group_id))
+            for group_id in witness.get("group_ids") or []
+        ]
+        normalized_witnesses.append(row)
+    normalized["witnesses"] = normalized_witnesses
+    return normalized
+
+
 def validate_detection_v5_source_degraded_role_resolutions(
     resolutions: object,
     *,
@@ -10084,6 +10118,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
+        document_scope = normalize_detection_v611_document_scope_group_ids(
+            document_scope,
+            group_id_mapping=group_id_mapping,
+        )
         semantic_validation_groups = [
             {
                 "group_id": group_id_mapping[str(group.get("group_id") or "")],

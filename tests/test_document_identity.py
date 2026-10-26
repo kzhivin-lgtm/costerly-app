@@ -66,7 +66,35 @@ def test_document_identity_reads_project_only_from_explicit_ocr_title_block_labe
         }]}
     })
 
-    assert result["model"] == "deterministic_ocr_title_block_v1"
+    assert result["model"] == "deterministic_ocr_title_block_v2"
     assert result["identity"]["project_name"]["value"] == "ROOMS"
     assert result["identity"]["client"]["value"] == "unknown"
     assert result["identity"]["design_partner"]["value"] == "unknown"
+
+
+def test_document_identity_uses_repeated_explicit_order_as_project_identifier():
+    result = derive_document_identity_from_ocr({
+        "evidence": {"text_blocks": [
+            {"page_number": page, "text": f"<table><tr><td>Заказ</td><td>12-08</td></tr></table>"}
+            for page in range(1, 7)
+        ]}
+    })
+
+    assert result["identity"]["project_name"] == {
+        "value": "Order 12-08",
+        "source_page": 1,
+        "source_corner": "ocr_title_block",
+        "source_label": "ORDER",
+    }
+
+
+def test_document_identity_does_not_treat_one_order_label_as_document_project():
+    result = derive_document_identity_from_ocr({
+        "evidence": {"text_blocks": [
+            {"page_number": 1, "text": "<table><tr><td>Заказ</td><td>12-08</td></tr></table>"},
+            {"page_number": 2, "text": "<table><tr><td>Лист</td><td>2</td></tr></table>"},
+            {"page_number": 3, "text": "<table><tr><td>Лист</td><td>3</td></tr></table>"},
+        ]}
+    })
+
+    assert result["identity"]["project_name"]["value"] == "unknown"

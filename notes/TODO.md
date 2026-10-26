@@ -38,6 +38,13 @@ Registry-owned, preserve the original Registry packages unchanged. First gate:
 V_Cabineter returns exactly one `Built-in joinery set` with all six pages and
 all retained Islands; then Adda retains its Sonnet route and independent
 objects, while HSL and Page23 retain their V6.25 protected results.
+The first V_Cabineter production run correctly selected `assembly_set` and
+confirmed scope, but safely retained 14 Registry packages because Discovery's
+provider Island IDs had not yet been normalized to Registry `view-NNN` IDs.
+V6.26.1 maps those cited scope references before compilation. The same patch
+also promotes a repeated explicit `Order`/`Заказ` code to a project identifier
+only when no explicit Project field exists and it occurs on a strict document
+majority. It must not infer client or partner facts.
 
 RESOLVED, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
 deferred Naming lifecycle and locked Detection object contract. Build optional

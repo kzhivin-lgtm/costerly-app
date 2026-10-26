@@ -19,10 +19,12 @@ from agents.anthropic_adapter import (
 )
 
 
-DOCUMENT_IDENTITY_VERSION = "document_identity_v1_title_block_only"
+DOCUMENT_IDENTITY_VERSION = "document_identity_v2_repeated_order"
 DOCUMENT_IDENTITY_PROMPT_PATH = Path(__file__).parent / "prompts" / "document_identity_prompt.md"
 _FIELDS = ("project_name", "client", "design_partner", "author", "document_date")
 _CORNERS = ("top_left", "top_right", "bottom_left", "bottom_right")
+_ORDER_LABEL_RE = re.compile(r"(?:order|заказ)(?:\s+(?:no\.?|number|№))?", re.I)
+_ORDER_VALUE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_/-]{1,63}$")
 
 DOCUMENT_IDENTITY_RESULT_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -110,14 +112,47 @@ def _first_project_value(rows: list[list[str]]) -> str:
     return ""
 
 
+def _first_order_identifier(rows: list[list[str]]) -> str:
+    """Return a package ID only when OCR explicitly labels it as an order.
+
+    An order is not generally a client or author.  It is, however, a useful
+    project identifier when the same explicitly labelled value is repeated
+    across the document and no project field exists.  Numeric values are safe
+    here precisely because the adjacent label supplies their meaning.
+    """
+    for row in rows:
+        for cell_index, cell in enumerate(row):
+            normalized = " ".join(cell.split())
+            direct = re.fullmatch(
+                r"(?:order|заказ)(?:\s+(?:no\.?|number|№))?\s*[:#№-]?\s*"
+                r"([A-Za-z0-9][A-Za-z0-9_/-]{1,63})",
+                normalized,
+                re.I,
+            )
+            if direct and _ORDER_VALUE_RE.fullmatch(direct.group(1)):
+                return direct.group(1)
+            if not _ORDER_LABEL_RE.fullmatch(normalized):
+                continue
+            for candidate in row[cell_index + 1:]:
+                value = " ".join(candidate.split())
+                if _ORDER_VALUE_RE.fullmatch(value):
+                    return value
+    return ""
+
+
 def derive_document_identity_from_ocr(ocr_package: dict[str, Any]) -> dict[str, Any]:
     """Extract only explicitly labelled identity facts from already available OCR."""
     identity = unknown_document_identity()
     project_candidates: list[tuple[int, str]] = []
-    for page_number, rows in _ocr_rows(ocr_package):
+    order_candidates_by_page: dict[int, set[str]] = {}
+    ocr_rows = _ocr_rows(ocr_package)
+    for page_number, rows in ocr_rows:
         project = _first_project_value(rows)
         if project:
             project_candidates.append((page_number, project))
+        order = _first_order_identifier(rows)
+        if order:
+            order_candidates_by_page.setdefault(page_number, set()).add(order)
     if project_candidates:
         counts: dict[str, int] = {}
         for _, value in project_candidates:
@@ -130,8 +165,29 @@ def derive_document_identity_from_ocr(ocr_package: dict[str, Any]) -> dict[str, 
             "source_corner": "ocr_title_block",
             "source_label": "PROJECT",
         }
+    elif order_candidates_by_page:
+        # A generic order reference on one sheet is not a project.  A common
+        # order label on a strict majority of the document is a stable package
+        # identifier and is more useful than leaving the project unknown.
+        page_count = len({page for page, _ in ocr_rows})
+        counts: dict[str, int] = {}
+        for values in order_candidates_by_page.values():
+            for value in values:
+                counts[value] = counts.get(value, 0) + 1
+        value, frequency = max(counts.items(), key=lambda item: item[1])
+        if page_count and frequency > page_count / 2:
+            source_page = next(
+                page for page, values in order_candidates_by_page.items()
+                if value in values
+            )
+            identity["project_name"] = {
+                "value": f"Order {value}",
+                "source_page": source_page,
+                "source_corner": "ocr_title_block",
+                "source_label": "ORDER",
+            }
     return {
-        "model": "deterministic_ocr_title_block_v1",
+        "model": "deterministic_ocr_title_block_v2",
         "duration_seconds": 0.0,
         "input_tokens": 0,
         "output_tokens": 0,

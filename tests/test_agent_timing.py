@@ -32,6 +32,7 @@ from agents.anthropic_adapter import (
     extract_detection_document_dimension_unit_profile,
     extract_detection_page_drawing_codes,
     normalize_detection_identity_fields,
+    normalize_detection_v611_document_scope_group_ids,
     run_anthropic_detection_agent,
     run_anthropic_detection_registry_agent,
     run_anthropic_detection_visual_map_agent,
@@ -175,6 +176,29 @@ def test_v611_document_scope_candidate_needs_a_real_view_relationship():
                 "observation": "The sheets share one title block.",
             }],
         }, visual_groups=groups)
+
+
+def test_v626_normalizes_document_scope_ids_to_registry_view_ids():
+    scope = {
+        "version": "detection_v6_11_document_scope_observation",
+        "decision": "assembly_set_candidate",
+        "root_group_ids": ["IG-P1-002"],
+        "witnesses": [{
+            "kind": "overview_detail_hierarchy",
+            "group_ids": ["IG-P1-002", "IG-P2-001"],
+            "observation": "Overview and detail belong to the same cabinet set.",
+        }],
+    }
+
+    normalized = normalize_detection_v611_document_scope_group_ids(
+        scope,
+        group_id_mapping={"IG-P1-002": "view-002", "IG-P2-001": "view-003"},
+    )
+
+    assert normalized is not scope
+    assert normalized["root_group_ids"] == ["view-002"]
+    assert normalized["witnesses"][0]["group_ids"] == ["view-002", "view-003"]
+    assert scope["root_group_ids"] == ["IG-P1-002"]
 
 
 def test_v5_8_registry_visual_sources_are_bounded_to_fixed_object_views():
