@@ -78,6 +78,16 @@ Adda is the unresolved gate. The experiment's production acceptance requires
 Stair to compile one all-page Assembly Set and Adda to stay on Sonnet with its
 accepted two-object boundary.
 
+ACTIVE REPAIR, P0, V6.27 optional-scope validation: a live RFQ failed with
+`V6.11 document scope witness references an unknown group`. The V6.11 scope
+sidecar may authorize assembly compilation, but it does not own Discovery
+Islands or ordinary Registry packages. Reject an invalid scope sidecar,
+record the exact validation error, and continue with the unchanged Registry
+result. Do not delete the unknown reference, rewrite its evidence, or compile
+an assembly without a fully valid scope. Local regression must prove the
+unknown-group case returns no validated scope and retains an auditable error;
+production re-run remains required before this repair is accepted.
+
 RESOLVED, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
 deferred Naming lifecycle and locked Detection object contract. Build optional
 `page_title_fields` during OCR/Fusion from explicit title-field label-to-value

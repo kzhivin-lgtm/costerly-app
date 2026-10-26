@@ -37,6 +37,7 @@ from agents.anthropic_adapter import (
     run_anthropic_detection_registry_agent,
     run_anthropic_detection_visual_map_agent,
     run_anthropic_detection_visual_registry_agent,
+    validate_optional_detection_v611_document_scope,
     validate_detection_v611_document_scope,
 )
 from agents.schemas.detection_registry_schema import (
@@ -199,6 +200,26 @@ def test_v626_normalizes_document_scope_ids_to_registry_view_ids():
     assert normalized["root_group_ids"] == ["view-002"]
     assert normalized["witnesses"][0]["group_ids"] == ["view-002", "view-003"]
     assert scope["root_group_ids"] == ["IG-P1-002"]
+
+
+def test_v627_invalid_optional_scope_disables_compilation_without_losing_registry():
+    groups = [
+        {"group_id": "overview", "page_number": 1},
+        {"group_id": "detail", "page_number": 2},
+    ]
+
+    decision, error = validate_optional_detection_v611_document_scope({
+        "classification": "assembly_set_candidate",
+        "root_group_ids": ["overview"],
+        "witnesses": [{
+            "kind": "overview_detail_hierarchy",
+            "group_ids": ["overview", "hallucinated-group"],
+            "observation": "The second drawing is a detail of the overall cabinet.",
+        }],
+    }, visual_groups=groups)
+
+    assert decision is None
+    assert error == "V6.11 document scope witness references an unknown group"
 
 
 def test_v5_8_registry_visual_sources_are_bounded_to_fixed_object_views():
@@ -887,6 +908,51 @@ def test_integrated_visual_registry_omits_scope_from_ordinary_contract():
     assert "document_scope" not in json.dumps(proposal_call["system"])
     assert usage["raw_usage"]["v6_11_document_scope"] is None
     assert usage["raw_usage"]["v6_14_document_scope_requested"] is False
+
+
+def test_integrated_visual_registry_rejects_invalid_optional_scope_only():
+    payload = _visual_registry_payload({
+        "visual_groups": [{
+            "group_id": "view_a", "page_number": 1, "location_hint": "left",
+            "visual_description": "one cabinet", "representation_kind": "perspective",
+        }],
+        "document_scope": {
+            "classification": "assembly_set_candidate",
+            "root_group_ids": ["view_a"],
+            "witnesses": [{
+                "kind": "overview_detail_hierarchy",
+                "group_ids": ["view_a", "missing_view"],
+                "observation": "The missing view is described as a cabinet detail.",
+            }],
+        },
+    })
+
+    def fake_create(*_args, **_kwargs):
+        return _Response(), {
+            "request_started_at": "2026-10-16T00:00:00+00:00",
+            "request_finished_at": "2026-10-16T00:00:01+00:00",
+        }
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
+        patch(
+            "agents.anthropic_adapter.extract_text_from_claude_response",
+            side_effect=[json.dumps(payload), json.dumps({"object_hypotheses": []})],
+        ),
+    ):
+        visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None, model="model",
+            document_category="assembly_set",
+        )
+
+    assert visual_map["visual_groups"][0]["group_id"] == "view-001"
+    assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
+    assert usage["raw_usage"]["v6_11_document_scope"] is None
+    assert usage["raw_usage"]["v6_11_document_scope_validation_error"] == (
+        "V6.11 document scope witness references an unknown group"
+    )
 
 
 def test_v67_mistral_anchor_contract_replaces_a_freehand_proposal_bbox():

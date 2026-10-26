@@ -4308,6 +4308,30 @@ def validate_detection_v611_document_scope(
     }
 
 
+def validate_optional_detection_v611_document_scope(
+    scope: object,
+    *,
+    visual_groups: list[dict[str, Any]],
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Fail closed on an invalid optional scope without losing Registry work.
+
+    Document scope may authorize the later assembly-set compiler, but it does
+    not own Island discovery or ordinary Registry packages. A provider scope
+    that cites an unknown Island therefore disables assembly compilation and
+    remains auditable instead of failing the entire RFQ.
+    """
+    try:
+        return (
+            validate_detection_v611_document_scope(
+                scope,
+                visual_groups=visual_groups,
+            ),
+            None,
+        )
+    except ValueError as exc:
+        return None, str(exc)
+
+
 def normalize_detection_v611_document_scope_group_ids(
     scope: dict[str, Any] | None,
     *,
@@ -9857,6 +9881,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     proposal_boundary_payload = copy.deepcopy(proposal_raw_payload)
     proposal_scope_payload: dict[str, Any] | None = None
     document_scope: dict[str, Any] | None = None
+    document_scope_validation_error: str | None = None
     if document_scope_enabled:
         proposal_scope_payload = proposal_boundary_payload.pop("document_scope")
     mistral_anchor_admission_audit: list[dict[str, Any]] = []
@@ -9878,9 +9903,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         proposal_discovery_payload
     )
     if document_scope_enabled:
-        document_scope = validate_detection_v611_document_scope(
-            proposal_scope_payload,
-            visual_groups=proposal_for_review["visual_groups"],
+        document_scope, document_scope_validation_error = (
+            validate_optional_detection_v611_document_scope(
+                proposal_scope_payload,
+                visual_groups=proposal_for_review["visual_groups"],
+            )
         )
     # V6.10 is intentionally scoped to the existing V6.7 Mistral-anchor path.
     # It replaces V6.8's costly complete pair matrix with sparse candidate
@@ -10200,6 +10227,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v6_10_pairwise_decision_audit": copy.deepcopy(v69_criteria_audit),
         "v6_10_reconciliation_decision_audit": copy.deepcopy(v69_reconciliation_audit),
         "v6_11_document_scope": copy.deepcopy(document_scope),
+        "v6_11_document_scope_validation_error": document_scope_validation_error,
         "v6_14_document_scope_requested": document_scope_enabled,
     })
     # Preserve the composed decision before runtime normalizes IDs and derives
@@ -10621,6 +10649,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "fusion_candidate_regions": candidate_regions,
             "candidate_region_audit": candidate_region_audit,
             "v6_11_document_scope": document_scope,
+            "v6_11_document_scope_validation_error": document_scope_validation_error,
             "registry_decision_audit": registry_decision_audit,
             "discarded_non_object_visual_groups": discarded_non_object_groups,
             "discarded_empty_evidence_visual_groups": discarded_empty_evidence_groups,
@@ -10692,6 +10721,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         ),
         "registry_decision_audit": registry_decision_audit,
         "v6_11_document_scope": document_scope,
+        "v6_11_document_scope_validation_error": document_scope_validation_error,
         "v6_14_document_scope_requested": document_scope_enabled,
         "discarded_non_object_visual_groups": discarded_non_object_groups,
         "discarded_empty_evidence_visual_groups": discarded_empty_evidence_groups,
