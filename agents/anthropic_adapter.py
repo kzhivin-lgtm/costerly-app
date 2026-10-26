@@ -2545,8 +2545,15 @@ def build_detection_v5_review_page_context_images(
     visual_groups: list[dict[str, Any]],
     coordinate_frames: dict[int, dict[str, Any]] | None = None,
     max_side: int = DETECTION_V5_MEMBERSHIP_PAGE_CONTEXT_MAX_SIDE,
+    overlay_labels_by_group_id: dict[str, str] | None = None,
+    overlay_colours_by_group_id: dict[str, str] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Render bounded full-page review context with immutable Island labels."""
+    """Render bounded full-page context with deterministic Island overlays.
+
+    Callers may replace the default View labels and colours, but never the
+    geometry. Naming uses this to show the same locked object identifier on
+    every View that belongs to it.
+    """
     try:
         from PIL import Image, ImageDraw
     except ImportError:
@@ -2595,7 +2602,11 @@ def build_detection_v5_review_page_context_images(
                     )
                     if review_bbox is None:
                         continue
-                    colour = palette[index % len(palette)]
+                    group_id = str(group.get("group_id") or "")
+                    colour = (overlay_colours_by_group_id or {}).get(
+                        group_id,
+                        palette[index % len(palette)],
+                    )
                     box = (
                         round(review_bbox["top_left_x"] * scale_x),
                         round(review_bbox["top_left_y"] * scale_y),
@@ -2603,12 +2614,14 @@ def build_detection_v5_review_page_context_images(
                         round(review_bbox["bottom_right_y"] * scale_y),
                     )
                     draw.rectangle(box, outline=colour, width=3)
-                    label = str(group.get("group_id") or "")
+                    label = (overlay_labels_by_group_id or {}).get(group_id, group_id)
                     label_box = (box[0], max(0, box[1] - 13), box[0] + max(46, len(label) * 6), box[1])
                     draw.rectangle(label_box, fill=colour)
                     draw.text((box[0] + 2, max(0, box[1] - 12)), label, fill="white")
                     overlay_audit.append({
-                        "group_id": str(group.get("group_id") or ""),
+                        "group_id": group_id,
+                        "label": label,
+                        "colour": colour,
                         "source_bbox": bbox,
                         "review_bbox": review_bbox,
                         "overlay_bbox": {

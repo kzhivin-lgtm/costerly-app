@@ -17,7 +17,7 @@ from agents.naming_lab import (
 
 
 def test_uses_semantic_category_naming_version():
-    assert NAMING_LAB_VERSION == "naming_lab_v12_source_index_preservation"
+    assert NAMING_LAB_VERSION == "naming_lab_v13_annotated_source_pages"
 
 
 def test_naming_schema_requires_short_decision_basis():

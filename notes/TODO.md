@@ -1135,6 +1135,25 @@ semantic name, while an absent or conflicting code remains `Object NN`. Remove
 Project name, Partner and Client from Technical metadata because they already
 have editable fields above it. This must not change Detection's object count,
 package membership, quantities, Island inventory, route, or Estimation package.
+
+ACTIVE, approved V6.19 annotated source-page Naming experiment: supersede only
+the V6.17 object-crop input contract. Preserve V6.14 Detection, Registry
+membership, OCR, router, object order, quantities, source codes and Estimation
+evidence. After Registry locks its View ownership, render each physical source
+page containing at least one Registry-owned View once at the existing rendered
+page resolution. Overlay every locked View bbox without fill. Each overlay must show
+the immutable `object_id`, and every View belonging to one object must use the
+same label and colour across pages. Naming receives those annotated full pages,
+the existing locked object mapping and bounded OCR facts. It may return only a
+semantic name suffix. It cannot alter object count, ownership, source index,
+quantity, bbox or package membership. Record page count, source page numbers,
+encoded image bytes, overlay View count and overlay-render audit in the
+Detection usage event. First live gate is HSL: ordinary Haiku Detection remains
+32 Islands and ten objects, Naming emits a terminal event, and the request
+contains one annotated page per Registry-Island page rather than one crop per
+View. Compare Naming duration, tokens and cost with V6.14 before extending the
+experiment to Page23 or Adda.
+
 SUPERSEDED INPUT CONTRACT, V6.5, no static pre-Discovery crops: remove the three
 fixed `upper_left`, `upper_right`, and `lower` images from the Adda
 `sonnet_boundary_risk` route as well as the ordinary Haiku route. Retain the

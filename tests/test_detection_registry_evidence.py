@@ -1,9 +1,13 @@
 import pytest
 from unittest.mock import patch
+from io import BytesIO
+
+from PIL import Image
 
 from agents.detection_agent import (
     DEFAULT_CLAUDE_DETECTION_V4_MODEL,
     _enforce_shared_track_door_system_quantity,
+    _build_v619_naming_annotated_pages,
     _merge_registry_evidence,
     _record_locked_evidence_handoff_audit,
     _registry_to_detection_result,
@@ -195,6 +199,48 @@ def test_v616_registry_materializes_only_registry_owned_bbox_regions():
         "top_left_x": 10.0, "top_left_y": 20.0,
         "bottom_right_x": 300.0, "bottom_right_y": 400.0,
     }]
+
+
+def test_v619_naming_uses_one_annotated_page_per_registry_island_page():
+    def page() -> bytes:
+        output = BytesIO()
+        Image.new("RGB", (1000, 700), "white").save(output, format="JPEG")
+        return output.getvalue()
+
+    registry = {"objects": [
+        {"object_id": "object-001", "visual_group_ids": ["view-001", "view-003"]},
+        {"object_id": "object-002", "visual_group_ids": ["view-002"]},
+    ]}
+    visual_map = {"_registry_owned_evidence": [
+        {"group_id": "view-001", "page_number": 1, "bbox": {
+            "top_left_x": 10, "top_left_y": 20, "bottom_right_x": 210, "bottom_right_y": 220,
+        }},
+        {"group_id": "view-002", "page_number": 1, "bbox": {
+            "top_left_x": 500, "top_left_y": 20, "bottom_right_x": 800, "bottom_right_y": 220,
+        }},
+        {"group_id": "view-003", "page_number": 2, "bbox": {
+            "top_left_x": 20, "top_left_y": 250, "bottom_right_x": 300, "bottom_right_y": 600,
+        }},
+    ]}
+    ocr = {"pages": [
+        {"page_number": 1, "dimensions": {"width": 1000, "height": 700}},
+        {"page_number": 2, "dimensions": {"width": 1000, "height": 700}},
+    ]}
+
+    pages, audit = _build_v619_naming_annotated_pages(
+        registry=registry,
+        visual_map=visual_map,
+        ocr_package=ocr,
+        page_images=[page(), page()],
+    )
+
+    assert set(pages) == {1, 2}
+    assert audit["annotated_page_count"] == 2
+    assert audit["overlay_view_count"] == 3
+    first_page_labels = {
+        item["label"] for item in audit["overlay_audit"][0]["overlays"]
+    }
+    assert first_page_labels == {"object-001", "object-002"}
 
 
 def test_v49_routes_default_registry_to_haiku_without_evidence_handoff():

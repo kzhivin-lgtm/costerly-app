@@ -9,8 +9,8 @@ from agents.anthropic_adapter import (
     DetectionVisualRegistryValidationError,
     _source_dimensions_by_page,
     build_detection_page_evidence_inventory,
-    build_detection_v5_membership_view_crops,
     build_detection_v5_review_coordinate_frames,
+    build_detection_v5_review_page_context_images,
     run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_audit,
     run_anthropic_detection_visual_registry_agent,
 )
@@ -161,51 +161,74 @@ def _registry_owned_visual_groups(visual_map: dict | None) -> dict[str, dict]:
     }
 
 
-def _build_v616_naming_crops(
+def _build_v619_naming_annotated_pages(
     *,
     registry: dict,
     visual_map: dict | None,
     ocr_package: dict | None,
     page_images: list[bytes],
-) -> tuple[dict[str, list[dict]], dict]:
-    """Create Naming-only crops from Registry-owned, immutable View bboxes."""
+) -> tuple[dict[int, bytes], dict]:
+    """Create one full source page per Registry-owned Island page for Naming.
+
+    The object partition is already locked.  Naming needs the full drawing
+    context to identify a category, while the overlay makes each locked View's
+    owner explicit without offering it a new boundary decision.
+    """
     owned_groups = _registry_owned_visual_groups(visual_map)
     frames, frame_audit = build_detection_v5_review_coordinate_frames(
         ocr_package=ocr_package,
         page_images=page_images,
     )
-    # The shared crop helper normally serves pre-Registry membership and
-    # therefore filters by evidence_class. Ownership in this sidecar is
-    # stronger: Registry has already locked it. Hydrate only those groups.
-    crops, crop_audit = build_detection_v5_membership_view_crops(
-        page_images=page_images,
-        visual_groups=[{**group, "evidence_class": "object_evidence"} for group in owned_groups.values()],
-        coordinate_frames=frames,
-    )
-    crops_by_group_id = {
-        str(crop.get("group_id") or ""): crop
-        for crop in crops
-        if isinstance(crop, dict) and str(crop.get("group_id") or "")
-    }
-    object_crops: dict[str, list[dict]] = {}
-    for item in registry.get("objects") or []:
+    palette = ("#D00000", "#0057B8", "#008A2E", "#9B1C9B", "#A15C00", "#006D77")
+    labels_by_group_id: dict[str, str] = {}
+    colours_by_group_id: dict[str, str] = {}
+    for object_number, item in enumerate(registry.get("objects") or [], start=1):
         if not isinstance(item, dict):
             continue
         object_id = str(item.get("object_id") or "")
         if not object_id:
             continue
-        object_crops[object_id] = [
-            {"group_id": group_id, "page_number": int(crop["page_number"]), "bytes": crop["bytes"]}
-            for group_id in item.get("visual_group_ids") or []
-            if isinstance(crops_by_group_id.get(str(group_id) or ""), dict)
-            for crop in [crops_by_group_id[str(group_id)]]
-        ]
-    return object_crops, {
+        colour = palette[(object_number - 1) % len(palette)]
+        for group_id in item.get("visual_group_ids") or []:
+            group_key = str(group_id or "")
+            if group_key not in owned_groups:
+                continue
+            labels_by_group_id[group_key] = object_id
+            colours_by_group_id[group_key] = colour
+
+    # Registry ownership is stronger than the earlier Discovery class. Hydrate
+    # only those groups and mark them as object evidence for the shared overlay
+    # renderer, which otherwise excludes non-object groups.
+    contexts, overlay_audit = build_detection_v5_review_page_context_images(
+        page_images=page_images,
+        visual_groups=[
+            {**group, "evidence_class": "object_evidence"}
+            for group_id, group in owned_groups.items()
+            if group_id in labels_by_group_id
+        ],
+        coordinate_frames=frames,
+        # Naming needs the same complete 200-DPI source-page context as the
+        # successful V6.14 path. Do not downscale title blocks or annotations.
+        max_side=0,
+        overlay_labels_by_group_id=labels_by_group_id,
+        overlay_colours_by_group_id=colours_by_group_id,
+    )
+    pages = {
+        int(context["page_number"]): context["bytes"]
+        for context in contexts
+        if isinstance(context, dict)
+        and isinstance(context.get("page_number"), int)
+        and isinstance(context.get("bytes"), bytes)
+    }
+    return pages, {
         "coordinate_frame_audit": frame_audit,
-        "crop_audit": crop_audit,
+        "overlay_audit": overlay_audit,
         "registry_owned_group_count": len(owned_groups),
-        "crop_count": len(crops),
-        "objects_with_crop_count": sum(bool(value) for value in object_crops.values()),
+        "annotated_page_count": len(pages),
+        "annotated_page_numbers": sorted(pages),
+        "annotated_image_bytes": sum(len(image) for image in pages.values()),
+        "overlay_object_count": len(set(labels_by_group_id.values())),
+        "overlay_view_count": len(labels_by_group_id),
     }
 
 
@@ -597,7 +620,7 @@ def run_detection_agent(
     )
     result = _normalize_evidence_source_labels(result, ocr_package)
     validated = validate_detection_result(result)
-    naming_crops, naming_crop_audit = _build_v616_naming_crops(
+    naming_annotated_pages, naming_overlay_audit = _build_v619_naming_annotated_pages(
         registry=registry,
         visual_map=_visual_map,
         ocr_package=ocr_package,
@@ -605,14 +628,9 @@ def run_detection_agent(
     )
     if isinstance(visual_registry_usage, dict):
         raw_usage = dict(visual_registry_usage.get("raw_usage") or {})
-        raw_usage["v6_16_naming_bound_evidence"] = naming_crop_audit
+        raw_usage["v6_19_naming_annotated_pages"] = naming_overlay_audit
         visual_registry_usage["raw_usage"] = raw_usage
-    registry_object_ids = {
-        str(item.get("object_id") or "")
-        for item in registry.get("objects") or []
-        if isinstance(item, dict) and str(item.get("object_id") or "")
-    }
-    if registry_object_ids and all(naming_crops.get(object_id) for object_id in registry_object_ids):
-        validated["_naming_object_crops"] = naming_crops
+    if naming_annotated_pages:
+        validated["_naming_annotated_pages"] = naming_annotated_pages
     validated["_agent_usage_events"] = [visual_registry_usage] if visual_registry_usage else []
     return validated

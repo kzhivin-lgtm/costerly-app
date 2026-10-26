@@ -291,7 +291,7 @@ def _run_deferred_naming(
     file_name: str,
     file_bytes: bytes = b"",
     page_images: list[bytes] | None = None,
-    object_crops_by_id: dict[str, list[dict[str, Any]]] | None = None,
+    annotated_visual_pages_by_number: dict[int, bytes] | None = None,
     provisional_project_name: str | None = None,
 ) -> dict[str, Any]:
     """Name locked objects after File Review is allowed to open."""
@@ -306,29 +306,24 @@ def _run_deferred_naming(
             for page in item.get("evidence_pages") or []
             if isinstance(page, int) and page > 0
         }
-        source_pages = page_images
-        if source_pages is None and file_bytes and file_name.lower().endswith(".pdf"):
-            source_pages, _ = render_detection_pdf_pages(file_bytes)
-        elif source_pages is None and file_bytes:
-            source_pages = [file_bytes]
-        elif source_pages is None:
-            source_pages = []
-        visual_pages = {
-            number: source_pages[number - 1]
-            for number in wanted_pages
-            if number <= len(source_pages)
-        }
+        if annotated_visual_pages_by_number:
+            visual_pages = dict(annotated_visual_pages_by_number)
+        else:
+            source_pages = page_images
+            if source_pages is None and file_bytes and file_name.lower().endswith(".pdf"):
+                source_pages, _ = render_detection_pdf_pages(file_bytes)
+            elif source_pages is None and file_bytes:
+                source_pages = [file_bytes]
+            elif source_pages is None:
+                source_pages = []
+            visual_pages = {
+                number: source_pages[number - 1]
+                for number in wanted_pages
+                if number <= len(source_pages)
+            }
         naming_result = (
-            run_naming_lab_call(
-                locked_objects,
-                visual_pages_by_number=visual_pages,
-                object_crops_by_id=object_crops_by_id,
-            )
-            if object_crops_by_id is not None
-            else (
-                run_naming_lab_call(locked_objects, visual_pages_by_number=visual_pages)
-                if visual_pages else run_naming_lab_call(locked_objects)
-            )
+            run_naming_lab_call(locked_objects, visual_pages_by_number=visual_pages)
+            if visual_pages else run_naming_lab_call(locked_objects)
         )
         apply_name_mapping(detected_objects, locked_objects, naming_result)
         names: dict[str, str] = {}
@@ -649,7 +644,7 @@ def process_uploaded_rfq(
             )
         raise
     detection_seconds = round(time.perf_counter() - detection_started, 3)
-    naming_object_crops = detection_result.pop("_naming_object_crops", None)
+    naming_annotated_pages = detection_result.pop("_naming_annotated_pages", None)
     usage_events = detection_result.pop("_agent_usage_events", [])
     legacy_usage_event = detection_result.pop("_agent_usage", None)
     if isinstance(legacy_usage_event, dict):
@@ -716,8 +711,8 @@ def process_uploaded_rfq(
             file_name=file_name,
             file_bytes=file_bytes,
             ocr_package=deepcopy(ocr_package),
-            object_crops_by_id=deepcopy(naming_object_crops)
-            if isinstance(naming_object_crops, dict) else None,
+            annotated_visual_pages_by_number=deepcopy(naming_annotated_pages)
+            if isinstance(naming_annotated_pages, dict) else None,
             provisional_project_name=str(detection_result["rfq_run"].get("project_name") or ""),
         )
 

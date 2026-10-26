@@ -18,7 +18,7 @@ from agents.anthropic_adapter import (
 )
 
 
-NAMING_LAB_VERSION = "naming_lab_v12_source_index_preservation"
+NAMING_LAB_VERSION = "naming_lab_v13_annotated_source_pages"
 NAMING_PROMPT_PATH = Path(__file__).parent / "prompts" / "naming_agent_prompt.md"
 
 NAMING_RESULT_SCHEMA: dict[str, Any] = {
@@ -429,7 +429,6 @@ def apply_name_mapping(
 def run_naming_lab_call(
     locked_objects: list[dict[str, Any]],
     visual_pages_by_number: dict[int, bytes] | None = None,
-    object_crops_by_id: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     model = str(
         get_secret("CLAUDE_NAMING_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
@@ -449,31 +448,20 @@ def run_naming_lab_call(
             ),
         }
     ]
-    if object_crops_by_id is not None:
-        for locked in locked_objects:
-            object_id = str(locked.get("object_id") or "")
-            for crop in object_crops_by_id.get(object_id) or []:
-                if not isinstance(crop, dict) or not isinstance(crop.get("bytes"), bytes):
-                    continue
-                content.extend([
-                    {"type": "text", "text": json.dumps({
-                        "object_bound_crop": {
-                            "object_id": object_id,
-                            "page_number": crop.get("page_number"),
-                            "group_id": crop.get("group_id"),
-                        },
-                    })},
-                    {"type": "image", "source": {
-                        "type": "base64", "media_type": "image/jpeg",
-                        "data": base64.b64encode(crop["bytes"]).decode("ascii"),
-                    }},
-                ])
-    else:
-        for page_number, page_bytes in sorted((visual_pages_by_number or {}).items()):
-            content.extend([
-                {"type": "text", "text": json.dumps({"source_evidence_page": page_number})},
-                {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": base64.b64encode(page_bytes).decode("ascii")}},
-            ])
+    for page_number, page_bytes in sorted((visual_pages_by_number or {}).items()):
+        content.extend([
+            {
+                "type": "text",
+                "text": json.dumps({
+                    "annotated_source_evidence_page": page_number,
+                    "overlay_contract": (
+                        "Each outlined label is a locked object_id. The overlay identifies "
+                        "already-owned Views and is not a request to change object boundaries."
+                    ),
+                }),
+            },
+            {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": base64.b64encode(page_bytes).decode("ascii")}},
+        ])
     response = create_claude_message(
         client,
         model=model,

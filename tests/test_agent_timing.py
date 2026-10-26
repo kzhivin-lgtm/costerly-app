@@ -2177,6 +2177,53 @@ def test_deferred_naming_updates_locked_names_and_returns_without_detection_chan
     assert events[0]["raw_usage"]["persistence_audit"]["readback_mismatches"] == []
 
 
+def test_deferred_naming_uses_prebuilt_annotated_source_pages(monkeypatch):
+    received: dict = {}
+    events = []
+
+    def naming_call(locked, *, visual_pages_by_number=None):
+        received["locked"] = locked
+        received["pages"] = visual_pages_by_number
+        return {
+            "names": [{
+                "object_id": "object-001", "name_en": "Display cabinet", "name_original": "",
+            }],
+            "duration_seconds": 1.0,
+            "model": "test-model",
+            "input_tokens": 1,
+            "output_tokens": 1,
+            "validation": {"accepted": True, "violations": []},
+        }
+
+    monkeypatch.setattr("use_cases.rfq_processing.run_naming_lab_call", naming_call)
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.update_rfq_detected_object_name_if_unchanged",
+        lambda _client, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.fetch_rfq_detected_object_names",
+        lambda _client, _run_id: [{"object_id": "object-001", "object_name": "Display cabinet"}],
+    )
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.insert_agent_usage_event",
+        lambda _client, event: events.append(event),
+    )
+
+    result = _run_deferred_naming(
+        client=object(),
+        detected_objects=[{"object_id": "object-001", "object_name": "Object 01"}],
+        locked_objects=[{"object_id": "object-001", "current_name": "Object 01"}],
+        company_id="001",
+        run_id="run-annotated-pages",
+        file_name="drawing.pdf",
+        annotated_visual_pages_by_number={3: b"annotated-page"},
+    )
+
+    assert result["status"] == "succeeded"
+    assert received["pages"] == {3: b"annotated-page"}
+    assert events[0]["status"] == "succeeded"
+
+
 def test_deferred_naming_records_readback_mismatch_as_failure(monkeypatch):
     events = []
     detected_objects = [{"object_id": "object-003", "object_name": "Object 3"}]
