@@ -10387,15 +10387,31 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             for group_id in item.get("visual_group_ids") or []
             if str(group_id)
         }
-        registry_owned_evidence = [
-            {
+        visual_groups_by_id = {
+            str(group.get("group_id") or ""): group
+            for group in visual_map.get("visual_groups") or []
+            if isinstance(group, dict) and str(group.get("group_id") or "")
+        }
+        registry_owned_evidence = []
+        for group_id in sorted(registry_owned_group_ids):
+            if group_id not in page_by_group_id or group_id not in group_bboxes:
+                continue
+            visual_group = visual_groups_by_id.get(group_id) or {}
+            # Naming receives only Registry-owned geometry. Preserve the
+            # visual form beside it so the deterministic presentation selector
+            # can prefer an elevation over a section. This post-Registry
+            # sidecar cannot affect object identity.
+            registry_owned_evidence.append({
                 "group_id": group_id,
                 "page_number": page_by_group_id[group_id],
                 "bbox": dict(group_bboxes[group_id]),
-            }
-            for group_id in sorted(registry_owned_group_ids)
-            if group_id in page_by_group_id and group_id in group_bboxes
-        ]
+                "representation_kind": str(
+                    visual_group.get("representation_kind") or ""
+                ),
+                "visual_description": str(
+                    visual_group.get("visual_description") or ""
+                ),
+            })
         if registry_owned_evidence:
             visual_map["_registry_owned_evidence"] = registry_owned_evidence
     except (KeyError, ValueError) as exc:

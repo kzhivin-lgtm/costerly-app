@@ -808,6 +808,8 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
             "top_left_x": 10, "top_left_y": 10,
             "bottom_right_x": 15, "bottom_right_y": 20,
         },
+        "representation_kind": "perspective",
+        "visual_description": "one cabinet",
     }]
     assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
     assert registry["objects"][0]["estimation_evidence_pages"] == [1]

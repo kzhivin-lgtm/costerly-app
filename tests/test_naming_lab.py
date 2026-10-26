@@ -14,10 +14,11 @@ from agents.naming_lab import (
     relevant_ocr_snippets,
     validate_locked_name_mapping,
 )
+from agents.ocr_adapter import build_page_title_fields
 
 
 def test_uses_semantic_category_naming_version():
-    assert NAMING_LAB_VERSION == "naming_lab_v14_object_source_crops"
+    assert NAMING_LAB_VERSION == "naming_lab_v15_grounded_category_evidence"
 
 
 def test_naming_schema_requires_short_decision_basis():
@@ -25,6 +26,7 @@ def test_naming_schema_requires_short_decision_basis():
 
     item_schema = NAMING_RESULT_SCHEMA["properties"]["names"]["items"]
     assert "name_basis" in item_schema["required"]
+    assert "category_evidence" in item_schema["required"]
 
 
 def test_naming_decision_audit_preserves_locked_code_and_evidence_pages():
@@ -34,6 +36,10 @@ def test_naming_decision_audit_preserves_locked_code_and_evidence_pages():
             "object_id": "object-001",
             "name_en": "Stair railing",
             "name_basis": "OCR railing label on p. 1; railing geometry.",
+            "category_evidence": {
+                "kind": "literal_object_label", "cue": "railing",
+                "page_number": 1, "visual_group_id": "view-001",
+            },
         }]},
     )
 
@@ -43,6 +49,10 @@ def test_naming_decision_audit_preserves_locked_code_and_evidence_pages():
         "evidence_pages": [1, 3],
         "selected_name": "Stair railing",
         "name_basis": "OCR railing label on p. 1; railing geometry.",
+        "category_evidence": {
+            "kind": "literal_object_label", "cue": "railing",
+            "page_number": 1, "visual_group_id": "view-001",
+        },
     }]
 
 
@@ -51,10 +61,9 @@ def test_naming_prompt_keeps_integrated_kitchens_out_of_shelving():
 
     assert "is `Kitchen`" in prompt
     assert "shelving unit" in prompt
-    assert "a sink" in prompt
-    assert "explicitly identified refrigerator" in prompt
-    assert "an oven" in prompt
-    assert "a dishwasher" in prompt
+    assert "faucet/mixer/tap" in prompt
+    assert "microwave" in prompt
+    assert "range hood" in prompt
     assert "A worktop alone is only supporting evidence" in prompt
     assert "never use them to merge separate cabinet systems" in prompt
 
@@ -97,6 +106,45 @@ def test_recovers_title_block_drawing_index_for_a_locked_object_page():
     assign_ocr_drawing_indices(objects, ocr)
 
     assert objects[0]["object_name"] == "N57"
+
+
+def test_fusion_title_fields_use_full_markdown_when_compact_evidence_loses_table():
+    fields = build_page_title_fields(
+        [{"page_number": 6, "markdown": "DRAWING NAME\nN62"}],
+        {"text_blocks": [], "literal_items": []},
+    )
+
+    assert fields == [{
+        "page_number": 6,
+        "field_type": "drawing_sheet_code",
+        "value": "N62",
+        "status": "single_source",
+        "sources": ["mistral_page_markdown"],
+        "label": "DRAWING NAME",
+        "bbox": None,
+    }]
+
+
+def test_kitchen_requires_object_local_direct_category_evidence():
+    locked = [{"object_id": "object-001", "evidence_pages": [3]}]
+    rejected = validate_locked_name_mapping(locked, {"names": [{
+        "object_id": "object-001", "name_en": "Kitchen", "name_original": "",
+        "name_basis": "Cabinet geometry.",
+        "category_evidence": {
+            "kind": "none", "cue": "", "page_number": 0, "visual_group_id": "",
+        },
+    }]})
+    accepted = validate_locked_name_mapping(locked, {"names": [{
+        "object_id": "object-001", "name_en": "Kitchen", "name_original": "",
+        "name_basis": "Faucet in the cabinet elevation.",
+        "category_evidence": {
+            "kind": "visual_direct_cue", "cue": "faucet_mixer_tap",
+            "page_number": 3, "visual_group_id": "view-001",
+        },
+    }]})
+
+    assert rejected["accepted"] is False
+    assert accepted == {"accepted": True, "violations": []}
 
 
 def test_drops_isolated_title_block_family_outlier_when_a_document_series_exists():
@@ -278,7 +326,11 @@ def test_rejects_source_language_name_for_english_only_mvp():
 
     assert validation["accepted"] is False
     assert validation["violations"] == [
-        {"object_id": "a", "field": "name_original", "words": 2}
+        {"object_id": "a", "field": "name_original", "words": 2},
+        {
+            "object_id": "a", "field": "category_evidence",
+            "reason": "strong_category_requires_evidence",
+        },
     ]
 
 

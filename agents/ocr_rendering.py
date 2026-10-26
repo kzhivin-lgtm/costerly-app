@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+from io import BytesIO
 import os
 import shutil
 import subprocess
@@ -12,8 +13,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable
 
+from PIL import Image
+
 from agents.ocr_adapter import (
     OCR_CONTRACT_VERSION,
+    build_page_title_fields,
     build_ocr_evidence,
     run_mistral_ocr,
     wait_for_mistral_http_warmup,
@@ -34,6 +38,95 @@ from agents.pdf_page_inspection import (
 DEFAULT_RENDER_DPI = 200
 DEFAULT_RENDER_WORKERS = 4
 DEFAULT_PAGE_WORKERS = 4
+
+
+def _title_block_search_image(page_bytes: bytes) -> bytes:
+    """Make one compact search image from the two title-block-prone page bands.
+
+    This is a file-local fallback only after the ordinary OCR/Fusion path has
+    already established repeated labelled title fields elsewhere in the file.
+    It avoids a second full-page request while covering the conventional left
+    vertical and lower horizontal title-block layouts.
+    """
+    with Image.open(BytesIO(page_bytes)) as source:
+        image = source.convert("RGB")
+    width, height = image.size
+    left = image.crop((0, 0, max(1, round(width * 0.23)), height))
+    lower = image.crop((0, round(height * 0.72), width, height))
+    canvas = Image.new("RGB", (max(left.width, lower.width), left.height + lower.height), "white")
+    canvas.paste(left, (0, 0))
+    canvas.paste(lower, (0, left.height))
+    output = BytesIO()
+    canvas.save(output, format="PNG", optimize=True)
+    return output.getvalue()
+
+
+def _recover_missing_repeated_title_fields(
+    *,
+    pages: list[dict[str, Any]],
+    title_fields: list[dict[str, Any]],
+    rendered_pages_by_index: dict[int, bytes],
+    file_name: str,
+    page_ocr: Callable[..., dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """OCR bounded title bands only when the document proves a repeated form."""
+    resolved_pages = {
+        int(field["page_number"])
+        for field in title_fields
+        if isinstance(field, dict)
+        and field.get("field_type") == "drawing_sheet_code"
+        and field.get("status") in {"verified", "single_source"}
+        and field.get("value")
+    }
+    page_numbers = {
+        int(page.get("page_number"))
+        for page in pages
+        if isinstance(page, dict) and isinstance(page.get("page_number"), int)
+    }
+    missing_pages = sorted(page_numbers - resolved_pages)
+    audit: dict[str, Any] = {
+        "status": "not_needed",
+        "eligible_page_count": len(resolved_pages),
+        "requested_pages": [],
+        "recovered_pages": [],
+        "errors": [],
+    }
+    # One labelled hit may be a cover or one-off table. Require a repeated
+    # document-level pattern before spending extra OCR or applying this layout
+    # fallback to otherwise unresolved pages.
+    if len(resolved_pages) < 2 or not missing_pages:
+        return title_fields, audit
+    audit["status"] = "attempted"
+    fields = list(title_fields)
+    for page_number in missing_pages:
+        page_bytes = rendered_pages_by_index.get(page_number - 1)
+        if not page_bytes:
+            continue
+        audit["requested_pages"].append(page_number)
+        try:
+            response = page_ocr(
+                file_name=f"{Path(file_name).stem}-title-block-page-{page_number}.png",
+                file_bytes=_title_block_search_image(page_bytes),
+                profile=OCR_PROFILE_BASIC,
+            )
+            markdown = "\n".join(
+                str(page.get("markdown") or "")
+                for page in response.get("pages") or []
+                if isinstance(page, dict)
+            )
+            recovered = build_page_title_fields(
+                [{"page_number": page_number, "markdown": markdown}],
+                {"text_blocks": [], "literal_items": []},
+            )
+            for field in recovered:
+                if field.get("value"):
+                    field["sources"] = ["mistral_title_block_fallback"]
+                    field["status"] = "single_source"
+                    fields.append(field)
+                    audit["recovered_pages"].append(page_number)
+        except Exception as exc:  # fallback must not block the primary OCR route
+            audit["errors"].append({"page_number": page_number, "error": str(exc)})
+    return fields, audit
 
 
 def extract_native_pdf_text_blocks(
@@ -223,6 +316,9 @@ def run_mistral_direct_pdf_evidence_ocr(
         native_text_blocks=native_inspection.get("text_blocks") or [],
         native_graphic_regions=native_inspection.get("graphic_regions") or [],
         page_profiles=native_inspection.get("page_profiles") or [],
+    )
+    result["page_title_fields"] = build_page_title_fields(
+        result.get("pages") or [], result["evidence"],
     )
     return result
 
@@ -556,6 +652,7 @@ def run_mistral_document_evidence_ocr(
     # page PNGs in a second concurrent pool. This keeps density analysis
     # bounded for large multi-page construction sets.
     rendered_page_measurements: dict[int, dict[str, Any]] = {}
+    rendered_pages_by_index: dict[int, bytes] = {}
 
     def recognize(item: tuple[int, bytes]) -> tuple[int, dict[str, Any]]:
         page_index, page_bytes = item
@@ -586,6 +683,7 @@ def run_mistral_document_evidence_ocr(
                     warmup_wait_seconds = time.perf_counter() - warmup_wait_started
                     provider_started = time.perf_counter()
                 rendered_page_sizes[page_index] = len(page_bytes)
+                rendered_pages_by_index[page_index] = page_bytes
                 rendered_page_measurements[page_index + 1] = (
                     measure_rendered_page_visual_coverage(page_bytes)
                 )
@@ -609,6 +707,10 @@ def run_mistral_document_evidence_ocr(
             recognized = list(executor.map(recognize, enumerate(rendered_pages)))
         rendered_page_sizes = {
             page_index: len(page_bytes)
+            for page_index, page_bytes in enumerate(rendered_pages)
+        }
+        rendered_pages_by_index = {
+            page_index: page_bytes
             for page_index, page_bytes in enumerate(rendered_pages)
         }
         rendered_page_measurements = {
@@ -795,4 +897,19 @@ def run_mistral_document_evidence_ocr(
         native_graphic_regions=native_graphic_regions,
         page_profiles=page_profiles,
     )
+    result["page_title_fields"] = build_page_title_fields(
+        pages, result["evidence"],
+    )
+    result["page_title_fields"], title_fallback_audit = _recover_missing_repeated_title_fields(
+        pages=pages,
+        title_fields=result["page_title_fields"],
+        rendered_pages_by_index=rendered_pages_by_index,
+        file_name=file_name,
+        page_ocr=page_ocr,
+    )
+    result["title_block_ocr_fallback"] = title_fallback_audit
+    result["usage"]["title_block_fallback_pages_processed"] = len(
+        title_fallback_audit["requested_pages"]
+    )
+    result["usage"]["pages_processed"] += len(title_fallback_audit["requested_pages"])
     return result

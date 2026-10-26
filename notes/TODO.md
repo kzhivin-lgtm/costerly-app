@@ -1,6 +1,20 @@
 # TODO
 
-ACTIVE, V6.21 object-bound Naming evidence and presentation preview: retain
+ACTIVE, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
+deferred Naming lifecycle and locked Detection object contract. Build optional
+`page_title_fields` during OCR/Fusion from explicit title-field label-to-value
+evidence, including full-page Mistral Markdown only as explicitly marked
+single-source fallback. Preserve `representation_kind` in the private
+Registry-owned sidecar so deterministic preview and Naming crop selection can
+prefer elevation over section. Extend the Naming response with object-local
+`category_evidence`; Kitchen can cite a sink, faucet/mixer/tap, or kitchen
+appliance, while strong categories such as Kitchen and Stair railing must not
+publish without an object-local literal or visual cue. Do not change router,
+object identity, quantity, order, bbox, evidence-page membership or View
+ownership. First gate: HSL audit of title facts, selected source crops and
+grounded category evidence. Then run Page23 and Ada regressions.
+
+RESOLVED, V6.21 object-bound Naming evidence and presentation preview: retain
 the V6.20 deferred Naming lifecycle and neutral File Review publication, but
 make one deterministic Registry-owned front/elevation View available in two
 strictly separate roles. It becomes `presentation_preview_bbox` for File

@@ -1,9 +1,41 @@
+from io import BytesIO
 from threading import Event
 
+from PIL import Image
+
 from agents.ocr_rendering import (
+    _recover_missing_repeated_title_fields,
     run_mistral_direct_pdf_evidence_ocr,
     run_mistral_document_evidence_ocr,
 )
+
+
+def test_title_block_fallback_runs_only_after_repeated_labelled_fields():
+    image = Image.new("RGB", (800, 500), "white")
+    encoded = BytesIO()
+    image.save(encoded, format="PNG")
+    calls = []
+
+    def page_ocr(**kwargs):
+        calls.append(kwargs)
+        return {"pages": [{"markdown": "DRAWING NAME N56"}]}
+
+    fields, audit = _recover_missing_repeated_title_fields(
+        pages=[{"page_number": 1}, {"page_number": 2}, {"page_number": 3}],
+        title_fields=[
+            {"page_number": 1, "field_type": "drawing_sheet_code", "value": "N57", "status": "verified"},
+            {"page_number": 2, "field_type": "drawing_sheet_code", "value": "N60", "status": "verified"},
+        ],
+        rendered_pages_by_index={2: encoded.getvalue()},
+        file_name="drawing.pdf",
+        page_ocr=page_ocr,
+    )
+
+    assert len(calls) == 1
+    assert audit["requested_pages"] == [3]
+    assert audit["recovered_pages"] == [3]
+    assert fields[-1]["value"] == "N56"
+    assert fields[-1]["sources"] == ["mistral_title_block_fallback"]
 
 
 def test_direct_pdf_mode_uses_one_original_document_request():

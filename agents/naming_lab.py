@@ -18,7 +18,7 @@ from agents.anthropic_adapter import (
 )
 
 
-NAMING_LAB_VERSION = "naming_lab_v14_object_source_crops"
+NAMING_LAB_VERSION = "naming_lab_v15_grounded_category_evidence"
 NAMING_PROMPT_PATH = Path(__file__).parent / "prompts" / "naming_agent_prompt.md"
 
 NAMING_RESULT_SCHEMA: dict[str, Any] = {
@@ -31,12 +31,29 @@ NAMING_RESULT_SCHEMA: dict[str, Any] = {
             "items": {
                 "type": "object",
                 "additionalProperties": False,
-                "required": ["object_id", "name_en", "name_original", "name_basis"],
+                "required": [
+                    "object_id", "name_en", "name_original", "name_basis",
+                    "category_evidence",
+                ],
                 "properties": {
                     "object_id": {"type": "string"},
                     "name_en": {"type": "string"},
                     "name_original": {"type": "string"},
                     "name_basis": {"type": "string"},
+                    "category_evidence": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["kind", "cue", "page_number", "visual_group_id"],
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": ["literal_object_label", "visual_direct_cue", "none"],
+                            },
+                            "cue": {"type": "string"},
+                            "page_number": {"type": "integer", "minimum": 0},
+                            "visual_group_id": {"type": "string"},
+                        },
+                    },
                 },
             },
         }
@@ -258,12 +275,27 @@ def _plain_ocr_text(value: Any) -> str:
 
 
 def source_drawing_indices_by_page(ocr_result: dict[str, Any]) -> dict[int, str]:
-    """Read literal drawing codes after a title-block Drawing Name label.
+    """Read Fusion-owned literal drawing sheet codes by page.
 
-    The code is source evidence, not a semantic inference. Ambiguous pages are
-    intentionally omitted rather than assigning a nearby dimension or table ID.
+    The compact OCR fallback retains compatibility with packages created before
+    V6.22. New packages must use the explicit page-title facts created during
+    OCR/Fusion, never infer a code from an arbitrary nearby number.
     """
     result: dict[int, str] = {}
+    for field in ocr_result.get("page_title_fields") or []:
+        if not isinstance(field, dict):
+            continue
+        if field.get("field_type") != "drawing_sheet_code":
+            continue
+        if field.get("status") not in {"verified", "single_source"}:
+            continue
+        try:
+            page_number = int(field.get("page_number"))
+        except (TypeError, ValueError):
+            continue
+        value = str(field.get("value") or "").strip()
+        if page_number > 0 and _is_source_identifier(value):
+            result[page_number] = value
     for item in _ocr_items(ocr_result):
         try:
             page_number = int(item.get("page_number"))
@@ -355,6 +387,15 @@ def validate_locked_name_mapping(
             f"Naming object_id sequence changed: expected {expected_ids}, got {actual_ids}"
         )
 
+    locked_by_id = {
+        str(item.get("object_id") or ""): item
+        for item in locked_objects
+        if isinstance(item, dict)
+    }
+    kitchen_cues = {
+        "sink", "faucet_mixer_tap", "dishwasher", "refrigerator_freezer",
+        "built_in_oven", "microwave", "cooktop", "range_hood", "other",
+    }
     violations: list[dict[str, Any]] = []
     for item in names:
         name_en_words = _word_count(item.get("name_en"))
@@ -383,6 +424,42 @@ def validate_locked_name_mapping(
                     "words": original_words,
                 }
             )
+        name = " ".join(str(item.get("name_en") or "").casefold().split())
+        category_evidence = item.get("category_evidence")
+        if name in {"kitchen", "stair railing"}:
+            if not isinstance(category_evidence, dict):
+                violations.append({
+                    "object_id": item["object_id"],
+                    "field": "category_evidence",
+                    "reason": "strong_category_requires_evidence",
+                })
+                continue
+            kind = str(category_evidence.get("kind") or "")
+            cue = str(category_evidence.get("cue") or "")
+            visual_group_id = str(category_evidence.get("visual_group_id") or "").strip()
+            try:
+                page_number = int(category_evidence.get("page_number") or 0)
+            except (TypeError, ValueError):
+                page_number = 0
+            object_pages = set(locked_by_id.get(str(item["object_id"]), {}).get("evidence_pages") or [])
+            if kind not in {"literal_object_label", "visual_direct_cue"} or page_number not in object_pages:
+                violations.append({
+                    "object_id": item["object_id"],
+                    "field": "category_evidence",
+                    "reason": "category_evidence_not_object_local",
+                })
+            elif kind == "visual_direct_cue" and not visual_group_id:
+                violations.append({
+                    "object_id": item["object_id"],
+                    "field": "category_evidence",
+                    "reason": "visual_cue_requires_source_group",
+                })
+            elif name == "kitchen" and cue not in kitchen_cues:
+                violations.append({
+                    "object_id": item["object_id"],
+                    "field": "category_evidence",
+                    "reason": "kitchen_cue_not_allowed",
+                })
     return {"accepted": not violations, "violations": violations}
 
 
@@ -428,6 +505,7 @@ def build_naming_decision_audit(
             "evidence_pages": list(locked.get("evidence_pages") or []),
             "selected_name": str(item.get("name_en") or ""),
             "name_basis": str(item.get("name_basis") or ""),
+            "category_evidence": dict(item.get("category_evidence") or {}),
         })
     return decisions
 

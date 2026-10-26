@@ -193,6 +193,112 @@ _DECLARED_DIMENSION_PATTERNS = (
 )
 
 
+_TITLE_FIELD_LABEL_RE = re.compile(
+    r"(?:drawing\s*(?:name|no\.?|number)|"
+    r"name\s+of\s+(?:the\s+)?drawing|"
+    r"sheet\s*(?:no\.?|number)?)",
+    flags=re.IGNORECASE,
+)
+_TITLE_FIELD_CODE_RE = re.compile(
+    r"(?<![A-Za-zА-Яа-яЁё0-9])(?:"
+    r"[A-Za-zА-Яа-яЁё]{1,4}\s*[- ]?\s*\d+"
+    r"[A-Za-zА-Яа-яЁё0-9]*(?:[-./][A-Za-zА-Яа-яЁё0-9]+){0,3}"
+    r"|\d{1,3}[A-ZА-ЯЁ][A-ZА-ЯЁ0-9]*(?:[-./][A-Za-zА-Яа-яЁё0-9]+){0,3}"
+    r"|\d{1,3}(?:[-./]\d*[A-Za-zА-Яа-яЁё][A-Za-zА-Яа-яЁё0-9]*)+"
+    r")(?![A-Za-zА-Яа-яЁё0-9])"
+)
+
+
+def build_page_title_fields(
+    pages: list[dict[str, Any]],
+    evidence: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Fuse explicit title-block fields without inferring nearby codes.
+
+    Drawing sheet identifiers are optional page facts. Full page Markdown is a
+    fallback when compact evidence discarded a title table, but has no local
+    bbox and is therefore explicitly marked as single-source.
+    """
+    source_records: list[dict[str, Any]] = []
+    for item in (evidence.get("text_blocks") or []) + (evidence.get("literal_items") or []):
+        if not isinstance(item, dict):
+            continue
+        try:
+            page_number = int(item.get("page_number"))
+        except (TypeError, ValueError):
+            continue
+        text = _compact_literal_text(item.get("text"))
+        if text:
+            source_records.append({
+                "page_number": page_number,
+                "text": text,
+                "source": str(item.get("source") or "ocr_evidence"),
+                "bbox": item.get("bbox") if isinstance(item.get("bbox"), dict) else None,
+            })
+    for page in pages:
+        if not isinstance(page, dict):
+            continue
+        try:
+            page_number = int(page.get("page_number"))
+        except (TypeError, ValueError):
+            continue
+        markdown = _compact_literal_text(page.get("markdown"))
+        if markdown:
+            source_records.append({
+                "page_number": page_number,
+                "text": markdown,
+                "source": "mistral_page_markdown",
+                "bbox": None,
+            })
+
+    candidates_by_page: dict[int, list[dict[str, Any]]] = {}
+    for record in source_records:
+        label_match = _TITLE_FIELD_LABEL_RE.search(record["text"])
+        if label_match is None:
+            continue
+        code_match = _TITLE_FIELD_CODE_RE.search(
+            record["text"], label_match.end(), label_match.end() + 500,
+        )
+        if code_match is None:
+            continue
+        candidates_by_page.setdefault(record["page_number"], []).append({
+            "field_type": "drawing_sheet_code",
+            "value": code_match.group(0).strip(),
+            "label": label_match.group(0).strip(),
+            "source": record["source"],
+            "bbox": dict(record["bbox"]) if record["bbox"] else None,
+        })
+
+    fields: list[dict[str, Any]] = []
+    for page_number in sorted(candidates_by_page):
+        candidates = candidates_by_page[page_number]
+        values = {candidate["value"] for candidate in candidates}
+        if len(values) != 1:
+            fields.append({
+                "page_number": page_number,
+                "field_type": "drawing_sheet_code",
+                "value": None,
+                "status": "conflicted",
+                "candidates": candidates,
+            })
+            continue
+        value = next(iter(values))
+        bbox_candidates = [candidate for candidate in candidates if candidate["bbox"]]
+        fields.append({
+            "page_number": page_number,
+            "field_type": "drawing_sheet_code",
+            "value": value,
+            # One bounded source containing both the literal field label and
+            # its code is sufficient to verify their local relationship. A
+            # Markdown-only hit remains useful but explicitly weaker.
+            "status": "verified" if bbox_candidates else "single_source",
+            "sources": sorted({candidate["source"] for candidate in candidates}),
+            "label": candidates[0]["label"],
+            "bbox": bbox_candidates[0]["bbox"] if bbox_candidates else None,
+        })
+    return fields
+
+
 def _extract_declared_dimension_literals(
     *,
     page_number: int,
@@ -493,6 +599,9 @@ def normalize_mistral_ocr_response(
         "raw_response": _plain_json(raw),
     }
     result["evidence"] = build_ocr_evidence(pages)
+    result["page_title_fields"] = build_page_title_fields(
+        result["pages"], result["evidence"],
+    )
     return result
 
 
