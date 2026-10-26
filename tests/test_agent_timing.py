@@ -18,8 +18,8 @@ from agents.anthropic_adapter import (
     validate_detection_v5_discovery_page_coverage,
     DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
     DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
-    DETECTION_V633_ADA_DISCOVERY_MODEL,
-    DETECTION_V633_ADA_HAIKU_DISCOVERY_SONNET_REVIEW_PROMPT_VERSION,
+    DETECTION_V634_ADA_DISCOVERY_MODEL,
+    DETECTION_V634_ADA_HAIKU_DISCOVERY_SONNET_REVIEW_PROMPT_VERSION,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
     apply_benchmark_run_suffix,
     build_agent_usage_event,
@@ -1236,7 +1236,7 @@ def test_v610_reconciliation_ignores_outside_row_and_falls_back_for_required_row
     assert audit[1]["disposition"] == "insufficient_evidence"
 
 
-def test_v633_ada_uses_haiku_for_discovery_and_sonnet_for_review():
+def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
     proposal = _visual_registry_payload({
         "visual_groups": [{
             "group_id": "raw_view", "page_number": 1, "location_hint": "centre",
@@ -1292,14 +1292,17 @@ def test_v633_ada_uses_haiku_for_discovery_and_sonnet_for_review():
         )
 
     assert [call.kwargs["model"] for call in create_message.call_args_list] == [
-        DETECTION_V633_ADA_DISCOVERY_MODEL,
+        DETECTION_V634_ADA_DISCOVERY_MODEL,
         "claude-sonnet-4-6",
     ]
     assert usage["prompt_version"] == (
-        DETECTION_V633_ADA_HAIKU_DISCOVERY_SONNET_REVIEW_PROMPT_VERSION
+        DETECTION_V634_ADA_HAIKU_DISCOVERY_SONNET_REVIEW_PROMPT_VERSION
     )
-    assert usage["raw_usage"]["v6_33_ada_haiku_discovery_sonnet_review_active"] is True
-    assert usage["raw_usage"]["v5_9_proposal"]["model"] == DETECTION_V633_ADA_DISCOVERY_MODEL
+    assert usage["raw_usage"]["v6_34_ada_haiku_discovery_sonnet_review_active"] is True
+    assert usage["raw_usage"]["v6_10_combined_evidence_review_active"] is False
+    assert usage["raw_usage"]["v6_10_candidate_pair_count"] == 0
+    assert usage["raw_usage"]["v6_10_reconciliation_pair_count"] == 0
+    assert usage["raw_usage"]["v5_9_proposal"]["model"] == DETECTION_V634_ADA_DISCOVERY_MODEL
     assert usage["raw_usage"]["v5_9_review"]["model"] == "claude-sonnet-4-6"
     assert (usage["input_tokens"], usage["output_tokens"]) == (200, 40)
     assert usage["input_cost_usd"] == "0.000400"
@@ -1331,7 +1334,7 @@ def test_v633_ada_uses_haiku_for_discovery_and_sonnet_for_review():
     assert str(raised.value) == (
         "Detection proposal response failed the V5.10.1 discovery contract"
     )
-    assert raised.value.usage_event["model"] == DETECTION_V633_ADA_DISCOVERY_MODEL
+    assert raised.value.usage_event["model"] == DETECTION_V634_ADA_DISCOVERY_MODEL
     assert raised.value.usage_event["raw_usage"]["validation_stage"] == (
         "v5_10_1_discovery_contract"
     )

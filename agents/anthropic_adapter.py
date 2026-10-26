@@ -123,10 +123,10 @@ DETECTION_V69_CRITERIA_RECONCILIATION_PROMPT_VERSION = (
 DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION = (
     "detection_v6_10_combined_evidence_review"
 )
-DETECTION_V633_ADA_HAIKU_DISCOVERY_SONNET_REVIEW_PROMPT_VERSION = (
-    "detection_v6_33_ada_haiku_discovery_sonnet_review"
+DETECTION_V634_ADA_HAIKU_DISCOVERY_SONNET_REVIEW_PROMPT_VERSION = (
+    "detection_v6_34_ada_haiku_discovery_sonnet_review"
 )
-DETECTION_V633_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
+DETECTION_V634_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
 # V5.0 keeps one Haiku call. Registry returns Islands, classifications, and
 # sparse positive semantic facts. Runtime owns every graph and package decision.
@@ -9665,18 +9665,18 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             for candidate in candidate_regions
         )
     )
-    # V6.33 keeps the existing Ada contract but separates the bounded visual
-    # inventory from the costly pairwise judgment. Mistral remains the anchor
-    # boundary authority, Haiku performs Discovery, and Sonnet remains the
-    # only model deciding V6.10 membership links and reconciliation.
-    v633_ada_haiku_discovery_sonnet_review_active = bool(
+    # V6.34 ports the proven V6.31 two-call contract into the existing Ada
+    # route. Mistral remains the bbox authority, Haiku performs Discovery,
+    # and one Sonnet Membership Review owns object hypotheses. V6.10's
+    # pairwise/reconciliation subroute is deliberately not entered.
+    v634_ada_haiku_discovery_sonnet_review_active = bool(
         document_category == "ada_sparse_multi_object"
         and mistral_anchor_admission_active
         and "sonnet" in selected_model.lower()
     )
     discovery_model = (
-        DETECTION_V633_ADA_DISCOVERY_MODEL
-        if v633_ada_haiku_discovery_sonnet_review_active
+        DETECTION_V634_ADA_DISCOVERY_MODEL
+        if v634_ada_haiku_discovery_sonnet_review_active
         else selected_model
     )
     review_model = selected_model
@@ -10052,20 +10052,17 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     # links, each emitted together with its complete criteria audit, then
     # component-level reconciliation for any View not held by a proven link.
     v69_criteria_reconciliation_active = bool(
-        mistral_anchor_admission_active
+        not v634_ada_haiku_discovery_sonnet_review_active
+        and mistral_anchor_admission_active
         and 2 <= len([
             group for group in proposal_for_review["visual_groups"]
             if group.get("evidence_class") == "object_evidence"
         ]) <= DETECTION_V69_RECONCILIATION_MAX_ISLANDS
     )
-    if v69_criteria_reconciliation_active:
-        prompt_version = (
-            DETECTION_V633_ADA_HAIKU_DISCOVERY_SONNET_REVIEW_PROMPT_VERSION
-            if v633_ada_haiku_discovery_sonnet_review_active
-            else DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION
-        )
-    elif v633_ada_haiku_discovery_sonnet_review_active:
-        prompt_version = DETECTION_V633_ADA_HAIKU_DISCOVERY_SONNET_REVIEW_PROMPT_VERSION
+    if v634_ada_haiku_discovery_sonnet_review_active:
+        prompt_version = DETECTION_V634_ADA_HAIKU_DISCOVERY_SONNET_REVIEW_PROMPT_VERSION
+    elif v69_criteria_reconciliation_active:
+        prompt_version = DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION
     registry_visual_sources = build_detection_v5_registry_visual_sources(
         proposal_for_review["visual_groups"]
     )
@@ -10368,11 +10365,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v6_7_mistral_anchor_admission_active": mistral_anchor_admission_active,
         "v6_7_mistral_anchor_admission_audit": mistral_anchor_admission_audit,
         "v6_10_combined_evidence_review_active": v69_criteria_reconciliation_active,
-        "v6_33_ada_haiku_discovery_sonnet_review_active": (
-            v633_ada_haiku_discovery_sonnet_review_active
+        "v6_34_ada_haiku_discovery_sonnet_review_active": (
+            v634_ada_haiku_discovery_sonnet_review_active
         ),
-        "v6_33_discovery_model": discovery_model,
-        "v6_33_membership_review_model": review_model,
+        "v6_34_discovery_model": discovery_model,
+        "v6_34_membership_review_model": review_model,
         "v6_10_candidate_pair_count": len(v69_preliminary_pairs),
         "v6_10_candidate_pairs": [
             {"group_id_a": left, "group_id_b": right}

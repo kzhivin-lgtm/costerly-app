@@ -141,17 +141,17 @@ existing Sonnet/Mistral-anchor/V6.10 contract. Gates: Lev_1 must route directly
 to Ada and assemble correctly; HSL stays ordinary; Adda stays direct Ada; Page
 23 keeps its source-degraded route.
 
-ACTIVE EXPERIMENT, P0, V6.33 Ada Haiku Discovery plus Sonnet Review: retain
-the three established routes and V6.32 router unchanged. Within the already
-selected Ada contract only, use Haiku for the bounded Discovery inventory and
-retain Sonnet for V6.10 Membership Review and any Reconciliation. Mistral
-graphic anchors remain the boundary authority. Persist the actual model and
-stage cost for each provider call, then sum the mixed-model costs rather than
-billing all calls at Sonnet rates. Gates: canonical Adda retains the accepted
-two-object membership, anchors, bboxes, and Evidence package; Lev_1 retains
-its one-object result; ordinary HSL and Page 23 are unchanged; measured cost
-and elapsed time are compared with their V6.32/V6.10 baselines before any
-broader decision.
+ACTIVE EXPERIMENT, P0, V6.34 Ada V6.31 model split: retain the three
+established routes and V6.32 router unchanged. Within the already selected Ada
+contract only, execute the exact V6.31 two-call pattern: Haiku Discovery, then
+one Sonnet Membership Review. Mistral graphic anchors remain the bbox boundary
+authority, but V6.10 pairwise Review and Reconciliation are explicitly off for
+this experiment. Persist the actual model and stage cost for each provider call,
+then sum the mixed-model costs rather than billing all calls at Sonnet rates.
+Gates: canonical Adda retains the accepted two-object membership, anchors,
+bboxes, and Evidence package; Lev_1 retains its one-object result; ordinary HSL
+and Page 23 are unchanged; measured cost and elapsed time are compared with the
+V6.31 benchmark before any broader decision.
 
 RESOLVED, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
 deferred Naming lifecycle and locked Detection object contract. Build optional
