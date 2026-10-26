@@ -47,6 +47,16 @@ def test_file_review_object_preview_matches_the_name_and_ignore_control_stack():
     assert "width: 145px;\n            height: 145px;" in review_css
 
 
+def test_quantity_review_is_a_compact_label_warning_without_card_copy():
+    review_source = open("screens/file_review.py").read()
+    review_css = open("styles/file_review.py").read()
+
+    assert "file-review-top-label-warning" in review_source
+    assert "REVIEW REQUIRED: QUANTITY MAY BE AMBIGUOUS" not in review_source
+    assert ".file-review-top-label-warning" in review_css
+    assert "color: var(--color-danger);" in review_css
+
+
 def test_file_review_does_not_need_a_stale_upload_navigation_override():
     review_css = open("styles/file_review.py").read()
 

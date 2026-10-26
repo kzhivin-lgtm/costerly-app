@@ -517,8 +517,10 @@ def _render_object_card(item: dict[str, object]) -> None:
         label_qty, label_ignore = name_slot.columns(
             [1.3, 1.7], gap="small", vertical_alignment="top",
         )
+        quantity_label_class = " file-review-top-label-warning" if item.get("review_required") else ""
         label_qty.markdown(
-            '<div class="file-review-top-label file-review-top-label-center">QTY</div>',
+            '<div class="file-review-top-label file-review-top-label-center'
+            f'{quantity_label_class}">QTY</div>',
             unsafe_allow_html=True,
         )
         label_ignore.markdown(
@@ -548,10 +550,6 @@ def _render_object_card(item: dict[str, object]) -> None:
                 '<div class="file-review-native-ignored">THIS OBJECT WILL BE SKIPPED DURING ESTIMATION</div>',
                 unsafe_allow_html=True,
             )
-
-        if item.get("review_required"):
-            st.markdown('<div class="file-review-native-ignored">REVIEW REQUIRED: QUANTITY MAY BE AMBIGUOUS</div>', unsafe_allow_html=True)
-
 
 def _sync_object_edit_state(run_id: str, objects: list[dict[str, object]]) -> None:
     """Keep File Review edits scoped to the current RFQ run."""

@@ -273,6 +273,10 @@ def apply_file_review_css() -> None:
             text-align: center;
         }
 
+        .file-review-top-label-warning {
+            color: var(--color-danger);
+        }
+
         .file-review-top-label-empty {
             visibility: hidden;
         }

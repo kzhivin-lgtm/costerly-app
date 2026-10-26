@@ -1,6 +1,16 @@
 # TODO
 
-ACTIVE, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
+ACTIVE, V6.23 bounded Naming and Quantity review presentation: retain the V6.22
+grounded Naming contract and Kitchen category evidence, but remove the sequential
+per-page title-block OCR fallback. Drawing title facts must come only from the
+ordinary OCR/Fusion payload, with full-page Mistral Markdown explicitly marked
+as single-source when used. In File Review, retain the underlying
+`review_required` fact but replace its Quantity warning sentence with a red
+`QTY` label only. Do not change router, object identity, quantity, order, bbox,
+evidence-page membership or View ownership. Verify one ordinary HSL run returns
+to one OCR request per source page while Kitchen Naming remains available.
+
+RESOLVED, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
 deferred Naming lifecycle and locked Detection object contract. Build optional
 `page_title_fields` during OCR/Fusion from explicit title-field label-to-value
 evidence, including full-page Mistral Markdown only as explicitly marked
