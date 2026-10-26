@@ -18,7 +18,7 @@ from agents.anthropic_adapter import (
 )
 
 
-NAMING_LAB_VERSION = "naming_lab_v16_compact_grounded_category_evidence"
+NAMING_LAB_VERSION = "naming_lab_v17_bound_visual_cue_evidence"
 NAMING_PROMPT_PATH = Path(__file__).parent / "prompts" / "naming_agent_prompt.md"
 
 NAMING_RESULT_SCHEMA: dict[str, Any] = {
@@ -373,6 +373,36 @@ def _is_transport_placeholder(value: Any) -> bool:
     return bool(re.fullmatch(r"(?:object|item|unknown)(?: \d+)?", normalized))
 
 
+def _bind_visual_cues_to_source_crops(
+    result: dict[str, Any],
+    object_source_crops_by_id: dict[str, dict[str, Any]] | None,
+) -> dict[str, Any]:
+    """Bind a visual Naming cue to its already locked source crop.
+
+    Naming receives one source-derived crop per object. When a model cites a
+    visual cue on that crop's page, the runtime supplies the exact locked group
+    id. A visual cue on another page stays unbound and validation rejects it.
+    """
+    for item in result.get("names") or []:
+        if not isinstance(item, dict):
+            continue
+        evidence = item.get("category_evidence")
+        if not isinstance(evidence, dict) or evidence.get("kind") != "visual_direct_cue":
+            continue
+        crop = (object_source_crops_by_id or {}).get(str(item.get("object_id") or ""))
+        if not isinstance(crop, dict):
+            continue
+        group_id = str(crop.get("group_id") or "").strip()
+        try:
+            crop_page = int(crop.get("page_number") or 0)
+            evidence_page = int(evidence.get("page_number") or 0)
+        except (TypeError, ValueError):
+            continue
+        if group_id and crop_page > 0 and crop_page == evidence_page:
+            evidence["visual_group_id"] = group_id
+    return result
+
+
 def validate_locked_name_mapping(
     locked_objects: list[dict[str, Any]],
     result: dict[str, Any],
@@ -573,6 +603,7 @@ def run_naming_lab_call(
                     "object_source_crop": {
                         "object_id": object_id,
                         "page_number": crop.get("page_number"),
+                        "visual_group_id": crop.get("group_id"),
                         "representation_kind": crop.get("representation_kind"),
                     },
                     "crop_contract": (
@@ -619,6 +650,7 @@ def run_naming_lab_call(
     )
     duration_seconds = round(time.perf_counter() - started, 3)
     result = json.loads(extract_text_from_claude_response(response))
+    result = _bind_visual_cues_to_source_crops(result, object_source_crops_by_id)
     validation = validate_locked_name_mapping(locked_objects, result)
     usage = getattr(response, "usage", None)
     return {

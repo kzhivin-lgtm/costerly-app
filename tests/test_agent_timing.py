@@ -2235,6 +2235,11 @@ def test_deferred_naming_passes_bounded_object_source_crops(monkeypatch):
         return {
             "names": [{
                 "object_id": "object-001", "name_en": "Kitchen", "name_original": "",
+                "name_basis": "Sink in elevation.",
+                "category_evidence": {
+                    "kind": "visual_direct_cue", "cue": "sink",
+                    "page_number": 3, "visual_group_id": "view-001",
+                },
             }],
             "duration_seconds": 1.0,
             "model": "test-model",
@@ -2257,12 +2262,16 @@ def test_deferred_naming_passes_bounded_object_source_crops(monkeypatch):
     result = _run_deferred_naming(
         client=object(),
         detected_objects=[{"object_id": "object-001", "object_name": "Object 01"}],
-        locked_objects=[{"object_id": "object-001", "current_name": "Object 01"}],
+        locked_objects=[{
+            "object_id": "object-001", "current_name": "Object 01",
+            "evidence_pages": [3],
+        }],
         company_id="001",
         run_id="run-source-crop",
         file_name="drawing.pdf",
         object_source_crops_by_id={"object-001": {
-            "page_number": 3, "representation_kind": "elevation", "bytes": b"crop",
+                "page_number": 3, "group_id": "view-001",
+                "representation_kind": "elevation", "bytes": b"crop",
         }},
     )
 

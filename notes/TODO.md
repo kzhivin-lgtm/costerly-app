@@ -10,19 +10,19 @@ contradictory `category_evidence.cue` validator rejects those rows and leaves
 source codes in the UI. Do not change Naming, routing, identity, quantity,
 order, bbox, evidence-page membership or View ownership at this checkpoint.
 
-ACTIVE, V6.24 compact Kitchen Naming repair: preserve the V6.23 checkpoint and
-its 11-page OCR route. Keep the present `category_evidence` shape, but require
-the model to emit a compact allowed Kitchen cue token such as `sink` or
-`cooktop`, never a prose explanation. Limit `name_basis` to 12 words. Do not
-change Detection, router, object identity, quantity, order, bbox, evidence-page
-membership or View ownership. First gate: HSL must publish model-proposed
-Kitchen names rather than reverting to source codes, without increasing OCR
-page count or adding a model call.
+SUPERSEDED, V6.24 compact Kitchen Naming repair: the model complied with its
+compact Kitchen cue tokens, but the runtime then rejected visual evidence whose
+`visual_group_id` was blank. The object crop had a valid locked group id, but
+the model never received it. Preserve the compact cue and 12-word basis rules.
 
-DEFERRED, stronger V6.24 evidence grounding, awaiting separate approval:
-validate a visual cue against real locked Registry View ids rather than any
-nonempty object-id-shaped string. This is intentionally outside the compact
-Kitchen Naming repair.
+ACTIVE, V6.25 bound visual Naming evidence: retain V6.23's 11-page OCR route
+and V6.24's compact Kitchen cue rules. Provide each source crop's locked
+`group_id` to Naming, then deterministically bind a visual cue to that group
+only when it cites the same physical page. Reject a cue on a different page.
+Do not add calls or change Detection, router, object identity, quantity, order,
+bbox, evidence-page membership or View ownership. First gate: HSL publishes
+the model-proposed Kitchen names rather than source codes, with one valid
+locked group id per visual cue.
 
 RESOLVED, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
 deferred Naming lifecycle and locked Detection object contract. Build optional

@@ -2,6 +2,7 @@ import pytest
 
 from agents.naming_lab import (
     NAMING_LAB_VERSION,
+    _bind_visual_cues_to_source_crops,
     apply_name_mapping,
     assign_ocr_drawing_indices,
     build_naming_decision_audit,
@@ -18,7 +19,7 @@ from agents.ocr_adapter import build_page_title_fields
 
 
 def test_uses_semantic_category_naming_version():
-    assert NAMING_LAB_VERSION == "naming_lab_v16_compact_grounded_category_evidence"
+    assert NAMING_LAB_VERSION == "naming_lab_v17_bound_visual_cue_evidence"
 
 
 def test_naming_schema_requires_short_decision_basis():
@@ -166,6 +167,40 @@ def test_kitchen_rejects_a_descriptive_cue_instead_of_a_compact_supported_token(
         "object_id": "object-001", "field": "category_evidence",
         "reason": "kitchen_cue_not_allowed",
     }]
+
+
+def test_runtime_binds_a_visual_cue_to_the_locked_source_crop_group():
+    result = {"names": [{
+        "object_id": "object-001", "name_en": "Kitchen", "name_original": "",
+        "name_basis": "Sink in elevation.",
+        "category_evidence": {
+            "kind": "visual_direct_cue", "cue": "sink", "page_number": 3,
+            "visual_group_id": "",
+        },
+    }]}
+
+    bound = _bind_visual_cues_to_source_crops(result, {
+        "object-001": {"page_number": 3, "group_id": "view-002"},
+    })
+
+    assert bound["names"][0]["category_evidence"]["visual_group_id"] == "view-002"
+
+
+def test_runtime_does_not_bind_a_visual_cue_to_a_crop_on_another_page():
+    result = {"names": [{
+        "object_id": "object-001", "name_en": "Kitchen", "name_original": "",
+        "name_basis": "Sink in elevation.",
+        "category_evidence": {
+            "kind": "visual_direct_cue", "cue": "sink", "page_number": 4,
+            "visual_group_id": "",
+        },
+    }]}
+
+    bound = _bind_visual_cues_to_source_crops(result, {
+        "object-001": {"page_number": 3, "group_id": "view-002"},
+    })
+
+    assert bound["names"][0]["category_evidence"]["visual_group_id"] == ""
 
 
 def test_drops_isolated_title_block_family_outlier_when_a_document_series_exists():

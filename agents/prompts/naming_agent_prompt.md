@@ -16,7 +16,9 @@ Return `category_evidence` for every object. It is an evidence pointer, not a
 new object claim: `kind` is `literal_object_label`, `visual_direct_cue`, or
 `none`; `cue` is a compact direct label or cue, never a sentence; `page_number` is the supplied
 physical page; and `visual_group_id` is the supplied source crop group when
-one exists. Use page_number 0 and an empty visual_group_id only for `none`.
+one exists. For a `visual_direct_cue`, use the supplied object source crop and
+copy its exact visual_group_id. Use page_number 0 and an empty visual_group_id
+only for `none`.
 
 - Every name_en must contain 1–3 words and must identify the physical product category, such as door, sofa, staircase, stair flight, shelving unit, counter, railing, or cabinet. A single precise category such as Chair, Table, or Bench is valid. Three words is a hard maximum.
 - An object index or code such as OM2, ЛС-1, or NR-90 is an identifier, never a product name. Do not return it in either name field; the application adds it separately.
