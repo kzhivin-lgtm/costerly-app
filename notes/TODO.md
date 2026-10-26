@@ -1,14 +1,21 @@
 # TODO
 
-ACTIVE, V6.23 bounded Naming and Quantity review presentation: retain the V6.22
-grounded Naming contract and Kitchen category evidence, but remove the sequential
-per-page title-block OCR fallback. Drawing title facts must come only from the
-ordinary OCR/Fusion payload, with full-page Mistral Markdown explicitly marked
-as single-source when used. In File Review, retain the underlying
-`review_required` fact but replace its Quantity warning sentence with a red
-`QTY` label only. Do not change router, object identity, quantity, order, bbox,
-evidence-page membership or View ownership. Verify one ordinary HSL run returns
-to one OCR request per source page while Kitchen Naming remains available.
+CHECKPOINT, V6.23 bounded Naming and Quantity review presentation:
+`c990495`, deployed and audited as
+`notes/DETECTION_V6_23_NAMING_AUDIT_CHECKPOINT_2026_10_26.md`. HSL returns to
+11 OCR pages, $0.044 OCR cost and a 72.243-second initial cycle. V6.23 retains
+the V6.22 Kitchen-oriented Naming pass, but its final names are not accepted:
+the model correctly proposes `Kitchen` from sink/cooktop evidence, then the
+contradictory `category_evidence.cue` validator rejects those rows and leaves
+source codes in the UI. Do not change Naming, routing, identity, quantity,
+order, bbox, evidence-page membership or View ownership at this checkpoint.
+
+DEFERRED, V6.24 Naming-contract repair, awaiting approval: split the current
+free-text `category_evidence.cue` into a closed `cue_type` and an auditable
+free-text `cue_detail`; validate a visual cue against real locked Registry View
+ids rather than any nonempty object-id-shaped string. Acceptance must prove
+that Kitchen publishes only for a page-local valid cue and View, without
+changing locked Detection object identity, quantity, order or membership.
 
 RESOLVED, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
 deferred Naming lifecycle and locked Detection object contract. Build optional
