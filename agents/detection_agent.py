@@ -75,6 +75,101 @@ def _enforce_shared_track_door_system_quantity(registry: dict) -> dict:
     return registry
 
 
+def _compile_confirmed_assembly_set_registry(
+    registry: dict,
+    *,
+    visual_map: dict | None,
+    document_scope: object,
+    page_count: int,
+) -> tuple[dict, dict]:
+    """Publish one locked package for a confirmed document-scale assembly.
+
+    Discovery still owns Island extraction and scope observation.  This
+    compiler runs only after that observation has passed its strict validator,
+    so common title-block metadata alone can never collapse a document.  The
+    resulting commercial boundary is deliberately document-wide: all
+    Registry-owned Islands stay attached to one object and every physical page
+    remains available to Estimation for authored notes, materials and details.
+    """
+    audit = {
+        "version": "detection_v6_26_assembly_set_compiler_v1",
+        "applied": False,
+        "reason": "document_scope_not_confirmed",
+    }
+    if not isinstance(document_scope, dict):
+        return registry, audit
+    if str(document_scope.get("decision") or "") != "assembly_set_candidate":
+        return registry, audit
+
+    original_objects = [
+        item for item in registry.get("objects") or [] if isinstance(item, dict)
+    ]
+    ordered_group_ids: list[str] = []
+    for item in original_objects:
+        for group_id in item.get("visual_group_ids") or []:
+            normalized = str(group_id or "")
+            if normalized and normalized not in ordered_group_ids:
+                ordered_group_ids.append(normalized)
+    if not ordered_group_ids:
+        audit["reason"] = "confirmed_scope_has_no_registry_owned_islands"
+        return registry, audit
+
+    owned_groups = _registry_owned_visual_groups(visual_map)
+    root_group_ids = [
+        str(group_id)
+        for group_id in document_scope.get("root_group_ids") or []
+        if str(group_id)
+    ]
+    if not root_group_ids or not set(root_group_ids).issubset(ordered_group_ids):
+        audit["reason"] = "confirmed_scope_roots_are_not_registry_owned"
+        return registry, audit
+    root_pages = sorted({
+        int(owned_groups[group_id]["page_number"])
+        for group_id in root_group_ids
+        if isinstance(owned_groups.get(group_id), dict)
+        and isinstance(owned_groups[group_id].get("page_number"), int)
+        and 1 <= int(owned_groups[group_id]["page_number"]) <= page_count
+    })
+    if not root_pages:
+        audit["reason"] = "confirmed_scope_roots_have_no_page_evidence"
+        return registry, audit
+
+    evidence_pages = list(range(1, page_count + 1))
+    compiled = {
+        "objects": [{
+            "object_id": "object-001",
+            "transport_label": "Built-in joinery set",
+            "quantity": 1,
+            "quantity_explicit": False,
+            "identity_pages": root_pages,
+            "estimation_evidence_pages": evidence_pages,
+            "visual_group_ids": ordered_group_ids,
+            "visual_identity": (
+                "One confirmed built-in joinery assembly set with overview "
+                "and connected component evidence."
+            ),
+            "boundary_basis": (
+                "V6.26 confirmed document scope: cited overview/root views "
+                "and connected component witnesses. All Registry-owned "
+                "Islands and uploaded sheets are retained for Estimation."
+            ),
+        }],
+    }
+    audit.update({
+        "applied": True,
+        "reason": "confirmed_scope_compiled_to_one_document_assembly",
+        "original_object_ids": [
+            str(item.get("object_id") or "") for item in original_objects
+        ],
+        "root_group_ids": root_group_ids,
+        "identity_pages": root_pages,
+        "retained_visual_group_ids": ordered_group_ids,
+        "retained_evidence_pages": evidence_pages,
+        "source_fact_policy": "all_source_facts_on_retained_uploaded_pages",
+    })
+    return compiled, audit
+
+
 def _merge_registry_evidence(
     result: dict,
     registry: dict,
@@ -735,6 +830,26 @@ def run_detection_agent(
     if stage_callback:
         stage_callback("Detection Registry completed")
     visual_registry_usage = _attach_detection_model_route(visual_registry_usage, route)
+    raw_registry_usage = (
+        dict(visual_registry_usage.get("raw_usage") or {})
+        if isinstance(visual_registry_usage, dict) else {}
+    )
+    document_scope = raw_registry_usage.get("v6_11_document_scope")
+    assembly_set_audit: dict = {
+        "version": "detection_v6_26_assembly_set_compiler_v1",
+        "applied": False,
+        "reason": "document_category_is_not_assembly_set",
+    }
+    if route.get("category") == "assembly_set":
+        registry, assembly_set_audit = _compile_confirmed_assembly_set_registry(
+            registry,
+            visual_map=_visual_map,
+            document_scope=document_scope,
+            page_count=len(registry_images),
+        )
+    if isinstance(visual_registry_usage, dict):
+        raw_registry_usage["v6_26_assembly_set_compiler"] = assembly_set_audit
+        visual_registry_usage["raw_usage"] = raw_registry_usage
     fallback_review_required_object_ids = {
         str(object_id)
         for object_id in (

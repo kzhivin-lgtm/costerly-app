@@ -25,6 +25,20 @@ accepted but not a semantic-quality benchmark. Do not reopen Naming, router,
 object identity, quantity, order, bbox, evidence-page membership or View
 ownership without separate explicit approval.
 
+ACTIVE, P0, V6.26 confirmed assembly-set compiler: retain the V6.12
+pre-Sonnet category and V6.11 validated scope observation, but make a
+confirmed `assembly_set_candidate` publish one locked commercial Object only
+after Registry validation. The compiled Object has quantity one, uses cited
+root pages as identity anchors, retains every Registry-owned Island, and
+includes every uploaded physical page in its Estimation evidence so authored
+notes, material schedules and detail sheets remain available. Shared order,
+title-block, date, material, page count or numbering alone still cannot
+trigger this compiler. If scope is ordinary, missing, or its roots are not
+Registry-owned, preserve the original Registry packages unchanged. First gate:
+V_Cabineter returns exactly one `Built-in joinery set` with all six pages and
+all retained Islands; then Adda retains its Sonnet route and independent
+objects, while HSL and Page23 retain their V6.25 protected results.
+
 RESOLVED, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
 deferred Naming lifecycle and locked Detection object contract. Build optional
 `page_title_fields` during OCR/Fusion from explicit title-field label-to-value

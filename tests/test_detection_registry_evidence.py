@@ -7,6 +7,7 @@ from PIL import Image
 from agents.detection_agent import (
     DEFAULT_CLAUDE_DETECTION_V4_MODEL,
     _build_v621_naming_source_crops,
+    _compile_confirmed_assembly_set_registry,
     _enforce_shared_track_door_system_quantity,
     _build_v619_naming_annotated_pages,
     _merge_registry_evidence,
@@ -176,6 +177,91 @@ def test_registry_only_result_materializes_every_registry_package_without_handof
         for page in range(1, 6)
     ]
     assert validate_detection_result(result) == result
+
+
+def test_v626_confirmed_assembly_scope_compiles_one_document_wide_evidence_package():
+    registry = {"objects": [
+        {
+            "object_id": "object-001", "transport_label": "Door",
+            "quantity": 1, "quantity_explicit": False,
+            "identity_pages": [1], "estimation_evidence_pages": [1, 2],
+            "visual_group_ids": ["overview", "door-detail"],
+            "visual_identity": "door views", "boundary_basis": "proof graph",
+        },
+        {
+            "object_id": "object-002", "transport_label": "Shelving",
+            "quantity": 1, "quantity_explicit": False,
+            "identity_pages": [5], "estimation_evidence_pages": [5, 6],
+            "visual_group_ids": ["cabinet", "shelf-detail"],
+            "visual_identity": "shelving views", "boundary_basis": "proof graph",
+        },
+    ]}
+    visual_map = {"_registry_owned_evidence": [
+        {"group_id": "overview", "page_number": 1},
+        {"group_id": "door-detail", "page_number": 2},
+        {"group_id": "cabinet", "page_number": 5},
+        {"group_id": "shelf-detail", "page_number": 6},
+    ]}
+    scope = {
+        "decision": "assembly_set_candidate",
+        "root_group_ids": ["overview"],
+        "witnesses": [{"kind": "overview_detail_hierarchy"}],
+    }
+
+    compiled, audit = _compile_confirmed_assembly_set_registry(
+        registry, visual_map=visual_map, document_scope=scope, page_count=6,
+    )
+
+    assert audit["applied"] is True
+    assert audit["retained_visual_group_ids"] == [
+        "overview", "door-detail", "cabinet", "shelf-detail",
+    ]
+    assert compiled == {"objects": [{
+        "object_id": "object-001",
+        "transport_label": "Built-in joinery set",
+        "quantity": 1,
+        "quantity_explicit": False,
+        "identity_pages": [1],
+        "estimation_evidence_pages": [1, 2, 3, 4, 5, 6],
+        "visual_group_ids": ["overview", "door-detail", "cabinet", "shelf-detail"],
+        "visual_identity": (
+            "One confirmed built-in joinery assembly set with overview "
+            "and connected component evidence."
+        ),
+        "boundary_basis": (
+            "V6.26 confirmed document scope: cited overview/root views "
+            "and connected component witnesses. All Registry-owned "
+            "Islands and uploaded sheets are retained for Estimation."
+        ),
+    }]}
+    result = _registry_to_detection_result(
+        compiled, company_id="001", file_name="set.pdf", page_count=6,
+        visual_map=visual_map,
+    )
+    assert result["detected_objects"][0]["evidence_pages"] == "1,2,3,4,5,6"
+    assert validate_detection_result(result) == result
+
+
+def test_v626_keeps_original_registry_without_a_confirmed_scope():
+    registry = {"objects": [{
+        "object_id": "object-001", "transport_label": "Object 1",
+        "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+        "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
+        "visual_identity": "one object", "boundary_basis": "one envelope",
+    }]}
+
+    compiled, audit = _compile_confirmed_assembly_set_registry(
+        registry,
+        visual_map={"_registry_owned_evidence": [{
+            "group_id": "view-001", "page_number": 1,
+        }]},
+        document_scope={"decision": "ordinary_object_set", "root_group_ids": []},
+        page_count=1,
+    )
+
+    assert compiled is registry
+    assert audit["applied"] is False
+    assert audit["reason"] == "document_scope_not_confirmed"
 
 
 def test_v616_registry_materializes_only_registry_owned_bbox_regions():
