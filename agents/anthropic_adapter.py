@@ -123,9 +123,6 @@ DETECTION_V69_CRITERIA_RECONCILIATION_PROMPT_VERSION = (
 DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION = (
     "detection_v6_10_combined_evidence_review"
 )
-DETECTION_V630_ORDINARY_ALL_PAIR_REVIEW_PROMPT_VERSION = (
-    "detection_v6_30_ordinary_all_pair_five_criteria"
-)
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
 # V5.0 keeps one Haiku call. Registry returns Islands, classifications, and
 # sparse positive semantic facts. Runtime owns every graph and package decision.
@@ -141,7 +138,6 @@ DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS = 12_288
 DETECTION_V5_MEMBERSHIP_MAX_TOKENS = 6_144
 DETECTION_V68_ALL_PAIR_MEMBERSHIP_MAX_ISLANDS = 10
 DETECTION_V69_RECONCILIATION_MAX_ISLANDS = 10
-DETECTION_V630_ORDINARY_ALL_PAIR_MAX_ISLANDS = 6
 DETECTION_V5_MEMBERSHIP_CROP_MAX_SIDE = 768
 DETECTION_V627_SCOPE_SCOUT_MAX_TOKENS = 480
 DETECTION_V5_MEMBERSHIP_PAGE_CONTEXT_MAX_SIDE = 1024
@@ -944,32 +940,6 @@ DETECTION_V610_EVIDENCE_REVIEW_JSON_SCHEMA: dict[str, Any] = {
     "required": ["pairwise_decisions"],
     "properties": {"pairwise_decisions": {"type": "array", "minItems": 0,
         "maxItems": 20, "items": DETECTION_V610_PAIR_DECISION_SCHEMA}},
-}
-# V6.30 applies the compact V6.10 five-criterion card to a complete, bounded
-# ordinary-route matrix. It has no trigger and no reconciliation pass: every
-# final Object Evidence pair is examined exactly once in the existing Review.
-DETECTION_V630_PAIR_DECISION_SCHEMA: dict[str, Any] = {
-    "type": "object", "additionalProperties": False,
-    "required": [
-        "group_id_a", "group_id_b", "disposition", "reason", "criteria", "evidence",
-    ],
-    "properties": {
-        "group_id_a": {"type": "string"},
-        "group_id_b": {"type": "string"},
-        "disposition": {"type": "string", "enum": [
-            "same_object", "different_objects", "insufficient_evidence",
-        ]},
-        "reason": {"type": "string", "minLength": 8, "maxLength": 72},
-        "criteria": DETECTION_V610_CRITERIA_STATUS_SCHEMA,
-        "evidence": {"type": "array", "maxItems": 2,
-                     "items": DETECTION_V610_PAIR_EVIDENCE_SCHEMA},
-    },
-}
-DETECTION_V630_ORDINARY_ALL_PAIR_JSON_SCHEMA: dict[str, Any] = {
-    "type": "object", "additionalProperties": False,
-    "required": ["pairwise_decisions"],
-    "properties": {"pairwise_decisions": {"type": "array", "minItems": 1,
-        "maxItems": 15, "items": DETECTION_V630_PAIR_DECISION_SCHEMA}},
 }
 DETECTION_V69_RECONCILIATION_DECISION_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": False,
@@ -3108,37 +3078,6 @@ def format_detection_v69_pair_criteria_matrix(
     return "\n".join(lines)
 
 
-def format_detection_v630_ordinary_all_pair_matrix(
-    pairs: list[tuple[str, str]],
-) -> str:
-    """State the complete, one-pass ordinary-route review contract."""
-    if not pairs:
-        return ""
-    lines = [
-        "V6.30 REQUIRED COMPLETE OBJECT-EVIDENCE PAIR MATRIX:",
-        "Return exactly one pairwise_decisions row for every unordered pair below. "
-        "This is one final review, not a preliminary-link list and not a second pass.",
-        "For every pair, set all five criteria exactly once: identifier, topology, "
-        "geometry, dimensions and construction. Each value is supports_same_object, "
-        "contradicts_same_object or not_visible.",
-        "same_object means one commercially estimable fabricated object, not one "
-        "installation, a general-view sheet, adjacency or continuous perspective lines. "
-        "A same_object row needs concrete cited evidence from both endpoints. It is "
-        "accepted only with no contradictory criterion and either a direct document "
-        "relation, or support from at least two of topology, geometry, dimensions and "
-        "construction plus two evidence types. For different_objects or "
-        "insufficient_evidence, evidence must be empty.",
-        "Shared page, title, composition, material, lighting or drawing strokes do not "
-        "support same_object on their own.",
-        "PAIR=id|A=View|B=View",
-    ]
-    lines.extend(
-        f"O{index:03d}|A={left}|B={right}"
-        for index, (left, right) in enumerate(pairs, start=1)
-    )
-    return "\n".join(lines)
-
-
 def _normalize_detection_v69_criteria(
     raw_criteria: object,
 ) -> tuple[list[dict[str, str]], set[str], set[str]]:
@@ -3333,65 +3272,6 @@ def normalize_detection_v610_evidence_review_decisions(
     for row in audit:
         row["trigger_criterion"] = triggers[(row["group_id_a"], row["group_id_b"])]
     return sorted(pairs), facts, audit
-
-
-def normalize_detection_v630_ordinary_all_pair_decisions(
-    decisions: object,
-    *,
-    expected_pairs: list[tuple[str, str]],
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Validate exact V6.30 matrix coverage through the V6.9 proof rule."""
-    if not isinstance(decisions, list):
-        raise ValueError("V6.30 pairwise_decisions must be a list")
-    expected = {tuple(sorted(pair)) for pair in expected_pairs}
-    seen: set[tuple[str, str]] = set()
-    expanded: list[dict[str, Any]] = []
-    expected_fields = {
-        "group_id_a", "group_id_b", "disposition", "reason", "criteria", "evidence",
-    }
-    for index, raw in enumerate(decisions):
-        if not isinstance(raw, dict) or set(raw) != expected_fields:
-            raise ValueError(f"V6.30 pairwise decision {index} has invalid fields")
-        left, right = sorted((
-            str(raw.get("group_id_a") or ""), str(raw.get("group_id_b") or ""),
-        ))
-        pair = (left, right)
-        compact_criteria = raw.get("criteria")
-        if (
-            pair not in expected or pair in seen
-            or not isinstance(compact_criteria, dict)
-            or set(compact_criteria) != set(DETECTION_V69_CRITERION_NAMES)
-            or any(
-                compact_criteria[name] not in {
-                    "supports_same_object", "contradicts_same_object", "not_visible",
-                }
-                for name in DETECTION_V69_CRITERION_NAMES
-            )
-        ):
-            raise ValueError(
-                f"V6.30 pairwise decision {index} is invalid or outside the matrix"
-            )
-        seen.add(pair)
-        expanded.append({
-            "group_id_a": left,
-            "group_id_b": right,
-            "disposition": raw["disposition"],
-            "reason": raw["reason"],
-            "criteria": [{
-                "criterion": name,
-                "assessment": compact_criteria[name],
-                "observation": "Compact V6.30 criterion status.",
-            } for name in DETECTION_V69_CRITERION_NAMES],
-            "evidence": copy.deepcopy(raw["evidence"]),
-        })
-    if seen != expected:
-        raise ValueError(
-            "V6.30 pairwise matrix coverage is incomplete or unexpected: "
-            f"missing={sorted(expected - seen)}, extra={sorted(seen - expected)}"
-        )
-    return normalize_detection_v69_pair_criteria_decisions(
-        expanded, expected_pairs=expected_pairs,
-    )
 
 
 def build_detection_v69_reconciliation_matrix(
@@ -10042,28 +9922,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             if group.get("evidence_class") == "object_evidence"
         ]) <= DETECTION_V69_RECONCILIATION_MAX_ISLANDS
     )
-    v630_object_evidence_group_count = len([
-        group for group in proposal_for_review["visual_groups"]
-        if group.get("evidence_class") == "object_evidence"
-    ])
-    v630_ordinary_all_pair_active = bool(
-        document_category == "ordinary_object_set"
-        and not v69_criteria_reconciliation_active
-        and 2 <= v630_object_evidence_group_count <= DETECTION_V630_ORDINARY_ALL_PAIR_MAX_ISLANDS
-    )
-    v630_pairwise_matrix = (
-        build_detection_v68_pairwise_membership_matrix(
-            proposal_for_review["visual_groups"]
-        ) if v630_ordinary_all_pair_active else []
-    )
-    if v630_ordinary_all_pair_active and len(v630_pairwise_matrix) != (
-        v630_object_evidence_group_count * (v630_object_evidence_group_count - 1) // 2
-    ):
-        raise ValueError("V6.30 ordinary complete pair matrix is incomplete")
     if v69_criteria_reconciliation_active:
         prompt_version = DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION
-    elif v630_ordinary_all_pair_active:
-        prompt_version = DETECTION_V630_ORDINARY_ALL_PAIR_REVIEW_PROMPT_VERSION
     registry_visual_sources = build_detection_v5_registry_visual_sources(
         proposal_for_review["visual_groups"]
     )
@@ -10092,17 +9952,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "candidates only. Do not assume a first plausible relation is final. "
             "Use concise factual observations, never explanatory prose.\n"
         )
-    elif v630_ordinary_all_pair_active:
-        review_handoff += "\n\n" + format_detection_v630_ordinary_all_pair_matrix(
-            v630_pairwise_matrix,
-        )
-        review_prompt_with_membership_contract += (
-            "\n\nV6.30 ORDINARY COMPLETE PAIR REVIEW CONTRACT:\n"
-            "Return pairwise_decisions only, never object_hypotheses. Complete every "
-            "required Object Evidence pair exactly once and audit all five criteria in "
-            "that row. Do not create a preliminary-link list or defer any pair to a "
-            "later pass. Use concise factual observations, never explanatory prose.\n"
-        )
     review_content = build_detection_v5_membership_content_blocks(
         user_text=review_handoff, view_crops=membership_crops,
         page_context_images=review_page_context_images,
@@ -10116,8 +9965,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
             DETECTION_V610_EVIDENCE_REVIEW_JSON_SCHEMA
             if v69_criteria_reconciliation_active
-            else DETECTION_V630_ORDINARY_ALL_PAIR_JSON_SCHEMA
-            if v630_ordinary_all_pair_active
             else DETECTION_V5_MEMBERSHIP_JSON_SCHEMA,
         )}},
     )
@@ -10157,14 +10004,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         and isinstance(
             review_raw_payload.get(
                 "pairwise_decisions"
-                if v69_criteria_reconciliation_active or v630_ordinary_all_pair_active
+                if v69_criteria_reconciliation_active
                 else "object_hypotheses"
             ),
             list,
         )
         and (
             (set(review_raw_payload) == {"pairwise_decisions"})
-            if v69_criteria_reconciliation_active or v630_ordinary_all_pair_active else True
+            if v69_criteria_reconciliation_active else True
         )
     )
     if not review_contract_valid:
@@ -10176,7 +10023,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "response_character_count": len(review_raw_text),
             "response_text_sha256": _sha256_text(review_raw_text),
             "v6_10_combined_evidence_review_active": v69_criteria_reconciliation_active,
-            "v6_30_ordinary_all_pair_review_active": v630_ordinary_all_pair_active,
         })
         failure_usage = build_agent_usage_event(
             agent_name="detection", operation="rfq_detection_visual_registry",
@@ -10208,8 +10054,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     v69_criteria_prompt = ""
     v69_reconciliation_handoff = ""
     v69_reconciliation_prompt = ""
-    v630_all_pair_facts: list[dict[str, Any]] = []
-    v630_all_pair_audit: list[dict[str, Any]] = []
     if v69_criteria_reconciliation_active:
         object_group_ids_raw = {
             str(group.get("group_id") or "")
@@ -10284,24 +10128,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                     raise DetectionVisualRegistryValidationError(
                         f"V6.10 reconciliation review failed validation: {exc}",
                     ) from exc
-    elif v630_ordinary_all_pair_active:
-        try:
-            v630_all_pair_facts, v630_all_pair_audit = (
-                normalize_detection_v630_ordinary_all_pair_decisions(
-                    review_raw_payload["pairwise_decisions"],
-                    expected_pairs=v630_pairwise_matrix,
-                )
-            )
-        except ValueError as exc:
-            raise DetectionVisualRegistryValidationError(
-                f"V6.30 ordinary complete pair review failed validation: {exc}",
-            ) from exc
     payload = {
         "visual_groups": proposal_discovery_payload["visual_groups"],
         "classifications": proposal_discovery_payload["classifications"],
         "object_hypotheses": (
-            [] if v69_criteria_reconciliation_active or v630_ordinary_all_pair_active
-            else review_raw_payload["object_hypotheses"]
+            [] if v69_criteria_reconciliation_active else review_raw_payload["object_hypotheses"]
         ),
         "candidate_region_exceptions": proposal_discovery_payload["candidate_region_exceptions"],
         "semantic_facts": [],
@@ -10347,13 +10178,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v6_7_mistral_anchor_admission_active": mistral_anchor_admission_active,
         "v6_7_mistral_anchor_admission_audit": mistral_anchor_admission_audit,
         "v6_10_combined_evidence_review_active": v69_criteria_reconciliation_active,
-        "v6_30_ordinary_all_pair_review_active": v630_ordinary_all_pair_active,
-        "v6_30_object_evidence_group_count": v630_object_evidence_group_count,
-        "v6_30_required_pair_count": len(v630_pairwise_matrix),
-        "v6_30_required_pairs": [
-            {"group_id_a": left, "group_id_b": right}
-            for left, right in v630_pairwise_matrix
-        ],
         "v6_10_candidate_pair_count": len(v69_preliminary_pairs),
         "v6_10_candidate_pairs": [
             {"group_id_a": left, "group_id_b": right}
@@ -10404,7 +10228,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v5_9_review_decision_audit": copy.deepcopy(review_raw_payload),
         "v6_10_pairwise_decision_audit": copy.deepcopy(v69_criteria_audit),
         "v6_10_reconciliation_decision_audit": copy.deepcopy(v69_reconciliation_audit),
-        "v6_30_pairwise_decision_audit": copy.deepcopy(v630_all_pair_audit),
         "v6_11_document_scope": copy.deepcopy(document_scope),
         "v6_11_document_scope_validation_error": document_scope_validation_error,
         "v6_14_document_scope_requested": document_scope_enabled,
@@ -10444,8 +10267,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     classified_visual_groups: list[dict[str, Any]] = []
     v69_pairwise_decision_audit: list[dict[str, Any]] = []
     v69_same_object_pairs: set[tuple[str, str]] = set()
-    v630_pairwise_decision_audit: list[dict[str, Any]] = []
-    v630_same_object_pairs: set[tuple[str, str]] = set()
     v5_merge_audit: dict[str, Any] = {}
     try:
         if isinstance(payload, dict):
@@ -10563,34 +10384,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 for left, right in sorted(v69_same_object_pairs)
                 if (left, right) not in candidate_q_final_pairs
             ]
-        elif v630_ordinary_all_pair_active:
-            semantic_facts = normalize_detection_v69_semantic_fact_ids(
-                v630_all_pair_facts,
-                group_id_mapping=group_id_mapping,
-            )
-            v630_pairwise_decision_audit = normalize_detection_v69_audit_ids(
-                v630_all_pair_audit,
-                group_id_mapping=group_id_mapping,
-            )
-            v630_same_object_pairs = {
-                tuple(sorted((str(fact["group_id_a"]), str(fact["group_id_b"]))))
-                for fact in semantic_facts
-            }
-            accepted_hypotheses = []
-            object_hypothesis_audit = {
-                "accepted": [],
-                "rejected": [],
-                "mode": "v6_30_ordinary_complete_five_criteria_matrix",
-            }
-            semantic_facts_outside_dimension_queue = [
-                {
-                    "reason": "v6_30_pairwise_same_object_outside_dimension_queue",
-                    "group_id_a": left,
-                    "group_id_b": right,
-                }
-                for left, right in sorted(v630_same_object_pairs)
-                if (left, right) not in candidate_q_final_pairs
-            ]
         else:
             normalized_hypotheses = []
             for hypothesis in payload["object_hypotheses"]:
@@ -10651,8 +10444,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             allowed_pairs=(
                 v69_same_object_pairs
                 if v69_criteria_reconciliation_active
-                else v630_same_object_pairs
-                if v630_ordinary_all_pair_active
                 else candidate_q_final_pairs
             ),
         )
@@ -10691,29 +10482,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                     "V6.10 same_object pair has no accepted typed evidence: "
                     f"{unsupported_same_object_pairs}"
                 )
-        if v630_ordinary_all_pair_active:
-            accepted_pairs = {
-                tuple(sorted((
-                    str(fact["group_id_a"]), str(fact["group_id_b"]),
-                )))
-                for fact in accepted_semantic_facts
-            }
-            unsupported_same_object_pairs = sorted(
-                v630_same_object_pairs - accepted_pairs
-            )
-            if unsupported_same_object_pairs:
-                raise ValueError(
-                    "V6.30 same_object pair has no accepted typed evidence: "
-                    f"{unsupported_same_object_pairs}"
-                )
         semantic_ledger_audit["outside_dimension_queue"] = semantic_facts_outside_dimension_queue
         if v69_criteria_reconciliation_active:
             semantic_ledger_audit["v6_10_pairwise_decisions"] = (
                 v69_pairwise_decision_audit
-            )
-        if v630_ordinary_all_pair_active:
-            semantic_ledger_audit["v6_30_pairwise_decisions"] = (
-                v630_pairwise_decision_audit
             )
         semantic_ledger_audit["rejected"].extend(
             object_hypothesis_audit["rejected"]
@@ -10722,7 +10494,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         positive_relation_edges, v5_merge_audit = compile_detection_v5_merge_edges(
             dimension_relation_edges, accepted_semantic_facts,
             visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
-            allow_batch_confirmation=not v630_ordinary_all_pair_active,
         )
         accepted_merge_edges = [
             edge for edge in positive_relation_edges

@@ -123,22 +123,6 @@ remain on Sonnet and retain its two-object boundary; Stair must still compile
 one all-page Assembly Set. The threshold is an experiment, not calibrated
 universal policy.
 
-ACTIVE EXPERIMENT, P0, V6.30 bounded ordinary complete pair review: only when
-the classified `ordinary_object_set` has two through six final Object Evidence
-Views, the existing Membership Review must return exactly C(n,2) rows, one for
-each unordered View pair. Each row audits identifier, topology, geometry,
-dimensions and construction, uses the existing V6.9 deterministic strong-proof
-rule, and must leave evidence empty for `different_objects` or
-`insufficient_evidence`. It adds no provider call and no reconciliation pass.
-Only accepted `same_object` rows may enter the graph, and V5 automatic batch
-confirmation is disabled on this branch so a weak repeated dimension cannot
-attach an unreviewed View. Ada, Assembly Set, Page23/source-degraded paths and
-ordinary documents with one or more than six Object Evidence Views remain
-unchanged. First production gate: `Lev_1.pdf`, preserving the complete audit,
-route, number of provider calls, cost and latency for comparison against the
-current ordinary result. V6.27 remains the protected checkpoint; V6.28 and
-V6.29 remain active candidates, not acceptance checkpoints.
-
 RESOLVED, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
 deferred Naming lifecycle and locked Detection object contract. Build optional
 `page_title_fields` during OCR/Fusion from explicit title-field label-to-value
