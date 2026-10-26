@@ -1047,7 +1047,7 @@ floor plan was discarded document context. This protects the ordinary route
 only. Deferred Naming and Preview defects remain separate, and future HSL
 audits must preserve the full inventory, membership and cost evidence.
 
-IMPLEMENTED, pending live regression, V6.15 document metadata and
+FAILED LIVE REGRESSION, V6.15 document metadata and
 object-bound Naming evidence: retain the existing Naming prompt, locked object
 identity, quantities, route selection, Discovery/Review sequence and
 Estimation package. The existing Discovery response now carries one compact,
@@ -1064,7 +1064,22 @@ names. This must not change Island boundaries, object membership, quantities,
 the Naming prompt, or the ordinary HSL route. Live gates: HSL must retain
 ordinary/Haiku, 32 object-evidence Islands and ten components while filling
 source-supported document fields and avoiding sheet-administration names;
-then Page23 and Adda must retain their protected object boundaries.
+then Page23 and Adda must retain their protected object boundaries. The first
+ordinary HSL live gate failed: `run_07934b6dcbbc48bda1da8ea96e4d7d93` remained
+on the ordinary Haiku route but produced 33 object-evidence Islands and 14
+components, versus V6.14's 32 Islands and ten components in
+`run_e8006a40e1fe4c68846b59b44dacaf4c`. The added metadata was requested from
+the same mandatory Discovery response that owns Island discovery, so it is not
+operationally isolated despite being described as audit-only. Its observed
+values also did not meet semantic-role acceptance. Separately, the intended
+object-bound Naming path did not run: the audit recorded `crop_count: 0` and
+`objects_with_crop_count: 0`, so Naming fell back to whole pages. The cause is
+that final normalized visual groups do not retain `evidence_class`, while the
+crop helper filters strictly for `object_evidence`. Do not promote or extend
+V6.15. Return to the V6.14 protected contract before a replacement experiment;
+the replacement must obtain metadata outside the Discovery response, use real
+Registry-owned crops, and pass HSL's 32-Island/ten-component gate before
+Page23 or Adda regression.
 
 SUPERSEDED INPUT CONTRACT, V6.5, no static pre-Discovery crops: remove the three
 fixed `upper_left`, `upper_right`, and `lower` images from the Adda
