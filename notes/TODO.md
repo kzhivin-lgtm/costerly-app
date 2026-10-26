@@ -10,12 +10,19 @@ contradictory `category_evidence.cue` validator rejects those rows and leaves
 source codes in the UI. Do not change Naming, routing, identity, quantity,
 order, bbox, evidence-page membership or View ownership at this checkpoint.
 
-DEFERRED, V6.24 Naming-contract repair, awaiting approval: split the current
-free-text `category_evidence.cue` into a closed `cue_type` and an auditable
-free-text `cue_detail`; validate a visual cue against real locked Registry View
-ids rather than any nonempty object-id-shaped string. Acceptance must prove
-that Kitchen publishes only for a page-local valid cue and View, without
-changing locked Detection object identity, quantity, order or membership.
+ACTIVE, V6.24 compact Kitchen Naming repair: preserve the V6.23 checkpoint and
+its 11-page OCR route. Keep the present `category_evidence` shape, but require
+the model to emit a compact allowed Kitchen cue token such as `sink` or
+`cooktop`, never a prose explanation. Limit `name_basis` to 12 words. Do not
+change Detection, router, object identity, quantity, order, bbox, evidence-page
+membership or View ownership. First gate: HSL must publish model-proposed
+Kitchen names rather than reverting to source codes, without increasing OCR
+page count or adding a model call.
+
+DEFERRED, stronger V6.24 evidence grounding, awaiting separate approval:
+validate a visual cue against real locked Registry View ids rather than any
+nonempty object-id-shaped string. This is intentionally outside the compact
+Kitchen Naming repair.
 
 RESOLVED, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
 deferred Naming lifecycle and locked Detection object contract. Build optional

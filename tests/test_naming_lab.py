@@ -18,7 +18,7 @@ from agents.ocr_adapter import build_page_title_fields
 
 
 def test_uses_semantic_category_naming_version():
-    assert NAMING_LAB_VERSION == "naming_lab_v15_grounded_category_evidence"
+    assert NAMING_LAB_VERSION == "naming_lab_v16_compact_grounded_category_evidence"
 
 
 def test_naming_schema_requires_short_decision_basis():
@@ -64,6 +64,8 @@ def test_naming_prompt_keeps_integrated_kitchens_out_of_shelving():
     assert "faucet/mixer/tap" in prompt
     assert "microwave" in prompt
     assert "range hood" in prompt
+    assert "cue` must be exactly one of" in prompt
+    assert "maximum 12 words" in prompt
     assert "A worktop alone is only supporting evidence" in prompt
     assert "never use them to merge separate cabinet systems" in prompt
 
@@ -145,6 +147,25 @@ def test_kitchen_requires_object_local_direct_category_evidence():
 
     assert rejected["accepted"] is False
     assert accepted == {"accepted": True, "violations": []}
+
+
+def test_kitchen_rejects_a_descriptive_cue_instead_of_a_compact_supported_token():
+    locked = [{"object_id": "object-001", "evidence_pages": [3]}]
+
+    result = validate_locked_name_mapping(locked, {"names": [{
+        "object_id": "object-001", "name_en": "Kitchen", "name_original": "",
+        "name_basis": "Sink and cooktop in cabinet elevation.",
+        "category_evidence": {
+            "kind": "visual_direct_cue", "cue": "Sink and cooktop integrated",
+            "page_number": 3, "visual_group_id": "view-001",
+        },
+    }]})
+
+    assert result["accepted"] is False
+    assert result["violations"] == [{
+        "object_id": "object-001", "field": "category_evidence",
+        "reason": "kitchen_cue_not_allowed",
+    }]
 
 
 def test_drops_isolated_title_block_family_outlier_when_a_document_series_exists():

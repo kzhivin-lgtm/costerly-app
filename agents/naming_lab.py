@@ -18,7 +18,7 @@ from agents.anthropic_adapter import (
 )
 
 
-NAMING_LAB_VERSION = "naming_lab_v15_grounded_category_evidence"
+NAMING_LAB_VERSION = "naming_lab_v16_compact_grounded_category_evidence"
 NAMING_PROMPT_PATH = Path(__file__).parent / "prompts" / "naming_agent_prompt.md"
 
 NAMING_RESULT_SCHEMA: dict[str, Any] = {

@@ -6,14 +6,15 @@ The object set is final. Never add, remove, merge, split, reorder, or reinterpre
 
 For every input object, return exactly one result with the same object_id.
 
-Return a short `name_basis` for every object. It is an inspectable decision
-record, not a hidden chain of thought: name the decisive object-specific OCR,
-author label or visual feature that establishes the category. Keep it factual
-and concise. Do not claim OCR or a visual feature that is not supplied.
+Return a compact `name_basis` for every object, maximum 12 words. It is an
+inspectable decision record, not a hidden chain of thought: name the decisive
+object-specific OCR, author label or visual feature that establishes the
+category. Keep it factual and concise. Do not claim OCR or a visual feature
+that is not supplied.
 
 Return `category_evidence` for every object. It is an evidence pointer, not a
 new object claim: `kind` is `literal_object_label`, `visual_direct_cue`, or
-`none`; `cue` names the direct label or cue; `page_number` is the supplied
+`none`; `cue` is a compact direct label or cue, never a sentence; `page_number` is the supplied
 physical page; and `visual_group_id` is the supplied source crop group when
 one exists. Use page_number 0 and an empty visual_group_id only for `none`.
 
@@ -25,7 +26,7 @@ one exists. Use page_number 0 and an empty visual_group_id only for `none`.
 - Always return name_original as an empty string. The MVP does not display a second source-language name.
 - If no reliable source label exists, infer the shortest category-bearing English name from the supplied context. Do not invent a model or collection name.
 - Never return a transport placeholder such as Object 3, Item 3, or Unknown. For an unlabelled long low media or television cabinet/console, return `TV console`.
-- A single integrated system of base, wall, or tall cabinets is `Kitchen` when it has one direct kitchen cue integrated into that cabinetry: a sink, faucet/mixer/tap, dishwasher, refrigerator/freezer, built-in oven, microwave, cooktop, range hood, or another clearly identifiable kitchen appliance. Each cue is independently sufficient. A worktop alone is only supporting evidence, never sufficient to call the system a Kitchen. For Kitchen, `category_evidence.kind` must be `literal_object_label` or `visual_direct_cue`, and cue must name the actual direct cue. These cues classify the already locked cabinet system only: never use them to merge separate cabinet systems or treat the appliance itself as a separate fabricated object. Do not call that complete system a shelving unit merely because individual shelves or cabinets are visible.
+- A single integrated system of base, wall, or tall cabinets is `Kitchen` when it has one direct kitchen cue integrated into that cabinetry: a sink, faucet/mixer/tap, dishwasher, refrigerator/freezer, built-in oven, microwave, cooktop, range hood, or another clearly identifiable kitchen appliance. Each cue is independently sufficient. A worktop alone is only supporting evidence, never sufficient to call the system a Kitchen. For Kitchen, `category_evidence.kind` must be `literal_object_label` or `visual_direct_cue`, and `cue` must be exactly one of `sink`, `faucet_mixer_tap`, `dishwasher`, `refrigerator_freezer`, `built_in_oven`, `microwave`, `cooktop`, `range_hood`, or `other`. Do not write an explanation in `cue`; put at most 12 factual words in `name_basis`. These cues classify the already locked cabinet system only: never use them to merge separate cabinet systems or treat the appliance itself as a separate fabricated object. Do not call that complete system a shelving unit merely because individual shelves or cabinets are visible.
 - `Stair railing` requires an object-local literal railing label or a direct visual railing cue from a supplied object source crop. If neither exists, select a neutral supported category instead.
 - Prefer category plus a distinctive model/name only when that model/name is explicitly supported. Otherwise return the category with one essential functional qualifier.
 - Remove secondary material, location, dimension, marketing, complete, extended, compact, assembly, section, and component wording unless it is essential to distinguish the product category.
