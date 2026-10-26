@@ -802,6 +802,13 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
     assert requested_budgets == [8192, 6144]
     assert requested_temperatures == [0.0, 0.0]
     assert visual_map["visual_groups"][0]["group_id"] == "view-001"
+    assert visual_map["_registry_owned_evidence"] == [{
+        "group_id": "view-001", "page_number": 1,
+        "bbox": {
+            "top_left_x": 10, "top_left_y": 10,
+            "bottom_right_x": 15, "bottom_right_y": 20,
+        },
+    }]
     assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
     assert registry["objects"][0]["estimation_evidence_pages"] == [1]
     assert usage["operation"] == "rfq_detection_visual_registry"

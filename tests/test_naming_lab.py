@@ -6,6 +6,7 @@ from agents.naming_lab import (
     build_naming_decision_audit,
     build_locked_naming_input,
     compose_name_preview,
+    ensure_provisional_object_names,
     ensure_unique_object_ids,
     extract_object_index,
     load_naming_prompt,
@@ -15,7 +16,7 @@ from agents.naming_lab import (
 
 
 def test_uses_semantic_category_naming_version():
-    assert NAMING_LAB_VERSION == "naming_lab_v11_decision_audit"
+    assert NAMING_LAB_VERSION == "naming_lab_v12_source_index_preservation"
 
 
 def test_naming_schema_requires_short_decision_basis():
@@ -63,6 +64,23 @@ def test_extracts_authoritative_leading_index_only():
     assert extract_object_index("Kitchen N56") == "N56"
     assert extract_object_index("Kitchen N56 N57") == ""
     assert extract_object_index("Sliding door system") == ""
+    assert extract_object_index("N76B") == "N76B"
+    assert extract_object_index("7-6B") == "7-6B"
+
+
+def test_gives_unlabelled_rows_stable_numbered_provisional_names():
+    objects = [
+        {"object_name": "Unlabelled"},
+        {"object_name": "Object 2"},
+        {"object_name": "N76B"},
+        {"object_name": ""},
+    ]
+
+    ensure_provisional_object_names(objects)
+
+    assert [item["object_name"] for item in objects] == [
+        "Object 01", "Object 02", "N76B", "Object 04",
+    ]
 
 
 def test_does_not_turn_transport_placeholders_into_suffix_codes():
@@ -266,6 +284,16 @@ def test_invalid_row_keeps_placeholder_without_discarding_valid_names():
 
     assert objects[0]["object_name"] == "CM-1"
     assert objects[1]["object_name"] == "CM-2 Display cabinet"
+
+
+def test_keeps_letter_suffixed_source_index_when_naming():
+    objects = [{"object_id": "a", "object_name": "N76B"}]
+    locked = [{"object_id": "a", "object_index": "N76B", "current_name": "N76B"}]
+    result = {"names": [{"object_id": "a", "name_en": "Shelving unit", "name_original": ""}]}
+
+    apply_name_mapping(objects, locked, result)
+
+    assert objects[0]["object_name"] == "N76B Shelving unit"
 
 
 def test_disambiguates_duplicate_transport_ids_without_changing_order_or_names():

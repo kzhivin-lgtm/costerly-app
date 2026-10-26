@@ -25,6 +25,7 @@ from use_cases.latest_estimate import load_latest_estimate_route_for_run
 from use_cases.rfq_processing import (
     FileReviewNameConflict,
     load_file_review_data,
+    load_file_review_document_identity_publication,
     load_file_review_naming_publication,
     load_file_review_preview_publication,
     record_file_review_first_render,
@@ -308,16 +309,6 @@ def _merged_timings(
     return result
 
 
-def _review_card_quality_html(run: dict[str, object]) -> str:
-    """Build the static quality row above the live timing placeholder."""
-    return (
-        '<div class="file-review-summary-grid">'
-        '<div class="file-review-label">File quality:</div>'
-        f'<div class="file-review-value">{_escape(run.get("file_quality"))}</div>'
-        '</div>'
-    )
-
-
 def _review_card_metadata_html(run: dict[str, object]) -> str:
     """Build the static metadata portion below the live timing placeholder."""
     return (
@@ -333,10 +324,98 @@ def _review_card_metadata_html(run: dict[str, object]) -> str:
     )
 
 
+def _publish_persisted_document_identity(
+    run_id: str,
+    result: dict[str, object],
+) -> bool:
+    """Apply durable identity fields before this fragment renders its widgets."""
+    status = str(result.get("status") or "pending")
+    if status == "pending":
+        return False
+
+    _mark_deferred_work_complete(run_id, "document_identity")
+    if status != "succeeded":
+        st.session_state[f"file_review_document_identity_terminal.{run_id}"] = str(
+            result.get("error") or "Document identity did not complete."
+        )
+        return True
+
+    metadata = result.get("metadata")
+    if not isinstance(metadata, dict):
+        return True
+    cache = st.session_state.setdefault("file_review_data_cache", {})
+    data = cache.get(run_id)
+    if not isinstance(data, dict) or not isinstance(data.get("run"), dict):
+        return True
+    run = data["run"]
+    edits = st.session_state.setdefault("file_review_run_metadata", {})
+    for field in _RUN_METADATA_LABELS:
+        value = str(metadata.get(field) or "unknown").strip() or "unknown"
+        run[field] = value
+        edits[field] = value
+        # This runs before the corresponding text_input is created inside this
+        # fragment, so Streamlit accepts the replacement without a full rerun.
+        st.session_state[f"file_review_run_metadata.{field}"] = value
+    return True
+
+
+def _sync_durable_document_identity_once(run_id: str) -> None:
+    """Cover restored File Review sessions without a perpetual metadata read."""
+    synced_key = f"file_review_document_identity_cache_synced.{run_id}"
+    if st.session_state.get(synced_key):
+        return
+    result = load_file_review_document_identity_publication(run_id)
+    if str(result.get("status") or "pending") == "pending":
+        return
+    _publish_persisted_document_identity(run_id, result)
+    st.session_state[synced_key] = True
+
+
+@st.fragment(run_every=2.0)
+def _render_file_review_metadata_inputs(run_id: str) -> None:
+    """Render editable metadata and publish title-block results in place."""
+    work = st.session_state.get("file_review_deferred_work")
+    if isinstance(work, dict) and work.get("run_id") == run_id and work.get("document_identity"):
+        _publish_persisted_document_identity(
+            run_id,
+            load_file_review_document_identity_publication(run_id),
+        )
+    else:
+        _sync_durable_document_identity_once(run_id)
+
+    data = st.session_state.setdefault("file_review_data_cache", {}).get(run_id)
+    run = data.get("run") if isinstance(data, dict) else None
+    if not isinstance(run, dict):
+        return
+    _sync_run_metadata_state(run_id, run)
+    for field, label in _RUN_METADATA_LABELS.items():
+        label_col, input_col = st.columns(
+            [1.8, 6.2], gap="small", vertical_alignment="center"
+        )
+        label_col.markdown(
+            f'<div class="file-review-label">{_escape(label)}:</div>',
+            unsafe_allow_html=True,
+        )
+        widget_key = f"file_review_run_metadata.{field}"
+        canonical_value = str(
+            st.session_state.file_review_run_metadata.get(field) or "unknown"
+        )
+        if widget_key not in st.session_state:
+            st.session_state[widget_key] = canonical_value
+        input_col.text_input(
+            label,
+            key=widget_key,
+            max_chars=240,
+            on_change=_commit_run_metadata,
+            args=(run_id, field, widget_key),
+            label_visibility="collapsed",
+        )
+    st.markdown(_review_card_metadata_html(run), unsafe_allow_html=True)
+
+
 def _render_review_card(
     *,
     run_id: str,
-    run: dict[str, object],
     timings: dict[str, object] | None,
 ) -> None:
     """Render editable project metadata inside the established summary card."""
@@ -345,34 +424,10 @@ def _render_review_card(
             '<span class="file-review-summary-card-marker" aria-hidden="true"></span>',
             unsafe_allow_html=True,
         )
-        for field, label in _RUN_METADATA_LABELS.items():
-            label_col, input_col = st.columns(
-                [1.8, 6.2], gap="small", vertical_alignment="center"
-            )
-            label_col.markdown(
-                f'<div class="file-review-label">{_escape(label)}:</div>',
-                unsafe_allow_html=True,
-            )
-            widget_key = f"file_review_run_metadata.{field}"
-            canonical_value = str(
-                st.session_state.file_review_run_metadata.get(field) or "unknown"
-            )
-            if widget_key not in st.session_state:
-                st.session_state[widget_key] = canonical_value
-            input_col.text_input(
-                label,
-                key=widget_key,
-                max_chars=240,
-                on_change=_commit_run_metadata,
-                args=(run_id, field, widget_key),
-                label_visibility="collapsed",
-            )
-
-        st.markdown(_review_card_quality_html(run), unsafe_allow_html=True)
+        _render_file_review_metadata_inputs(run_id)
         timing_slot = st.empty()
         timing_slot.markdown(_timing_html(timings), unsafe_allow_html=True)
         st.session_state[f"file_review_timing_slot.{run_id}"] = timing_slot
-        st.markdown(_review_card_metadata_html(run), unsafe_allow_html=True)
 
 
 def _refresh_live_timing_row(run_id: str) -> None:
@@ -913,7 +968,6 @@ def render_file_review_screen(
         )
         _render_review_card(
             run_id=run_id,
-            run=data["run"],
             timings=_merged_timings(st.session_state.get("current_agent_timings"), data.get("timings")),
         )
     install_workflow_header_alignment_guard()

@@ -17,7 +17,7 @@ from agents.anthropic_adapter import (
 )
 
 
-NAMING_LAB_VERSION = "naming_lab_v11_decision_audit"
+NAMING_LAB_VERSION = "naming_lab_v12_source_index_preservation"
 NAMING_PROMPT_PATH = Path(__file__).parent / "prompts" / "naming_agent_prompt.md"
 
 NAMING_RESULT_SCHEMA: dict[str, Any] = {
@@ -69,7 +69,11 @@ def extract_object_index(object_name: Any) -> str:
 
 
 _SOURCE_IDENTIFIER_RE = re.compile(
-    r"(?<![A-Za-zА-Яа-яЁё0-9])(?:[A-Za-zА-Яа-яЁё]{1,4}\s*[- ]?\s*\d+(?:[-./][A-Za-zА-Яа-яЁё0-9]+){0,3}|\d{1,3}[A-ZА-ЯЁ][A-ZА-ЯЁ0-9]*(?:[-./][A-Za-zА-Яа-яЁё0-9]+){0,3})(?![A-Za-zА-Яа-яЁё0-9])"
+    r"(?<![A-Za-zА-Яа-яЁё0-9])(?:"
+    r"[A-Za-zА-Яа-яЁё]{1,4}\s*[- ]?\s*\d+[A-Za-zА-Яа-яЁё0-9]*(?:[-./][A-Za-zА-Яа-яЁё0-9]+){0,3}"
+    r"|\d{1,3}[A-ZА-ЯЁ][A-ZА-ЯЁ0-9]*(?:[-./][A-Za-zА-Яа-яЁё0-9]+){0,3}"
+    r"|\d{1,3}(?:[-./]\d*[A-Za-zА-Яа-яЁё][A-Za-zА-Яа-яЁё0-9]*)+"
+    r")(?![A-Za-zА-Яа-яЁё0-9])"
 )
 
 
@@ -100,6 +104,39 @@ def _ocr_items(ocr_result: dict[str, Any]) -> list[dict[str, Any]]:
     return items
 
 
+def _bbox_contains_centre(region: dict[str, Any], bbox: object) -> bool:
+    """Keep OCR local when Detection has a locked object View bbox."""
+    if not isinstance(bbox, dict):
+        return False
+    keys = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
+    try:
+        left, top, right, bottom = (float(bbox[key]) for key in keys)
+        region_left, region_top, region_right, region_bottom = (
+            float(region[key]) for key in keys
+        )
+    except (KeyError, TypeError, ValueError):
+        return False
+    if right <= left or bottom <= top or region_right <= region_left or region_bottom <= region_top:
+        return False
+    centre_x, centre_y = (left + right) / 2, (top + bottom) / 2
+    return region_left <= centre_x <= region_right and region_top <= centre_y <= region_bottom
+
+
+def _object_regions_by_page(detected_object: dict[str, Any]) -> dict[int, list[dict[str, Any]]]:
+    regions_by_page: dict[int, list[dict[str, Any]]] = {}
+    for ref in detected_object.get("evidence_page_refs") or []:
+        if not isinstance(ref, dict):
+            continue
+        try:
+            page_number = int(ref.get("page_number"))
+        except (TypeError, ValueError):
+            continue
+        regions = [region for region in ref.get("regions") or [] if isinstance(region, dict)]
+        if page_number > 0 and regions:
+            regions_by_page[page_number] = regions
+    return regions_by_page
+
+
 def relevant_ocr_snippets(
     detected_object: dict[str, Any],
     ocr_result: dict[str, Any],
@@ -109,18 +146,32 @@ def relevant_ocr_snippets(
 ) -> list[str]:
     object_index = extract_object_index(detected_object.get("object_name"))
     pages = _page_numbers(detected_object.get("evidence_pages"))
+    regions_by_page = _object_regions_by_page(detected_object)
     exact: list[str] = []
+    local: list[str] = []
     page_fallback: list[str] = []
 
     for item in _ocr_items(ocr_result):
         text = " ".join(str(item.get("text") or "").split())
-        page = item.get("page_number")
+        try:
+            page = int(item.get("page_number"))
+        except (TypeError, ValueError):
+            continue
+        item_bbox = item.get("bbox") or item.get("source_image_bbox")
+        is_local = any(
+            _bbox_contains_centre(region, item_bbox)
+            for region in regions_by_page.get(page, [])
+        )
+        if regions_by_page and not is_local:
+            continue
         if object_index and object_index.casefold() in text.casefold():
             exact.append(text)
+        elif regions_by_page and is_local:
+            local.append(text)
         elif not object_index and page in pages:
             page_fallback.append(text)
 
-    selected = exact or page_fallback
+    selected = exact or local or page_fallback
     unique: list[str] = []
     seen: set[str] = set()
     char_count = 0
@@ -174,6 +225,22 @@ def ensure_unique_object_ids(detected_objects: list[dict[str, Any]]) -> None:
     """Assign position-locked transport IDs without changing objects or labels."""
     for position, item in enumerate(detected_objects, start=1):
         item["object_id"] = f"object-{position:03d}"
+
+
+def ensure_provisional_object_names(detected_objects: list[dict[str, Any]]) -> None:
+    """Give unlabelled Registry rows a stable, visible name before Naming.
+
+    This is a UI transport label only. It neither infers a category nor changes
+    a source-authored identifier, quantity, evidence, or object boundary.
+    """
+    provisional = re.compile(
+        r"(?:object|item)\s*\d+|unknown|unlabelled|untitled",
+        re.IGNORECASE,
+    )
+    for position, item in enumerate(detected_objects, start=1):
+        current = " ".join(str(item.get("object_name") or "").split())
+        if not current or provisional.fullmatch(current):
+            item["object_name"] = f"Object {position:02d}"
 
 
 def _word_count(value: Any) -> int:
@@ -305,6 +372,7 @@ def apply_name_mapping(
 def run_naming_lab_call(
     locked_objects: list[dict[str, Any]],
     visual_pages_by_number: dict[int, bytes] | None = None,
+    object_crops_by_id: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     model = str(
         get_secret("CLAUDE_NAMING_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
@@ -324,11 +392,31 @@ def run_naming_lab_call(
             ),
         }
     ]
-    for page_number, page_bytes in sorted((visual_pages_by_number or {}).items()):
-        content.extend([
-            {"type": "text", "text": json.dumps({"source_evidence_page": page_number})},
-            {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": base64.b64encode(page_bytes).decode("ascii")}},
-        ])
+    if object_crops_by_id is not None:
+        for locked in locked_objects:
+            object_id = str(locked.get("object_id") or "")
+            for crop in object_crops_by_id.get(object_id) or []:
+                if not isinstance(crop, dict) or not isinstance(crop.get("bytes"), bytes):
+                    continue
+                content.extend([
+                    {"type": "text", "text": json.dumps({
+                        "object_bound_crop": {
+                            "object_id": object_id,
+                            "page_number": crop.get("page_number"),
+                            "group_id": crop.get("group_id"),
+                        },
+                    })},
+                    {"type": "image", "source": {
+                        "type": "base64", "media_type": "image/jpeg",
+                        "data": base64.b64encode(crop["bytes"]).decode("ascii"),
+                    }},
+                ])
+    else:
+        for page_number, page_bytes in sorted((visual_pages_by_number or {}).items()):
+            content.extend([
+                {"type": "text", "text": json.dumps({"source_evidence_page": page_number})},
+                {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": base64.b64encode(page_bytes).decode("ascii")}},
+            ])
     response = create_claude_message(
         client,
         model=model,

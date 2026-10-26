@@ -85,6 +85,9 @@ def init_state() -> None:
     if "current_preview_future" not in st.session_state:
         st.session_state.current_preview_future = None
 
+    if "current_document_identity_future" not in st.session_state:
+        st.session_state.current_document_identity_future = None
+
     if "file_review_deferred_work" not in st.session_state:
         st.session_state.file_review_deferred_work = None
 
@@ -122,6 +125,7 @@ def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
         "current_naming_future",
         "current_naming_result",
         "current_preview_future",
+        "current_document_identity_future",
         "file_review_deferred_work",
         "processed_file_name",
         "processing_error",

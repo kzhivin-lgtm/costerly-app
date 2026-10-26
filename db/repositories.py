@@ -397,6 +397,22 @@ def fetch_deferred_naming_status(client: Client, run_id: str) -> dict | None:
     return dict(rows[0]) if rows else None
 
 
+def fetch_deferred_document_identity_status(client: Client, run_id: str) -> dict | None:
+    """Return the terminal post-Detection document-identity ledger entry."""
+    response = (
+        client.table("agent_usage_events")
+        .select("status,raw_usage,created_at")
+        .eq("run_id", run_id)
+        .eq("agent_name", "document_identity")
+        .eq("operation", "document_identity_deferred")
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = response.data or []
+    return dict(rows[0]) if rows else None
+
+
 def fetch_deferred_preview_status(client: Client, run_id: str) -> dict | None:
     """Return the terminal Preview ledger entry for one run, if it exists."""
     response = (
@@ -511,6 +527,36 @@ def update_rfq_run_project_name_if_unchanged(
         len(rows) == 1
         and str(rows[0].get("run_id") or "") == run_id
         and str(rows[0].get("project_name") or "") == project_name
+    )
+
+
+def update_rfq_run_field_if_unchanged(
+    client: Client,
+    *,
+    run_id: str,
+    field: str,
+    expected_value: str,
+    value: str,
+) -> bool:
+    """Publish one deferred document field without replacing a user edit."""
+    allowed_fields = {
+        "project_name", "design_partner", "client", "author", "document_date",
+    }
+    if field not in allowed_fields:
+        raise ValueError("RFQ run field is not eligible for deferred metadata")
+    response = (
+        client.table("rfq_runs")
+        .update({field: value})
+        .eq("run_id", run_id)
+        .eq(field, expected_value)
+        .select(f"run_id,{field}")
+        .execute()
+    )
+    rows = response.data or []
+    return (
+        len(rows) == 1
+        and str(rows[0].get("run_id") or "") == run_id
+        and str(rows[0].get(field) or "") == value
     )
 
 

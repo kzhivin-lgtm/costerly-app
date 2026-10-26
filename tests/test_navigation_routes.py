@@ -32,6 +32,7 @@ def test_new_estimate_reset_clears_all_estimate_scoped_session_state():
         "objects_estimation_cache_dirty": {"estimate-old"},
         "file_review_naming_published.run-old": True,
         "file_review_naming_cache_synced.run-old": True,
+        "current_document_identity_future": object(),
         "rfq_upload_input": "previous-file-widget-value",
     })
 
@@ -45,10 +46,45 @@ def test_new_estimate_reset_clears_all_estimate_scoped_session_state():
     assert st.session_state.objects_estimation_data_cache == {}
     assert st.session_state.objects_estimation_cache_dirty == set()
     assert st.session_state.processed_file_name is None
+    assert st.session_state.current_document_identity_future is None
     assert "file_review_naming_published.run-old" not in st.session_state
     assert "file_review_naming_cache_synced.run-old" not in st.session_state
     assert "rfq_upload_input" not in st.session_state
     assert st.session_state.rfq_upload_widget_generation == 1
+
+
+def test_file_review_publishes_document_identity_before_metadata_widgets():
+    st.session_state.clear()
+    run_id = "run-identity"
+    st.session_state.file_review_deferred_work = {
+        "run_id": run_id, "document_identity": True,
+    }
+    st.session_state.file_review_data_cache = {
+        run_id: {"run": {"project_name": "unknown", "partner": "unknown", "client": "unknown"}}
+    }
+    st.session_state.file_review_run_metadata = {
+        "project_name": "unknown", "partner": "unknown", "client": "unknown",
+    }
+
+    published = file_review._publish_persisted_document_identity(
+        run_id,
+        {
+            "status": "succeeded",
+            "metadata": {"project_name": "ROOMS", "partner": "unknown", "client": "unknown"},
+        },
+    )
+
+    assert published is True
+    assert st.session_state.file_review_data_cache[run_id]["run"]["project_name"] == "ROOMS"
+    assert st.session_state.file_review_run_metadata["project_name"] == "ROOMS"
+    assert st.session_state["file_review_run_metadata.project_name"] == "ROOMS"
+
+
+def test_file_quality_is_only_part_of_technical_metadata():
+    metadata = file_review._metadata_rows_html({"file_quality": "detailed_drawings"})
+
+    assert "File quality" in metadata
+    assert not hasattr(file_review, "_review_card_quality_html")
 
 
 def test_account_bootstrap_drops_legacy_profile_tab_parameter():

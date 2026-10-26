@@ -9,6 +9,8 @@ from agents.anthropic_adapter import (
     DetectionVisualRegistryValidationError,
     _source_dimensions_by_page,
     build_detection_page_evidence_inventory,
+    build_detection_v5_membership_view_crops,
+    build_detection_v5_review_coordinate_frames,
     run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_audit,
     run_anthropic_detection_visual_registry_agent,
 )
@@ -150,6 +152,63 @@ def _validate_registry_evidence_pages(registry: dict, *, page_count: int) -> Non
                 )
 
 
+def _registry_owned_visual_groups(visual_map: dict | None) -> dict[str, dict]:
+    """Index private post-Registry bbox evidence by immutable View ID."""
+    return {
+        str(group.get("group_id") or ""): group
+        for group in (visual_map or {}).get("_registry_owned_evidence") or []
+        if isinstance(group, dict) and str(group.get("group_id") or "")
+    }
+
+
+def _build_v616_naming_crops(
+    *,
+    registry: dict,
+    visual_map: dict | None,
+    ocr_package: dict | None,
+    page_images: list[bytes],
+) -> tuple[dict[str, list[dict]], dict]:
+    """Create Naming-only crops from Registry-owned, immutable View bboxes."""
+    owned_groups = _registry_owned_visual_groups(visual_map)
+    frames, frame_audit = build_detection_v5_review_coordinate_frames(
+        ocr_package=ocr_package,
+        page_images=page_images,
+    )
+    # The shared crop helper normally serves pre-Registry membership and
+    # therefore filters by evidence_class. Ownership in this sidecar is
+    # stronger: Registry has already locked it. Hydrate only those groups.
+    crops, crop_audit = build_detection_v5_membership_view_crops(
+        page_images=page_images,
+        visual_groups=[{**group, "evidence_class": "object_evidence"} for group in owned_groups.values()],
+        coordinate_frames=frames,
+    )
+    crops_by_group_id = {
+        str(crop.get("group_id") or ""): crop
+        for crop in crops
+        if isinstance(crop, dict) and str(crop.get("group_id") or "")
+    }
+    object_crops: dict[str, list[dict]] = {}
+    for item in registry.get("objects") or []:
+        if not isinstance(item, dict):
+            continue
+        object_id = str(item.get("object_id") or "")
+        if not object_id:
+            continue
+        object_crops[object_id] = [
+            {"group_id": group_id, "page_number": int(crop["page_number"]), "bytes": crop["bytes"]}
+            for group_id in item.get("visual_group_ids") or []
+            if isinstance(crops_by_group_id.get(str(group_id) or ""), dict)
+            for crop in [crops_by_group_id[str(group_id)]]
+        ]
+    return object_crops, {
+        "coordinate_frame_audit": frame_audit,
+        "crop_audit": crop_audit,
+        "registry_owned_group_count": len(owned_groups),
+        "crop_count": len(crops),
+        "objects_with_crop_count": sum(bool(value) for value in object_crops.values()),
+    }
+
+
 def _literal_page_texts(ocr_package: dict | None) -> dict[int, str]:
     """Index OCR text by physical page without adding model interpretation."""
     evidence = (ocr_package or {}).get("evidence")
@@ -208,6 +267,7 @@ def _registry_to_detection_result(
     company_id: str,
     file_name: str,
     page_count: int,
+    visual_map: dict | None = None,
     review_required_object_ids: set[str] | None = None,
 ) -> dict:
     """Materialize the Registry's locked packages as the V4 result.
@@ -220,6 +280,7 @@ def _registry_to_detection_result(
     created_at = datetime.now(UTC).isoformat()
     run_id = f"run_{uuid4().hex}"
     flagged_ids = set(review_required_object_ids or ())
+    visual_groups_by_id = _registry_owned_visual_groups(visual_map)
     objects = []
     for item in registry.get("objects") or []:
         if not isinstance(item, dict):
@@ -232,6 +293,21 @@ def _registry_to_detection_result(
         })
         if not object_id or not evidence_pages:
             continue
+        regions_by_page: dict[int, list[dict]] = {}
+        for group_id in item.get("visual_group_ids") or []:
+            group = visual_groups_by_id.get(str(group_id) or "")
+            bbox = group.get("bbox") if isinstance(group, dict) else None
+            try:
+                page_number = int(group.get("page_number")) if isinstance(group, dict) else 0
+                normalized_bbox = {
+                    key: float(bbox[key]) for key in (
+                        "top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y",
+                    )
+                }
+            except (KeyError, TypeError, ValueError):
+                continue
+            if page_number in evidence_pages:
+                regions_by_page.setdefault(page_number, []).append(normalized_bbox)
         objects.append({
             "run_id": run_id,
             "company_id": company_id,
@@ -242,7 +318,11 @@ def _registry_to_detection_result(
             "review_required": object_id in flagged_ids,
             "evidence_pages": ",".join(str(page) for page in evidence_pages),
             "evidence_page_refs": [
-                {"page_number": page, "source_label": f"P{page}", "regions": []}
+                {
+                    "page_number": page,
+                    "source_label": f"P{page}",
+                    "regions": regions_by_page.get(page, []),
+                }
                 for page in evidence_pages
             ],
             "approved": False,
@@ -510,11 +590,29 @@ def run_detection_agent(
         company_id=company_id,
         file_name=file_name,
         page_count=len(registry_images),
+        visual_map=_visual_map,
         review_required_object_ids=(
             fallback_review_required_object_ids | graph_review_required_object_ids
         ),
     )
     result = _normalize_evidence_source_labels(result, ocr_package)
     validated = validate_detection_result(result)
+    naming_crops, naming_crop_audit = _build_v616_naming_crops(
+        registry=registry,
+        visual_map=_visual_map,
+        ocr_package=ocr_package,
+        page_images=registry_images,
+    )
+    if isinstance(visual_registry_usage, dict):
+        raw_usage = dict(visual_registry_usage.get("raw_usage") or {})
+        raw_usage["v6_16_naming_bound_evidence"] = naming_crop_audit
+        visual_registry_usage["raw_usage"] = raw_usage
+    registry_object_ids = {
+        str(item.get("object_id") or "")
+        for item in registry.get("objects") or []
+        if isinstance(item, dict) and str(item.get("object_id") or "")
+    }
+    if registry_object_ids and all(naming_crops.get(object_id) for object_id in registry_object_ids):
+        validated["_naming_object_crops"] = naming_crops
     validated["_agent_usage_events"] = [visual_registry_usage] if visual_registry_usage else []
     return validated
