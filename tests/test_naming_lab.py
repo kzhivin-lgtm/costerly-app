@@ -17,7 +17,7 @@ from agents.naming_lab import (
 
 
 def test_uses_semantic_category_naming_version():
-    assert NAMING_LAB_VERSION == "naming_lab_v13_annotated_source_pages"
+    assert NAMING_LAB_VERSION == "naming_lab_v14_object_source_crops"
 
 
 def test_naming_schema_requires_short_decision_basis():
@@ -97,6 +97,24 @@ def test_recovers_title_block_drawing_index_for_a_locked_object_page():
     assign_ocr_drawing_indices(objects, ocr)
 
     assert objects[0]["object_name"] == "N57"
+
+
+def test_drops_isolated_title_block_family_outlier_when_a_document_series_exists():
+    objects = [
+        {"object_name": "Object 01", "evidence_page_refs": [{"page_number": 4}]},
+        {"object_name": "Object 02", "evidence_page_refs": [{"page_number": 9}]},
+    ]
+    ocr = {"evidence": {"text_blocks": [
+        {"page_number": 4, "text": "DRAWING NAME N57"},
+        {"page_number": 5, "text": "DRAWING NAME N60"},
+        {"page_number": 7, "text": "DRAWING NAME N68"},
+        {"page_number": 8, "text": "DRAWING NAME N70"},
+        {"page_number": 9, "text": "DRAWING NAME FTC201.06"},
+    ]}}
+
+    assign_ocr_drawing_indices(objects, ocr)
+
+    assert [item["object_name"] for item in objects] == ["N57", "Object 02"]
 
 
 def test_private_naming_code_does_not_replace_neutral_persisted_label():

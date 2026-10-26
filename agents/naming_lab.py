@@ -18,7 +18,7 @@ from agents.anthropic_adapter import (
 )
 
 
-NAMING_LAB_VERSION = "naming_lab_v13_annotated_source_pages"
+NAMING_LAB_VERSION = "naming_lab_v14_object_source_crops"
 NAMING_PROMPT_PATH = Path(__file__).parent / "prompts" / "naming_agent_prompt.md"
 
 NAMING_RESULT_SCHEMA: dict[str, Any] = {
@@ -282,12 +282,33 @@ def source_drawing_indices_by_page(ocr_result: dict[str, Any]) -> dict[int, str]
     return result
 
 
+def _source_identifier_family(identifier: str) -> str:
+    """Return the author-code prefix used to reject isolated title-block noise."""
+    match = re.match(r"\s*([A-Za-zА-Яа-яЁё]+)", identifier)
+    return match.group(1).casefold() if match else ""
+
+
+def _dominant_source_identifier_family(candidates: dict[int, str]) -> str | None:
+    """Return a repeated majority family, otherwise retain all source codes."""
+    families: dict[str, int] = {}
+    for candidate in candidates.values():
+        family = _source_identifier_family(candidate)
+        if family:
+            families[family] = families.get(family, 0) + 1
+    if not families:
+        return None
+    family, count = max(families.items(), key=lambda item: (item[1], item[0]))
+    total = sum(families.values())
+    return family if count >= 2 and count * 2 > total else None
+
+
 def assign_ocr_drawing_indices(
     detected_objects: list[dict[str, Any]],
     ocr_result: dict[str, Any],
 ) -> None:
     """Replace only deterministic Object NN placeholders with page title codes."""
     by_page = source_drawing_indices_by_page(ocr_result)
+    dominant_family = _dominant_source_identifier_family(by_page)
     for item in detected_objects:
         if not re.fullmatch(r"Object\s+\d+", str(item.get("object_name") or ""), re.I):
             continue
@@ -299,7 +320,13 @@ def assign_ocr_drawing_indices(
                 page_number = int(ref.get("page_number"))
             except (TypeError, ValueError):
                 continue
-            if page_number in by_page:
+            if (
+                page_number in by_page
+                and (
+                    dominant_family is None
+                    or _source_identifier_family(by_page[page_number]) == dominant_family
+                )
+            ):
                 candidates.add(by_page[page_number])
         if len(candidates) == 1:
             item["object_name"] = candidates.pop()
@@ -434,6 +461,7 @@ def apply_name_mapping(
 def run_naming_lab_call(
     locked_objects: list[dict[str, Any]],
     visual_pages_by_number: dict[int, bytes] | None = None,
+    object_source_crops_by_id: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     model = str(
         get_secret("CLAUDE_NAMING_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
@@ -457,6 +485,32 @@ def run_naming_lab_call(
             ),
         }
     ]
+    for object_id, crop in sorted((object_source_crops_by_id or {}).items()):
+        if not isinstance(crop, dict) or not isinstance(crop.get("bytes"), bytes):
+            continue
+        content.extend([
+            {
+                "type": "text",
+                "text": json.dumps({
+                    "object_source_crop": {
+                        "object_id": object_id,
+                        "page_number": crop.get("page_number"),
+                        "representation_kind": crop.get("representation_kind"),
+                    },
+                    "crop_contract": (
+                        "This is a source-derived magnifier of one already-owned Registry View. "
+                        "Use it only to name that locked object. It cannot change boundaries."
+                    ),
+                }),
+            },
+            {
+                "type": "image",
+                "source": {
+                    "type": "base64", "media_type": "image/jpeg",
+                    "data": base64.b64encode(crop["bytes"]).decode("ascii"),
+                },
+            },
+        ])
     for page_number, page_bytes in sorted((visual_pages_by_number or {}).items()):
         content.extend([
             {

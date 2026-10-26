@@ -1,5 +1,21 @@
 # TODO
 
+ACTIVE, V6.21 object-bound Naming evidence and presentation preview: retain
+the V6.20 deferred Naming lifecycle and neutral File Review publication, but
+make one deterministic Registry-owned front/elevation View available in two
+strictly separate roles. It becomes `presentation_preview_bbox` for File
+Review only, and its source crop becomes bounded visual context for Naming.
+Full annotated pages and local OCR snippets remain in Naming. Do not pass the
+UI preview field to Naming or Estimation, and do not change object identity,
+quantity, order, evidence-page membership, or View ownership. When a repeated
+title-block identifier family is a strict document majority, omit isolated
+minority-family codes from the private Naming transport, so a project/file
+code cannot be published as an object index. Acceptance: HSL produces stored
+front/elevation previews, no `FTC201.06` prefix, and a terminal Naming audit
+whose category decisions can cite object-bound visual/OCR evidence. Reassess
+the P11 object split separately from Naming: it is a locked Detection-boundary
+question, not a name rewrite.
+
 ACTIVE, V6.20 Naming publication and cost lifecycle: preserve the V6.14
 Detection checkpoint while repairing the V6.19 deferred Naming worker call,
 show `TC1` for completed OCR plus Detection and `TC2` only after terminal

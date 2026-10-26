@@ -304,6 +304,7 @@ def _run_deferred_naming(
     file_bytes: bytes = b"",
     page_images: list[bytes] | None = None,
     annotated_visual_pages_by_number: dict[int, bytes] | None = None,
+    object_source_crops_by_id: dict[str, dict[str, Any]] | None = None,
     provisional_project_name: str | None = None,
 ) -> dict[str, Any]:
     """Name locked objects after File Review is allowed to open."""
@@ -333,10 +334,12 @@ def _run_deferred_naming(
                 for number in wanted_pages
                 if number <= len(source_pages)
             }
-        naming_result = (
-            run_naming_lab_call(locked_objects, visual_pages_by_number=visual_pages)
-            if visual_pages else run_naming_lab_call(locked_objects)
-        )
+        naming_kwargs: dict[str, Any] = {}
+        if visual_pages:
+            naming_kwargs["visual_pages_by_number"] = visual_pages
+        if object_source_crops_by_id:
+            naming_kwargs["object_source_crops_by_id"] = object_source_crops_by_id
+        naming_result = run_naming_lab_call(locked_objects, **naming_kwargs)
         apply_name_mapping(detected_objects, locked_objects, naming_result)
         names: dict[str, str] = {}
         for provisional, named in zip(locked_objects, detected_objects, strict=True):
@@ -659,6 +662,7 @@ def process_uploaded_rfq(
         raise
     detection_seconds = round(time.perf_counter() - detection_started, 3)
     naming_annotated_pages = detection_result.pop("_naming_annotated_pages", None)
+    naming_source_crops = detection_result.pop("_naming_source_crops", None)
     usage_events = detection_result.pop("_agent_usage_events", [])
     legacy_usage_event = detection_result.pop("_agent_usage", None)
     if isinstance(legacy_usage_event, dict):
@@ -736,6 +740,8 @@ def process_uploaded_rfq(
             file_bytes=file_bytes,
             annotated_visual_pages_by_number=deepcopy(naming_annotated_pages)
             if isinstance(naming_annotated_pages, dict) else None,
+            object_source_crops_by_id=deepcopy(naming_source_crops)
+            if isinstance(naming_source_crops, dict) else None,
             provisional_project_name=str(detection_result["rfq_run"].get("project_name") or ""),
         )
 

@@ -9,6 +9,7 @@ from agents.anthropic_adapter import (
     DetectionVisualRegistryValidationError,
     _source_dimensions_by_page,
     build_detection_page_evidence_inventory,
+    build_detection_v5_membership_view_crops,
     build_detection_v5_review_coordinate_frames,
     build_detection_v5_review_page_context_images,
     run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_audit,
@@ -32,6 +33,15 @@ from agents.schemas.detection_schema import validate_detection_result
 # router with scenario categorization. The configured secret names remain V4.
 DEFAULT_CLAUDE_DETECTION_V4_MODEL = DEFAULT_CLAUDE_DETECTION_MODEL
 DEFAULT_CLAUDE_DETECTION_V4_BOUNDARY_MODEL = DEFAULT_CLAUDE_DETECTION_BOUNDARY_MODEL
+
+
+_PRESENTATION_REPRESENTATION_PRIORITY = {
+    "elevation": 0,
+    "front_elevation": 0,
+    "front": 0,
+    "section": 1,
+    "detail": 2,
+}
 
 
 def _enforce_shared_track_door_system_quantity(registry: dict) -> dict:
@@ -158,6 +168,137 @@ def _registry_owned_visual_groups(visual_map: dict | None) -> dict[str, dict]:
         str(group.get("group_id") or ""): group
         for group in (visual_map or {}).get("_registry_owned_evidence") or []
         if isinstance(group, dict) and str(group.get("group_id") or "")
+    }
+
+
+def _registry_group_bbox(group: dict | None) -> dict[str, float] | None:
+    """Return one valid Registry-owned bbox in the Fusion coordinate frame."""
+    if not isinstance(group, dict):
+        return None
+    bbox = group.get("bbox")
+    try:
+        normalized = {
+            key: float(bbox[key])
+            for key in (
+                "top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y",
+            )
+        }
+    except (KeyError, TypeError, ValueError):
+        return None
+    if (
+        normalized["bottom_right_x"] <= normalized["top_left_x"]
+        or normalized["bottom_right_y"] <= normalized["top_left_y"]
+    ):
+        return None
+    return normalized
+
+
+def _select_presentation_view(
+    item: dict,
+    *,
+    visual_groups_by_id: dict[str, dict],
+    evidence_pages: set[int],
+) -> dict | None:
+    """Choose one Registry View for UI presentation without changing evidence.
+
+    A front/elevation is the most useful isolated File Review preview.  The
+    same source View can be supplied as a bounded Naming magnifier, but the
+    UI-only ``presentation_preview_bbox`` itself is never passed as Naming
+    evidence.
+    """
+    candidates: list[tuple[tuple[float | int | str, ...], dict]] = []
+    for raw_group_id in item.get("visual_group_ids") or []:
+        group = visual_groups_by_id.get(str(raw_group_id) or "")
+        bbox = _registry_group_bbox(group)
+        try:
+            page_number = int(group.get("page_number")) if isinstance(group, dict) else 0
+        except (TypeError, ValueError):
+            page_number = 0
+        if bbox is None or page_number not in evidence_pages:
+            continue
+        representation = str(group.get("representation_kind") or "").casefold()
+        priority = _PRESENTATION_REPRESENTATION_PRIORITY.get(representation, 3)
+        area = (
+            (bbox["bottom_right_x"] - bbox["top_left_x"])
+            * (bbox["bottom_right_y"] - bbox["top_left_y"])
+        )
+        candidates.append((
+            (priority, -area, page_number, str(group.get("group_id") or "")),
+            group,
+        ))
+    return min(candidates, key=lambda candidate: candidate[0])[1] if candidates else None
+
+
+def _build_v621_naming_source_crops(
+    *,
+    registry: dict,
+    visual_map: dict | None,
+    ocr_package: dict | None,
+    page_images: list[bytes],
+) -> tuple[dict[str, dict], dict]:
+    """Build one compact, source-derived magnifier for each locked object.
+
+    Full annotated pages preserve document context.  A bounded crop of the
+    selected Registry View restores local legibility for category Naming,
+    without asking Naming to make a new grouping or boundary decision.
+    """
+    owned_groups = _registry_owned_visual_groups(visual_map)
+    frames, frame_audit = build_detection_v5_review_coordinate_frames(
+        ocr_package=ocr_package,
+        page_images=page_images,
+    )
+    selected_by_object: dict[str, dict] = {}
+    crop_groups: list[dict] = []
+    for item in registry.get("objects") or []:
+        if not isinstance(item, dict):
+            continue
+        object_id = str(item.get("object_id") or "")
+        evidence_pages = {
+            int(page) for page in item.get("estimation_evidence_pages") or []
+            if isinstance(page, int) and page > 0
+        }
+        selected = _select_presentation_view(
+            item,
+            visual_groups_by_id=owned_groups,
+            evidence_pages=evidence_pages,
+        )
+        if not object_id or selected is None:
+            continue
+        selected_by_object[object_id] = selected
+        crop_groups.append({**selected, "evidence_class": "object_evidence"})
+
+    crops, crop_audit = build_detection_v5_membership_view_crops(
+        page_images=page_images,
+        visual_groups=crop_groups,
+        coordinate_frames=frames,
+        max_side=1024,
+    )
+    crops_by_group_id = {
+        str(crop.get("group_id") or ""): crop
+        for crop in crops
+        if isinstance(crop, dict) and isinstance(crop.get("bytes"), bytes)
+    }
+    result: dict[str, dict] = {}
+    for object_id, group in selected_by_object.items():
+        crop = crops_by_group_id.get(str(group.get("group_id") or ""))
+        if crop is None:
+            continue
+        result[object_id] = {
+            "page_number": int(crop["page_number"]),
+            "group_id": str(group.get("group_id") or ""),
+            "representation_kind": str(group.get("representation_kind") or ""),
+            "bytes": crop["bytes"],
+        }
+    return result, {
+        "coordinate_frame_audit": frame_audit,
+        "selected_group_ids": {
+            object_id: str(group.get("group_id") or "")
+            for object_id, group in selected_by_object.items()
+        },
+        "requested_crop_count": len(selected_by_object),
+        "created_crop_count": len(result),
+        "crop_audit": crop_audit,
+        "crop_image_bytes": sum(len(crop["bytes"]) for crop in result.values()),
     }
 
 
@@ -319,18 +460,23 @@ def _registry_to_detection_result(
         regions_by_page: dict[int, list[dict]] = {}
         for group_id in item.get("visual_group_ids") or []:
             group = visual_groups_by_id.get(str(group_id) or "")
-            bbox = group.get("bbox") if isinstance(group, dict) else None
+            bbox = _registry_group_bbox(group)
             try:
                 page_number = int(group.get("page_number")) if isinstance(group, dict) else 0
-                normalized_bbox = {
-                    key: float(bbox[key]) for key in (
-                        "top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y",
-                    )
-                }
-            except (KeyError, TypeError, ValueError):
+            except (TypeError, ValueError):
                 continue
-            if page_number in evidence_pages:
-                regions_by_page.setdefault(page_number, []).append(normalized_bbox)
+            if page_number in evidence_pages and bbox is not None:
+                regions_by_page.setdefault(page_number, []).append(bbox)
+        presentation_group = _select_presentation_view(
+            item,
+            visual_groups_by_id=visual_groups_by_id,
+            evidence_pages=set(evidence_pages),
+        )
+        presentation_bbox = _registry_group_bbox(presentation_group)
+        try:
+            presentation_page = int(presentation_group.get("page_number")) if presentation_group else 0
+        except (TypeError, ValueError):
+            presentation_page = 0
         objects.append({
             "run_id": run_id,
             "company_id": company_id,
@@ -345,6 +491,11 @@ def _registry_to_detection_result(
                     "page_number": page,
                     "source_label": f"P{page}",
                     "regions": regions_by_page.get(page, []),
+                    **(
+                        {"presentation_preview_bbox": presentation_bbox}
+                        if page == presentation_page and presentation_bbox is not None
+                        else {}
+                    ),
                 }
                 for page in evidence_pages
             ],
@@ -626,11 +777,20 @@ def run_detection_agent(
         ocr_package=ocr_package,
         page_images=registry_images,
     )
+    naming_source_crops, naming_crop_audit = _build_v621_naming_source_crops(
+        registry=registry,
+        visual_map=_visual_map,
+        ocr_package=ocr_package,
+        page_images=registry_images,
+    )
     if isinstance(visual_registry_usage, dict):
         raw_usage = dict(visual_registry_usage.get("raw_usage") or {})
         raw_usage["v6_19_naming_annotated_pages"] = naming_overlay_audit
+        raw_usage["v6_21_naming_source_crops"] = naming_crop_audit
         visual_registry_usage["raw_usage"] = raw_usage
     if naming_annotated_pages:
         validated["_naming_annotated_pages"] = naming_annotated_pages
+    if naming_source_crops:
+        validated["_naming_source_crops"] = naming_source_crops
     validated["_agent_usage_events"] = [visual_registry_usage] if visual_registry_usage else []
     return validated

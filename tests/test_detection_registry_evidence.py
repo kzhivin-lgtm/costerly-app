@@ -6,6 +6,7 @@ from PIL import Image
 
 from agents.detection_agent import (
     DEFAULT_CLAUDE_DETECTION_V4_MODEL,
+    _build_v621_naming_source_crops,
     _enforce_shared_track_door_system_quantity,
     _build_v619_naming_annotated_pages,
     _merge_registry_evidence,
@@ -199,6 +200,51 @@ def test_v616_registry_materializes_only_registry_owned_bbox_regions():
         "top_left_x": 10.0, "top_left_y": 20.0,
         "bottom_right_x": 300.0, "bottom_right_y": 400.0,
     }]
+    assert result["detected_objects"][0]["evidence_page_refs"][0]["presentation_preview_bbox"] == {
+        "top_left_x": 10.0, "top_left_y": 20.0,
+        "bottom_right_x": 300.0, "bottom_right_y": 400.0,
+    }
+
+
+def test_registry_selects_elevation_for_preview_and_naming_source_crop():
+    def page() -> bytes:
+        output = BytesIO()
+        Image.new("RGB", (1000, 700), "white").save(output, format="JPEG")
+        return output.getvalue()
+
+    registry = {"objects": [{
+        "object_id": "object-001", "transport_label": "Object 1",
+        "quantity": 1, "quantity_explicit": False,
+        "estimation_evidence_pages": [1],
+        "visual_group_ids": ["section", "elevation"],
+    }]}
+    visual_map = {"_registry_owned_evidence": [
+        {"group_id": "section", "page_number": 1, "representation_kind": "section", "bbox": {
+            "top_left_x": 10, "top_left_y": 10, "bottom_right_x": 900, "bottom_right_y": 600,
+        }},
+        {"group_id": "elevation", "page_number": 1, "representation_kind": "elevation", "bbox": {
+            "top_left_x": 100, "top_left_y": 100, "bottom_right_x": 400, "bottom_right_y": 500,
+        }},
+    ]}
+    ocr = {"pages": [{"page_number": 1, "dimensions": {"width": 1000, "height": 700}}]}
+
+    result = _registry_to_detection_result(
+        registry, company_id="001", file_name="cabinet.pdf", page_count=1,
+        visual_map=visual_map,
+    )
+    preview = result["detected_objects"][0]["evidence_page_refs"][0]["presentation_preview_bbox"]
+    assert preview == {
+        "top_left_x": 100.0, "top_left_y": 100.0,
+        "bottom_right_x": 400.0, "bottom_right_y": 500.0,
+    }
+
+    crops, audit = _build_v621_naming_source_crops(
+        registry=registry, visual_map=visual_map, ocr_package=ocr, page_images=[page()],
+    )
+    assert crops["object-001"]["group_id"] == "elevation"
+    assert crops["object-001"]["representation_kind"] == "elevation"
+    assert isinstance(crops["object-001"]["bytes"], bytes)
+    assert audit["selected_group_ids"] == {"object-001": "elevation"}
 
 
 def test_v619_naming_uses_one_annotated_page_per_registry_island_page():
