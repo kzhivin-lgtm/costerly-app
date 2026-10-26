@@ -116,12 +116,6 @@ def _visual_registry_payload(payload):
             "root_group_ids": [],
             "witnesses": [],
         })),
-        "document_metadata": copy.deepcopy(payload.get("document_metadata", {
-            field: {"value": "unknown", "source_fact_ids": []}
-            for field in (
-                "project_name", "design_partner", "client", "author", "document_date",
-            )
-        })),
     }
 
 
@@ -812,9 +806,7 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
     assert registry["objects"][0]["estimation_evidence_pages"] == [1]
     assert usage["operation"] == "rfq_detection_visual_registry"
     assert usage["raw_usage"]["temperature"] == 0.0
-    expected_audit = _visual_registry_payload(payload)
-    expected_audit.pop("document_metadata")
-    assert usage["raw_usage"]["registry_decision_audit"] == expected_audit
+    assert usage["raw_usage"]["registry_decision_audit"] == _visual_registry_payload(payload)
     assert usage["raw_usage"]["classification_decisions"] == [{
         "group_id": "view_a",
         "page_number": 1,
@@ -1925,9 +1917,7 @@ def test_integrated_visual_registry_allows_one_physical_page_for_multiple_compon
     assert [item["object_id"] for item in registry["objects"]] == [
         "object-001", "object-002",
     ]
-    expected_audit = _visual_registry_payload(payload)
-    expected_audit.pop("document_metadata")
-    assert usage["raw_usage"]["registry_decision_audit"] == expected_audit
+    assert usage["raw_usage"]["registry_decision_audit"] == _visual_registry_payload(payload)
 
 
 def test_visual_map_retries_truncated_structured_json_with_larger_budget():

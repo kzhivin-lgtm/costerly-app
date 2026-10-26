@@ -1080,7 +1080,6 @@ V6.15. Return to the V6.14 protected contract before a replacement experiment;
 the replacement must obtain metadata outside the Discovery response, use real
 Registry-owned crops, and pass HSL's 32-Island/ten-component gate before
 Page23 or Adda regression.
-
 SUPERSEDED INPUT CONTRACT, V6.5, no static pre-Discovery crops: remove the three
 fixed `upper_left`, `upper_right`, and `lower` images from the Adda
 `sonnet_boundary_risk` route as well as the ordinary Haiku route. Retain the

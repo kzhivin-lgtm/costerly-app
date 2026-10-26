@@ -173,49 +173,6 @@ def test_registry_only_result_materializes_every_registry_package_without_handof
     assert validate_detection_result(result) == result
 
 
-def test_v615_materializes_cited_document_metadata_and_object_bound_regions():
-    registry = {"objects": [{
-        "object_id": "object-001", "transport_label": "Object 1",
-        "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-        "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
-        "visual_identity": "one cabinet", "boundary_basis": "one envelope",
-    }]}
-    document_metadata = {
-        "project_name": {"value": "Hasolelim", "source_fact_ids": ["SF00001"]},
-        "design_partner": {"value": "Studio A", "source_fact_ids": ["SF00002"]},
-        "client": {"value": "Client B", "source_fact_ids": ["SF00003"]},
-        "author": {"value": "Designer C", "source_fact_ids": ["SF00004"]},
-        "document_date": {"value": "10.09.25", "source_fact_ids": ["SF00005"]},
-    }
-    visual_map = {"visual_groups": [{
-        "group_id": "view-001", "page_number": 1,
-        "bbox": {
-            "top_left_x": 10, "top_left_y": 20,
-            "bottom_right_x": 300, "bottom_right_y": 400,
-        },
-    }]}
-
-    result = _registry_to_detection_result(
-        registry, company_id="001", file_name="kitchen.pdf", page_count=1,
-        visual_map=visual_map, document_metadata=document_metadata,
-    )
-
-    assert {
-        key: result["rfq_run"][key]
-        for key in ("project_name", "design_partner", "client", "author", "document_date")
-    } == {
-        "project_name": "Hasolelim",
-        "design_partner": "Studio A",
-        "client": "Client B",
-        "author": "Designer C",
-        "document_date": "10.09.25",
-    }
-    assert result["detected_objects"][0]["evidence_page_refs"][0]["regions"] == [{
-        "top_left_x": 10.0, "top_left_y": 20.0,
-        "bottom_right_x": 300.0, "bottom_right_y": 400.0,
-    }]
-
-
 def test_v49_routes_default_registry_to_haiku_without_evidence_handoff():
     registry = {"objects": [{
         "object_id": "object-001", "transport_label": "Object 1",
