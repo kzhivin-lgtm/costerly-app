@@ -1121,6 +1121,20 @@ Naming receives nonzero Registry-owned crop evidence and returns category plus
 source index where supported; HSL title block yields Project `ROOMS`, author
 `Ayelet Levit`, document date `09.09.2025`, and no false Partner from
 `Hasolelim_Carpentry`; Page23 and Adda then retain protected boundaries.
+
+ACTIVE, approved V6.18 OCR-grounded document metadata and drawing indexes:
+replace the unbounded deferred image-model identity call, which scheduled but
+never emitted a terminal event in HSL `run_ff729e5345604d70a9f757fc4695bb76`,
+with deterministic extraction from the already persisted Mistral OCR evidence.
+The OCR fact `PROJECT -> ROOMS` is sufficient only for `project_name`; it does
+not establish Client or Partner. Before locked Naming input is made, use only a
+literal `DRAWING NAME -> code` title-block fact on an object's already locked
+evidence page to replace an `Object NN` placeholder. Thus `N57`, `N60`, `N68`,
+`N70`, `N76`, `N76B`, or other literal author codes can prefix the subsequent
+semantic name, while an absent or conflicting code remains `Object NN`. Remove
+Project name, Partner and Client from Technical metadata because they already
+have editable fields above it. This must not change Detection's object count,
+package membership, quantities, Island inventory, route, or Estimation package.
 SUPERSEDED INPUT CONTRACT, V6.5, no static pre-Discovery crops: remove the three
 fixed `upper_left`, `upper_right`, and `lower` images from the Adda
 `sonnet_boundary_risk` route as well as the ordinary Haiku route. Retain the

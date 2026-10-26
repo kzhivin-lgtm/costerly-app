@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import base64
+import html
 import re
 import time
 from pathlib import Path
@@ -241,6 +242,62 @@ def ensure_provisional_object_names(detected_objects: list[dict[str, Any]]) -> N
         current = " ".join(str(item.get("object_name") or "").split())
         if not current or provisional.fullmatch(current):
             item["object_name"] = f"Object {position:02d}"
+
+
+def _plain_ocr_text(value: Any) -> str:
+    text = html.unescape(str(value or ""))
+    text = re.sub(r"(?i)<br\s*/?>", "\n", text)
+    text = re.sub(r"(?i)</(?:tr|p|div)\s*>", "\n", text)
+    text = re.sub(r"(?i)</(?:td|th)\s*>", " | ", text)
+    return re.sub(r"<[^>]+>", " ", text)
+
+
+def source_drawing_indices_by_page(ocr_result: dict[str, Any]) -> dict[int, str]:
+    """Read literal drawing codes after a title-block Drawing Name label.
+
+    The code is source evidence, not a semantic inference. Ambiguous pages are
+    intentionally omitted rather than assigning a nearby dimension or table ID.
+    """
+    result: dict[int, str] = {}
+    for item in _ocr_items(ocr_result):
+        try:
+            page_number = int(item.get("page_number"))
+        except (TypeError, ValueError):
+            continue
+        text = _plain_ocr_text(item.get("text"))
+        match = re.search(r"(?:drawing\s+name|name\s+of\s+(?:the\s+)?drawing)", text, re.I)
+        if not match:
+            continue
+        candidates = [
+            candidate.group(0).strip()
+            for candidate in _SOURCE_IDENTIFIER_RE.finditer(text[match.end():match.end() + 500])
+        ]
+        if candidates and page_number not in result:
+            result[page_number] = candidates[0]
+    return result
+
+
+def assign_ocr_drawing_indices(
+    detected_objects: list[dict[str, Any]],
+    ocr_result: dict[str, Any],
+) -> None:
+    """Replace only deterministic Object NN placeholders with page title codes."""
+    by_page = source_drawing_indices_by_page(ocr_result)
+    for item in detected_objects:
+        if not re.fullmatch(r"Object\s+\d+", str(item.get("object_name") or ""), re.I):
+            continue
+        candidates: set[str] = set()
+        for ref in item.get("evidence_page_refs") or []:
+            if not isinstance(ref, dict):
+                continue
+            try:
+                page_number = int(ref.get("page_number"))
+            except (TypeError, ValueError):
+                continue
+            if page_number in by_page:
+                candidates.add(by_page[page_number])
+        if len(candidates) == 1:
+            item["object_name"] = candidates.pop()
 
 
 def _word_count(value: Any) -> int:

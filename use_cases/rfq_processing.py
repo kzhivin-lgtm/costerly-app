@@ -23,7 +23,7 @@ from agents.anthropic_adapter import (
 from agents.detection_agent import run_detection_agent
 from agents.document_identity import (
     DOCUMENT_IDENTITY_VERSION,
-    run_document_identity_call,
+    derive_document_identity_from_ocr,
 )
 from agents.detection_page_images import (
     DEFAULT_PAGE_IMAGE_DPI,
@@ -34,6 +34,7 @@ from agents.detection_page_images import (
 from agents.naming_lab import (
     NAMING_LAB_VERSION,
     apply_name_mapping,
+    assign_ocr_drawing_indices,
     build_locked_naming_input,
     ensure_provisional_object_names,
     ensure_unique_object_ids,
@@ -474,14 +475,14 @@ def _run_deferred_document_identity(
     company_id: str,
     run_id: str,
     file_name: str,
-    page_images: list[bytes] | None,
+    ocr_package: dict[str, Any],
 ) -> dict[str, Any]:
     """Fill explicit document fields after File Review is already available."""
     started_at = datetime.now(UTC).isoformat()
     started = time.perf_counter()
     persistence_audit: list[dict[str, Any]] = []
     try:
-        result = run_document_identity_call(page_images=page_images or [])
+        result = derive_document_identity_from_ocr(ocr_package)
         identity = result["identity"]
         for field, evidence in identity.items():
             value = str(evidence.get("value") or "unknown")
@@ -671,6 +672,7 @@ def process_uploaded_rfq(
     if detection_naming_split_enabled() and detection_result["detected_objects"]:
         ensure_unique_object_ids(detection_result["detected_objects"])
         ensure_provisional_object_names(detection_result["detected_objects"])
+        assign_ocr_drawing_indices(detection_result["detected_objects"], ocr_package)
         locked_objects = build_locked_naming_input(
             detection_result["detected_objects"],
             ocr_package,
@@ -694,14 +696,14 @@ def process_uploaded_rfq(
             objects=deepcopy(detection_result["detected_objects"]),
             ocr_package=deepcopy(ocr_package), page_images=page_images,
         )
-    if page_images:
+    if ocr_package:
         document_identity_future = _NAMING_EXECUTOR.submit(
             _run_deferred_document_identity,
             client=client,
             company_id=company_id,
             run_id=run_id,
             file_name=file_name,
-            page_images=deepcopy(page_images),
+            ocr_package=deepcopy(ocr_package),
         )
     if locked_objects is not None:
         naming_future = _NAMING_EXECUTOR.submit(
@@ -713,7 +715,7 @@ def process_uploaded_rfq(
             run_id=run_id,
             file_name=file_name,
             file_bytes=file_bytes,
-            page_images=deepcopy(page_images) if page_images else None,
+            ocr_package=deepcopy(ocr_package),
             object_crops_by_id=deepcopy(naming_object_crops)
             if isinstance(naming_object_crops, dict) else None,
             provisional_project_name=str(detection_result["rfq_run"].get("project_name") or ""),

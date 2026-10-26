@@ -62,9 +62,6 @@ def _list_html(items: list[str], *, class_name: str) -> str:
 def _metadata_rows_html(run: dict[str, object]) -> str:
     """Render the compact technical metadata rows."""
     rows = [
-        ("Project name", run.get("project_name")),
-        ("Partner", run.get("partner")),
-        ("Client", run.get("client")),
         ("File name", run.get("file_name")),
         ("Pages detected", run.get("pages_detected")),
         ("Author", run.get("author")),

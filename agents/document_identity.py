@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import base64
+import html
 import json
+import re
 import time
 from io import BytesIO
 from pathlib import Path
@@ -54,6 +56,87 @@ def unknown_document_identity() -> dict[str, dict[str, Any]]:
             "source_corner": "", "source_label": "",
         }
         for field in _FIELDS
+    }
+
+
+def _ocr_rows(ocr_package: dict[str, Any]) -> list[tuple[int, list[list[str]]]]:
+    evidence = ocr_package.get("evidence") if isinstance(ocr_package, dict) else None
+    if not isinstance(evidence, dict):
+        return []
+    rows: list[tuple[int, list[list[str]]]] = []
+    for kind in ("text_blocks", "literal_items"):
+        for item in evidence.get(kind) or []:
+            if not isinstance(item, dict):
+                continue
+            try:
+                page_number = int(item.get("page_number"))
+            except (TypeError, ValueError):
+                continue
+            raw = html.unescape(str(item.get("text") or ""))
+            raw = re.sub(r"(?i)<br\s*/?>", "\n", raw)
+            raw = re.sub(r"(?i)</tr\s*>", "\n", raw)
+            raw = re.sub(r"(?i)</(?:td|th)\s*>", "|", raw)
+            plain = re.sub(r"<[^>]+>", " ", raw)
+            table_rows = [
+                [" ".join(cell.split()) for cell in line.split("|") if " ".join(cell.split())]
+                for line in plain.splitlines()
+            ]
+            table_rows = [row for row in table_rows if row]
+            if table_rows:
+                rows.append((page_number, table_rows))
+    return rows
+
+
+def _is_administrative_label(value: str) -> bool:
+    normalized = value.casefold()
+    return any(marker in normalized for marker in (
+        "project", "item no", "project no", "drawing name", "file name",
+        "date", "scale", "sheet no", "revision", "chief arch", "architect",
+    ))
+
+
+def _first_project_value(rows: list[list[str]]) -> str:
+    for row_index, row in enumerate(rows):
+        for cell_index, cell in enumerate(row):
+            if not re.fullmatch(r"project(?:\s+name)?", cell, re.I):
+                continue
+            for candidate in row[cell_index + 1:]:
+                if not _is_administrative_label(candidate) and re.search(r"[A-Za-zА-Яа-яЁё]", candidate):
+                    return candidate
+            for following in rows[row_index + 1:row_index + 3]:
+                for candidate in following:
+                    if not _is_administrative_label(candidate) and re.search(r"[A-Za-zА-Яа-яЁё]", candidate):
+                        return candidate
+    return ""
+
+
+def derive_document_identity_from_ocr(ocr_package: dict[str, Any]) -> dict[str, Any]:
+    """Extract only explicitly labelled identity facts from already available OCR."""
+    identity = unknown_document_identity()
+    project_candidates: list[tuple[int, str]] = []
+    for page_number, rows in _ocr_rows(ocr_package):
+        project = _first_project_value(rows)
+        if project:
+            project_candidates.append((page_number, project))
+    if project_candidates:
+        counts: dict[str, int] = {}
+        for _, value in project_candidates:
+            counts[value] = counts.get(value, 0) + 1
+        value = max(counts, key=counts.get)
+        source_page = next(page for page, candidate in project_candidates if candidate == value)
+        identity["project_name"] = {
+            "value": value,
+            "source_page": source_page,
+            "source_corner": "ocr_title_block",
+            "source_label": "PROJECT",
+        }
+    return {
+        "model": "deterministic_ocr_title_block_v1",
+        "duration_seconds": 0.0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "identity": identity,
+        "crop_audit": [],
     }
 
 

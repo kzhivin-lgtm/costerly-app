@@ -3,6 +3,7 @@ import pytest
 from agents.naming_lab import (
     NAMING_LAB_VERSION,
     apply_name_mapping,
+    assign_ocr_drawing_indices,
     build_naming_decision_audit,
     build_locked_naming_input,
     compose_name_preview,
@@ -81,6 +82,21 @@ def test_gives_unlabelled_rows_stable_numbered_provisional_names():
     assert [item["object_name"] for item in objects] == [
         "Object 01", "Object 02", "N76B", "Object 04",
     ]
+
+
+def test_recovers_title_block_drawing_index_for_a_locked_object_page():
+    objects = [{
+        "object_name": "Object 01",
+        "evidence_page_refs": [{"page_number": 4}],
+    }]
+    ocr = {"evidence": {"text_blocks": [{
+        "page_number": 4,
+        "text": "<table><tr><td>DRAWING NAME</td><td>ITEM NO</td></tr><tr><td>N57</td></tr></table>",
+    }]}}
+
+    assign_ocr_drawing_indices(objects, ocr)
+
+    assert objects[0]["object_name"] == "N57"
 
 
 def test_does_not_turn_transport_placeholders_into_suffix_codes():

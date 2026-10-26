@@ -5,6 +5,7 @@ import pytest
 
 from agents.document_identity import (
     build_document_identity_title_block_crops,
+    derive_document_identity_from_ocr,
     unknown_document_identity,
     validate_document_identity,
 )
@@ -51,3 +52,21 @@ def test_document_identity_requires_an_explicit_visible_label_for_known_value():
             allowed_pages={1, 2},
             allowed_corners={"bottom_left"},
         )
+
+
+def test_document_identity_reads_project_only_from_explicit_ocr_title_block_label():
+    result = derive_document_identity_from_ocr({
+        "evidence": {"text_blocks": [{
+            "page_number": 11,
+            "text": (
+                "<table><tr><td>PROJECT</td><td>שם העבודה</td></tr>"
+                "<tr><td>ROOMS<br/>המוללים תל אביב</td></tr>"
+                "<tr><td>FILE NAME</td><td>Hasolelim_Carpentry</td></tr></table>"
+            ),
+        }]}
+    })
+
+    assert result["model"] == "deterministic_ocr_title_block_v1"
+    assert result["identity"]["project_name"]["value"] == "ROOMS"
+    assert result["identity"]["client"]["value"] == "unknown"
+    assert result["identity"]["design_partner"]["value"] == "unknown"
