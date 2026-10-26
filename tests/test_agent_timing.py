@@ -18,6 +18,8 @@ from agents.anthropic_adapter import (
     validate_detection_v5_discovery_page_coverage,
     DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
     DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+    DETECTION_V631_ORDINARY_SONNET_REVIEW_MODEL,
+    DETECTION_V631_ORDINARY_SONNET_REVIEW_PROMPT_VERSION,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
     apply_benchmark_run_suffix,
     build_agent_usage_event,
@@ -958,6 +960,53 @@ def test_integrated_visual_registry_omits_scope_from_ordinary_contract():
     assert "document_scope" not in json.dumps(proposal_call["system"])
     assert usage["raw_usage"]["v6_11_document_scope"] is None
     assert usage["raw_usage"]["v6_14_document_scope_requested"] is False
+
+
+def test_ordinary_membership_review_uses_sonnet_without_changing_discovery():
+    payload = _visual_registry_payload({
+        "visual_groups": [{
+            "group_id": "view_a", "page_number": 1, "location_hint": "left",
+            "visual_description": "one cabinet", "representation_kind": "perspective",
+        }],
+    })
+    payload.pop("document_scope")
+    provider_calls = []
+
+    def fake_create(*_args, **kwargs):
+        provider_calls.append(kwargs)
+        return _Response(), {
+            "request_started_at": "2026-10-16T00:00:00+00:00",
+            "request_finished_at": "2026-10-16T00:00:01+00:00",
+        }
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
+        patch(
+            "agents.anthropic_adapter.extract_text_from_claude_response",
+            side_effect=[json.dumps(payload), json.dumps({"object_hypotheses": []})],
+        ),
+    ):
+        _, _, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None,
+            model=DEFAULT_CLAUDE_DETECTION_MODEL,
+            document_category="ordinary_object_set",
+        )
+
+    assert [call["model"] for call in provider_calls] == [
+        DEFAULT_CLAUDE_DETECTION_MODEL,
+        DETECTION_V631_ORDINARY_SONNET_REVIEW_MODEL,
+    ]
+    assert usage["prompt_version"] == DETECTION_V631_ORDINARY_SONNET_REVIEW_PROMPT_VERSION
+    assert usage["model"] == DETECTION_V631_ORDINARY_SONNET_REVIEW_MODEL
+    assert usage["raw_usage"]["v6_31_ordinary_sonnet_review_active"] is True
+    assert usage["raw_usage"]["v6_31_proposal_model"] == DEFAULT_CLAUDE_DETECTION_MODEL
+    assert usage["raw_usage"]["v6_31_membership_review_model"] == DETECTION_V631_ORDINARY_SONNET_REVIEW_MODEL
+    assert usage["raw_usage"]["v5_9_review"]["model"] == DETECTION_V631_ORDINARY_SONNET_REVIEW_MODEL
+    assert usage["input_cost_usd"] == "0.000400"
+    assert usage["output_cost_usd"] == "0.000400"
+    assert usage["total_cost_usd"] == "0.000800"
 
 
 def test_integrated_visual_registry_rejects_invalid_optional_scope_only():
