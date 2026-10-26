@@ -25,7 +25,7 @@ accepted but not a semantic-quality benchmark. Do not reopen Naming, router,
 object identity, quantity, order, bbox, evidence-page membership or View
 ownership without separate explicit approval.
 
-ACTIVE, P0, V6.26 confirmed assembly-set compiler: retain the V6.12
+CHECKPOINT, preliminary, V6.26 assembly-set compiler: retain the V6.12
 pre-Sonnet category and V6.11 validated scope observation, but make a
 confirmed `assembly_set_candidate` publish one locked commercial Object only
 after Registry validation. The compiled Object has quantity one, uses cited
@@ -34,10 +34,7 @@ includes every uploaded physical page in its Estimation evidence so authored
 notes, material schedules and detail sheets remain available. Shared order,
 title-block, date, material, page count or numbering alone still cannot
 trigger this compiler. If scope is ordinary, missing, or its roots are not
-Registry-owned, preserve the original Registry packages unchanged. First gate:
-V_Cabineter returns exactly one `Built-in joinery set` with all six pages and
-all retained Islands; then Adda retains its Sonnet route and independent
-objects, while HSL and Page23 retain their V6.25 protected results.
+Registry-owned, preserve the original Registry packages unchanged.
 The first V_Cabineter production run correctly selected `assembly_set` and
 confirmed scope, but safely retained 14 Registry packages because Discovery's
 provider Island IDs had not yet been normalized to Registry `view-NNN` IDs.
@@ -49,6 +46,21 @@ V6.26.2 treats a rejected one-object Naming project fallback as a successful
 Naming completion when Document Identity has concurrently published a stronger
 project value. The fallback remains non-authoritative and its refusal is kept
 in the Naming audit rather than surfaced as a false failure.
+Owner accepted the preliminary checkpoint at
+`notes/DETECTION_V6_26_ASSEMBLY_SET_CHECKPOINT_2026_10_26.md`: production run
+`run_41fdb9846abb4c2b9e5cfc0d194b6fe6` on `V_Cabineter.pdf` selected
+`assembly_set`, compiled one quantity-one Object, retained all six pages and
+17 Views, and persisted `Order 1208`. V6.26.2 `c9cb521` is deployed to remove
+the false red Naming failure caused by the concurrent Identity update, but
+that narrow presentation repair has not yet had a production re-run. The
+separate `V_Stair.pdf` run is a negative guard only, not a second assembly-set
+benchmark: it correctly retained the ordinary route and one independent stair
+railing Object.
+
+DEFERRED, P1, assembly-set breadth validation: test a second genuinely
+multi-sheet built-in/cabinet dossier after the V6.26.2 deploy, plus protected
+Adda, HSL, and Page23 regressions. Do not expand the compiler rule from one
+accepted V_Cabineter dossier or use object count alone as quality evidence.
 
 RESOLVED, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
 deferred Naming lifecycle and locked Detection object contract. Build optional
