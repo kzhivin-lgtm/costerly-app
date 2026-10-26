@@ -633,6 +633,10 @@ def run_detection_agent(
         raw_usage = dict(visual_registry_usage.get("raw_usage") or {})
         raw_usage["v6_15_naming_bound_evidence"] = naming_crop_audit
         visual_registry_usage["raw_usage"] = raw_usage
-    validated["_naming_object_crops"] = naming_crops
+    # Keep the protected legacy Naming input for source-degraded documents or
+    # an unavailable crop renderer. V6.15 only replaces whole pages when it
+    # has at least one Registry-bound visual crop to supply.
+    if any(naming_crops.values()):
+        validated["_naming_object_crops"] = naming_crops
     validated["_agent_usage_events"] = [visual_registry_usage] if visual_registry_usage else []
     return validated
