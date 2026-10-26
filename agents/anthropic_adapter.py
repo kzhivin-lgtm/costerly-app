@@ -10160,8 +10160,28 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 )
             )
         except ValueError as exc:
+            failure_diagnostics = dict(review_diagnostics)
+            failure_diagnostics.update({
+                "validation_error": str(exc),
+                "validation_stage": "v6_10_combined_evidence_review",
+                "attempt_label": "v6_10_combined_evidence_review_failed",
+                "response_character_count": len(review_raw_text),
+                "response_text_sha256": _sha256_text(review_raw_text),
+            })
+            failure_usage = build_agent_usage_event(
+                agent_name="detection", operation="rfq_detection_visual_registry",
+                company_id=company_id, run_id=None, file_name=file_name,
+                object_id=None, object_name=None, model=review_model,
+                prompt_version=prompt_version, response=review_response,
+                started_at=review_diagnostics["request_started_at"],
+                finished_at=review_diagnostics["request_finished_at"],
+                request_diagnostics=failure_diagnostics,
+            )
+            failure_usage["status"] = "failed"
+            failure_usage["error_message"] = str(exc)
             raise DetectionVisualRegistryValidationError(
                 f"V6.10 combined evidence review failed validation: {exc}",
+                usage_event=failure_usage,
             ) from exc
         if v69_preliminary_pairs:
             v69_reconciliation_matrix, v69_reference_components = (
@@ -10216,8 +10236,32 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                         )
                     )
                 except (json.JSONDecodeError, ValueError) as exc:
+                    reconciliation_raw_text = extract_text_from_claude_response(
+                        v69_reconciliation_response
+                    )
+                    failure_diagnostics = dict(v69_reconciliation_diagnostics)
+                    failure_diagnostics.update({
+                        "validation_error": str(exc),
+                        "validation_stage": "v6_10_reconciliation_review",
+                        "attempt_label": "v6_10_reconciliation_review_failed",
+                        "response_character_count": len(reconciliation_raw_text),
+                        "response_text_sha256": _sha256_text(reconciliation_raw_text),
+                    })
+                    failure_usage = build_agent_usage_event(
+                        agent_name="detection", operation="rfq_detection_visual_registry",
+                        company_id=company_id, run_id=None, file_name=file_name,
+                        object_id=None, object_name=None, model=review_model,
+                        prompt_version=prompt_version,
+                        response=v69_reconciliation_response,
+                        started_at=v69_reconciliation_diagnostics["request_started_at"],
+                        finished_at=v69_reconciliation_diagnostics["request_finished_at"],
+                        request_diagnostics=failure_diagnostics,
+                    )
+                    failure_usage["status"] = "failed"
+                    failure_usage["error_message"] = str(exc)
                     raise DetectionVisualRegistryValidationError(
                         f"V6.10 reconciliation review failed validation: {exc}",
+                        usage_event=failure_usage,
                     ) from exc
     payload = {
         "visual_groups": proposal_discovery_payload["visual_groups"],
