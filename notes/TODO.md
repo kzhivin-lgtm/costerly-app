@@ -110,6 +110,19 @@ Estimation, material-policy, and UI-contract failures; none touches the V6.28
 files or protected Detection/Identity/Naming paths. Those failures are not part
 of this candidate and were not modified.
 
+ACTIVE EXPERIMENT, P0, V6.29 Ada sparse-native-graphics route guard: the V6.27
+scope-scout production gate accepted Stair correctly but falsely classified
+Adda as one Assembly Set, collapsing its accepted two-object boundary. Preserve
+the existing Ada Sonnet route before the scout when a document has at least 24
+native graphic anchors and more than four times as many anchors as recoverable
+source facts. This is a boundary-protective source-capability condition, not an
+object-count claim or a filename rule. It skips the $0.010497 scout call on the
+observed Adda signature, retains Sonnet, and leaves Stair and direct V6.26
+Cabinet Assembly Set selection unchanged. Production acceptance: Adda must
+remain on Sonnet and retain its two-object boundary; Stair must still compile
+one all-page Assembly Set. The threshold is an experiment, not calibrated
+universal policy.
+
 RESOLVED, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
 deferred Naming lifecycle and locked Detection object contract. Build optional
 `page_title_fields` during OCR/Fusion from explicit title-field label-to-value

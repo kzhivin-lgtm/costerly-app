@@ -45,6 +45,33 @@ _PRESENTATION_REPRESENTATION_PRIORITY = {
 }
 
 
+def _v629_preserves_ada_for_sparse_native_graphics(route: dict) -> bool:
+    """Keep boundary-sensitive graphic PDFs on Sonnet before scope reasoning.
+
+    A page package with many native graphic anchors but little recoverable
+    coordinate evidence can show several complete assemblies as a single
+    orthographic drawing set.  A short document-scope answer is not enough to
+    safely collapse that ambiguity to one Assembly Set.  This guard does not
+    identify an object or assert that multiple objects exist.  It only retains
+    the pre-existing Ada boundary contract.
+    """
+    signals = route.get("signals") if isinstance(route.get("signals"), dict) else {}
+    source_capability = (
+        signals.get("source_capability")
+        if isinstance(signals.get("source_capability"), dict)
+        else {}
+    )
+    try:
+        native_graphic_anchor_count = int(signals.get("native_graphic_anchor_count") or 0)
+        source_fact_count = int(source_capability.get("source_fact_count") or 0)
+    except (TypeError, ValueError):
+        return False
+    return (
+        native_graphic_anchor_count >= 24
+        and native_graphic_anchor_count > source_fact_count * 4
+    )
+
+
 def _enforce_shared_track_door_system_quantity(registry: dict) -> dict:
     """Resolve an internal registry contradiction for a shared-track door set.
 
@@ -756,7 +783,30 @@ def run_detection_agent(
         explicit_model=model,
     )
     scope_scout_usage: dict | None = None
-    if route.get("category") == "ada_sparse_multi_object":
+    sparse_native_graphics_guard = (
+        route.get("category") == "ada_sparse_multi_object"
+        and _v629_preserves_ada_for_sparse_native_graphics(route)
+    )
+    if sparse_native_graphics_guard:
+        # V6.29 does not allow a sparse structural inventory behind a
+        # graphic-dense PDF to be collapsed into one Assembly Set by one short
+        # semantic observation. Preserve Sonnet without paying for an
+        # observation that cannot change the route safely.
+        route = {
+            **route,
+            "decision": "ada_boundary_risk_sparse_native_graphics",
+            "reasons": [
+                *route.get("reasons", []),
+                "v6_29_sparse_native_graphics_preserve_ada",
+            ],
+            "signals": {
+                **dict(route.get("signals") or {}),
+                "v6_29_scope_scout": {
+                    "classification": "not_run_sparse_native_graphics",
+                },
+            },
+        }
+    if route.get("category") == "ada_sparse_multi_object" and not sparse_native_graphics_guard:
         # V6.27 narrows the expensive Ada boundary route only after a separate,
         # conservative document-scope observation. The scout cannot create
         # Islands or commercial objects. A failed or uncertain scout preserves
