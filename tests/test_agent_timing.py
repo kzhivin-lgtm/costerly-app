@@ -222,6 +222,56 @@ def test_v627_invalid_optional_scope_disables_compilation_without_losing_registr
     assert error == "V6.11 document scope witness references an unknown group"
 
 
+def test_v628_scope_witness_keeps_five_existing_groups_without_selection():
+    groups = [
+        {"group_id": f"view-{index:03d}", "page_number": index}
+        for index in range(1, 6)
+    ]
+
+    decision, error = validate_optional_detection_v611_document_scope({
+        "classification": "assembly_set_candidate",
+        "root_group_ids": ["view-001"],
+        "witnesses": [
+            {
+                "kind": "document_set_continuity",
+                "group_ids": [group["group_id"] for group in groups],
+                "observation": "Five authored sheets document one bounded assembly.",
+            },
+            {
+                "kind": "overview_detail_hierarchy",
+                "group_ids": ["view-001", "view-003"],
+                "observation": "The cited overview and elevation show the same assembly.",
+            },
+        ],
+    }, visual_groups=groups)
+
+    assert error is None
+    assert decision is not None
+    assert decision["witnesses"][0]["group_ids"] == [
+        "view-001", "view-002", "view-003", "view-004", "view-005",
+    ]
+
+
+def test_v628_scope_witness_reports_group_limit_separately_from_unknown_id():
+    groups = [
+        {"group_id": f"view-{index:03d}", "page_number": index}
+        for index in range(1, 10)
+    ]
+
+    decision, error = validate_optional_detection_v611_document_scope({
+        "classification": "assembly_set_candidate",
+        "root_group_ids": ["view-001"],
+        "witnesses": [{
+            "kind": "document_set_continuity",
+            "group_ids": [group["group_id"] for group in groups],
+            "observation": "Nine authored sheets document one bounded assembly.",
+        }],
+    }, visual_groups=groups)
+
+    assert decision is None
+    assert error == "V6.11 document scope witness exceeds the group limit"
+
+
 def test_v5_8_registry_visual_sources_are_bounded_to_fixed_object_views():
     sources = build_detection_v5_registry_visual_sources([
         {
@@ -2192,7 +2242,6 @@ def test_deferred_naming_updates_locked_names_and_returns_without_detection_chan
     monkeypatch,
 ):
     updates = []
-    project_updates = []
     events = []
     detected_objects = [
         {"object_id": "object-001", "object_name": "Object 1", "quantity": 1}
@@ -2227,10 +2276,6 @@ def test_deferred_naming_updates_locked_names_and_returns_without_detection_chan
         lambda _client, **kwargs: updates.append(kwargs) or True,
     )
     monkeypatch.setattr(
-        "use_cases.rfq_processing.update_rfq_run_project_name_if_unchanged",
-        lambda _client, **kwargs: project_updates.append(kwargs) or True,
-    )
-    monkeypatch.setattr(
         "use_cases.rfq_processing.insert_agent_usage_event",
         lambda _client, event: events.append(event),
     )
@@ -2259,17 +2304,16 @@ def test_deferred_naming_updates_locked_names_and_returns_without_detection_chan
     }
     assert updates[0]["expected_name"] == "Object 1"
     assert updates[0]["object_name"] == "Display cabinet"
-    assert project_updates == [{
-        "run_id": "run-001",
-        "expected_project_name": "25 items",
-        "project_name": "Display cabinet",
-    }]
+    assert events[0]["raw_usage"]["persistence_audit"]["project_name_fallback"] == {
+        "accepted": False,
+        "reason": "owned_by_document_identity",
+    }
     assert events[0]["operation"] == "locked_object_naming_deferred"
     assert events[0]["raw_usage"]["names"] == {"object-001": "Display cabinet"}
     assert events[0]["raw_usage"]["persistence_audit"]["readback_mismatches"] == []
 
 
-def test_deferred_naming_preserves_newer_document_identity_without_false_failure(monkeypatch):
+def test_deferred_naming_never_writes_project_identity(monkeypatch):
     events = []
     detected_objects = [{"object_id": "object-001", "object_name": "Object 01"}]
     locked_objects = [{"object_id": "object-001", "current_name": "Object 01"}]
@@ -2293,10 +2337,6 @@ def test_deferred_naming_preserves_newer_document_identity_without_false_failure
         lambda _client, _run_id: [{"object_id": "object-001", "object_name": "Built-in cabinetry"}],
     )
     monkeypatch.setattr(
-        "use_cases.rfq_processing.update_rfq_run_project_name_if_unchanged",
-        lambda _client, **_kwargs: False,
-    )
-    monkeypatch.setattr(
         "use_cases.rfq_processing.insert_agent_usage_event",
         lambda _client, event: events.append(event),
     )
@@ -2313,10 +2353,8 @@ def test_deferred_naming_preserves_newer_document_identity_without_false_failure
 
     assert result["status"] == "succeeded"
     assert events[0]["raw_usage"]["persistence_audit"]["project_name_fallback"] == {
-        "requested_name": "Built-in cabinetry",
-        "expected_project_name": "unknown",
         "accepted": False,
-        "reason": "preserved_newer_project_identity",
+        "reason": "owned_by_document_identity",
     }
 
 

@@ -66,7 +66,7 @@ def test_document_identity_reads_project_only_from_explicit_ocr_title_block_labe
         }]}
     })
 
-    assert result["model"] == "deterministic_ocr_title_block_v2"
+    assert result["model"] == "deterministic_ocr_title_block_v3"
     assert result["identity"]["project_name"]["value"] == "ROOMS"
     assert result["identity"]["client"]["value"] == "unknown"
     assert result["identity"]["design_partner"]["value"] == "unknown"
@@ -86,6 +86,62 @@ def test_document_identity_uses_repeated_explicit_order_as_project_identifier():
         "source_corner": "ocr_title_block",
         "source_label": "ORDER",
     }
+
+
+def test_document_identity_uses_repeated_explicit_title_as_project_name():
+    result = derive_document_identity_from_ocr({
+        "evidence": {"text_blocks": [
+            {
+                "page_number": page,
+                "text": (
+                    "<table><tr><td>Title<br/>Офис</td>"
+                    f"<td>Sheet<br/>{page}/5</td></tr></table>"
+                ),
+            }
+            for page in range(1, 6)
+        ]}
+    })
+
+    assert result["model"] == "deterministic_ocr_title_block_v3"
+    assert result["identity"]["project_name"] == {
+        "value": "Офис",
+        "source_page": 1,
+        "source_corner": "ocr_title_block",
+        "source_label": "TITLE",
+    }
+
+
+def test_document_identity_does_not_promote_one_sheet_title_to_project():
+    result = derive_document_identity_from_ocr({
+        "evidence": {"text_blocks": [
+            {
+                "page_number": 1,
+                "text": "<table><tr><td>Title</td><td>Stair detail</td></tr></table>",
+            },
+            {"page_number": 2, "text": "<table><tr><td>Sheet</td><td>2</td></tr></table>"},
+            {"page_number": 3, "text": "<table><tr><td>Sheet</td><td>3</td></tr></table>"},
+        ]}
+    })
+
+    assert result["identity"]["project_name"]["value"] == "unknown"
+
+
+def test_document_identity_prefers_explicit_project_over_repeated_title():
+    result = derive_document_identity_from_ocr({
+        "evidence": {"text_blocks": [
+            {
+                "page_number": page,
+                "text": (
+                    "<table><tr><td>PROJECT</td><td>North Wing</td></tr>"
+                    "<tr><td>Title</td><td>Office</td></tr></table>"
+                ),
+            }
+            for page in range(1, 4)
+        ]}
+    })
+
+    assert result["identity"]["project_name"]["value"] == "North Wing"
+    assert result["identity"]["project_name"]["source_label"] == "PROJECT"
 
 
 def test_document_identity_does_not_treat_one_order_label_as_document_project():

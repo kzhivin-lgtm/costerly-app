@@ -19,7 +19,7 @@ from agents.anthropic_adapter import (
 )
 
 
-DOCUMENT_IDENTITY_VERSION = "document_identity_v2_repeated_order"
+DOCUMENT_IDENTITY_VERSION = "document_identity_v3_repeated_title"
 DOCUMENT_IDENTITY_PROMPT_PATH = Path(__file__).parent / "prompts" / "document_identity_prompt.md"
 _FIELDS = ("project_name", "client", "design_partner", "author", "document_date")
 _CORNERS = ("top_left", "top_right", "bottom_left", "bottom_right")
@@ -94,6 +94,8 @@ def _is_administrative_label(value: str) -> bool:
     return any(marker in normalized for marker in (
         "project", "item no", "project no", "drawing name", "file name",
         "date", "scale", "sheet no", "revision", "chief arch", "architect",
+        "title", "document status", "dwg no", "approved by", "created by",
+        "technical reference",
     ))
 
 
@@ -108,6 +110,26 @@ def _first_project_value(rows: list[list[str]]) -> str:
             for following in rows[row_index + 1:row_index + 3]:
                 for candidate in following:
                     if not _is_administrative_label(candidate) and re.search(r"[A-Za-zА-Яа-яЁё]", candidate):
+                        return candidate
+    return ""
+
+
+def _first_document_title(rows: list[list[str]]) -> str:
+    """Return only a value locally attached to an explicit Title label."""
+    for row_index, row in enumerate(rows):
+        for cell_index, cell in enumerate(row):
+            if not re.fullmatch(r"(?:document\s+)?title", cell, re.I):
+                continue
+            for candidate in row[cell_index + 1:]:
+                if not _is_administrative_label(candidate) and re.search(
+                    r"[A-Za-zА-Яа-яЁё]", candidate,
+                ):
+                    return candidate
+            for following in rows[row_index + 1:row_index + 3]:
+                for candidate in following:
+                    if not _is_administrative_label(candidate) and re.search(
+                        r"[A-Za-zА-Яа-яЁё]", candidate,
+                    ):
                         return candidate
     return ""
 
@@ -144,12 +166,16 @@ def derive_document_identity_from_ocr(ocr_package: dict[str, Any]) -> dict[str, 
     """Extract only explicitly labelled identity facts from already available OCR."""
     identity = unknown_document_identity()
     project_candidates: list[tuple[int, str]] = []
+    title_candidates_by_page: dict[int, set[str]] = {}
     order_candidates_by_page: dict[int, set[str]] = {}
     ocr_rows = _ocr_rows(ocr_package)
     for page_number, rows in ocr_rows:
         project = _first_project_value(rows)
         if project:
             project_candidates.append((page_number, project))
+        title = _first_document_title(rows)
+        if title:
+            title_candidates_by_page.setdefault(page_number, set()).add(title)
         order = _first_order_identifier(rows)
         if order:
             order_candidates_by_page.setdefault(page_number, set()).add(order)
@@ -165,7 +191,37 @@ def derive_document_identity_from_ocr(ocr_package: dict[str, Any]) -> dict[str, 
             "source_corner": "ocr_title_block",
             "source_label": "PROJECT",
         }
-    elif order_candidates_by_page:
+    elif title_candidates_by_page:
+        # A sheet Title can name a local detail rather than the document. Only
+        # one identical, explicitly labelled value repeated on a strict page
+        # majority is promoted to Project identity.
+        page_count = len({page for page, _ in ocr_rows})
+        unambiguous_titles = {
+            page: next(iter(values))
+            for page, values in title_candidates_by_page.items()
+            if len(values) == 1
+        }
+        counts: dict[str, int] = {}
+        for value in unambiguous_titles.values():
+            counts[value] = counts.get(value, 0) + 1
+        ranked = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+        value, frequency = ranked[0] if ranked else ("", 0)
+        unique_winner = len(ranked) == 1 or ranked[0][1] > ranked[1][1]
+        if page_count and unique_winner and frequency > page_count / 2:
+            source_page = next(
+                page for page, candidate in unambiguous_titles.items()
+                if value == candidate
+            )
+            identity["project_name"] = {
+                "value": value,
+                "source_page": source_page,
+                "source_corner": "ocr_title_block",
+                "source_label": "TITLE",
+            }
+    if (
+        identity["project_name"]["value"] == "unknown"
+        and order_candidates_by_page
+    ):
         # A generic order reference on one sheet is not a project.  A common
         # order label on a strict majority of the document is a stable package
         # identifier and is more useful than leaving the project unknown.
@@ -187,7 +243,7 @@ def derive_document_identity_from_ocr(ocr_package: dict[str, Any]) -> dict[str, 
                 "source_label": "ORDER",
             }
     return {
-        "model": "deterministic_ocr_title_block_v2",
+        "model": "deterministic_ocr_title_block_v3",
         "duration_seconds": 0.0,
         "input_tokens": 0,
         "output_tokens": 0,

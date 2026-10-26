@@ -730,7 +730,7 @@ DETECTION_V5_DISCOVERY_JSON_SCHEMA: dict[str, Any] = {
                                 ],
                             },
                             "group_ids": {
-                                "type": "array", "maxItems": 4,
+                                "type": "array", "maxItems": 8,
                                 "items": {"type": "string"},
                             },
                             "observation": {"type": "string", "maxLength": 180},
@@ -748,7 +748,7 @@ ASSEMBLY-SET SCOPE OBSERVATION:
 Return one compact `document_scope` observation. This is scope evidence only,
 not an object decision: it cannot merge, remove or reclassify an Island. Name
 at most four root Island IDs. Return at most four witnesses, each citing at
-most four Island IDs with an observation of at most 180 characters. Use
+most eight Island IDs with an observation of at most 180 characters. Use
 `assembly_set_candidate` only when the PDF documents one commissioned assembly
 through a cited overview or root set plus connected sections, carcasses,
 modules, components or hardware. Common client/order metadata, date, material,
@@ -4272,9 +4272,11 @@ def validate_detection_v611_document_scope(
         if (
             len(witness_ids) != len(witness["group_ids"])
             or len(witness_ids) != len(set(witness_ids))
-            or len(witness_ids) > 4
-            or any(group_id not in group_ids for group_id in witness_ids)
         ):
+            raise ValueError("V6.11 document scope witness group list is invalid")
+        if len(witness_ids) > 8:
+            raise ValueError("V6.11 document scope witness exceeds the group limit")
+        if any(group_id not in group_ids for group_id in witness_ids):
             raise ValueError("V6.11 document scope witness references an unknown group")
         if len(normalized_witnesses) >= 4 or len(str(witness["observation"])) > 180:
             raise ValueError("V6.11 document scope exceeds its compact contract")

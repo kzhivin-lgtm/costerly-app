@@ -78,7 +78,7 @@ Adda is the unresolved gate. The experiment's production acceptance requires
 Stair to compile one all-page Assembly Set and Adda to stay on Sonnet with its
 accepted two-object boundary.
 
-ACTIVE REPAIR, P0, V6.27 optional-scope validation: a live RFQ failed with
+CHECKPOINT, V6.27 optional-scope validation: a live RFQ failed with
 `V6.11 document scope witness references an unknown group`. The V6.11 scope
 sidecar may authorize assembly compilation, but it does not own Discovery
 Islands or ordinary Registry packages. Reject an invalid scope sidecar,
@@ -86,7 +86,29 @@ record the exact validation error, and continue with the unchanged Registry
 result. Do not delete the unknown reference, rewrite its evidence, or compile
 an assembly without a fully valid scope. Local regression must prove the
 unknown-group case returns no validated scope and retains an auditable error;
-production re-run remains required before this repair is accepted.
+production run `run_62392d84938242cfa7d83b6060e7ce0e` proved that the invalid
+sidecar is rejected while the ordinary Registry retains one quantity-one Object
+with all five pages and seven Views. Protected at `e9e8548` and tag
+`detection-v6.27-invalid-scope-recovery-production-2026-10-26`.
+
+ACTIVE CANDIDATE, P0, V6.28 bounded witness and Identity ownership: retain up
+to eight existing group IDs in one scope witness rather than randomly dropping
+valid evidence. Keep four roots, four witnesses, and the 180-character bound.
+Split group-limit diagnostics from unknown IDs. Promote an explicit identical
+`Title` to Project only when it repeats on a strict majority of OCR pages, with
+explicit `Project` still taking precedence. Naming publishes Object names only
+and must never write Project, Partner, Client, Author, or Date. Protect V6.27
+failure recovery, Registry boundaries, quantity, View ownership, Evidence, and
+all accepted Naming behavior.
+Local verification: 129 relevant Detection, Identity, Naming, and evidence tests
+pass. A read-only replay of production run
+`run_62392d84938242cfa7d83b6060e7ce0e` returns grounded Project `Офис` from
+page 1 and validates the original witness counts `4, 3, 5, 3` with no scope
+error. Fresh production acceptance remains pending.
+The full repository suite reports 1445 passed and 20 unrelated existing
+Estimation, material-policy, and UI-contract failures; none touches the V6.28
+files or protected Detection/Identity/Naming paths. Those failures are not part
+of this candidate and were not modified.
 
 RESOLVED, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
 deferred Naming lifecycle and locked Detection object contract. Build optional
