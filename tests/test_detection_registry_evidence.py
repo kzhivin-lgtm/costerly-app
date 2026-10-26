@@ -411,6 +411,69 @@ def test_v49_routes_default_registry_to_haiku_without_evidence_handoff():
     assert len(result["_agent_usage_events"]) == 1
 
 
+def test_v627_scope_scout_routes_single_assembly_candidate_to_haiku_registry():
+    registry = {"objects": [{
+        "object_id": "object-001", "transport_label": "Object 1",
+        "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+        "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
+        "visual_identity": "one assembly", "boundary_basis": "one envelope",
+    }]}
+    registry_call: dict = {}
+
+    def capture_registry(**kwargs):
+        registry_call.update(kwargs)
+        return {"visual_groups": []}, registry, {"event": "visual_registry"}
+
+    def capture_scope_scout(**_kwargs):
+        return (
+            {
+                "classification": "single_assembly_candidate",
+                "evidence_pages": [1, 2],
+                "rationale": "overview followed by connected details",
+            },
+            {"event": "scope_scout"},
+        )
+
+    two_islands_page = {
+        "dimensions": {"width": 1000, "height": 1000},
+        "images": [
+            {"top_left_x": 0, "top_left_y": 0, "bottom_right_x": 400, "bottom_right_y": 400},
+            {"top_left_x": 500, "top_left_y": 0, "bottom_right_x": 900, "bottom_right_y": 400},
+        ],
+    }
+    with (
+        patch("agents.detection_agent.get_secret", side_effect=lambda _name, default: default),
+        patch(
+            "agents.detection_agent.assess_detection_source_capability",
+            return_value={"route_eligible": False, "route_reason": "ordinary", "page_count": 2},
+        ),
+        patch(
+            "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
+            side_effect=capture_registry,
+        ),
+        patch(
+            "agents.detection_agent.run_anthropic_detection_v627_scope_scout",
+            side_effect=capture_scope_scout,
+        ),
+    ):
+        result = run_detection_agent(
+            file_name="stair.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"one", b"two"], ocr_package={
+                "pages": [two_islands_page, two_islands_page],
+                "evidence": {"text_blocks": [
+                    {"page_number": 1, "text": "overview", "bbox": {"top_left_x": 10, "top_left_y": 10, "bottom_right_x": 80, "bottom_right_y": 30}},
+                    {"page_number": 2, "text": "detail", "bbox": {"top_left_x": 10, "top_left_y": 10, "bottom_right_x": 80, "bottom_right_y": 30}},
+                ]},
+            },
+        )
+
+    assert registry_call["model"] == "claude-haiku-4-5-20251001"
+    assert registry_call["mistral_anchor_admission"] is False
+    route = result["_agent_usage_events"][1]["raw_usage"]["detection_v6_12_document_category"]
+    assert route["category"] == "assembly_set"
+    assert route["decision"] == "assembly_set_scope_scout"
+
+
 def test_v65_routes_adda_style_registry_to_sonnet_without_static_discovery_crops():
     registry = {"objects": [{
         "object_id": "object-001", "transport_label": "Object 1",
@@ -423,6 +486,16 @@ def test_v65_routes_adda_style_registry_to_sonnet_without_static_discovery_crops
     def capture_registry(**kwargs):
         registry_call.update(kwargs)
         return {"visual_groups": []}, registry, {"event": "visual_registry"}
+
+    def capture_scope_scout(**_kwargs):
+        return (
+            {
+                "classification": "multi_object_risk",
+                "evidence_pages": [1],
+                "rationale": "two independent systems are shown",
+            },
+            {"event": "scope_scout"},
+        )
 
     two_islands_page = {
         "dimensions": {"width": 1000, "height": 1000},
@@ -439,6 +512,10 @@ def test_v65_routes_adda_style_registry_to_sonnet_without_static_discovery_crops
         patch(
             "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
             side_effect=capture_registry,
+        ),
+        patch(
+            "agents.detection_agent.run_anthropic_detection_v627_scope_scout",
+            side_effect=capture_scope_scout,
         ),
     ):
         result = run_detection_agent(
@@ -458,7 +535,7 @@ def test_v65_routes_adda_style_registry_to_sonnet_without_static_discovery_crops
     assert registry_call["regions"] == []
     assert registry_call["mistral_anchor_admission"] is True
     regions_builder.assert_not_called()
-    assert len(result["_agent_usage_events"]) == 1
+    assert len(result["_agent_usage_events"]) == 2
 
 
 def test_source_degraded_route_uses_v532_pairwise_structural_admission_audit_and_forces_the_base_model():

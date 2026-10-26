@@ -123,6 +123,7 @@ DETECTION_V69_CRITERIA_RECONCILIATION_PROMPT_VERSION = (
 DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION = (
     "detection_v6_10_combined_evidence_review"
 )
+DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
 # V5.0 keeps one Haiku call. Registry returns Islands, classifications, and
 # sparse positive semantic facts. Runtime owns every graph and package decision.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
@@ -138,6 +139,7 @@ DETECTION_V5_MEMBERSHIP_MAX_TOKENS = 6_144
 DETECTION_V68_ALL_PAIR_MEMBERSHIP_MAX_ISLANDS = 10
 DETECTION_V69_RECONCILIATION_MAX_ISLANDS = 10
 DETECTION_V5_MEMBERSHIP_CROP_MAX_SIDE = 768
+DETECTION_V627_SCOPE_SCOUT_MAX_TOKENS = 480
 DETECTION_V5_MEMBERSHIP_PAGE_CONTEXT_MAX_SIDE = 1024
 DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_MAX_TOKENS = 6_144
 DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_MAX_TOKENS = 4_096
@@ -1935,6 +1937,167 @@ def build_detection_content_blocks(
         ]
     blocks.append({"type": "text", "text": user_text})
     return blocks
+
+
+def run_anthropic_detection_v627_scope_scout(
+    *,
+    file_name: str,
+    company_id: str,
+    file_bytes: bytes,
+    page_images: list[bytes],
+    ocr_package: dict[str, Any] | None,
+    model: str | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Classify an Ada-boundary candidate before choosing its Registry contract.
+
+    The scout decides only which existing contract may proceed.  It does not
+    create Islands, infer a commercial object, or alter any source evidence.
+    Its conservative fallback preserves the established Sonnet Ada route.
+    """
+    if not page_images:
+        raise ValueError("V6.27 scope scout requires rendered PDF pages")
+    selected_model = model or get_secret(
+        "CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL,
+    )
+    prompt = """
+You are a document-scope router for custom-fabrication drawings.
+
+Inspect the complete rendered pages and the supplied OCR text. Return only the
+JSON required by the schema. This routing decision does not identify objects,
+draw boundaries, or change evidence.
+
+Choose `single_assembly_candidate` only if the document visibly presents one
+commissioned assembly through an overall/root view and connected elevations,
+sections, details, subassemblies, carcasses, modules, or hardware. A repeated
+title block, order number, client name, date, material schedule, page number,
+or a shared document title can never establish that conclusion by itself.
+
+Choose `multi_object_risk` when the pages present two or more independently
+finished products or systems, even if those systems share one project, title
+block, or drawing package. Choose `uncertain` if neither conclusion is
+visually supported. Be conservative: `uncertain` retains the existing
+boundary-protective route.
+""".strip()
+    schema = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["classification", "evidence_pages", "rationale"],
+        "properties": {
+            "classification": {
+                "type": "string",
+                "enum": [
+                    "single_assembly_candidate",
+                    "multi_object_risk",
+                    "uncertain",
+                ],
+            },
+            "evidence_pages": {
+                "type": "array",
+                "minItems": 1,
+                "items": {"type": "integer", "minimum": 1},
+            },
+            "rationale": {"type": "string", "minLength": 1, "maxLength": 480},
+        },
+    }
+    ocr_context = build_detection_ocr_context(ocr_package, max_chars=8_000)
+    content = build_detection_content_blocks(
+        file_name=file_name,
+        file_bytes=file_bytes,
+        page_images=page_images,
+        user_text=f"OCR context, potentially incomplete:\n{ocr_context}",
+    )
+    response, diagnostics = create_claude_message_streamed(
+        get_anthropic_client(),
+        model=selected_model,
+        max_tokens=DETECTION_V627_SCOPE_SCOUT_MAX_TOKENS,
+        temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+        system=build_detection_system_content(prompt=prompt),
+        messages=[{"role": "user", "content": content}],
+        output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(schema)}},
+    )
+    raw_text = extract_text_from_claude_response(response)
+    try:
+        payload = json.loads(raw_text)
+    except json.JSONDecodeError as exc:
+        raise DetectionVisualRegistryValidationError(
+            f"V6.27 scope scout returned invalid JSON: {exc}",
+            usage_event={
+                "agent_name": "detection",
+                "operation": "rfq_detection_v6_27_scope_scout",
+                "file_name": file_name,
+                "company_id": company_id,
+                "status": "failed",
+                "error_message": str(exc),
+            },
+        ) from exc
+    classification = str(payload.get("classification") or "")
+    raw_evidence_pages = payload.get("evidence_pages")
+    evidence_pages = sorted({
+        page for page in raw_evidence_pages or []
+        if isinstance(page, int) and 1 <= page <= len(page_images)
+    })[:4]
+    rationale = str(payload.get("rationale") or "").strip()
+    if (
+        classification not in {"single_assembly_candidate", "multi_object_risk", "uncertain"}
+        or not isinstance(raw_evidence_pages, list)
+        or not evidence_pages
+        or len(evidence_pages) > 4
+        or any(not isinstance(page, int) or page < 1 or page > len(page_images) for page in evidence_pages)
+        or not rationale
+    ):
+        raise DetectionVisualRegistryValidationError(
+            "V6.27 scope scout response failed validation",
+            usage_event={
+                "agent_name": "detection",
+                "operation": "rfq_detection_v6_27_scope_scout",
+                "file_name": file_name,
+                "company_id": company_id,
+                "status": "failed",
+                "raw_payload": payload,
+            },
+        )
+    summary = summarize_detection_provider_call(
+        response=response,
+        diagnostics=diagnostics,
+        prompt_characters=len(prompt),
+        context_characters=len(ocr_context),
+        image_count=len(page_images),
+        image_bytes=sum(len(image) for image in page_images),
+    )
+    usage = {
+        "agent_name": "detection",
+        "operation": "rfq_detection_v6_27_scope_scout",
+        "file_name": file_name,
+        "company_id": company_id,
+        "status": "succeeded",
+        "model": summary["model"],
+        "input_tokens": summary["input_tokens"],
+        "output_tokens": summary["output_tokens"],
+        "input_cost_usd": summary["input_cost_usd"],
+        "output_cost_usd": summary["output_cost_usd"],
+        "total_cost_usd": summary["total_cost_usd"],
+        "raw_usage": {
+            "cost_category": "detection",
+            "duration_seconds": summary["duration_seconds"],
+            "scope_scout": {
+                "version": DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION,
+                "classification": classification,
+                "evidence_pages": evidence_pages,
+                "rationale": rationale,
+                "prompt_characters": summary["prompt_characters"],
+                "context_characters": summary["context_characters"],
+                "image_count": summary["image_count"],
+                "image_bytes": summary["image_bytes"],
+                "request_id": diagnostics.get("request_id"),
+            },
+        },
+    }
+    return {
+        "version": DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION,
+        "classification": classification,
+        "evidence_pages": evidence_pages,
+        "rationale": rationale,
+    }, usage
 
 def build_detection_registry_content_blocks(*, file_name: str, file_bytes: bytes, user_text: str, page_images: list[bytes], regions: list[dict[str, Any]]) -> list[dict[str, Any]]:
     blocks = build_detection_content_blocks(file_name=file_name, file_bytes=file_bytes, user_text="", page_images=page_images)

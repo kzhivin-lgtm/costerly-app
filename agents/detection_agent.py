@@ -12,6 +12,7 @@ from agents.anthropic_adapter import (
     build_detection_v5_membership_view_crops,
     build_detection_v5_review_coordinate_frames,
     build_detection_v5_review_page_context_images,
+    run_anthropic_detection_v627_scope_scout,
     run_anthropic_detection_v5_source_degraded_pairwise_structural_admission_audit,
     run_anthropic_detection_visual_registry_agent,
 )
@@ -754,6 +755,75 @@ def run_detection_agent(
         boundary_model=str(boundary_model),
         explicit_model=model,
     )
+    scope_scout_usage: dict | None = None
+    if route.get("category") == "ada_sparse_multi_object":
+        # V6.27 narrows the expensive Ada boundary route only after a separate,
+        # conservative document-scope observation. The scout cannot create
+        # Islands or commercial objects. A failed or uncertain scout preserves
+        # the established Sonnet contract.
+        if stage_callback:
+            stage_callback("Document scope classification started")
+        try:
+            scope_scout, scope_scout_usage = run_anthropic_detection_v627_scope_scout(
+                file_name=file_name,
+                company_id=company_id,
+                file_bytes=file_bytes,
+                page_images=registry_images,
+                ocr_package=ocr_package,
+                model=str(route.get("evidence_model") or base_model),
+            )
+            scout_classification = str(scope_scout.get("classification") or "uncertain")
+            route = {
+                **route,
+                "category": (
+                    "assembly_set"
+                    if scout_classification == "single_assembly_candidate"
+                    else "ada_sparse_multi_object"
+                ),
+                "decision": (
+                    "assembly_set_scope_scout"
+                    if scout_classification == "single_assembly_candidate"
+                    else "ada_boundary_risk_scope_scout"
+                ),
+                "reasons": [
+                    *route.get("reasons", []),
+                    f"v6_27_scope_scout:{scout_classification}",
+                ],
+                "registry_model": (
+                    str(route.get("evidence_model") or base_model)
+                    if scout_classification == "single_assembly_candidate"
+                    else route.get("registry_model")
+                ),
+                "signals": {
+                    **dict(route.get("signals") or {}),
+                    "v6_27_scope_scout": scope_scout,
+                },
+            }
+        except Exception as exc:
+            scope_scout_usage = {
+                "agent_name": "detection",
+                "operation": "rfq_detection_v6_27_scope_scout",
+                "file_name": file_name,
+                "company_id": company_id,
+                "status": "failed",
+                "raw_usage": {
+                    "cost_category": "detection",
+                    "scope_scout": {
+                        "version": "detection_v6_27_scope_scout",
+                        "classification": "failed_preserve_ada_route",
+                        "error_message": str(exc),
+                    },
+                },
+            }
+            route = {
+                **route,
+                "reasons": [
+                    *route.get("reasons", []),
+                    "v6_27_scope_scout_failed_preserve_ada_route",
+                ],
+            }
+        if stage_callback:
+            stage_callback("Document scope classification completed")
     if stage_callback:
         stage_callback("Detection Registry started")
     try:
@@ -907,5 +977,7 @@ def run_detection_agent(
         validated["_naming_annotated_pages"] = naming_annotated_pages
     if naming_source_crops:
         validated["_naming_source_crops"] = naming_source_crops
-    validated["_agent_usage_events"] = [visual_registry_usage] if visual_registry_usage else []
+    validated["_agent_usage_events"] = [
+        event for event in (scope_scout_usage, visual_registry_usage) if event
+    ]
     return validated

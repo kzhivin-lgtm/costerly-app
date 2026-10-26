@@ -65,10 +65,18 @@ accepted V_Cabineter dossier or use object count alone as quality evidence.
 `ada_sparse_multi_object` and Sonnet Detection, while Cabineter selected
 `assembly_set` and Haiku. The latter's pre-V6.26.2 failed Naming event did not
 record model tokens/cost, so `TC1 $0.105` is incomplete rather than a final
-ten-cent total. The Ada boundary criterion is now under focused review because
-V_Stair is visually a single overview-plus-detail assembly but selected the
-costly Ada route. Do not alter the guard before a shadow comparison of
-V_Stair and Adda under the proposed assembly/ordinary contract.
+ten-cent total. ACTIVE, P0, V6.27 scope-scout experiment: retain the Ada guard
+until a separate short Haiku observation classifies only its current candidates
+as `single_assembly_candidate`, `multi_object_risk`, or `uncertain`. Only the
+first result may use the existing Haiku Assembly Set Registry and compiler;
+the other two retain Sonnet Ada. The scope scout cannot create Islands, merge
+objects, or use shared title/order metadata as sufficient proof. Its cost must
+be stored as a separate Detection usage event. V_Stair passed the local shadow
+gate as `single_assembly_candidate` ($0.013431, 28.873 s). Adda's local scout
+result was unavailable after two environment-level attempts, so production
+Adda is the unresolved gate. The experiment's production acceptance requires
+Stair to compile one all-page Assembly Set and Adda to stay on Sonnet with its
+accepted two-object boundary.
 
 RESOLVED, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
 deferred Naming lifecycle and locked Detection object contract. Build optional
