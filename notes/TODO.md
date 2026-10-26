@@ -1080,6 +1080,25 @@ V6.15. Return to the V6.14 protected contract before a replacement experiment;
 the replacement must obtain metadata outside the Discovery response, use real
 Registry-owned crops, and pass HSL's 32-Island/ten-component gate before
 Page23 or Adda regression.
+
+ACTIVE, approved V6.16 isolated document identity and locked Naming evidence:
+preserve V6.14 Discovery, Review, routing, Islands, proof graph, package
+membership and Evidence boundaries byte-for-byte. After Registry has locked
+objects and File Review has been saved, derive a private sidecar containing
+only each Registry-owned View ID, page and existing bbox. Use that sidecar to
+make Naming-only crops and local OCR retrieval. Do not use full-page Naming
+input when every locked object has a crop; retain the existing full-page path
+only when a complete crop set is unavailable. In a separate deferred call,
+read bounded title-block corner crops and update only still-`unknown` run
+fields. `Project` maps only to project_name; `FILE NAME`, drawing identifiers,
+logos and addresses cannot establish project, client or partner. Client and
+Partner remain `unknown` unless their roles are explicitly visible. Neither
+branch can add, remove, merge, split, reorder or rename Detection packages.
+Gates: ordinary HSL remains 32 object-evidence Islands and ten components;
+Naming receives nonzero Registry-owned crop evidence and returns category plus
+source index where supported; HSL title block yields Project `ROOMS`, author
+`Ayelet Levit`, document date `09.09.2025`, and no false Partner from
+`Hasolelim_Carpentry`; Page23 and Adda then retain protected boundaries.
 SUPERSEDED INPUT CONTRACT, V6.5, no static pre-Discovery crops: remove the three
 fixed `upper_left`, `upper_right`, and `lower` images from the Adda
 `sonnet_boundary_risk` route as well as the ordinary Haiku route. Retain the
