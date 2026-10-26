@@ -15,14 +15,15 @@ compact Kitchen cue tokens, but the runtime then rejected visual evidence whose
 `visual_group_id` was blank. The object crop had a valid locked group id, but
 the model never received it. Preserve the compact cue and 12-word basis rules.
 
-ACTIVE, V6.25 bound visual Naming evidence: retain V6.23's 11-page OCR route
-and V6.24's compact Kitchen cue rules. Provide each source crop's locked
-`group_id` to Naming, then deterministically bind a visual cue to that group
-only when it cites the same physical page. Reject a cue on a different page.
-Do not add calls or change Detection, router, object identity, quantity, order,
-bbox, evidence-page membership or View ownership. First gate: HSL publishes
-the model-proposed Kitchen names rather than source codes, with one valid
-locked group id per visual cue.
+CHECKPOINT, V6.25 bound visual Naming evidence: `a34497b`, deployed and
+accepted at `notes/DETECTION_V6_25_HSL_CHECKPOINT_2026_10_26.md`. HSL run
+`run_2dceafe62d3440668ca56b6b74101cc8` produced 9 objects, 11 OCR pages at
+$0.044, a 69.777-second initial cycle, accepted Naming validation and 9/9
+created previews. P11's three evidence regions are one locked object, with
+`view-033` selected as its presentation source. The names are operationally
+accepted but not a semantic-quality benchmark. Do not reopen Naming, router,
+object identity, quantity, order, bbox, evidence-page membership or View
+ownership without separate explicit approval.
 
 RESOLVED, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
 deferred Naming lifecycle and locked Detection object contract. Build optional
