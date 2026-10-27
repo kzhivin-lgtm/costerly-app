@@ -41,6 +41,8 @@ from agents.anthropic_adapter import (
     run_anthropic_detection_registry_agent,
     run_anthropic_detection_visual_map_agent,
     run_anthropic_detection_visual_registry_agent,
+    select_detection_v645_discovery_output_max_tokens,
+    select_detection_v645_membership_output_max_tokens,
     validate_optional_detection_v611_document_scope,
     validate_detection_v611_document_scope,
 )
@@ -614,6 +616,13 @@ def test_large_file_forecast_uses_two_compatible_raw_usage_events():
 def test_file_review_progress_means_elapsed_share_of_current_forecast():
     assert progress_fraction(elapsed_seconds=45, expected_total_seconds=90) == 0.5
     assert 0.96 <= progress_fraction(elapsed_seconds=90, expected_total_seconds=90) < 1
+
+
+def test_v645_large_file_requests_start_with_capacity_for_their_response_shape():
+    assert select_detection_v645_discovery_output_max_tokens(30) == 8_192
+    assert select_detection_v645_discovery_output_max_tokens(49) == 12_288
+    assert select_detection_v645_membership_output_max_tokens(64) == 6_144
+    assert select_detection_v645_membership_output_max_tokens(96) == 12_288
 
 
 def test_processing_progress_uses_file_review_forecast_not_phase_weights():

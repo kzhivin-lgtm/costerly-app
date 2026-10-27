@@ -163,6 +163,15 @@ DETECTION_V641_DISCOVERY_BATCH_ESTIMATE_TOKENS = 105_000
 DETECTION_V641_DISCOVERY_MAX_EXACT_INPUT_TOKENS = 160_000
 DETECTION_V641_IMAGE_PIXELS_PER_ESTIMATED_TOKEN = 750
 DETECTION_V641_REVIEW_MAX_IMAGES = 100
+# V6.45 plans output capacity before sending a bounded large-file request.
+# The Discovery response is linear in candidate islands, while Membership is
+# linear in view crops.  Asking for a larger ceiling does not bill unused
+# output tokens, but it prevents a known-too-small first response from being
+# discarded and repeated in full.
+DETECTION_V645_DISCOVERY_OUTPUT_BASE_TOKENS = 512
+DETECTION_V645_DISCOVERY_OUTPUT_TOKENS_PER_CANDIDATE = 240
+DETECTION_V645_MEMBERSHIP_OUTPUT_BASE_TOKENS = 384
+DETECTION_V645_MEMBERSHIP_OUTPUT_TOKENS_PER_VIEW = 90
 DETECTION_V642_MULTILINGUAL_EVIDENCE_PROMPT_VERSION = (
     "detection_v6_42_multilingual_local_evidence_fallback"
 )
@@ -2177,6 +2186,38 @@ def _v641_image_token_estimate(image_bytes: bytes) -> int:
         # to the legacy all-pages request.
         pass
     return max(1, math.ceil(len(image_bytes) / 2))
+
+
+def select_detection_v645_discovery_output_max_tokens(
+    candidate_region_count: int,
+) -> int:
+    """Choose a Discovery output ceiling from the bounded response shape."""
+    count = max(0, int(candidate_region_count))
+    estimated = (
+        DETECTION_V645_DISCOVERY_OUTPUT_BASE_TOKENS
+        + DETECTION_V645_DISCOVERY_OUTPUT_TOKENS_PER_CANDIDATE * count
+    )
+    return (
+        DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS
+        if estimated > DETECTION_V5_PROPOSAL_MAX_TOKENS
+        else DETECTION_V5_PROPOSAL_MAX_TOKENS
+    )
+
+
+def select_detection_v645_membership_output_max_tokens(
+    view_crop_count: int,
+) -> int:
+    """Choose a Membership output ceiling from the bounded response shape."""
+    count = max(0, int(view_crop_count))
+    estimated = (
+        DETECTION_V645_MEMBERSHIP_OUTPUT_BASE_TOKENS
+        + DETECTION_V645_MEMBERSHIP_OUTPUT_TOKENS_PER_VIEW * count
+    )
+    return (
+        DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS
+        if estimated > DETECTION_V5_MEMBERSHIP_MAX_TOKENS
+        else DETECTION_V5_MEMBERSHIP_MAX_TOKENS
+    )
 
 
 def _v641_page_discovery_estimates(
@@ -10562,10 +10603,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                     "V6.41 Discovery batch exceeds its safe input budget. "
                     "Reduce the batch target before retrying this file."
                 )
+            batch_initial_max_tokens = select_detection_v645_discovery_output_max_tokens(
+                len(batch_candidates),
+            )
             batch_response, batch_diagnostics = create_claude_message_streamed(
                 client,
                 model=discovery_model,
-                max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
+                max_tokens=batch_initial_max_tokens,
                 temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
                 system=proposal_system,
                 messages=batch_messages,
@@ -10575,7 +10619,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 {
                     "response": batch_response,
                     "diagnostics": batch_diagnostics,
-                    "max_tokens": DETECTION_V5_PROPOSAL_MAX_TOKENS,
+                    "max_tokens": batch_initial_max_tokens,
                     "exact_input_tokens": exact_input_tokens,
                     "context_characters": len(batch_user_text),
                     "retry_kind": "initial",
@@ -10589,7 +10633,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 if _is_retryable_visual_registry_json_truncation(
                     extract_text_from_claude_response(batch_response),
                     batch_response,
-                    max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
+                    max_tokens=batch_initial_max_tokens,
                 ):
                     batch_retry_reason = "initial_response_hit_budget_inside_json_string"
                     batch_response, batch_diagnostics = create_claude_message_streamed(
@@ -10752,6 +10796,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 "source_fact_count": len(batch_facts),
                 "candidate_region_count": len(batch_candidates),
                 "candidate_pair_count": len(batch_pairs),
+                "initial_output_token_budget": batch_initial_max_tokens,
                 "full_page_image_count": len(batch_images),
                 "truncation_retry": {
                     "attempted": batch_retry_reason is not None,
@@ -11122,6 +11167,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         user_text=review_handoff, view_crops=membership_crops,
         page_context_images=effective_review_page_context_images,
     )
+    review_initial_max_tokens = (
+        select_detection_v645_membership_output_max_tokens(len(membership_crops))
+        if v641_budgeted_discovery_active
+        else DETECTION_V5_MEMBERSHIP_MAX_TOKENS
+    )
     v641_review_exact_input_tokens: int | None = None
     if stage_callback:
         stage_callback("Membership review started")
@@ -11153,7 +11203,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             )
     review_response, review_diagnostics = create_claude_message_streamed(
         get_anthropic_client(), model=review_model,
-        max_tokens=DETECTION_V5_MEMBERSHIP_MAX_TOKENS,
+        max_tokens=review_initial_max_tokens,
         temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
         system=build_detection_system_content(prompt=review_prompt_with_membership_contract),
         messages=[{"role": "user", "content": review_content}],
@@ -11164,7 +11214,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         )}},
     )
     review_attempts = [
-        (review_response, review_diagnostics, DETECTION_V5_MEMBERSHIP_MAX_TOKENS),
+        (review_response, review_diagnostics, review_initial_max_tokens),
     ]
     review_retry_reason: str | None = None
     review_raw_text = extract_text_from_claude_response(review_response)
@@ -11177,7 +11227,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             and _is_retryable_visual_registry_json_truncation(
                 review_raw_text,
                 review_response,
-                max_tokens=DETECTION_V5_MEMBERSHIP_MAX_TOKENS,
+                max_tokens=review_initial_max_tokens,
             )
         ):
             review_retry_reason = "initial_response_hit_budget_inside_json_string"
