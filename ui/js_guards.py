@@ -3353,8 +3353,8 @@ def install_upload_interaction_guards(shell_html: str) -> None:
         (() => {
             const parentWindow = window.parent;
             const parentDoc = parentWindow.document;
-            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_15";
-            const runtimeVersion = 'v1115';
+            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_16";
+            const runtimeVersion = 'v1116';
             const resetMarker = 'costerly-progress-controller-runtime';
             try {
                 if (
@@ -3389,9 +3389,9 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const REAL_PROCESSING_MARKER_ID = 'costerly-processing-screen-active';
                 const FILE_REVIEW_MARKER_ID = 'costerly-file-review-screen-active';
                 const SHELL_ACTIVE_CLASS = 'costerly-upload-processing-shell-active';
-                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1115';
-                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1115';
-                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1115Installed';
+                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1116';
+                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1116';
+                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1116Installed';
                 const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAtV4';
                 const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimerV4';
                 const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSecondsV4';
@@ -3515,6 +3515,28 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 }
 
                 const STAGE_PROGRESS_STATE_KEY = '__costerlyStageAwareProgressV2';
+                const PRE_UPLOAD_PROGRESS_STATE_KEY = '__costerlyPreUploadProgressV2';
+
+                function browserElapsedSeconds() {
+                    const startedAt = Number(window[ELAPSED_STARTED_AT_KEY] || 0);
+                    return startedAt ? Math.max(0, (Date.now() - startedAt) / 1000) : 0;
+                }
+
+                function updateForecastLabel(seconds) {
+                    if (!Number.isFinite(seconds) || seconds <= 0) return;
+                    const rounded = Math.round(seconds);
+                    const label = 'F ' + String(Math.floor(rounded / 60)).padStart(2, '0') +
+                        ':' + String(rounded % 60).padStart(2, '0');
+                    document.querySelectorAll('[data-processing-forecast-label]').forEach((node) => {
+                        if (node.dataset.processingForecastLabel !== label) {
+                            node.dataset.processingForecastLabel = label;
+                        }
+                    });
+                    document.querySelectorAll('.post-upload-stage__forecast').forEach((node) => {
+                        const text = '(' + label + ')';
+                        if (node.textContent !== text) node.textContent = text;
+                    });
+                }
 
                 function processingPlan(stage) {
                     if (!stage || !stage.dataset.processingPlan) return null;
@@ -3534,16 +3556,52 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     if (!runToken) return null;
                     let state = window[STAGE_PROGRESS_STATE_KEY];
                     if (!state || state.runToken !== runToken) {
-                        state = { runToken, highestPercent: 0 };
+                        const preUpload = window[PRE_UPLOAD_PROGRESS_STATE_KEY];
+                        state = {
+                            runToken,
+                            highestPercent: Math.max(
+                                0, Number(preUpload?.highestPercent || 0)
+                            ),
+                            lastUpdatedAtMs: Date.now(),
+                            uiForecastSeconds: 0,
+                        };
                         window[STAGE_PROGRESS_STATE_KEY] = state;
                     }
                     return state;
                 }
 
+                function advanceProgress(state, targetPercent, maxPercentPerSecond = 1.15) {
+                    const now = Date.now();
+                    const previous = Math.max(0, Number(state.highestPercent || 0));
+                    const elapsed = Math.max(
+                        0, (now - Number(state.lastUpdatedAtMs || now)) / 1000
+                    );
+                    state.lastUpdatedAtMs = now;
+                    state.highestPercent = Math.max(
+                        previous,
+                        Math.min(targetPercent, previous + maxPercentPerSecond * elapsed)
+                    );
+                    return state.highestPercent;
+                }
+
                 function phaseProgress(stage) {
                     if (!stage) return 0;
                     const state = progressState(stage);
-                    if (!state) return 0;
+                    if (!state) {
+                        // Upload has been accepted by the browser but has not
+                        // reached Python yet. Give that real transfer a single,
+                        // slow, zero-origin segment instead of a dead bar.
+                        const elapsed = browserElapsedSeconds();
+                        const preUpload = window[PRE_UPLOAD_PROGRESS_STATE_KEY] || {
+                            highestPercent: 0,
+                        };
+                        const target = Math.min(4, elapsed * 4 / 45);
+                        preUpload.highestPercent = Math.max(
+                            Number(preUpload.highestPercent || 0), target
+                        );
+                        window[PRE_UPLOAD_PROGRESS_STATE_KEY] = preUpload;
+                        return preUpload.highestPercent;
+                    }
                     const plan = processingPlan(stage);
                     if (!plan) {
                         // Before Fusion the only known file fact is page count.
@@ -3561,8 +3619,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         const calculated = preparationSpan * Math.min(
                             1, elapsed / expectedPreparationSeconds
                         );
-                        state.highestPercent = Math.max(state.highestPercent, calculated);
-                        return state.highestPercent;
+                        return advanceProgress(state, calculated);
                     }
 
                     const activeStageId = stage.dataset.processingStageId || '';
@@ -3581,21 +3638,36 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         .slice(0, activeStageIndex)
                         .reduce((sum, value) => sum + value, 0);
                     const activeDuration = stageDurations[activeStageIndex];
-                    const runStartedAt = Number(stage.dataset.processingRunToken || Date.now());
-                    const runElapsedSeconds = Math.max(0, (Date.now() - runStartedAt) / 1000);
-                    const forecastSeconds = Math.max(
-                        1, Number(plan.forecast_seconds || totalDuration)
+                    const serverPreFusion = plan.stages.find(
+                        (item) => String(item.id || '') === 'pre_fusion'
                     );
+                    const serverPreFusionSeconds = Math.max(
+                        0, Number(serverPreFusion?.expected_seconds || 0)
+                    );
+                    const fullLapElapsedSeconds = browserElapsedSeconds();
+                    // F describes the user-visible lap. The server plan starts
+                    // only after file transfer and the Streamlit handoff, so
+                    // add that already-observed interval exactly once.
+                    if (!state.uiForecastSeconds) {
+                        state.uiForecastSeconds = Math.max(
+                            1,
+                            Number(plan.forecast_seconds || totalDuration) + Math.max(
+                                0, fullLapElapsedSeconds - serverPreFusionSeconds
+                            )
+                        );
+                    }
+                    const forecastSeconds = state.uiForecastSeconds;
+                    updateForecastLabel(forecastSeconds);
                     const stageFloor = 100 * completedDuration / totalDuration;
                     // Forecast owns the pace. Real stage completion owns the
                     // boundary. This prevents early phases from consuming 90%
                     // while the forecast says substantial work remains.
-                    const forecastPace = runElapsedSeconds <= forecastSeconds
-                        ? 98.5 * runElapsedSeconds / forecastSeconds
+                    const forecastPace = fullLapElapsedSeconds <= forecastSeconds
+                        ? 98.5 * fullLapElapsedSeconds / forecastSeconds
                         : Math.min(
                             99.2,
                             98.5 + 0.7 * (1 - Math.exp(
-                                -(runElapsedSeconds - forecastSeconds) / forecastSeconds
+                                -(fullLapElapsedSeconds - forecastSeconds) / forecastSeconds
                             ))
                         );
                     const stageCeiling = 100 * (completedDuration + activeDuration) / totalDuration;
@@ -3606,8 +3678,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         stageFloor,
                         Math.min(stageCeiling - 0.5, forecastPace)
                     );
-                    state.highestPercent = Math.max(state.highestPercent, calculated);
-                    return state.highestPercent;
+                    return advanceProgress(state, calculated);
                 }
 
                 function updateElapsed() {
@@ -3641,10 +3712,13 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 function applyFinalElapsed(seconds) {
                     if (!Number.isFinite(seconds)) return;
                     document.querySelectorAll('[data-costerly-total-lap]').forEach((node) => {
-                        const forecast = Number(node.dataset.costerlyForecastSeconds || 0);
+                        const state = window[STAGE_PROGRESS_STATE_KEY];
+                        const forecast = Number(
+                            state?.uiForecastSeconds || node.dataset.costerlyForecastSeconds || 0
+                        );
                         const label = Math.round(seconds) + 's' + (
                             Number.isFinite(forecast) && forecast > 0
-                                ? ` (F: ${Math.round(forecast)}s)`
+                                ? ` (F ${Math.round(forecast)}s)`
                                 : ''
                         );
                         if (node.textContent !== label) node.textContent = label;
@@ -3726,6 +3800,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     window[PROCESSING_COMPLETE_STYLED_OBSERVER_KEY] = null;
                     window[PROCESSING_STAGE_SEEN_KEY] = false;
                     window[STAGE_PROGRESS_STATE_KEY] = null;
+                    window[PRE_UPLOAD_PROGRESS_STATE_KEY] = { highestPercent: 0 };
                     window[RFQ_UPLOAD_CYCLE_ID_KEY] = crypto.randomUUID();
                     return window[RFQ_UPLOAD_CYCLE_ID_KEY];
                 }

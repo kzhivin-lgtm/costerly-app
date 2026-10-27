@@ -121,7 +121,7 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
 
     try:
         phase_state: dict[str, object] = {
-            "value": "ocr", "page_count": None,
+            "value": "ocr", "page_count": initial_page_count,
             "label": "OCR reading document",
             "stage_id": "pre_fusion",
             "stage_started_at_ms": screen_started_at_ms,

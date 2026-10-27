@@ -66,7 +66,7 @@ def post_upload_stage_html(
         forecast_attr = ""
         if expected_file_review_seconds is not None:
             forecast_seconds = max(0, int(round(expected_file_review_seconds)))
-            forecast_label = f"F: {forecast_seconds // 60:02d}:{forecast_seconds % 60:02d}"
+            forecast_label = f"F {forecast_seconds // 60:02d}:{forecast_seconds % 60:02d}"
             forecast_attr = f' data-processing-forecast-label="{forecast_label}"'
             forecast_html = (
                 ' <span class="post-upload-stage__forecast">'

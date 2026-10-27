@@ -591,7 +591,7 @@ def test_processing_stage_exposes_file_specific_plan_and_forecast_label():
     )
 
     assert "Elapsed 00:04" in markup
-    assert '<span class="post-upload-stage__forecast">(F: 02:05)</span>' in markup
+    assert '<span class="post-upload-stage__forecast">(F 02:05)</span>' in markup
     assert 'data-processing-stage-id="discovery_1"' in markup
     assert "data-processing-plan=" in markup
 
@@ -721,6 +721,9 @@ def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signal
     assert "expectedPreparationSeconds" in source
     assert "const preparationSpan = Math.min(15, pageCount)" in source
     assert "progressNode = stage.querySelector('.custom-progress-fill')" in source
+    assert "PRE_UPLOAD_PROGRESS_STATE_KEY" in source
+    assert "fullLapElapsedSeconds" in source
+    assert "advanceProgress(state, calculated)" in source
 
 
 def test_processing_screen_counts_pdf_pages_before_rendering_the_pre_fusion_stage():
@@ -728,6 +731,7 @@ def test_processing_screen_counts_pdf_pages_before_rendering_the_pre_fusion_stag
 
     assert "def _initial_pdf_page_count" in source
     assert "processing_page_count=initial_page_count" in source
+    assert '"value": "ocr", "page_count": initial_page_count' in source
     assert "render_stage(\n        1.0," not in source
 
 
@@ -740,7 +744,7 @@ def test_processing_cycle_persists_ocr_page_count_for_future_forecasts():
 def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():
     source = getsource(install_upload_interaction_guards)
 
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_15" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_16" in source
     assert "function uploadScreenIsActive()" in source
     assert "document.querySelector('.upload-screen-active')" in source
     assert "if (!uploadScreenIsActive()) return;" in source
