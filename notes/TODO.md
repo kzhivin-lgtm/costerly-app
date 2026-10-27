@@ -12,6 +12,20 @@ Naming, Preview, and Estimation are protected and unchanged. Commits `06e54ee`,
 `9686459`, and `f4312d9` are pushed to `main`; Railway health remains pending
 independent observation.
 
+ACTIVE EXPERIMENT, V6.41, P0, large-document token preflight and full-page
+Discovery batches:
+`Morbergs.pdf` failed before any Claude response because its ordinary Discovery
+payload was 271,060 input tokens, above the active 200,000-token maximum. The
+document is only 22 pages, but every 200-DPI rendered page and its Fusion
+context are currently sent in one request. Owner approved an isolated V6.41
+experiment: ordinary non-anchor files whose conservative local estimate exceeds
+150k tokens retain their complete pages, but Discovery runs in measured batches
+targeted to 105k estimated / 160k exact input tokens. Each batch preserves
+absolute page numbers and page coverage, and Membership Review still receives
+the complete global post-Discovery set. V6.41 must not change Ada, Page23,
+Assembly Set, quantity, or Evidence ownership. Pending: deploy and Morbergs
+acceptance test, including the recorded batch token audit and final Review size.
+
 CHECKPOINT, V6.23 bounded Naming and Quantity review presentation:
 `c990495`, deployed and audited as
 `notes/DETECTION_V6_23_NAMING_AUDIT_CHECKPOINT_2026_10_26.md`. HSL returns to

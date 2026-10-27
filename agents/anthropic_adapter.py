@@ -149,6 +149,17 @@ DETECTION_V5_PROPOSAL_MAX_TOKENS = 8_192
 # at the normal budget while still inside a JSON string.  It keeps the same
 # discovery contract and is intentionally not a general validation retry.
 DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS = 12_288
+# V6.41 is a transport guard, not a new semantic route.  It applies only
+# after ordinary routing has selected the established Registry contract.
+# The estimate uses the provider's documented image heuristic, then adds a
+# deliberately conservative allowance for source facts and repeated framing.
+DETECTION_V641_DISCOVERY_BATCH_PROMPT_VERSION = (
+    "detection_v6_41_budgeted_full_page_discovery"
+)
+DETECTION_V641_DISCOVERY_NORMAL_ESTIMATE_TOKENS = 150_000
+DETECTION_V641_DISCOVERY_BATCH_ESTIMATE_TOKENS = 105_000
+DETECTION_V641_DISCOVERY_MAX_EXACT_INPUT_TOKENS = 160_000
+DETECTION_V641_IMAGE_PIXELS_PER_ESTIMATED_TOKEN = 750
 DETECTION_V5_MEMBERSHIP_MAX_TOKENS = 6_144
 DETECTION_V68_ALL_PAIR_MEMBERSHIP_MAX_ISLANDS = 10
 DETECTION_V69_RECONCILIATION_MAX_ISLANDS = 10
@@ -2113,14 +2124,201 @@ boundary-protective route.
         "rationale": rationale,
     }, usage
 
-def build_detection_registry_content_blocks(*, file_name: str, file_bytes: bytes, user_text: str, page_images: list[bytes], regions: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    blocks = build_detection_content_blocks(file_name=file_name, file_bytes=file_bytes, user_text="", page_images=page_images)
+def build_detection_registry_content_blocks(
+    *,
+    file_name: str,
+    file_bytes: bytes,
+    user_text: str,
+    page_images: list[bytes],
+    regions: list[dict[str, Any]],
+    page_image_numbers: list[int] | None = None,
+) -> list[dict[str, Any]]:
+    """Build Registry content while retaining original PDF page numbers.
+
+    A V6.41 Discovery batch is still inspected as full pages.  The explicit
+    page numbers stop a later batch from silently becoming a second "page 1".
+    """
+    blocks = build_detection_content_blocks(
+        file_name=file_name,
+        file_bytes=file_bytes,
+        user_text="",
+        page_images=page_images,
+        page_image_numbers=page_image_numbers,
+    )
     blocks.pop()
     for region in regions:
         blocks.append({"type":"text", "text":f"PDF page {region['page_number']} enlarged region: {region['region']}"})
         blocks.append({"type":"image", "source":{"type":"base64","media_type":"image/jpeg","data":base64.standard_b64encode(region["bytes"]).decode("ascii")}})
     blocks.append({"type":"text", "text":user_text})
     return blocks
+
+
+def _v641_image_token_estimate(image_bytes: bytes) -> int:
+    """Return a conservative local vision-token estimate without an API call."""
+    try:
+        from PIL import Image
+
+        with Image.open(BytesIO(image_bytes)) as image:
+            width, height = image.size
+        if width > 0 and height > 0:
+            return max(1, math.ceil(
+                (width * height) / DETECTION_V641_IMAGE_PIXELS_PER_ESTIMATED_TOKEN,
+            ))
+    except Exception:
+        # Rendering has already succeeded at this point.  A corrupt image is
+        # still charged conservatively rather than allowing an unsafe fallback
+        # to the legacy all-pages request.
+        pass
+    return max(1, math.ceil(len(image_bytes) / 2))
+
+
+def _v641_page_discovery_estimates(
+    *, page_images: list[bytes], source_facts: list[dict[str, Any]],
+) -> list[dict[str, int]]:
+    """Estimate full-page Discovery inputs, preserving the page as one unit."""
+    facts_by_page: dict[int, list[dict[str, Any]]] = {}
+    for fact in source_facts:
+        page_number = fact.get("page_number")
+        if isinstance(page_number, int) and page_number >= 1:
+            facts_by_page.setdefault(page_number, []).append(fact)
+    estimates: list[dict[str, int]] = []
+    for page_number, image in enumerate(page_images, start=1):
+        page_fact_chars = sum(
+            len(str(fact.get("text") or "")) + 96
+            for fact in facts_by_page.get(page_number, [])
+        )
+        estimates.append({
+            "page_number": page_number,
+            "image_tokens": _v641_image_token_estimate(image),
+            # OCR contains Hebrew, Russian, dimensions and technical IDs. A
+            # half-character estimate is intentionally conservative.
+            "source_fact_tokens": math.ceil(page_fact_chars / 2),
+        })
+    return estimates
+
+
+def build_detection_v641_full_page_discovery_batches(
+    *, page_images: list[bytes], source_facts: list[dict[str, Any]],
+    target_tokens: int = DETECTION_V641_DISCOVERY_BATCH_ESTIMATE_TOKENS,
+) -> tuple[list[dict[str, Any]], int]:
+    """Partition Discovery only, never crop or omit a supplied page."""
+    page_estimates = _v641_page_discovery_estimates(
+        page_images=page_images, source_facts=source_facts,
+    )
+    # System/schema/user framing is repeated for every batch.  It is charged
+    # here so a batch cannot accidentally approach the provider context limit.
+    shared_tokens = 10_000
+    batches: list[dict[str, Any]] = []
+    current_pages: list[int] = []
+    current_tokens = shared_tokens
+    for row in page_estimates:
+        page_tokens = row["image_tokens"] + row["source_fact_tokens"]
+        if current_pages and current_tokens + page_tokens > target_tokens:
+            batches.append({
+                "page_numbers": current_pages,
+                "estimated_tokens": current_tokens,
+            })
+            current_pages = []
+            current_tokens = shared_tokens
+        current_pages.append(row["page_number"])
+        current_tokens += page_tokens
+    if current_pages:
+        batches.append({
+            "page_numbers": current_pages,
+            "estimated_tokens": current_tokens,
+        })
+    full_estimate = shared_tokens + sum(
+        row["image_tokens"] + row["source_fact_tokens"]
+        for row in page_estimates
+    )
+    return batches, full_estimate
+
+
+def _v641_validate_batch_page_coverage(
+    payload: dict[str, Any], *, expected_pages: list[int],
+) -> None:
+    """Validate batch coverage against original, not batch-relative, page IDs."""
+    coverage = payload.get("page_coverage")
+    groups = payload.get("visual_groups")
+    if not isinstance(coverage, list) or not isinstance(groups, list):
+        raise ValueError("V6.41 Discovery batch omitted page coverage")
+    groups_by_id = {
+        str(group.get("group_id") or ""): group
+        for group in groups if isinstance(group, dict)
+    }
+    if "" in groups_by_id or len(groups_by_id) != len(groups):
+        raise ValueError("V6.41 Discovery batch has invalid Island IDs")
+    covered: set[str] = set()
+    pages_seen: set[int] = set()
+    for row in coverage:
+        if not isinstance(row, dict):
+            raise ValueError("V6.41 Discovery batch has invalid page coverage")
+        page_number = row.get("page_number")
+        group_ids = row.get("visual_group_ids")
+        if page_number not in expected_pages or page_number in pages_seen or not isinstance(group_ids, list):
+            raise ValueError("V6.41 Discovery batch has invalid page coverage")
+        pages_seen.add(page_number)
+        for group_id in group_ids:
+            group_id = str(group_id)
+            group = groups_by_id.get(group_id)
+            if group is None or group.get("page_number") != page_number or group_id in covered:
+                raise ValueError("V6.41 Discovery batch coverage does not match its Islands")
+            covered.add(group_id)
+    if pages_seen != set(expected_pages) or covered != set(groups_by_id):
+        raise ValueError("V6.41 Discovery batch coverage is incomplete")
+
+
+def _v641_reindex_batch_discovery_payload(
+    payload: dict[str, Any], *, batch_number: int,
+) -> dict[str, Any]:
+    """Make independently discovered Island IDs globally unambiguous."""
+    result = copy.deepcopy(payload)
+    groups = result.get("visual_groups")
+    if not isinstance(groups, list):
+        raise ValueError("V6.41 Discovery batch has no visual groups")
+    mapping: dict[str, str] = {}
+    for ordinal, group in enumerate(groups, start=1):
+        if not isinstance(group, dict):
+            raise ValueError("V6.41 Discovery batch has an invalid visual group")
+        old_id = str(group.get("group_id") or "")
+        if not old_id or old_id in mapping:
+            raise ValueError("V6.41 Discovery batch has duplicate Island IDs")
+        mapping[old_id] = f"v641-b{batch_number:02d}-{ordinal:03d}"
+        group["group_id"] = mapping[old_id]
+    for classification in result.get("classifications") or []:
+        if not isinstance(classification, dict):
+            raise ValueError("V6.41 Discovery batch has an invalid classification")
+        old_id = str(classification.get("group_id") or "")
+        if old_id not in mapping:
+            raise ValueError("V6.41 classification references an unknown Island")
+        classification["group_id"] = mapping[old_id]
+    for coverage in result.get("page_coverage") or []:
+        if not isinstance(coverage, dict):
+            raise ValueError("V6.41 Discovery batch has invalid coverage")
+        coverage["visual_group_ids"] = [
+            mapping[str(group_id)] for group_id in coverage.get("visual_group_ids") or []
+        ]
+    return result
+
+
+def _v641_count_input_tokens(
+    *, client: anthropic.Anthropic, model: str, system: str,
+    messages: list[dict[str, Any]], output_config: dict[str, Any],
+) -> int | None:
+    """Ask the provider for an exact input count without producing a response."""
+    try:
+        result = client.messages.count_tokens(
+            model=model,
+            system=system,
+            messages=messages,
+            output_config=output_config,
+        )
+        value = getattr(result, "input_tokens", None)
+        return int(value) if isinstance(value, int) and value >= 0 else None
+    except Exception:
+        # Local estimate remains the safety gate if the optional count endpoint
+        # is unavailable.  It must never restore the failing all-pages request.
+        return None
 
 
 def _detection_bbox(value: object) -> dict[str, int] | None:
@@ -9956,25 +10154,196 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             ),
         }
 
-    proposal_response, proposal_diagnostics = create_claude_message_streamed(
-        get_anthropic_client(), model=discovery_model,
-        max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
-        temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
-        system=build_detection_system_content(prompt=proposal_prompt_with_anchor_contract),
-        messages=[{"role": "user", "content": proposal_content}],
-        output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
-            proposal_schema,
-        )}},
+    v641_batches, v641_full_estimate = build_detection_v641_full_page_discovery_batches(
+        page_images=page_images,
+        source_facts=source_facts,
     )
-    proposal_raw_text = extract_text_from_claude_response(proposal_response)
-    proposal_attempt_summaries = [summarize_proposal_attempt(
-        proposal_response,
-        proposal_diagnostics,
-        max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
-    )]
+    # Keep every established route byte-for-byte on its original single-pass
+    # request.  Only an ordinary, non-anchor document whose local estimate is
+    # beyond the guard receives V6.41 transport batching.
+    v641_budgeted_discovery_active = bool(
+        document_category == "ordinary"
+        and not mistral_anchor_admission_active
+        and v641_full_estimate > DETECTION_V641_DISCOVERY_NORMAL_ESTIMATE_TOKENS
+    )
+    v641_batch_audit: list[dict[str, Any]] = []
+    v641_proposal_attempt_summaries: list[dict[str, Any]] = []
+    if v641_budgeted_discovery_active:
+        all_groups: list[dict[str, Any]] = []
+        all_classifications: list[dict[str, Any]] = []
+        all_exceptions: list[dict[str, Any]] = []
+        all_coverage: list[dict[str, Any]] = []
+        client = get_anthropic_client()
+        proposal_system = build_detection_system_content(
+            prompt=proposal_prompt_with_anchor_contract,
+        )
+        proposal_output_config = {"format": {"type": "json_schema", "schema": (
+            strip_schema_for_claude(proposal_schema)
+        )}}
+        proposal_response: Any | None = None
+        proposal_diagnostics: dict[str, Any] | None = None
+        for batch_number, batch in enumerate(v641_batches, start=1):
+            page_numbers = list(batch["page_numbers"])
+            page_set = set(page_numbers)
+            batch_images = [page_images[page_number - 1] for page_number in page_numbers]
+            batch_facts = [
+                fact for fact in source_facts
+                if fact.get("page_number") in page_set
+            ]
+            batch_candidates = [
+                candidate for candidate in candidate_regions
+                if candidate.get("page_number") in page_set
+            ]
+            batch_candidate_ids = {
+                str(candidate["candidate_region_id"]) for candidate in batch_candidates
+            }
+            batch_pairs = [
+                pair for pair in candidate_pair_queue
+                if str(pair.get("group_id_a") or "") in batch_candidate_ids
+                and str(pair.get("group_id_b") or "") in batch_candidate_ids
+            ]
+            batch_baskets = [
+                basket for basket in candidate_dimension_baskets
+                if len(basket) > 1 and set(basket).issubset(batch_candidate_ids)
+            ]
+            batch_frames = {
+                page_number: review_coordinate_frames[page_number]
+                for page_number in page_numbers
+                if page_number in review_coordinate_frames
+            }
+            batch_inventory = format_detection_page_evidence_inventory(batch_facts)
+            batch_user_text = build_detection_user_text(
+                file_name=file_name, company_id=company_id, ocr_package=None,
+            ).replace("OCR text layer: unavailable", batch_inventory)
+            batch_user_text += "\n\n" + format_detection_fusion_candidate_regions(
+                batch_candidates,
+            )
+            batch_user_text += "\n\n" + format_detection_candidate_pair_queue(
+                batch_pairs, batch_baskets,
+            )
+            batch_user_text += "\n\n" + format_detection_document_dimension_unit_profile(
+                document_dimension_unit_profile,
+            )
+            batch_user_text += "\n\n" + format_detection_v5_coordinate_frame_context(
+                batch_frames,
+            )
+            batch_content = build_detection_registry_content_blocks(
+                file_name=file_name,
+                file_bytes=file_bytes,
+                user_text=batch_user_text,
+                page_images=batch_images,
+                page_image_numbers=page_numbers,
+                regions=[],
+            )
+            batch_messages = [{"role": "user", "content": batch_content}]
+            exact_input_tokens = _v641_count_input_tokens(
+                client=client,
+                model=discovery_model,
+                system=proposal_system,
+                messages=batch_messages,
+                output_config=proposal_output_config,
+            )
+            if (
+                exact_input_tokens is not None
+                and exact_input_tokens > DETECTION_V641_DISCOVERY_MAX_EXACT_INPUT_TOKENS
+            ):
+                raise RuntimeError(
+                    "V6.41 Discovery batch exceeds its safe input budget. "
+                    "Reduce the batch target before retrying this file."
+                )
+            batch_response, batch_diagnostics = create_claude_message_streamed(
+                client,
+                model=discovery_model,
+                max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
+                temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+                system=proposal_system,
+                messages=batch_messages,
+                output_config=proposal_output_config,
+            )
+            try:
+                batch_payload = json.loads(extract_text_from_claude_response(batch_response))
+            except json.JSONDecodeError as exc:
+                raise RuntimeError(
+                    f"V6.41 Discovery batch {batch_number} returned invalid JSON: {exc}"
+                ) from exc
+            expected_fields = {
+                "visual_groups", "classifications", "candidate_region_exceptions", "page_coverage",
+            }
+            if not isinstance(batch_payload, dict) or set(batch_payload) != expected_fields:
+                raise RuntimeError(
+                    f"V6.41 Discovery batch {batch_number} did not meet the ordinary Discovery contract"
+                )
+            _v641_validate_batch_page_coverage(
+                batch_payload, expected_pages=page_numbers,
+            )
+            batch_payload = _v641_reindex_batch_discovery_payload(
+                batch_payload, batch_number=batch_number,
+            )
+            all_groups.extend(batch_payload["visual_groups"])
+            all_classifications.extend(batch_payload["classifications"])
+            all_exceptions.extend(batch_payload["candidate_region_exceptions"])
+            all_coverage.extend(batch_payload["page_coverage"])
+            v641_proposal_attempt_summaries.append({
+                "batch_number": batch_number,
+                "page_numbers": page_numbers,
+                "estimated_input_tokens": int(batch["estimated_tokens"]),
+                "exact_input_tokens": exact_input_tokens,
+                "max_tokens": DETECTION_V5_PROPOSAL_MAX_TOKENS,
+                **summarize_detection_provider_call(
+                    response=batch_response,
+                    diagnostics=batch_diagnostics,
+                    requested_model=discovery_model,
+                    prompt_characters=len(proposal_prompt_with_anchor_contract),
+                    context_characters=len(batch_user_text),
+                    image_count=len(batch_images),
+                    image_bytes=sum(len(image) for image in batch_images),
+                ),
+            })
+            v641_batch_audit.append({
+                "batch_number": batch_number,
+                "page_numbers": page_numbers,
+                "estimated_input_tokens": int(batch["estimated_tokens"]),
+                "exact_input_tokens": exact_input_tokens,
+                "source_fact_count": len(batch_facts),
+                "candidate_region_count": len(batch_candidates),
+                "candidate_pair_count": len(batch_pairs),
+                "full_page_image_count": len(batch_images),
+            })
+            proposal_response, proposal_diagnostics = batch_response, batch_diagnostics
+        if proposal_response is None or proposal_diagnostics is None:
+            raise RuntimeError("V6.41 has no full-page Discovery batch to run")
+        proposal_raw_payload = {
+            "visual_groups": all_groups,
+            "classifications": all_classifications,
+            "candidate_region_exceptions": all_exceptions,
+            "page_coverage": sorted(all_coverage, key=lambda row: row["page_number"]),
+        }
+        proposal_raw_text = json.dumps(proposal_raw_payload, ensure_ascii=False)
+    else:
+        proposal_response, proposal_diagnostics = create_claude_message_streamed(
+            get_anthropic_client(), model=discovery_model,
+            max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
+            temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+            system=build_detection_system_content(prompt=proposal_prompt_with_anchor_contract),
+            messages=[{"role": "user", "content": proposal_content}],
+            output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
+                proposal_schema,
+            )}},
+        )
+        proposal_raw_text = extract_text_from_claude_response(proposal_response)
+    proposal_attempt_summaries = (
+        v641_proposal_attempt_summaries
+        if v641_budgeted_discovery_active
+        else [summarize_proposal_attempt(
+            proposal_response,
+            proposal_diagnostics,
+            max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
+        )]
+    )
     proposal_retry_reason: str | None = None
     try:
-        proposal_raw_payload = json.loads(proposal_raw_text)
+        if not v641_budgeted_discovery_active:
+            proposal_raw_payload = json.loads(proposal_raw_text)
     except json.JSONDecodeError as initial_error:
         proposal_json_error: json.JSONDecodeError | None = initial_error
         if _is_retryable_visual_registry_json_truncation(
@@ -10267,6 +10636,33 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         user_text=review_handoff, view_crops=membership_crops,
         page_context_images=review_page_context_images,
     )
+    v641_review_exact_input_tokens: int | None = None
+    if v641_budgeted_discovery_active:
+        review_system = build_detection_system_content(
+            prompt=review_prompt_with_membership_contract,
+        )
+        review_output_config = {"format": {"type": "json_schema", "schema": (
+            strip_schema_for_claude(
+                DETECTION_V610_EVIDENCE_REVIEW_JSON_SCHEMA
+                if v69_criteria_reconciliation_active
+                else DETECTION_V5_MEMBERSHIP_JSON_SCHEMA,
+            )
+        )}}
+        v641_review_exact_input_tokens = _v641_count_input_tokens(
+            client=get_anthropic_client(),
+            model=review_model,
+            system=review_system,
+            messages=[{"role": "user", "content": review_content}],
+            output_config=review_output_config,
+        )
+        if (
+            v641_review_exact_input_tokens is not None
+            and v641_review_exact_input_tokens > DETECTION_V641_DISCOVERY_MAX_EXACT_INPUT_TOKENS
+        ):
+            raise RuntimeError(
+                "V6.41 Membership Review exceeds its safe input budget. "
+                "Discovery completed, but this file needs bounded Review batching."
+            )
     review_response, review_diagnostics = create_claude_message_streamed(
         get_anthropic_client(), model=review_model,
         max_tokens=DETECTION_V5_MEMBERSHIP_MAX_TOKENS,
@@ -10605,6 +11001,16 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v6_11_document_scope": copy.deepcopy(document_scope),
         "v6_11_document_scope_validation_error": document_scope_validation_error,
         "v6_14_document_scope_requested": document_scope_enabled,
+        "v6_41_budgeted_full_page_discovery": {
+            "version": DETECTION_V641_DISCOVERY_BATCH_PROMPT_VERSION,
+            "active": v641_budgeted_discovery_active,
+            "full_request_estimated_input_tokens": v641_full_estimate,
+            "normal_single_pass_estimate_limit": DETECTION_V641_DISCOVERY_NORMAL_ESTIMATE_TOKENS,
+            "batch_estimate_target": DETECTION_V641_DISCOVERY_BATCH_ESTIMATE_TOKENS,
+            "max_exact_input_tokens": DETECTION_V641_DISCOVERY_MAX_EXACT_INPUT_TOKENS,
+            "batches": v641_batch_audit,
+            "membership_review_exact_input_tokens": v641_review_exact_input_tokens,
+        },
     })
     # Preserve the composed decision before runtime normalizes IDs and derives
     # deterministic graph and Evidence pages.
