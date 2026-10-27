@@ -2319,6 +2319,32 @@ def _v641_validate_batch_page_coverage(
         raise ValueError("V6.41 Discovery batch coverage is incomplete")
 
 
+def _v644_validate_batch_core_geometry(payload: dict[str, Any]) -> None:
+    """Reject a bad core before it can invalidate the whole assembled Registry.
+
+    V6.41 batches are independently retryable.  The relationship between a
+    physical core and its evidence envelope is semantic, so the provider JSON
+    schema cannot enforce it.  Validate it here, while the one offending batch
+    is still isolated.
+    """
+    groups = payload.get("visual_groups")
+    if not isinstance(groups, list):
+        raise ValueError("V6.44 Discovery batch visual groups are invalid")
+    group_id_mapping = {
+        str(group.get("group_id") or ""): str(group.get("group_id") or "")
+        for group in groups if isinstance(group, dict)
+    }
+    envelopes = _normalize_registry_group_bboxes(
+        groups,
+        group_id_mapping=group_id_mapping,
+    )
+    _normalize_registry_group_core_bboxes(
+        groups,
+        group_id_mapping=group_id_mapping,
+        evidence_envelopes=envelopes,
+    )
+
+
 def _v641_reindex_batch_discovery_payload(
     payload: dict[str, Any], *, batch_number: int,
 ) -> dict[str, Any]:
@@ -5424,21 +5450,34 @@ def _normalize_registry_group_core_bboxes(
     for group in groups:
         if not isinstance(group, dict):
             raise ValueError("visual registry group core geometry is invalid")
-        group_id = group_id_mapping.get(str(group.get("group_id") or ""), "")
+        raw_group_id = str(group.get("group_id") or "")
+        group_id = group_id_mapping.get(raw_group_id, "")
         bbox = group.get("core_bbox")
         envelope = evidence_envelopes.get(group_id) or {}
-        if (
-            not group_id or group_id in result or not isinstance(bbox, dict)
-            or set(bbox) != set(keys)
-            or not all(isinstance(bbox[key], int) for key in keys)
-            or bbox["top_left_x"] < envelope.get("top_left_x", 1)
-            or bbox["top_left_y"] < envelope.get("top_left_y", 1)
-            or bbox["bottom_right_x"] > envelope.get("bottom_right_x", -1)
-            or bbox["bottom_right_y"] > envelope.get("bottom_right_y", -1)
-            or bbox["bottom_right_x"] <= bbox["top_left_x"]
-            or bbox["bottom_right_y"] <= bbox["top_left_y"]
-        ):
-            raise ValueError("visual registry group core geometry is invalid")
+        error = ""
+        if not group_id:
+            error = "group_id is unknown"
+        elif group_id in result:
+            error = "group_id is duplicated"
+        elif not isinstance(bbox, dict) or set(bbox) != set(keys):
+            error = "core_bbox does not contain exactly four coordinates"
+        elif not all(isinstance(bbox[key], int) for key in keys):
+            error = "core_bbox coordinates are not integers"
+        elif bbox["bottom_right_x"] <= bbox["top_left_x"] or bbox["bottom_right_y"] <= bbox["top_left_y"]:
+            error = "core_bbox has no positive area"
+        elif bbox["top_left_x"] < envelope.get("top_left_x", 1):
+            error = "core_bbox exceeds bbox on the left"
+        elif bbox["top_left_y"] < envelope.get("top_left_y", 1):
+            error = "core_bbox exceeds bbox at the top"
+        elif bbox["bottom_right_x"] > envelope.get("bottom_right_x", -1):
+            error = "core_bbox exceeds bbox on the right"
+        elif bbox["bottom_right_y"] > envelope.get("bottom_right_y", -1):
+            error = "core_bbox exceeds bbox at the bottom"
+        if error:
+            raise ValueError(
+                "visual registry group core geometry is invalid "
+                f"for {raw_group_id or '<missing>'}: {error}"
+            )
         result[group_id] = {key: int(bbox[key]) for key in keys}
     return result
 
@@ -10533,7 +10572,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 output_config=proposal_output_config,
             )
             batch_attempts = [
-                (batch_response, batch_diagnostics, DETECTION_V5_PROPOSAL_MAX_TOKENS),
+                {
+                    "response": batch_response,
+                    "diagnostics": batch_diagnostics,
+                    "max_tokens": DETECTION_V5_PROPOSAL_MAX_TOKENS,
+                    "exact_input_tokens": exact_input_tokens,
+                    "context_characters": len(batch_user_text),
+                    "retry_kind": "initial",
+                },
             ]
             batch_retry_reason: str | None = None
             try:
@@ -10555,11 +10601,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                         messages=batch_messages,
                         output_config=proposal_output_config,
                     )
-                    batch_attempts.append((
-                        batch_response,
-                        batch_diagnostics,
-                        DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
-                    ))
+                    batch_attempts.append({
+                        "response": batch_response,
+                        "diagnostics": batch_diagnostics,
+                        "max_tokens": DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+                        "exact_input_tokens": exact_input_tokens,
+                        "context_characters": len(batch_user_text),
+                        "retry_kind": "truncated_json",
+                    })
                     try:
                         batch_payload = json.loads(
                             extract_text_from_claude_response(batch_response),
@@ -10573,18 +10622,101 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                         f"V6.41 Discovery batch {batch_number} returned invalid JSON: "
                         f"{batch_json_error}"
                     ) from batch_json_error
+
+            def validate_batch_contract(candidate: object) -> dict[str, Any]:
+                if not isinstance(candidate, dict) or set(candidate) != expected_fields:
+                    raise RuntimeError(
+                        f"V6.41 Discovery batch {batch_number} did not meet the ordinary Discovery contract"
+                    )
+                _v641_validate_batch_page_coverage(
+                    candidate, expected_pages=page_numbers,
+                )
+                return candidate
+
             expected_fields = {
                 "visual_groups", "classifications", "candidate_region_exceptions", "page_coverage",
             }
             if document_scope_enabled:
                 expected_fields.add("document_scope")
-            if not isinstance(batch_payload, dict) or set(batch_payload) != expected_fields:
-                raise RuntimeError(
-                    f"V6.41 Discovery batch {batch_number} did not meet the ordinary Discovery contract"
+            batch_payload = validate_batch_contract(batch_payload)
+            geometry_retry_error = ""
+            try:
+                _v644_validate_batch_core_geometry(batch_payload)
+            except ValueError as geometry_error:
+                geometry_retry_error = str(geometry_error)
+                if stage_callback:
+                    stage_callback(
+                        f"Discovery batch {batch_number} geometry correction retry"
+                    )
+                geometry_retry_text = (
+                    batch_user_text
+                    + "\n\nGEOMETRY CORRECTION REQUIRED:\n"
+                    + "The prior candidate response was rejected because its physical "
+                    + "core_bbox geometry was invalid. Reinspect every Island in this "
+                    + "batch and return the complete response again. For every group, "
+                    + "core_bbox must have positive area and be fully contained in bbox: "
+                    + "bbox.top_left_x <= core_bbox.top_left_x < core_bbox.bottom_right_x "
+                    + "<= bbox.bottom_right_x, and equivalently for y. bbox may include "
+                    + "associated dimensions or labels, while core_bbox encloses only the "
+                    + "physical depiction. Do not add commentary.\n"
+                    + f"Validation feedback: {geometry_retry_error}"
                 )
-            _v641_validate_batch_page_coverage(
-                batch_payload, expected_pages=page_numbers,
-            )
+                geometry_retry_content = build_detection_registry_content_blocks(
+                    file_name=file_name,
+                    file_bytes=file_bytes,
+                    user_text=geometry_retry_text,
+                    page_images=batch_images,
+                    page_image_numbers=page_numbers,
+                    regions=[],
+                )
+                geometry_retry_messages = [{"role": "user", "content": geometry_retry_content}]
+                geometry_retry_exact_input_tokens = _v641_count_input_tokens(
+                    client=client,
+                    model=discovery_model,
+                    system=proposal_system,
+                    messages=geometry_retry_messages,
+                    output_config=proposal_output_config,
+                )
+                if (
+                    geometry_retry_exact_input_tokens is not None
+                    and geometry_retry_exact_input_tokens
+                    > DETECTION_V641_DISCOVERY_MAX_EXACT_INPUT_TOKENS
+                ):
+                    raise RuntimeError(
+                        "V6.44 geometry-correction batch exceeds its safe input budget."
+                    )
+                batch_response, batch_diagnostics = create_claude_message_streamed(
+                    client,
+                    model=discovery_model,
+                    max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+                    temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+                    system=proposal_system,
+                    messages=geometry_retry_messages,
+                    output_config=proposal_output_config,
+                )
+                batch_attempts.append({
+                    "response": batch_response,
+                    "diagnostics": batch_diagnostics,
+                    "max_tokens": DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+                    "exact_input_tokens": geometry_retry_exact_input_tokens,
+                    "context_characters": len(geometry_retry_text),
+                    "retry_kind": "invalid_core_geometry",
+                })
+                try:
+                    batch_payload = json.loads(extract_text_from_claude_response(batch_response))
+                except json.JSONDecodeError as retry_error:
+                    raise RuntimeError(
+                        f"V6.44 geometry-correction batch {batch_number} returned invalid JSON: "
+                        f"{retry_error}"
+                    ) from retry_error
+                batch_payload = validate_batch_contract(batch_payload)
+                try:
+                    _v644_validate_batch_core_geometry(batch_payload)
+                except ValueError as retry_error:
+                    raise RuntimeError(
+                        f"V6.44 geometry-correction batch {batch_number} remained invalid: "
+                        f"{retry_error}"
+                    ) from retry_error
             batch_payload = _v641_reindex_batch_discovery_payload(
                 batch_payload, batch_number=batch_number,
             )
@@ -10592,23 +10724,22 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             all_classifications.extend(batch_payload["classifications"])
             all_exceptions.extend(batch_payload["candidate_region_exceptions"])
             all_coverage.extend(batch_payload["page_coverage"])
-            for attempt_number, (attempt_response, attempt_diagnostics, max_tokens) in enumerate(
-                batch_attempts, start=1,
-            ):
+            for attempt_number, attempt in enumerate(batch_attempts, start=1):
                 v641_proposal_attempt_summaries.append({
                     "batch_number": batch_number,
                     "attempt_number": attempt_number,
                     "accepted": attempt_number == len(batch_attempts),
                     "page_numbers": page_numbers,
                     "estimated_input_tokens": int(batch["estimated_tokens"]),
-                    "exact_input_tokens": exact_input_tokens,
-                    "max_tokens": max_tokens,
+                    "exact_input_tokens": attempt["exact_input_tokens"],
+                    "max_tokens": attempt["max_tokens"],
+                    "retry_kind": attempt["retry_kind"],
                     **summarize_detection_provider_call(
-                        response=attempt_response,
-                        diagnostics=attempt_diagnostics,
+                        response=attempt["response"],
+                        diagnostics=attempt["diagnostics"],
                         requested_model=discovery_model,
                         prompt_characters=len(proposal_prompt_with_anchor_contract),
-                        context_characters=len(batch_user_text),
+                        context_characters=attempt["context_characters"],
                         image_count=len(batch_images),
                         image_bytes=sum(len(image) for image in batch_images),
                     ),
@@ -10625,8 +10756,20 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 "truncation_retry": {
                     "attempted": batch_retry_reason is not None,
                     "reason": batch_retry_reason,
-                    "attempt_count": len(batch_attempts),
+                    "attempt_count": len([
+                        attempt for attempt in batch_attempts
+                        if attempt["retry_kind"] in {"initial", "truncated_json"}
+                    ]),
                 },
+                "v6_44_core_geometry_retry": {
+                    "attempted": bool(geometry_retry_error),
+                    "initial_error": geometry_retry_error,
+                    "attempt_count": len([
+                        attempt for attempt in batch_attempts
+                        if attempt["retry_kind"] == "invalid_core_geometry"
+                    ]),
+                },
+                "provider_attempt_count": len(batch_attempts),
             })
             proposal_response, proposal_diagnostics = batch_response, batch_diagnostics
         if proposal_response is None or proposal_diagnostics is None:

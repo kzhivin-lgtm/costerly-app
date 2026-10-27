@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import pytest
+
 from agents.anthropic_adapter import (
+    _v644_validate_batch_core_geometry,
     _v641_reindex_batch_discovery_payload,
     _v641_validate_batch_page_coverage,
     build_detection_v641_full_page_discovery_batches,
@@ -54,6 +57,26 @@ def test_v641_batch_reindex_preserves_absolute_page_coverage() -> None:
         {"page_number": 7, "visual_group_ids": ["v641-b02-001"]},
         {"page_number": 8, "visual_group_ids": ["v641-b02-002"]},
     ]
+
+
+def test_v644_rejects_core_that_escapes_its_batch_envelope() -> None:
+    payload = {
+        "visual_groups": [{
+            "group_id": "V1",
+            "page_number": 7,
+            "bbox": {
+                "top_left_x": 100, "top_left_y": 100,
+                "bottom_right_x": 300, "bottom_right_y": 300,
+            },
+            "core_bbox": {
+                "top_left_x": 90, "top_left_y": 110,
+                "bottom_right_x": 250, "bottom_right_y": 250,
+            },
+        }],
+    }
+
+    with pytest.raises(ValueError, match="V1.*exceeds bbox on the left"):
+        _v644_validate_batch_core_geometry(payload)
 
 
 def test_registry_blocks_keep_supplied_page_numbers() -> None:

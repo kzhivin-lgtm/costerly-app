@@ -48,6 +48,18 @@ page preparation, OCR, Fusion/route, Discovery batches, Review, Registry and
 publication. Protected: Detection behaviour and the accepted Processing to File
 Review handoff. Pending: deploy and a live ordinary-file interaction check.
 
+ACTIVE, V6.44, P0, retry isolated invalid Discovery-batch core geometry:
+For V6.41 budgeted ordinary Discovery only, validate each batch's semantic
+`core_bbox` containment before it joins the global Registry. If one batch has
+an invalid physical core, repeat only that batch once with explicit geometric
+correction feedback and preserve every accepted batch unchanged. Record the
+failing Island and rule, retry input size, provider attempt and final outcome in
+the existing batch audit. Never clamp the core to its envelope or weaken the
+fail-closed final validator: core geometry controls deterministic evidence
+ownership. Protected: valid ordinary, Assembly Set, Ada and Page 23 detection;
+no new provider call or altered output on valid runs. Pending: deploy and
+Morbergs retry validation.
+
 CHECKPOINT, V6.23 bounded Naming and Quantity review presentation:
 `c990495`, deployed and audited as
 `notes/DETECTION_V6_23_NAMING_AUDIT_CHECKPOINT_2026_10_26.md`. HSL returns to
