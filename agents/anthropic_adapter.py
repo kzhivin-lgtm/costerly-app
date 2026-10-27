@@ -113,7 +113,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v5_10_12_compact_coverage_dimension_halo_min20_fusion_text_recall_temperature_0"
+    "detection_v6_57_compact_discovery_deterministic_output_budget"
 )
 DETECTION_V67_MISTRAL_ANCHOR_ADMISSION_PROMPT_VERSION = (
     "detection_v6_7_mistral_graphic_anchor_admission"
@@ -804,6 +804,22 @@ def detection_v5_discovery_json_schema(
 ) -> dict[str, Any]:
     """Return the Discovery schema for the pre-classified document category."""
     schema = copy.deepcopy(DETECTION_V5_DISCOVERY_JSON_SCHEMA)
+    # These are audit labels, not an evidence transport. Bounding them prevents
+    # a verbose visual narration from starving the required Island geometry and
+    # page coverage at the end of this same JSON response.
+    group_properties = schema["properties"]["visual_groups"]["items"]["properties"]
+    group_properties["group_id"]["maxLength"] = 48
+    group_properties["location_hint"]["maxLength"] = 96
+    group_properties["visual_description"]["maxLength"] = 180
+    group_properties["representation_kind"]["maxLength"] = 64
+    schema["properties"]["classifications"]["items"]["properties"][
+        "classification_reason"
+    ]["maxLength"] = 120
+    exception_properties = schema["properties"]["candidate_region_exceptions"][
+        "items"
+    ]["properties"]
+    exception_properties["candidate_region_id"]["maxLength"] = 48
+    exception_properties["reason"]["maxLength"] = 120
     if not include_document_scope:
         schema["required"].remove("document_scope")
         schema["properties"].pop("document_scope")
@@ -10574,6 +10590,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     )
     v641_batch_audit: list[dict[str, Any]] = []
     v641_proposal_attempt_summaries: list[dict[str, Any]] = []
+    # The ordinary single-pass route has the same response shape as a V6.41
+    # batch. Plan capacity from candidate count before the provider call rather
+    # than discovering a fixed 8,192-token ceiling through a failed response.
+    proposal_output_max_tokens = select_detection_v645_discovery_output_max_tokens(
+        len(candidate_regions),
+    )
     if v641_budgeted_discovery_active:
         all_groups: list[dict[str, Any]] = []
         all_classifications: list[dict[str, Any]] = []
@@ -10897,7 +10919,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             stage_callback("Discovery started")
         proposal_response, proposal_diagnostics = create_claude_message_streamed(
             get_anthropic_client(), model=discovery_model,
-            max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
+            max_tokens=proposal_output_max_tokens,
             temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
             system=build_detection_system_content(prompt=proposal_prompt_with_anchor_contract),
             messages=[{"role": "user", "content": proposal_content}],
@@ -10912,7 +10934,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         else [summarize_proposal_attempt(
             proposal_response,
             proposal_diagnostics,
-            max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
+            max_tokens=proposal_output_max_tokens,
         )]
     )
     proposal_retry_reason: str | None = None
@@ -10921,10 +10943,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             proposal_raw_payload = json.loads(proposal_raw_text)
     except json.JSONDecodeError as initial_error:
         proposal_json_error: json.JSONDecodeError | None = initial_error
-        if _is_retryable_visual_registry_json_truncation(
-            proposal_raw_text,
-            proposal_response,
-            max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
+        if (
+            proposal_output_max_tokens < DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS
+            and _is_retryable_visual_registry_json_truncation(
+                proposal_raw_text,
+                proposal_response,
+                max_tokens=proposal_output_max_tokens,
+            )
         ):
             proposal_retry_reason = "initial_response_hit_budget_inside_json_string"
             if stage_callback:

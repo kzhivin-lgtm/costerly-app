@@ -701,9 +701,18 @@ def test_file_review_progress_means_elapsed_share_of_current_forecast():
 
 def test_v645_large_file_requests_start_with_capacity_for_their_response_shape():
     assert select_detection_v645_discovery_output_max_tokens(30) == 8_192
+    assert select_detection_v645_discovery_output_max_tokens(37) == 12_288
     assert select_detection_v645_discovery_output_max_tokens(49) == 12_288
     assert select_detection_v645_membership_output_max_tokens(64) == 6_144
     assert select_detection_v645_membership_output_max_tokens(96) == 12_288
+
+
+def test_ordinary_discovery_uses_the_same_planned_output_capacity_as_batches():
+    source = getsource(run_anthropic_detection_visual_registry_agent)
+
+    assert "proposal_output_max_tokens = select_detection_v645_discovery_output_max_tokens(" in source
+    assert "max_tokens=proposal_output_max_tokens" in source
+    assert "proposal_output_max_tokens < DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS" in source
 
 
 def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signals():

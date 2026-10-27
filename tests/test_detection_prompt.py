@@ -2,6 +2,7 @@ from agents.anthropic_adapter import (
     DETECTION_NO_NAMING_PROMPT_VERSION,
     DETECTION_PROMPT_VERSION,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
+    detection_v5_discovery_json_schema,
 )
 from agents.prompt_loader import (
     load_detection_agent_prompt,
@@ -77,6 +78,8 @@ def test_v5_10_11_separates_full_page_discovery_from_membership_review():
     assert "complete visual-Island inventory" in proposal_prompt
     assert "You do\nnot decide object membership" in proposal_prompt
     assert "Candidate Regions and Q are recall aids" in proposal_prompt
+    assert "Compact output is a correctness requirement" in proposal_prompt
+    assert "Do\nnot narrate the inspection" in proposal_prompt
     assert "one compact `page_coverage` record for every supplied page" in proposal_prompt
     assert "evidence envelope" in proposal_prompt
     assert "fixed visual-Island inventory" in review_prompt
@@ -84,5 +87,19 @@ def test_v5_10_11_separates_full_page_discovery_from_membership_review():
     assert "cannot create,\nremove, split, reclassify" in review_prompt
     assert "registry_view:<View ID>" in review_prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v5_10_12_compact_coverage_dimension_halo_min20_fusion_text_recall_temperature_0"
+        "detection_v6_57_compact_discovery_deterministic_output_budget"
     )
+
+
+def test_v657_discovery_schema_bounds_non_evidence_text_only():
+    schema = detection_v5_discovery_json_schema(include_document_scope=False)
+    group_properties = schema["properties"]["visual_groups"]["items"]["properties"]
+
+    assert group_properties["location_hint"]["maxLength"] == 96
+    assert group_properties["visual_description"]["maxLength"] == 180
+    assert schema["properties"]["classifications"]["items"]["properties"][
+        "classification_reason"
+    ]["maxLength"] == 120
+    assert schema["properties"]["candidate_region_exceptions"]["items"][
+        "properties"
+    ]["reason"]["maxLength"] == 120

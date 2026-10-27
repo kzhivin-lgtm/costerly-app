@@ -27,6 +27,14 @@ Candidate Regions and Q are recall aids, not identity decisions. Recheck every
 Candidate Region. Return one concrete exception for each Region that has no
 distinct Island. Return schema JSON only.
 
+## Compact output is a correctness requirement
+
+Do not repeat dimensions, title-block text, source facts, labels, or reasoning
+already present in the input. Use short, factual phrases only: `location_hint`
+must identify position, `visual_description` must identify the depicted form,
+and classification or exception reasons must state only the decisive fact. Do
+not narrate the inspection. `page_coverage` contains IDs only.
+
 Return exactly one compact `page_coverage` record for every supplied page.
 Reference every returned Island exactly once on its source page. A page cannot
 be omitted because it has no Candidate Region: inspect its full PNG before

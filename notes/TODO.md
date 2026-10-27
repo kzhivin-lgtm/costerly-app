@@ -1,5 +1,31 @@
 # TODO
 
+ACTIVE, V6.57, P0, ordinary Discovery output envelope and Processing progress
+root-cause:
+
+The 2026-10-27 HSL failure reached the existing 8,192-token Discovery ceiling
+while emitting valid JSON fields, then stopped inside `page_coverage`. The
+nearest successful HSL Discovery had the same route, 1,073 source facts,
+37 Candidate Regions, 11 page images, 86,995 input tokens and 123,572
+context characters, but returned 7,451 output tokens. This is an intermittent
+response-expansion boundary, not evidence that Fusion, routing or page recall
+changed. Owner approved a minimal repair: keep the same ordinary Discovery
+contract, make its output ceiling deterministic from Candidate Region count,
+and make its existing reasons/descriptions explicitly compact. Do not add a
+general JSON retry, change models, routing, Fusion, Membership Review,
+Evidence ownership or accepted object boundaries. Verify focused Discovery
+schema, prompt and call-budget tests before deployment, then run the protected
+HSL benchmark.
+
+Also investigate the Processing progress bar separately as a user-facing
+regression. It must have one visible bar, begin at zero, never reset or move
+backward, advance continuously before Fusion, recalibrate only forward from
+real stage signals, and reach File Review without a completed-bar grey delay.
+Do not infer that a Detection response failure is a progress-bar fault. Add a
+safe request-content digest to future Discovery diagnostics before attributing
+any remaining output variation to provider behaviour; never store raw document
+content in the ledger.
+
 CHECKPOINT, owner-accepted, V6.38-V6.40 quantity and Document Identity:
 `notes/DETECTION_V6_40_DOCUMENT_IDENTITY_QUANTITY_CHECKPOINT_2026_10_27.md`.
 The ordinary `300119_f2.pdf` witness published `ПОДДОН=5` and `СТЕЙШН=1` from
