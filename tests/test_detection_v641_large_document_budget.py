@@ -5,6 +5,7 @@ from agents.anthropic_adapter import (
     _v641_validate_batch_page_coverage,
     build_detection_v641_full_page_discovery_batches,
     build_detection_registry_content_blocks,
+    select_detection_v641_review_page_context_images,
     should_use_detection_v641_budgeted_discovery,
 )
 
@@ -81,3 +82,14 @@ def test_v641_covers_both_existing_ordinary_registry_categories() -> None:
         mistral_anchor_admission_active=True,
         full_estimated_input_tokens=300_000,
     )
+
+
+def test_v641_review_keeps_all_view_crops_before_page_contexts() -> None:
+    contexts, audit = select_detection_v641_review_page_context_images(
+        view_crops=[{"group_id": f"V{index}"} for index in range(92)],
+        page_context_images=[{"page_number": index} for index in range(22)],
+    )
+
+    assert contexts == []
+    assert audit["contexts_suppressed"] is True
+    assert audit["view_crop_count"] == 92

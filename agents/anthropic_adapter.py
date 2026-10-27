@@ -160,6 +160,7 @@ DETECTION_V641_DISCOVERY_NORMAL_ESTIMATE_TOKENS = 150_000
 DETECTION_V641_DISCOVERY_BATCH_ESTIMATE_TOKENS = 105_000
 DETECTION_V641_DISCOVERY_MAX_EXACT_INPUT_TOKENS = 160_000
 DETECTION_V641_IMAGE_PIXELS_PER_ESTIMATED_TOKEN = 750
+DETECTION_V641_REVIEW_MAX_IMAGES = 100
 DETECTION_V5_MEMBERSHIP_MAX_TOKENS = 6_144
 DETECTION_V68_ALL_PAIR_MEMBERSHIP_MAX_ISLANDS = 10
 DETECTION_V69_RECONCILIATION_MAX_ISLANDS = 10
@@ -2244,6 +2245,38 @@ def should_use_detection_v641_budgeted_discovery(
         and not mistral_anchor_admission_active
         and full_estimated_input_tokens > DETECTION_V641_DISCOVERY_NORMAL_ESTIMATE_TOKENS
     )
+
+
+def select_detection_v641_review_page_context_images(
+    *, view_crops: list[dict[str, Any]], page_context_images: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Keep object Views complete before retaining duplicated full-page context.
+
+    Discovery already inspected every full page.  Review's irreplaceable input
+    is the complete set of post-Discovery View crops.  If its extra page
+    contexts would breach the provider's 100-image transport limit, omit that
+    redundant layer rather than silently dropping an Island.
+    """
+    total_images = len(view_crops) + len(page_context_images)
+    if total_images <= DETECTION_V641_REVIEW_MAX_IMAGES:
+        return page_context_images, {
+            "contexts_suppressed": False,
+            "provider_image_limit": DETECTION_V641_REVIEW_MAX_IMAGES,
+            "view_crop_count": len(view_crops),
+            "page_context_count": len(page_context_images),
+        }
+    if len(view_crops) > DETECTION_V641_REVIEW_MAX_IMAGES:
+        raise RuntimeError(
+            "V6.41 Membership Review has more than 100 View crops. "
+            "This file needs bounded Review batching before it can run safely."
+        )
+    return [], {
+        "contexts_suppressed": True,
+        "reason": "complete_view_crops_take_priority_over_redundant_page_contexts",
+        "provider_image_limit": DETECTION_V641_REVIEW_MAX_IMAGES,
+        "view_crop_count": len(view_crops),
+        "page_context_count": len(page_context_images),
+    }
 
 
 def _v641_validate_batch_page_coverage(
@@ -10668,6 +10701,16 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             coordinate_frames=review_coordinate_frames,
         )
     )
+    v641_review_context_audit: dict[str, Any] | None = None
+    effective_review_page_context_images = review_page_context_images
+    if v641_budgeted_discovery_active:
+        (
+            effective_review_page_context_images,
+            v641_review_context_audit,
+        ) = select_detection_v641_review_page_context_images(
+            view_crops=membership_crops,
+            page_context_images=review_page_context_images,
+        )
     review_handoff = format_detection_v5_review_handoff(
         visual_groups=proposal_for_review["visual_groups"], source_facts=source_facts,
         draft_hypotheses=[],
@@ -10703,7 +10746,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         )
     review_content = build_detection_v5_membership_content_blocks(
         user_text=review_handoff, view_crops=membership_crops,
-        page_context_images=review_page_context_images,
+        page_context_images=effective_review_page_context_images,
     )
     v641_review_exact_input_tokens: int | None = None
     if v641_budgeted_discovery_active:
@@ -11034,9 +11077,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             response=review_response, diagnostics=review_diagnostics,
             requested_model=review_model,
             prompt_characters=len(review_prompt_with_membership_contract), context_characters=len(review_handoff),
-            image_count=len(review_page_context_images) + len(membership_crops),
+            image_count=len(effective_review_page_context_images) + len(membership_crops),
             image_bytes=(
-                sum(len(page["bytes"]) for page in review_page_context_images)
+                sum(len(page["bytes"]) for page in effective_review_page_context_images)
                 + sum(len(crop["bytes"]) for crop in membership_crops)
             ),
         ),
@@ -11046,8 +11089,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 requested_model=review_model,
                 prompt_characters=len(review_prompt_with_membership_contract),
                 context_characters=len(review_handoff),
-                image_count=len(review_page_context_images) + len(membership_crops),
-                image_bytes=(sum(len(page["bytes"]) for page in review_page_context_images)
+                image_count=len(effective_review_page_context_images) + len(membership_crops),
+                image_bytes=(sum(len(page["bytes"]) for page in effective_review_page_context_images)
                              + sum(len(crop["bytes"]) for crop in membership_crops)),
             ) if v69_criteria_reconciliation_active else None
         ),
@@ -11056,13 +11099,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 response=v69_reconciliation_response, diagnostics=v69_reconciliation_diagnostics,
                 requested_model=review_model,
                 prompt_characters=len(v69_reconciliation_prompt), context_characters=len(v69_reconciliation_handoff),
-                image_count=len(review_page_context_images) + len(membership_crops),
-                image_bytes=(sum(len(page["bytes"]) for page in review_page_context_images)
+                image_count=len(effective_review_page_context_images) + len(membership_crops),
+                image_bytes=(sum(len(page["bytes"]) for page in effective_review_page_context_images)
                              + sum(len(crop["bytes"]) for crop in membership_crops)),
             ) if v69_reconciliation_response is not None and v69_reconciliation_diagnostics is not None else None
         ),
         "v5_9_review_crop_audit": membership_crop_audit,
         "v5_9_review_page_context_audit": review_page_context_audit,
+        "v6_41_review_context_transport": v641_review_context_audit,
         "v5_9_proposal_decision_audit": proposal_model_payload,
         "v5_9_review_decision_audit": copy.deepcopy(review_raw_payload),
         "v6_10_pairwise_decision_audit": copy.deepcopy(v69_criteria_audit),
