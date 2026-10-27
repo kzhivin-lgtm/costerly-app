@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import json
 
 
 PROCESSING_TITLE = "Reading your RFQ file..."
@@ -21,6 +22,10 @@ def post_upload_stage_html(
     complete: bool = False,
     processing_phase: str | None = None,
     expected_file_review_seconds: float | None = None,
+    processing_plan: dict | None = None,
+    processing_stage_id: str | None = None,
+    processing_stage_started_at_ms: int | None = None,
+    processing_run_token: str | None = None,
 ) -> str:
     """Return the shared fixed-origin post-upload stage HTML."""
     stage_classes = "post-upload-stage"
@@ -56,8 +61,20 @@ def post_upload_stage_html(
     timer_html = ""
     if elapsed_seconds is not None:
         seconds = max(0, int(elapsed_seconds))
+        forecast_html = ""
+        forecast_attr = ""
+        if expected_file_review_seconds is not None:
+            forecast_seconds = max(0, int(round(expected_file_review_seconds)))
+            forecast_label = f"F: {forecast_seconds // 60:02d}:{forecast_seconds % 60:02d}"
+            forecast_attr = f' data-processing-forecast-label="{forecast_label}"'
+            forecast_html = (
+                '<span class="post-upload-stage__forecast">'
+                f'{forecast_label}'
+                '</span> '
+            )
         timer_html = (
-            '<div class="post-upload-stage__timer">'
+            f'<div class="post-upload-stage__timer"{forecast_attr}>'
+            f'{forecast_html}'
             f'Elapsed {seconds // 60:02d}:{seconds % 60:02d}'
             '</div>'
         )
@@ -72,9 +89,24 @@ def post_upload_stage_html(
     if expected_file_review_seconds is not None:
         seconds = max(1.0, float(expected_file_review_seconds))
         expected_file_review_attr = f' data-expected-file-review-seconds="{seconds:g}"'
+    plan_attr = ""
+    if isinstance(processing_plan, dict):
+        plan_attr = f" data-processing-plan='{html.escape(json.dumps(processing_plan, separators=(',', ':')), quote=True)}'"
+    stage_id_attr = (
+        f' data-processing-stage-id="{html.escape(processing_stage_id)}"'
+        if processing_stage_id else ""
+    )
+    stage_started_attr = (
+        f' data-processing-stage-started-at-ms="{int(processing_stage_started_at_ms)}"'
+        if processing_stage_started_at_ms is not None else ""
+    )
+    run_token_attr = (
+        f' data-processing-run-token="{html.escape(processing_run_token)}"'
+        if processing_run_token else ""
+    )
 
     return (
-        f'<div class="{stage_classes}"{complete_attr}{phase_attr}{expected_file_review_attr}>'
+        f'<div class="{stage_classes}"{complete_attr}{phase_attr}{expected_file_review_attr}{plan_attr}{stage_id_attr}{stage_started_attr}{run_token_attr}>'
         '<div class="post-upload-stage__inner">'
         '<div class="post-upload-shell">'
         f'{marker_html}'
@@ -98,6 +130,10 @@ def processing_stage_html(
     complete: bool = False,
     processing_phase: str = "upload",
     expected_file_review_seconds: float | None = None,
+    processing_plan: dict | None = None,
+    processing_stage_id: str | None = None,
+    processing_stage_started_at_ms: int | None = None,
+    processing_run_token: str | None = None,
 ) -> str:
     """Return the shared Processing stage HTML for instant and real screens."""
     return post_upload_stage_html(
@@ -111,4 +147,8 @@ def processing_stage_html(
         complete=complete,
         processing_phase=processing_phase,
         expected_file_review_seconds=expected_file_review_seconds,
+        processing_plan=processing_plan,
+        processing_stage_id=processing_stage_id,
+        processing_stage_started_at_ms=processing_stage_started_at_ms,
+        processing_run_token=processing_run_token,
     )

@@ -28,7 +28,7 @@ def fallback_file_review_seconds(page_count: int | None) -> float:
         "3-6": 60.0,
         "7-12": 90.0,
         "13-20": 150.0,
-        "21+": 240.0,
+        "21+": 360.0,
         "unknown": 90.0,
     }[processing_page_bucket(page_count)]
 
@@ -112,3 +112,116 @@ def progress_fraction(*, elapsed_seconds: float, expected_total_seconds: float) 
     # but reserve completion for the actual File Review handoff.
     overtime = (elapsed - expected) / expected
     return min(0.985, 0.96 + 0.025 * (1 - pow(2.718281828, -overtime)))
+
+
+def build_stage_progress_plan(
+    *,
+    page_count: int | None,
+    elapsed_seconds: float,
+    plan_input: dict[str, Any],
+    history: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Build one file-specific, immutable progress plan after Fusion.
+
+    The numbers are a forecast for movement *inside* a stage.  The server's
+    stage callbacks remain the authority that closes one stage and opens the
+    next.  This deliberately keeps a slow provider request inside its own
+    range instead of allowing elapsed wall time to push the whole bar to 90%.
+    """
+    raw_batches = plan_input.get("discovery_batches_estimated_tokens")
+    if not isinstance(raw_batches, list):
+        raw_batches = []
+    batch_tokens = [
+        max(1, int(value))
+        for value in raw_batches
+        if isinstance(value, (int, float))
+    ]
+    if not batch_tokens:
+        batch_tokens = [max(10_000, int(plan_input.get("full_estimated_input_tokens") or 10_000))]
+
+    model = str(plan_input.get("registry_model") or "").lower()
+    model_multiplier = 1.35 if "sonnet" in model else 1.0
+    candidate_regions = max(0, int(plan_input.get("candidate_region_count") or 0))
+    review_images = max(
+        int(plan_input.get("review_image_estimate") or 0),
+        int(plan_input.get("page_count") or page_count or 0),
+    )
+
+    # These are deliberately transparent work-unit estimates.  Historical
+    # cycles can raise the total forecast, while exact batch/token shape still
+    # determines how that remaining time is distributed across this file.
+    discovery_seconds = [
+        round(model_multiplier * max(12.0, 7.0 + tokens / 2_000.0), 1)
+        for tokens in batch_tokens
+    ]
+    review_seconds = round(
+        model_multiplier * max(10.0, 6.0 + review_images * 0.55), 1,
+    )
+    registry_seconds = round(max(4.0, 3.0 + candidate_regions * 0.08), 1)
+    saving_seconds = 3.0
+    observed_seconds = max(1.0, float(elapsed_seconds))
+    unscaled_remaining = sum(discovery_seconds) + review_seconds + registry_seconds + saving_seconds
+    historical_seconds = float(
+        estimate_file_review_seconds(history or [], page_count=page_count)["seconds"]
+    )
+    forecast_seconds = max(
+        observed_seconds + unscaled_remaining,
+        historical_seconds,
+    )
+    remaining_target = max(1.0, forecast_seconds - observed_seconds)
+    scale = remaining_target / unscaled_remaining
+
+    stages: list[dict[str, Any]] = [{
+        "id": "pre_fusion",
+        "label": "OCR and Fusion",
+        "expected_seconds": round(observed_seconds, 1),
+    }]
+    for number, seconds in enumerate(discovery_seconds, start=1):
+        stages.append({
+            "id": f"discovery_{number}",
+            "label": f"Discovery batch {number} of {len(discovery_seconds)}",
+            "expected_seconds": round(seconds * scale, 1),
+            "estimated_input_tokens": batch_tokens[number - 1],
+        })
+    stages.extend([
+        {
+            "id": "membership_review",
+            "label": "Membership review",
+            "expected_seconds": round(review_seconds * scale, 1),
+        },
+        {
+            "id": "registry_assembly",
+            "label": "Registry assembly",
+            "expected_seconds": round(registry_seconds * scale, 1),
+        },
+        {
+            "id": "saving",
+            "label": "Saving results",
+            "expected_seconds": round(saving_seconds * scale, 1),
+        },
+    ])
+    return {
+        "version": "stage_aware_progress_v1",
+        "forecast_seconds": int(round(forecast_seconds)),
+        "page_count": page_count,
+        "plan_input": dict(plan_input),
+        "stages": stages,
+    }
+
+
+def stage_progress_floor(plan: dict[str, Any] | None, stage_id: str | None) -> float:
+    """Return the completed-stage floor without inventing current-stage work."""
+    if not isinstance(plan, dict) or not stage_id:
+        return 0.04
+    stages = plan.get("stages")
+    if not isinstance(stages, list):
+        return 0.04
+    total = sum(max(0.0, float(row.get("expected_seconds") or 0)) for row in stages)
+    if total <= 0:
+        return 0.04
+    completed = 0.0
+    for row in stages:
+        if str(row.get("id") or "") == stage_id:
+            break
+        completed += max(0.0, float(row.get("expected_seconds") or 0))
+    return max(0.04, min(0.985, completed / total))

@@ -3488,30 +3488,64 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     return shell ? shell.querySelector('.post-upload-stage') : null;
                 }
 
+                const STAGE_PROGRESS_STATE_KEY = '__costerlyStageAwareProgressV1';
+
+                function processingPlan(stage) {
+                    if (!stage || !stage.dataset.processingPlan) return null;
+                    try {
+                        const value = JSON.parse(stage.dataset.processingPlan);
+                        return Array.isArray(value.stages) ? value : null;
+                    } catch (_) {
+                        return null;
+                    }
+                }
+
                 function phaseProgress(stage) {
                     if (!stage) return 4;
                     if (stage.dataset.processingComplete === 'true') return 100;
+                    const plan = processingPlan(stage);
+                    if (!plan) return 4;
 
-                    const requestedTotalSeconds = Number(
-                        stage.dataset.expectedFileReviewSeconds || 90
-                    );
-                    const expectedTotalSeconds = Number.isFinite(requestedTotalSeconds)
-                        ? Math.max(8, requestedTotalSeconds)
-                        : 90;
-                    const elapsedSeconds = Math.max(
-                        0,
-                        (Date.now() - Number(window[ELAPSED_STARTED_AT_KEY] || Date.now())) / 1000
-                    );
-                    // The bar represents estimated progress to first File Review,
-                    // not a decorative allocation of OCR/Detection/Saving bands.
-                    // At half the current forecast it is roughly half full. A
-                    // provider that outlives the forecast still never reaches
-                    // completion before the server has actually published Review.
-                    if (elapsedSeconds < expectedTotalSeconds) {
-                        return Math.max(4, Math.min(96, 100 * elapsedSeconds / expectedTotalSeconds));
+                    const runToken = stage.dataset.processingRunToken || 'unknown';
+                    let state = window[STAGE_PROGRESS_STATE_KEY];
+                    if (!state || state.runToken !== runToken) {
+                        state = { runToken, highestPercent: 4, highestStageIndex: 0 };
+                        window[STAGE_PROGRESS_STATE_KEY] = state;
                     }
-                    const overtime = (elapsedSeconds - expectedTotalSeconds) / expectedTotalSeconds;
-                    return Math.min(98.5, 96 + 2.5 * (1 - Math.exp(-overtime)));
+                    const activeStageId = stage.dataset.processingStageId || '';
+                    const activeStageIndex = plan.stages.findIndex(
+                        (item) => String(item.id || '') === activeStageId
+                    );
+                    if (activeStageIndex < 0) return state.highestPercent;
+
+                    const stageDurations = plan.stages.map((item) => Math.max(
+                        0.1, Number(item.expected_seconds || 0.1)
+                    ));
+                    const totalDuration = stageDurations.reduce((sum, value) => sum + value, 0);
+                    if (!totalDuration) return state.highestPercent;
+
+                    const completedDuration = stageDurations
+                        .slice(0, activeStageIndex)
+                        .reduce((sum, value) => sum + value, 0);
+                    const stageStartedAt = Number(stage.dataset.processingStageStartedAtMs || Date.now());
+                    const activeElapsedSeconds = Math.max(0, (Date.now() - stageStartedAt) / 1000);
+                    const activeDuration = stageDurations[activeStageIndex];
+                    // A model call may outlive its estimate. It then approaches
+                    // the end of its own range and visibly remains active, but
+                    // cannot consume the later Review/Saving ranges.
+                    const withinStage = Math.min(
+                        0.92,
+                        activeElapsedSeconds / activeDuration
+                    );
+                    const calculated = 100 * Math.min(
+                        0.985,
+                        (completedDuration + activeDuration * withinStage) / totalDuration
+                    );
+                    if (activeStageIndex >= state.highestStageIndex) {
+                        state.highestStageIndex = activeStageIndex;
+                        state.highestPercent = Math.max(state.highestPercent, calculated);
+                    }
+                    return state.highestPercent;
                 }
 
                 function updateElapsed() {
@@ -3524,8 +3558,12 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     );
                     const label = elapsedLabel(seconds);
                     document.querySelectorAll('.post-upload-stage__timer').forEach((node) => {
-                        if (node.textContent !== label) {
-                            node.textContent = label;
+                        const forecastLabel = node.dataset.processingForecastLabel;
+                        const timerLabel = forecastLabel
+                            ? `${forecastLabel} ${label}`
+                            : label;
+                        if (node.textContent !== timerLabel) {
+                            node.textContent = timerLabel;
                         }
                     });
 
@@ -3541,7 +3579,12 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 function applyFinalElapsed(seconds) {
                     if (!Number.isFinite(seconds)) return;
                     document.querySelectorAll('[data-costerly-total-lap]').forEach((node) => {
-                        const label = seconds.toFixed(1) + 's';
+                        const forecast = Number(node.dataset.costerlyForecastSeconds || 0);
+                        const label = Math.round(seconds) + 's' + (
+                            Number.isFinite(forecast) && forecast > 0
+                                ? ` (F: ${Math.round(forecast)}s)`
+                                : ''
+                        );
                         if (node.textContent !== label) node.textContent = label;
                     });
                 }

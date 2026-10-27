@@ -52,6 +52,7 @@ from agents.schemas.detection_registry_schema import (
 from agents.ocr_adapter import normalize_mistral_ocr_response
 from ui.processing_stage import processing_stage_html
 from ui.processing_forecast import (
+    build_stage_progress_plan,
     estimate_file_review_seconds,
     minimum_history_observations,
     progress_fraction,
@@ -573,6 +574,40 @@ def test_processing_stage_exposes_expected_file_review_seconds():
     assert 'data-expected-file-review-seconds="72"' in markup
 
 
+def test_processing_stage_exposes_file_specific_plan_and_forecast_label():
+    markup = processing_stage_html(
+        elapsed_seconds=4,
+        expected_file_review_seconds=125,
+        processing_plan={"forecast_seconds": 125, "stages": []},
+        processing_stage_id="discovery_1",
+        processing_stage_started_at_ms=123,
+        processing_run_token="run-1",
+    )
+
+    assert "F: 02:05" in markup
+    assert 'data-processing-stage-id="discovery_1"' in markup
+    assert "data-processing-plan=" in markup
+
+
+def test_stage_progress_plan_uses_exact_discovery_batch_shape():
+    plan = build_stage_progress_plan(
+        page_count=22,
+        elapsed_seconds=18,
+        plan_input={
+            "registry_model": "claude-haiku",
+            "candidate_region_count": 49,
+            "review_image_estimate": 49,
+            "discovery_batches_estimated_tokens": [100_000, 100_000, 71_000],
+        },
+    )
+
+    discovery = [row for row in plan["stages"] if row["id"].startswith("discovery_")]
+    assert len(discovery) == 3
+    assert plan["forecast_seconds"] >= 18 + sum(
+        float(row["expected_seconds"]) for row in discovery
+    )
+
+
 def test_file_review_forecast_uses_history_only_after_three_same_bucket_runs():
     history = [
         {
@@ -625,12 +660,13 @@ def test_v645_large_file_requests_start_with_capacity_for_their_response_shape()
     assert select_detection_v645_membership_output_max_tokens(96) == 12_288
 
 
-def test_processing_progress_uses_file_review_forecast_not_phase_weights():
+def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signals():
     source = getsource(install_upload_interaction_guards)
 
-    assert "expectedFileReviewSeconds" in source
-    assert "elapsedSeconds / expectedTotalSeconds" in source
-    assert "decorative allocation of OCR/Detection/Saving bands" in source
+    assert "dataset.processingPlan" in source
+    assert "activeStageId" in source
+    assert "activeElapsedSeconds / activeDuration" in source
+    assert "cannot consume the later Review/Saving ranges" in source
 
 
 def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():

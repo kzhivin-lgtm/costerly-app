@@ -256,6 +256,25 @@ def _timing_html(timings: dict[str, object] | None) -> str:
         except (TypeError, ValueError):
             return "—"
 
+    def total_lap() -> str:
+        try:
+            actual = round(float(timings.get("total_seconds") or 0))
+        except (TypeError, ValueError):
+            return "—"
+        try:
+            forecast = int(round(float(timings.get("forecast_seconds") or 0)))
+        except (TypeError, ValueError):
+            forecast = 0
+        suffix = f" (F: {forecast}s)" if forecast > 0 else ""
+        return f"{actual}s{suffix}"
+
+    def forecast_attr() -> str:
+        try:
+            forecast = int(round(float(timings.get("forecast_seconds") or 0)))
+        except (TypeError, ValueError):
+            forecast = 0
+        return f' data-costerly-forecast-seconds="{forecast}"' if forecast > 0 else ""
+
     def token_cost() -> str:
         try:
             completed = timings.get("full_cost")
@@ -282,7 +301,7 @@ def _timing_html(timings: dict[str, object] | None) -> str:
         f'<span>OCR <strong>{seconds("ocr_seconds")}</strong></span>'
         f'<span>Detection <strong>{seconds("detection_seconds")}</strong></span>'
         f'{naming_html}'
-        f'<span>Total lap <strong data-costerly-total-lap>{seconds("total_seconds")}</strong></span>'
+        f'<span>Total lap <strong data-costerly-total-lap{forecast_attr()}>{total_lap()}</strong></span>'
         f'<span><strong>{token_cost()}</strong></span>'
         '</div>'
     )

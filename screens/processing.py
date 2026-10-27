@@ -7,7 +7,11 @@ from threading import Lock
 import streamlit as st
 
 from ui.js_guards import clear_upload_processing_shell
-from ui.processing_forecast import estimate_file_review_seconds
+from ui.processing_forecast import (
+    build_stage_progress_plan,
+    estimate_file_review_seconds,
+    stage_progress_floor,
+)
 from ui.processing_stage import PROCESSING_MARKER_ID, processing_stage_html
 from use_cases.rfq_processing import build_file_review_data, process_uploaded_rfq
 from db.repositories import fetch_recent_rfq_processing_cycles
@@ -39,6 +43,8 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
     process_uploaded_rfq().
     """
     stage_slot = st.empty()
+    screen_started = time.perf_counter()
+    screen_started_at_ms = int(time.time() * 1000)
 
     def render_stage(
         progress_value: float,
@@ -47,6 +53,9 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
         complete: bool = False,
         processing_phase: str = "ocr",
         expected_file_review_seconds_value: float | None = None,
+        processing_plan: dict | None = None,
+        processing_stage_id: str | None = None,
+        processing_stage_started_at_ms: int | None = None,
     ) -> None:
         stage_slot.markdown(
             processing_stage_html(
@@ -56,15 +65,15 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
                 complete=complete,
                 processing_phase=processing_phase,
                 expected_file_review_seconds=expected_file_review_seconds_value,
+                processing_plan=processing_plan,
+                processing_stage_id=processing_stage_id,
+                processing_stage_started_at_ms=processing_stage_started_at_ms,
+                processing_run_token=str(screen_started_at_ms),
             ),
             unsafe_allow_html=True,
         )
 
-    render_stage(
-        0.04,
-        processing_phase="ocr",
-        expected_file_review_seconds_value=expected_file_review_seconds(None),
-    )
+    render_stage(0.04, processing_phase="ocr", processing_stage_id="pre_fusion")
     clear_upload_processing_shell()
 
     file_name = st.session_state.get("uploaded_file_name")
@@ -85,14 +94,37 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
     try:
         phase_state: dict[str, object] = {
             "value": "ocr", "page_count": None,
-            "expected_file_review_seconds": expected_file_review_seconds(None),
+            "label": "OCR reading document",
+            "stage_id": "pre_fusion",
+            "stage_started_at_ms": screen_started_at_ms,
+            "plan_input": None,
+            "progress_plan": None,
         }
         phase_lock = Lock()
 
         if trace is not None:
             trace.event("server.rfq_processing_worker_started")
 
-        def update_phase(label: str, page_count: int | None = None) -> None:
+        def _stage_id(label: str, metadata: dict | None = None) -> str:
+            if label.startswith("Discovery batch "):
+                try:
+                    return f"discovery_{int(label.split()[2])}"
+                except (IndexError, ValueError):
+                    return "discovery_1"
+            if label.startswith("Discovery"):
+                return "discovery_1"
+            return {
+                "Membership review started": "membership_review",
+                "Membership review retry 1": "membership_review",
+                "Registry assembly started": "registry_assembly",
+                "Saving results": "saving",
+            }.get(label, "pre_fusion")
+
+        def update_phase(
+            label: str,
+            page_count: int | None = None,
+            metadata: dict | None = None,
+        ) -> None:
             with phase_lock:
                 previous_phase = str(phase_state["value"])
             phase = {
@@ -113,8 +145,13 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
             )
             with phase_lock:
                 phase_state["value"] = phase
+                phase_state["label"] = label
+                phase_state["stage_id"] = _stage_id(label, metadata)
+                phase_state["stage_started_at_ms"] = int(time.time() * 1000)
                 if page_count is not None:
                     phase_state["page_count"] = page_count
+                if label == "Processing plan prepared" and isinstance(metadata, dict):
+                    phase_state["plan_input"] = dict(metadata)
             if trace is not None:
                 trace.event(
                     "server.rfq_processing_stage",
@@ -133,22 +170,45 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
             )
 
             history: list[dict] | None = None
-            rendered_signature: tuple[str, float] | None = None
+            rendered_signature: tuple | None = None
             while not future.done():
                 if history is None and history_future.done():
                     history = history_future.result()
                 with phase_lock:
                     page_count = phase_state["page_count"]
                     active_phase = str(phase_state["value"])
-                forecast = expected_file_review_seconds(page_count, history=history)
-                with phase_lock:
-                    phase_state["expected_file_review_seconds"] = forecast
-                signature = (active_phase, forecast)
+                    label = str(phase_state["label"])
+                    stage_id = str(phase_state["stage_id"])
+                    stage_started_at_ms = int(phase_state["stage_started_at_ms"])
+                    plan_input = phase_state["plan_input"]
+                    progress_plan = phase_state["progress_plan"]
+                if progress_plan is None and isinstance(plan_input, dict):
+                    progress_plan = build_stage_progress_plan(
+                        page_count=page_count if isinstance(page_count, int) else None,
+                        elapsed_seconds=time.perf_counter() - screen_started,
+                        plan_input=plan_input,
+                        history=history,
+                    )
+                    with phase_lock:
+                        phase_state["progress_plan"] = progress_plan
+                forecast = (
+                    float(progress_plan["forecast_seconds"])
+                    if isinstance(progress_plan, dict) else None
+                )
+                signature = (
+                    label,
+                    stage_id,
+                    stage_started_at_ms,
+                    forecast,
+                )
                 if signature != rendered_signature:
                     render_stage(
-                        0.04,
+                        stage_progress_floor(progress_plan, stage_id),
                         processing_phase=active_phase,
                         expected_file_review_seconds_value=forecast,
+                        processing_plan=progress_plan,
+                        processing_stage_id=stage_id,
+                        processing_stage_started_at_ms=stage_started_at_ms,
                     )
                     rendered_signature = signature
                 time.sleep(0.15)
@@ -158,6 +218,12 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
         st.session_state.processing_error = str(exc)
         st.session_state.screen = "file_review"
         st.rerun()
+
+    processing_plan = phase_state.get("progress_plan")
+    if isinstance(processing_plan, dict):
+        result.setdefault("timings", {})["forecast_seconds"] = int(
+            processing_plan["forecast_seconds"]
+        )
 
     # This marker intentionally starts before cache seeding and the existing
     # transition handshake. It lets File Review record the complete server-side
@@ -178,7 +244,17 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
     # observe the complete marker and install transition masking before rerun.
     # The former 250 ms delay was unnecessarily visible; 120 ms preserves the
     # no-fragment contract while the cached File Review keeps the handoff fast.
-    render_stage(1.0, complete=True, processing_phase="complete")
+    render_stage(
+        1.0,
+        complete=True,
+        processing_phase="complete",
+        expected_file_review_seconds_value=(
+            float(processing_plan["forecast_seconds"])
+            if isinstance(processing_plan, dict) else None
+        ),
+        processing_plan=processing_plan if isinstance(processing_plan, dict) else None,
+        processing_stage_id="complete",
+    )
     time.sleep(0.12)
 
     st.session_state.current_run_id = run_id

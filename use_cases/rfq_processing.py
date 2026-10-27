@@ -587,13 +587,14 @@ def process_uploaded_rfq(
     file_bytes: bytes,
     company_id: str,
     user_id: str | None = None,
-    progress_callback: Callable[[str, int | None], None] | None = None,
+    progress_callback: Callable[..., None] | None = None,
 ) -> dict:
     """Run RFQ detection once and persist the validated result to Supabase."""
     cycle_started_at = datetime.now(UTC).isoformat()
     cycle_started = time.perf_counter()
     stage_ledger: list[dict[str, Any]] = []
     active_stage: dict[str, Any] | None = None
+    progress_plan_input: dict[str, Any] | None = None
 
     def stage_id(label: str) -> str:
         if label == "Preparing document pages":
@@ -614,9 +615,13 @@ def process_uploaded_rfq(
             return "publish_file_review"
         return "orchestration"
 
-    def emit_progress(label: str, page_count: int | None = None) -> None:
+    def emit_progress(
+        label: str,
+        page_count: int | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
         """Record one transition and forward it to the visual-only screen."""
-        nonlocal active_stage
+        nonlocal active_stage, progress_plan_input
         now = time.perf_counter()
         if active_stage is not None:
             stage_ledger.append({
@@ -630,8 +635,14 @@ def process_uploaded_rfq(
         }
         if page_count is not None:
             active_stage["page_count"] = int(page_count)
+        progress_metadata = dict(metadata or {})
+        progress_metadata["elapsed_seconds"] = round(now - cycle_started, 3)
+        if progress_metadata:
+            active_stage["metadata"] = progress_metadata
+        if label == "Processing plan prepared" and metadata:
+            progress_plan_input = dict(metadata)
         if progress_callback:
-            progress_callback(label, page_count)
+            progress_callback(label, page_count, progress_metadata)
 
     def finalize_stage_ledger() -> list[dict[str, Any]]:
         if active_stage is not None:
@@ -712,7 +723,9 @@ def process_uploaded_rfq(
             # V6.12 categorizes the completed OCR/Fusion package before any
             # Detection model call and selects the scenario-owned model.
             model=None,
-            stage_callback=lambda label: emit_progress(label, page_count),
+            stage_callback=lambda label, metadata=None: emit_progress(
+                label, page_count, metadata,
+            ),
         )
     except DetectionVisualRegistryValidationError as exc:
         try:
@@ -845,6 +858,7 @@ def process_uploaded_rfq(
             "document_identity_deferred": document_identity_future is not None,
             "preview_deferred": preview_future is not None,
             "object_lock_log": _object_lock_log(detection_result["detected_objects"]),
+            "stage_aware_progress_plan_input": progress_plan_input,
             "v6_43_processing_stage_ledger": finalize_stage_ledger(),
         },
     )

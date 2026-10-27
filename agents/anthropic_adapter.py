@@ -5,6 +5,7 @@ import copy
 from decimal import Decimal
 import html
 import hashlib
+import inspect
 import json
 import math
 import os
@@ -2280,6 +2281,38 @@ def build_detection_v641_full_page_discovery_batches(
         for row in page_estimates
     )
     return batches, full_estimate
+
+
+def _notify_detection_stage(
+    stage_callback: Callable[..., None] | None,
+    label: str,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    """Forward optional visual-only planning data without breaking old callers."""
+    if stage_callback is None:
+        return
+    if metadata is None:
+        stage_callback(label)
+        return
+    try:
+        signature = inspect.signature(stage_callback)
+        parameters = list(signature.parameters.values())
+        accepts_metadata = any(
+            parameter.kind == inspect.Parameter.VAR_POSITIONAL
+            for parameter in parameters
+        ) or len([
+            parameter for parameter in parameters
+            if parameter.kind in (
+                inspect.Parameter.POSITIONAL_ONLY,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            )
+        ]) >= 2
+    except (TypeError, ValueError):
+        accepts_metadata = True
+    if accepts_metadata:
+        stage_callback(label, metadata)
+    else:
+        stage_callback(label)
 
 
 def should_use_detection_v641_budgeted_discovery(
@@ -10318,7 +10351,7 @@ def run_anthropic_detection_v5_source_degraded_v561_consensus_experiment(
     }, usage
 
 
-def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None, mistral_anchor_admission: bool = False, document_category: str | None = None, stage_callback: Callable[[str], None] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
+def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None, mistral_anchor_admission: bool = False, document_category: str | None = None, stage_callback: Callable[..., None] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Run Island discovery, then the route-scoped bounded membership review."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
     proposal_prompt = load_detection_v5_proposal_prompt()
@@ -10515,6 +10548,29 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         document_category=document_category,
         mistral_anchor_admission_active=mistral_anchor_admission_active,
         full_estimated_input_tokens=v641_full_estimate,
+    )
+    planned_discovery_batches = (
+        v641_batches
+        if v641_budgeted_discovery_active
+        else [{"estimated_tokens": v641_full_estimate}]
+    )
+    _notify_detection_stage(
+        stage_callback,
+        "Processing plan prepared",
+        {
+            "page_count": len(page_images),
+            "document_category": str(document_category or "ordinary_object_set"),
+            "registry_model": discovery_model,
+            "candidate_region_count": len(candidate_regions),
+            "full_estimated_input_tokens": int(v641_full_estimate),
+            "discovery_batches_estimated_tokens": [
+                int(batch["estimated_tokens"])
+                for batch in planned_discovery_batches
+            ],
+            # Discovery has not yet emitted the actual View inventory. This is
+            # a bounded pre-call estimate, refined by the real stage signal.
+            "review_image_estimate": max(len(page_images), len(candidate_regions)),
+        },
     )
     v641_batch_audit: list[dict[str, Any]] = []
     v641_proposal_attempt_summaries: list[dict[str, Any]] = []
@@ -11173,8 +11229,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         else DETECTION_V5_MEMBERSHIP_MAX_TOKENS
     )
     v641_review_exact_input_tokens: int | None = None
-    if stage_callback:
-        stage_callback("Membership review started")
+    _notify_detection_stage(
+        stage_callback,
+        "Membership review started",
+        {
+            "review_image_count": len(membership_crops),
+            "page_context_image_count": len(effective_review_page_context_images),
+        },
+    )
     if v641_budgeted_discovery_active:
         review_system = build_detection_system_content(
             prompt=review_prompt_with_membership_contract,

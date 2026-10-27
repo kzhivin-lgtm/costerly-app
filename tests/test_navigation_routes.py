@@ -413,6 +413,13 @@ def test_file_review_publishes_persisted_naming_once_without_reloading_review():
     assert st.session_state.current_agent_timings["naming_seconds"] == 1.2
     assert "TC1 unavailable" in file_review._timing_html({"total_seconds": 1.2})
     assert "TC1 0.024" in file_review._timing_html({"total_seconds": 1.2, "token_cost": 0.024166})
+    forecast_markup = file_review._timing_html({
+        "total_seconds": 307.6,
+        "forecast_seconds": 295,
+        "token_cost": 0.1,
+    })
+    assert "308s (F: 295s)" in forecast_markup
+    assert 'data-costerly-forecast-seconds="295"' in forecast_markup
     assert file_review._publish_persisted_naming(
         run_id,
         {"status": "succeeded", "names": {object_id: "Different name"}},
