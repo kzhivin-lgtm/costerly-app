@@ -3353,8 +3353,8 @@ def install_upload_interaction_guards(shell_html: str) -> None:
         (() => {
             const parentWindow = window.parent;
             const parentDoc = parentWindow.document;
-            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_16";
-            const runtimeVersion = 'v1116';
+            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_17";
+            const runtimeVersion = 'v1117';
             const resetMarker = 'costerly-progress-controller-runtime';
             try {
                 if (
@@ -3389,9 +3389,9 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const REAL_PROCESSING_MARKER_ID = 'costerly-processing-screen-active';
                 const FILE_REVIEW_MARKER_ID = 'costerly-file-review-screen-active';
                 const SHELL_ACTIVE_CLASS = 'costerly-upload-processing-shell-active';
-                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1116';
-                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1116';
-                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1116Installed';
+                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1117';
+                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1117';
+                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1117Installed';
                 const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAtV4';
                 const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimerV4';
                 const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSecondsV4';
@@ -3514,6 +3514,12 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     return shell ? shell.querySelector('.post-upload-stage') : null;
                 }
 
+                function visibleProgressNode(stage) {
+                    const shell = document.getElementById(SHELL_ID);
+                    return shell?.querySelector('.custom-progress-fill') ||
+                        stage?.querySelector('.custom-progress-fill') || null;
+                }
+
                 const STAGE_PROGRESS_STATE_KEY = '__costerlyStageAwareProgressV2';
                 const PRE_UPLOAD_PROGRESS_STATE_KEY = '__costerlyPreUploadProgressV2';
 
@@ -3590,18 +3596,19 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     if (!state) {
                         // Upload has been accepted by the browser but has not
                         // reached Python yet. Give that real transfer a single,
-                        // slow, zero-origin segment instead of a dead bar.
+                        // steady, zero-origin segment instead of a dead bar.
                         const elapsed = browserElapsedSeconds();
                         const preUpload = window[PRE_UPLOAD_PROGRESS_STATE_KEY] || {
                             highestPercent: 0,
                         };
-                        const target = Math.min(4, elapsed * 4 / 45);
+                        const target = Math.min(8, elapsed * 0.5);
                         preUpload.highestPercent = Math.max(
                             Number(preUpload.highestPercent || 0), target
                         );
                         window[PRE_UPLOAD_PROGRESS_STATE_KEY] = preUpload;
                         return preUpload.highestPercent;
                     }
+                    if (stage.dataset.processingComplete === 'true') return 100;
                     const plan = processingPlan(stage);
                     if (!plan) {
                         // Before Fusion the only known file fact is page count.
@@ -3702,7 +3709,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         return;
                     }
                     const progressWidth = phaseProgress(stage).toFixed(1) + '%';
-                    const progressNode = stage.querySelector('.custom-progress-fill');
+                    const progressNode = visibleProgressNode(stage);
                     if (progressNode && progressNode.style.width !== progressWidth) {
                         progressNode.style.width = progressWidth;
                     }
@@ -3858,15 +3865,9 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 }
 
                 function startWatcher() {
-                    if (watcher) return;
-
-                    watcher = window.setInterval(() => {
-                        if (realProcessingIsActive()) {
-                            removeShell();
-                            window.clearInterval(watcher);
-                            watcher = null;
-                        }
-                    }, 80);
+                    // The shell is the one visible progress bar for upload and
+                    // Processing. It stays mounted while Streamlit replaces
+                    // the hidden stage markup beneath it.
                 }
 
                 function showShell(source) {
@@ -3979,20 +3980,11 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     if (fileReviewIsActive() && window[LAST_ELAPSED_SECONDS_KEY]) {
                         applyFinalElapsed(Number(window[LAST_ELAPSED_SECONDS_KEY]));
                     }
+                    if (fileReviewIsActive()) {
+                        removeShell();
+                    }
                     if (realProcessingIsActive()) {
                         reportProcessingVisible();
-                        const stage = activeProcessingStage();
-                        if (stage && stage.dataset.processingComplete === 'true') {
-                            const transitionId = startTransition(
-                                'processing_to_file_review',
-                                'processing',
-                                'file_review',
-                                PROCESSING_COMPLETE_TRANSITION_ID_KEY,
-                                window[RFQ_UPLOAD_CYCLE_ID_KEY] || '',
-                            );
-                            reportFileReviewStyled(transitionId);
-                        }
-                        removeShell();
                     }
                 });
 

@@ -6,7 +6,6 @@ from threading import Lock
 
 import streamlit as st
 
-from ui.js_guards import clear_upload_processing_shell
 from ui.processing_forecast import (
     build_stage_progress_plan,
     estimate_file_review_seconds,
@@ -110,8 +109,6 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
         processing_stage_id="pre_fusion",
         processing_page_count=initial_page_count,
     )
-    clear_upload_processing_shell()
-
     if (
         st.session_state.get("current_run_id")
         and st.session_state.get("processed_file_name") == file_name
@@ -285,6 +282,22 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
             timings=result.get("timings"),
         )
     )
+
+    # The one visible shell receives completion only after File Review's first
+    # payload is ready. Its CSS transition reaches 100% immediately before the
+    # rerun, rather than leaving a gray gap after a false early finish.
+    render_stage(
+        1.0,
+        complete=True,
+        processing_phase="complete",
+        expected_file_review_seconds_value=(
+            float(processing_plan["forecast_seconds"])
+            if isinstance(processing_plan, dict) else None
+        ),
+        processing_plan=processing_plan if isinstance(processing_plan, dict) else None,
+        processing_stage_id="complete",
+    )
+    time.sleep(0.22)
 
     st.session_state.current_run_id = run_id
     st.session_state.current_ocr_package = result.get("ocr_package")
