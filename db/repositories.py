@@ -379,6 +379,24 @@ def fetch_agent_usage_events(client: Client, run_id: str) -> pd.DataFrame:
     )
 
 
+def fetch_recent_rfq_processing_cycles(
+    client: Client, *, company_id: str, limit: int = 80,
+) -> list[dict]:
+    """Return only this company's completed File Review timing history."""
+    response = (
+        client.table("agent_usage_events")
+        .select("duration_seconds,raw_usage,status,created_at")
+        .eq("company_id", company_id)
+        .eq("agent_name", "orchestration")
+        .eq("operation", "rfq_processing_cycle")
+        .eq("status", "succeeded")
+        .order("created_at", desc=True)
+        .limit(max(1, min(int(limit), 200)))
+        .execute()
+    )
+    return [dict(row) for row in response.data or []]
+
+
 def fetch_deferred_naming_status(client: Client, run_id: str) -> dict | None:
     """Return the terminal Naming ledger entry for one run, if it exists."""
     response = (

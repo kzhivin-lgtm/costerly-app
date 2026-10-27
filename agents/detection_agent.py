@@ -960,6 +960,7 @@ def run_detection_agent(
                 # ordinary route. The deterministic pre-model category has
                 # already made that routing decision.
                 document_category=str(route.get("category") or ""),
+                stage_callback=stage_callback,
             )
     except DetectionVisualRegistryValidationError as exc:
         if stage_callback:

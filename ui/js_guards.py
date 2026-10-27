@@ -3378,8 +3378,6 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAt';
                 const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimer';
                 const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSeconds';
-                const PROGRESS_PHASE_KEY = '__costerlyProcessingProgressPhase';
-                const PROGRESS_PHASE_STARTED_AT_KEY = '__costerlyProcessingProgressPhaseStartedAt';
                 const PROCESSING_TRANSITION_ID_KEY = '__costerlyUploadToProcessingTransitionId';
                 const PROCESSING_COMPLETE_TRANSITION_ID_KEY = '__costerlyProcessingToReviewTransitionId';
                 const PROCESSING_COMPLETE_STYLED_OBSERVER_KEY = '__costerlyProcessingToReviewStyledObserver';
@@ -3494,47 +3492,26 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     if (!stage) return 4;
                     if (stage.dataset.processingComplete === 'true') return 100;
 
-                    const phase = stage.dataset.processingPhase || 'upload';
-                    if (window[PROGRESS_PHASE_KEY] !== phase) {
-                        window[PROGRESS_PHASE_KEY] = phase;
-                        window[PROGRESS_PHASE_STARTED_AT_KEY] = Date.now();
-                    }
-
-                    const phaseSeconds = Math.max(
+                    const requestedTotalSeconds = Number(
+                        stage.dataset.expectedFileReviewSeconds || 90
+                    );
+                    const expectedTotalSeconds = Number.isFinite(requestedTotalSeconds)
+                        ? Math.max(8, requestedTotalSeconds)
+                        : 90;
+                    const elapsedSeconds = Math.max(
                         0,
-                        (Date.now() - Number(window[PROGRESS_PHASE_STARTED_AT_KEY] || Date.now())) / 1000
+                        (Date.now() - Number(window[ELAPSED_STARTED_AT_KEY] || Date.now())) / 1000
                     );
-                    const requestedDetectionSeconds = Number(
-                        stage.dataset.expectedDetectionSeconds || 28
-                    );
-                    const detectionExpectedSeconds = Number.isFinite(requestedDetectionSeconds)
-                        ? Math.min(90, Math.max(8, requestedDetectionSeconds))
-                        : 28;
-                    // Golden benchmark medians are approximately 1.4s OCR,
-                    // 25.1s Detection, and 1.0s saving. Keep most of the visual
-                    // range for the opaque Detection call.
-                    const config = {
-                        upload: [4, 8, 2.5],
-                        ocr: [8, 13, 1.5],
-                        detection: [13, 96, detectionExpectedSeconds],
-                        saving: [96, 99, 1],
-                    }[phase] || [4, 96, 28];
-                    const start = config[0];
-                    const end = config[1];
-                    const expectedSeconds = config[2];
-                    // Ease in through the opaque phase, then creep toward its cap
-                    // during unusually slow calls. The real backend transition is
-                    // authoritative and provides the faster finish.
-                    const normalized = Math.min(1, phaseSeconds / expectedSeconds);
-                    let fraction;
-                    if (phaseSeconds <= expectedSeconds) {
-                        fraction = 0.90 * Math.pow(normalized, 1.35);
-                    } else {
-                        const overtime = (phaseSeconds - expectedSeconds) / expectedSeconds;
-                        fraction = 0.90 + 0.085 * (1 - Math.exp(-overtime));
+                    // The bar represents estimated progress to first File Review,
+                    // not a decorative allocation of OCR/Detection/Saving bands.
+                    // At half the current forecast it is roughly half full. A
+                    // provider that outlives the forecast still never reaches
+                    // completion before the server has actually published Review.
+                    if (elapsedSeconds < expectedTotalSeconds) {
+                        return Math.max(4, Math.min(96, 100 * elapsedSeconds / expectedTotalSeconds));
                     }
-                    fraction = Math.min(0.985, fraction);
-                    return start + (end - start) * fraction;
+                    const overtime = (elapsedSeconds - expectedTotalSeconds) / expectedTotalSeconds;
+                    return Math.min(98.5, 96 + 2.5 * (1 - Math.exp(-overtime)));
                 }
 
                 function updateElapsed() {
@@ -3639,8 +3616,6 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     window[ELAPSED_TIMER_KEY] = null;
                     window[ELAPSED_STARTED_AT_KEY] = Date.now();
                     window[LAST_ELAPSED_SECONDS_KEY] = null;
-                    window[PROGRESS_PHASE_KEY] = null;
-                    window[PROGRESS_PHASE_STARTED_AT_KEY] = null;
                     window[PROCESSING_TRANSITION_ID_KEY] = null;
                     window[PROCESSING_COMPLETE_TRANSITION_ID_KEY] = null;
                     window[PROCESSING_COMPLETE_STYLED_OBSERVER_KEY] = null;

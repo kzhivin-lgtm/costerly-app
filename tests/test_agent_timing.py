@@ -49,11 +49,15 @@ from agents.schemas.detection_registry_schema import (
 )
 from agents.ocr_adapter import normalize_mistral_ocr_response
 from ui.processing_stage import processing_stage_html
+from ui.processing_forecast import (
+    estimate_file_review_seconds,
+    progress_fraction,
+)
 from ui.js_guards import (
     install_company_logo_picker_guard,
     install_upload_interaction_guards,
 )
-from screens.processing import expected_detection_seconds
+from screens.processing import expected_file_review_seconds
 from use_cases.rfq_processing import (
     _latest_runtime_timings,
     _normalize_run,
@@ -557,36 +561,47 @@ def test_processing_stage_exposes_real_phase_and_completion():
     assert 'data-processing-complete="true"' in markup
 
 
-def test_processing_stage_exposes_expected_detection_seconds():
+def test_processing_stage_exposes_expected_file_review_seconds():
     markup = processing_stage_html(
         processing_phase="detection",
-        expected_detection_seconds=14,
+        expected_file_review_seconds=72,
     )
 
-    assert 'data-expected-detection-seconds="14"' in markup
+    assert 'data-expected-file-review-seconds="72"' in markup
 
 
-def test_detection_pacing_uses_ocr_page_buckets():
-    assert expected_detection_seconds(None) == 28
-    assert expected_detection_seconds(0) == 28
-    assert expected_detection_seconds(1) == 14
-    assert expected_detection_seconds(2) == 14
-    assert expected_detection_seconds(3) == 18
-    assert expected_detection_seconds(6) == 18
-    assert expected_detection_seconds(7) == 28
-    assert expected_detection_seconds(12) == 28
-    assert expected_detection_seconds(13) == 45
-    assert expected_detection_seconds(20) == 45
-    assert expected_detection_seconds(21) == 60
+def test_file_review_forecast_uses_history_only_after_three_same_bucket_runs():
+    history = [
+        {
+            "status": "succeeded", "duration_seconds": duration,
+            "raw_usage": {"page_count": 11},
+        }
+        for duration in (50, 70, 90)
+    ]
+
+    forecast = estimate_file_review_seconds(history, page_count=11)
+
+    assert forecast == {
+        "seconds": 70.0,
+        "source": "same_company_page_bucket_median",
+        "sample_size": 3,
+        "page_bucket": "7-12",
+    }
+    assert expected_file_review_seconds(11, history=history) == 70.0
+    assert expected_file_review_seconds(11, history=history[:2]) == 90.0
 
 
-def test_processing_progress_uses_golden_stage_weights_and_ease_in_curve():
+def test_file_review_progress_means_elapsed_share_of_current_forecast():
+    assert progress_fraction(elapsed_seconds=45, expected_total_seconds=90) == 0.5
+    assert 0.96 <= progress_fraction(elapsed_seconds=90, expected_total_seconds=90) < 1
+
+
+def test_processing_progress_uses_file_review_forecast_not_phase_weights():
     source = getsource(install_upload_interaction_guards)
 
-    assert "ocr: [8, 13, 1.5]" in source
-    assert "detection: [13, 96, detectionExpectedSeconds]" in source
-    assert "saving: [96, 99, 1]" in source
-    assert "Math.pow(normalized, 1.35)" in source
+    assert "expectedFileReviewSeconds" in source
+    assert "elapsedSeconds / expectedTotalSeconds" in source
+    assert "decorative allocation of OCR/Detection/Saving bands" in source
 
 
 def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():

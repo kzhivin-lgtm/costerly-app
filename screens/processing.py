@@ -2,27 +2,34 @@ from __future__ import annotations
 
 import time
 from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
 
 import streamlit as st
 
 from ui.js_guards import clear_upload_processing_shell
+from ui.processing_forecast import estimate_file_review_seconds
 from ui.processing_stage import PROCESSING_MARKER_ID, processing_stage_html
 from use_cases.rfq_processing import build_file_review_data, process_uploaded_rfq
+from db.repositories import fetch_recent_rfq_processing_cycles
+from db.supabase_client import get_supabase_client
 
 
-def expected_detection_seconds(page_count: int | None) -> float:
-    """Return a conservative Detection pacing bucket from OCR page count."""
-    if not isinstance(page_count, int) or isinstance(page_count, bool) or page_count < 1:
-        return 28.0
-    if page_count <= 2:
-        return 14.0
-    if page_count <= 6:
-        return 18.0
-    if page_count <= 12:
-        return 28.0
-    if page_count <= 20:
-        return 45.0
-    return 60.0
+def expected_file_review_seconds(
+    page_count: int | None, *, history: list[dict] | None = None,
+) -> float:
+    """Return the current forecast to File Review, not only Detection time."""
+    return float(estimate_file_review_seconds(history or [], page_count=page_count)["seconds"])
+
+
+def _load_processing_history(company_id: str) -> list[dict]:
+    """Best-effort same-company history, deliberately outside the RFQ critical path."""
+    try:
+        return fetch_recent_rfq_processing_cycles(
+            get_supabase_client(), company_id=company_id,
+        )
+    except Exception as exc:
+        print(f"[Processing Forecast] History unavailable: {exc}")
+        return []
 
 
 def render_processing_screen(company_id: str, *, trace=None) -> None:
@@ -39,7 +46,7 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
         elapsed_seconds: float = 0,
         complete: bool = False,
         processing_phase: str = "ocr",
-        expected_detection_seconds_value: float | None = None,
+        expected_file_review_seconds_value: float | None = None,
     ) -> None:
         stage_slot.markdown(
             processing_stage_html(
@@ -48,12 +55,16 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
                 elapsed_seconds=elapsed_seconds,
                 complete=complete,
                 processing_phase=processing_phase,
-                expected_detection_seconds=expected_detection_seconds_value,
+                expected_file_review_seconds=expected_file_review_seconds_value,
             ),
             unsafe_allow_html=True,
         )
 
-    render_stage(0.08, processing_phase="ocr")
+    render_stage(
+        0.04,
+        processing_phase="ocr",
+        expected_file_review_seconds_value=expected_file_review_seconds(None),
+    )
     clear_upload_processing_shell()
 
     file_name = st.session_state.get("uploaded_file_name")
@@ -72,30 +83,46 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
         st.rerun()
 
     try:
-        phase_state: dict[str, object] = {"value": "ocr", "page_count": None}
+        phase_state: dict[str, object] = {
+            "value": "ocr", "page_count": None,
+            "expected_file_review_seconds": expected_file_review_seconds(None),
+        }
+        phase_lock = Lock()
 
         if trace is not None:
             trace.event("server.rfq_processing_worker_started")
 
         def update_phase(label: str, page_count: int | None = None) -> None:
-            phase_state["value"] = {
+            with phase_lock:
+                previous_phase = str(phase_state["value"])
+            phase = {
                 "OCR reading document": "ocr",
                 "Preparing document pages": "ocr",
+                "Fusion and route started": "fusion",
+                "Discovery started": "discovery",
+                "Membership review started": "review",
+                "Registry assembly started": "registry",
                 "Detection Agent": "detection",
                 "Saving results": "saving",
             }.get(
                 label,
-                "detection" if label.startswith("Detection ") else phase_state["value"],
+                (
+                    "discovery" if label.startswith("Discovery batch")
+                    else previous_phase
+                ),
             )
-            if page_count is not None:
-                phase_state["page_count"] = page_count
+            with phase_lock:
+                phase_state["value"] = phase
+                if page_count is not None:
+                    phase_state["page_count"] = page_count
             if trace is not None:
                 trace.event(
                     "server.rfq_processing_stage",
                     metadata={"stage": label, "page_count": page_count},
                 )
 
-        with ThreadPoolExecutor(max_workers=1) as executor:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            history_future = executor.submit(_load_processing_history, company_id)
             future = executor.submit(
                 process_uploaded_rfq,
                 file_name=file_name,
@@ -105,20 +132,25 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
                 progress_callback=update_phase,
             )
 
-            rendered_phase = "ocr"
+            history: list[dict] | None = None
+            rendered_signature: tuple[str, float] | None = None
             while not future.done():
-                active_phase = phase_state["value"]
-                if active_phase != rendered_phase:
+                if history is None and history_future.done():
+                    history = history_future.result()
+                with phase_lock:
+                    page_count = phase_state["page_count"]
+                    active_phase = str(phase_state["value"])
+                forecast = expected_file_review_seconds(page_count, history=history)
+                with phase_lock:
+                    phase_state["expected_file_review_seconds"] = forecast
+                signature = (active_phase, forecast)
+                if signature != rendered_signature:
                     render_stage(
-                        {"ocr": 0.08, "detection": 0.13, "saving": 0.96}[active_phase],
+                        0.04,
                         processing_phase=active_phase,
-                        expected_detection_seconds_value=(
-                            expected_detection_seconds(phase_state.get("page_count"))
-                            if active_phase == "detection"
-                            else None
-                        ),
+                        expected_file_review_seconds_value=forecast,
                     )
-                    rendered_phase = active_phase
+                    rendered_signature = signature
                 time.sleep(0.15)
 
             result = future.result()

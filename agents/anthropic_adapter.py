@@ -10238,7 +10238,7 @@ def run_anthropic_detection_v5_source_degraded_v561_consensus_experiment(
     }, usage
 
 
-def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None, mistral_anchor_admission: bool = False, document_category: str | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
+def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None, mistral_anchor_admission: bool = False, document_category: str | None = None, stage_callback: Callable[[str], None] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Run Island discovery, then the route-scoped bounded membership review."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
     proposal_prompt = load_detection_v5_proposal_prompt()
@@ -10453,6 +10453,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         proposal_response: Any | None = None
         proposal_diagnostics: dict[str, Any] | None = None
         for batch_number, batch in enumerate(v641_batches, start=1):
+            if stage_callback:
+                stage_callback(f"Discovery batch {batch_number} of {len(v641_batches)}")
             page_numbers = list(batch["page_numbers"])
             page_set = set(page_numbers)
             batch_images = [page_images[page_number - 1] for page_number in page_numbers]
@@ -10647,6 +10649,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             }
         proposal_raw_text = json.dumps(proposal_raw_payload, ensure_ascii=False)
     else:
+        if stage_callback:
+            stage_callback("Discovery started")
         proposal_response, proposal_diagnostics = create_claude_message_streamed(
             get_anthropic_client(), model=discovery_model,
             max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
@@ -10679,6 +10683,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
         ):
             proposal_retry_reason = "initial_response_hit_budget_inside_json_string"
+            if stage_callback:
+                stage_callback("Discovery retry 1")
             proposal_response, proposal_diagnostics = create_claude_message_streamed(
                 get_anthropic_client(), model=discovery_model,
                 max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
@@ -10974,6 +10980,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         page_context_images=effective_review_page_context_images,
     )
     v641_review_exact_input_tokens: int | None = None
+    if stage_callback:
+        stage_callback("Membership review started")
     if v641_budgeted_discovery_active:
         review_system = build_detection_system_content(
             prompt=review_prompt_with_membership_contract,
@@ -11030,6 +11038,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             )
         ):
             review_retry_reason = "initial_response_hit_budget_inside_json_string"
+            if stage_callback:
+                stage_callback("Membership review retry 1")
             review_response, review_diagnostics = create_claude_message_streamed(
                 get_anthropic_client(),
                 model=review_model,
@@ -11287,6 +11297,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                         f"V6.10 reconciliation review failed validation: {exc}",
                         usage_event=failure_usage,
                     ) from exc
+    if stage_callback:
+        stage_callback("Registry assembly started")
     payload = {
         "visual_groups": proposal_discovery_payload["visual_groups"],
         "classifications": proposal_discovery_payload["classifications"],

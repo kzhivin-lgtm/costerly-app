@@ -20,7 +20,7 @@ def post_upload_stage_html(
     elapsed_seconds: float | None = None,
     complete: bool = False,
     processing_phase: str | None = None,
-    expected_detection_seconds: float | None = None,
+    expected_file_review_seconds: float | None = None,
 ) -> str:
     """Return the shared fixed-origin post-upload stage HTML."""
     stage_classes = "post-upload-stage"
@@ -68,13 +68,13 @@ def post_upload_stage_html(
         if processing_phase
         else ""
     )
-    expected_detection_attr = ""
-    if expected_detection_seconds is not None:
-        seconds = max(1.0, float(expected_detection_seconds))
-        expected_detection_attr = f' data-expected-detection-seconds="{seconds:g}"'
+    expected_file_review_attr = ""
+    if expected_file_review_seconds is not None:
+        seconds = max(1.0, float(expected_file_review_seconds))
+        expected_file_review_attr = f' data-expected-file-review-seconds="{seconds:g}"'
 
     return (
-        f'<div class="{stage_classes}"{complete_attr}{phase_attr}{expected_detection_attr}>'
+        f'<div class="{stage_classes}"{complete_attr}{phase_attr}{expected_file_review_attr}>'
         '<div class="post-upload-stage__inner">'
         '<div class="post-upload-shell">'
         f'{marker_html}'
@@ -97,7 +97,7 @@ def processing_stage_html(
     elapsed_seconds: float | None = None,
     complete: bool = False,
     processing_phase: str = "upload",
-    expected_detection_seconds: float | None = None,
+    expected_file_review_seconds: float | None = None,
 ) -> str:
     """Return the shared Processing stage HTML for instant and real screens."""
     return post_upload_stage_html(
@@ -110,5 +110,5 @@ def processing_stage_html(
         elapsed_seconds=elapsed_seconds,
         complete=complete,
         processing_phase=processing_phase,
-        expected_detection_seconds=expected_detection_seconds,
+        expected_file_review_seconds=expected_file_review_seconds,
     )

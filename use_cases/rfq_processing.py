@@ -592,6 +592,60 @@ def process_uploaded_rfq(
     """Run RFQ detection once and persist the validated result to Supabase."""
     cycle_started_at = datetime.now(UTC).isoformat()
     cycle_started = time.perf_counter()
+    stage_ledger: list[dict[str, Any]] = []
+    active_stage: dict[str, Any] | None = None
+
+    def stage_id(label: str) -> str:
+        if label == "Preparing document pages":
+            return "page_preparation"
+        if label == "OCR reading document":
+            return "ocr"
+        if label == "Fusion and route started":
+            return "fusion_and_route"
+        if label == "Detection Registry started":
+            return "discovery_preparation"
+        if label.startswith("Discovery"):
+            return "discovery"
+        if label == "Membership review started":
+            return "membership_review"
+        if label == "Registry assembly started":
+            return "registry_and_evidence"
+        if label == "Saving results":
+            return "publish_file_review"
+        return "orchestration"
+
+    def emit_progress(label: str, page_count: int | None = None) -> None:
+        """Record one transition and forward it to the visual-only screen."""
+        nonlocal active_stage
+        now = time.perf_counter()
+        if active_stage is not None:
+            stage_ledger.append({
+                **active_stage,
+                "duration_seconds": round(now - float(active_stage["started_at_monotonic"]), 3),
+            })
+        active_stage = {
+            "stage": stage_id(label),
+            "label": label,
+            "started_at_monotonic": now,
+        }
+        if page_count is not None:
+            active_stage["page_count"] = int(page_count)
+        if progress_callback:
+            progress_callback(label, page_count)
+
+    def finalize_stage_ledger() -> list[dict[str, Any]]:
+        if active_stage is not None:
+            stage_ledger.append({
+                **active_stage,
+                "duration_seconds": round(
+                    time.perf_counter() - float(active_stage["started_at_monotonic"]), 3,
+                ),
+            })
+        return [
+            {key: value for key, value in row.items() if key != "started_at_monotonic"}
+            for row in stage_ledger
+        ]
+
     client = get_supabase_client()
     try:
         record_rfq_upload(
@@ -616,8 +670,7 @@ def process_uploaded_rfq(
         file_bytes=file_bytes,
     )
     if use_page_images:
-        if progress_callback:
-            progress_callback("Preparing document pages", None)
+        emit_progress("Preparing document pages")
         page_images, page_image_diagnostics = render_detection_pdf_pages(file_bytes)
         ocr_package = {
             "provider": "none",
@@ -635,20 +688,18 @@ def process_uploaded_rfq(
         }
         detection_ocr_package = None
     else:
-        if progress_callback:
-            progress_callback("OCR reading document", None)
+        emit_progress("OCR reading document")
         ocr_package, detection_ocr_package = _run_optional_ocr(
             file_name=file_name,
             file_bytes=file_bytes,
         )
     detection_context = build_detection_ocr_context(detection_ocr_package)
-    if progress_callback:
-        if page_images:
-            page_count = len(page_images)
-        else:
-            pages = ocr_package.get("pages")
-            page_count = len(pages) if isinstance(pages, list) and pages else None
-        progress_callback("Detection Agent", page_count)
+    if page_images:
+        page_count = len(page_images)
+    else:
+        pages = ocr_package.get("pages")
+        page_count = len(pages) if isinstance(pages, list) and pages else None
+    emit_progress("Fusion and route started", page_count)
     detection_started = time.perf_counter()
     try:
         detection_result = run_detection_agent(
@@ -661,11 +712,7 @@ def process_uploaded_rfq(
             # V6.12 categorizes the completed OCR/Fusion package before any
             # Detection model call and selects the scenario-owned model.
             model=None,
-            stage_callback=(
-                (lambda label: progress_callback(label, page_count))
-                if progress_callback
-                else None
-            ),
+            stage_callback=lambda label: emit_progress(label, page_count),
         )
     except DetectionVisualRegistryValidationError as exc:
         try:
@@ -723,8 +770,7 @@ def process_uploaded_rfq(
         usage_events=usage_events,
     )
 
-    if progress_callback:
-        progress_callback("Saving results", None)
+    emit_progress("Saving results")
     upsert_rfq_detection_result(client, detection_result)
     preview_future = None
     if detection_result["detected_objects"]:
@@ -799,6 +845,7 @@ def process_uploaded_rfq(
             "document_identity_deferred": document_identity_future is not None,
             "preview_deferred": preview_future is not None,
             "object_lock_log": _object_lock_log(detection_result["detected_objects"]),
+            "v6_43_processing_stage_ledger": finalize_stage_ledger(),
         },
     )
     ocr_event = _runtime_event(

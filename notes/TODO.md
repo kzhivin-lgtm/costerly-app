@@ -37,6 +37,17 @@ membership, Naming, or Evidence ownership. No static Latvian aliases are being
 added. Protected: V6.41 batching and all accepted routes. Pending: deploy and
 Morbergs validation of identity, CF codes, explicit quantities, timing and cost.
 
+ACTIVE, V6.43, P0, Processing forecast to first File Review:
+Replace the decorative OCR/Detection/Saving easing curve with one elapsed-time
+forecast to File Review. The bar uses the median of at least three successful
+same-company cycles in the matching page-count bucket, otherwise a conservative
+cold-start estimate. It must update without new model-provider calls, route changes,
+or blocking Naming, Preview and Document Identity. Persist a compact stage
+ledger inside the existing orchestration event so later forecasts can separate
+page preparation, OCR, Fusion/route, Discovery batches, Review, Registry and
+publication. Protected: Detection behaviour and the accepted Processing to File
+Review handoff. Pending: deploy and a live ordinary-file interaction check.
+
 CHECKPOINT, V6.23 bounded Naming and Quantity review presentation:
 `c990495`, deployed and audited as
 `notes/DETECTION_V6_23_NAMING_AUDIT_CHECKPOINT_2026_10_26.md`. HSL returns to
