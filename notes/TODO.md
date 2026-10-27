@@ -1,44 +1,16 @@
 # TODO
 
-ACTIVE CANDIDATE, P0, V6.38 caption-bound explicit quantity publication:
-the `300119_f2.pdf` production audit proved that Fusion retained native fact
-`04 / ПОДДОН 5 ШТ`, and Membership cited it as five pieces, but the final V5
-proof-component compiler passed an empty metadata list into the Registry and
-published its fallback `quantity=1, quantity_explicit=false`. Keep object
-boundaries, router selection, Evidence ownership, Naming and Document Identity
-unchanged. After graph membership is immutable, promote only one unambiguous
-positive literal quantity from a retained View's upper caption band. Supported
-markers are bounded English, Russian and Hebrew piece/count forms. Multiple
-different caption quantities preserve the conservative default and record the
-conflict. No model call or prompt expansion is allowed. First gate: the exact
-`ПОДДОН 5 ШТ` fact publishes quantity five and explicit true; regression gates
-cover English/Russian/Hebrew aliases and conflicting captions.
-
-ACTIVE CANDIDATE, P1, V6.39 semantic Document Identity fallback: user approved
-less-conservative, cited title-block inference when formal Client, Partner and
-Project labels are absent. Explicit labels always win. A design/architecture
-organisation is Partner; a named designer is Partner only when not credited as
-Author; a non-design organisation immediately associated with an address is
-Client; an unlabelled document title is Project; and the address itself is
-Project only when no title survives. `Studio` or an address alone are not
-absolute rules: `300119_f2.pdf` proves why, since `СТУДИЯ CALGEL` is the
-address-associated Client while `МЕБЕЛЬ / СТЕЙШН И ПОДДОНЫ` is the Project.
-Publish every fallback with its semantic source label, preserve `unknown` only
-when no bounded candidate exists, and do not affect object Detection, Naming,
-quantity, Evidence or routing. First gate is the exact 300119 title-block
-mapping plus explicit-label, address-only and named-designer regressions.
-
-ACTIVE CANDIDATE, P0, V6.40 quantity-review signal repair: File Review's red
-`QTY` label must represent only a physical quantity that needs a human choice.
-It must not reuse graph or Registry-metadata review flags. An unambiguous
-caption quantity, including `04 / ПОДДОН 5 ШТ` and `03 / КОФЕ СТЕЙШН 1 ШТ`,
-is never red. A safe default of one for an otherwise unique built-in kitchen,
-large cabinet system or other integral object is also never red. Preserve the
-default only when no explicit count exists. The only current red condition is
-conflicting positive caption quantities for the same locked Object. No model,
-route, object boundary, evidence, quantity value or database migration is
-allowed. First gate: the three-object transport test proves default one and
-explicit five remain unflagged while a documented caption conflict is flagged.
+CHECKPOINT, owner-accepted, V6.38-V6.40 quantity and Document Identity:
+`notes/DETECTION_V6_40_DOCUMENT_IDENTITY_QUANTITY_CHECKPOINT_2026_10_27.md`.
+The ordinary `300119_f2.pdf` witness published `ПОДДОН=5` and `СТЕЙШН=1` from
+bounded native caption facts, and semantic title-block fallback published its
+Project, Client, and Partner without a new model call. Red `QTY` now means only
+conflicting explicit quantities for one locked Object. Default one for a unique
+built-in kitchen, cabinet system, counter, or other integral object is not a
+warning. V6.37 Ada, Page23, Assembly Set, router, object boundaries, Evidence,
+Naming, Preview, and Estimation are protected and unchanged. Commits `06e54ee`,
+`9686459`, and `f4312d9` are pushed to `main`; Railway health remains pending
+independent observation.
 
 CHECKPOINT, V6.23 bounded Naming and Quantity review presentation:
 `c990495`, deployed and audited as
