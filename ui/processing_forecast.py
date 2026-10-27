@@ -179,12 +179,19 @@ def build_stage_progress_plan(
     saving_seconds = 3.0
     observed_seconds = max(1.0, float(elapsed_seconds))
     unscaled_remaining = sum(discovery_seconds) + review_seconds + registry_seconds + saving_seconds
-    historical_seconds = float(
-        estimate_file_review_seconds(history or [], page_count=page_count)["seconds"]
+    historical_forecast = estimate_file_review_seconds(
+        history or [], page_count=page_count,
     )
-    forecast_seconds = max(
-        observed_seconds + unscaled_remaining,
-        historical_seconds,
+    historical_seconds = float(historical_forecast["seconds"])
+    raw_shape_seconds = observed_seconds + unscaled_remaining
+    # Exact batch shape distributes the remaining work. Once we have enough
+    # same-page-bucket observations, their median is the estimate of the total
+    # lap. The earlier `max()` made an intentionally rough token estimate
+    # override real production history and could only make F worse.
+    forecast_seconds = (
+        max(observed_seconds + 10.0, historical_seconds)
+        if historical_forecast["source"] == "same_company_page_bucket_median"
+        else raw_shape_seconds
     )
     remaining_target = max(1.0, forecast_seconds - observed_seconds)
     scale = remaining_target / unscaled_remaining

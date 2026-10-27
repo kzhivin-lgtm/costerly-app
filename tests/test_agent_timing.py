@@ -615,6 +615,30 @@ def test_stage_progress_plan_uses_exact_discovery_batch_shape():
     )
 
 
+def test_stage_progress_plan_uses_compatible_history_for_total_forecast():
+    history = [
+        {
+            "status": "succeeded", "duration_seconds": duration,
+            "raw_usage": {"page_count": 11},
+        }
+        for duration in (86.916, 93.823, 103.282)
+    ]
+
+    plan = build_stage_progress_plan(
+        page_count=11,
+        elapsed_seconds=21.95,
+        plan_input={
+            "registry_model": "claude-haiku",
+            "candidate_region_count": 37,
+            "review_image_estimate": 37,
+            "discovery_batches_estimated_tokens": [118_860],
+        },
+        history=history,
+    )
+
+    assert plan["forecast_seconds"] == 94
+
+
 def test_file_review_forecast_uses_history_only_after_three_same_bucket_runs():
     history = [
         {
