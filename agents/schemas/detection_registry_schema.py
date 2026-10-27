@@ -1910,6 +1910,8 @@ def compile_detection_v5_semantic_facts(
     visual_groups: list[dict[str, Any]],
     source_facts: list[dict[str, Any]],
     allowed_evidence_types: frozenset[str] = SEMANTIC_PAIRWISE_EVIDENCE_TYPES,
+    require_pair_endpoint_visual_sources: bool = False,
+    reject_document_relation_for_merge: bool = False,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Keep grounded V5 positive facts and audit every rejected candidate."""
     object_groups = {
@@ -2013,6 +2015,24 @@ def compile_detection_v5_semantic_facts(
         if kind == "explicit_document_relation" and not cited:
             rejected.append({"index": index, "reason": "document_relation_requires_source"})
             continue
+        if reject_document_relation_for_merge and kind == "explicit_document_relation":
+            rejected.append({
+                "index": index,
+                "reason": "document_relation_is_context_not_merge_evidence",
+            })
+            continue
+        if require_pair_endpoint_visual_sources:
+            required_sources = {
+                f"registry_view:{left}", f"registry_view:{right}",
+            }
+            if not required_sources.issubset(set(cited)):
+                rejected.append({
+                    "index": index,
+                    "reason": "pair_endpoint_visual_sources_missing",
+                    "required_source_fact_ids": sorted(required_sources),
+                    "source_fact_ids": cited,
+                })
+                continue
         if kind == "dimension_transform" and (len(cited) < 2 or len(re.findall(r"\d", observation)) < 2):
             rejected.append({"index": index, "reason": "transform_requires_two_readings"})
             continue

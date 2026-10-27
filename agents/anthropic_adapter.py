@@ -126,6 +126,9 @@ DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION = (
 DETECTION_V634_ADA_HAIKU_DISCOVERY_SONNET_REVIEW_PROMPT_VERSION = (
     "detection_v6_34_ada_haiku_discovery_sonnet_review"
 )
+DETECTION_V635_ADA_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION = (
+    "detection_v6_35_ada_pair_local_membership"
+)
 DETECTION_V634_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
 # V5.0 keeps one Haiku call. Registry returns Islands, classifications, and
@@ -9674,6 +9677,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         and mistral_anchor_admission_active
         and "sonnet" in selected_model.lower()
     )
+    # V6.35 preserves V6.34's models and two-call shape. It changes only
+    # semantic admission: document context cannot merge Views, and each
+    # positive fact must cite both endpoints of the relation it creates.
+    v635_ada_pair_local_membership_active = (
+        v634_ada_haiku_discovery_sonnet_review_active
+    )
     discovery_model = (
         DETECTION_V634_ADA_DISCOVERY_MODEL
         if v634_ada_haiku_discovery_sonnet_review_active
@@ -10059,8 +10068,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             if group.get("evidence_class") == "object_evidence"
         ]) <= DETECTION_V69_RECONCILIATION_MAX_ISLANDS
     )
-    if v634_ada_haiku_discovery_sonnet_review_active:
-        prompt_version = DETECTION_V634_ADA_HAIKU_DISCOVERY_SONNET_REVIEW_PROMPT_VERSION
+    if v635_ada_pair_local_membership_active:
+        prompt_version = DETECTION_V635_ADA_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION
     elif v69_criteria_reconciliation_active:
         prompt_version = DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION
     registry_visual_sources = build_detection_v5_registry_visual_sources(
@@ -10081,7 +10090,19 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         draft_hypotheses=[],
     )
     review_prompt_with_membership_contract = review_prompt
-    if v69_criteria_reconciliation_active:
+    if v635_ada_pair_local_membership_active:
+        review_prompt_with_membership_contract += (
+            "\n\nV6.35 ADA PAIR-LOCAL MEMBERSHIP CONTRACT:\n"
+            "Document title blocks, project identity, author, sheet sequence and "
+            "a common fabrication package are context only. They are never positive "
+            "merge evidence, so do not emit explicit_document_relation. For every "
+            "positive evidence row, cite registry_view sources for the exact two "
+            "Views it connects. Do not pool evidence from different pairs into one "
+            "object hypothesis. For a hypothesis with more than two Views, include "
+            "enough pair-local facts to form a connected proof graph, or split it "
+            "into separate hypotheses.\n"
+        )
+    elif v69_criteria_reconciliation_active:
         review_prompt_with_membership_contract += (
             "\n\nV6.10 COMBINED EVIDENCE REVIEW CONTRACT:\n"
             "Return pairwise_decisions only, never object_hypotheses. Emit a row only "
@@ -10368,6 +10389,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v6_34_ada_haiku_discovery_sonnet_review_active": (
             v634_ada_haiku_discovery_sonnet_review_active
         ),
+        "v6_35_ada_pair_local_membership_active": (
+            v635_ada_pair_local_membership_active
+        ),
         "v6_34_discovery_model": discovery_model,
         "v6_34_membership_review_model": review_model,
         "v6_10_candidate_pair_count": len(v69_preliminary_pairs),
@@ -10506,6 +10530,24 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
+        normalized_registry_visual_sources = []
+        for source in registry_visual_sources:
+            normalized_source = copy.deepcopy(source)
+            source_id = str(normalized_source.get("fact_id") or "")
+            if source_id.startswith("registry_view:"):
+                raw_view_id = source_id.removeprefix("registry_view:")
+                normalized_source["fact_id"] = (
+                    f"registry_view:{group_id_mapping.get(raw_view_id, raw_view_id)}"
+                )
+            normalized_registry_visual_sources.append(normalized_source)
+        semantic_source_facts = [
+            *source_facts,
+            *(
+                normalized_registry_visual_sources
+                if v635_ada_pair_local_membership_active
+                else registry_visual_sources
+            ),
+        ]
         document_scope = normalize_detection_v611_document_scope_group_ids(
             document_scope,
             group_id_mapping=group_id_mapping,
@@ -10594,6 +10636,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                             normalized_evidence.append(evidence)
                             continue
                         normalized_evidence_row = copy.deepcopy(evidence)
+                        if v635_ada_pair_local_membership_active:
+                            normalized_evidence_row["source_fact_ids"] = (
+                                _normalize_source_degraded_registry_view_ids(
+                                    normalized_evidence_row.get("source_fact_ids"),
+                                    group_id_mapping=group_id_mapping,
+                                )
+                            )
                         if isinstance(normalized_evidence_row.get("structural_witness"), dict):
                             witness = copy.deepcopy(normalized_evidence_row["structural_witness"])
                             witness["witness_view_id"] = group_id_mapping.get(
@@ -10660,7 +10709,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         })
         accepted_semantic_facts, semantic_ledger_audit = compile_detection_v5_semantic_facts(
             semantic_facts, visual_groups=semantic_validation_groups,
-            source_facts=[*source_facts, *registry_visual_sources],
+            source_facts=semantic_source_facts,
+            require_pair_endpoint_visual_sources=(
+                v635_ada_pair_local_membership_active
+            ),
+            reject_document_relation_for_merge=(
+                v635_ada_pair_local_membership_active
+            ),
         )
         if v69_criteria_reconciliation_active:
             accepted_pairs = {
@@ -10800,7 +10855,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             registry,
             visual_groups=visual_map["visual_groups"],
             graph_edges=positive_relation_edges,
-            source_facts=[*source_facts, *registry_visual_sources],
+            source_facts=semantic_source_facts,
         )
         # The normalized public visual map deliberately omits Discovery bbox
         # geometry and evidence classes.  Keep a private, post-Registry

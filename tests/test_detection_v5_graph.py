@@ -162,6 +162,62 @@ def test_v5103_unknown_bracketed_source_id_remains_rejected():
     assert audit["source_id_normalizations"] == []
 
 
+def test_v635_pair_local_semantic_fact_requires_both_view_sources():
+    source_facts = [
+        {"fact_id": "registry_view:view-001"},
+        {"fact_id": "registry_view:view-002"},
+        {"fact_id": "registry_view:view-003"},
+    ]
+    fact = {
+        "group_id_a": "view-001", "group_id_b": "view-002",
+        "evidence_type": "matching_topology", "strength": "standard",
+        "observation": "The same three-bay carcass and door order recur.",
+        "source_fact_ids": ["registry_view:view-001", "registry_view:view-003"],
+    }
+
+    accepted, audit = compile_detection_v5_semantic_facts(
+        [fact], visual_groups=VIEWS, source_facts=source_facts,
+        require_pair_endpoint_visual_sources=True,
+    )
+
+    assert accepted == []
+    assert audit["rejected"] == [{
+        "index": 0,
+        "reason": "pair_endpoint_visual_sources_missing",
+        "required_source_fact_ids": [
+            "registry_view:view-001", "registry_view:view-002",
+        ],
+        "source_fact_ids": [
+            "registry_view:view-001", "registry_view:view-003",
+        ],
+    }]
+
+
+def test_v635_document_relation_is_context_not_merge_evidence():
+    fact = {
+        "group_id_a": "view-001", "group_id_b": "view-002",
+        "evidence_type": "explicit_document_relation", "strength": "direct",
+        "observation": "The shared title block names a common project for both views.",
+        "source_fact_ids": ["registry_view:view-001", "registry_view:view-002"],
+    }
+
+    accepted, audit = compile_detection_v5_semantic_facts(
+        [fact], visual_groups=VIEWS,
+        source_facts=[
+            {"fact_id": "registry_view:view-001"},
+            {"fact_id": "registry_view:view-002"},
+        ],
+        require_pair_endpoint_visual_sources=True,
+        reject_document_relation_for_merge=True,
+    )
+
+    assert accepted == []
+    assert audit["rejected"] == [{
+        "index": 0,
+        "reason": "document_relation_is_context_not_merge_evidence",
+    }]
+
+
 def test_v5_object_hypothesis_requires_distinct_non_overlapping_object_views():
     accepted, audit = compile_detection_v5_object_hypotheses([
         {"group_ids": ["view-001", "view-002"], "hypothesis_reason": "One cabinet in two projections.", "evidence": [{"evidence_type": "matching_topology"}]},
