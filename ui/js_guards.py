@@ -3532,15 +3532,24 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 }
 
                 function phaseProgress(stage) {
-                    if (!stage) return 4;
+                    if (!stage) return 0;
                     if (stage.dataset.processingComplete === 'true') return 100;
                     const plan = processingPlan(stage);
-                    if (!plan) return 4;
+                    if (!plan) {
+                        // OCR/Fusion has not yielded a file-specific plan yet.
+                        // It is still real elapsed work, but it owns only a
+                        // small, bounded initial segment and starts at zero.
+                        const startedAt = Number(
+                            stage.dataset.processingStageStartedAtMs || Date.now()
+                        );
+                        const elapsed = Math.max(0, (Date.now() - startedAt) / 1000);
+                        return Math.min(8, elapsed * 8 / 30);
+                    }
 
                     const runToken = stage.dataset.processingRunToken || 'unknown';
                     let state = window[STAGE_PROGRESS_STATE_KEY];
                     if (!state || state.runToken !== runToken) {
-                        state = { runToken, highestPercent: 4, highestStageIndex: 0 };
+                        state = { runToken, highestPercent: 0, highestStageIndex: 0 };
                         window[STAGE_PROGRESS_STATE_KEY] = state;
                     }
                     const activeStageId = stage.dataset.processingStageId || '';
@@ -3561,13 +3570,14 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     const stageStartedAt = Number(stage.dataset.processingStageStartedAtMs || Date.now());
                     const activeElapsedSeconds = Math.max(0, (Date.now() - stageStartedAt) / 1000);
                     const activeDuration = stageDurations[activeStageIndex];
-                    // A model call may outlive its estimate. It then approaches
-                    // the end of its own range and visibly remains active, but
-                    // cannot consume the later Review/Saving ranges.
-                    const withinStage = Math.min(
-                        0.92,
-                        activeElapsedSeconds / activeDuration
-                    );
+                    // The bar reaches 97% of a stage at its forecast, then
+                    // keeps moving asymptotically until the server confirms the
+                    // transition. It never steals a later stage's span, but
+                    // also never freezes at an arbitrary 92% ceiling.
+                    const elapsedRatio = activeElapsedSeconds / activeDuration;
+                    const withinStage = elapsedRatio <= 1
+                        ? 0.97 * elapsedRatio
+                        : 0.97 + 0.029 * (1 - Math.exp(-(elapsedRatio - 1)));
                     const calculated = 100 * Math.min(
                         0.985,
                         (completedDuration + activeDuration * withinStage) / totalDuration

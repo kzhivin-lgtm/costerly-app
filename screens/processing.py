@@ -73,7 +73,10 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
             unsafe_allow_html=True,
         )
 
-    render_stage(0.04, processing_phase="ocr", processing_stage_id="pre_fusion")
+    # Before Fusion there is no file-specific forecast. Start visibly at zero;
+    # the browser advances this bounded preparation segment only after real
+    # elapsed time, rather than presenting invented completed work.
+    render_stage(0.0, processing_phase="ocr", processing_stage_id="pre_fusion")
     clear_upload_processing_shell()
 
     file_name = st.session_state.get("uploaded_file_name")

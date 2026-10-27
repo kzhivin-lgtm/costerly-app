@@ -212,16 +212,16 @@ def build_stage_progress_plan(
 def stage_progress_floor(plan: dict[str, Any] | None, stage_id: str | None) -> float:
     """Return the completed-stage floor without inventing current-stage work."""
     if not isinstance(plan, dict) or not stage_id:
-        return 0.04
+        return 0.0
     stages = plan.get("stages")
     if not isinstance(stages, list):
-        return 0.04
+        return 0.0
     total = sum(max(0.0, float(row.get("expected_seconds") or 0)) for row in stages)
     if total <= 0:
-        return 0.04
+        return 0.0
     completed = 0.0
     for row in stages:
         if str(row.get("id") or "") == stage_id:
             break
         completed += max(0.0, float(row.get("expected_seconds") or 0))
-    return max(0.04, min(0.985, completed / total))
+    return max(0.0, min(0.985, completed / total))

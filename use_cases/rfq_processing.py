@@ -851,7 +851,14 @@ def process_uploaded_rfq(
             "document_route": document_route,
             "source_bytes": len(file_bytes),
             "estimated_inline_pdf_bytes": estimated_inline_pdf_bytes(file_bytes),
-            "page_count": int(page_image_diagnostics.get("page_count") or 0),
+            # Normal PDFs obtain their pages from OCR, while JPEG-origin files
+            # use rendered-page diagnostics. Persist the actual count for both
+            # so the next file can use a compatible historical F forecast.
+            "page_count": int(
+                page_count
+                or page_image_diagnostics.get("page_count")
+                or 0
+            ),
             "detection_seconds": detection_seconds,
             "naming_seconds": naming_seconds,
             "naming_deferred": naming_future is not None,

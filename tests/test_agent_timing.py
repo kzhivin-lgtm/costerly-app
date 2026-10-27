@@ -554,6 +554,12 @@ def test_processing_stage_shows_live_timer_and_original_subtitle():
     assert "taking longer than expected" not in markup
 
 
+def test_processing_stage_starts_empty_until_elapsed_work_is_observed():
+    markup = processing_stage_html(elapsed_seconds=0)
+
+    assert 'style="width:0.0%;"' in markup
+
+
 def test_processing_stage_exposes_real_phase_and_completion():
     markup = processing_stage_html(
         progress_value=1,
@@ -667,12 +673,21 @@ def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signal
     assert "dataset.processingPlan" in source
     assert "activeStageId" in source
     assert "activeElapsedSeconds / activeDuration" in source
-    assert "cannot consume the later Review/Saving ranges" in source
+    assert "never steals a later stage's span" in source
     assert "__costerlyRealProcessingStageSeenV3" in source
     assert "if (window[PROCESSING_STAGE_SEEN_KEY]) return null" in source
     assert "__costerlyProcessingElapsedStartedAtV3" in source
     assert "parentWindow.location.reload()" in source
     assert "__costerlyUploadInteractionGuardsV1112Installed" in source
+    assert "return Math.min(8, elapsed * 8 / 30);" in source
+    assert "0.97 + 0.029" in source
+    assert "0.92," not in source
+
+
+def test_processing_cycle_persists_ocr_page_count_for_future_forecasts():
+    source = Path("use_cases/rfq_processing.py").read_text()
+
+    assert '"page_count": int(\n                page_count' in source
 
 
 def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():
