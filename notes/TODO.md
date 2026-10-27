@@ -90,6 +90,24 @@ the matching File Review appears, with no blank frame or backward movement;
 `New Estimate → Last Estimate` reopens that most recently completed Detection
 run.
 
+ACTIVE, V6.61, P0, short-file pacing and immediate Last Estimate:
+The V6.60 cap removal was necessary but insufficient. Its cold stage model
+still budgeted a one-page file as roughly 40 seconds, and forecast pace could
+cross unfinished stage ranges. The result was an initially slow bar followed
+by a large final catch-up. V6.61 keeps all Detection work unchanged, lowers
+only transparent cold-start work-unit timings, and combines continuous forecast
+pace with exact stage floors and per-stage ceilings. Before Fusion, page count
+sets a faster zero-origin preparation curve for a one-page file. Each actual
+stage signal may move progress forward, never backward; its unfinished range
+limits the forecast so later work cannot be displayed early. Preserve the
+latest completed File Review payload in the browser-session cache across
+`New Estimate`, and update the header route immediately when that run completes.
+Acceptance: a short ordinary file makes steady progress into the 85-90% range
+before its terminal handoff, does not jump from a low percentage to completion,
+and `Last Estimate` returns the same completed review from cache without a
+multi-second grey load. Detection, OCR, Fusion, router, objects, Evidence,
+Naming, Preview and provider calls are protected.
+
 ACTIVE, V6.59, P0, New Estimate to Upload client-transition observability:
 The evidence rejects server-side auth, Supabase, and Upload rendering as the
 source of the reported 3-4 second warm navigation: prior successful

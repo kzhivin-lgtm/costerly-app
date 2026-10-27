@@ -614,6 +614,28 @@ def test_stage_progress_plan_uses_exact_discovery_batch_shape():
     )
 
 
+def test_stage_progress_plan_keeps_one_page_cold_start_near_short_real_lap():
+    plan = build_stage_progress_plan(
+        page_count=1,
+        elapsed_seconds=2,
+        plan_input={
+            "registry_model": "claude-haiku",
+            "candidate_region_count": 2,
+            "review_image_estimate": 1,
+            "discovery_batches_estimated_tokens": [17_822],
+        },
+    )
+
+    assert plan["forecast_seconds"] == 18
+    assert [stage["id"] for stage in plan["stages"]] == [
+        "pre_fusion",
+        "discovery_1",
+        "membership_review",
+        "registry_assembly",
+        "saving",
+    ]
+
+
 def test_stage_progress_plan_uses_compatible_history_for_total_forecast():
     history = [
         {
@@ -715,18 +737,20 @@ def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signal
     assert "dataset.processingPlan" in source
     assert "dataset.processingPageCount" in source
     assert "activeStageId" in source
-    assert "Forecast owns the pace" in source
-    assert "A phase signal can move the floor forward" in source
+    assert "The forecast creates a continuous pace" in source
+    assert "Exact stage" in source
     assert "__costerlyRealProcessingStageSeenV5" in source
     assert "if (window[PROCESSING_STAGE_SEEN_KEY]) return null" in source
     assert "__costerlyProcessingElapsedStartedAtV5" in source
     assert "document.querySelectorAll('.post-upload-stage .custom-progress-fill')" not in source
     assert "expectedPreparationSeconds" in source
-    assert "const preparationSpan = Math.min(15, 6 + pageCount)" in source
+    assert "const preparationSpan = Math.min(24, 20 + pageCount * 2)" in source
     assert "Math.exp(-elapsed / expectedPreparationSeconds)" in source
     assert "writeProgress(phaseProgress(stage))" in source
     assert "PRE_UPLOAD_PROGRESS_STATE_KEY" in source
     assert "fullLapElapsedSeconds" in source
+    assert "nextStageFloor" in source
+    assert "stageCeiling" in source
     assert "advanceProgress(state, calculated)" in source
     assert "function visibleProgressNode(stage)" in source
     assert "writeProgress(percent)" in source

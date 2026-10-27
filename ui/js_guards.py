@@ -3683,8 +3683,11 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         const pageCount = Math.max(
                             1, Number(stage.dataset.processingPageCount || 1)
                         );
-                        const preparationSpan = Math.min(15, 6 + pageCount);
-                        const expectedPreparationSeconds = Math.max(6, pageCount * 1.5);
+                        // A short document must visibly move from the first
+                        // second. Its later plan will refine this range, but
+                        // page count is already a deterministic signal here.
+                        const preparationSpan = Math.min(24, 20 + pageCount * 2);
+                        const expectedPreparationSeconds = Math.max(4, pageCount * 1.25);
                         // Fusion has not told us the request shape yet. Keep
                         // a page-shaped, zero-origin movement that approaches
                         // its preparation share without reaching a flat cap.
@@ -3730,9 +3733,11 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     const forecastSeconds = state.uiForecastSeconds;
                     updateForecastLabel(forecastSeconds);
                     const stageFloor = 100 * completedDuration / totalDuration;
-                    // Forecast owns the pace. Real stage completion owns the
-                    // boundary. This prevents early phases from consuming 90%
-                    // while the forecast says substantial work remains.
+                    // The forecast creates a continuous pace. Exact stage
+                    // signals define the part of that pace that can honestly
+                    // be consumed: a slow model stage cannot spend later
+                    // stage progress, while a completed stage never leaves
+                    // the bar behind.
                     const forecastPace = fullLapElapsedSeconds <= forecastSeconds
                         ? 98.5 * fullLapElapsedSeconds / forecastSeconds
                         : Math.min(
@@ -3741,11 +3746,16 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                                 -(fullLapElapsedSeconds - forecastSeconds) / forecastSeconds
                             ))
                         );
-                    // A phase signal can move the floor forward, but cannot
-                    // freeze the bar at a guessed per-phase ceiling. The
-                    // overall file forecast owns continuous pacing until the
-                    // actual File Review payload confirms completion.
-                    const calculated = Math.max(stageFloor, forecastPace);
+                    const nextStageFloor = 100 * (
+                        completedDuration + stageDurations[activeStageIndex]
+                    ) / totalDuration;
+                    const stageCeiling = activeStageIndex === stageDurations.length - 1
+                        ? 98.5
+                        : stageFloor + (nextStageFloor - stageFloor) * 0.92;
+                    const calculated = Math.max(
+                        stageFloor,
+                        Math.min(forecastPace, stageCeiling)
+                    );
                     return advanceProgress(state, calculated);
                 }
 

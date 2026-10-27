@@ -143,6 +143,19 @@ def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
         "object_detail_pending_snapshot",
         "object_detail_approve_after_edit",
     )
+    # File Review is immutable enough for the lifetime of this browser session.
+    # Keep only the review that the user has just left: `Last Estimate` then
+    # returns immediately instead of fetching the same completed run again.
+    previous_run_id = str(st.session_state.get("current_run_id") or "").strip()
+    previous_review_cache = st.session_state.get("file_review_data_cache")
+    retained_file_review_cache = (
+        {previous_run_id: previous_review_cache[previous_run_id]}
+        if previous_run_id
+        and isinstance(previous_review_cache, dict)
+        and previous_run_id in previous_review_cache
+        else {}
+    )
+
     for key in none_fields:
         st.session_state[key] = None
 
@@ -161,7 +174,7 @@ def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
 
     st.session_state.uploaded_file_name = None
     st.session_state.uploaded_file_bytes = None
-    st.session_state.file_review_data_cache = {}
+    st.session_state.file_review_data_cache = retained_file_review_cache
     st.session_state.objects_estimation_data_cache = {}
     st.session_state.objects_estimation_cache_dirty = set()
 

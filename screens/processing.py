@@ -303,6 +303,13 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
     time.sleep(0.22)
 
     st.session_state.current_run_id = run_id
+    # `Last Estimate` is File Review, not necessarily an estimate shell. Keep
+    # its exact completed run ready for the header after the user starts a new
+    # upload, so the action can use the session cache above before any query.
+    st.session_state[f"_latest_estimate_route:{company_id}"] = {
+        "run_id": run_id,
+        "estimate_id": "",
+    }
     st.session_state.current_ocr_package = result.get("ocr_package")
     st.session_state.current_agent_timings = result.get("timings")
     st.session_state.current_naming_future = result.get("naming_future")

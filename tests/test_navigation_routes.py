@@ -42,7 +42,9 @@ def test_new_estimate_reset_clears_all_estimate_scoped_session_state():
     assert st.session_state.current_estimate_id is None
     assert st.session_state.uploaded_file_name is None
     assert st.session_state.uploaded_file_bytes is None
-    assert st.session_state.file_review_data_cache == {}
+    assert st.session_state.file_review_data_cache == {
+        "run-old": {"objects": [{"name": "Object 3"}]}
+    }
     assert st.session_state.objects_estimation_data_cache == {}
     assert st.session_state.objects_estimation_cache_dirty == set()
     assert st.session_state.processed_file_name is None
