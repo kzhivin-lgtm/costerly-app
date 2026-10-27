@@ -731,8 +731,8 @@ def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signal
     assert "function visibleProgressNode(stage)" in source
     assert "progressNode = visibleProgressNode(stage)" in source
     assert "syncForecastFromStage(stage)" in source
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_18" in source
-    assert "runtimeVersion = 'v1118'" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_19" in source
+    assert "runtimeVersion = 'v1119'" in source
     assert "if (stage.dataset.processingComplete === 'true') return 100" in source
 
 
@@ -755,7 +755,7 @@ def test_processing_cycle_persists_ocr_page_count_for_future_forecasts():
 def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():
     source = getsource(install_upload_interaction_guards)
 
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_18" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_19" in source
     assert "function uploadScreenIsActive()" in source
     assert "document.querySelector('.upload-screen-active')" in source
     assert "if (!uploadScreenIsActive()) return;" in source

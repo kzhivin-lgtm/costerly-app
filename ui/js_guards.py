@@ -3353,8 +3353,8 @@ def install_upload_interaction_guards(shell_html: str) -> None:
         (() => {
             const parentWindow = window.parent;
             const parentDoc = parentWindow.document;
-            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_18";
-            const runtimeVersion = 'v1118';
+            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_19";
+            const runtimeVersion = 'v1119';
             const resetMarker = 'costerly-progress-controller-runtime';
             try {
                 if (
@@ -3389,9 +3389,9 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const REAL_PROCESSING_MARKER_ID = 'costerly-processing-screen-active';
                 const FILE_REVIEW_MARKER_ID = 'costerly-file-review-screen-active';
                 const SHELL_ACTIVE_CLASS = 'costerly-upload-processing-shell-active';
-                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1118';
-                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1118';
-                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1118Installed';
+                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1119';
+                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1119';
+                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1119Installed';
                 const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAtV5';
                 const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimerV5';
                 const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSecondsV5';
@@ -3875,6 +3875,15 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                             transition: 'processing_to_file_review',
                             transitionId,
                         }, '*');
+                        // The Processing shell has covered the old Streamlit
+                        // tree for the whole lap. Release it only after the
+                        // actual File Review card and header controls are in
+                        // the DOM and have painted. Removing on the first
+                        // File Review marker caused the one-frame composite
+                        // of the old Upload shell and the new review screen.
+                        window.requestAnimationFrame(() => {
+                            window.requestAnimationFrame(removeShell);
+                        });
                         stop();
                         return true;
                     };
@@ -3882,7 +3891,26 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     observer = new MutationObserver(report);
                     observer.observe(document.documentElement, { childList: true, subtree: true });
                     report();
-                    window.setTimeout(stop, 15000);
+                    window.setTimeout(() => {
+                        stop();
+                        // Fail open only if the review marker is actually
+                        // present. A missing marker remains a visible
+                        // Processing error, rather than exposing an unknown
+                        // half-rendered screen.
+                        if (fileReviewIsActive()) removeShell();
+                    }, 15000);
+                }
+
+                function beginFileReviewTransition(stage) {
+                    if (!stage || stage.dataset.processingComplete !== 'true') return;
+                    const transitionId = startTransition(
+                        'processing_to_file_review',
+                        'processing',
+                        'file_review',
+                        PROCESSING_COMPLETE_TRANSITION_ID_KEY,
+                        window[RFQ_UPLOAD_CYCLE_ID_KEY] || '',
+                    );
+                    reportFileReviewStyled(transitionId);
                 }
 
                 function startWatcher() {
@@ -4001,8 +4029,17 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     if (fileReviewIsActive() && window[LAST_ELAPSED_SECONDS_KEY]) {
                         applyFinalElapsed(Number(window[LAST_ELAPSED_SECONDS_KEY]));
                     }
+                    beginFileReviewTransition(activeProcessingStage());
                     if (fileReviewIsActive()) {
-                        removeShell();
+                        const transitionId = window[PROCESSING_COMPLETE_TRANSITION_ID_KEY]
+                            || startTransition(
+                                'processing_to_file_review',
+                                'processing',
+                                'file_review',
+                                PROCESSING_COMPLETE_TRANSITION_ID_KEY,
+                                window[RFQ_UPLOAD_CYCLE_ID_KEY] || '',
+                            );
+                        reportFileReviewStyled(transitionId);
                     }
                     if (realProcessingIsActive()) {
                         reportProcessingVisible();

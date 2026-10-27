@@ -1737,6 +1737,14 @@ def render_account_control(
 ) -> None:
     active_screen = str(st.query_params.get("screen") or st.session_state.get("screen") or "upload")
     workflow_screens = {"file_review", "objects", "object_detail"}
+    # Start the one process-wide OCR connection warm-up while the user is
+    # still reviewing the current result. It is intentionally asynchronous:
+    # entering Upload never waits for a network request, while a subsequent
+    # file selection can reuse the ready client.
+    if active_screen not in {"upload", "processing"}:
+        from agents.ocr_adapter import warm_mistral_http_client_async
+
+        warm_mistral_http_client_async()
     render_account_header_controls(
         on_profile=_open_company_account,
         on_sign_out=sign_out,

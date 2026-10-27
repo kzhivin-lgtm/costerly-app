@@ -687,3 +687,8 @@ def test_file_review_transitions_follow_the_current_editable_summary_marker():
     assert "const fileReviewReady" in handoff_source
     assert "document.querySelector('.file-review-summary-card-marker')" in handoff_source
     assert "document.querySelector('.file-review-card')" not in handoff_source
+    assert "window.requestAnimationFrame(() => {" in handoff_source
+    assert "window.requestAnimationFrame(removeShell);" in handoff_source
+    assert "function beginFileReviewTransition(stage)" in source
+    assert "beginFileReviewTransition(activeProcessingStage());" in source
+    assert "if (fileReviewIsActive()) {\n                        removeShell();" not in source

@@ -55,6 +55,29 @@ accepted V6.58 progress controller, forecast, Detection cycle, File Review
 data readiness, routes or provider calls. Acceptance: no overlap and no blank
 or grey delay between a completed bar and the fully rendered File Review.
 
+Diagnosis update, 2026-10-27: the persistent Processing runtime already has
+`reportFileReviewStyled()`, but nothing calls it when the terminal Processing
+stage is rendered. The mutation observer therefore removes the shell as soon
+as it sees the raw File Review marker, before the card and navigation controls
+have painted. V6.59 must arm `processing_to_file_review` from the explicit
+`data-processing-complete` stage and release only after the existing styled
+predicate, with two animation frames. It also starts the existing process-wide
+Mistral HTTP warm-up while an authenticated user is still on File Review,
+Objects, Account, Projects, or Admin. This warm-up is non-blocking and does
+not change Detection or Upload rendering correctness.
+
+ACTIVE, V6.59, P0, New Estimate to Upload client-transition observability:
+The evidence rejects server-side auth, Supabase, and Upload rendering as the
+source of the reported 3-4 second warm navigation: prior successful
+`New Estimate → Upload` runs reached Python app-ready in 8-18 ms and browser
+styled in 0.5-2.0 seconds. The latest affected transition produced a browser
+timeout after 15 seconds with `python_runs=0`, so its callback never reached
+the app. Preserve the existing native callback and diagnose the client
+transition path, rather than adding a cache around unrelated server work.
+Acceptance: a live authenticated File Review → New Estimate transition records
+one `browser.transition_ready` or `browser.transition_styled`, one Python run,
+and no client timeout.
+
 CHECKPOINT, owner-accepted, V6.38-V6.40 quantity and Document Identity:
 `notes/DETECTION_V6_40_DOCUMENT_IDENTITY_QUANTITY_CHECKPOINT_2026_10_27.md`.
 The ordinary `300119_f2.pdf` witness published `ПОДДОН=5` and `СТЕЙШН=1` from
