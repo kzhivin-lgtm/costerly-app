@@ -5,6 +5,7 @@ from agents.anthropic_adapter import (
     _v641_validate_batch_page_coverage,
     build_detection_v641_full_page_discovery_batches,
     build_detection_registry_content_blocks,
+    should_use_detection_v641_budgeted_discovery,
 )
 
 
@@ -66,3 +67,17 @@ def test_registry_blocks_keep_supplied_page_numbers() -> None:
 
     assert blocks[0] == {"type": "text", "text": "PDF page 7"}
     assert blocks[2] == {"type": "text", "text": "PDF page 8"}
+
+
+def test_v641_covers_both_existing_ordinary_registry_categories() -> None:
+    for category in ("ordinary_object_set", "assembly_set"):
+        assert should_use_detection_v641_budgeted_discovery(
+            document_category=category,
+            mistral_anchor_admission_active=False,
+            full_estimated_input_tokens=150_001,
+        )
+    assert not should_use_detection_v641_budgeted_discovery(
+        document_category="ada_sparse_multi_object",
+        mistral_anchor_admission_active=True,
+        full_estimated_input_tokens=300_000,
+    )

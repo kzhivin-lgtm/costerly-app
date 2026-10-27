@@ -2234,6 +2234,18 @@ def build_detection_v641_full_page_discovery_batches(
     return batches, full_estimate
 
 
+def should_use_detection_v641_budgeted_discovery(
+    *, document_category: str | None, mistral_anchor_admission_active: bool,
+    full_estimated_input_tokens: int,
+) -> bool:
+    """Keep V6.41 inside the existing ordinary Registry family."""
+    return bool(
+        document_category in {"ordinary_object_set", "assembly_set"}
+        and not mistral_anchor_admission_active
+        and full_estimated_input_tokens > DETECTION_V641_DISCOVERY_NORMAL_ESTIMATE_TOKENS
+    )
+
+
 def _v641_validate_batch_page_coverage(
     payload: dict[str, Any], *, expected_pages: list[int],
 ) -> None:
@@ -10159,12 +10171,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         source_facts=source_facts,
     )
     # Keep every established route byte-for-byte on its original single-pass
-    # request.  Only an ordinary, non-anchor document whose local estimate is
-    # beyond the guard receives V6.41 transport batching.
-    v641_budgeted_discovery_active = bool(
-        document_category == "ordinary"
-        and not mistral_anchor_admission_active
-        and v641_full_estimate > DETECTION_V641_DISCOVERY_NORMAL_ESTIMATE_TOKENS
+    # request.  The two Haiku Registry categories share this contract.  Ada,
+    # Page 23 and source-degraded routes never reach this branch.
+    v641_budgeted_discovery_active = should_use_detection_v641_budgeted_discovery(
+        document_category=document_category,
+        mistral_anchor_admission_active=mistral_anchor_admission_active,
+        full_estimated_input_tokens=v641_full_estimate,
     )
     v641_batch_audit: list[dict[str, Any]] = []
     v641_proposal_attempt_summaries: list[dict[str, Any]] = []
@@ -10269,6 +10281,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             expected_fields = {
                 "visual_groups", "classifications", "candidate_region_exceptions", "page_coverage",
             }
+            if document_scope_enabled:
+                expected_fields.add("document_scope")
             if not isinstance(batch_payload, dict) or set(batch_payload) != expected_fields:
                 raise RuntimeError(
                     f"V6.41 Discovery batch {batch_number} did not meet the ordinary Discovery contract"
@@ -10318,6 +10332,16 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "candidate_region_exceptions": all_exceptions,
             "page_coverage": sorted(all_coverage, key=lambda row: row["page_number"]),
         }
+        if document_scope_enabled:
+            # A page-local Discovery call cannot truthfully assert one
+            # document-wide hierarchy.  The deterministic category remains
+            # recorded separately, while this optional, non-boundary
+            # observation fails closed instead of inventing a cross-batch root.
+            proposal_raw_payload["document_scope"] = {
+                "classification": "ordinary_object_set",
+                "root_group_ids": [],
+                "witnesses": [],
+            }
         proposal_raw_text = json.dumps(proposal_raw_payload, ensure_ascii=False)
     else:
         proposal_response, proposal_diagnostics = create_claude_message_streamed(
