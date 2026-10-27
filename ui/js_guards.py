@@ -3353,8 +3353,8 @@ def install_upload_interaction_guards(shell_html: str) -> None:
         (() => {
             const parentWindow = window.parent;
             const parentDoc = parentWindow.document;
-            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_17";
-            const runtimeVersion = 'v1117';
+            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_18";
+            const runtimeVersion = 'v1118';
             const resetMarker = 'costerly-progress-controller-runtime';
             try {
                 if (
@@ -3389,17 +3389,17 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const REAL_PROCESSING_MARKER_ID = 'costerly-processing-screen-active';
                 const FILE_REVIEW_MARKER_ID = 'costerly-file-review-screen-active';
                 const SHELL_ACTIVE_CLASS = 'costerly-upload-processing-shell-active';
-                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1117';
-                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1117';
-                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1117Installed';
-                const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAtV4';
-                const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimerV4';
-                const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSecondsV4';
-                const PROCESSING_STAGE_SEEN_KEY = '__costerlyRealProcessingStageSeenV4';
-                const PROCESSING_TRANSITION_ID_KEY = '__costerlyUploadToProcessingTransitionIdV4';
-                const PROCESSING_COMPLETE_TRANSITION_ID_KEY = '__costerlyProcessingToReviewTransitionIdV4';
-                const PROCESSING_COMPLETE_STYLED_OBSERVER_KEY = '__costerlyProcessingToReviewStyledObserverV4';
-                const RFQ_UPLOAD_CYCLE_ID_KEY = '__costerlyRfqUploadCycleIdV4';
+                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1118';
+                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1118';
+                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1118Installed';
+                const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAtV5';
+                const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimerV5';
+                const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSecondsV5';
+                const PROCESSING_STAGE_SEEN_KEY = '__costerlyRealProcessingStageSeenV5';
+                const PROCESSING_TRANSITION_ID_KEY = '__costerlyUploadToProcessingTransitionIdV5';
+                const PROCESSING_COMPLETE_TRANSITION_ID_KEY = '__costerlyProcessingToReviewTransitionIdV5';
+                const PROCESSING_COMPLETE_STYLED_OBSERVER_KEY = '__costerlyProcessingToReviewStyledObserverV5';
+                const RFQ_UPLOAD_CYCLE_ID_KEY = '__costerlyRfqUploadCycleIdV5';
                 let clearDragTimer = null;
                 let watcher = null;
                 let slowTimer = null;
@@ -3533,6 +3533,18 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     const rounded = Math.round(seconds);
                     const label = 'F ' + String(Math.floor(rounded / 60)).padStart(2, '0') +
                         ':' + String(rounded % 60).padStart(2, '0');
+                    // The upload shell is deliberately the only visible bar
+                    // for the full lap. It was created before the forecast
+                    // existed, so add its forecast node instead of waiting for
+                    // a replaced server stage to become visible.
+                    const shellTimer = document.getElementById(SHELL_ID)
+                        ?.querySelector('.post-upload-stage__timer');
+                    if (shellTimer && !shellTimer.querySelector('.post-upload-stage__forecast')) {
+                        const forecastNode = document.createElement('span');
+                        forecastNode.className = 'post-upload-stage__forecast';
+                        shellTimer.appendChild(document.createTextNode(' '));
+                        shellTimer.appendChild(forecastNode);
+                    }
                     document.querySelectorAll('[data-processing-forecast-label]').forEach((node) => {
                         if (node.dataset.processingForecastLabel !== label) {
                             node.dataset.processingForecastLabel = label;
@@ -3542,6 +3554,15 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         const text = '(' + label + ')';
                         if (node.textContent !== text) node.textContent = text;
                     });
+                }
+
+                function syncForecastFromStage(stage) {
+                    const forecast = Number(
+                        stage?.dataset.processingExpectedFileReviewSeconds || 0
+                    );
+                    if (Number.isFinite(forecast) && forecast > 0) {
+                        updateForecastLabel(forecast);
+                    }
                 }
 
                 function processingPlan(stage) {
@@ -3623,8 +3644,11 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         );
                         const preparationSpan = Math.min(15, pageCount);
                         const expectedPreparationSeconds = Math.max(6, pageCount * 1.5);
-                        const calculated = preparationSpan * Math.min(
-                            1, elapsed / expectedPreparationSeconds
+                        // Fusion has not told us the request shape yet. Keep
+                        // a page-shaped, zero-origin movement that approaches
+                        // its preparation share without reaching a flat cap.
+                        const calculated = preparationSpan * (
+                            1 - Math.exp(-elapsed / expectedPreparationSeconds)
                         );
                         return advanceProgress(state, calculated);
                     }
@@ -3644,7 +3668,6 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     const completedDuration = stageDurations
                         .slice(0, activeStageIndex)
                         .reduce((sum, value) => sum + value, 0);
-                    const activeDuration = stageDurations[activeStageIndex];
                     const serverPreFusion = plan.stages.find(
                         (item) => String(item.id || '') === 'pre_fusion'
                     );
@@ -3677,14 +3700,11 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                                 -(fullLapElapsedSeconds - forecastSeconds) / forecastSeconds
                             ))
                         );
-                    const stageCeiling = 100 * (completedDuration + activeDuration) / totalDuration;
-                    // Leave a visible fraction for the server-confirmed stage
-                    // transition. The final 0.8% belongs to File Review itself,
-                    // never to a gray intermediate screen.
-                    const calculated = Math.max(
-                        stageFloor,
-                        Math.min(stageCeiling - 0.5, forecastPace)
-                    );
+                    // A phase signal can move the floor forward, but cannot
+                    // freeze the bar at a guessed per-phase ceiling. The
+                    // overall file forecast owns continuous pacing until the
+                    // actual File Review payload confirms completion.
+                    const calculated = Math.max(stageFloor, forecastPace);
                     return advanceProgress(state, calculated);
                 }
 
@@ -3708,6 +3728,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         if (fileReviewIsActive()) finalizeElapsed(seconds);
                         return;
                     }
+                    syncForecastFromStage(stage);
                     const progressWidth = phaseProgress(stage).toFixed(1) + '%';
                     const progressNode = visibleProgressNode(stage);
                     if (progressNode && progressNode.style.width !== progressWidth) {

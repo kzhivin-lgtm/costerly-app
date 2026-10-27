@@ -120,18 +120,6 @@ def estimate_file_review_seconds(
     }
 
 
-def progress_fraction(*, elapsed_seconds: float, expected_total_seconds: float) -> float:
-    """Map elapsed time to a truthful, never-complete-before-result bar."""
-    elapsed = max(0.0, float(elapsed_seconds))
-    expected = max(1.0, float(expected_total_seconds))
-    if elapsed < expected:
-        return max(0.04, min(0.96, elapsed / expected))
-    # When a provider outlives its historical median, retain visible movement
-    # but reserve completion for the actual File Review handoff.
-    overtime = (elapsed - expected) / expected
-    return min(0.985, 0.96 + 0.025 * (1 - pow(2.718281828, -overtime)))
-
-
 def build_stage_progress_plan(
     *,
     page_count: int | None,

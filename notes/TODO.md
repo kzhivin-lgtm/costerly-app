@@ -1,7 +1,6 @@
 # TODO
 
-ACTIVE, V6.57, P0, ordinary Discovery output envelope and Processing progress
-root-cause:
+PENDING LIVE VERIFY, V6.57, P0, ordinary Discovery output envelope:
 
 The 2026-10-27 HSL failure reached the existing 8,192-token Discovery ceiling
 while emitting valid JSON fields, then stopped inside `page_coverage`. The
@@ -17,14 +16,28 @@ Evidence ownership or accepted object boundaries. Verify focused Discovery
 schema, prompt and call-budget tests before deployment, then run the protected
 HSL benchmark.
 
-Also investigate the Processing progress bar separately as a user-facing
-regression. It must have one visible bar, begin at zero, never reset or move
-backward, advance continuously before Fusion, recalibrate only forward from
-real stage signals, and reach File Review without a completed-bar grey delay.
 Do not infer that a Detection response failure is a progress-bar fault. Add a
 safe request-content digest to future Discovery diagnostics before attributing
 any remaining output variation to provider behaviour; never store raw document
 content in the ledger.
+
+ACTIVE, V6.58, P0, Processing progress root-cause:
+The progress bar must have one visible bar, begin at zero, never reset or move
+backward, advance continuously before Fusion, recalibrate only forward from
+real stage signals, and reach File Review without a completed-bar grey delay.
+
+V6.58 investigation: the server replaces the Processing stage subtree on each
+stage signal. Its newly-created fill starts at the server floor, while the
+browser controller restores its higher in-memory value on the following tick.
+That produces a visible backward flash. A legacy upload-shell controller can
+also survive a Streamlit deployment in the parent browser document and remove
+the persistent shell when the server marker appears. The approved repair is a
+one-time V6.58 browser-runtime reset, one persistent client-visible shell for
+the whole lap, and server markup used only as stage and forecast data. The
+server may move the floor forward, never backward. Before Fusion, movement is
+zero-origin and page-shaped without a hard cap. Keep Detection, provider calls,
+router, Fusion, Evidence and File Review data unchanged. Verify focused tests,
+then require a live HSL interaction check before accepting the UI result.
 
 CHECKPOINT, owner-accepted, V6.38-V6.40 quantity and Document Identity:
 `notes/DETECTION_V6_40_DOCUMENT_IDENTITY_QUANTITY_CHECKPOINT_2026_10_27.md`.

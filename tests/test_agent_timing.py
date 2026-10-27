@@ -55,7 +55,6 @@ from ui.processing_forecast import (
     build_stage_progress_plan,
     estimate_file_review_seconds,
     minimum_history_observations,
-    progress_fraction,
 )
 from ui.js_guards import (
     install_company_logo_picker_guard,
@@ -694,11 +693,6 @@ def test_large_file_forecast_uses_two_compatible_raw_usage_events():
     }
 
 
-def test_file_review_progress_means_elapsed_share_of_current_forecast():
-    assert progress_fraction(elapsed_seconds=45, expected_total_seconds=90) == 0.5
-    assert 0.96 <= progress_fraction(elapsed_seconds=90, expected_total_seconds=90) < 1
-
-
 def test_v645_large_file_requests_start_with_capacity_for_their_response_shape():
     assert select_detection_v645_discovery_output_max_tokens(30) == 8_192
     assert select_detection_v645_discovery_output_max_tokens(37) == 12_288
@@ -722,19 +716,23 @@ def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signal
     assert "dataset.processingPageCount" in source
     assert "activeStageId" in source
     assert "Forecast owns the pace" in source
-    assert "Real stage completion owns the" in source
-    assert "__costerlyRealProcessingStageSeenV4" in source
+    assert "A phase signal can move the floor forward" in source
+    assert "__costerlyRealProcessingStageSeenV5" in source
     assert "if (window[PROCESSING_STAGE_SEEN_KEY]) return null" in source
-    assert "__costerlyProcessingElapsedStartedAtV4" in source
+    assert "__costerlyProcessingElapsedStartedAtV5" in source
     assert "document.querySelectorAll('.post-upload-stage .custom-progress-fill')" not in source
     assert "expectedPreparationSeconds" in source
     assert "const preparationSpan = Math.min(15, pageCount)" in source
+    assert "Math.exp(-elapsed / expectedPreparationSeconds)" in source
     assert "progressNode = visibleProgressNode(stage)" in source
     assert "PRE_UPLOAD_PROGRESS_STATE_KEY" in source
     assert "fullLapElapsedSeconds" in source
     assert "advanceProgress(state, calculated)" in source
     assert "function visibleProgressNode(stage)" in source
     assert "progressNode = visibleProgressNode(stage)" in source
+    assert "syncForecastFromStage(stage)" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_18" in source
+    assert "runtimeVersion = 'v1118'" in source
     assert "if (stage.dataset.processingComplete === 'true') return 100" in source
 
 
@@ -757,7 +755,7 @@ def test_processing_cycle_persists_ocr_page_count_for_future_forecasts():
 def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():
     source = getsource(install_upload_interaction_guards)
 
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_17" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_18" in source
     assert "function uploadScreenIsActive()" in source
     assert "document.querySelector('.upload-screen-active')" in source
     assert "if (!uploadScreenIsActive()) return;" in source
