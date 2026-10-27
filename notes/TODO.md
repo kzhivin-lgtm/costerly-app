@@ -21,7 +21,7 @@ safe request-content digest to future Discovery diagnostics before attributing
 any remaining output variation to provider behaviour; never store raw document
 content in the ledger.
 
-ACTIVE, V6.58, P0, Processing progress root-cause:
+CHECKPOINT, V6.58, P0, Processing progress root-cause:
 The progress bar must have one visible bar, begin at zero, never reset or move
 backward, advance continuously before Fusion, recalibrate only forward from
 real stage signals, and reach File Review without a completed-bar grey delay.
@@ -38,6 +38,15 @@ server may move the floor forward, never backward. Before Fusion, movement is
 zero-origin and page-shaped without a hard cap. Keep Detection, provider calls,
 router, Fusion, Evidence and File Review data unchanged. Verify focused tests,
 then require a live HSL interaction check before accepting the UI result.
+
+ACTIVE, V6.59, P0, File Review handoff visual isolation:
+The V6.58 owner-run HSL interaction accepted Processing pacing but showed one
+brief frame where the outgoing upload shell and incoming File Review screen
+were composited together. Trace the transition shell's removal and the File
+Review styled-ready signal. Repair only that handoff, without changing the
+accepted V6.58 progress controller, forecast, Detection cycle, File Review
+data readiness, routes or provider calls. Acceptance: no overlap and no blank
+or grey delay between a completed bar and the fully rendered File Review.
 
 CHECKPOINT, owner-accepted, V6.38-V6.40 quantity and Document Identity:
 `notes/DETECTION_V6_40_DOCUMENT_IDENTITY_QUANTITY_CHECKPOINT_2026_10_27.md`.

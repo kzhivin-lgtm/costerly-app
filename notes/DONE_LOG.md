@@ -1,5 +1,18 @@
 # Done Log
 
+Detection V6.58 Processing progress checkpoint `9374888`: owner accepted the
+ordinary HSL Processing screen after a live run. One persistent browser shell
+now owns the visible progress fill for the full cycle, starts at zero, advances
+from page count before Fusion, then follows the Fusion forecast without
+backward resets or a guessed per-stage ceiling. V6.57's ordinary Discovery
+budget is included: 37 Candidate Regions receive a 12,288-token planned cap
+and a compact-output instruction, without changing model, route, Fusion,
+Membership Review or Evidence. Focused tests: 95 passed. The one-frame
+Processing-to-File-Review overlap is explicitly outside this checkpoint and
+recorded as V6.59. Full evidence:
+`notes/DETECTION_V6_58_PROCESSING_PROGRESS_CHECKPOINT_2026_10_27.md`,
+завершена 27.10
+
 Detection V6.37 Ada covered-membership checkpoint `d5a306c`: retains the
 existing Mistral-anchor, Haiku Discovery and one Sonnet Membership Review Ada
 route, but accepts a non-overlapping multi-View group only when accepted
