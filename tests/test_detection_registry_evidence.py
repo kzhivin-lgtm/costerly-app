@@ -15,7 +15,11 @@ from agents.detection_agent import (
     _registry_to_detection_result,
     run_detection_agent,
 )
-from agents.anthropic_adapter import DetectionVisualRegistryValidationError
+from agents.anthropic_adapter import (
+    DetectionVisualRegistryValidationError,
+    apply_detection_explicit_quantities,
+    extract_detection_explicit_quantity_candidates,
+)
 from agents.schemas.detection_schema import validate_detection_result
 from use_cases.rfq_processing import (
     _persist_detection_audit_before_file_review,
@@ -66,6 +70,91 @@ def test_registry_locks_complete_system_quantity_against_component_count():
 
     assert merged["detected_objects"][0]["quantity"] == 1
     assert merged["detected_objects"][0]["quantity_explicit"] is False
+
+
+@pytest.mark.parametrize(
+    ("literal", "expected_quantity"),
+    [
+        ("04 / TRAY 5 PCS", 5),
+        ("04 / TRAY QUANTITY: 5", 5),
+        ("04 / TRAY 5 pieces", 5),
+        ("04 / ПОДДОН 5 ШТ", 5),
+        ("04 / ПОДДОН 5 штук", 5),
+        ("04 / ПОДДОН количество: 5", 5),
+        ("04 / מגש 5 יח׳", 5),
+        ("04 / מגש כמות: 5", 5),
+        ("04 / מגש 5 יחידות", 5),
+    ],
+)
+def test_explicit_quantity_aliases_cover_english_russian_and_hebrew(
+    literal, expected_quantity,
+):
+    candidates = extract_detection_explicit_quantity_candidates(literal)
+
+    assert [candidate["quantity"] for candidate in candidates] == [expected_quantity]
+
+
+def test_caption_bound_explicit_quantity_replaces_registry_default():
+    registry = {"objects": [{
+        "object_id": "object-002", "quantity": 1, "quantity_explicit": False,
+        "visual_group_ids": ["view-002"],
+    }]}
+    evidence = [{
+        "visual_group_id": "view-002", "page_number": 1,
+        "bbox": {"top_left_x": 100, "top_left_y": 100, "bottom_right_x": 600, "bottom_right_y": 700},
+        "source_facts": [{
+            "fact_id": "SF00070", "page_number": 1,
+            "bbox": {"top_left_x": 120, "top_left_y": 120, "bottom_right_x": 340, "bottom_right_y": 155},
+            "text": "04 / ПОДДОН 5 ШТ",
+        }],
+    }]
+
+    resolved, audit = apply_detection_explicit_quantities(
+        registry, view_evidence_packages=evidence,
+    )
+
+    assert resolved["objects"][0]["quantity"] == 5
+    assert resolved["objects"][0]["quantity_explicit"] is True
+    assert audit == [{
+        "object_id": "object-002",
+        "decision": "accepted_unambiguous_caption_quantity",
+        "candidates": [{
+            "quantity": 5, "marker": "ШТ", "literal": "5 ШТ",
+            "visual_group_id": "view-002", "fact_id": "SF00070", "page_number": 1,
+        }],
+        "published_quantity": 5,
+        "quantity_explicit": True,
+    }]
+
+
+def test_conflicting_caption_quantities_preserve_the_safe_default():
+    registry = {"objects": [{
+        "object_id": "object-001", "quantity": 1, "quantity_explicit": False,
+        "visual_group_ids": ["view-001", "view-002"],
+    }]}
+    evidence = [
+        {
+            "visual_group_id": group_id, "page_number": 1,
+            "bbox": {"top_left_x": 100, "top_left_y": 100, "bottom_right_x": 600, "bottom_right_y": 700},
+            "source_facts": [{
+                "fact_id": fact_id, "page_number": 1,
+                "bbox": {"top_left_x": 120, "top_left_y": 120, "bottom_right_x": 340, "bottom_right_y": 155},
+                "text": literal,
+            }],
+        }
+        for group_id, fact_id, literal in (
+            ("view-001", "SF00001", "01 / BENCH 2 PCS"),
+            ("view-002", "SF00002", "01 / BENCH 3 PCS"),
+        )
+    ]
+
+    resolved, audit = apply_detection_explicit_quantities(
+        registry, view_evidence_packages=evidence,
+    )
+
+    assert resolved["objects"][0]["quantity"] == 1
+    assert resolved["objects"][0]["quantity_explicit"] is False
+    assert audit[0]["decision"] == "conflicting_caption_quantities_preserved_default"
 
 
 def test_registry_metadata_fallback_marks_only_that_graph_package_for_review():

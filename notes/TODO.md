@@ -1,5 +1,29 @@
 # TODO
 
+ACTIVE CANDIDATE, P0, V6.38 caption-bound explicit quantity publication:
+the `300119_f2.pdf` production audit proved that Fusion retained native fact
+`04 / ПОДДОН 5 ШТ`, and Membership cited it as five pieces, but the final V5
+proof-component compiler passed an empty metadata list into the Registry and
+published its fallback `quantity=1, quantity_explicit=false`. Keep object
+boundaries, router selection, Evidence ownership, Naming and Document Identity
+unchanged. After graph membership is immutable, promote only one unambiguous
+positive literal quantity from a retained View's upper caption band. Supported
+markers are bounded English, Russian and Hebrew piece/count forms. Multiple
+different caption quantities preserve the conservative default and record the
+conflict. No model call or prompt expansion is allowed. First gate: the exact
+`ПОДДОН 5 ШТ` fact publishes quantity five and explicit true; regression gates
+cover English/Russian/Hebrew aliases and conflicting captions.
+
+PENDING DECISION, P1, unlabelled Document Identity roles: the same title block
+visibly contains `СТУДИЯ CALGEL`, `МЕБЕЛЬ / СТЕЙШН И ПОДДОНЫ` and `ООО
+"АРХИПРОБА"`, but none is labelled Client, Partner or Project. Current
+Document Identity correctly preserves unknown under its explicit-label-only
+contract. A document title can be introduced as separately cited title-block
+evidence, but assigning Client versus Partner requires either visible labels,
+a user/company-maintained role mapping, or an explicitly approved contextual
+model policy with a review state. Do not silently infer those roles from
+title-block position or company type.
+
 CHECKPOINT, V6.23 bounded Naming and Quantity review presentation:
 `c990495`, deployed and audited as
 `notes/DETECTION_V6_23_NAMING_AUDIT_CHECKPOINT_2026_10_26.md`. HSL returns to

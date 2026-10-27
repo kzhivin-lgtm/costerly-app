@@ -6147,6 +6147,137 @@ def build_detection_view_evidence_packages(
     return packages
 
 
+# These are quantity markers, not a general language detector.  A number is
+# accepted only when it is locally attached to a retained Object View and its
+# fact sits in that View's caption band.  That distinction keeps dimensions,
+# hardware counts and drawing numbers from silently becoming commercial-unit
+# quantities.
+_DETECTION_QUANTITY_MARKER_RE = re.compile(
+    r"(?:"
+    # English.
+    r"qty\.?|quantity|quantities|pcs?\.?|pieces?|units?|ea\.?|each|nos?\.?"
+    # Russian. `шт` is the authored abbreviation; the longer forms cover the
+    # ordinary declensions used in title and schedule rows.
+    r"|шт\.?|штук(?:а|и)?|ед\.?|единиц(?:а|ы)?|кол(?:ичество|-?во)?\.?|"
+    r"экз\.?|экземпляр(?:а|ов)?"
+    # Hebrew. Keep `מספר` out: it commonly denotes a drawing/document number,
+    # while `כמות` and the unit forms are explicit quantity evidence.
+    r"|יח(?:ידה|ידות)?|יח[׳'״\"]|כמות"
+    r")",
+    re.IGNORECASE,
+)
+_DETECTION_QUANTITY_VALUE_RE = re.compile(
+    rf"(?<![\d.,])(?P<quantity>[1-9]\d{{0,5}})(?:\s|\u00a0)*(?P<marker>{_DETECTION_QUANTITY_MARKER_RE.pattern})(?![\w])"
+    rf"|(?P<marker_first>{_DETECTION_QUANTITY_MARKER_RE.pattern})(?:\s|\u00a0)*(?:[:=#]|[-–])?(?:\s|\u00a0)*(?P<quantity_first>[1-9]\d{{0,5}})(?![\d.,])",
+    re.IGNORECASE,
+)
+
+
+def extract_detection_explicit_quantity_candidates(text: object) -> list[dict[str, Any]]:
+    """Return literal count markers from one source fact, with no object decision.
+
+    The caller must still prove local ownership and caption placement.  Keeping
+    alias recognition separate from object binding makes the language coverage
+    testable and avoids granting a bare number any semantic authority.
+    """
+    value = str(text or "")
+    candidates: list[dict[str, Any]] = []
+    for match in _DETECTION_QUANTITY_VALUE_RE.finditer(value):
+        raw_quantity = match.group("quantity") or match.group("quantity_first")
+        marker = match.group("marker") or match.group("marker_first") or ""
+        try:
+            quantity = int(raw_quantity)
+        except (TypeError, ValueError):
+            continue
+        candidates.append({
+            "quantity": quantity,
+            "marker": " ".join(marker.split()),
+            "literal": match.group(0),
+        })
+    return candidates
+
+
+def _detection_quantity_fact_is_in_caption_band(
+    fact: dict[str, Any],
+    package: dict[str, Any],
+) -> bool:
+    """Require a literal quantity to live in the retained View's caption zone."""
+    fact_bbox = fact.get("bbox")
+    package_bbox = package.get("bbox")
+    if not isinstance(fact_bbox, dict) or not isinstance(package_bbox, dict):
+        return False
+    try:
+        fact_top = float(fact_bbox["top_left_y"])
+        package_top = float(package_bbox["top_left_y"])
+        package_bottom = float(package_bbox["bottom_right_y"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    height = package_bottom - package_top
+    if height <= 0:
+        return False
+    # Quantity headings conventionally sit just above or inside the upper part
+    # of their View.  This is intentionally conservative: a count in the body
+    # of a detail remains non-authoritative rather than becoming a false total.
+    return fact_top <= package_top + max(80.0, height * 0.28)
+
+
+def apply_detection_explicit_quantities(
+    registry: dict[str, Any],
+    *,
+    view_evidence_packages: list[dict[str, Any]],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Promote unambiguous object-header quantity facts into locked Registry rows.
+
+    Object membership is already immutable here.  This function cannot add,
+    merge, split or reorder objects.  It changes quantity only when every
+    caption-bound literal candidate for a package agrees on the same positive
+    integer.  Conflicts are retained in the audit and preserve the established
+    conservative default of one.
+    """
+    packages_by_id = {
+        str(package.get("visual_group_id") or ""): package
+        for package in view_evidence_packages
+        if isinstance(package, dict) and str(package.get("visual_group_id") or "")
+    }
+    resolved = copy.deepcopy(registry)
+    audit: list[dict[str, Any]] = []
+    for item in resolved.get("objects") or []:
+        if not isinstance(item, dict):
+            continue
+        object_id = str(item.get("object_id") or "")
+        candidates: list[dict[str, Any]] = []
+        for group_id in item.get("visual_group_ids") or []:
+            package = packages_by_id.get(str(group_id))
+            if package is None:
+                continue
+            for fact in package.get("source_facts") or []:
+                if not isinstance(fact, dict) or not _detection_quantity_fact_is_in_caption_band(fact, package):
+                    continue
+                for candidate in extract_detection_explicit_quantity_candidates(fact.get("text")):
+                    candidates.append({
+                        **candidate,
+                        "visual_group_id": str(group_id),
+                        "fact_id": str(fact.get("fact_id") or ""),
+                        "page_number": package.get("page_number"),
+                    })
+        quantities = sorted({int(candidate["quantity"]) for candidate in candidates})
+        decision = "no_explicit_object_quantity"
+        if len(quantities) == 1:
+            item["quantity"] = quantities[0]
+            item["quantity_explicit"] = True
+            decision = "accepted_unambiguous_caption_quantity"
+        elif len(quantities) > 1:
+            decision = "conflicting_caption_quantities_preserved_default"
+        audit.append({
+            "object_id": object_id,
+            "decision": decision,
+            "candidates": candidates,
+            "published_quantity": item.get("quantity"),
+            "quantity_explicit": item.get("quantity_explicit"),
+        })
+    return resolved, audit
+
+
 def assign_detection_page_local_view_labels(
     view_evidence_packages: list[dict[str, Any]],
 ) -> dict[str, dict[str, Any]]:
@@ -10911,6 +11042,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         registry_objects, reconciled_object_ids = _apply_page_coverage_to_registry(
             registry_objects_input, resolved_page_coverage, page_count=len(page_images),
         )
+        registry_objects, explicit_quantity_audit = apply_detection_explicit_quantities(
+            {"objects": registry_objects},
+            view_evidence_packages=view_evidence_packages,
+        )
+        registry_objects = registry_objects["objects"]
         registry_graph_review_required_object_ids = sorted({
             *(
                 anchor_to_object_id[group_id]
@@ -11112,6 +11248,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "registry_metadata_fallback_object_ids": fallback_registry_object_ids,
         "registry_graph_review_required_object_ids": registry_graph_review_required_object_ids,
         "registry_metadata_audit": registry_metadata_audit,
+        "explicit_quantity_audit": explicit_quantity_audit,
         "graph_page_coverage_supplements": graph_page_coverage_supplements,
         "page_coverage_audit": page_coverage_audit,
         "proof_graph_components": [
