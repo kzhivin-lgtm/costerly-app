@@ -157,6 +157,37 @@ def test_conflicting_caption_quantities_preserve_the_safe_default():
     assert audit[0]["decision"] == "conflicting_caption_quantities_preserved_default"
 
 
+def test_registry_result_marks_review_only_for_a_conflicting_explicit_quantity():
+    registry = {"objects": [{
+        "object_id": "object-001", "transport_label": "Built-in kitchen",
+        "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+        "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
+        "visual_identity": "one integrated kitchen", "boundary_basis": "one envelope",
+    }, {
+        "object_id": "object-002", "transport_label": "Tray D1",
+        "quantity": 5, "quantity_explicit": True, "identity_pages": [1],
+        "estimation_evidence_pages": [1], "visual_group_ids": ["view-002"],
+        "visual_identity": "five identical trays", "boundary_basis": "caption quantity",
+    }, {
+        "object_id": "object-003", "transport_label": "Bench",
+        "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+        "estimation_evidence_pages": [1], "visual_group_ids": ["view-003"],
+        "visual_identity": "one unresolved bench", "boundary_basis": "conflicting captions",
+    }]}
+
+    result = _registry_to_detection_result(
+        registry,
+        company_id="001",
+        file_name="objects.pdf",
+        page_count=1,
+        review_required_object_ids={"object-003"},
+    )
+
+    assert [item["review_required"] for item in result["detected_objects"]] == [
+        False, False, True,
+    ]
+
+
 def test_registry_metadata_fallback_marks_only_that_graph_package_for_review():
     result = {
         "detected_objects": [{

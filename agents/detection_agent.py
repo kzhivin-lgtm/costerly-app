@@ -989,27 +989,17 @@ def run_detection_agent(
     if isinstance(visual_registry_usage, dict):
         raw_registry_usage["v6_26_assembly_set_compiler"] = assembly_set_audit
         visual_registry_usage["raw_usage"] = raw_registry_usage
-    fallback_review_required_object_ids = {
-        str(object_id)
-        for object_id in (
-            (visual_registry_usage.get("raw_usage") or {}).get(
-                "registry_metadata_fallback_object_ids", []
-            )
-            if isinstance(visual_registry_usage, dict)
+    quantity_review_required_object_ids = {
+        str(item.get("object_id") or "")
+        for item in (
+            raw_registry_usage.get("explicit_quantity_audit", [])
+            if isinstance(raw_registry_usage.get("explicit_quantity_audit"), list)
             else []
         )
-        if str(object_id)
-    }
-    graph_review_required_object_ids = {
-        str(object_id)
-        for object_id in (
-            (visual_registry_usage.get("raw_usage") or {}).get(
-                "registry_graph_review_required_object_ids", []
-            )
-            if isinstance(visual_registry_usage, dict)
-            else []
-        )
-        if str(object_id)
+        if isinstance(item, dict)
+        and str(item.get("decision") or "")
+        == "conflicting_caption_quantities_preserved_default"
+        and str(item.get("object_id") or "")
     }
     registry = _enforce_shared_track_door_system_quantity(registry)
     _validate_registry_evidence_pages(registry, page_count=len(registry_images))
@@ -1019,9 +1009,11 @@ def run_detection_agent(
         file_name=file_name,
         page_count=len(registry_images),
         visual_map=_visual_map,
-        review_required_object_ids=(
-            fallback_review_required_object_ids | graph_review_required_object_ids
-        ),
+        # File Review uses review_required solely for a physical quantity that
+        # needs a human decision. Registry metadata fallback and graph review
+        # remain auditable in raw usage, but must not turn a proved quantity or
+        # a safe default of one into a red QTY label.
+        review_required_object_ids=quantity_review_required_object_ids,
     )
     result = _normalize_evidence_source_labels(result, ocr_package)
     validated = validate_detection_result(result)

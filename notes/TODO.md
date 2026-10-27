@@ -28,6 +28,18 @@ when no bounded candidate exists, and do not affect object Detection, Naming,
 quantity, Evidence or routing. First gate is the exact 300119 title-block
 mapping plus explicit-label, address-only and named-designer regressions.
 
+ACTIVE CANDIDATE, P0, V6.40 quantity-review signal repair: File Review's red
+`QTY` label must represent only a physical quantity that needs a human choice.
+It must not reuse graph or Registry-metadata review flags. An unambiguous
+caption quantity, including `04 / ПОДДОН 5 ШТ` and `03 / КОФЕ СТЕЙШН 1 ШТ`,
+is never red. A safe default of one for an otherwise unique built-in kitchen,
+large cabinet system or other integral object is also never red. Preserve the
+default only when no explicit count exists. The only current red condition is
+conflicting positive caption quantities for the same locked Object. No model,
+route, object boundary, evidence, quantity value or database migration is
+allowed. First gate: the three-object transport test proves default one and
+explicit five remain unflagged while a documented caption conflict is flagged.
+
 CHECKPOINT, V6.23 bounded Naming and Quantity review presentation:
 `c990495`, deployed and audited as
 `notes/DETECTION_V6_23_NAMING_AUDIT_CHECKPOINT_2026_10_26.md`. HSL returns to
