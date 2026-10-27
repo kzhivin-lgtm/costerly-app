@@ -3378,6 +3378,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAt';
                 const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimer';
                 const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSeconds';
+                const PROCESSING_STAGE_SEEN_KEY = '__costerlyRealProcessingStageSeen';
                 const PROCESSING_TRANSITION_ID_KEY = '__costerlyUploadToProcessingTransitionId';
                 const PROCESSING_COMPLETE_TRANSITION_ID_KEY = '__costerlyProcessingToReviewTransitionId';
                 const PROCESSING_COMPLETE_STYLED_OBSERVER_KEY = '__costerlyProcessingToReviewStyledObserver';
@@ -3482,7 +3483,15 @@ def install_upload_interaction_guards(shell_html: str) -> None:
 
                 function activeProcessingStage() {
                     const marker = document.getElementById(REAL_PROCESSING_MARKER_ID);
-                    if (marker) return marker.closest('.post-upload-stage');
+                    if (marker) {
+                        window[PROCESSING_STAGE_SEEN_KEY] = true;
+                        return marker.closest('.post-upload-stage');
+                    }
+                    // Streamlit replaces the real stage subtree during a
+                    // server phase update. Never fall back to the upload shell
+                    // in that small DOM gap: that shell has no plan and used to
+                    // write 4% over the already-advanced real bar.
+                    if (window[PROCESSING_STAGE_SEEN_KEY]) return null;
 
                     const shell = document.getElementById(SHELL_ID);
                     return shell ? shell.querySelector('.post-upload-stage') : null;
@@ -3557,17 +3566,18 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         Math.floor((Date.now() - startedAt) / 1000)
                     );
                     const label = elapsedLabel(seconds);
-                    document.querySelectorAll('.post-upload-stage__timer').forEach((node) => {
-                        const forecastLabel = node.dataset.processingForecastLabel;
-                        const timerLabel = forecastLabel
-                            ? `${forecastLabel} ${label}`
-                            : label;
-                        if (node.textContent !== timerLabel) {
-                            node.textContent = timerLabel;
+                    document.querySelectorAll('[data-processing-elapsed-label]').forEach((node) => {
+                        if (node.textContent !== label) {
+                            node.textContent = label;
                         }
                     });
 
-                    const progressWidth = phaseProgress(activeProcessingStage()).toFixed(1) + '%';
+                    const stage = activeProcessingStage();
+                    if (!stage) {
+                        if (fileReviewIsActive()) finalizeElapsed(seconds);
+                        return;
+                    }
+                    const progressWidth = phaseProgress(stage).toFixed(1) + '%';
                     document.querySelectorAll('.post-upload-stage .custom-progress-fill').forEach((node) => {
                         if (node.style.width !== progressWidth) {
                             node.style.width = progressWidth;
@@ -3662,6 +3672,8 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     window[PROCESSING_TRANSITION_ID_KEY] = null;
                     window[PROCESSING_COMPLETE_TRANSITION_ID_KEY] = null;
                     window[PROCESSING_COMPLETE_STYLED_OBSERVER_KEY] = null;
+                    window[PROCESSING_STAGE_SEEN_KEY] = false;
+                    window[STAGE_PROGRESS_STATE_KEY] = null;
                     window[RFQ_UPLOAD_CYCLE_ID_KEY] = crypto.randomUUID();
                     return window[RFQ_UPLOAD_CYCLE_ID_KEY];
                 }

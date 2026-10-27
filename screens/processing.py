@@ -97,6 +97,7 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
             "label": "OCR reading document",
             "stage_id": "pre_fusion",
             "stage_started_at_ms": screen_started_at_ms,
+            "forecast_requested": False,
             "plan_input": None,
             "progress_plan": None,
         }
@@ -150,6 +151,11 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
                 phase_state["stage_started_at_ms"] = int(time.time() * 1000)
                 if page_count is not None:
                     phase_state["page_count"] = page_count
+                if label == "Fusion and route started":
+                    # A visible F begins as soon as Fusion has given us a
+                    # concrete page count. The exact batch-shaped plan follows
+                    # immediately before the first Discovery model call.
+                    phase_state["forecast_requested"] = True
                 if label == "Processing plan prepared" and isinstance(metadata, dict):
                     phase_state["plan_input"] = dict(metadata)
             if trace is not None:
@@ -182,6 +188,7 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
                     stage_started_at_ms = int(phase_state["stage_started_at_ms"])
                     plan_input = phase_state["plan_input"]
                     progress_plan = phase_state["progress_plan"]
+                    forecast_requested = bool(phase_state["forecast_requested"])
                 if progress_plan is None and isinstance(plan_input, dict):
                     progress_plan = build_stage_progress_plan(
                         page_count=page_count if isinstance(page_count, int) else None,
@@ -193,7 +200,14 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
                         phase_state["progress_plan"] = progress_plan
                 forecast = (
                     float(progress_plan["forecast_seconds"])
-                    if isinstance(progress_plan, dict) else None
+                    if isinstance(progress_plan, dict)
+                    else (
+                        expected_file_review_seconds(
+                            page_count if isinstance(page_count, int) else None,
+                            history=history,
+                        )
+                        if forecast_requested else None
+                    )
                 )
                 signature = (
                     label,

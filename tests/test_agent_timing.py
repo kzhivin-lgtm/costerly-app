@@ -667,6 +667,8 @@ def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signal
     assert "activeStageId" in source
     assert "activeElapsedSeconds / activeDuration" in source
     assert "cannot consume the later Review/Saving ranges" in source
+    assert "__costerlyRealProcessingStageSeen" in source
+    assert "if (window[PROCESSING_STAGE_SEEN_KEY]) return null" in source
 
 
 def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():

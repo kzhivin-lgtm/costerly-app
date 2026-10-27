@@ -75,7 +75,9 @@ def post_upload_stage_html(
         timer_html = (
             f'<div class="post-upload-stage__timer"{forecast_attr}>'
             f'{forecast_html}'
+            '<span data-processing-elapsed-label>'
             f'Elapsed {seconds // 60:02d}:{seconds % 60:02d}'
+            '</span>'
             '</div>'
         )
 
