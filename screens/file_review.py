@@ -448,7 +448,9 @@ def _render_review_card(
     """Render editable project metadata inside the established summary card."""
     with st.container(border=True):
         st.markdown(
-            '<span class="file-review-summary-card-marker" aria-hidden="true"></span>',
+            '<span class="file-review-summary-card-marker" '
+            f'data-file-review-run-id="{html.escape(run_id)}" '
+            'aria-hidden="true"></span>',
             unsafe_allow_html=True,
         )
         _render_file_review_metadata_inputs(run_id)

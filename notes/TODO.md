@@ -74,6 +74,22 @@ Detection delay. Remove the forced reload entirely. Existing runtimes may
 upgrade only on an ordinary browser refresh or a new tab, never as a result of
 New Estimate or file selection.
 
+Diagnosis update, 2026-10-28: the one-page `Стеишен и поддон.pdf` run reached
+Detection completion in 21.514 s, but the client kept a hard `1.15%/s` cap
+after Fusion. The bar could therefore show only about 25-30% when the real
+result was ready. The terminal transition then released after a stale generic
+File Review DOM predicate, leaving a measured 3.434 s handoff. V6.60 must
+retain forecast pacing plus real stage floors, remove the false cap, use a
+bounded finishing segment under the shell, and release only after the target
+File Review marker carries the exact completed `run_id`. The header's `Last
+Estimate` route must use the latest succeeded `rfq_processing_cycle`, not
+`rfq_estimates`, because a File Review exists before Continue creates an
+estimate shell. Preserve Detection, OCR, route selection, Fusion, objects and
+Evidence unchanged. Live acceptance: a short one-page run reaches 100% before
+the matching File Review appears, with no blank frame or backward movement;
+`New Estimate → Last Estimate` reopens that most recently completed Detection
+run.
+
 ACTIVE, V6.59, P0, New Estimate to Upload client-transition observability:
 The evidence rejects server-side auth, Supabase, and Upload rendering as the
 source of the reported 3-4 second warm navigation: prior successful

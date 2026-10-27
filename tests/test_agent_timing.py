@@ -722,19 +722,22 @@ def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signal
     assert "__costerlyProcessingElapsedStartedAtV5" in source
     assert "document.querySelectorAll('.post-upload-stage .custom-progress-fill')" not in source
     assert "expectedPreparationSeconds" in source
-    assert "const preparationSpan = Math.min(15, pageCount)" in source
+    assert "const preparationSpan = Math.min(15, 6 + pageCount)" in source
     assert "Math.exp(-elapsed / expectedPreparationSeconds)" in source
-    assert "progressNode = visibleProgressNode(stage)" in source
+    assert "writeProgress(phaseProgress(stage))" in source
     assert "PRE_UPLOAD_PROGRESS_STATE_KEY" in source
     assert "fullLapElapsedSeconds" in source
     assert "advanceProgress(state, calculated)" in source
     assert "function visibleProgressNode(stage)" in source
-    assert "progressNode = visibleProgressNode(stage)" in source
+    assert "writeProgress(percent)" in source
     assert "syncForecastFromStage(stage)" in source
     assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_19" in source
     assert "runtimeVersion = 'v1119'" not in source
     assert "parentWindow.location.reload();" not in source
-    assert "if (stage.dataset.processingComplete === 'true') return 100" in source
+    assert "function finalizationState(stage)" in source
+    assert "function advanceFinalization(state)" in source
+    assert "function finishFinalization()" in source
+    assert "processingResultRunId" in source
 
 
 def test_processing_screen_counts_pdf_pages_before_rendering_the_pre_fusion_stage():
@@ -745,6 +748,16 @@ def test_processing_screen_counts_pdf_pages_before_rendering_the_pre_fusion_stag
     assert '"value": "ocr", "page_count": initial_page_count' in source
     assert "clear_upload_processing_shell" not in source
     assert 'complete=True' in source
+
+
+def test_processing_stage_carries_the_completed_run_id_to_the_browser_handoff():
+    source = Path("ui/processing_stage.py").read_text()
+    processing_source = Path("screens/processing.py").read_text()
+    review_source = Path("screens/file_review.py").read_text()
+
+    assert 'data-processing-result-run-id' in source
+    assert "processing_result_run_id=run_id" in processing_source
+    assert 'data-file-review-run-id="{html.escape(run_id)}"' in review_source
 
 
 def test_processing_cycle_persists_ocr_page_count_for_future_forecasts():

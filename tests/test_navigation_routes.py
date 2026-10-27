@@ -685,7 +685,8 @@ def test_file_review_transitions_follow_the_current_editable_summary_marker():
     handoff_end = source.index("function startWatcher", handoff_start)
     handoff_source = source[handoff_start:handoff_end]
     assert "const fileReviewReady" in handoff_source
-    assert "document.querySelector('.file-review-summary-card-marker')" in handoff_source
+    assert "document.querySelectorAll('.file-review-summary-card-marker')" in handoff_source
+    assert "marker.dataset.fileReviewRunId === expectedRunId" in handoff_source
     assert "document.querySelector('.file-review-card')" not in handoff_source
     assert "window.requestAnimationFrame(() => {" in handoff_source
     assert "window.requestAnimationFrame(removeShell);" in handoff_source

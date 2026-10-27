@@ -49,7 +49,7 @@ from ui.js_guards import (
     signal_app_ready_to_embed,
 )
 from ui.app_header import render_app_header
-from use_cases.latest_estimate import load_latest_estimate_route
+from use_cases.latest_estimate import load_latest_file_review_route
 from use_cases.platform_admin import (
     load_platform_access,
     record_authenticated_session_in_background,
@@ -525,7 +525,7 @@ def main() -> None:
             if latest_route is None and latest_route_cache_key not in st.session_state:
                 try:
                     with trace.span("server.latest_estimate_query"):
-                        latest_route = load_latest_estimate_route(
+                        latest_route = load_latest_file_review_route(
                             _header_client(trace), str(access.company_id)
                         )
                 except Exception:
@@ -540,7 +540,7 @@ def main() -> None:
                 latest_future = (
                     executor.submit(
                         _timed_call,
-                        load_latest_estimate_route,
+                        load_latest_file_review_route,
                         client,
                         str(access.company_id),
                     )

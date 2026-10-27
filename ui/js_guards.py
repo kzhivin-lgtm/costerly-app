@@ -3383,6 +3383,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const PROCESSING_TRANSITION_ID_KEY = '__costerlyUploadToProcessingTransitionIdV5';
                 const PROCESSING_COMPLETE_TRANSITION_ID_KEY = '__costerlyProcessingToReviewTransitionIdV5';
                 const PROCESSING_COMPLETE_STYLED_OBSERVER_KEY = '__costerlyProcessingToReviewStyledObserverV5';
+                const PROCESSING_COMPLETE_EXPECTED_RUN_ID_KEY = '__costerlyProcessingToReviewRunIdV5';
                 const RFQ_UPLOAD_CYCLE_ID_KEY = '__costerlyRfqUploadCycleIdV5';
                 let clearDragTimer = null;
                 let watcher = null;
@@ -3581,18 +3582,69 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     return state;
                 }
 
-                function advanceProgress(state, targetPercent, maxPercentPerSecond = 1.15) {
+                function writeProgress(percent) {
+                    const progressNode = visibleProgressNode(null);
+                    if (!progressNode) return;
+                    const width = Math.max(0, Math.min(100, Number(percent || 0))).toFixed(1) + '%';
+                    if (progressNode.style.width !== width) progressNode.style.width = width;
+                }
+
+                function advanceProgress(state, targetPercent) {
                     const now = Date.now();
                     const previous = Math.max(0, Number(state.highestPercent || 0));
-                    const elapsed = Math.max(
-                        0, (now - Number(state.lastUpdatedAtMs || now)) / 1000
-                    );
                     state.lastUpdatedAtMs = now;
-                    state.highestPercent = Math.max(
-                        previous,
-                        Math.min(targetPercent, previous + maxPercentPerSecond * elapsed)
-                    );
+                    // The forecast has already supplied a continuous target.
+                    // A fixed pixels-per-second ceiling made a short file
+                    // physically incapable of reaching its own forecast.
+                    state.highestPercent = Math.max(previous, Math.min(99.2, targetPercent));
                     return state.highestPercent;
+                }
+
+                function finalizationState(stage) {
+                    const state = progressState(stage);
+                    if (!state) return null;
+                    if (!state.finalization) {
+                        const from = Math.max(0, Number(state.highestPercent || 0));
+                        const target = 99.2;
+                        state.finalization = {
+                            from,
+                            target,
+                            startedAtMs: Date.now(),
+                            // Keep the finished result covered while its File
+                            // Review DOM streams in. A lower current value gets
+                            // a longer, still bounded, finishing segment.
+                            durationMs: Math.max(700, Math.min(
+                                3500, Math.round((target - from) * 50)
+                            )),
+                        };
+                    }
+                    return state;
+                }
+
+                function advanceFinalization(state) {
+                    const finalization = state?.finalization;
+                    if (!finalization) return Number(state?.highestPercent || 0);
+                    const elapsed = Math.max(0, Date.now() - finalization.startedAtMs);
+                    const ratio = Math.min(1, elapsed / finalization.durationMs);
+                    const next = finalization.from + (finalization.target - finalization.from) * ratio;
+                    state.highestPercent = Math.max(Number(state.highestPercent || 0), next);
+                    writeProgress(state.highestPercent);
+                    return state.highestPercent;
+                }
+
+                function continueFinalization(state) {
+                    if (!state?.finalization || window[STAGE_PROGRESS_STATE_KEY] !== state) return;
+                    const progress = advanceFinalization(state);
+                    if (progress < state.finalization.target) {
+                        window.requestAnimationFrame(() => continueFinalization(state));
+                    }
+                }
+
+                function finishFinalization() {
+                    const state = window[STAGE_PROGRESS_STATE_KEY];
+                    if (!state) return;
+                    state.highestPercent = 100;
+                    writeProgress(100);
                 }
 
                 function phaseProgress(stage) {
@@ -3613,12 +3665,17 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         window[PRE_UPLOAD_PROGRESS_STATE_KEY] = preUpload;
                         return preUpload.highestPercent;
                     }
-                    if (stage.dataset.processingComplete === 'true') return 100;
+                    if (stage.dataset.processingComplete === 'true') {
+                        return state.finalization
+                            ? advanceFinalization(state)
+                            : state.highestPercent;
+                    }
                     const plan = processingPlan(stage);
                     if (!plan) {
                         // Before Fusion the only known file fact is page count.
-                        // One page owns one percentage point, capped at 15.
-                        // This is preparation, not claimed Detection progress.
+                        // Fusion has not told us the request shape yet. Give a
+                        // small document a visible, bounded preparation range
+                        // instead of pinning a one-page upload below 1%.
                         const startedAt = Number(
                             stage.dataset.processingStageStartedAtMs || Date.now()
                         );
@@ -3626,7 +3683,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         const pageCount = Math.max(
                             1, Number(stage.dataset.processingPageCount || 1)
                         );
-                        const preparationSpan = Math.min(15, pageCount);
+                        const preparationSpan = Math.min(15, 6 + pageCount);
                         const expectedPreparationSeconds = Math.max(6, pageCount * 1.5);
                         // Fusion has not told us the request shape yet. Keep
                         // a page-shaped, zero-origin movement that approaches
@@ -3713,11 +3770,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         return;
                     }
                     syncForecastFromStage(stage);
-                    const progressWidth = phaseProgress(stage).toFixed(1) + '%';
-                    const progressNode = visibleProgressNode(stage);
-                    if (progressNode && progressNode.style.width !== progressWidth) {
-                        progressNode.style.width = progressWidth;
-                    }
+                    writeProgress(phaseProgress(stage));
                     if (fileReviewIsActive()) finalizeElapsed(seconds);
                 }
 
@@ -3810,6 +3863,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     window[PROCESSING_TRANSITION_ID_KEY] = null;
                     window[PROCESSING_COMPLETE_TRANSITION_ID_KEY] = null;
                     window[PROCESSING_COMPLETE_STYLED_OBSERVER_KEY] = null;
+                    window[PROCESSING_COMPLETE_EXPECTED_RUN_ID_KEY] = null;
                     window[PROCESSING_STAGE_SEEN_KEY] = false;
                     window[STAGE_PROGRESS_STATE_KEY] = null;
                     window[PRE_UPLOAD_PROGRESS_STATE_KEY] = { highestPercent: 0 };
@@ -3817,7 +3871,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     return window[RFQ_UPLOAD_CYCLE_ID_KEY];
                 }
 
-                function reportFileReviewStyled(transitionId) {
+                function reportFileReviewStyled(transitionId, expectedRunId = '') {
                     const existing = window[PROCESSING_COMPLETE_STYLED_OBSERVER_KEY];
                     if (existing && existing.transitionId === transitionId) return;
                     if (existing && existing.stop) existing.stop();
@@ -3829,8 +3883,13 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         const controls = document.querySelector('.st-key-costerly_header_controls');
                         return Boolean(controls && controls.querySelectorAll('button').length >= 2);
                     };
+                    const matchingReviewMarker = () => Array.from(
+                        document.querySelectorAll('.file-review-summary-card-marker')
+                    ).reverse().find((marker) => (
+                        !expectedRunId || marker.dataset.fileReviewRunId === expectedRunId
+                    )) || null;
                     const fileReviewReady = () => Boolean(
-                        document.querySelector('.file-review-summary-card-marker') &&
+                        matchingReviewMarker() &&
                         document.querySelector('.file-review-detected-title') &&
                         controlsReady()
                     );
@@ -3854,6 +3913,10 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                             return false;
                         }
                         reported = true;
+                        // The review DOM is now proven to belong to the run
+                        // that finished Processing, not a stale review still
+                        // present during Streamlit's replacement.
+                        finishFinalization();
                         window.top.postMessage({
                             type: 'costerly:transition-styled',
                             transition: 'processing_to_file_review',
@@ -3865,9 +3928,11 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         // the DOM and have painted. Removing on the first
                         // File Review marker caused the one-frame composite
                         // of the old Upload shell and the new review screen.
-                        window.requestAnimationFrame(() => {
-                            window.requestAnimationFrame(removeShell);
-                        });
+                        window.setTimeout(() => {
+                            window.requestAnimationFrame(() => {
+                                window.requestAnimationFrame(removeShell);
+                            });
+                        }, 160);
                         stop();
                         return true;
                     };
@@ -3877,16 +3942,21 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     report();
                     window.setTimeout(() => {
                         stop();
-                        // Fail open only if the review marker is actually
-                        // present. A missing marker remains a visible
-                        // Processing error, rather than exposing an unknown
-                        // half-rendered screen.
-                        if (fileReviewIsActive()) removeShell();
+                        // Never reveal a stale File Review. The timeout may
+                        // only release an already-matching completed review.
+                        if (fileReviewReady()) {
+                            finishFinalization();
+                            removeShell();
+                        }
                     }, 15000);
                 }
 
                 function beginFileReviewTransition(stage) {
                     if (!stage || stage.dataset.processingComplete !== 'true') return;
+                    const state = finalizationState(stage);
+                    continueFinalization(state);
+                    const expectedRunId = stage.dataset.processingResultRunId || '';
+                    window[PROCESSING_COMPLETE_EXPECTED_RUN_ID_KEY] = expectedRunId;
                     const transitionId = startTransition(
                         'processing_to_file_review',
                         'processing',
@@ -3894,7 +3964,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         PROCESSING_COMPLETE_TRANSITION_ID_KEY,
                         window[RFQ_UPLOAD_CYCLE_ID_KEY] || '',
                     );
-                    reportFileReviewStyled(transitionId);
+                    reportFileReviewStyled(transitionId, expectedRunId);
                 }
 
                 function startWatcher() {
@@ -4023,7 +4093,10 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                                 PROCESSING_COMPLETE_TRANSITION_ID_KEY,
                                 window[RFQ_UPLOAD_CYCLE_ID_KEY] || '',
                             );
-                        reportFileReviewStyled(transitionId);
+                        reportFileReviewStyled(
+                            transitionId,
+                            window[PROCESSING_COMPLETE_EXPECTED_RUN_ID_KEY] || '',
+                        );
                     }
                     if (realProcessingIsActive()) {
                         reportProcessingVisible();

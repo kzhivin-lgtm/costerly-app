@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from use_cases.latest_estimate import (
+    load_latest_file_review_route,
     load_latest_estimate_route,
     load_latest_estimate_route_for_run,
 )
@@ -36,7 +37,7 @@ class _Client:
         self.query = _Query(rows)
 
     def table(self, name):
-        assert name == "rfq_estimates"
+        self.table_name = name
         return self.query
 
 
@@ -55,6 +56,25 @@ def test_latest_estimate_route_is_company_scoped_and_newest_first():
 def test_latest_estimate_route_returns_none_for_missing_or_incomplete_row():
     assert load_latest_estimate_route(_Client([]), "company-1") is None
     assert load_latest_estimate_route(_Client([{"estimate_id": "estimate-2"}]), "company-1") is None
+
+
+def test_latest_file_review_route_uses_the_latest_completed_detection_cycle():
+    client = _Client([{"run_id": "run-new"}])
+
+    assert load_latest_file_review_route(client, "company-1") == {
+        "estimate_id": "",
+        "run_id": "run-new",
+    }
+    assert client.table_name == "agent_usage_events"
+    assert ("eq", "company_id", "company-1") in client.query.calls
+    assert ("eq", "agent_name", "orchestration") in client.query.calls
+    assert ("eq", "operation", "rfq_processing_cycle") in client.query.calls
+    assert ("eq", "status", "succeeded") in client.query.calls
+    assert ("order", "created_at", True) in client.query.calls
+
+
+def test_latest_file_review_route_rejects_missing_run_id():
+    assert load_latest_file_review_route(_Client([{}]), "company-1") is None
 
 
 def test_latest_estimate_route_for_run_is_scoped_to_the_active_rfq():

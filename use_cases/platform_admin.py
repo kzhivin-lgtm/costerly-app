@@ -211,14 +211,14 @@ def prefetch_header_access_in_background(*, user_id: str, company_id: str) -> No
         if existing is not None and not existing.done():
             return
         from db.supabase_client import get_supabase_client
-        from use_cases.latest_estimate import load_latest_estimate_route
+        from use_cases.latest_estimate import load_latest_file_review_route
 
         def load_header_data():
             client = get_supabase_client()
             with ThreadPoolExecutor(max_workers=2) as executor:
                 platform_future = executor.submit(load_platform_access, client, key[0])
                 latest_future = executor.submit(
-                    load_latest_estimate_route, client, key[1]
+                    load_latest_file_review_route, client, key[1]
                 )
                 return platform_future.result(), latest_future.result()
 

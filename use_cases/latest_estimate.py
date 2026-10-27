@@ -28,6 +28,33 @@ def load_latest_estimate_route(client, company_id: str) -> dict[str, str] | None
     return {"estimate_id": estimate_id, "run_id": run_id}
 
 
+def load_latest_file_review_route(client, company_id: str) -> dict[str, str] | None:
+    """Return the newest successfully processed RFQ for the header restore action.
+
+    File Review is available before a user presses Continue and creates an
+    ``rfq_estimates`` shell.  The header action therefore must be based on the
+    completed Processing ledger, not on estimates alone.  This avoids opening
+    an unrelated older file after ``New Estimate``.
+    """
+    rows = (
+        client.table("agent_usage_events")
+        .select("run_id")
+        .eq("company_id", str(company_id))
+        .eq("agent_name", "orchestration")
+        .eq("operation", "rfq_processing_cycle")
+        .eq("status", "succeeded")
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not rows:
+        return None
+    run_id = str(rows[0].get("run_id") or "").strip()
+    return {"estimate_id": "", "run_id": run_id} if run_id else None
+
+
 def load_latest_estimate_route_for_run(
     client,
     company_id: str,

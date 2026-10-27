@@ -74,6 +74,7 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
         processing_stage_id: str | None = None,
         processing_stage_started_at_ms: int | None = None,
         processing_page_count: int | None = None,
+        processing_result_run_id: str | None = None,
     ) -> None:
         stage_slot.markdown(
             processing_stage_html(
@@ -88,6 +89,7 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
                 processing_stage_started_at_ms=processing_stage_started_at_ms,
                 processing_run_token=str(screen_started_at_ms),
                 processing_page_count=processing_page_count,
+                processing_result_run_id=processing_result_run_id,
             ),
             unsafe_allow_html=True,
         )
@@ -296,6 +298,7 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
         ),
         processing_plan=processing_plan if isinstance(processing_plan, dict) else None,
         processing_stage_id="complete",
+        processing_result_run_id=run_id,
     )
     time.sleep(0.22)
 
