@@ -10787,37 +10787,106 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             else DETECTION_V5_MEMBERSHIP_JSON_SCHEMA,
         )}},
     )
+    review_attempts = [
+        (review_response, review_diagnostics, DETECTION_V5_MEMBERSHIP_MAX_TOKENS),
+    ]
+    review_retry_reason: str | None = None
     review_raw_text = extract_text_from_claude_response(review_response)
     try:
         review_raw_payload = json.loads(review_raw_text)
-    except json.JSONDecodeError as exc:
-        failure_diagnostics = dict(review_diagnostics)
-        failure_diagnostics.update({
-            **_summarize_incomplete_visual_registry_json(
-                review_raw_text, exc, review_response,
+    except json.JSONDecodeError as initial_error:
+        review_json_error: json.JSONDecodeError | None = initial_error
+        if (
+            v641_budgeted_discovery_active
+            and _is_retryable_visual_registry_json_truncation(
+                review_raw_text,
+                review_response,
                 max_tokens=DETECTION_V5_MEMBERSHIP_MAX_TOKENS,
+            )
+        ):
+            review_retry_reason = "initial_response_hit_budget_inside_json_string"
+            review_response, review_diagnostics = create_claude_message_streamed(
+                get_anthropic_client(),
+                model=review_model,
+                max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+                temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+                system=build_detection_system_content(
+                    prompt=review_prompt_with_membership_contract,
+                ),
+                messages=[{"role": "user", "content": review_content}],
+                output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
+                    DETECTION_V610_EVIDENCE_REVIEW_JSON_SCHEMA
+                    if v69_criteria_reconciliation_active
+                    else DETECTION_V5_MEMBERSHIP_JSON_SCHEMA,
+                )}},
+            )
+            review_attempts.append((
+                review_response,
+                review_diagnostics,
+                DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+            ))
+            review_raw_text = extract_text_from_claude_response(review_response)
+            try:
+                review_raw_payload = json.loads(review_raw_text)
+            except json.JSONDecodeError as retry_error:
+                review_json_error = retry_error
+            else:
+                review_json_error = None
+        if review_json_error is not None:
+            exc = review_json_error
+            failure_diagnostics = dict(review_diagnostics)
+            failure_diagnostics.update({
+                **_summarize_incomplete_visual_registry_json(
+                    review_raw_text, exc, review_response,
+                    max_tokens=review_attempts[-1][2],
+                ),
+                "validation_error": str(exc),
+                "validation_stage": "v5_9_review_json",
+                "attempt_label": "v5_9_review_json_parse_failed",
+                "response_character_count": len(review_raw_text),
+                "response_text_sha256": _sha256_text(review_raw_text),
+                "v6_41_review_truncation_retry": {
+                    "attempted": review_retry_reason is not None,
+                    "reason": review_retry_reason,
+                    "attempt_count": len(review_attempts),
+                },
+            })
+            failure_usage = build_agent_usage_event(
+                agent_name="detection", operation="rfq_detection_visual_registry",
+                company_id=company_id, run_id=None, file_name=file_name,
+                object_id=None, object_name=None, model=review_model,
+                prompt_version=prompt_version, response=review_response,
+                started_at=review_diagnostics["request_started_at"],
+                finished_at=review_diagnostics["request_finished_at"],
+                request_diagnostics=failure_diagnostics,
+            )
+            failure_usage["status"] = "failed"
+            failure_usage["error_message"] = str(exc)
+            raise DetectionVisualRegistryValidationError(
+                f"Detection review response failed validation: {exc}",
+                usage_event=failure_usage,
+            ) from exc
+    review_attempt_summaries = [
+        {
+            "max_tokens": max_tokens,
+            "accepted": attempt_number == len(review_attempts),
+            **summarize_detection_provider_call(
+                response=attempt_response,
+                diagnostics=attempt_diagnostics,
+                requested_model=review_model,
+                prompt_characters=len(review_prompt_with_membership_contract),
+                context_characters=len(review_handoff),
+                image_count=len(effective_review_page_context_images) + len(membership_crops),
+                image_bytes=(
+                    sum(len(page["bytes"]) for page in effective_review_page_context_images)
+                    + sum(len(crop["bytes"]) for crop in membership_crops)
+                ),
             ),
-            "validation_error": str(exc),
-            "validation_stage": "v5_9_review_json",
-            "attempt_label": "v5_9_review_json_parse_failed",
-            "response_character_count": len(review_raw_text),
-            "response_text_sha256": _sha256_text(review_raw_text),
-        })
-        failure_usage = build_agent_usage_event(
-            agent_name="detection", operation="rfq_detection_visual_registry",
-            company_id=company_id, run_id=None, file_name=file_name,
-            object_id=None, object_name=None, model=review_model,
-            prompt_version=prompt_version, response=review_response,
-            started_at=review_diagnostics["request_started_at"],
-            finished_at=review_diagnostics["request_finished_at"],
-            request_diagnostics=failure_diagnostics,
+        }
+        for attempt_number, (attempt_response, attempt_diagnostics, max_tokens) in enumerate(
+            review_attempts, start=1,
         )
-        failure_usage["status"] = "failed"
-        failure_usage["error_message"] = str(exc)
-        raise DetectionVisualRegistryValidationError(
-            f"Detection review response failed validation: {exc}",
-            usage_event=failure_usage,
-        ) from exc
+    ]
     review_contract_valid = (
         isinstance(review_raw_payload, dict)
         and isinstance(
@@ -11073,16 +11142,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "reason": proposal_retry_reason,
             "attempts": proposal_attempt_summaries,
         },
-        "v5_9_review": summarize_detection_provider_call(
-            response=review_response, diagnostics=review_diagnostics,
-            requested_model=review_model,
-            prompt_characters=len(review_prompt_with_membership_contract), context_characters=len(review_handoff),
-            image_count=len(effective_review_page_context_images) + len(membership_crops),
-            image_bytes=(
-                sum(len(page["bytes"]) for page in effective_review_page_context_images)
-                + sum(len(crop["bytes"]) for crop in membership_crops)
-            ),
-        ),
+        "v5_9_review": review_attempt_summaries[-1],
+        "v6_41_review_truncation_retry": {
+            "attempted": review_retry_reason is not None,
+            "reason": review_retry_reason,
+            "attempts": review_attempt_summaries,
+        },
         "v6_10_evidence_review": (
             summarize_detection_provider_call(
                 response=review_response, diagnostics=review_diagnostics,
@@ -11814,7 +11879,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=review_model,prompt_version=prompt_version,response=review_response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
     provider_call_usages = [
         *diagnostics["v6_13_proposal_truncation_retry"]["attempts"],
-        diagnostics["v5_9_review"],
+        *diagnostics["v6_41_review_truncation_retry"]["attempts"],
     ]
     reconciliation_usage = diagnostics.get("v6_10_reconciliation_review")
     if isinstance(reconciliation_usage, dict):
