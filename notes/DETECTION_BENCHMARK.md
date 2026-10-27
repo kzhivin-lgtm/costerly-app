@@ -1,5 +1,18 @@
 # Detection Agent benchmark
 
+## V6.37 Ada covered-membership checkpoint, 2026-10-27
+
+Status: protected live checkpoint for the existing Ada route only. Two Adda
+runs retained eight Mistral Views and published the accepted two four-View
+components, Counter `{V2,V3,V5,V7}` and L-shaped `{V1,V4,V6,V8}`. Two Lev
+runs retained six Views and published one object. Adda Detection took
+42.793-43.863 seconds at `$0.071588-$0.072353`; Lev took 34.833-35.796 seconds
+at `$0.043409-$0.044534`. The route retains Mistral anchors, Haiku Discovery,
+and one Sonnet Membership Review. Group membership requires pair-local visual
+fact coverage of every View, but does not falsely require a pairwise tree among
+complementary projections. Full record:
+`notes/DETECTION_V6_37_ADA_COVERED_MEMBERSHIP_CHECKPOINT_2026_10_27.md`.
+
 ## V6.14 ordinary HSL cost and membership checkpoint, 2026-10-25
 
 Status: protected live checkpoint for the ordinary HSL route, not universal

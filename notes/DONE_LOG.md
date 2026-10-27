@@ -1,5 +1,18 @@
 # Done Log
 
+Detection V6.37 Ada covered-membership checkpoint `d5a306c`: retains the
+existing Mistral-anchor, Haiku Discovery and one Sonnet Membership Review Ada
+route, but accepts a non-overlapping multi-View group only when accepted
+pair-local facts cover every declared View. It neither uses title/order context
+as a merge fact nor invents root-to-member edges. Two Adda runs returned the
+benchmark Counter `{V2,V3,V5,V7}` and L-shaped `{V1,V4,V6,V8}` objects. Two
+Lev runs returned one six-View object. Detection cost/time remained stable at
+7.16-7.24 cents and 42.8-43.9 seconds for Adda, and 4.34-4.45 cents and
+34.8-35.8 seconds for Lev. The 109-test focused suite passed. This accepts the
+Ada contract only, not a universal classifier. Full evidence:
+`notes/DETECTION_V6_37_ADA_COVERED_MEMBERSHIP_CHECKPOINT_2026_10_27.md`,
+завершена 27.10
+
 Detection V6.10 combined Evidence Review experimental checkpoint `27e7e22`:
 the bounded V6.7 Sonnet Mistral-anchor route replaces V6.9's sequential
 preliminary-link and criteria calls with one compact, fully auditable evidence

@@ -110,7 +110,7 @@ Estimation, material-policy, and UI-contract failures; none touches the V6.28
 files or protected Detection/Identity/Naming paths. Those failures are not part
 of this candidate and were not modified.
 
-ACTIVE EXPERIMENT, P0, V6.29 Ada sparse-native-graphics route guard: the V6.27
+CHECKPOINT, V6.29 Ada sparse-native-graphics route guard: the V6.27
 scope-scout production gate accepted Stair correctly but falsely classified
 Adda as one Assembly Set, collapsing its accepted two-object boundary. Preserve
 the existing Ada Sonnet route before the scout when a document has at least 24
@@ -129,7 +129,7 @@ but ordinary must remain the inexpensive, stable Haiku scenario. V6.31 is
 reverted before the next test. Its result is evidence about the required
 reasoning capability, not approval to make ordinary a mixed-model contract.
 
-ACTIVE EXPERIMENT, P0, V6.32 direct Ada classification from Mistral graphic
+CHECKPOINT, V6.32 direct Ada classification from Mistral graphic
 regions: retain exactly three scenarios, Page 23, ordinary, and Ada. Before
 Claude, route an unlabelled one-page mixed/vector technical sheet to existing
 Ada only when Mistral already exposes four through ten bounded graphic regions
@@ -141,7 +141,7 @@ existing Sonnet/Mistral-anchor/V6.10 contract. Gates: Lev_1 must route directly
 to Ada and assemble correctly; HSL stays ordinary; Adda stays direct Ada; Page
 23 keeps its source-degraded route.
 
-ACTIVE EXPERIMENT, P0, V6.34 Ada V6.31 model split: retain the three
+CHECKPOINT, V6.34 Ada V6.31 model split: retain the three
 established routes and V6.32 router unchanged. Within the already selected Ada
 contract only, execute the exact V6.31 two-call pattern: Haiku Discovery, then
 one Sonnet Membership Review. Mistral graphic anchors remain the bbox boundary
@@ -152,6 +152,19 @@ Gates: canonical Adda retains the accepted two-object membership, anchors,
 bboxes, and Evidence package; Lev_1 retains its one-object result; ordinary HSL
 and Page 23 are unchanged; measured cost and elapsed time are compared with the
 V6.31 benchmark before any broader decision.
+
+CHECKPOINT, V6.37 Ada covered-membership: the protected Ada route now retains
+the V6.34 Haiku Discovery plus one Sonnet Membership Review shape, but treats a
+multi-View hypothesis as a semantic group only after accepted pair-local facts
+cover every declared View. It does not fabricate root-to-member edges or demand
+a connected pair tree from complementary projections. `Adda.pdf` passed twice
+with the benchmark Counter `{V2,V3,V5,V7}` and L-shaped `{V1,V4,V6,V8}`
+groups. `Lev_1.pdf` passed twice with all six Views in one object. Four runs,
+109 focused tests, exact run IDs, costs, limits, and protected behavior are in
+`notes/DETECTION_V6_37_ADA_COVERED_MEMBERSHIP_CHECKPOINT_2026_10_27.md`.
+Do not modify the Ada route, its model split, grouping rule, candidate queue,
+object quantity, Evidence ownership, Naming, Preview, Document Identity, or
+Estimation handoff without a separately approved benchmark.
 
 RESOLVED, V6.22 grounded title facts and Kitchen Naming: retain the V6.21
 deferred Naming lifecycle and locked Detection object contract. Build optional
