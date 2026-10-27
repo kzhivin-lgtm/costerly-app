@@ -3353,22 +3353,17 @@ def install_upload_interaction_guards(shell_html: str) -> None:
         (() => {
             const parentWindow = window.parent;
             const parentDoc = parentWindow.document;
-            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_13";
-            const legacyFlags = [
-                '__costerlyUploadInteractionGuardsV1111Installed',
-                '__costerlyUploadInteractionGuardsV1112Installed',
-            ];
-            const resetMarker = 'costerly-progress-controller-v1113-reset';
+            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_14";
+            const runtimeVersion = 'v1114';
+            const resetMarker = 'costerly-progress-controller-runtime';
             try {
                 if (
-                    legacyFlags.some((key) => Boolean(parentWindow[key])) &&
-                    parentWindow.sessionStorage.getItem(resetMarker) !== '1'
+                    parentWindow.sessionStorage.getItem(resetMarker) !== runtimeVersion
                 ) {
-                    // A script that already runs in the parent document cannot
-                    // be safely removed from another component. Reset this tab
-                    // once before any RFQ begins, so exactly one controller
-                    // owns the subsequent processing cycle.
-                    parentWindow.sessionStorage.setItem(resetMarker, '1');
+                    // A parent-document script cannot be replaced safely in
+                    // place. Reset once per controller release, before a new
+                    // RFQ starts, so one runtime owns the progress screen.
+                    parentWindow.sessionStorage.setItem(resetMarker, runtimeVersion);
                     parentWindow.location.reload();
                     return;
                 }
@@ -3394,17 +3389,17 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const REAL_PROCESSING_MARKER_ID = 'costerly-processing-screen-active';
                 const FILE_REVIEW_MARKER_ID = 'costerly-file-review-screen-active';
                 const SHELL_ACTIVE_CLASS = 'costerly-upload-processing-shell-active';
-                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1113';
-                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1113';
-                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1113Installed';
-                const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAtV3';
-                const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimerV3';
-                const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSecondsV3';
-                const PROCESSING_STAGE_SEEN_KEY = '__costerlyRealProcessingStageSeenV3';
-                const PROCESSING_TRANSITION_ID_KEY = '__costerlyUploadToProcessingTransitionIdV3';
-                const PROCESSING_COMPLETE_TRANSITION_ID_KEY = '__costerlyProcessingToReviewTransitionIdV3';
-                const PROCESSING_COMPLETE_STYLED_OBSERVER_KEY = '__costerlyProcessingToReviewStyledObserverV3';
-                const RFQ_UPLOAD_CYCLE_ID_KEY = '__costerlyRfqUploadCycleIdV3';
+                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1114';
+                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1114';
+                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1114Installed';
+                const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAtV4';
+                const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimerV4';
+                const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSecondsV4';
+                const PROCESSING_STAGE_SEEN_KEY = '__costerlyRealProcessingStageSeenV4';
+                const PROCESSING_TRANSITION_ID_KEY = '__costerlyUploadToProcessingTransitionIdV4';
+                const PROCESSING_COMPLETE_TRANSITION_ID_KEY = '__costerlyProcessingToReviewTransitionIdV4';
+                const PROCESSING_COMPLETE_STYLED_OBSERVER_KEY = '__costerlyProcessingToReviewStyledObserverV4';
+                const RFQ_UPLOAD_CYCLE_ID_KEY = '__costerlyRfqUploadCycleIdV4';
                 let clearDragTimer = null;
                 let watcher = null;
                 let slowTimer = null;
@@ -3543,7 +3538,18 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                             stage.dataset.processingStageStartedAtMs || Date.now()
                         );
                         const elapsed = Math.max(0, (Date.now() - startedAt) / 1000);
-                        return Math.min(8, elapsed * 8 / 30);
+                        const pageCount = Math.max(
+                            1, Number(stage.dataset.processingPageCount || 1)
+                        );
+                        const expectedPreparationSeconds = Math.min(
+                            45, 5 + 1.5 * pageCount
+                        );
+                        const preparationSpan = Math.min(20, 6 + 1.2 * pageCount);
+                        const elapsedRatio = elapsed / expectedPreparationSeconds;
+                        const withinPreparation = elapsedRatio <= 1
+                            ? 0.97 * elapsedRatio
+                            : 0.97 + 0.029 * (1 - Math.exp(-(elapsedRatio - 1)));
+                        return preparationSpan * withinPreparation;
                     }
 
                     const runToken = stage.dataset.processingRunToken || 'unknown';

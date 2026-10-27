@@ -56,6 +56,7 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
         processing_plan: dict | None = None,
         processing_stage_id: str | None = None,
         processing_stage_started_at_ms: int | None = None,
+        processing_page_count: int | None = None,
     ) -> None:
         stage_slot.markdown(
             processing_stage_html(
@@ -69,6 +70,7 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
                 processing_stage_id=processing_stage_id,
                 processing_stage_started_at_ms=processing_stage_started_at_ms,
                 processing_run_token=str(screen_started_at_ms),
+                processing_page_count=processing_page_count,
             ),
             unsafe_allow_html=True,
         )
@@ -217,6 +219,7 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
                     stage_id,
                     stage_started_at_ms,
                     forecast,
+                    page_count,
                 )
                 if signature != rendered_signature:
                     render_stage(
@@ -226,6 +229,9 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
                         processing_plan=progress_plan,
                         processing_stage_id=stage_id,
                         processing_stage_started_at_ms=stage_started_at_ms,
+                        processing_page_count=(
+                            page_count if isinstance(page_count, int) else None
+                        ),
                     )
                     rendered_signature = signature
                 time.sleep(0.15)

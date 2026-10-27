@@ -636,6 +636,21 @@ def test_file_review_forecast_uses_history_only_after_three_same_bucket_runs():
     assert expected_file_review_seconds(11, history=history[:2]) == 90.0
 
 
+def test_file_review_forecast_recovers_page_count_from_pre_v651_stage_plan():
+    history = [
+        {
+            "status": "succeeded", "duration_seconds": duration,
+            "raw_usage": {
+                "page_count": 0,
+                "stage_aware_progress_plan_input": {"page_count": 11},
+            },
+        }
+        for duration in (86.916, 93.823, 103.282)
+    ]
+
+    assert estimate_file_review_seconds(history, page_count=11)["seconds"] == 93.8
+
+
 def test_large_file_forecast_uses_two_compatible_raw_usage_events():
     history = [
         {
@@ -671,15 +686,16 @@ def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signal
     source = getsource(install_upload_interaction_guards)
 
     assert "dataset.processingPlan" in source
+    assert "dataset.processingPageCount" in source
     assert "activeStageId" in source
     assert "activeElapsedSeconds / activeDuration" in source
     assert "never steals a later stage's span" in source
-    assert "__costerlyRealProcessingStageSeenV3" in source
+    assert "__costerlyRealProcessingStageSeenV4" in source
     assert "if (window[PROCESSING_STAGE_SEEN_KEY]) return null" in source
-    assert "__costerlyProcessingElapsedStartedAtV3" in source
+    assert "__costerlyProcessingElapsedStartedAtV4" in source
     assert "parentWindow.location.reload()" in source
-    assert "__costerlyUploadInteractionGuardsV1112Installed" in source
-    assert "return Math.min(8, elapsed * 8 / 30);" in source
+    assert "costerly-progress-controller-runtime" in source
+    assert "expectedPreparationSeconds" in source
     assert "0.97 + 0.029" in source
     assert "0.92," not in source
 
@@ -693,7 +709,7 @@ def test_processing_cycle_persists_ocr_page_count_for_future_forecasts():
 def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():
     source = getsource(install_upload_interaction_guards)
 
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_13" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_14" in source
     assert "function uploadScreenIsActive()" in source
     assert "document.querySelector('.upload-screen-active')" in source
     assert "if (!uploadScreenIsActive()) return;" in source

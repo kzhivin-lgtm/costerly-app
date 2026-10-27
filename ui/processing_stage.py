@@ -26,6 +26,7 @@ def post_upload_stage_html(
     processing_stage_id: str | None = None,
     processing_stage_started_at_ms: int | None = None,
     processing_run_token: str | None = None,
+    processing_page_count: int | None = None,
 ) -> str:
     """Return the shared fixed-origin post-upload stage HTML."""
     stage_classes = "post-upload-stage"
@@ -106,9 +107,14 @@ def post_upload_stage_html(
         f' data-processing-run-token="{html.escape(processing_run_token)}"'
         if processing_run_token else ""
     )
+    page_count_attr = (
+        f' data-processing-page-count="{int(processing_page_count)}"'
+        if isinstance(processing_page_count, int) and processing_page_count > 0
+        else ""
+    )
 
     return (
-        f'<div class="{stage_classes}"{complete_attr}{phase_attr}{expected_file_review_attr}{plan_attr}{stage_id_attr}{stage_started_attr}{run_token_attr}>'
+        f'<div class="{stage_classes}"{complete_attr}{phase_attr}{expected_file_review_attr}{plan_attr}{stage_id_attr}{stage_started_attr}{run_token_attr}{page_count_attr}>'
         '<div class="post-upload-stage__inner">'
         '<div class="post-upload-shell">'
         f'{marker_html}'
@@ -136,6 +142,7 @@ def processing_stage_html(
     processing_stage_id: str | None = None,
     processing_stage_started_at_ms: int | None = None,
     processing_run_token: str | None = None,
+    processing_page_count: int | None = None,
 ) -> str:
     """Return the shared Processing stage HTML for instant and real screens."""
     return post_upload_stage_html(
@@ -153,4 +160,5 @@ def processing_stage_html(
         processing_stage_id=processing_stage_id,
         processing_stage_started_at_ms=processing_stage_started_at_ms,
         processing_run_token=processing_run_token,
+        processing_page_count=processing_page_count,
     )

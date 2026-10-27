@@ -66,6 +66,24 @@ def _duration(row: dict[str, Any]) -> float | None:
     return value if value > 0 else None
 
 
+def _cycle_page_count(row: dict[str, Any]) -> int | None:
+    """Read the real page count from current or pre-V6.51 cycle telemetry."""
+    raw = _raw_usage(row)
+    direct = raw.get("page_count")
+    if isinstance(direct, int) and not isinstance(direct, bool) and direct > 0:
+        return direct
+    # V6.47-V6.50 wrote page_count=0 for normal OCR PDFs, but their exact
+    # post-Fusion plan already contains the real OCR page count. Reuse those
+    # completed cycles instead of discarding valuable observed timing.
+    plan = raw.get("stage_aware_progress_plan_input")
+    planned = plan.get("page_count") if isinstance(plan, dict) else None
+    return (
+        planned
+        if isinstance(planned, int) and not isinstance(planned, bool) and planned > 0
+        else None
+    )
+
+
 def estimate_file_review_seconds(
     history: list[dict[str, Any]], *, page_count: int | None,
 ) -> dict[str, Any]:
@@ -82,7 +100,7 @@ def estimate_file_review_seconds(
         if str(row.get("status") or "") != "succeeded":
             continue
         raw = _raw_usage(row)
-        if processing_page_bucket(raw.get("page_count")) != bucket:
+        if processing_page_bucket(_cycle_page_count(row)) != bucket:
             continue
         duration = _duration(row)
         if duration is not None:

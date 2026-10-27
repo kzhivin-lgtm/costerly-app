@@ -581,6 +581,24 @@ def assign_server_run_id(detection_result: dict[str, Any]) -> str:
     return run_id
 
 
+def _initial_pdf_page_count(*, file_name: str, file_bytes: bytes) -> int | None:
+    """Read PDF page count before OCR, without rendering or calling a model."""
+    if not file_name.lower().endswith(".pdf") or not file_bytes:
+        return None
+    try:
+        import pymupdf
+
+        document = pymupdf.open(stream=file_bytes, filetype="pdf")
+        try:
+            count = len(document)
+        finally:
+            document.close()
+        return count if count > 0 else None
+    except Exception as exc:
+        print(f"[Processing Forecast] Initial PDF page count unavailable: {exc}")
+        return None
+
+
 def process_uploaded_rfq(
     *,
     file_name: str,
@@ -680,8 +698,11 @@ def process_uploaded_rfq(
         file_name=file_name,
         file_bytes=file_bytes,
     )
+    initial_page_count = _initial_pdf_page_count(
+        file_name=file_name, file_bytes=file_bytes,
+    )
     if use_page_images:
-        emit_progress("Preparing document pages")
+        emit_progress("Preparing document pages", initial_page_count)
         page_images, page_image_diagnostics = render_detection_pdf_pages(file_bytes)
         ocr_package = {
             "provider": "none",
@@ -699,7 +720,7 @@ def process_uploaded_rfq(
         }
         detection_ocr_package = None
     else:
-        emit_progress("OCR reading document")
+        emit_progress("OCR reading document", initial_page_count)
         ocr_package, detection_ocr_package = _run_optional_ocr(
             file_name=file_name,
             file_bytes=file_bytes,
@@ -709,7 +730,7 @@ def process_uploaded_rfq(
         page_count = len(page_images)
     else:
         pages = ocr_package.get("pages")
-        page_count = len(pages) if isinstance(pages, list) and pages else None
+        page_count = len(pages) if isinstance(pages, list) and pages else initial_page_count
     emit_progress("Fusion and route started", page_count)
     detection_started = time.perf_counter()
     try:
