@@ -3353,8 +3353,8 @@ def install_upload_interaction_guards(shell_html: str) -> None:
         (() => {
             const parentWindow = window.parent;
             const parentDoc = parentWindow.document;
-            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_14";
-            const runtimeVersion = 'v1114';
+            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_15";
+            const runtimeVersion = 'v1115';
             const resetMarker = 'costerly-progress-controller-runtime';
             try {
                 if (
@@ -3389,9 +3389,9 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const REAL_PROCESSING_MARKER_ID = 'costerly-processing-screen-active';
                 const FILE_REVIEW_MARKER_ID = 'costerly-file-review-screen-active';
                 const SHELL_ACTIVE_CLASS = 'costerly-upload-processing-shell-active';
-                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1114';
-                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1114';
-                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1114Installed';
+                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1115';
+                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1115';
+                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1115Installed';
                 const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAtV4';
                 const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimerV4';
                 const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSecondsV4';
@@ -3514,7 +3514,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     return shell ? shell.querySelector('.post-upload-stage') : null;
                 }
 
-                const STAGE_PROGRESS_STATE_KEY = '__costerlyStageAwareProgressV1';
+                const STAGE_PROGRESS_STATE_KEY = '__costerlyStageAwareProgressV2';
 
                 function processingPlan(stage) {
                     if (!stage || !stage.dataset.processingPlan) return null;
@@ -3526,14 +3526,29 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     }
                 }
 
+                function progressState(stage) {
+                    const runToken = stage?.dataset.processingRunToken || '';
+                    // The instant upload shell is deliberately static at zero.
+                    // A real screen owns the first moving pixel, so there is
+                    // never a shell-to-screen progress reset.
+                    if (!runToken) return null;
+                    let state = window[STAGE_PROGRESS_STATE_KEY];
+                    if (!state || state.runToken !== runToken) {
+                        state = { runToken, highestPercent: 0 };
+                        window[STAGE_PROGRESS_STATE_KEY] = state;
+                    }
+                    return state;
+                }
+
                 function phaseProgress(stage) {
                     if (!stage) return 0;
-                    if (stage.dataset.processingComplete === 'true') return 100;
+                    const state = progressState(stage);
+                    if (!state) return 0;
                     const plan = processingPlan(stage);
                     if (!plan) {
-                        // OCR/Fusion has not yielded a file-specific plan yet.
-                        // It is still real elapsed work, but it owns only a
-                        // small, bounded initial segment and starts at zero.
+                        // Before Fusion the only known file fact is page count.
+                        // One page owns one percentage point, capped at 15.
+                        // This is preparation, not claimed Detection progress.
                         const startedAt = Number(
                             stage.dataset.processingStageStartedAtMs || Date.now()
                         );
@@ -3541,23 +3556,15 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         const pageCount = Math.max(
                             1, Number(stage.dataset.processingPageCount || 1)
                         );
-                        const expectedPreparationSeconds = Math.min(
-                            45, 5 + 1.5 * pageCount
+                        const preparationSpan = Math.min(15, pageCount);
+                        const expectedPreparationSeconds = Math.max(6, pageCount * 1.5);
+                        const calculated = preparationSpan * Math.min(
+                            1, elapsed / expectedPreparationSeconds
                         );
-                        const preparationSpan = Math.min(20, 6 + 1.2 * pageCount);
-                        const elapsedRatio = elapsed / expectedPreparationSeconds;
-                        const withinPreparation = elapsedRatio <= 1
-                            ? 0.97 * elapsedRatio
-                            : 0.97 + 0.029 * (1 - Math.exp(-(elapsedRatio - 1)));
-                        return preparationSpan * withinPreparation;
+                        state.highestPercent = Math.max(state.highestPercent, calculated);
+                        return state.highestPercent;
                     }
 
-                    const runToken = stage.dataset.processingRunToken || 'unknown';
-                    let state = window[STAGE_PROGRESS_STATE_KEY];
-                    if (!state || state.runToken !== runToken) {
-                        state = { runToken, highestPercent: 0, highestStageIndex: 0 };
-                        window[STAGE_PROGRESS_STATE_KEY] = state;
-                    }
                     const activeStageId = stage.dataset.processingStageId || '';
                     const activeStageIndex = plan.stages.findIndex(
                         (item) => String(item.id || '') === activeStageId
@@ -3573,25 +3580,33 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     const completedDuration = stageDurations
                         .slice(0, activeStageIndex)
                         .reduce((sum, value) => sum + value, 0);
-                    const stageStartedAt = Number(stage.dataset.processingStageStartedAtMs || Date.now());
-                    const activeElapsedSeconds = Math.max(0, (Date.now() - stageStartedAt) / 1000);
                     const activeDuration = stageDurations[activeStageIndex];
-                    // The bar reaches 97% of a stage at its forecast, then
-                    // keeps moving asymptotically until the server confirms the
-                    // transition. It never steals a later stage's span, but
-                    // also never freezes at an arbitrary 92% ceiling.
-                    const elapsedRatio = activeElapsedSeconds / activeDuration;
-                    const withinStage = elapsedRatio <= 1
-                        ? 0.97 * elapsedRatio
-                        : 0.97 + 0.029 * (1 - Math.exp(-(elapsedRatio - 1)));
-                    const calculated = 100 * Math.min(
-                        0.985,
-                        (completedDuration + activeDuration * withinStage) / totalDuration
+                    const runStartedAt = Number(stage.dataset.processingRunToken || Date.now());
+                    const runElapsedSeconds = Math.max(0, (Date.now() - runStartedAt) / 1000);
+                    const forecastSeconds = Math.max(
+                        1, Number(plan.forecast_seconds || totalDuration)
                     );
-                    if (activeStageIndex >= state.highestStageIndex) {
-                        state.highestStageIndex = activeStageIndex;
-                        state.highestPercent = Math.max(state.highestPercent, calculated);
-                    }
+                    const stageFloor = 100 * completedDuration / totalDuration;
+                    // Forecast owns the pace. Real stage completion owns the
+                    // boundary. This prevents early phases from consuming 90%
+                    // while the forecast says substantial work remains.
+                    const forecastPace = runElapsedSeconds <= forecastSeconds
+                        ? 98.5 * runElapsedSeconds / forecastSeconds
+                        : Math.min(
+                            99.2,
+                            98.5 + 0.7 * (1 - Math.exp(
+                                -(runElapsedSeconds - forecastSeconds) / forecastSeconds
+                            ))
+                        );
+                    const stageCeiling = 100 * (completedDuration + activeDuration) / totalDuration;
+                    // Leave a visible fraction for the server-confirmed stage
+                    // transition. The final 0.8% belongs to File Review itself,
+                    // never to a gray intermediate screen.
+                    const calculated = Math.max(
+                        stageFloor,
+                        Math.min(stageCeiling - 0.5, forecastPace)
+                    );
+                    state.highestPercent = Math.max(state.highestPercent, calculated);
                     return state.highestPercent;
                 }
 
@@ -3616,11 +3631,10 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         return;
                     }
                     const progressWidth = phaseProgress(stage).toFixed(1) + '%';
-                    document.querySelectorAll('.post-upload-stage .custom-progress-fill').forEach((node) => {
-                        if (node.style.width !== progressWidth) {
-                            node.style.width = progressWidth;
-                        }
-                    });
+                    const progressNode = stage.querySelector('.custom-progress-fill');
+                    if (progressNode && progressNode.style.width !== progressWidth) {
+                        progressNode.style.width = progressWidth;
+                    }
                     if (fileReviewIsActive()) finalizeElapsed(seconds);
                 }
 

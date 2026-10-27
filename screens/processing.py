@@ -18,6 +18,24 @@ from db.repositories import fetch_recent_rfq_processing_cycles
 from db.supabase_client import get_supabase_client
 
 
+def _initial_pdf_page_count(file_name: str, file_bytes: bytes) -> int | None:
+    """Read the PDF page count before OCR, without rendering a page or calling AI."""
+    if not file_name.lower().endswith(".pdf") or not file_bytes:
+        return None
+    try:
+        import pymupdf
+
+        document = pymupdf.open(stream=file_bytes, filetype="pdf")
+        try:
+            page_count = len(document)
+        finally:
+            document.close()
+        return page_count if page_count > 0 else None
+    except Exception as exc:
+        print(f"[Processing Progress] Initial PDF page count unavailable: {exc}")
+        return None
+
+
 def expected_file_review_seconds(
     page_count: int | None, *, history: list[dict] | None = None,
 ) -> float:
@@ -75,12 +93,6 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
             unsafe_allow_html=True,
         )
 
-    # Before Fusion there is no file-specific forecast. Start visibly at zero;
-    # the browser advances this bounded preparation segment only after real
-    # elapsed time, rather than presenting invented completed work.
-    render_stage(0.0, processing_phase="ocr", processing_stage_id="pre_fusion")
-    clear_upload_processing_shell()
-
     file_name = st.session_state.get("uploaded_file_name")
     file_bytes = st.session_state.get("uploaded_file_bytes")
 
@@ -88,6 +100,17 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
         st.session_state.processing_error = "No uploaded RFQ file found."
         st.session_state.screen = "upload"
         st.rerun()
+
+    # Page count is cheap and deterministic. It lets the one visible bar begin
+    # at zero and make bounded, file-shaped progress before Fusion exists.
+    initial_page_count = _initial_pdf_page_count(file_name, file_bytes)
+    render_stage(
+        0.0,
+        processing_phase="ocr",
+        processing_stage_id="pre_fusion",
+        processing_page_count=initial_page_count,
+    )
+    clear_upload_processing_shell()
 
     if (
         st.session_state.get("current_run_id")
@@ -262,23 +285,6 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
             timings=result.get("timings"),
         )
     )
-
-    # Give the existing 80 ms browser watcher one bounded handshake window to
-    # observe the complete marker and install transition masking before rerun.
-    # The former 250 ms delay was unnecessarily visible; 120 ms preserves the
-    # no-fragment contract while the cached File Review keeps the handoff fast.
-    render_stage(
-        1.0,
-        complete=True,
-        processing_phase="complete",
-        expected_file_review_seconds_value=(
-            float(processing_plan["forecast_seconds"])
-            if isinstance(processing_plan, dict) else None
-        ),
-        processing_plan=processing_plan if isinstance(processing_plan, dict) else None,
-        processing_stage_id="complete",
-    )
-    time.sleep(0.12)
 
     st.session_state.current_run_id = run_id
     st.session_state.current_ocr_package = result.get("ocr_package")

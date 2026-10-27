@@ -712,16 +712,23 @@ def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signal
     assert "dataset.processingPlan" in source
     assert "dataset.processingPageCount" in source
     assert "activeStageId" in source
-    assert "activeElapsedSeconds / activeDuration" in source
-    assert "never steals a later stage's span" in source
+    assert "Forecast owns the pace" in source
+    assert "Real stage completion owns the" in source
     assert "__costerlyRealProcessingStageSeenV4" in source
     assert "if (window[PROCESSING_STAGE_SEEN_KEY]) return null" in source
     assert "__costerlyProcessingElapsedStartedAtV4" in source
-    assert "parentWindow.location.reload()" in source
-    assert "costerly-progress-controller-runtime" in source
+    assert "document.querySelectorAll('.post-upload-stage .custom-progress-fill')" not in source
     assert "expectedPreparationSeconds" in source
-    assert "0.97 + 0.029" in source
-    assert "0.92," not in source
+    assert "const preparationSpan = Math.min(15, pageCount)" in source
+    assert "progressNode = stage.querySelector('.custom-progress-fill')" in source
+
+
+def test_processing_screen_counts_pdf_pages_before_rendering_the_pre_fusion_stage():
+    source = Path("screens/processing.py").read_text()
+
+    assert "def _initial_pdf_page_count" in source
+    assert "processing_page_count=initial_page_count" in source
+    assert "render_stage(\n        1.0," not in source
 
 
 def test_processing_cycle_persists_ocr_page_count_for_future_forecasts():
@@ -733,7 +740,7 @@ def test_processing_cycle_persists_ocr_page_count_for_future_forecasts():
 def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():
     source = getsource(install_upload_interaction_guards)
 
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_14" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_15" in source
     assert "function uploadScreenIsActive()" in source
     assert "document.querySelector('.upload-screen-active')" in source
     assert "if (!uploadScreenIsActive()) return;" in source
