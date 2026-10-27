@@ -668,16 +668,17 @@ def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signal
     assert "activeStageId" in source
     assert "activeElapsedSeconds / activeDuration" in source
     assert "cannot consume the later Review/Saving ranges" in source
-    assert "__costerlyRealProcessingStageSeenV2" in source
+    assert "__costerlyRealProcessingStageSeenV3" in source
     assert "if (window[PROCESSING_STAGE_SEEN_KEY]) return null" in source
-    assert "silenceLegacyProcessingTimer" in source
-    assert "__costerlyProcessingElapsedStartedAtV2" in source
+    assert "__costerlyProcessingElapsedStartedAtV3" in source
+    assert "parentWindow.location.reload()" in source
+    assert "__costerlyUploadInteractionGuardsV1112Installed" in source
 
 
 def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():
     source = getsource(install_upload_interaction_guards)
 
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_12" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_13" in source
     assert "function uploadScreenIsActive()" in source
     assert "document.querySelector('.upload-screen-active')" in source
     assert "if (!uploadScreenIsActive()) return;" in source

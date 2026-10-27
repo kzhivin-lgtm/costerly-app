@@ -3351,8 +3351,30 @@ def install_upload_interaction_guards(shell_html: str) -> None:
         """
         <script>
         (() => {
-            const parentDoc = window.parent.document;
-            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_12";
+            const parentWindow = window.parent;
+            const parentDoc = parentWindow.document;
+            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_13";
+            const legacyFlags = [
+                '__costerlyUploadInteractionGuardsV1111Installed',
+                '__costerlyUploadInteractionGuardsV1112Installed',
+            ];
+            const resetMarker = 'costerly-progress-controller-v1113-reset';
+            try {
+                if (
+                    legacyFlags.some((key) => Boolean(parentWindow[key])) &&
+                    parentWindow.sessionStorage.getItem(resetMarker) !== '1'
+                ) {
+                    // A script that already runs in the parent document cannot
+                    // be safely removed from another component. Reset this tab
+                    // once before any RFQ begins, so exactly one controller
+                    // owns the subsequent processing cycle.
+                    parentWindow.sessionStorage.setItem(resetMarker, '1');
+                    parentWindow.location.reload();
+                    return;
+                }
+            } catch (_) {
+                // A blocked sessionStorage must not prevent upload.
+            }
             const oldMarker = parentDoc.getElementById(markerId);
 
             if (oldMarker) {
@@ -3372,24 +3394,17 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const REAL_PROCESSING_MARKER_ID = 'costerly-processing-screen-active';
                 const FILE_REVIEW_MARKER_ID = 'costerly-file-review-screen-active';
                 const SHELL_ACTIVE_CLASS = 'costerly-upload-processing-shell-active';
-                // A Streamlit deployment replaces server markup but keeps this
-                // parent document alive. V6.48 reused the legacy installation
-                // flag, so the previous timer kept mutating the new screen.
-                // V2 deliberately owns separate runtime keys and silences the
-                // legacy timer before it can overwrite the active bar or F.
-                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1112';
-                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1112';
-                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1112Installed';
-                const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAtV2';
-                const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimerV2';
-                const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSecondsV2';
-                const PROCESSING_STAGE_SEEN_KEY = '__costerlyRealProcessingStageSeenV2';
-                const PROCESSING_TRANSITION_ID_KEY = '__costerlyUploadToProcessingTransitionIdV2';
-                const PROCESSING_COMPLETE_TRANSITION_ID_KEY = '__costerlyProcessingToReviewTransitionIdV2';
-                const PROCESSING_COMPLETE_STYLED_OBSERVER_KEY = '__costerlyProcessingToReviewStyledObserverV2';
-                const RFQ_UPLOAD_CYCLE_ID_KEY = '__costerlyRfqUploadCycleIdV2';
-                const LEGACY_ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAt';
-                const LEGACY_ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimer';
+                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1113';
+                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1113';
+                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1113Installed';
+                const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAtV3';
+                const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimerV3';
+                const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSecondsV3';
+                const PROCESSING_STAGE_SEEN_KEY = '__costerlyRealProcessingStageSeenV3';
+                const PROCESSING_TRANSITION_ID_KEY = '__costerlyUploadToProcessingTransitionIdV3';
+                const PROCESSING_COMPLETE_TRANSITION_ID_KEY = '__costerlyProcessingToReviewTransitionIdV3';
+                const PROCESSING_COMPLETE_STYLED_OBSERVER_KEY = '__costerlyProcessingToReviewStyledObserverV3';
+                const RFQ_UPLOAD_CYCLE_ID_KEY = '__costerlyRfqUploadCycleIdV3';
                 let clearDragTimer = null;
                 let watcher = null;
                 let slowTimer = null;
@@ -3399,14 +3414,6 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 }
 
                 window[INSTALLED_FLAG] = true;
-
-                function silenceLegacyProcessingTimer() {
-                    window.clearInterval(window[LEGACY_ELAPSED_TIMER_KEY]);
-                    window[LEGACY_ELAPSED_TIMER_KEY] = null;
-                    window[LEGACY_ELAPSED_STARTED_AT_KEY] = null;
-                }
-
-                silenceLegacyProcessingTimer();
 
                 function getDropzones() {
                     return Array.from(document.querySelectorAll(DROPZONE_SELECTOR));
@@ -3677,10 +3684,6 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 }
 
                 function beginUploadCycle() {
-                    // The earlier deployed listener still receives the native
-                    // file-input event. It must be made inert before this
-                    // generation starts its own truthful timer.
-                    silenceLegacyProcessingTimer();
                     const completeObserver = window[PROCESSING_COMPLETE_STYLED_OBSERVER_KEY];
                     if (completeObserver && completeObserver.stop) completeObserver.stop();
 
