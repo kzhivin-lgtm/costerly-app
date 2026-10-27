@@ -10272,12 +10272,47 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 messages=batch_messages,
                 output_config=proposal_output_config,
             )
+            batch_attempts = [
+                (batch_response, batch_diagnostics, DETECTION_V5_PROPOSAL_MAX_TOKENS),
+            ]
+            batch_retry_reason: str | None = None
             try:
                 batch_payload = json.loads(extract_text_from_claude_response(batch_response))
-            except json.JSONDecodeError as exc:
-                raise RuntimeError(
-                    f"V6.41 Discovery batch {batch_number} returned invalid JSON: {exc}"
-                ) from exc
+            except json.JSONDecodeError as initial_error:
+                batch_json_error: json.JSONDecodeError | None = initial_error
+                if _is_retryable_visual_registry_json_truncation(
+                    extract_text_from_claude_response(batch_response),
+                    batch_response,
+                    max_tokens=DETECTION_V5_PROPOSAL_MAX_TOKENS,
+                ):
+                    batch_retry_reason = "initial_response_hit_budget_inside_json_string"
+                    batch_response, batch_diagnostics = create_claude_message_streamed(
+                        client,
+                        model=discovery_model,
+                        max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+                        temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+                        system=proposal_system,
+                        messages=batch_messages,
+                        output_config=proposal_output_config,
+                    )
+                    batch_attempts.append((
+                        batch_response,
+                        batch_diagnostics,
+                        DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+                    ))
+                    try:
+                        batch_payload = json.loads(
+                            extract_text_from_claude_response(batch_response),
+                        )
+                    except json.JSONDecodeError as retry_error:
+                        batch_json_error = retry_error
+                    else:
+                        batch_json_error = None
+                if batch_json_error is not None:
+                    raise RuntimeError(
+                        f"V6.41 Discovery batch {batch_number} returned invalid JSON: "
+                        f"{batch_json_error}"
+                    ) from batch_json_error
             expected_fields = {
                 "visual_groups", "classifications", "candidate_region_exceptions", "page_coverage",
             }
@@ -10297,22 +10332,27 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             all_classifications.extend(batch_payload["classifications"])
             all_exceptions.extend(batch_payload["candidate_region_exceptions"])
             all_coverage.extend(batch_payload["page_coverage"])
-            v641_proposal_attempt_summaries.append({
-                "batch_number": batch_number,
-                "page_numbers": page_numbers,
-                "estimated_input_tokens": int(batch["estimated_tokens"]),
-                "exact_input_tokens": exact_input_tokens,
-                "max_tokens": DETECTION_V5_PROPOSAL_MAX_TOKENS,
-                **summarize_detection_provider_call(
-                    response=batch_response,
-                    diagnostics=batch_diagnostics,
-                    requested_model=discovery_model,
-                    prompt_characters=len(proposal_prompt_with_anchor_contract),
-                    context_characters=len(batch_user_text),
-                    image_count=len(batch_images),
-                    image_bytes=sum(len(image) for image in batch_images),
-                ),
-            })
+            for attempt_number, (attempt_response, attempt_diagnostics, max_tokens) in enumerate(
+                batch_attempts, start=1,
+            ):
+                v641_proposal_attempt_summaries.append({
+                    "batch_number": batch_number,
+                    "attempt_number": attempt_number,
+                    "accepted": attempt_number == len(batch_attempts),
+                    "page_numbers": page_numbers,
+                    "estimated_input_tokens": int(batch["estimated_tokens"]),
+                    "exact_input_tokens": exact_input_tokens,
+                    "max_tokens": max_tokens,
+                    **summarize_detection_provider_call(
+                        response=attempt_response,
+                        diagnostics=attempt_diagnostics,
+                        requested_model=discovery_model,
+                        prompt_characters=len(proposal_prompt_with_anchor_contract),
+                        context_characters=len(batch_user_text),
+                        image_count=len(batch_images),
+                        image_bytes=sum(len(image) for image in batch_images),
+                    ),
+                })
             v641_batch_audit.append({
                 "batch_number": batch_number,
                 "page_numbers": page_numbers,
@@ -10322,6 +10362,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 "candidate_region_count": len(batch_candidates),
                 "candidate_pair_count": len(batch_pairs),
                 "full_page_image_count": len(batch_images),
+                "truncation_retry": {
+                    "attempted": batch_retry_reason is not None,
+                    "reason": batch_retry_reason,
+                    "attempt_count": len(batch_attempts),
+                },
             })
             proposal_response, proposal_diagnostics = batch_response, batch_diagnostics
         if proposal_response is None or proposal_diagnostics is None:
