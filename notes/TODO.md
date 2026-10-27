@@ -16,6 +16,13 @@ Evidence ownership or accepted object boundaries. Verify focused Discovery
 schema, prompt and call-budget tests before deployment, then run the protected
 HSL benchmark.
 
+HSL budget witness passed on `run_99b433940dcc4fd9abbe0587dc56fb12`: one
+ordinary Discovery call selected 12,288 tokens for 37 Candidate Regions and
+used 7,464 without a retry or JSON failure. This confirms the capacity repair,
+not lower cost, lower output volume or object-boundary quality. Preserve its
+ledger in the V6.58 checkpoint and audit its nine-object evidence separately
+before accepting any Detection-quality conclusion.
+
 Do not infer that a Detection response failure is a progress-bar fault. Add a
 safe request-content digest to future Discovery diagnostics before attributing
 any remaining output variation to provider behaviour; never store raw document

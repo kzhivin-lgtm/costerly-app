@@ -54,6 +54,39 @@ prior HSL witness with 37 Candidate Regions, the deterministic ceiling is
 model, Fusion, Membership Review, Evidence or object-boundary change is part
 of this checkpoint.
 
+## Post-checkpoint HSL ledger audit
+
+Run `run_99b433940dcc4fd9abbe0587dc56fb12` completed successfully at
+2026-10-27 21:15 UTC through `ordinary_haiku`.
+
+- Discovery received 37 Candidate Regions, 1,073 source facts, 11 full-page
+  images, 2,177,549 image bytes and 123,572 characters of assembled user
+  context. The V6.41 large-document batch route correctly remained inactive:
+  its conservative input estimate was 118,860, below the 150,000 single-pass
+  boundary.
+- The V6.57 deterministic rule calculated `512 + 240 * 37 = 9,392`, above
+  the former 8,192 ceiling, and selected 12,288 tokens. Discovery used 7,464
+  tokens, or 60.7 percent of that ceiling, completed in 52.577 seconds and
+  made exactly one provider call. No truncation retry ran.
+- Membership Review used one accepted 6,144-token call, emitted 3,265 tokens
+  in 21.776 seconds and had no retry. The resulting registry had 34 visual
+  groups, 9 commercial objects, zero unassigned visual groups and exact
+  coverage records for all 11 pages.
+- Discovery and Review provider time totalled 74.353 seconds. Detection's
+  runtime ledger recorded 75.552 seconds, while the full initial Processing
+  lap recorded 97.531 seconds, including 10.556 seconds of OCR and framework
+  handoff. Naming completed afterwards in the background in 9.255 seconds.
+- Provider cost before background Naming was $0.210855: $0.044 OCR plus
+  $0.166855 Detection. Naming later added $0.028077.
+
+The compact instruction added 426 system-prompt characters. Its effect on
+word-level concision cannot be independently proven from this ledger because
+raw model response text is intentionally not persisted. The observed Discovery
+output of 7,464 tokens is essentially equal to the nearest pre-V6.57 success
+(7,451), so this witness validates safer capacity, not a claim of lower token
+use or improved object quality. The 9-object result needs a separate evidence
+quality audit before any object-boundary conclusion.
+
 ## Verification
 
 - Focused Processing, timing and prompt tests: `95 passed`.
@@ -73,7 +106,6 @@ of this checkpoint.
 
 ## Next safe work
 
-First audit the just-completed HSL ledger for V6.57's planned output capacity,
-actual token use, compact-output evidence and any retry. Then trace the single
-frame File Review handoff through the transition shell and DOM readiness signal.
-Do not alter the accepted Processing pacing while repairing that distinct handoff.
+Trace the single-frame File Review handoff through the transition shell and DOM
+readiness signal. Do not alter the accepted Processing pacing while repairing
+that distinct handoff.
