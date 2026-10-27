@@ -66,7 +66,7 @@ def test_document_identity_reads_project_only_from_explicit_ocr_title_block_labe
         }]}
     })
 
-    assert result["model"] == "deterministic_ocr_title_block_v3"
+    assert result["model"] == "deterministic_ocr_title_block_v4_semantic_fallback"
     assert result["identity"]["project_name"]["value"] == "ROOMS"
     assert result["identity"]["client"]["value"] == "unknown"
     assert result["identity"]["design_partner"]["value"] == "unknown"
@@ -102,7 +102,7 @@ def test_document_identity_uses_repeated_explicit_title_as_project_name():
         ]}
     })
 
-    assert result["model"] == "deterministic_ocr_title_block_v3"
+    assert result["model"] == "deterministic_ocr_title_block_v4_semantic_fallback"
     assert result["identity"]["project_name"] == {
         "value": "Офис",
         "source_page": 1,
@@ -142,6 +142,96 @@ def test_document_identity_prefers_explicit_project_over_repeated_title():
 
     assert result["identity"]["project_name"]["value"] == "North Wing"
     assert result["identity"]["project_name"]["source_label"] == "PROJECT"
+
+
+def test_document_identity_uses_semantic_title_block_roles_when_labels_are_absent():
+    result = derive_document_identity_from_ocr({
+        "evidence": {"text_blocks": [
+            {
+                "page_number": 1, "text": "СТУДИЯ CALGEL",
+                "bbox": {"top_left_x": 2600, "top_left_y": 1880, "bottom_right_x": 2800, "bottom_right_y": 1910},
+            },
+            {
+                "page_number": 1, "text": "ПО АДРЕСУ: МОСКВА | ВОЛХОНКА, 3",
+                "bbox": {"top_left_x": 2500, "top_left_y": 1930, "bottom_right_x": 2920, "bottom_right_y": 1960},
+            },
+            {
+                "page_number": 1, "text": "ООО \\\"АРХИПРОБА\\\"",
+                "bbox": {"top_left_x": 2850, "top_left_y": 2135, "bottom_right_x": 3070, "bottom_right_y": 2160},
+            },
+            {
+                "page_number": 1, "text": "МЕБЕЛЬ / СТЕЙШН И ПОДДОНЫ",
+                "bbox": {"top_left_x": 2260, "top_left_y": 2130, "bottom_right_x": 2610, "bottom_right_y": 2160},
+            },
+            {
+                "page_number": 1, "text": "GSPublisherVersion 0.0.100.100",
+                "bbox": {"top_left_x": 100, "top_left_y": 2210, "bottom_right_x": 3200, "bottom_right_y": 2230},
+            },
+        ]},
+    })
+
+    assert result["identity"]["design_partner"] == {
+        "value": "ООО \\\"АРХИПРОБА\\\"", "source_page": 1,
+        "source_corner": "ocr_title_block",
+        "source_label": "SEMANTIC_DESIGN_ORGANIZATION",
+    }
+    assert result["identity"]["client"] == {
+        "value": "СТУДИЯ CALGEL", "source_page": 1,
+        "source_corner": "ocr_title_block",
+        "source_label": "ADDRESS_ASSOCIATED_ORGANIZATION",
+    }
+    assert result["identity"]["project_name"] == {
+        "value": "МЕБЕЛЬ / СТЕЙШН И ПОДДОНЫ", "source_page": 1,
+        "source_corner": "ocr_title_block",
+        "source_label": "TITLE_BLOCK_DOCUMENT_TITLE",
+    }
+
+
+def test_document_identity_uses_address_only_when_no_document_title_survives():
+    result = derive_document_identity_from_ocr({
+        "evidence": {"text_blocks": [
+            {
+                "page_number": 1, "text": "АДРЕС: МОСКВА, ВОЛХОНКА, 3",
+                "bbox": {"top_left_x": 2200, "top_left_y": 1900, "bottom_right_x": 3000, "bottom_right_y": 1930},
+            },
+            {
+                "page_number": 1, "text": "Лист",
+                "bbox": {"top_left_x": 2900, "top_left_y": 2000, "bottom_right_x": 3000, "bottom_right_y": 2030},
+            },
+            {
+                "page_number": 1, "text": "GSPublisherVersion 0.0.100.100",
+                "bbox": {"top_left_x": 100, "top_left_y": 2200, "bottom_right_x": 3200, "bottom_right_y": 2230},
+            },
+        ]},
+    })
+
+    assert result["identity"]["project_name"]["value"] == "АДРЕС: МОСКВА, ВОЛХОНКА, 3"
+    assert result["identity"]["project_name"]["source_label"] == "ADDRESS_AS_PROJECT_FALLBACK"
+
+
+def test_document_identity_uses_named_designer_as_partner_when_no_design_firm_exists():
+    result = derive_document_identity_from_ocr({
+        "evidence": {"text_blocks": [
+            {
+                "page_number": 1, "text": "Дизайнер",
+                "bbox": {"top_left_x": 2200, "top_left_y": 1900, "bottom_right_x": 2320, "bottom_right_y": 1930},
+            },
+            {
+                "page_number": 1, "text": "Людмила Виноградова",
+                "bbox": {"top_left_x": 2340, "top_left_y": 1900, "bottom_right_x": 2600, "bottom_right_y": 1930},
+            },
+            {
+                "page_number": 1, "text": "GSPublisherVersion 0.0.100.100",
+                "bbox": {"top_left_x": 100, "top_left_y": 2200, "bottom_right_x": 3200, "bottom_right_y": 2230},
+            },
+        ]},
+    })
+
+    assert result["identity"]["design_partner"] == {
+        "value": "Людмила Виноградова", "source_page": 1,
+        "source_corner": "ocr_title_block",
+        "source_label": "SEMANTIC_DESIGN_PERSON",
+    }
 
 
 def test_document_identity_does_not_treat_one_order_label_as_document_project():

@@ -19,7 +19,7 @@ from agents.anthropic_adapter import (
 )
 
 
-DOCUMENT_IDENTITY_VERSION = "document_identity_v3_repeated_title"
+DOCUMENT_IDENTITY_VERSION = "document_identity_v4_semantic_title_block"
 DOCUMENT_IDENTITY_PROMPT_PATH = Path(__file__).parent / "prompts" / "document_identity_prompt.md"
 _FIELDS = ("project_name", "client", "design_partner", "author", "document_date")
 _CORNERS = ("top_left", "top_right", "bottom_left", "bottom_right")
@@ -87,6 +87,228 @@ def _ocr_rows(ocr_package: dict[str, Any]) -> list[tuple[int, list[list[str]]]]:
             if table_rows:
                 rows.append((page_number, table_rows))
     return rows
+
+
+def _ocr_title_block_entries(ocr_package: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return positioned title-block candidates from existing OCR/native text.
+
+    This does not run another model.  The OCR package already carries native
+    PDF spans and Mistral literals in rendered-page coordinates.  We use only
+    the lower-right/central title-block zone, deliberately excluding ordinary
+    drawing annotation from document identity.
+    """
+    evidence = ocr_package.get("evidence") if isinstance(ocr_package, dict) else None
+    if not isinstance(evidence, dict):
+        return []
+    raw_entries: list[dict[str, Any]] = []
+    seen: set[tuple[object, ...]] = set()
+    for kind in ("text_blocks", "literal_items"):
+        for item in evidence.get(kind) or []:
+            if not isinstance(item, dict):
+                continue
+            try:
+                page_number = int(item.get("page_number"))
+            except (TypeError, ValueError):
+                continue
+            bbox = item.get("bbox") if isinstance(item.get("bbox"), dict) else {}
+            try:
+                left = float(bbox["top_left_x"])
+                top = float(bbox["top_left_y"])
+                right = float(bbox["bottom_right_x"])
+                bottom = float(bbox["bottom_right_y"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            text = " ".join(html.unescape(str(item.get("text") or "")).split())
+            if not text or right <= left or bottom <= top:
+                continue
+            key = (page_number, text, round(left), round(top), round(right), round(bottom))
+            if key in seen:
+                continue
+            seen.add(key)
+            raw_entries.append({
+                "page_number": page_number, "text": text,
+                "left": left, "top": top, "right": right, "bottom": bottom,
+            })
+    page_extents: dict[int, tuple[float, float]] = {}
+    for entry in raw_entries:
+        page = int(entry["page_number"])
+        max_right, max_bottom = page_extents.get(page, (0.0, 0.0))
+        page_extents[page] = (max(max_right, entry["right"]), max(max_bottom, entry["bottom"]))
+    return [
+        entry for entry in raw_entries
+        if (
+            (extent := page_extents.get(int(entry["page_number"]))) is not None
+            and entry["top"] >= extent[1] * 0.78
+            and entry["right"] >= extent[0] * 0.35
+        )
+    ]
+
+
+_TITLE_BLOCK_ADDRESS_RE = re.compile(
+    r"(?:\baddress\b|\bby\s+address\b|адрес(?:у|:)?|по\s+адресу|"
+    r"ул(?:ица|\.)?|просп(?:ект|\.)?|street|st\.)",
+    re.IGNORECASE,
+)
+_TITLE_BLOCK_DESIGN_RE = re.compile(
+    r"(?:arch(?:i|itect|itecture)|архи|архитект|дизайн|designer?|design|"
+    r"bureau|бюро|проектн|עיצוב|אדריכל)",
+    re.IGNORECASE,
+)
+_TITLE_BLOCK_ORGANIZATION_RE = re.compile(
+    r"(?:\b(?:llc|ltd|inc|corp|studio|bureau)\b|ооо|зао|ао|ип|бюро|студия|"
+    r"компания|company)",
+    re.IGNORECASE,
+)
+_TITLE_BLOCK_ADMIN_RE = re.compile(
+    r"(?:архитектурная\s+часть|architectural\s+part|stage|стадия|лист(?:ов)?|"
+    r"изм\.?|кол\.?(?:уч\.)?|подпись|дата|architect|дизайнер|designer|"
+    r"док\.?|sheet|revision|gspublisherversion)",
+    re.IGNORECASE,
+)
+_TITLE_BLOCK_DESIGN_PERSON_ROLE_RE = re.compile(
+    r"(?:architect|архитектор|дизайнер|designer|design\s+lead)",
+    re.IGNORECASE,
+)
+_TITLE_BLOCK_AUTHOR_ROLE_RE = re.compile(
+    r"(?:\bauthor\b|автор|drawn\s+by|разработал)",
+    re.IGNORECASE,
+)
+_TITLE_BLOCK_PERSON_RE = re.compile(
+    r"(?:^[A-ZА-ЯЁ]\.?\s*[A-Za-zА-Яа-яЁё-]{2,}$|"
+    r"^[A-ZА-ЯЁ][a-zа-яё-]{1,}\s+[A-ZА-ЯЁ][a-zа-яё-]{1,}$)"
+)
+
+
+def _identity_value(entry: dict[str, Any], *, source_label: str) -> dict[str, Any]:
+    return {
+        "value": str(entry["text"]),
+        "source_page": int(entry["page_number"]),
+        "source_corner": "ocr_title_block",
+        "source_label": source_label,
+    }
+
+
+def _derive_semantic_title_block_identity(
+    identity: dict[str, dict[str, Any]],
+    ocr_package: dict[str, Any],
+) -> dict[str, dict[str, Any]]:
+    """Fill useful title-block roles when a drawing omits formal field labels.
+
+    Explicitly-labelled values, resolved earlier, always win.  The fallback is
+    intentionally evidence-shaped rather than optimistic: architecture/design
+    organisations are Partner candidates, a non-design organisation directly
+    attached to an address is a Client candidate, and a document-title phrase
+    is Project.  The address itself is a Project fallback only when no title
+    survives the filters.
+    """
+    entries = _ocr_title_block_entries(ocr_package)
+    if not entries:
+        return identity
+
+    if identity["design_partner"]["value"] == "unknown":
+        partner_candidates = [
+            entry for entry in entries
+            if _TITLE_BLOCK_DESIGN_RE.search(entry["text"])
+            and _TITLE_BLOCK_ORGANIZATION_RE.search(entry["text"])
+            and not _TITLE_BLOCK_ADMIN_RE.search(entry["text"])
+        ]
+        if partner_candidates:
+            # Prefer the most title-block-like candidate, not a nearby callout.
+            partner = max(partner_candidates, key=lambda entry: (entry["bottom"], entry["right"]))
+            identity["design_partner"] = _identity_value(
+                partner, source_label="SEMANTIC_DESIGN_ORGANIZATION",
+            )
+        else:
+            # A named designer can be the design partner for a sole-practitioner
+            # dossier.  Do not repurpose an explicit Author/Drawn-by row.
+            design_people: list[dict[str, Any]] = []
+            for role in entries:
+                if (
+                    not _TITLE_BLOCK_DESIGN_PERSON_ROLE_RE.search(role["text"])
+                    or _TITLE_BLOCK_AUTHOR_ROLE_RE.search(role["text"])
+                ):
+                    continue
+                for candidate in entries:
+                    if candidate["page_number"] != role["page_number"]:
+                        continue
+                    same_row = abs(
+                        (candidate["top"] + candidate["bottom"]) / 2
+                        - (role["top"] + role["bottom"]) / 2
+                    ) <= 30
+                    near_role = -40 <= candidate["left"] - role["right"] <= 280
+                    if same_row and near_role and _TITLE_BLOCK_PERSON_RE.fullmatch(candidate["text"]):
+                        design_people.append(candidate)
+            if design_people:
+                partner = max(design_people, key=lambda entry: (entry["bottom"], entry["right"]))
+                identity["design_partner"] = _identity_value(
+                    partner, source_label="SEMANTIC_DESIGN_PERSON",
+                )
+
+    if identity["client"]["value"] == "unknown":
+        address_entries = [
+            entry for entry in entries if _TITLE_BLOCK_ADDRESS_RE.search(entry["text"])
+        ]
+        address_linked_candidates: list[dict[str, Any]] = []
+        for address in address_entries:
+            address_linked_candidates.extend(
+                entry for entry in entries
+                if entry["page_number"] == address["page_number"]
+                and 0 <= address["top"] - entry["bottom"] <= 100
+                and _TITLE_BLOCK_ORGANIZATION_RE.search(entry["text"])
+                and not _TITLE_BLOCK_DESIGN_RE.search(entry["text"])
+            )
+        if address_linked_candidates:
+            client = min(
+                address_linked_candidates,
+                key=lambda entry: min(
+                    address["top"] - entry["bottom"]
+                    for address in address_entries
+                    if address["page_number"] == entry["page_number"]
+                ),
+            )
+            identity["client"] = _identity_value(
+                client, source_label="ADDRESS_ASSOCIATED_ORGANIZATION",
+            )
+        else:
+            client_candidates = [
+                entry for entry in entries
+                if _TITLE_BLOCK_ORGANIZATION_RE.search(entry["text"])
+                and not _TITLE_BLOCK_DESIGN_RE.search(entry["text"])
+                and not _TITLE_BLOCK_ADMIN_RE.search(entry["text"])
+            ]
+            if client_candidates:
+                client = max(client_candidates, key=lambda entry: (entry["bottom"], entry["right"]))
+                identity["client"] = _identity_value(
+                    client, source_label="SEMANTIC_NON_DESIGN_ORGANIZATION",
+                )
+
+    if identity["project_name"]["value"] == "unknown":
+        project_candidates = [
+            entry for entry in entries
+            if len(re.sub(r"[^A-Za-zА-Яа-яЁёא-ת]", "", entry["text"])) >= 5
+            and not _TITLE_BLOCK_ADDRESS_RE.search(entry["text"])
+            and not _TITLE_BLOCK_DESIGN_RE.search(entry["text"])
+            and not _TITLE_BLOCK_ORGANIZATION_RE.search(entry["text"])
+            and not _TITLE_BLOCK_ADMIN_RE.search(entry["text"])
+        ]
+        if project_candidates:
+            project = max(
+                project_candidates,
+                key=lambda entry: (entry["bottom"], entry["right"] - entry["left"]),
+            )
+            identity["project_name"] = _identity_value(
+                project, source_label="TITLE_BLOCK_DOCUMENT_TITLE",
+            )
+        else:
+            address_entries = [
+                entry for entry in entries if _TITLE_BLOCK_ADDRESS_RE.search(entry["text"])
+            ]
+            if address_entries:
+                project = max(address_entries, key=lambda entry: (entry["bottom"], entry["right"]))
+                identity["project_name"] = _identity_value(
+                    project, source_label="ADDRESS_AS_PROJECT_FALLBACK",
+                )
+    return identity
 
 
 def _is_administrative_label(value: str) -> bool:
@@ -242,8 +464,9 @@ def derive_document_identity_from_ocr(ocr_package: dict[str, Any]) -> dict[str, 
                 "source_corner": "ocr_title_block",
                 "source_label": "ORDER",
             }
+    identity = _derive_semantic_title_block_identity(identity, ocr_package)
     return {
-        "model": "deterministic_ocr_title_block_v3",
+        "model": "deterministic_ocr_title_block_v4_semantic_fallback",
         "duration_seconds": 0.0,
         "input_tokens": 0,
         "output_tokens": 0,

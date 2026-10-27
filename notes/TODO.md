@@ -14,15 +14,19 @@ conflict. No model call or prompt expansion is allowed. First gate: the exact
 `ПОДДОН 5 ШТ` fact publishes quantity five and explicit true; regression gates
 cover English/Russian/Hebrew aliases and conflicting captions.
 
-PENDING DECISION, P1, unlabelled Document Identity roles: the same title block
-visibly contains `СТУДИЯ CALGEL`, `МЕБЕЛЬ / СТЕЙШН И ПОДДОНЫ` and `ООО
-"АРХИПРОБА"`, but none is labelled Client, Partner or Project. Current
-Document Identity correctly preserves unknown under its explicit-label-only
-contract. A document title can be introduced as separately cited title-block
-evidence, but assigning Client versus Partner requires either visible labels,
-a user/company-maintained role mapping, or an explicitly approved contextual
-model policy with a review state. Do not silently infer those roles from
-title-block position or company type.
+ACTIVE CANDIDATE, P1, V6.39 semantic Document Identity fallback: user approved
+less-conservative, cited title-block inference when formal Client, Partner and
+Project labels are absent. Explicit labels always win. A design/architecture
+organisation is Partner; a named designer is Partner only when not credited as
+Author; a non-design organisation immediately associated with an address is
+Client; an unlabelled document title is Project; and the address itself is
+Project only when no title survives. `Studio` or an address alone are not
+absolute rules: `300119_f2.pdf` proves why, since `СТУДИЯ CALGEL` is the
+address-associated Client while `МЕБЕЛЬ / СТЕЙШН И ПОДДОНЫ` is the Project.
+Publish every fallback with its semantic source label, preserve `unknown` only
+when no bounded candidate exists, and do not affect object Detection, Naming,
+quantity, Evidence or routing. First gate is the exact 300119 title-block
+mapping plus explicit-label, address-only and named-designer regressions.
 
 CHECKPOINT, V6.23 bounded Naming and Quantity review presentation:
 `c990495`, deployed and audited as
