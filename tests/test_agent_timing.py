@@ -732,7 +732,8 @@ def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signal
     assert "progressNode = visibleProgressNode(stage)" in source
     assert "syncForecastFromStage(stage)" in source
     assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_19" in source
-    assert "runtimeVersion = 'v1119'" in source
+    assert "runtimeVersion = 'v1119'" not in source
+    assert "parentWindow.location.reload();" not in source
     assert "if (stage.dataset.processingComplete === 'true') return 100" in source
 
 

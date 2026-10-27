@@ -66,6 +66,14 @@ Mistral HTTP warm-up while an authenticated user is still on File Review,
 Objects, Account, Projects, or Admin. This warm-up is non-blocking and does
 not change Detection or Upload rendering correctness.
 
+Regression found immediately after deployment: the temporary V6.58 browser
+runtime migration forced `parentWindow.location.reload()` on first Upload.
+Its production timeline produced an 8-second grey fallback and duplicate auth
+reruns before Upload became usable. This is a client-shell failure, not a
+Detection delay. Remove the forced reload entirely. Existing runtimes may
+upgrade only on an ordinary browser refresh or a new tab, never as a result of
+New Estimate or file selection.
+
 ACTIVE, V6.59, P0, New Estimate to Upload client-transition observability:
 The evidence rejects server-side auth, Supabase, and Upload rendering as the
 source of the reported 3-4 second warm navigation: prior successful

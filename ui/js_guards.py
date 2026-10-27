@@ -3354,22 +3354,6 @@ def install_upload_interaction_guards(shell_html: str) -> None:
             const parentWindow = window.parent;
             const parentDoc = parentWindow.document;
             const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_19";
-            const runtimeVersion = 'v1119';
-            const resetMarker = 'costerly-progress-controller-runtime';
-            try {
-                if (
-                    parentWindow.sessionStorage.getItem(resetMarker) !== runtimeVersion
-                ) {
-                    // A parent-document script cannot be replaced safely in
-                    // place. Reset once per controller release, before a new
-                    // RFQ starts, so one runtime owns the progress screen.
-                    parentWindow.sessionStorage.setItem(resetMarker, runtimeVersion);
-                    parentWindow.location.reload();
-                    return;
-                }
-            } catch (_) {
-                // A blocked sessionStorage must not prevent upload.
-            }
             const oldMarker = parentDoc.getElementById(markerId);
 
             if (oldMarker) {
