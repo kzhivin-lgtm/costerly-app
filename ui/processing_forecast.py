@@ -33,6 +33,16 @@ def fallback_file_review_seconds(page_count: int | None) -> float:
     }[processing_page_bucket(page_count)]
 
 
+def minimum_history_observations(page_count: int | None) -> int:
+    """Return the evidence threshold for a timing forecast.
+
+    A 21+ page run is unusually expensive to repeat merely to collect a third
+    timing sample.  Two close, same-company runs are enough to replace the
+    deliberately pessimistic cold-start figure; smaller files retain three.
+    """
+    return 2 if processing_page_bucket(page_count) == "21+" else 3
+
+
 def _raw_usage(row: dict[str, Any]) -> dict[str, Any]:
     value = row.get("raw_usage") if isinstance(row, dict) else None
     if isinstance(value, str):
@@ -61,9 +71,10 @@ def estimate_file_review_seconds(
 ) -> dict[str, Any]:
     """Estimate to first File Review from successful same-company cycles.
 
-    A page bucket must have at least three observations before it supersedes the
-    conservative cold-start forecast. Median is intentionally used instead of a
-    mean so a provider outage or retry-heavy run cannot dominate the bar.
+    A page bucket normally needs three observations before it supersedes the
+    conservative cold-start forecast.  The 21+ bucket needs two because each
+    observed run is materially costly. Median is intentionally used instead of
+    a mean so a provider outage or retry-heavy run cannot dominate the bar.
     """
     bucket = processing_page_bucket(page_count)
     values: list[float] = []
@@ -76,7 +87,7 @@ def estimate_file_review_seconds(
         duration = _duration(row)
         if duration is not None:
             values.append(duration)
-    if len(values) >= 3:
+    if len(values) >= minimum_history_observations(page_count):
         return {
             "seconds": round(float(median(values)), 1),
             "source": "same_company_page_bucket_median",

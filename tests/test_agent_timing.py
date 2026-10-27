@@ -51,6 +51,7 @@ from agents.ocr_adapter import normalize_mistral_ocr_response
 from ui.processing_stage import processing_stage_html
 from ui.processing_forecast import (
     estimate_file_review_seconds,
+    minimum_history_observations,
     progress_fraction,
 )
 from ui.js_guards import (
@@ -589,6 +590,25 @@ def test_file_review_forecast_uses_history_only_after_three_same_bucket_runs():
     }
     assert expected_file_review_seconds(11, history=history) == 70.0
     assert expected_file_review_seconds(11, history=history[:2]) == 90.0
+
+
+def test_large_file_forecast_uses_two_compatible_raw_usage_events():
+    history = [
+        {
+            "status": "succeeded",
+            # Production stores duration only in raw_usage.
+            "raw_usage": json.dumps({"page_count": 22, "duration_seconds": duration}),
+        }
+        for duration in (346.457, 360.051)
+    ]
+
+    assert minimum_history_observations(22) == 2
+    assert estimate_file_review_seconds(history, page_count=22) == {
+        "seconds": 353.3,
+        "source": "same_company_page_bucket_median",
+        "sample_size": 2,
+        "page_bucket": "21+",
+    }
 
 
 def test_file_review_progress_means_elapsed_share_of_current_forecast():

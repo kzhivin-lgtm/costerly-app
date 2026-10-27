@@ -385,7 +385,9 @@ def fetch_recent_rfq_processing_cycles(
     """Return only this company's completed File Review timing history."""
     response = (
         client.table("agent_usage_events")
-        .select("duration_seconds,raw_usage,status,created_at")
+        # `duration_seconds` is not a production column.  Runtime events
+        # intentionally carry it inside `raw_usage` for schema compatibility.
+        .select("raw_usage,status,created_at")
         .eq("company_id", company_id)
         .eq("agent_name", "orchestration")
         .eq("operation", "rfq_processing_cycle")
