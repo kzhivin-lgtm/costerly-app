@@ -73,7 +73,7 @@ from agents.schemas.detection_registry_schema import (
     derive_detection_package_decision_audit,
     derive_detection_dimension_package_candidates,
     compile_detection_v5_object_hypotheses,
-    compile_detection_v5_hypothesis_membership_edges,
+    compile_detection_v637_hypothesis_coverage_components,
     compile_detection_v5_semantic_facts,
     compile_detection_v5_visual_dimension_conflicts,
     compile_detection_v5_merge_edges,
@@ -132,6 +132,9 @@ DETECTION_V635_ADA_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION = (
 )
 DETECTION_V636_ADA_CONNECTED_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION = (
     "detection_v6_36_ada_connected_pair_local_membership"
+)
+DETECTION_V637_ADA_COVERED_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION = (
+    "detection_v6_37_ada_covered_pair_local_membership"
 )
 DETECTION_V634_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
@@ -9681,15 +9684,18 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         and mistral_anchor_admission_active
         and "sonnet" in selected_model.lower()
     )
-    # V6.36 preserves V6.34's models and two-call shape. It changes only
+    # V6.37 preserves V6.34's models and two-call shape. It changes only
     # semantic admission: document context cannot merge Views, every positive
     # fact cites both endpoints of the relation it creates, and each accepted
-    # multi-view hypothesis must be locally connected by those exact facts.
+    # multi-view hypothesis must cover every View with local evidence.
     v635_ada_pair_local_membership_active = (
         v634_ada_haiku_discovery_sonnet_review_active
     )
     v636_ada_connected_pair_local_membership_active = (
         v635_ada_pair_local_membership_active
+    )
+    v637_ada_covered_pair_local_membership_active = (
+        v636_ada_connected_pair_local_membership_active
     )
     discovery_model = (
         DETECTION_V634_ADA_DISCOVERY_MODEL
@@ -10076,8 +10082,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             if group.get("evidence_class") == "object_evidence"
         ]) <= DETECTION_V69_RECONCILIATION_MAX_ISLANDS
     )
-    if v636_ada_connected_pair_local_membership_active:
-        prompt_version = DETECTION_V636_ADA_CONNECTED_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION
+    if v637_ada_covered_pair_local_membership_active:
+        prompt_version = DETECTION_V637_ADA_COVERED_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION
     elif v69_criteria_reconciliation_active:
         prompt_version = DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION
     registry_visual_sources = build_detection_v5_registry_visual_sources(
@@ -10098,18 +10104,21 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         draft_hypotheses=[],
     )
     review_prompt_with_membership_contract = review_prompt
-    if v636_ada_connected_pair_local_membership_active:
+    if v637_ada_covered_pair_local_membership_active:
         review_prompt_with_membership_contract += (
-            "\n\nV6.36 ADA CONNECTED PAIR-LOCAL MEMBERSHIP CONTRACT:\n"
+            "\n\nV6.37 ADA COVERED PAIR-LOCAL MEMBERSHIP CONTRACT:\n"
             "Document title blocks, project identity, author, sheet sequence and "
             "a common fabrication package are context only. They are never positive "
             "merge evidence, so do not emit explicit_document_relation. For every "
             "positive evidence row, cite registry_view sources for the exact two "
-            "Views it connects. Do not pool evidence from different pairs into one "
-            "object hypothesis. For a hypothesis with N Views, emit at least N-1 "
-            "pair-local evidence rows that form one connected chain or tree across "
-            "all N Views. Merely citing every View somewhere is insufficient. If you "
-            "cannot provide that connected pair graph, split the hypothesis.\n"
+            "Views it connects. Do not use a fact from one proposed object to "
+            "support another proposed object. Complementary local pairs within the "
+            "same object hypothesis are allowed. For non-document visual evidence use strength \"standard\". "
+            "For a hypothesis with more than two Views, provide at least two local "
+            "pair facts and ensure every declared View appears in at least one of "
+            "those facts. The facts may be complementary and need not form a chain. "
+            "Never invent an extra bridge merely to connect the graph. If a View has "
+            "no local evidence inside the hypothesis, split it out.\n"
         )
     elif v69_criteria_reconciliation_active:
         review_prompt_with_membership_contract += (
@@ -10404,6 +10413,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v6_36_ada_connected_pair_local_membership_active": (
             v636_ada_connected_pair_local_membership_active
         ),
+        "v6_37_ada_covered_pair_local_membership_active": (
+            v637_ada_covered_pair_local_membership_active
+        ),
         "v6_34_discovery_model": discovery_model,
         "v6_34_membership_review_model": review_model,
         "v6_10_candidate_pair_count": len(v69_preliminary_pairs),
@@ -10670,9 +10682,19 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             )
             semantic_facts = []
             for hypothesis in accepted_hypotheses:
-                if v636_ada_connected_pair_local_membership_active:
+                if v637_ada_covered_pair_local_membership_active:
                     hypothesis_group_ids = set(hypothesis["group_ids"])
                     for evidence_index, evidence in enumerate(hypothesis["evidence"]):
+                        evidence = copy.deepcopy(evidence)
+                        if (
+                            evidence.get("strength") == "direct"
+                            and evidence.get("evidence_type") != "explicit_document_relation"
+                        ):
+                            # V6.37 never treats a visual observation as a
+                            # document-identity label. Canonicalize the
+                            # provider's colloquial "direct" wording before
+                            # the established semantic validator evaluates it.
+                            evidence["strength"] = "standard"
                         cited_view_ids = sorted({
                             source_id.removeprefix("registry_view:")
                             for source_id in evidence.get("source_fact_ids") or []
@@ -10781,20 +10803,21 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             object_hypothesis_audit["rejected"]
         )
         semantic_ledger_audit["object_hypotheses"] = object_hypothesis_audit
-        if v636_ada_connected_pair_local_membership_active:
+        v637_accepted_components: list[list[str]] = []
+        if v637_ada_covered_pair_local_membership_active:
             supporting_relation_edges, v5_merge_audit = compile_detection_v5_merge_edges(
                 dimension_relation_edges, accepted_semantic_facts,
                 visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
                 allow_runtime_merges=False, allow_batch_confirmation=False,
             )
-            membership_edges, membership_audit = (
-                compile_detection_v5_hypothesis_membership_edges(
+            v637_accepted_components, membership_audit = (
+                compile_detection_v637_hypothesis_coverage_components(
                     accepted_hypotheses, accepted_semantic_facts,
                     visual_groups=semantic_validation_groups,
                 )
             )
-            positive_relation_edges = [*supporting_relation_edges, *membership_edges]
-            v5_merge_audit["v6_36_pair_local_membership"] = membership_audit
+            positive_relation_edges = supporting_relation_edges
+            v5_merge_audit["v6_37_pair_local_membership"] = membership_audit
         else:
             positive_relation_edges, v5_merge_audit = compile_detection_v5_merge_edges(
                 dimension_relation_edges, accepted_semantic_facts,
@@ -10804,14 +10827,27 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             edge for edge in positive_relation_edges
             if edge["relationship"] == "same_object_view"
         ]
-        base_proof_components = derive_detection_proof_components(
-            accepted_merge_edges, visual_group_ids=visual_group_ids,
-        )
-        dominant_page_edges, dominant_page_attachment_audit = (
-            derive_detection_v5_dominant_page_attachment_edges(
-                base_proof_components, visual_groups=visual_map["visual_groups"],
+        if v637_ada_covered_pair_local_membership_active:
+            covered_group_ids = {
+                group_id
+                for component in v637_accepted_components
+                for group_id in component
+            }
+            base_proof_components = [
+                *v637_accepted_components,
+                *[[group_id] for group_id in sorted(visual_group_ids - covered_group_ids)],
+            ]
+            dominant_page_edges = []
+            dominant_page_attachment_audit = []
+        else:
+            base_proof_components = derive_detection_proof_components(
+                accepted_merge_edges, visual_group_ids=visual_group_ids,
             )
-        )
+            dominant_page_edges, dominant_page_attachment_audit = (
+                derive_detection_v5_dominant_page_attachment_edges(
+                    base_proof_components, visual_groups=visual_map["visual_groups"],
+                )
+            )
         positive_relation_edges.extend(dominant_page_edges)
         accepted_merge_edges.extend(dominant_page_edges)
         semantic_ledger_audit["dominant_page_attachment"] = dominant_page_attachment_audit
@@ -10828,8 +10864,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         # Only accepted merge edges decide package membership. Every omitted,
         # weak or rejected relation therefore remains a singleton rather than
         # aborting the document or disappearing from Estimation Evidence.
-        proof_components = derive_detection_proof_components(
-            accepted_merge_edges, visual_group_ids=visual_group_ids,
+        proof_components = (
+            base_proof_components
+            if v637_ada_covered_pair_local_membership_active
+            else derive_detection_proof_components(
+                accepted_merge_edges, visual_group_ids=visual_group_ids,
+            )
         )
         standalone_package_group_ids = derive_detection_standalone_package_group_ids(
             proof_components

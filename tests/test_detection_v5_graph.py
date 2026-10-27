@@ -1,6 +1,7 @@
 from agents.schemas.detection_registry_schema import (
     compile_detection_v5_dimension_graph,
     compile_detection_v5_hypothesis_membership_edges,
+    compile_detection_v637_hypothesis_coverage_components,
     compile_detection_v5_merge_edges,
     compile_detection_v5_membership_edges,
     compile_detection_v5_object_hypotheses,
@@ -389,6 +390,84 @@ def test_v636_membership_tree_rejects_disconnected_pair_local_evidence():
     assert audit["rejected"][0]["reason"] == (
         "membership_hypothesis_pair_local_graph_disconnected"
     )
+
+
+def test_v637_hypothesis_coverage_accepts_complementary_disconnected_pairs():
+    views = [
+        {"group_id": f"view-00{index}", "evidence_class": "object_evidence"}
+        for index in range(1, 5)
+    ]
+    hypotheses, _ = compile_detection_v5_object_hypotheses([{
+        "group_ids": ["view-001", "view-002", "view-003", "view-004"],
+        "hypothesis_reason": "Complementary projections show one cabinet.",
+        "evidence": [{
+            "evidence_type": "matching_topology", "strength": "standard",
+            "observation": "The same cabinet bays recur.", "source_fact_ids": [],
+        }],
+    }], visual_groups=views)
+    facts, _ = compile_detection_v5_semantic_facts([
+        {
+            "group_id_a": "view-001", "group_id_b": "view-004",
+            "evidence_type": "matching_topology", "strength": "standard",
+            "observation": "The same three-bay carcass and door order recur.",
+            "source_fact_ids": [],
+        },
+        {
+            "group_id_a": "view-002", "group_id_b": "view-003",
+            "evidence_type": "unique_geometry", "strength": "standard",
+            "observation": "The same offset circular cut-out and handle layout recur.",
+            "source_fact_ids": [],
+        },
+    ], visual_groups=views, source_facts=[])
+
+    components, audit = compile_detection_v637_hypothesis_coverage_components(
+        hypotheses, facts, visual_groups=views,
+    )
+
+    assert components == [["view-001", "view-002", "view-003", "view-004"]]
+    assert audit["rejected"] == []
+
+
+def test_v637_hypothesis_coverage_rejects_an_uncovered_view():
+    views = [
+        {"group_id": f"view-00{index}", "evidence_class": "object_evidence"}
+        for index in range(1, 5)
+    ]
+    hypotheses, _ = compile_detection_v5_object_hypotheses([{
+        "group_ids": ["view-001", "view-002", "view-003", "view-004"],
+        "hypothesis_reason": "Complementary projections show one cabinet.",
+        "evidence": [{
+            "evidence_type": "matching_topology", "strength": "standard",
+            "observation": "The same cabinet bays recur.", "source_fact_ids": [],
+        }],
+    }], visual_groups=views)
+    facts, _ = compile_detection_v5_semantic_facts([
+        {
+            "group_id_a": "view-001", "group_id_b": "view-002",
+            "evidence_type": "matching_topology", "strength": "standard",
+            "observation": "The same three-bay carcass and door order recur.",
+            "source_fact_ids": [],
+        },
+        {
+            "group_id_a": "view-002", "group_id_b": "view-003",
+            "evidence_type": "unique_geometry", "strength": "standard",
+            "observation": "The same offset circular cut-out and handle layout recur.",
+            "source_fact_ids": [],
+        },
+    ], visual_groups=views, source_facts=[])
+
+    components, audit = compile_detection_v637_hypothesis_coverage_components(
+        hypotheses, facts, visual_groups=views,
+    )
+
+    assert components == []
+    assert audit["rejected"] == [{
+        "index": 0,
+        "reason": "membership_hypothesis_pair_local_coverage_incomplete",
+        "group_ids": ["view-001", "view-002", "view-003", "view-004"],
+        "missing_group_ids": ["view-004"],
+        "local_fact_pairs": [["view-001", "view-002"], ["view-002", "view-003"]],
+    }]
 
 
 def test_v571_supporting_graph_cannot_override_registry_membership():

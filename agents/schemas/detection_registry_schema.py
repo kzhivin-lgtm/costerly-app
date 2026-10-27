@@ -1803,6 +1803,84 @@ def compile_detection_v5_hypothesis_membership_edges(
     }
 
 
+def compile_detection_v637_hypothesis_coverage_components(
+    hypotheses: list[dict[str, Any]],
+    semantic_facts: list[dict[str, Any]],
+    *,
+    visual_groups: list[dict[str, Any]],
+) -> tuple[list[list[str]], dict[str, Any]]:
+    """Accept a multi-view hypothesis only when local facts cover every View.
+
+    A fabrication drawing can establish one object through complementary
+    projections.  Those proof pairs need not form a visual chain: a plan may
+    support one view while an elevation supports another.  Runtime therefore
+    keeps the model's non-overlapping group decision only after every member
+    has pair-local, typed evidence inside that exact group.  This returns
+    components, not invented root-to-member graph edges.
+    """
+    object_group_ids = {
+        str(group.get("group_id") or "")
+        for group in visual_groups
+        if isinstance(group, dict) and group.get("evidence_class") == "object_evidence"
+    }
+    accepted: list[list[str]] = []
+    rejected: list[dict[str, Any]] = []
+    facts_by_pair: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for fact in semantic_facts:
+        pair = tuple(sorted((str(fact["group_id_a"]), str(fact["group_id_b"]))))
+        facts_by_pair.setdefault(pair, []).append(fact)
+
+    for index, hypothesis in enumerate(hypotheses):
+        group_ids = sorted({str(group_id) for group_id in hypothesis.get("group_ids") or []})
+        group_id_set = set(group_ids)
+        if len(group_ids) < 2 or not group_id_set.issubset(object_group_ids):
+            rejected.append({
+                "index": index,
+                "reason": "membership_hypothesis_members_invalid",
+                "group_ids": group_ids,
+            })
+            continue
+        local_pairs = sorted(
+            pair for pair in facts_by_pair
+            if set(pair).issubset(group_id_set)
+        )
+        covered_group_ids = {
+            group_id
+            for pair in local_pairs
+            for group_id in pair
+        }
+        missing_group_ids = sorted(group_id_set - covered_group_ids)
+        if missing_group_ids:
+            rejected.append({
+                "index": index,
+                "reason": "membership_hypothesis_pair_local_coverage_incomplete",
+                "group_ids": group_ids,
+                "missing_group_ids": missing_group_ids,
+                "local_fact_pairs": [list(pair) for pair in local_pairs],
+            })
+            continue
+        if len(group_ids) > 2 and len(local_pairs) < 2:
+            rejected.append({
+                "index": index,
+                "reason": "membership_hypothesis_requires_multiple_independent_local_pairs",
+                "group_ids": group_ids,
+                "local_fact_pairs": [list(pair) for pair in local_pairs],
+            })
+            continue
+        accepted.append(group_ids)
+
+    return accepted, {
+        "compiler_version": "v6_37_pair_local_hypothesis_coverage",
+        "accepted": [
+            {"group_ids": component, "local_fact_pair_count": sum(
+                set(pair).issubset(set(component)) for pair in facts_by_pair
+            )}
+            for component in accepted
+        ],
+        "rejected": rejected,
+    }
+
+
 def compile_detection_v5_membership_edges(
     raw_edges: object,
     *,
