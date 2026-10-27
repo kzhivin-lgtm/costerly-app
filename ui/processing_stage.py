@@ -68,16 +68,16 @@ def post_upload_stage_html(
             forecast_label = f"F: {forecast_seconds // 60:02d}:{forecast_seconds % 60:02d}"
             forecast_attr = f' data-processing-forecast-label="{forecast_label}"'
             forecast_html = (
-                '<span class="post-upload-stage__forecast">'
-                f'{forecast_label}'
-                '</span> '
+                ' <span class="post-upload-stage__forecast">'
+                f'({forecast_label})'
+                '</span>'
             )
         timer_html = (
             f'<div class="post-upload-stage__timer"{forecast_attr}>'
-            f'{forecast_html}'
             '<span data-processing-elapsed-label>'
             f'Elapsed {seconds // 60:02d}:{seconds % 60:02d}'
             '</span>'
+            f'{forecast_html}'
             '</div>'
         )
 
