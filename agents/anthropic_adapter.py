@@ -73,6 +73,7 @@ from agents.schemas.detection_registry_schema import (
     derive_detection_package_decision_audit,
     derive_detection_dimension_package_candidates,
     compile_detection_v5_object_hypotheses,
+    compile_detection_v5_hypothesis_membership_edges,
     compile_detection_v5_semantic_facts,
     compile_detection_v5_visual_dimension_conflicts,
     compile_detection_v5_merge_edges,
@@ -128,6 +129,9 @@ DETECTION_V634_ADA_HAIKU_DISCOVERY_SONNET_REVIEW_PROMPT_VERSION = (
 )
 DETECTION_V635_ADA_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION = (
     "detection_v6_35_ada_pair_local_membership"
+)
+DETECTION_V636_ADA_CONNECTED_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION = (
+    "detection_v6_36_ada_connected_pair_local_membership"
 )
 DETECTION_V634_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
@@ -9677,11 +9681,15 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         and mistral_anchor_admission_active
         and "sonnet" in selected_model.lower()
     )
-    # V6.35 preserves V6.34's models and two-call shape. It changes only
-    # semantic admission: document context cannot merge Views, and each
-    # positive fact must cite both endpoints of the relation it creates.
+    # V6.36 preserves V6.34's models and two-call shape. It changes only
+    # semantic admission: document context cannot merge Views, every positive
+    # fact cites both endpoints of the relation it creates, and each accepted
+    # multi-view hypothesis must be locally connected by those exact facts.
     v635_ada_pair_local_membership_active = (
         v634_ada_haiku_discovery_sonnet_review_active
+    )
+    v636_ada_connected_pair_local_membership_active = (
+        v635_ada_pair_local_membership_active
     )
     discovery_model = (
         DETECTION_V634_ADA_DISCOVERY_MODEL
@@ -10068,8 +10076,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             if group.get("evidence_class") == "object_evidence"
         ]) <= DETECTION_V69_RECONCILIATION_MAX_ISLANDS
     )
-    if v635_ada_pair_local_membership_active:
-        prompt_version = DETECTION_V635_ADA_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION
+    if v636_ada_connected_pair_local_membership_active:
+        prompt_version = DETECTION_V636_ADA_CONNECTED_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION
     elif v69_criteria_reconciliation_active:
         prompt_version = DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION
     registry_visual_sources = build_detection_v5_registry_visual_sources(
@@ -10090,17 +10098,18 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         draft_hypotheses=[],
     )
     review_prompt_with_membership_contract = review_prompt
-    if v635_ada_pair_local_membership_active:
+    if v636_ada_connected_pair_local_membership_active:
         review_prompt_with_membership_contract += (
-            "\n\nV6.35 ADA PAIR-LOCAL MEMBERSHIP CONTRACT:\n"
+            "\n\nV6.36 ADA CONNECTED PAIR-LOCAL MEMBERSHIP CONTRACT:\n"
             "Document title blocks, project identity, author, sheet sequence and "
             "a common fabrication package are context only. They are never positive "
             "merge evidence, so do not emit explicit_document_relation. For every "
             "positive evidence row, cite registry_view sources for the exact two "
             "Views it connects. Do not pool evidence from different pairs into one "
-            "object hypothesis. For a hypothesis with more than two Views, include "
-            "enough pair-local facts to form a connected proof graph, or split it "
-            "into separate hypotheses.\n"
+            "object hypothesis. For a hypothesis with N Views, emit at least N-1 "
+            "pair-local evidence rows that form one connected chain or tree across "
+            "all N Views. Merely citing every View somewhere is insufficient. If you "
+            "cannot provide that connected pair graph, split the hypothesis.\n"
         )
     elif v69_criteria_reconciliation_active:
         review_prompt_with_membership_contract += (
@@ -10392,6 +10401,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v6_35_ada_pair_local_membership_active": (
             v635_ada_pair_local_membership_active
         ),
+        "v6_36_ada_connected_pair_local_membership_active": (
+            v636_ada_connected_pair_local_membership_active
+        ),
         "v6_34_discovery_model": discovery_model,
         "v6_34_membership_review_model": review_model,
         "v6_10_candidate_pair_count": len(v69_preliminary_pairs),
@@ -10658,18 +10670,46 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             )
             semantic_facts = []
             for hypothesis in accepted_hypotheses:
-                root, *members = hypothesis["group_ids"]
-                for member in members:
-                    pair = tuple(sorted((root, member)))
-                    for evidence in hypothesis["evidence"]:
+                if v636_ada_connected_pair_local_membership_active:
+                    hypothesis_group_ids = set(hypothesis["group_ids"])
+                    for evidence_index, evidence in enumerate(hypothesis["evidence"]):
+                        cited_view_ids = sorted({
+                            source_id.removeprefix("registry_view:")
+                            for source_id in evidence.get("source_fact_ids") or []
+                            if isinstance(source_id, str)
+                            and source_id.startswith("registry_view:")
+                            and source_id.removeprefix("registry_view:") in hypothesis_group_ids
+                        })
+                        if len(cited_view_ids) != 2:
+                            semantic_facts_outside_dimension_queue.append({
+                                "reason": "v6_36_hypothesis_evidence_requires_exactly_two_local_views",
+                                "hypothesis_group_ids": sorted(hypothesis_group_ids),
+                                "evidence_index": evidence_index,
+                                "cited_view_ids": cited_view_ids,
+                            })
+                            continue
+                        pair = tuple(cited_view_ids)
                         semantic_facts.append({
                             "group_id_a": pair[0], "group_id_b": pair[1], **evidence,
                         })
-                    if pair not in candidate_q_final_pairs:
-                        semantic_facts_outside_dimension_queue.append({
-                            "reason": "derived_semantic_fact_outside_dimension_queue_accepted",
-                            "group_id_a": pair[0], "group_id_b": pair[1],
-                        })
+                        if pair not in candidate_q_final_pairs:
+                            semantic_facts_outside_dimension_queue.append({
+                                "reason": "derived_semantic_fact_outside_dimension_queue_accepted",
+                                "group_id_a": pair[0], "group_id_b": pair[1],
+                            })
+                else:
+                    root, *members = hypothesis["group_ids"]
+                    for member in members:
+                        pair = tuple(sorted((root, member)))
+                        for evidence in hypothesis["evidence"]:
+                            semantic_facts.append({
+                                "group_id_a": pair[0], "group_id_b": pair[1], **evidence,
+                            })
+                        if pair not in candidate_q_final_pairs:
+                            semantic_facts_outside_dimension_queue.append({
+                                "reason": "derived_semantic_fact_outside_dimension_queue_accepted",
+                                "group_id_a": pair[0], "group_id_b": pair[1],
+                            })
         effective_dimension_unit, dimension_unit_reason = infer_detection_v5_bare_dimension_unit(
             view_evidence_packages,
             document_unit=str(document_dimension_unit_profile.get("unit") or "unknown"),
@@ -10741,10 +10781,25 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             object_hypothesis_audit["rejected"]
         )
         semantic_ledger_audit["object_hypotheses"] = object_hypothesis_audit
-        positive_relation_edges, v5_merge_audit = compile_detection_v5_merge_edges(
-            dimension_relation_edges, accepted_semantic_facts,
-            visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
-        )
+        if v636_ada_connected_pair_local_membership_active:
+            supporting_relation_edges, v5_merge_audit = compile_detection_v5_merge_edges(
+                dimension_relation_edges, accepted_semantic_facts,
+                visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
+                allow_runtime_merges=False, allow_batch_confirmation=False,
+            )
+            membership_edges, membership_audit = (
+                compile_detection_v5_hypothesis_membership_edges(
+                    accepted_hypotheses, accepted_semantic_facts,
+                    visual_groups=semantic_validation_groups,
+                )
+            )
+            positive_relation_edges = [*supporting_relation_edges, *membership_edges]
+            v5_merge_audit["v6_36_pair_local_membership"] = membership_audit
+        else:
+            positive_relation_edges, v5_merge_audit = compile_detection_v5_merge_edges(
+                dimension_relation_edges, accepted_semantic_facts,
+                visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
+            )
         accepted_merge_edges = [
             edge for edge in positive_relation_edges
             if edge["relationship"] == "same_object_view"

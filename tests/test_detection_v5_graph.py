@@ -300,8 +300,95 @@ def test_v572_complete_hypothesis_is_deterministically_adapted_to_tree():
     assert [(edge["group_id_a"], edge["group_id_b"]) for edge in edges] == [
         ("view-001", "view-002"), ("view-001", "view-003"),
     ]
-    assert all(edge["membership_basis"] == "registry_full_page_hypothesis" for edge in edges)
-    assert audit["compiler_version"] == "v5_7_registry_membership_proof_tree"
+    assert all(
+        edge["membership_basis"] == "registry_pair_local_connected_hypothesis"
+        for edge in edges
+    )
+    assert audit["compiler_version"] == "v6_36_registry_pair_local_membership_tree"
+
+
+def test_v636_membership_tree_keeps_only_the_model_cited_local_pairs():
+    views = [
+        {"group_id": f"view-00{index}", "evidence_class": "object_evidence", "page_number": index}
+        for index in range(1, 5)
+    ]
+    hypotheses, _ = compile_detection_v5_object_hypotheses([{
+        "group_ids": ["view-001", "view-002", "view-003", "view-004"],
+        "hypothesis_reason": "Four projections show the same cabinet.",
+        "evidence": [{
+            "evidence_type": "matching_topology", "strength": "standard",
+            "observation": "The same bays recur.", "source_fact_ids": [],
+        }],
+    }], visual_groups=views)
+    facts, _ = compile_detection_v5_semantic_facts([
+        {
+            "group_id_a": "view-001", "group_id_b": "view-004",
+            "evidence_type": "matching_topology", "strength": "standard",
+            "observation": "The same three-bay carcass and door order recur.",
+            "source_fact_ids": [],
+        },
+        {
+            "group_id_a": "view-002", "group_id_b": "view-003",
+            "evidence_type": "unique_geometry", "strength": "standard",
+            "observation": "The same offset circular cut-out and handle layout recur.",
+            "source_fact_ids": [],
+        },
+        {
+            "group_id_a": "view-003", "group_id_b": "view-004",
+            "evidence_type": "matching_topology", "strength": "standard",
+            "observation": "The same shelf bays and return panel recur.",
+            "source_fact_ids": [],
+        },
+    ], visual_groups=views, source_facts=[])
+
+    edges, audit = compile_detection_v5_hypothesis_membership_edges(
+        hypotheses, facts, visual_groups=views,
+    )
+
+    assert [(edge["group_id_a"], edge["group_id_b"]) for edge in edges] == [
+        ("view-001", "view-004"),
+        ("view-002", "view-003"),
+        ("view-003", "view-004"),
+    ]
+    assert audit["rejected"] == []
+
+
+def test_v636_membership_tree_rejects_disconnected_pair_local_evidence():
+    views = [
+        {"group_id": f"view-00{index}", "evidence_class": "object_evidence", "page_number": index}
+        for index in range(1, 5)
+    ]
+    hypotheses, _ = compile_detection_v5_object_hypotheses([{
+        "group_ids": ["view-001", "view-002", "view-003", "view-004"],
+        "hypothesis_reason": "Four projections show the same cabinet.",
+        "evidence": [{
+            "evidence_type": "matching_topology", "strength": "standard",
+            "observation": "The same bays recur.", "source_fact_ids": [],
+        }],
+    }], visual_groups=views)
+    facts, _ = compile_detection_v5_semantic_facts([
+        {
+            "group_id_a": "view-001", "group_id_b": "view-004",
+            "evidence_type": "matching_topology", "strength": "standard",
+            "observation": "The same three-bay carcass and door order recur.",
+            "source_fact_ids": [],
+        },
+        {
+            "group_id_a": "view-002", "group_id_b": "view-003",
+            "evidence_type": "unique_geometry", "strength": "standard",
+            "observation": "The same offset circular cut-out and handle layout recur.",
+            "source_fact_ids": [],
+        },
+    ], visual_groups=views, source_facts=[])
+
+    edges, audit = compile_detection_v5_hypothesis_membership_edges(
+        hypotheses, facts, visual_groups=views,
+    )
+
+    assert edges == []
+    assert audit["rejected"][0]["reason"] == (
+        "membership_hypothesis_pair_local_graph_disconnected"
+    )
 
 
 def test_v571_supporting_graph_cannot_override_registry_membership():

@@ -1738,21 +1738,25 @@ def compile_detection_v5_hypothesis_membership_edges(
     accepted: list[dict[str, Any]] = []
     rejected: list[dict[str, Any]] = []
     for index, hypothesis in enumerate(hypotheses):
-        group_ids = list(hypothesis.get("group_ids") or [])
-        root, *members = group_ids
+        group_ids = sorted({str(group_id) for group_id in hypothesis.get("group_ids") or []})
+        group_id_set = set(group_ids)
+        parent = {group_id: group_id for group_id in group_ids}
+
+        def root(group_id: str) -> str:
+            while parent[group_id] != group_id:
+                parent[group_id] = parent[parent[group_id]]
+                group_id = parent[group_id]
+            return group_id
+
         proposal_edges: list[dict[str, Any]] = []
-        for member in members:
-            pair = tuple(sorted((str(root), str(member))))
-            facts = facts_by_pair.get(pair) or []
-            if not facts:
-                rejected.append({
-                    "index": index,
-                    "reason": "membership_hypothesis_has_no_validated_visual_fact",
-                    "group_ids": group_ids,
-                    "missing_pair": list(pair),
-                })
-                proposal_edges = []
-                break
+        local_pairs = sorted(
+            pair for pair in facts_by_pair
+            if set(pair).issubset(group_id_set)
+        )
+        for pair in local_pairs:
+            if root(pair[0]) == root(pair[1]):
+                continue
+            facts = facts_by_pair[pair]
             proposal_edges.append({
                 "group_id_a": pair[0],
                 "group_id_b": pair[1],
@@ -1773,17 +1777,27 @@ def compile_detection_v5_hypothesis_membership_edges(
                     for fact in facts
                 ],
                 "commercial_inseparability": hypothesis["hypothesis_reason"],
-                "membership_basis": "registry_full_page_hypothesis",
+                "membership_basis": "registry_pair_local_connected_hypothesis",
             })
-        if proposal_edges:
-            edges.extend(proposal_edges)
-            accepted.append({
+            parent[root(pair[1])] = root(pair[0])
+        components = sorted({root(group_id) for group_id in group_ids})
+        if len(components) != 1:
+            rejected.append({
                 "index": index,
+                "reason": "membership_hypothesis_pair_local_graph_disconnected",
                 "group_ids": group_ids,
-                "edge_count": len(proposal_edges),
+                "local_fact_pairs": [list(pair) for pair in local_pairs],
+                "component_count": len(components),
             })
+            continue
+        edges.extend(proposal_edges)
+        accepted.append({
+            "index": index,
+            "group_ids": group_ids,
+            "edge_count": len(proposal_edges),
+        })
     return edges, {
-        "compiler_version": "v5_7_registry_membership_proof_tree",
+        "compiler_version": "v6_36_registry_pair_local_membership_tree",
         "accepted": accepted,
         "rejected": rejected,
     }

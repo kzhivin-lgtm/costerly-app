@@ -19,7 +19,7 @@ from agents.anthropic_adapter import (
     DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
     DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
     DETECTION_V634_ADA_DISCOVERY_MODEL,
-    DETECTION_V635_ADA_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION,
+    DETECTION_V636_ADA_CONNECTED_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
     apply_benchmark_run_suffix,
     build_agent_usage_event,
@@ -1296,10 +1296,11 @@ def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
         "claude-sonnet-4-6",
     ]
     assert usage["prompt_version"] == (
-        DETECTION_V635_ADA_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION
+        DETECTION_V636_ADA_CONNECTED_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION
     )
     assert usage["raw_usage"]["v6_34_ada_haiku_discovery_sonnet_review_active"] is True
     assert usage["raw_usage"]["v6_35_ada_pair_local_membership_active"] is True
+    assert usage["raw_usage"]["v6_36_ada_connected_pair_local_membership_active"] is True
     assert usage["raw_usage"]["v6_10_combined_evidence_review_active"] is False
     assert usage["raw_usage"]["v6_10_candidate_pair_count"] == 0
     assert usage["raw_usage"]["v6_10_reconciliation_pair_count"] == 0
