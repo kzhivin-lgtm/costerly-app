@@ -26,6 +26,17 @@ the complete global post-Discovery set. V6.41 must not change Ada, Page23,
 Assembly Set, quantity, or Evidence ownership. Pending: deploy and Morbergs
 acceptance test, including the recorded batch token audit and final Review size.
 
+ACTIVE EXPERIMENT, V6.42, P0, bounded multilingual Fusion fallback:
+Use a content-only gate, not `unknown` metadata, when Fusion contains a material
+amount of text outside the primary English/Hebrew/Russian workflows. The gate
+may schedule one bounded, text-only Haiku read of facts already owned by locked
+Objects and the existing title-block crops for Document Identity. It may fill
+an absent Project, Partner, Client, source code or explicit quantity only with
+a cited local literal. It cannot change router choice, Island geometry, Object
+membership, Naming, or Evidence ownership. No static Latvian aliases are being
+added. Protected: V6.41 batching and all accepted routes. Pending: deploy and
+Morbergs validation of identity, CF codes, explicit quantities, timing and cost.
+
 CHECKPOINT, V6.23 bounded Naming and Quantity review presentation:
 `c990495`, deployed and audited as
 `notes/DETECTION_V6_23_NAMING_AUDIT_CHECKPOINT_2026_10_26.md`. HSL returns to

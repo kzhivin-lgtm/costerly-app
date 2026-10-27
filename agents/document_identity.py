@@ -17,9 +17,10 @@ from agents.anthropic_adapter import (
     get_secret,
     strip_schema_for_claude,
 )
+from agents.multilingual_evidence import multilingual_fallback_signal
 
 
-DOCUMENT_IDENTITY_VERSION = "document_identity_v4_semantic_title_block"
+DOCUMENT_IDENTITY_VERSION = "document_identity_v5_multilingual_visual_fallback"
 DOCUMENT_IDENTITY_PROMPT_PATH = Path(__file__).parent / "prompts" / "document_identity_prompt.md"
 _FIELDS = ("project_name", "client", "design_partner", "author", "document_date")
 _CORNERS = ("top_left", "top_right", "bottom_left", "bottom_right")
@@ -59,6 +60,38 @@ def unknown_document_identity() -> dict[str, dict[str, Any]]:
         }
         for field in _FIELDS
     }
+
+
+def merge_document_identity_fallback(
+    deterministic_identity: dict[str, dict[str, Any]],
+    visual_identity: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Let bounded title-block vision fill gaps, never replace proven fields."""
+    merged = {
+        field: dict(deterministic_identity.get(field) or unknown_document_identity()[field])
+        for field in _FIELDS
+    }
+    for field in _FIELDS:
+        if str(merged[field].get("value") or "unknown").casefold() != "unknown":
+            continue
+        candidate = visual_identity.get(field)
+        if isinstance(candidate, dict) and str(candidate.get("value") or "unknown").casefold() != "unknown":
+            merged[field] = dict(candidate)
+    return merged
+
+
+def document_identity_multilingual_signal(ocr_package: dict[str, Any]) -> dict[str, int | bool]:
+    """Gate visual identity fallback from Fusion text, never from missing fields."""
+    evidence = ocr_package.get("evidence") if isinstance(ocr_package, dict) else {}
+    values: list[object] = []
+    if isinstance(evidence, dict):
+        for kind in ("text_blocks", "literal_items"):
+            values.extend(
+                item.get("text")
+                for item in evidence.get(kind) or []
+                if isinstance(item, dict)
+            )
+    return multilingual_fallback_signal(values)
 
 
 def _ocr_rows(ocr_package: dict[str, Any]) -> list[tuple[int, list[list[str]]]]:

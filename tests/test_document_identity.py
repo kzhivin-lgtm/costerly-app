@@ -5,7 +5,9 @@ import pytest
 
 from agents.document_identity import (
     build_document_identity_title_block_crops,
+    document_identity_multilingual_signal,
     derive_document_identity_from_ocr,
+    merge_document_identity_fallback,
     unknown_document_identity,
     validate_document_identity,
 )
@@ -52,6 +54,44 @@ def test_document_identity_requires_an_explicit_visible_label_for_known_value():
             allowed_pages={1, 2},
             allowed_corners={"bottom_left"},
         )
+
+
+def test_visual_identity_fallback_fills_only_unknown_deterministic_fields():
+    deterministic = unknown_document_identity()
+    deterministic["project_name"] = {
+        "value": "Known project", "source_page": 2,
+        "source_corner": "ocr_title_block", "source_label": "PROJECT",
+    }
+    visual = unknown_document_identity()
+    visual["project_name"] = {
+        "value": "Wrong replacement", "source_page": 1,
+        "source_corner": "top_right", "source_label": "OBJEKTS",
+    }
+    visual["client"] = {
+        "value": "MAGNUM SOCIAL & MEDICAL CARE SIA", "source_page": 3,
+        "source_corner": "bottom_right", "source_label": "PASŪTĪTĀJS",
+    }
+
+    merged = merge_document_identity_fallback(deterministic, visual)
+
+    assert merged["project_name"] == deterministic["project_name"]
+    assert merged["client"] == visual["client"]
+
+
+def test_multilingual_identity_fallback_is_gated_by_fusion_text_not_unknown_fields():
+    primary_only = document_identity_multilingual_signal({
+        "evidence": {"text_blocks": [{"text": "PROJECT Rooms Заказ כמות"}]},
+    })
+    latvian = document_identity_multilingual_signal({
+        "evidence": {"text_blocks": [{
+            "text": " ".join([
+                "DIZAINA AUTORS GATERIS WORKS PASŪTĪTĀJS MAGNUM",
+            ] * 4),
+        }]},
+    })
+
+    assert primary_only["eligible"] is False
+    assert latvian["eligible"] is True
 
 
 def test_document_identity_reads_project_only_from_explicit_ocr_title_block_label():

@@ -23,7 +23,10 @@ from agents.anthropic_adapter import (
 from agents.detection_agent import run_detection_agent
 from agents.document_identity import (
     DOCUMENT_IDENTITY_VERSION,
+    document_identity_multilingual_signal,
     derive_document_identity_from_ocr,
+    merge_document_identity_fallback,
+    run_document_identity_call,
 )
 from agents.detection_page_images import (
     DEFAULT_PAGE_IMAGE_DPI,
@@ -472,6 +475,7 @@ def _run_deferred_document_identity(
     run_id: str,
     file_name: str,
     ocr_package: dict[str, Any],
+    page_images: list[bytes] | None = None,
 ) -> dict[str, Any]:
     """Fill explicit document fields after File Review is already available."""
     started_at = datetime.now(UTC).isoformat()
@@ -480,6 +484,19 @@ def _run_deferred_document_identity(
     try:
         result = derive_document_identity_from_ocr(ocr_package)
         identity = result["identity"]
+        visual_fallback: dict[str, Any] | None = None
+        fallback_error = ""
+        language_signal = document_identity_multilingual_signal(ocr_package)
+        if page_images and bool(language_signal["eligible"]):
+            try:
+                visual_fallback = run_document_identity_call(page_images=page_images)
+                identity = merge_document_identity_fallback(
+                    identity, visual_fallback["identity"],
+                )
+            except Exception as exc:
+                # Identity is supplementary metadata. A visual fallback cannot
+                # invalidate Detection or discard the deterministic fields.
+                fallback_error = str(exc)
         for field, evidence in identity.items():
             value = str(evidence.get("value") or "unknown")
             if value == "unknown":
@@ -499,16 +516,31 @@ def _run_deferred_document_identity(
             company_id=company_id,
             run_id=run_id,
             file_name=file_name,
-            model=str(result["model"]),
+            model=str((visual_fallback or result)["model"]),
             prompt_version=DOCUMENT_IDENTITY_VERSION,
             started_at=started_at,
             finished_at=datetime.now(UTC).isoformat(),
-            duration_seconds=float(result["duration_seconds"]),
+            duration_seconds=(
+                float(result["duration_seconds"])
+                + float((visual_fallback or {}).get("duration_seconds") or 0)
+            ),
             raw_usage={
-                "input_tokens": result["input_tokens"],
-                "output_tokens": result["output_tokens"],
+                "input_tokens": (
+                    int(result["input_tokens"])
+                    + int((visual_fallback or {}).get("input_tokens") or 0)
+                ),
+                "output_tokens": (
+                    int(result["output_tokens"])
+                    + int((visual_fallback or {}).get("output_tokens") or 0)
+                ),
                 "identity": identity,
-                "crop_audit": result["crop_audit"],
+                "crop_audit": (visual_fallback or result)["crop_audit"],
+                "visual_fallback": {
+                    "attempted": visual_fallback is not None or bool(fallback_error),
+                    "succeeded": visual_fallback is not None,
+                    "error": fallback_error,
+                    "language_signal": language_signal,
+                },
                 "persistence_audit": persistence_audit,
                 "deferred": True,
             },
@@ -711,6 +743,7 @@ def process_uploaded_rfq(
             run_id=run_id,
             file_name=file_name,
             ocr_package=deepcopy(ocr_package),
+            page_images=deepcopy(page_images),
         )
     if locked_objects is not None:
         naming_future = _NAMING_EXECUTOR.submit(

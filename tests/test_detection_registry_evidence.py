@@ -17,6 +17,7 @@ from agents.detection_agent import (
 )
 from agents.anthropic_adapter import (
     DetectionVisualRegistryValidationError,
+    _apply_detection_v642_multilingual_observations,
     apply_detection_explicit_quantities,
     extract_detection_explicit_quantity_candidates,
 )
@@ -125,6 +126,36 @@ def test_caption_bound_explicit_quantity_replaces_registry_default():
         "published_quantity": 5,
         "quantity_explicit": True,
     }]
+
+
+def test_multilingual_fallback_publishes_only_literal_facts_owned_by_locked_object():
+    registry = {"objects": [{
+        "object_id": "object-003", "transport_label": "Object 03",
+        "quantity": 1, "quantity_explicit": False,
+        "visual_group_ids": ["view-003"],
+    }]}
+    evidence = [{
+        "visual_group_id": "view-003", "source_facts": [{
+            "fact_id": "SF003", "text": "LAPAS NOSAUKUMS: CF-13 LETE. DAUDZUMS: 2 Gab.",
+        }],
+    }]
+
+    resolved, audit = _apply_detection_v642_multilingual_observations(
+        registry,
+        view_evidence_packages=evidence,
+        observations=[{
+            "object_id": "object-003", "fact_id": "SF003",
+            "source_object_code": "CF-13", "explicit_quantity": 2,
+        }, {
+            "object_id": "object-003", "fact_id": "SF-not-owned",
+            "source_object_code": "CF-99", "explicit_quantity": 9,
+        }],
+    )
+
+    assert resolved["objects"][0]["transport_label"] == "CF-13"
+    assert resolved["objects"][0]["quantity"] == 2
+    assert resolved["objects"][0]["quantity_explicit"] is True
+    assert audit[1]["reason"] == "fact_not_owned_by_object"
 
 
 def test_conflicting_caption_quantities_preserve_the_safe_default():

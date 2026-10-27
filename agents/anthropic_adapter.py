@@ -20,6 +20,8 @@ from typing import Any, Callable
 
 import anthropic
 
+from agents.multilingual_evidence import multilingual_fallback_signal
+
 from config import agent_cost_category, calculate_llm_cost_usd
 from agents.prompt_loader import (
     load_detection_agent_prompt,
@@ -161,6 +163,10 @@ DETECTION_V641_DISCOVERY_BATCH_ESTIMATE_TOKENS = 105_000
 DETECTION_V641_DISCOVERY_MAX_EXACT_INPUT_TOKENS = 160_000
 DETECTION_V641_IMAGE_PIXELS_PER_ESTIMATED_TOKEN = 750
 DETECTION_V641_REVIEW_MAX_IMAGES = 100
+DETECTION_V642_MULTILINGUAL_EVIDENCE_PROMPT_VERSION = (
+    "detection_v6_42_multilingual_local_evidence_fallback"
+)
+DETECTION_V642_MULTILINGUAL_EVIDENCE_MAX_TOKENS = 2_048
 DETECTION_V5_MEMBERSHIP_MAX_TOKENS = 6_144
 DETECTION_V68_ALL_PAIR_MEMBERSHIP_MAX_ISLANDS = 10
 DETECTION_V69_RECONCILIATION_MAX_ISLANDS = 10
@@ -6521,6 +6527,225 @@ def apply_detection_explicit_quantities(
     return resolved, audit
 
 
+_DETECTION_V642_MULTILINGUAL_EVIDENCE_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["observations"],
+    "properties": {
+        "observations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": [
+                    "object_id", "fact_id", "source_object_code", "explicit_quantity",
+                ],
+                "properties": {
+                    "object_id": {"type": "string"},
+                    "fact_id": {"type": "string"},
+                    "source_object_code": {"type": "string"},
+                    "explicit_quantity": {"type": "integer", "minimum": 0},
+                },
+            },
+        },
+    },
+}
+
+
+def _detection_v642_local_evidence_context(
+    registry: dict[str, Any],
+    view_evidence_packages: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Give the model only facts geometrically owned by a locked Object."""
+    packages = {
+        str(package.get("visual_group_id") or ""): package
+        for package in view_evidence_packages
+        if isinstance(package, dict)
+    }
+    context: list[dict[str, Any]] = []
+    for item in registry.get("objects") or []:
+        if not isinstance(item, dict):
+            continue
+        facts: list[dict[str, str]] = []
+        seen_fact_ids: set[str] = set()
+        for group_id in item.get("visual_group_ids") or []:
+            package = packages.get(str(group_id))
+            if package is None:
+                continue
+            for fact in package.get("source_facts") or []:
+                fact_id = str(fact.get("fact_id") or "") if isinstance(fact, dict) else ""
+                text = str(fact.get("text") or "") if isinstance(fact, dict) else ""
+                if not fact_id or not text or fact_id in seen_fact_ids:
+                    continue
+                seen_fact_ids.add(fact_id)
+                facts.append({"fact_id": fact_id, "text": text[:320]})
+        # This is enrichment only. Bound each Object independently, preserving
+        # the earliest local facts rather than sending a document-wide OCR dump.
+        if facts:
+            context.append({
+                "object_id": str(item.get("object_id") or ""),
+                "facts": facts[:12],
+            })
+    return context
+
+
+def _apply_detection_v642_multilingual_observations(
+    registry: dict[str, Any],
+    *,
+    view_evidence_packages: list[dict[str, Any]],
+    observations: object,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Publish only cited, local multilingual facts to an immutable Registry."""
+    resolved = copy.deepcopy(registry)
+    packages = {
+        str(package.get("visual_group_id") or ""): package
+        for package in view_evidence_packages
+        if isinstance(package, dict)
+    }
+    local_facts_by_object: dict[str, dict[str, str]] = {}
+    for item in resolved.get("objects") or []:
+        if not isinstance(item, dict):
+            continue
+        facts: dict[str, str] = {}
+        for group_id in item.get("visual_group_ids") or []:
+            for fact in (packages.get(str(group_id)) or {}).get("source_facts") or []:
+                if isinstance(fact, dict) and str(fact.get("fact_id") or ""):
+                    facts[str(fact["fact_id"])] = str(fact.get("text") or "")
+        local_facts_by_object[str(item.get("object_id") or "")] = facts
+
+    accepted: dict[str, dict[str, list[dict[str, Any]]]] = {}
+    audit: list[dict[str, Any]] = []
+    for observation in observations if isinstance(observations, list) else []:
+        if not isinstance(observation, dict):
+            continue
+        object_id = str(observation.get("object_id") or "")
+        fact_id = str(observation.get("fact_id") or "")
+        text = local_facts_by_object.get(object_id, {}).get(fact_id)
+        row = {"object_id": object_id, "fact_id": fact_id, "decision": "rejected"}
+        if text is None:
+            row["reason"] = "fact_not_owned_by_object"
+            audit.append(row)
+            continue
+        code = _canonical_source_object_code(str(observation.get("source_object_code") or ""))
+        quantity = observation.get("explicit_quantity")
+        code_matches = {
+            _canonical_source_object_code(match.group(0))
+            for match in _SOURCE_OBJECT_CODE_RE.finditer(text)
+        }
+        valid_code = bool(code) and code in code_matches
+        valid_quantity = (
+            isinstance(quantity, int) and 1 <= quantity <= 999_999
+            and re.search(rf"(?<!\d){quantity}(?!\d)", text) is not None
+        )
+        if not valid_code and not valid_quantity:
+            row["reason"] = "no_literal_local_code_or_quantity"
+            audit.append(row)
+            continue
+        accepted.setdefault(object_id, {"codes": [], "quantities": []})
+        if valid_code:
+            accepted[object_id]["codes"].append({"value": code, "fact_id": fact_id})
+        if valid_quantity:
+            accepted[object_id]["quantities"].append({"value": quantity, "fact_id": fact_id})
+        row.update({"decision": "accepted_local_literal", "code": code if valid_code else "", "quantity": quantity if valid_quantity else None})
+        audit.append(row)
+
+    for item in resolved.get("objects") or []:
+        object_id = str(item.get("object_id") or "")
+        values = accepted.get(object_id) or {"codes": [], "quantities": []}
+        codes = {str(row["value"]) for row in values["codes"]}
+        quantities = {int(row["value"]) for row in values["quantities"]}
+        if len(codes) == 1 and str(item.get("transport_label") or "").startswith("Object "):
+            item["transport_label"] = next(iter(codes))
+        if len(quantities) == 1 and not bool(item.get("quantity_explicit")):
+            item["quantity"] = next(iter(quantities))
+            item["quantity_explicit"] = True
+    return resolved, audit
+
+
+def apply_detection_v642_multilingual_evidence_fallback(
+    registry: dict[str, Any],
+    *,
+    view_evidence_packages: list[dict[str, Any]],
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any] | None]:
+    """Use one bounded text-only read when Fusion carries non-primary text.
+
+    This call receives no page images, no candidate regions and no pair graph. It
+    cannot influence route selection or object membership, and every published
+    value must be a literal from a fact already owned by that locked Object.
+    """
+    source_texts = [
+        fact.get("text")
+        for package in view_evidence_packages
+        if isinstance(package, dict)
+        for fact in package.get("source_facts") or []
+        if isinstance(fact, dict)
+    ]
+    signal = multilingual_fallback_signal(source_texts)
+    audit: dict[str, Any] = {
+        "prompt_version": DETECTION_V642_MULTILINGUAL_EVIDENCE_PROMPT_VERSION,
+        "language_signal": signal,
+        "attempted": False,
+        "published_observations": [],
+        "error": "",
+    }
+    if not bool(signal["eligible"]):
+        return registry, audit, None
+    context = _detection_v642_local_evidence_context(registry, view_evidence_packages)
+    if not context:
+        audit["error"] = "no_locked_local_facts"
+        return registry, audit, None
+    prompt = (
+        "Read the supplied local source facts in their original language. "
+        "For each locked object, return an observation only when one cited fact "
+        "explicitly identifies that same local object with a short source code, "
+        "or explicitly binds a commercial quantity to it. Do not infer from "
+        "dimensions, sheet numbers, material counts, nearby objects or document "
+        "context. The supplied object boundaries are immutable. Use an empty "
+        "string for no code and 0 for no quantity.\n\nLOCAL FACTS:\n"
+        + json.dumps(context, ensure_ascii=False, separators=(",", ":"))
+    )
+    started = time.perf_counter()
+    try:
+        response = create_claude_message(
+            get_anthropic_client(),
+            model=DETECTION_V634_ADA_DISCOVERY_MODEL,
+            max_tokens=DETECTION_V642_MULTILINGUAL_EVIDENCE_MAX_TOKENS,
+            messages=[{"role": "user", "content": prompt}],
+            output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
+                _DETECTION_V642_MULTILINGUAL_EVIDENCE_SCHEMA
+            )}},
+        )
+        payload = json.loads(extract_text_from_claude_response(response))
+        resolved, published = _apply_detection_v642_multilingual_observations(
+            registry,
+            view_evidence_packages=view_evidence_packages,
+            observations=payload.get("observations"),
+        )
+        usage_values = getattr(response, "usage", None)
+        input_tokens = int(getattr(usage_values, "input_tokens", 0) or 0)
+        output_tokens = int(getattr(usage_values, "output_tokens", 0) or 0)
+        costs = calculate_llm_cost_usd(
+            model=DETECTION_V634_ADA_DISCOVERY_MODEL,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+        )
+        usage = {
+            "model": DETECTION_V634_ADA_DISCOVERY_MODEL,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "input_cost_usd": costs["input_cost_usd"],
+            "output_cost_usd": costs["output_cost_usd"],
+            "total_cost_usd": costs["total_cost_usd"],
+            "duration_seconds": round(time.perf_counter() - started, 3),
+        }
+        audit.update({"attempted": True, "context_object_count": len(context), "published_observations": published})
+        return resolved, audit, usage
+    except Exception as exc:
+        # The fallback is supplementary and must not invalidate accepted Detection.
+        audit.update({"attempted": True, "error": str(exc), "duration_seconds": round(time.perf_counter() - started, 3)})
+        return registry, audit, None
+
+
 def assign_detection_page_local_view_labels(
     view_evidence_packages: list[dict[str, Any]],
 ) -> dict[str, dict[str, Any]]:
@@ -11631,6 +11856,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             view_evidence_packages=view_evidence_packages,
         )
         registry_objects = registry_objects["objects"]
+        registry_objects, multilingual_evidence_audit, multilingual_evidence_usage = (
+            apply_detection_v642_multilingual_evidence_fallback(
+                {"objects": registry_objects},
+                view_evidence_packages=view_evidence_packages,
+            )
+        )
+        registry_objects = registry_objects["objects"]
         registry_graph_review_required_object_ids = sorted({
             *(
                 anchor_to_object_id[group_id]
@@ -11833,6 +12065,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "registry_graph_review_required_object_ids": registry_graph_review_required_object_ids,
         "registry_metadata_audit": registry_metadata_audit,
         "explicit_quantity_audit": explicit_quantity_audit,
+        "v6_42_multilingual_evidence_fallback": multilingual_evidence_audit,
         "graph_page_coverage_supplements": graph_page_coverage_supplements,
         "page_coverage_audit": page_coverage_audit,
         "proof_graph_components": [
@@ -11884,6 +12117,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     reconciliation_usage = diagnostics.get("v6_10_reconciliation_review")
     if isinstance(reconciliation_usage, dict):
         provider_call_usages.append(reconciliation_usage)
+    if isinstance(multilingual_evidence_usage, dict):
+        provider_call_usages.append(multilingual_evidence_usage)
     total_input_tokens = sum(int(call["input_tokens"]) for call in provider_call_usages)
     total_output_tokens = sum(int(call["output_tokens"]) for call in provider_call_usages)
     def summed_provider_cost(field: str) -> str | None:
