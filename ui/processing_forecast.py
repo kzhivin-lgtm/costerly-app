@@ -158,16 +158,26 @@ def build_stage_progress_plan(
     # calibrated to a short real lap, rather than treating every one-page
     # document as a 40-second document before the first useful observation.
     discovery_seconds = [
-        round(model_multiplier * max(7.0, 3.0 + tokens / 4_500.0), 1)
+        round(model_multiplier * max(9.0, 3.0 + tokens / 3_000.0), 1)
         for tokens in batch_tokens
     ]
     review_seconds = round(
-        model_multiplier * max(6.0, 3.5 + review_images * 0.45), 1,
+        model_multiplier * max(7.0, 4.0 + review_images * 0.45), 1,
     )
-    registry_seconds = round(max(2.0, 1.5 + candidate_regions * 0.04), 1)
-    saving_seconds = 1.5
+    registry_seconds = round(max(3.0, 2.0 + candidate_regions * 0.04), 1)
+    saving_seconds = 2.0
+    # The File Review payload and first render follow Detection but are still
+    # part of the lap the user sees. Keep that explicit in the plan instead of
+    # allowing a finished Detection result to teleport the bar to 100%.
+    handoff_seconds = 3.0
     observed_seconds = max(1.0, float(elapsed_seconds))
-    unscaled_remaining = sum(discovery_seconds) + review_seconds + registry_seconds + saving_seconds
+    unscaled_remaining = (
+        sum(discovery_seconds)
+        + review_seconds
+        + registry_seconds
+        + saving_seconds
+        + handoff_seconds
+    )
     historical_forecast = estimate_file_review_seconds(
         history or [], page_count=page_count,
     )
@@ -212,6 +222,11 @@ def build_stage_progress_plan(
             "id": "saving",
             "label": "Saving results",
             "expected_seconds": round(saving_seconds * scale, 1),
+        },
+        {
+            "id": "file_review_handoff",
+            "label": "Preparing File Review",
+            "expected_seconds": round(handoff_seconds * scale, 1),
         },
     ])
     return {

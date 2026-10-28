@@ -778,7 +778,12 @@ def signal_app_ready_to_embed(
                     return "new_estimate";
                 }
                 if (control.closest(".st-key-header_last_estimate")) {
-                    return "last_estimate";
+                    // Last Estimate is a cached Streamlit callback. The
+                    // generic outer transition shell can outlive a valid
+                    // click and has produced client-only timeouts with zero
+                    // Python runs. Let the callback render File Review
+                    // directly instead of covering it with that shell.
+                    return null;
                 }
                 if (control.closest(".st-key-open_company_account")) {
                     if (currentScreen() === "upload") return "upload_to_profile";
@@ -3353,11 +3358,42 @@ def install_upload_interaction_guards(shell_html: str) -> None:
         (() => {
             const parentWindow = window.parent;
             const parentDoc = parentWindow.document;
-            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_19";
+            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_20";
             const oldMarker = parentDoc.getElementById(markerId);
 
             if (oldMarker) {
                 oldMarker.remove();
+            }
+
+            // V6.59's controller was a closure with no shutdown path. It can
+            // retain its old 1.15%-per-second limiter after a deploy, so no
+            // server-side progress repair reaches the visible bar. A one-time
+            // idle refresh is the only safe way to remove that already-running
+            // closure. It never runs while an upload or Processing is active.
+            const legacyMarker = parentDoc.getElementById(
+                "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_19"
+            );
+            const migrationKey = "costerly-upload-runtime-v1120-migrated";
+            const legacyInstalled = Boolean(
+                parentWindow.__costerlyUploadInteractionGuardsV1119Installed
+            );
+            const activeProcessing = Boolean(
+                parentDoc.getElementById("costerly-processing-screen-active") ||
+                parentDoc.getElementById("costerly-upload-processing-shell")
+            );
+            if ((legacyMarker || legacyInstalled) && !activeProcessing &&
+                parentWindow.sessionStorage.getItem(migrationKey) !== "1") {
+                parentWindow.sessionStorage.setItem(migrationKey, "1");
+                parentWindow.location.reload();
+                return;
+            }
+
+            const previousRuntime = parentWindow.__costerlyUploadInteractionRuntime;
+            if (previousRuntime && previousRuntime.version === "v1120") {
+                return;
+            }
+            if (previousRuntime && typeof previousRuntime.dispose === "function") {
+                previousRuntime.dispose();
             }
 
             const script = parentDoc.createElement("script");
@@ -3373,9 +3409,11 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const REAL_PROCESSING_MARKER_ID = 'costerly-processing-screen-active';
                 const FILE_REVIEW_MARKER_ID = 'costerly-file-review-screen-active';
                 const SHELL_ACTIVE_CLASS = 'costerly-upload-processing-shell-active';
-                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1119';
-                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1119';
-                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1119Installed';
+                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1120';
+                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1120';
+                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1120Installed';
+                const RUNTIME_KEY = '__costerlyUploadInteractionRuntime';
+                const RUNTIME_VERSION = 'v1120';
                 const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAtV5';
                 const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimerV5';
                 const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSecondsV5';
@@ -3385,6 +3423,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const PROCESSING_COMPLETE_STYLED_OBSERVER_KEY = '__costerlyProcessingToReviewStyledObserverV5';
                 const PROCESSING_COMPLETE_EXPECTED_RUN_ID_KEY = '__costerlyProcessingToReviewRunIdV5';
                 const RFQ_UPLOAD_CYCLE_ID_KEY = '__costerlyRfqUploadCycleIdV5';
+                let disposed = false;
                 let clearDragTimer = null;
                 let watcher = null;
                 let slowTimer = null;
@@ -3418,11 +3457,13 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 }
 
                 function clearDragover() {
+                    if (disposed) return;
                     window.clearTimeout(clearDragTimer);
                     setDragover(null, false);
                 }
 
                 function forceDragover(event) {
+                    if (disposed) return;
                     if (!uploadScreenIsActive()) {
                         clearDragover();
                         return;
@@ -3576,6 +3617,9 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                             ),
                             lastUpdatedAtMs: Date.now(),
                             uiForecastSeconds: 0,
+                            observedStageId: '',
+                            observedStageStartedAtElapsed: 0,
+                            observedCompletedSeconds: 0,
                         };
                         window[STAGE_PROGRESS_STATE_KEY] = state;
                     }
@@ -3730,6 +3774,41 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                             )
                         );
                     }
+                    // A completed stage is evidence about this file's actual
+                    // provider speed. It may extend the remaining forecast,
+                    // never reset the bar or pull it backwards. This keeps a
+                    // short, slow request from arriving at an exhausted 90%.
+                    if (state.observedStageId !== activeStageId) {
+                        if (state.observedStageId) {
+                            state.observedCompletedSeconds += Math.max(
+                                0,
+                                fullLapElapsedSeconds - state.observedStageStartedAtElapsed
+                            );
+                        } else {
+                            // The plan arrives after OCR and Fusion. Count
+                            // that already-visible portion once before timing
+                            // the first model stage.
+                            state.observedCompletedSeconds = fullLapElapsedSeconds;
+                        }
+                        state.observedStageId = activeStageId;
+                        state.observedStageStartedAtElapsed = fullLapElapsedSeconds;
+                        const expectedCompleted = stageDurations
+                            .slice(0, activeStageIndex)
+                            .reduce((sum, value) => sum + value, 0);
+                        const observedMultiplier = expectedCompleted > 0
+                            ? Math.max(0.75, Math.min(
+                                1.75,
+                                state.observedCompletedSeconds / expectedCompleted
+                            ))
+                            : 1;
+                        const remainingExpected = stageDurations
+                            .slice(activeStageIndex)
+                            .reduce((sum, value) => sum + value, 0);
+                        state.uiForecastSeconds = Math.max(
+                            state.uiForecastSeconds,
+                            fullLapElapsedSeconds + remainingExpected * observedMultiplier
+                        );
+                    }
                     const forecastSeconds = state.uiForecastSeconds;
                     updateForecastLabel(forecastSeconds);
                     const stageFloor = 100 * completedDuration / totalDuration;
@@ -3760,6 +3839,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 }
 
                 function updateElapsed() {
+                    if (disposed) return;
                     const startedAt = Number(window[ELAPSED_STARTED_AT_KEY] || 0);
                     if (!startedAt) return;
 
@@ -3984,6 +4064,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 }
 
                 function showShell(source) {
+                    if (disposed) return;
                     if (!uploadScreenIsActive()) return;
                     if (realProcessingIsActive()) return;
 
@@ -4079,6 +4160,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 }
 
                 const observer = new MutationObserver(() => {
+                    if (disposed) return;
                     bindInputs();
                     if (!uploadScreenIsActive() && !realProcessingIsActive()) {
                         clearDragover();
@@ -4121,6 +4203,22 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 bindGlobalListeners();
                 bindInputs();
                 startWatcher();
+                window[RUNTIME_KEY] = {
+                    version: RUNTIME_VERSION,
+                    dispose: () => {
+                        if (disposed) return;
+                        disposed = true;
+                        observer.disconnect();
+                        window.clearInterval(window[ELAPSED_TIMER_KEY]);
+                        window[ELAPSED_TIMER_KEY] = null;
+                        window.clearTimeout(clearDragTimer);
+                        window.clearTimeout(slowTimer);
+                        if (window[RUNTIME_KEY]?.version === RUNTIME_VERSION) {
+                            delete window[RUNTIME_KEY];
+                        }
+                        window[INSTALLED_FLAG] = false;
+                    },
+                };
             }.toString() + ")();";
 
             parentDoc.head.appendChild(script);

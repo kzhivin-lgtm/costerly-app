@@ -59,6 +59,7 @@ from ui.processing_forecast import (
 from ui.js_guards import (
     install_company_logo_picker_guard,
     install_upload_interaction_guards,
+    signal_app_ready_to_embed,
 )
 from screens.processing import expected_file_review_seconds
 from use_cases.rfq_processing import (
@@ -626,13 +627,14 @@ def test_stage_progress_plan_keeps_one_page_cold_start_near_short_real_lap():
         },
     )
 
-    assert plan["forecast_seconds"] == 18
+    assert plan["forecast_seconds"] == 26
     assert [stage["id"] for stage in plan["stages"]] == [
         "pre_fusion",
         "discovery_1",
         "membership_review",
         "registry_assembly",
         "saving",
+        "file_review_handoff",
     ]
 
 
@@ -751,13 +753,15 @@ def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signal
     assert "fullLapElapsedSeconds" in source
     assert "nextStageFloor" in source
     assert "stageCeiling" in source
+    assert "observedCompletedSeconds" in source
+    assert "__costerlyUploadInteractionRuntime" in source
     assert "advanceProgress(state, calculated)" in source
     assert "function visibleProgressNode(stage)" in source
     assert "writeProgress(percent)" in source
     assert "syncForecastFromStage(stage)" in source
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_19" in source
-    assert "runtimeVersion = 'v1119'" not in source
-    assert "parentWindow.location.reload();" not in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_20" in source
+    assert "costerly-upload-runtime-v1120-migrated" in source
+    assert "parentWindow.location.reload();" in source
     assert "function finalizationState(stage)" in source
     assert "function advanceFinalization(state)" in source
     assert "function finishFinalization()" in source
@@ -793,12 +797,20 @@ def test_processing_cycle_persists_ocr_page_count_for_future_forecasts():
 def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():
     source = getsource(install_upload_interaction_guards)
 
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_19" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_20" in source
     assert "function uploadScreenIsActive()" in source
     assert "document.querySelector('.upload-screen-active')" in source
     assert "if (!uploadScreenIsActive()) return;" in source
     assert "if (uploadScreenIsActive() && dropzone && dropHasFiles(event))" in source
     assert "costerly:rfq-upload-selected" in source
+
+
+def test_last_estimate_uses_its_native_callback_without_outer_transition_shell():
+    source = getsource(signal_app_ready_to_embed)
+
+    assert 'if (control.closest(".st-key-header_last_estimate")) {' in source
+    assert 'return "last_estimate";' not in source
+    assert "cached Streamlit callback" in source
 
 
 def test_upload_screen_uses_a_fresh_widget_identity_for_each_estimate_cycle():

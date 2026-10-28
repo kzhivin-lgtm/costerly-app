@@ -108,6 +108,23 @@ and `Last Estimate` returns the same completed review from cache without a
 multi-second grey load. Detection, OCR, Fusion, router, objects, Evidence,
 Naming, Preview and provider calls are protected.
 
+ACTIVE, V6.62, P0, versioned browser progress controller:
+Live V6.61 evidence invalidates further coefficient-only tuning. The deployed
+page retained V6.59's closure, including its 1.15%-per-second limiter: a
+26-second one-page cycle therefore displayed about 30% progress despite newer
+server code. The same trace shows `Last Estimate` can reach a generic client
+transition timeout with `python_runs=0`, so a server-session cache cannot be
+the first fix. Replace the progress runtime with a versioned controller that
+can dispose its observers and timers. Migrate the one non-disposable V6.59
+runtime through exactly one idle Upload/File Review reload, never during an
+upload or Processing. The controller owns one monotonic bar, recalibrates its
+remaining forecast only forward from observed completed-stage duration, and
+keeps explicit File Review handoff time in the plan. Remove `Last Estimate`
+from the generic outer transition overlay so its native Streamlit callback and
+the retained File Review cache can operate directly. Require production
+evidence of the controller version, stage-plan receipt, stage transitions,
+cache hit and exactly one Python callback before accepting.
+
 ACTIVE, V6.59, P0, New Estimate to Upload client-transition observability:
 The evidence rejects server-side auth, Supabase, and Upload rendering as the
 source of the reported 3-4 second warm navigation: prior successful
