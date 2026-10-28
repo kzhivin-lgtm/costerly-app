@@ -108,7 +108,7 @@ and `Last Estimate` returns the same completed review from cache without a
 multi-second grey load. Detection, OCR, Fusion, router, objects, Evidence,
 Naming, Preview and provider calls are protected.
 
-ACTIVE, V6.63, P0, retained File Review integrity and explicit caption quantity:
+CHECKPOINT, V6.63, P0, retained File Review integrity and explicit caption quantity:
 The accepted V6.62 Progress controller and File Review handoff remain protected.
 The `New Estimate -> Last Estimate` cache preserved an early review payload but
 discarded its deferred Naming state while leaving Streamlit's old empty input
@@ -123,6 +123,13 @@ unique bounded top caption halo. Acceptance: restored names remain canonical
 through repeated New Estimate and Last Estimate navigation, and the printed
 PODDON quantity publishes as five without assigning nearby dimensions or
 another object's caption.
+
+Owner acceptance, 2026-10-28: deployed from `main` at `e97933f`. A live rerun
+returned the printed PODDON quantity as five. Repeated `New Estimate -> Last
+Estimate` navigation retained names and did not recreate the name-conflict
+banner. Focused verification remains `78 passed, 1 deselected` (the deselected
+case is the pre-existing static source-order test). Protected checkpoint:
+`notes/DETECTION_V6_63_FILE_REVIEW_RESTORE_QUANTITY_CHECKPOINT_2026_10_28.md`.
 
 ACTIVE, V6.62, P0, versioned browser progress controller:
 Live V6.61 evidence invalidates further coefficient-only tuning. The deployed

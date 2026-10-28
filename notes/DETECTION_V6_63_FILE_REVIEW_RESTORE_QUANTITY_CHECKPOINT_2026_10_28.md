@@ -2,9 +2,9 @@
 
 Date: 2026-10-28
 
-Status: owner-requested technical checkpoint. V6.62 Progress and File Review
-handoff were accepted by live UI observation. V6.63 has automated verification
-and requires one production witness after deployment.
+Status: owner-accepted production checkpoint. V6.62 Progress and File Review
+handoff remain protected. V6.63 was deployed from `main` at `e97933f` and
+accepted by the owner after a live rerun and repeated navigation check.
 
 ## Protected baseline
 
@@ -45,11 +45,14 @@ captions remain excluded.
   the pre-fix failure: both persisted objects had quantity one and the quantity
   audit had no candidates, while the source PDF contains `04 / ПОДДОН 5 ШТ`
   above the second View.
+- Live production witness after `e97933f`: the second object returned quantity
+  `5`; repeated `New Estimate -> Last Estimate` navigation did not show a
+  name-conflict banner and retained the visible object names.
 
-## Required live witness
+## Accepted behaviour
 
-After deployment, process `Стейшен и поддон.pdf` once and verify:
+The accepted result is deliberately narrow:
 
 1. the second object has quantity `5` and no red quantity warning;
-2. navigate `New Estimate -> Last Estimate` repeatedly while Naming completes;
+2. `New Estimate -> Last Estimate` can be repeated while Naming completes;
 3. no name-conflict banner appears and the same persisted names remain visible.

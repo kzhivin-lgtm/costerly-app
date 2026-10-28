@@ -1,5 +1,19 @@
 # Done Log
 
+Detection V6.63 retained File Review and caption quantity checkpoint `e97933f`:
+restores durable Naming before File Review object widgets are created and clears
+only stale retained name-widget values, preventing a cached empty card from
+overwriting or conflicting with its saved name. It also associates an explicit
+quantity only when a unique bounded caption strip immediately above one View
+contains the quantity marker, preserving normal bbox ownership and excluding
+dimensions, unlabelled numbers, side notes and ambiguous captions. Owner
+accepted the live rerun of `Стейшен и поддон.pdf`: PODDON returned quantity 5,
+and repeated New Estimate to Last Estimate navigation retained names without a
+conflict banner. Focused verification: 78 passed, 1 pre-existing static test
+deselected. Full evidence:
+`notes/DETECTION_V6_63_FILE_REVIEW_RESTORE_QUANTITY_CHECKPOINT_2026_10_28.md`,
+завершена 28.10
+
 Detection V6.58 Processing progress checkpoint `9374888`: owner accepted the
 ordinary HSL Processing screen after a live run. One persistent browser shell
 now owns the visible progress fill for the full cycle, starts at zero, advances
