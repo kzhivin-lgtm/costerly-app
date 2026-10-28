@@ -6359,6 +6359,9 @@ _DIMENSION_HALO_MIN_VALUE = Decimal("20")
 _DIMENSION_HALO_MIN_PX = 80
 _DIMENSION_HALO_MAX_PX = 180
 _DIMENSION_HALO_SHORT_SIDE_RATIO = 0.12
+_QUANTITY_CAPTION_HALO_MIN_PX = 80
+_QUANTITY_CAPTION_HALO_MAX_PX = 200
+_QUANTITY_CAPTION_HORIZONTAL_RATIO = 0.18
 
 
 def _detection_v5_dimension_halo(
@@ -6384,6 +6387,36 @@ def _detection_v5_dimension_halo(
         "top_left_y": bbox["top_left_y"] - margin,
         "bottom_right_x": bbox["bottom_right_x"] + margin,
         "bottom_right_y": bbox["bottom_right_y"] + margin,
+    }
+
+
+def _detection_quantity_caption_halo(
+    bbox: dict[str, Any],
+) -> dict[str, float] | None:
+    """Return the bounded top strip where an authored object caption may sit.
+
+    Unlike the all-sides dimension halo, this zone is only above one View and
+    is considered solely for text that contains an explicit quantity marker.
+    It preserves ownership of nearby dimensions and component notes while
+    allowing common drawing captions such as ``04 / ПОДДОН 5 ШТ``.
+    """
+    keys = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
+    if not all(isinstance(bbox.get(key), (int, float)) for key in keys):
+        return None
+    width = float(bbox["bottom_right_x"] - bbox["top_left_x"])
+    height = float(bbox["bottom_right_y"] - bbox["top_left_y"])
+    if width <= 0 or height <= 0:
+        return None
+    vertical_margin = min(
+        _QUANTITY_CAPTION_HALO_MAX_PX,
+        max(_QUANTITY_CAPTION_HALO_MIN_PX, round(min(width, height) * 0.5)),
+    )
+    horizontal_margin = max(40, round(width * _QUANTITY_CAPTION_HORIZONTAL_RATIO))
+    return {
+        "top_left_x": bbox["top_left_x"] - horizontal_margin,
+        "top_left_y": bbox["top_left_y"] - vertical_margin,
+        "bottom_right_x": bbox["bottom_right_x"] + horizontal_margin,
+        "bottom_right_y": bbox["top_left_y"],
     }
 
 
@@ -6442,6 +6475,9 @@ def build_detection_view_evidence_packages(
     halo_fact_ids: dict[str, list[str]] = {
         str(group["group_id"]): [] for group in visual_groups
     }
+    quantity_caption_fact_ids: dict[str, list[str]] = {
+        str(group["group_id"]): [] for group in visual_groups
+    }
     for fact in source_facts:
         if not isinstance(fact, dict):
             continue
@@ -6483,6 +6519,7 @@ def build_detection_view_evidence_packages(
         else:
             owner = None
         halo_owner = False
+        quantity_caption_owner = False
         halo_match = _DIMENSION_HALO_TEXT_RE.fullmatch(str(fact.get("text") or ""))
         if (
             owner is None
@@ -6501,11 +6538,26 @@ def build_detection_view_evidence_packages(
             if len(halo_candidates) == 1:
                 owner = halo_candidates[0]
                 halo_owner = True
+        if owner is None and extract_detection_explicit_quantity_candidates(fact.get("text")):
+            quantity_caption_candidates = [
+                group for group in page_groups
+                if (
+                    (caption_halo := _detection_quantity_caption_halo(
+                        group_bboxes.get(str(group.get("group_id") or ""), {})
+                    ))
+                    is not None and contains(caption_halo, point)
+                )
+            ]
+            if len(quantity_caption_candidates) == 1:
+                owner = quantity_caption_candidates[0]
+                quantity_caption_owner = True
         if owner is not None:
             group_id = str(owner["group_id"])
             owned_facts[group_id].append(copy.deepcopy(fact))
             if halo_owner:
                 halo_fact_ids[group_id].append(str(fact["fact_id"]))
+            if quantity_caption_owner:
+                quantity_caption_fact_ids[group_id].append(str(fact["fact_id"]))
 
     packages: list[dict[str, Any]] = []
     for group in visual_groups:
@@ -6520,7 +6572,8 @@ def build_detection_view_evidence_packages(
             "source_fact_ids": [str(fact["fact_id"]) for fact in facts],
             "source_facts": facts,
             "dimension_halo_source_fact_ids": halo_fact_ids.get(group_id, []),
-            "membership_basis": "unique_evidence_envelope_or_core_nearest_owner",
+            "quantity_caption_halo_source_fact_ids": quantity_caption_fact_ids.get(group_id, []),
+            "membership_basis": "unique_evidence_envelope_or_core_nearest_owner_or_quantity_caption_halo",
         })
     return packages
 

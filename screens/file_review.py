@@ -1017,8 +1017,12 @@ def render_file_review_screen(
         return
 
     _sync_run_metadata_state(run_id, data["run"])
-    _sync_object_edit_state(run_id, data["objects"])
+    # A retained File Review cache can predate deferred Naming.  Hydrate its
+    # narrow, durable name snapshot before object edits and widgets are
+    # initialized, so a stale blank browser value cannot compete with the
+    # canonical saved name on a later Last Estimate restore.
     _sync_durable_naming_once(run_id)
+    _sync_object_edit_state(run_id, data["objects"])
     with st.container():
         st.markdown(
             '<span class="file-review-title-card-shell-marker" aria-hidden="true"></span>',

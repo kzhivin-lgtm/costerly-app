@@ -55,6 +55,61 @@ def test_new_estimate_reset_clears_all_estimate_scoped_session_state():
     assert st.session_state.rfq_upload_widget_generation == 1
 
 
+def test_new_estimate_reset_discards_retained_review_widget_value():
+    st.session_state.clear()
+    run_id = "run-old"
+    object_id = "object-3"
+    widget_key = f"file_review_object_edits.{object_id}.name"
+    st.session_state.update({
+        "current_run_id": run_id,
+        "file_review_data_cache": {
+            run_id: {"objects": [{"object_id": object_id, "name": ""}]},
+        },
+        widget_key: "",
+    })
+
+    session.reset_new_estimate_session(clear_upload_widget=False)
+
+    assert run_id in st.session_state.file_review_data_cache
+    assert widget_key not in st.session_state
+
+
+def test_restored_review_hydrates_durable_name_before_object_edit_state(monkeypatch):
+    st.session_state.clear()
+    run_id = "run-old"
+    object_id = "object-3"
+    st.session_state.update({
+        "current_run_id": run_id,
+        "file_review_data_cache": {
+            run_id: {"objects": [{"object_id": object_id, "name": ""}]},
+        },
+        f"file_review_object_edits.{object_id}.name": "",
+        "current_agent_timings": {},
+    })
+    session.reset_new_estimate_session(clear_upload_widget=False)
+    st.session_state.current_run_id = run_id
+    monkeypatch.setattr(
+        file_review,
+        "load_file_review_naming_publication",
+        lambda _run_id: {
+            "status": "succeeded", "names": {object_id: "Metal mesh panel"},
+        },
+    )
+
+    data = file_review._load_file_review_screen_data(run_id)
+    file_review._sync_durable_naming_once(run_id)
+    file_review._sync_object_edit_state(run_id, data["objects"])
+
+    assert data["objects"][0]["name"] == "Metal mesh panel"
+    assert st.session_state.file_review_initial_object_names == {
+        object_id: "Metal mesh panel",
+    }
+    assert file_review._ensure_object_edit(object_id, data["objects"][0]) == {
+        "name": "Metal mesh panel", "expected_name": "Metal mesh panel",
+        "quantity": "1", "ignored": False,
+    }
+
+
 def test_file_review_publishes_document_identity_before_metadata_widgets():
     st.session_state.clear()
     run_id = "run-identity"

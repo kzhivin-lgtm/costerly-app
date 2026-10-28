@@ -155,6 +155,14 @@ def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
         and previous_run_id in previous_review_cache
         else {}
     )
+    retained_object_ids = {
+        str(item.get("object_id") or "")
+        for item in (
+            retained_file_review_cache.get(previous_run_id, {}).get("objects", [])
+            if previous_run_id else []
+        )
+        if isinstance(item, dict) and str(item.get("object_id") or "")
+    }
 
     for key in none_fields:
         st.session_state[key] = None
@@ -182,10 +190,19 @@ def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
         if str(key).startswith((
             "file_review_naming_published.",
             "file_review_naming_cache_synced.",
+            "file_review_naming_terminal.",
+            "file_review_deferred_name_echoes.",
             "file_review_preview_published.",
             "file_review_preview_terminal.",
         )):
             st.session_state.pop(key, None)
+    # The File Review payload may be retained for an immediate Last Estimate,
+    # but Streamlit widget values are not part of that immutable snapshot.  A
+    # prior empty placeholder can otherwise fire after deferred Naming became
+    # durable and race its canonical value.  The restored screen hydrates the
+    # compact Naming publication before it creates these fresh widgets.
+    for object_id in retained_object_ids:
+        st.session_state.pop(f"file_review_object_edits.{object_id}.name", None)
     if clear_upload_widget:
         # A native file input does not reliably emit a new Streamlit value when
         # the same PDF is selected again. A new widget identity makes every

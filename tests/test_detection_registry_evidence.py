@@ -19,6 +19,7 @@ from agents.anthropic_adapter import (
     DetectionVisualRegistryValidationError,
     _apply_detection_v642_multilingual_observations,
     apply_detection_explicit_quantities,
+    build_detection_view_evidence_packages,
     extract_detection_explicit_quantity_candidates,
 )
 from agents.schemas.detection_schema import validate_detection_result
@@ -126,6 +127,47 @@ def test_caption_bound_explicit_quantity_replaces_registry_default():
         "published_quantity": 5,
         "quantity_explicit": True,
     }]
+
+
+def test_quantity_caption_just_above_view_is_owned_without_claiming_dimensions():
+    visual_groups = [
+        {"group_id": "view-001", "page_number": 1},
+        {"group_id": "view-002", "page_number": 1},
+    ]
+    bboxes = {
+        "view-001": {"top_left_x": 100, "top_left_y": 300, "bottom_right_x": 500, "bottom_right_y": 700},
+        "view-002": {"top_left_x": 700, "top_left_y": 300, "bottom_right_x": 1100, "bottom_right_y": 700},
+    }
+    packages = build_detection_view_evidence_packages(
+        visual_groups=visual_groups,
+        group_bboxes=bboxes,
+        source_facts=[
+            {
+                "fact_id": "SF00001", "page_number": 1,
+                "bbox": {"top_left_x": 190, "top_left_y": 180, "bottom_right_x": 330, "bottom_right_y": 210},
+                "text": "04 / TRAY 5 PCS",
+            },
+            {
+                "fact_id": "SF00002", "page_number": 1,
+                "bbox": {"top_left_x": 220, "top_left_y": 340, "bottom_right_x": 280, "bottom_right_y": 370},
+                "text": "540",
+            },
+        ],
+    )
+
+    assert packages[0]["quantity_caption_halo_source_fact_ids"] == ["SF00001"]
+    assert packages[1]["quantity_caption_halo_source_fact_ids"] == []
+    registry = {"objects": [{
+        "object_id": "object-001", "quantity": 1, "quantity_explicit": False,
+        "visual_group_ids": ["view-001"],
+    }]}
+    resolved, audit = apply_detection_explicit_quantities(
+        registry, view_evidence_packages=packages,
+    )
+
+    assert resolved["objects"][0]["quantity"] == 5
+    assert resolved["objects"][0]["quantity_explicit"] is True
+    assert audit[0]["candidates"][0]["fact_id"] == "SF00001"
 
 
 def test_multilingual_fallback_publishes_only_literal_facts_owned_by_locked_object():
