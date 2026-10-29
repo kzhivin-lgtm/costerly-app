@@ -10,6 +10,7 @@ add the same bounded recall supplement.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from agents.pdf_page_inspection import compact_page_profile_audit
@@ -25,6 +26,9 @@ _TEXT_CLUSTER_MIN_FACTS = 2
 _TEXT_CLUSTER_MIN_WIDTH_RATIO = 0.18
 _TEXT_CLUSTER_MIN_HEIGHT_RATIO = 0.30
 _TEXT_CLUSTER_PADDING_PX = 80
+_SUPPLEMENT_MIN_DIMENSION_VALUE = 20
+_SUPPLEMENT_MIN_DIMENSION_FACTS = 2
+_DIMENSION_LITERAL_RE = re.compile(r"[+\-±]?\d+(?:[.,]\d+)?")
 
 
 def _bbox(value: object) -> dict[str, int] | None:
@@ -72,6 +76,22 @@ def _uncovered_native_pdf_facts(
     ]
 
 
+def _has_substantive_dimension_signal(
+    entries: list[tuple[dict[str, Any], dict[str, int]]],
+    indexes: list[int],
+) -> bool:
+    """Reject title/revision text clusters from a MyPDF-only supplement."""
+    dimension_count = 0
+    for index in indexes:
+        value = str(entries[index][0].get("text") or "").strip()
+        if not _DIMENSION_LITERAL_RE.fullmatch(value):
+            continue
+        if abs(float(value.replace("±", "").replace(",", "."))) < _SUPPLEMENT_MIN_DIMENSION_VALUE:
+            continue
+        dimension_count += 1
+    return dimension_count >= _SUPPLEMENT_MIN_DIMENSION_FACTS
+
+
 def _centre(bbox: dict[str, int]) -> tuple[float, float]:
     return (
         (bbox["top_left_x"] + bbox["bottom_right_x"]) / 2,
@@ -99,6 +119,7 @@ def _text_cluster_candidates(
     page: dict[str, Any],
     source_facts: list[dict[str, Any]],
     ordinal: int,
+    require_dimension_signal: bool = False,
 ) -> list[dict[str, Any]]:
     """Build broad recall boxes from disconnected Fusion text clusters.
 
@@ -144,6 +165,8 @@ def _text_cluster_candidates(
         min(entries[index][1]["top_left_y"] for index in values),
         min(entries[index][1]["top_left_x"] for index in values),
     )):
+        if require_dimension_signal and not _has_substantive_dimension_signal(entries, indexes):
+            continue
         boxes = [entries[index][1] for index in indexes]
         left = min(box["top_left_x"] for box in boxes) - _TEXT_CLUSTER_PADDING_PX
         top = min(box["top_left_y"] for box in boxes) - _TEXT_CLUSTER_PADDING_PX
@@ -228,12 +251,13 @@ def build_detection_fusion_candidate_regions(
         candidates.extend(_text_cluster_candidates(
             page_number=page_number,
             page=page,
-            source_facts=_uncovered_native_pdf_facts(
+                source_facts=_uncovered_native_pdf_facts(
                 page_number=page_number,
                 source_facts=source_facts,
                 graphic_bboxes=graphic_bboxes,
             ),
             ordinal=ordinal,
+            require_dimension_signal=True,
         ))
     return candidates
 
