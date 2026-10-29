@@ -76,12 +76,15 @@ def _text_cluster_candidates(
     page: dict[str, Any],
     source_facts: list[dict[str, Any]],
     ordinal: int,
+    covered_graphic_bboxes: list[dict[str, int]] | None = None,
 ) -> list[dict[str, Any]]:
     """Build broad recall boxes from disconnected Fusion text clusters.
 
-    This is deliberately only used when Mistral supplied no graphic region for
-    the page. A cluster is a recall hint, so broad boxes are acceptable, while
-    every final Island and fact owner remains decided later by Registry/code.
+    Candidate Regions are the recall union of independent source channels.
+    A Mistral graphic block must not suppress authored-PDF or OCR text/vector
+    evidence elsewhere on its page.  We omit only a cluster whose source facts
+    are already inside a Mistral graphic candidate, because it adds no new
+    recall surface.  Final Island boundaries remain decided by Discovery.
     """
     entries = [
         (fact, bbox)
@@ -116,11 +119,24 @@ def _text_cluster_candidates(
     page_width, page_height = _page_dimensions(page, [fact for fact, _ in entries])
     min_width = max(1, round(page_width * _TEXT_CLUSTER_MIN_WIDTH_RATIO))
     min_height = max(1, round(page_height * _TEXT_CLUSTER_MIN_HEIGHT_RATIO))
+    covered_graphic_bboxes = covered_graphic_bboxes or []
+
+    def is_already_covered(indexes: list[int]) -> bool:
+        return bool(covered_graphic_bboxes) and all(
+            any(
+                _centre_inside(entries[index][1], graphic_bbox)
+                for graphic_bbox in covered_graphic_bboxes
+            )
+            for index in indexes
+        )
+
     candidates: list[dict[str, Any]] = []
     for indexes in sorted(components, key=lambda values: (
         min(entries[index][1]["top_left_y"] for index in values),
         min(entries[index][1]["top_left_x"] for index in values),
     )):
+        if is_already_covered(indexes):
+            continue
         boxes = [entries[index][1] for index in indexes]
         left = min(box["top_left_x"] for box in boxes) - _TEXT_CLUSTER_PADDING_PX
         top = min(box["top_left_y"] for box in boxes) - _TEXT_CLUSTER_PADDING_PX
@@ -154,7 +170,12 @@ def build_detection_fusion_candidate_regions(
     ocr_package: dict[str, Any] | None,
     source_facts: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Return stable, source-enriched graphic or fallback text-cluster regions."""
+    """Return the stable union of graphic and text/vector recall regions.
+
+    Neither MyPDF/Fusion text nor Mistral graphic regions are privileged for
+    page coverage.  A candidate remains a recall hint, not an Island or an
+    object claim, until visual Discovery inspects the full rendered page.
+    """
     candidates: list[dict[str, Any]] = []
     for page in (ocr_package or {}).get("pages") or []:
         if not isinstance(page, dict):
@@ -189,11 +210,19 @@ def build_detection_fusion_candidate_regions(
                 "basis": "mistral_graphic_region",
                 "source_fact_ids": source_fact_ids,
             })
-        if ordinal == 0:
-            candidates.extend(_text_cluster_candidates(
-                page_number=page_number, page=page, source_facts=source_facts,
-                ordinal=ordinal,
-            ))
+        graphic_bboxes = [
+            candidate["bbox"]
+            for candidate in candidates
+            if candidate["page_number"] == page_number
+            and candidate["basis"] == "mistral_graphic_region"
+        ]
+        candidates.extend(_text_cluster_candidates(
+            page_number=page_number,
+            page=page,
+            source_facts=source_facts,
+            ordinal=ordinal,
+            covered_graphic_bboxes=graphic_bboxes,
+        ))
     return candidates
 
 

@@ -143,6 +143,17 @@ genuine whole-level plan remains `document_context`, technical object views
 mislabelled `floor_plan` survive, and Floor 06 retains V6.67-grade merge
 behaviour rather than reproducing V6.68's split into 39 packages.
 
+ACTIVE EXPERIMENT, V6.70, P0, independent Fusion recall union without expanded halo:
+Base: V6.69. Candidate Regions must be the union of independent sources:
+retain a Mistral graphic candidate when Mistral found it, and also create a
+Fusion text/vector candidate for authored MyPDF or OCR evidence outside every
+such graphic candidate. A candidate already fully covered by a Mistral graphic
+box is not duplicated. Do not alter Discovery, Membership Review, floor-plan
+classification, Dimension scoring, routers, or the fixed 80-180px dimension
+halo. Acceptance: an unrelated MyPDF text/vector cluster survives beside a
+Mistral graphic candidate in tests; a Floor 06 rerun exposes both source paths
+in candidate audit without a broad halo or new cross-page comparison work.
+
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
 contracts are still changing. The current V5 Registry route records zero cache
