@@ -108,6 +108,20 @@ and `Last Estimate` returns the same completed review from cache without a
 multi-second grey load. Detection, OCR, Fusion, router, objects, Evidence,
 Naming, Preview and provider calls are protected.
 
+ACTIVE, V6.67, P0, mandatory post-Discovery same-page full-criteria comparison:
+Base: owner-accepted V6.63, with all subsequent V6.64-V6.66 Fusion, bbox,
+halo, scoring, routing and classification experiments excluded. After Discovery
+has fixed retained `object_evidence` Islands, build the exact unordered pair
+set independently for each page and require Membership Review to inspect every
+pair against identifier, topology, geometry, dimensions and construction. The
+new queue is comparison-only, not merge evidence, and never creates cross-page
+all-to-all work. Preserve V6.63's Dimension scoring, Candidate Q cross-page
+behaviour, Mistral anchors, routers, File Review, Naming and quantity policy.
+Acceptance: the review handoff and audit prove an exhaustive pair set for each
+page's retained Object Evidence inventory; every queue pair is subject to the
+five-criterion review contract; no document-context or floor-plan group enters
+the queue. Pending focused tests, deployment, then live Floor 06 verification.
+
 CHECKPOINT, V6.63, P0, retained File Review integrity and explicit caption quantity:
 The accepted V6.62 Progress controller and File Review handoff remain protected.
 The `New Estimate -> Last Estimate` cache preserved an early review payload but

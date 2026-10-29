@@ -33,6 +33,7 @@ from agents.anthropic_adapter import (
     create_claude_message_streamed,
     extract_detection_document_dimension_unit_profile,
     extract_detection_page_drawing_codes,
+    finalize_detection_same_page_membership_queue,
     normalize_detection_identity_fields,
     normalize_detection_v610_evidence_review_decisions,
     normalize_detection_v69_reconciliation_decisions,
@@ -3048,3 +3049,25 @@ def test_file_review_project_metadata_rejects_unknown_fields_and_empty_values(mo
             run_id="run-001",
             values={"untrusted": "ignored"},
         )
+
+
+def test_v667_same_page_membership_queue_is_complete_only_for_retained_object_evidence():
+    pairs, audit = finalize_detection_same_page_membership_queue(
+        visual_groups=[
+            {"group_id": "view-1", "page_number": 1, "evidence_class": "object_evidence"},
+            {"group_id": "view-2", "page_number": 1, "evidence_class": "object_evidence"},
+            {"group_id": "view-3", "page_number": 1, "evidence_class": "object_evidence"},
+            {"group_id": "context-1", "page_number": 1, "evidence_class": "document_context"},
+            {"group_id": "view-4", "page_number": 2, "evidence_class": "object_evidence"},
+            {"group_id": "floor-1", "page_number": 2, "evidence_class": "floor_plan"},
+        ],
+    )
+
+    assert pairs == [
+        ("view-1", "view-2"),
+        ("view-1", "view-3"),
+        ("view-2", "view-3"),
+    ]
+    assert audit["basis"] == "post_discovery_retained_object_evidence"
+    assert audit["counts_by_page"] == {"1": 3, "2": 1}
+    assert audit["required_same_page_pair_count"] == 3

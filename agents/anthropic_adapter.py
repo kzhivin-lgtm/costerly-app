@@ -3258,8 +3258,9 @@ def format_detection_v5_review_handoff(
     visual_groups: list[dict[str, Any]],
     source_facts: list[dict[str, Any]],
     draft_hypotheses: object,
+    required_same_page_pairs: list[tuple[str, str]],
 ) -> str:
-    """Give review the locked Views and untrusted first-pass group sets."""
+    """Give Review locked Views, drafts and its mandatory same-page queue."""
     lines = [format_detection_v5_membership_handoff(
         visual_groups=visual_groups, source_facts=source_facts,
     )]
@@ -3269,9 +3270,16 @@ def format_detection_v5_review_handoff(
             group_ids = hypothesis.get("group_ids") if isinstance(hypothesis, dict) else None
             if isinstance(group_ids, list) and len(group_ids) >= 2:
                 proposal_lines.append(f"H{index:03d}|{'|'.join(str(group_id) for group_id in group_ids)}")
+    pair_lines = [
+        f"Q{index:03d}|A={left}|B={right}"
+        for index, (left, right) in enumerate(required_same_page_pairs, start=1)
+    ]
     lines.extend([
         "UNTRUSTED DRAFT MULTI-VIEW PROPOSALS (review, do not copy blindly):",
         *(proposal_lines or ["none"]),
+        "REQUIRED SAME-PAGE MEMBERSHIP QUEUE (evaluate every Q line before deciding membership):",
+        "Queue membership requires comparison only. It is never positive merge evidence.",
+        *(pair_lines or ["none"]),
     ])
     return "\n".join(lines)
 
@@ -6349,6 +6357,56 @@ def map_detection_candidate_q_pairs_to_islands(
     if include_audit:
         return allowed, audit
     return allowed
+
+
+def finalize_detection_same_page_membership_queue(
+    *,
+    visual_groups: list[dict[str, Any]],
+) -> tuple[list[tuple[str, str]], dict[str, Any]]:
+    """Build the exhaustive post-Discovery same-page Object Evidence queue.
+
+    This is deliberately independent of Fusion Candidate Q. Discovery is the
+    first point at which Island boundaries and evidence classes are known, so
+    this is the first safe point to require a full five-criterion comparison
+    for every retained same-page pair.
+    """
+    page_by_group_id: dict[str, int] = {}
+    for group in visual_groups:
+        if not isinstance(group, dict) or group.get("evidence_class") != "object_evidence":
+            continue
+        group_id = str(group.get("group_id") or "")
+        try:
+            page_number = int(group.get("page_number"))
+        except (TypeError, ValueError):
+            continue
+        if group_id:
+            page_by_group_id[group_id] = page_number
+
+    pairs = [
+        (left, right)
+        for page_number in sorted(set(page_by_group_id.values()))
+        for left, right in combinations(sorted(
+            group_id for group_id, group_page in page_by_group_id.items()
+            if group_page == page_number
+        ), 2)
+    ]
+    counts_by_page = {
+        str(page_number): sum(
+            1 for group_page in page_by_group_id.values()
+            if group_page == page_number
+        )
+        for page_number in sorted(set(page_by_group_id.values()))
+    }
+    return pairs, {
+        "basis": "post_discovery_retained_object_evidence",
+        "object_evidence_count": len(page_by_group_id),
+        "counts_by_page": counts_by_page,
+        "required_same_page_pair_count": len(pairs),
+        "required_same_page_pairs": [
+            {"group_id_a": left, "group_id_b": right}
+            for left, right in pairs
+        ],
+    }
 
 
 _DIMENSION_HALO_TEXT_RE = re.compile(
@@ -11264,9 +11322,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             view_crops=membership_crops,
             page_context_images=review_page_context_images,
         )
+    required_same_page_pairs, review_same_page_queue_audit = (
+        finalize_detection_same_page_membership_queue(
+            visual_groups=proposal_for_review["visual_groups"],
+        )
+    )
     review_handoff = format_detection_v5_review_handoff(
         visual_groups=proposal_for_review["visual_groups"], source_facts=source_facts,
-        draft_hypotheses=[],
+        draft_hypotheses=[], required_same_page_pairs=required_same_page_pairs,
     )
     review_prompt_with_membership_contract = review_prompt
     if v637_ada_covered_pair_local_membership_active:
@@ -11296,6 +11359,17 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "Use concise factual observations, never explanatory prose. For "
             "different_objects or insufficient_evidence, evidence must be an empty "
             "array because that field is positive merge evidence only.\n"
+        )
+    if required_same_page_pairs:
+        review_prompt_with_membership_contract += (
+            "\n\nV6.67 SAME-PAGE FULL-CRITERIA CONTRACT:\n"
+            "Evaluate every Q line in the REQUIRED SAME-PAGE MEMBERSHIP QUEUE before "
+            "deciding membership. For each Q pair, inspect all five criteria: "
+            "identifier, topology, geometry, dimensions and construction. The queue "
+            "is exhaustive for retained Object Evidence Views on its page. It does not "
+            "imply that the Views belong together. Return only schema-valid supported "
+            "positive hypotheses or pair decisions. Do not manufacture negative rows "
+            "merely to echo Q.\n"
         )
     review_content = build_detection_v5_membership_content_blocks(
         user_text=review_handoff, view_crops=membership_crops,
@@ -12049,6 +12123,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "candidate_pair_queue_count": len(candidate_pair_queue),
             "candidate_pair_queue_final_pair_count": len(candidate_q_final_pairs),
             "candidate_pair_queue_mapping_audit": candidate_q_mapping_audit,
+            "v6_67_review_same_page_queue": review_same_page_queue_audit,
             "candidate_pair_queue_final_pairs": [
                 {"group_id_a": pair[0], "group_id_b": pair[1]}
                 for pair in sorted(candidate_q_final_pairs)
