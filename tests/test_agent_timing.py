@@ -1558,7 +1558,7 @@ def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
     )
 
 
-def test_whole_architectural_floor_plan_honors_model_document_context():
+def test_whole_architectural_floor_plan_is_demoted_to_document_context():
     payload = _visual_registry_payload({
         "visual_groups": [{
             "group_id": "plan", "page_number": 2, "location_hint": "whole page",
@@ -1566,7 +1566,7 @@ def test_whole_architectural_floor_plan_honors_model_document_context():
             "representation_kind": "floor_plan",
         }],
         "classifications": [{
-            "group_id": "plan", "evidence_class": "document_context",
+            "group_id": "plan", "evidence_class": "object_evidence",
             "classification_reason": "Complete floor plan showing spatial room layout and architectural circulation.",
         }],
     })
@@ -1575,7 +1575,7 @@ def test_whole_architectural_floor_plan_honors_model_document_context():
     assert audit[0]["evidence_class"] == "document_context"
 
 
-def test_floor_plan_form_never_demotes_model_object_evidence():
+def test_whole_architectural_floor_plan_is_demoted_when_model_mislabels_representation_kind():
     payload = _visual_registry_payload({
         "visual_groups": [{
             "group_id": "plan", "page_number": 2, "location_hint": "whole page",
@@ -1588,8 +1588,10 @@ def test_floor_plan_form_never_demotes_model_object_evidence():
         }],
     })
     enriched, audit = _validate_and_apply_visual_registry_classifications(payload)
-    assert enriched["visual_groups"][0]["evidence_class"] == "object_evidence"
-    assert audit[0]["evidence_class"] == "object_evidence"
+    assert enriched["visual_groups"][0]["evidence_class"] == "document_context"
+    assert audit[0]["classification_reason"] == (
+        "Whole-level architectural plan is document context, not an isolated fabricated item."
+    )
 
 
 def test_object_evidence_survives_imprecise_floor_plan_representation_kind():
