@@ -89,6 +89,35 @@ def test_fusion_text_clusters_are_recall_fallback_when_no_graphic_region_exists(
     )
 
 
+def test_fusion_adds_uncovered_native_pdf_cluster_beside_mistral_graphic_region():
+    facts = [
+        {"fact_id": "SF-IN", "page_number": 1, "source": "native_pdf_text", "bbox": {
+            "top_left_x": 400, "top_left_y": 200,
+            "bottom_right_x": 410, "bottom_right_y": 210,
+        }},
+        {"fact_id": "SF-OUT-1", "page_number": 1, "source": "native_pdf_text", "bbox": {
+            "top_left_x": 1100, "top_left_y": 300,
+            "bottom_right_x": 1110, "bottom_right_y": 310,
+        }},
+        {"fact_id": "SF-OUT-2", "page_number": 1, "source": "native_pdf_text", "bbox": {
+            "top_left_x": 1300, "top_left_y": 300,
+            "bottom_right_x": 1310, "bottom_right_y": 310,
+        }},
+        {"fact_id": "SF-OCR-ONLY", "page_number": 1, "source": "mistral_ocr", "bbox": {
+            "top_left_x": 1500, "top_left_y": 300,
+            "bottom_right_x": 1510, "bottom_right_y": 310,
+        }},
+    ]
+
+    candidates = build_detection_fusion_candidate_regions(_ocr_with_graphic_region(), facts)
+
+    assert [(row["candidate_region_id"], row["basis"], row["source_fact_ids"])
+            for row in candidates] == [
+        ("CR-P001-001", "mistral_graphic_region", ["SF-IN"]),
+        ("CR-P001-002", "fusion_text_cluster", ["SF-OUT-1", "SF-OUT-2"]),
+    ]
+
+
 def test_v68_small_anchor_route_builds_complete_pair_matrix_only_through_ten_islands():
     groups = [
         {"group_id": f"view-{index:03d}", "evidence_class": "object_evidence"}

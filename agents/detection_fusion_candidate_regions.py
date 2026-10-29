@@ -3,7 +3,9 @@
 Candidate regions are not Islands and never decide object identity. They are
 Mistral graphic areas enriched with MyPDF/Mistral source facts. When Mistral
 finds no graphic area on a content page, spatial source-fact clusters provide
-a conservative recall fallback for Registry's full-page inspection.
+a conservative recall fallback for Registry's full-page inspection. When it
+does find graphic areas, distinct MyPDF facts outside every graphic area may
+add the same bounded recall supplement.
 """
 
 from __future__ import annotations
@@ -47,6 +49,27 @@ def _centre_inside(point_bbox: dict[str, int], area_bbox: dict[str, int]) -> boo
         area_bbox["top_left_x"] <= x <= area_bbox["bottom_right_x"]
         and area_bbox["top_left_y"] <= y <= area_bbox["bottom_right_y"]
     )
+
+
+def _is_native_pdf_fact(fact: dict[str, Any]) -> bool:
+    return str(fact.get("source") or "").startswith("native_pdf_")
+
+
+def _uncovered_native_pdf_facts(
+    *,
+    page_number: int,
+    source_facts: list[dict[str, Any]],
+    graphic_bboxes: list[dict[str, int]],
+) -> list[dict[str, Any]]:
+    """Return MyPDF facts whose centre is not covered by a Mistral graphic area."""
+    return [
+        fact
+        for fact in source_facts
+        if fact.get("page_number") == page_number
+        and _is_native_pdf_fact(fact)
+        and (fact_bbox := _bbox(fact.get("bbox"))) is not None
+        and not any(_centre_inside(fact_bbox, bbox) for bbox in graphic_bboxes)
+    ]
 
 
 def _centre(bbox: dict[str, int]) -> tuple[float, float]:
@@ -194,6 +217,24 @@ def build_detection_fusion_candidate_regions(
                 page_number=page_number, page=page, source_facts=source_facts,
                 ordinal=ordinal,
             ))
+            continue
+
+        graphic_bboxes = [
+            candidate["bbox"]
+            for candidate in candidates
+            if candidate["page_number"] == page_number
+            and candidate["basis"] == "mistral_graphic_region"
+        ]
+        candidates.extend(_text_cluster_candidates(
+            page_number=page_number,
+            page=page,
+            source_facts=_uncovered_native_pdf_facts(
+                page_number=page_number,
+                source_facts=source_facts,
+                graphic_bboxes=graphic_bboxes,
+            ),
+            ordinal=ordinal,
+        ))
     return candidates
 
 
