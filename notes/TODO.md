@@ -143,6 +143,21 @@ genuine whole-level plan remains `document_context`, technical object views
 mislabelled `floor_plan` survive, and Floor 06 retains V6.67-grade merge
 behaviour rather than reproducing V6.68's split into 39 packages.
 
+DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
+Do not enable cache_control while Discovery, Review prompts, models, or Evidence
+contracts are still changing. The current V5 Registry route records zero cache
+creation and cache-read tokens. When Detection has a stable accepted checkpoint,
+run one isolated experiment that preserves model behaviour: create an explicit
+5-minute cache breakpoint after an identical immutable source-page prefix shared
+by Discovery and Membership Review, then keep stage-specific instructions,
+Fusion handoff and crops after that prefix. Measure cache_creation_input_tokens,
+cache_read_input_tokens, provider latency, output quality and actual TCC on HSL
+and Morbergs. Update the cost ledger before enabling it, because current TCC
+calculation does not price cache writes and reads separately. Do not treat the
+Anthropic email's 48% account-level estimate as a product forecast. The first
+write costs more, and cache is useful only for an identical prefix reused within
+its TTL, especially Discovery to Review and a same-context retry.
+
 CHECKPOINT, V6.63, P0, retained File Review integrity and explicit caption quantity:
 The accepted V6.62 Progress controller and File Review handoff remain protected.
 The `New Estimate -> Last Estimate` cache preserved an early review payload but
