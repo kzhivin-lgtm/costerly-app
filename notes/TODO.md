@@ -143,6 +143,17 @@ genuine whole-level plan remains `document_context`, technical object views
 mislabelled `floor_plan` survive, and Floor 06 retains V6.67-grade merge
 behaviour rather than reproducing V6.68's split into 39 packages.
 
+ACTIVE EXPERIMENT, V6.73, P0, page-scale guard for forced floor-plan demotion:
+Base: V6.72 rollback, which restores the V6.69 code path. No Discovery prompt,
+Fusion recall, BBox, Halo, candidate queue, Dimension score, router, Naming or
+merge-contract change. Keep the existing plan-like semantic cue, but force an
+`object_evidence` Island to `document_context` only when it is the sole raw
+Island on that page or its physical `core_bbox` covers at least 75 percent of
+the measured Fusion page frame. The wider evidence envelope is explicitly not
+used for this test. Acceptance: a whole-page architectural layout is still
+discarded; a bounded object plan on a multi-Island page remains Object Evidence;
+Floor 06 live run changes only this classification outcome, not recall or Q.
+
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
 contracts are still changing. The current V5 Registry route records zero cache

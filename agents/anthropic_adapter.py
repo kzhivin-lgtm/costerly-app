@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import copy
+from collections import Counter
 from decimal import Decimal
 import html
 import hashlib
@@ -4572,8 +4573,37 @@ def _visual_map_from_registry_groups(groups: object) -> dict[str, Any]:
     }
 
 
+def _floor_plan_forced_context_eligible(
+    group: dict[str, Any],
+    *,
+    groups_on_page: int,
+    page_frame: dict[str, Any] | None,
+) -> bool:
+    """Return whether a plan-like group is large enough for forced demotion.
+
+    A representation label is deliberately insufficient: object plans share it
+    with whole-level layouts. The test uses only the physical core, never the
+    wider evidence envelope which may legitimately include captions/dimensions.
+    """
+    if groups_on_page == 1:
+        return True
+    core_bbox = _detection_bbox(group.get("core_bbox"))
+    dimensions = (page_frame or {}).get("fusion_dimensions") or page_frame or {}
+    try:
+        page_width = int(dimensions.get("width"))
+        page_height = int(dimensions.get("height"))
+    except (AttributeError, TypeError, ValueError):
+        return False
+    if core_bbox is None or page_width <= 0 or page_height <= 0:
+        return False
+    core_area = _detection_bbox_area(core_bbox)
+    return core_area / (page_width * page_height) >= 0.75
+
+
 def _validate_and_apply_visual_registry_classifications(
     payload: dict[str, Any],
+    *,
+    page_frames: dict[int, dict[str, Any]] | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Validate complete phase-two classifications, then attach them in code."""
     groups = payload.get("visual_groups")
@@ -4608,6 +4638,11 @@ def _validate_and_apply_visual_registry_classifications(
         r"architectural|circulation|walls?|door\s+swings?|multiple\s+spaces?)\b",
         re.IGNORECASE,
     )
+    groups_by_page = Counter(
+        int(group["page_number"])
+        for group in enriched["visual_groups"]
+        if isinstance(group, dict) and isinstance(group.get("page_number"), int)
+    )
     for group in enriched["visual_groups"]:
         decision = by_group_id[group["group_id"]]
         representation = str(group.get("representation_kind") or "").lower()
@@ -4626,7 +4661,18 @@ def _validate_and_apply_visual_registry_classifications(
         generic_plan = (
             representation in {"floor_plan", "location_plan"} or describes_floor_plan
         ) and len(set(generic_plan_markers.findall(description))) >= 3
-        if decision["evidence_class"] == "object_evidence" and generic_plan:
+        page_number = group.get("page_number")
+        page_frame = (page_frames or {}).get(page_number) if isinstance(page_number, int) else None
+        forced_context_eligible = _floor_plan_forced_context_eligible(
+            group,
+            groups_on_page=groups_by_page.get(page_number, 0),
+            page_frame=page_frame,
+        )
+        if (
+            decision["evidence_class"] == "object_evidence"
+            and generic_plan
+            and forced_context_eligible
+        ):
             group["evidence_class"] = "document_context"
             group["classification_reason"] = (
                 "Whole-level architectural plan is document context, not an isolated fabricated item."
@@ -10081,7 +10127,7 @@ def _normalize_detection_v516_v561_proposal(
         raise ValueError("V5.16 source-degraded proposal cannot return source semantic facts")
 
     classified, classification_audit = _validate_and_apply_visual_registry_classifications(
-        copy.deepcopy(payload)
+        copy.deepcopy(payload), page_frames=page_frames,
     )
     raw_groups = classified["visual_groups"]
     raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
@@ -11254,7 +11300,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             for field in discovery_fields - {"page_coverage", "document_scope"}
         }
     proposal_for_review, _ = _validate_and_apply_visual_registry_classifications(
-        proposal_discovery_payload
+        proposal_discovery_payload, page_frames=review_coordinate_frames,
     )
     if document_scope_enabled:
         document_scope, document_scope_validation_error = (
@@ -11853,7 +11899,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     try:
         if isinstance(payload, dict):
             payload, classification_decisions = (
-                _validate_and_apply_visual_registry_classifications(payload)
+                _validate_and_apply_visual_registry_classifications(
+                    payload, page_frames=review_coordinate_frames,
+                )
             )
             classified_visual_groups = copy.deepcopy(payload["visual_groups"])
             all_group_bboxes = _normalize_registry_group_bboxes(
