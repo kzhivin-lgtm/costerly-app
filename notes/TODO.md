@@ -154,6 +154,35 @@ used for this test. Acceptance: a whole-page architectural layout is still
 discarded; a bounded object plan on a multi-Island page remains Object Evidence;
 Floor 06 live run changes only this classification outcome, not recall or Q.
 
+BENCHMARK, P0, Hasolelim Floor 06 manual Object Evidence island inventory:
+
+This is the owner-provided visual inventory, separate from final package count
+and Naming. P01 title block and P02 whole-level floor plan are document context,
+not benchmark Object Evidence islands. P13's additional photograph is reference
+context, not a seventh Object Evidence island.
+
+| Page | Expected Object Evidence islands |
+| --- | ---: |
+| P03 | 12 |
+| P04 | 4 |
+| P05 | 6 |
+| P06 | 3 |
+| P07 | 8 |
+| P08 | 3 |
+| P09 | 6 |
+| P10 | 3 |
+| P11 | 4 |
+| P12 | 3 |
+| P13 | 6 |
+| P14 | 3 |
+| P15 | 3 |
+
+V6.73 live audit (`run_ffe9eae79b15430698d9bae23dad76da`): P03=11,
+P04=4, P05=6, P06=3, P07=6, P08=3, P09=3, P10=1, P11=2, P12=3,
+P13=6, P14=3, P15=3. Mismatches are P03, P07, P09, P10 and P11.
+Do not treat matching 15-package output as evidence that this island benchmark
+has passed.
+
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
 contracts are still changing. The current V5 Registry route records zero cache
