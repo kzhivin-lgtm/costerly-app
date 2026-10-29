@@ -4600,40 +4600,15 @@ def _validate_and_apply_visual_registry_classifications(
     if set(by_group_id) != expected:
         raise ValueError("visual registry must classify every visual group exactly once")
     enriched = copy.deepcopy(payload)
-    # A whole-level architectural plan is document navigation, not an object
-    # depiction.  This applies to any document and depends on the Registry's
-    # own declared representation and description, never on a page number.
-    generic_plan_markers = re.compile(
-        r"\b(?:complete|overall|whole|level|rooms?|layouts?|spatial|"
-        r"architectural|circulation|walls?|door\s+swings?|multiple\s+spaces?)\b",
-        re.IGNORECASE,
-    )
     for group in enriched["visual_groups"]:
         decision = by_group_id[group["group_id"]]
-        representation = str(group.get("representation_kind") or "").lower()
-        description = " ".join((
-            str(group.get("visual_description") or ""),
-            str(decision["classification_reason"]),
-        ))
-        # Registry occasionally emits its evidence-class name in
-        # representation_kind.  A real whole-level floor plan must still be
-        # context, so use the concrete description as a deterministic fallback.
-        describes_floor_plan = bool(re.search(
-            r"\b(?:architectural\s+)?(?:floor|level)\s+plan\b|\broom\s+layouts?\b",
-            description,
-            re.IGNORECASE,
-        ))
-        generic_plan = (
-            representation in {"floor_plan", "location_plan"} or describes_floor_plan
-        ) and len(set(generic_plan_markers.findall(description))) >= 3
-        if decision["evidence_class"] == "object_evidence" and generic_plan:
-            group["evidence_class"] = "document_context"
-            group["classification_reason"] = (
-                "Whole-level architectural plan is document context, not an isolated fabricated item."
-            )
-        else:
-            group["evidence_class"] = decision["evidence_class"]
-            group["classification_reason"] = decision["classification_reason"]
+        # ``representation_kind`` describes visual form only. It cannot, by
+        # itself, overrule a complete model classification: object-specific
+        # plans and real architectural floor plans share the same projection.
+        # A confirmed document-context decision is still discarded downstream;
+        # uncertainty must be retained rather than silently deleting evidence.
+        group["evidence_class"] = decision["evidence_class"]
+        group["classification_reason"] = decision["classification_reason"]
     audit = [
         {"group_id": group["group_id"], "page_number": group["page_number"],
          "representation_kind": group["representation_kind"],

@@ -143,7 +143,7 @@ genuine whole-level plan remains `document_context`, technical object views
 mislabelled `floor_plan` survive, and Floor 06 retains V6.67-grade merge
 behaviour rather than reproducing V6.68's split into 39 packages.
 
-ACTIVE EXPERIMENT, V6.70, P0, independent Fusion recall union without expanded halo:
+INCONCLUSIVE EXPERIMENT, V6.70, P0, independent Fusion recall union without expanded halo:
 Base: V6.69. Candidate Regions must be the union of independent sources:
 retain a Mistral graphic candidate when Mistral found it, and also create a
 Fusion text/vector candidate for authored MyPDF or OCR evidence outside every
@@ -153,6 +153,39 @@ classification, Dimension scoring, routers, or the fixed 80-180px dimension
 halo. Acceptance: an unrelated MyPDF text/vector cluster survives beside a
 Mistral graphic candidate in tests; a Floor 06 rerun exposes both source paths
 in candidate audit without a broad halo or new cross-page comparison work.
+Observed on Floor 06, 2026-10-29: source candidates increased 63 to 115 and
+raw visual groups 56 to 64, proving that the independent-source path runs.
+However, retained object-evidence groups fell 54 to 50 and registry packages
+rose 15 to 22. Discovery reclassified all three raw groups on page 10 and all
+four on page 11 as `document_context` (`floor_plan` or `schedule`), while page
+3 also varied from 11 to 9 raw groups. Do not expand halo or alter merge from
+this result. Next diagnostic must make Discovery classification stable and
+auditable before judging source-union recall.
+Page-specific evidence: page 9 produced all six raw groups but discarded one
+as `floor_plan`; pages 10 and 11 produced their expected 3 and 4 raw groups
+but discarded all of them. Page 7 is a different upstream failure: Mistral
+created six graphic regions, missing two small left-side profile views; Fusion
+did receive their facts but coalesced all three left profiles into one broad
+text cluster and attached it to the first profile. Any follow-up must split
+source clusters at real blank corridors, not reintroduce an expanded halo.
+Root cause confirmed after this run: P10's three groups and two P11 groups
+were returned by both Proposal and Registry as `object_evidence`. The legacy
+deterministic floor-plan fallback in
+`_validate_and_apply_visual_registry_classifications` overwrote them to
+`document_context`, because `representation_kind == floor_plan` plus generic
+words was treated as conclusive whole-level-plan proof. V6.69 did not remove
+that fallback. P11's two `schedule` groups are a separate model classification
+failure and must not be conflated with the floor-plan override.
+
+ACTIVE EXPERIMENT, V6.71, P0, remove the unsafe floor-plan hard demotion:
+Base: V6.69, not V6.70. Revert the V6.70 independent-source Fusion union in
+full. Remove only the deterministic fallback that overwrites a complete
+Proposal/Registry `object_evidence` decision based on `representation_kind`
+and generic plan words. Preserve explicit model `document_context` decisions,
+all Candidate Regions, halo, Discovery prompt, merge, review and routers.
+Acceptance: a model-approved object plan remains in the proof graph; a model-
+classified whole-level plan remains document context; P10 no longer loses its
+three raw groups through the post-classification gate.
 
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
