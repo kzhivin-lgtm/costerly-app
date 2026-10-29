@@ -955,3 +955,51 @@ def test_processing_persists_visual_registry_validation_audit_before_reraising(m
         )
 
     assert persisted == [failure_event]
+
+
+def test_processing_does_not_wait_for_upload_analytics_before_ocr(monkeypatch):
+    """A stalled nonessential analytics RPC cannot hold the Detection cycle."""
+    from threading import Event
+
+    analytics_started = Event()
+    release_analytics = Event()
+    detection_reached = Event()
+    failure_event = {
+        "company_id": "001", "run_id": None, "file_name": "drawing.pdf",
+        "agent_name": "detection", "operation": "rfq_detection_visual_registry",
+        "model": "test-model", "prompt_version": "test-prompt", "input_tokens": 1,
+        "output_tokens": 1, "status": "failed", "raw_usage": {"audit": "payload"},
+    }
+    ocr_package = {
+        "model": "none", "contract_version": "ocr_v2", "status": "skipped",
+        "pages": [], "evidence": {"text_blocks": [], "literal_items": []}, "usage": {},
+        "processing_seconds": 0.0,
+    }
+
+    def blocked_analytics(*_args, **_kwargs):
+        analytics_started.set()
+        release_analytics.wait(timeout=1)
+
+    def fail_after_ocr(**_kwargs):
+        detection_reached.set()
+        raise DetectionVisualRegistryValidationError(
+            "registry invalid", usage_event=failure_event,
+        )
+
+    monkeypatch.setattr("use_cases.rfq_processing.get_supabase_client", lambda: object())
+    monkeypatch.setattr("use_cases.rfq_processing.record_rfq_upload", blocked_analytics)
+    monkeypatch.setattr("use_cases.rfq_processing.persist_estimation_original", lambda **_kwargs: None)
+    monkeypatch.setattr("use_cases.rfq_processing.should_use_detection_page_images", lambda **_kwargs: False)
+    monkeypatch.setattr("use_cases.rfq_processing._run_optional_ocr", lambda **_kwargs: (ocr_package, None))
+    monkeypatch.setattr("use_cases.rfq_processing.run_detection_agent", fail_after_ocr)
+    monkeypatch.setattr("use_cases.rfq_processing.insert_agent_usage_event", lambda *_args: None)
+
+    try:
+        with pytest.raises(DetectionVisualRegistryValidationError, match="registry invalid"):
+            process_uploaded_rfq(
+                file_name="drawing.pdf", file_bytes=b"pdf", company_id="001",
+            )
+        assert detection_reached.is_set()
+        assert analytics_started.wait(timeout=1)
+    finally:
+        release_analytics.set()

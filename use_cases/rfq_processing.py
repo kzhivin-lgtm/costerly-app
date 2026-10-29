@@ -258,6 +258,25 @@ def _persist_runtime_event(event: dict[str, Any]) -> None:
         print(f"[Usage Ledger] Could not save runtime marker: {exc}")
 
 
+def _record_rfq_upload_diagnostic(
+    *,
+    client: Any,
+    company_id: str,
+    user_id: str | None,
+    file_bytes: bytes,
+) -> None:
+    """Persist upload analytics without holding the user-facing OCR path."""
+    try:
+        record_rfq_upload(
+            client,
+            company_id=company_id,
+            user_id=user_id,
+            file_bytes=file_bytes,
+        )
+    except Exception as exc:
+        print(f"[Product Analytics] Could not record RFQ upload: {exc}")
+
+
 def _run_optional_ocr(
     *,
     file_name: str,
@@ -676,20 +695,21 @@ def process_uploaded_rfq(
         ]
 
     client = get_supabase_client()
-    try:
-        record_rfq_upload(
-            client,
-            company_id=company_id,
-            user_id=user_id,
-            file_bytes=file_bytes,
-        )
-    except Exception as exc:
-        print(f"[Product Analytics] Could not record RFQ upload: {exc}")
     original_future = _DIAGNOSTICS_EXECUTOR.submit(
         persist_estimation_original,
         client=client,
         company_id=company_id,
         file_name=file_name,
+        file_bytes=file_bytes,
+    )
+    # Product analytics is useful, but it neither changes Detection input nor
+    # gates File Review. A slow RPC must never postpone OCR or make the visible
+    # processing cycle appear stalled before it has reached a model call.
+    _DIAGNOSTICS_EXECUTOR.submit(
+        _record_rfq_upload_diagnostic,
+        client=client,
+        company_id=company_id,
+        user_id=user_id,
         file_bytes=file_bytes,
     )
     page_images = None
