@@ -11,6 +11,7 @@ import pandas as pd
 import pytest
 
 from agents.anthropic_adapter import (
+    _discard_non_object_visual_registry_groups,
     _validate_and_apply_visual_registry_classifications,
     _apply_reference_root_suffixes,
     DEFAULT_CLAUDE_DETECTION_MODEL,
@@ -1591,6 +1592,33 @@ def test_whole_architectural_floor_plan_is_demoted_when_model_mislabels_represen
     assert audit[0]["classification_reason"] == (
         "Whole-level architectural plan is document context, not an isolated fabricated item."
     )
+
+
+def test_object_evidence_survives_imprecise_floor_plan_representation_kind():
+    payload = _visual_registry_payload({
+        "visual_groups": [{
+            "group_id": "cabinet-plan", "page_number": 7,
+            "location_hint": "lower left",
+            "visual_description": (
+                "Orthographic top view of one cabinet carcass with local "
+                "dimensions and internal divisions."
+            ),
+            "representation_kind": "floor_plan",
+            "evidence_class": "object_evidence",
+            "classification_reason": (
+                "The bounded technical depiction directly specifies one fabricated cabinet."
+            ),
+        }],
+    })
+
+    enriched, audit = _validate_and_apply_visual_registry_classifications(payload)
+    effective, discarded = _discard_non_object_visual_registry_groups(enriched)
+
+    assert audit[0]["evidence_class"] == "object_evidence"
+    assert discarded == []
+    assert [group["group_id"] for group in effective["visual_groups"]] == [
+        "cabinet-plan"
+    ]
 
 
 def test_v5_discovery_page_coverage_requires_every_page_and_every_island():

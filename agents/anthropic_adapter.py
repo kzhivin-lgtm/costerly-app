@@ -246,23 +246,6 @@ DETECTION_V5_NATIVE_GRAPHIC_ANCHOR_MAX_PER_PAGE = 12
 # contract as well.
 DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE = 0.0
 
-_NON_OBJECT_VISUAL_REPRESENTATION_KINDS = frozenset({
-    "cover",
-    "cover_page",
-    "title_page",
-    "title_block",
-    "generic_floor_plan",
-    "floor_plan",
-    "room_layout",
-    "electrical_plan",
-    "plumbing_plan",
-    "lighting_plan",
-    "legend",
-    "administrative_text",
-    "generic_schedule",
-    "navigation_diagram",
-})
-
 _DOCUMENT_DIMENSION_UNIT_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("mm", re.compile(r"(?i)\b[HWD]\s*=\s*\d+(?:[.,]\d+)?\s*mm\b")),
     ("cm", re.compile(r"(?i)\b[HWD]\s*=\s*\d+(?:[.,]\d+)?\s*cm\b")),
@@ -7248,12 +7231,13 @@ def build_detection_view_dimension_audit(
 def _discard_non_object_visual_registry_groups(
     payload: dict[str, Any],
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """Remove title and generic-plan material before it can claim ownership.
+    """Remove only confirmed document context before it can claim ownership.
 
-    These pages may help Detection orient itself, but are never object Evidence.
-    The model's original output remains in the decision audit. The effective
-    payload cannot pass a generic plan into the proof graph, candidate objects,
-    identity pages, or Estimation page coverage.
+    ``representation_kind`` describes the visual form, not commercial
+    eligibility. The classification pass deterministically demotes a proven
+    whole architectural plan to ``document_context`` before this function runs.
+    A technical View imprecisely named ``floor_plan`` but classified as
+    ``object_evidence`` must remain available to the proof graph.
     """
     groups = payload.get("visual_groups")
     if not isinstance(groups, list):
@@ -7261,11 +7245,7 @@ def _discard_non_object_visual_registry_groups(
     discarded_groups = [
         group for group in groups
         if isinstance(group, dict)
-        and (
-            group.get("evidence_class") == "document_context"
-            or str(group.get("representation_kind") or "").strip().lower()
-            in _NON_OBJECT_VISUAL_REPRESENTATION_KINDS
-        )
+        and group.get("evidence_class") == "document_context"
     ]
     if not discarded_groups:
         return payload, []
