@@ -41,11 +41,5 @@ be omitted because it has no Candidate Region: inspect its full PNG before
 returning that page's Island ID list, including an empty list when appropriate.
 
 `representation_kind` describes the visual form, never its evidence class.
-Use `floor_plan` only for a whole architectural room-and-circulation layout:
-for example an overall level or room plan with architectural boundaries,
-circulation, several spaces, walls or door swings. Classify that as Document
-Context, not Object Evidence. A top view of one fabricated item or a bounded
-fabrication assembly is `object_plan`, not `floor_plan`. An elevation, section,
-detail or orthographic technical view is never `floor_plan`. When the drawing
-is object-specific but its visual form is uncertain, retain it as Object
-Evidence rather than treating it as generic page context.
+Use `floor_plan` for a whole architectural room-and-circulation layout, and
+classify it as Document Context, not Object Evidence.

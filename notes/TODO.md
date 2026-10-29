@@ -126,20 +126,22 @@ pairs. This checkpoint protects the queue only. It is not final Floor 06
 quality acceptance because P09/P10/P11/P14 exposed the separate false
 `floor_plan` exclusion defect, recorded as V6.68 below.
 
-ACTIVE, V6.68, P0, floor-plan classification gate:
-Base: V6.67 same-page Review checkpoint. Retain a technical Island classified
+INVALID EXPERIMENT, V6.68, P0, floor-plan classification gate:
+The downstream soft gate was coupled with a Discovery prompt rewrite. On the
+Floor 06 live run, the model returned a materially weaker semantic evidence
+set and the deterministic merge gate produced 39 packages instead of the V6.67
+run's 15. Do not use V6.68 as a checkpoint or as the base for further work.
+
+ACTIVE, V6.69, P0, isolated floor-plan soft gate:
+Base: exact V6.67 Discovery prompt and same-page Review checkpoint. Apply only
+the deterministic downstream soft gate: retain a technical Island classified
 as `object_evidence` even when its neutral `representation_kind` is
-`floor_plan`; remove the later hard discard that makes the label itself fatal.
-Keep the existing deterministic demotion for an actual whole architectural
-floor plan when its description establishes level/room/layout/wall/circulation
-context. Tighten Discovery wording: `floor_plan` is only a whole architectural
-room-and-circulation layout; a top view of a fabricated item is `object_plan`,
-and elevation, section or detail is never `floor_plan`. Do not alter V6.67
+`floor_plan`; discard only confirmed `document_context`. Keep V6.67's prompt,
 same-page queue, Candidate Q cross-page selection, Dimension scoring, router,
-Naming, quantity or preview policy. Acceptance: genuine whole-level plans stay
-`document_context`; a technical object view mislabelled `floor_plan` survives
-as Object Evidence; Floor 06 P09/P10/P11/P14 remain in the final visual
-inventory before merge review.
+Naming, quantity and preview policy byte-for-byte unchanged. Acceptance: a
+genuine whole-level plan remains `document_context`, technical object views
+mislabelled `floor_plan` survive, and Floor 06 retains V6.67-grade merge
+behaviour rather than reproducing V6.68's split into 39 packages.
 
 CHECKPOINT, V6.63, P0, retained File Review integrity and explicit caption quantity:
 The accepted V6.62 Progress controller and File Review handoff remain protected.
