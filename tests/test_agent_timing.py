@@ -1286,6 +1286,84 @@ def test_v67_mistral_anchor_contract_replaces_a_freehand_proposal_bbox():
     assert usage["raw_usage"]["v6_7_mistral_anchor_admission_audit"][0]["status"] == "accepted_anchor"
 
 
+def test_v73_coverage_contract_admits_only_an_independently_observed_island():
+    proposal = _visual_registry_payload({
+        "visual_groups": [{
+            "group_id": "view_cov", "page_number": 1, "location_hint": "lower right",
+            "visual_description": "separate cabinet elevation", "representation_kind": "elevation",
+            "bbox": {"top_left_x": 250, "top_left_y": 250,
+                     "bottom_right_x": 500, "bottom_right_y": 520},
+            "core_bbox": {"top_left_x": 270, "top_left_y": 270,
+                          "bottom_right_x": 480, "bottom_right_y": 500},
+        }],
+    })
+    proposal.pop("object_hypotheses")
+    proposal.pop("semantic_facts")
+    proposal["page_coverage"] = [{
+        "page_number": 1, "visual_group_ids": ["view_cov"],
+    }]
+    proposal["coverage_region_decisions"] = [{
+        "candidate_region_id": "CR-P001-002", "decision": "accept",
+        "group_id": "view_cov",
+        "reason": "A separate cabinet elevation is visibly drawn in the coverage region.",
+        "source_fact_ids": ["SF00001"],
+    }]
+    ocr_package = {
+        "pages": [{
+            "page_number": 1, "dimensions": {"width": 1000, "height": 1000},
+            "blocks": [{
+                "type": "image", "content": "upper cabinet elevation",
+                "top_left_x": 10, "top_left_y": 10,
+                "bottom_right_x": 180, "bottom_right_y": 180,
+            }],
+        }],
+        "evidence": {"text_blocks": [
+            {"page_number": 1, "source": "native_pdf_text", "text": "240",
+             "bbox": {"top_left_x": 320, "top_left_y": 330,
+                      "bottom_right_x": 340, "bottom_right_y": 350}},
+            {"page_number": 1, "source": "native_pdf_text", "text": "460",
+             "bbox": {"top_left_x": 420, "top_left_y": 430,
+                      "bottom_right_x": 440, "bottom_right_y": 450}},
+        ]},
+    }
+
+    def fake_create(*_args, **_kwargs):
+        return _Response(), {
+            "request_started_at": "2026-10-16T00:00:00+00:00",
+            "request_finished_at": "2026-10-16T00:00:01+00:00",
+        }
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
+        patch(
+            "agents.anthropic_adapter.extract_text_from_claude_response",
+            side_effect=[json.dumps(proposal), json.dumps({"object_hypotheses": []})],
+        ),
+    ):
+        visual_map, _, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=ocr_package, model="model",
+        )
+
+    assert visual_map["visual_groups"][0]["group_id"] == "view-001"
+    assert usage["prompt_version"] == "detection_v7_3_coverage_only_structured_acceptance"
+    assert usage["raw_usage"]["v7_3_coverage_admission_audit"] == [{
+        "candidate_region_id": "CR-P001-002", "page_number": 1,
+        "candidate_bbox": {
+            "top_left_x": 240, "top_left_y": 240,
+            "bottom_right_x": 520, "bottom_right_y": 540,
+        },
+        "decision": "accept", "group_id": "view-001",
+        "reason": "A separate cabinet elevation is visibly drawn in the coverage region.",
+        "source_fact_ids": ["SF00001"], "status": "accepted_visual_island",
+        "island_bbox": {
+            "top_left_x": 250, "top_left_y": 250,
+            "bottom_right_x": 500, "bottom_right_y": 520,
+        },
+    }]
+
+
 def test_v610_small_mistral_anchor_route_audits_each_sparse_link_before_merge():
     proposal = _visual_registry_payload({
         "visual_groups": [

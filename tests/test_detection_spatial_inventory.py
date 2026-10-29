@@ -1,6 +1,7 @@
 import pytest
 
 from agents.anthropic_adapter import (
+    apply_detection_v73_coverage_admission,
     apply_detection_v67_mistral_anchor_admission,
     build_detection_v69_reconciliation_matrix,
     build_detection_v68_pairwise_membership_matrix,
@@ -454,6 +455,79 @@ def test_v67_source_grounded_expansion_is_admitted_without_foreign_anchor():
 
     assert payload["visual_groups"][0]["bbox"] == proposed_bbox
     assert audit[0]["status"] == "accepted_sonnet_change"
+
+
+def _v73_coverage_target() -> dict:
+    return {
+        "candidate_region_id": "CR-P001-002", "page_number": 1,
+        "bbox": {
+            "top_left_x": 100, "top_left_y": 100,
+            "bottom_right_x": 500, "bottom_right_y": 500,
+        },
+        "basis": "fusion_text_cluster", "role": "coverage_only",
+        "source_fact_ids": ["SF-COV"],
+    }
+
+
+def _v73_coverage_payload(*, decision: dict, exceptions: list[dict] | None = None) -> dict:
+    return {
+        "visual_groups": [{
+            "group_id": "VG-P001-002", "page_number": 1,
+            "bbox": {
+                "top_left_x": 180, "top_left_y": 180,
+                "bottom_right_x": 420, "bottom_right_y": 420,
+            },
+            "core_bbox": {
+                "top_left_x": 200, "top_left_y": 200,
+                "bottom_right_x": 400, "bottom_right_y": 400,
+            },
+        }],
+        "candidate_region_exceptions": exceptions or [],
+        "coverage_region_decisions": [decision],
+    }
+
+
+def test_v73_coverage_accepts_an_independent_visual_island_without_copying_candidate_bbox():
+    payload, audit = apply_detection_v73_coverage_admission(
+        payload=_v73_coverage_payload(decision={
+            "candidate_region_id": "CR-P001-002", "decision": "accept",
+            "group_id": "VG-P001-002",
+            "reason": "The page visibly shows a separate cabinet elevation in this region.",
+            "source_fact_ids": ["SF-COV"],
+        }),
+        candidate_regions=[_v73_coverage_target()],
+        source_facts=[{
+            "fact_id": "SF-COV", "page_number": 1,
+            "bbox": {
+                "top_left_x": 250, "top_left_y": 250,
+                "bottom_right_x": 270, "bottom_right_y": 270,
+            },
+        }],
+    )
+
+    assert payload["visual_groups"][0]["bbox"] != _v73_coverage_target()["bbox"]
+    assert audit == [{
+        "candidate_region_id": "CR-P001-002", "page_number": 1,
+        "candidate_bbox": _v73_coverage_target()["bbox"], "decision": "accept",
+        "group_id": "VG-P001-002",
+        "reason": "The page visibly shows a separate cabinet elevation in this region.",
+        "source_fact_ids": ["SF-COV"], "status": "accepted_visual_island",
+        "island_bbox": payload["visual_groups"][0]["bbox"],
+    }]
+    assert "coverage_region_decisions" not in payload
+
+
+def test_v73_coverage_rejection_requires_a_matching_non_island_exception():
+    with pytest.raises(ValueError, match="matching exception"):
+        apply_detection_v73_coverage_admission(
+            payload=_v73_coverage_payload(decision={
+                "candidate_region_id": "CR-P001-002", "decision": "reject",
+                "group_id": "", "reason": "The region contains only a dimension annotation cluster.",
+                "source_fact_ids": [],
+            }),
+            candidate_regions=[_v73_coverage_target()],
+            source_facts=[],
+        )
 
 
 def test_evidence_envelope_keeps_external_dimension_with_its_single_island():

@@ -183,7 +183,7 @@ P13=6, P14=3, P15=3. Mismatches are P03, P07, P09, P10 and P11.
 Do not treat matching 15-package output as evidence that this island benchmark
 has passed.
 
-ACTIVE, P0, Floor 06 Candidate Region source-union repair:
+EXPERIMENTAL CHECKPOINT, P0, Floor 06 Candidate Region source-union repair (V7.2):
 
 The V6.73 Floor 06 audit proves a source-recall defect before Discovery, not a
 floor-plan classification or Membership error. On P10, MyPDF extracted 99 text
@@ -220,6 +220,24 @@ or any changes to Discovery, floor-plan classification, Q, dimensions, merge,
 router, Naming, UI, or model choice. Acceptance starts with P10 producing
 three candidate regions before Discovery, while the Floor 06 benchmark pages
 with already-correct counts do not gain duplicate candidates.
+
+ACTIVE, P0, V7.3 Coverage-only structured acceptance:
+
+Checkpoint `detection-v7.2-coverage-only-checkpoint-2026-10-30` at `49b9476`
+protects V7.2's bounded source layer. V7.3 changes neither Candidate Region
+sources nor graph seeds: every `coverage_only` region must yield exactly one
+structured `accept` or `reject` decision during Discovery. An accepted region
+must name an independently observed, same-page Island and cite a candidate
+source fact located inside that Island; the broad candidate bbox is never
+copied into Island geometry. A rejection must leave no Island or fact claim and
+must carry a matching concrete non-Island exception. This adds no provider
+call. The V7.3 runtime audit records every decision after final Island-ID
+normalization. Acceptance: P10 still supplies exactly its two coverage targets,
+both receive explicit decisions, any accepted target becomes an ordinary
+post-Discovery Island only, and no candidate enters pre-Discovery dimensions,
+Q, Membership or packages. Do not change raster recall, Mistral-region
+classification, source filters, model choice, or downstream graph policy in
+this iteration.
 
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence

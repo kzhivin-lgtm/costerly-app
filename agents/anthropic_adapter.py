@@ -120,6 +120,9 @@ DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
 DETECTION_V67_MISTRAL_ANCHOR_ADMISSION_PROMPT_VERSION = (
     "detection_v6_7_mistral_graphic_anchor_admission"
 )
+DETECTION_V73_COVERAGE_ACCEPTANCE_PROMPT_VERSION = (
+    "detection_v7_3_coverage_only_structured_acceptance"
+)
 DETECTION_V68_BOUNDED_ALL_PAIR_MEMBERSHIP_PROMPT_VERSION = (
     "detection_v6_8_bounded_all_pair_membership"
 )
@@ -843,6 +846,30 @@ DETECTION_V67_MISTRAL_ANCHOR_DISCOVERY_JSON_SCHEMA["required"].append(
 DETECTION_V67_MISTRAL_ANCHOR_DISCOVERY_JSON_SCHEMA["properties"][
     "candidate_region_decisions"
 ] = DETECTION_V67_MISTRAL_ANCHOR_DECISIONS_SCHEMA
+
+# Coverage-only regions are recall targets, not initial boundary authority.
+# Unlike a Mistral anchor, accepting one must never copy its broad recall box
+# into an Island. The model must instead return the independently observed
+# Island it found inside the full-page image.
+DETECTION_V73_COVERAGE_DECISIONS_SCHEMA: dict[str, Any] = {
+    "type": "array", "maxItems": 32,
+    "items": {"type": "object", "additionalProperties": False,
+        "required": [
+            "candidate_region_id", "decision", "group_id", "reason",
+            "source_fact_ids",
+        ],
+        "properties": {
+            "candidate_region_id": {"type": "string"},
+            "decision": {"type": "string", "enum": ["accept", "reject"]},
+            "group_id": {"type": "string"},
+            "reason": {"type": "string", "minLength": 16, "maxLength": 180},
+            "source_fact_ids": {
+                "type": "array", "minItems": 0, "maxItems": 4,
+                "items": {"type": "string"},
+            },
+        },
+    },
+}
 
 DETECTION_V5_MEMBERSHIP_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -6150,6 +6177,165 @@ def format_detection_v67_mistral_graphic_anchors(
     return "\n".join(lines)
 
 
+def format_detection_v73_coverage_admission_targets(
+    candidates: list[dict[str, Any]],
+) -> str:
+    """Require a visible, source-grounded outcome for every coverage target."""
+    targets = [
+        candidate for candidate in candidates
+        if candidate.get("role") == "coverage_only"
+    ]
+    if not targets:
+        return ""
+    lines = [
+        "COVERAGE-ONLY ADMISSION (recall targets, not Island geometry):",
+        "Return exactly one coverage_region_decision for every COV below.",
+        "accept: group_id names one independently observed Island on the same page. "
+        "Use that Island's visual bbox/core_bbox, never copy the COV bbox. Cite one "
+        "listed COV source fact located inside the Island.",
+        "reject: group_id and source_fact_ids are empty, and candidate_region_exceptions "
+        "contains the same COV ID with a concrete visible non-Island reason.",
+        "COV=id|P=page|B=x1,y1,x2,y2|SF=source facts.",
+    ]
+    for candidate in targets:
+        bbox = candidate["bbox"]
+        all_source_fact_ids = candidate.get("source_fact_ids") or []
+        source_fact_ids = ",".join(all_source_fact_ids[:4]) or "-"
+        if len(all_source_fact_ids) > 4:
+            source_fact_ids += f",+{len(all_source_fact_ids) - 4} more"
+        lines.append(
+            "COV={id}|P={page}|B={x1},{y1},{x2},{y2}|SF={facts}".format(
+                id=candidate["candidate_region_id"],
+                page=candidate["page_number"],
+                x1=bbox["top_left_x"], y1=bbox["top_left_y"],
+                x2=bbox["bottom_right_x"], y2=bbox["bottom_right_y"],
+                facts=source_fact_ids,
+            )
+        )
+    return "\n".join(lines)
+
+
+def apply_detection_v73_coverage_admission(
+    *,
+    payload: dict[str, Any],
+    candidate_regions: list[dict[str, Any]],
+    source_facts: list[dict[str, Any]],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Validate coverage outcomes without granting a recall bbox any authority."""
+    effective = copy.deepcopy(payload)
+    decisions = effective.pop("coverage_region_decisions", None)
+    targets = [
+        candidate for candidate in candidate_regions
+        if candidate.get("role") == "coverage_only"
+    ]
+    if not targets:
+        if decisions not in (None, []):
+            raise ValueError("coverage decisions exist without coverage targets")
+        return effective, []
+    if not isinstance(decisions, list):
+        raise ValueError("coverage decisions are invalid")
+    targets_by_id = {
+        str(candidate["candidate_region_id"]): candidate
+        for candidate in targets
+    }
+    groups = effective.get("visual_groups")
+    if not isinstance(groups, list):
+        raise ValueError("coverage visual groups are invalid")
+    groups_by_id = {
+        str(group.get("group_id") or ""): group
+        for group in groups if isinstance(group, dict)
+    }
+    if len(groups_by_id) != len(groups):
+        raise ValueError("coverage visual group IDs are invalid")
+    facts_by_id = {
+        str(fact.get("fact_id") or ""): fact
+        for fact in source_facts if isinstance(fact, dict) and fact.get("fact_id")
+    }
+    exceptions = {
+        str(row.get("candidate_region_id") or ""): str(row.get("reason") or "").strip()
+        for row in effective.get("candidate_region_exceptions") or []
+        if isinstance(row, dict)
+    }
+    decisions_by_candidate: dict[str, dict[str, Any]] = {}
+    for decision in decisions:
+        if not isinstance(decision, dict) or set(decision) != {
+            "candidate_region_id", "decision", "group_id", "reason", "source_fact_ids",
+        }:
+            raise ValueError("coverage decision shape is invalid")
+        candidate_id = str(decision.get("candidate_region_id") or "")
+        if candidate_id not in targets_by_id or candidate_id in decisions_by_candidate:
+            raise ValueError("coverage decision candidate is invalid")
+        if decision.get("decision") not in {"accept", "reject"}:
+            raise ValueError("coverage decision type is invalid")
+        if not str(decision.get("reason") or "").strip():
+            raise ValueError("coverage decision reason is invalid")
+        source_fact_ids = decision.get("source_fact_ids")
+        if (
+            not isinstance(source_fact_ids, list)
+            or len(source_fact_ids) != len(set(source_fact_ids))
+            or any(str(fact_id) not in facts_by_id for fact_id in source_fact_ids)
+        ):
+            raise ValueError("coverage decision source facts are invalid")
+        decisions_by_candidate[candidate_id] = copy.deepcopy(decision)
+    if set(decisions_by_candidate) != set(targets_by_id):
+        raise ValueError("coverage decisions must cover every coverage target")
+
+    claimed_group_ids: set[str] = set()
+    audit: list[dict[str, Any]] = []
+    for candidate in targets:
+        candidate_id = str(candidate["candidate_region_id"])
+        decision = decisions_by_candidate[candidate_id]
+        group_id = str(decision.get("group_id") or "")
+        source_fact_ids = [str(fact_id) for fact_id in decision["source_fact_ids"]]
+        entry = {
+            "candidate_region_id": candidate_id,
+            "page_number": candidate["page_number"],
+            "candidate_bbox": copy.deepcopy(candidate["bbox"]),
+            "decision": decision["decision"],
+            "group_id": group_id or None,
+            "reason": str(decision["reason"]).strip(),
+            "source_fact_ids": source_fact_ids,
+        }
+        if decision["decision"] == "reject":
+            if group_id or source_fact_ids or not exceptions.get(candidate_id):
+                raise ValueError("coverage rejection must have a matching exception")
+            audit.append({**entry, "status": "accepted_rejection"})
+            continue
+
+        candidate_fact_ids = {str(fact_id) for fact_id in candidate.get("source_fact_ids") or []}
+        if (
+            not group_id
+            or group_id not in groups_by_id
+            or group_id in claimed_group_ids
+            or not source_fact_ids
+            or not set(source_fact_ids).issubset(candidate_fact_ids)
+        ):
+            raise ValueError("coverage acceptance group or source facts are invalid")
+        group = groups_by_id[group_id]
+        if int(group.get("page_number") or 0) != int(candidate["page_number"]):
+            raise ValueError("coverage acceptance crosses pages")
+        group_bbox = _detection_bbox(group.get("bbox"))
+        if group_bbox is None or not _bbox_overlaps(candidate["bbox"], group_bbox):
+            raise ValueError("coverage acceptance lacks visual overlap")
+        cited_fact_bboxes = [
+            _detection_bbox(facts_by_id[fact_id].get("bbox"))
+            for fact_id in source_fact_ids
+        ]
+        if not any(
+            fact_bbox is not None
+            and _detection_bbox_centre_inside(fact_bbox, group_bbox)
+            for fact_bbox in cited_fact_bboxes
+        ):
+            raise ValueError("coverage acceptance lacks an in-Island source fact")
+        claimed_group_ids.add(group_id)
+        audit.append({
+            **entry,
+            "status": "accepted_visual_island",
+            "island_bbox": copy.deepcopy(group_bbox),
+        })
+    return effective, audit
+
+
 def apply_detection_v67_mistral_anchor_admission(
     *,
     payload: dict[str, Any],
@@ -10536,6 +10722,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         ocr_package, source_facts,
     )
     candidate_graph_seeds = select_detection_candidate_graph_seeds(candidate_regions)
+    coverage_admission_active = any(
+        candidate.get("role") == "coverage_only"
+        for candidate in candidate_regions
+    )
     mistral_anchor_admission_active = bool(
         mistral_anchor_admission and any(
             candidate.get("basis") == "mistral_graphic_region"
@@ -10571,9 +10761,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     )
     review_model = selected_model
     prompt_version = (
-        DETECTION_V67_MISTRAL_ANCHOR_ADMISSION_PROMPT_VERSION
-        if mistral_anchor_admission_active
-        else DETECTION_VISUAL_REGISTRY_PROMPT_VERSION
+        DETECTION_V73_COVERAGE_ACCEPTANCE_PROMPT_VERSION
+        if coverage_admission_active
+        else DETECTION_V67_MISTRAL_ANCHOR_ADMISSION_PROMPT_VERSION
+        if mistral_anchor_admission_active else DETECTION_VISUAL_REGISTRY_PROMPT_VERSION
     )
     mistral_anchor_text = format_detection_v67_mistral_graphic_anchors(
         candidate_regions,
@@ -10588,6 +10779,16 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "the constrained decisions supplied in the user context. Runtime "
             "will reject an unsupported change and keep the Mistral bbox.\n"
         )
+    if coverage_admission_active:
+        proposal_prompt_with_anchor_contract += (
+            "\n\nV7.3 COVERAGE-ONLY ADMISSION:\n"
+            "Every supplied coverage-only target requires one structured decision. "
+            "A coverage target is a recall cue, never Island geometry. On accept, "
+            "identify the independently observed Island and cite its supplied source "
+            "fact. On reject, provide a concrete visible non-Island exception. Return "
+            "an empty coverage_region_decisions array when a Discovery batch has no "
+            "coverage targets.\n"
+        )
     proposal_schema = (
         copy.deepcopy(DETECTION_V67_MISTRAL_ANCHOR_DISCOVERY_JSON_SCHEMA)
         if mistral_anchor_admission_active
@@ -10598,6 +10799,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     if mistral_anchor_admission_active and not document_scope_enabled:
         proposal_schema["required"].remove("document_scope")
         proposal_schema["properties"].pop("document_scope")
+    if coverage_admission_active:
+        proposal_schema["required"].append("coverage_region_decisions")
+        proposal_schema["properties"]["coverage_region_decisions"] = (
+            copy.deepcopy(DETECTION_V73_COVERAGE_DECISIONS_SCHEMA)
+        )
     fusion_page_profiles = build_detection_fusion_page_profile_audit(ocr_package)
     candidate_visual_groups = [{
         "group_id": str(candidate["candidate_region_id"]),
@@ -10656,6 +10862,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         file_name=file_name, company_id=company_id, ocr_package=None,
     ).replace("OCR text layer: unavailable", page_evidence_inventory_text)
     proposal_user_text += "\n\n" + fusion_candidate_region_text
+    coverage_admission_text = format_detection_v73_coverage_admission_targets(
+        candidate_regions,
+    )
+    if coverage_admission_text:
+        proposal_user_text += "\n\n" + coverage_admission_text
     if mistral_anchor_text:
         proposal_user_text += "\n\n" + mistral_anchor_text
     proposal_user_text += "\n\n" + format_detection_candidate_pair_queue(
@@ -10730,6 +10941,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     )
     v641_batch_audit: list[dict[str, Any]] = []
     v641_proposal_attempt_summaries: list[dict[str, Any]] = []
+    coverage_admission_audit: list[dict[str, Any]] = []
+    coverage_admission_consumed = False
     # The ordinary single-pass route has the same response shape as a V6.41
     # batch. Plan capacity from candidate count before the provider call rather
     # than discovering a fixed 8,192-token ceiling through a failed response.
@@ -10788,6 +11001,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             batch_user_text += "\n\n" + format_detection_fusion_candidate_regions(
                 batch_candidates,
             )
+            batch_coverage_admission_text = (
+                format_detection_v73_coverage_admission_targets(batch_candidates)
+            )
+            if batch_coverage_admission_text:
+                batch_user_text += "\n\n" + batch_coverage_admission_text
             batch_user_text += "\n\n" + format_detection_candidate_pair_queue(
                 batch_pairs, batch_baskets,
             )
@@ -10900,6 +11118,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             }
             if document_scope_enabled:
                 expected_fields.add("document_scope")
+            if coverage_admission_active:
+                expected_fields.add("coverage_region_decisions")
             batch_payload = validate_batch_contract(batch_payload)
             geometry_retry_error = ""
             try:
@@ -10979,6 +11199,26 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                         f"V6.44 geometry-correction batch {batch_number} remained invalid: "
                         f"{retry_error}"
                     ) from retry_error
+            if coverage_admission_active:
+                batch_payload, batch_coverage_admission_audit = (
+                    apply_detection_v73_coverage_admission(
+                        payload=batch_payload,
+                        candidate_regions=batch_candidates,
+                        source_facts=batch_facts,
+                    )
+                )
+                batch_group_id_mapping = {
+                    str(group.get("group_id") or ""): (
+                        f"v641-b{batch_number:02d}-{ordinal:03d}"
+                    )
+                    for ordinal, group in enumerate(batch_payload["visual_groups"], start=1)
+                }
+                for row in batch_coverage_admission_audit:
+                    group_id = row.get("group_id")
+                    if group_id:
+                        row["group_id"] = batch_group_id_mapping.get(str(group_id), group_id)
+                coverage_admission_audit.extend(batch_coverage_admission_audit)
+                coverage_admission_consumed = True
             batch_payload = _v641_reindex_batch_discovery_payload(
                 batch_payload, batch_number=batch_number,
             )
@@ -11043,6 +11283,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "candidate_region_exceptions": all_exceptions,
             "page_coverage": sorted(all_coverage, key=lambda row: row["page_number"]),
         }
+        if coverage_admission_active:
+            # Per-batch validation already consumed every decision before IDs
+            # were reindexed. Keep the aggregate schema shape explicit while
+            # preventing a second admission pass below.
+            proposal_raw_payload["coverage_region_decisions"] = []
         if document_scope_enabled:
             # A page-local Discovery call cannot truthfully assert one
             # document-wide hierarchy.  The deterministic category remains
@@ -11187,6 +11432,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     }
     if document_scope_enabled:
         discovery_fields.add("document_scope")
+    if coverage_admission_active:
+        discovery_fields.add("coverage_region_decisions")
     anchor_discovery_fields = {
         *discovery_fields, "candidate_region_decisions",
     }
@@ -11201,7 +11448,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     )
     allowed_response_fields = (
         (expected_discovery_fields,)
-        if mistral_anchor_admission_active
+        if mistral_anchor_admission_active or coverage_admission_active
         else (discovery_fields, legacy_proposal_fields)
     )
     if not isinstance(proposal_raw_payload, dict) or set(proposal_raw_payload) not in allowed_response_fields:
@@ -11282,6 +11529,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         }]
     proposal_model_payload = copy.deepcopy(proposal_raw_payload)
     proposal_boundary_payload = copy.deepcopy(proposal_raw_payload)
+    if coverage_admission_consumed:
+        proposal_boundary_payload.pop("coverage_region_decisions", None)
     proposal_scope_payload: dict[str, Any] | None = None
     document_scope: dict[str, Any] | None = None
     document_scope_validation_error: str | None = None
@@ -11299,9 +11548,18 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         proposal_discovery_payload.pop("page_coverage", None)
     else:
         proposal_discovery_payload = {
-            field: proposal_raw_payload[field]
-            for field in discovery_fields - {"page_coverage", "document_scope"}
+            field: proposal_boundary_payload[field]
+            for field in proposal_boundary_payload
+            if field not in {"page_coverage", "document_scope"}
         }
+    if coverage_admission_active and not coverage_admission_consumed:
+        proposal_discovery_payload, coverage_admission_audit = (
+            apply_detection_v73_coverage_admission(
+                payload=proposal_discovery_payload,
+                candidate_regions=candidate_regions,
+                source_facts=source_facts,
+            )
+        )
     proposal_for_review, _ = _validate_and_apply_visual_registry_classifications(
         proposal_discovery_payload, page_frames=review_coordinate_frames,
     )
@@ -11945,6 +12203,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
+        for row in coverage_admission_audit:
+            group_id = row.get("group_id")
+            if group_id:
+                row["group_id"] = group_id_mapping.get(str(group_id), str(group_id))
         normalized_registry_visual_sources = []
         for source in registry_visual_sources:
             normalized_source = copy.deepcopy(source)
@@ -12531,6 +12793,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "fusion_candidate_regions": candidate_regions,
         "fusion_page_profiles": fusion_page_profiles,
         "candidate_region_audit": candidate_region_audit,
+        "v7_3_coverage_admission_active": coverage_admission_active,
+        "v7_3_coverage_admission_audit": coverage_admission_audit,
         "unexplained_candidate_region_count": sum(
             row["status"] == "unexplained" for row in candidate_region_audit
         ),
