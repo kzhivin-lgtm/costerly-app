@@ -183,8 +183,7 @@ P13=6, P14=3, P15=3. Mismatches are P03, P07, P09, P10 and P11.
 Do not treat matching 15-package output as evidence that this island benchmark
 has passed.
 
-ACTIVE NEXT, P0, Floor 06 Candidate Region source-union repair, proposed,
-not yet implemented:
+ACTIVE, P0, Floor 06 Candidate Region source-union repair:
 
 The V6.73 Floor 06 audit proves a source-recall defect before Discovery, not a
 floor-plan classification or Membership error. On P10, MyPDF extracted 99 text
@@ -201,8 +200,11 @@ text/dimension clusters only when Mistral has no graphic region anywhere on the
 page. A Mistral graphic block therefore suppresses distinct MyPDF evidence on
 the same page even when it leaves that evidence uncovered. The next experiment
 must preserve the V6.73 checkpoint and change only recall: form bounded MyPDF
-candidates from source facts that lie outside every Mistral graphic candidate,
-or whose fact cluster is spatially distinct from the Mistral candidate. Do not
+candidates from native-PDF source facts whose centres lie outside every Mistral
+graphic candidate. V7 implementation `d1f0b60` adds only this supplement;
+the focused candidate-region suite passed 19 tests. It remains active until
+the cached Floor 06 P10 source audit and the complete benchmark establish that
+the bounded candidates improve recall without duplicate regions. Do not
 reintroduce V6.70's unbounded source union, broad Halo, candidate-box authority,
 or any changes to Discovery, floor-plan classification, Q, dimensions, merge,
 router, Naming, UI, or model choice. Acceptance starts with P10 producing
