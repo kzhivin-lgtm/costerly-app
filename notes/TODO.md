@@ -108,7 +108,7 @@ and `Last Estimate` returns the same completed review from cache without a
 multi-second grey load. Detection, OCR, Fusion, router, objects, Evidence,
 Naming, Preview and provider calls are protected.
 
-ACTIVE, V6.67, P0, mandatory post-Discovery same-page full-criteria comparison:
+CHECKPOINT, V6.67, P0, mandatory post-Discovery same-page full-criteria comparison:
 Base: owner-accepted V6.63, with all subsequent V6.64-V6.66 Fusion, bbox,
 halo, scoring, routing and classification experiments excluded. After Discovery
 has fixed retained `object_evidence` Islands, build the exact unordered pair
@@ -117,10 +117,29 @@ pair against identifier, topology, geometry, dimensions and construction. The
 new queue is comparison-only, not merge evidence, and never creates cross-page
 all-to-all work. Preserve V6.63's Dimension scoring, Candidate Q cross-page
 behaviour, Mistral anchors, routers, File Review, Naming and quantity policy.
-Acceptance: the review handoff and audit prove an exhaustive pair set for each
-page's retained Object Evidence inventory; every queue pair is subject to the
-five-criterion review contract; no document-context or floor-plan group enters
-the queue. Pending focused tests, deployment, then live Floor 06 verification.
+Acceptance met for the pairing mechanism: the review handoff and audit prove
+an exhaustive pair set for each page's retained Object Evidence inventory; every
+queue pair is subject to the five-criterion review contract; no document-context
+or discarded floor-plan group enters the queue. Floor 06 live verification
+returned 15 packages from 49 retained final Views and 125 required same-page
+pairs. This checkpoint protects the queue only. It is not final Floor 06
+quality acceptance because P09/P10/P11/P14 exposed the separate false
+`floor_plan` exclusion defect, recorded as V6.68 below.
+
+ACTIVE, V6.68, P0, floor-plan classification gate:
+Base: V6.67 same-page Review checkpoint. Retain a technical Island classified
+as `object_evidence` even when its neutral `representation_kind` is
+`floor_plan`; remove the later hard discard that makes the label itself fatal.
+Keep the existing deterministic demotion for an actual whole architectural
+floor plan when its description establishes level/room/layout/wall/circulation
+context. Tighten Discovery wording: `floor_plan` is only a whole architectural
+room-and-circulation layout; a top view of a fabricated item is `object_plan`,
+and elevation, section or detail is never `floor_plan`. Do not alter V6.67
+same-page queue, Candidate Q cross-page selection, Dimension scoring, router,
+Naming, quantity or preview policy. Acceptance: genuine whole-level plans stay
+`document_context`; a technical object view mislabelled `floor_plan` survives
+as Object Evidence; Floor 06 P09/P10/P11/P14 remain in the final visual
+inventory before merge review.
 
 CHECKPOINT, V6.63, P0, retained File Review integrity and explicit caption quantity:
 The accepted V6.62 Progress controller and File Review handoff remain protected.
