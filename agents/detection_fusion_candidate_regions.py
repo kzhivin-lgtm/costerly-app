@@ -120,6 +120,7 @@ def _text_cluster_candidates(
     source_facts: list[dict[str, Any]],
     ordinal: int,
     require_dimension_signal: bool = False,
+    role: str | None = None,
 ) -> list[dict[str, Any]]:
     """Build broad recall boxes from disconnected Fusion text clusters.
 
@@ -186,13 +187,16 @@ def _text_cluster_candidates(
         if bbox["bottom_right_x"] <= bbox["top_left_x"] or bbox["bottom_right_y"] <= bbox["top_left_y"]:
             continue
         ordinal += 1
-        candidates.append({
+        candidate = {
             "candidate_region_id": f"CR-P{page_number:03d}-{ordinal:03d}",
             "page_number": page_number,
             "bbox": bbox,
             "basis": "fusion_text_cluster",
             "source_fact_ids": [str(entries[index][0]["fact_id"]) for index in indexes],
-        })
+        }
+        if role is not None:
+            candidate["role"] = role
+        candidates.append(candidate)
     return candidates
 
 
@@ -251,15 +255,26 @@ def build_detection_fusion_candidate_regions(
         candidates.extend(_text_cluster_candidates(
             page_number=page_number,
             page=page,
-                source_facts=_uncovered_native_pdf_facts(
+            source_facts=_uncovered_native_pdf_facts(
                 page_number=page_number,
                 source_facts=source_facts,
                 graphic_bboxes=graphic_bboxes,
             ),
             ordinal=ordinal,
             require_dimension_signal=True,
+            role="coverage_only",
         ))
     return candidates
+
+
+def select_detection_candidate_graph_seeds(
+    candidates: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Keep MyPDF coverage targets out of all pre-Discovery object graph inputs."""
+    return [
+        candidate for candidate in candidates
+        if candidate.get("role") != "coverage_only"
+    ]
 
 
 def build_detection_fusion_page_profile_audit(
@@ -277,7 +292,10 @@ def format_detection_fusion_candidate_regions(
         return "CANDIDATE REGIONS: no usable Fusion recall regions."
     lines = [
         "CANDIDATE REGIONS (Fusion recall aid, not Islands):",
-        "CR=id|P=page|B=x1,y1,x2,y2|K=recall basis|SF=source facts inside region.",
+        "CR=id|P=page|B=x1,y1,x2,y2|K=recall basis|R=role|SF=source facts inside region.",
+        "R=coverage_only requires visual inspection and either an Island or a concrete "
+        "exception. It is not an Object Evidence claim and cannot create pre-Discovery "
+        "dimension, candidate-Q, membership, or package inputs.",
     ]
     for candidate in candidates:
         bbox = candidate["bbox"]
@@ -286,7 +304,7 @@ def format_detection_fusion_candidate_regions(
             f"{candidate['candidate_region_id']}|P{candidate['page_number']}|"
             f"B={bbox['top_left_x']},{bbox['top_left_y']},"
             f"{bbox['bottom_right_x']},{bbox['bottom_right_y']}|"
-            f"K={candidate['basis']}|SF={facts}"
+            f"K={candidate['basis']}|R={candidate.get('role', 'discovery_candidate')}|SF={facts}"
         )
     return "\n".join(lines)
 

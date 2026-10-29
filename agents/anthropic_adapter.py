@@ -55,6 +55,7 @@ from agents.detection_fusion_candidate_regions import (
     build_detection_fusion_page_profile_audit,
     format_detection_candidate_pair_queue,
     format_detection_fusion_candidate_regions,
+    select_detection_candidate_graph_seeds,
 )
 from agents.detection_visual_embedding import (
     DetectionVisualEmbeddingUnavailable,
@@ -10534,6 +10535,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     candidate_regions = build_detection_fusion_candidate_regions(
         ocr_package, source_facts,
     )
+    candidate_graph_seeds = select_detection_candidate_graph_seeds(candidate_regions)
     mistral_anchor_admission_active = bool(
         mistral_anchor_admission and any(
             candidate.get("basis") == "mistral_graphic_region"
@@ -10601,10 +10603,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "group_id": str(candidate["candidate_region_id"]),
         "page_number": candidate["page_number"],
         "evidence_class": "object_evidence",
-    } for candidate in candidate_regions]
+    } for candidate in candidate_graph_seeds]
     candidate_group_bboxes = {
         str(candidate["candidate_region_id"]): candidate["bbox"]
-        for candidate in candidate_regions
+        for candidate in candidate_graph_seeds
     }
     candidate_packages = build_detection_view_evidence_packages(
         visual_groups=candidate_visual_groups,
@@ -10715,6 +10717,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "document_category": str(document_category or "ordinary_object_set"),
             "registry_model": discovery_model,
             "candidate_region_count": len(candidate_regions),
+            "candidate_graph_seed_count": len(candidate_graph_seeds),
             "full_estimated_input_tokens": int(v641_full_estimate),
             "discovery_batches_estimated_tokens": [
                 int(batch["estimated_tokens"])
@@ -10731,7 +10734,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     # batch. Plan capacity from candidate count before the provider call rather
     # than discovering a fixed 8,192-token ceiling through a failed response.
     proposal_output_max_tokens = select_detection_v645_discovery_output_max_tokens(
-        len(candidate_regions),
+        len(candidate_graph_seeds),
     )
     if v641_budgeted_discovery_active:
         all_groups: list[dict[str, Any]] = []
@@ -11764,6 +11767,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "candidate_pair_queue_characters": len(format_detection_candidate_pair_queue(candidate_pair_queue, candidate_dimension_baskets)),
         "document_unit_profile_characters": len(format_detection_document_dimension_unit_profile(document_dimension_unit_profile)),
         "fusion_candidate_region_count": len(candidate_regions),
+        "fusion_candidate_graph_seed_count": len(candidate_graph_seeds),
         "candidate_pair_queue_count": len(candidate_pair_queue),
         "candidate_pair_queue_audit": candidate_pair_queue_audit,
         "candidate_dimension_basket_count": len(candidate_dimension_baskets),

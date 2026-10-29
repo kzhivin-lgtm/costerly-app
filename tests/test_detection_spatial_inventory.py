@@ -12,7 +12,10 @@ from agents.anthropic_adapter import (
     normalize_detection_v610_evidence_review_decisions,
     normalize_detection_v68_pairwise_decisions,
 )
-from agents.detection_fusion_candidate_regions import build_detection_fusion_candidate_regions
+from agents.detection_fusion_candidate_regions import (
+    build_detection_fusion_candidate_regions,
+    select_detection_candidate_graph_seeds,
+)
 
 
 def _ocr_with_graphic_region() -> dict:
@@ -128,6 +131,8 @@ def test_fusion_adds_uncovered_native_pdf_cluster_beside_mistral_graphic_region(
         ("CR-P001-001", "mistral_graphic_region", ["SF-IN"]),
         ("CR-P001-002", "fusion_text_cluster", ["SF-OUT-1", "SF-OUT-2"]),
     ]
+    assert candidates[1]["role"] == "coverage_only"
+    assert select_detection_candidate_graph_seeds(candidates) == [candidates[0]]
 
 
 def test_v68_small_anchor_route_builds_complete_pair_matrix_only_through_ten_islands():
