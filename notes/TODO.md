@@ -183,6 +183,32 @@ P13=6, P14=3, P15=3. Mismatches are P03, P07, P09, P10 and P11.
 Do not treat matching 15-package output as evidence that this island benchmark
 has passed.
 
+ACTIVE NEXT, P0, Floor 06 Candidate Region source-union repair, proposed,
+not yet implemented:
+
+The V6.73 Floor 06 audit proves a source-recall defect before Discovery, not a
+floor-plan classification or Membership error. On P10, MyPDF extracted 99 text
+spans and 14,252 vector primitives, but `vector_cluster_recall` was skipped at
+the 9,284-path limit. Mistral emitted only two near-identical graphic blocks,
+which Candidate Regions treated as one covered region. Discovery consequently
+received one Candidate Region (`CR-P010-001`) and emitted one Object Evidence
+Island, `v641-b02-004`. It did not discard two Islands as `object_plan` or
+`document_context`: the sole Island remained `object_evidence` despite its
+`floor_plan` representation label.
+
+The root contract gap is that Candidate Regions currently creates MyPDF
+text/dimension clusters only when Mistral has no graphic region anywhere on the
+page. A Mistral graphic block therefore suppresses distinct MyPDF evidence on
+the same page even when it leaves that evidence uncovered. The next experiment
+must preserve the V6.73 checkpoint and change only recall: form bounded MyPDF
+candidates from source facts that lie outside every Mistral graphic candidate,
+or whose fact cluster is spatially distinct from the Mistral candidate. Do not
+reintroduce V6.70's unbounded source union, broad Halo, candidate-box authority,
+or any changes to Discovery, floor-plan classification, Q, dimensions, merge,
+router, Naming, UI, or model choice. Acceptance starts with P10 producing
+three candidate regions before Discovery, while the Floor 06 benchmark pages
+with already-correct counts do not gain duplicate candidates.
+
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
 contracts are still changing. The current V5 Registry route records zero cache
