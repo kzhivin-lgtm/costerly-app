@@ -205,9 +205,16 @@ graphic candidate. V7 implementation `d1f0b60` initially admitted four P10
 MyPDF clusters, including the revision table and title block. The correction
 `67624fc` requires two substantial native dimension literals, so its P10 local
 audit yields exactly one Mistral region plus the two lower object-view clusters.
-The focused candidate-region suite passed 19 tests. It remains active until
-the complete Floor 06 benchmark establishes that the bounded candidates improve
-recall without duplicate regions. Do not
+V7.1 is rejected despite that local count: it promoted every supplemental
+MyPDF region into a pre-Discovery `object_evidence` proxy, Dimension Fingerprint
+and Candidate Q, and caused an observed 50-60 object explosion. V7.2 `4050111`
+retains the same three P10 Discovery candidates but assigns the two MyPDF
+regions `coverage_only`: Discovery must inspect/account for them, while only
+ordinary candidates seed pre-Discovery dimensions, Q, Membership and packages.
+The local P10 contract is 3 Discovery candidates and 1 graph seed; the focused
+candidate-region suite passed 19 tests. It remains active until the complete
+Floor 06 benchmark establishes that the bounded candidates improve recall
+without duplicate regions or object explosion. Do not
 reintroduce V6.70's unbounded source union, broad Halo, candidate-box authority,
 or any changes to Discovery, floor-plan classification, Q, dimensions, merge,
 router, Naming, UI, or model choice. Acceptance starts with P10 producing
