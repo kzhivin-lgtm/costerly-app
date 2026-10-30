@@ -7,6 +7,7 @@ from agents.anthropic_adapter import (
     apply_detection_v67_mistral_anchor_admission,
     build_detection_v69_reconciliation_matrix,
     build_detection_v68_pairwise_membership_matrix,
+    build_detection_v714_conflict_membership_matrix,
     build_detection_candidate_region_audit,
     build_detection_view_evidence_packages,
     normalize_detection_v69_pair_criteria_decisions,
@@ -202,6 +203,36 @@ def test_v68_pairwise_normalizer_requires_full_coverage_and_keeps_only_positive_
     assert [row["disposition"] for row in audit] == [
         "same_object", "different_objects", "insufficient_evidence",
     ]
+
+
+def test_v714_requires_only_same_page_technical_conflict_admissions():
+    pairs, audit = build_detection_v714_conflict_membership_matrix(
+        visual_groups=[
+            {"group_id": "technical-a", "page_number": 10,
+             "evidence_class": "object_evidence", "representation_kind": "section"},
+            {"group_id": "technical-b", "page_number": 10,
+             "evidence_class": "object_evidence", "representation_kind": "elevation"},
+            {"group_id": "render", "page_number": 10,
+             "evidence_class": "object_evidence", "representation_kind": "presentation_render"},
+            {"group_id": "plan", "page_number": 10,
+             "evidence_class": "object_evidence", "representation_kind": "floor_plan"},
+            {"group_id": "other-page", "page_number": 11,
+             "evidence_class": "object_evidence", "representation_kind": "section"},
+        ],
+        conflict_decisions=[
+            {"disposition": "admit_object_evidence", "admitted_group_id": "technical-a"},
+            {"disposition": "admit_object_evidence", "admitted_group_id": "technical-b"},
+            {"disposition": "admit_object_evidence", "admitted_group_id": "render"},
+            {"disposition": "admit_object_evidence", "admitted_group_id": "plan"},
+            {"disposition": "admit_object_evidence", "admitted_group_id": "other-page"},
+        ],
+    )
+
+    assert pairs == [("technical-a", "technical-b")]
+    assert audit["basis"] == "same_page_technical_v7_5_conflict_admissions"
+    assert audit["admitted_technical_group_ids_by_page"] == {
+        "10": ["technical-a", "technical-b"], "11": ["other-page"],
+    }
 
 
 def _v69_criteria(*, topology: str, geometry: str, disposition: str = "same_object") -> list[dict]:

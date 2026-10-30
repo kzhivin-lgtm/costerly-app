@@ -157,6 +157,9 @@ DETECTION_V711_PRESENTATION_RENDER_REVIEW_PROMPT_VERSION = (
 DETECTION_V713_BOUNDED_MEMBERSHIP_REVIEW_PROMPT_VERSION = (
     "detection_v7_13_bounded_membership_review_stream"
 )
+DETECTION_V714_CONFLICT_MEMBERSHIP_PROMPT_VERSION = (
+    "detection_v7_14_targeted_conflict_membership"
+)
 DETECTION_V634_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
 DETECTION_V75_CONFLICT_RESOLVER_PROMPT_VERSION = (
@@ -926,6 +929,16 @@ DETECTION_V68_PAIRWISE_DECISIONS_SCHEMA: dict[str, Any] = {
         },
     },
 }
+
+# This is intentionally a property of the existing Membership Review, not a
+# second resolver. It becomes required only when V7.5 admitted two technical
+# views on the same page that Discovery had missed. The ordinary Q queue stays
+# observational, so it cannot again make Review enumerate the whole document.
+DETECTION_V714_CONFLICT_PAIR_DECISIONS_SCHEMA = copy.deepcopy(
+    DETECTION_V68_PAIRWISE_DECISIONS_SCHEMA
+)
+DETECTION_V714_CONFLICT_PAIR_DECISIONS_SCHEMA["minItems"] = 0
+DETECTION_V714_CONFLICT_PAIR_DECISIONS_SCHEMA["maxItems"] = 66
 DETECTION_V68_MEMBERSHIP_JSON_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": False,
     "required": ["pairwise_decisions"],
@@ -7027,6 +7040,67 @@ def finalize_detection_same_page_membership_queue(
     }
 
 
+def build_detection_v714_conflict_membership_matrix(
+    *,
+    visual_groups: list[dict[str, Any]],
+    conflict_decisions: list[dict[str, Any]],
+) -> tuple[list[tuple[str, str]], dict[str, Any]]:
+    """Select only unresolved technical V7.5 admissions for explicit Review.
+
+    Conflict Resolver establishes that a missed region is Object Evidence. It
+    does not establish that two such regions are one commercial object. When
+    two of its technical admissions share a page, require the existing Review
+    to decide just that bounded pair matrix. Presentation renders already have
+    their V7.11 path, while floor plans remain outside object membership.
+    """
+    groups_by_id = {
+        str(group.get("group_id") or ""): group
+        for group in visual_groups
+        if isinstance(group, dict)
+        and group.get("evidence_class") == "object_evidence"
+        and str(group.get("group_id") or "")
+    }
+    excluded_kinds = {"presentation_render", "floor_plan"}
+    admitted_ids: set[str] = set()
+    for decision in conflict_decisions:
+        if not isinstance(decision, dict):
+            continue
+        group_id = str(decision.get("admitted_group_id") or "")
+        group = groups_by_id.get(group_id)
+        if (
+            decision.get("disposition") == "admit_object_evidence"
+            and group is not None
+            and str(group.get("representation_kind") or "") not in excluded_kinds
+        ):
+            admitted_ids.add(group_id)
+
+    admitted_by_page: dict[int, list[str]] = {}
+    for group_id in sorted(admitted_ids):
+        try:
+            page_number = int(groups_by_id[group_id]["page_number"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        admitted_by_page.setdefault(page_number, []).append(group_id)
+    pairs = [
+        pair
+        for page_number in sorted(admitted_by_page)
+        for pair in combinations(admitted_by_page[page_number], 2)
+    ]
+    return pairs, {
+        "basis": "same_page_technical_v7_5_conflict_admissions",
+        "admitted_technical_group_ids": sorted(admitted_ids),
+        "admitted_technical_group_ids_by_page": {
+            str(page): group_ids
+            for page, group_ids in sorted(admitted_by_page.items())
+        },
+        "required_pair_count": len(pairs),
+        "required_pairs": [
+            {"group_id_a": left, "group_id_b": right}
+            for left, right in pairs
+        ],
+    }
+
+
 _DIMENSION_HALO_TEXT_RE = re.compile(
     r"^\s*(?:[A-Za-z]+\s*=\s*)?(?P<value>\d+(?:[.,]\d+)?)\s*(?:mm|cm|m)?\s*$",
     re.IGNORECASE,
@@ -11990,6 +12064,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     proposal_for_review, _ = _validate_and_apply_visual_registry_classifications(
         proposal_discovery_payload, page_frames=review_coordinate_frames,
     )
+    (
+        v714_required_conflict_pairs,
+        v714_conflict_membership_audit,
+    ) = build_detection_v714_conflict_membership_matrix(
+        visual_groups=proposal_for_review["visual_groups"],
+        conflict_decisions=v75_conflict_resolver_audit.get("decisions", []),
+    )
+    v714_conflict_membership_active = bool(v714_required_conflict_pairs)
     if document_scope_enabled:
         document_scope, document_scope_validation_error = (
             validate_optional_detection_v611_document_scope(
@@ -12009,8 +12091,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             if group.get("evidence_class") == "object_evidence"
         ]) <= DETECTION_V69_RECONCILIATION_MAX_ISLANDS
     )
+    v714_conflict_membership_active = bool(
+        v714_required_conflict_pairs and not v69_criteria_reconciliation_active
+    )
     if v69_criteria_reconciliation_active:
         prompt_version = DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION
+    elif v714_conflict_membership_active:
+        prompt_version = DETECTION_V714_CONFLICT_MEMBERSHIP_PROMPT_VERSION
     else:
         prompt_version = DETECTION_V713_BOUNDED_MEMBERSHIP_REVIEW_PROMPT_VERSION
     registry_visual_sources = build_detection_v5_registry_visual_sources(
@@ -12085,6 +12172,23 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "positive hypotheses or pair decisions. Do not manufacture negative rows "
             "merely to echo Q.\n"
         )
+    if v714_conflict_membership_active:
+        conflict_matrix = format_detection_v68_pairwise_membership_matrix(
+            v714_required_conflict_pairs,
+        ).replace(
+            "V6.8 REQUIRED COMMERCIAL-IDENTITY PAIR MATRIX:",
+            "V7.14 REQUIRED CONFLICT-ADMISSION PAIR MATRIX:",
+        ).replace("pairwise_decisions", "conflict_pair_decisions")
+        review_prompt_with_membership_contract += (
+            "\n\nV7.14 TARGETED CONFLICT-ADMISSION MEMBERSHIP MATRIX:\n"
+            "These are the only same-page pairs independently admitted as "
+            "technical Object Evidence by Conflict Resolver after Discovery "
+            "missed them. Return exactly one `conflict_pair_decisions` row per "
+            "pair. This does not authorize a merge. `same_object` needs the same "
+            "concrete, typed proof and two independent evidence types required by "
+            "the ordinary Membership contract. Do not emit rows for other Q pairs.\n"
+            + conflict_matrix + "\n"
+        )
     if v637_ada_covered_pair_local_membership_active:
         review_prompt_with_membership_contract += (
             "\n\nV7.8 PRESENTATION RENDER OVERRIDE:\n"
@@ -12124,6 +12228,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         if v641_budgeted_discovery_active
         else DETECTION_V5_MEMBERSHIP_MAX_TOKENS
     )
+    membership_review_schema = copy.deepcopy(DETECTION_V5_MEMBERSHIP_JSON_SCHEMA)
+    if v714_conflict_membership_active:
+        membership_review_schema["required"].append("conflict_pair_decisions")
+        membership_review_schema["properties"]["conflict_pair_decisions"] = (
+            DETECTION_V714_CONFLICT_PAIR_DECISIONS_SCHEMA
+        )
     v641_review_exact_input_tokens: int | None = None
     _notify_detection_stage(
         stage_callback,
@@ -12141,7 +12251,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             strip_schema_for_claude(
                 DETECTION_V610_EVIDENCE_REVIEW_JSON_SCHEMA
                 if v69_criteria_reconciliation_active
-                else DETECTION_V5_MEMBERSHIP_JSON_SCHEMA,
+                else membership_review_schema,
             )
         )}}
         v641_review_exact_input_tokens = _v641_count_input_tokens(
@@ -12169,7 +12279,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
             DETECTION_V610_EVIDENCE_REVIEW_JSON_SCHEMA
             if v69_criteria_reconciliation_active
-            else DETECTION_V5_MEMBERSHIP_JSON_SCHEMA,
+            else membership_review_schema,
         )}},
     )
     review_attempts = [
@@ -12205,7 +12315,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
                     DETECTION_V610_EVIDENCE_REVIEW_JSON_SCHEMA
                     if v69_criteria_reconciliation_active
-                    else DETECTION_V5_MEMBERSHIP_JSON_SCHEMA,
+                    else membership_review_schema,
                 )}},
             )
             review_attempts.append((
@@ -12289,10 +12399,20 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             (set(review_raw_payload) == {"pairwise_decisions"})
             if v69_criteria_reconciliation_active
             else (
-                set(review_raw_payload) == {
-                    "object_hypotheses", "presentation_render_decisions",
-                }
+                set(review_raw_payload) == (
+                    {
+                        "object_hypotheses", "presentation_render_decisions",
+                        "conflict_pair_decisions",
+                    }
+                    if v714_conflict_membership_active
+                    else {"object_hypotheses", "presentation_render_decisions"}
+                )
                 and isinstance(review_raw_payload.get("presentation_render_decisions"), list)
+                and (
+                    isinstance(review_raw_payload.get("conflict_pair_decisions"), list)
+                    if v714_conflict_membership_active
+                    else True
+                )
             )
         )
     )
@@ -12325,6 +12445,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         [] if v69_criteria_reconciliation_active
         else review_raw_payload["presentation_render_decisions"]
     )
+    review_conflict_pair_decisions = (
+        [] if not v714_conflict_membership_active
+        else review_raw_payload["conflict_pair_decisions"]
+    )
+    v714_conflict_membership_decision_audit: list[dict[str, Any]] = []
     v69_preliminary_pairs: list[tuple[str, str]] = []
     v69_criteria_facts: list[dict[str, Any]] = []
     v69_criteria_audit: list[dict[str, Any]] = []
@@ -12578,6 +12703,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v7_11_presentation_render_decisions": copy.deepcopy(
             review_presentation_render_decisions,
         ),
+        "v7_14_conflict_membership": {
+            **copy.deepcopy(v714_conflict_membership_audit),
+            "active": v714_conflict_membership_active,
+            "decisions": copy.deepcopy(v714_conflict_membership_decision_audit),
+        },
         "v6_10_pairwise_decision_audit": copy.deepcopy(v69_criteria_audit),
         "v6_10_reconciliation_decision_audit": copy.deepcopy(v69_reconciliation_audit),
         "v6_11_document_scope": copy.deepcopy(document_scope),
@@ -12629,6 +12759,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     classified_visual_groups: list[dict[str, Any]] = []
     v69_pairwise_decision_audit: list[dict[str, Any]] = []
     v69_same_object_pairs: set[tuple[str, str]] = set()
+    v714_conflict_semantic_facts: list[dict[str, Any]] = []
     v5_merge_audit: dict[str, Any] = {}
     try:
         if isinstance(payload, dict):
@@ -12703,6 +12834,15 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         ) if not v69_criteria_reconciliation_active else ([], [])
         if presentation_render_facts and not v635_ada_pair_local_membership_active:
             semantic_source_facts.extend(normalized_registry_visual_sources)
+        if v714_conflict_membership_active:
+            (
+                v714_conflict_semantic_facts,
+                v714_conflict_membership_decision_audit,
+            ) = normalize_detection_v68_pairwise_decisions(
+                review_conflict_pair_decisions,
+                expected_pairs=v714_required_conflict_pairs,
+                group_id_mapping=group_id_mapping,
+            )
         document_scope = normalize_detection_v611_document_scope_group_ids(
             document_scope,
             group_id_mapping=group_id_mapping,
@@ -12888,6 +13028,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                                 "reason": "derived_semantic_fact_outside_dimension_queue_accepted",
                                 "group_id_a": pair[0], "group_id_b": pair[1],
                             })
+        semantic_facts.extend(v714_conflict_semantic_facts)
         effective_dimension_unit, dimension_unit_reason = infer_detection_v5_bare_dimension_unit(
             view_evidence_packages,
             document_unit=str(document_dimension_unit_profile.get("unit") or "unknown"),
@@ -13309,6 +13450,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             f"Detection visual-registry response failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
+    diagnostics["v7_14_conflict_membership"] = {
+        **copy.deepcopy(v714_conflict_membership_audit),
+        "active": v714_conflict_membership_active,
+        "decisions": copy.deepcopy(v714_conflict_membership_decision_audit),
+    }
     assigned_visual_group_ids = {
         group_id
         for item in registry["objects"]

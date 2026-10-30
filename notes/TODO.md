@@ -311,27 +311,38 @@ inventory, page-by-page package composition, total packages, provider tokens,
 cost and duration against V7.6. Reject the experiment on any broad package
 increase or a missed technical component caused by the new rule.
 
-ACTIVE EXPERIMENT, V7.13, P0, bounded existing Membership Review:
+COMPLETED EXPERIMENT, V7.13, bounded existing Membership Review:
 
-Base: protected V7.11 checkpoint `0f4ecb6`
-(`detection-v7.11-render-membership-2026-10-30`). Restore V7.11's existing
-Membership Review contract exactly, including its Review-owned presentation
-render decisions. V7.12's mandatory full same-page Q disposition string is
-rejected: on Floor 06 it left the single Review call without a response for
-more than two minutes and consequently left the processing screen blocked.
-Do not replace that failure with another resolver, call, source, criterion or
-merge rule. Bound the same existing streamed Membership Review call to 90
-seconds for both its initial and truncation-retry attempts. A provider stream
-that exceeds the budget must fail visibly and release the cycle instead of
-holding the UI indefinitely. Candidate Regions, Discovery, Conflict Resolver,
-technical membership evidence, Q, dimensions, floor-plan classification,
-router, Naming and UI behaviour remain unchanged.
+Commit `cb84daa` restored V7.11's membership contract after the rejected V7.12
+full-Q response and limited the existing initial and retry Review streams to 90
+seconds. Floor 06 run `run_34f77878a83d475f85abdc4ff9ec9818` completed in 84.4
+seconds with a 35.4-second Review. It reproduced V7.11's 16 objects, including
+the unresolved three P10 packages. It is a stability guard, not an accepted
+Detection-quality checkpoint.
 
-Acceptance: Floor 06 returns a completed result or a visible bounded Review
-error within 90 seconds of `Membership review started`, never an indefinitely
-running cycle. On success, compare V7.11's island inventory, presentation-render
-decisions, page-by-page packages, total packages, tokens, cost and duration.
-P02's known floor-plan false positive remains outside this experiment.
+ACTIVE EXPERIMENT, V7.14, P0, targeted conflict-admission membership:
+
+Base: V7.13 commit `cb84daa`, with protected V7.11 checkpoint `0f4ecb6`
+(`detection-v7.11-render-membership-2026-10-30`). The P10 failure is now
+located: V7.5 independently admits its two missed technical regions as Object
+Evidence and they enter the existing 157-pair same-page Q, but the ordinary
+Review omits their positive membership evidence. Do not restore V7.12's full
+Q disposition string, add another provider call, change Conflict Resolver,
+Candidate Regions, Discovery, dimensions, general technical merge criteria,
+floor-plan policy, router, Naming or UI. In the same existing Membership Review,
+require one V6.8-style, evidence-backed decision only for every pair of
+same-page technical V7.5 admissions. Presentation renders retain V7.11's
+dedicated path and floor plans remain outside this matrix. Positive decisions
+need two independent existing evidence types; negative decisions carry none.
+
+Acceptance: Floor 06's P10 V2-to-V3 pair receives exactly one audited decision.
+If its visual proof is positive and validates through the existing semantic
+ledger, the two admitted technical views merge into one package without merging
+the floor plan. The complete Review must return or fail visibly within 90
+seconds. Compare island inventory, P03/P04 render attachment, other page
+packages, tokens, cost and duration with V7.13. Reject on a broad package
+increase, a non-P10 technical regression, or a Review response that omits the
+targeted row.
 
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
