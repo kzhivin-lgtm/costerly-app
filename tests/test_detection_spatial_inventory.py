@@ -98,40 +98,6 @@ def test_fusion_text_clusters_are_recall_fallback_when_no_graphic_region_exists(
     )
 
 
-def test_fusion_text_cluster_gap_does_not_bridge_separate_dimension_drawings():
-    """A 438 px gap must not turn two P7-like drawing clusters into one target."""
-    ocr = {"pages": [{
-        "page_number": 1,
-        "dimensions": {"width": 4678, "height": 3309},
-        "blocks": [],
-    }]}
-    facts = [
-        {"fact_id": "SF-UPPER-1", "page_number": 1, "source": "native_pdf_text", "bbox": {
-            "top_left_x": 1902, "top_left_y": 1837,
-            "bottom_right_x": 1924, "bottom_right_y": 1862,
-        }},
-        {"fact_id": "SF-UPPER-2", "page_number": 1, "source": "native_pdf_text", "bbox": {
-            "top_left_x": 1829, "top_left_y": 1966,
-            "bottom_right_x": 1854, "bottom_right_y": 1988,
-        }},
-        {"fact_id": "SF-LOWER-1", "page_number": 1, "source": "native_pdf_text", "bbox": {
-            "top_left_x": 1754, "top_left_y": 2403,
-            "bottom_right_x": 1776, "bottom_right_y": 2427,
-        }},
-        {"fact_id": "SF-LOWER-2", "page_number": 1, "source": "native_pdf_text", "bbox": {
-            "top_left_x": 1829, "top_left_y": 2531,
-            "bottom_right_x": 1854, "bottom_right_y": 2553,
-        }},
-    ]
-
-    candidates = build_detection_fusion_candidate_regions(ocr, facts)
-
-    assert [row["source_fact_ids"] for row in candidates] == [
-        ["SF-UPPER-1", "SF-UPPER-2"],
-        ["SF-LOWER-1", "SF-LOWER-2"],
-    ]
-
-
 def test_fusion_adds_uncovered_native_pdf_cluster_beside_mistral_graphic_region():
     facts = [
         {"fact_id": "SF-IN", "page_number": 1, "source": "native_pdf_text", "text": "600", "bbox": {

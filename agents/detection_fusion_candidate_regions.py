@@ -19,9 +19,9 @@ from agents.pdf_page_inspection import compact_page_profile_audit
 _BBOX_KEYS = (
     "top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y",
 )
-# 400 px at the rendered 200 dpi is about 51 mm: enough to keep a sparse
-# dimension grid together without bridging vertically separate drawings.
-_TEXT_CLUSTER_GAP_PX = 400
+# 500 px at the rendered 200 dpi is about 64 mm: enough to keep a sparse
+# dimension grid together without bridging separated drawing areas.
+_TEXT_CLUSTER_GAP_PX = 500
 _TEXT_CLUSTER_MIN_FACTS = 2
 _TEXT_CLUSTER_MIN_WIDTH_RATIO = 0.18
 _TEXT_CLUSTER_MIN_HEIGHT_RATIO = 0.30
