@@ -211,6 +211,14 @@ and Candidate Q, and caused an observed 50-60 object explosion. V7.2 `4050111`
 retains the same three P10 Discovery candidates but assigns the two MyPDF
 regions `coverage_only`: Discovery must inspect/account for them, while only
 ordinary candidates seed pre-Discovery dimensions, Q, Membership and packages.
+V7.3 `20c1e31` is rejected and reverted by `b2bce47`: it added a required
+`coverage_region_decisions` schema field to the first Discovery request. Live
+Floor 06 trace reached `Discovery batch 1 of 2` in 16.5 seconds and emitted no
+later stage, whereas the V7.2 control reached batch 2 in about 45 seconds. The
+only changed request surface was the V7.3 structured coverage contract. Do not
+repeat that schema or force a second required response array into Discovery.
+Any next Coverage Acceptance experiment must retain the ordinary Discovery
+schema and measure a conditional post-Discovery correction separately.
 The local P10 contract is 3 Discovery candidates and 1 graph seed; the focused
 candidate-region suite passed 19 tests. It remains active until the complete
 Floor 06 benchmark establishes that the bounded candidates improve recall
