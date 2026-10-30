@@ -163,7 +163,7 @@ context, not a seventh Object Evidence island.
 
 | Page | Expected Object Evidence islands |
 | --- | ---: |
-| P03 | 12 |
+| P03 | 11 |
 | P04 | 4 |
 | P05 | 6 |
 | P06 | 3 |
@@ -264,6 +264,29 @@ or any changes to Discovery, floor-plan classification, Q, dimensions, merge,
 router, Naming, UI, or model choice. Acceptance starts with P10 producing
 three candidate regions before Discovery, while the Floor 06 benchmark pages
 with already-correct counts do not gain duplicate candidates.
+
+ACTIVE EXPERIMENT, V7.10, P0, isolated Conflict Resolver results:
+
+Base: published V7.8 rollback `c771806`. V7.9 `37d6642` is rejected: its
+direct presentation-render instruction changed the entire ordinary Discovery
+response and produced 23 packages in Floor 06. V7.10 leaves the Discovery
+prompt, Candidate Regions, geometry, Q, dimensions, technical merge rules,
+router, Naming and UI unchanged.
+
+Repair only the bounded V7.5 fallback. Validate each returned target decision
+independently, preserve valid decisions when a neighbouring row is malformed,
+and retry only invalid targets once. A fallback render/photo is explicitly
+labelled `presentation_render`; it remains subject to V7.8's no-render-only
+object partition. An admitted `floor_plan` or `location_plan` becomes
+`generic_plan` document context only when its supplied region or independently
+observed core covers at least 75 percent of the Fusion page, so a bounded
+object plan stays admissible.
+
+Acceptance: no invalid V7.5 row erases another valid verdict. Floor 06 keeps
+P02 as document context, restores only independently admitted source-conflict
+islands, has P03=11, and creates no render-only or broad package increase.
+Compare page inventory, package composition, provider tokens, cost and duration
+against V7.8 before accepting.
 
 ACTIVE EXPERIMENT, V7.8, P0, presentation render/photo membership:
 
