@@ -311,30 +311,27 @@ inventory, page-by-page package composition, total packages, provider tokens,
 cost and duration against V7.6. Reject the experiment on any broad package
 increase or a missed technical component caused by the new rule.
 
-ACTIVE EXPERIMENT, V7.12, P0, auditable existing same-page Membership Review:
+ACTIVE EXPERIMENT, V7.13, P0, bounded existing Membership Review:
 
 Base: protected V7.11 checkpoint `0f4ecb6`
-(`detection-v7.11-render-membership-2026-10-30`). Retain V7.11's mandatory
-Review-owned presentation-render decisions unchanged. Repair the existing
-post-Discovery same-page Membership Review queue instead of adding a resolver,
-call, candidate source or merge rule. The queue already contains every retained
-Object Evidence pair on a page, including Conflict Resolver admissions. Review
-must return a compact ordered `S`/`D`/`I` disposition string for every existing
-Q entry: same object, different objects or insufficient evidence. `S` remains
-only a coverage verdict. It is valid only when the existing typed-evidence path
-also emits that exact pair, and existing positive same-page evidence is invalid
-without its matching `S`. Keep one Review call, existing technical criteria,
-render rules, Candidate Regions, Discovery, Conflict Resolver, dimensions,
-floor-plan classification, router, Naming and UI behaviour unchanged.
+(`detection-v7.11-render-membership-2026-10-30`). Restore V7.11's existing
+Membership Review contract exactly, including its Review-owned presentation
+render decisions. V7.12's mandatory full same-page Q disposition string is
+rejected: on Floor 06 it left the single Review call without a response for
+more than two minutes and consequently left the processing screen blocked.
+Do not replace that failure with another resolver, call, source, criterion or
+merge rule. Bound the same existing streamed Membership Review call to 90
+seconds for both its initial and truncation-retry attempts. A provider stream
+that exceeds the budget must fail visibly and release the cycle instead of
+holding the UI indefinitely. Candidate Regions, Discovery, Conflict Resolver,
+technical membership evidence, Q, dimensions, floor-plan classification,
+router, Naming and UI behaviour remain unchanged.
 
-Acceptance: Floor 06 preserves the V7.11 island inventory and explicit
-P03/P09 presentation-render decisions. Its audit records one disposition for
-every same-page Q, including all three P10 pairs. The proven P10
-`v75-conflict-009` to `v75-conflict-010` comparison must either produce its
-supported existing evidence and merge edge, or expose a specific negative
-decision for audit, never silently disappear. Compare page-by-page packages,
-total packages, tokens, cost and duration with V7.11. P02's known floor-plan
-false positive remains outside this experiment.
+Acceptance: Floor 06 returns a completed result or a visible bounded Review
+error within 90 seconds of `Membership review started`, never an indefinitely
+running cycle. On success, compare V7.11's island inventory, presentation-render
+decisions, page-by-page packages, total packages, tokens, cost and duration.
+P02's known floor-plan false positive remains outside this experiment.
 
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
