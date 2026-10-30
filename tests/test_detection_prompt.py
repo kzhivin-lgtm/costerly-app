@@ -89,6 +89,8 @@ def test_v5_10_11_separates_full_page_discovery_from_membership_review():
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
         "detection_v6_57_compact_discovery_deterministic_output_budget"
     )
+    assert "presentation_render" in proposal_prompt
+    assert "render-only hypothesis" in review_prompt
 
 
 def test_v657_discovery_schema_bounds_non_evidence_text_only():

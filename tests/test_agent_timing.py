@@ -20,7 +20,7 @@ from agents.anthropic_adapter import (
     DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
     DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
     DETECTION_V634_ADA_DISCOVERY_MODEL,
-    DETECTION_V637_ADA_COVERED_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION,
+    DETECTION_V78_PRESENTATION_RENDER_MEMBERSHIP_PROMPT_VERSION,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
     apply_benchmark_run_suffix,
     build_agent_usage_event,
@@ -1176,6 +1176,46 @@ def test_integrated_visual_registry_omits_scope_from_ordinary_contract():
     assert "document_scope" not in proposal_schema["properties"]
     assert "document_scope" not in json.dumps(proposal_call["system"])
     assert usage["raw_usage"]["v6_11_document_scope"] is None
+
+
+def test_presentation_render_without_technical_match_never_creates_registry_object():
+    proposal = _visual_registry_payload({
+        "visual_groups": [{
+            "group_id": "render", "page_number": 1, "location_hint": "centre",
+            "visual_description": "photorealistic kitchen presentation image",
+            "representation_kind": "presentation_render",
+        }],
+    })
+    proposal.pop("document_scope")
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            return_value=(_Response(), {
+                "request_started_at": "2026-10-16T00:00:00+00:00",
+                "request_finished_at": "2026-10-16T00:00:01+00:00",
+            }),
+        ),
+        patch(
+            "agents.anthropic_adapter.extract_text_from_claude_response",
+            side_effect=[json.dumps(proposal), json.dumps({"object_hypotheses": []})],
+        ),
+    ):
+        visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None, model="model",
+            document_category="ordinary_object_set",
+        )
+
+    assert registry["objects"] == []
+    assert "_registry_owned_evidence" not in visual_map
+    assert usage["raw_usage"]["excluded_presentation_render_group_ids"] == ["view-001"]
+    assert usage["raw_usage"]["presentation_render_component_audit"] == [{
+        "group_ids": ["view-001"],
+        "disposition": "excluded_unattached_presentation_render",
+        "reason": "Presentation render/photo has no proven technical View in its component.",
+    }]
     assert usage["raw_usage"]["v6_14_document_scope_requested"] is False
 
 
@@ -1511,7 +1551,7 @@ def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
         "claude-sonnet-4-6",
     ]
     assert usage["prompt_version"] == (
-        DETECTION_V637_ADA_COVERED_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION
+        DETECTION_V78_PRESENTATION_RENDER_MEMBERSHIP_PROMPT_VERSION
     )
     assert usage["raw_usage"]["v6_34_ada_haiku_discovery_sonnet_review_active"] is True
     assert usage["raw_usage"]["v6_35_ada_pair_local_membership_active"] is True

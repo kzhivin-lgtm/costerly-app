@@ -43,3 +43,9 @@ returning that page's Island ID list, including an empty list when appropriate.
 `representation_kind` describes the visual form, never its evidence class.
 Use `floor_plan` for a whole architectural room-and-circulation layout, and
 classify it as Document Context, not Object Evidence.
+
+Use the exact `representation_kind` `presentation_render` for a photographic
+render or photo that presents a fabricated object. Do not use it for a
+line-drawn or dimensioned technical perspective. A presentation render remains
+Object Evidence when it depicts fabrication, but it is not itself a commercial
+object or a quantity decision.

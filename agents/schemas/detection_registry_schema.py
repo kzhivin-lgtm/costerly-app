@@ -55,6 +55,7 @@ SOURCE_DEGRADED_VISUAL_SEMANTIC_EVIDENCE_TYPES = frozenset({
     *SEMANTIC_PAIRWISE_EVIDENCE_TYPES,
     "visual_dimension_similarity",
 })
+PRESENTATION_RENDER_REPRESENTATION_KIND = "presentation_render"
 
 DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
     "type": "array",
@@ -2876,6 +2877,53 @@ def derive_detection_standalone_package_group_ids(
     return sorted(
         component[0] for component in components if len(component) == 1
     )
+
+
+def partition_detection_presentation_render_components(
+    components: list[list[str]],
+    *,
+    visual_groups: list[dict[str, Any]],
+) -> tuple[list[list[str]], list[str], list[dict[str, Any]]]:
+    """Keep a presentation image only when a technical View proves its owner.
+
+    A render or photograph is still a fixed visual Island and can carry a
+    concrete topology or geometry proof.  It cannot, however, manufacture a
+    commercial object when every member of its final component is another
+    presentation image.  This changes package admission only: it does not
+    add a second Island class or invent a relationship.
+    """
+    representation_kind_by_group_id = {
+        str(group.get("group_id") or ""): str(
+            group.get("representation_kind") or ""
+        ).strip().lower()
+        for group in visual_groups
+        if isinstance(group, dict)
+    }
+    retained: list[list[str]] = []
+    excluded_group_ids: list[str] = []
+    audit: list[dict[str, Any]] = []
+    for component in components:
+        group_ids = sorted({str(group_id) for group_id in component if str(group_id)})
+        if not group_ids:
+            continue
+        presentation_group_ids = [
+            group_id for group_id in group_ids
+            if representation_kind_by_group_id.get(group_id)
+            == PRESENTATION_RENDER_REPRESENTATION_KIND
+        ]
+        if presentation_group_ids and len(presentation_group_ids) == len(group_ids):
+            excluded_group_ids.extend(group_ids)
+            audit.append({
+                "group_ids": group_ids,
+                "disposition": "excluded_unattached_presentation_render",
+                "reason": (
+                    "Presentation render/photo has no proven technical View "
+                    "in its component."
+                ),
+            })
+            continue
+        retained.append(group_ids)
+    return retained, sorted(excluded_group_ids), audit
 
 
 def derive_detection_v5_dominant_page_attachment_edges(

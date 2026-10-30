@@ -265,6 +265,29 @@ router, Naming, UI, or model choice. Acceptance starts with P10 producing
 three candidate regions before Discovery, while the Floor 06 benchmark pages
 with already-correct counts do not gain duplicate candidates.
 
+ACTIVE EXPERIMENT, V7.8, P0, presentation render/photo membership:
+
+Base: published V7.7 rollback `76e96fb`, with protected V7.6 dimension-bbox
+checkpoint `5c01195`. Define the existing Object Evidence
+`representation_kind` `presentation_render` for a photographic render or
+photo, never a technical perspective. It may join a technical View only on one
+concrete, pair-local `matching_topology` or `unique_geometry` fact that cites
+both fixed Views. Colour, finish, material, room context, proximity and pixel
+proportions are not identity evidence. A component made only of presentation
+renders/photos is retained in audit but excluded from the final object registry;
+it cannot create a standalone commercial object. No Candidate Regions, Conflict
+Resolver, Discovery geometry, Q, dimensions, ordinary technical merge rules,
+router, Naming or UI behaviour may change.
+
+Acceptance: a focused P03 audit labels the presentation images with the exact
+kind, connects their demonstrated triangular-shelving topology to the relevant
+technical component when the visible evidence supports it, and creates no
+render-only object. First pass: focused code tests covering single-fact visual
+admission and orphan-render exclusion. Then run Floor 06 and compare island
+inventory, page-by-page package composition, total packages, provider tokens,
+cost and duration against V7.6. Reject the experiment on any broad package
+increase or a missed technical component caused by the new rule.
+
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
 contracts are still changing. The current V5 Registry route records zero cache

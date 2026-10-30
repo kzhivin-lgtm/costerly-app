@@ -28,8 +28,13 @@ witness View ID, two joined-part labels, its visible connection and cite
 `registry_view:<witness View ID>`.
 
 Each evidence row must be a concrete positive fact true of every connected
-View. Use two evidence types unless an explicit author relation is direct. Cite
-only IDs from `SRC`. For visual observations, cite
+View. Use two evidence types unless an explicit author relation is direct.
+Exception: for `K=presentation_render` paired with a technical View, test only
+`matching_topology` or `unique_geometry`. One concrete fact is sufficient when
+it names a distinctive configuration visible in both Views. Do not use colour,
+finish, material, room context, proximity or approximate pixel proportions as
+proof, and do not create a render-only hypothesis. Cite only IDs from `SRC`.
+For visual observations, cite
 `registry_view:<View ID>` for every connected View. Never cite View IDs as
 source facts. OCR source IDs are displayed as `[SF00202]` only for readability.
 When citing, output the interior token `SF00202`, without brackets or quoted

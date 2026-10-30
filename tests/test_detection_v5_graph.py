@@ -5,6 +5,7 @@ from agents.schemas.detection_registry_schema import (
     compile_detection_v5_merge_edges,
     compile_detection_v5_membership_edges,
     compile_detection_v5_object_hypotheses,
+    partition_detection_presentation_render_components,
     derive_detection_v5_dominant_page_attachment_edges,
     compile_detection_v5_semantic_facts,
     validate_detection_v5_final_result,
@@ -16,6 +17,35 @@ VIEWS = [
     {"group_id": "view-001", "evidence_class": "object_evidence"},
     {"group_id": "view-002", "evidence_class": "object_evidence"},
 ]
+
+
+def test_presentation_render_components_require_a_technical_view():
+    components, excluded, audit = partition_detection_presentation_render_components(
+        [
+            ["view-001"],
+            ["view-002", "view-003"],
+            ["view-004", "view-005"],
+        ],
+        visual_groups=[
+            {"group_id": "view-001", "representation_kind": "presentation_render"},
+            {"group_id": "view-002", "representation_kind": "presentation_render"},
+            {"group_id": "view-003", "representation_kind": "presentation_render"},
+            {"group_id": "view-004", "representation_kind": "presentation_render"},
+            {"group_id": "view-005", "representation_kind": "technical_elevation"},
+        ],
+    )
+
+    assert components == [["view-004", "view-005"]]
+    assert excluded == ["view-001", "view-002", "view-003"]
+    assert audit == [{
+        "group_ids": ["view-001"],
+        "disposition": "excluded_unattached_presentation_render",
+        "reason": "Presentation render/photo has no proven technical View in its component.",
+    }, {
+        "group_ids": ["view-002", "view-003"],
+        "disposition": "excluded_unattached_presentation_render",
+        "reason": "Presentation render/photo has no proven technical View in its component.",
+    }]
 
 
 def _fingerprints(left, right):

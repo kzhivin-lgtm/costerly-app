@@ -94,6 +94,7 @@ from agents.schemas.detection_registry_schema import (
     merge_detection_relation_edges,
     derive_detection_proof_components,
     derive_detection_standalone_package_group_ids,
+    partition_detection_presentation_render_components,
     derive_detection_v5_dominant_page_attachment_edges,
     compile_detection_dimension_graph,
     normalize_empty_detection_envelope_chains,
@@ -146,6 +147,9 @@ DETECTION_V636_ADA_CONNECTED_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION = (
 )
 DETECTION_V637_ADA_COVERED_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION = (
     "detection_v6_37_ada_covered_pair_local_membership"
+)
+DETECTION_V78_PRESENTATION_RENDER_MEMBERSHIP_PROMPT_VERSION = (
+    "detection_v7_8_presentation_render_membership"
 )
 DETECTION_V634_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
@@ -11771,7 +11775,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         ]) <= DETECTION_V69_RECONCILIATION_MAX_ISLANDS
     )
     if v637_ada_covered_pair_local_membership_active:
-        prompt_version = DETECTION_V637_ADA_COVERED_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION
+        prompt_version = DETECTION_V78_PRESENTATION_RENDER_MEMBERSHIP_PROMPT_VERSION
     elif v69_criteria_reconciliation_active:
         prompt_version = DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION
     registry_visual_sources = build_detection_v5_registry_visual_sources(
@@ -11845,6 +11849,21 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "imply that the Views belong together. Return only schema-valid supported "
             "positive hypotheses or pair decisions. Do not manufacture negative rows "
             "merely to echo Q.\n"
+        )
+    if v637_ada_covered_pair_local_membership_active:
+        review_prompt_with_membership_contract += (
+            "\n\nV7.8 PRESENTATION RENDER OVERRIDE:\n"
+            "`K=presentation_render` means a photographic render or photo, not "
+            "a technical perspective. For a pair containing one, inspect only "
+            "concrete matching_topology or unique_geometry. Do not require a "
+            "dimension, OCR label, material, construction criterion, or a second "
+            "evidence type. One of those two facts is sufficient only when its "
+            "observation names a distinctive configuration visible in both Views "
+            "and cites exactly those two registry_view sources. Generic furniture "
+            "type, colour, finish, room context, proximity or approximate pixel "
+            "proportions are never proof. A presentation render may appear in an "
+            "object_hypothesis only with at least one non-presentation technical "
+            "View.\n"
         )
     review_content = build_detection_v5_membership_content_blocks(
         user_text=review_handoff, view_crops=membership_crops,
@@ -12728,10 +12747,38 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 accepted_merge_edges, visual_group_ids=visual_group_ids,
             )
         )
+        (
+            proof_components,
+            excluded_presentation_render_group_ids,
+            presentation_render_component_audit,
+        ) = partition_detection_presentation_render_components(
+            proof_components,
+            visual_groups=visual_map["visual_groups"],
+        )
+        registry_visual_group_ids = (
+            visual_group_ids - set(excluded_presentation_render_group_ids)
+        )
+        registry_positive_relation_edges = [
+            edge for edge in positive_relation_edges
+            if {
+                str(edge.get("group_id_a") or ""),
+                str(edge.get("group_id_b") or ""),
+            }.issubset(registry_visual_group_ids)
+        ]
         standalone_package_group_ids = derive_detection_standalone_package_group_ids(
             proof_components
         )
-        package_decisions = derive_detection_package_decision_audit(proof_components)
+        package_decisions = [
+            *derive_detection_package_decision_audit(proof_components),
+            *(
+                {
+                    "group_id": group_id,
+                    "package_disposition": "excluded_unattached_presentation_render",
+                    "component_anchor_group_id": None,
+                }
+                for group_id in excluded_presentation_render_group_ids
+            ),
+        ]
         page_number_by_group_id = {
             str(group["group_id"]): int(group["page_number"])
             for group in visual_map["visual_groups"]
@@ -12812,13 +12859,16 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         registry_payload = {"objects": registry_objects}
         registry = validate_detection_registry(
             registry_payload,
-            visual_group_ids=visual_group_ids,
-            object_evidence_group_ids=visual_group_ids,
+            visual_group_ids=registry_visual_group_ids,
+            object_evidence_group_ids=registry_visual_group_ids,
         )
         registry = validate_detection_v5_final_result(
             registry,
-            visual_groups=visual_map["visual_groups"],
-            graph_edges=positive_relation_edges,
+            visual_groups=[
+                group for group in visual_map["visual_groups"]
+                if str(group.get("group_id") or "") in registry_visual_group_ids
+            ],
+            graph_edges=registry_positive_relation_edges,
             source_facts=semantic_source_facts,
         )
         # The normalized public visual map deliberately omits Discovery bbox
@@ -12928,8 +12978,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "registry_object_count": len(registry["objects"]),
         "unassigned_visual_group_count": len(visual_group_ids - assigned_visual_group_ids),
         "unassigned_object_evidence_group_count": len(
-            visual_group_ids - assigned_visual_group_ids
+            registry_visual_group_ids - assigned_visual_group_ids
         ),
+        "excluded_presentation_render_group_ids": excluded_presentation_render_group_ids,
+        "presentation_render_component_audit": presentation_render_component_audit,
         "proof_component_count": len(proof_components),
         "page_coverage_count": len(resolved_page_coverage),
         "unassigned_page_count": sum(
