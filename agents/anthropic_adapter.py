@@ -6799,6 +6799,7 @@ _DIMENSION_HALO_SHORT_SIDE_RATIO = 0.12
 _QUANTITY_CAPTION_HALO_MIN_PX = 80
 _QUANTITY_CAPTION_HALO_MAX_PX = 200
 _QUANTITY_CAPTION_HORIZONTAL_RATIO = 0.18
+_DIMENSION_ENVELOPE_BAND_PADDING_PX = 20
 
 
 def _detection_v5_dimension_halo(
@@ -6871,11 +6872,12 @@ def build_detection_view_evidence_packages(
     match wins when unique, otherwise the core resolves overlap, then a unique
     nearest core. Exact ties remain unowned instead of being duplicated.
 
-    Printed outer dimensions often sit just outside an otherwise valid evidence
-    envelope. A bounded halo may claim such a numeric fact only when exactly
-    one Island contains it in its halo. The halo never changes Island geometry
-    and never resolves an overlap, so it cannot turn a nearby Island's number
-    into duplicate evidence.
+    Printed outer dimensions may initially sit outside an otherwise valid
+    evidence envelope. A bounded halo may identify such a numeric fact only
+    when exactly one Island contains it. A uniquely owned fact then expands
+    that Island's *evidence envelope* into the full adjacent dimension band;
+    its physical ``core_bbox`` never changes. The halo is therefore an
+    attribution safeguard, not a persistent outside-the-bbox exception.
     """
     keys = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
     core_bboxes = group_core_bboxes or group_bboxes
@@ -6996,21 +6998,76 @@ def build_detection_view_evidence_packages(
             if quantity_caption_owner:
                 quantity_caption_fact_ids[group_id].append(str(fact["fact_id"]))
 
+    # V7.6 contract: dimensions that belong to one Island must be inside that
+    # Island's evidence bbox.  Expand only after deterministic ownership is
+    # settled, so the expanded bands cannot capture or duplicate a neighbour's
+    # source fact.  Keep the expansion directional: a bottom dimension row
+    # extends the bottom edge, rather than inflating all four sides.
+    effective_bboxes = {
+        group_id: copy.deepcopy(bbox)
+        for group_id, bbox in group_bboxes.items()
+    }
+    dimension_envelope_fact_ids: dict[str, list[str]] = {
+        str(group["group_id"]): [] for group in visual_groups
+    }
+    for group_id, fact_ids in halo_fact_ids.items():
+        original_bbox = group_bboxes.get(group_id)
+        effective_bbox = effective_bboxes.get(group_id)
+        if not isinstance(original_bbox, dict) or not isinstance(effective_bbox, dict):
+            continue
+        facts_by_id = {
+            str(fact.get("fact_id") or ""): fact
+            for fact in owned_facts.get(group_id, [])
+            if isinstance(fact, dict)
+        }
+        for fact_id in fact_ids:
+            fact_bbox = facts_by_id.get(fact_id, {}).get("bbox")
+            if not isinstance(fact_bbox, dict) or not all(
+                isinstance(fact_bbox.get(key), (int, float)) for key in keys
+            ):
+                continue
+            if fact_bbox["bottom_right_x"] > original_bbox["bottom_right_x"]:
+                effective_bbox["bottom_right_x"] = max(
+                    effective_bbox["bottom_right_x"],
+                    int(fact_bbox["bottom_right_x"]) + _DIMENSION_ENVELOPE_BAND_PADDING_PX,
+                )
+            if fact_bbox["top_left_x"] < original_bbox["top_left_x"]:
+                effective_bbox["top_left_x"] = min(
+                    effective_bbox["top_left_x"],
+                    int(fact_bbox["top_left_x"]) - _DIMENSION_ENVELOPE_BAND_PADDING_PX,
+                )
+            if fact_bbox["bottom_right_y"] > original_bbox["bottom_right_y"]:
+                effective_bbox["bottom_right_y"] = max(
+                    effective_bbox["bottom_right_y"],
+                    int(fact_bbox["bottom_right_y"]) + _DIMENSION_ENVELOPE_BAND_PADDING_PX,
+                )
+            if fact_bbox["top_left_y"] < original_bbox["top_left_y"]:
+                effective_bbox["top_left_y"] = min(
+                    effective_bbox["top_left_y"],
+                    int(fact_bbox["top_left_y"]) - _DIMENSION_ENVELOPE_BAND_PADDING_PX,
+                )
+            dimension_envelope_fact_ids[group_id].append(fact_id)
+
     packages: list[dict[str, Any]] = []
     for group in visual_groups:
         group_id = str(group["group_id"])
         facts = owned_facts.get(group_id, [])
+        membership_basis = "unique_evidence_envelope_or_core_nearest_owner"
+        if dimension_envelope_fact_ids.get(group_id):
+            membership_basis += "_or_dimension_envelope_expansion"
+        if quantity_caption_fact_ids.get(group_id):
+            membership_basis += "_or_quantity_caption_halo"
         packages.append({
             "visual_group_id": group_id,
             "page_number": group["page_number"],
-            "bbox": group_bboxes.get(group_id, {}),
+            "bbox": effective_bboxes.get(group_id, {}),
             "core_bbox": core_bboxes.get(group_id, {}),
             "evidence_class": group.get("evidence_class"),
             "source_fact_ids": [str(fact["fact_id"]) for fact in facts],
             "source_facts": facts,
-            "dimension_halo_source_fact_ids": halo_fact_ids.get(group_id, []),
+            "dimension_envelope_source_fact_ids": dimension_envelope_fact_ids.get(group_id, []),
             "quantity_caption_halo_source_fact_ids": quantity_caption_fact_ids.get(group_id, []),
-            "membership_basis": "unique_evidence_envelope_or_core_nearest_owner_or_quantity_caption_halo",
+            "membership_basis": membership_basis,
         })
     return packages
 
@@ -12389,6 +12446,25 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
             group_core_bboxes=group_core_bboxes, source_facts=source_facts,
         )
+        # V7.6 makes a uniquely owned dimension band part of the public Island
+        # evidence bbox.  Keep the physical core unchanged, and apply this
+        # only after ownership was resolved against the pre-expansion geometry.
+        expanded_group_bboxes = {
+            str(package["visual_group_id"]): copy.deepcopy(package["bbox"])
+            for package in view_evidence_packages
+            if isinstance(package, dict)
+            and str(package.get("visual_group_id") or "") in group_bboxes
+            and isinstance(package.get("bbox"), dict)
+        }
+        if expanded_group_bboxes:
+            group_bboxes = expanded_group_bboxes
+            for raw_group in raw_groups:
+                normalized_group_id = group_id_mapping.get(
+                    str(raw_group.get("group_id") or ""), "",
+                )
+                expanded_bbox = group_bboxes.get(normalized_group_id)
+                if isinstance(expanded_bbox, dict):
+                    raw_group["bbox"] = copy.deepcopy(expanded_bbox)
         page_local_view_labels = assign_detection_page_local_view_labels(
             view_evidence_packages
         )

@@ -626,7 +626,7 @@ def test_evidence_envelope_overlap_uses_core_and_never_duplicates_a_fact():
     assert packages[1]["source_fact_ids"] == []
 
 
-def test_dimension_halo_keeps_outer_numeric_dimension_when_one_island_is_nearby():
+def test_dimension_halo_expands_envelope_to_outer_numeric_dimension_when_unique():
     packages = build_detection_view_evidence_packages(
         visual_groups=[{
             "group_id": "view-001", "page_number": 1,
@@ -646,7 +646,15 @@ def test_dimension_halo_keeps_outer_numeric_dimension_when_one_island_is_nearby(
     )
 
     assert packages[0]["source_fact_ids"] == ["SF00407"]
-    assert packages[0]["dimension_halo_source_fact_ids"] == ["SF00407"]
+    assert packages[0]["dimension_envelope_source_fact_ids"] == ["SF00407"]
+    assert packages[0]["bbox"] == {
+        "top_left_x": 100, "top_left_y": 100,
+        "bottom_right_x": 500, "bottom_right_y": 592,
+    }
+    assert packages[0]["core_bbox"] == {
+        "top_left_x": 100, "top_left_y": 100,
+        "bottom_right_x": 500, "bottom_right_y": 500,
+    }
 
 
 def test_dimension_halo_does_not_capture_small_revision_numbers():
@@ -669,7 +677,11 @@ def test_dimension_halo_does_not_capture_small_revision_numbers():
     )
 
     assert packages[0]["source_fact_ids"] == []
-    assert packages[0]["dimension_halo_source_fact_ids"] == []
+    assert packages[0]["dimension_envelope_source_fact_ids"] == []
+    assert packages[0]["bbox"] == {
+        "top_left_x": 100, "top_left_y": 100,
+        "bottom_right_x": 500, "bottom_right_y": 500,
+    }
 
 
 def test_dimension_halo_leaves_numeric_fact_unowned_when_two_islands_overlap():
