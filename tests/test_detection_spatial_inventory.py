@@ -11,11 +11,16 @@ from agents.anthropic_adapter import (
     normalize_detection_v69_reconciliation_decisions,
     normalize_detection_v610_evidence_review_decisions,
     normalize_detection_v68_pairwise_decisions,
-    unresolved_detection_coverage_only_candidate_ids,
 )
 from agents.detection_fusion_candidate_regions import (
     build_detection_fusion_candidate_regions,
     select_detection_candidate_graph_seeds,
+)
+from agents.detection_conflict_resolver import (
+    apply_detection_conflict_admissions,
+    build_detection_conflict_targets,
+    translate_detection_conflict_crop_decisions,
+    validate_detection_conflict_decisions,
 )
 
 
@@ -333,38 +338,116 @@ def test_candidate_region_without_island_requires_a_registry_explanation_in_audi
     assert audit[0]["status"] == "explained_non_island"
 
 
-def test_coverage_only_requires_object_evidence_or_a_visible_exception():
-    candidate = {
-        "candidate_region_id": "CR-P010-003", "page_number": 10,
-        "role": "coverage_only",
-        "bbox": {"top_left_x": 100, "top_left_y": 100, "bottom_right_x": 400, "bottom_right_y": 400},
-    }
-    payload = {
-        "visual_groups": [{
-            "group_id": "VG-P010-001", "page_number": 10,
+def test_v75_conflict_targets_ignore_exception_and_require_visual_resolution():
+    candidates = [
+        {
+            "candidate_region_id": "CR-P010-003", "page_number": 10,
+            "role": "coverage_only", "basis": "fusion_text_cluster",
             "bbox": {"top_left_x": 100, "top_left_y": 100, "bottom_right_x": 400, "bottom_right_y": 400},
-        }],
-        "classifications": [{
-            "group_id": "VG-P010-001", "evidence_class": "document_context",
-        }],
-        "candidate_region_exceptions": [],
-    }
-    assert unresolved_detection_coverage_only_candidate_ids(
-        payload=payload, candidate_regions=[candidate],
-    ) == ["CR-P010-003"]
+        },
+        {
+            "candidate_region_id": "CR-P011-002", "page_number": 11,
+            "basis": "mistral_graphic_region",
+            "bbox": {"top_left_x": 500, "top_left_y": 100, "bottom_right_x": 900, "bottom_right_y": 400},
+        },
+        {
+            "candidate_region_id": "CR-P012-001", "page_number": 12,
+            "basis": "mistral_graphic_region",
+            "bbox": {"top_left_x": 100, "top_left_y": 500, "bottom_right_x": 400, "bottom_right_y": 900},
+        },
+    ]
+    groups = [
+        {
+            "group_id": "VG-P011-002", "page_number": 11,
+            "bbox": {"top_left_x": 500, "top_left_y": 100, "bottom_right_x": 900, "bottom_right_y": 400},
+        },
+        {
+            "group_id": "VG-P012-001", "page_number": 12,
+            "bbox": {"top_left_x": 100, "top_left_y": 500, "bottom_right_x": 400, "bottom_right_y": 900},
+        },
+    ]
+    classifications = [
+        {"group_id": "VG-P011-002", "evidence_class": "document_context"},
+        {"group_id": "VG-P012-001", "evidence_class": "object_evidence"},
+    ]
 
-    payload["classifications"][0]["evidence_class"] = "object_evidence"
-    assert unresolved_detection_coverage_only_candidate_ids(
-        payload=payload, candidate_regions=[candidate],
-    ) == []
+    assert build_detection_conflict_targets(
+        candidate_regions=candidates, visual_groups=groups, classifications=classifications,
+    ) == [
+        {
+            "target_id": "V75-C001", "page_number": 10,
+            "bbox": {"top_left_x": 100, "top_left_y": 100, "bottom_right_x": 400, "bottom_right_y": 400},
+            "trigger": "coverage_only_without_object_evidence",
+            "candidate_region_ids": ["CR-P010-003"],
+        },
+        {
+            "target_id": "V75-C002", "page_number": 11,
+            "bbox": {"top_left_x": 500, "top_left_y": 100, "bottom_right_x": 900, "bottom_right_y": 400},
+            "trigger": "graphic_region_without_object_evidence",
+            "candidate_region_ids": ["CR-P011-002"],
+        },
+    ]
 
-    payload["classifications"][0]["evidence_class"] = "document_context"
-    payload["candidate_region_exceptions"] = [{
-        "candidate_region_id": "CR-P010-003", "reason": "The visible region is a title block.",
+
+def test_v75_admission_is_visual_geometry_not_candidate_proxy():
+    targets = [{
+        "target_id": "V75-C001", "page_number": 10,
+        "bbox": {"top_left_x": 100, "top_left_y": 100, "bottom_right_x": 400, "bottom_right_y": 400},
+        "trigger": "coverage_only_without_object_evidence",
+        "candidate_region_ids": ["CR-P010-003"],
     }]
-    assert unresolved_detection_coverage_only_candidate_ids(
-        payload=payload, candidate_regions=[candidate],
-    ) == []
+    decisions = validate_detection_conflict_decisions(
+        decisions=[{
+            "target_id": "V75-C001", "disposition": "admit_object_evidence",
+            "visual_witness": "A framed elevation with attached dimensions is visible.",
+            "representation_kind": "elevation",
+            "bbox": {"top_left_x": 120, "top_left_y": 120, "bottom_right_x": 360, "bottom_right_y": 360},
+            "core_bbox": {"top_left_x": 140, "top_left_y": 140, "bottom_right_x": 340, "bottom_right_y": 340},
+        }],
+        targets=targets,
+        page_frames={10: {"fusion_dimensions": {"width": 1000, "height": 1000}}},
+    )
+    payload, audit = apply_detection_conflict_admissions(
+        payload={"visual_groups": [], "classifications": [], "candidate_region_exceptions": []},
+        targets=targets,
+        decisions=decisions,
+    )
+
+    assert payload["visual_groups"][0]["group_id"] == "v75-conflict-001"
+    assert payload["visual_groups"][0]["bbox"] != targets[0]["bbox"]
+    assert payload["classifications"] == [{
+        "group_id": "v75-conflict-001",
+        "evidence_class": "object_evidence",
+        "classification_reason": "A framed elevation with attached dimensions is visible.",
+    }]
+    assert audit[0]["candidate_region_ids"] == ["CR-P010-003"]
+
+
+def test_v75_translates_hidden_crop_coordinates_into_fusion_frame():
+    decisions = translate_detection_conflict_crop_decisions(
+        decisions=[{
+            "target_id": "V75-C001", "disposition": "admit_object_evidence",
+            "visual_witness": "A dimensioned elevation is visible.",
+            "representation_kind": "elevation",
+            "bbox": {"top_left_x": 100, "top_left_y": 50, "bottom_right_x": 300, "bottom_right_y": 150},
+            "core_bbox": {"top_left_x": 120, "top_left_y": 70, "bottom_right_x": 280, "bottom_right_y": 130},
+        }],
+        crop_frames={"V75-C001": {
+            "page_number": 10,
+            "crop_dimensions": {"width": 400, "height": 200},
+            "review_crop_bbox": {"top_left_x": 200, "top_left_y": 100, "bottom_right_x": 1000, "bottom_right_y": 500},
+        }},
+        page_frames={10: {"scale_x": 2.0, "scale_y": 2.0}},
+    )
+
+    assert decisions[0]["bbox"] == {
+        "top_left_x": 200, "top_left_y": 100,
+        "bottom_right_x": 400, "bottom_right_y": 200,
+    }
+    assert decisions[0]["core_bbox"] == {
+        "top_left_x": 220, "top_left_y": 120,
+        "bottom_right_x": 380, "bottom_right_y": 180,
+    }
 
 
 def _v67_anchor_payload(*, bbox: dict, core_bbox: dict, decision: dict) -> dict:

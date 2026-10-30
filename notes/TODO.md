@@ -219,9 +219,45 @@ only changed request surface was the V7.3 structured coverage contract. Do not
 repeat that schema or force a second required response array into Discovery.
 Any next Coverage Acceptance experiment must retain the ordinary Discovery
 schema and measure a conditional post-Discovery correction separately.
-The local P10 contract is 3 Discovery candidates and 1 graph seed; the focused
-candidate-region suite passed 19 tests. It remains active until the complete
-Floor 06 benchmark establishes that the bounded candidates improve recall
+V7.3's later `21d8d8a` retry of the complete batch for an unresolved
+`coverage_only` candidate is superseded: it repeats the same Discovery
+structure, adds a second full-page request, and still skips any target that
+has a first-pass exception. Do not restore it.
+
+ACTIVE EXPERIMENT, V7.5, P0, independent visual conflict resolver:
+
+Base: `21d8d8a` with the ineffective V7.3 full-batch coverage retry removed.
+After ordinary Discovery has completed, build a bounded target only for a
+Candidate Region with no overlapping retained `object_evidence` Island: either
+a `coverage_only` MyPDF region or an original Mistral graphic region. This is
+source-conflict routing, not a second page inventory. The resolver receives
+only a neutral raster crop, a small page-orientation image and a local crop
+pixel coordinate frame. It receives no Candidate Region role, source facts,
+OCR text, prior Discovery classification, exception or object hypothesis.
+The runtime alone translates its local geometry into Fusion coordinates.
+
+The resolver may emit exactly one of `admit_object_evidence`,
+`document_context`, or `unresolved` for each target. Only a visually observed,
+non-proxy bbox overlapping the target is added to the ordinary Discovery
+ledger. It cannot create graph seeds, Candidate Q, Membership decisions,
+packages, quantities or source facts. It runs only when targets exist, has a
+12-target maximum per request, and fails open to the ordinary Discovery result
+with an audit if its request, JSON or geometry is unavailable. The ordinary
+Discovery schema and normal no-conflict path remain unchanged.
+
+Acceptance: Floor 06 P10 starts from its existing three candidates and one
+graph seed, then admits only independently visible lower Islands. The same
+trace must show resolver targets and decisions for every covered source
+conflict, no V7.3 full-batch retry, no candidate-box geometry, and no
+50-60-object explosion. This experiment is designed to address observable
+source conflicts on P07/P09/P10/P11. It does not claim to discover P03's
+fully silent omission; that remains a separate recall problem. Compare the
+full 64-island page inventory, final packages, provider tokens, cost and stage
+durations with V7.2 before accepting it.
+
+The local P10 contract is 3 Discovery candidates and 1 graph seed; the V7.5
+source-conflict and Candidate Region suite passes 22 focused tests. It remains
+active until the complete Floor 06 benchmark establishes that the bounded candidates improve recall
 without duplicate regions or object explosion. Do not
 reintroduce V6.70's unbounded source union, broad Halo, candidate-box authority,
 or any changes to Discovery, floor-plan classification, Q, dimensions, merge,

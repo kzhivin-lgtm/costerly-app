@@ -57,6 +57,12 @@ from agents.detection_fusion_candidate_regions import (
     format_detection_fusion_candidate_regions,
     select_detection_candidate_graph_seeds,
 )
+from agents.detection_conflict_resolver import (
+    apply_detection_conflict_admissions,
+    build_detection_conflict_targets,
+    translate_detection_conflict_crop_decisions,
+    validate_detection_conflict_decisions,
+)
 from agents.detection_visual_embedding import (
     DetectionVisualEmbeddingUnavailable,
     build_detection_native_xobject_embedding_prior,
@@ -143,6 +149,9 @@ DETECTION_V637_ADA_COVERED_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION = (
 )
 DETECTION_V634_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
+DETECTION_V75_CONFLICT_RESOLVER_PROMPT_VERSION = (
+    "detection_v7_5_independent_visual_conflict_resolver"
+)
 # V5.0 keeps one Haiku call. Registry returns Islands, classifications, and
 # sparse positive semantic facts. Runtime owns every graph and package decision.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
@@ -184,6 +193,10 @@ DETECTION_V68_ALL_PAIR_MEMBERSHIP_MAX_ISLANDS = 10
 DETECTION_V69_RECONCILIATION_MAX_ISLANDS = 10
 DETECTION_V5_MEMBERSHIP_CROP_MAX_SIDE = 768
 DETECTION_V627_SCOPE_SCOUT_MAX_TOKENS = 480
+DETECTION_V75_CONFLICT_RESOLVER_MAX_TOKENS = 2_048
+DETECTION_V75_CONFLICT_RESOLVER_MAX_TARGETS_PER_REQUEST = 12
+DETECTION_V75_CONFLICT_RESOLVER_CROP_MAX_SIDE = 1_200
+DETECTION_V75_CONFLICT_RESOLVER_CONTEXT_MAX_SIDE = 512
 DETECTION_V5_MEMBERSHIP_PAGE_CONTEXT_MAX_SIDE = 1024
 DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_MAX_TOKENS = 6_144
 DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_MAX_TOKENS = 4_096
@@ -2954,6 +2967,342 @@ def build_detection_v5_membership_view_crops(
             "coordinate_frame": "fusion_to_review",
         })
     return crops, audit
+
+
+def build_detection_v75_conflict_resolver_images(
+    *,
+    page_images: list[bytes],
+    targets: list[dict[str, Any]],
+    coordinate_frames: dict[int, dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[int, bytes], list[dict[str, Any]]]:
+    """Render neutral crops plus small page context for V7.5 only.
+
+    Target provenance is intentionally absent from the returned images and
+    provider-facing labels. The resolver sees a crop and page number, not a
+    Candidate Region, OCR fact, source type or the first Discovery verdict.
+    """
+    try:
+        from PIL import Image
+    except ImportError:
+        return [], {}, [{"reason": "Pillow unavailable"}]
+
+    crops: list[dict[str, Any]] = []
+    contexts: dict[int, bytes] = {}
+    audit: list[dict[str, Any]] = []
+    for target in targets:
+        target_id = str(target.get("target_id") or "")
+        try:
+            page_number = int(target.get("page_number"))
+        except (TypeError, ValueError):
+            page_number = 0
+        bbox = _detection_bbox(target.get("bbox"))
+        if not target_id or bbox is None or not 1 <= page_number <= len(page_images):
+            audit.append({"target_id": target_id, "reason": "invalid target geometry"})
+            continue
+        try:
+            with Image.open(BytesIO(page_images[page_number - 1])) as source:
+                image = source.copy()
+            width, height = image.size
+            review_bbox = _scale_detection_bbox_to_review_image(
+                bbox,
+                frame=coordinate_frames.get(page_number),
+                review_width=width,
+                review_height=height,
+            )
+            if review_bbox is None:
+                raise ValueError("review coordinate frame unavailable")
+            margin_x = max(16, round((review_bbox["bottom_right_x"] - review_bbox["top_left_x"]) * 0.08))
+            margin_y = max(16, round((review_bbox["bottom_right_y"] - review_bbox["top_left_y"]) * 0.08))
+            left = max(0, review_bbox["top_left_x"] - margin_x)
+            top = max(0, review_bbox["top_left_y"] - margin_y)
+            right = min(width, review_bbox["bottom_right_x"] + margin_x)
+            bottom = min(height, review_bbox["bottom_right_y"] + margin_y)
+            crop = image.crop((left, top, right, bottom))
+            crop.thumbnail(
+                (DETECTION_V75_CONFLICT_RESOLVER_CROP_MAX_SIDE,) * 2,
+                Image.Resampling.LANCZOS,
+            )
+            crop_output = BytesIO()
+            crop.save(crop_output, format="JPEG", quality=88)
+            if page_number not in contexts:
+                context = image.copy()
+                context.thumbnail(
+                    (DETECTION_V75_CONFLICT_RESOLVER_CONTEXT_MAX_SIDE,) * 2,
+                    Image.Resampling.LANCZOS,
+                )
+                context_output = BytesIO()
+                context.save(context_output, format="JPEG", quality=75)
+                contexts[page_number] = context_output.getvalue()
+        except Exception as exc:
+            audit.append({
+                "target_id": target_id,
+                "page_number": page_number,
+                "reason": f"crop unavailable: {type(exc).__name__}",
+            })
+            continue
+        crops.append({
+            "target_id": target_id,
+            "page_number": page_number,
+            "bytes": crop_output.getvalue(),
+            "crop_dimensions": {"width": crop.width, "height": crop.height},
+            "review_crop_bbox": {
+                "top_left_x": left, "top_left_y": top,
+                "bottom_right_x": right, "bottom_right_y": bottom,
+            },
+        })
+        audit.append({
+            "target_id": target_id,
+            "page_number": page_number,
+            "source_bbox": bbox,
+            "review_bbox": review_bbox,
+            "crop_bbox": {
+                "top_left_x": left, "top_left_y": top,
+                "bottom_right_x": right, "bottom_right_y": bottom,
+            },
+            "crop_dimensions": {"width": crop.width, "height": crop.height},
+            "coordinate_frame": "fusion_to_review",
+        })
+    return crops, contexts, audit
+
+
+DETECTION_V75_CONFLICT_RESOLVER_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["decisions"],
+    "properties": {
+        "decisions": {
+            "type": "array",
+            "maxItems": DETECTION_V75_CONFLICT_RESOLVER_MAX_TARGETS_PER_REQUEST,
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["target_id", "disposition", "visual_witness"],
+                "properties": {
+                    "target_id": {"type": "string", "maxLength": 32},
+                    "disposition": {
+                        "type": "string",
+                        "enum": [
+                            "admit_object_evidence",
+                            "document_context",
+                            "unresolved",
+                        ],
+                    },
+                    "visual_witness": {"type": "string", "minLength": 1, "maxLength": 180},
+                    "representation_kind": {"type": "string", "maxLength": 64},
+                    "document_context_kind": {
+                        "type": "string",
+                        "enum": [
+                            "title_block", "schedule", "legend", "navigation",
+                            "generic_plan", "other_document_context",
+                        ],
+                    },
+                    "bbox": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": [
+                            "top_left_x", "top_left_y",
+                            "bottom_right_x", "bottom_right_y",
+                        ],
+                        "properties": {
+                            "top_left_x": {"type": "integer", "minimum": 0},
+                            "top_left_y": {"type": "integer", "minimum": 0},
+                            "bottom_right_x": {"type": "integer", "minimum": 1},
+                            "bottom_right_y": {"type": "integer", "minimum": 1},
+                        },
+                    },
+                    "core_bbox": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": [
+                            "top_left_x", "top_left_y",
+                            "bottom_right_x", "bottom_right_y",
+                        ],
+                        "properties": {
+                            "top_left_x": {"type": "integer", "minimum": 0},
+                            "top_left_y": {"type": "integer", "minimum": 0},
+                            "bottom_right_x": {"type": "integer", "minimum": 1},
+                            "bottom_right_y": {"type": "integer", "minimum": 1},
+                        },
+                    },
+                },
+            },
+        },
+    },
+}
+
+
+def _v75_conflict_resolver_content_blocks(
+    *,
+    crops: list[dict[str, Any]],
+    contexts: dict[int, bytes],
+    coordinate_frames: dict[int, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Build a provenance-blind visual-only request for conflict resolution."""
+    blocks: list[dict[str, Any]] = []
+    emitted_context_pages: set[int] = set()
+    for crop in crops:
+        page_number = int(crop["page_number"])
+        if page_number not in emitted_context_pages:
+            emitted_context_pages.add(page_number)
+            context = contexts[page_number]
+            blocks.append({
+                "type": "text",
+                "text": f"PDF page {page_number} orientation context. It is not a decision source.",
+            })
+            blocks.append({
+                "type": "image",
+                "source": {
+                    "type": "base64", "media_type": "image/jpeg",
+                    "data": base64.standard_b64encode(context).decode("ascii"),
+                },
+            })
+        blocks.append({
+            "type": "text",
+            "text": (
+                f"Inspection target {crop['target_id']} on PDF page {page_number}. "
+                "The next image is the target crop. Return admitted coordinates in "
+                "the target-crop pixel frame "
+                f"{crop['crop_dimensions']['width']}x{crop['crop_dimensions']['height']}."
+            ),
+        })
+        blocks.append({
+            "type": "image",
+            "source": {
+                "type": "base64", "media_type": "image/jpeg",
+                "data": base64.standard_b64encode(crop["bytes"]).decode("ascii"),
+            },
+        })
+    blocks.append({
+        "type": "text",
+        "text": "Return only schema JSON for every inspection target.",
+    })
+    return blocks
+
+
+def run_detection_v75_conflict_resolver(
+    *,
+    page_images: list[bytes],
+    targets: list[dict[str, Any]],
+    coordinate_frames: dict[int, dict[str, Any]],
+    model: str,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Resolve a bounded conflict batch without exposing its provenance."""
+    if not targets:
+        return [], {"attempted": False, "target_count": 0, "batches": []}
+    prompt = """
+You are an independent visual conflict resolver for technical PDF drawings.
+
+For each supplied target crop, decide only whether it visibly contains one
+distinct fabricated-object depiction. Do not infer object identity, quantity,
+membership, labels, source provenance, OCR text, or a decision made elsewhere.
+
+Admit `object_evidence` when the crop visibly depicts a separate technical
+plan, elevation, section, detail, perspective, module, assembly or fabricated
+construction. A sparse technical drawing with dimensions can still be object
+evidence. Dimensions alone are never a reason to reject a visible drawing.
+
+Use `document_context` only for visually identifiable title blocks, schedules,
+legends, navigation references, generic whole-level plans, or other document
+administration. State the visual discriminator in `visual_witness`.
+
+Use `unresolved` only when the supplied pixels cannot support either result.
+For an admission, return a newly observed bbox and core_bbox in the declared
+FUSION page frame. Never copy a crop boundary merely because it was supplied.
+Return only schema JSON.
+""".strip()
+    all_decisions: list[dict[str, Any]] = []
+    batches: list[dict[str, Any]] = []
+    for offset in range(0, len(targets), DETECTION_V75_CONFLICT_RESOLVER_MAX_TARGETS_PER_REQUEST):
+        batch_targets = targets[offset:offset + DETECTION_V75_CONFLICT_RESOLVER_MAX_TARGETS_PER_REQUEST]
+        crops, contexts, crop_audit = build_detection_v75_conflict_resolver_images(
+            page_images=page_images,
+            targets=batch_targets,
+            coordinate_frames=coordinate_frames,
+        )
+        available_ids = {str(crop["target_id"]) for crop in crops}
+        unavailable = [target for target in batch_targets if str(target["target_id"]) not in available_ids]
+        def unresolved_batch_decisions(reason: str) -> list[dict[str, Any]]:
+            return [{
+                "target_id": str(target["target_id"]),
+                "disposition": "unresolved",
+                "visual_witness": reason,
+            } for target in batch_targets]
+
+        decisions: list[dict[str, Any]] = [{
+            "target_id": str(target["target_id"]),
+            "disposition": "unresolved",
+            "visual_witness": "Inspection crop was unavailable.",
+        } for target in unavailable]
+        provider_summary: dict[str, Any] | None = None
+        batch_error: str | None = None
+        if crops:
+            try:
+                content = _v75_conflict_resolver_content_blocks(
+                    crops=crops, contexts=contexts, coordinate_frames=coordinate_frames,
+                )
+                response, request_diagnostics = create_claude_message_streamed(
+                    get_anthropic_client(),
+                    model=model,
+                    max_tokens=DETECTION_V75_CONFLICT_RESOLVER_MAX_TOKENS,
+                    temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+                    system=build_detection_system_content(prompt=prompt),
+                    messages=[{"role": "user", "content": content}],
+                    output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
+                        DETECTION_V75_CONFLICT_RESOLVER_SCHEMA,
+                    )}},
+                )
+                provider_summary = summarize_detection_provider_call(
+                    response=response,
+                    diagnostics=request_diagnostics,
+                    requested_model=model,
+                    prompt_characters=len(prompt),
+                    context_characters=0,
+                    image_count=len(crops) + len(contexts),
+                    image_bytes=(
+                        sum(len(crop["bytes"]) for crop in crops)
+                        + sum(len(value) for value in contexts.values())
+                    ),
+                )
+                payload = json.loads(extract_text_from_claude_response(response))
+                provider_decisions = payload.get("decisions") if isinstance(payload, dict) else []
+                crop_frames = {
+                    str(crop["target_id"]): crop
+                    for crop in crops
+                }
+                decisions.extend(translate_detection_conflict_crop_decisions(
+                    decisions=provider_decisions,
+                    crop_frames=crop_frames,
+                    page_frames=coordinate_frames,
+                ))
+                normalized = validate_detection_conflict_decisions(
+                    decisions=decisions,
+                    targets=batch_targets,
+                    page_frames=coordinate_frames,
+                )
+            except Exception as exc:
+                batch_error = f"{type(exc).__name__}: {exc}"
+                normalized = unresolved_batch_decisions(
+                    "Independent visual inspection was unavailable.",
+                )
+        else:
+            normalized = validate_detection_conflict_decisions(
+                decisions=decisions,
+                targets=batch_targets,
+                page_frames=coordinate_frames,
+            )
+        all_decisions.extend(normalized)
+        batches.append({
+            "target_ids": [str(target["target_id"]) for target in batch_targets],
+            "crop_audit": crop_audit,
+            "provider": provider_summary,
+            "error": batch_error,
+        })
+    return all_decisions, {
+        "version": DETECTION_V75_CONFLICT_RESOLVER_PROMPT_VERSION,
+        "attempted": True,
+        "target_count": len(targets),
+        "batches": batches,
+    }
 
 
 def build_detection_v5_source_degraded_context_pair_crops(
@@ -6109,47 +6458,6 @@ def build_detection_candidate_region_audit(
             ),
         })
     return audit
-
-
-def unresolved_detection_coverage_only_candidate_ids(
-    *,
-    payload: dict[str, Any],
-    candidate_regions: list[dict[str, Any]],
-) -> list[str]:
-    """Return COVs lacking Object Evidence or an explicit visible exception."""
-    coverage_candidates = [
-        candidate for candidate in candidate_regions
-        if candidate.get("role") == "coverage_only"
-    ]
-    if not coverage_candidates:
-        return []
-    classifications = {
-        str(row.get("group_id") or ""): str(row.get("evidence_class") or "")
-        for row in payload.get("classifications") or []
-        if isinstance(row, dict)
-    }
-    object_group_bboxes = [
-        (int(group.get("page_number") or 0), _detection_bbox(group.get("bbox")))
-        for group in payload.get("visual_groups") or []
-        if isinstance(group, dict)
-        and classifications.get(str(group.get("group_id") or "")) == "object_evidence"
-    ]
-    exception_ids = {
-        str(row.get("candidate_region_id") or "")
-        for row in payload.get("candidate_region_exceptions") or []
-        if isinstance(row, dict) and str(row.get("reason") or "").strip()
-    }
-    return [
-        str(candidate["candidate_region_id"])
-        for candidate in coverage_candidates
-        if str(candidate["candidate_region_id"]) not in exception_ids
-        and not any(
-            page_number == int(candidate["page_number"])
-            and group_bbox is not None
-            and _bbox_overlaps(candidate["bbox"], group_bbox)
-            for page_number, group_bbox in object_group_bboxes
-        )
-    ]
 
 
 def format_detection_v67_mistral_graphic_anchors(
@@ -11020,85 +11328,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                         f"V6.44 geometry-correction batch {batch_number} remained invalid: "
                         f"{retry_error}"
                     ) from retry_error
-            coverage_retry_candidate_ids = unresolved_detection_coverage_only_candidate_ids(
-                payload=batch_payload, candidate_regions=batch_candidates,
-            )
-            if coverage_retry_candidate_ids:
-                if stage_callback:
-                    stage_callback(f"Discovery batch {batch_number} coverage correction retry")
-                coverage_retry_text = (
-                    batch_user_text
-                    + "\n\nCOVERAGE CORRECTION REQUIRED:\n"
-                    + "The prior response left these coverage-only recall targets without "
-                    + "an overlapping object_evidence Island or a concrete exception: "
-                    + ", ".join(coverage_retry_candidate_ids)
-                    + ". Reinspect only those target areas, then return the complete ordinary "
-                    + "Discovery response using the unchanged schema. If a target visibly depicts "
-                    + "a fabricated object or construction, return its independently observed "
-                    + "object_evidence Island with its own visual bbox, never the COV bbox. If it "
-                    + "does not, list that COV in candidate_region_exceptions with a concrete "
-                    + "visible reason. Do not add commentary."
-                )
-                coverage_retry_content = build_detection_registry_content_blocks(
-                    file_name=file_name,
-                    file_bytes=file_bytes,
-                    user_text=coverage_retry_text,
-                    page_images=batch_images,
-                    page_image_numbers=page_numbers,
-                    regions=[],
-                )
-                coverage_retry_messages = [{"role": "user", "content": coverage_retry_content}]
-                coverage_retry_exact_input_tokens = _v641_count_input_tokens(
-                    client=client,
-                    model=discovery_model,
-                    system=proposal_system,
-                    messages=coverage_retry_messages,
-                    output_config=proposal_output_config,
-                )
-                if (
-                    coverage_retry_exact_input_tokens is not None
-                    and coverage_retry_exact_input_tokens
-                    > DETECTION_V641_DISCOVERY_MAX_EXACT_INPUT_TOKENS
-                ):
-                    raise RuntimeError(
-                        "Coverage-correction batch exceeds its safe input budget."
-                    )
-                batch_response, batch_diagnostics = create_claude_message_streamed(
-                    client,
-                    model=discovery_model,
-                    max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
-                    temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
-                    system=proposal_system,
-                    messages=coverage_retry_messages,
-                    output_config=proposal_output_config,
-                )
-                batch_attempts.append({
-                    "response": batch_response,
-                    "diagnostics": batch_diagnostics,
-                    "max_tokens": DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
-                    "exact_input_tokens": coverage_retry_exact_input_tokens,
-                    "context_characters": len(coverage_retry_text),
-                    "retry_kind": "unresolved_coverage_only",
-                })
-                try:
-                    batch_payload = json.loads(extract_text_from_claude_response(batch_response))
-                except json.JSONDecodeError as retry_error:
-                    raise RuntimeError(
-                        f"Coverage-correction batch {batch_number} returned invalid JSON: "
-                        f"{retry_error}"
-                    ) from retry_error
-                batch_payload = validate_batch_contract(batch_payload)
-                _v644_validate_batch_core_geometry(batch_payload)
-                remaining_coverage_candidate_ids = (
-                    unresolved_detection_coverage_only_candidate_ids(
-                        payload=batch_payload, candidate_regions=batch_candidates,
-                    )
-                )
-                if remaining_coverage_candidate_ids:
-                    raise RuntimeError(
-                        "Coverage-correction batch left recall targets unresolved: "
-                        f"{remaining_coverage_candidate_ids}"
-                    )
             batch_payload = _v641_reindex_batch_discovery_payload(
                 batch_payload, batch_number=batch_number,
             )
@@ -11150,14 +11379,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                     "attempt_count": len([
                         attempt for attempt in batch_attempts
                         if attempt["retry_kind"] == "invalid_core_geometry"
-                    ]),
-                },
-                "coverage_only_retry": {
-                    "attempted": bool(coverage_retry_candidate_ids),
-                    "candidate_region_ids": coverage_retry_candidate_ids,
-                    "attempt_count": len([
-                        attempt for attempt in batch_attempts
-                        if attempt["retry_kind"] == "unresolved_coverage_only"
                     ]),
                 },
                 "provider_attempt_count": len(batch_attempts),
@@ -11430,6 +11651,46 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             field: proposal_raw_payload[field]
             for field in discovery_fields - {"page_coverage", "document_scope"}
         }
+    v75_conflict_targets = build_detection_conflict_targets(
+        candidate_regions=candidate_regions,
+        visual_groups=proposal_discovery_payload["visual_groups"],
+        classifications=proposal_discovery_payload["classifications"],
+    )
+    v75_conflict_resolver_audit: dict[str, Any] = {
+        "version": DETECTION_V75_CONFLICT_RESOLVER_PROMPT_VERSION,
+        "attempted": False,
+        "target_count": len(v75_conflict_targets),
+        "targets": copy.deepcopy(v75_conflict_targets),
+        "decisions": [],
+        "batches": [],
+    }
+    if v75_conflict_targets:
+        _notify_detection_stage(
+            stage_callback,
+            "Conflict visual verification started",
+            {"target_count": len(v75_conflict_targets)},
+        )
+        try:
+            v75_conflict_decisions, resolver_audit = run_detection_v75_conflict_resolver(
+                page_images=page_images,
+                targets=v75_conflict_targets,
+                coordinate_frames=review_coordinate_frames,
+                model=discovery_model,
+            )
+            proposal_discovery_payload, applied_audit = apply_detection_conflict_admissions(
+                payload=proposal_discovery_payload,
+                targets=v75_conflict_targets,
+                decisions=v75_conflict_decisions,
+            )
+            v75_conflict_resolver_audit.update(resolver_audit)
+            v75_conflict_resolver_audit["decisions"] = applied_audit
+        except Exception as exc:
+            # This is an optional, post-Discovery safeguard. It must never
+            # invalidate the established Detection result or block processing.
+            v75_conflict_resolver_audit.update({
+                "status": "unavailable",
+                "error": f"{type(exc).__name__}: {exc}",
+            })
     proposal_for_review, _ = _validate_and_apply_visual_registry_classifications(
         proposal_discovery_payload, page_frames=review_coordinate_frames,
     )
@@ -12659,6 +12920,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "fusion_candidate_regions": candidate_regions,
         "fusion_page_profiles": fusion_page_profiles,
         "candidate_region_audit": candidate_region_audit,
+        "v7_5_conflict_resolver": v75_conflict_resolver_audit,
         "unexplained_candidate_region_count": sum(
             row["status"] == "unexplained" for row in candidate_region_audit
         ),
@@ -12694,6 +12956,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         *diagnostics["v6_13_proposal_truncation_retry"]["attempts"],
         *diagnostics["v6_41_review_truncation_retry"]["attempts"],
     ]
+    provider_call_usages.extend(
+        batch["provider"]
+        for batch in v75_conflict_resolver_audit.get("batches", [])
+        if isinstance(batch, dict) and isinstance(batch.get("provider"), dict)
+    )
     reconciliation_usage = diagnostics.get("v6_10_reconciliation_review")
     if isinstance(reconciliation_usage, dict):
         provider_call_usages.append(reconciliation_usage)
