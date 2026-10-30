@@ -5245,6 +5245,26 @@ def _validate_and_apply_visual_registry_classifications(
         for group in enriched["visual_groups"]
         if isinstance(group, dict) and isinstance(group.get("page_number"), int)
     )
+    # Conflict Resolver can independently rediscover the same whole-level plan
+    # that Discovery already classified as document context.  That duplicate
+    # makes the page appear multi-island and would otherwise disable the
+    # existing whole-page fallback below.  Keep this narrowly about nearly
+    # identical plan depictions, not every plan-like technical view.
+    context_floor_plan_bboxes_by_page: dict[int, list[dict[str, int]]] = {}
+    for group in enriched["visual_groups"]:
+        if not isinstance(group, dict):
+            continue
+        decision = by_group_id[group["group_id"]]
+        page_number = group.get("page_number")
+        bbox = _detection_bbox(group.get("bbox"))
+        if (
+            decision["evidence_class"] == "document_context"
+            and str(group.get("representation_kind") or "").lower()
+            in {"floor_plan", "location_plan"}
+            and isinstance(page_number, int)
+            and bbox is not None
+        ):
+            context_floor_plan_bboxes_by_page.setdefault(page_number, []).append(bbox)
     for group in enriched["visual_groups"]:
         decision = by_group_id[group["group_id"]]
         representation = str(group.get("representation_kind") or "").lower()
@@ -5270,10 +5290,20 @@ def _validate_and_apply_visual_registry_classifications(
             groups_on_page=groups_by_page.get(page_number, 0),
             page_frame=page_frame,
         )
+        group_bbox = _detection_bbox(group.get("bbox"))
+        duplicates_context_plan = (
+            group_bbox is not None
+            and any(
+                _detection_bbox_agreement(group_bbox, context_bbox)[0] >= 0.80
+                for context_bbox in context_floor_plan_bboxes_by_page.get(
+                    page_number, []
+                )
+            )
+        )
         if (
             decision["evidence_class"] == "object_evidence"
             and generic_plan
-            and forced_context_eligible
+            and (forced_context_eligible or duplicates_context_plan)
         ):
             group["evidence_class"] = "document_context"
             group["classification_reason"] = (

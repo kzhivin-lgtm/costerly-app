@@ -1719,6 +1719,51 @@ def test_small_plan_like_group_is_not_forced_to_document_context_on_multi_island
     assert audit[0]["evidence_class"] == "object_evidence"
 
 
+def test_duplicate_whole_level_floor_plan_is_demoted_despite_multi_island_page():
+    payload = _visual_registry_payload({
+        "visual_groups": [{
+            "group_id": "discovery-plan", "page_number": 2,
+            "location_hint": "center-right",
+            "visual_description": "Floor plan with dimensions and room layout.",
+            "representation_kind": "floor_plan",
+            "evidence_class": "document_context",
+            "classification_reason": "Architectural floor plan showing room layout and circulation.",
+            "bbox": {"top_left_x": 1180, "top_left_y": 126,
+                     "bottom_right_x": 4584, "bottom_right_y": 3239},
+            "core_bbox": {"top_left_x": 1180, "top_left_y": 126,
+                          "bottom_right_x": 4584, "bottom_right_y": 3239},
+        }, {
+            "group_id": "conflict-plan", "page_number": 2,
+            "location_hint": "independent visual conflict adjudication",
+            "visual_description": (
+                "Complete architectural floor plan with walls, rooms, dimensions, "
+                "and technical annotations."
+            ),
+            "representation_kind": "floor_plan",
+            "evidence_class": "object_evidence",
+            "classification_reason": (
+                "Complete architectural floor plan with walls, rooms, dimensions, "
+                "and technical annotations."
+            ),
+            "bbox": {"top_left_x": 1065, "top_left_y": 94,
+                     "bottom_right_x": 4521, "bottom_right_y": 3205},
+            "core_bbox": {"top_left_x": 1222, "top_left_y": 251,
+                          "bottom_right_x": 4364, "bottom_right_y": 3080},
+        }],
+    })
+
+    enriched, audit = _validate_and_apply_visual_registry_classifications(
+        payload, page_frames={2: {"fusion_dimensions": {"width": 4800, "height": 3400}}},
+    )
+
+    assert [group["evidence_class"] for group in enriched["visual_groups"]] == [
+        "document_context", "document_context",
+    ]
+    assert audit[1]["classification_reason"] == (
+        "Whole-level architectural plan is document context, not an isolated fabricated item."
+    )
+
+
 def test_v5_discovery_page_coverage_requires_every_page_and_every_island():
     groups = [
         {"group_id": "P1.A", "page_number": 1},
