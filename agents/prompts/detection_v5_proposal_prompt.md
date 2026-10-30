@@ -49,3 +49,10 @@ render or photo that presents a fabricated object. Do not use it for a
 line-drawn or dimensioned technical perspective. A presentation render remains
 Object Evidence when it depicts fabrication, but it is not itself a commercial
 object or a quantity decision.
+
+Before returning each page, make a dedicated visual pass for photographic or
+photorealistic rectangular images. Every visibly distinct render or photo of a
+fabricated object is its own Object Evidence Island with the exact
+`presentation_render` kind, even when it has no dimensions, labels or OCR text
+and even when it sits near a title block. Never describe such an image as
+document administration merely because it lacks technical annotations.

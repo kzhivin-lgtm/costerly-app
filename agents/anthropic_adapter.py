@@ -122,7 +122,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v6_57_compact_discovery_deterministic_output_budget"
+    "detection_v7_9_direct_presentation_render_discovery"
 )
 DETECTION_V67_MISTRAL_ANCHOR_ADMISSION_PROMPT_VERSION = (
     "detection_v6_7_mistral_graphic_anchor_admission"
@@ -3189,6 +3189,7 @@ def run_detection_v75_conflict_resolver(
     targets: list[dict[str, Any]],
     coordinate_frames: dict[int, dict[str, Any]],
     model: str,
+    retry_invalid_targets: bool = True,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Resolve a bounded conflict batch without exposing its provenance."""
     if not targets:
@@ -3205,6 +3206,10 @@ plan, elevation, section, detail, perspective, module, assembly or fabricated
 construction. A sparse technical drawing with dimensions can still be object
 evidence. Dimensions alone are never a reason to reject a visible drawing.
 
+For a photorealistic render or photograph that presents a fabricated object,
+admit `object_evidence` with exact `representation_kind=presentation_render`.
+It is visual evidence, not a quantity or a standalone commercial object.
+
 Use `document_context` only for visually identifiable title blocks, schedules,
 legends, navigation references, generic whole-level plans, or other document
 administration. State the visual discriminator in `visual_witness`.
@@ -3216,6 +3221,71 @@ Return only schema JSON.
 """.strip()
     all_decisions: list[dict[str, Any]] = []
     batches: list[dict[str, Any]] = []
+
+    def normalize_provider_decisions(
+        *,
+        provider_decisions: object,
+        batch_targets: list[dict[str, Any]],
+        crop_frames: dict[str, dict[str, Any]],
+    ) -> tuple[list[dict[str, Any]], dict[str, str], list[str]]:
+        """Keep valid visual verdicts when another target is malformed.
+
+        The provider answers a bounded batch, but a bad bbox or duplicate ID is
+        evidence about one target, not grounds to erase every other independent
+        visual inspection in that request.
+        """
+        target_by_id = {str(target["target_id"]): target for target in batch_targets}
+        rows_by_target: dict[str, list[dict[str, Any]]] = {
+            target_id: [] for target_id in target_by_id
+        }
+        batch_diagnostics: list[str] = []
+        if not isinstance(provider_decisions, list):
+            return [], {
+                target_id: "provider decisions were not a list"
+                for target_id in target_by_id
+            }, batch_diagnostics
+        for row in provider_decisions:
+            if not isinstance(row, dict):
+                batch_diagnostics.append("provider decision was not an object")
+                continue
+            target_id = str(row.get("target_id") or "")
+            if target_id not in rows_by_target:
+                batch_diagnostics.append("provider decision referenced an unknown target")
+                continue
+            rows_by_target[target_id].append(row)
+
+        normalized_by_target: dict[str, dict[str, Any]] = {}
+        invalid_by_target: dict[str, str] = {}
+        for target_id, target in target_by_id.items():
+            rows = rows_by_target[target_id]
+            if len(rows) != 1:
+                invalid_by_target[target_id] = (
+                    "provider returned no decision" if not rows
+                    else "provider returned duplicate decisions"
+                )
+                continue
+            try:
+                translated = translate_detection_conflict_crop_decisions(
+                    decisions=rows,
+                    crop_frames=crop_frames,
+                    page_frames=coordinate_frames,
+                )
+                normalized_by_target[target_id] = validate_detection_conflict_decisions(
+                    decisions=translated,
+                    targets=[target],
+                    page_frames=coordinate_frames,
+                )[0]
+            except Exception as exc:
+                invalid_by_target[target_id] = (
+                    f"{type(exc).__name__}: {exc}"
+                )
+        return (
+            [normalized_by_target[str(target["target_id"])] for target in batch_targets
+             if str(target["target_id"]) in normalized_by_target],
+            invalid_by_target,
+            batch_diagnostics,
+        )
+
     for offset in range(0, len(targets), DETECTION_V75_CONFLICT_RESOLVER_MAX_TARGETS_PER_REQUEST):
         batch_targets = targets[offset:offset + DETECTION_V75_CONFLICT_RESOLVER_MAX_TARGETS_PER_REQUEST]
         crops, contexts, crop_audit = build_detection_v75_conflict_resolver_images(
@@ -3239,6 +3309,9 @@ Return only schema JSON.
         } for target in unavailable]
         provider_summary: dict[str, Any] | None = None
         batch_error: str | None = None
+        invalid_target_errors: dict[str, str] = {}
+        batch_diagnostics: list[str] = []
+        retry_audit: dict[str, Any] | None = None
         if crops:
             try:
                 content = _v75_conflict_resolver_content_blocks(
@@ -3273,33 +3346,68 @@ Return only schema JSON.
                     str(crop["target_id"]): crop
                     for crop in crops
                 }
-                decisions.extend(translate_detection_conflict_crop_decisions(
-                    decisions=provider_decisions,
+                valid_decisions, invalid_target_errors, batch_diagnostics = (
+                    normalize_provider_decisions(
+                    provider_decisions=provider_decisions,
+                    batch_targets=batch_targets,
                     crop_frames=crop_frames,
-                    page_frames=coordinate_frames,
-                ))
-                normalized = validate_detection_conflict_decisions(
-                    decisions=decisions,
-                    targets=batch_targets,
-                    page_frames=coordinate_frames,
+                    )
                 )
+                decisions.extend(valid_decisions)
             except Exception as exc:
                 batch_error = f"{type(exc).__name__}: {exc}"
-                normalized = unresolved_batch_decisions(
-                    "Independent visual inspection was unavailable.",
-                )
+                invalid_target_errors = {
+                    str(target["target_id"]): batch_error for target in batch_targets
+                }
         else:
-            normalized = validate_detection_conflict_decisions(
-                decisions=decisions,
-                targets=batch_targets,
-                page_frames=coordinate_frames,
+            invalid_target_errors = {
+                str(target["target_id"]): "inspection crop was unavailable"
+                for target in batch_targets
+                if str(target["target_id"]) not in {
+                    str(decision["target_id"]) for decision in decisions
+                }
+            }
+        if invalid_target_errors and retry_invalid_targets:
+            retry_targets = [
+                target for target in batch_targets
+                if str(target["target_id"]) in invalid_target_errors
+            ]
+            retry_decisions, retry_audit = run_detection_v75_conflict_resolver(
+                page_images=page_images,
+                targets=retry_targets,
+                coordinate_frames=coordinate_frames,
+                model=model,
+                retry_invalid_targets=False,
             )
+            decisions.extend(retry_decisions)
+            invalid_target_errors = {
+                target_id: reason
+                for target_id, reason in invalid_target_errors.items()
+                if target_id not in {str(decision["target_id"]) for decision in retry_decisions}
+            }
+        decision_by_target = {
+            str(decision["target_id"]): decision for decision in decisions
+        }
+        normalized = [
+            decision_by_target.get(str(target["target_id"]), {
+                "target_id": str(target["target_id"]),
+                "disposition": "unresolved",
+                "visual_witness": (
+                    "Independent visual decision was invalid: "
+                    f"{invalid_target_errors.get(str(target["target_id"]), "unknown failure")}"[:180]
+                ),
+            })
+            for target in batch_targets
+        ]
         all_decisions.extend(normalized)
         batches.append({
             "target_ids": [str(target["target_id"]) for target in batch_targets],
             "crop_audit": crop_audit,
             "provider": provider_summary,
             "error": batch_error,
+            "invalid_target_errors": invalid_target_errors,
+            "batch_diagnostics": batch_diagnostics,
+            "retry": retry_audit,
         })
     return all_decisions, {
         "version": DETECTION_V75_CONFLICT_RESOLVER_PROMPT_VERSION,
