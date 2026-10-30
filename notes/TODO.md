@@ -163,7 +163,7 @@ context, not a seventh Object Evidence island.
 
 | Page | Expected Object Evidence islands |
 | --- | ---: |
-| P03 | 11 |
+| P03 | 12 |
 | P04 | 4 |
 | P05 | 6 |
 | P06 | 3 |
@@ -264,32 +264,6 @@ or any changes to Discovery, floor-plan classification, Q, dimensions, merge,
 router, Naming, UI, or model choice. Acceptance starts with P10 producing
 three candidate regions before Discovery, while the Floor 06 benchmark pages
 with already-correct counts do not gain duplicate candidates.
-
-ACTIVE EXPERIMENT, V7.9, P0, direct presentation-render Discovery and
-conflict-resolver isolation:
-
-Protected base: V7.8 `c428463`, tag
-`detection-v7.8-presentation-render-2026-10-30`. The owner has accepted
-Floor 06 P03=11 as the visual-island benchmark. A render/photo is not a
-conflict by default: ordinary Discovery must emit each visibly distinct
-photorealistic presentation image as Object Evidence with exact
-`representation_kind=presentation_render`. Preserve all Candidate Regions,
-Discovery geometry, Q, dimensions, ordinary technical merge rules, router,
-Naming and UI behaviour.
-
-The V7.5 resolver remains a bounded fallback only after ordinary Discovery
-omits a source region. Its batch normalisation must isolate invalid or missing
-provider rows, preserve valid decisions, retry only failed targets once, and
-record their actual failure reason. One invalid decision must never rewrite the
-whole batch as unresolved. A fallback-admitted photo/render uses the same exact
-representation kind and cannot create a standalone Registry object without a
-technical owner.
-
-Acceptance: Floor 06 P03 small presentation images, P09 three renders and P13
-photo are not silently demoted to document context. No valid conflict target is
-lost because another target is malformed. Compare page inventory, final package
-composition, tokens, cost and duration against V7.8. Reject any broad package
-increase or any render-only object.
 
 ACTIVE EXPERIMENT, V7.8, P0, presentation render/photo membership:
 

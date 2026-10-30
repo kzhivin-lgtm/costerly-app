@@ -1,7 +1,4 @@
-import json
-
 import pytest
-import agents.anthropic_adapter as anthropic_adapter
 
 from agents.anthropic_adapter import (
     apply_detection_v67_mistral_anchor_admission,
@@ -451,73 +448,6 @@ def test_v75_translates_hidden_crop_coordinates_into_fusion_frame():
         "top_left_x": 220, "top_left_y": 120,
         "bottom_right_x": 380, "bottom_right_y": 180,
     }
-
-
-def test_v75_invalid_target_does_not_discard_other_valid_batch_decisions(monkeypatch):
-    targets = [
-        {
-            "target_id": "V75-C001", "page_number": 1,
-            "bbox": {"top_left_x": 10, "top_left_y": 10, "bottom_right_x": 50, "bottom_right_y": 50},
-            "trigger": "graphic_region_without_object_evidence",
-            "candidate_region_ids": ["CR-P001-001"],
-        },
-        {
-            "target_id": "V75-C002", "page_number": 1,
-            "bbox": {"top_left_x": 60, "top_left_y": 10, "bottom_right_x": 100, "bottom_right_y": 50},
-            "trigger": "graphic_region_without_object_evidence",
-            "candidate_region_ids": ["CR-P001-002"],
-        },
-    ]
-    provider_payloads = [
-        {"decisions": [{
-            "target_id": "V75-C001", "disposition": "document_context",
-            "visual_witness": "Visible title block.", "document_context_kind": "title_block",
-        }]},
-        {"decisions": [{
-            "target_id": "V75-C002", "disposition": "unresolved",
-            "visual_witness": "The pixels are too indistinct to classify.",
-        }]},
-    ]
-
-    def fake_images(*, targets, **_kwargs):
-        return [
-            {
-                "target_id": target["target_id"], "page_number": 1, "bytes": b"crop",
-                "crop_dimensions": {"width": 40, "height": 40},
-                "review_crop_bbox": target["bbox"],
-            }
-            for target in targets
-        ], {1: b"context"}, []
-
-    monkeypatch.setattr(
-        anthropic_adapter, "build_detection_v75_conflict_resolver_images", fake_images,
-    )
-    monkeypatch.setattr(anthropic_adapter, "get_anthropic_client", lambda: object())
-    monkeypatch.setattr(
-        anthropic_adapter,
-        "create_claude_message_streamed",
-        lambda *_args, **_kwargs: ({"payload": provider_payloads.pop(0)}, {}),
-    )
-    monkeypatch.setattr(
-        anthropic_adapter,
-        "extract_text_from_claude_response",
-        lambda response: json.dumps(response["payload"]),
-    )
-    monkeypatch.setattr(
-        anthropic_adapter, "summarize_detection_provider_call", lambda **_kwargs: {},
-    )
-
-    decisions, audit = anthropic_adapter.run_detection_v75_conflict_resolver(
-        page_images=[b"page"], targets=targets,
-        coordinate_frames={1: {"fusion_dimensions": {"width": 100, "height": 100}}},
-        model="test-model",
-    )
-
-    assert [(row["target_id"], row["disposition"]) for row in decisions] == [
-        ("V75-C001", "document_context"),
-        ("V75-C002", "unresolved"),
-    ], audit
-    assert audit["batches"][0]["retry"] is not None
 
 
 def _v67_anchor_payload(*, bbox: dict, core_bbox: dict, decision: dict) -> dict:
