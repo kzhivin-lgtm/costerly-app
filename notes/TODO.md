@@ -311,29 +311,30 @@ inventory, page-by-page package composition, total packages, provider tokens,
 cost and duration against V7.6. Reject the experiment on any broad package
 increase or a missed technical component caused by the new rule.
 
-ACTIVE EXPERIMENT, V7.11, P0, review-owned presentation-render membership:
+ACTIVE EXPERIMENT, V7.12, P0, auditable existing same-page Membership Review:
 
-Base: protected V7.8 checkpoint `c428463` (`detection-v7.8-presentation-render-2026-10-30`).
-Retain only V7.10's isolated Conflict Resolver retry and its explicit fallback
-classification of a photographic render/photo as `presentation_render`. Do not
-retain its Discovery-wide render instruction or floor-plan experiment. The
-existing Membership Review receives one mandatory decision for every retained
-presentation render, including a render on another page: `attach`, `no_match`,
-or `unresolved`. `attach` may name one non-render technical View only with
-`matching_topology` or `unique_geometry` and a concrete visual witness. OCR,
-text, colour, material, proximity, dimensions, dominant-page attachment and
-generic semantic hypotheses are prohibited for a render. These Review decisions
-are its only legal membership path. No Candidate Regions, Discovery, technical
-membership rules, Q, dimensions, floor-plan classification, router, Naming or
-UI behaviour may change.
+Base: protected V7.11 checkpoint `0f4ecb6`
+(`detection-v7.11-render-membership-2026-10-30`). Retain V7.11's mandatory
+Review-owned presentation-render decisions unchanged. Repair the existing
+post-Discovery same-page Membership Review queue instead of adding a resolver,
+call, candidate source or merge rule. The queue already contains every retained
+Object Evidence pair on a page, including Conflict Resolver admissions. Review
+must return a compact ordered `S`/`D`/`I` disposition string for every existing
+Q entry: same object, different objects or insufficient evidence. `S` remains
+only a coverage verdict. It is valid only when the existing typed-evidence path
+also emits that exact pair, and existing positive same-page evidence is invalid
+without its matching `S`. Keep one Review call, existing technical criteria,
+render rules, Candidate Regions, Discovery, Conflict Resolver, dimensions,
+floor-plan classification, router, Naming and UI behaviour unchanged.
 
-Acceptance: the Floor 06 audit makes every P03/P09 presentation render decision
-explicit; a supported cross-page render joins the selected technical component;
-an unsupported render remains excluded rather than creating a package; and P13
-cannot be generically attached through a dimension envelope or dominant page.
-Compare island inventory, per-page package composition, total packages, tokens,
-cost and duration with V7.8. P02's known floor-plan false positive is outside
-this experiment and is not a V7.11 acceptance signal.
+Acceptance: Floor 06 preserves the V7.11 island inventory and explicit
+P03/P09 presentation-render decisions. Its audit records one disposition for
+every same-page Q, including all three P10 pairs. The proven P10
+`v75-conflict-009` to `v75-conflict-010` comparison must either produce its
+supported existing evidence and merge edge, or expose a specific negative
+decision for audit, never silently disappear. Compare page-by-page packages,
+total packages, tokens, cost and duration with V7.11. P02's known floor-plan
+false positive remains outside this experiment.
 
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence

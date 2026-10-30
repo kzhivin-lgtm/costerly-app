@@ -1,5 +1,6 @@
 import copy
 from inspect import getsource
+from itertools import combinations
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -20,7 +21,7 @@ from agents.anthropic_adapter import (
     DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
     DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
     DETECTION_V634_ADA_DISCOVERY_MODEL,
-    DETECTION_V711_PRESENTATION_RENDER_REVIEW_PROMPT_VERSION,
+    DETECTION_V712_AUDITABLE_SAME_PAGE_MEMBERSHIP_PROMPT_VERSION,
     apply_benchmark_run_suffix,
     build_agent_usage_event,
     build_detection_ocr_context,
@@ -33,6 +34,7 @@ from agents.anthropic_adapter import (
     create_claude_message_streamed,
     extract_detection_document_dimension_unit_profile,
     extract_detection_page_drawing_codes,
+    decode_detection_v712_same_page_queue_dispositions,
     finalize_detection_same_page_membership_queue,
     normalize_detection_identity_fields,
     normalize_detection_v610_evidence_review_decisions,
@@ -45,6 +47,7 @@ from agents.anthropic_adapter import (
     select_detection_v645_discovery_output_max_tokens,
     select_detection_v645_membership_output_max_tokens,
     validate_optional_detection_v611_document_scope,
+    validate_detection_v712_same_page_queue_evidence,
     validate_detection_v611_document_scope,
 )
 from agents.schemas.detection_registry_schema import (
@@ -137,9 +140,31 @@ def _visual_registry_payload(payload):
 def _visual_registry_response_sequence(payload):
     """Return separate Discovery and Membership Review fixtures."""
     proposal = _visual_registry_payload(payload)
+    evidence_class_by_group_id = {
+        row["group_id"]: row["evidence_class"]
+        for row in proposal["classifications"]
+    }
+    required_pairs, _ = finalize_detection_same_page_membership_queue(
+        visual_groups=[{
+            **group,
+            "evidence_class": evidence_class_by_group_id[group["group_id"]],
+        } for group in proposal["visual_groups"]],
+    )
+    positive_pairs = {
+        tuple(sorted((left, right)))
+        for hypothesis in proposal.get("object_hypotheses", [])
+        if isinstance(hypothesis, dict)
+        for left, right in combinations(
+            sorted(str(group_id) for group_id in hypothesis.get("group_ids", [])), 2,
+        )
+    }
     return [
         json.dumps(proposal),
         json.dumps({
+            "same_page_queue_dispositions": "".join(
+                "S" if pair in positive_pairs else "I"
+                for pair in required_pairs
+            ),
             "object_hypotheses": copy.deepcopy(proposal.get("object_hypotheses", [])),
             "presentation_render_decisions": [],
         }),
@@ -1064,7 +1089,7 @@ def test_integrated_visual_registry_retries_only_a_proven_truncated_proposal():
             side_effect=[
                 '{"visual_groups":[{"group_id":"partial',
                 json.dumps(proposal),
-                json.dumps({"object_hypotheses": [], "presentation_render_decisions": []}),
+                json.dumps({"same_page_queue_dispositions": "", "object_hypotheses": [], "presentation_render_decisions": []}),
             ],
         ),
     ):
@@ -1172,7 +1197,7 @@ def test_integrated_visual_registry_omits_scope_from_ordinary_contract():
         patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
         patch(
             "agents.anthropic_adapter.extract_text_from_claude_response",
-            side_effect=[json.dumps(payload), json.dumps({"object_hypotheses": [], "presentation_render_decisions": []})],
+            side_effect=[json.dumps(payload), json.dumps({"same_page_queue_dispositions": "", "object_hypotheses": [], "presentation_render_decisions": []})],
         ),
     ):
         _, _, usage = run_anthropic_detection_visual_registry_agent(
@@ -1213,6 +1238,7 @@ def test_presentation_render_without_technical_match_never_creates_registry_obje
             side_effect=[
                 json.dumps(proposal),
                 json.dumps({
+                    "same_page_queue_dispositions": "",
                     "object_hypotheses": [],
                     "presentation_render_decisions": [{
                         "render_group_id": "render",
@@ -1270,7 +1296,7 @@ def test_integrated_visual_registry_rejects_invalid_optional_scope_only():
         patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
         patch(
             "agents.anthropic_adapter.extract_text_from_claude_response",
-            side_effect=[json.dumps(payload), json.dumps({"object_hypotheses": [], "presentation_render_decisions": []})],
+            side_effect=[json.dumps(payload), json.dumps({"same_page_queue_dispositions": "", "object_hypotheses": [], "presentation_render_decisions": []})],
         ),
     ):
         visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
@@ -1330,7 +1356,7 @@ def test_v67_mistral_anchor_contract_replaces_a_freehand_proposal_bbox():
         patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
         patch(
             "agents.anthropic_adapter.extract_text_from_claude_response",
-            side_effect=[json.dumps(proposal), json.dumps({"object_hypotheses": [], "presentation_render_decisions": []})],
+            side_effect=[json.dumps(proposal), json.dumps({"same_page_queue_dispositions": "", "object_hypotheses": [], "presentation_render_decisions": []})],
         ),
     ):
         visual_map, _, usage = run_anthropic_detection_visual_registry_agent(
@@ -1345,7 +1371,7 @@ def test_v67_mistral_anchor_contract_replaces_a_freehand_proposal_bbox():
     }
     assert visual_map["visual_groups"][0]["group_id"] == "view-001"
     assert usage["raw_usage"]["registry_decision_audit"]["visual_groups"][0]["bbox"] == expected_bbox
-    assert usage["prompt_version"] == DETECTION_V711_PRESENTATION_RENDER_REVIEW_PROMPT_VERSION
+    assert usage["prompt_version"] == DETECTION_V712_AUDITABLE_SAME_PAGE_MEMBERSHIP_PROMPT_VERSION
     assert usage["raw_usage"]["v6_7_mistral_anchor_admission_audit"][0]["status"] == "accepted_anchor"
 
 
@@ -1559,7 +1585,7 @@ def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
         ) as create_message,
         patch(
             "agents.anthropic_adapter.extract_text_from_claude_response",
-            side_effect=[json.dumps(proposal), json.dumps({"object_hypotheses": [], "presentation_render_decisions": []})],
+            side_effect=[json.dumps(proposal), json.dumps({"same_page_queue_dispositions": "", "object_hypotheses": [], "presentation_render_decisions": []})],
         ),
     ):
         _, _, usage = run_anthropic_detection_visual_registry_agent(
@@ -1574,7 +1600,7 @@ def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
         "claude-sonnet-4-6",
     ]
     assert usage["prompt_version"] == (
-        DETECTION_V711_PRESENTATION_RENDER_REVIEW_PROMPT_VERSION
+        DETECTION_V712_AUDITABLE_SAME_PAGE_MEMBERSHIP_PROMPT_VERSION
     )
     assert usage["raw_usage"]["v6_34_ada_haiku_discovery_sonnet_review_active"] is True
     assert usage["raw_usage"]["v6_35_ada_pair_local_membership_active"] is True
@@ -2193,8 +2219,8 @@ def test_registry_uses_the_same_atomic_visual_group_contract_for_all_models():
             model="claude-sonnet-4-6",
         )
 
-    assert haiku_usage["prompt_version"] == DETECTION_V711_PRESENTATION_RENDER_REVIEW_PROMPT_VERSION
-    assert sonnet_usage["prompt_version"] == DETECTION_V711_PRESENTATION_RENDER_REVIEW_PROMPT_VERSION
+    assert haiku_usage["prompt_version"] == DETECTION_V712_AUDITABLE_SAME_PAGE_MEMBERSHIP_PROMPT_VERSION
+    assert sonnet_usage["prompt_version"] == DETECTION_V712_AUDITABLE_SAME_PAGE_MEMBERSHIP_PROMPT_VERSION
     assert prompts[0] == prompts[2]
     assert prompts[1] == prompts[3]
     assert prompts[0] != prompts[1]
@@ -3198,3 +3224,41 @@ def test_v667_same_page_membership_queue_is_complete_only_for_retained_object_ev
     assert audit["basis"] == "post_discovery_retained_object_evidence"
     assert audit["counts_by_page"] == {"1": 3, "2": 1}
     assert audit["required_same_page_pair_count"] == 3
+
+
+def test_v712_same_page_queue_keeps_every_q_auditable_without_new_evidence_rule():
+    dispositions = decode_detection_v712_same_page_queue_dispositions(
+        "DIS",
+        required_pairs=[("view-1", "view-2"), ("view-1", "view-3"), ("view-2", "view-3")],
+    )
+
+    audit = validate_detection_v712_same_page_queue_evidence(
+        dispositions=dispositions,
+        semantic_facts=[{
+            "group_id_a": "view-2", "group_id_b": "view-3",
+            "evidence_type": "matching_topology",
+        }],
+    )
+
+    assert audit["required_pair_count"] == 3
+    assert audit["same_object_pair_count"] == 1
+    assert audit["same_object_pairs"] == [{
+        "group_id_a": "view-2", "group_id_b": "view-3",
+    }]
+
+
+def test_v712_same_page_queue_rejects_a_silent_positive_or_uncovered_pair():
+    dispositions = decode_detection_v712_same_page_queue_dispositions(
+        "S", required_pairs=[("view-1", "view-2")],
+    )
+
+    with pytest.raises(ValueError, match="do not match accepted typed evidence"):
+        validate_detection_v712_same_page_queue_evidence(
+            dispositions=dispositions,
+            semantic_facts=[],
+        )
+
+    with pytest.raises(ValueError, match="does not match the required queue"):
+        decode_detection_v712_same_page_queue_dispositions(
+            "", required_pairs=[("view-1", "view-2")],
+        )

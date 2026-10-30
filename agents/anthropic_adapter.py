@@ -154,6 +154,9 @@ DETECTION_V78_PRESENTATION_RENDER_MEMBERSHIP_PROMPT_VERSION = (
 DETECTION_V711_PRESENTATION_RENDER_REVIEW_PROMPT_VERSION = (
     "detection_v7_11_review_owned_presentation_render_membership"
 )
+DETECTION_V712_AUDITABLE_SAME_PAGE_MEMBERSHIP_PROMPT_VERSION = (
+    "detection_v7_12_auditable_same_page_membership"
+)
 DETECTION_V634_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
 DETECTION_V75_CONFLICT_RESOLVER_PROMPT_VERSION = (
@@ -885,8 +888,15 @@ DETECTION_V67_MISTRAL_ANCHOR_DISCOVERY_JSON_SCHEMA["properties"][
 DETECTION_V5_MEMBERSHIP_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["object_hypotheses", "presentation_render_decisions"],
+    "required": [
+        "same_page_queue_dispositions",
+        "object_hypotheses",
+        "presentation_render_decisions",
+    ],
     "properties": {
+        "same_page_queue_dispositions": {
+            "type": "string", "maxLength": 8192,
+        },
         "object_hypotheses": DETECTION_V5_OBJECT_HYPOTHESES_SCHEMA,
         "presentation_render_decisions": DETECTION_V711_PRESENTATION_RENDER_DECISIONS_SCHEMA,
     },
@@ -7023,6 +7033,81 @@ def finalize_detection_same_page_membership_queue(
     }
 
 
+def decode_detection_v712_same_page_queue_dispositions(
+    dispositions: object,
+    *,
+    required_pairs: list[tuple[str, str]],
+) -> dict[tuple[str, str], str]:
+    """Decode the compact, ordered verdict for the existing Review Q queue.
+
+    The queue is already part of the Membership Review handoff.  A compact
+    position-preserving code makes its required coverage observable without a
+    second call or a verbose five-criterion card for every negative pair.
+    """
+    if not isinstance(dispositions, str):
+        raise ValueError("V7.12 same-page queue dispositions must be a string")
+    if len(dispositions) != len(required_pairs):
+        raise ValueError(
+            "V7.12 same-page queue disposition count does not match the required queue"
+        )
+    invalid_codes = sorted(set(dispositions) - {"S", "D", "I"})
+    if invalid_codes:
+        raise ValueError(
+            "V7.12 same-page queue contains invalid disposition codes: "
+            f"{invalid_codes}"
+        )
+    return {
+        tuple(sorted(pair)): disposition
+        for pair, disposition in zip(required_pairs, dispositions, strict=True)
+    }
+
+
+def validate_detection_v712_same_page_queue_evidence(
+    *,
+    dispositions: dict[tuple[str, str], str],
+    semantic_facts: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Require every positive same-page verdict to become an accepted edge.
+
+    `S` is only a coverage verdict.  The established typed-evidence validator
+    remains the authority for merging; this check prevents an unrepresented Q
+    pair from silently vanishing between Review and the graph.
+    """
+    required_positive_pairs = {
+        pair for pair, disposition in dispositions.items()
+        if disposition == "S"
+    }
+    observed_positive_pairs = {
+        tuple(sorted((
+            str(fact.get("group_id_a") or ""),
+            str(fact.get("group_id_b") or ""),
+        )))
+        for fact in semantic_facts
+        if isinstance(fact, dict)
+    }.intersection(dispositions)
+    if required_positive_pairs != observed_positive_pairs:
+        raise ValueError(
+            "V7.12 same-page queue positive decisions do not match accepted "
+            "typed evidence: "
+            f"declared={sorted(required_positive_pairs)}, "
+            f"accepted={sorted(observed_positive_pairs)}"
+        )
+    return {
+        "required_pair_count": len(dispositions),
+        "same_object_pair_count": len(required_positive_pairs),
+        "different_objects_pair_count": sum(
+            disposition == "D" for disposition in dispositions.values()
+        ),
+        "insufficient_evidence_pair_count": sum(
+            disposition == "I" for disposition in dispositions.values()
+        ),
+        "same_object_pairs": [
+            {"group_id_a": left, "group_id_b": right}
+            for left, right in sorted(required_positive_pairs)
+        ],
+    }
+
+
 _DIMENSION_HALO_TEXT_RE = re.compile(
     r"^\s*(?:[A-Za-z]+\s*=\s*)?(?P<value>\d+(?:[.,]\d+)?)\s*(?:mm|cm|m)?\s*$",
     re.IGNORECASE,
@@ -12008,7 +12093,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     if v69_criteria_reconciliation_active:
         prompt_version = DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION
     else:
-        prompt_version = DETECTION_V711_PRESENTATION_RENDER_REVIEW_PROMPT_VERSION
+        prompt_version = DETECTION_V712_AUDITABLE_SAME_PAGE_MEMBERSHIP_PROMPT_VERSION
     registry_visual_sources = build_detection_v5_registry_visual_sources(
         proposal_for_review["visual_groups"]
     )
@@ -12080,6 +12165,18 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "imply that the Views belong together. Return only schema-valid supported "
             "positive hypotheses or pair decisions. Do not manufacture negative rows "
             "merely to echo Q.\n"
+        )
+    if not v69_criteria_reconciliation_active:
+        review_prompt_with_membership_contract += (
+            "\n\nV7.12 AUDITABLE SAME-PAGE QUEUE CONTRACT:\n"
+            "Return `same_page_queue_dispositions` as one ordered string with exactly "
+            f"{len(required_same_page_pairs)} characters, one character for each Q line "
+            "in queue order. Use S for same_object, D for different_objects and I for "
+            "insufficient_evidence. This compact string is mandatory even when no Q "
+            "pair is positive. S is not merge evidence: for every S, include existing "
+            "schema-valid positive evidence for exactly that View pair in "
+            "object_hypotheses. Every same-page positive evidence pair must have S. "
+            "Do not create hypotheses for D or I.\n"
         )
     if v637_ada_covered_pair_local_membership_active:
         review_prompt_with_membership_contract += (
@@ -12284,8 +12381,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             if v69_criteria_reconciliation_active
             else (
                 set(review_raw_payload) == {
-                    "object_hypotheses", "presentation_render_decisions",
+                    "same_page_queue_dispositions", "object_hypotheses",
+                    "presentation_render_decisions",
                 }
+                and isinstance(review_raw_payload.get("same_page_queue_dispositions"), str)
                 and isinstance(review_raw_payload.get("presentation_render_decisions"), list)
             )
         )
@@ -12318,6 +12417,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     review_presentation_render_decisions = (
         [] if v69_criteria_reconciliation_active
         else review_raw_payload["presentation_render_decisions"]
+    )
+    v712_same_page_queue_dispositions = (
+        {} if v69_criteria_reconciliation_active
+        else decode_detection_v712_same_page_queue_dispositions(
+            review_raw_payload["same_page_queue_dispositions"],
+            required_pairs=required_same_page_pairs,
+        )
     )
     v69_preliminary_pairs: list[tuple[str, str]] = []
     v69_criteria_facts: list[dict[str, Any]] = []
@@ -12624,6 +12730,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     v69_pairwise_decision_audit: list[dict[str, Any]] = []
     v69_same_object_pairs: set[tuple[str, str]] = set()
     v5_merge_audit: dict[str, Any] = {}
+    v712_same_page_queue_audit: dict[str, Any] = {}
     try:
         if isinstance(payload, dict):
             payload, classification_decisions = (
@@ -12668,6 +12775,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         group_id_mapping = {
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
+        }
+        v712_normalized_same_page_queue_dispositions = {
+            tuple(sorted((
+                group_id_mapping.get(left, left),
+                group_id_mapping.get(right, right),
+            ))): disposition
+            for (left, right), disposition in v712_same_page_queue_dispositions.items()
         }
         normalized_registry_visual_sources = []
         for source in registry_visual_sources:
@@ -12941,6 +13055,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             fact for fact in accepted_semantic_facts
             if fact not in generic_presentation_facts
         ]
+        if not v69_criteria_reconciliation_active:
+            v712_same_page_queue_audit = (
+                validate_detection_v712_same_page_queue_evidence(
+                    dispositions=v712_normalized_same_page_queue_dispositions,
+                    semantic_facts=accepted_semantic_facts,
+                )
+            )
         presentation_render_edges = [
             {
                 "group_id_a": str(fact["group_id_a"]),
@@ -12972,6 +13093,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "accepted_edge_count": len(presentation_render_edges),
             "rejected_generic_fact_count": len(generic_presentation_facts),
         }
+        semantic_ledger_audit["v7_12_same_page_queue"] = v712_same_page_queue_audit
         if v69_criteria_reconciliation_active:
             accepted_pairs = {
                 tuple(sorted((
