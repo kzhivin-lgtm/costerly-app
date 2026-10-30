@@ -14,6 +14,8 @@ from agents.anthropic_adapter import (
     normalize_detection_v69_reconciliation_decisions,
     normalize_detection_v610_evidence_review_decisions,
     normalize_detection_v68_pairwise_decisions,
+    normalize_detection_v711_presentation_render_decisions,
+    attach_detection_v711_presentation_render_components,
 )
 from agents.detection_fusion_candidate_regions import (
     build_detection_fusion_candidate_regions,
@@ -22,7 +24,6 @@ from agents.detection_fusion_candidate_regions import (
 from agents.detection_conflict_resolver import (
     apply_detection_conflict_admissions,
     build_detection_conflict_targets,
-    demote_detection_conflict_full_page_plan,
     translate_detection_conflict_crop_decisions,
     validate_detection_conflict_decisions,
 )
@@ -454,29 +455,48 @@ def test_v75_translates_hidden_crop_coordinates_into_fusion_frame():
     }
 
 
-def test_v75_full_page_floor_plan_is_document_context_but_bounded_plan_is_not():
-    target = {
-        "target_id": "V75-C001", "page_number": 1,
-        "bbox": {"top_left_x": 0, "top_left_y": 0, "bottom_right_x": 1000, "bottom_right_y": 1000},
-    }
-    decision = {
-        "target_id": "V75-C001", "disposition": "admit_object_evidence",
-        "visual_witness": "A floor plan is visible.", "representation_kind": "floor_plan",
-        "bbox": target["bbox"], "core_bbox": target["bbox"],
-    }
-    page_frames = {1: {"fusion_dimensions": {"width": 1000, "height": 1000}}}
+def test_v711_render_decision_creates_one_cross_page_visual_fact():
+    facts, audit = normalize_detection_v711_presentation_render_decisions(
+        [{
+            "render_group_id": "render", "disposition": "attach",
+            "technical_group_id": "technical", "evidence_type": "matching_topology",
+            "visual_witness": "Both views show the same three triangular shelf bays.",
+        }],
+        visual_groups=[
+            {"group_id": "render", "page_number": 3, "evidence_class": "object_evidence", "representation_kind": "presentation_render"},
+            {"group_id": "technical", "page_number": 8, "evidence_class": "object_evidence", "representation_kind": "elevation"},
+        ],
+        group_id_mapping={"render": "view-010", "technical": "view-024"},
+    )
 
-    assert demote_detection_conflict_full_page_plan(
-        decision=decision, target=target, page_frames=page_frames,
-    )["disposition"] == "document_context"
+    assert audit[0]["technical_group_id"] == "view-024"
+    assert facts == [{
+        "group_id_a": "view-010", "group_id_b": "view-024",
+        "evidence_type": "matching_topology", "strength": "standard",
+        "observation": "Both views show the same three triangular shelf bays.",
+        "source_fact_ids": ["registry_view:view-010", "registry_view:view-024"],
+    }]
 
-    bounded_target = {**target, "bbox": {
-        "top_left_x": 100, "top_left_y": 100, "bottom_right_x": 500, "bottom_right_y": 500,
-    }}
-    bounded_decision = {**decision, "bbox": bounded_target["bbox"], "core_bbox": bounded_target["bbox"]}
-    assert demote_detection_conflict_full_page_plan(
-        decision=bounded_decision, target=bounded_target, page_frames=page_frames,
-    )["disposition"] == "admit_object_evidence"
+
+def test_v711_render_decision_requires_every_render_and_a_technical_target():
+    with pytest.raises(ValueError, match="cover every render"):
+        normalize_detection_v711_presentation_render_decisions(
+            [],
+            visual_groups=[{
+                "group_id": "render", "page_number": 3,
+                "evidence_class": "object_evidence", "representation_kind": "presentation_render",
+            }],
+            group_id_mapping={"render": "view-010"},
+        )
+
+
+def test_v711_render_decision_extends_a_covered_component_only():
+    components = attach_detection_v711_presentation_render_components(
+        [["view-001", "view-002"], ["view-003"]],
+        [{"group_id_a": "view-010", "group_id_b": "view-002"}],
+    )
+
+    assert components == [["view-001", "view-002", "view-010"], ["view-003"]]
 
 
 def test_v75_invalid_target_does_not_discard_other_valid_batch_decisions(monkeypatch):

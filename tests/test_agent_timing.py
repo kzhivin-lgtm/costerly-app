@@ -20,8 +20,7 @@ from agents.anthropic_adapter import (
     DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
     DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
     DETECTION_V634_ADA_DISCOVERY_MODEL,
-    DETECTION_V78_PRESENTATION_RENDER_MEMBERSHIP_PROMPT_VERSION,
-    DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
+    DETECTION_V711_PRESENTATION_RENDER_REVIEW_PROMPT_VERSION,
     apply_benchmark_run_suffix,
     build_agent_usage_event,
     build_detection_ocr_context,
@@ -133,6 +132,18 @@ def _visual_registry_payload(payload):
             "witnesses": [],
         })),
     }
+
+
+def _visual_registry_response_sequence(payload):
+    """Return separate Discovery and Membership Review fixtures."""
+    proposal = _visual_registry_payload(payload)
+    return [
+        json.dumps(proposal),
+        json.dumps({
+            "object_hypotheses": copy.deepcopy(proposal.get("object_hypotheses", [])),
+            "presentation_render_decisions": [],
+        }),
+    ]
 
 
 def test_document_dimension_unit_profile_requires_one_explicit_unit_across_document():
@@ -1053,7 +1064,7 @@ def test_integrated_visual_registry_retries_only_a_proven_truncated_proposal():
             side_effect=[
                 '{"visual_groups":[{"group_id":"partial',
                 json.dumps(proposal),
-                json.dumps({"object_hypotheses": []}),
+                json.dumps({"object_hypotheses": [], "presentation_render_decisions": []}),
             ],
         ),
     ):
@@ -1106,7 +1117,7 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
         patch("agents.anthropic_adapter.get_secret", return_value="model"),
         patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
         patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=_visual_registry_response_sequence(payload)),
     ):
         visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -1161,7 +1172,7 @@ def test_integrated_visual_registry_omits_scope_from_ordinary_contract():
         patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
         patch(
             "agents.anthropic_adapter.extract_text_from_claude_response",
-            side_effect=[json.dumps(payload), json.dumps({"object_hypotheses": []})],
+            side_effect=[json.dumps(payload), json.dumps({"object_hypotheses": [], "presentation_render_decisions": []})],
         ),
     ):
         _, _, usage = run_anthropic_detection_visual_registry_agent(
@@ -1199,7 +1210,19 @@ def test_presentation_render_without_technical_match_never_creates_registry_obje
         ),
         patch(
             "agents.anthropic_adapter.extract_text_from_claude_response",
-            side_effect=[json.dumps(proposal), json.dumps({"object_hypotheses": []})],
+            side_effect=[
+                json.dumps(proposal),
+                json.dumps({
+                    "object_hypotheses": [],
+                    "presentation_render_decisions": [{
+                        "render_group_id": "render",
+                        "disposition": "no_match",
+                        "technical_group_id": "",
+                        "evidence_type": "none",
+                        "visual_witness": "No technical View depicts this render's cabinet.",
+                    }],
+                }),
+            ],
         ),
     ):
         visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
@@ -1247,7 +1270,7 @@ def test_integrated_visual_registry_rejects_invalid_optional_scope_only():
         patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
         patch(
             "agents.anthropic_adapter.extract_text_from_claude_response",
-            side_effect=[json.dumps(payload), json.dumps({"object_hypotheses": []})],
+            side_effect=[json.dumps(payload), json.dumps({"object_hypotheses": [], "presentation_render_decisions": []})],
         ),
     ):
         visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
@@ -1307,7 +1330,7 @@ def test_v67_mistral_anchor_contract_replaces_a_freehand_proposal_bbox():
         patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
         patch(
             "agents.anthropic_adapter.extract_text_from_claude_response",
-            side_effect=[json.dumps(proposal), json.dumps({"object_hypotheses": []})],
+            side_effect=[json.dumps(proposal), json.dumps({"object_hypotheses": [], "presentation_render_decisions": []})],
         ),
     ):
         visual_map, _, usage = run_anthropic_detection_visual_registry_agent(
@@ -1322,7 +1345,7 @@ def test_v67_mistral_anchor_contract_replaces_a_freehand_proposal_bbox():
     }
     assert visual_map["visual_groups"][0]["group_id"] == "view-001"
     assert usage["raw_usage"]["registry_decision_audit"]["visual_groups"][0]["bbox"] == expected_bbox
-    assert usage["prompt_version"] == "detection_v6_7_mistral_graphic_anchor_admission"
+    assert usage["prompt_version"] == DETECTION_V711_PRESENTATION_RENDER_REVIEW_PROMPT_VERSION
     assert usage["raw_usage"]["v6_7_mistral_anchor_admission_audit"][0]["status"] == "accepted_anchor"
 
 
@@ -1536,7 +1559,7 @@ def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
         ) as create_message,
         patch(
             "agents.anthropic_adapter.extract_text_from_claude_response",
-            side_effect=[json.dumps(proposal), json.dumps({"object_hypotheses": []})],
+            side_effect=[json.dumps(proposal), json.dumps({"object_hypotheses": [], "presentation_render_decisions": []})],
         ),
     ):
         _, _, usage = run_anthropic_detection_visual_registry_agent(
@@ -1551,7 +1574,7 @@ def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
         "claude-sonnet-4-6",
     ]
     assert usage["prompt_version"] == (
-        DETECTION_V78_PRESENTATION_RENDER_MEMBERSHIP_PROMPT_VERSION
+        DETECTION_V711_PRESENTATION_RENDER_REVIEW_PROMPT_VERSION
     )
     assert usage["raw_usage"]["v6_34_ada_haiku_discovery_sonnet_review_active"] is True
     assert usage["raw_usage"]["v6_35_ada_pair_local_membership_active"] is True
@@ -1737,7 +1760,7 @@ def test_visual_registry_keeps_semantic_facts_outside_dimension_queue_for_global
             "request_started_at": "2026-10-16T00:00:00+00:00",
             "request_finished_at": "2026-10-16T00:00:01+00:00",
         })),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=_visual_registry_response_sequence(payload)),
     ):
         _, _, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -1794,7 +1817,7 @@ def test_visual_registry_materializes_view_package_from_immutable_source_fact():
                 "request_finished_at": "2026-10-16T00:00:01+00:00",
             }),
         ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=_visual_registry_response_sequence(payload)),
     ):
         _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -1851,7 +1874,7 @@ def test_visual_registry_retains_visual_island_without_source_text():
                 "request_finished_at": "2026-10-16T00:00:01+00:00",
             }),
         ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=_visual_registry_response_sequence(payload)),
     ):
         _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -1910,7 +1933,7 @@ def test_integrated_visual_registry_uses_two_literal_overall_dimensions_to_merge
                 "request_finished_at": "2026-10-16T00:00:01+00:00",
             }),
         ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(response_payload)),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=_visual_registry_response_sequence(response_payload)),
     ):
         visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -1968,7 +1991,7 @@ def test_integrated_visual_registry_keeps_upload_actionable_when_dimension_index
                 "request_finished_at": "2026-10-16T00:00:01+00:00",
             }),
         ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=_visual_registry_response_sequence(payload)),
     ):
         _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -2013,7 +2036,7 @@ def test_integrated_visual_registry_keeps_title_code_as_label_but_not_graph_edge
             "request_started_at": "2026-10-16T00:00:00+00:00",
             "request_finished_at": "2026-10-16T00:00:01+00:00",
         })),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=_visual_registry_response_sequence(payload)),
     ):
         _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -2061,7 +2084,7 @@ def test_integrated_visual_registry_does_not_accept_model_package_metadata():
             "request_started_at": "2026-10-16T00:00:00+00:00",
             "request_finished_at": "2026-10-16T00:00:01+00:00",
         })),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=_visual_registry_response_sequence(payload)),
     ):
         _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -2097,7 +2120,7 @@ def test_integrated_visual_registry_keeps_unproved_group_as_review_fallback():
             "request_started_at": "2026-10-16T00:00:00+00:00",
             "request_finished_at": "2026-10-16T00:00:01+00:00",
         })),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=_visual_registry_response_sequence(payload)),
     ):
         _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -2150,7 +2173,13 @@ def test_registry_uses_the_same_atomic_visual_group_contract_for_all_models():
                 "request_finished_at": "2026-10-16T00:00:01+00:00",
             }),
         ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
+        patch(
+            "agents.anthropic_adapter.extract_text_from_claude_response",
+            side_effect=(
+                _visual_registry_response_sequence(payload)
+                + _visual_registry_response_sequence(payload)
+            ),
+        ),
         patch("agents.anthropic_adapter.build_detection_system_content", side_effect=fake_system_content),
     ):
         _, _, haiku_usage = run_anthropic_detection_visual_registry_agent(
@@ -2164,8 +2193,8 @@ def test_registry_uses_the_same_atomic_visual_group_contract_for_all_models():
             model="claude-sonnet-4-6",
         )
 
-    assert haiku_usage["prompt_version"] == DETECTION_VISUAL_REGISTRY_PROMPT_VERSION
-    assert sonnet_usage["prompt_version"] == DETECTION_VISUAL_REGISTRY_PROMPT_VERSION
+    assert haiku_usage["prompt_version"] == DETECTION_V711_PRESENTATION_RENDER_REVIEW_PROMPT_VERSION
+    assert sonnet_usage["prompt_version"] == DETECTION_V711_PRESENTATION_RENDER_REVIEW_PROMPT_VERSION
     assert prompts[0] == prompts[2]
     assert prompts[1] == prompts[3]
     assert prompts[0] != prompts[1]
@@ -2201,7 +2230,7 @@ def test_integrated_visual_registry_derives_missing_page_coverage_from_graph():
                 "request_finished_at": "2026-10-16T00:00:01+00:00",
             }),
         ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=_visual_registry_response_sequence(payload)),
     ):
         _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -2245,7 +2274,7 @@ def test_integrated_visual_registry_excludes_non_object_pages_from_estimation_ev
                 "request_finished_at": "2026-10-16T00:00:01+00:00",
             }),
         ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=_visual_registry_response_sequence(payload)),
     ):
         _, registry, _ = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -2305,7 +2334,7 @@ def test_integrated_visual_registry_discards_document_context_before_pair_ledger
                 "request_finished_at": "2026-10-16T00:00:01+00:00",
             }),
         ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=_visual_registry_response_sequence(payload)),
     ):
         visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -2347,7 +2376,7 @@ def test_integrated_visual_registry_accepts_document_only_upload_without_object_
                 "request_finished_at": "2026-10-16T00:00:01+00:00",
             }),
         ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=_visual_registry_response_sequence(payload)),
     ):
         visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="cover.pdf", company_id="001", file_bytes=b"pdf",
@@ -2401,7 +2430,7 @@ def test_integrated_visual_registry_reconciles_missing_object_on_only_page():
                 "request_finished_at": "2026-10-16T00:00:01+00:00",
             }),
         ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=_visual_registry_response_sequence(payload)),
     ):
         _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -2450,7 +2479,7 @@ def test_integrated_visual_registry_keeps_valid_graph_when_page_coverage_is_inco
                 "request_finished_at": "2026-10-16T00:00:01+00:00",
             }),
         ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=_visual_registry_response_sequence(payload)),
     ):
         _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -2537,7 +2566,7 @@ def test_integrated_visual_registry_allows_one_physical_page_for_multiple_compon
                 "request_finished_at": "2026-10-16T00:00:01+00:00",
             }),
         ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=_visual_registry_response_sequence(payload)),
     ):
         _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",

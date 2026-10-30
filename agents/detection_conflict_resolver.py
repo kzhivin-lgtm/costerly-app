@@ -61,57 +61,6 @@ def _contains(outer: dict[str, int], inner: dict[str, int]) -> bool:
     )
 
 
-def demote_detection_conflict_full_page_plan(
-    *,
-    decision: dict[str, Any],
-    target: dict[str, Any],
-    page_frames: dict[int, dict[str, Any]],
-) -> dict[str, Any]:
-    """Keep a whole-level plan out of Object Evidence after fallback review.
-
-    A floor-plan representation is also valid object evidence when it is a
-    bounded plan of one fabricated item.  The fallback therefore demotes only
-    a plan whose supplied source region or independently observed core covers
-    at least 75 percent of its Fusion page frame.
-    """
-    if (
-        decision.get("disposition") != "admit_object_evidence"
-        or str(decision.get("representation_kind") or "")
-        not in {"floor_plan", "location_plan"}
-    ):
-        return decision
-    frame = page_frames.get(int(target["page_number"])) or {}
-    dimensions = frame.get("fusion_dimensions") if isinstance(frame, dict) else None
-    try:
-        page_area = int(dimensions["width"]) * int(dimensions["height"])
-    except (KeyError, TypeError, ValueError):
-        return decision
-    if page_area <= 0:
-        return decision
-
-    def coverage(value: object) -> float:
-        box = _bbox(value)
-        if box is None:
-            return 0.0
-        return (
-            (box["bottom_right_x"] - box["top_left_x"])
-            * (box["bottom_right_y"] - box["top_left_y"])
-            / page_area
-        )
-
-    if max(coverage(target.get("bbox")), coverage(decision.get("core_bbox"))) < 0.75:
-        return decision
-    return {
-        "target_id": decision["target_id"],
-        "disposition": "document_context",
-        "visual_witness": (
-            "Whole-level architectural plan is document context, not an "
-            "isolated fabricated item."
-        ),
-        "document_context_kind": "generic_plan",
-    }
-
-
 def translate_detection_conflict_crop_decisions(
     *,
     decisions: object,

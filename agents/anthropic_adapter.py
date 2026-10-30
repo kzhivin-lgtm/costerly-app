@@ -60,7 +60,6 @@ from agents.detection_fusion_candidate_regions import (
 from agents.detection_conflict_resolver import (
     apply_detection_conflict_admissions,
     build_detection_conflict_targets,
-    demote_detection_conflict_full_page_plan,
     translate_detection_conflict_crop_decisions,
     validate_detection_conflict_decisions,
 )
@@ -151,6 +150,9 @@ DETECTION_V637_ADA_COVERED_PAIR_LOCAL_MEMBERSHIP_PROMPT_VERSION = (
 )
 DETECTION_V78_PRESENTATION_RENDER_MEMBERSHIP_PROMPT_VERSION = (
     "detection_v7_8_presentation_render_membership"
+)
+DETECTION_V711_PRESENTATION_RENDER_REVIEW_PROMPT_VERSION = (
+    "detection_v7_11_review_owned_presentation_render_membership"
 )
 DETECTION_V634_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
@@ -549,6 +551,24 @@ DETECTION_V5_OBJECT_HYPOTHESES_SCHEMA: dict[str, Any] = {
                     }}},
         }}}
 
+DETECTION_V711_PRESENTATION_RENDER_DECISIONS_SCHEMA: dict[str, Any] = {
+    "type": "array", "maxItems": 24,
+    "items": {"type": "object", "additionalProperties": False,
+        "required": [
+            "render_group_id", "disposition", "technical_group_id",
+            "evidence_type", "visual_witness",
+        ],
+        "properties": {
+            "render_group_id": {"type": "string"},
+            "disposition": {"type": "string", "enum": ["attach", "no_match", "unresolved"]},
+            "technical_group_id": {"type": "string"},
+            "evidence_type": {"type": "string", "enum": [
+                "matching_topology", "unique_geometry", "none",
+            ]},
+            "visual_witness": {"type": "string", "minLength": 1, "maxLength": 180},
+        }},
+}
+
 DETECTION_V5_PAGE_COVERAGE_SCHEMA: dict[str, Any] = {
     "type": "array", "maxItems": 100,
     "items": {"type": "object", "additionalProperties": False,
@@ -865,8 +885,11 @@ DETECTION_V67_MISTRAL_ANCHOR_DISCOVERY_JSON_SCHEMA["properties"][
 DETECTION_V5_MEMBERSHIP_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["object_hypotheses"],
-    "properties": {"object_hypotheses": DETECTION_V5_OBJECT_HYPOTHESES_SCHEMA},
+    "required": ["object_hypotheses", "presentation_render_decisions"],
+    "properties": {
+        "object_hypotheses": DETECTION_V5_OBJECT_HYPOTHESES_SCHEMA,
+        "presentation_render_decisions": DETECTION_V711_PRESENTATION_RENDER_DECISIONS_SCHEMA,
+    },
 }
 
 DETECTION_V68_PAIRWISE_DECISION_EVIDENCE_SCHEMA: dict[str, Any] = {
@@ -3266,16 +3289,11 @@ Return only schema JSON.
                     crop_frames=crop_frames,
                     page_frames=coordinate_frames,
                 )
-                normalized = validate_detection_conflict_decisions(
+                normalized_by_target[target_id] = validate_detection_conflict_decisions(
                     decisions=translated,
                     targets=[target],
                     page_frames=coordinate_frames,
                 )[0]
-                normalized_by_target[target_id] = demote_detection_conflict_full_page_plan(
-                    decision=normalized,
-                    target=target,
-                    page_frames=coordinate_frames,
-                )
             except Exception as exc:
                 invalid_by_target[target_id] = f"{type(exc).__name__}: {exc}"
         return (
@@ -3386,7 +3404,7 @@ Return only schema JSON.
                 "disposition": "unresolved",
                 "visual_witness": (
                     "Independent visual decision was invalid: "
-                    f"{invalid_target_errors.get(str(target["target_id"]), "unknown failure")}"[:180]
+                    f"{invalid_target_errors.get(str(target['target_id']), 'unknown failure')}"[:180]
                 ),
             })
             for target in batch_targets
@@ -3720,6 +3738,119 @@ def format_detection_v5_review_handoff(
         *(pair_lines or ["none"]),
     ])
     return "\n".join(lines)
+
+
+def normalize_detection_v711_presentation_render_decisions(
+    decisions: object,
+    *,
+    visual_groups: list[dict[str, Any]],
+    group_id_mapping: dict[str, str],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Turn mandatory render decisions into the only render merge edges.
+
+    The existing Membership Review sees the whole document.  This adapter adds
+    no second visual call, but makes its conclusion explicit and prevents a
+    presentation image from being attached by a generic geometry shortcut.
+    """
+    object_groups = {
+        str(group.get("group_id") or ""): group
+        for group in visual_groups
+        if isinstance(group, dict) and group.get("evidence_class") == "object_evidence"
+    }
+    render_ids = {
+        group_id for group_id, group in object_groups.items()
+        if str(group.get("representation_kind") or "").strip().lower()
+        == "presentation_render"
+    }
+    if not isinstance(decisions, list):
+        raise ValueError("V7.11 presentation render decisions must be a list")
+    by_render: dict[str, dict[str, Any]] = {}
+    for row in decisions:
+        if not isinstance(row, dict) or set(row) != {
+            "render_group_id", "disposition", "technical_group_id",
+            "evidence_type", "visual_witness",
+        }:
+            raise ValueError("V7.11 presentation render decision fields are invalid")
+        render_id = str(row["render_group_id"] or "")
+        disposition = str(row["disposition"] or "")
+        technical_id = str(row["technical_group_id"] or "")
+        evidence_type = str(row["evidence_type"] or "")
+        witness = str(row["visual_witness"] or "").strip()
+        if render_id not in render_ids or render_id in by_render or not witness:
+            raise ValueError("V7.11 presentation render decision is invalid")
+        if disposition == "attach":
+            technical_group = object_groups.get(technical_id)
+            if (
+                technical_group is None
+                or technical_id in render_ids
+                or evidence_type not in {"matching_topology", "unique_geometry"}
+            ):
+                raise ValueError("V7.11 presentation render attachment is invalid")
+        elif disposition in {"no_match", "unresolved"}:
+            if technical_id or evidence_type != "none":
+                raise ValueError("V7.11 non-attachment decision is invalid")
+        else:
+            raise ValueError("V7.11 presentation render disposition is invalid")
+        by_render[render_id] = {
+            "render_group_id": render_id,
+            "disposition": disposition,
+            "technical_group_id": technical_id,
+            "evidence_type": evidence_type,
+            "visual_witness": witness,
+        }
+    if set(by_render) != render_ids:
+        raise ValueError("V7.11 presentation render decisions must cover every render")
+
+    facts: list[dict[str, Any]] = []
+    audit: list[dict[str, Any]] = []
+    for render_id in sorted(render_ids):
+        decision = by_render[render_id]
+        normalized = {
+            **decision,
+            "render_group_id": group_id_mapping.get(render_id, render_id),
+            "technical_group_id": group_id_mapping.get(
+                decision["technical_group_id"], decision["technical_group_id"],
+            ),
+        }
+        audit.append(copy.deepcopy(normalized))
+        if decision["disposition"] == "attach":
+            facts.append({
+                "group_id_a": normalized["render_group_id"],
+                "group_id_b": normalized["technical_group_id"],
+                "evidence_type": normalized["evidence_type"],
+                "strength": "standard",
+                "observation": normalized["visual_witness"],
+                "source_fact_ids": [
+                    f"registry_view:{normalized['render_group_id']}",
+                    f"registry_view:{normalized['technical_group_id']}",
+                ],
+            })
+    return facts, audit
+
+
+def attach_detection_v711_presentation_render_components(
+    components: list[list[str]],
+    edges: list[dict[str, Any]],
+) -> list[list[str]]:
+    """Extend proven components only with an explicit render decision edge."""
+    merged = [set(component) for component in components]
+    for edge in edges:
+        endpoints = {
+            str(edge.get("group_id_a") or ""),
+            str(edge.get("group_id_b") or ""),
+        }
+        matching_indexes = [
+            index for index, component in enumerate(merged)
+            if component.intersection(endpoints)
+        ]
+        if not matching_indexes:
+            merged.append(endpoints)
+            continue
+        retained_index = matching_indexes[0]
+        merged[retained_index].update(endpoints)
+        for index in reversed(matching_indexes[1:]):
+            merged[retained_index].update(merged.pop(index))
+    return [sorted(component) for component in merged]
 
 
 def build_detection_v68_pairwise_membership_matrix(
@@ -11874,10 +12005,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             if group.get("evidence_class") == "object_evidence"
         ]) <= DETECTION_V69_RECONCILIATION_MAX_ISLANDS
     )
-    if v637_ada_covered_pair_local_membership_active:
-        prompt_version = DETECTION_V78_PRESENTATION_RENDER_MEMBERSHIP_PROMPT_VERSION
-    elif v69_criteria_reconciliation_active:
+    if v69_criteria_reconciliation_active:
         prompt_version = DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION
+    else:
+        prompt_version = DETECTION_V711_PRESENTATION_RENDER_REVIEW_PROMPT_VERSION
     registry_visual_sources = build_detection_v5_registry_visual_sources(
         proposal_for_review["visual_groups"]
     )
@@ -11964,6 +12095,21 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "proportions are never proof. A presentation render may appear in an "
             "object_hypothesis only with at least one non-presentation technical "
             "View.\n"
+        )
+    if not v69_criteria_reconciliation_active:
+        review_prompt_with_membership_contract += (
+            "\n\nV7.11 PRESENTATION RENDER DECISIONS:\n"
+            "For every `K=presentation_render` View, return exactly one row in "
+            "`presentation_render_decisions`, even when the candidate technical "
+            "View is on another page. Use `attach` only for one non-render View "
+            "with exactly `matching_topology` or `unique_geometry` and a concrete "
+            "configuration visible in both images. Use `no_match` when no such "
+            "proof exists and `unresolved` only when pixels prevent comparison. "
+            "For `no_match` or `unresolved`, set technical_group_id to an empty "
+            "string and evidence_type to `none`. Do not include presentation "
+            "renders in object_hypotheses: this decision list is their only "
+            "membership authority. Colour, finish, room context, proximity, "
+            "material and approximate proportions are never proof.\n"
         )
     review_content = build_detection_v5_membership_content_blocks(
         user_text=review_handoff, view_crops=membership_crops,
@@ -12135,7 +12281,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         )
         and (
             (set(review_raw_payload) == {"pairwise_decisions"})
-            if v69_criteria_reconciliation_active else True
+            if v69_criteria_reconciliation_active
+            else (
+                set(review_raw_payload) == {
+                    "object_hypotheses", "presentation_render_decisions",
+                }
+                and isinstance(review_raw_payload.get("presentation_render_decisions"), list)
+            )
         )
     )
     if not review_contract_valid:
@@ -12163,6 +12315,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "Detection review response failed the membership review contract",
             usage_event=failure_usage,
         )
+    review_presentation_render_decisions = (
+        [] if v69_criteria_reconciliation_active
+        else review_raw_payload["presentation_render_decisions"]
+    )
     v69_preliminary_pairs: list[tuple[str, str]] = []
     v69_criteria_facts: list[dict[str, Any]] = []
     v69_criteria_audit: list[dict[str, Any]] = []
@@ -12413,6 +12569,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v6_41_review_context_transport": v641_review_context_audit,
         "v5_9_proposal_decision_audit": proposal_model_payload,
         "v5_9_review_decision_audit": copy.deepcopy(review_raw_payload),
+        "v7_11_presentation_render_decisions": copy.deepcopy(
+            review_presentation_render_decisions,
+        ),
         "v6_10_pairwise_decision_audit": copy.deepcopy(v69_criteria_audit),
         "v6_10_reconciliation_decision_audit": copy.deepcopy(v69_reconciliation_audit),
         "v6_11_document_scope": copy.deepcopy(document_scope),
@@ -12528,6 +12687,16 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 else registry_visual_sources
             ),
         ]
+        (
+            presentation_render_facts,
+            presentation_render_decision_audit,
+        ) = normalize_detection_v711_presentation_render_decisions(
+            review_presentation_render_decisions,
+            visual_groups=raw_groups,
+            group_id_mapping=group_id_mapping,
+        ) if not v69_criteria_reconciliation_active else ([], [])
+        if presentation_render_facts and not v635_ada_pair_local_membership_active:
+            semantic_source_facts.extend(normalized_registry_visual_sources)
         document_scope = normalize_detection_v611_document_scope_group_ids(
             document_scope,
             group_id_mapping=group_id_mapping,
@@ -12560,6 +12729,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         )
         visual_group_ids = {
             group["group_id"] for group in visual_map["visual_groups"]
+        }
+        presentation_render_group_ids = {
+            str(group.get("group_id") or "")
+            for group in visual_map["visual_groups"]
+            if str(group.get("representation_kind") or "").strip().lower()
+            == "presentation_render"
         }
         view_evidence_packages = build_detection_view_evidence_packages(
             visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
@@ -12755,6 +12930,48 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 v635_ada_pair_local_membership_active
             ),
         )
+        generic_presentation_facts = [
+            fact for fact in accepted_semantic_facts
+            if {
+                str(fact.get("group_id_a") or ""),
+                str(fact.get("group_id_b") or ""),
+            }.intersection(presentation_render_group_ids)
+        ]
+        accepted_semantic_facts = [
+            fact for fact in accepted_semantic_facts
+            if fact not in generic_presentation_facts
+        ]
+        presentation_render_edges = [
+            {
+                "group_id_a": str(fact["group_id_a"]),
+                "group_id_b": str(fact["group_id_b"]),
+                "page_a": int(page_by_group_id[str(fact["group_id_a"])]),
+                "page_b": int(page_by_group_id[str(fact["group_id_b"])]),
+                "same_page": (
+                    page_by_group_id[str(fact["group_id_a"])]
+                    == page_by_group_id[str(fact["group_id_b"])]
+                ),
+                "relationship": "same_object_view",
+                "evidence_facts": [{
+                    "evidence_type": fact["evidence_type"],
+                    "evidence_pages": sorted({
+                        page_by_group_id[str(fact["group_id_a"])],
+                        page_by_group_id[str(fact["group_id_b"])],
+                    }),
+                    "observation": fact["observation"],
+                    "source_fact_ids": list(fact["source_fact_ids"]),
+                }],
+                "commercial_inseparability": "V7.11 presentation-render visual proof",
+                "dimension_similarity_score": 0.0,
+                "edge_score": 100.0,
+            }
+            for fact in presentation_render_facts
+        ]
+        semantic_ledger_audit["v7_11_presentation_render"] = {
+            "decisions": presentation_render_decision_audit,
+            "accepted_edge_count": len(presentation_render_edges),
+            "rejected_generic_fact_count": len(generic_presentation_facts),
+        }
         if v69_criteria_reconciliation_active:
             accepted_pairs = {
                 tuple(sorted((
@@ -12792,13 +13009,24 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                     visual_groups=semantic_validation_groups,
                 )
             )
-            positive_relation_edges = supporting_relation_edges
+            positive_relation_edges = [
+                *supporting_relation_edges,
+                *presentation_render_edges,
+            ]
             v5_merge_audit["v6_37_pair_local_membership"] = membership_audit
         else:
             positive_relation_edges, v5_merge_audit = compile_detection_v5_merge_edges(
-                dimension_relation_edges, accepted_semantic_facts,
+                [
+                    edge for edge in dimension_relation_edges
+                    if not {
+                        str(edge.get("group_id_a") or ""),
+                        str(edge.get("group_id_b") or ""),
+                    }.intersection(presentation_render_group_ids)
+                ],
+                accepted_semantic_facts,
                 visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
             )
+            positive_relation_edges.extend(presentation_render_edges)
         accepted_merge_edges = [
             edge for edge in positive_relation_edges
             if edge["relationship"] == "same_object_view"
@@ -12813,6 +13041,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 *v637_accepted_components,
                 *[[group_id] for group_id in sorted(visual_group_ids - covered_group_ids)],
             ]
+            base_proof_components = attach_detection_v711_presentation_render_components(
+                base_proof_components, presentation_render_edges,
+            )
             dominant_page_edges = []
             dominant_page_attachment_audit = []
         else:
@@ -12821,7 +13052,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             )
             dominant_page_edges, dominant_page_attachment_audit = (
                 derive_detection_v5_dominant_page_attachment_edges(
-                    base_proof_components, visual_groups=visual_map["visual_groups"],
+                    base_proof_components,
+                    visual_groups=[
+                        group for group in visual_map["visual_groups"]
+                        if str(group.get("group_id") or "")
+                        not in presentation_render_group_ids
+                    ],
                 )
             )
         positive_relation_edges.extend(dominant_page_edges)
