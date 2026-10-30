@@ -6111,6 +6111,47 @@ def build_detection_candidate_region_audit(
     return audit
 
 
+def unresolved_detection_coverage_only_candidate_ids(
+    *,
+    payload: dict[str, Any],
+    candidate_regions: list[dict[str, Any]],
+) -> list[str]:
+    """Return COVs lacking Object Evidence or an explicit visible exception."""
+    coverage_candidates = [
+        candidate for candidate in candidate_regions
+        if candidate.get("role") == "coverage_only"
+    ]
+    if not coverage_candidates:
+        return []
+    classifications = {
+        str(row.get("group_id") or ""): str(row.get("evidence_class") or "")
+        for row in payload.get("classifications") or []
+        if isinstance(row, dict)
+    }
+    object_group_bboxes = [
+        (int(group.get("page_number") or 0), _detection_bbox(group.get("bbox")))
+        for group in payload.get("visual_groups") or []
+        if isinstance(group, dict)
+        and classifications.get(str(group.get("group_id") or "")) == "object_evidence"
+    ]
+    exception_ids = {
+        str(row.get("candidate_region_id") or "")
+        for row in payload.get("candidate_region_exceptions") or []
+        if isinstance(row, dict) and str(row.get("reason") or "").strip()
+    }
+    return [
+        str(candidate["candidate_region_id"])
+        for candidate in coverage_candidates
+        if str(candidate["candidate_region_id"]) not in exception_ids
+        and not any(
+            page_number == int(candidate["page_number"])
+            and group_bbox is not None
+            and _bbox_overlaps(candidate["bbox"], group_bbox)
+            for page_number, group_bbox in object_group_bboxes
+        )
+    ]
+
+
 def format_detection_v67_mistral_graphic_anchors(
     candidates: list[dict[str, Any]],
 ) -> str:
@@ -10979,6 +11020,85 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                         f"V6.44 geometry-correction batch {batch_number} remained invalid: "
                         f"{retry_error}"
                     ) from retry_error
+            coverage_retry_candidate_ids = unresolved_detection_coverage_only_candidate_ids(
+                payload=batch_payload, candidate_regions=batch_candidates,
+            )
+            if coverage_retry_candidate_ids:
+                if stage_callback:
+                    stage_callback(f"Discovery batch {batch_number} coverage correction retry")
+                coverage_retry_text = (
+                    batch_user_text
+                    + "\n\nCOVERAGE CORRECTION REQUIRED:\n"
+                    + "The prior response left these coverage-only recall targets without "
+                    + "an overlapping object_evidence Island or a concrete exception: "
+                    + ", ".join(coverage_retry_candidate_ids)
+                    + ". Reinspect only those target areas, then return the complete ordinary "
+                    + "Discovery response using the unchanged schema. If a target visibly depicts "
+                    + "a fabricated object or construction, return its independently observed "
+                    + "object_evidence Island with its own visual bbox, never the COV bbox. If it "
+                    + "does not, list that COV in candidate_region_exceptions with a concrete "
+                    + "visible reason. Do not add commentary."
+                )
+                coverage_retry_content = build_detection_registry_content_blocks(
+                    file_name=file_name,
+                    file_bytes=file_bytes,
+                    user_text=coverage_retry_text,
+                    page_images=batch_images,
+                    page_image_numbers=page_numbers,
+                    regions=[],
+                )
+                coverage_retry_messages = [{"role": "user", "content": coverage_retry_content}]
+                coverage_retry_exact_input_tokens = _v641_count_input_tokens(
+                    client=client,
+                    model=discovery_model,
+                    system=proposal_system,
+                    messages=coverage_retry_messages,
+                    output_config=proposal_output_config,
+                )
+                if (
+                    coverage_retry_exact_input_tokens is not None
+                    and coverage_retry_exact_input_tokens
+                    > DETECTION_V641_DISCOVERY_MAX_EXACT_INPUT_TOKENS
+                ):
+                    raise RuntimeError(
+                        "Coverage-correction batch exceeds its safe input budget."
+                    )
+                batch_response, batch_diagnostics = create_claude_message_streamed(
+                    client,
+                    model=discovery_model,
+                    max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+                    temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+                    system=proposal_system,
+                    messages=coverage_retry_messages,
+                    output_config=proposal_output_config,
+                )
+                batch_attempts.append({
+                    "response": batch_response,
+                    "diagnostics": batch_diagnostics,
+                    "max_tokens": DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+                    "exact_input_tokens": coverage_retry_exact_input_tokens,
+                    "context_characters": len(coverage_retry_text),
+                    "retry_kind": "unresolved_coverage_only",
+                })
+                try:
+                    batch_payload = json.loads(extract_text_from_claude_response(batch_response))
+                except json.JSONDecodeError as retry_error:
+                    raise RuntimeError(
+                        f"Coverage-correction batch {batch_number} returned invalid JSON: "
+                        f"{retry_error}"
+                    ) from retry_error
+                batch_payload = validate_batch_contract(batch_payload)
+                _v644_validate_batch_core_geometry(batch_payload)
+                remaining_coverage_candidate_ids = (
+                    unresolved_detection_coverage_only_candidate_ids(
+                        payload=batch_payload, candidate_regions=batch_candidates,
+                    )
+                )
+                if remaining_coverage_candidate_ids:
+                    raise RuntimeError(
+                        "Coverage-correction batch left recall targets unresolved: "
+                        f"{remaining_coverage_candidate_ids}"
+                    )
             batch_payload = _v641_reindex_batch_discovery_payload(
                 batch_payload, batch_number=batch_number,
             )
@@ -11030,6 +11150,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                     "attempt_count": len([
                         attempt for attempt in batch_attempts
                         if attempt["retry_kind"] == "invalid_core_geometry"
+                    ]),
+                },
+                "coverage_only_retry": {
+                    "attempted": bool(coverage_retry_candidate_ids),
+                    "candidate_region_ids": coverage_retry_candidate_ids,
+                    "attempt_count": len([
+                        attempt for attempt in batch_attempts
+                        if attempt["retry_kind"] == "unresolved_coverage_only"
                     ]),
                 },
                 "provider_attempt_count": len(batch_attempts),

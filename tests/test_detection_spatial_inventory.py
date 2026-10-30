@@ -11,6 +11,7 @@ from agents.anthropic_adapter import (
     normalize_detection_v69_reconciliation_decisions,
     normalize_detection_v610_evidence_review_decisions,
     normalize_detection_v68_pairwise_decisions,
+    unresolved_detection_coverage_only_candidate_ids,
 )
 from agents.detection_fusion_candidate_regions import (
     build_detection_fusion_candidate_regions,
@@ -330,6 +331,40 @@ def test_candidate_region_without_island_requires_a_registry_explanation_in_audi
         visual_groups=[], group_bboxes={}, group_id_mapping={},
     )
     assert audit[0]["status"] == "explained_non_island"
+
+
+def test_coverage_only_requires_object_evidence_or_a_visible_exception():
+    candidate = {
+        "candidate_region_id": "CR-P010-003", "page_number": 10,
+        "role": "coverage_only",
+        "bbox": {"top_left_x": 100, "top_left_y": 100, "bottom_right_x": 400, "bottom_right_y": 400},
+    }
+    payload = {
+        "visual_groups": [{
+            "group_id": "VG-P010-001", "page_number": 10,
+            "bbox": {"top_left_x": 100, "top_left_y": 100, "bottom_right_x": 400, "bottom_right_y": 400},
+        }],
+        "classifications": [{
+            "group_id": "VG-P010-001", "evidence_class": "document_context",
+        }],
+        "candidate_region_exceptions": [],
+    }
+    assert unresolved_detection_coverage_only_candidate_ids(
+        payload=payload, candidate_regions=[candidate],
+    ) == ["CR-P010-003"]
+
+    payload["classifications"][0]["evidence_class"] = "object_evidence"
+    assert unresolved_detection_coverage_only_candidate_ids(
+        payload=payload, candidate_regions=[candidate],
+    ) == []
+
+    payload["classifications"][0]["evidence_class"] = "document_context"
+    payload["candidate_region_exceptions"] = [{
+        "candidate_region_id": "CR-P010-003", "reason": "The visible region is a title block.",
+    }]
+    assert unresolved_detection_coverage_only_candidate_ids(
+        payload=payload, candidate_regions=[candidate],
+    ) == []
 
 
 def _v67_anchor_payload(*, bbox: dict, core_bbox: dict, decision: dict) -> dict:
