@@ -320,7 +320,8 @@ seconds with a 35.4-second Review. It reproduced V7.11's 16 objects, including
 the unresolved three P10 packages. It is a stability guard, not an accepted
 Detection-quality checkpoint.
 
-ACTIVE EXPERIMENT, V7.14, P0, targeted conflict-admission membership:
+COMPLETED AND PROTECTED CHECKPOINT, V7.14, P0, targeted conflict-admission
+membership:
 
 Base: V7.13 commit `cb84daa`, with protected V7.11 checkpoint `0f4ecb6`
 (`detection-v7.11-render-membership-2026-10-30`). The P10 failure is now
@@ -335,14 +336,21 @@ same-page technical V7.5 admissions. Presentation renders retain V7.11's
 dedicated path and floor plans remain outside this matrix. Positive decisions
 need two independent existing evidence types; negative decisions carry none.
 
-Acceptance: Floor 06's P10 V2-to-V3 pair receives exactly one audited decision.
-If its visual proof is positive and validates through the existing semantic
-ledger, the two admitted technical views merge into one package without merging
-the floor plan. The complete Review must return or fail visibly within 90
-seconds. Compare island inventory, P03/P04 render attachment, other page
-packages, tokens, cost and duration with V7.13. Reject on a broad package
-increase, a non-P10 technical regression, or a Review response that omits the
-targeted row.
+Verified Floor 06 run `run_2360208579e34618aec4b60fc322ff2c` produced one
+audited positive decision for the P10 V2-to-V3 pair. Its two technical views
+formed one proof component while the P10 floor plan remained separate. The run
+returned 15 objects, preserved all 64 Object Evidence islands, completed its
+Review in 45.0 seconds, and cost `$0.304735`. Protected commit `39eb723`, tag
+`detection-v7.14-conflict-membership-2026-10-30`.
+
+ACTIVE DIAGNOSIS, V7.15, P0, restore generic floor-plan context contract:
+
+Objective: determine why a generic floor plan is still emitted as a singleton
+Detected Object, then restore the existing contract that generic whole-level
+plans are Document Context and never a package. Preserve object-specific plans,
+technical object views, candidate recall, V7.14 P10 membership, and the
+bounded Review path. Diagnose the earliest breach and propose only the smallest
+isolated repair before changing classification, membership, or packaging rules.
 
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
