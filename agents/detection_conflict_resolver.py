@@ -61,30 +61,6 @@ def _contains(outer: dict[str, int], inner: dict[str, int]) -> bool:
     )
 
 
-def _iou(left: dict[str, int], right: dict[str, int]) -> float:
-    intersection_width = max(
-        0,
-        min(left["bottom_right_x"], right["bottom_right_x"])
-        - max(left["top_left_x"], right["top_left_x"]),
-    )
-    intersection_height = max(
-        0,
-        min(left["bottom_right_y"], right["bottom_right_y"])
-        - max(left["top_left_y"], right["top_left_y"]),
-    )
-    intersection = intersection_width * intersection_height
-    left_area = (
-        (left["bottom_right_x"] - left["top_left_x"])
-        * (left["bottom_right_y"] - left["top_left_y"])
-    )
-    right_area = (
-        (right["bottom_right_x"] - right["top_left_x"])
-        * (right["bottom_right_y"] - right["top_left_y"])
-    )
-    union = left_area + right_area - intersection
-    return intersection / union if union else 0.0
-
-
 def translate_detection_conflict_crop_decisions(
     *,
     decisions: object,
@@ -166,7 +142,6 @@ def build_detection_conflict_targets(
         for row in classifications if isinstance(row, dict)
     }
     object_boxes: list[tuple[int, dict[str, int]]] = []
-    generic_plan_context_boxes: list[tuple[int, dict[str, int]]] = []
     for group in visual_groups:
         if not isinstance(group, dict):
             continue
@@ -174,20 +149,10 @@ def build_detection_conflict_targets(
             page_number = int(group.get("page_number"))
         except (TypeError, ValueError):
             continue
-        evidence_class = str(
-            group.get("evidence_class")
-            or classification_by_group_id.get(str(group.get("group_id") or ""))
-            or ""
-        )
+        if classification_by_group_id.get(str(group.get("group_id") or "")) != "object_evidence":
+            continue
         if (bbox := _bbox(group.get("bbox"))) is not None:
-            if evidence_class == "object_evidence":
-                object_boxes.append((page_number, bbox))
-            elif (
-                evidence_class == "document_context"
-                and str(group.get("representation_kind") or "").strip().lower()
-                in {"floor_plan", "location_plan", "generic_plan"}
-            ):
-                generic_plan_context_boxes.append((page_number, bbox))
+            object_boxes.append((page_number, bbox))
 
     targets: list[dict[str, Any]] = []
     for candidate in candidate_regions:
@@ -205,11 +170,7 @@ def build_detection_conflict_targets(
             object_page == page_number and _overlaps(bbox, object_bbox)
             for object_page, object_bbox in object_boxes
         )
-        has_matching_generic_plan_context = any(
-            context_page == page_number and _iou(bbox, context_bbox) >= 0.80
-            for context_page, context_bbox in generic_plan_context_boxes
-        )
-        if has_object_evidence or has_matching_generic_plan_context:
+        if has_object_evidence:
             continue
         if candidate.get("role") == "coverage_only":
             trigger = "coverage_only_without_object_evidence"
