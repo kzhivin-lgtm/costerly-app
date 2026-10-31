@@ -12,6 +12,7 @@ from ui.processing_forecast import (
     stage_progress_floor,
 )
 from ui.processing_stage import PROCESSING_MARKER_ID, processing_stage_html
+from ui.js_guards import clear_upload_processing_shell
 from use_cases.rfq_processing import build_file_review_data, process_uploaded_rfq
 from db.repositories import fetch_recent_rfq_processing_cycles
 from db.supabase_client import get_supabase_client
@@ -51,6 +52,25 @@ def _load_processing_history(company_id: str) -> list[dict]:
     except Exception as exc:
         print(f"[Processing Forecast] History unavailable: {exc}")
         return []
+
+
+def _render_terminal_processing_error(stage_slot, message: object) -> None:
+    """End the active Processing view in place after a terminal failure.
+
+    A failure has no File Review run or detected-object card. Rerunning into
+    File Review therefore leaves the browser transition waiting for a DOM that
+    cannot exist. Rendering the explicit failure in this completed server pass
+    releases the Processing shell without an auth/session round trip.
+    """
+    from state.session import reset_new_estimate_session, set_screen
+
+    stage_slot.empty()
+    clear_upload_processing_shell()
+    st.error(f"RFQ processing failed: {message}")
+    if st.button("BACK TO UPLOAD", type="secondary"):
+        reset_new_estimate_session(clear_upload_widget=True)
+        set_screen("upload")
+        st.rerun()
 
 
 def render_processing_screen(company_id: str, *, trace=None) -> None:
@@ -101,6 +121,10 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
         st.session_state.processing_error = "No uploaded RFQ file found."
         st.session_state.screen = "upload"
         st.rerun()
+
+    if processing_error := st.session_state.get("processing_error"):
+        _render_terminal_processing_error(stage_slot, processing_error)
+        return
 
     # Page count is cheap and deterministic. It lets the one visible bar begin
     # at zero and make bounded, file-shaped progress before Fusion exists.
@@ -266,8 +290,8 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
             executor.shutdown(wait=False, cancel_futures=True)
     except Exception as exc:
         st.session_state.processing_error = str(exc)
-        st.session_state.screen = "file_review"
-        st.rerun()
+        _render_terminal_processing_error(stage_slot, exc)
+        return
 
     processing_plan = phase_state.get("progress_plan")
     if isinstance(processing_plan, dict):

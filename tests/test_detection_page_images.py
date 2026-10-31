@@ -159,9 +159,7 @@ def test_first_file_review_reuses_normalized_detection_payload():
 
 def test_processing_uses_only_bounded_browser_handshake_after_complete_marker():
     source = Path("screens/processing.py").read_text()
-    complete_tail = source.split(
-        'render_stage(1.0, complete=True, processing_phase="complete")', 1
-    )[1]
+    complete_tail = source.split("processing_result_run_id=run_id", 1)[1]
 
     assert "time.sleep(0.25)" not in complete_tail
-    assert "time.sleep(0.12)" in complete_tail
+    assert "time.sleep(0.22)" in complete_tail

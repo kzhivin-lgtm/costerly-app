@@ -372,6 +372,22 @@ the deployed run to either reach File Review or show its actionable failure
 promptly, with no stuck Processing screen; Floor 06 must retain V7.14's P10
 two-view membership and must not create a generic-plan Conflict Resolver target.
 
+ACTIVE DEPLOYMENT, V7.17, P0, scalar render anchor and visible terminal error:
+
+The V7.16 Floor 06 run failed after a valid Membership response because two
+`attach` rows put a comma-separated multi-view technical assembly into the
+schema's scalar `technical_group_id`. Do not let a render bridge several
+technical components. When every comma-separated ID is an existing non-render
+View, retain only the first named technical anchor as the one render edge and
+record the complete provider assertion in the audit. Reject malformed or
+unknown IDs as before. The same run proved a terminal Processing error was
+rendered through a File Review transition that requires a detected-object card,
+which does not exist on failure. Render the terminal error in-place on the
+Processing screen, clear its shell, and offer Back to Upload without a rerun.
+Acceptance: the live retry passes this former parser boundary or exposes a
+different actionable error immediately, never an indefinitely visible progress
+bar; V7.14 P10 membership and the no-render-only-object contract remain intact.
+
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
 contracts are still changing. The current V5 Registry route records zero cache

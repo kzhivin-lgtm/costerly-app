@@ -3799,6 +3799,24 @@ def normalize_detection_v711_presentation_render_decisions(
         if render_id not in render_ids or render_id in by_render or not witness:
             raise ValueError("V7.11 presentation render decision is invalid")
         if disposition == "attach":
+            # The Review sometimes describes a multi-view technical assembly
+            # in the schema's scalar field as ``view-a,view-b``. A render must
+            # never bridge several technical components: retain only the first
+            # explicitly named valid anchor and preserve the complete model
+            # assertion in the audit below.
+            technical_ids_from_model = [
+                value.strip() for value in technical_id.split(",") if value.strip()
+            ]
+            if (
+                not technical_ids_from_model
+                or len(technical_ids_from_model) != len(set(technical_ids_from_model))
+                or any(
+                    candidate_id not in object_groups or candidate_id in render_ids
+                    for candidate_id in technical_ids_from_model
+                )
+            ):
+                raise ValueError("V7.11 presentation render attachment is invalid")
+            technical_id = technical_ids_from_model[0]
             technical_group = object_groups.get(technical_id)
             if (
                 technical_group is None
@@ -3809,6 +3827,7 @@ def normalize_detection_v711_presentation_render_decisions(
         elif disposition in {"no_match", "unresolved"}:
             if technical_id or evidence_type != "none":
                 raise ValueError("V7.11 non-attachment decision is invalid")
+            technical_ids_from_model = []
         else:
             raise ValueError("V7.11 presentation render disposition is invalid")
         by_render[render_id] = {
@@ -3817,6 +3836,7 @@ def normalize_detection_v711_presentation_render_decisions(
             "technical_group_id": technical_id,
             "evidence_type": evidence_type,
             "visual_witness": witness,
+            "technical_group_ids_from_model": technical_ids_from_model,
         }
     if set(by_render) != render_ids:
         raise ValueError("V7.11 presentation render decisions must cover every render")
@@ -3832,6 +3852,10 @@ def normalize_detection_v711_presentation_render_decisions(
                 decision["technical_group_id"], decision["technical_group_id"],
             ),
         }
+        normalized["technical_group_ids_from_model"] = [
+            group_id_mapping.get(group_id, group_id)
+            for group_id in decision["technical_group_ids_from_model"]
+        ]
         audit.append(copy.deepcopy(normalized))
         if decision["disposition"] == "attach":
             facts.append({

@@ -789,7 +789,7 @@ def test_processing_screen_counts_pdf_pages_before_rendering_the_pre_fusion_stag
     assert "def _initial_pdf_page_count" in source
     assert "processing_page_count=initial_page_count" in source
     assert '"value": "ocr", "page_count": initial_page_count' in source
-    assert "clear_upload_processing_shell" not in source
+    assert "def _render_terminal_processing_error" in source
     assert 'complete=True' in source
 
 
@@ -2239,6 +2239,25 @@ def test_processing_terminal_failure_does_not_wait_for_forecast_history():
 
     assert "executor.shutdown(wait=False, cancel_futures=True)" in source
     assert "with ThreadPoolExecutor(max_workers=2) as executor:" not in source
+
+
+def test_processing_error_is_a_valid_processing_to_file_review_terminal_state():
+    file_review_source = Path("screens/file_review.py").read_text(encoding="utf-8")
+    transition_source = Path("ui/js_guards.py").read_text(encoding="utf-8")
+
+    assert 'class="file-review-processing-error"' in file_review_source
+    assert "document.querySelector('.file-review-processing-error')" in transition_source
+
+
+def test_processing_terminal_error_is_rendered_without_a_file_review_rerun():
+    source = Path("screens/processing.py").read_text(encoding="utf-8")
+    error_handler = source.rsplit("    except Exception as exc:", 1)[1].split(
+        "    processing_plan =", 1
+    )[0]
+
+    assert "_render_terminal_processing_error(stage_slot, exc)" in error_handler
+    assert 'st.session_state.screen = "file_review"' not in error_handler
+    assert "clear_upload_processing_shell()" in source
 
 
 def test_integrated_visual_registry_derives_missing_page_coverage_from_graph():
