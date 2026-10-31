@@ -20,7 +20,7 @@ from agents.anthropic_adapter import (
     DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
     DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
     DETECTION_V634_ADA_DISCOVERY_MODEL,
-    DETECTION_V713_BOUNDED_MEMBERSHIP_REVIEW_PROMPT_VERSION,
+    DETECTION_V716_RENDER_MATRIX_PROMPT_VERSION,
     DETECTION_V713_MEMBERSHIP_REVIEW_MAX_STREAM_SECONDS,
     apply_benchmark_run_suffix,
     build_agent_usage_event,
@@ -35,6 +35,7 @@ from agents.anthropic_adapter import (
     extract_detection_document_dimension_unit_profile,
     extract_detection_page_drawing_codes,
     finalize_detection_same_page_membership_queue,
+    format_detection_v711_presentation_render_matrix,
     normalize_detection_identity_fields,
     normalize_detection_v610_evidence_review_decisions,
     normalize_detection_v69_reconciliation_decisions,
@@ -1350,7 +1351,7 @@ def test_v67_mistral_anchor_contract_replaces_a_freehand_proposal_bbox():
     }
     assert visual_map["visual_groups"][0]["group_id"] == "view-001"
     assert usage["raw_usage"]["registry_decision_audit"]["visual_groups"][0]["bbox"] == expected_bbox
-    assert usage["prompt_version"] == DETECTION_V713_BOUNDED_MEMBERSHIP_REVIEW_PROMPT_VERSION
+    assert usage["prompt_version"] == DETECTION_V716_RENDER_MATRIX_PROMPT_VERSION
     assert usage["raw_usage"]["v6_7_mistral_anchor_admission_audit"][0]["status"] == "accepted_anchor"
 
 
@@ -1578,9 +1579,7 @@ def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
         DETECTION_V634_ADA_DISCOVERY_MODEL,
         "claude-sonnet-4-6",
     ]
-    assert usage["prompt_version"] == (
-        DETECTION_V713_BOUNDED_MEMBERSHIP_REVIEW_PROMPT_VERSION
-    )
+    assert usage["prompt_version"] == DETECTION_V716_RENDER_MATRIX_PROMPT_VERSION
     assert usage["raw_usage"]["v6_34_ada_haiku_discovery_sonnet_review_active"] is True
     assert usage["raw_usage"]["v6_35_ada_pair_local_membership_active"] is True
     assert usage["raw_usage"]["v6_36_ada_connected_pair_local_membership_active"] is True
@@ -2198,12 +2197,48 @@ def test_registry_uses_the_same_atomic_visual_group_contract_for_all_models():
             model="claude-sonnet-4-6",
         )
 
-    assert haiku_usage["prompt_version"] == DETECTION_V713_BOUNDED_MEMBERSHIP_REVIEW_PROMPT_VERSION
-    assert sonnet_usage["prompt_version"] == DETECTION_V713_BOUNDED_MEMBERSHIP_REVIEW_PROMPT_VERSION
+    assert haiku_usage["prompt_version"] == DETECTION_V716_RENDER_MATRIX_PROMPT_VERSION
+    assert sonnet_usage["prompt_version"] == DETECTION_V716_RENDER_MATRIX_PROMPT_VERSION
     assert prompts[0] == prompts[2]
     assert prompts[1] == prompts[3]
     assert prompts[0] != prompts[1]
     assert "related_group_ids" not in prompts[0]
+
+
+def test_v716_render_matrix_lists_only_object_evidence_renders_in_stable_order():
+    matrix = format_detection_v711_presentation_render_matrix([
+        {
+            "group_id": "render-z", "evidence_class": "object_evidence",
+            "representation_kind": "presentation_render",
+        },
+        {
+            "group_id": "technical-a", "evidence_class": "object_evidence",
+            "representation_kind": "elevation",
+        },
+        {
+            "group_id": "render-context", "evidence_class": "document_context",
+            "representation_kind": "presentation_render",
+        },
+        {
+            "group_id": "render-a", "evidence_class": "object_evidence",
+            "representation_kind": "presentation_render",
+        },
+    ])
+
+    assert matrix.splitlines() == [
+        "V7.16 REQUIRED PRESENTATION RENDER MATRIX:",
+        "Return exactly one presentation_render_decisions row for every R line.",
+        "R=id|View",
+        "R001|render-a",
+        "R002|render-z",
+    ]
+
+
+def test_processing_terminal_failure_does_not_wait_for_forecast_history():
+    source = Path("screens/processing.py").read_text(encoding="utf-8")
+
+    assert "executor.shutdown(wait=False, cancel_futures=True)" in source
+    assert "with ThreadPoolExecutor(max_workers=2) as executor:" not in source
 
 
 def test_integrated_visual_registry_derives_missing_page_coverage_from_graph():

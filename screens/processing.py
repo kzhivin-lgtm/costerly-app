@@ -191,7 +191,10 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
                     metadata={"stage": label, "page_count": page_count},
                 )
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        # Forecast history is optional. A terminal Detection error must never
+        # wait for this unrelated read before the user sees the failure.
+        executor = ThreadPoolExecutor(max_workers=2)
+        try:
             history_future = executor.submit(_load_processing_history, company_id)
             future = executor.submit(
                 process_uploaded_rfq,
@@ -259,6 +262,8 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
                 time.sleep(0.15)
 
             result = future.result()
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
     except Exception as exc:
         st.session_state.processing_error = str(exc)
         st.session_state.screen = "file_review"

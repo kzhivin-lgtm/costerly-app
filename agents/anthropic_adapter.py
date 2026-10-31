@@ -160,6 +160,9 @@ DETECTION_V713_BOUNDED_MEMBERSHIP_REVIEW_PROMPT_VERSION = (
 DETECTION_V714_CONFLICT_MEMBERSHIP_PROMPT_VERSION = (
     "detection_v7_14_targeted_conflict_membership"
 )
+DETECTION_V716_RENDER_MATRIX_PROMPT_VERSION = (
+    "detection_v7_16_render_matrix_terminal_failure"
+)
 DETECTION_V634_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
 DETECTION_V75_CONFLICT_RESOLVER_PROMPT_VERSION = (
@@ -3843,6 +3846,29 @@ def normalize_detection_v711_presentation_render_decisions(
                 ],
             })
     return facts, audit
+
+
+def format_detection_v711_presentation_render_matrix(
+    visual_groups: list[dict[str, Any]],
+) -> str:
+    """Make the finite render-decision coverage contract explicit to Review."""
+    render_ids = sorted(
+        str(group.get("group_id") or "")
+        for group in visual_groups
+        if isinstance(group, dict)
+        and group.get("evidence_class") == "object_evidence"
+        and str(group.get("representation_kind") or "").strip().lower()
+        == "presentation_render"
+        and str(group.get("group_id") or "")
+    )
+    if not render_ids:
+        return ""
+    return "\n".join([
+        "V7.16 REQUIRED PRESENTATION RENDER MATRIX:",
+        "Return exactly one presentation_render_decisions row for every R line.",
+        "R=id|View",
+        *(f"R{index:03d}|{group_id}" for index, group_id in enumerate(render_ids, start=1)),
+    ])
 
 
 def attach_detection_v711_presentation_render_components(
@@ -12021,10 +12047,18 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             field: proposal_raw_payload[field]
             for field in discovery_fields - {"page_coverage", "document_scope"}
         }
+    # Discovery is the first boundary where visual representation and class
+    # exist. Evaluate that classification before Conflict Resolver decides
+    # whether a Fusion region is genuinely missing Object Evidence. Keep the
+    # raw Discovery record intact for its model-decision audit; the same
+    # deterministic classification is applied to the live payload below.
+    conflict_routing_payload, _ = _validate_and_apply_visual_registry_classifications(
+        copy.deepcopy(proposal_discovery_payload), page_frames=review_coordinate_frames,
+    )
     v75_conflict_targets = build_detection_conflict_targets(
         candidate_regions=candidate_regions,
-        visual_groups=proposal_discovery_payload["visual_groups"],
-        classifications=proposal_discovery_payload["classifications"],
+        visual_groups=conflict_routing_payload["visual_groups"],
+        classifications=conflict_routing_payload["classifications"],
     )
     v75_conflict_resolver_audit: dict[str, Any] = {
         "version": DETECTION_V75_CONFLICT_RESOLVER_PROMPT_VERSION,
@@ -12096,10 +12130,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     )
     if v69_criteria_reconciliation_active:
         prompt_version = DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION
-    elif v714_conflict_membership_active:
-        prompt_version = DETECTION_V714_CONFLICT_MEMBERSHIP_PROMPT_VERSION
     else:
-        prompt_version = DETECTION_V713_BOUNDED_MEMBERSHIP_REVIEW_PROMPT_VERSION
+        prompt_version = DETECTION_V716_RENDER_MATRIX_PROMPT_VERSION
     registry_visual_sources = build_detection_v5_registry_visual_sources(
         proposal_for_review["visual_groups"]
     )
@@ -12205,6 +12237,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "View.\n"
         )
     if not v69_criteria_reconciliation_active:
+        render_matrix = format_detection_v711_presentation_render_matrix(
+            proposal_for_review["visual_groups"],
+        )
         review_prompt_with_membership_contract += (
             "\n\nV7.11 PRESENTATION RENDER DECISIONS:\n"
             "For every `K=presentation_render` View, return exactly one row in "
@@ -12219,6 +12254,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "membership authority. Colour, finish, room context, proximity, "
             "material and approximate proportions are never proof.\n"
         )
+        if render_matrix:
+            review_prompt_with_membership_contract += "\n" + render_matrix + "\n"
     review_content = build_detection_v5_membership_content_blocks(
         user_text=review_handoff, view_crops=membership_crops,
         page_context_images=effective_review_page_context_images,

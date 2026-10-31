@@ -343,14 +343,34 @@ returned 15 objects, preserved all 64 Object Evidence islands, completed its
 Review in 45.0 seconds, and cost `$0.304735`. Protected commit `39eb723`, tag
 `detection-v7.14-conflict-membership-2026-10-30`.
 
-ACTIVE DIAGNOSIS, V7.15, P0, restore generic floor-plan context contract:
+REJECTED EXPERIMENT, V7.15, P0, late duplicate generic-floor-plan demotion:
 
-Objective: determine why a generic floor plan is still emitted as a singleton
-Detected Object, then restore the existing contract that generic whole-level
-plans are Document Context and never a package. Preserve object-specific plans,
-technical object views, candidate recall, V7.14 P10 membership, and the
-bounded Review path. Diagnose the earliest breach and propose only the smallest
-isolated repair before changing classification, membership, or packaging rules.
+Commit `122ecc8` attempted to demote a duplicate generic plan only after
+Conflict Resolver had already introduced it. The following run failed in
+Membership Review before package assembly, so it is not a checkpoint. Revert
+commit `473a5c9` restores protected V7.14 behaviour. Do not revive this late
+classification workaround.
+
+ACTIVE DEPLOYMENT, V7.16, P0, early Discovery routing and terminal failure:
+
+At the first boundary where Discovery has both visual representation and
+evidence class, apply the existing deterministic generic-floor-plan
+classification to Conflict Resolver routing. A Candidate Region that is at
+least 0.80 IoU with an already-classified generic whole-level Document Context
+plan is explained and never becomes a Conflict Resolver target. A smaller
+unexplained candidate within that plan remains eligible. Preserve
+object-specific plans, technical object views, candidate recall, V7.14 P10
+membership, package construction, and the bounded Review path.
+
+The Membership Review error on the failed 2026-10-30 run was a valid JSON
+response missing six of nine required Presentation Render decisions. Make the
+finite render set explicit as an `R001...` matrix in the existing Review,
+without a second model call or a relaxed completeness contract. In Processing,
+a terminal Detection exception must set the existing File Review error state
+without waiting for the optional forecast-history worker. Acceptance requires
+the deployed run to either reach File Review or show its actionable failure
+promptly, with no stuck Processing screen; Floor 06 must retain V7.14's P10
+two-view membership and must not create a generic-plan Conflict Resolver target.
 
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence

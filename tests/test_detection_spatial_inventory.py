@@ -425,6 +425,66 @@ def test_v75_conflict_targets_ignore_exception_and_require_visual_resolution():
     ]
 
 
+def test_v716_conflict_targets_do_not_reopen_discovery_context_floor_plan():
+    plan_bbox = {
+        "top_left_x": 100, "top_left_y": 100,
+        "bottom_right_x": 900, "bottom_right_y": 900,
+    }
+    groups = [{
+        "group_id": "whole-level-plan", "page_number": 2,
+        "bbox": plan_bbox, "representation_kind": "floor_plan",
+        "evidence_class": "document_context",
+    }]
+    classifications = [{
+        "group_id": "whole-level-plan", "evidence_class": "document_context",
+    }]
+
+    assert build_detection_conflict_targets(
+        candidate_regions=[{
+            "candidate_region_id": "CR-P002-001", "page_number": 2,
+            "basis": "mistral_graphic_region", "bbox": plan_bbox,
+        }],
+        visual_groups=groups,
+        classifications=classifications,
+    ) == []
+
+
+def test_v716_floor_plan_context_does_not_hide_smaller_unexplained_object():
+    groups = [{
+        "group_id": "whole-level-plan", "page_number": 2,
+        "bbox": {
+            "top_left_x": 100, "top_left_y": 100,
+            "bottom_right_x": 900, "bottom_right_y": 900,
+        },
+        "representation_kind": "floor_plan",
+        "evidence_class": "document_context",
+    }]
+    classifications = [{
+        "group_id": "whole-level-plan", "evidence_class": "document_context",
+    }]
+
+    assert build_detection_conflict_targets(
+        candidate_regions=[{
+            "candidate_region_id": "CR-P002-002", "page_number": 2,
+            "basis": "mistral_graphic_region",
+            "bbox": {
+                "top_left_x": 350, "top_left_y": 350,
+                "bottom_right_x": 650, "bottom_right_y": 650,
+            },
+        }],
+        visual_groups=groups,
+        classifications=classifications,
+    ) == [{
+        "target_id": "V75-C001", "page_number": 2,
+        "bbox": {
+            "top_left_x": 350, "top_left_y": 350,
+            "bottom_right_x": 650, "bottom_right_y": 650,
+        },
+        "trigger": "graphic_region_without_object_evidence",
+        "candidate_region_ids": ["CR-P002-002"],
+    }]
+
+
 def test_v75_admission_is_visual_geometry_not_candidate_proxy():
     targets = [{
         "target_id": "V75-C001", "page_number": 10,
