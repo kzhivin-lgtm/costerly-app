@@ -357,18 +357,6 @@ candidate recall, V7.14 P10 membership, Review, prompts, parser and UI.
 Acceptance: a live Floor 06 run has no P2 V7.5 conflict target or package,
 while V7.14's P10 pair and protected 15-object baseline remain intact.
 
-AWAITING LIVE VALIDATION, V7.19, P0, stable conflict identity after terminal
-Discovery closure:
-
-The two V7.18 runs reproducibly closed P2 but changed unrelated Membership
-decisions: excluding P2 compacted every subsequent V7.5 target and admitted
-Island ID by one. V7.19 reserves the closed candidate's ordinal without
-returning it to Resolver, Membership or package assembly. Thus P3/P9/P10 keep
-their existing conflict identity while P2 remains terminal document context.
-No prompt, classification criterion, membership criterion, crop, UI or parser
-changes. Acceptance: repeat Floor 06 has no P2 target/package and restores the
-V7.14 P3/P9 render-attachment decisions, P10 pair and proof-component count.
-
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
 contracts are still changing. The current V5 Registry route records zero cache

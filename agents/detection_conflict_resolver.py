@@ -202,6 +202,15 @@ def build_detection_conflict_targets(
         candidate_id = str(candidate.get("candidate_region_id") or "")
         if not candidate_id or bbox is None:
             continue
+        # Discovery has already closed this same visual region as document
+        # context. Do not reopen it merely because Candidate Regions is an
+        # independent recall source. The high IoU requirement keeps distinct
+        # object islands inside a plan eligible for review.
+        if any(
+            context_page == page_number and _iou(bbox, context_bbox) >= 0.8
+            for context_page, context_bbox in closed_context_boxes
+        ):
+            continue
         has_object_evidence = any(
             object_page == page_number and _overlaps(bbox, object_bbox)
             for object_page, object_bbox in object_boxes
@@ -220,13 +229,6 @@ def build_detection_conflict_targets(
             "bbox": bbox,
             "trigger": trigger,
             "candidate_region_ids": [candidate_id],
-            # Preserve the ordinary candidate ordinal even when Discovery has
-            # terminally closed this one. Removing it must not rename every
-            # unrelated conflict island supplied to Membership.
-            "closed_document_context": any(
-                context_page == page_number and _iou(bbox, context_bbox) >= 0.8
-                for context_page, context_bbox in closed_context_boxes
-            ),
         })
 
     # Candidate suppliers sometimes emit duplicate boxes. One neutral crop is
@@ -247,26 +249,12 @@ def build_detection_conflict_targets(
         if match is not None:
             match["candidate_region_ids"].extend(target["candidate_region_ids"])
             match["trigger"] = "multiple_source_conflicts"
-            match["closed_document_context"] = bool(
-                match["closed_document_context"]
-                or target["closed_document_context"]
-            )
             continue
         deduplicated.append(deepcopy(target))
     for ordinal, target in enumerate(deduplicated, start=1):
         target["target_id"] = f"V75-C{ordinal:03d}"
         target["candidate_region_ids"] = sorted(set(target["candidate_region_ids"]))
-    # A closed whole-document plan reserves its historical ordinal but is
-    # never returned to the Resolver.
-    return [
-        {
-            key: value
-            for key, value in target.items()
-            if key != "closed_document_context"
-        }
-        for target in deduplicated
-        if not target["closed_document_context"]
-    ]
+    return deduplicated
 
 
 def validate_detection_conflict_decisions(
@@ -354,7 +342,7 @@ def apply_detection_conflict_admissions(
         str(group.get("group_id") or "")
         for group in visual_groups if isinstance(group, dict)
     }
-    for decision in decisions:
+    for ordinal, decision in enumerate(decisions, start=1):
         target = target_by_id[str(decision["target_id"])]
         audit_row = {
             "target_id": decision["target_id"],
@@ -364,11 +352,7 @@ def apply_detection_conflict_admissions(
             **deepcopy(decision),
         }
         if decision["disposition"] == "admit_object_evidence":
-            try:
-                target_ordinal = int(str(decision["target_id"]).removeprefix("V75-C"))
-            except ValueError as exc:
-                raise ValueError("V7.5 conflict target ID is invalid") from exc
-            group_id = f"v75-conflict-{target_ordinal:03d}"
+            group_id = f"v75-conflict-{ordinal:03d}"
             if group_id in existing_group_ids:
                 raise ValueError("V7.5 generated a duplicate Island ID")
             existing_group_ids.add(group_id)
