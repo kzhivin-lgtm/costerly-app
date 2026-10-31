@@ -1,4 +1,3 @@
-import copy
 import json
 
 import pytest
@@ -17,9 +16,7 @@ from agents.anthropic_adapter import (
     normalize_detection_v610_evidence_review_decisions,
     normalize_detection_v68_pairwise_decisions,
     normalize_detection_v711_presentation_render_decisions,
-    constrain_detection_v711_presentation_render_schema,
     attach_detection_v711_presentation_render_components,
-    DETECTION_V5_MEMBERSHIP_JSON_SCHEMA,
 )
 from agents.detection_fusion_candidate_regions import (
     build_detection_fusion_candidate_regions,
@@ -510,29 +507,6 @@ def test_v711_render_decision_creates_one_cross_page_visual_fact():
         "observation": "Both views show the same three triangular shelf bays.",
         "source_fact_ids": ["registry_view:view-010", "registry_view:view-024"],
     }]
-
-
-def test_v711_render_schema_permits_only_one_known_technical_view_id():
-    schema = copy.deepcopy(DETECTION_V5_MEMBERSHIP_JSON_SCHEMA)
-
-    constrain_detection_v711_presentation_render_schema(
-        schema,
-        visual_groups=[
-            {"group_id": "render", "evidence_class": "object_evidence",
-             "representation_kind": "presentation_render"},
-            {"group_id": "technical-a", "evidence_class": "object_evidence",
-             "representation_kind": "elevation"},
-            {"group_id": "technical-b", "evidence_class": "object_evidence",
-             "representation_kind": "section"},
-            {"group_id": "legend", "evidence_class": "document_context",
-             "representation_kind": "legend"},
-        ],
-    )
-
-    properties = schema["properties"]["presentation_render_decisions"]["items"]["properties"]
-    assert properties["render_group_id"]["enum"] == ["render"]
-    assert properties["technical_group_id"]["enum"] == ["", "technical-a", "technical-b"]
-    assert "technical-a|technical-b" not in properties["technical_group_id"]["enum"]
 
 
 def test_v711_render_decision_requires_every_render_and_a_technical_target():

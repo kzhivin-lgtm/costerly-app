@@ -899,43 +899,6 @@ DETECTION_V5_MEMBERSHIP_JSON_SCHEMA: dict[str, Any] = {
     },
 }
 
-def constrain_detection_v711_presentation_render_schema(
-    schema: dict[str, Any],
-    *,
-    visual_groups: list[dict[str, Any]],
-) -> None:
-    """Restrict each render decision to the one raw View its contract permits."""
-    object_groups = [
-        group
-        for group in visual_groups
-        if isinstance(group, dict) and group.get("evidence_class") == "object_evidence"
-    ]
-    render_ids = sorted({
-        str(group.get("group_id") or "")
-        for group in object_groups
-        if str(group.get("representation_kind") or "").strip().lower()
-        == "presentation_render"
-        and str(group.get("group_id") or "")
-    })
-    if not render_ids:
-        return
-    technical_ids = sorted({
-        str(group.get("group_id") or "")
-        for group in object_groups
-        if str(group.get("representation_kind") or "").strip().lower()
-        != "presentation_render"
-        and str(group.get("group_id") or "")
-    })
-    decision_properties = schema["properties"]["presentation_render_decisions"][
-        "items"
-    ]["properties"]
-    decision_properties["render_group_id"]["enum"] = render_ids
-    # Empty remains valid only for no_match/unresolved. The normalizer retains
-    # the disposition-specific check, so this cannot silently permit an attach
-    # without one exact technical target.
-    decision_properties["technical_group_id"]["enum"] = ["", *technical_ids]
-
-
 DETECTION_V68_PAIRWISE_DECISION_EVIDENCE_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": False,
     "required": ["evidence_type", "strength", "observation", "source_fact_ids"],
@@ -12313,10 +12276,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         else DETECTION_V5_MEMBERSHIP_MAX_TOKENS
     )
     membership_review_schema = copy.deepcopy(DETECTION_V5_MEMBERSHIP_JSON_SCHEMA)
-    constrain_detection_v711_presentation_render_schema(
-        membership_review_schema,
-        visual_groups=proposal_for_review["visual_groups"],
-    )
     if v714_conflict_membership_active:
         membership_review_schema["required"].append("conflict_pair_decisions")
         membership_review_schema["properties"]["conflict_pair_decisions"] = (

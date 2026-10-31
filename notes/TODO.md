@@ -364,15 +364,6 @@ the two existing V7.5 admissions and their V7.14 membership decision. Reject
 on any lost non-P2 conflict admission, package-count regression, or altered
 Resolver payload.
 
-Current blocker and bounded repair: the two V7.22 attempts reached Membership
-but stopped before final package assembly because V7.11 returned pipe-separated
-technical group IDs for a render `attach`, while its contract permits exactly
-one technical View. The repair constrains the existing Membership JSON schema
-at request time to the actual raw render IDs and individual non-render Object
-Evidence IDs (plus the existing empty value for `no_match`/`unresolved`). It
-does not split or reinterpret a multi-ID response, add edges, alter Resolver,
-or change V7.14 Membership. Await a new end-to-end run before accepting V7.22.
-
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
 contracts are still changing. The current V5 Registry route records zero cache

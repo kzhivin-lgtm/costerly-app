@@ -1215,57 +1215,6 @@ def test_integrated_visual_registry_omits_scope_from_ordinary_contract():
     assert usage["raw_usage"]["v6_11_document_scope"] is None
 
 
-def test_membership_schema_constrains_render_attachment_to_known_single_view():
-    proposal = _visual_registry_payload({
-        "visual_groups": [
-            {"group_id": "render", "page_number": 1, "location_hint": "left",
-             "visual_description": "photorealistic kitchen render",
-             "representation_kind": "presentation_render"},
-            {"group_id": "technical", "page_number": 1, "location_hint": "right",
-             "visual_description": "cabinet elevation", "representation_kind": "elevation"},
-        ],
-    })
-    proposal.pop("document_scope")
-    provider_calls = []
-
-    def fake_create(*_args, **kwargs):
-        provider_calls.append(kwargs)
-        return _Response(), {
-            "request_started_at": "2026-10-16T00:00:00+00:00",
-            "request_finished_at": "2026-10-16T00:00:01+00:00",
-        }
-
-    with (
-        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
-        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
-        patch(
-            "agents.anthropic_adapter.extract_text_from_claude_response",
-            side_effect=[
-                json.dumps(proposal),
-                json.dumps({
-                    "object_hypotheses": [],
-                    "presentation_render_decisions": [{
-                        "render_group_id": "render", "disposition": "no_match",
-                        "technical_group_id": "", "evidence_type": "none",
-                        "visual_witness": "No technical View depicts this render's cabinet.",
-                    }],
-                }),
-            ],
-        ),
-    ):
-        run_anthropic_detection_visual_registry_agent(
-            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"page"], regions=[], ocr_package=None, model="model",
-            document_category="ordinary_object_set",
-        )
-
-    decision_properties = provider_calls[1]["output_config"]["format"]["schema"][
-        "properties"
-    ]["presentation_render_decisions"]["items"]["properties"]
-    assert decision_properties["render_group_id"]["enum"] == ["render"]
-    assert decision_properties["technical_group_id"]["enum"] == ["", "technical"]
-
-
 def test_presentation_render_without_technical_match_never_creates_registry_object():
     proposal = _visual_registry_payload({
         "visual_groups": [{
