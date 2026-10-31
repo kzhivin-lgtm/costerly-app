@@ -12,7 +12,6 @@ import pytest
 
 from agents.anthropic_adapter import (
     _discard_non_object_visual_registry_groups,
-    _exclude_terminal_discovery_context_regions,
     _validate_and_apply_visual_registry_classifications,
     _apply_reference_root_suffixes,
     DEFAULT_CLAUDE_DETECTION_MODEL,
@@ -774,8 +773,8 @@ def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signal
     assert "function visibleProgressNode(stage)" in source
     assert "writeProgress(percent)" in source
     assert "syncForecastFromStage(stage)" in source
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_21" in source
-    assert "costerly-upload-runtime-v1121-migrated" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_20" in source
+    assert "costerly-upload-runtime-v1120-migrated" in source
     assert "parentWindow.location.reload();" in source
     assert "function finalizationState(stage)" in source
     assert "function advanceFinalization(state)" in source
@@ -791,26 +790,6 @@ def test_processing_screen_counts_pdf_pages_before_rendering_the_pre_fusion_stag
     assert '"value": "ocr", "page_count": initial_page_count' in source
     assert "clear_upload_processing_shell" not in source
     assert 'complete=True' in source
-
-
-def test_processing_failure_replaces_the_progress_shell_without_waiting_for_a_rerun():
-    source = Path("screens/processing.py").read_text()
-    failure_branch = source.rsplit("except Exception as exc:", 1)[1].split(
-        "processing_plan = phase_state.get", 1,
-    )[0]
-
-    assert 'costerly-processing-failure-marker' in source
-    assert '_render_processing_failure(stage_slot, exc)' in failure_branch
-    assert 'st.rerun()' not in failure_branch
-
-
-def test_processing_shell_releases_on_terminal_failure_marker():
-    source = getsource(install_upload_interaction_guards)
-
-    assert "PROCESSING_FAILURE_MARKER" in source
-    assert "processingFailureIsActive" in source
-    assert "finalizeElapsed" in source
-    assert "removeShell" in source
 
 
 def test_processing_stage_carries_the_completed_run_id_to_the_browser_handoff():
@@ -832,7 +811,7 @@ def test_processing_cycle_persists_ocr_page_count_for_future_forecasts():
 def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():
     source = getsource(install_upload_interaction_guards)
 
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_21" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_20" in source
     assert "function uploadScreenIsActive()" in source
     assert "document.querySelector('.upload-screen-active')" in source
     assert "if (!uploadScreenIsActive()) return;" in source
@@ -1647,7 +1626,47 @@ def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
     )
 
 
-def test_discovery_classification_is_preserved_without_runtime_floor_plan_rules():
+def test_whole_architectural_floor_plan_is_demoted_to_document_context():
+    payload = _visual_registry_payload({
+        "visual_groups": [{
+            "group_id": "plan", "page_number": 2, "location_hint": "whole page",
+            "visual_description": "Complete whole-level architectural layout with rooms, walls and door swings.",
+            "representation_kind": "floor_plan",
+            "evidence_class": "object_evidence",
+            "classification_reason": "Complete floor plan showing spatial room layout and architectural circulation.",
+            "bbox": {"top_left_x": 0, "top_left_y": 0, "bottom_right_x": 1000, "bottom_right_y": 1000},
+            "core_bbox": {"top_left_x": 0, "top_left_y": 0, "bottom_right_x": 1000, "bottom_right_y": 1000},
+        }],
+    })
+    enriched, audit = _validate_and_apply_visual_registry_classifications(
+        payload, page_frames={2: {"fusion_dimensions": {"width": 1000, "height": 1000}}},
+    )
+    assert enriched["visual_groups"][0]["evidence_class"] == "document_context"
+    assert audit[0]["evidence_class"] == "document_context"
+
+
+def test_whole_architectural_floor_plan_is_demoted_when_model_mislabels_representation_kind():
+    payload = _visual_registry_payload({
+        "visual_groups": [{
+            "group_id": "plan", "page_number": 2, "location_hint": "whole page",
+            "visual_description": "Architectural floor plan with room layouts, dimensions and colored zones.",
+            "representation_kind": "object_evidence",
+            "evidence_class": "object_evidence",
+            "classification_reason": "Architectural floor plan depicting room layouts and spatial organization.",
+            "bbox": {"top_left_x": 0, "top_left_y": 0, "bottom_right_x": 1000, "bottom_right_y": 1000},
+            "core_bbox": {"top_left_x": 0, "top_left_y": 0, "bottom_right_x": 1000, "bottom_right_y": 1000},
+        }],
+    })
+    enriched, audit = _validate_and_apply_visual_registry_classifications(
+        payload, page_frames={2: {"fusion_dimensions": {"width": 1000, "height": 1000}}},
+    )
+    assert enriched["visual_groups"][0]["evidence_class"] == "document_context"
+    assert audit[0]["classification_reason"] == (
+        "Whole-level architectural plan is document context, not an isolated fabricated item."
+    )
+
+
+def test_object_evidence_survives_imprecise_floor_plan_representation_kind():
     payload = _visual_registry_payload({
         "visual_groups": [{
             "group_id": "cabinet-plan", "page_number": 7,
@@ -1674,25 +1693,30 @@ def test_discovery_classification_is_preserved_without_runtime_floor_plan_rules(
     ]
 
 
-def test_terminal_floor_plan_context_excludes_only_overlapping_candidate_regions():
-    candidates = [{
-        "candidate_region_id": "P2-plan", "page_number": 2,
-        "bbox": {"top_left_x": 1500, "top_left_y": 150, "bottom_right_x": 4500, "bottom_right_y": 3200},
-    }, {
-        "candidate_region_id": "P10-view", "page_number": 10,
-        "bbox": {"top_left_x": 1500, "top_left_y": 1500, "bottom_right_x": 2300, "bottom_right_y": 2700},
-    }]
-    visual_groups = [{
-        "group_id": "plan", "page_number": 2, "evidence_class": "document_context",
-        "representation_kind": "floor_plan",
-        "bbox": {"top_left_x": 1180, "top_left_y": 126, "bottom_right_x": 4584, "bottom_right_y": 3239},
-    }]
+def test_small_plan_like_group_is_not_forced_to_document_context_on_multi_island_page():
+    payload = _visual_registry_payload({
+        "visual_groups": [{
+            "group_id": "object-plan", "page_number": 3, "location_hint": "top",
+            "visual_description": "Architectural floor plan with room layouts, walls and circulation.",
+            "representation_kind": "floor_plan",
+            "evidence_class": "object_evidence",
+            "classification_reason": "Floor plan showing room layout, walls and circulation.",
+            "bbox": {"top_left_x": 0, "top_left_y": 0, "bottom_right_x": 600, "bottom_right_y": 600},
+            "core_bbox": {"top_left_x": 0, "top_left_y": 0, "bottom_right_x": 600, "bottom_right_y": 600},
+        }, {
+            "group_id": "other-view", "page_number": 3, "location_hint": "bottom",
+            "visual_description": "Dimensioned cabinet elevation.", "representation_kind": "elevation",
+            "evidence_class": "object_evidence",
+            "classification_reason": "Dimensioned fabricated cabinet elevation.",
+        }],
+    })
 
-    retained = _exclude_terminal_discovery_context_regions(
-        candidates, visual_groups=visual_groups,
+    enriched, audit = _validate_and_apply_visual_registry_classifications(
+        payload, page_frames={3: {"fusion_dimensions": {"width": 1000, "height": 1000}}},
     )
 
-    assert [candidate["candidate_region_id"] for candidate in retained] == ["P10-view"]
+    assert enriched["visual_groups"][0]["evidence_class"] == "object_evidence"
+    assert audit[0]["evidence_class"] == "object_evidence"
 
 
 def test_v5_discovery_page_coverage_requires_every_page_and_every_island():

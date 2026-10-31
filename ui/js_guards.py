@@ -3358,7 +3358,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
         (() => {
             const parentWindow = window.parent;
             const parentDoc = parentWindow.document;
-            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_21";
+            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_20";
             const oldMarker = parentDoc.getElementById(markerId);
 
             if (oldMarker) {
@@ -3371,11 +3371,11 @@ def install_upload_interaction_guards(shell_html: str) -> None:
             // idle refresh is the only safe way to remove that already-running
             // closure. It never runs while an upload or Processing is active.
             const legacyMarker = parentDoc.getElementById(
-                "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_20"
+                "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_19"
             );
-            const migrationKey = "costerly-upload-runtime-v1121-migrated";
+            const migrationKey = "costerly-upload-runtime-v1120-migrated";
             const legacyInstalled = Boolean(
-                parentWindow.__costerlyUploadInteractionGuardsV1120Installed
+                parentWindow.__costerlyUploadInteractionGuardsV1119Installed
             );
             const activeProcessing = Boolean(
                 parentDoc.getElementById("costerly-processing-screen-active") ||
@@ -3389,7 +3389,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
             }
 
             const previousRuntime = parentWindow.__costerlyUploadInteractionRuntime;
-            if (previousRuntime && previousRuntime.version === "v1121") {
+            if (previousRuntime && previousRuntime.version === "v1120") {
                 return;
             }
             if (previousRuntime && typeof previousRuntime.dispose === "function") {
@@ -3408,13 +3408,12 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const STYLE_ID = 'costerly-upload-processing-shell-style';
                 const REAL_PROCESSING_MARKER_ID = 'costerly-processing-screen-active';
                 const FILE_REVIEW_MARKER_ID = 'costerly-file-review-screen-active';
-                const PROCESSING_FAILURE_MARKER = '.costerly-processing-failure-marker';
                 const SHELL_ACTIVE_CLASS = 'costerly-upload-processing-shell-active';
-                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1121';
-                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1121';
-                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1121Installed';
+                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1120';
+                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1120';
+                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1120Installed';
                 const RUNTIME_KEY = '__costerlyUploadInteractionRuntime';
-                const RUNTIME_VERSION = 'v1121';
+                const RUNTIME_VERSION = 'v1120';
                 const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAtV5';
                 const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimerV5';
                 const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSecondsV5';
@@ -3485,10 +3484,6 @@ def install_upload_interaction_guards(shell_html: str) -> None:
 
                 function realProcessingIsActive() {
                     return Boolean(document.getElementById(REAL_PROCESSING_MARKER_ID));
-                }
-
-                function processingFailureIsActive() {
-                    return Boolean(document.querySelector(PROCESSING_FAILURE_MARKER));
                 }
 
                 function fileReviewIsActive() {
@@ -4167,14 +4162,6 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const observer = new MutationObserver(() => {
                     if (disposed) return;
                     bindInputs();
-                    if (processingFailureIsActive()) {
-                        finalizeElapsed(Math.max(
-                            0,
-                            (Date.now() - Number(window[ELAPSED_STARTED_AT_KEY] || Date.now())) / 1000
-                        ));
-                        removeShell();
-                        return;
-                    }
                     if (!uploadScreenIsActive() && !realProcessingIsActive()) {
                         clearDragover();
                     }

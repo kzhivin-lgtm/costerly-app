@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import copy
+from collections import Counter
 from decimal import Decimal
 import html
 import hashlib
@@ -121,7 +122,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v7_17_discovery_context_classification"
+    "detection_v6_57_compact_discovery_deterministic_output_budget"
 )
 DETECTION_V67_MISTRAL_ANCHOR_ADMISSION_PROMPT_VERSION = (
     "detection_v6_7_mistral_graphic_anchor_admission"
@@ -3792,11 +3793,9 @@ def normalize_detection_v711_presentation_render_decisions(
         technical_id = str(row["technical_group_id"] or "")
         evidence_type = str(row["evidence_type"] or "")
         witness = str(row["visual_witness"] or "").strip()
-        if render_id not in render_ids or render_id in by_render:
+        if render_id not in render_ids or render_id in by_render or not witness:
             raise ValueError("V7.11 presentation render decision is invalid")
         if disposition == "attach":
-            if not witness:
-                raise ValueError("V7.11 presentation render attachment is invalid")
             technical_group = object_groups.get(technical_id)
             if (
                 technical_group is None
@@ -3807,11 +3806,6 @@ def normalize_detection_v711_presentation_render_decisions(
         elif disposition in {"no_match", "unresolved"}:
             if technical_id or evidence_type != "none":
                 raise ValueError("V7.11 non-attachment decision is invalid")
-            if not witness:
-                witness = (
-                    "No concrete visual correspondence was supplied by the "
-                    "membership review."
-                )
         else:
             raise ValueError("V7.11 presentation render disposition is invalid")
         by_render[render_id] = {
@@ -5181,6 +5175,33 @@ def _visual_map_from_registry_groups(groups: object) -> dict[str, Any]:
     }
 
 
+def _floor_plan_forced_context_eligible(
+    group: dict[str, Any],
+    *,
+    groups_on_page: int,
+    page_frame: dict[str, Any] | None,
+) -> bool:
+    """Return whether a plan-like group is large enough for forced demotion.
+
+    A representation label is deliberately insufficient: object plans share it
+    with whole-level layouts. The test uses only the physical core, never the
+    wider evidence envelope which may legitimately include captions/dimensions.
+    """
+    if groups_on_page == 1:
+        return True
+    core_bbox = _detection_bbox(group.get("core_bbox"))
+    dimensions = (page_frame or {}).get("fusion_dimensions") or page_frame or {}
+    try:
+        page_width = int(dimensions.get("width"))
+        page_height = int(dimensions.get("height"))
+    except (AttributeError, TypeError, ValueError):
+        return False
+    if core_bbox is None or page_width <= 0 or page_height <= 0:
+        return False
+    core_area = _detection_bbox_area(core_bbox)
+    return core_area / (page_width * page_height) >= 0.75
+
+
 def _validate_and_apply_visual_registry_classifications(
     payload: dict[str, Any],
     *,
@@ -5211,10 +5232,56 @@ def _validate_and_apply_visual_registry_classifications(
     if set(by_group_id) != expected:
         raise ValueError("visual registry must classify every visual group exactly once")
     enriched = copy.deepcopy(payload)
+    # A whole-level architectural plan is document navigation, not an object
+    # depiction.  This applies to any document and depends on the Registry's
+    # own declared representation and description, never on a page number.
+    generic_plan_markers = re.compile(
+        r"\b(?:complete|overall|whole|level|rooms?|layouts?|spatial|"
+        r"architectural|circulation|walls?|door\s+swings?|multiple\s+spaces?)\b",
+        re.IGNORECASE,
+    )
+    groups_by_page = Counter(
+        int(group["page_number"])
+        for group in enriched["visual_groups"]
+        if isinstance(group, dict) and isinstance(group.get("page_number"), int)
+    )
     for group in enriched["visual_groups"]:
         decision = by_group_id[group["group_id"]]
-        group["evidence_class"] = decision["evidence_class"]
-        group["classification_reason"] = decision["classification_reason"]
+        representation = str(group.get("representation_kind") or "").lower()
+        description = " ".join((
+            str(group.get("visual_description") or ""),
+            str(decision["classification_reason"]),
+        ))
+        # Registry occasionally emits its evidence-class name in
+        # representation_kind.  A real whole-level floor plan must still be
+        # context, so use the concrete description as a deterministic fallback.
+        describes_floor_plan = bool(re.search(
+            r"\b(?:architectural\s+)?(?:floor|level)\s+plan\b|\broom\s+layouts?\b",
+            description,
+            re.IGNORECASE,
+        ))
+        generic_plan = (
+            representation in {"floor_plan", "location_plan"} or describes_floor_plan
+        ) and len(set(generic_plan_markers.findall(description))) >= 3
+        page_number = group.get("page_number")
+        page_frame = (page_frames or {}).get(page_number) if isinstance(page_number, int) else None
+        forced_context_eligible = _floor_plan_forced_context_eligible(
+            group,
+            groups_on_page=groups_by_page.get(page_number, 0),
+            page_frame=page_frame,
+        )
+        if (
+            decision["evidence_class"] == "object_evidence"
+            and generic_plan
+            and forced_context_eligible
+        ):
+            group["evidence_class"] = "document_context"
+            group["classification_reason"] = (
+                "Whole-level architectural plan is document context, not an isolated fabricated item."
+            )
+        else:
+            group["evidence_class"] = decision["evidence_class"]
+            group["classification_reason"] = decision["classification_reason"]
     audit = [
         {"group_id": group["group_id"], "page_number": group["page_number"],
          "representation_kind": group["representation_kind"],
@@ -5223,42 +5290,6 @@ def _validate_and_apply_visual_registry_classifications(
         for group in enriched["visual_groups"]
     ]
     return enriched, audit
-
-
-def _exclude_terminal_discovery_context_regions(
-    candidate_regions: list[dict[str, Any]],
-    *,
-    visual_groups: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    """Keep Conflict Resolver away from regions Discovery has terminally closed."""
-    terminal_context_boxes: list[tuple[int, dict[str, int]]] = []
-    for group in visual_groups:
-        if not isinstance(group, dict) or group.get("evidence_class") != "document_context":
-            continue
-        if str(group.get("representation_kind") or "").lower() not in {
-            "floor_plan", "location_plan",
-        }:
-            continue
-        try:
-            page_number = int(group.get("page_number"))
-        except (TypeError, ValueError):
-            continue
-        if (bbox := _detection_bbox(group.get("bbox"))) is not None:
-            terminal_context_boxes.append((page_number, bbox))
-
-    return [
-        candidate
-        for candidate in candidate_regions
-        if not (
-            isinstance(candidate, dict)
-            and (candidate_bbox := _detection_bbox(candidate.get("bbox"))) is not None
-            and any(
-                context_page == candidate.get("page_number")
-                and _bbox_overlaps(candidate_bbox, context_bbox)
-                for context_page, context_bbox in terminal_context_boxes
-            )
-        )
-    ]
 
 
 def validate_detection_v611_document_scope(
@@ -7968,9 +7999,11 @@ def _discard_non_object_visual_registry_groups(
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Remove only confirmed document context before it can claim ownership.
 
-    ``representation_kind`` describes visual form, not commercial eligibility.
+    ``representation_kind`` describes the visual form, not commercial
+    eligibility. The classification pass deterministically demotes a proven
+    whole architectural plan to ``document_context`` before this function runs.
     A technical View imprecisely named ``floor_plan`` but classified as
-    ``object_evidence`` remains available to the proof graph.
+    ``object_evidence`` must remain available to the proof graph.
     """
     groups = payload.get("visual_groups")
     if not isinstance(groups, list):
@@ -11988,15 +12021,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             field: proposal_raw_payload[field]
             for field in discovery_fields - {"page_coverage", "document_scope"}
         }
-    terminal_discovery_payload, _ = _validate_and_apply_visual_registry_classifications(
-        proposal_discovery_payload, page_frames=review_coordinate_frames,
-    )
-    conflict_candidate_regions = _exclude_terminal_discovery_context_regions(
-        candidate_regions,
-        visual_groups=terminal_discovery_payload["visual_groups"],
-    )
     v75_conflict_targets = build_detection_conflict_targets(
-        candidate_regions=conflict_candidate_regions,
+        candidate_regions=candidate_regions,
         visual_groups=proposal_discovery_payload["visual_groups"],
         classifications=proposal_discovery_payload["classifications"],
     )
@@ -12188,8 +12214,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "configuration visible in both images. Use `no_match` when no such "
             "proof exists and `unresolved` only when pixels prevent comparison. "
             "For `no_match` or `unresolved`, set technical_group_id to an empty "
-            "string and evidence_type to `none`. Always provide a short, non-empty "
-            "visual_witness, including for `no_match` and `unresolved`. Do not include presentation "
+            "string and evidence_type to `none`. Do not include presentation "
             "renders in object_hypotheses: this decision list is their only "
             "membership authority. Colour, finish, room context, proximity, "
             "material and approximate proportions are never proof.\n"

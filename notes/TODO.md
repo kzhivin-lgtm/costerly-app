@@ -344,25 +344,6 @@ packages, tokens, cost and duration with V7.13. Reject on a broad package
 increase, a non-P10 technical regression, or a Review response that omits the
 targeted row.
 
-ACTIVE EXPERIMENT, V7.17, P0, Discovery-owned dominant-plan classification:
-
-Base: V7.14 conflict-admission Membership and all protected Detection
-behaviour. Remove only Discovery's forced reclassification, page-area threshold
-and lexical override. Preserve Candidate Regions, Conflict Resolver, the V7.14
-floor-plan Membership exclusion, dimensions, renders and package assembly
-unchanged. Change only the Discovery proposal instruction: classify as
-`document_context` only one complete architectural
-floor plan, or one continuous substantial fragment, that dominates its page
-while the remaining marks are dimensions, labels, legend, axes or title block.
-Do not classify by `floor_plan` label alone; a specific fabricated-object plan,
-a page with other independent object drawings, or uncertainty remains
-`object_evidence`.
-
-Acceptance: Discovery is the sole new floor-plan decision. A model-classified
-`document_context` group follows the established discard path and is withheld
-from the existing Resolver input exactly as in V7.14. All other protected
-V7.14 contracts remain unchanged.
-
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
 contracts are still changing. The current V5 Registry route records zero cache

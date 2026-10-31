@@ -521,51 +521,6 @@ def test_v711_render_decision_requires_every_render_and_a_technical_target():
         )
 
 
-def test_v711_blank_negative_witness_is_audited_without_creating_an_edge():
-    facts, audit = normalize_detection_v711_presentation_render_decisions(
-        [{
-            "render_group_id": "render", "disposition": "no_match",
-            "technical_group_id": "", "evidence_type": "none",
-            "visual_witness": "",
-        }],
-        visual_groups=[{
-            "group_id": "render", "page_number": 3,
-            "evidence_class": "object_evidence",
-            "representation_kind": "presentation_render",
-        }],
-        group_id_mapping={"render": "view-010"},
-    )
-
-    assert facts == []
-    assert audit == [{
-        "render_group_id": "view-010", "disposition": "no_match",
-        "technical_group_id": "", "evidence_type": "none",
-        "visual_witness": (
-            "No concrete visual correspondence was supplied by the "
-            "membership review."
-        ),
-    }]
-
-
-def test_v711_blank_attachment_witness_remains_invalid():
-    with pytest.raises(ValueError, match="attachment is invalid"):
-        normalize_detection_v711_presentation_render_decisions(
-            [{
-                "render_group_id": "render", "disposition": "attach",
-                "technical_group_id": "technical",
-                "evidence_type": "matching_topology", "visual_witness": "",
-            }],
-            visual_groups=[
-                {"group_id": "render", "page_number": 3,
-                 "evidence_class": "object_evidence",
-                 "representation_kind": "presentation_render"},
-                {"group_id": "technical", "page_number": 3,
-                 "evidence_class": "object_evidence", "representation_kind": "elevation"},
-            ],
-            group_id_mapping={},
-        )
-
-
 def test_v711_render_decision_extends_a_covered_component_only():
     components = attach_detection_v711_presentation_render_components(
         [["view-001", "view-002"], ["view-003"]],
