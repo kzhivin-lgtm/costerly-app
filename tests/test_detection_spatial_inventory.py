@@ -425,48 +425,6 @@ def test_v75_conflict_targets_ignore_exception_and_require_visual_resolution():
     ]
 
 
-def test_v75_conflict_targets_do_not_reopen_closed_discovery_floor_plan():
-    candidates = [
-        {
-            "candidate_region_id": "CR-P002-001", "page_number": 2,
-            "role": "coverage_only",
-            "bbox": {
-                "top_left_x": 100, "top_left_y": 100,
-                "bottom_right_x": 900, "bottom_right_y": 900,
-            },
-        },
-        {
-            "candidate_region_id": "CR-P002-002", "page_number": 2,
-            "role": "coverage_only",
-            "bbox": {
-                "top_left_x": 200, "top_left_y": 200,
-                "bottom_right_x": 400, "bottom_right_y": 400,
-            },
-        },
-    ]
-
-    assert build_detection_conflict_targets(
-        candidate_regions=candidates,
-        visual_groups=[],
-        classifications=[],
-        closed_document_context_boxes=[{
-            "page_number": 2,
-            "bbox": {
-                "top_left_x": 100, "top_left_y": 100,
-                "bottom_right_x": 900, "bottom_right_y": 900,
-            },
-        }],
-    ) == [{
-        "target_id": "V75-C001", "page_number": 2,
-        "bbox": {
-            "top_left_x": 200, "top_left_y": 200,
-            "bottom_right_x": 400, "bottom_right_y": 400,
-        },
-        "trigger": "coverage_only_without_object_evidence",
-        "candidate_region_ids": ["CR-P002-002"],
-    }]
-
-
 def test_v75_admission_is_visual_geometry_not_candidate_proxy():
     targets = [{
         "target_id": "V75-C001", "page_number": 10,

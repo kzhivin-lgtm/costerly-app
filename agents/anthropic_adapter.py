@@ -7996,8 +7996,6 @@ def build_detection_view_dimension_audit(
 
 def _discard_non_object_visual_registry_groups(
     payload: dict[str, Any],
-    *,
-    eligible_group_ids: set[str] | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Remove only confirmed document context before it can claim ownership.
 
@@ -8014,10 +8012,6 @@ def _discard_non_object_visual_registry_groups(
         group for group in groups
         if isinstance(group, dict)
         and group.get("evidence_class") == "document_context"
-        and (
-            eligible_group_ids is None
-            or str(group.get("group_id") or "") in eligible_group_ids
-        )
     ]
     if not discarded_groups:
         return payload, []
@@ -12027,45 +12021,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             field: proposal_raw_payload[field]
             for field in discovery_fields - {"page_coverage", "document_scope"}
         }
-    # A whole-document plan is terminal document context at Discovery. Keep
-    # the original response for audit, but do not let that closed island enter
-    # conflict resolution, Membership, or package assembly. A technical
-    # object plan remains untouched because this gate requires both the
-    # declared floor-plan representation and document-context classification.
-    discovery_decision_audit_payload = copy.deepcopy(proposal_discovery_payload)
-    (
-        proposal_discovery_payload,
-        discovery_classification_decisions,
-    ) = _validate_and_apply_visual_registry_classifications(
-        copy.deepcopy(proposal_discovery_payload),
-        page_frames=review_coordinate_frames,
-    )
-    discovery_terminal_floor_plan_group_ids = {
-        str(group.get("group_id") or "")
-        for group in proposal_discovery_payload["visual_groups"]
-        if isinstance(group, dict)
-        and str(group.get("representation_kind") or "").lower() == "floor_plan"
-        and str(group.get("evidence_class") or "") == "document_context"
-    }
-    (
-        proposal_discovery_payload,
-        discovery_discarded_floor_plan_groups,
-    ) = _discard_non_object_visual_registry_groups(
-        proposal_discovery_payload,
-        eligible_group_ids=discovery_terminal_floor_plan_group_ids,
-    )
     v75_conflict_targets = build_detection_conflict_targets(
         candidate_regions=candidate_regions,
         visual_groups=proposal_discovery_payload["visual_groups"],
         classifications=proposal_discovery_payload["classifications"],
-        closed_document_context_boxes=[
-            {
-                "page_number": group["page_number"],
-                "bbox": group.get("bbox"),
-            }
-            for group in discovery_discarded_floor_plan_groups
-            if isinstance(group, dict)
-        ],
     )
     v75_conflict_resolver_audit: dict[str, Any] = {
         "version": DETECTION_V75_CONFLICT_RESOLVER_PROMPT_VERSION,
@@ -12768,21 +12727,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     # Preserve the composed decision before runtime normalizes IDs and derives
     # deterministic graph and Evidence pages.
     registry_decision_audit = copy.deepcopy(payload)
-    registry_decision_audit["visual_groups"] = copy.deepcopy(
-        discovery_decision_audit_payload["visual_groups"]
-    )
-    registry_decision_audit["classifications"] = copy.deepcopy(
-        discovery_decision_audit_payload["classifications"]
-    )
     if document_scope_enabled:
         registry_decision_audit["document_scope"] = copy.deepcopy(proposal_scope_payload)
-    discarded_non_object_groups: list[dict[str, Any]] = copy.deepcopy(
-        discovery_discarded_floor_plan_groups
-    )
+    discarded_non_object_groups: list[dict[str, Any]] = []
     discarded_empty_evidence_groups: list[dict[str, Any]] = []
-    classification_decisions: list[dict[str, Any]] = copy.deepcopy(
-        discovery_classification_decisions
-    )
+    classification_decisions: list[dict[str, Any]] = []
     positive_relation_edges: list[dict[str, Any]] = []
     accepted_merge_edges: list[dict[str, Any]] = []
     reference_links: list[dict[str, Any]] = []
@@ -12814,19 +12763,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     v5_merge_audit: dict[str, Any] = {}
     try:
         if isinstance(payload, dict):
-            payload, late_classification_decisions = (
+            payload, classification_decisions = (
                 _validate_and_apply_visual_registry_classifications(
                     payload, page_frames=review_coordinate_frames,
                 )
-            )
-            classified_group_ids = {
-                str(decision.get("group_id") or "")
-                for decision in classification_decisions
-                if isinstance(decision, dict)
-            }
-            classification_decisions.extend(
-                decision for decision in late_classification_decisions
-                if str(decision.get("group_id") or "") not in classified_group_ids
             )
             classified_visual_groups = copy.deepcopy(payload["visual_groups"])
             all_group_bboxes = _normalize_registry_group_bboxes(
@@ -12846,10 +12786,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                     for group in classified_visual_groups
                 },
             )
-            payload, late_discarded_non_object_groups = (
+            payload, discarded_non_object_groups = (
                 _discard_non_object_visual_registry_groups(payload)
             )
-            discarded_non_object_groups.extend(late_discarded_non_object_groups)
         if not isinstance(payload, dict) or set(payload) != {
             "visual_groups", "classifications", "object_hypotheses", "candidate_region_exceptions", "semantic_facts",
         }:

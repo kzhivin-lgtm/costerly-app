@@ -52,31 +52,6 @@ def _overlaps(left: dict[str, int], right: dict[str, int]) -> bool:
     )
 
 
-def _iou(left: dict[str, int], right: dict[str, int]) -> float:
-    intersection_width = max(
-        0,
-        min(left["bottom_right_x"], right["bottom_right_x"])
-        - max(left["top_left_x"], right["top_left_x"]),
-    )
-    intersection_height = max(
-        0,
-        min(left["bottom_right_y"], right["bottom_right_y"])
-        - max(left["top_left_y"], right["top_left_y"]),
-    )
-    intersection = intersection_width * intersection_height
-    if not intersection:
-        return 0.0
-    left_area = (
-        (left["bottom_right_x"] - left["top_left_x"])
-        * (left["bottom_right_y"] - left["top_left_y"])
-    )
-    right_area = (
-        (right["bottom_right_x"] - right["top_left_x"])
-        * (right["bottom_right_y"] - right["top_left_y"])
-    )
-    return intersection / (left_area + right_area - intersection)
-
-
 def _contains(outer: dict[str, int], inner: dict[str, int]) -> bool:
     return (
         outer["top_left_x"] <= inner["top_left_x"]
@@ -155,7 +130,6 @@ def build_detection_conflict_targets(
     candidate_regions: list[dict[str, Any]],
     visual_groups: list[dict[str, Any]],
     classifications: list[dict[str, Any]],
-    closed_document_context_boxes: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     """Return only source regions whose visual disposition conflicts.
 
@@ -168,16 +142,6 @@ def build_detection_conflict_targets(
         for row in classifications if isinstance(row, dict)
     }
     object_boxes: list[tuple[int, dict[str, int]]] = []
-    closed_context_boxes: list[tuple[int, dict[str, int]]] = []
-    for item in closed_document_context_boxes or []:
-        if not isinstance(item, dict):
-            continue
-        try:
-            page_number = int(item.get("page_number"))
-        except (TypeError, ValueError):
-            continue
-        if (bbox := _bbox(item.get("bbox"))) is not None:
-            closed_context_boxes.append((page_number, bbox))
     for group in visual_groups:
         if not isinstance(group, dict):
             continue
@@ -201,15 +165,6 @@ def build_detection_conflict_targets(
         bbox = _bbox(candidate.get("bbox"))
         candidate_id = str(candidate.get("candidate_region_id") or "")
         if not candidate_id or bbox is None:
-            continue
-        # Discovery has already closed this same visual region as document
-        # context. Do not reopen it merely because Candidate Regions is an
-        # independent recall source. The high IoU requirement keeps distinct
-        # object islands inside a plan eligible for review.
-        if any(
-            context_page == page_number and _iou(bbox, context_bbox) >= 0.8
-            for context_page, context_bbox in closed_context_boxes
-        ):
             continue
         has_object_evidence = any(
             object_page == page_number and _overlaps(bbox, object_bbox)

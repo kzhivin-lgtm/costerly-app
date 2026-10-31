@@ -343,19 +343,14 @@ returned 15 objects, preserved all 64 Object Evidence islands, completed its
 Review in 45.0 seconds, and cost `$0.304735`. Protected commit `39eb723`, tag
 `detection-v7.14-conflict-membership-2026-10-30`.
 
-AWAITING LIVE VALIDATION, V7.18, P0, terminal Discovery closure for generic
-floor-plan context:
+ACTIVE DIAGNOSIS, V7.15, P0, restore generic floor-plan context contract:
 
-The earliest breach is routing, not classification: P2 was already emitted as
-`representation_kind=floor_plan` and `evidence_class=document_context`, but
-the same candidate could be reopened by Conflict Resolver. V7.18 closes only
-that exact dual-classified island at Discovery, before Conflict Resolver,
-Membership and package assembly. A candidate is suppressed only when it has
-at least 0.80 IoU with the closed plan, so a distinct object island inside the
-plan remains eligible. Preserve object-specific plans, technical object views,
-candidate recall, V7.14 P10 membership, Review, prompts, parser and UI.
-Acceptance: a live Floor 06 run has no P2 V7.5 conflict target or package,
-while V7.14's P10 pair and protected 15-object baseline remain intact.
+Objective: determine why a generic floor plan is still emitted as a singleton
+Detected Object, then restore the existing contract that generic whole-level
+plans are Document Context and never a package. Preserve object-specific plans,
+technical object views, candidate recall, V7.14 P10 membership, and the
+bounded Review path. Diagnose the earliest breach and propose only the smallest
+isolated repair before changing classification, membership, or packaging rules.
 
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
