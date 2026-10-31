@@ -457,7 +457,7 @@ def test_v75_conflict_targets_do_not_reopen_closed_discovery_floor_plan():
             },
         }],
     ) == [{
-        "target_id": "V75-C001", "page_number": 2,
+        "target_id": "V75-C002", "page_number": 2,
         "bbox": {
             "top_left_x": 200, "top_left_y": 200,
             "bottom_right_x": 400, "bottom_right_y": 400,
@@ -469,14 +469,14 @@ def test_v75_conflict_targets_do_not_reopen_closed_discovery_floor_plan():
 
 def test_v75_admission_is_visual_geometry_not_candidate_proxy():
     targets = [{
-        "target_id": "V75-C001", "page_number": 10,
+        "target_id": "V75-C002", "page_number": 10,
         "bbox": {"top_left_x": 100, "top_left_y": 100, "bottom_right_x": 400, "bottom_right_y": 400},
         "trigger": "coverage_only_without_object_evidence",
         "candidate_region_ids": ["CR-P010-003"],
     }]
     decisions = validate_detection_conflict_decisions(
         decisions=[{
-            "target_id": "V75-C001", "disposition": "admit_object_evidence",
+            "target_id": "V75-C002", "disposition": "admit_object_evidence",
             "visual_witness": "A framed elevation with attached dimensions is visible.",
             "representation_kind": "elevation",
             "bbox": {"top_left_x": 120, "top_left_y": 120, "bottom_right_x": 360, "bottom_right_y": 360},
@@ -491,10 +491,10 @@ def test_v75_admission_is_visual_geometry_not_candidate_proxy():
         decisions=decisions,
     )
 
-    assert payload["visual_groups"][0]["group_id"] == "v75-conflict-001"
+    assert payload["visual_groups"][0]["group_id"] == "v75-conflict-002"
     assert payload["visual_groups"][0]["bbox"] != targets[0]["bbox"]
     assert payload["classifications"] == [{
-        "group_id": "v75-conflict-001",
+        "group_id": "v75-conflict-002",
         "evidence_class": "object_evidence",
         "classification_reason": "A framed elevation with attached dimensions is visible.",
     }]
