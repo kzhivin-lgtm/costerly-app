@@ -332,9 +332,7 @@ Candidate Regions, Discovery, dimensions, general technical merge criteria,
 floor-plan policy, router, Naming or UI. In the same existing Membership Review,
 require one V6.8-style, evidence-backed decision only for every pair of
 same-page technical V7.5 admissions. Presentation renders retain V7.11's
-dedicated path. Discovery-owned floor-plan classification decides whether a
-plan enters this matrix at all; retained Object Evidence follows the ordinary
-technical path. Positive decisions
+dedicated path and floor plans remain outside this matrix. Positive decisions
 need two independent existing evidence types; negative decisions carry none.
 
 Acceptance: Floor 06's P10 V2-to-V3 pair receives exactly one audited decision.
@@ -349,21 +347,21 @@ targeted row.
 ACTIVE EXPERIMENT, V7.17, P0, Discovery-owned dominant-plan classification:
 
 Base: V7.14 conflict-admission Membership and all protected Detection
-behaviour. Remove every runtime floor-plan rule: no forced reclassification,
-page-area threshold, lexical override, Candidate Region filter or
-floor-plan-specific Membership exclusion. Change only the Discovery proposal
-instruction: classify as `document_context` only one complete architectural
+behaviour. Remove only Discovery's forced reclassification, page-area threshold
+and lexical override. Preserve Candidate Regions, Conflict Resolver, the V7.14
+floor-plan Membership exclusion, dimensions, renders and package assembly
+unchanged. Change only the Discovery proposal instruction: classify as
+`document_context` only one complete architectural
 floor plan, or one continuous substantial fragment, that dominates its page
 while the remaining marks are dimensions, labels, legend, axes or title block.
 Do not classify by `floor_plan` label alone; a specific fabricated-object plan,
 a page with other independent object drawings, or uncertainty remains
 `object_evidence`.
 
-Acceptance: the prompt is the sole floor-plan policy; Conflict Resolver,
-Membership, dimensions, renders and package assembly retain their ordinary
-contracts. A Discovery `document_context` group follows the established generic
-discard path, while every retained Object Evidence view is treated identically
-regardless of `representation_kind`.
+Acceptance: Discovery is the sole new floor-plan decision. A model-classified
+`document_context` group follows the established discard path and is withheld
+from the existing Resolver input exactly as in V7.14. All other protected
+V7.14 contracts remain unchanged.
 
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence

@@ -12,6 +12,7 @@ import pytest
 
 from agents.anthropic_adapter import (
     _discard_non_object_visual_registry_groups,
+    _exclude_terminal_discovery_context_regions,
     _validate_and_apply_visual_registry_classifications,
     _apply_reference_root_suffixes,
     DEFAULT_CLAUDE_DETECTION_MODEL,
@@ -1671,6 +1672,27 @@ def test_discovery_classification_is_preserved_without_runtime_floor_plan_rules(
     assert [group["group_id"] for group in effective["visual_groups"]] == [
         "cabinet-plan"
     ]
+
+
+def test_terminal_floor_plan_context_excludes_only_overlapping_candidate_regions():
+    candidates = [{
+        "candidate_region_id": "P2-plan", "page_number": 2,
+        "bbox": {"top_left_x": 1500, "top_left_y": 150, "bottom_right_x": 4500, "bottom_right_y": 3200},
+    }, {
+        "candidate_region_id": "P10-view", "page_number": 10,
+        "bbox": {"top_left_x": 1500, "top_left_y": 1500, "bottom_right_x": 2300, "bottom_right_y": 2700},
+    }]
+    visual_groups = [{
+        "group_id": "plan", "page_number": 2, "evidence_class": "document_context",
+        "representation_kind": "floor_plan",
+        "bbox": {"top_left_x": 1180, "top_left_y": 126, "bottom_right_x": 4584, "bottom_right_y": 3239},
+    }]
+
+    retained = _exclude_terminal_discovery_context_regions(
+        candidates, visual_groups=visual_groups,
+    )
+
+    assert [candidate["candidate_region_id"] for candidate in retained] == ["P10-view"]
 
 
 def test_v5_discovery_page_coverage_requires_every_page_and_every_island():

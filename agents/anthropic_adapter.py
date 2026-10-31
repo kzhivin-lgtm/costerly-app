@@ -5218,6 +5218,42 @@ def _validate_and_apply_visual_registry_classifications(
     return enriched, audit
 
 
+def _exclude_terminal_discovery_context_regions(
+    candidate_regions: list[dict[str, Any]],
+    *,
+    visual_groups: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Keep Conflict Resolver away from regions Discovery has terminally closed."""
+    terminal_context_boxes: list[tuple[int, dict[str, int]]] = []
+    for group in visual_groups:
+        if not isinstance(group, dict) or group.get("evidence_class") != "document_context":
+            continue
+        if str(group.get("representation_kind") or "").lower() not in {
+            "floor_plan", "location_plan",
+        }:
+            continue
+        try:
+            page_number = int(group.get("page_number"))
+        except (TypeError, ValueError):
+            continue
+        if (bbox := _detection_bbox(group.get("bbox"))) is not None:
+            terminal_context_boxes.append((page_number, bbox))
+
+    return [
+        candidate
+        for candidate in candidate_regions
+        if not (
+            isinstance(candidate, dict)
+            and (candidate_bbox := _detection_bbox(candidate.get("bbox"))) is not None
+            and any(
+                context_page == candidate.get("page_number")
+                and _bbox_overlaps(candidate_bbox, context_bbox)
+                for context_page, context_bbox in terminal_context_boxes
+            )
+        )
+    ]
+
+
 def validate_detection_v611_document_scope(
     scope: object,
     *,
@@ -6977,7 +7013,7 @@ def build_detection_v714_conflict_membership_matrix(
     does not establish that two such regions are one commercial object. When
     two of its technical admissions share a page, require the existing Review
     to decide just that bounded pair matrix. Presentation renders already have
-    their V7.11 path.
+    their V7.11 path, while floor plans remain outside object membership.
     """
     groups_by_id = {
         str(group.get("group_id") or ""): group
@@ -6986,7 +7022,7 @@ def build_detection_v714_conflict_membership_matrix(
         and group.get("evidence_class") == "object_evidence"
         and str(group.get("group_id") or "")
     }
-    excluded_kinds = {"presentation_render"}
+    excluded_kinds = {"presentation_render", "floor_plan"}
     admitted_ids: set[str] = set()
     for decision in conflict_decisions:
         if not isinstance(decision, dict):
@@ -7926,7 +7962,8 @@ def _discard_non_object_visual_registry_groups(
     """Remove only confirmed document context before it can claim ownership.
 
     ``representation_kind`` describes visual form, not commercial eligibility.
-    Discovery classification alone decides whether a group is document context.
+    A technical View imprecisely named ``floor_plan`` but classified as
+    ``object_evidence`` remains available to the proof graph.
     """
     groups = payload.get("visual_groups")
     if not isinstance(groups, list):
@@ -11944,8 +11981,15 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             field: proposal_raw_payload[field]
             for field in discovery_fields - {"page_coverage", "document_scope"}
         }
+    terminal_discovery_payload, _ = _validate_and_apply_visual_registry_classifications(
+        proposal_discovery_payload, page_frames=review_coordinate_frames,
+    )
+    conflict_candidate_regions = _exclude_terminal_discovery_context_regions(
+        candidate_regions,
+        visual_groups=terminal_discovery_payload["visual_groups"],
+    )
     v75_conflict_targets = build_detection_conflict_targets(
-        candidate_regions=candidate_regions,
+        candidate_regions=conflict_candidate_regions,
         visual_groups=proposal_discovery_payload["visual_groups"],
         classifications=proposal_discovery_payload["classifications"],
     )
