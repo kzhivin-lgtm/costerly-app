@@ -509,6 +509,35 @@ def test_v711_render_decision_creates_one_cross_page_visual_fact():
     }]
 
 
+def test_v711_render_decision_quarantines_ambiguous_multi_target_attachment():
+    facts, audit = normalize_detection_v711_presentation_render_decisions(
+        [{
+            "render_group_id": "render", "disposition": "attach",
+            "technical_group_id": "technical-a|technical-b",
+            "evidence_type": "matching_topology",
+            "visual_witness": "The render appears to match both technical Views.",
+        }],
+        visual_groups=[
+            {"group_id": "render", "page_number": 3,
+             "evidence_class": "object_evidence", "representation_kind": "presentation_render"},
+            {"group_id": "technical-a", "page_number": 3,
+             "evidence_class": "object_evidence", "representation_kind": "elevation"},
+            {"group_id": "technical-b", "page_number": 3,
+             "evidence_class": "object_evidence", "representation_kind": "section"},
+        ],
+        group_id_mapping={
+            "render": "view-010", "technical-a": "view-011", "technical-b": "view-012",
+        },
+    )
+
+    assert facts == []
+    assert audit == [{
+        "render_group_id": "view-010", "disposition": "unresolved",
+        "technical_group_id": "", "evidence_type": "none",
+        "visual_witness": "Render named multiple technical Views; no single attachment is proven.",
+    }]
+
+
 def test_v711_render_decision_requires_every_render_and_a_technical_target():
     with pytest.raises(ValueError, match="cover every render"):
         normalize_detection_v711_presentation_render_decisions(
