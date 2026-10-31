@@ -3980,13 +3980,8 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     )) || null;
                     const fileReviewReady = () => Boolean(
                         matchingReviewMarker() &&
-                        (
-                            document.querySelector('.file-review-processing-error') ||
-                            (
-                                document.querySelector('.file-review-detected-title') &&
-                                controlsReady()
-                            )
-                        )
+                        document.querySelector('.file-review-detected-title') &&
+                        controlsReady()
                     );
                     const stop = () => {
                         if (observer) observer.disconnect();

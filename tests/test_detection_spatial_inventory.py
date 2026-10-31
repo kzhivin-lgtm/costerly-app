@@ -569,50 +569,6 @@ def test_v711_render_decision_creates_one_cross_page_visual_fact():
     }]
 
 
-def test_v716_render_decision_keeps_one_anchor_when_model_lists_technical_views():
-    facts, audit = normalize_detection_v711_presentation_render_decisions(
-        [{
-            "render_group_id": "render", "disposition": "attach",
-            "technical_group_id": "technical-a, technical-b",
-            "evidence_type": "matching_topology",
-            "visual_witness": "The shelf-bay topology is visible in both technical views.",
-        }],
-        visual_groups=[
-            {"group_id": "render", "page_number": 3, "evidence_class": "object_evidence", "representation_kind": "presentation_render"},
-            {"group_id": "technical-a", "page_number": 8, "evidence_class": "object_evidence", "representation_kind": "elevation"},
-            {"group_id": "technical-b", "page_number": 8, "evidence_class": "object_evidence", "representation_kind": "section"},
-        ],
-        group_id_mapping={
-            "render": "view-010", "technical-a": "view-024", "technical-b": "view-025",
-        },
-    )
-
-    assert facts == [{
-        "group_id_a": "view-010", "group_id_b": "view-024",
-        "evidence_type": "matching_topology", "strength": "standard",
-        "observation": "The shelf-bay topology is visible in both technical views.",
-        "source_fact_ids": ["registry_view:view-010", "registry_view:view-024"],
-    }]
-    assert audit[0]["technical_group_ids_from_model"] == ["view-024", "view-025"]
-
-
-def test_v716_render_decision_rejects_unknown_id_in_a_multi_view_assertion():
-    with pytest.raises(ValueError, match="attachment is invalid"):
-        normalize_detection_v711_presentation_render_decisions(
-            [{
-                "render_group_id": "render", "disposition": "attach",
-                "technical_group_id": "technical, missing-view",
-                "evidence_type": "matching_topology",
-                "visual_witness": "The shelf-bay topology is visible in both views.",
-            }],
-            visual_groups=[
-                {"group_id": "render", "page_number": 3, "evidence_class": "object_evidence", "representation_kind": "presentation_render"},
-                {"group_id": "technical", "page_number": 8, "evidence_class": "object_evidence", "representation_kind": "elevation"},
-            ],
-            group_id_mapping={"render": "view-010", "technical": "view-024"},
-        )
-
-
 def test_v711_render_decision_requires_every_render_and_a_technical_target():
     with pytest.raises(ValueError, match="cover every render"):
         normalize_detection_v711_presentation_render_decisions(

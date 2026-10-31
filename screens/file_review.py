@@ -945,13 +945,6 @@ def _render_processing_error(
 ) -> None:
     """Render the File Review fallback when RFQ processing failed."""
     _render_file_review_header_only(render_header_controls)
-    # Processing's browser shell normally waits for a completed File Review
-    # card. On a terminal Detection error there is deliberately no run/card,
-    # so expose an explicit final-state marker for that transition instead.
-    st.markdown(
-        '<div class="file-review-processing-error" data-processing-error="true"></div>',
-        unsafe_allow_html=True,
-    )
     st.error(f"RFQ processing failed: {message}")
     _back_to_upload_button(clear_processing_error=True)
 
