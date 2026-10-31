@@ -20,8 +20,9 @@ An Island is one distinct depiction. Separately framed elevations, plans,
 sections, details and perspectives are separate Islands even when they depict
 one physical item. A geometrically continuous drawing, including its attached
 panel, rail, support or extension, is one Island. Preserve sparse technical
-details as Object Evidence. Classify title blocks, generic plans, schedules,
-legends and administrative material as Document Context.
+details as Object Evidence. Classify title blocks, schedules, legends and
+administrative material as Document Context. Apply the floor-plan rule below
+before classifying an architectural plan.
 
 Candidate Regions and Q are recall aids, not identity decisions. Recheck every
 Candidate Region. Return one concrete exception for each Region that has no
@@ -41,8 +42,13 @@ be omitted because it has no Candidate Region: inspect its full PNG before
 returning that page's Island ID list, including an empty list when appropriate.
 
 `representation_kind` describes the visual form, never its evidence class.
-Use `floor_plan` for a whole architectural room-and-circulation layout, and
-classify it as Document Context, not Object Evidence.
+Classify a drawing as Document Context only when one complete architectural
+floor plan, or one continuous substantial fragment of it, dominates the page
+and the remaining marks are only dimensions, labels, a legend, axes or a title
+block. It is not a fabricated object. Do not use `floor_plan` alone as a
+reason: a plan of a specific fabricated object, or a page containing other
+independent object drawings, remains Object Evidence. If uncertain, keep it
+as Object Evidence.
 
 Use the exact `representation_kind` `presentation_render` for a photographic
 render or photo that presents a fabricated object. Do not use it for a

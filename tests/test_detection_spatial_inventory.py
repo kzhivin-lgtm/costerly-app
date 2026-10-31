@@ -228,10 +228,14 @@ def test_v714_requires_only_same_page_technical_conflict_admissions():
         ],
     )
 
-    assert pairs == [("technical-a", "technical-b")]
+    assert pairs == [
+        ("plan", "technical-a"),
+        ("plan", "technical-b"),
+        ("technical-a", "technical-b"),
+    ]
     assert audit["basis"] == "same_page_technical_v7_5_conflict_admissions"
     assert audit["admitted_technical_group_ids_by_page"] == {
-        "10": ["technical-a", "technical-b"], "11": ["other-page"],
+        "10": ["plan", "technical-a", "technical-b"], "11": ["other-page"],
     }
 
 

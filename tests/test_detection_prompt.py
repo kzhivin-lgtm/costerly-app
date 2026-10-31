@@ -87,10 +87,12 @@ def test_v5_10_11_separates_full_page_discovery_from_membership_review():
     assert "cannot create,\nremove, split, reclassify" in review_prompt
     assert "registry_view:<View ID>" in review_prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v6_57_compact_discovery_deterministic_output_budget"
+        "detection_v7_17_discovery_context_classification"
     )
     assert "presentation_render" in proposal_prompt
     assert "render-only hypothesis" in review_prompt
+    assert "one complete architectural\nfloor plan" in proposal_prompt
+    assert "If uncertain, keep it\nas Object Evidence." in proposal_prompt
 
 
 def test_v657_discovery_schema_bounds_non_evidence_text_only():

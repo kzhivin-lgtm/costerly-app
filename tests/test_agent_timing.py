@@ -1646,47 +1646,7 @@ def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
     )
 
 
-def test_whole_architectural_floor_plan_is_demoted_to_document_context():
-    payload = _visual_registry_payload({
-        "visual_groups": [{
-            "group_id": "plan", "page_number": 2, "location_hint": "whole page",
-            "visual_description": "Complete whole-level architectural layout with rooms, walls and door swings.",
-            "representation_kind": "floor_plan",
-            "evidence_class": "object_evidence",
-            "classification_reason": "Complete floor plan showing spatial room layout and architectural circulation.",
-            "bbox": {"top_left_x": 0, "top_left_y": 0, "bottom_right_x": 1000, "bottom_right_y": 1000},
-            "core_bbox": {"top_left_x": 0, "top_left_y": 0, "bottom_right_x": 1000, "bottom_right_y": 1000},
-        }],
-    })
-    enriched, audit = _validate_and_apply_visual_registry_classifications(
-        payload, page_frames={2: {"fusion_dimensions": {"width": 1000, "height": 1000}}},
-    )
-    assert enriched["visual_groups"][0]["evidence_class"] == "document_context"
-    assert audit[0]["evidence_class"] == "document_context"
-
-
-def test_whole_architectural_floor_plan_is_demoted_when_model_mislabels_representation_kind():
-    payload = _visual_registry_payload({
-        "visual_groups": [{
-            "group_id": "plan", "page_number": 2, "location_hint": "whole page",
-            "visual_description": "Architectural floor plan with room layouts, dimensions and colored zones.",
-            "representation_kind": "object_evidence",
-            "evidence_class": "object_evidence",
-            "classification_reason": "Architectural floor plan depicting room layouts and spatial organization.",
-            "bbox": {"top_left_x": 0, "top_left_y": 0, "bottom_right_x": 1000, "bottom_right_y": 1000},
-            "core_bbox": {"top_left_x": 0, "top_left_y": 0, "bottom_right_x": 1000, "bottom_right_y": 1000},
-        }],
-    })
-    enriched, audit = _validate_and_apply_visual_registry_classifications(
-        payload, page_frames={2: {"fusion_dimensions": {"width": 1000, "height": 1000}}},
-    )
-    assert enriched["visual_groups"][0]["evidence_class"] == "document_context"
-    assert audit[0]["classification_reason"] == (
-        "Whole-level architectural plan is document context, not an isolated fabricated item."
-    )
-
-
-def test_object_evidence_survives_imprecise_floor_plan_representation_kind():
+def test_discovery_classification_is_preserved_without_runtime_floor_plan_rules():
     payload = _visual_registry_payload({
         "visual_groups": [{
             "group_id": "cabinet-plan", "page_number": 7,
@@ -1711,32 +1671,6 @@ def test_object_evidence_survives_imprecise_floor_plan_representation_kind():
     assert [group["group_id"] for group in effective["visual_groups"]] == [
         "cabinet-plan"
     ]
-
-
-def test_small_plan_like_group_is_not_forced_to_document_context_on_multi_island_page():
-    payload = _visual_registry_payload({
-        "visual_groups": [{
-            "group_id": "object-plan", "page_number": 3, "location_hint": "top",
-            "visual_description": "Architectural floor plan with room layouts, walls and circulation.",
-            "representation_kind": "floor_plan",
-            "evidence_class": "object_evidence",
-            "classification_reason": "Floor plan showing room layout, walls and circulation.",
-            "bbox": {"top_left_x": 0, "top_left_y": 0, "bottom_right_x": 600, "bottom_right_y": 600},
-            "core_bbox": {"top_left_x": 0, "top_left_y": 0, "bottom_right_x": 600, "bottom_right_y": 600},
-        }, {
-            "group_id": "other-view", "page_number": 3, "location_hint": "bottom",
-            "visual_description": "Dimensioned cabinet elevation.", "representation_kind": "elevation",
-            "evidence_class": "object_evidence",
-            "classification_reason": "Dimensioned fabricated cabinet elevation.",
-        }],
-    })
-
-    enriched, audit = _validate_and_apply_visual_registry_classifications(
-        payload, page_frames={3: {"fusion_dimensions": {"width": 1000, "height": 1000}}},
-    )
-
-    assert enriched["visual_groups"][0]["evidence_class"] == "object_evidence"
-    assert audit[0]["evidence_class"] == "object_evidence"
 
 
 def test_v5_discovery_page_coverage_requires_every_page_and_every_island():
