@@ -363,14 +363,6 @@ V7.14 Membership pair. Compare full island inventory and final package count to
 protected run `run_2360208579e34618aec4b60fc322ff2c`; reject any broad package
 change or altered non-P2 Resolver target.
 
-Terminal safety rule for this route: when V7.11 receives an `attach` row whose
-technical target is a pipe-separated list of otherwise valid non-render Views,
-it records that render as `unresolved` and creates no render edge. It must not
-split the list, select one target, retry the model, or alter ordinary technical
-Membership hypotheses. The raw provider response remains in the review audit.
-This keeps an optional ambiguous render from aborting already accepted technical
-Membership, including the V7.14 P10 pair.
-
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
 contracts are still changing. The current V5 Registry route records zero cache

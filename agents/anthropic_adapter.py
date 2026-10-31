@@ -3795,29 +3795,6 @@ def normalize_detection_v711_presentation_render_decisions(
         witness = str(row["visual_witness"] or "").strip()
         if render_id not in render_ids or render_id in by_render or not witness:
             raise ValueError("V7.11 presentation render decision is invalid")
-        ambiguous_technical_ids = [
-            target_id.strip() for target_id in technical_id.split("|") if target_id.strip()
-        ]
-        if (
-            disposition == "attach"
-            and len(ambiguous_technical_ids) > 1
-            and evidence_type in {"matching_topology", "unique_geometry"}
-            and all(
-                target_id in object_groups and target_id not in render_ids
-                for target_id in ambiguous_technical_ids
-            )
-        ):
-            # A render has no authority to connect several technical Views.
-            # Do not split the model's value into edges: ordinary Membership
-            # already owns technical merges and may have established those
-            # components independently. Preserve that result and quarantine
-            # only this ambiguous optional render attachment.
-            disposition = "unresolved"
-            technical_id = ""
-            evidence_type = "none"
-            witness = (
-                "Render named multiple technical Views; no single attachment is proven."
-            )
         if disposition == "attach":
             technical_group = object_groups.get(technical_id)
             if (
