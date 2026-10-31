@@ -344,6 +344,25 @@ packages, tokens, cost and duration with V7.13. Reject on a broad package
 increase, a non-P10 technical regression, or a Review response that omits the
 targeted row.
 
+ACTIVE FOLLOW-UP, V7.14 Discovery terminal floor-plan closure, P0:
+
+Base: protected V7.14 Detection behaviour. The rejected render-schema
+experiment and its V7.22 precursor were reverted. This follow-up changes only
+Discovery's terminal handling of a whole-level floor plan. Context satellites
+such as a legend or title block do not count as Object Evidence siblings when
+the existing whole-plan rule is evaluated. Once Discovery classifies a
+whole-level floor or location plan as document context, only overlapping
+Candidate Regions are withheld from the existing Conflict Resolver, so that
+terminal context cannot be re-admitted downstream. Candidate Region generation,
+Membership, presentation render decisions, package assembly, dimensions,
+Naming and UI remain unchanged.
+
+Acceptance: P2 has no retained Object Evidence island and no Resolver target.
+P10 retains both existing V7.5 technical admissions and exactly its existing
+V7.14 Membership pair. Compare full island inventory and final package count to
+protected run `run_2360208579e34618aec4b60fc322ff2c`; reject any broad package
+change or altered non-P2 Resolver target.
+
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
 contracts are still changing. The current V5 Registry route records zero cache

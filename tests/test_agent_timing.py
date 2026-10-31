@@ -12,6 +12,7 @@ import pytest
 
 from agents.anthropic_adapter import (
     _discard_non_object_visual_registry_groups,
+    _exclude_terminal_discovery_context_regions,
     _validate_and_apply_visual_registry_classifications,
     _apply_reference_root_suffixes,
     DEFAULT_CLAUDE_DETECTION_MODEL,
@@ -1684,6 +1685,54 @@ def test_whole_architectural_floor_plan_is_demoted_when_model_mislabels_represen
     assert audit[0]["classification_reason"] == (
         "Whole-level architectural plan is document context, not an isolated fabricated item."
     )
+
+
+def test_whole_architectural_floor_plan_is_demoted_with_context_satellites():
+    payload = _visual_registry_payload({
+        "visual_groups": [{
+            "group_id": "plan", "page_number": 2, "location_hint": "center-right",
+            "visual_description": "Floor plan with room layouts, walls, dimensions and circulation.",
+            "representation_kind": "floor_plan", "evidence_class": "object_evidence",
+            "classification_reason": "Whole-level architectural floor plan showing room layout and circulation.",
+            "bbox": {"top_left_x": 1180, "top_left_y": 126, "bottom_right_x": 4584, "bottom_right_y": 3239},
+            "core_bbox": {"top_left_x": 1180, "top_left_y": 126, "bottom_right_x": 4584, "bottom_right_y": 3239},
+        }, {
+            "group_id": "legend", "page_number": 2, "location_hint": "left",
+            "visual_description": "Legend and numbering scale.", "representation_kind": "legend",
+            "evidence_class": "document_context", "classification_reason": "Legend for document reference.",
+        }, {
+            "group_id": "title", "page_number": 2, "location_hint": "bottom-left",
+            "visual_description": "Title block and project information.", "representation_kind": "title_block",
+            "evidence_class": "document_context", "classification_reason": "Title block with project metadata.",
+        }],
+    })
+
+    enriched, _ = _validate_and_apply_visual_registry_classifications(
+        payload, page_frames={2: {"fusion_dimensions": {"width": 4678, "height": 3309}}},
+    )
+
+    assert enriched["visual_groups"][0]["evidence_class"] == "document_context"
+
+
+def test_terminal_floor_plan_context_excludes_only_overlapping_candidate_regions():
+    candidates = [{
+        "candidate_region_id": "P2-plan", "page_number": 2,
+        "bbox": {"top_left_x": 1500, "top_left_y": 150, "bottom_right_x": 4500, "bottom_right_y": 3200},
+    }, {
+        "candidate_region_id": "P10-view", "page_number": 10,
+        "bbox": {"top_left_x": 1500, "top_left_y": 1500, "bottom_right_x": 2300, "bottom_right_y": 2700},
+    }]
+    visual_groups = [{
+        "group_id": "plan", "page_number": 2, "evidence_class": "document_context",
+        "representation_kind": "floor_plan",
+        "bbox": {"top_left_x": 1180, "top_left_y": 126, "bottom_right_x": 4584, "bottom_right_y": 3239},
+    }]
+
+    retained = _exclude_terminal_discovery_context_regions(
+        candidates, visual_groups=visual_groups,
+    )
+
+    assert [candidate["candidate_region_id"] for candidate in retained] == ["P10-view"]
 
 
 def test_object_evidence_survives_imprecise_floor_plan_representation_kind():
