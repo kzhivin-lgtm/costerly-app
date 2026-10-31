@@ -3792,9 +3792,11 @@ def normalize_detection_v711_presentation_render_decisions(
         technical_id = str(row["technical_group_id"] or "")
         evidence_type = str(row["evidence_type"] or "")
         witness = str(row["visual_witness"] or "").strip()
-        if render_id not in render_ids or render_id in by_render or not witness:
+        if render_id not in render_ids or render_id in by_render:
             raise ValueError("V7.11 presentation render decision is invalid")
         if disposition == "attach":
+            if not witness:
+                raise ValueError("V7.11 presentation render attachment is invalid")
             technical_group = object_groups.get(technical_id)
             if (
                 technical_group is None
@@ -3805,6 +3807,11 @@ def normalize_detection_v711_presentation_render_decisions(
         elif disposition in {"no_match", "unresolved"}:
             if technical_id or evidence_type != "none":
                 raise ValueError("V7.11 non-attachment decision is invalid")
+            if not witness:
+                witness = (
+                    "No concrete visual correspondence was supplied by the "
+                    "membership review."
+                )
         else:
             raise ValueError("V7.11 presentation render disposition is invalid")
         by_render[render_id] = {
@@ -12181,7 +12188,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "configuration visible in both images. Use `no_match` when no such "
             "proof exists and `unresolved` only when pixels prevent comparison. "
             "For `no_match` or `unresolved`, set technical_group_id to an empty "
-            "string and evidence_type to `none`. Do not include presentation "
+            "string and evidence_type to `none`. Always provide a short, non-empty "
+            "visual_witness, including for `no_match` and `unresolved`. Do not include presentation "
             "renders in object_hypotheses: this decision list is their only "
             "membership authority. Colour, finish, room context, proximity, "
             "material and approximate proportions are never proof.\n"
