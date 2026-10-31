@@ -320,8 +320,7 @@ seconds with a 35.4-second Review. It reproduced V7.11's 16 objects, including
 the unresolved three P10 packages. It is a stability guard, not an accepted
 Detection-quality checkpoint.
 
-COMPLETED AND PROTECTED CHECKPOINT, V7.14, P0, targeted conflict-admission
-membership:
+ACTIVE EXPERIMENT, V7.14, P0, targeted conflict-admission membership:
 
 Base: V7.13 commit `cb84daa`, with protected V7.11 checkpoint `0f4ecb6`
 (`detection-v7.11-render-membership-2026-10-30`). The P10 failure is now
@@ -336,33 +335,14 @@ same-page technical V7.5 admissions. Presentation renders retain V7.11's
 dedicated path and floor plans remain outside this matrix. Positive decisions
 need two independent existing evidence types; negative decisions carry none.
 
-Verified Floor 06 run `run_2360208579e34618aec4b60fc322ff2c` produced one
-audited positive decision for the P10 V2-to-V3 pair. Its two technical views
-formed one proof component while the P10 floor plan remained separate. The run
-returned 15 objects, preserved all 64 Object Evidence islands, completed its
-Review in 45.0 seconds, and cost `$0.304735`. Protected commit `39eb723`, tag
-`detection-v7.14-conflict-membership-2026-10-30`.
-
-ACTIVE EXPERIMENT, V7.22, P0, terminal floor-plan classification at Discovery:
-
-Base: protected V7.14 commit `39eb723`, plus the separate Processing terminal
-failure UI fix `ca86aaa`. V7.21 established the intended P2 closure and P10
-Membership decision in its saved audit but did not publish a result because a
-Presentation Render response failed validation. V7.22 repeats the exact
-Detection change with visible terminal failure handling.
-
-A whole-level floor plan must be
-closed as Document Context in Discovery even when the same page also has title
-blocks or legends. Count only Discovery-classified Object Evidence siblings in
-the existing generic-plan gate. Before the unchanged V7.5 Resolver runs, omit
-only Candidate Regions overlapping a terminal document-context floor plan.
-Do not change Candidate Regions, Conflict Resolver, V7.14 Membership, prompts,
-models, dimensions, router, Naming, UI, or final payload assembly.
-
-Acceptance: P2 creates no V7.5 target and no Object Evidence Island; P10 keeps
-the two existing V7.5 admissions and their V7.14 membership decision. Reject
-on any lost non-P2 conflict admission, package-count regression, or altered
-Resolver payload.
+Acceptance: Floor 06's P10 V2-to-V3 pair receives exactly one audited decision.
+If its visual proof is positive and validates through the existing semantic
+ledger, the two admitted technical views merge into one package without merging
+the floor plan. The complete Review must return or fail visibly within 90
+seconds. Compare island inventory, P03/P04 render attachment, other page
+packages, tokens, cost and duration with V7.13. Reject on a broad package
+increase, a non-P10 technical regression, or a Review response that omits the
+targeted row.
 
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
