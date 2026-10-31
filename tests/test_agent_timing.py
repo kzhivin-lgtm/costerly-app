@@ -773,8 +773,8 @@ def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signal
     assert "function visibleProgressNode(stage)" in source
     assert "writeProgress(percent)" in source
     assert "syncForecastFromStage(stage)" in source
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_20" in source
-    assert "costerly-upload-runtime-v1120-migrated" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_21" in source
+    assert "costerly-upload-runtime-v1121-migrated" in source
     assert "parentWindow.location.reload();" in source
     assert "function finalizationState(stage)" in source
     assert "function advanceFinalization(state)" in source
@@ -790,6 +790,26 @@ def test_processing_screen_counts_pdf_pages_before_rendering_the_pre_fusion_stag
     assert '"value": "ocr", "page_count": initial_page_count' in source
     assert "clear_upload_processing_shell" not in source
     assert 'complete=True' in source
+
+
+def test_processing_failure_replaces_the_progress_shell_without_waiting_for_a_rerun():
+    source = Path("screens/processing.py").read_text()
+    failure_branch = source.rsplit("except Exception as exc:", 1)[1].split(
+        "processing_plan = phase_state.get", 1,
+    )[0]
+
+    assert 'costerly-processing-failure-marker' in source
+    assert '_render_processing_failure(stage_slot, exc)' in failure_branch
+    assert 'st.rerun()' not in failure_branch
+
+
+def test_processing_shell_releases_on_terminal_failure_marker():
+    source = getsource(install_upload_interaction_guards)
+
+    assert "PROCESSING_FAILURE_MARKER" in source
+    assert "processingFailureIsActive" in source
+    assert "finalizeElapsed" in source
+    assert "removeShell" in source
 
 
 def test_processing_stage_carries_the_completed_run_id_to_the_browser_handoff():
@@ -811,7 +831,7 @@ def test_processing_cycle_persists_ocr_page_count_for_future_forecasts():
 def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():
     source = getsource(install_upload_interaction_guards)
 
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_20" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_21" in source
     assert "function uploadScreenIsActive()" in source
     assert "document.querySelector('.upload-screen-active')" in source
     assert "if (!uploadScreenIsActive()) return;" in source
