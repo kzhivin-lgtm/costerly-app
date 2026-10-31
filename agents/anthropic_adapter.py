@@ -5178,7 +5178,7 @@ def _visual_map_from_registry_groups(groups: object) -> dict[str, Any]:
 def _floor_plan_forced_context_eligible(
     group: dict[str, Any],
     *,
-    groups_on_page: int,
+    primary_object_groups_on_page: int,
     page_frame: dict[str, Any] | None,
 ) -> bool:
     """Return whether a plan-like group is large enough for forced demotion.
@@ -5187,7 +5187,7 @@ def _floor_plan_forced_context_eligible(
     with whole-level layouts. The test uses only the physical core, never the
     wider evidence envelope which may legitimately include captions/dimensions.
     """
-    if groups_on_page == 1:
+    if primary_object_groups_on_page == 1:
         return True
     core_bbox = _detection_bbox(group.get("core_bbox"))
     dimensions = (page_frame or {}).get("fusion_dimensions") or page_frame or {}
@@ -5240,10 +5240,14 @@ def _validate_and_apply_visual_registry_classifications(
         r"architectural|circulation|walls?|door\s+swings?|multiple\s+spaces?)\b",
         re.IGNORECASE,
     )
-    groups_by_page = Counter(
+    primary_object_groups_by_page = Counter(
         int(group["page_number"])
         for group in enriched["visual_groups"]
-        if isinstance(group, dict) and isinstance(group.get("page_number"), int)
+        if (
+            isinstance(group, dict)
+            and isinstance(group.get("page_number"), int)
+            and by_group_id[group["group_id"]]["evidence_class"] == "object_evidence"
+        )
     )
     for group in enriched["visual_groups"]:
         decision = by_group_id[group["group_id"]]
@@ -5267,7 +5271,7 @@ def _validate_and_apply_visual_registry_classifications(
         page_frame = (page_frames or {}).get(page_number) if isinstance(page_number, int) else None
         forced_context_eligible = _floor_plan_forced_context_eligible(
             group,
-            groups_on_page=groups_by_page.get(page_number, 0),
+            primary_object_groups_on_page=primary_object_groups_by_page.get(page_number, 0),
             page_frame=page_frame,
         )
         if (
@@ -5290,6 +5294,42 @@ def _validate_and_apply_visual_registry_classifications(
         for group in enriched["visual_groups"]
     ]
     return enriched, audit
+
+
+def _exclude_terminal_discovery_context_regions(
+    candidate_regions: list[dict[str, Any]],
+    *,
+    visual_groups: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Keep Resolver away from regions Discovery has terminally closed."""
+    terminal_context_boxes: list[tuple[int, dict[str, int]]] = []
+    for group in visual_groups:
+        if not isinstance(group, dict) or group.get("evidence_class") != "document_context":
+            continue
+        if str(group.get("representation_kind") or "").lower() not in {
+            "floor_plan", "location_plan",
+        }:
+            continue
+        try:
+            page_number = int(group.get("page_number"))
+        except (TypeError, ValueError):
+            continue
+        if (bbox := _detection_bbox(group.get("bbox"))) is not None:
+            terminal_context_boxes.append((page_number, bbox))
+
+    return [
+        candidate
+        for candidate in candidate_regions
+        if not (
+            isinstance(candidate, dict)
+            and (candidate_bbox := _detection_bbox(candidate.get("bbox"))) is not None
+            and any(
+                context_page == candidate.get("page_number")
+                and _bbox_overlaps(candidate_bbox, context_bbox)
+                for context_page, context_bbox in terminal_context_boxes
+            )
+        )
+    ]
 
 
 def validate_detection_v611_document_scope(
@@ -12021,8 +12061,15 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             field: proposal_raw_payload[field]
             for field in discovery_fields - {"page_coverage", "document_scope"}
         }
+    terminal_discovery_payload, _ = _validate_and_apply_visual_registry_classifications(
+        proposal_discovery_payload, page_frames=review_coordinate_frames,
+    )
+    conflict_candidate_regions = _exclude_terminal_discovery_context_regions(
+        candidate_regions,
+        visual_groups=terminal_discovery_payload["visual_groups"],
+    )
     v75_conflict_targets = build_detection_conflict_targets(
-        candidate_regions=candidate_regions,
+        candidate_regions=conflict_candidate_regions,
         visual_groups=proposal_discovery_payload["visual_groups"],
         classifications=proposal_discovery_payload["classifications"],
     )
