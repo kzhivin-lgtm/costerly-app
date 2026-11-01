@@ -3063,6 +3063,11 @@ then Israel Reference, then a visible Assumption Fallback that also creates a
 team review job to add or correct the material source. The design must separately
 preserve catalog/price authority from consumption basis, so an Israel-selected
 material with an assumed net norm is not falsely shown as fully sourced.
+The V4.2 small-file witness establishes the immediate prerequisite: its page 2
+contains visual geometry, but the V4.2 facts contract persists no structured
+dimensions and deliberately emits zero parts. The next task must therefore add
+bounded BOM geometry extraction or deterministic construction recipes before
+attempting any material-quantity or cost completion.
 
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
