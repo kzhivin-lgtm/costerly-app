@@ -1,5 +1,20 @@
 # Detection Agent benchmark
 
+## V8.4.5 large batched assembly-set checkpoint, 2026-11-01
+
+Status: owner-verified positive boundary witness for the narrow
+`assembly_set + V6.41 batching` combination. `24-215. Кухня. СБ.pdf` had
+previously completed after V8.4.4 but published 25 ordinary Membership
+components because the V6.41 batch merge intentionally emitted an ordinary
+scope. V8.4.5 (`4c9ff38`) runs one optional, fail-closed V6.11 scope
+observation after all batches have produced a fixed Object Evidence inventory;
+the established V6.26 compiler then has valid document-wide evidence without
+changing Membership or Islands. The owner reran the document and confirmed one
+published commercial object. No exact run ID, timing or cost was supplied for
+that witness, so none is inferred. This does not accept Floor 06, Floor 07,
+Page 23, Ada, or Cabineter by substitution. Full record:
+`notes/DETECTION_V8_4_5_GLOBAL_BATCHED_ASSEMBLY_SCOPE_CHECKPOINT_2026_11_01.md`.
+
 ## V6.37 Ada covered-membership checkpoint, 2026-10-27
 
 Status: protected live checkpoint for the existing Ada route only. Two Adda

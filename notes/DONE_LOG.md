@@ -1,5 +1,18 @@
 # Done Log
 
+Detection V8.4.5 global batched assembly-scope production checkpoint `4c9ff38`:
+after V6.41 merged all Discovery batches, one optional scope-only review now
+uses the fixed Object Evidence crops and bounded local facts. It cannot alter
+Islands, classifications, Conflict Resolver or Membership; invalid or
+unavailable scope falls back to ordinary processing. The existing V6.26
+compiler remains the only mechanism that publishes one dossier. The owner
+verified `24-215. Кухня. СБ.pdf` now returns one commercial object. Detection
+regression: 153 passed. Protected tag:
+`detection-v8.4.5-global-batched-assembly-scope-production-2026-11-01`.
+Full evidence:
+`notes/DETECTION_V8_4_5_GLOBAL_BATCHED_ASSEMBLY_SCOPE_CHECKPOINT_2026_11_01.md`,
+завершена 01.11
+
 Detection V6.63 retained File Review and caption quantity checkpoint `e97933f`:
 restores durable Naming before File Review object widgets are created and clears
 only stale retained name-widget values, preventing a cached empty card from

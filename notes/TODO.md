@@ -189,6 +189,25 @@ object assembly, Naming, UI or Page 23 logic changes. Acceptance: the Cabinet
 run reaches Registry and preserves its historical one-object P1-P6 package,
 while the audit records the ignored material-sample row.
 
+COMPLETED AND OWNER-VERIFIED, V8.4.5, P0, global batched assembly scope:
+`4c9ff38` restores the pre-existing V6.11 document-scope observation only
+after V6.41 has merged every Discovery batch into one fixed Object Evidence
+inventory. It runs only for a non-anchor `assembly_set` with active V6.41
+batching, sends only fixed Object Evidence crops and bounded local facts, and
+returns only the established scope schema. Existing V6.11 validation and the
+existing V6.26 compiler remain the sole authority for document-wide
+compilation. Candidate Regions, Discovery Islands, classifications, Conflict
+Resolver, Membership, render decisions, dimensions, router, Naming, previews
+and UI are unchanged. Missing crops, provider failure, invalid JSON or an
+unknown Island fail closed to the prior ordinary scope without stopping the
+cycle. Targeted Detection suite: 153 passed. The owner reran
+`24-215. Кухня. СБ.pdf` and confirmed one final commercial object. Protected
+tag: `detection-v8.4.5-global-batched-assembly-scope-production-2026-11-01`.
+Before widening Estimation behaviour, audit that successful run's persisted
+single object, `estimation_input_v4`, OCR event and private source-page
+artifacts read-only. Full record:
+`notes/DETECTION_V8_4_5_GLOBAL_BATCHED_ASSEMBLY_SCOPE_CHECKPOINT_2026_11_01.md`.
+
 BENCHMARK, P0, Hasolelim Floor 06 manual Object Evidence island inventory:
 
 This is the owner-provided visual inventory, separate from final package count
@@ -2994,6 +3013,16 @@ rectangles, prefer exact measurements, make any proxy explicit and
 review-visible, and guard physical subtype compatibility before selection.
 The complete evidence and commit checkpoint is
 `notes/ESTIMATION_V3_MATERIAL_PIPELINE_CHECKPOINT_2026_10_15.md`.
+
+Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
+large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
+commercial object. The existing immutable `estimation_input_v4` carries its
+locked identity and quantity, physical evidence-page references and regions,
+cited OCR, private full-page artifacts, original-file reference and OCR-event
+identity. This is sufficient to begin the next Estimation-agent contract, not
+to declare a correct full estimate. First inspect the successful kitchen
+handoff read-only, then keep evidence-bound extraction, deterministic Material
+Engine selection, labor routes and pricing as separate authorities.
 
 Israel Reference rebuild, points 1-2, 2026-10-14: the earlier Coverage Audit
 incorrectly treated the legacy `reference_material_pricing_identities` bridge
