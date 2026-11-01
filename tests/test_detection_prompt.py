@@ -4,6 +4,8 @@ from agents.anthropic_adapter import (
     DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS,
     DETECTION_V843_ASSEMBLY_SCOPE_COMPACTION_PROMPT_VERSION,
     DETECTION_V844_CORE_BBOX_ENVELOPE_FALLBACK_PROMPT_VERSION,
+    DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT_VERSION,
+    DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT,
     DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION,
     DETECTION_V611_ASSEMBLY_SCOPE_PROMPT,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
@@ -122,6 +124,19 @@ def test_v844_labels_only_the_batched_discovery_geometry_fallback():
     assert DETECTION_V844_CORE_BBOX_ENVELOPE_FALLBACK_PROMPT_VERSION == (
         "detection_v8_4_4_core_bbox_envelope_fallback"
     )
+
+
+def test_v845_scope_is_explicitly_scope_only_after_batched_discovery():
+    assert DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT_VERSION == (
+        "detection_v8_4_5_global_batched_assembly_scope"
+    )
+    assert "complete, fixed post-Discovery inventory" in (
+        DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT
+    )
+    assert "cannot merge, remove, split, reclassify, create" in (
+        DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT
+    )
+    assert "cannot change Membership" in DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT
 
 
 def test_v657_discovery_schema_bounds_non_evidence_text_only():

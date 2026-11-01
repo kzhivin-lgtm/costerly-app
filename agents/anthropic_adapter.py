@@ -177,6 +177,12 @@ DETECTION_V844_CORE_BBOX_ENVELOPE_FALLBACK_PROMPT_VERSION = (
     # document. Membership and all non-batched routes remain unchanged.
     "detection_v8_4_4_core_bbox_envelope_fallback"
 )
+DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT_VERSION = (
+    # V8.4.5 restores the existing V6.11 scope observation only after all
+    # V6.41 Discovery batches have been deterministically merged. It owns no
+    # Island boundary, classification, Membership, or route decision.
+    "detection_v8_4_5_global_batched_assembly_scope"
+)
 DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS = 180
 DETECTION_V634_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
@@ -835,6 +841,12 @@ DETECTION_V5_DISCOVERY_JSON_SCHEMA: dict[str, Any] = {
     },
 }
 
+# V8.4.5 asks for this already-established scope record by itself, after
+# batched Discovery has produced the complete fixed Object Evidence inventory.
+DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_JSON_SCHEMA = copy.deepcopy(
+    DETECTION_V5_DISCOVERY_JSON_SCHEMA["properties"]["document_scope"]
+)
+
 DETECTION_V611_ASSEMBLY_SCOPE_PROMPT = f"""
 
 ASSEMBLY-SET SCOPE OBSERVATION:
@@ -851,6 +863,26 @@ through a cited overview or root set plus connected sections, carcasses,
 modules, components or hardware. Common client/order metadata, date, material,
 title block, page numbering or page count can never establish assembly scope
 alone. Use `ordinary_object_set` otherwise.
+"""
+
+DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT = f"""
+GLOBAL ASSEMBLY-SET SCOPE OBSERVATION:
+The supplied Object Views are the complete, fixed post-Discovery inventory
+from one PDF after all Discovery batches were merged. Return only the scope
+JSON required by the schema. This is scope evidence only, not an object
+decision: it cannot merge, remove, split, reclassify, create, or otherwise
+change an Island, and it cannot change Membership. Name at most four root
+Island IDs. Return at most four witnesses, each citing at most eight Island
+IDs with one compact observation. Each observation must be one sentence,
+target 140 characters and never exceed
+{DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS} characters after whitespace
+normalization. Compact the sentence before emitting it, do not narrate the
+inspection. Use `assembly_set_candidate` only when the fixed PDF inventory
+documents one commissioned assembly through a cited overview or root set plus
+connected sections, carcasses, modules, components or hardware. Common
+client/order metadata, date, material, title block, page numbering or page
+count can never establish assembly scope alone. Use `ordinary_object_set`
+otherwise.
 """
 
 
@@ -2409,6 +2441,153 @@ def should_use_detection_v641_budgeted_discovery(
         and not mistral_anchor_admission_active
         and full_estimated_input_tokens > DETECTION_V641_DISCOVERY_NORMAL_ESTIMATE_TOKENS
     )
+
+
+def should_use_detection_v845_global_batched_assembly_scope(
+    *,
+    document_category: str | None,
+    v641_budgeted_discovery_active: bool,
+    mistral_anchor_admission_active: bool,
+) -> bool:
+    """Run one scope-only review after, never inside, merged V6.41 Discovery.
+
+    This is deliberately stricter than V6.41 itself.  V6.41 is a transport
+    mode for two Registry categories; the extra scope observation is relevant
+    only to an already routed assembly set and never to the Mistral-anchor
+    branch.
+    """
+    return bool(
+        document_category == "assembly_set"
+        and v641_budgeted_discovery_active
+        and not mistral_anchor_admission_active
+    )
+
+
+def run_detection_v845_global_batched_assembly_scope(
+    *,
+    model: str,
+    visual_groups: list[dict[str, Any]],
+    source_facts: list[dict[str, Any]],
+    view_crops: list[dict[str, Any]],
+) -> tuple[
+    dict[str, Any] | None,
+    dict[str, Any] | None,
+    str | None,
+    dict[str, Any],
+]:
+    """Return a validated whole-document scope without mutating Registry work.
+
+    Any provider, JSON, schema, or transport failure is observational.  The
+    caller keeps V6.41's existing ordinary scope and continues to Membership.
+    """
+    object_groups = [
+        group for group in visual_groups
+        if group.get("evidence_class") == "object_evidence"
+    ]
+    object_group_ids = {
+        str(group.get("group_id") or "")
+        for group in object_groups
+        if str(group.get("group_id") or "")
+    }
+    crop_group_ids = {
+        str(crop.get("group_id") or "")
+        for crop in view_crops
+        if str(crop.get("group_id") or "")
+    }
+    audit: dict[str, Any] = {
+        "version": DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT_VERSION,
+        "active": True,
+        "object_evidence_group_count": len(object_group_ids),
+        "view_crop_count": len(crop_group_ids),
+        "provider_image_limit": DETECTION_V641_REVIEW_MAX_IMAGES,
+    }
+    if not object_group_ids:
+        audit.update({"status": "skipped", "reason": "no_object_evidence"})
+        return None, None, None, audit
+    if object_group_ids != crop_group_ids:
+        audit.update({
+            "status": "skipped",
+            "reason": "incomplete_fixed_object_evidence_inventory",
+            "missing_crop_group_ids": sorted(object_group_ids - crop_group_ids),
+            "unexpected_crop_group_ids": sorted(crop_group_ids - object_group_ids),
+        })
+        return None, None, None, audit
+    if len(view_crops) > DETECTION_V641_REVIEW_MAX_IMAGES:
+        audit.update({
+            "status": "skipped",
+            "reason": "object_evidence_exceeds_provider_image_limit",
+        })
+        return None, None, None, audit
+
+    handoff = format_detection_v5_membership_handoff(
+        visual_groups=object_groups,
+        source_facts=source_facts,
+    )
+    content = build_detection_v5_membership_content_blocks(
+        user_text=handoff,
+        view_crops=view_crops,
+        page_context_images=[],
+    )
+    response: Any | None = None
+    diagnostics: dict[str, Any] | None = None
+    try:
+        response, diagnostics = create_claude_message_streamed(
+            get_anthropic_client(),
+            model=model,
+            max_tokens=1024,
+            temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+            system=build_detection_system_content(
+                prompt=DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT,
+            ),
+            messages=[{"role": "user", "content": content}],
+            output_config={"format": {"type": "json_schema", "schema": (
+                strip_schema_for_claude(
+                    DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_JSON_SCHEMA,
+                )
+            )}},
+        )
+        raw_scope = json.loads(extract_text_from_claude_response(response))
+        decision, validation_error = validate_optional_detection_v611_document_scope(
+            raw_scope,
+            visual_groups=object_groups,
+        )
+        audit["provider"] = summarize_detection_provider_call(
+            response=response,
+            diagnostics=diagnostics,
+            requested_model=model,
+            prompt_characters=len(DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT),
+            context_characters=len(handoff),
+            image_count=len(view_crops),
+            image_bytes=sum(len(crop["bytes"]) for crop in view_crops),
+        )
+        audit["returned_classification"] = (
+            raw_scope.get("classification") if isinstance(raw_scope, dict) else None
+        )
+        if validation_error is not None:
+            audit.update({"status": "invalid", "validation_error": validation_error})
+            return None, None, validation_error, audit
+        audit["status"] = (
+            "confirmed"
+            if decision and decision["decision"] == "assembly_set_candidate"
+            else "ordinary"
+        )
+        return raw_scope, decision, None, audit
+    except Exception as exc:
+        if response is not None and diagnostics is not None:
+            audit["provider"] = summarize_detection_provider_call(
+                response=response,
+                diagnostics=diagnostics,
+                requested_model=model,
+                prompt_characters=len(DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT),
+                context_characters=len(handoff),
+                image_count=len(view_crops),
+                image_bytes=sum(len(crop["bytes"]) for crop in view_crops),
+            )
+        audit.update({
+            "status": "unavailable",
+            "error": f"{type(exc).__name__}: {exc}",
+        })
+        return None, None, None, audit
 
 
 def select_detection_v641_review_page_context_images(
@@ -12214,7 +12393,26 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     v714_conflict_membership_active = bool(
         v714_required_conflict_pairs and not v69_criteria_reconciliation_active
     )
-    if v641_budgeted_discovery_active:
+    v845_global_batched_assembly_scope_active = (
+        should_use_detection_v845_global_batched_assembly_scope(
+            document_category=document_category,
+            v641_budgeted_discovery_active=v641_budgeted_discovery_active,
+            mistral_anchor_admission_active=mistral_anchor_admission_active,
+        )
+    )
+    v845_global_batched_assembly_scope_audit: dict[str, Any] = {
+        "version": DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT_VERSION,
+        "active": v845_global_batched_assembly_scope_active,
+        "status": "not_applicable",
+        "reason": (
+            "requires_batched_assembly_set_without_mistral_anchor"
+            if not v845_global_batched_assembly_scope_active
+            else "pending_fixed_object_evidence_inventory"
+        ),
+    }
+    if v845_global_batched_assembly_scope_active:
+        prompt_version = DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT_VERSION
+    elif v641_budgeted_discovery_active:
         prompt_version = DETECTION_V844_CORE_BBOX_ENVELOPE_FALLBACK_PROMPT_VERSION
     elif document_category == "assembly_set":
         prompt_version = DETECTION_V843_ASSEMBLY_SCOPE_COMPACTION_PROMPT_VERSION
@@ -12231,6 +12429,25 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         page_images=page_images, visual_groups=proposal_for_review["visual_groups"],
         coordinate_frames=review_coordinate_frames,
     )
+    if v845_global_batched_assembly_scope_active:
+        (
+            global_scope_payload,
+            global_scope,
+            _global_scope_validation_error,
+            v845_global_batched_assembly_scope_audit,
+        ) = run_detection_v845_global_batched_assembly_scope(
+            model=discovery_model,
+            visual_groups=proposal_for_review["visual_groups"],
+            source_facts=source_facts,
+            view_crops=membership_crops,
+        )
+        if global_scope_payload is not None and global_scope is not None:
+            # This is the same V6.11 scope contract that a single Discovery
+            # pass returned.  It is computed only after the batched Island
+            # inventory is complete, and remains non-authoritative for
+            # Membership, classifications, and boundaries.
+            proposal_scope_payload = global_scope_payload
+            document_scope = global_scope
     review_page_context_images, review_page_context_audit = (
         build_detection_v5_review_page_context_images(
             page_images=page_images, visual_groups=proposal_for_review["visual_groups"],
@@ -12758,6 +12975,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             + len(review_prompt_with_membership_contract)
             + len(v69_criteria_prompt)
             + len(v69_reconciliation_prompt)
+            + (
+                len(DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT)
+                if v845_global_batched_assembly_scope_active else 0
+            )
         ),
         "v6_7_mistral_anchor_admission_active": mistral_anchor_admission_active,
         "v6_7_mistral_anchor_admission_audit": mistral_anchor_admission_audit,
@@ -12822,6 +13043,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v5_9_review_crop_audit": membership_crop_audit,
         "v5_9_review_page_context_audit": review_page_context_audit,
         "v6_41_review_context_transport": v641_review_context_audit,
+        "v8_4_5_global_batched_assembly_scope": copy.deepcopy(
+            v845_global_batched_assembly_scope_audit,
+        ),
         "v5_9_proposal_decision_audit": proposal_model_payload,
         "v5_9_review_decision_audit": copy.deepcopy(review_raw_payload),
         "v7_11_presentation_render_decisions": copy.deepcopy(
@@ -13704,6 +13928,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     reconciliation_usage = diagnostics.get("v6_10_reconciliation_review")
     if isinstance(reconciliation_usage, dict):
         provider_call_usages.append(reconciliation_usage)
+    v845_scope_usage = diagnostics.get("v8_4_5_global_batched_assembly_scope")
+    if isinstance(v845_scope_usage, dict) and isinstance(
+        v845_scope_usage.get("provider"), dict,
+    ):
+        provider_call_usages.append(v845_scope_usage["provider"])
     if isinstance(multilingual_evidence_usage, dict):
         provider_call_usages.append(multilingual_evidence_usage)
     total_input_tokens = sum(int(call["input_tokens"]) for call in provider_call_usages)

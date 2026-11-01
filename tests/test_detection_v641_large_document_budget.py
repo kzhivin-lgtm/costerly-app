@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import json
+from types import SimpleNamespace
+from unittest.mock import patch
+
 import pytest
 
 from agents.anthropic_adapter import (
@@ -8,7 +12,9 @@ from agents.anthropic_adapter import (
     _v641_validate_batch_page_coverage,
     build_detection_v641_full_page_discovery_batches,
     build_detection_registry_content_blocks,
+    run_detection_v845_global_batched_assembly_scope,
     select_detection_v641_review_page_context_images,
+    should_use_detection_v845_global_batched_assembly_scope,
     should_use_detection_v641_budgeted_discovery,
 )
 
@@ -146,6 +152,119 @@ def test_v641_covers_both_existing_ordinary_registry_categories() -> None:
         mistral_anchor_admission_active=True,
         full_estimated_input_tokens=300_000,
     )
+
+
+def test_v845_scope_runs_only_for_a_batched_non_anchor_assembly_set() -> None:
+    assert should_use_detection_v845_global_batched_assembly_scope(
+        document_category="assembly_set",
+        v641_budgeted_discovery_active=True,
+        mistral_anchor_admission_active=False,
+    )
+    for category, batched, anchor in (
+        ("ordinary_object_set", True, False),
+        ("assembly_set", False, False),
+        ("assembly_set", True, True),
+    ):
+        assert not should_use_detection_v845_global_batched_assembly_scope(
+            document_category=category,
+            v641_budgeted_discovery_active=batched,
+            mistral_anchor_admission_active=anchor,
+        )
+
+
+def test_v845_scope_uses_complete_fixed_inventory_and_fails_closed() -> None:
+    groups = [
+        {
+            "group_id": "v641-b01-001", "page_number": 1,
+            "evidence_class": "object_evidence", "representation_kind": "elevation",
+            "visual_description": "Kitchen overview elevation.",
+            "bbox": {"top_left_x": 0, "top_left_y": 0,
+                     "bottom_right_x": 100, "bottom_right_y": 100},
+        },
+        {
+            "group_id": "v641-b02-001", "page_number": 2,
+            "evidence_class": "object_evidence", "representation_kind": "section",
+            "visual_description": "Kitchen carcass section.",
+            "bbox": {"top_left_x": 0, "top_left_y": 0,
+                     "bottom_right_x": 100, "bottom_right_y": 100},
+        },
+    ]
+    crops = [
+        {"group_id": group["group_id"], "page_number": group["page_number"], "bytes": b"crop"}
+        for group in groups
+    ]
+    scope = {
+        "classification": "assembly_set_candidate",
+        "root_group_ids": ["v641-b01-001"],
+        "witnesses": [{
+            "kind": "overview_detail_hierarchy",
+            "group_ids": ["v641-b01-001", "v641-b02-001"],
+            "observation": "The section details the cited kitchen overview.",
+        }],
+    }
+    response = SimpleNamespace(
+        content=[SimpleNamespace(type="text", text=json.dumps(scope))],
+        usage=SimpleNamespace(input_tokens=12, output_tokens=8),
+        model="claude-haiku-4-5-20251001",
+    )
+    diagnostics = {
+        "request_started_at": "2026-11-01T00:00:00+00:00",
+        "request_finished_at": "2026-11-01T00:00:01+00:00",
+    }
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            return_value=(response, diagnostics),
+        ) as request,
+    ):
+        raw_scope, decision, error, audit = run_detection_v845_global_batched_assembly_scope(
+            model="claude-haiku-4-5-20251001",
+            visual_groups=groups,
+            source_facts=[],
+            view_crops=crops,
+        )
+
+    assert raw_scope == scope
+    assert error is None
+    assert decision is not None
+    assert decision["decision"] == "assembly_set_candidate"
+    assert audit["status"] == "confirmed"
+    assert request.call_count == 1
+    request_content = request.call_args.kwargs["messages"][0]["content"]
+    assert all("full-page context" not in block.get("text", "") for block in request_content)
+
+    invalid_scope = {
+        **scope,
+        "witnesses": [{
+            **scope["witnesses"][0],
+            "group_ids": ["v641-b01-001", "unknown"],
+        }],
+    }
+    invalid_response = SimpleNamespace(
+        content=[SimpleNamespace(type="text", text=json.dumps(invalid_scope))],
+        usage=SimpleNamespace(input_tokens=12, output_tokens=8),
+        model="claude-haiku-4-5-20251001",
+    )
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            return_value=(invalid_response, diagnostics),
+        ),
+    ):
+        raw_scope, decision, error, audit = run_detection_v845_global_batched_assembly_scope(
+            model="claude-haiku-4-5-20251001",
+            visual_groups=groups,
+            source_facts=[],
+            view_crops=crops,
+        )
+
+    assert raw_scope is None
+    assert decision is None
+    assert error == "V6.11 document scope witness references an unknown group"
+    assert audit["status"] == "invalid"
 
 
 def test_v641_review_keeps_all_view_crops_before_page_contexts() -> None:
