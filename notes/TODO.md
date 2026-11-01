@@ -3055,6 +3055,15 @@ pricing, labor, manufacturing or overhead fields. The result remains
 consumption. Await owner quality review of the cited material identities
 before marking this release accepted.
 
+PENDING USER DECISION, USER REQUEST, next Estimation task after 3.17.4.2:
+complete every material demand to a material cost rather than leaving an
+unpriced `needs_review` line. Keep evidence extraction separate from this
+deterministic downstream step. The requested authority order is Company Catalog,
+then Israel Reference, then a visible Assumption Fallback that also creates a
+team review job to add or correct the material source. The design must separately
+preserve catalog/price authority from consumption basis, so an Israel-selected
+material with an assumed net norm is not falsely shown as fully sourced.
+
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
 commercial object. The existing immutable `estimation_input_v4` carries its
