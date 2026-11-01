@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import copy
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
 import html
 import hashlib
@@ -209,6 +210,7 @@ DETECTION_V5_MEMBERSHIP_CROP_MAX_SIDE = 768
 DETECTION_V627_SCOPE_SCOUT_MAX_TOKENS = 480
 DETECTION_V75_CONFLICT_RESOLVER_MAX_TOKENS = 2_048
 DETECTION_V75_CONFLICT_RESOLVER_MAX_TARGETS_PER_REQUEST = 12
+DETECTION_V75_CONFLICT_RESOLVER_MAX_CONCURRENT_REQUESTS = 4
 DETECTION_V75_CONFLICT_RESOLVER_CROP_MAX_SIDE = 1_200
 DETECTION_V75_CONFLICT_RESOLVER_CONTEXT_MAX_SIDE = 512
 DETECTION_V5_MEMBERSHIP_PAGE_CONTEXT_MAX_SIDE = 1024
@@ -3232,9 +3234,52 @@ def run_detection_v75_conflict_resolver(
     model: str,
     retry_invalid_targets: bool = True,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Resolve a bounded conflict batch without exposing its provenance."""
+    """Resolve each bounded conflict target without exposing its provenance.
+
+    Each provider request contains exactly one target crop and its own page
+    context.  Candidate routing must be observationally independent: adding
+    or removing another target cannot change this target's provider input.
+    """
     if not targets:
         return [], {"attempted": False, "target_count": 0, "batches": []}
+    if len(targets) > 1:
+        # Preserve the established four-request concurrency ceiling while
+        # making the visual decision itself target-atomic.  ``map`` returns
+        # results in input order, so downstream IDs and audits remain stable.
+        with ThreadPoolExecutor(
+            max_workers=min(
+                DETECTION_V75_CONFLICT_RESOLVER_MAX_CONCURRENT_REQUESTS,
+                len(targets),
+            ),
+            thread_name_prefix="detection-v75",
+        ) as executor:
+            individual_results = list(executor.map(
+                lambda target: run_detection_v75_conflict_resolver(
+                    page_images=page_images,
+                    targets=[target],
+                    coordinate_frames=coordinate_frames,
+                    model=model,
+                    retry_invalid_targets=retry_invalid_targets,
+                ),
+                targets,
+            ))
+        return (
+            [
+                decision
+                for decisions, _ in individual_results
+                for decision in decisions
+            ],
+            {
+                "version": DETECTION_V75_CONFLICT_RESOLVER_PROMPT_VERSION,
+                "attempted": True,
+                "target_count": len(targets),
+                "batches": [
+                    batch
+                    for _, audit in individual_results
+                    for batch in audit["batches"]
+                ],
+            },
+        )
     prompt = """
 You are an independent visual conflict resolver for technical PDF drawings.
 
@@ -3320,8 +3365,8 @@ Return only schema JSON.
             batch_diagnostics,
         )
 
-    for offset in range(0, len(targets), DETECTION_V75_CONFLICT_RESOLVER_MAX_TARGETS_PER_REQUEST):
-        batch_targets = targets[offset:offset + DETECTION_V75_CONFLICT_RESOLVER_MAX_TARGETS_PER_REQUEST]
+    for target in targets:
+        batch_targets = [target]
         crops, contexts, crop_audit = build_detection_v75_conflict_resolver_images(
             page_images=page_images,
             targets=batch_targets,
@@ -3339,11 +3384,17 @@ Return only schema JSON.
         invalid_target_errors: dict[str, str] = {}
         batch_diagnostics: list[str] = []
         retry_audit: dict[str, Any] | None = None
+        request_content_sha256: str | None = None
         if crops:
             try:
                 content = _v75_conflict_resolver_content_blocks(
                     crops=crops, contexts=contexts, coordinate_frames=coordinate_frames,
                 )
+                request_content_sha256 = hashlib.sha256(
+                    json.dumps(
+                        content, sort_keys=True, separators=(",", ":"),
+                    ).encode("utf-8")
+                ).hexdigest()
                 response, request_diagnostics = create_claude_message_streamed(
                     get_anthropic_client(),
                     model=model,
@@ -3429,6 +3480,9 @@ Return only schema JSON.
         all_decisions.extend(normalized)
         batches.append({
             "target_ids": [str(target["target_id"]) for target in batch_targets],
+            "request_content_sha256": (
+                request_content_sha256 if crops else None
+            ),
             "crop_audit": crop_audit,
             "provider": provider_summary,
             "error": batch_error,

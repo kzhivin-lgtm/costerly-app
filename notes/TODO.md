@@ -392,6 +392,34 @@ response validates without changing ordinary hypotheses or merge edges; an
 ambiguous list produces no edge and no terminal validation error. Floor 06
 must preserve P2's excluded Resolver candidate and P10's existing path.
 
+ACTIVE EXPERIMENT, V7.21, P0, atomic Conflict Resolver targets:
+
+Base: V7.20 commit `be7c087`. The Floor 06 V7.14 control resolved 11 targets
+in one provider batch, including P02. V7.18 correctly excluded the terminal
+P02 plan and therefore sent ten targets, but an unrelated P03 target changed
+from `presentation_render` to `elevation`. The resolver's advertised
+independence was not real: one provider request carried up to 12 visual crops,
+and the target IDs were ordinal. The resulting target composition could change
+unrelated visual verdicts before Membership Review.
+
+Change only the V7.5 transport: one opaque, geometry-stable target ID and one
+provider request containing exactly that target crop plus its page context,
+with at most four target requests in flight.
+Collect the resulting decisions in the established order and retain the
+existing crop transform, schema, validation, retry, admission, Conflict
+Resolver prompt, Discovery, Candidate Regions, terminal P02 exclusion,
+Membership, render recovery, graph assembly, Naming and UI unchanged. Record
+only a SHA-256 digest of each request content in the resolver audit, never
+the pixels or document payload. A failed target remains unresolved without
+affecting another target.
+
+Acceptance: adding or removing an unrelated Candidate Region leaves the same
+target's opaque ID and request-content digest unchanged. Focused resolver and
+timing tests pass. Floor 06 then retains P02's terminal exclusion and is
+audited against V7.20 for per-target decisions, Island inventory, page package
+composition, Membership result, provider tokens, cost and duration. This is
+an isolation experiment, not acceptance of a package count.
+
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
 contracts are still changing. The current V5 Registry route records zero cache

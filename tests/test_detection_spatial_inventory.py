@@ -408,22 +408,45 @@ def test_v75_conflict_targets_ignore_exception_and_require_visual_resolution():
         {"group_id": "VG-P012-001", "evidence_class": "object_evidence"},
     ]
 
-    assert build_detection_conflict_targets(
+    targets = build_detection_conflict_targets(
         candidate_regions=candidates, visual_groups=groups, classifications=classifications,
-    ) == [
+    )
+    assert targets == [
         {
-            "target_id": "V75-C001", "page_number": 10,
+            "target_id": "V75-Tf5439031923acf4e", "page_number": 10,
             "bbox": {"top_left_x": 100, "top_left_y": 100, "bottom_right_x": 400, "bottom_right_y": 400},
             "trigger": "coverage_only_without_object_evidence",
             "candidate_region_ids": ["CR-P010-003"],
         },
         {
-            "target_id": "V75-C002", "page_number": 11,
+            "target_id": "V75-T89bfaa26fcbe167e", "page_number": 11,
             "bbox": {"top_left_x": 500, "top_left_y": 100, "bottom_right_x": 900, "bottom_right_y": 400},
             "trigger": "graphic_region_without_object_evidence",
             "candidate_region_ids": ["CR-P011-002"],
         },
     ]
+    assert all(target["target_id"].startswith("V75-T") for target in targets)
+
+
+def test_v75_conflict_target_id_is_stable_when_another_target_is_removed():
+    p10_candidate = {
+        "candidate_region_id": "CR-P010-003", "page_number": 10,
+        "role": "coverage_only", "basis": "fusion_text_cluster",
+        "bbox": {"top_left_x": 100, "top_left_y": 100, "bottom_right_x": 400, "bottom_right_y": 400},
+    }
+    p2_candidate = {
+        "candidate_region_id": "CR-P002-001", "page_number": 2,
+        "basis": "mistral_graphic_region",
+        "bbox": {"top_left_x": 20, "top_left_y": 20, "bottom_right_x": 300, "bottom_right_y": 300},
+    }
+    single = build_detection_conflict_targets(
+        candidate_regions=[p10_candidate], visual_groups=[], classifications=[],
+    )
+    with_unrelated = build_detection_conflict_targets(
+        candidate_regions=[p2_candidate, p10_candidate], visual_groups=[], classifications=[],
+    )
+
+    assert single[0]["target_id"] == with_unrelated[1]["target_id"]
 
 
 def test_v75_admission_is_visual_geometry_not_candidate_proxy():
@@ -608,7 +631,7 @@ def test_v711_render_decision_extends_a_covered_component_only():
     assert components == [["view-001", "view-002", "view-010"], ["view-003"]]
 
 
-def test_v75_invalid_target_does_not_discard_other_valid_batch_decisions(monkeypatch):
+def test_v75_independent_target_requests_do_not_discard_other_valid_decisions(monkeypatch):
     targets = [
         {
             "target_id": "V75-C001", "page_number": 1,
@@ -623,17 +646,6 @@ def test_v75_invalid_target_does_not_discard_other_valid_batch_decisions(monkeyp
             "candidate_region_ids": ["CR-P001-002"],
         },
     ]
-    provider_payloads = [
-        {"decisions": [{
-            "target_id": "V75-C001", "disposition": "document_context",
-            "visual_witness": "Visible title block.", "document_context_kind": "title_block",
-        }]},
-        {"decisions": [{
-            "target_id": "V75-C002", "disposition": "unresolved",
-            "visual_witness": "The pixels are too indistinct to classify.",
-        }]},
-    ]
-
     def fake_images(*, targets, **_kwargs):
         return [
             {
@@ -648,11 +660,26 @@ def test_v75_invalid_target_does_not_discard_other_valid_batch_decisions(monkeyp
         anthropic_adapter, "build_detection_v75_conflict_resolver_images", fake_images,
     )
     monkeypatch.setattr(anthropic_adapter, "get_anthropic_client", lambda: object())
-    monkeypatch.setattr(
-        anthropic_adapter,
-        "create_claude_message_streamed",
-        lambda *_args, **_kwargs: ({"payload": provider_payloads.pop(0)}, {}),
-    )
+    def fake_provider(*_args, **kwargs):
+        content = kwargs["messages"][0]["content"]
+        target_line = next(
+            block["text"] for block in content
+            if block.get("type") == "text" and block["text"].startswith("Inspection target ")
+        )
+        target_id = target_line.split()[2]
+        if target_id == "V75-C001":
+            decision = {
+                "target_id": target_id, "disposition": "document_context",
+                "visual_witness": "Visible title block.", "document_context_kind": "title_block",
+            }
+        else:
+            decision = {
+                "target_id": target_id, "disposition": "unresolved",
+                "visual_witness": "The pixels are too indistinct to classify.",
+            }
+        return ({"payload": {"decisions": [decision]}}, {})
+
+    monkeypatch.setattr(anthropic_adapter, "create_claude_message_streamed", fake_provider)
     monkeypatch.setattr(
         anthropic_adapter,
         "extract_text_from_claude_response",
@@ -672,7 +699,84 @@ def test_v75_invalid_target_does_not_discard_other_valid_batch_decisions(monkeyp
         ("V75-C001", "document_context"),
         ("V75-C002", "unresolved"),
     ], audit
-    assert audit["batches"][0]["retry"] is not None
+    assert [batch["target_ids"] for batch in audit["batches"]] == [
+        ["V75-C001"], ["V75-C002"],
+    ]
+    assert all(batch["retry"] is None for batch in audit["batches"])
+
+
+def test_v75_unrelated_target_does_not_change_a_target_request_digest(monkeypatch):
+    target_a = {
+        "target_id": "V75-TAAAAAAAAAAAAAAAA", "page_number": 1,
+        "bbox": {"top_left_x": 10, "top_left_y": 10, "bottom_right_x": 50, "bottom_right_y": 50},
+        "trigger": "graphic_region_without_object_evidence",
+        "candidate_region_ids": ["CR-P001-001"],
+    }
+    target_b = {
+        "target_id": "V75-TBBBBBBBBBBBBBBBB", "page_number": 2,
+        "bbox": {"top_left_x": 10, "top_left_y": 10, "bottom_right_x": 50, "bottom_right_y": 50},
+        "trigger": "graphic_region_without_object_evidence",
+        "candidate_region_ids": ["CR-P002-001"],
+    }
+    provider_target_ids: list[str] = []
+
+    def fake_images(*, targets, **_kwargs):
+        target = targets[0]
+        return [{
+            "target_id": target["target_id"],
+            "page_number": target["page_number"],
+            "bytes": f"crop:{target['target_id']}".encode(),
+            "crop_dimensions": {"width": 40, "height": 40},
+            "review_crop_bbox": target["bbox"],
+        }], {target["page_number"]: b"page-context"}, []
+
+    def fake_provider(*_args, **kwargs):
+        content = kwargs["messages"][0]["content"]
+        target_line = next(
+            block["text"] for block in content
+            if block.get("type") == "text" and block["text"].startswith("Inspection target ")
+        )
+        target_id = target_line.split()[2]
+        provider_target_ids.append(target_id)
+        return ({"payload": {"decisions": [{
+            "target_id": target_id,
+            "disposition": "document_context",
+            "visual_witness": "Visible title block.",
+            "document_context_kind": "title_block",
+        }]}}, {})
+
+    monkeypatch.setattr(anthropic_adapter, "build_detection_v75_conflict_resolver_images", fake_images)
+    monkeypatch.setattr(anthropic_adapter, "get_anthropic_client", lambda: object())
+    monkeypatch.setattr(anthropic_adapter, "create_claude_message_streamed", fake_provider)
+    monkeypatch.setattr(
+        anthropic_adapter,
+        "extract_text_from_claude_response",
+        lambda response: json.dumps(response["payload"]),
+    )
+    monkeypatch.setattr(anthropic_adapter, "summarize_detection_provider_call", lambda **_kwargs: {})
+
+    _, solo_audit = anthropic_adapter.run_detection_v75_conflict_resolver(
+        page_images=[b"page-1", b"page-2"], targets=[target_a],
+        coordinate_frames={
+            1: {"fusion_dimensions": {"width": 100, "height": 100}},
+            2: {"fusion_dimensions": {"width": 100, "height": 100}},
+        },
+        model="test-model",
+    )
+    _, combined_audit = anthropic_adapter.run_detection_v75_conflict_resolver(
+        page_images=[b"page-1", b"page-2"], targets=[target_a, target_b],
+        coordinate_frames={
+            1: {"fusion_dimensions": {"width": 100, "height": 100}},
+            2: {"fusion_dimensions": {"width": 100, "height": 100}},
+        },
+        model="test-model",
+    )
+
+    assert provider_target_ids[0] == target_a["target_id"]
+    assert sorted(provider_target_ids[1:]) == sorted([target_a["target_id"], target_b["target_id"]])
+    assert solo_audit["batches"][0]["request_content_sha256"] == (
+        combined_audit["batches"][0]["request_content_sha256"]
+    )
 
 
 def _v67_anchor_payload(*, bbox: dict, core_bbox: dict, decision: dict) -> dict:
