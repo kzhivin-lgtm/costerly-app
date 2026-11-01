@@ -10,6 +10,7 @@ from agents.anthropic_adapter import (
     build_detection_v714_conflict_membership_matrix,
     build_detection_candidate_region_audit,
     build_detection_view_evidence_packages,
+    build_detection_v711_presentation_render_review_schema,
     normalize_detection_v69_pair_criteria_decisions,
     normalize_detection_v69_preliminary_links,
     normalize_detection_v69_reconciliation_decisions,
@@ -507,6 +508,37 @@ def test_v711_render_decision_creates_one_cross_page_visual_fact():
         "observation": "Both views show the same three triangular shelf bays.",
         "source_fact_ids": ["registry_view:view-010", "registry_view:view-024"],
     }]
+
+
+def test_v711_render_schema_allows_only_one_exact_current_view_id():
+    schema = build_detection_v711_presentation_render_review_schema(
+        visual_groups=[
+            {
+                "group_id": "render", "evidence_class": "object_evidence",
+                "representation_kind": "presentation_render",
+            },
+            {
+                "group_id": "technical-a", "evidence_class": "object_evidence",
+                "representation_kind": "elevation",
+            },
+            {
+                "group_id": "technical-b", "evidence_class": "object_evidence",
+                "representation_kind": "section",
+            },
+            {
+                "group_id": "context", "evidence_class": "document_context",
+                "representation_kind": "floor_plan",
+            },
+        ],
+    )
+    properties = schema["properties"]["presentation_render_decisions"][
+        "items"
+    ]["properties"]
+
+    assert properties["render_group_id"]["enum"] == ["render"]
+    assert properties["technical_group_id"]["enum"] == [
+        "", "technical-a", "technical-b",
+    ]
 
 
 def test_v711_render_decision_requires_every_render_and_a_technical_target():
