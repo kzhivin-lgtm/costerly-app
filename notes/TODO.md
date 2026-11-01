@@ -454,6 +454,24 @@ audited against V7.20 for per-target decisions, Island inventory, page package
 composition, Membership result, provider tokens, cost and duration. This is
 an isolation experiment, not acceptance of a package count.
 
+ACTIVE, P0, Detection V8 stage-separated rebuild:
+
+Owner-approved new generation. Preserve V7.14 `39eb723` as the comparison
+checkpoint, but do not extend the V7 resolver, render adapter, Candidate Q or
+route-specific Membership schemas. Build a clean pipeline with exactly five
+boundaries: deterministic Mistral/MyPDF candidate union, one Discovery
+classification, rare independently audited Conflict Resolver, one Membership
+pair-link contract and deterministic components. Candidate Regions never seed a
+graph. A dominant full-page floor plan is terminally excluded during Discovery.
+Presentation render/photo is ordinary Object Evidence with a narrower link
+proof, not an adapter or separate response array. Resolver admissions become
+ordinary Object Evidence and receive no special Membership matrix.
+
+Implemented core: `agents/detection_v8.py`, prompts and focused tests. It is
+not wired to production. Before deployment, add a provider adapter behind an
+explicit V8 route and run the complete Floor 06 acceptance audit recorded in
+`notes/DETECTION_V8_REBUILD.md`.
+
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
 contracts are still changing. The current V5 Registry route records zero cache

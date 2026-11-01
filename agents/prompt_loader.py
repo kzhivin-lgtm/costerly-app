@@ -14,6 +14,8 @@ DETECTION_V5_DISCOVERY_PROMPT_PATH = PROMPTS_DIR / "detection_v5_discovery_promp
 DETECTION_V5_MEMBERSHIP_PROMPT_PATH = PROMPTS_DIR / "detection_v5_membership_prompt.md"
 DETECTION_V5_PROPOSAL_PROMPT_PATH = PROMPTS_DIR / "detection_v5_proposal_prompt.md"
 DETECTION_V5_REVIEW_PROMPT_PATH = PROMPTS_DIR / "detection_v5_review_prompt.md"
+DETECTION_V8_DISCOVERY_PROMPT_PATH = PROMPTS_DIR / "detection_v8_discovery_prompt.md"
+DETECTION_V8_MEMBERSHIP_PROMPT_PATH = PROMPTS_DIR / "detection_v8_membership_prompt.md"
 DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_PROMPT_PATH = (
     PROMPTS_DIR / "detection_v5_source_degraded_discovery_prompt.md"
 )
@@ -113,6 +115,20 @@ def load_detection_v5_review_prompt() -> str:
     prompt = DETECTION_V5_REVIEW_PROMPT_PATH.read_text(encoding="utf-8").strip()
     if not prompt:
         raise ValueError("Detection V5 review prompt is empty")
+    return prompt
+
+
+def load_detection_v8_discovery_prompt() -> str:
+    prompt = DETECTION_V8_DISCOVERY_PROMPT_PATH.read_text(encoding="utf-8").strip()
+    if not prompt:
+        raise ValueError("Detection V8 Discovery prompt is empty")
+    return prompt
+
+
+def load_detection_v8_membership_prompt() -> str:
+    prompt = DETECTION_V8_MEMBERSHIP_PROMPT_PATH.read_text(encoding="utf-8").strip()
+    if not prompt:
+        raise ValueError("Detection V8 Membership prompt is empty")
     return prompt
 
 
