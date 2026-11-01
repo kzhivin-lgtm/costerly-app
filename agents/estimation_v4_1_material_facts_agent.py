@@ -84,11 +84,13 @@ def _json_object(text: str) -> Mapping[str, Any]:
         value = "\n".join(lines[1:]).strip()
         if value.endswith("```"):
             value = value[:-3].strip()
-    first, last = value.find("{"), value.rfind("}")
-    if first < 0 or last < first or value[:first].strip() or value[last + 1:].strip():
-        raise ValueError("V4.1 material facts must contain one raw JSON object")
-    value = value[first:last + 1]
-    parsed = json.loads(value)
+    first = value.find("{")
+    if first < 0:
+        raise ValueError("V4.1 material facts must contain a JSON object")
+    # Claude occasionally leaves an opening fence or a brief formatter suffix.
+    # The strict V4.1 response schema below remains the acceptance boundary;
+    # raw_decode only recovers its first complete JSON object.
+    parsed, _ = json.JSONDecoder().raw_decode(value[first:])
     if not isinstance(parsed, Mapping):
         raise ValueError("V4.1 material facts must be a JSON object")
     return parsed
