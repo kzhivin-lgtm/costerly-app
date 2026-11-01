@@ -3,6 +3,7 @@ from agents.anthropic_adapter import (
     DETECTION_PROMPT_VERSION,
     DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS,
     DETECTION_V843_ASSEMBLY_SCOPE_COMPACTION_PROMPT_VERSION,
+    DETECTION_V844_CORE_BBOX_ENVELOPE_FALLBACK_PROMPT_VERSION,
     DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION,
     DETECTION_V611_ASSEMBLY_SCOPE_PROMPT,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
@@ -114,6 +115,12 @@ def test_v843_assembly_scope_uses_one_shared_observation_limit():
     assert "target 140 characters" in DETECTION_V611_ASSEMBLY_SCOPE_PROMPT
     assert DETECTION_V843_ASSEMBLY_SCOPE_COMPACTION_PROMPT_VERSION == (
         "detection_v8_4_3_assembly_scope_compact_observation"
+    )
+
+
+def test_v844_labels_only_the_batched_discovery_geometry_fallback():
+    assert DETECTION_V844_CORE_BBOX_ENVELOPE_FALLBACK_PROMPT_VERSION == (
+        "detection_v8_4_4_core_bbox_envelope_fallback"
     )
 
 

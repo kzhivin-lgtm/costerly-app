@@ -59,7 +59,7 @@ def test_v641_batch_reindex_preserves_absolute_page_coverage() -> None:
     ]
 
 
-def test_v644_rejects_core_that_escapes_its_batch_envelope() -> None:
+def test_v644_reconciles_valid_core_that_escapes_its_batch_envelope() -> None:
     payload = {
         "visual_groups": [{
             "group_id": "V1",
@@ -75,7 +75,48 @@ def test_v644_rejects_core_that_escapes_its_batch_envelope() -> None:
         }],
     }
 
-    with pytest.raises(ValueError, match="V1.*exceeds bbox on the left"):
+    repairs = _v644_validate_batch_core_geometry(payload)
+
+    assert payload["visual_groups"][0]["bbox"] == {
+        "top_left_x": 100, "top_left_y": 100,
+        "bottom_right_x": 300, "bottom_right_y": 300,
+    }
+    assert payload["visual_groups"][0]["core_bbox"] == payload["visual_groups"][0]["bbox"]
+    assert repairs == [{
+        "group_id": "V1",
+        "reason": "valid_core_bbox_escaped_valid_evidence_bbox",
+        "original_core_bbox": {
+            "top_left_x": 90, "top_left_y": 110,
+            "bottom_right_x": 250, "bottom_right_y": 250,
+        },
+        "bbox": {
+            "top_left_x": 100, "top_left_y": 100,
+            "bottom_right_x": 300, "bottom_right_y": 300,
+        },
+        "fallback_core_bbox": {
+            "top_left_x": 100, "top_left_y": 100,
+            "bottom_right_x": 300, "bottom_right_y": 300,
+        },
+    }]
+
+
+def test_v644_still_rejects_structurally_invalid_core_geometry() -> None:
+    payload = {
+        "visual_groups": [{
+            "group_id": "V1",
+            "page_number": 7,
+            "bbox": {
+                "top_left_x": 100, "top_left_y": 100,
+                "bottom_right_x": 300, "bottom_right_y": 300,
+            },
+            "core_bbox": {
+                "top_left_x": 200, "top_left_y": 200,
+                "bottom_right_x": 200, "bottom_right_y": 250,
+            },
+        }],
+    }
+
+    with pytest.raises(ValueError, match="V1.*has no positive area"):
         _v644_validate_batch_core_geometry(payload)
 
 

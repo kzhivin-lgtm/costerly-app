@@ -170,6 +170,13 @@ DETECTION_V843_ASSEMBLY_SCOPE_COMPACTION_PROMPT_VERSION = (
     # change.
     "detection_v8_4_3_assembly_scope_compact_observation"
 )
+DETECTION_V844_CORE_BBOX_ENVELOPE_FALLBACK_PROMPT_VERSION = (
+    # V8.4.4 is limited to V6.44 batched Discovery. When the provider gives a
+    # valid outer Island envelope but an otherwise valid core that escapes it,
+    # preserve the envelope and use it as the core rather than aborting the
+    # document. Membership and all non-batched routes remain unchanged.
+    "detection_v8_4_4_core_bbox_envelope_fallback"
+)
 DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS = 180
 DETECTION_V634_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
@@ -2470,13 +2477,14 @@ def _v641_validate_batch_page_coverage(
         raise ValueError("V6.41 Discovery batch coverage is incomplete")
 
 
-def _v644_validate_batch_core_geometry(payload: dict[str, Any]) -> None:
-    """Reject a bad core before it can invalidate the whole assembled Registry.
+def _v644_validate_batch_core_geometry(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """Validate batch geometry and reconcile an otherwise valid escaping core.
 
-    V6.41 batches are independently retryable.  The relationship between a
-    physical core and its evidence envelope is semantic, so the provider JSON
-    schema cannot enforce it.  Validate it here, while the one offending batch
-    is still isolated.
+    ``bbox`` is the authoritative Island evidence envelope. ``core_bbox`` is a
+    narrower ownership tie-breaker. When the core has valid integer geometry
+    but crosses the valid envelope, retaining the envelope as its core keeps
+    the Island stable and loses only that secondary precision. Malformed
+    geometry still fails closed and remains eligible for the existing retry.
     """
     groups = payload.get("visual_groups")
     if not isinstance(groups, list):
@@ -2489,11 +2497,51 @@ def _v644_validate_batch_core_geometry(payload: dict[str, Any]) -> None:
         groups,
         group_id_mapping=group_id_mapping,
     )
+    keys = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
+    repairs: list[dict[str, Any]] = []
+    for group in groups:
+        if not isinstance(group, dict):
+            continue
+        raw_group_id = str(group.get("group_id") or "")
+        group_id = group_id_mapping.get(raw_group_id, "")
+        envelope = envelopes.get(group_id)
+        core_bbox = group.get("core_bbox")
+        # Do not repair malformed or untraceable values. The strict normalizer
+        # below retains the established failure and retry path for those cases.
+        if (
+            not group_id
+            or envelope is None
+            or not isinstance(core_bbox, dict)
+            or set(core_bbox) != set(keys)
+            or not all(isinstance(core_bbox[key], int) for key in keys)
+            or core_bbox["bottom_right_x"] <= core_bbox["top_left_x"]
+            or core_bbox["bottom_right_y"] <= core_bbox["top_left_y"]
+        ):
+            continue
+        escapes_envelope = (
+            core_bbox["top_left_x"] < envelope["top_left_x"]
+            or core_bbox["top_left_y"] < envelope["top_left_y"]
+            or core_bbox["bottom_right_x"] > envelope["bottom_right_x"]
+            or core_bbox["bottom_right_y"] > envelope["bottom_right_y"]
+        )
+        if not escapes_envelope:
+            continue
+        original_core_bbox = {key: int(core_bbox[key]) for key in keys}
+        fallback_core_bbox = {key: int(envelope[key]) for key in keys}
+        group["core_bbox"] = fallback_core_bbox
+        repairs.append({
+            "group_id": raw_group_id,
+            "reason": "valid_core_bbox_escaped_valid_evidence_bbox",
+            "original_core_bbox": original_core_bbox,
+            "bbox": fallback_core_bbox,
+            "fallback_core_bbox": fallback_core_bbox,
+        })
     _normalize_registry_group_core_bboxes(
         groups,
         group_id_mapping=group_id_mapping,
         evidence_envelopes=envelopes,
     )
+    return repairs
 
 
 def _v641_reindex_batch_discovery_payload(
@@ -11687,8 +11735,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 expected_fields.add("document_scope")
             batch_payload = validate_batch_contract(batch_payload)
             geometry_retry_error = ""
+            core_geometry_repairs: list[dict[str, Any]] = []
             try:
-                _v644_validate_batch_core_geometry(batch_payload)
+                core_geometry_repairs.extend(
+                    _v644_validate_batch_core_geometry(batch_payload),
+                )
             except ValueError as geometry_error:
                 geometry_retry_error = str(geometry_error)
                 if stage_callback:
@@ -11758,7 +11809,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                     ) from retry_error
                 batch_payload = validate_batch_contract(batch_payload)
                 try:
-                    _v644_validate_batch_core_geometry(batch_payload)
+                    core_geometry_repairs.extend(
+                        _v644_validate_batch_core_geometry(batch_payload),
+                    )
                 except ValueError as retry_error:
                     raise RuntimeError(
                         f"V6.44 geometry-correction batch {batch_number} remained invalid: "
@@ -11817,6 +11870,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                         if attempt["retry_kind"] == "invalid_core_geometry"
                     ]),
                 },
+                "v8_4_4_core_geometry_repairs": core_geometry_repairs,
                 "provider_attempt_count": len(batch_attempts),
             })
             proposal_response, proposal_diagnostics = batch_response, batch_diagnostics
@@ -12160,7 +12214,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     v714_conflict_membership_active = bool(
         v714_required_conflict_pairs and not v69_criteria_reconciliation_active
     )
-    if document_category == "assembly_set":
+    if v641_budgeted_discovery_active:
+        prompt_version = DETECTION_V844_CORE_BBOX_ENVELOPE_FALLBACK_PROMPT_VERSION
+    elif document_category == "assembly_set":
         prompt_version = DETECTION_V843_ASSEMBLY_SCOPE_COMPACTION_PROMPT_VERSION
     elif v69_criteria_reconciliation_active:
         prompt_version = DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION
