@@ -110,9 +110,36 @@ DETECTION_V82_CONFLICT_SCHEMA: dict[str, Any] = {
 DETECTION_V82_MEMBERSHIP_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["links"],
+    "required": ["same_page_decisions", "cross_page_links"],
     "properties": {
-        "links": {
+        "same_page_decisions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["group_id_a", "group_id_b", "decision", "reason", "proofs"],
+                "properties": {
+                    "group_id_a": {"type": "string", "minLength": 1, "maxLength": 64},
+                    "group_id_b": {"type": "string", "minLength": 1, "maxLength": 64},
+                    "decision": {"type": "string", "enum": ["same_object", "different_or_insufficient"]},
+                    "reason": {"type": "string", "minLength": 1, "maxLength": 120},
+                    "proofs": {
+                        "type": "array",
+                        "maxItems": 2,
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": ["kind", "observation"],
+                            "properties": {
+                                "kind": {"type": "string", "enum": sorted(_PROOF_KINDS)},
+                                "observation": {"type": "string", "minLength": 1, "maxLength": 160},
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        "cross_page_links": {
             "type": "array",
             "maxItems": 160,
             "items": {
@@ -529,6 +556,103 @@ def normalize_detection_v82_membership_links(raw_links: object, *, object_eviden
     return sorted(accepted, key=lambda item: (item["group_id_a"], item["group_id_b"])), rejected
 
 
+def build_detection_v82_same_page_membership_pairs(*, object_evidence: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Enumerate every valid unordered Membership pair on each page.
+
+    The matrix is deterministic and is a review obligation only. It neither
+    creates a link nor suggests that two views belong together.
+    """
+    by_page: dict[int, list[dict[str, Any]]] = {}
+    for view in object_evidence:
+        by_page.setdefault(int(view["page_number"]), []).append(view)
+    pairs: list[dict[str, Any]] = []
+    for page_number in sorted(by_page):
+        views = sorted(by_page[page_number], key=_stable_view_sort_key)
+        pair_index = 0
+        for index, left in enumerate(views):
+            for right in views[index + 1:]:
+                pair_index += 1
+                group_id_a, group_id_b = sorted((str(left["group_id"]), str(right["group_id"])))
+                pairs.append({
+                    "pair_id": f"V82-SP-P{page_number:03d}-{pair_index:03d}",
+                    "page_number": page_number,
+                    "group_id_a": group_id_a,
+                    "group_id_b": group_id_b,
+                })
+    return pairs
+
+
+def normalize_detection_v82_membership_review(*, raw_review: object, object_evidence: list[dict[str, Any]], required_same_page_pairs: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Require one decision for every deterministic same-page pair.
+
+    Positive pairs are normalized through the ordinary link contract. Negative
+    decisions remain an audit record, so omitted pairs cannot silently become
+    singleton objects. Cross-page links are optional positive findings only.
+    """
+    if not isinstance(raw_review, dict) or set(raw_review) != {"same_page_decisions", "cross_page_links"}:
+        raise DetectionV82ContractError("V8.2 Membership response shape is invalid")
+    raw_decisions, raw_cross_page_links = raw_review["same_page_decisions"], raw_review["cross_page_links"]
+    if not isinstance(raw_decisions, list) or not isinstance(raw_cross_page_links, list):
+        raise DetectionV82ContractError("V8.2 Membership response lists are invalid")
+    required_by_pair = {
+        (str(pair["group_id_a"]), str(pair["group_id_b"])): pair
+        for pair in required_same_page_pairs
+    }
+    if len(required_by_pair) != len(required_same_page_pairs):
+        raise DetectionV82ContractError("V8.2 Membership same-page matrix is invalid")
+    decisions_by_pair: dict[tuple[str, str], dict[str, Any]] = {}
+    positive_same_page_links: list[dict[str, Any]] = []
+    for raw in raw_decisions:
+        if not isinstance(raw, dict):
+            raise DetectionV82ContractError("V8.2 Membership decision must be an object")
+        left, right = sorted((str(raw.get("group_id_a") or ""), str(raw.get("group_id_b") or "")))
+        pair = (left, right)
+        decision = str(raw.get("decision") or "")
+        reason = " ".join(str(raw.get("reason") or "").split())
+        proofs = raw.get("proofs")
+        if pair not in required_by_pair or pair in decisions_by_pair or decision not in {"same_object", "different_or_insufficient"} or not reason or not isinstance(proofs, list):
+            raise DetectionV82ContractError("V8.2 Membership same-page decision is invalid")
+        if decision == "different_or_insufficient" and proofs:
+            raise DetectionV82ContractError("V8.2 Membership negative decision must not include positive proofs")
+        normalized = {
+            "pair_id": required_by_pair[pair]["pair_id"],
+            "page_number": required_by_pair[pair]["page_number"],
+            "group_id_a": left,
+            "group_id_b": right,
+            "decision": decision,
+            "reason": reason,
+        }
+        decisions_by_pair[pair] = normalized
+        if decision == "same_object":
+            positive_same_page_links.append({"group_id_a": left, "group_id_b": right, "proofs": proofs})
+    if set(decisions_by_pair) != set(required_by_pair):
+        missing = sorted(set(required_by_pair) - set(decisions_by_pair))
+        raise DetectionV82ContractError(f"V8.2 Membership omitted {len(missing)} required same-page pair decisions")
+
+    same_page_links, rejected_same_page = normalize_detection_v82_membership_links(positive_same_page_links, object_evidence=object_evidence)
+    if rejected_same_page or len(same_page_links) != len(positive_same_page_links):
+        raise DetectionV82ContractError("V8.2 Membership same-page positive decision failed link validation")
+    cross_page_links, rejected_cross_page = normalize_detection_v82_membership_links(raw_cross_page_links, object_evidence=object_evidence)
+    if rejected_cross_page or len(cross_page_links) != len(raw_cross_page_links):
+        raise DetectionV82ContractError("V8.2 Membership cross-page link failed validation")
+    page_by_id = {str(view["group_id"]): int(view["page_number"]) for view in object_evidence}
+    same_page_pairs = set(required_by_pair)
+    for link in cross_page_links:
+        pair = (str(link["group_id_a"]), str(link["group_id_b"]))
+        if page_by_id[pair[0]] == page_by_id[pair[1]] or pair in same_page_pairs:
+            raise DetectionV82ContractError("V8.2 Membership cross-page links must be strictly cross-page")
+    combined_by_pair = {
+        (str(link["group_id_a"]), str(link["group_id_b"])): link
+        for link in [*same_page_links, *cross_page_links]
+    }
+    if len(combined_by_pair) != len(same_page_links) + len(cross_page_links):
+        raise DetectionV82ContractError("V8.2 Membership returned duplicate links")
+    return (
+        sorted(combined_by_pair.values(), key=lambda item: (item["group_id_a"], item["group_id_b"])),
+        [decisions_by_pair[pair] for pair in sorted(decisions_by_pair)],
+    )
+
+
 def compile_detection_v82_components(*, object_evidence: list[dict[str, Any]], membership_links: list[dict[str, Any]]) -> tuple[list[list[str]], list[str]]:
     """Construct order-invariant components from accepted Membership links."""
     group_ids = sorted(str(view["group_id"]) for view in object_evidence)
@@ -554,7 +678,7 @@ def compile_detection_v82_components(*, object_evidence: list[dict[str, Any]], m
     return sorted(retained, key=lambda component: tuple(component)), excluded_renders
 
 
-def run_detection_v82_pipeline(*, ocr_package: dict[str, Any] | None, source_facts: list[dict[str, Any]], page_dimensions: dict[int, tuple[int, int]], discover: Callable[[list[dict[str, Any]]], list[dict[str, Any]]], review_membership: Callable[[list[dict[str, Any]]], list[dict[str, Any]]], resolve_conflict: Callable[[dict[str, Any]], dict[str, Any]] | None = None) -> dict[str, Any]:
+def run_detection_v82_pipeline(*, ocr_package: dict[str, Any] | None, source_facts: list[dict[str, Any]], page_dimensions: dict[int, tuple[int, int]], discover: Callable[[list[dict[str, Any]]], list[dict[str, Any]]], review_membership: Callable[[list[dict[str, Any]], list[dict[str, Any]]], dict[str, Any]], resolve_conflict: Callable[[dict[str, Any]], dict[str, Any]] | None = None) -> dict[str, Any]:
     """Run V8.2 with provider callbacks constrained to their own boundaries."""
     candidates = build_detection_v82_candidate_regions(ocr_package, source_facts)
     object_evidence, exclusions = normalize_detection_v82_discovery(discover(deepcopy(candidates)), page_dimensions=page_dimensions)
@@ -563,17 +687,24 @@ def run_detection_v82_pipeline(*, ocr_package: dict[str, Any] | None, source_fac
     resolver_audit: list[dict[str, Any]] = []
     if targets and resolve_conflict is not None:
         object_evidence, resolver_audit = apply_detection_v82_conflict_decisions(object_evidence=object_evidence, targets=targets, decisions=[resolve_conflict(deepcopy(target)) for target in targets], page_dimensions=page_dimensions)
-    raw_links = review_membership(deepcopy(object_evidence))
-    links, rejected_links = normalize_detection_v82_membership_links(raw_links, object_evidence=object_evidence)
-    if raw_links and not links:
-        raise DetectionV82ContractError("V8.2 Membership returned links but none satisfied the contract")
+    required_same_page_pairs = build_detection_v82_same_page_membership_pairs(object_evidence=object_evidence)
+    raw_review = review_membership(deepcopy(object_evidence), deepcopy(required_same_page_pairs))
+    links, same_page_decisions = normalize_detection_v82_membership_review(
+        raw_review=raw_review,
+        object_evidence=object_evidence,
+        required_same_page_pairs=required_same_page_pairs,
+    )
     components, excluded_renders = compile_detection_v82_components(object_evidence=object_evidence, membership_links=links)
     return {
-        "version": "detection_v8_2_0",
+        "version": "detection_v8_2_2",
         "candidate_regions": candidates,
         "discovery": {"object_evidence": object_evidence, "excluded": exclusions, "candidate_coverage": coverage},
         "conflict_resolver": {"attempted": bool(targets and resolve_conflict is not None), "targets": targets, "decisions": resolver_audit},
-        "membership": {"accepted_links": links, "rejected_links": rejected_links},
+        "membership": {
+            "same_page_required_pairs": required_same_page_pairs,
+            "same_page_decisions": same_page_decisions,
+            "accepted_links": links,
+        },
         "components": components,
         "excluded_unattached_presentation_renders": excluded_renders,
     }

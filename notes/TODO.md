@@ -479,7 +479,7 @@ Floor 06 self-run before it is accepted as a quality checkpoint. `v7` remains
 the explicit rollback. Acceptance requires the complete Floor 06 audit
 recorded in `notes/DETECTION_V8_REBUILD.md`.
 
-ACTIVE, V8.2.1, P0, global Membership evidence board:
+SUPERSEDED, V8.2.1, P0, global Membership evidence board:
 
 The first V8.2 Floor 06 run was fast (74.241 seconds, $0.133184) but returned
 22 objects because Membership received 36 ordered local crops and emitted only
@@ -492,6 +492,24 @@ targets, graph, adapter, extra provider call, or new membership rule. The
 Membership audit records its tile-to-view mapping. Acceptance: Floor 06 has
 evidence-backed cross-page links where the views depict the same object, no
 extra provider call, and no Discovery or floor-plan regression.
+
+ACTIVE, V8.2.2, P0, mandatory same-page Membership coverage:
+
+V8.2.1 made all Object Evidence visible in one Membership request, but it did
+not make a decision for every within-page pair mandatory. V8.2.2 preserves the
+same single Membership call, Discovery, Candidate Regions, Floor Plan terminal
+exclusion, Conflict Resolver, ordinary render representation kind and link
+validator. Before the call it deterministically enumerates every unordered pair
+of normal Object Evidence on each page. The response must contain exactly one
+decision per listed pair. Positive decisions pass through the existing link
+validator; negative decisions are audit-only and cannot create links. Optional
+cross-page links retain their existing positive-link contract. The output cap
+is raised from 8,192 to 12,288 only to allow a dense required decision matrix
+to finish in that same call, not to add work. Acceptance: no omitted or
+duplicated same-page decision can publish, all positive links remain subject to
+the established proof rules, exactly one Membership provider call occurs, and
+Discovery, floor-plan handling, candidate recall and Conflict Resolver records
+remain unchanged.
 
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence

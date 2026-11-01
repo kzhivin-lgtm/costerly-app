@@ -1,5 +1,6 @@
 from copy import deepcopy
 from io import BytesIO
+from itertools import combinations
 import re
 from unittest.mock import patch
 
@@ -10,9 +11,11 @@ from agents.detection_v82 import (
     apply_detection_v82_conflict_decisions,
     audit_detection_v82_candidate_coverage,
     build_detection_v82_candidate_regions,
+    build_detection_v82_same_page_membership_pairs,
     compile_detection_v82_components,
     normalize_detection_v82_discovery,
     normalize_detection_v82_membership_links,
+    normalize_detection_v82_membership_review,
     run_detection_v82_pipeline,
     select_detection_v82_conflict_targets,
 )
@@ -144,17 +147,97 @@ def test_v82_membership_has_one_real_contract_for_technical_and_render_links():
     assert excluded == []
 
 
-def test_v82_rejects_invalid_membership_instead_of_silently_publishing_singletons():
+def test_v82_rejects_missing_same_page_decision_instead_of_silently_publishing_singletons():
     views = [_view("A"), _view("B", bbox=_bbox(700, 100, 1200, 600))]
-    with pytest.raises(DetectionV82ContractError, match="none satisfied"):
+    with pytest.raises(DetectionV82ContractError, match="omitted 1 required"):
         run_detection_v82_pipeline(
             ocr_package=_ocr(), source_facts=_facts(), page_dimensions={1: (2000, 2000)},
             discover=lambda _candidates: [{
                 "page_number": 1, "bbox": view["bbox"], "core_bbox": view["core_bbox"], "representation_kind": view["representation_kind"], "decision": "object_evidence", "exclusion_kind": "other", "visual_description": view["visual_description"], "reason": view["reason"],
             } for view in views],
             resolve_conflict=lambda target: {"target_id": target["target_id"], "decision": "exclude", "reason": "not needed"},
-            review_membership=lambda _views: [{"group_id_a": "unknown", "group_id_b": "B", "proofs": [_proof("matching_topology"), _proof("dimension_equality")] }],
+            review_membership=lambda _views, _pairs: {"same_page_decisions": [], "cross_page_links": []},
         )
+
+
+def test_v82_same_page_matrix_is_exhaustive_and_order_invariant():
+    technical_a = _view("A")
+    technical_b = _view("B", bbox=_bbox(700, 100, 1200, 600))
+    render = _view("R", kind="presentation_render", bbox=_bbox(1300, 100, 1800, 600))
+    next_page = {**_view("C", bbox=_bbox(100, 100, 600, 600)), "page_number": 2}
+
+    first = build_detection_v82_same_page_membership_pairs(object_evidence=[technical_b, next_page, render, technical_a])
+    second = build_detection_v82_same_page_membership_pairs(object_evidence=[technical_a, render, technical_b, next_page])
+
+    assert first == second
+    assert {(row["group_id_a"], row["group_id_b"]) for row in first} == {("A", "B"), ("A", "R"), ("B", "R")}
+
+
+def test_v82_membership_review_accepts_only_covered_same_page_positive_links():
+    views = [_view("A"), _view("B", bbox=_bbox(700, 100, 1200, 600)), _view("C", bbox=_bbox(1300, 100, 1800, 600))]
+    pairs = build_detection_v82_same_page_membership_pairs(object_evidence=views)
+    links, decisions = normalize_detection_v82_membership_review(
+        raw_review={
+            "same_page_decisions": [
+                {"group_id_a": "A", "group_id_b": "B", "decision": "same_object", "reason": "same distinctive shelving topology and dimensions", "proofs": [_proof("matching_topology"), _proof("dimension_equality")]},
+                {"group_id_a": "A", "group_id_b": "C", "decision": "different_or_insufficient", "reason": "no shared topology or dimensions", "proofs": []},
+                {"group_id_a": "B", "group_id_b": "C", "decision": "different_or_insufficient", "reason": "no shared topology or dimensions", "proofs": []},
+            ],
+            "cross_page_links": [],
+        },
+        object_evidence=views,
+        required_same_page_pairs=pairs,
+    )
+
+    assert [(link["group_id_a"], link["group_id_b"]) for link in links] == [("A", "B")]
+    assert len(decisions) == len(pairs) == 3
+
+
+def test_v82_pipeline_passes_the_complete_same_page_matrix_to_membership():
+    views = [
+        _view("A"),
+        _view("B", bbox=_bbox(700, 100, 1200, 600)),
+        _view("R", kind="presentation_render", bbox=_bbox(1300, 100, 1800, 600)),
+    ]
+    observed_pairs: list[dict] = []
+    observed_view_ids: set[str] = set()
+    technical_view_ids: set[str] = set()
+
+    def review(callback_views: list[dict], required_pairs: list[dict]) -> dict:
+        observed_pairs.extend(deepcopy(required_pairs))
+        observed_view_ids.update(str(view["group_id"]) for view in callback_views)
+        technical_view_ids.update(
+            str(view["group_id"])
+            for view in callback_views
+            if view["representation_kind"] != "presentation_render"
+        )
+        return {
+            "same_page_decisions": [{
+                "group_id_a": pair["group_id_a"],
+                "group_id_b": pair["group_id_b"],
+                "decision": "same_object" if {pair["group_id_a"], pair["group_id_b"]} == technical_view_ids else "different_or_insufficient",
+                "reason": "same construction details" if {pair["group_id_a"], pair["group_id_b"]} == technical_view_ids else "no sufficient shared evidence",
+                "proofs": [_proof("matching_topology"), _proof("dimension_equality")] if {pair["group_id_a"], pair["group_id_b"]} == technical_view_ids else [],
+            } for pair in required_pairs],
+            "cross_page_links": [],
+        }
+
+    result = run_detection_v82_pipeline(
+        ocr_package=_ocr(), source_facts=[], page_dimensions={1: (2000, 2000)},
+        discover=lambda _candidates: [{
+            "page_number": 1, "bbox": view["bbox"], "core_bbox": view["core_bbox"],
+            "representation_kind": view["representation_kind"], "decision": "object_evidence",
+            "exclusion_kind": "other", "visual_description": view["visual_description"], "reason": view["reason"],
+        } for view in views],
+        review_membership=review,
+    )
+
+    assert {(pair["group_id_a"], pair["group_id_b"]) for pair in observed_pairs} == {
+        tuple(sorted(pair)) for pair in combinations(observed_view_ids, 2)
+    }
+    assert result["membership"]["same_page_required_pairs"] == observed_pairs
+    assert len(result["membership"]["accepted_links"]) == 1
+    assert {result["membership"]["accepted_links"][0]["group_id_a"], result["membership"]["accepted_links"][0]["group_id_b"]} == technical_view_ids
 
 
 def test_v82_components_are_invariant_to_membership_order():
@@ -187,7 +270,15 @@ def test_v82_adapter_membership_uses_literal_view_ids_not_undeclared_registry_so
             assert "registry_view:" not in text
             ids = re.findall(r"^(V82-I-[^|]+)\|P", text, flags=re.MULTILINE)
             assert len(ids) == 2
-            return {"links": [{"group_id_a": ids[0], "group_id_b": ids[1], "proofs": [_proof("matching_topology"), _proof("dimension_equality")]}]}, {"input_tokens": 1, "output_tokens": 1}
+            return {
+                "same_page_decisions": [{
+                    "group_id_a": ids[0], "group_id_b": ids[1],
+                    "decision": "same_object",
+                    "reason": "matching triangular shelving topology and dimensions",
+                    "proofs": [_proof("matching_topology"), _proof("dimension_equality")],
+                }],
+                "cross_page_links": [],
+            }, {"input_tokens": 1, "output_tokens": 1}
         raise AssertionError(stage)
 
     _visual_map, registry, audit = run_detection_v82_with_request(

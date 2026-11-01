@@ -46,10 +46,13 @@ from agents.prompt_loader import (
 from agents.schemas.detection_registry_schema import validate_detection_registry
 
 
-DETECTION_V82_RELEASE = "8.2.1"
-DETECTION_V82_PROMPT_VERSION = "detection_v8_2_1"
+DETECTION_V82_RELEASE = "8.2.2"
+DETECTION_V82_PROMPT_VERSION = "detection_v8_2_2"
 DETECTION_V82_DISCOVERY_MAX_TOKENS = 12_288
-DETECTION_V82_MEMBERSHIP_MAX_TOKENS = 8_192
+# A Membership response now records one compact decision for every same-page
+# pair.  This remains one provider call, but 8k can truncate a dense drawing's
+# required matrix before its final negative decisions are emitted.
+DETECTION_V82_MEMBERSHIP_MAX_TOKENS = 12_288
 DETECTION_V82_CONFLICT_MAX_TOKENS = 1_536
 DETECTION_V82_MAX_STREAM_SECONDS = 90.0
 DETECTION_V82_MEMBERSHIP_CROP_MAX_SIDE = 1_400
@@ -161,7 +164,7 @@ def _membership_view_sort_key(view: dict[str, Any]) -> tuple[int, int, int, str]
     )
 
 
-def _membership_context(*, views: list[dict[str, Any]], owned_facts: dict[str, list[dict[str, Any]]]) -> str:
+def _membership_context(*, views: list[dict[str, Any]], owned_facts: dict[str, list[dict[str, Any]]], required_same_page_pairs: list[dict[str, Any]]) -> str:
     rows = [
         "FIXED OBJECT EVIDENCE VIEWS:",
         "V=id|P=page|K=representation kind|B=x1,y1,x2,y2|D=visual description|F=owned source text.",
@@ -179,6 +182,11 @@ def _membership_context(*, views: list[dict[str, Any]], owned_facts: dict[str, l
             f"B={bbox['top_left_x']},{bbox['top_left_y']},{bbox['bottom_right_x']},{bbox['bottom_right_y']}|"
             f"D={json.dumps(view['visual_description'], ensure_ascii=False)}|F={json.dumps(fact_text, ensure_ascii=False)}"
         )
+    rows.append("REQUIRED SAME-PAGE PAIRS: one decision is required for every row.")
+    rows.extend(
+        f"{pair['pair_id']}|P{pair['page_number']}|{pair['group_id_a']}|{pair['group_id_b']}"
+        for pair in required_same_page_pairs
+    )
     return "\n".join(rows)
 
 
@@ -439,17 +447,18 @@ def run_detection_v82_with_request(*, file_name: str, company_id: str, file_byte
             raise DetectionV82ProviderError("V8.2 Conflict Resolver returned an invalid crop bbox")
         return {**payload, "bbox": bbox, "core_bbox": core_bbox}
 
-    def review_membership(views: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def review_membership(views: list[dict[str, Any]], required_same_page_pairs: list[dict[str, Any]]) -> dict[str, Any]:
         if not views:
-            return []
+            return {"same_page_decisions": [], "cross_page_links": []}
         owned_facts = _owned_facts_by_view(source_facts, views)
         crops, crop_audit = _build_membership_crops(page_images=page_images, views=views, frames=frames)
         board = _build_membership_board(crops=crops, views=views)
-        payload, audit = request_json("membership", load_detection_v82_membership_prompt(), DETECTION_V82_MEMBERSHIP_SCHEMA, _membership_content(context=_membership_context(views=views, owned_facts=owned_facts), crops=crops, board=board), DETECTION_V82_MEMBERSHIP_MAX_TOKENS)
-        calls.append({"stage": "membership", "crop_count": len(crops), "owned_source_fact_count": sum(len(value) for value in owned_facts.values()), "crop_audit": crop_audit, "global_comparison_board": board["audit"], **audit})
-        if not isinstance(payload, dict) or set(payload) != {"links"}:
+        context = _membership_context(views=views, owned_facts=owned_facts, required_same_page_pairs=required_same_page_pairs)
+        payload, audit = request_json("membership", load_detection_v82_membership_prompt(), DETECTION_V82_MEMBERSHIP_SCHEMA, _membership_content(context=context, crops=crops, board=board), DETECTION_V82_MEMBERSHIP_MAX_TOKENS)
+        calls.append({"stage": "membership", "crop_count": len(crops), "same_page_required_pair_count": len(required_same_page_pairs), "same_page_required_pairs": required_same_page_pairs, "owned_source_fact_count": sum(len(value) for value in owned_facts.values()), "crop_audit": crop_audit, "global_comparison_board": board["audit"], **audit})
+        if not isinstance(payload, dict) or set(payload) != {"same_page_decisions", "cross_page_links"}:
             raise DetectionV82ProviderError("V8.2 Membership response does not match its contract")
-        return payload["links"]
+        return payload
 
     try:
         pipeline = run_detection_v82_pipeline(ocr_package=ocr_package, source_facts=source_facts, page_dimensions=page_dimensions, discover=discover, resolve_conflict=resolve_conflict, review_membership=review_membership)
