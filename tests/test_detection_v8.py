@@ -400,6 +400,56 @@ def test_v8_adapter_keeps_provider_stages_separate_and_publishes_only_after_memb
     assert audit["pipeline"]["conflict_resolver"]["attempted"] is False
 
 
+def test_v8_adapter_does_not_publish_an_unattached_render_as_registry_evidence():
+    from PIL import Image
+
+    image = Image.new("RGB", (1000, 1000), "white")
+    encoded = BytesIO()
+    image.save(encoded, format="JPEG")
+
+    def request(
+        stage: str, _prompt: str, _schema: dict, _content: list[dict], _max_tokens: int,
+    ) -> tuple[dict, dict]:
+        if stage == "discovery":
+            return {
+                "islands": [
+                    {
+                        "page_number": 1,
+                        "bbox": _bbox(100, 100, 800, 800),
+                        "core_bbox": _bbox(120, 120, 780, 780),
+                        "representation_kind": "technical_elevation",
+                        "decision": "object_evidence",
+                        "exclusion_kind": "",
+                        "visual_description": "cabinet elevation",
+                        "reason": "distinct technical object depiction",
+                    },
+                    {
+                        "page_number": 1,
+                        "bbox": _bbox(1000, 100, 1800, 800),
+                        "core_bbox": _bbox(1020, 120, 1780, 780),
+                        "representation_kind": "presentation_render",
+                        "decision": "object_evidence",
+                        "exclusion_kind": "",
+                        "visual_description": "unmatched presentation render",
+                        "reason": "separate render evidence",
+                    },
+                ],
+            }, {}
+        assert stage == "membership"
+        return {"links": []}, {}
+
+    visual_map, registry, audit = run_detection_v8_with_request(
+        file_name="drawing.pdf", company_id="001", file_bytes=b"%PDF",
+        page_images=[encoded.getvalue()], ocr_package=_ocr(), request_json=request,
+    )
+
+    assert [group["representation_kind"] for group in visual_map["visual_groups"]] == [
+        "technical_elevation",
+    ]
+    assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
+    assert len(audit["pipeline"]["excluded_unattached_presentation_renders"]) == 1
+
+
 def test_v8_route_is_the_default_and_v7_remains_an_explicit_rollback(monkeypatch):
     monkeypatch.setattr("agents.detection_agent.get_secret", lambda _name, default=None: default)
 

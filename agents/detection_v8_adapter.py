@@ -366,7 +366,19 @@ def _map_crop_box_to_fusion(
 
 def _published_v8_output(pipeline: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     """Apply terminal presentation IDs after all V8 membership decisions end."""
-    views = list(pipeline["discovery"]["object_evidence"])
+    # An unattached presentation render is Object Evidence during Membership,
+    # but intentionally has no final object component.  It must therefore not
+    # be published as registry Object Evidence, whose contract requires every
+    # such group to belong to exactly one object.
+    retained_group_ids = {
+        str(group_id)
+        for component in pipeline["components"]
+        for group_id in component
+    }
+    views = [
+        view for view in pipeline["discovery"]["object_evidence"]
+        if str(view["group_id"]) in retained_group_ids
+    ]
     view_order = sorted(views, key=lambda item: (
         int(item["page_number"]),
         int(item["bbox"]["top_left_y"]),
