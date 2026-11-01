@@ -344,6 +344,24 @@ packages, tokens, cost and duration with V7.13. Reject on a broad package
 increase, a non-P10 technical regression, or a Review response that omits the
 targeted row.
 
+ACTIVE EXPERIMENT, V7.18, P0, terminal floor-plan Resolver handoff:
+
+Base: exact protected V7.14 Detection behaviour, plus only the independently
+verified terminal-error UI fix. Do not change the Discovery prompt, Candidate
+Region generation, the Conflict Resolver implementation or prompt, Membership,
+presentation-render handling, package assembly, P10, router, Naming or UI
+behaviour. After the existing Discovery classification has already marked a
+`floor_plan` or `location_plan` group as `document_context`, remove only a
+Candidate Region on the same page whose complete bbox is contained in that
+terminal plan bbox from the input to the existing Conflict Resolver. Keep every
+other Candidate Region, including partial overlaps and all P10 candidates. The
+source inventory and final candidate audit remain intact.
+
+Acceptance: Floor 06 returns 14 packages. P02 creates neither a V7.5 Resolver
+target nor `P02.V1`; P10 candidate inventory, Resolver targets and package
+assembly remain identical to V7.14. Reject if a non-contained Candidate Region
+is suppressed or any protected stage changes.
+
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
 contracts are still changing. The current V5 Registry route records zero cache

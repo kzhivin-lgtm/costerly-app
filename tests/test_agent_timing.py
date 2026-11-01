@@ -12,6 +12,7 @@ import pytest
 
 from agents.anthropic_adapter import (
     _discard_non_object_visual_registry_groups,
+    _exclude_terminal_floor_plan_candidate_regions,
     _validate_and_apply_visual_registry_classifications,
     _apply_reference_root_suffixes,
     DEFAULT_CLAUDE_DETECTION_MODEL,
@@ -1663,6 +1664,61 @@ def test_whole_architectural_floor_plan_is_demoted_to_document_context():
     )
     assert enriched["visual_groups"][0]["evidence_class"] == "document_context"
     assert audit[0]["evidence_class"] == "document_context"
+
+
+def test_terminal_floor_plan_excludes_only_fully_contained_candidate_region():
+    candidates = [
+        {
+            "candidate_region_id": "CR-P002-001", "page_number": 2,
+            "bbox": {
+                "top_left_x": 120, "top_left_y": 120,
+                "bottom_right_x": 880, "bottom_right_y": 880,
+            },
+        },
+        {
+            "candidate_region_id": "CR-P002-002", "page_number": 2,
+            "bbox": {
+                "top_left_x": 850, "top_left_y": 120,
+                "bottom_right_x": 1100, "bottom_right_y": 880,
+            },
+        },
+        {
+            "candidate_region_id": "CR-P010-001", "page_number": 10,
+            "bbox": {
+                "top_left_x": 120, "top_left_y": 120,
+                "bottom_right_x": 880, "bottom_right_y": 880,
+            },
+        },
+    ]
+    visual_groups = [
+        {
+            "group_id": "whole-plan", "page_number": 2,
+            "representation_kind": "floor_plan",
+            "evidence_class": "document_context",
+            "bbox": {
+                "top_left_x": 100, "top_left_y": 100,
+                "bottom_right_x": 1000, "bottom_right_y": 1000,
+            },
+        },
+        {
+            "group_id": "title-block", "page_number": 10,
+            "representation_kind": "title_block",
+            "evidence_class": "document_context",
+            "bbox": {
+                "top_left_x": 0, "top_left_y": 0,
+                "bottom_right_x": 1000, "bottom_right_y": 1000,
+            },
+        },
+    ]
+
+    retained, excluded_ids = _exclude_terminal_floor_plan_candidate_regions(
+        candidates, visual_groups=visual_groups,
+    )
+
+    assert excluded_ids == ["CR-P002-001"]
+    assert [candidate["candidate_region_id"] for candidate in retained] == [
+        "CR-P002-002", "CR-P010-001",
+    ]
 
 
 def test_whole_architectural_floor_plan_is_demoted_when_model_mislabels_representation_kind():

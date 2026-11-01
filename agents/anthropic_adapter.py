@@ -5292,6 +5292,63 @@ def _validate_and_apply_visual_registry_classifications(
     return enriched, audit
 
 
+def _exclude_terminal_floor_plan_candidate_regions(
+    candidate_regions: list[dict[str, Any]],
+    *,
+    visual_groups: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Keep closed whole-plan candidates out of the Conflict Resolver only.
+
+    Candidate Regions are created before Discovery.  A dominant architectural
+    plan may therefore be correctly closed as terminal document context by
+    Discovery while its original Candidate Region would otherwise be routed to
+    the post-Discovery resolver and re-admitted as a new Island.  This leaves
+    source inventory untouched and removes only a region fully contained by
+    that already-closed floor or location plan.
+    """
+    terminal_context_boxes: list[tuple[int, dict[str, int]]] = []
+    for group in visual_groups:
+        if not isinstance(group, dict):
+            continue
+        if group.get("evidence_class") != "document_context":
+            continue
+        if str(group.get("representation_kind") or "").lower() not in {
+            "floor_plan", "location_plan",
+        }:
+            continue
+        try:
+            page_number = int(group.get("page_number"))
+        except (TypeError, ValueError):
+            continue
+        if (bbox := _detection_bbox(group.get("bbox"))) is not None:
+            terminal_context_boxes.append((page_number, bbox))
+
+    retained: list[dict[str, Any]] = []
+    excluded_ids: list[str] = []
+    for candidate in candidate_regions:
+        if not isinstance(candidate, dict):
+            retained.append(candidate)
+            continue
+        try:
+            page_number = int(candidate.get("page_number"))
+        except (TypeError, ValueError):
+            retained.append(candidate)
+            continue
+        candidate_bbox = _detection_bbox(candidate.get("bbox"))
+        if candidate_bbox is None:
+            retained.append(candidate)
+            continue
+        if any(
+            context_page == page_number
+            and _detection_bbox_contains(context_bbox, candidate_bbox)
+            for context_page, context_bbox in terminal_context_boxes
+        ):
+            excluded_ids.append(str(candidate.get("candidate_region_id") or ""))
+            continue
+        retained.append(candidate)
+    return retained, excluded_ids
+
+
 def validate_detection_v611_document_scope(
     scope: object,
     *,
@@ -12021,8 +12078,17 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             field: proposal_raw_payload[field]
             for field in discovery_fields - {"page_coverage", "document_scope"}
         }
+    terminal_discovery_payload, _ = _validate_and_apply_visual_registry_classifications(
+        proposal_discovery_payload, page_frames=review_coordinate_frames,
+    )
+    conflict_candidate_regions, terminal_floor_plan_candidate_region_ids = (
+        _exclude_terminal_floor_plan_candidate_regions(
+            candidate_regions,
+            visual_groups=terminal_discovery_payload["visual_groups"],
+        )
+    )
     v75_conflict_targets = build_detection_conflict_targets(
-        candidate_regions=candidate_regions,
+        candidate_regions=conflict_candidate_regions,
         visual_groups=proposal_discovery_payload["visual_groups"],
         classifications=proposal_discovery_payload["classifications"],
     )
@@ -12033,6 +12099,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "targets": copy.deepcopy(v75_conflict_targets),
         "decisions": [],
         "batches": [],
+        "terminal_floor_plan_excluded_candidate_region_ids": (
+            terminal_floor_plan_candidate_region_ids
+        ),
     }
     if v75_conflict_targets:
         _notify_detection_stage(
