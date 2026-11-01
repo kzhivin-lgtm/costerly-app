@@ -9,7 +9,6 @@ visually observed Island or confirm document context.
 from __future__ import annotations
 
 from copy import deepcopy
-import hashlib
 from typing import Any
 
 
@@ -26,21 +25,6 @@ RESOLUTION_DISPOSITIONS = {
     "document_context",
     "unresolved",
 }
-
-
-def _stable_target_id(*, page_number: int, bbox: dict[str, int]) -> str:
-    """Return an opaque ID that does not depend on unrelated target order.
-
-    The Resolver receives this value in its visual-only request.  It therefore
-    must not expose Candidate Region provenance, but it must remain stable if
-    another conflict target is added or removed elsewhere in the document.
-    """
-    material = ":".join(str(value) for value in (
-        page_number,
-        bbox["top_left_x"], bbox["top_left_y"],
-        bbox["bottom_right_x"], bbox["bottom_right_y"],
-    ))
-    return "V75-T" + hashlib.sha256(material.encode("ascii")).hexdigest()[:16]
 
 
 def _bbox(value: object) -> dict[str, int] | None:
@@ -222,10 +206,8 @@ def build_detection_conflict_targets(
             match["trigger"] = "multiple_source_conflicts"
             continue
         deduplicated.append(deepcopy(target))
-    for target in deduplicated:
-        target["target_id"] = _stable_target_id(
-            page_number=target["page_number"], bbox=target["bbox"],
-        )
+    for ordinal, target in enumerate(deduplicated, start=1):
+        target["target_id"] = f"V75-C{ordinal:03d}"
         target["candidate_region_ids"] = sorted(set(target["candidate_region_ids"]))
     return deduplicated
 

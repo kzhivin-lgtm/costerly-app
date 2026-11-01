@@ -154,6 +154,21 @@ used for this test. Acceptance: a whole-page architectural layout is still
 discarded; a bounded object plan on a multi-Island page remains Object Evidence;
 Floor 06 live run changes only this classification outcome, not recall or Q.
 
+ACTIVE EXPERIMENT, V8.3, P0, V7.14 dominant floor-plan classification:
+Base: protected `detection-v7.14-conflict-membership-2026-10-30` (`39eb723`).
+Restore that pipeline in full, then change only Discovery's terminal
+classification of a dominant `floor_plan` or `location_plan`: the physical
+`core_bbox` must cover at least 75 percent of its Fusion page. This rule is
+independent of the number or ordering of other Islands on the page. A bounded
+object-specific plan remains Object Evidence. Do not filter, renumber, reorder
+or otherwise alter Candidate Regions; do not alter Conflict Resolver targets,
+Membership, render handling, router, Naming or UI. Prior V7 attempts that
+removed floor-plan candidates before the Conflict Resolver are rejected because
+they changed resolver input and regressed the protected pipeline. Before a paid
+run, pass the V7.14 Discovery, spatial-inventory and prompt regressions. Live
+acceptance: P02 is terminal document context, P03 retains 11 Object Evidence
+Islands, and the complete post-Discovery object inventory remains stable.
+
 BENCHMARK, P0, Hasolelim Floor 06 manual Object Evidence island inventory:
 
 This is the owner-provided visual inventory, separate from final package count
@@ -343,204 +358,6 @@ seconds. Compare island inventory, P03/P04 render attachment, other page
 packages, tokens, cost and duration with V7.13. Reject on a broad package
 increase, a non-P10 technical regression, or a Review response that omits the
 targeted row.
-
-ACTIVE EXPERIMENT, V7.18, P0, terminal floor-plan Resolver handoff:
-
-Base: exact protected V7.14 Detection behaviour, plus only the independently
-verified terminal-error UI fix. Do not change the Discovery prompt, Candidate
-Region generation, the Conflict Resolver implementation or prompt, Membership,
-presentation-render handling, package assembly, P10, router, Naming or UI
-behaviour. After the existing Discovery classification has already marked a
-`floor_plan` or `location_plan` group as `document_context`, remove only a
-Candidate Region on the same page whose complete bbox is contained in that
-terminal plan bbox from the input to the existing Conflict Resolver. Keep every
-other Candidate Region, including partial overlaps and all P10 candidates. The
-source inventory and final candidate audit remain intact.
-
-Acceptance: Floor 06 returns 14 packages. P02 creates neither a V7.5 Resolver
-target nor `P02.V1`; P10 candidate inventory, Resolver targets and package
-assembly remain identical to V7.14. Reject if a non-contained Candidate Region
-is suppressed or any protected stage changes.
-
-REJECTED EXPERIMENT, V7.19, exact render-attachment ID schema:
-
-V7.19 constrained the Review's structured-output schema to exact render and
-technical View IDs to prevent a pipe-delimited `technical_group_id`. On Floor
-06 run `run_f4288fc8ae4e4a9a9da048845410897d`, the provider then returned zero
-ordinary `object_hypotheses`, only three merge edges, and 54 packages from 63
-Object Evidence Views. The prior V7.18 Review response had 15 hypotheses; its
-only observed defect was the malformed scalar render target. Schema and prompt
-conditioning changed the entire Membership outcome, so the experiment was
-reverted in commit `87b5c81`. Do not use a dynamic enum or change the ordinary
-Review output contract to repair a malformed presentation-render row.
-
-ACTIVE EXPERIMENT, V7.20, P0, bounded malformed render-target recovery:
-
-Base: exact V7.18 Review prompt and schema. Do not add a provider call, select
-an anchor arbitrarily, or change Discovery, floor-plan handling, Candidate
-Regions, Conflict Resolver, ordinary Membership, P10, graph assembly or UI.
-At the existing V7.11 render adapter only, recognize a pipe-delimited target
-only when every listed ID is a non-render Object Evidence View and all listed
-IDs are contained in exactly one ordinary hypothesis emitted by that same
-Review. Replace that scalar with the component's lexical technical anchor and
-audit both forms. If the IDs are unknown or span hypotheses, rewrite only that
-render row to `unresolved`, with no edge, so the RFQ completes safely.
-
-Evidence: all five malformed render rows in the failed Floor 06 V7.18 run had
-their listed IDs wholly inside one Review hypothesis. Acceptance: the same
-response validates without changing ordinary hypotheses or merge edges; an
-ambiguous list produces no edge and no terminal validation error. Floor 06
-must preserve P2's excluded Resolver candidate and P10's existing path.
-
-ACTIVE EXPERIMENT, V7.23, P0, bounded non-render render-decision tolerance:
-
-Base: V7.22 commit `b80a2dd`. The Floor 06 V7.22 Review covered every real
-presentation render but also emitted two `no_match` rows for known V7.5
-technical Object Evidence Views. Those rows cannot create presentation-render
-edges, yet V7.11 treated them as a terminal error before it could validate the
-complete real-render set. Change only the V7.11 normalizer: record and ignore
-such rows when `render_group_id` identifies an existing non-render Object
-Evidence View. Unknown IDs, duplicates, invalid true-render rows and missing
-true-render coverage remain terminal validation errors. Do not change Review
-prompt/schema, Discovery, Candidate Regions, Conflict Resolver, Membership,
-graph assembly, Naming or UI.
-
-Acceptance: the exact known technical surplus row yields no fact and is
-audited. A real render still requires one valid decision, and an unknown ID
-still fails validation. Focused tests pass before Floor 06 retry.
-
-ACTIVE EXPERIMENT, V7.22, P0, bounded render-target delimiter recovery:
-
-Base: V7.21 commit `c6fe0f5`. The Floor 06 V7.21 Review failed before
-package assembly because it serialized a multi-View `technical_group_id` with
-commas, while V7.20 only recognized the identical safe list form with pipes.
-Change only V7.20's existing presentation-render adapter to recognize `,` as
-an alternative separator. Preserve the exact existing guard: every listed ID
-must be a non-render Object Evidence View contained in exactly one ordinary
-hypothesis from that same Review; then use its lexical technical anchor. All
-unknown, cross-hypothesis and malformed lists become `unresolved` without an
-edge. Do not change the Review prompt/schema, Discovery, Candidate Regions,
-Conflict Resolver, Membership, graph assembly, Naming or UI.
-
-Acceptance: the exact comma-separated error response validates to the same
-anchors as its pipe-separated equivalent. A cross-hypothesis comma list creates
-no edge and no terminal failure. Focused tests pass before Floor 06 retry.
-
-ACTIVE EXPERIMENT, V7.21, P0, atomic Conflict Resolver targets:
-
-Base: V7.20 commit `be7c087`. The Floor 06 V7.14 control resolved 11 targets
-in one provider batch, including P02. V7.18 correctly excluded the terminal
-P02 plan and therefore sent ten targets, but an unrelated P03 target changed
-from `presentation_render` to `elevation`. The resolver's advertised
-independence was not real: one provider request carried up to 12 visual crops,
-and the target IDs were ordinal. The resulting target composition could change
-unrelated visual verdicts before Membership Review.
-
-Change only the V7.5 transport: one opaque, geometry-stable target ID and one
-provider request containing exactly that target crop plus its page context,
-with at most four target requests in flight.
-Collect the resulting decisions in the established order and retain the
-existing crop transform, schema, validation, retry, admission, Conflict
-Resolver prompt, Discovery, Candidate Regions, terminal P02 exclusion,
-Membership, render recovery, graph assembly, Naming and UI unchanged. Record
-only a SHA-256 digest of each request content in the resolver audit, never
-the pixels or document payload. A failed target remains unresolved without
-affecting another target.
-
-Acceptance: adding or removing an unrelated Candidate Region leaves the same
-target's opaque ID and request-content digest unchanged. Focused resolver and
-timing tests pass. Floor 06 then retains P02's terminal exclusion and is
-audited against V7.20 for per-target decisions, Island inventory, page package
-composition, Membership result, provider tokens, cost and duration. This is
-an isolation experiment, not acceptance of a package count.
-
-ACTIVE, P0, Detection V8 stage-separated rebuild:
-
-Owner-approved new generation. Preserve V7.14 `39eb723` as the comparison
-checkpoint, but do not extend the V7 resolver, render adapter, Candidate Q or
-route-specific Membership schemas. Build a clean pipeline with exactly five
-boundaries: deterministic Mistral/MyPDF candidate union, one Discovery
-classification, rare independently audited Conflict Resolver, one Membership
-pair-link contract and deterministic components. Candidate Regions never seed a
-graph. A dominant full-page floor plan is terminally excluded during Discovery.
-Presentation render/photo is ordinary Object Evidence with a narrower link
-proof, not an adapter or separate response array. Resolver admissions become
-ordinary Object Evidence and receive no special Membership matrix.
-
-V8.1 experimental path remains the current default but is not accepted: its
-first Floor 06 run rejected every returned Membership link and published 48
-singletons. V8.2 is an isolated rebuild in `agents/detection_v82.py`
-with its own transport and version marker `detection_v8_2_0`; it is selectable
-as `DETECTION_PIPELINE_VERSION=v82`. Its default eligibility is
-`ordinary_object_set` only. ADA, Page 23/native-graphic, source-degraded,
-assembly-set and explicit-model categories retain the V7 route unchanged;
-this router contract is covered by focused tests. V8.2 still needs the full
-Floor 06 self-run before it is accepted as a quality checkpoint. `v7` remains
-the explicit rollback. Acceptance requires the complete Floor 06 audit
-recorded in `notes/DETECTION_V8_REBUILD.md`.
-
-SUPERSEDED, V8.2.1, P0, global Membership evidence board:
-
-The first V8.2 Floor 06 run was fast (74.241 seconds, $0.133184) but returned
-22 objects because Membership received 36 ordered local crops and emitted only
-11 same-page links. Discovery, Candidate Regions, Floor Plan exclusion and the
-Conflict Resolver are protected. V8.2.1 changes only the single Membership
-request: it adds a deterministic labelled contact sheet of the same immutable
-Object Evidence views before their existing detail crops, and explicitly
-requires cross-page comparison. It creates no objects, candidates, resolver
-targets, graph, adapter, extra provider call, or new membership rule. The
-Membership audit records its tile-to-view mapping. Acceptance: Floor 06 has
-evidence-backed cross-page links where the views depict the same object, no
-extra provider call, and no Discovery or floor-plan regression.
-
-SUPERSEDED, V8.2.2, P0, mandatory same-page Membership coverage:
-
-V8.2.1 made all Object Evidence visible in one Membership request, but it did
-not make a decision for every within-page pair mandatory. V8.2.2 preserves the
-same single Membership call, Discovery, Candidate Regions, Floor Plan terminal
-exclusion, Conflict Resolver, ordinary render representation kind and link
-validator. Before the call it deterministically enumerates every unordered pair
-of normal Object Evidence on each page. The response must contain exactly one
-decision per listed pair. Positive decisions pass through the existing link
-validator; negative decisions are audit-only and cannot create links. Optional
-cross-page links retain their existing positive-link contract. The output cap
-is raised from 8,192 to 12,288 only to allow a dense required decision matrix
-to finish in that same call, not to add work. Acceptance: no omitted or
-duplicated same-page decision can publish, all positive links remain subject to
-the established proof rules, exactly one Membership provider call occurs, and
-Discovery, floor-plan handling, candidate recall and Conflict Resolver records
-remain unchanged.
-
-SUPERSEDED, V8.2.3, P0, Membership pair-rule alignment:
-
-The first V8.2.2 live attempt reached Membership and correctly stopped rather
-than publishing an unsupported positive decision. Its generic failure did not
-identify the pair or violated proof rule. V8.2.3 changes no pipeline boundary,
-candidate, Discovery decision, resolver target, Membership call count or
-technical link rule. It prints the already-existing validation rule beside each
-deterministic same-page pair: two independent proofs for technical pairs,
-visual-only proof for render-to-technical pairs, and must-not-link for
-render-to-render pairs. The deterministic normalizer removes a render-to-render
-edge and discards non-visual surplus proofs from a render-to-technical edge. It
-never invents a missing visual proof or weakens a technical pair. It also
-returns the pair ID and precise existing-validator reason on a rejected
-technical positive decision. Acceptance: a valid response has unchanged
-grouping rules; invalid render responses cannot crash the run, and an invalid
-technical positive identifies the exact pair and reason rather than the former
-generic error.
-
-ACTIVE, V8.2.4, P0, optional cross-page Membership audit:
-
-The next live V8.2.3 attempt completed same-page validation but stopped on an
-invalid optional cross-page link. V8.2.4 changes only the terminal handling of
-that optional output. It applies the existing proof rules, including the
-render-to-technical visual-only normalization, accepts a valid cross-page edge,
-and records an invalid edge in `rejected_cross_page_links` with its endpoints
-and validator reason. It neither creates an edge nor attempts a retry. Required
-same-page decisions remain terminal and unchanged. Acceptance: one malformed
-cross-page proposal cannot stop a run or merge objects; every discarded
-cross-page proposal is inspectable in the Membership audit; a valid cross-page
-link still joins its component.
 
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence

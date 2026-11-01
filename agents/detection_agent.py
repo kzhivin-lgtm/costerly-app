@@ -22,8 +22,6 @@ from agents.detection_document_classifier import (
     DEFAULT_CLAUDE_DETECTION_MODEL,
     classify_detection_document,
 )
-from agents.detection_v8_adapter import run_anthropic_detection_v8_stage_separated
-from agents.detection_v82_adapter import run_anthropic_detection_v82
 from agents.detection_page_images import (
     DEFAULT_PAGE_IMAGE_DPI,
     build_detection_registry_regions,
@@ -36,15 +34,6 @@ from agents.schemas.detection_schema import validate_detection_result
 # router with scenario categorization. The configured secret names remain V4.
 DEFAULT_CLAUDE_DETECTION_V4_MODEL = DEFAULT_CLAUDE_DETECTION_MODEL
 DEFAULT_CLAUDE_DETECTION_V4_BOUNDARY_MODEL = DEFAULT_CLAUDE_DETECTION_BOUNDARY_MODEL
-
-
-def _select_detection_pipeline_version(explicit_version: str | None = None) -> str:
-    """Select an explicit generation, retaining V7 as a server-side rollback."""
-    value = explicit_version or get_secret("DETECTION_PIPELINE_VERSION", "v82") or "v82"
-    normalized = str(value).strip().lower()
-    if normalized in {"v7", "v8", "v82"}:
-        return normalized
-    raise ValueError("DETECTION_PIPELINE_VERSION must be 'v7', 'v8', or 'v82'")
 
 
 _PRESENTATION_REPRESENTATION_PRIORITY = {
@@ -757,7 +746,6 @@ def run_detection_agent(
     page_image_diagnostics: dict | None = None,
     model: str | None = None,
     stage_callback: Callable[[str], None] | None = None,
-    pipeline_version: str | None = None,
 ) -> dict:
     """
     Detection Agent entrypoint.
@@ -771,7 +759,6 @@ def run_detection_agent(
     if file_bytes is None:
         raise ValueError("Detection Agent requires uploaded file bytes.")
 
-    selected_pipeline_version = _select_detection_pipeline_version(pipeline_version)
     base_model = get_secret(
         "CLAUDE_DETECTION_V4_MODEL",
         DEFAULT_CLAUDE_DETECTION_MODEL,
@@ -792,10 +779,6 @@ def run_detection_agent(
         page_count=len(registry_images),
         page_dimensions=_source_dimensions_by_page(ocr_package),
     )
-    # V8.2 must not erase scenario routing.  The V5-V7 contract is still the
-    # authority for every evidenced special category.  V8.2 is the ordinary
-    # route only until each specialised contract is independently ported and
-    # accepted against its protected benchmark.
     route = classify_detection_document(
         ocr_package=ocr_package,
         source_capability=source_capability,
@@ -803,24 +786,12 @@ def run_detection_agent(
         boundary_model=str(boundary_model),
         explicit_model=model,
     )
-    v82_ordinary_route = (
-        selected_pipeline_version == "v82"
-        and route.get("category") == "ordinary_object_set"
-    )
-    if v82_ordinary_route:
-        route = {
-            **route,
-            "decision": "detection_v8_2_ordinary_stage_separated",
-            "reasons": [*route.get("reasons", []), "v8_2_default_ordinary_route"],
-        }
-    v8_stage_separated_route = selected_pipeline_version == "v8"
-    stage_separated_route = v82_ordinary_route or v8_stage_separated_route
     scope_scout_usage: dict | None = None
     ada_scope_scout_bypass = (
         route.get("category") == "ada_sparse_multi_object"
         and _ada_scope_scout_bypass_reason(route)
     )
-    if not stage_separated_route and ada_scope_scout_bypass:
+    if ada_scope_scout_bypass:
         # V6.29 and V6.32 do not allow a structurally evidenced boundary risk
         # to be collapsed into one Assembly Set by the short scope observation.
         # Preserve the existing Ada contract without a call that cannot change
@@ -854,11 +825,7 @@ def run_detection_agent(
                 },
             },
         }
-    if (
-        not stage_separated_route
-        and route.get("category") == "ada_sparse_multi_object"
-        and not ada_scope_scout_bypass
-    ):
+    if route.get("category") == "ada_sparse_multi_object" and not ada_scope_scout_bypass:
         # V6.27 narrows the expensive Ada boundary route only after a separate,
         # conservative document-scope observation. The scout cannot create
         # Islands or commercial objects. A failed or uncertain scout preserves
@@ -929,29 +896,7 @@ def run_detection_agent(
     if stage_callback:
         stage_callback("Detection Registry started")
     try:
-        if v82_ordinary_route:
-            _visual_map, registry, visual_registry_usage = run_anthropic_detection_v82(
-                file_name=file_name,
-                company_id=company_id,
-                file_bytes=file_bytes,
-                page_images=registry_images,
-                ocr_package=ocr_package,
-                model=(model or route["registry_model"]),
-                stage_callback=stage_callback,
-            )
-        elif v8_stage_separated_route:
-            _visual_map, registry, visual_registry_usage = (
-                run_anthropic_detection_v8_stage_separated(
-                    file_name=file_name,
-                    company_id=company_id,
-                    file_bytes=file_bytes,
-                    page_images=registry_images,
-                    ocr_package=ocr_package,
-                    model=(model or route["registry_model"]),
-                    stage_callback=stage_callback,
-                )
-            )
-        elif source_capability["route_eligible"]:
+        if source_capability["route_eligible"]:
             # The visual-only route is deliberately a separate contract. It is
             # reached only when every page lacks usable coordinate evidence, so
             # it cannot weaken ordinary V5's OCR/Fusion/Dimension path.
@@ -1035,7 +980,7 @@ def run_detection_agent(
         "applied": False,
         "reason": "document_category_is_not_assembly_set",
     }
-    if not stage_separated_route and route.get("category") == "assembly_set":
+    if route.get("category") == "assembly_set":
         registry, assembly_set_audit = _compile_confirmed_assembly_set_registry(
             registry,
             visual_map=_visual_map,

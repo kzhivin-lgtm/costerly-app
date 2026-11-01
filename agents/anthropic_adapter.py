@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import base64
 import copy
-from collections import Counter
-from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
 import html
 import hashlib
@@ -123,7 +121,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v6_57_compact_discovery_deterministic_output_budget"
+    "detection_v8_3_v714_dominant_floor_plan_discovery"
 )
 DETECTION_V67_MISTRAL_ANCHOR_ADMISSION_PROMPT_VERSION = (
     "detection_v6_7_mistral_graphic_anchor_admission"
@@ -210,7 +208,6 @@ DETECTION_V5_MEMBERSHIP_CROP_MAX_SIDE = 768
 DETECTION_V627_SCOPE_SCOUT_MAX_TOKENS = 480
 DETECTION_V75_CONFLICT_RESOLVER_MAX_TOKENS = 2_048
 DETECTION_V75_CONFLICT_RESOLVER_MAX_TARGETS_PER_REQUEST = 12
-DETECTION_V75_CONFLICT_RESOLVER_MAX_CONCURRENT_REQUESTS = 4
 DETECTION_V75_CONFLICT_RESOLVER_CROP_MAX_SIDE = 1_200
 DETECTION_V75_CONFLICT_RESOLVER_CONTEXT_MAX_SIDE = 512
 DETECTION_V5_MEMBERSHIP_PAGE_CONTEXT_MAX_SIDE = 1024
@@ -3234,52 +3231,9 @@ def run_detection_v75_conflict_resolver(
     model: str,
     retry_invalid_targets: bool = True,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Resolve each bounded conflict target without exposing its provenance.
-
-    Each provider request contains exactly one target crop and its own page
-    context.  Candidate routing must be observationally independent: adding
-    or removing another target cannot change this target's provider input.
-    """
+    """Resolve a bounded conflict batch without exposing its provenance."""
     if not targets:
         return [], {"attempted": False, "target_count": 0, "batches": []}
-    if len(targets) > 1:
-        # Preserve the established four-request concurrency ceiling while
-        # making the visual decision itself target-atomic.  ``map`` returns
-        # results in input order, so downstream IDs and audits remain stable.
-        with ThreadPoolExecutor(
-            max_workers=min(
-                DETECTION_V75_CONFLICT_RESOLVER_MAX_CONCURRENT_REQUESTS,
-                len(targets),
-            ),
-            thread_name_prefix="detection-v75",
-        ) as executor:
-            individual_results = list(executor.map(
-                lambda target: run_detection_v75_conflict_resolver(
-                    page_images=page_images,
-                    targets=[target],
-                    coordinate_frames=coordinate_frames,
-                    model=model,
-                    retry_invalid_targets=retry_invalid_targets,
-                ),
-                targets,
-            ))
-        return (
-            [
-                decision
-                for decisions, _ in individual_results
-                for decision in decisions
-            ],
-            {
-                "version": DETECTION_V75_CONFLICT_RESOLVER_PROMPT_VERSION,
-                "attempted": True,
-                "target_count": len(targets),
-                "batches": [
-                    batch
-                    for _, audit in individual_results
-                    for batch in audit["batches"]
-                ],
-            },
-        )
     prompt = """
 You are an independent visual conflict resolver for technical PDF drawings.
 
@@ -3365,8 +3319,8 @@ Return only schema JSON.
             batch_diagnostics,
         )
 
-    for target in targets:
-        batch_targets = [target]
+    for offset in range(0, len(targets), DETECTION_V75_CONFLICT_RESOLVER_MAX_TARGETS_PER_REQUEST):
+        batch_targets = targets[offset:offset + DETECTION_V75_CONFLICT_RESOLVER_MAX_TARGETS_PER_REQUEST]
         crops, contexts, crop_audit = build_detection_v75_conflict_resolver_images(
             page_images=page_images,
             targets=batch_targets,
@@ -3384,17 +3338,11 @@ Return only schema JSON.
         invalid_target_errors: dict[str, str] = {}
         batch_diagnostics: list[str] = []
         retry_audit: dict[str, Any] | None = None
-        request_content_sha256: str | None = None
         if crops:
             try:
                 content = _v75_conflict_resolver_content_blocks(
                     crops=crops, contexts=contexts, coordinate_frames=coordinate_frames,
                 )
-                request_content_sha256 = hashlib.sha256(
-                    json.dumps(
-                        content, sort_keys=True, separators=(",", ":"),
-                    ).encode("utf-8")
-                ).hexdigest()
                 response, request_diagnostics = create_claude_message_streamed(
                     get_anthropic_client(),
                     model=model,
@@ -3480,9 +3428,6 @@ Return only schema JSON.
         all_decisions.extend(normalized)
         batches.append({
             "target_ids": [str(target["target_id"]) for target in batch_targets],
-            "request_content_sha256": (
-                request_content_sha256 if crops else None
-            ),
             "crop_audit": crop_audit,
             "provider": provider_summary,
             "error": batch_error,
@@ -3833,11 +3778,9 @@ def normalize_detection_v711_presentation_render_decisions(
         if str(group.get("representation_kind") or "").strip().lower()
         == "presentation_render"
     }
-    non_render_object_ids = set(object_groups) - render_ids
     if not isinstance(decisions, list):
         raise ValueError("V7.11 presentation render decisions must be a list")
     by_render: dict[str, dict[str, Any]] = {}
-    ignored_non_render_rows: list[dict[str, str]] = []
     for row in decisions:
         if not isinstance(row, dict) or set(row) != {
             "render_group_id", "disposition", "technical_group_id",
@@ -3849,19 +3792,6 @@ def normalize_detection_v711_presentation_render_decisions(
         technical_id = str(row["technical_group_id"] or "")
         evidence_type = str(row["evidence_type"] or "")
         witness = str(row["visual_witness"] or "").strip()
-        if render_id in non_render_object_ids:
-            # The Review must decide every presentation render, but occasionally
-            # echoes a known technical View as a no-match row. It cannot create
-            # a render edge, so retain an audit entry and ignore it. Unknown
-            # IDs remain invalid below.
-            ignored_non_render_rows.append({
-                "render_group_id": render_id,
-                "disposition": "ignored_non_render_row",
-                "raw_disposition": disposition,
-                "raw_technical_group_id": technical_id,
-                "raw_evidence_type": evidence_type,
-            })
-            continue
         if render_id not in render_ids or render_id in by_render or not witness:
             raise ValueError("V7.11 presentation render decision is invalid")
         if disposition == "attach":
@@ -3888,7 +3818,7 @@ def normalize_detection_v711_presentation_render_decisions(
         raise ValueError("V7.11 presentation render decisions must cover every render")
 
     facts: list[dict[str, Any]] = []
-    audit: list[dict[str, Any]] = list(ignored_non_render_rows)
+    audit: list[dict[str, Any]] = []
     for render_id in sorted(render_ids):
         decision = by_render[render_id]
         normalized = {
@@ -3912,93 +3842,6 @@ def normalize_detection_v711_presentation_render_decisions(
                 ],
             })
     return facts, audit
-
-
-def recover_detection_v711_multitarget_render_decisions(
-    decisions: list[dict[str, Any]],
-    *,
-    object_hypotheses: object,
-    visual_groups: list[dict[str, Any]],
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Recover only a delimited target list already contained in one hypothesis.
-
-    Review's ``technical_group_id`` is scalar. Some otherwise valid Reviews
-    serialize a list of technical Views with ``|`` or ``,``. Choosing an
-    arbitrary target would be unsafe, but a list whose every View is already
-    in exactly one ordinary hypothesis emitted by the same Review cannot
-    create a new technical merge. It can safely
-    use that component's lexically stable technical anchor.  Every other
-    multi-target row becomes ``unresolved`` so it cannot merge components or
-    abort the complete RFQ.
-    """
-    technical_group_ids = {
-        str(group.get("group_id") or "")
-        for group in visual_groups
-        if isinstance(group, dict)
-        and group.get("evidence_class") == "object_evidence"
-        and str(group.get("representation_kind") or "").lower()
-        != "presentation_render"
-        and str(group.get("group_id") or "")
-    }
-    hypothesis_group_sets: list[set[str]] = []
-    if isinstance(object_hypotheses, list):
-        for hypothesis in object_hypotheses:
-            group_ids = hypothesis.get("group_ids") if isinstance(hypothesis, dict) else None
-            if isinstance(group_ids, list):
-                hypothesis_group_sets.append({
-                    str(group_id) for group_id in group_ids if str(group_id)
-                })
-
-    recovered: list[dict[str, Any]] = []
-    audit: list[dict[str, Any]] = []
-    for decision in decisions:
-        row = copy.deepcopy(decision)
-        if not isinstance(row, dict):
-            # The ordinary V7.11 normalizer retains ownership of malformed
-            # decision validation and its established error path.
-            recovered.append(row)
-            continue
-        target = str(row.get("technical_group_id") or "")
-        target_ids = [
-            part.strip() for part in re.split(r"[|,]", target) if part.strip()
-        ]
-        if len(target_ids) <= 1:
-            recovered.append(row)
-            continue
-        unique_target_ids = set(target_ids)
-        matching_hypotheses = [
-            group_ids for group_ids in hypothesis_group_sets
-            if unique_target_ids <= group_ids
-        ]
-        if (
-            unique_target_ids <= technical_group_ids
-            and len(matching_hypotheses) == 1
-        ):
-            anchor = min(unique_target_ids)
-            row["technical_group_id"] = anchor
-            audit.append({
-                "render_group_id": str(row.get("render_group_id") or ""),
-                "disposition": "recovered_same_hypothesis_anchor",
-                "raw_technical_group_id": target,
-                "technical_group_id": anchor,
-            })
-        else:
-            row.update({
-                "disposition": "unresolved",
-                "technical_group_id": "",
-                "evidence_type": "none",
-                "visual_witness": (
-                    "Malformed multi-target render reference does not identify "
-                    "one technical View."
-                ),
-            })
-            audit.append({
-                "render_group_id": str(row.get("render_group_id") or ""),
-                "disposition": "unresolved_ambiguous_multi_target",
-                "raw_technical_group_id": target,
-            })
-        recovered.append(row)
-    return recovered, audit
 
 
 def attach_detection_v711_presentation_render_components(
@@ -5334,17 +5177,17 @@ def _visual_map_from_registry_groups(groups: object) -> dict[str, Any]:
 def _floor_plan_forced_context_eligible(
     group: dict[str, Any],
     *,
-    groups_on_page: int,
     page_frame: dict[str, Any] | None,
 ) -> bool:
     """Return whether a plan-like group is large enough for forced demotion.
 
     A representation label is deliberately insufficient: object plans share it
-    with whole-level layouts. The test uses only the physical core, never the
-    wider evidence envelope which may legitimately include captions/dimensions.
+    with whole-level layouts. The decision must not depend on how many
+    unrelated Islands Discovery returned on the page: that count can change
+    when another recall source finds a detail. Use only the physical core,
+    never the wider evidence envelope which may legitimately include
+    captions/dimensions.
     """
-    if groups_on_page == 1:
-        return True
     core_bbox = _detection_bbox(group.get("core_bbox"))
     dimensions = (page_frame or {}).get("fusion_dimensions") or page_frame or {}
     try:
@@ -5396,11 +5239,6 @@ def _validate_and_apply_visual_registry_classifications(
         r"architectural|circulation|walls?|door\s+swings?|multiple\s+spaces?)\b",
         re.IGNORECASE,
     )
-    groups_by_page = Counter(
-        int(group["page_number"])
-        for group in enriched["visual_groups"]
-        if isinstance(group, dict) and isinstance(group.get("page_number"), int)
-    )
     for group in enriched["visual_groups"]:
         decision = by_group_id[group["group_id"]]
         representation = str(group.get("representation_kind") or "").lower()
@@ -5416,14 +5254,20 @@ def _validate_and_apply_visual_registry_classifications(
             description,
             re.IGNORECASE,
         ))
+        # A full-page plan may have a terse description, so an explicit visual
+        # kind is enough when its physical core is dominant. The marker count
+        # remains a guarded fallback only for a model-mislabelled plan.
         generic_plan = (
-            representation in {"floor_plan", "location_plan"} or describes_floor_plan
-        ) and len(set(generic_plan_markers.findall(description))) >= 3
+            representation in {"floor_plan", "location_plan"}
+            or (
+                describes_floor_plan
+                and len(set(generic_plan_markers.findall(description))) >= 3
+            )
+        )
         page_number = group.get("page_number")
         page_frame = (page_frames or {}).get(page_number) if isinstance(page_number, int) else None
         forced_context_eligible = _floor_plan_forced_context_eligible(
             group,
-            groups_on_page=groups_by_page.get(page_number, 0),
             page_frame=page_frame,
         )
         if (
@@ -5446,63 +5290,6 @@ def _validate_and_apply_visual_registry_classifications(
         for group in enriched["visual_groups"]
     ]
     return enriched, audit
-
-
-def _exclude_terminal_floor_plan_candidate_regions(
-    candidate_regions: list[dict[str, Any]],
-    *,
-    visual_groups: list[dict[str, Any]],
-) -> tuple[list[dict[str, Any]], list[str]]:
-    """Keep closed whole-plan candidates out of the Conflict Resolver only.
-
-    Candidate Regions are created before Discovery.  A dominant architectural
-    plan may therefore be correctly closed as terminal document context by
-    Discovery while its original Candidate Region would otherwise be routed to
-    the post-Discovery resolver and re-admitted as a new Island.  This leaves
-    source inventory untouched and removes only a region fully contained by
-    that already-closed floor or location plan.
-    """
-    terminal_context_boxes: list[tuple[int, dict[str, int]]] = []
-    for group in visual_groups:
-        if not isinstance(group, dict):
-            continue
-        if group.get("evidence_class") != "document_context":
-            continue
-        if str(group.get("representation_kind") or "").lower() not in {
-            "floor_plan", "location_plan",
-        }:
-            continue
-        try:
-            page_number = int(group.get("page_number"))
-        except (TypeError, ValueError):
-            continue
-        if (bbox := _detection_bbox(group.get("bbox"))) is not None:
-            terminal_context_boxes.append((page_number, bbox))
-
-    retained: list[dict[str, Any]] = []
-    excluded_ids: list[str] = []
-    for candidate in candidate_regions:
-        if not isinstance(candidate, dict):
-            retained.append(candidate)
-            continue
-        try:
-            page_number = int(candidate.get("page_number"))
-        except (TypeError, ValueError):
-            retained.append(candidate)
-            continue
-        candidate_bbox = _detection_bbox(candidate.get("bbox"))
-        if candidate_bbox is None:
-            retained.append(candidate)
-            continue
-        if any(
-            context_page == page_number
-            and _detection_bbox_contains(context_bbox, candidate_bbox)
-            for context_page, context_bbox in terminal_context_boxes
-        ):
-            excluded_ids.append(str(candidate.get("candidate_region_id") or ""))
-            continue
-        retained.append(candidate)
-    return retained, excluded_ids
 
 
 def validate_detection_v611_document_scope(
@@ -12234,17 +12021,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             field: proposal_raw_payload[field]
             for field in discovery_fields - {"page_coverage", "document_scope"}
         }
-    terminal_discovery_payload, _ = _validate_and_apply_visual_registry_classifications(
-        proposal_discovery_payload, page_frames=review_coordinate_frames,
-    )
-    conflict_candidate_regions, terminal_floor_plan_candidate_region_ids = (
-        _exclude_terminal_floor_plan_candidate_regions(
-            candidate_regions,
-            visual_groups=terminal_discovery_payload["visual_groups"],
-        )
-    )
     v75_conflict_targets = build_detection_conflict_targets(
-        candidate_regions=conflict_candidate_regions,
+        candidate_regions=candidate_regions,
         visual_groups=proposal_discovery_payload["visual_groups"],
         classifications=proposal_discovery_payload["classifications"],
     )
@@ -12255,9 +12033,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "targets": copy.deepcopy(v75_conflict_targets),
         "decisions": [],
         "batches": [],
-        "terminal_floor_plan_excluded_candidate_region_ids": (
-            terminal_floor_plan_candidate_region_ids
-        ),
     }
     if v75_conflict_targets:
         _notify_detection_stage(
@@ -12670,16 +12445,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         [] if v69_criteria_reconciliation_active
         else review_raw_payload["presentation_render_decisions"]
     )
-    presentation_render_target_recovery_audit: list[dict[str, Any]] = []
-    if not v69_criteria_reconciliation_active:
-        (
-            review_presentation_render_decisions,
-            presentation_render_target_recovery_audit,
-        ) = recover_detection_v711_multitarget_render_decisions(
-            review_presentation_render_decisions,
-            object_hypotheses=review_raw_payload["object_hypotheses"],
-            visual_groups=proposal_for_review["visual_groups"],
-        )
     review_conflict_pair_decisions = (
         [] if not v714_conflict_membership_active
         else review_raw_payload["conflict_pair_decisions"]
@@ -12937,9 +12702,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v5_9_review_decision_audit": copy.deepcopy(review_raw_payload),
         "v7_11_presentation_render_decisions": copy.deepcopy(
             review_presentation_render_decisions,
-        ),
-        "v7_20_presentation_render_target_recovery": copy.deepcopy(
-            presentation_render_target_recovery_audit,
         ),
         "v7_14_conflict_membership": {
             **copy.deepcopy(v714_conflict_membership_audit),

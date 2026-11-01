@@ -53,20 +53,6 @@ def _load_processing_history(company_id: str) -> list[dict]:
         return []
 
 
-def _render_processing_failure(stage_slot, message: object) -> None:
-    """Replace the client-side Processing shell with a terminal failure state."""
-    from state.session import reset_new_estimate_session, set_screen
-
-    def return_to_upload() -> None:
-        reset_new_estimate_session(clear_upload_widget=True)
-        set_screen("upload")
-
-    stage_slot.empty()
-    st.markdown('<span class="costerly-processing-failure-marker"></span>', unsafe_allow_html=True)
-    st.error(f"RFQ processing failed: {message}")
-    st.button("BACK TO UPLOAD", type="secondary", on_click=return_to_upload)
-
-
 def render_processing_screen(company_id: str, *, trace=None) -> None:
     """Render the processing screen while the uploaded RFQ is analyzed.
 
@@ -275,8 +261,8 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
             result = future.result()
     except Exception as exc:
         st.session_state.processing_error = str(exc)
-        _render_processing_failure(stage_slot, exc)
-        return
+        st.session_state.screen = "file_review"
+        st.rerun()
 
     processing_plan = phase_state.get("progress_plan")
     if isinstance(processing_plan, dict):

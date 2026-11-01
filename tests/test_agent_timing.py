@@ -12,7 +12,6 @@ import pytest
 
 from agents.anthropic_adapter import (
     _discard_non_object_visual_registry_groups,
-    _exclude_terminal_floor_plan_candidate_regions,
     _validate_and_apply_visual_registry_classifications,
     _apply_reference_root_suffixes,
     DEFAULT_CLAUDE_DETECTION_MODEL,
@@ -774,8 +773,8 @@ def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signal
     assert "function visibleProgressNode(stage)" in source
     assert "writeProgress(percent)" in source
     assert "syncForecastFromStage(stage)" in source
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_21" in source
-    assert "costerly-upload-runtime-v1121-migrated" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_20" in source
+    assert "costerly-upload-runtime-v1120-migrated" in source
     assert "parentWindow.location.reload();" in source
     assert "function finalizationState(stage)" in source
     assert "function advanceFinalization(state)" in source
@@ -791,26 +790,6 @@ def test_processing_screen_counts_pdf_pages_before_rendering_the_pre_fusion_stag
     assert '"value": "ocr", "page_count": initial_page_count' in source
     assert "clear_upload_processing_shell" not in source
     assert 'complete=True' in source
-
-
-def test_processing_failure_replaces_the_progress_shell_without_waiting_for_a_rerun():
-    source = Path("screens/processing.py").read_text()
-    failure_branch = source.rsplit("except Exception as exc:", 1)[1].split(
-        "processing_plan = phase_state.get", 1,
-    )[0]
-
-    assert 'costerly-processing-failure-marker' in source
-    assert '_render_processing_failure(stage_slot, exc)' in failure_branch
-    assert 'st.rerun()' not in failure_branch
-
-
-def test_processing_shell_releases_on_terminal_failure_marker():
-    source = getsource(install_upload_interaction_guards)
-
-    assert "PROCESSING_FAILURE_MARKER" in source
-    assert "processingFailureIsActive" in source
-    assert "finalizeElapsed" in source
-    assert "removeShell" in source
 
 
 def test_processing_stage_carries_the_completed_run_id_to_the_browser_handoff():
@@ -832,7 +811,7 @@ def test_processing_cycle_persists_ocr_page_count_for_future_forecasts():
 def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():
     source = getsource(install_upload_interaction_guards)
 
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_21" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_20" in source
     assert "function uploadScreenIsActive()" in source
     assert "document.querySelector('.upload-screen-active')" in source
     assert "if (!uploadScreenIsActive()) return;" in source
@@ -1666,59 +1645,41 @@ def test_whole_architectural_floor_plan_is_demoted_to_document_context():
     assert audit[0]["evidence_class"] == "document_context"
 
 
-def test_terminal_floor_plan_excludes_only_fully_contained_candidate_region():
-    candidates = [
-        {
-            "candidate_region_id": "CR-P002-001", "page_number": 2,
-            "bbox": {
-                "top_left_x": 120, "top_left_y": 120,
-                "bottom_right_x": 880, "bottom_right_y": 880,
-            },
-        },
-        {
-            "candidate_region_id": "CR-P002-002", "page_number": 2,
-            "bbox": {
-                "top_left_x": 850, "top_left_y": 120,
-                "bottom_right_x": 1100, "bottom_right_y": 880,
-            },
-        },
-        {
-            "candidate_region_id": "CR-P010-001", "page_number": 10,
-            "bbox": {
-                "top_left_x": 120, "top_left_y": 120,
-                "bottom_right_x": 880, "bottom_right_y": 880,
-            },
-        },
-    ]
-    visual_groups = [
-        {
-            "group_id": "whole-plan", "page_number": 2,
+def test_dominant_floor_plan_is_demoted_without_marker_words_or_group_count():
+    payload = _visual_registry_payload({
+        "visual_groups": [{
+            "group_id": "plan", "page_number": 2, "location_hint": "whole page",
+            "visual_description": "Dimensioned layout drawing.",
             "representation_kind": "floor_plan",
-            "evidence_class": "document_context",
-            "bbox": {
-                "top_left_x": 100, "top_left_y": 100,
-                "bottom_right_x": 1000, "bottom_right_y": 1000,
-            },
-        },
-        {
-            "group_id": "title-block", "page_number": 10,
-            "representation_kind": "title_block",
-            "evidence_class": "document_context",
+            "evidence_class": "object_evidence",
+            "classification_reason": "Large plan sheet.",
             "bbox": {
                 "top_left_x": 0, "top_left_y": 0,
                 "bottom_right_x": 1000, "bottom_right_y": 1000,
             },
-        },
-    ]
+            "core_bbox": {
+                "top_left_x": 0, "top_left_y": 0,
+                "bottom_right_x": 900, "bottom_right_y": 900,
+            },
+        }, {
+            "group_id": "detail", "page_number": 2, "location_hint": "corner",
+            "visual_description": "Cabinet section.",
+            "representation_kind": "section",
+            "evidence_class": "object_evidence",
+            "classification_reason": "Bounded fabricated cabinet detail.",
+        }],
+    })
 
-    retained, excluded_ids = _exclude_terminal_floor_plan_candidate_regions(
-        candidates, visual_groups=visual_groups,
+    enriched, audit = _validate_and_apply_visual_registry_classifications(
+        payload,
+        page_frames={2: {"fusion_dimensions": {"width": 1000, "height": 1000}}},
     )
 
-    assert excluded_ids == ["CR-P002-001"]
-    assert [candidate["candidate_region_id"] for candidate in retained] == [
-        "CR-P002-002", "CR-P010-001",
-    ]
+    by_id = {group["group_id"]: group for group in enriched["visual_groups"]}
+    audit_by_id = {row["group_id"]: row for row in audit}
+    assert by_id["plan"]["evidence_class"] == "document_context"
+    assert audit_by_id["plan"]["evidence_class"] == "document_context"
+    assert by_id["detail"]["evidence_class"] == "object_evidence"
 
 
 def test_whole_architectural_floor_plan_is_demoted_when_model_mislabels_representation_kind():
