@@ -183,6 +183,19 @@ def fetch_estimation_fact_result(
     return dict(rows[0]) if rows else None
 
 
+def fetch_estimation_object_input(client: Client, *, input_id: str) -> dict | None:
+    """Read one immutable evidence package for a controlled extractor replay."""
+    response = (
+        client.table("rfq_estimation_object_inputs")
+        .select("*")
+        .eq("input_id", input_id)
+        .limit(1)
+        .execute()
+    )
+    rows = response.data or []
+    return dict(rows[0]) if rows else None
+
+
 def fetch_latest_estimation_facts_by_object(
     client: Client,
     *,

@@ -1,322 +1,120 @@
 import json
-import threading
+from types import SimpleNamespace
 
 import pytest
-import agents.estimation_v3_material_facts_agent as agent
-from agents.estimation_v3_material_facts_agent import _create_message_with_hard_timeout, _expand
-from use_cases.estimation_v3_material_facts import (
-    _family_alias_context_by_resolver_family,
-    _pricing_key_fields_by_resolver_family,
-)
+
+import agents.estimation_v4_1_material_facts_agent as agent
+import use_cases.estimation_v4_1_material_facts as replay
 
 
-def test_v3_facts_hard_timeout_releases_estimation_worker(monkeypatch):
-    blocked = threading.Event()
-    monkeypatch.setattr(
-        "agents.estimation_v3_material_facts_agent.create_claude_message",
-        lambda *_args, **_kwargs: blocked.wait(60),
-    )
-
-    with pytest.raises(RuntimeError, match="exceeded the 0-second limit"):
-        _create_message_with_hard_timeout(object(), timeout_seconds=0, model="test")
-
-    blocked.set()
-
-
-def test_v3_expands_only_material_demands_and_cut_geometry():
-    facts = _expand(
-        {
-            "d": [1200, 600, 720],
-            "m": [{"id": "m1", "n": "MDF panel", "f": "mdf", "q": 2.4, "u": "m²", "s": {"thickness_mm": 18}}],
-            "p": [{"id": "p1", "m": "m1", "q": 2, "l": 1200, "w": 600, "r": "yes"}],
+def _row(page_count=2):
+    artifacts = []
+    pages = []
+    blocks = []
+    for page_number in range(1, page_count + 1):
+        ref = f"storage://rfq-estimation-evidence/company/run/object/r1/page-{page_number}.webp"
+        artifacts.append({"storage_ref": ref, "page_number": page_number, "artifact_kind": "page"})
+        pages.append({"page_number": page_number, "source_label": str(page_number), "regions": []})
+        blocks.append({"page_number": page_number, "text": f"MDF panel page {page_number}", "block_ref": f"ocr:event:p{page_number}:b0001"})
+    return {
+        "input_id": "input-1", "object_input_revision": 1,
+        "input_payload": {
+            "contract_version": "estimation_input_v4", "run_id": "run-1", "company_id": "company-1", "document": {"file_name": "kitchen.pdf"},
+            "object": {"object_id": "object-1", "object_name": "Kitchen", "quantity": 1, "evidence_pages": pages},
+            "evidence": {"ocr_blocks": blocks, "ocr_literal_items": [], "artifacts": artifacts},
         },
-        {"input_id": "input-1", "object_input_revision": 1, "input_payload": {
-            "run_id": "run-1", "company_id": "company-1",
-            "object": {"object_id": "object-1", "object_name": "Cabinet", "quantity": 1},
-            "evidence": {"primary_preview_ref": "storage://rfq-estimation-evidence/company-1/a.webp"},
-        }},
-        {"mdf"},
-    )
-
-    assert facts["contract_version"] == "estimation_material_facts_v3"
-    assert facts["materials"][0]["family"] == "mdf"
-    assert facts["materials"][0]["quantity"] == 2.4
-    assert facts["materials"][0]["unit"] == "m²"
-    assert facts["parts"][0]["material_requirement_id"] == "m1"
-    assert set(facts) == {
-        "contract_version", "input_id", "object_input_revision", "run_id",
-        "company_id", "object_id", "object_name", "quantity", "status",
-        "dimensions_mm", "materials", "parts", "review_items", "primary_preview_ref",
     }
 
 
-def test_v3_keeps_unit_empty_when_evidence_does_not_support_net_measurement():
-    facts = _expand(
-        {
-            "m": [{
-                "id": "profile", "n": "square steel tube", "f": "metal tube",
-                "q": 1, "s": {"profile_section": "20x20 mm square"},
-            }],
-        },
-        {"input_id": "input-1", "object_input_revision": 1, "input_payload": {
-            "run_id": "run-1", "company_id": "company-1",
-            "object": {"object_id": "object-1", "object_name": "Shelf", "quantity": 1},
-            "evidence": {"primary_preview_ref": "storage://rfq-estimation-evidence/company-1/a.webp"},
-        }},
-        {"metal_tube"},
-    )
+def test_v4_1_builds_disjoint_bounded_batches_with_complete_page_coverage():
+    row = _row(39)
 
-    material = facts["materials"][0]
-    assert material["family"] == "metal_tube"
-    assert material["quantity"] == 1
-    assert material["unit"] is None
+    batches = agent.build_v4_1_evidence_batches(row["input_payload"])
+
+    covered = [page["page_number"] for batch in batches for page in batch["pages"]]
+    assert sorted(covered) == list(range(1, 40))
+    assert len(covered) == len(set(covered))
+    assert all(len(batch["pages"]) <= agent.MAX_SOURCE_PAGES_PER_CALL for batch in batches)
+    assert all(page["topic"] == "structure" for batch in batches for page in batch["pages"])
 
 
-def test_v3_preserves_evidence_backed_net_linear_demand():
-    facts = _expand(
-        {
-            "m": [{
-                "id": "frame", "n": "steel square tube", "f": "metal_tube",
-                "q": 18.6, "u": "m", "s": {"profile_section": "20x20 mm"},
-            }],
-        },
-        {"input_id": "input-1", "object_input_revision": 1, "input_payload": {
-            "run_id": "run-1", "company_id": "company-1",
-            "object": {"object_id": "object-1", "object_name": "Shelf", "quantity": 1},
-            "evidence": {"primary_preview_ref": "storage://rfq-estimation-evidence/company-1/a.webp"},
-        }},
-        {"metal_tube"},
-    )
+def test_v4_1_rejects_a_model_response_that_silently_omits_a_page():
+    batch = agent.build_v4_1_evidence_batches(_row(2)["input_payload"])[0]
 
-    assert facts["materials"][0]["quantity"] == 18.6
-    assert facts["materials"][0]["unit"] == "m"
+    with pytest.raises(ValueError, match="page coverage"):
+        agent._response_for_batch(
+            response={"batch_id": batch["batch_id"], "pages": [{"page_number": 1, "material_signal": "no", "claim_ids": []}], "claims": []},
+            batch=batch, families={"mdf_hdf"},
+        )
 
 
-def test_v3_preserves_every_distinct_material_requirement():
-    facts = _expand(
-        {"m": [
-            {"id": "frame", "n": "metal frame", "f": "metal_tube", "q": 18.6, "u": "m", "s": {"profile_section": "20x20 mm"}},
-            {"id": "backing", "n": "perforated metal backing", "f": "metal sheet", "q": 4.2, "u": "m²", "s": {"thickness_mm": 5}},
-            {"id": "panels", "n": "raw MDF panel", "f": "mdf_hdf", "q": 6.0, "u": "m²", "s": {"thickness_mm": 20}},
-            {"id": "doors", "n": "wood board", "f": "solid_timber", "q": 2.1, "u": "m²", "s": {}},
-        ]},
-        {"input_id": "input-1", "object_input_revision": 1, "input_payload": {
-            "run_id": "run-1", "company_id": "company-1",
-            "object": {"object_id": "object-1", "object_name": "Wall unit", "quantity": 1},
-            "evidence": {"primary_preview_ref": "storage://rfq-estimation-evidence/company-1/a.webp"},
-        }},
-        {"metal_tube", "sheet_metal", "mdf_hdf", "solid_timber"},
-    )
+def test_v4_1_sends_each_source_page_once_in_a_bounded_call(monkeypatch):
+    captured = []
 
-    assert [(row["source_name"], row["unit"]) for row in facts["materials"]] == [
-        ("metal frame", "m"), ("perforated metal backing", "m²"),
-        ("raw MDF panel", "m²"), ("wood board", "m²"),
-    ]
-    assert facts["materials"][1]["family"] == "sheet_metal"
-
-
-def test_v3_supplies_reviewable_envelope_proxy_when_material_has_no_demand():
-    facts = _expand(
-        {"m": [
-            {"id": "backing", "n": "perforated metal backing", "f": "sheet_metal", "q": 0, "s": {"thickness_mm": 5}},
-            {"id": "frame", "n": "metal frame", "f": "metal_tube", "q": 0, "s": {"profile_section": "20x20 mm"}},
-            {"id": "board", "n": "painted MDF", "f": "mdf_hdf", "q": 0, "s": {"surface": "painted", "thickness_mm": 20}},
-        ]},
-        {"input_id": "input-1", "object_input_revision": 1, "input_payload": {
-            "run_id": "run-1", "company_id": "company-1",
-            "object": {
-                "object_id": "object-1", "object_name": "Shelf", "quantity": 1,
-                "dimensions": {"width": 450, "height": 2995, "depth": 0},
-            },
-            "evidence": {"primary_preview_ref": "storage://rfq-estimation-evidence/company-1/a.webp"},
-        }},
-        {"sheet_metal", "metal_tube", "mdf_hdf"},
-    )
-
-    assert [(row["quantity"], row["unit"]) for row in facts["materials"]] == [
-        (1.34775, "m²"), (6.89, "m"), (1.34775, "m²"),
-    ]
-    assert facts["materials"][2]["specification"]["surface"] == "raw"
-    assert len(facts["review_items"]) == 3
-    assert facts["status"] == "review_required"
-
-
-def test_v3_recovers_explicit_detected_materials_omitted_by_the_model():
-    facts = _expand(
-        {"m": [{"id": "mdf", "n": "MDF", "f": "mdf_hdf", "q": 0, "s": {"thickness_mm": 20}}]},
-        {"input_id": "input-1", "object_input_revision": 1, "input_payload": {
-            "run_id": "run-1", "company_id": "company-1",
-            "object": {
-                "object_id": "object-1", "object_name": "Shelf", "quantity": 1,
-                "dimensions": {"width": 450, "height": 2995, "depth": 0},
-                "detected_materials": "Perforated metal sheet 5mm, metal square profile 20x20mm, MDF panel 20mm",
-            },
-            "evidence": {"primary_preview_ref": "storage://rfq-estimation-evidence/company-1/a.webp"},
-        }},
-        {"sheet_metal", "metal_tube", "mdf_hdf"},
-    )
-
-    assert [(row["family"], row["quantity"], row["unit"]) for row in facts["materials"]] == [
-        ("mdf_hdf", 1.34775, "m²"),
-        ("sheet_metal", 1.34775, "m²"),
-        ("metal_tube", 6.89, "m"),
-    ]
-    assert facts["materials"][1]["specification"] == {"thickness_mm": 5.0}
-    assert facts["materials"][2]["specification"] == {"profile_section": "20x20"}
-
-
-def test_v3_excludes_paint_and_packaging_from_material_requirements():
-    facts = _expand(
-        {"m": [
-            {"id": "board", "n": "MDF", "f": "mdf_hdf", "q": 2, "u": "m²", "s": {"thickness_mm": 20}},
-            {"id": "paint", "n": "Paint lacquer stain", "f": "paint_lacquer_stain", "q": 1, "u": "l", "s": {}},
-            {"id": "box", "n": "Packaging", "f": "packaging_material", "q": 1, "u": "piece", "s": {}},
-        ]},
-        {"input_id": "input-1", "object_input_revision": 1, "input_payload": {
-            "run_id": "run-1", "company_id": "company-1",
-            "object": {"object_id": "object-1", "object_name": "Shelf", "quantity": 1},
-            "evidence": {"primary_preview_ref": "storage://rfq-estimation-evidence/company-1/a.webp"},
-        }},
-        {"mdf_hdf", "paint_lacquer_stain", "packaging_material"},
-    )
-
-    assert [material["family"] for material in facts["materials"]] == ["mdf_hdf"]
-
-
-def test_v3_normalizes_bare_mdf_to_raw_board_identity():
-    facts = _expand(
-        {
-            "m": [{
-                "id": "mdf", "n": "MDF", "f": "mdf_hdf", "q": 0,
-                "s": {"thickness_mm": 20, "surface": "white matte"},
-            }],
-        },
-        {"input_id": "input-1", "object_input_revision": 1, "input_payload": {
-            "run_id": "run-1", "company_id": "company-1",
-            "object": {"object_id": "object-1", "object_name": "Shelf", "quantity": 1},
-            "evidence": {"primary_preview_ref": "storage://rfq-estimation-evidence/company-1/a.webp"},
-        }},
-        {"mdf_hdf"},
-    )
-
-    assert facts["materials"][0]["specification"] == {
-        "board_type": "mdf", "surface": "raw", "thickness_mm": 20,
-    }
-
-
-def test_v3_exposes_only_existing_pricing_key_facts_to_extraction():
-    requirements = _pricing_key_fields_by_resolver_family(
-        families={"mdf_hdf", "metal_tube"},
-        material_families=[
-            {"family_id": "mdf", "family_code": "mdf_hdf", "active": True},
-            {"family_id": "tube", "family_code": "metal_tube", "active": True},
-        ],
-        material_pricing_policies=[
-            {"family_id": "mdf", "pricing_key_attribute_codes": ["thickness"], "active": True},
-            {
-                "family_id": "tube",
-                "pricing_key_attribute_codes": ["metal_type", "section_profile"],
-                "active": True,
-            },
-        ],
-    )
-
-    assert requirements == {
-        "mdf_hdf": ("thickness_mm",),
-        "metal_tube": ("metal_type", "profile_section"),
-    }
-
-
-def test_v3_builds_multilingual_intake_context_for_allowed_families(monkeypatch):
-    monkeypatch.setattr(
-        "use_cases.estimation_v3_material_facts.load_estimation_alias_context",
-        lambda _client, **_kwargs: {
-            "mdf_hdf": {
-                "catalog_family": "mdf_hdf",
-                "family_aliases": ["панель мдф"],
-                "pricing_key_aliases": {"thickness_mm": ["толщина"]},
-            },
-            "metal_profile_angle_channel": {
-                "catalog_family": "metal_profile_angle_channel",
-                "family_aliases": ["профиль металлический"],
-                "pricing_key_aliases": {},
-            },
-        },
-    )
-    context = _family_alias_context_by_resolver_family(
-        client=object(),
-        families={"mdf_hdf", "metal_profile_angle_channel"},
-        pricing_key_fields_by_family={
-            "mdf_hdf": ("thickness_mm",),
-            "metal_profile_angle_channel": ("profile_section", "metal_type"),
-        },
-    )
-
-    assert set(context) == {"mdf_hdf", "metal_profile_angle_channel"}
-    assert context["mdf_hdf"]["catalog_family"] == "mdf_hdf"
-    assert "панель мдф" in context["mdf_hdf"]["family_aliases"]
-    assert "толщина" in context["mdf_hdf"]["pricing_key_aliases"]["thickness_mm"]
-    assert context["metal_profile_angle_channel"]["catalog_family"] == "metal_profile_angle_channel"
-    assert "профиль металлический" in context["metal_profile_angle_channel"]["family_aliases"]
-
-
-def test_v3_sends_bounded_multilingual_alias_context_to_the_agent(monkeypatch):
-    captured = {}
-
-    class _Client:
+    class Client:
         def with_options(self, **_kwargs):
             return self
 
-    class _Response:
-        usage = None
-        stop_reason = "end_turn"
+    def fake_message(_client, **kwargs):
+        captured.append(kwargs)
+        request = json.loads(kwargs["messages"][0]["content"][-1]["text"])
+        answer = {
+            "batch_id": request["batch_id"],
+            "pages": [{"page_number": page["page_number"], "material_signal": "no", "claim_ids": []} for page in request["pages"]],
+            "claims": [],
+        }
+        return SimpleNamespace(
+            content=[SimpleNamespace(type="text", text=json.dumps(answer))],
+            usage=SimpleNamespace(input_tokens=10, output_tokens=5),
+        )
 
-    monkeypatch.setattr(agent, "get_anthropic_client", lambda: _Client())
+    monkeypatch.setattr(agent, "get_anthropic_client", lambda: Client())
     monkeypatch.setattr(agent, "get_secret", lambda *_args: "test-model")
-    monkeypatch.setattr(agent, "create_claude_message", lambda *_args, **kwargs: captured.update(kwargs) or _Response())
-    monkeypatch.setattr(
-        agent,
-        "extract_text_from_claude_response",
-        lambda _response: json.dumps({"objects": [{"id": "object-1", "d": [0, 0, 0], "m": [], "p": []}]}),
+    monkeypatch.setattr(agent, "create_claude_message", fake_message)
+    row = _row(13)
+    bytes_by_ref = {item["storage_ref"]: b"page" for item in row["input_payload"]["evidence"]["artifacts"]}
+
+    result = agent.run_estimation_v4_1_material_facts_agent(
+        inputs=[row], allowed_material_families={"mdf_hdf"}, evidence_page_bytes_by_ref=bytes_by_ref,
     )
 
-    agent.run_estimation_v3_material_facts_agent(
-        inputs=[{
-            "input_id": "input-1",
-            "object_input_revision": 1,
-            "input_payload": {
-                "run_id": "run-1", "company_id": "company-1",
-                "object": {
-                    "object_id": "object-1", "object_name": "Shelf", "quantity": 1,
-                    "dimensions": {"width_mm": 1200, "height_mm": 800},
-                    "notes": "MDF carcass with steel frame",
-                    "detected_materials": "MDF panels, 20x20 metal tube",
-                },
-                "evidence": {"primary_preview_ref": "storage://rfq-estimation-evidence/company-1/a.webp"},
-            },
-        }],
-        allowed_material_families={"mdf"},
-        preview_bytes_by_input={"input-1": b"preview"},
-        pricing_key_fields_by_family={"mdf": ("thickness_mm",)},
-        family_alias_context={
-            "mdf": {
-                "catalog_family": "mdf_hdf",
-                "family_aliases": ["mdf", "мдф", "מדפ"],
-                "pricing_key_aliases": {"thickness_mm": ["thickness", "толщина", "עובי"]},
-            },
-        },
-    )
+    assert result["failed"] == {}
+    assert len(captured) == 3
+    sent_refs = []
+    for kwargs in captured:
+        content = kwargs["messages"][0]["content"]
+        request = json.loads(content[-1]["text"])
+        images = [item for item in content if item["type"] == "image"]
+        assert len(images) <= 6
+        sent_refs.extend(page["source_evidence_ref"] for page in request["pages"])
+        page_numbers = {page["page_number"] for page in request["pages"]}
+        assert all(block["page_number"] in page_numbers for page in request["pages"] for block in page["ocr_blocks"])
+    assert sorted(sent_refs) == sorted(bytes_by_ref)
+    assert result["usage_event"]["raw_usage"]["batch_count"] == 3
 
-    request = json.loads(captured["messages"][0]["content"][-1]["text"])
-    assert request["family_alias_context"] == {
-        "mdf": {
-            "catalog_family": "mdf_hdf",
-            "family_aliases": ["mdf", "мдф", "מדפ"],
-            "pricing_key_aliases": {"thickness_mm": ["thickness", "толщина", "עובי"]},
-        },
-    }
-    assert request["targets"][0]["evidence_backed_object_handoff"] == {
-        "dimensions": {"width_mm": 1200, "height_mm": 800},
-        "description": "MDF carcass with steel frame",
-        "detected_materials": "MDF panels, 20x20 metal tube",
-    }
+
+def test_v4_1_never_combines_repeated_material_scope_into_a_quantity():
+    row = _row(2)
+    claims = [
+        {"raw": {"id": "a", "n": "MDF", "f": "mdf_hdf", "q": 2, "u": "m²", "s": {}}, "family": "mdf_hdf", "evidence_refs": ["storage://rfq-estimation-evidence/company/run/object/r1/page-1.webp"]},
+        {"raw": {"id": "b", "n": "MDF", "f": "mdf_hdf", "q": 3, "u": "m²", "s": {}}, "family": "mdf_hdf", "evidence_refs": ["storage://rfq-estimation-evidence/company/run/object/r1/page-2.webp"]},
+    ]
+
+    facts = agent._facts_from_claims(row=row, claims=claims, reviews=[], families={"mdf_hdf"})
+
+    assert [material["quantity"] for material in facts["materials"]] == [None, None]
+    assert any(item["code"] == "material_scope_overlap" for item in facts["review_items"])
+
+
+def test_v4_1_replay_uses_the_immutable_input_without_a_new_upload(monkeypatch):
+    row = _row(1)
+    captured = {}
+    monkeypatch.setattr(replay, "fetch_estimation_object_input", lambda _client, **_kwargs: row)
+    monkeypatch.setattr(replay, "build_estimation_material_context", lambda _client, company_id: {"company_id": company_id})
+    monkeypatch.setattr(replay, "run_estimation_v4_1_material_facts_batch", lambda **kwargs: captured.update(kwargs) or {"failed": {}})
+
+    result = replay.replay_estimation_v4_1_material_facts_input(client=object(), input_id="input-1")
+
+    assert result == {"failed": {}}
+    assert captured["inputs"] == [row]
+    assert captured["material_context"] == {"company_id": "company-1"}

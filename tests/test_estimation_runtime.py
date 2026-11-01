@@ -50,7 +50,7 @@ def test_submit_creates_estimate_shell_before_background_job(monkeypatch):
     }
 
 
-def test_v3_material_runtime_routes_all_objects_through_the_current_path(monkeypatch):
+def test_v4_1_material_runtime_routes_all_objects_through_the_current_path(monkeypatch):
     events = []
     monkeypatch.setattr(runtime, "get_supabase_client", lambda: object())
     monkeypatch.setattr(runtime, "fetch_rfq_run", lambda _client, _run_id: _Frame([{}]))
@@ -70,8 +70,8 @@ def test_v3_material_runtime_routes_all_objects_through_the_current_path(monkeyp
     monkeypatch.setattr(runtime, "describe_estimation_original", lambda **_kwargs: object())
     monkeypatch.setattr(
         runtime,
-        "_run_estimation_v3_for_all_objects",
-        lambda **kwargs: events.append(("v3_run", kwargs["created_inputs"])) or {
+        "_run_estimation_v4_1_for_all_objects",
+        lambda **kwargs: events.append(("v4_1_run", kwargs["created_inputs"])) or {
             "processed_input_ids": ["input-1"], "failed": {}
         },
     )
@@ -86,13 +86,13 @@ def test_v3_material_runtime_routes_all_objects_through_the_current_path(monkeyp
         shell={"estimate_id": "estimate-1"},
     )
 
-    assert [event[0] for event in events] == ["v3_run"]
+    assert [event[0] for event in events] == ["v4_1_run"]
     assert result["estimation"]["status"] == "completed"
     assert result["estimation"]["estimated_objects"] == 1
-    assert result["estimation_version"] == "v3_materials"
+    assert result["estimation_version"] == "v4_1_materials"
 
 
-def test_all_ignored_objects_finish_as_empty_v3_estimate(monkeypatch):
+def test_all_ignored_objects_finish_as_empty_v4_1_estimate(monkeypatch):
     monkeypatch.setattr(runtime, "get_supabase_client", lambda: object())
     monkeypatch.setattr(runtime, "fetch_rfq_run", lambda _client, _run_id: _Frame([{}]))
     monkeypatch.setattr(runtime, "fetch_rfq_detected_objects", lambda _client, _run_id: _Frame([]))
@@ -119,7 +119,7 @@ def test_material_engine_plan_runs_after_facts_and_cannot_block_object_publishin
     captured_facts = {}
     monkeypatch.setattr(
         runtime,
-        "run_estimation_v3_material_facts_batch",
+        "run_estimation_v4_1_material_facts_batch",
         lambda **kwargs: captured_facts.update(kwargs) or events.append("facts") or {"failed": {}},
     )
     monkeypatch.setattr(runtime, "fetch_latest_estimation_facts_by_object", lambda _client, **_kwargs: facts)
@@ -141,11 +141,11 @@ def test_material_engine_plan_runs_after_facts_and_cannot_block_object_publishin
         "upsert_rfq_estimate_material_plan",
         lambda *_args, **_kwargs: events.append("material_plan_persisted"),
     )
-    monkeypatch.setattr(runtime, "publish_estimation_v3_material_object", lambda **_kwargs: events.append("publish") or {"status": "review_required"})
+    monkeypatch.setattr(runtime, "publish_estimation_v4_1_material_object", lambda **_kwargs: events.append("publish") or {"status": "review_required"})
     monkeypatch.setattr(runtime, "_set_object_progress", lambda _client, **_kwargs: None)
     monkeypatch.setattr(runtime, "update_rfq_object_estimate_progress", lambda _client, **_kwargs: None)
 
-    result = runtime._run_estimation_v3_for_all_objects(
+    result = runtime._run_estimation_v4_1_for_all_objects(
         client=object(), estimate_id="estimate-1",
         created_inputs=[{
             "input_id": "input-1", "object_id": "object-1",

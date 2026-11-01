@@ -19,15 +19,15 @@ from db.repositories import (
 from db.supabase_client import get_supabase_client
 from use_cases.estimation_handoff import persist_estimation_inputs
 from use_cases.estimation_originals import describe_estimation_original
-from use_cases.estimation_v3_material_facts import run_estimation_v3_material_facts_batch
-from agents.estimation_v3_material_facts_agent import ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION
+from use_cases.estimation_v4_1_material_facts import run_estimation_v4_1_material_facts_batch
+from agents.estimation_v4_1_material_facts_agent import ESTIMATION_V4_1_MATERIAL_FACTS_AGENT_VERSION
 from use_cases.material_engine_adapter import (
     material_plan_input_fingerprint,
     material_plan_snapshot,
     build_material_plan,
 )
 from use_cases.estimation_material_context import build_estimation_material_context
-from use_cases.estimation_v3_material_publisher import publish_estimation_v3_material_object
+from use_cases.estimation_v3_material_publisher import publish_estimation_v4_1_material_object
 from db.repositories import update_rfq_object_estimate_progress
 from use_cases.estimation_progress import set_object_progress
 
@@ -59,7 +59,7 @@ def _build_and_persist_material_plan(
     """Compute one estimate-wide plan from the latest facts and user norms."""
     shared_catalogs = catalogs or build_estimation_material_context(client, company_id)["catalogs"]
     facts_by_object = fetch_latest_estimation_facts_by_object(
-        client, run_id=run_id, agent_version=ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION,
+        client, run_id=run_id, agent_version=ESTIMATION_V4_1_MATERIAL_FACTS_AGENT_VERSION,
     )
     override_rows = fetch_rfq_estimate_material_norm_overrides(client, estimate_id)
     overrides = _material_norm_overrides_by_requirement(override_rows)
@@ -164,7 +164,7 @@ def _set_object_progress(
     )
 
 
-def _run_estimation_v3_for_all_objects(
+def _run_estimation_v4_1_for_all_objects(
     *,
     client: object,
     estimate_id: str,
@@ -202,7 +202,7 @@ def _run_estimation_v3_for_all_objects(
 
     for input_row in valid_inputs:
         mark_facts_start(input_row)
-    facts_result = run_estimation_v3_material_facts_batch(
+    facts_result = run_estimation_v4_1_material_facts_batch(
         client=client,
         inputs=valid_inputs,
         material_context=shared_context,
@@ -266,7 +266,7 @@ def _run_estimation_v3_for_all_objects(
             label="object_facts_ready_for_costing",
         )
         try:
-            published = publish_estimation_v3_material_object(
+            published = publish_estimation_v4_1_material_object(
                 client=client,
                 estimate_id=estimate_id,
                 input_row=input_row,
@@ -354,7 +354,7 @@ def _run_estimation_job(
     ignored_object_ids: set[str],
     shell: dict[str, object] | None,
 ) -> dict[str, object]:
-    """Persist the V3 handoff, then run queued material estimates."""
+    """Persist the immutable V4 handoff, then run bounded V4.1 material extraction."""
     created_inputs: list[dict[str, object]] = []
     client = get_supabase_client()
     try:
@@ -378,11 +378,11 @@ def _run_estimation_job(
             )
             created_inputs = handoff["created_inputs"]
     except Exception as exc:
-        raise RuntimeError(f"Estimation V3 handoff failed: {exc}") from exc
+        raise RuntimeError(f"Estimation V4.1 handoff failed: {exc}") from exc
 
     inputs_available = bool(created_inputs)
     if inputs_available:
-        estimation_result = _run_estimation_v3_for_all_objects(
+        estimation_result = _run_estimation_v4_1_for_all_objects(
                 client=client,
                 estimate_id=estimate_id,
                 created_inputs=created_inputs,
@@ -396,7 +396,7 @@ def _run_estimation_job(
                 "estimated_objects": len(estimation_result["processed_input_ids"]),
                 "failed_objects": estimation_result["failed"],
             },
-            "estimation_version": "v3_materials",
+            "estimation_version": "v4_1_materials",
         }
     if shell and int(shell.get("object_count") or 0) == 0:
         return {
@@ -408,6 +408,6 @@ def _run_estimation_job(
                 "estimated_objects": 0,
                 "failed_objects": {},
             },
-            "estimation_version": "v3_materials",
+            "estimation_version": "v4_1_materials",
         }
-    raise RuntimeError("Estimation V3 input handoff produced no estimable objects.")
+    raise RuntimeError("Estimation V4.1 input handoff produced no estimable objects.")

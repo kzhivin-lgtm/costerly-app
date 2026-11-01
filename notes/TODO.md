@@ -2988,8 +2988,9 @@ The next Material Engine task is read-only Purchase Plan presentation,
 including stock format, purchased quantity, remaining material and allocation
 trace. Assumption Fallback remains a separate orchestration task.
 
-ACTIVE, P0, USER REQUEST, 3.17.4.1 Estimation Agent V3 material-only cutover:
-replace the active Estimation path with a standalone V3 material-facts contract,
+ACTIVE, P0, USER REQUEST, 3.17.4.1 Estimation Agent V4.1 material-only cutover:
+replace the active Estimation path with bounded, page-accountable V4.1 material
+facts over the immutable `estimation_input_v4` dossier,
 Material Resolver and estimate-wide Material Engine integration. V3 must not
 import, invoke or publish V2. Labor, manufacturing and overhead remain
 disabled until their own engines are accepted. Company-first and Israel
@@ -3013,6 +3014,20 @@ rectangles, prefer exact measurements, make any proxy explicit and
 review-visible, and guard physical subtype compatibility before selection.
 The complete evidence and commit checkpoint is
 `notes/ESTIMATION_V3_MATERIAL_PIPELINE_CHECKPOINT_2026_10_15.md`.
+
+V4.1 experiment, 2026-11-01: the active runtime now uses the new
+`estimation_material_facts_v4_1` extractor. It indexes the persisted V4
+evidence locally and forms disjoint Cloud batches of at most six page images;
+every page must be declared by its batch response and every claim must cite a
+local page or OCR block. Unsupported cut rectangles, envelope proxies and
+construction-inferred quantities are removed. Ambiguous repeated material
+scope becomes blocking review, not a summed quantity. Focused checks passed
+64/64, and the saved 39-page kitchen input plans as seven bounded batches with
+all pages covered exactly once. This is not live-material acceptance: deploy
+and one controlled replay still need to verify provider tokens, response
+quality and evidence completeness. The replay tool reads the immutable package
+without OCR or re-upload; its paid persistent mode is explicit. Record:
+`notes/ESTIMATION_V4_1_BATCHED_EVIDENCE_EXPERIMENT_2026_11_01.md`.
 
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
