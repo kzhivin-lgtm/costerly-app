@@ -24,4 +24,8 @@ plan. A dominant whole-level floor plan must be `exclude` with
 `core_bbox` encloses the physical depiction. `bbox` is its evidence envelope,
 including only the attached dimensions, labels and leaders needed to interpret
 that depiction. Never use a Candidate Region boundary as either box merely
-because it was supplied. Return only schema JSON.
+because it was supplied.
+
+Keep `visual_description` and `reason` each to at most twelve words. Do not
+repeat page number, coordinates, candidate IDs, OCR text or dimensions in those
+fields. Return only schema JSON.

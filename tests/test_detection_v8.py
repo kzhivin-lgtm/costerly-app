@@ -2,7 +2,10 @@ from copy import deepcopy
 from io import BytesIO
 import re
 
-from agents.detection_v8_adapter import run_detection_v8_with_request
+from agents.detection_v8_adapter import (
+    DETECTION_V8_DISCOVERY_MAX_TOKENS,
+    run_detection_v8_with_request,
+)
 from agents.detection_agent import _select_detection_pipeline_version
 from agents.detection_v8 import (
     DETECTION_V8_DISCOVERY_SCHEMA,
@@ -326,8 +329,10 @@ def test_v8_has_two_ordinary_provider_contracts_without_render_or_conflict_side_
     assert "conflict_pair_decisions" not in DETECTION_V8_MEMBERSHIP_SCHEMA["properties"]
     assert DETECTION_V8_DISCOVERY_SCHEMA["required"] == ["islands"]
     assert "Candidate Region is only a recall aid" in discovery_prompt
+    assert "at most twelve words" in discovery_prompt
     assert "Absence of a\nlink means no merge" in membership_prompt
     assert "not a second Discovery pass" in conflict_prompt
+    assert DETECTION_V8_DISCOVERY_MAX_TOKENS == 10_240
 
 
 def test_v8_adapter_keeps_provider_stages_separate_and_publishes_only_after_membership():

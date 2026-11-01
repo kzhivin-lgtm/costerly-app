@@ -17,4 +17,7 @@ distinctive configuration visible in both views and cite both endpoint
 `registry_view` sources. A render/photo can never link to another render/photo
 and cannot create an object by itself.
 
+Keep every evidence observation to at most twelve words. Never restate a view
+ID, page number or source-fact ID in the observation.
+
 Return only schema JSON.

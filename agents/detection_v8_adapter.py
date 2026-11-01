@@ -48,7 +48,7 @@ from agents.schemas.detection_registry_schema import validate_detection_registry
 
 
 DETECTION_V8_PROMPT_VERSION = "detection_v8_stage_separated"
-DETECTION_V8_DISCOVERY_MAX_TOKENS = 8_192
+DETECTION_V8_DISCOVERY_MAX_TOKENS = 10_240
 DETECTION_V8_MEMBERSHIP_MAX_TOKENS = 8_192
 DETECTION_V8_CONFLICT_MAX_TOKENS = 1_536
 DETECTION_V8_MAX_STREAM_SECONDS = 90.0
@@ -615,7 +615,12 @@ def run_anthropic_detection_v8_stage_separated(
                 output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(schema)}},
             )
             payload = json.loads(extract_text_from_claude_response(response))
-        except (json.JSONDecodeError, RuntimeError) as exc:
+        except json.JSONDecodeError as exc:
+            raise DetectionV8ProviderError(
+                f"V8 {stage} response ended before valid JSON. "
+                "No downstream stage was run."
+            ) from exc
+        except RuntimeError as exc:
             raise DetectionV8ProviderError(f"V8 {stage} request failed: {exc}") from exc
         summary = summarize_detection_provider_call(
             response=response, diagnostics=diagnostics, requested_model=selected_model,
