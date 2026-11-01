@@ -157,11 +157,11 @@ DETECTION_V711_PRESENTATION_RENDER_REVIEW_PROMPT_VERSION = (
 DETECTION_V713_BOUNDED_MEMBERSHIP_REVIEW_PROMPT_VERSION = (
     "detection_v7_13_bounded_membership_review_stream"
 )
-DETECTION_V714_CONFLICT_MEMBERSHIP_PROMPT_VERSION = (
-    # V8.4.1 keeps the protected V7.14 Detection runtime unchanged. This
-    # telemetry value distinguishes the UI/Page 23 presentation repair without
-    # changing a prompt, branch, schema, model or merge rule.
-    "detection_v8_4_1_ui_page23_preview_repair"
+DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION = (
+    # V8.4.2 changes only deterministic normalization of a harmless,
+    # model-supplied non-render `no_match` row. The prompt, Discovery, router,
+    # Membership and merge rules remain unchanged.
+    "detection_v8_4_2_safe_non_render_no_match"
 )
 DETECTION_V634_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
@@ -3785,6 +3785,7 @@ def normalize_detection_v711_presentation_render_decisions(
     if not isinstance(decisions, list):
         raise ValueError("V7.11 presentation render decisions must be a list")
     by_render: dict[str, dict[str, Any]] = {}
+    ignored_non_render_no_match: list[dict[str, Any]] = []
     for row in decisions:
         if not isinstance(row, dict) or set(row) != {
             "render_group_id", "disposition", "technical_group_id",
@@ -3796,7 +3797,28 @@ def normalize_detection_v711_presentation_render_decisions(
         technical_id = str(row["technical_group_id"] or "")
         evidence_type = str(row["evidence_type"] or "")
         witness = str(row["visual_witness"] or "").strip()
-        if render_id not in render_ids or render_id in by_render or not witness:
+        if render_id not in render_ids:
+            # The review can repeat a known non-render View as a harmless
+            # `no_match`. It cannot create a graph edge, so retain it as audit
+            # rather than failing an otherwise complete render review. Never
+            # relax unknown IDs, attachments, unresolved rows or malformed data.
+            if (
+                render_id in object_groups
+                and disposition == "no_match"
+                and not technical_id
+                and evidence_type == "none"
+                and witness
+            ):
+                ignored_non_render_no_match.append({
+                    "render_group_id": group_id_mapping.get(render_id, render_id),
+                    "disposition": "ignored_non_render_no_match",
+                    "technical_group_id": "",
+                    "evidence_type": "none",
+                    "visual_witness": witness,
+                })
+                continue
+            raise ValueError("V7.11 presentation render decision is invalid")
+        if render_id in by_render or not witness:
             raise ValueError("V7.11 presentation render decision is invalid")
         if disposition == "attach":
             technical_group = object_groups.get(technical_id)
@@ -3845,7 +3867,7 @@ def normalize_detection_v711_presentation_render_decisions(
                     f"registry_view:{normalized['technical_group_id']}",
                 ],
             })
-    return facts, audit
+    return facts, [*audit, *ignored_non_render_no_match]
 
 
 def attach_detection_v711_presentation_render_components(
@@ -12100,9 +12122,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     if v69_criteria_reconciliation_active:
         prompt_version = DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION
     elif v714_conflict_membership_active:
-        prompt_version = DETECTION_V714_CONFLICT_MEMBERSHIP_PROMPT_VERSION
+        prompt_version = DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION
     else:
-        prompt_version = DETECTION_V713_BOUNDED_MEMBERSHIP_REVIEW_PROMPT_VERSION
+        prompt_version = DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION
     registry_visual_sources = build_detection_v5_registry_visual_sources(
         proposal_for_review["visual_groups"]
     )

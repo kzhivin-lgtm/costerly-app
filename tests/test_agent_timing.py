@@ -20,7 +20,7 @@ from agents.anthropic_adapter import (
     DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
     DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
     DETECTION_V634_ADA_DISCOVERY_MODEL,
-    DETECTION_V713_BOUNDED_MEMBERSHIP_REVIEW_PROMPT_VERSION,
+    DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION,
     DETECTION_V713_MEMBERSHIP_REVIEW_MAX_STREAM_SECONDS,
     apply_benchmark_run_suffix,
     build_agent_usage_event,
@@ -1374,7 +1374,7 @@ def test_v67_mistral_anchor_contract_replaces_a_freehand_proposal_bbox():
     }
     assert visual_map["visual_groups"][0]["group_id"] == "view-001"
     assert usage["raw_usage"]["registry_decision_audit"]["visual_groups"][0]["bbox"] == expected_bbox
-    assert usage["prompt_version"] == DETECTION_V713_BOUNDED_MEMBERSHIP_REVIEW_PROMPT_VERSION
+    assert usage["prompt_version"] == DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION
     assert usage["raw_usage"]["v6_7_mistral_anchor_admission_audit"][0]["status"] == "accepted_anchor"
 
 
@@ -1602,9 +1602,7 @@ def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
         DETECTION_V634_ADA_DISCOVERY_MODEL,
         "claude-sonnet-4-6",
     ]
-    assert usage["prompt_version"] == (
-        DETECTION_V713_BOUNDED_MEMBERSHIP_REVIEW_PROMPT_VERSION
-    )
+    assert usage["prompt_version"] == DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION
     assert usage["raw_usage"]["v6_34_ada_haiku_discovery_sonnet_review_active"] is True
     assert usage["raw_usage"]["v6_35_ada_pair_local_membership_active"] is True
     assert usage["raw_usage"]["v6_36_ada_connected_pair_local_membership_active"] is True
@@ -2222,8 +2220,8 @@ def test_registry_uses_the_same_atomic_visual_group_contract_for_all_models():
             model="claude-sonnet-4-6",
         )
 
-    assert haiku_usage["prompt_version"] == DETECTION_V713_BOUNDED_MEMBERSHIP_REVIEW_PROMPT_VERSION
-    assert sonnet_usage["prompt_version"] == DETECTION_V713_BOUNDED_MEMBERSHIP_REVIEW_PROMPT_VERSION
+    assert haiku_usage["prompt_version"] == DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION
+    assert sonnet_usage["prompt_version"] == DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION
     assert prompts[0] == prompts[2]
     assert prompts[1] == prompts[3]
     assert prompts[0] != prompts[1]

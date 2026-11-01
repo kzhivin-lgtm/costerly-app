@@ -521,6 +521,108 @@ def test_v711_render_decision_requires_every_render_and_a_technical_target():
         )
 
 
+def test_v711_render_decision_ignores_only_safe_known_non_render_no_match():
+    facts, audit = normalize_detection_v711_presentation_render_decisions(
+        [
+            {
+                "render_group_id": "material-sample", "disposition": "no_match",
+                "technical_group_id": "", "evidence_type": "none",
+                "visual_witness": "This is a finish sample, not a presentation render.",
+            },
+            {
+                "render_group_id": "render", "disposition": "no_match",
+                "technical_group_id": "", "evidence_type": "none",
+                "visual_witness": "No technical view proves this render's object.",
+            },
+        ],
+        visual_groups=[
+            {"group_id": "render", "page_number": 3, "evidence_class": "object_evidence", "representation_kind": "presentation_render"},
+            {"group_id": "material-sample", "page_number": 3, "evidence_class": "object_evidence", "representation_kind": "material_sample"},
+        ],
+        group_id_mapping={"render": "view-010", "material-sample": "view-011"},
+    )
+
+    assert facts == []
+    assert audit == [
+        {
+            "render_group_id": "view-010", "disposition": "no_match",
+            "technical_group_id": "", "evidence_type": "none",
+            "visual_witness": "No technical view proves this render's object.",
+        },
+        {
+            "render_group_id": "view-011", "disposition": "ignored_non_render_no_match",
+            "technical_group_id": "", "evidence_type": "none",
+            "visual_witness": "This is a finish sample, not a presentation render.",
+        },
+    ]
+
+
+def test_v711_render_decision_accepts_cabinet_trace_with_extra_material_sample():
+    facts, audit = normalize_detection_v711_presentation_render_decisions(
+        [
+            {
+                "render_group_id": "IG-P1-001", "disposition": "attach",
+                "technical_group_id": "IG-P1-002", "evidence_type": "matching_topology",
+                "visual_witness": "The render and elevation show the same cabinet interior.",
+            },
+            {
+                "render_group_id": "IG-P2-004", "disposition": "no_match",
+                "technical_group_id": "", "evidence_type": "none",
+                "visual_witness": "No technical View proves this hinge render.",
+            },
+            {
+                "render_group_id": "IG-P3-003", "disposition": "no_match",
+                "technical_group_id": "", "evidence_type": "none",
+                "visual_witness": "This is a wood-grain material sample.",
+            },
+            {
+                "render_group_id": "IG-P3-004", "disposition": "no_match",
+                "technical_group_id": "", "evidence_type": "none",
+                "visual_witness": "No technical View proves this mounting-clip render.",
+            },
+        ],
+        visual_groups=[
+            {"group_id": "IG-P1-001", "evidence_class": "object_evidence", "representation_kind": "presentation_render"},
+            {"group_id": "IG-P1-002", "evidence_class": "object_evidence", "representation_kind": "plan_elevation"},
+            {"group_id": "IG-P2-004", "evidence_class": "object_evidence", "representation_kind": "presentation_render"},
+            {"group_id": "IG-P3-003", "evidence_class": "object_evidence", "representation_kind": "material_sample"},
+            {"group_id": "IG-P3-004", "evidence_class": "object_evidence", "representation_kind": "presentation_render"},
+        ],
+        group_id_mapping={
+            "IG-P1-001": "view-001", "IG-P1-002": "view-002",
+            "IG-P2-004": "view-006", "IG-P3-003": "view-009",
+            "IG-P3-004": "view-010",
+        },
+    )
+
+    assert facts == [{
+        "group_id_a": "view-001", "group_id_b": "view-002",
+        "evidence_type": "matching_topology", "strength": "standard",
+        "observation": "The render and elevation show the same cabinet interior.",
+        "source_fact_ids": ["registry_view:view-001", "registry_view:view-002"],
+    }]
+    assert [row["render_group_id"] for row in audit] == [
+        "view-001", "view-006", "view-010", "view-009",
+    ]
+    assert audit[-1]["disposition"] == "ignored_non_render_no_match"
+
+
+def test_v711_render_decision_rejects_non_render_attachment():
+    with pytest.raises(ValueError, match="decision is invalid"):
+        normalize_detection_v711_presentation_render_decisions(
+            [{
+                "render_group_id": "material-sample", "disposition": "attach",
+                "technical_group_id": "technical", "evidence_type": "matching_topology",
+                "visual_witness": "An invalid attachment from a material sample.",
+            }],
+            visual_groups=[
+                {"group_id": "material-sample", "page_number": 3, "evidence_class": "object_evidence", "representation_kind": "material_sample"},
+                {"group_id": "technical", "page_number": 3, "evidence_class": "object_evidence", "representation_kind": "elevation"},
+            ],
+            group_id_mapping={},
+        )
+
+
 def test_v711_render_decision_extends_a_covered_component_only():
     components = attach_detection_v711_presentation_render_components(
         [["view-001", "view-002"], ["view-003"]],

@@ -163,7 +163,7 @@ byte-for-byte V7.14. Only the persisted telemetry label is
 Acceptance: same V7.14 behavior, including its known one extra floor-plan
 package if it occurs; no V8.x floor-plan exclusion experiment is active.
 
-ACTIVE, V8.4.1, P0, Page 23 presentation and terminal Processing error:
+COMPLETED, V8.4.1, P0, Page 23 presentation and terminal Processing error:
 Base: V8.4 exact V7.14 Detection runtime. Scope is deliberately outside
 Discovery, Candidate Regions, Conflict Resolver, Membership, router and object
 assembly. First, source-degraded native-graphic Registry output receives a
@@ -175,6 +175,19 @@ the client timer and reveals the recoverable File Review error instead of
 leaving a stale progress shell. Acceptance: Page 23 retains exactly three
 objects and exposes presentation bboxes, while a forced Detection validation
 failure visibly stops Processing and presents its actual error.
+
+ACTIVE, V8.4.2, P0, bounded Cabinet render-decision normalization:
+Base: V8.4.1 (`59177dc`). The V7.11 adapter remains strict for actual
+`presentation_render` Views: every actual render still requires exactly one
+valid decision, and unknown IDs, duplicate rows, attachments from a non-render,
+unresolved non-render rows, malformed rows, and incomplete render coverage still
+fail. Only a known Object Evidence View that is not a `presentation_render` may
+be ignored when the model emits a semantically inert `no_match` row with no
+technical target and evidence type `none`; that ignored row stays in the audit.
+No prompt, Discovery, Candidate Region, Conflict Resolver, router, Membership,
+object assembly, Naming, UI or Page 23 logic changes. Acceptance: the Cabinet
+run reaches Registry and preserves its historical one-object P1-P6 package,
+while the audit records the ignored material-sample row.
 
 BENCHMARK, P0, Hasolelim Floor 06 manual Object Evidence island inventory:
 
