@@ -3034,7 +3034,7 @@ not live-material acceptance: the owner must choose whether to spend the
 package without OCR or re-upload; its paid persistent mode is explicit. Record:
 `notes/ESTIMATION_V4_1_BATCHED_EVIDENCE_EXPERIMENT_2026_11_01.md`.
 
-ACTIVE, P0, USER APPROVED, 3.17.4.2 Estimation Agent V4.2 persistence repair:
+PENDING OWNER REVIEW, P0, 3.17.4.2 Estimation Agent V4.2 persistence repair:
 the first small-file V4.1 live witness reached the provider in one bounded
 batch and produced a valid material-facts response, but its immutable result
 could not be inserted because the production fact-results constraint still
@@ -3046,7 +3046,14 @@ already saved small immutable input and confirm one persisted V4.2 result with
 the original one-batch coverage and no labor, manufacturing, overhead or price
 fields. Commit `497bcbc` was published to `origin/main` and the production
 constraint was applied and read back on 2026-11-01. A renewed owner approval is
-required before the separate paid replay.
+required before the separate paid replay. That approval was given and the
+small immutable input `ec399eb5-9bc7-4960-b7ec-c2ba72d41c2c` persisted result
+`bce97bf4-aa95-431f-b3f2-70758b33889f`: three pages were covered exactly once
+in two bounded batches, with three material demands, zero parts and no
+pricing, labor, manufacturing or overhead fields. The result remains
+`review_required` because two sheet/surface demands have no explicit net
+consumption. Await owner quality review of the cited material identities
+before marking this release accepted.
 
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one

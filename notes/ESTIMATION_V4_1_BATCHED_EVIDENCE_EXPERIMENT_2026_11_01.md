@@ -88,8 +88,25 @@ published to `origin/main`, and the live constraint was read back as permitting
 `estimation_object_facts_v1`, `estimation_object_facts_v2`,
 `estimation_material_facts_v3`, `estimation_material_facts_v4_1` and
 `estimation_material_facts_v4_2`. The paid small-input replay has not been
-repeated, so the first persist-to-render V4.2 witness remains pending explicit
+repeated, so the first persisted V4.2 witness remains pending explicit
 owner approval.
+
+That approval was given later on 2026-11-01. The V4.2 replay of input
+`ec399eb5-9bc7-4960-b7ec-c2ba72d41c2c` persisted immutable result
+`bce97bf4-aa95-431f-b3f2-70758b33889f`. Its three evidence pages were split
+by topic into two calls, pages `[2, 3]` and page `[1]`, with exact one-time
+coverage. The Cloud ledger recorded 31,962 input and 825 output tokens,
+`$0.036087`, and status `succeeded`.
+
+The persisted result is `review_required`: it contains three material demands,
+zero parts, and two `material_quantity_unsupported` warnings. Explicit demand
+facts are melamine-faced particleboard with `Sugar Dust` colour, HPL/CPL with
+SKU `686`, and six `AL100.1000.374` handles. The first two deliberately retain
+null quantity and unit because the source did not directly establish their net
+consumption. Every material claim has a known private evidence reference; no
+labor, manufacturing, overhead or price fields were emitted. This proves
+persistence and safety boundaries, not yet the completeness or commercial
+correctness of material demand for production use.
 
 ## Explicit limitations before production acceptance
 
