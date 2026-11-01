@@ -83,6 +83,14 @@ extends the fact-results constraint to retain V1, V2, V3 and V4.1 while
 permitting V4.2. It neither changes an existing row nor changes the immutable
 `estimation_input_v4` input contract.
 
+Production application was completed on 2026-11-01: commit `497bcbc` was
+published to `origin/main`, and the live constraint was read back as permitting
+`estimation_object_facts_v1`, `estimation_object_facts_v2`,
+`estimation_material_facts_v3`, `estimation_material_facts_v4_1` and
+`estimation_material_facts_v4_2`. The paid small-input replay has not been
+repeated, so the first persist-to-render V4.2 witness remains pending explicit
+owner approval.
+
 ## Explicit limitations before production acceptance
 
 1. No complete paid V4.2 Cloud replay has produced persisted facts. The model

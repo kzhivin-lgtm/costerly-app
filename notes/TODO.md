@@ -3044,7 +3044,9 @@ and extends that constraint additively without modifying prior rows. Acceptance:
 deploy V4.2, apply and inspect the production constraint, then replay the
 already saved small immutable input and confirm one persisted V4.2 result with
 the original one-batch coverage and no labor, manufacturing, overhead or price
-fields. The owner approved the migration, deployment and replay on 2026-11-01.
+fields. Commit `497bcbc` was published to `origin/main` and the production
+constraint was applied and read back on 2026-11-01. A renewed owner approval is
+required before the separate paid replay.
 
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
