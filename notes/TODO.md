@@ -392,6 +392,23 @@ response validates without changing ordinary hypotheses or merge edges; an
 ambiguous list produces no edge and no terminal validation error. Floor 06
 must preserve P2's excluded Resolver candidate and P10's existing path.
 
+ACTIVE EXPERIMENT, V7.22, P0, bounded render-target delimiter recovery:
+
+Base: V7.21 commit `c6fe0f5`. The Floor 06 V7.21 Review failed before
+package assembly because it serialized a multi-View `technical_group_id` with
+commas, while V7.20 only recognized the identical safe list form with pipes.
+Change only V7.20's existing presentation-render adapter to recognize `,` as
+an alternative separator. Preserve the exact existing guard: every listed ID
+must be a non-render Object Evidence View contained in exactly one ordinary
+hypothesis from that same Review; then use its lexical technical anchor. All
+unknown, cross-hypothesis and malformed lists become `unresolved` without an
+edge. Do not change the Review prompt/schema, Discovery, Candidate Regions,
+Conflict Resolver, Membership, graph assembly, Naming or UI.
+
+Acceptance: the exact comma-separated error response validates to the same
+anchors as its pipe-separated equivalent. A cross-hypothesis comma list creates
+no edge and no terminal failure. Focused tests pass before Floor 06 retry.
+
 ACTIVE EXPERIMENT, V7.21, P0, atomic Conflict Resolver targets:
 
 Base: V7.20 commit `be7c087`. The Floor 06 V7.14 control resolved 11 targets

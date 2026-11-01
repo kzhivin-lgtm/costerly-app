@@ -545,11 +545,12 @@ def test_v711_render_decision_requires_every_render_and_a_technical_target():
         )
 
 
-def test_v720_recovers_pipe_target_only_inside_one_review_hypothesis():
+@pytest.mark.parametrize("delimiter", ["|", ","])
+def test_v720_recovers_delimited_target_only_inside_one_review_hypothesis(delimiter):
     decisions = [
         {
             "render_group_id": "render-a", "disposition": "attach",
-            "technical_group_id": "technical-b|technical-a",
+            "technical_group_id": f"technical-b{delimiter}technical-a",
             "evidence_type": "matching_topology",
             "visual_witness": "The same three triangular bays are visible in both views.",
         },
@@ -572,18 +573,19 @@ def test_v720_recovers_pipe_target_only_inside_one_review_hypothesis():
         ],
     )
 
-    assert decisions[0]["technical_group_id"] == "technical-b|technical-a"
+    assert decisions[0]["technical_group_id"] == f"technical-b{delimiter}technical-a"
     assert recovered[0]["technical_group_id"] == "technical-a"
     assert recovered[1] == decisions[1]
     assert audit == [{
         "render_group_id": "render-a",
         "disposition": "recovered_same_hypothesis_anchor",
-        "raw_technical_group_id": "technical-b|technical-a",
+        "raw_technical_group_id": f"technical-b{delimiter}technical-a",
         "technical_group_id": "technical-a",
     }]
 
 
-def test_v720_multitarget_across_review_hypotheses_becomes_unresolved():
+@pytest.mark.parametrize("delimiter", ["|", ","])
+def test_v720_delimited_targets_across_review_hypotheses_become_unresolved(delimiter):
     visual_groups = [
         {"group_id": "render", "evidence_class": "object_evidence", "representation_kind": "presentation_render"},
         {"group_id": "technical-a", "evidence_class": "object_evidence", "representation_kind": "elevation"},
@@ -592,7 +594,7 @@ def test_v720_multitarget_across_review_hypotheses_becomes_unresolved():
     recovered, audit = recover_detection_v711_multitarget_render_decisions(
         [{
             "render_group_id": "render", "disposition": "attach",
-            "technical_group_id": "technical-a|technical-b",
+            "technical_group_id": f"technical-a{delimiter}technical-b",
             "evidence_type": "matching_topology",
             "visual_witness": "Both technical views appear related to the render.",
         }],
@@ -613,7 +615,7 @@ def test_v720_multitarget_across_review_hypotheses_becomes_unresolved():
     assert audit == [{
         "render_group_id": "render",
         "disposition": "unresolved_ambiguous_multi_target",
-        "raw_technical_group_id": "technical-a|technical-b",
+        "raw_technical_group_id": f"technical-a{delimiter}technical-b",
     }]
     facts, normalized_audit = normalize_detection_v711_presentation_render_decisions(
         recovered, visual_groups=visual_groups, group_id_mapping={},

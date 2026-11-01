@@ -3905,13 +3905,13 @@ def recover_detection_v711_multitarget_render_decisions(
     object_hypotheses: object,
     visual_groups: list[dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Recover only a pipe-list target already contained in one hypothesis.
+    """Recover only a delimited target list already contained in one hypothesis.
 
-    Review's ``technical_group_id`` is scalar.  Some otherwise valid Reviews
-    serialize a list of technical Views with ``|``.  Choosing an arbitrary
-    target would be unsafe, but a list whose every View is already in exactly
-    one ordinary hypothesis emitted by the same Review cannot create a new
-    technical merge. It can safely
+    Review's ``technical_group_id`` is scalar. Some otherwise valid Reviews
+    serialize a list of technical Views with ``|`` or ``,``. Choosing an
+    arbitrary target would be unsafe, but a list whose every View is already
+    in exactly one ordinary hypothesis emitted by the same Review cannot
+    create a new technical merge. It can safely
     use that component's lexically stable technical anchor.  Every other
     multi-target row becomes ``unresolved`` so it cannot merge components or
     abort the complete RFQ.
@@ -3944,7 +3944,9 @@ def recover_detection_v711_multitarget_render_decisions(
             recovered.append(row)
             continue
         target = str(row.get("technical_group_id") or "")
-        target_ids = [part.strip() for part in target.split("|") if part.strip()]
+        target_ids = [
+            part.strip() for part in re.split(r"[|,]", target) if part.strip()
+        ]
         if len(target_ids) <= 1:
             recovered.append(row)
             continue
