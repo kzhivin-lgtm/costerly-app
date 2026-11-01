@@ -545,6 +545,56 @@ def test_v711_render_decision_requires_every_render_and_a_technical_target():
         )
 
 
+def test_v711_ignores_only_known_non_render_rows_after_render_coverage():
+    decisions = [
+        {
+            "render_group_id": "render", "disposition": "attach",
+            "technical_group_id": "technical", "evidence_type": "matching_topology",
+            "visual_witness": "The same three triangular shelf bays are visible in both views.",
+        },
+        {
+            "render_group_id": "technical-extra", "disposition": "no_match",
+            "technical_group_id": "", "evidence_type": "none",
+            "visual_witness": "This row names a technical view and cannot create a render edge.",
+        },
+    ]
+
+    facts, audit = normalize_detection_v711_presentation_render_decisions(
+        decisions,
+        visual_groups=[
+            {"group_id": "render", "page_number": 3, "evidence_class": "object_evidence", "representation_kind": "presentation_render"},
+            {"group_id": "technical", "page_number": 3, "evidence_class": "object_evidence", "representation_kind": "elevation"},
+            {"group_id": "technical-extra", "page_number": 3, "evidence_class": "object_evidence", "representation_kind": "section"},
+        ],
+        group_id_mapping={},
+    )
+
+    assert len(facts) == 1
+    assert audit[0] == {
+        "render_group_id": "technical-extra",
+        "disposition": "ignored_non_render_row",
+        "raw_disposition": "no_match",
+        "raw_technical_group_id": "",
+        "raw_evidence_type": "none",
+    }
+    with pytest.raises(ValueError, match="decision is invalid"):
+        normalize_detection_v711_presentation_render_decisions(
+            [{
+                **decisions[0],
+                "render_group_id": "unknown-view",
+                "disposition": "no_match",
+                "technical_group_id": "",
+                "evidence_type": "none",
+            }],
+            visual_groups=[
+                {"group_id": "render", "page_number": 3, "evidence_class": "object_evidence", "representation_kind": "presentation_render"},
+                {"group_id": "technical", "page_number": 3, "evidence_class": "object_evidence", "representation_kind": "elevation"},
+                {"group_id": "technical-extra", "page_number": 3, "evidence_class": "object_evidence", "representation_kind": "section"},
+            ],
+            group_id_mapping={},
+        )
+
+
 @pytest.mark.parametrize("delimiter", ["|", ","])
 def test_v720_recovers_delimited_target_only_inside_one_review_hypothesis(delimiter):
     decisions = [

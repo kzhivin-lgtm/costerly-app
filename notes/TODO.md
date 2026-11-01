@@ -392,6 +392,23 @@ response validates without changing ordinary hypotheses or merge edges; an
 ambiguous list produces no edge and no terminal validation error. Floor 06
 must preserve P2's excluded Resolver candidate and P10's existing path.
 
+ACTIVE EXPERIMENT, V7.23, P0, bounded non-render render-decision tolerance:
+
+Base: V7.22 commit `b80a2dd`. The Floor 06 V7.22 Review covered every real
+presentation render but also emitted two `no_match` rows for known V7.5
+technical Object Evidence Views. Those rows cannot create presentation-render
+edges, yet V7.11 treated them as a terminal error before it could validate the
+complete real-render set. Change only the V7.11 normalizer: record and ignore
+such rows when `render_group_id` identifies an existing non-render Object
+Evidence View. Unknown IDs, duplicates, invalid true-render rows and missing
+true-render coverage remain terminal validation errors. Do not change Review
+prompt/schema, Discovery, Candidate Regions, Conflict Resolver, Membership,
+graph assembly, Naming or UI.
+
+Acceptance: the exact known technical surplus row yields no fact and is
+audited. A real render still requires one valid decision, and an unknown ID
+still fails validation. Focused tests pass before Floor 06 retry.
+
 ACTIVE EXPERIMENT, V7.22, P0, bounded render-target delimiter recovery:
 
 Base: V7.21 commit `c6fe0f5`. The Floor 06 V7.21 Review failed before

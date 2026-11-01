@@ -3833,9 +3833,11 @@ def normalize_detection_v711_presentation_render_decisions(
         if str(group.get("representation_kind") or "").strip().lower()
         == "presentation_render"
     }
+    non_render_object_ids = set(object_groups) - render_ids
     if not isinstance(decisions, list):
         raise ValueError("V7.11 presentation render decisions must be a list")
     by_render: dict[str, dict[str, Any]] = {}
+    ignored_non_render_rows: list[dict[str, str]] = []
     for row in decisions:
         if not isinstance(row, dict) or set(row) != {
             "render_group_id", "disposition", "technical_group_id",
@@ -3847,6 +3849,19 @@ def normalize_detection_v711_presentation_render_decisions(
         technical_id = str(row["technical_group_id"] or "")
         evidence_type = str(row["evidence_type"] or "")
         witness = str(row["visual_witness"] or "").strip()
+        if render_id in non_render_object_ids:
+            # The Review must decide every presentation render, but occasionally
+            # echoes a known technical View as a no-match row. It cannot create
+            # a render edge, so retain an audit entry and ignore it. Unknown
+            # IDs remain invalid below.
+            ignored_non_render_rows.append({
+                "render_group_id": render_id,
+                "disposition": "ignored_non_render_row",
+                "raw_disposition": disposition,
+                "raw_technical_group_id": technical_id,
+                "raw_evidence_type": evidence_type,
+            })
+            continue
         if render_id not in render_ids or render_id in by_render or not witness:
             raise ValueError("V7.11 presentation render decision is invalid")
         if disposition == "attach":
@@ -3873,7 +3888,7 @@ def normalize_detection_v711_presentation_render_decisions(
         raise ValueError("V7.11 presentation render decisions must cover every render")
 
     facts: list[dict[str, Any]] = []
-    audit: list[dict[str, Any]] = []
+    audit: list[dict[str, Any]] = list(ignored_non_render_rows)
     for render_id in sorted(render_ids):
         decision = by_render[render_id]
         normalized = {
