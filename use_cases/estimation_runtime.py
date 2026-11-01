@@ -20,7 +20,7 @@ from db.supabase_client import get_supabase_client
 from use_cases.estimation_handoff import persist_estimation_inputs
 from use_cases.estimation_originals import describe_estimation_original
 from use_cases.estimation_v4_1_material_facts import run_estimation_v4_1_material_facts_batch
-from agents.estimation_v4_1_material_facts_agent import ESTIMATION_V4_1_MATERIAL_FACTS_AGENT_VERSION
+from agents.estimation_v4_1_material_facts_agent import ESTIMATION_V4_2_MATERIAL_FACTS_AGENT_VERSION
 from use_cases.material_engine_adapter import (
     material_plan_input_fingerprint,
     material_plan_snapshot,
@@ -59,7 +59,7 @@ def _build_and_persist_material_plan(
     """Compute one estimate-wide plan from the latest facts and user norms."""
     shared_catalogs = catalogs or build_estimation_material_context(client, company_id)["catalogs"]
     facts_by_object = fetch_latest_estimation_facts_by_object(
-        client, run_id=run_id, agent_version=ESTIMATION_V4_1_MATERIAL_FACTS_AGENT_VERSION,
+        client, run_id=run_id, agent_version=ESTIMATION_V4_2_MATERIAL_FACTS_AGENT_VERSION,
     )
     override_rows = fetch_rfq_estimate_material_norm_overrides(client, estimate_id)
     overrides = _material_norm_overrides_by_requirement(override_rows)
@@ -396,7 +396,7 @@ def _run_estimation_job(
                 "estimated_objects": len(estimation_result["processed_input_ids"]),
                 "failed_objects": estimation_result["failed"],
             },
-            "estimation_version": "v4_1_materials",
+            "estimation_version": "v4_2_materials",
         }
     if shell and int(shell.get("object_count") or 0) == 0:
         return {
@@ -408,6 +408,6 @@ def _run_estimation_job(
                 "estimated_objects": 0,
                 "failed_objects": {},
             },
-            "estimation_version": "v4_1_materials",
+            "estimation_version": "v4_2_materials",
         }
-    raise RuntimeError("Estimation V4.1 input handoff produced no estimable objects.")
+    raise RuntimeError("Estimation V4.2 input handoff produced no estimable objects.")

@@ -89,7 +89,7 @@ def test_v4_1_material_runtime_routes_all_objects_through_the_current_path(monke
     assert [event[0] for event in events] == ["v4_1_run"]
     assert result["estimation"]["status"] == "completed"
     assert result["estimation"]["estimated_objects"] == 1
-    assert result["estimation_version"] == "v4_1_materials"
+    assert result["estimation_version"] == "v4_2_materials"
 
 
 def test_all_ignored_objects_finish_as_empty_v4_1_estimate(monkeypatch):

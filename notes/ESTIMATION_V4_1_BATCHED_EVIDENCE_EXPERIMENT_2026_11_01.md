@@ -32,8 +32,8 @@ pricing, supplier selection and purchase rounding remain outside the agent.
 
 ## Verified local evidence
 
-Focused automated checks: 18 passed after the live-replay repair set. The
-broader pre-replay material boundary suite passed 70 checks. They cover V4 evidence assembly,
+The full relevant material/Estimation regression suite passed 73 checks after
+the V4.2 persistence repair. It covers V4 evidence assembly,
 V4.1 bounded batching, incomplete-page rejection, no source-page duplication,
 runtime handoff, publisher, contract, Material Engine and cost accounting.
 `git diff --check` passed.
@@ -64,9 +64,28 @@ than 240 OCR blocks remains one page rather than being silently truncated.
 This is deliberately not yet another paid replay: the 20-call cost/latency
 trade-off needs owner confirmation.
 
+## V4.2 persistence repair
+
+The first new, small-file live run (`run_1f32df03b7464413937ed9d6d9776a8c`)
+confirmed the bounded extraction path itself: one Cloud batch completed with
+31,962 input and 825 output tokens, and the usage ledger recorded
+`$0.036087`. It then failed only while inserting the generated result. The
+database check constraint had never been extended past
+`estimation_material_facts_v3`, so it rejected the new V4.1 contract. No
+fact result was persisted and the provider response cannot be recovered from
+the ledger.
+
+V4.2 is a persistence-only release. It keeps the same evidence batching,
+claim validation, material-only boundary and downstream Resolver/Engine
+ownership, but writes a distinct `estimation_material_facts_v4_2` result.
+Migration `db/sql/2026_11_01_estimation_v4_2_material_facts_contract.sql`
+extends the fact-results constraint to retain V1, V2, V3 and V4.1 while
+permitting V4.2. It neither changes an existing row nor changes the immutable
+`estimation_input_v4` input contract.
+
 ## Explicit limitations before production acceptance
 
-1. No complete paid V4.1 Cloud replay has produced persisted facts. The model
+1. No complete paid V4.2 Cloud replay has produced persisted facts. The model
    response quality, full-token receipt, latency and material completeness
    remain unknown.
 2. The topic index is intentionally conservative and OCR-keyword based. It
@@ -75,7 +94,7 @@ trade-off needs owner confirmation.
 3. V4.1 safely refuses to aggregate repeated material scopes. A later,
    separately approved aggregation rule is needed to turn non-overlapping
    detailed production pages into one approximate consumption norm.
-4. The existing UI submission path can use V4.1 for a new estimate. The
+4. The existing UI submission path can use V4.2 for a new estimate. The
    controlled replay tool `tools/replay_estimation_v4_1_input.py` reads an
    already persisted input without OCR or upload. Its default is read-only;
    `--execute` is intentionally explicit because it calls Cloud and persists

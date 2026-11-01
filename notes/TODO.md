@@ -3034,6 +3034,18 @@ not live-material acceptance: the owner must choose whether to spend the
 package without OCR or re-upload; its paid persistent mode is explicit. Record:
 `notes/ESTIMATION_V4_1_BATCHED_EVIDENCE_EXPERIMENT_2026_11_01.md`.
 
+ACTIVE, P0, USER APPROVED, 3.17.4.2 Estimation Agent V4.2 persistence repair:
+the first small-file V4.1 live witness reached the provider in one bounded
+batch and produced a valid material-facts response, but its immutable result
+could not be inserted because the production fact-results constraint still
+allowed only V1, V2 and V3 contracts. V4.2 retains V4.1's page-accountable
+extractor and Material Engine boundary, uses its own immutable result version,
+and extends that constraint additively without modifying prior rows. Acceptance:
+deploy V4.2, apply and inspect the production constraint, then replay the
+already saved small immutable input and confirm one persisted V4.2 result with
+the original one-batch coverage and no labor, manufacturing, overhead or price
+fields. The owner approved the migration, deployment and replay on 2026-11-01.
+
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
 commercial object. The existing immutable `estimation_input_v4` carries its

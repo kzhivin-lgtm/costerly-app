@@ -1,4 +1,4 @@
-"""Bounded, evidence-indexed material extraction for Estimation V4.1.
+"""Bounded, evidence-indexed material extraction for Estimation V4.2.
 
 V4.1 deliberately does not derive cut rectangles or envelope proxies.  Every
 Cloud call receives a disjoint bounded subset of the immutable V4 evidence
@@ -25,13 +25,13 @@ from agents.anthropic_adapter import (
     get_secret,
 )
 from use_cases.estimation_v3_material_contract import (
-    MATERIAL_FACTS_V4_1_VERSION,
+    MATERIAL_FACTS_V4_2_VERSION,
     SPECIFICATION_KEYS,
-    validate_material_facts_v4_1,
+    validate_material_facts_v4_2,
 )
 
 
-ESTIMATION_V4_1_MATERIAL_FACTS_AGENT_VERSION = "estimation_material_facts_v4_1"
+ESTIMATION_V4_2_MATERIAL_FACTS_AGENT_VERSION = "estimation_material_facts_v4_2"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v4_1_material_facts_prompt.md"
 MAX_OUTPUT_TOKENS = 8_000
 TIMEOUT_SECONDS = 90.0
@@ -364,7 +364,7 @@ def _facts_from_claims(
             "message": "No valid material demand was extracted", "evidence_refs": artifact_refs[:1],
         })
     facts = {
-        "contract_version": MATERIAL_FACTS_V4_1_VERSION, "input_id": str(row["input_id"]),
+        "contract_version": MATERIAL_FACTS_V4_2_VERSION, "input_id": str(row["input_id"]),
         "object_input_revision": int(row.get("object_input_revision") or 1),
         "run_id": str(payload["run_id"]), "company_id": str(payload["company_id"]),
         "object_id": str(object_payload["object_id"]), "object_name": str(object_payload["object_name"]),
@@ -374,7 +374,7 @@ def _facts_from_claims(
         "materials": materials, "parts": [], "review_items": reviews,
         "primary_preview_ref": artifact_refs[0],
     }
-    return validate_material_facts_v4_1(facts, allowed_material_families=families)
+    return validate_material_facts_v4_2(facts, allowed_material_families=families)
 
 
 def _run_one_input(
@@ -451,11 +451,11 @@ def run_estimation_v4_1_material_facts_agent(
     aggregate_response = SimpleNamespace(usage=SimpleNamespace(input_tokens=total_input, output_tokens=total_output, cache_creation_input_tokens=0, cache_read_input_tokens=0))
     first = inputs[0]["input_payload"]
     usage = build_agent_usage_event(
-        agent_name="estimation_v4_1_material_facts", operation="bounded_material_fact_extraction",
+        agent_name="estimation_v4_2_material_facts", operation="bounded_material_fact_extraction",
         company_id=str(first.get("company_id") or ""), run_id=str(first.get("run_id") or ""),
         file_name=str((first.get("document") or {}).get("file_name") or ""), object_id="page-batches",
         object_name=f"{len(inputs)} objects", model=selected_model,
-        prompt_version=ESTIMATION_V4_1_MATERIAL_FACTS_AGENT_VERSION, response=aggregate_response,
+        prompt_version=ESTIMATION_V4_2_MATERIAL_FACTS_AGENT_VERSION, response=aggregate_response,
         started_at=started_at, finished_at=datetime.now(UTC).isoformat(),
         request_diagnostics={"object_count": len(inputs), "batch_count": len(all_responses), "batches": batch_diagnostics, "material_only": True},
     )

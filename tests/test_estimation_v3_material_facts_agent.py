@@ -99,6 +99,7 @@ def test_v4_1_sends_each_source_page_once_in_a_bounded_call(monkeypatch):
     )
 
     assert result["failed"] == {}
+    assert result["facts_by_input"]["input-1"]["contract_version"] == "estimation_material_facts_v4_2"
     assert len(captured) == 3
     sent_refs = []
     for kwargs in captured:

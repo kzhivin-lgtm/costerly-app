@@ -15,6 +15,10 @@ MATERIAL_FACTS_V3_VERSION = "estimation_material_facts_v3"
 # Engine boundary.  Keeping that shape lets Resolver/Engine remain the sole
 # purchaser and avoids a parallel pricing contract.
 MATERIAL_FACTS_V4_1_VERSION = "estimation_material_facts_v4_1"
+# V4.2 retains V4.1's evidence-bounded extractor and Material Engine shape.
+# Its separate immutable result version closes the production persistence gap
+# discovered by the first small-file live witness.
+MATERIAL_FACTS_V4_2_VERSION = "estimation_material_facts_v4_2"
 SPECIFICATION_KEYS = frozenset({
     "thickness_mm", "width_mm", "height_mm", "length_mm", "diameter_mm",
     "wall_thickness_mm", "profile_section", "board_type", "species", "grade", "alloy",
@@ -184,4 +188,19 @@ def validate_material_facts_v4_1(
         v3_shape, allowed_material_families=allowed_material_families,
     )
     normalized["contract_version"] = MATERIAL_FACTS_V4_1_VERSION
+    return normalized
+
+
+def validate_material_facts_v4_2(
+    facts: Mapping[str, Any], *, allowed_material_families: AbstractSet[str],
+) -> dict[str, Any]:
+    """Validate V4.2 facts against the unchanged V4.1 material boundary."""
+    if not isinstance(facts, Mapping) or facts.get("contract_version") != MATERIAL_FACTS_V4_2_VERSION:
+        raise ValueError("V4.2 material facts have an unsupported contract version")
+    v4_1_shape = dict(facts)
+    v4_1_shape["contract_version"] = MATERIAL_FACTS_V4_1_VERSION
+    normalized = validate_material_facts_v4_1(
+        v4_1_shape, allowed_material_families=allowed_material_families,
+    )
+    normalized["contract_version"] = MATERIAL_FACTS_V4_2_VERSION
     return normalized
