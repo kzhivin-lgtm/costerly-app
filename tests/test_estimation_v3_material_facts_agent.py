@@ -48,6 +48,12 @@ def test_v4_1_rejects_a_model_response_that_silently_omits_a_page():
         )
 
 
+def test_v4_1_accepts_a_json_fence_missing_only_its_closing_marker():
+    assert agent._json_object("```json\n{\"batch_id\": \"b1\"}") == {"batch_id": "b1"}
+    with pytest.raises(ValueError, match="raw JSON"):
+        agent._json_object("Here is the result: {\"batch_id\": \"b1\"}")
+
+
 def test_v4_1_sends_each_source_page_once_in_a_bounded_call(monkeypatch):
     captured = []
 

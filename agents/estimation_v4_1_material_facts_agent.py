@@ -79,9 +79,15 @@ def _json_object(text: str) -> Mapping[str, Any]:
     value = str(text or "").strip()
     if value.startswith("```"):
         lines = value.splitlines()
-        if len(lines) < 3 or lines[-1].strip() != "```":
+        if len(lines) < 2:
             raise ValueError("V4.1 material facts returned an invalid JSON fence")
-        value = "\n".join(lines[1:-1]).strip()
+        value = "\n".join(lines[1:]).strip()
+        if value.endswith("```"):
+            value = value[:-3].strip()
+    first, last = value.find("{"), value.rfind("}")
+    if first < 0 or last < first or value[:first].strip() or value[last + 1:].strip():
+        raise ValueError("V4.1 material facts must contain one raw JSON object")
+    value = value[first:last + 1]
     parsed = json.loads(value)
     if not isinstance(parsed, Mapping):
         raise ValueError("V4.1 material facts must be a JSON object")
