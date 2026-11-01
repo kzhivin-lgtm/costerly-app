@@ -154,6 +154,26 @@ used for this test. Acceptance: a whole-page architectural layout is still
 discarded; a bounded object plan on a multi-Island page remains Object Evidence;
 Floor 06 live run changes only this classification outcome, not recall or Q.
 
+ACTIVE EXPERIMENT, V8.3, P0, V7.14 dominant floor-plan classification:
+Base: protected `detection-v7.14-conflict-membership-2026-10-30` (`39eb723`).
+Restore that pipeline in full, then change only Discovery's terminal
+classification of a dominant `floor_plan` or `location_plan`: the physical
+`core_bbox` must cover at least 75 percent of its Fusion page. This rule is
+independent of the number or ordering of other Islands on the page. A bounded
+object-specific plan remains Object Evidence. Do not filter, renumber, reorder
+or otherwise alter Candidate Regions; Membership, render handling, router,
+Naming and UI remain unchanged. The existing Conflict Resolver must also honour
+a terminal floor-plan decision only when its source candidate is the same visual
+region (85 percent reciprocal overlap). It must not create a target that
+re-admits that plan as Object Evidence, but a smaller drawing inside the plan
+remains eligible for ordinary review. Prior V7 attempts that removed floor-plan
+candidates before the Conflict Resolver are rejected because they changed
+resolver input and regressed the protected pipeline. Before a paid run, pass
+the V7.14 Discovery, spatial-inventory and prompt regressions. Live acceptance:
+P02 is terminal document context with no P02 Conflict Resolver target, P03
+retains 11 Object Evidence Islands, and the complete post-Discovery object
+inventory remains stable.
+
 BENCHMARK, P0, Hasolelim Floor 06 manual Object Evidence island inventory:
 
 This is the owner-provided visual inventory, separate from final package count

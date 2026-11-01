@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import base64
 import copy
-from collections import Counter
 from decimal import Decimal
 import html
 import hashlib
@@ -122,7 +121,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v6_57_compact_discovery_deterministic_output_budget"
+    "detection_v8_3_v714_dominant_floor_plan_discovery"
 )
 DETECTION_V67_MISTRAL_ANCHOR_ADMISSION_PROMPT_VERSION = (
     "detection_v6_7_mistral_graphic_anchor_admission"
@@ -5178,17 +5177,17 @@ def _visual_map_from_registry_groups(groups: object) -> dict[str, Any]:
 def _floor_plan_forced_context_eligible(
     group: dict[str, Any],
     *,
-    groups_on_page: int,
     page_frame: dict[str, Any] | None,
 ) -> bool:
     """Return whether a plan-like group is large enough for forced demotion.
 
     A representation label is deliberately insufficient: object plans share it
-    with whole-level layouts. The test uses only the physical core, never the
-    wider evidence envelope which may legitimately include captions/dimensions.
+    with whole-level layouts. The decision must not depend on how many
+    unrelated Islands Discovery returned on the page: that count can change
+    when another recall source finds a detail. Use only the physical core,
+    never the wider evidence envelope which may legitimately include
+    captions/dimensions.
     """
-    if groups_on_page == 1:
-        return True
     core_bbox = _detection_bbox(group.get("core_bbox"))
     dimensions = (page_frame or {}).get("fusion_dimensions") or page_frame or {}
     try:
@@ -5240,11 +5239,6 @@ def _validate_and_apply_visual_registry_classifications(
         r"architectural|circulation|walls?|door\s+swings?|multiple\s+spaces?)\b",
         re.IGNORECASE,
     )
-    groups_by_page = Counter(
-        int(group["page_number"])
-        for group in enriched["visual_groups"]
-        if isinstance(group, dict) and isinstance(group.get("page_number"), int)
-    )
     for group in enriched["visual_groups"]:
         decision = by_group_id[group["group_id"]]
         representation = str(group.get("representation_kind") or "").lower()
@@ -5260,14 +5254,20 @@ def _validate_and_apply_visual_registry_classifications(
             description,
             re.IGNORECASE,
         ))
+        # A full-page plan may have a terse description, so an explicit visual
+        # kind is enough when its physical core is dominant. The marker count
+        # remains a guarded fallback only for a model-mislabelled plan.
         generic_plan = (
-            representation in {"floor_plan", "location_plan"} or describes_floor_plan
-        ) and len(set(generic_plan_markers.findall(description))) >= 3
+            representation in {"floor_plan", "location_plan"}
+            or (
+                describes_floor_plan
+                and len(set(generic_plan_markers.findall(description))) >= 3
+            )
+        )
         page_number = group.get("page_number")
         page_frame = (page_frames or {}).get(page_number) if isinstance(page_number, int) else None
         forced_context_eligible = _floor_plan_forced_context_eligible(
             group,
-            groups_on_page=groups_by_page.get(page_number, 0),
             page_frame=page_frame,
         )
         if (
