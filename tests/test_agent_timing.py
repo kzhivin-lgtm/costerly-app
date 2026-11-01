@@ -1645,43 +1645,6 @@ def test_whole_architectural_floor_plan_is_demoted_to_document_context():
     assert audit[0]["evidence_class"] == "document_context"
 
 
-def test_dominant_floor_plan_is_demoted_without_marker_words_or_group_count():
-    payload = _visual_registry_payload({
-        "visual_groups": [{
-            "group_id": "plan", "page_number": 2, "location_hint": "whole page",
-            "visual_description": "Dimensioned layout drawing.",
-            "representation_kind": "floor_plan",
-            "evidence_class": "object_evidence",
-            "classification_reason": "Large plan sheet.",
-            "bbox": {
-                "top_left_x": 0, "top_left_y": 0,
-                "bottom_right_x": 1000, "bottom_right_y": 1000,
-            },
-            "core_bbox": {
-                "top_left_x": 0, "top_left_y": 0,
-                "bottom_right_x": 900, "bottom_right_y": 900,
-            },
-        }, {
-            "group_id": "detail", "page_number": 2, "location_hint": "corner",
-            "visual_description": "Cabinet section.",
-            "representation_kind": "section",
-            "evidence_class": "object_evidence",
-            "classification_reason": "Bounded fabricated cabinet detail.",
-        }],
-    })
-
-    enriched, audit = _validate_and_apply_visual_registry_classifications(
-        payload,
-        page_frames={2: {"fusion_dimensions": {"width": 1000, "height": 1000}}},
-    )
-
-    by_id = {group["group_id"]: group for group in enriched["visual_groups"]}
-    audit_by_id = {row["group_id"]: row for row in audit}
-    assert by_id["plan"]["evidence_class"] == "document_context"
-    assert audit_by_id["plan"]["evidence_class"] == "document_context"
-    assert by_id["detail"]["evidence_class"] == "object_evidence"
-
-
 def test_whole_architectural_floor_plan_is_demoted_when_model_mislabels_representation_kind():
     payload = _visual_registry_payload({
         "visual_groups": [{

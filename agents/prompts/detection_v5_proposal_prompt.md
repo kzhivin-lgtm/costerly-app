@@ -44,12 +44,6 @@ returning that page's Island ID list, including an empty list when appropriate.
 Use `floor_plan` for a whole architectural room-and-circulation layout, and
 classify it as Document Context, not Object Evidence.
 
-A single dominant floor or location plan that occupies most of its page is
-Document Context even if it has dimensions, labels, furniture symbols or a
-technical drawing style. It does not become a fabricated object merely because
-other, smaller Islands are present on the page. A bounded plan of one cabinet,
-room element or fabricated assembly remains Object Evidence.
-
 Use the exact `representation_kind` `presentation_render` for a photographic
 render or photo that presents a fabricated object. Do not use it for a
 line-drawn or dimensioned technical perspective. A presentation render remains
