@@ -1,7 +1,8 @@
 # Detection V8 rebuild
 
-Status: experimental core only. It is not wired into production and must not
-replace V7.14 or be deployed before a Floor 06 live benchmark.
+Status: experimental, opt-in implementation. V8 is wired behind
+`DETECTION_PIPELINE_VERSION=v8`, while the default remains V7. It must not
+replace V7.14 or be deployed as the default before a Floor 06 live benchmark.
 
 ## Protected checkpoint
 
@@ -32,6 +33,10 @@ target design.
 6. Floor-plan terminal handling is split across Discovery classification and a
    later Candidate-Region suppression helper. A normal classification outcome
    must not require a downstream repair to stay terminal.
+7. MyPDF clustering used a transitive fixed-distance chain. A sequence of
+   nearby labels could form one broad recall region even when its endpoints
+   belonged to different drawings. V8 uses deterministic fixed cells only;
+   candidates do not enter object assembly in either case.
 
 ## V8 contract
 
@@ -69,7 +74,7 @@ Membership link schema as technical views. A render-to-technical pair needs one
 grounded `matching_topology` or `unique_geometry` proof; a technical pair needs
 two independent types. An unattached render is excluded from final components.
 
-## Implemented V8 core
+## Implemented V8
 
 `agents/detection_v8.py` owns the new contracts and deterministic pipeline.
 It has no V7 Candidate Q, coverage-only graph seed, dominant-page attachment,
@@ -79,12 +84,22 @@ Discovery, Membership or package semantics.
 
 `agents/prompts/detection_v8_discovery_prompt.md` and
 `agents/prompts/detection_v8_membership_prompt.md` define the two ordinary
-provider contracts. Their schemas are in the V8 module.
+provider contracts. `agents/prompts/detection_v8_conflict_prompt.md` is used
+only for an eligible exceptional target. Their schemas are in the V8 module.
 
-## Verification before integration
+`agents/detection_v8_adapter.py` is the provider transport and publication
+boundary. It builds fixed view crops only after Discovery, never reuses V7
+semantic helpers, limits every streamed request to 90 seconds, and reports a
+stage-specific terminal error rather than leaving the UI at an ambiguous
+progress state. It deterministically publishes components only after
+Membership, with an explicit default quantity of one and no synthetic object
+name. `agents/detection_agent.py` selects this path only by explicit V8 flag;
+the default V7 entry point is unchanged.
 
-The V8 core tests must pass, then a provider adapter must be added behind an
-explicit V8 route flag. The first live Floor 06 comparison must report:
+## Verification before live benchmark
+
+Focused V8 and V5 regression tests pass locally. The first live Floor 06
+comparison must report:
 
 - per-page candidates, Object Evidence islands and terminal exclusions;
 - every resolver target and why it was selected;

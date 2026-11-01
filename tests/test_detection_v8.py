@@ -1,5 +1,9 @@
 from copy import deepcopy
+from io import BytesIO
+import re
 
+from agents.detection_v8_adapter import run_detection_v8_with_request
+from agents.detection_agent import _select_detection_pipeline_version
 from agents.detection_v8 import (
     DETECTION_V8_DISCOVERY_SCHEMA,
     DETECTION_V8_MEMBERSHIP_SCHEMA,
@@ -13,6 +17,7 @@ from agents.detection_v8 import (
     select_detection_v8_conflict_targets,
 )
 from agents.prompt_loader import (
+    load_detection_v8_conflict_prompt,
     load_detection_v8_discovery_prompt,
     load_detection_v8_membership_prompt,
 )
@@ -93,6 +98,27 @@ def test_v8_candidate_identity_does_not_change_when_an_unrelated_region_is_added
     assert original_ids <= changed_ids
 
 
+def test_v8_mypdf_candidates_do_not_join_distinct_islands_through_a_distance_chain():
+    facts = [
+        {
+            "fact_id": f"SF-{index}", "page_number": 1,
+            "source": "native_pdf_text", "text": "600",
+                "bbox": _bbox(left, 900, left + 1, 910),
+        }
+        for index, left in enumerate((0, 499, 501, 999), start=1)
+    ]
+    ocr = {"pages": [{
+        "page_number": 1,
+        "dimensions": {"width": 2000, "height": 2000},
+        "blocks": [],
+    }]}
+
+    candidates = build_detection_v8_candidate_regions(ocr, facts)
+
+    assert len(candidates) == 2
+    assert all(row["sources"] == ["mypdf_dimensions"] for row in candidates)
+
+
 def test_v8_excludes_dominant_floor_plan_during_discovery_and_never_routes_it_to_resolver():
     candidate = {
         "candidate_region_id": "candidate-plan", "page_number": 1,
@@ -104,6 +130,7 @@ def test_v8_excludes_dominant_floor_plan_during_discovery_and_never_routes_it_to
         "core_bbox": _bbox(0, 0, 1000, 1000),
         "representation_kind": "floor_plan",
         "decision": "object_evidence",
+        "visual_description": "whole-level room and circulation layout",
         "reason": "whole level architectural room and circulation plan",
     }], page_dimensions={1: (1000, 1000)})
 
@@ -150,6 +177,26 @@ def test_v8_conflict_resolver_is_only_selected_for_unexplained_technical_candida
     assert len(targets) == 1
     assert admitted[0]["evidence_class"] == "object_evidence"
     assert audit[0]["admitted_group_id"] == admitted[0]["group_id"]
+
+
+def test_v8_conflict_exclusion_needs_no_fake_object_bbox():
+    targets = [{
+        "target_id": "target-1", "candidate_region_id": "candidate-1",
+        "page_number": 1, "bbox": _bbox(100, 100, 500, 500),
+        "source_fact_ids": ["SF-1", "SF-2"],
+    }]
+
+    admitted, audit = apply_detection_v8_conflict_decisions(
+        object_evidence=[], targets=targets,
+        decisions=[{
+            "target_id": "target-1", "decision": "exclude",
+            "reason": "only a title block fragment is visible",
+        }],
+        page_dimensions={1: (2000, 2000)},
+    )
+
+    assert admitted == []
+    assert audit[0]["decision"] == "exclude"
 
 
 def test_v8_membership_has_one_link_contract_for_technical_views_and_renders():
@@ -221,6 +268,7 @@ def test_v8_end_to_end_has_no_special_conflict_membership_path():
             "bbox": _bbox(100, 100, 900, 900),
             "core_bbox": _bbox(120, 120, 880, 880),
             "representation_kind": "technical_elevation",
+            "visual_description": "main cabinet elevation",
             "decision": "object_evidence",
             "reason": "main technical elevation",
         }]
@@ -231,6 +279,7 @@ def test_v8_end_to_end_has_no_special_conflict_membership_path():
             "bbox": _bbox(1300, 900, 1700, 1400),
             "core_bbox": _bbox(1320, 920, 1680, 1380),
             "representation_kind": "technical_elevation",
+            "visual_description": "separate cabinet elevation",
             "reason": "separate technical elevation with dimensions",
         }
 
@@ -271,9 +320,83 @@ def test_v8_components_are_invariant_to_membership_link_order():
 def test_v8_has_two_ordinary_provider_contracts_without_render_or_conflict_side_arrays():
     discovery_prompt = load_detection_v8_discovery_prompt()
     membership_prompt = load_detection_v8_membership_prompt()
+    conflict_prompt = load_detection_v8_conflict_prompt()
 
     assert "presentation_render_decisions" not in DETECTION_V8_MEMBERSHIP_SCHEMA["properties"]
     assert "conflict_pair_decisions" not in DETECTION_V8_MEMBERSHIP_SCHEMA["properties"]
     assert DETECTION_V8_DISCOVERY_SCHEMA["required"] == ["islands"]
     assert "Candidate Region is only a recall aid" in discovery_prompt
     assert "Absence of a\nlink means no merge" in membership_prompt
+    assert "not a second Discovery pass" in conflict_prompt
+
+
+def test_v8_adapter_keeps_provider_stages_separate_and_publishes_only_after_membership():
+    from PIL import Image
+
+    image = Image.new("RGB", (1000, 1000), "white")
+    encoded = BytesIO()
+    image.save(encoded, format="JPEG")
+    stages: list[str] = []
+
+    def request(
+        stage: str, _prompt: str, _schema: dict, content: list[dict], _max_tokens: int,
+    ) -> tuple[dict, dict]:
+        stages.append(stage)
+        if stage == "discovery":
+            return {
+                "islands": [
+                    {
+                        "page_number": 1,
+                        "bbox": _bbox(100, 100, 800, 800),
+                        "core_bbox": _bbox(120, 120, 780, 780),
+                        "representation_kind": "technical_elevation",
+                        "decision": "object_evidence",
+                        "exclusion_kind": "",
+                        "visual_description": "cabinet elevation with triangular shelf",
+                        "reason": "distinct technical object depiction",
+                    },
+                    {
+                        "page_number": 1,
+                        "bbox": _bbox(1000, 100, 1800, 800),
+                        "core_bbox": _bbox(1020, 120, 1780, 780),
+                        "representation_kind": "technical_section",
+                        "decision": "object_evidence",
+                        "exclusion_kind": "",
+                        "visual_description": "matching cabinet section with triangular shelf",
+                        "reason": "distinct technical object depiction",
+                    },
+                ],
+            }, {"input_tokens": 10, "output_tokens": 20}
+        assert stage == "membership"
+        text = str(content[-1]["text"])
+        group_ids = re.findall(r"(V8-I-P001-[a-f0-9]+)\|P1", text)
+        assert len(group_ids) == 2
+        return {
+            "links": [{
+                "group_id_a": group_ids[0], "group_id_b": group_ids[1],
+                "evidence": [
+                    _evidence(group_ids[0], group_ids[1], "matching_topology"),
+                    _evidence(group_ids[0], group_ids[1], "unique_geometry"),
+                ],
+            }],
+        }, {"input_tokens": 30, "output_tokens": 40}
+
+    visual_map, registry, audit = run_detection_v8_with_request(
+        file_name="drawing.pdf", company_id="001", file_bytes=b"%PDF",
+        page_images=[encoded.getvalue()], ocr_package=_ocr(), request_json=request,
+    )
+
+    assert stages == ["discovery", "membership"]
+    assert [group["group_id"] for group in visual_map["visual_groups"]] == [
+        "view-001", "view-002",
+    ]
+    assert audit["pipeline"]["membership"]["accepted_links"], audit["pipeline"]["membership"]
+    assert registry["objects"][0]["visual_group_ids"] == ["view-001", "view-002"], audit
+    assert audit["pipeline"]["conflict_resolver"]["attempted"] is False
+
+
+def test_v8_route_stays_opt_in_without_changing_the_v7_default(monkeypatch):
+    monkeypatch.setattr("agents.detection_agent.get_secret", lambda _name, default=None: default)
+
+    assert _select_detection_pipeline_version() == "v7"
+    assert _select_detection_pipeline_version("v8") == "v8"

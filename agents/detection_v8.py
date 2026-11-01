@@ -86,10 +86,7 @@ DETECTION_V8_DISCOVERY_SCHEMA: dict[str, Any] = {
 DETECTION_V8_CONFLICT_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": [
-        "target_id", "decision", "bbox", "core_bbox", "representation_kind",
-        "visual_description", "reason",
-    ],
+    "required": ["target_id", "decision", "reason"],
     "properties": {
         "target_id": {"type": "string", "minLength": 1, "maxLength": 48},
         "decision": {"type": "string", "enum": ["object_evidence", "exclude"]},
@@ -265,29 +262,22 @@ def _mypdf_dimension_clusters(
         and _is_native_dimension(fact)
         and (bbox := _bbox(fact.get("bbox"))) is not None
     ]
-    remaining = set(range(len(entries)))
-    components: list[list[int]] = []
-    while remaining:
-        component = {remaining.pop()}
-        frontier = list(component)
-        while frontier:
-            current = frontier.pop()
-            current_box = entries[current][1]
-            centre_x = (current_box["top_left_x"] + current_box["bottom_right_x"]) / 2
-            centre_y = (current_box["top_left_y"] + current_box["bottom_right_y"]) / 2
-            adjacent = []
-            for index in remaining:
-                box = entries[index][1]
-                x = (box["top_left_x"] + box["bottom_right_x"]) / 2
-                y = (box["top_left_y"] + box["bottom_right_y"]) / 2
-                if max(abs(x - centre_x), abs(y - centre_y)) <= gap_px:
-                    adjacent.append(index)
-            for index in adjacent:
-                remaining.remove(index)
-                component.add(index)
-                frontier.append(index)
-        if len(component) >= 2:
-            components.append(sorted(component))
+    # A connected graph with a fixed pair distance is not a spatial cluster:
+    # an arbitrary chain of labels can bridge distinct drawings.  Candidate
+    # Regions are recall-only in V8, so use compact fixed cells instead.  A
+    # numeric label can belong to just one deterministic cell and cannot pull
+    # an unrelated island into a broad transitive component.
+    cells: dict[tuple[int, int], list[int]] = {}
+    for index, (_fact, box) in enumerate(entries):
+        centre_x = (box["top_left_x"] + box["bottom_right_x"]) / 2
+        centre_y = (box["top_left_y"] + box["bottom_right_y"]) / 2
+        cell = (int(centre_x // gap_px), int(centre_y // gap_px))
+        cells.setdefault(cell, []).append(index)
+    components = [
+        sorted(indices)
+        for _cell, indices in sorted(cells.items())
+        if len(indices) >= 2
+    ]
 
     page_width, page_height = _page_dimensions(page, [fact for fact, _ in entries])
     clusters: list[dict[str, Any]] = []
@@ -465,6 +455,7 @@ def normalize_detection_v8_discovery(
             or not _contains(bbox, core_bbox)
             or decision not in {"object_evidence", "exclude"}
             or not kind
+            or not description
             or not reason
         ):
             raise DetectionV8ContractError("V8 Discovery island contract is invalid")
@@ -480,7 +471,7 @@ def normalize_detection_v8_discovery(
         seen_geometry.add(geometry_key)
         terminal_floor_plan = _dominant_floor_plan(
             representation_kind=kind,
-            bbox=bbox,
+            bbox=core_bbox,
             page_dimensions=page_dimensions,
             page_number=page_number,
         )
@@ -640,7 +631,7 @@ def apply_detection_v8_conflict_decisions(
             or bbox["top_left_x"] < 0 or bbox["top_left_y"] < 0
             or bbox["bottom_right_x"] > width or bbox["bottom_right_y"] > height
             or _dominant_floor_plan(
-                representation_kind=kind, bbox=bbox,
+                representation_kind=kind, bbox=core_bbox,
                 page_dimensions=page_dimensions, page_number=page_number,
             )
         ):
