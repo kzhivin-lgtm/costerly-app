@@ -3022,11 +3022,16 @@ every page must be declared by its batch response and every claim must cite a
 local page or OCR block. Unsupported cut rectangles, envelope proxies and
 construction-inferred quantities are removed. Ambiguous repeated material
 scope becomes blocking review, not a summed quantity. Focused checks passed
-64/64, and the saved 39-page kitchen input plans as seven bounded batches with
-all pages covered exactly once. This is not live-material acceptance: deploy
-and one controlled replay still need to verify provider tokens, response
-quality and evidence completeness. The replay tool reads the immutable package
-without OCR or re-upload; its paid persistent mode is explicit. Record:
+70 pre-replay checks and 18 replay-repair checks passed. The saved 39-page
+kitchen input was approved for a controlled Cloud replay but did not persist
+facts: a 4,000-token response cap truncated dense specification JSON, and
+telemetry initially lost received-response usage on parse failure. V4.1 now
+records received usage before parsing, permits a complete fenced JSON object,
+uses 8,000 output tokens and separates dense pages at 240 OCR blocks. The
+safe replay plan is now 20 calls, with every page still covered once. This is
+not live-material acceptance: the owner must choose whether to spend the
+20-call budget before another replay. The replay tool reads the immutable
+package without OCR or re-upload; its paid persistent mode is explicit. Record:
 `notes/ESTIMATION_V4_1_BATCHED_EVIDENCE_EXPERIMENT_2026_11_01.md`.
 
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive

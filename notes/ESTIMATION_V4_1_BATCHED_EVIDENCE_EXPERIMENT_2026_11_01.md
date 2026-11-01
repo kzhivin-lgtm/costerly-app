@@ -32,7 +32,8 @@ pricing, supplier selection and purchase rounding remain outside the agent.
 
 ## Verified local evidence
 
-Focused automated checks: 64 passed. They cover V4 evidence assembly,
+Focused automated checks: 18 passed after the live-replay repair set. The
+broader pre-replay material boundary suite passed 70 checks. They cover V4 evidence assembly,
 V4.1 bounded batching, incomplete-page rejection, no source-page duplication,
 runtime handoff, publisher, contract, Material Engine and cost accounting.
 `git diff --check` passed.
@@ -40,14 +41,34 @@ runtime handoff, publisher, contract, Material Engine and cost accounting.
 The saved production kitchen object input
 `2be20d54-1962-4747-b2e3-9207ad9dff42` was read without change and passed
 through the V4.1 local planner: all 39 physical pages were represented once,
-with no batch over six pages. Its current deterministic index creates seven
-batches, not one 472,178-token request. This is a planner verification only,
-not a Cloud material result or a price acceptance.
+with no batch over six page images. The first planner made seven batches,
+instead of one 472,178-token request.
+
+## Controlled Cloud replay result
+
+The owner explicitly approved the saved kitchen package for V4.1 testing.
+No V4.1 fact result was persisted. The first local wrapper was interrupted
+before aggregate persistence. Two later attempts reached the provider but
+exposed output-boundary defects: the provider may wrap JSON in markdown, and
+a dense specification batch can exceed the prior 4,000 output-token cap,
+producing an unterminated JSON string. The earlier aggregate telemetry also
+recorded zero tokens when a response failed parsing, because it retained a
+response only after parsing.
+
+V4.1 now recovers the first complete JSON object before applying its strict
+schema, records a received response before parsing so its usage survives a
+failure, raises the output cap to 8,000, and limits a multi-page batch to 240
+OCR blocks as well as six images. The real kitchen dossier now plans as 20
+calls, with each page still present exactly once. A one-page source with more
+than 240 OCR blocks remains one page rather than being silently truncated.
+This is deliberately not yet another paid replay: the 20-call cost/latency
+trade-off needs owner confirmation.
 
 ## Explicit limitations before production acceptance
 
-1. No paid V4.1 Cloud replay has been made yet. The model response quality,
-   real token use, latency and material completeness are still unknown.
+1. No complete paid V4.1 Cloud replay has produced persisted facts. The model
+   response quality, full-token receipt, latency and material completeness
+   remain unknown.
 2. The topic index is intentionally conservative and OCR-keyword based. It
    helps batching and auditability but does not yet decide a construction or a
    BOM hierarchy.
@@ -63,8 +84,9 @@ not a Cloud material result or a price acceptance.
 
 ## Next verification
 
-Commit and deploy this bounded extraction checkpoint, then run one controlled
-V4.1 replay of the saved kitchen input. Acceptance is not merely completing:
-every Cloud call must stay under the provider limit, all 39 pages must have a
+Choose the output budget for the next controlled replay. The current safe
+plan has 20 calls, each with no more than six images and 240 OCR blocks when
+the source page itself permits it. Acceptance is not merely completing: every
+Cloud call must stay under the provider limit, all 39 pages must have a
 coverage declaration, every published claim must have exact local evidence,
 and unresolved material scopes must remain review-visible rather than guessed.

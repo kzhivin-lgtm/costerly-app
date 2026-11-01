@@ -33,9 +33,13 @@ from use_cases.estimation_v3_material_contract import (
 
 ESTIMATION_V4_1_MATERIAL_FACTS_AGENT_VERSION = "estimation_material_facts_v4_1"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v4_1_material_facts_prompt.md"
-MAX_OUTPUT_TOKENS = 4_000
+MAX_OUTPUT_TOKENS = 8_000
 TIMEOUT_SECONDS = 90.0
 MAX_SOURCE_PAGES_PER_CALL = 6
+# Six title pages are harmless while six dense specification pages can ask the
+# model to emit hundreds of cited claims. Keep both image and text evidence
+# bounded before a request is assembled.
+MAX_OCR_BLOCKS_PER_CALL = 240
 _EXCLUDED_MATERIAL_FAMILIES = frozenset({
     "packaging_material", "paint_lacquer_stain", "powder_coating", "primer",
     "filler_hardener_thinner", "hardware_fastener",
@@ -50,6 +54,14 @@ _MATERIAL_SIGNAL = re.compile(
     r"\b(mdf|hdf|plywood|particleboard|melamine|laminate|steel|metal|aluminium|glass|stone|hinge|handle|slide|track|rail|profile|tube|мдф|фанер|металл|стекл|камн|петл|ручк|направляющ|профил)\b",
     re.I,
 )
+
+
+class _BatchExtractionError(RuntimeError):
+    def __init__(self, cause: BaseException, *, responses: Sequence[Any], diagnostics: Sequence[Mapping[str, Any]]) -> None:
+        super().__init__(str(cause))
+        self.cause = cause
+        self.responses = list(responses)
+        self.diagnostics = [dict(item) for item in diagnostics]
 
 
 def _create_message_with_hard_timeout(client: Any, *, timeout_seconds: float, **kwargs: Any) -> Any:
@@ -195,12 +207,23 @@ def build_v4_1_evidence_batches(payload: Mapping[str, Any]) -> list[dict[str, An
         grouped.setdefault(str(page["topic"]), []).append(page)
     batches: list[dict[str, Any]] = []
     for topic in sorted(grouped):
-        for start in range(0, len(grouped[topic]), MAX_SOURCE_PAGES_PER_CALL):
-            selected = grouped[topic][start:start + MAX_SOURCE_PAGES_PER_CALL]
+        selected: list[dict[str, Any]] = []
+        selected_block_count = 0
+        batch_number = 1
+        for page in grouped[topic]:
+            page_block_count = len(page["ocr_blocks"]) + len(page["ocr_literal_items"])
+            would_exceed_text_limit = selected and selected_block_count + page_block_count > MAX_OCR_BLOCKS_PER_CALL
+            if selected and (len(selected) >= MAX_SOURCE_PAGES_PER_CALL or would_exceed_text_limit):
+                batches.append({
+                    "batch_id": f"{topic}-{batch_number}", "topic": topic, "pages": selected,
+                })
+                batch_number += 1
+                selected, selected_block_count = [], 0
+            selected.append(page)
+            selected_block_count += page_block_count
+        if selected:
             batches.append({
-                "batch_id": f"{topic}-{start // MAX_SOURCE_PAGES_PER_CALL + 1}",
-                "topic": topic,
-                "pages": selected,
+                "batch_id": f"{topic}-{batch_number}", "topic": topic, "pages": selected,
             })
     covered = [page["page_number"] for batch in batches for page in batch["pages"]]
     if sorted(covered) != sorted(page["page_number"] for page in pages) or len(covered) != len(set(covered)):
@@ -363,28 +386,35 @@ def _run_one_input(
     responses, claims, reviews, diagnostics = [], [], [], []
     client = get_anthropic_client().with_options(timeout=TIMEOUT_SECONDS, max_retries=0)
     for batch in batches:
-        resolved_pages = []
-        for page in batch["pages"]:
-            content = evidence_page_bytes_by_ref.get(page["storage_ref"])
-            if not content:
-                raise ValueError(f"full source evidence is missing for {page['storage_ref']}")
-            resolved_pages.append({**page, "bytes": content})
-        content, _request = _batch_request(
-            batch={**batch, "pages": resolved_pages}, allowed_material_families=allowed_material_families,
-            pricing_key_fields_by_family=pricing_key_fields_by_family, family_alias_context=family_alias_context,
-        )
-        response = _create_message_with_hard_timeout(
-            client, timeout_seconds=TIMEOUT_SECONDS, model=model, max_tokens=MAX_OUTPUT_TOKENS, temperature=0,
-            system=PROMPT_PATH.read_text(encoding="utf-8").strip(), messages=[{"role": "user", "content": content}],
-        )
-        batch_claims, batch_reviews = _response_for_batch(
-            response=_json_object(extract_text_from_claude_response(response)), batch=batch,
-            families=allowed_material_families,
-        )
-        responses.append(response)
-        claims.extend(batch_claims)
-        reviews.extend(batch_reviews)
-        diagnostics.append({"batch_id": batch["batch_id"], "topic": batch["topic"], "page_numbers": [page["page_number"] for page in batch["pages"]]})
+        try:
+            resolved_pages = []
+            for page in batch["pages"]:
+                content = evidence_page_bytes_by_ref.get(page["storage_ref"])
+                if not content:
+                    raise ValueError(f"full source evidence is missing for {page['storage_ref']}")
+                resolved_pages.append({**page, "bytes": content})
+            content, _request = _batch_request(
+                batch={**batch, "pages": resolved_pages}, allowed_material_families=allowed_material_families,
+                pricing_key_fields_by_family=pricing_key_fields_by_family, family_alias_context=family_alias_context,
+            )
+            diagnostic = {
+                "batch_id": batch["batch_id"], "topic": batch["topic"],
+                "page_numbers": [page["page_number"] for page in batch["pages"]],
+            }
+            response = _create_message_with_hard_timeout(
+                client, timeout_seconds=TIMEOUT_SECONDS, model=model, max_tokens=MAX_OUTPUT_TOKENS, temperature=0,
+                system=PROMPT_PATH.read_text(encoding="utf-8").strip(), messages=[{"role": "user", "content": content}],
+            )
+            responses.append(response)
+            diagnostics.append(diagnostic)
+            batch_claims, batch_reviews = _response_for_batch(
+                response=_json_object(extract_text_from_claude_response(response)), batch=batch,
+                families=allowed_material_families,
+            )
+            claims.extend(batch_claims)
+            reviews.extend(batch_reviews)
+        except Exception as exc:
+            raise _BatchExtractionError(exc, responses=responses, diagnostics=diagnostics) from exc
     return _facts_from_claims(row=row, claims=claims, reviews=reviews, families=allowed_material_families), responses, diagnostics
 
 
@@ -410,6 +440,10 @@ def run_estimation_v4_1_material_facts_agent(
             facts_by_input[input_id] = facts
             all_responses.extend(responses)
             batch_diagnostics.extend(diagnostics)
+        except _BatchExtractionError as exc:
+            all_responses.extend(exc.responses)
+            batch_diagnostics.extend(exc.diagnostics)
+            failed[input_id or "unknown"] = f"{type(exc.cause).__name__}: {exc.cause}"
         except Exception as exc:
             failed[input_id or "unknown"] = f"{type(exc).__name__}: {exc}"
     total_input = sum(int(getattr(getattr(response, "usage", None), "input_tokens", 0) or 0) for response in all_responses)
@@ -425,4 +459,7 @@ def run_estimation_v4_1_material_facts_agent(
         started_at=started_at, finished_at=datetime.now(UTC).isoformat(),
         request_diagnostics={"object_count": len(inputs), "batch_count": len(all_responses), "batches": batch_diagnostics, "material_only": True},
     )
+    if failed:
+        usage["status"] = "failed"
+        usage["error_message"] = next(iter(failed.values()))[:1000]
     return {"facts_by_input": facts_by_input, "failed": failed, "usage_event": usage}

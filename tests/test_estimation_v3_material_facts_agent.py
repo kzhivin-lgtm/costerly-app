@@ -38,6 +38,19 @@ def test_v4_1_builds_disjoint_bounded_batches_with_complete_page_coverage():
     assert all(page["topic"] == "structure" for batch in batches for page in batch["pages"])
 
 
+def test_v4_1_splits_dense_ocr_before_it_exceeds_the_output_budget():
+    row = _row(3)
+    row["input_payload"]["evidence"]["ocr_blocks"] = [
+        {"page_number": page_number, "text": f"MDF {index}", "block_ref": f"ocr:p{page_number}:b{index}"}
+        for page_number in range(1, 4) for index in range(130)
+    ]
+
+    batches = agent.build_v4_1_evidence_batches(row["input_payload"])
+
+    assert [[page["page_number"] for page in batch["pages"]] for batch in batches] == [[1], [2], [3]]
+    assert all(sum(len(page["ocr_blocks"]) for page in batch["pages"]) <= agent.MAX_OCR_BLOCKS_PER_CALL for batch in batches)
+
+
 def test_v4_1_rejects_a_model_response_that_silently_omits_a_page():
     batch = agent.build_v4_1_evidence_batches(_row(2)["input_payload"])[0]
 
@@ -98,6 +111,33 @@ def test_v4_1_sends_each_source_page_once_in_a_bounded_call(monkeypatch):
         assert all(block["page_number"] in page_numbers for page in request["pages"] for block in page["ocr_blocks"])
     assert sorted(sent_refs) == sorted(bytes_by_ref)
     assert result["usage_event"]["raw_usage"]["batch_count"] == 3
+
+
+def test_v4_1_records_provider_usage_when_response_parsing_fails(monkeypatch):
+    class Client:
+        def with_options(self, **_kwargs):
+            return self
+
+    monkeypatch.setattr(agent, "get_anthropic_client", lambda: Client())
+    monkeypatch.setattr(agent, "get_secret", lambda *_args: "test-model")
+    monkeypatch.setattr(
+        agent, "create_claude_message",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            content=[SimpleNamespace(type="text", text="not json")],
+            usage=SimpleNamespace(input_tokens=123, output_tokens=45),
+        ),
+    )
+    row = _row(1)
+    bytes_by_ref = {item["storage_ref"]: b"page" for item in row["input_payload"]["evidence"]["artifacts"]}
+
+    result = agent.run_estimation_v4_1_material_facts_agent(
+        inputs=[row], allowed_material_families={"mdf_hdf"}, evidence_page_bytes_by_ref=bytes_by_ref,
+    )
+
+    assert result["failed"]
+    assert result["usage_event"]["status"] == "failed"
+    assert result["usage_event"]["input_tokens"] == 123
+    assert result["usage_event"]["raw_usage"]["batch_count"] == 1
 
 
 def test_v4_1_never_combines_repeated_material_scope_into_a_quantity():
