@@ -181,7 +181,7 @@ def test_v82_same_page_matrix_is_exhaustive_and_order_invariant():
 def test_v82_membership_review_accepts_only_covered_same_page_positive_links():
     views = [_view("A"), _view("B", bbox=_bbox(700, 100, 1200, 600)), _view("C", bbox=_bbox(1300, 100, 1800, 600))]
     pairs = build_detection_v82_same_page_membership_pairs(object_evidence=views)
-    links, decisions = normalize_detection_v82_membership_review(
+    links, decisions, rejected_cross_page = normalize_detection_v82_membership_review(
         raw_review={
             "same_page_decisions": [
                 {"group_id_a": "A", "group_id_b": "B", "decision": "same_object", "reason": "same distinctive shelving topology and dimensions", "proofs": [_proof("matching_topology"), _proof("dimension_equality")]},
@@ -196,6 +196,7 @@ def test_v82_membership_review_accepts_only_covered_same_page_positive_links():
 
     assert [(link["group_id_a"], link["group_id_b"]) for link in links] == [("A", "B")]
     assert len(decisions) == len(pairs) == 3
+    assert rejected_cross_page == []
 
 
 def test_v82_membership_deterministically_removes_render_to_render_edges():
@@ -203,7 +204,7 @@ def test_v82_membership_deterministically_removes_render_to_render_edges():
     render_b = _view("R2", kind="presentation_render", bbox=_bbox(700, 100, 1200, 600))
     pairs = build_detection_v82_same_page_membership_pairs(object_evidence=[render_a, render_b])
 
-    links, decisions = normalize_detection_v82_membership_review(
+    links, decisions, rejected_cross_page = normalize_detection_v82_membership_review(
         raw_review={
             "same_page_decisions": [{
                 "group_id_a": "R1", "group_id_b": "R2", "decision": "same_object",
@@ -218,6 +219,7 @@ def test_v82_membership_deterministically_removes_render_to_render_edges():
     assert links == []
     assert decisions[0]["decision"] == "different_or_insufficient"
     assert decisions[0]["normalization"] == "forced_no_render_to_render_link"
+    assert rejected_cross_page == []
 
 
 def test_v82_membership_retains_the_visual_proof_for_render_to_technical_link():
@@ -225,7 +227,7 @@ def test_v82_membership_retains_the_visual_proof_for_render_to_technical_link():
     render = _view("R", kind="presentation_render", bbox=_bbox(700, 100, 1200, 600))
     pairs = build_detection_v82_same_page_membership_pairs(object_evidence=[technical, render])
 
-    links, _decisions = normalize_detection_v82_membership_review(
+    links, _decisions, rejected_cross_page = normalize_detection_v82_membership_review(
         raw_review={
             "same_page_decisions": [{
                 "group_id_a": "R", "group_id_b": "T", "decision": "same_object",
@@ -240,6 +242,52 @@ def test_v82_membership_retains_the_visual_proof_for_render_to_technical_link():
     )
 
     assert [proof["kind"] for proof in links[0]["proofs"]] == ["matching_topology"]
+    assert rejected_cross_page == []
+
+
+def test_v82_membership_rejects_invalid_optional_cross_page_link_without_aborting():
+    left = _view("A")
+    right = {**_view("B", bbox=_bbox(700, 100, 1200, 600)), "page_number": 2}
+
+    links, decisions, rejected_cross_page = normalize_detection_v82_membership_review(
+        raw_review={
+            "same_page_decisions": [],
+            "cross_page_links": [{
+                "group_id_a": "A", "group_id_b": "B",
+                "proofs": [_proof("matching_topology")],
+            }],
+        },
+        object_evidence=[left, right],
+        required_same_page_pairs=[],
+    )
+
+    assert links == []
+    assert decisions == []
+    assert rejected_cross_page == [{
+        "index": 0, "group_id_a": "A", "group_id_b": "B",
+        "reason": "technical_link_requires_two_independent_proofs",
+    }]
+
+
+def test_v82_membership_accepts_valid_optional_cross_page_link():
+    left = _view("A")
+    right = {**_view("B", bbox=_bbox(700, 100, 1200, 600)), "page_number": 2}
+
+    links, decisions, rejected_cross_page = normalize_detection_v82_membership_review(
+        raw_review={
+            "same_page_decisions": [],
+            "cross_page_links": [{
+                "group_id_a": "A", "group_id_b": "B",
+                "proofs": [_proof("matching_topology"), _proof("dimension_equality")],
+            }],
+        },
+        object_evidence=[left, right],
+        required_same_page_pairs=[],
+    )
+
+    assert [(link["group_id_a"], link["group_id_b"]) for link in links] == [("A", "B")]
+    assert decisions == []
+    assert rejected_cross_page == []
 
 
 def test_v82_membership_names_the_pair_when_a_technical_positive_lacks_proof():

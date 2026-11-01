@@ -511,7 +511,7 @@ the established proof rules, exactly one Membership provider call occurs, and
 Discovery, floor-plan handling, candidate recall and Conflict Resolver records
 remain unchanged.
 
-ACTIVE, V8.2.3, P0, Membership pair-rule alignment:
+SUPERSEDED, V8.2.3, P0, Membership pair-rule alignment:
 
 The first V8.2.2 live attempt reached Membership and correctly stopped rather
 than publishing an unsupported positive decision. Its generic failure did not
@@ -528,6 +528,19 @@ technical positive decision. Acceptance: a valid response has unchanged
 grouping rules; invalid render responses cannot crash the run, and an invalid
 technical positive identifies the exact pair and reason rather than the former
 generic error.
+
+ACTIVE, V8.2.4, P0, optional cross-page Membership audit:
+
+The next live V8.2.3 attempt completed same-page validation but stopped on an
+invalid optional cross-page link. V8.2.4 changes only the terminal handling of
+that optional output. It applies the existing proof rules, including the
+render-to-technical visual-only normalization, accepts a valid cross-page edge,
+and records an invalid edge in `rejected_cross_page_links` with its endpoints
+and validator reason. It neither creates an edge nor attempts a retry. Required
+same-page decisions remain terminal and unchanged. Acceptance: one malformed
+cross-page proposal cannot stop a run or merge objects; every discarded
+cross-page proposal is inspectable in the Membership audit; a valid cross-page
+link still joins its component.
 
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence

@@ -16,7 +16,9 @@ decision for every listed pair, even when evidence is insufficient. Use
 `same_object` only with the positive proof rules below. Use
 `different_or_insufficient` with no proofs when the pair must not merge. Never
 omit, duplicate, add, or substitute a listed pair. `cross_page_links` contains
-only additional positive links whose endpoints are on different PDF pages.
+only additional positive links whose endpoints are on different PDF pages. Do
+not return a speculative cross-page link: it must follow the same proof rule as
+an equivalent same-page pair.
 
 Each required pair includes a fixed `RULE`. It is mechanical, not a visual
 suggestion: `two_independent_proofs` permits `same_object` only with two

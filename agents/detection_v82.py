@@ -595,12 +595,13 @@ def build_detection_v82_same_page_membership_pairs(*, object_evidence: list[dict
     return pairs
 
 
-def normalize_detection_v82_membership_review(*, raw_review: object, object_evidence: list[dict[str, Any]], required_same_page_pairs: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def normalize_detection_v82_membership_review(*, raw_review: object, object_evidence: list[dict[str, Any]], required_same_page_pairs: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     """Require one decision for every deterministic same-page pair.
 
     Positive pairs are normalized through the ordinary link contract. Negative
     decisions remain an audit record, so omitted pairs cannot silently become
-    singleton objects. Cross-page links are optional positive findings only.
+    singleton objects. Cross-page links are optional positive findings, so an
+    invalid one is rejected and audited rather than terminating the run.
     """
     if not isinstance(raw_review, dict) or set(raw_review) != {"same_page_decisions", "cross_page_links"}:
         raise DetectionV82ContractError("V8.2 Membership response shape is invalid")
@@ -674,15 +675,48 @@ def normalize_detection_v82_membership_review(*, raw_review: object, object_evid
         raise DetectionV82ContractError(
             f"V8.2 Membership same-page positive decision failed link validation ({failures})"
         )
-    cross_page_links, rejected_cross_page = normalize_detection_v82_membership_links(raw_cross_page_links, object_evidence=object_evidence)
-    if rejected_cross_page or len(cross_page_links) != len(raw_cross_page_links):
-        raise DetectionV82ContractError("V8.2 Membership cross-page link failed validation")
     page_by_id = {str(view["group_id"]): int(view["page_number"]) for view in object_evidence}
+    kind_by_id = {str(view["group_id"]): str(view["representation_kind"]) for view in object_evidence}
     same_page_pairs = set(required_by_pair)
-    for link in cross_page_links:
+    cross_page_inputs: list[object] = []
+    for raw in raw_cross_page_links:
+        if not isinstance(raw, dict):
+            cross_page_inputs.append(raw)
+            continue
+        candidate = deepcopy(raw)
+        endpoints = (str(candidate.get("group_id_a") or ""), str(candidate.get("group_id_b") or ""))
+        if sum(kind_by_id.get(endpoint) == _RENDER_KIND for endpoint in endpoints) == 1 and isinstance(candidate.get("proofs"), list):
+            # The render contract is visual across pages too.  Preserve valid
+            # visual evidence and ignore an irrelevant extra technical proof.
+            candidate["proofs"] = [
+                proof for proof in candidate["proofs"]
+                if isinstance(proof, dict) and str(proof.get("kind") or "") in _RENDER_PROOF_KINDS
+            ]
+        cross_page_inputs.append(candidate)
+    normalized_cross_page_links, rejected_cross_page = normalize_detection_v82_membership_links(
+        cross_page_inputs, object_evidence=object_evidence,
+    )
+    rejected_cross_page_audit = [
+        {
+            "index": int(row["index"]),
+            "group_id_a": str(raw_cross_page_links[int(row["index"])].get("group_id_a") or "") if isinstance(raw_cross_page_links[int(row["index"])], dict) else "",
+            "group_id_b": str(raw_cross_page_links[int(row["index"])].get("group_id_b") or "") if isinstance(raw_cross_page_links[int(row["index"])], dict) else "",
+            "reason": str(row["reason"]),
+        }
+        for row in rejected_cross_page
+        if isinstance(row.get("index"), int) and int(row["index"]) < len(raw_cross_page_links)
+    ]
+    cross_page_links: list[dict[str, Any]] = []
+    for link in normalized_cross_page_links:
         pair = (str(link["group_id_a"]), str(link["group_id_b"]))
         if page_by_id[pair[0]] == page_by_id[pair[1]] or pair in same_page_pairs:
-            raise DetectionV82ContractError("V8.2 Membership cross-page links must be strictly cross-page")
+            rejected_cross_page_audit.append({
+                "group_id_a": pair[0],
+                "group_id_b": pair[1],
+                "reason": "cross_page_link_is_not_cross_page",
+            })
+            continue
+        cross_page_links.append(link)
     combined_by_pair = {
         (str(link["group_id_a"]), str(link["group_id_b"])): link
         for link in [*same_page_links, *cross_page_links]
@@ -692,6 +726,7 @@ def normalize_detection_v82_membership_review(*, raw_review: object, object_evid
     return (
         sorted(combined_by_pair.values(), key=lambda item: (item["group_id_a"], item["group_id_b"])),
         [decisions_by_pair[pair] for pair in sorted(decisions_by_pair)],
+        rejected_cross_page_audit,
     )
 
 
@@ -731,14 +766,14 @@ def run_detection_v82_pipeline(*, ocr_package: dict[str, Any] | None, source_fac
         object_evidence, resolver_audit = apply_detection_v82_conflict_decisions(object_evidence=object_evidence, targets=targets, decisions=[resolve_conflict(deepcopy(target)) for target in targets], page_dimensions=page_dimensions)
     required_same_page_pairs = build_detection_v82_same_page_membership_pairs(object_evidence=object_evidence)
     raw_review = review_membership(deepcopy(object_evidence), deepcopy(required_same_page_pairs))
-    links, same_page_decisions = normalize_detection_v82_membership_review(
+    links, same_page_decisions, rejected_cross_page_links = normalize_detection_v82_membership_review(
         raw_review=raw_review,
         object_evidence=object_evidence,
         required_same_page_pairs=required_same_page_pairs,
     )
     components, excluded_renders = compile_detection_v82_components(object_evidence=object_evidence, membership_links=links)
     return {
-        "version": "detection_v8_2_3",
+        "version": "detection_v8_2_4",
         "candidate_regions": candidates,
         "discovery": {"object_evidence": object_evidence, "excluded": exclusions, "candidate_coverage": coverage},
         "conflict_resolver": {"attempted": bool(targets and resolve_conflict is not None), "targets": targets, "decisions": resolver_audit},
@@ -746,6 +781,7 @@ def run_detection_v82_pipeline(*, ocr_package: dict[str, Any] | None, source_fac
             "same_page_required_pairs": required_same_page_pairs,
             "same_page_decisions": same_page_decisions,
             "accepted_links": links,
+            "rejected_cross_page_links": rejected_cross_page_links,
         },
         "components": components,
         "excluded_unattached_presentation_renders": excluded_renders,

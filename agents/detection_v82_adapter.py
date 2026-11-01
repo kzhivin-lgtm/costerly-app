@@ -46,8 +46,8 @@ from agents.prompt_loader import (
 from agents.schemas.detection_registry_schema import validate_detection_registry
 
 
-DETECTION_V82_RELEASE = "8.2.3"
-DETECTION_V82_PROMPT_VERSION = "detection_v8_2_3"
+DETECTION_V82_RELEASE = "8.2.4"
+DETECTION_V82_PROMPT_VERSION = "detection_v8_2_4"
 DETECTION_V82_DISCOVERY_MAX_TOKENS = 12_288
 # A Membership response now records one compact decision for every same-page
 # pair.  This remains one provider call, but 8k can truncate a dense drawing's
