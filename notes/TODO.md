@@ -374,6 +374,24 @@ conditioning changed the entire Membership outcome, so the experiment was
 reverted in commit `87b5c81`. Do not use a dynamic enum or change the ordinary
 Review output contract to repair a malformed presentation-render row.
 
+ACTIVE EXPERIMENT, V7.20, P0, bounded malformed render-target recovery:
+
+Base: exact V7.18 Review prompt and schema. Do not add a provider call, select
+an anchor arbitrarily, or change Discovery, floor-plan handling, Candidate
+Regions, Conflict Resolver, ordinary Membership, P10, graph assembly or UI.
+At the existing V7.11 render adapter only, recognize a pipe-delimited target
+only when every listed ID is a non-render Object Evidence View and all listed
+IDs are contained in exactly one ordinary hypothesis emitted by that same
+Review. Replace that scalar with the component's lexical technical anchor and
+audit both forms. If the IDs are unknown or span hypotheses, rewrite only that
+render row to `unresolved`, with no edge, so the RFQ completes safely.
+
+Evidence: all five malformed render rows in the failed Floor 06 V7.18 run had
+their listed IDs wholly inside one Review hypothesis. Acceptance: the same
+response validates without changing ordinary hypotheses or merge edges; an
+ambiguous list produces no edge and no terminal validation error. Floor 06
+must preserve P2's excluded Resolver candidate and P10's existing path.
+
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
 contracts are still changing. The current V5 Registry route records zero cache

@@ -10,6 +10,7 @@ from agents.anthropic_adapter import (
     build_detection_v714_conflict_membership_matrix,
     build_detection_candidate_region_audit,
     build_detection_view_evidence_packages,
+    recover_detection_v711_multitarget_render_decisions,
     normalize_detection_v69_pair_criteria_decisions,
     normalize_detection_v69_preliminary_links,
     normalize_detection_v69_reconciliation_decisions,
@@ -519,6 +520,83 @@ def test_v711_render_decision_requires_every_render_and_a_technical_target():
             }],
             group_id_mapping={"render": "view-010"},
         )
+
+
+def test_v720_recovers_pipe_target_only_inside_one_review_hypothesis():
+    decisions = [
+        {
+            "render_group_id": "render-a", "disposition": "attach",
+            "technical_group_id": "technical-b|technical-a",
+            "evidence_type": "matching_topology",
+            "visual_witness": "The same three triangular bays are visible in both views.",
+        },
+        {
+            "render_group_id": "render-b", "disposition": "attach",
+            "technical_group_id": "technical-c",
+            "evidence_type": "unique_geometry",
+            "visual_witness": "The same asymmetric frame is visible in both views.",
+        },
+    ]
+    recovered, audit = recover_detection_v711_multitarget_render_decisions(
+        decisions,
+        object_hypotheses=[{"group_ids": ["technical-a", "technical-b"]}],
+        visual_groups=[
+            {"group_id": "render-a", "evidence_class": "object_evidence", "representation_kind": "presentation_render"},
+            {"group_id": "render-b", "evidence_class": "object_evidence", "representation_kind": "presentation_render"},
+            {"group_id": "technical-a", "evidence_class": "object_evidence", "representation_kind": "elevation"},
+            {"group_id": "technical-b", "evidence_class": "object_evidence", "representation_kind": "section"},
+            {"group_id": "technical-c", "evidence_class": "object_evidence", "representation_kind": "detail"},
+        ],
+    )
+
+    assert decisions[0]["technical_group_id"] == "technical-b|technical-a"
+    assert recovered[0]["technical_group_id"] == "technical-a"
+    assert recovered[1] == decisions[1]
+    assert audit == [{
+        "render_group_id": "render-a",
+        "disposition": "recovered_same_hypothesis_anchor",
+        "raw_technical_group_id": "technical-b|technical-a",
+        "technical_group_id": "technical-a",
+    }]
+
+
+def test_v720_multitarget_across_review_hypotheses_becomes_unresolved():
+    visual_groups = [
+        {"group_id": "render", "evidence_class": "object_evidence", "representation_kind": "presentation_render"},
+        {"group_id": "technical-a", "evidence_class": "object_evidence", "representation_kind": "elevation"},
+        {"group_id": "technical-b", "evidence_class": "object_evidence", "representation_kind": "section"},
+    ]
+    recovered, audit = recover_detection_v711_multitarget_render_decisions(
+        [{
+            "render_group_id": "render", "disposition": "attach",
+            "technical_group_id": "technical-a|technical-b",
+            "evidence_type": "matching_topology",
+            "visual_witness": "Both technical views appear related to the render.",
+        }],
+        object_hypotheses=[
+            {"group_ids": ["technical-a"]},
+            {"group_ids": ["technical-b"]},
+        ],
+        visual_groups=visual_groups,
+    )
+
+    assert recovered == [{
+        "render_group_id": "render", "disposition": "unresolved",
+        "technical_group_id": "", "evidence_type": "none",
+        "visual_witness": (
+            "Malformed multi-target render reference does not identify one technical View."
+        ),
+    }]
+    assert audit == [{
+        "render_group_id": "render",
+        "disposition": "unresolved_ambiguous_multi_target",
+        "raw_technical_group_id": "technical-a|technical-b",
+    }]
+    facts, normalized_audit = normalize_detection_v711_presentation_render_decisions(
+        recovered, visual_groups=visual_groups, group_id_mapping={},
+    )
+    assert facts == []
+    assert normalized_audit[0]["disposition"] == "unresolved"
 
 
 def test_v711_render_decision_extends_a_covered_component_only():

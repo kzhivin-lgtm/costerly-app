@@ -3845,6 +3845,91 @@ def normalize_detection_v711_presentation_render_decisions(
     return facts, audit
 
 
+def recover_detection_v711_multitarget_render_decisions(
+    decisions: list[dict[str, Any]],
+    *,
+    object_hypotheses: object,
+    visual_groups: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Recover only a pipe-list target already contained in one hypothesis.
+
+    Review's ``technical_group_id`` is scalar.  Some otherwise valid Reviews
+    serialize a list of technical Views with ``|``.  Choosing an arbitrary
+    target would be unsafe, but a list whose every View is already in exactly
+    one ordinary hypothesis emitted by the same Review cannot create a new
+    technical merge. It can safely
+    use that component's lexically stable technical anchor.  Every other
+    multi-target row becomes ``unresolved`` so it cannot merge components or
+    abort the complete RFQ.
+    """
+    technical_group_ids = {
+        str(group.get("group_id") or "")
+        for group in visual_groups
+        if isinstance(group, dict)
+        and group.get("evidence_class") == "object_evidence"
+        and str(group.get("representation_kind") or "").lower()
+        != "presentation_render"
+        and str(group.get("group_id") or "")
+    }
+    hypothesis_group_sets: list[set[str]] = []
+    if isinstance(object_hypotheses, list):
+        for hypothesis in object_hypotheses:
+            group_ids = hypothesis.get("group_ids") if isinstance(hypothesis, dict) else None
+            if isinstance(group_ids, list):
+                hypothesis_group_sets.append({
+                    str(group_id) for group_id in group_ids if str(group_id)
+                })
+
+    recovered: list[dict[str, Any]] = []
+    audit: list[dict[str, Any]] = []
+    for decision in decisions:
+        row = copy.deepcopy(decision)
+        if not isinstance(row, dict):
+            # The ordinary V7.11 normalizer retains ownership of malformed
+            # decision validation and its established error path.
+            recovered.append(row)
+            continue
+        target = str(row.get("technical_group_id") or "")
+        target_ids = [part.strip() for part in target.split("|") if part.strip()]
+        if len(target_ids) <= 1:
+            recovered.append(row)
+            continue
+        unique_target_ids = set(target_ids)
+        matching_hypotheses = [
+            group_ids for group_ids in hypothesis_group_sets
+            if unique_target_ids <= group_ids
+        ]
+        if (
+            unique_target_ids <= technical_group_ids
+            and len(matching_hypotheses) == 1
+        ):
+            anchor = min(unique_target_ids)
+            row["technical_group_id"] = anchor
+            audit.append({
+                "render_group_id": str(row.get("render_group_id") or ""),
+                "disposition": "recovered_same_hypothesis_anchor",
+                "raw_technical_group_id": target,
+                "technical_group_id": anchor,
+            })
+        else:
+            row.update({
+                "disposition": "unresolved",
+                "technical_group_id": "",
+                "evidence_type": "none",
+                "visual_witness": (
+                    "Malformed multi-target render reference does not identify "
+                    "one technical View."
+                ),
+            })
+            audit.append({
+                "render_group_id": str(row.get("render_group_id") or ""),
+                "disposition": "unresolved_ambiguous_multi_target",
+                "raw_technical_group_id": target,
+            })
+        recovered.append(row)
+    return recovered, audit
+
+
 def attach_detection_v711_presentation_render_components(
     components: list[list[str]],
     edges: list[dict[str, Any]],
@@ -12514,6 +12599,16 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         [] if v69_criteria_reconciliation_active
         else review_raw_payload["presentation_render_decisions"]
     )
+    presentation_render_target_recovery_audit: list[dict[str, Any]] = []
+    if not v69_criteria_reconciliation_active:
+        (
+            review_presentation_render_decisions,
+            presentation_render_target_recovery_audit,
+        ) = recover_detection_v711_multitarget_render_decisions(
+            review_presentation_render_decisions,
+            object_hypotheses=review_raw_payload["object_hypotheses"],
+            visual_groups=proposal_for_review["visual_groups"],
+        )
     review_conflict_pair_decisions = (
         [] if not v714_conflict_membership_active
         else review_raw_payload["conflict_pair_decisions"]
@@ -12771,6 +12866,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v5_9_review_decision_audit": copy.deepcopy(review_raw_payload),
         "v7_11_presentation_render_decisions": copy.deepcopy(
             review_presentation_render_decisions,
+        ),
+        "v7_20_presentation_render_target_recovery": copy.deepcopy(
+            presentation_render_target_recovery_audit,
         ),
         "v7_14_conflict_membership": {
             **copy.deepcopy(v714_conflict_membership_audit),
