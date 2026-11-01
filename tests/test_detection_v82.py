@@ -171,6 +171,11 @@ def test_v82_same_page_matrix_is_exhaustive_and_order_invariant():
 
     assert first == second
     assert {(row["group_id_a"], row["group_id_b"]) for row in first} == {("A", "B"), ("A", "R"), ("B", "R")}
+    assert {(row["group_id_a"], row["group_id_b"]): row["positive_rule"] for row in first} == {
+        ("A", "B"): "two_independent_proofs",
+        ("A", "R"): "visual_proof_only",
+        ("B", "R"): "visual_proof_only",
+    }
 
 
 def test_v82_membership_review_accepts_only_covered_same_page_positive_links():
@@ -191,6 +196,72 @@ def test_v82_membership_review_accepts_only_covered_same_page_positive_links():
 
     assert [(link["group_id_a"], link["group_id_b"]) for link in links] == [("A", "B")]
     assert len(decisions) == len(pairs) == 3
+
+
+def test_v82_membership_deterministically_removes_render_to_render_edges():
+    render_a = _view("R1", kind="presentation_render")
+    render_b = _view("R2", kind="presentation_render", bbox=_bbox(700, 100, 1200, 600))
+    pairs = build_detection_v82_same_page_membership_pairs(object_evidence=[render_a, render_b])
+
+    links, decisions = normalize_detection_v82_membership_review(
+        raw_review={
+            "same_page_decisions": [{
+                "group_id_a": "R1", "group_id_b": "R2", "decision": "same_object",
+                "reason": "same presentation", "proofs": [_proof("matching_topology")],
+            }],
+            "cross_page_links": [],
+        },
+        object_evidence=[render_a, render_b],
+        required_same_page_pairs=pairs,
+    )
+
+    assert links == []
+    assert decisions[0]["decision"] == "different_or_insufficient"
+    assert decisions[0]["normalization"] == "forced_no_render_to_render_link"
+
+
+def test_v82_membership_retains_the_visual_proof_for_render_to_technical_link():
+    technical = _view("T")
+    render = _view("R", kind="presentation_render", bbox=_bbox(700, 100, 1200, 600))
+    pairs = build_detection_v82_same_page_membership_pairs(object_evidence=[technical, render])
+
+    links, _decisions = normalize_detection_v82_membership_review(
+        raw_review={
+            "same_page_decisions": [{
+                "group_id_a": "R", "group_id_b": "T", "decision": "same_object",
+                "reason": "same distinctive triangle assembly", "proofs": [
+                    _proof("matching_topology"), _proof("dimension_equality"),
+                ],
+            }],
+            "cross_page_links": [],
+        },
+        object_evidence=[technical, render],
+        required_same_page_pairs=pairs,
+    )
+
+    assert [proof["kind"] for proof in links[0]["proofs"]] == ["matching_topology"]
+
+
+def test_v82_membership_names_the_pair_when_a_technical_positive_lacks_proof():
+    left = _view("A")
+    right = _view("B", bbox=_bbox(700, 100, 1200, 600))
+    pairs = build_detection_v82_same_page_membership_pairs(object_evidence=[left, right])
+
+    with pytest.raises(
+        DetectionV82ContractError,
+        match=r"V82-SP-P001-001:technical_link_requires_two_independent_proofs",
+    ):
+        normalize_detection_v82_membership_review(
+            raw_review={
+                "same_page_decisions": [{
+                    "group_id_a": "A", "group_id_b": "B", "decision": "same_object",
+                    "reason": "matching triangular shelf", "proofs": [_proof("matching_topology")],
+                }],
+                "cross_page_links": [],
+            },
+            object_evidence=[left, right],
+            required_same_page_pairs=pairs,
+        )
 
 
 def test_v82_pipeline_passes_the_complete_same_page_matrix_to_membership():

@@ -493,7 +493,7 @@ Membership audit records its tile-to-view mapping. Acceptance: Floor 06 has
 evidence-backed cross-page links where the views depict the same object, no
 extra provider call, and no Discovery or floor-plan regression.
 
-ACTIVE, V8.2.2, P0, mandatory same-page Membership coverage:
+SUPERSEDED, V8.2.2, P0, mandatory same-page Membership coverage:
 
 V8.2.1 made all Object Evidence visible in one Membership request, but it did
 not make a decision for every within-page pair mandatory. V8.2.2 preserves the
@@ -510,6 +510,24 @@ duplicated same-page decision can publish, all positive links remain subject to
 the established proof rules, exactly one Membership provider call occurs, and
 Discovery, floor-plan handling, candidate recall and Conflict Resolver records
 remain unchanged.
+
+ACTIVE, V8.2.3, P0, Membership pair-rule alignment:
+
+The first V8.2.2 live attempt reached Membership and correctly stopped rather
+than publishing an unsupported positive decision. Its generic failure did not
+identify the pair or violated proof rule. V8.2.3 changes no pipeline boundary,
+candidate, Discovery decision, resolver target, Membership call count or
+technical link rule. It prints the already-existing validation rule beside each
+deterministic same-page pair: two independent proofs for technical pairs,
+visual-only proof for render-to-technical pairs, and must-not-link for
+render-to-render pairs. The deterministic normalizer removes a render-to-render
+edge and discards non-visual surplus proofs from a render-to-technical edge. It
+never invents a missing visual proof or weakens a technical pair. It also
+returns the pair ID and precise existing-validator reason on a rejected
+technical positive decision. Acceptance: a valid response has unchanged
+grouping rules; invalid render responses cannot crash the run, and an invalid
+technical positive identifies the exact pair and reason rather than the former
+generic error.
 
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence

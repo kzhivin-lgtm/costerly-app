@@ -556,6 +556,18 @@ def normalize_detection_v82_membership_links(raw_links: object, *, object_eviden
     return sorted(accepted, key=lambda item: (item["group_id_a"], item["group_id_b"])), rejected
 
 
+def _same_page_membership_pair_rule(left: dict[str, Any], right: dict[str, Any]) -> str:
+    render_count = sum(
+        str(view["representation_kind"]) == _RENDER_KIND
+        for view in (left, right)
+    )
+    if render_count == 2:
+        return "must_not_link"
+    if render_count == 1:
+        return "visual_proof_only"
+    return "two_independent_proofs"
+
+
 def build_detection_v82_same_page_membership_pairs(*, object_evidence: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Enumerate every valid unordered Membership pair on each page.
 
@@ -578,6 +590,7 @@ def build_detection_v82_same_page_membership_pairs(*, object_evidence: list[dict
                     "page_number": page_number,
                     "group_id_a": group_id_a,
                     "group_id_b": group_id_b,
+                    "positive_rule": _same_page_membership_pair_rule(left, right),
                 })
     return pairs
 
@@ -602,6 +615,7 @@ def normalize_detection_v82_membership_review(*, raw_review: object, object_evid
         raise DetectionV82ContractError("V8.2 Membership same-page matrix is invalid")
     decisions_by_pair: dict[tuple[str, str], dict[str, Any]] = {}
     positive_same_page_links: list[dict[str, Any]] = []
+    positive_pair_ids: list[str] = []
     for raw in raw_decisions:
         if not isinstance(raw, dict):
             raise DetectionV82ContractError("V8.2 Membership decision must be an object")
@@ -622,16 +636,44 @@ def normalize_detection_v82_membership_review(*, raw_review: object, object_evid
             "decision": decision,
             "reason": reason,
         }
-        decisions_by_pair[pair] = normalized
         if decision == "same_object":
-            positive_same_page_links.append({"group_id_a": left, "group_id_b": right, "proofs": proofs})
+            rule = str(required_by_pair[pair]["positive_rule"])
+            if rule == "must_not_link":
+                # A render-to-render edge can never retain either view on its
+                # own.  Removing it is deterministic, preserves the normal
+                # render contract, and does not decide anything visual.
+                normalized.update({
+                    "decision": "different_or_insufficient",
+                    "reason": "two presentation renders cannot form a Membership link",
+                    "normalization": "forced_no_render_to_render_link",
+                })
+            else:
+                accepted_proofs = proofs
+                if rule == "visual_proof_only":
+                    # The render contract is visual.  A surplus technical
+                    # proof must not invalidate an otherwise valid visual
+                    # attachment, but no missing visual proof is invented.
+                    accepted_proofs = [
+                        proof for proof in proofs
+                        if isinstance(proof, dict) and str(proof.get("kind") or "") in _RENDER_PROOF_KINDS
+                    ]
+                positive_same_page_links.append({"group_id_a": left, "group_id_b": right, "proofs": accepted_proofs})
+                positive_pair_ids.append(str(required_by_pair[pair]["pair_id"]))
+        decisions_by_pair[pair] = normalized
     if set(decisions_by_pair) != set(required_by_pair):
         missing = sorted(set(required_by_pair) - set(decisions_by_pair))
         raise DetectionV82ContractError(f"V8.2 Membership omitted {len(missing)} required same-page pair decisions")
 
     same_page_links, rejected_same_page = normalize_detection_v82_membership_links(positive_same_page_links, object_evidence=object_evidence)
     if rejected_same_page or len(same_page_links) != len(positive_same_page_links):
-        raise DetectionV82ContractError("V8.2 Membership same-page positive decision failed link validation")
+        failures = "; ".join(
+            f"{positive_pair_ids[int(row['index'])]}:{row['reason']}"
+            for row in rejected_same_page
+            if isinstance(row.get("index"), int) and int(row["index"]) < len(positive_pair_ids)
+        ) or "unknown_pair"
+        raise DetectionV82ContractError(
+            f"V8.2 Membership same-page positive decision failed link validation ({failures})"
+        )
     cross_page_links, rejected_cross_page = normalize_detection_v82_membership_links(raw_cross_page_links, object_evidence=object_evidence)
     if rejected_cross_page or len(cross_page_links) != len(raw_cross_page_links):
         raise DetectionV82ContractError("V8.2 Membership cross-page link failed validation")
@@ -696,7 +738,7 @@ def run_detection_v82_pipeline(*, ocr_package: dict[str, Any] | None, source_fac
     )
     components, excluded_renders = compile_detection_v82_components(object_evidence=object_evidence, membership_links=links)
     return {
-        "version": "detection_v8_2_2",
+        "version": "detection_v8_2_3",
         "candidate_regions": candidates,
         "discovery": {"object_evidence": object_evidence, "excluded": exclusions, "candidate_coverage": coverage},
         "conflict_resolver": {"attempted": bool(targets and resolve_conflict is not None), "targets": targets, "decisions": resolver_audit},

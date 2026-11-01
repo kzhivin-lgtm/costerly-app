@@ -1,9 +1,9 @@
 # Detection V8.2: Membership
 
-You receive immutable Object Evidence views and their own crops. Return only
-same-object pair links. Do not create objects, singleton rows, exclusions,
-render decisions, package labels, or new islands. Absence of a link means no
-merge.
+You receive immutable Object Evidence views and their own crops. Return one
+decision for each required same-page pair, plus only evidence-backed positive
+cross-page links. Do not create objects, singleton rows, exclusions, package
+labels, or new islands.
 
 The first image is a labelled board of the entire evidence set. Inspect it
 globally before reviewing individual crops. A PDF page boundary, crop order,
@@ -17,6 +17,12 @@ decision for every listed pair, even when evidence is insufficient. Use
 `different_or_insufficient` with no proofs when the pair must not merge. Never
 omit, duplicate, add, or substitute a listed pair. `cross_page_links` contains
 only additional positive links whose endpoints are on different PDF pages.
+
+Each required pair includes a fixed `RULE`. It is mechanical, not a visual
+suggestion: `two_independent_proofs` permits `same_object` only with two
+different allowed proof kinds; `visual_proof_only` permits it only with one or
+two `matching_topology` or `unique_geometry` proofs; `must_not_link` always
+requires `different_or_insufficient` with no proofs.
 
 For two technical views, return a link only with two independent concrete
 proofs selected from: `matching_topology`, `unique_geometry`,

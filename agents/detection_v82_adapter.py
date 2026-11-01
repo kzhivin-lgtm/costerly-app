@@ -46,8 +46,8 @@ from agents.prompt_loader import (
 from agents.schemas.detection_registry_schema import validate_detection_registry
 
 
-DETECTION_V82_RELEASE = "8.2.2"
-DETECTION_V82_PROMPT_VERSION = "detection_v8_2_2"
+DETECTION_V82_RELEASE = "8.2.3"
+DETECTION_V82_PROMPT_VERSION = "detection_v8_2_3"
 DETECTION_V82_DISCOVERY_MAX_TOKENS = 12_288
 # A Membership response now records one compact decision for every same-page
 # pair.  This remains one provider call, but 8k can truncate a dense drawing's
@@ -184,7 +184,7 @@ def _membership_context(*, views: list[dict[str, Any]], owned_facts: dict[str, l
         )
     rows.append("REQUIRED SAME-PAGE PAIRS: one decision is required for every row.")
     rows.extend(
-        f"{pair['pair_id']}|P{pair['page_number']}|{pair['group_id_a']}|{pair['group_id_b']}"
+        f"{pair['pair_id']}|P{pair['page_number']}|{pair['group_id_a']}|{pair['group_id_b']}|RULE={pair['positive_rule']}"
         for pair in required_same_page_pairs
     )
     return "\n".join(rows)
