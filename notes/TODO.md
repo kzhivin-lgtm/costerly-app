@@ -467,11 +467,17 @@ Presentation render/photo is ordinary Object Evidence with a narrower link
 proof, not an adapter or separate response array. Resolver admissions become
 ordinary Object Evidence and receive no special Membership matrix.
 
-Implemented experimental path: `agents/detection_v8.py`, its three bounded
-prompts, `agents/detection_v8_adapter.py`, and V8 as the default route.
-`DETECTION_PIPELINE_VERSION=v7` remains the explicit rollback. Run the
-complete Floor 06 acceptance audit recorded in
-`notes/DETECTION_V8_REBUILD.md`.
+V8.1 experimental path remains the current default but is not accepted: its
+first Floor 06 run rejected every returned Membership link and published 48
+singletons. V8.2 is an isolated rebuild in `agents/detection_v82.py`
+with its own transport and version marker `detection_v8_2_0`; it is selectable
+as `DETECTION_PIPELINE_VERSION=v82`. Its default eligibility is
+`ordinary_object_set` only. ADA, Page 23/native-graphic, source-degraded,
+assembly-set and explicit-model categories retain the V7 route unchanged;
+this router contract is covered by focused tests. V8.2 still needs the full
+Floor 06 self-run before it is accepted as a quality checkpoint. `v7` remains
+the explicit rollback. Acceptance requires the complete Floor 06 audit
+recorded in `notes/DETECTION_V8_REBUILD.md`.
 
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence

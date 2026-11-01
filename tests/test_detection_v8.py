@@ -450,9 +450,10 @@ def test_v8_adapter_does_not_publish_an_unattached_render_as_registry_evidence()
     assert len(audit["pipeline"]["excluded_unattached_presentation_renders"]) == 1
 
 
-def test_v8_route_is_the_default_and_v7_remains_an_explicit_rollback(monkeypatch):
+def test_v82_route_is_the_default_and_v7_remains_an_explicit_rollback(monkeypatch):
     monkeypatch.setattr("agents.detection_agent.get_secret", lambda _name, default=None: default)
 
-    assert _select_detection_pipeline_version() == "v8"
+    assert _select_detection_pipeline_version() == "v82"
     assert _select_detection_pipeline_version("v7") == "v7"
     assert _select_detection_pipeline_version("v8") == "v8"
+    assert _select_detection_pipeline_version("v82") == "v82"

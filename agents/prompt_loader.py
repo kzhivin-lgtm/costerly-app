@@ -17,6 +17,9 @@ DETECTION_V5_REVIEW_PROMPT_PATH = PROMPTS_DIR / "detection_v5_review_prompt.md"
 DETECTION_V8_DISCOVERY_PROMPT_PATH = PROMPTS_DIR / "detection_v8_discovery_prompt.md"
 DETECTION_V8_MEMBERSHIP_PROMPT_PATH = PROMPTS_DIR / "detection_v8_membership_prompt.md"
 DETECTION_V8_CONFLICT_PROMPT_PATH = PROMPTS_DIR / "detection_v8_conflict_prompt.md"
+DETECTION_V82_DISCOVERY_PROMPT_PATH = PROMPTS_DIR / "detection_v82_discovery_prompt.md"
+DETECTION_V82_MEMBERSHIP_PROMPT_PATH = PROMPTS_DIR / "detection_v82_membership_prompt.md"
+DETECTION_V82_CONFLICT_PROMPT_PATH = PROMPTS_DIR / "detection_v82_conflict_prompt.md"
 DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_PROMPT_PATH = (
     PROMPTS_DIR / "detection_v5_source_degraded_discovery_prompt.md"
 )
@@ -137,6 +140,27 @@ def load_detection_v8_conflict_prompt() -> str:
     prompt = DETECTION_V8_CONFLICT_PROMPT_PATH.read_text(encoding="utf-8").strip()
     if not prompt:
         raise ValueError("Detection V8 Conflict Resolver prompt is empty")
+    return prompt
+
+
+def load_detection_v82_discovery_prompt() -> str:
+    prompt = DETECTION_V82_DISCOVERY_PROMPT_PATH.read_text(encoding="utf-8").strip()
+    if not prompt:
+        raise ValueError("Detection V8.2 Discovery prompt is empty")
+    return prompt
+
+
+def load_detection_v82_membership_prompt() -> str:
+    prompt = DETECTION_V82_MEMBERSHIP_PROMPT_PATH.read_text(encoding="utf-8").strip()
+    if not prompt:
+        raise ValueError("Detection V8.2 Membership prompt is empty")
+    return prompt
+
+
+def load_detection_v82_conflict_prompt() -> str:
+    prompt = DETECTION_V82_CONFLICT_PROMPT_PATH.read_text(encoding="utf-8").strip()
+    if not prompt:
+        raise ValueError("Detection V8.2 Conflict Resolver prompt is empty")
     return prompt
 
 

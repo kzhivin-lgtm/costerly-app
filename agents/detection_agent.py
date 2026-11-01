@@ -23,6 +23,7 @@ from agents.detection_document_classifier import (
     classify_detection_document,
 )
 from agents.detection_v8_adapter import run_anthropic_detection_v8_stage_separated
+from agents.detection_v82_adapter import run_anthropic_detection_v82
 from agents.detection_page_images import (
     DEFAULT_PAGE_IMAGE_DPI,
     build_detection_registry_regions,
@@ -38,12 +39,12 @@ DEFAULT_CLAUDE_DETECTION_V4_BOUNDARY_MODEL = DEFAULT_CLAUDE_DETECTION_BOUNDARY_M
 
 
 def _select_detection_pipeline_version(explicit_version: str | None = None) -> str:
-    """Use V8 by default while retaining a server-side rollback override."""
-    value = explicit_version or get_secret("DETECTION_PIPELINE_VERSION", "v8") or "v8"
+    """Select an explicit generation, retaining V7 as a server-side rollback."""
+    value = explicit_version or get_secret("DETECTION_PIPELINE_VERSION", "v82") or "v82"
     normalized = str(value).strip().lower()
-    if normalized in {"v7", "v8"}:
+    if normalized in {"v7", "v8", "v82"}:
         return normalized
-    raise ValueError("DETECTION_PIPELINE_VERSION must be either 'v7' or 'v8'")
+    raise ValueError("DETECTION_PIPELINE_VERSION must be 'v7', 'v8', or 'v82'")
 
 
 _PRESENTATION_REPRESENTATION_PRIORITY = {
@@ -791,29 +792,35 @@ def run_detection_agent(
         page_count=len(registry_images),
         page_dimensions=_source_dimensions_by_page(ocr_package),
     )
-    route = (
-        {
-            "category": "v8_stage_separated",
-            "decision": "detection_v8_stage_separated",
-            "reasons": ["v8_opt_in_stage_separated_pipeline"],
-            "signals": {"source_capability": source_capability},
-            "registry_model": str(model or base_model),
-        }
-        if selected_pipeline_version == "v8"
-        else classify_detection_document(
-            ocr_package=ocr_package,
-            source_capability=source_capability,
-            base_model=str(base_model),
-            boundary_model=str(boundary_model),
-            explicit_model=model,
-        )
+    # V8.2 must not erase scenario routing.  The V5-V7 contract is still the
+    # authority for every evidenced special category.  V8.2 is the ordinary
+    # route only until each specialised contract is independently ported and
+    # accepted against its protected benchmark.
+    route = classify_detection_document(
+        ocr_package=ocr_package,
+        source_capability=source_capability,
+        base_model=str(base_model),
+        boundary_model=str(boundary_model),
+        explicit_model=model,
     )
+    v82_ordinary_route = (
+        selected_pipeline_version == "v82"
+        and route.get("category") == "ordinary_object_set"
+    )
+    if v82_ordinary_route:
+        route = {
+            **route,
+            "decision": "detection_v8_2_ordinary_stage_separated",
+            "reasons": [*route.get("reasons", []), "v8_2_default_ordinary_route"],
+        }
+    v8_stage_separated_route = selected_pipeline_version == "v8"
+    stage_separated_route = v82_ordinary_route or v8_stage_separated_route
     scope_scout_usage: dict | None = None
     ada_scope_scout_bypass = (
         route.get("category") == "ada_sparse_multi_object"
         and _ada_scope_scout_bypass_reason(route)
     )
-    if selected_pipeline_version != "v8" and ada_scope_scout_bypass:
+    if not stage_separated_route and ada_scope_scout_bypass:
         # V6.29 and V6.32 do not allow a structurally evidenced boundary risk
         # to be collapsed into one Assembly Set by the short scope observation.
         # Preserve the existing Ada contract without a call that cannot change
@@ -848,7 +855,7 @@ def run_detection_agent(
             },
         }
     if (
-        selected_pipeline_version != "v8"
+        not stage_separated_route
         and route.get("category") == "ada_sparse_multi_object"
         and not ada_scope_scout_bypass
     ):
@@ -922,7 +929,17 @@ def run_detection_agent(
     if stage_callback:
         stage_callback("Detection Registry started")
     try:
-        if selected_pipeline_version == "v8":
+        if v82_ordinary_route:
+            _visual_map, registry, visual_registry_usage = run_anthropic_detection_v82(
+                file_name=file_name,
+                company_id=company_id,
+                file_bytes=file_bytes,
+                page_images=registry_images,
+                ocr_package=ocr_package,
+                model=(model or route["registry_model"]),
+                stage_callback=stage_callback,
+            )
+        elif v8_stage_separated_route:
             _visual_map, registry, visual_registry_usage = (
                 run_anthropic_detection_v8_stage_separated(
                     file_name=file_name,
@@ -1018,7 +1035,7 @@ def run_detection_agent(
         "applied": False,
         "reason": "document_category_is_not_assembly_set",
     }
-    if selected_pipeline_version != "v8" and route.get("category") == "assembly_set":
+    if not stage_separated_route and route.get("category") == "assembly_set":
         registry, assembly_set_audit = _compile_confirmed_assembly_set_registry(
             registry,
             visual_map=_visual_map,

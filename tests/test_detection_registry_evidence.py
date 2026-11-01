@@ -568,7 +568,7 @@ def test_v619_naming_uses_one_annotated_page_per_registry_island_page():
     assert first_page_labels == {"object-001", "object-002"}
 
 
-def test_v49_routes_default_registry_to_haiku_without_evidence_handoff():
+def test_v7_routes_registry_to_haiku_without_evidence_handoff():
     registry = {"objects": [{
         "object_id": "object-001", "transport_label": "Object 1",
         "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
@@ -591,6 +591,7 @@ def test_v49_routes_default_registry_to_haiku_without_evidence_handoff():
     ):
         result = run_detection_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf", page_images=[b"page"],
+            pipeline_version="v7",
             ocr_package={"evidence": {"text_blocks": [
                 {"page_number": 1, "text": "Cabinet", "bbox": {"top_left_x": 10, "top_left_y": 10, "bottom_right_x": 80, "bottom_right_y": 30}},
                 {"page_number": 1, "text": "Detail", "bbox": {"top_left_x": 400, "top_left_y": 400, "bottom_right_x": 480, "bottom_right_y": 420}},
@@ -651,6 +652,7 @@ def test_v627_scope_scout_routes_single_assembly_candidate_to_haiku_registry():
     ):
         result = run_detection_agent(
             file_name="stair.pdf", company_id="001", file_bytes=b"pdf",
+            pipeline_version="v7",
             page_images=[b"one", b"two"], ocr_package={
                 "pages": [two_islands_page, two_islands_page],
                 "evidence": {"text_blocks": [
@@ -713,6 +715,7 @@ def test_v65_routes_adda_style_registry_to_sonnet_without_static_discovery_crops
     ):
         result = run_detection_agent(
             file_name="adda.pdf", company_id="001", file_bytes=b"pdf",
+            pipeline_version="v7",
             page_images=[b"one", b"two"], ocr_package={
                 "pages": [two_islands_page, two_islands_page],
                 "evidence": {"text_blocks": [
@@ -773,6 +776,7 @@ def test_v629_sparse_native_graphics_preserve_adda_before_scope_scout():
     ):
         result = run_detection_agent(
             file_name="graphic-pack.pdf", company_id="001", file_bytes=b"pdf",
+            pipeline_version="v7",
             page_images=[b"one", b"two"], ocr_package={
                 "pages": [two_islands_page, two_islands_page],
                 "evidence": {
@@ -836,6 +840,7 @@ def test_v632_sparse_single_page_mistral_regions_preserve_adda_before_scope_scou
     ):
         result = run_detection_agent(
             file_name="lev.pdf", company_id="001", file_bytes=b"pdf",
+            pipeline_version="v7",
             page_images=[b"page"], ocr_package={
                 "pages": [{"page_number": 1, "blocks": blocks}],
                 "evidence": {
@@ -880,6 +885,7 @@ def test_source_degraded_route_uses_v532_pairwise_structural_admission_audit_and
     ):
         result = run_detection_agent(
             file_name="scan.png", company_id="001", file_bytes=b"image",
+            pipeline_version="v7",
             page_images=[b"page"], ocr_package={"evidence": {"text_blocks": []}},
         )
 
