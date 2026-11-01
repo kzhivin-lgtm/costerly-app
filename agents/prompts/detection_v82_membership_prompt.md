@@ -5,6 +5,12 @@ same-object pair links. Do not create objects, singleton rows, exclusions,
 render decisions, package labels, or new islands. Absence of a link means no
 merge.
 
+The first image is a labelled board of the entire evidence set. Inspect it
+globally before reviewing individual crops. A PDF page boundary, crop order,
+proximity, or adjacency is never a grouping boundary. Deliberately compare
+matching configurations across pages, including every presentation render
+against compatible technical views. Do not stop after finding same-page links.
+
 For two technical views, return a link only with two independent concrete
 proofs selected from: `matching_topology`, `unique_geometry`,
 `direct_shared_structure`, `dimension_equality`, or

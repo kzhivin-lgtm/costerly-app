@@ -198,6 +198,36 @@ def test_v82_adapter_membership_uses_literal_view_ids_not_undeclared_registry_so
     assert len(audit["pipeline"]["membership"]["accepted_links"]) == 1
 
 
+def test_v82_membership_global_board_is_stable_and_precedes_individual_crops():
+    from PIL import Image
+    from agents.detection_v82_adapter import (
+        _build_membership_board,
+        _build_membership_crops,
+        _membership_content,
+    )
+
+    image = Image.new("RGB", (2000, 2000), "white")
+    encoded = BytesIO()
+    image.save(encoded, format="JPEG")
+    page_images = [encoded.getvalue(), encoded.getvalue()]
+    frames = {
+        1: {"fusion_dimensions": {"width": 2000, "height": 2000}, "review_dimensions": {"width": 2000, "height": 2000}},
+        2: {"fusion_dimensions": {"width": 2000, "height": 2000}, "review_dimensions": {"width": 2000, "height": 2000}},
+    }
+    first = _view("B", bbox=_bbox(100, 100, 600, 600))
+    second = {**_view("A", bbox=_bbox(700, 100, 1200, 600)), "page_number": 2}
+
+    crops, _audit = _build_membership_crops(page_images=page_images, views=[second, first], frames=frames)
+    board = _build_membership_board(crops=crops, views=[second, first])
+    content = _membership_content(context="FIXED OBJECT EVIDENCE VIEWS", crops=crops, board=board)
+
+    assert [tile["group_id"] for tile in board["audit"]["tiles"]] == ["B", "A"]
+    assert board["audit"]["tiles"][1]["page_number"] == 2
+    assert content[0]["type"] == "text"
+    assert "GLOBAL COMPARISON BOARD" in content[0]["text"]
+    assert content[1]["type"] == "image"
+
+
 def test_v82_is_explicitly_versioned_and_is_the_default():
     assert _select_detection_pipeline_version() == "v82"
     assert _select_detection_pipeline_version("v82") == "v82"

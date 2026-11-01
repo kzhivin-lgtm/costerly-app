@@ -479,6 +479,20 @@ Floor 06 self-run before it is accepted as a quality checkpoint. `v7` remains
 the explicit rollback. Acceptance requires the complete Floor 06 audit
 recorded in `notes/DETECTION_V8_REBUILD.md`.
 
+ACTIVE, V8.2.1, P0, global Membership evidence board:
+
+The first V8.2 Floor 06 run was fast (74.241 seconds, $0.133184) but returned
+22 objects because Membership received 36 ordered local crops and emitted only
+11 same-page links. Discovery, Candidate Regions, Floor Plan exclusion and the
+Conflict Resolver are protected. V8.2.1 changes only the single Membership
+request: it adds a deterministic labelled contact sheet of the same immutable
+Object Evidence views before their existing detail crops, and explicitly
+requires cross-page comparison. It creates no objects, candidates, resolver
+targets, graph, adapter, extra provider call, or new membership rule. The
+Membership audit records its tile-to-view mapping. Acceptance: Floor 06 has
+evidence-backed cross-page links where the views depict the same object, no
+extra provider call, and no Discovery or floor-plan regression.
+
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
 contracts are still changing. The current V5 Registry route records zero cache

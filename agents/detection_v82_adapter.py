@@ -11,6 +11,7 @@ import base64
 from copy import deepcopy
 from io import BytesIO
 import json
+from math import ceil, sqrt
 from typing import Any, Callable
 
 from agents.anthropic_adapter import (
@@ -45,8 +46,8 @@ from agents.prompt_loader import (
 from agents.schemas.detection_registry_schema import validate_detection_registry
 
 
-DETECTION_V82_RELEASE = "8.2.0"
-DETECTION_V82_PROMPT_VERSION = "detection_v8_2_0"
+DETECTION_V82_RELEASE = "8.2.1"
+DETECTION_V82_PROMPT_VERSION = "detection_v8_2_1"
 DETECTION_V82_DISCOVERY_MAX_TOKENS = 12_288
 DETECTION_V82_MEMBERSHIP_MAX_TOKENS = 8_192
 DETECTION_V82_CONFLICT_MAX_TOKENS = 1_536
@@ -149,13 +150,24 @@ def _owned_facts_by_view(source_facts: list[dict[str, Any]], views: list[dict[st
     return owned
 
 
+def _membership_view_sort_key(view: dict[str, Any]) -> tuple[int, int, int, str]:
+    """Keep the model's Membership evidence order independent of upstream order."""
+    bbox = view["bbox"]
+    return (
+        int(view["page_number"]),
+        int(bbox["top_left_y"]),
+        int(bbox["top_left_x"]),
+        str(view["group_id"]),
+    )
+
+
 def _membership_context(*, views: list[dict[str, Any]], owned_facts: dict[str, list[dict[str, Any]]]) -> str:
     rows = [
         "FIXED OBJECT EVIDENCE VIEWS:",
         "V=id|P=page|K=representation kind|B=x1,y1,x2,y2|D=visual description|F=owned source text.",
         "A fact occurs under at most one view. It is context only, not a merge command.",
     ]
-    for view in views:
+    for view in sorted(views, key=_membership_view_sort_key):
         bbox = view["bbox"]
         fact_text = "; ".join(
             str(fact.get("text") or "")[:48]
@@ -176,7 +188,7 @@ def _build_membership_crops(*, page_images: list[bytes], views: list[dict[str, A
     except ImportError as exc:
         raise DetectionV82ProviderError("V8.2 Membership requires Pillow") from exc
     crops, audit = [], []
-    for view in views:
+    for view in sorted(views, key=_membership_view_sort_key):
         group_id, page_number = str(view["group_id"]), int(view["page_number"])
         if page_number not in frames or not 1 <= page_number <= len(page_images):
             raise DetectionV82ProviderError(f"V8.2 Membership crop unavailable for {group_id}")
@@ -203,8 +215,78 @@ def _build_membership_crops(*, page_images: list[bytes], views: list[dict[str, A
     return crops, audit
 
 
-def _membership_content(*, context: str, crops: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    content: list[dict[str, Any]] = []
+def _build_membership_board(*, crops: list[dict[str, Any]], views: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build one labelled, deterministic contact sheet for global comparison.
+
+    Individual crops preserve detail, but a flat sequence encourages a model to
+    stop at adjacent same-page links. This remains one Membership request, not
+    another classifier or a pair-selection mechanism.
+    """
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError as exc:
+        raise DetectionV82ProviderError("V8.2 Membership requires Pillow") from exc
+    crop_by_id = {str(crop["group_id"]): crop for crop in crops}
+    ordered_views = sorted(views, key=_membership_view_sort_key)
+    if set(crop_by_id) != {str(view["group_id"]) for view in ordered_views}:
+        raise DetectionV82ProviderError("V8.2 Membership board is missing a view crop")
+    tile_width, tile_height, label_height = 320, 250, 34
+    columns = min(6, max(1, ceil(sqrt(len(ordered_views)))))
+    rows = ceil(len(ordered_views) / columns)
+    board = Image.new("RGB", (columns * tile_width, rows * tile_height), "#f5f5f5")
+    draw = ImageDraw.Draw(board)
+    tile_audit: list[dict[str, Any]] = []
+    for index, view in enumerate(ordered_views, start=1):
+        group_id = str(view["group_id"])
+        crop_data = crop_by_id[group_id]
+        try:
+            with Image.open(BytesIO(crop_data["bytes"])) as raw_crop:
+                crop = raw_crop.convert("RGB")
+        except Exception as exc:
+            raise DetectionV82ProviderError(f"V8.2 Membership board crop unavailable for {group_id}: {type(exc).__name__}") from exc
+        crop.thumbnail((tile_width - 12, tile_height - label_height - 10), Image.Resampling.LANCZOS)
+        column, row = (index - 1) % columns, (index - 1) // columns
+        left, top = column * tile_width, row * tile_height
+        draw.rectangle((left, top, left + tile_width - 1, top + label_height), fill="#1f2937")
+        tile_id = f"V{index:02d}"
+        draw.text((left + 7, top + 9), f"{tile_id}  P{view['page_number']}  {view['representation_kind']}", fill="white")
+        crop_left = left + (tile_width - crop.width) // 2
+        crop_top = top + label_height + (tile_height - label_height - crop.height) // 2
+        board.paste(crop, (crop_left, crop_top))
+        tile_audit.append({
+            "tile_id": tile_id,
+            "group_id": group_id,
+            "page_number": int(view["page_number"]),
+            "representation_kind": str(view["representation_kind"]),
+        })
+    encoded = BytesIO()
+    board.save(encoded, format="JPEG", quality=82)
+    return {
+        "bytes": encoded.getvalue(),
+        "audit": {
+            "tile_count": len(tile_audit),
+            "dimensions": {"width": board.width, "height": board.height},
+            "tiles": tile_audit,
+        },
+    }
+
+
+def _membership_content(*, context: str, crops: list[dict[str, Any]], board: dict[str, Any]) -> list[dict[str, Any]]:
+    tile_legend = "; ".join(
+        f"{tile['tile_id']}={tile['group_id']} (P{tile['page_number']}, {tile['representation_kind']})"
+        for tile in board["audit"]["tiles"]
+    )
+    content: list[dict[str, Any]] = [
+        {
+            "type": "text",
+            "text": (
+                "GLOBAL COMPARISON BOARD. Inspect this board before the individual crops. "
+                "It is the complete fixed view set, and PDF page boundaries are not object boundaries. "
+                "Tile legend: " + tile_legend
+            ),
+        },
+        {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": base64.standard_b64encode(board["bytes"]).decode("ascii")}},
+    ]
     for crop in crops:
         content.extend((
             {"type": "text", "text": f"Fixed Object Evidence {crop['group_id']}, PDF page {crop['page_number']}."},
@@ -362,8 +444,9 @@ def run_detection_v82_with_request(*, file_name: str, company_id: str, file_byte
             return []
         owned_facts = _owned_facts_by_view(source_facts, views)
         crops, crop_audit = _build_membership_crops(page_images=page_images, views=views, frames=frames)
-        payload, audit = request_json("membership", load_detection_v82_membership_prompt(), DETECTION_V82_MEMBERSHIP_SCHEMA, _membership_content(context=_membership_context(views=views, owned_facts=owned_facts), crops=crops), DETECTION_V82_MEMBERSHIP_MAX_TOKENS)
-        calls.append({"stage": "membership", "crop_count": len(crops), "owned_source_fact_count": sum(len(value) for value in owned_facts.values()), "crop_audit": crop_audit, **audit})
+        board = _build_membership_board(crops=crops, views=views)
+        payload, audit = request_json("membership", load_detection_v82_membership_prompt(), DETECTION_V82_MEMBERSHIP_SCHEMA, _membership_content(context=_membership_context(views=views, owned_facts=owned_facts), crops=crops, board=board), DETECTION_V82_MEMBERSHIP_MAX_TOKENS)
+        calls.append({"stage": "membership", "crop_count": len(crops), "owned_source_fact_count": sum(len(value) for value in owned_facts.values()), "crop_audit": crop_audit, "global_comparison_board": board["audit"], **audit})
         if not isinstance(payload, dict) or set(payload) != {"links"}:
             raise DetectionV82ProviderError("V8.2 Membership response does not match its contract")
         return payload["links"]
