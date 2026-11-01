@@ -38,8 +38,8 @@ DEFAULT_CLAUDE_DETECTION_V4_BOUNDARY_MODEL = DEFAULT_CLAUDE_DETECTION_BOUNDARY_M
 
 
 def _select_detection_pipeline_version(explicit_version: str | None = None) -> str:
-    """Keep V8 opt-in until its benchmark accepts the full production route."""
-    value = explicit_version or get_secret("DETECTION_PIPELINE_VERSION", "v7") or "v7"
+    """Use V8 by default while retaining a server-side rollback override."""
+    value = explicit_version or get_secret("DETECTION_PIPELINE_VERSION", "v8") or "v8"
     normalized = str(value).strip().lower()
     if normalized in {"v7", "v8"}:
         return normalized

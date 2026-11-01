@@ -1,8 +1,8 @@
 # Detection V8 rebuild
 
-Status: experimental, opt-in implementation. V8 is wired behind
-`DETECTION_PIPELINE_VERSION=v8`, while the default remains V7. It must not
-replace V7.14 or be deployed as the default before a Floor 06 live benchmark.
+Status: experimental production candidate. V8 is the code default, with
+`DETECTION_PIPELINE_VERSION=v7` retained as an explicit server-side rollback.
+It has not passed its Floor 06 live benchmark yet.
 
 ## Protected checkpoint
 
@@ -93,8 +93,8 @@ semantic helpers, limits every streamed request to 90 seconds, and reports a
 stage-specific terminal error rather than leaving the UI at an ambiguous
 progress state. It deterministically publishes components only after
 Membership, with an explicit default quantity of one and no synthetic object
-name. `agents/detection_agent.py` selects this path only by explicit V8 flag;
-the default V7 entry point is unchanged.
+name. `agents/detection_agent.py` selects this path by default; the server can
+roll back explicitly with `DETECTION_PIPELINE_VERSION=v7`.
 
 ## Verification before live benchmark
 

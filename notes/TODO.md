@@ -468,9 +468,9 @@ proof, not an adapter or separate response array. Resolver admissions become
 ordinary Object Evidence and receive no special Membership matrix.
 
 Implemented experimental path: `agents/detection_v8.py`, its three bounded
-prompts, `agents/detection_v8_adapter.py`, and the opt-in
-`DETECTION_PIPELINE_VERSION=v8` route. Default remains V7. Before any default
-deployment, run the complete Floor 06 acceptance audit recorded in
+prompts, `agents/detection_v8_adapter.py`, and V8 as the default route.
+`DETECTION_PIPELINE_VERSION=v7` remains the explicit rollback. Run the
+complete Floor 06 acceptance audit recorded in
 `notes/DETECTION_V8_REBUILD.md`.
 
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:

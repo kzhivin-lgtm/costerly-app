@@ -395,8 +395,9 @@ def test_v8_adapter_keeps_provider_stages_separate_and_publishes_only_after_memb
     assert audit["pipeline"]["conflict_resolver"]["attempted"] is False
 
 
-def test_v8_route_stays_opt_in_without_changing_the_v7_default(monkeypatch):
+def test_v8_route_is_the_default_and_v7_remains_an_explicit_rollback(monkeypatch):
     monkeypatch.setattr("agents.detection_agent.get_secret", lambda _name, default=None: default)
 
-    assert _select_detection_pipeline_version() == "v7"
+    assert _select_detection_pipeline_version() == "v8"
+    assert _select_detection_pipeline_version("v7") == "v7"
     assert _select_detection_pipeline_version("v8") == "v8"
