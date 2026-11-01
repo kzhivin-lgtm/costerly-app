@@ -61,32 +61,6 @@ def _contains(outer: dict[str, int], inner: dict[str, int]) -> bool:
     )
 
 
-def _same_visual_region(left: dict[str, int], right: dict[str, int]) -> bool:
-    """Return whether two boxes describe the same source region, not nesting.
-
-    A floor-plan page can contain a smaller bounded drawing. That drawing
-    remains eligible for normal conflict review, so containment is deliberately
-    insufficient. Requiring at least 85 percent reciprocal overlap keeps this
-    limited to duplicate supplier geometry with minor coordinate drift.
-    """
-    if not _overlaps(left, right):
-        return False
-    overlap_width = min(left["bottom_right_x"], right["bottom_right_x"]) - max(
-        left["top_left_x"], right["top_left_x"]
-    )
-    overlap_height = min(left["bottom_right_y"], right["bottom_right_y"]) - max(
-        left["top_left_y"], right["top_left_y"]
-    )
-    overlap_area = overlap_width * overlap_height
-    left_area = (left["bottom_right_x"] - left["top_left_x"]) * (
-        left["bottom_right_y"] - left["top_left_y"]
-    )
-    right_area = (right["bottom_right_x"] - right["top_left_x"]) * (
-        right["bottom_right_y"] - right["top_left_y"]
-    )
-    return overlap_area / left_area >= 0.85 and overlap_area / right_area >= 0.85
-
-
 def translate_detection_conflict_crop_decisions(
     *,
     decisions: object,
@@ -168,7 +142,6 @@ def build_detection_conflict_targets(
         for row in classifications if isinstance(row, dict)
     }
     object_boxes: list[tuple[int, dict[str, int]]] = []
-    terminal_floor_plan_boxes: list[tuple[int, dict[str, int]]] = []
     for group in visual_groups:
         if not isinstance(group, dict):
             continue
@@ -176,19 +149,10 @@ def build_detection_conflict_targets(
             page_number = int(group.get("page_number"))
         except (TypeError, ValueError):
             continue
-        evidence_class = classification_by_group_id.get(str(group.get("group_id") or ""))
-        group_bbox = _bbox(group.get("bbox"))
-        if (
-            evidence_class == "document_context"
-            and str(group.get("representation_kind") or "").strip().lower()
-            in {"floor_plan", "location_plan"}
-            and group_bbox is not None
-        ):
-            terminal_floor_plan_boxes.append((page_number, group_bbox))
-        if evidence_class != "object_evidence":
+        if classification_by_group_id.get(str(group.get("group_id") or "")) != "object_evidence":
             continue
-        if group_bbox is not None:
-            object_boxes.append((page_number, group_bbox))
+        if (bbox := _bbox(group.get("bbox"))) is not None:
+            object_boxes.append((page_number, bbox))
 
     targets: list[dict[str, Any]] = []
     for candidate in candidate_regions:
@@ -201,17 +165,6 @@ def build_detection_conflict_targets(
         bbox = _bbox(candidate.get("bbox"))
         candidate_id = str(candidate.get("candidate_region_id") or "")
         if not candidate_id or bbox is None:
-            continue
-        # Discovery has already made a terminal decision for this exact visual
-        # region. It is therefore not an unresolved absence of an Island.
-        # This changes neither Candidate Regions nor their IDs/order: it only
-        # prevents a duplicate source box from re-entering through the
-        # exceptional resolver path. Smaller drawings inside a floor plan are
-        # intentionally not considered the same region.
-        if any(
-            context_page == page_number and _same_visual_region(bbox, context_bbox)
-            for context_page, context_bbox in terminal_floor_plan_boxes
-        ):
             continue
         has_object_evidence = any(
             object_page == page_number and _overlaps(bbox, object_bbox)

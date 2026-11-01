@@ -425,36 +425,6 @@ def test_v75_conflict_targets_ignore_exception_and_require_visual_resolution():
     ]
 
 
-def test_v75_terminal_floor_plan_context_closes_only_its_duplicate_candidate():
-    candidates = [
-        {
-            "candidate_region_id": "CR-P002-001", "page_number": 2,
-            "basis": "mistral_graphic_region",
-            "bbox": {"top_left_x": 100, "top_left_y": 100, "bottom_right_x": 900, "bottom_right_y": 900},
-        },
-        {
-            "candidate_region_id": "CR-P002-002", "page_number": 2,
-            "basis": "mistral_graphic_region",
-            "bbox": {"top_left_x": 150, "top_left_y": 150, "bottom_right_x": 350, "bottom_right_y": 350},
-        },
-    ]
-    groups = [{
-        "group_id": "VG-P002-001", "page_number": 2,
-        "representation_kind": "floor_plan",
-        "bbox": {"top_left_x": 100, "top_left_y": 100, "bottom_right_x": 900, "bottom_right_y": 900},
-    }]
-    classifications = [{"group_id": "VG-P002-001", "evidence_class": "document_context"}]
-
-    assert build_detection_conflict_targets(
-        candidate_regions=candidates, visual_groups=groups, classifications=classifications,
-    ) == [{
-        "target_id": "V75-C001", "page_number": 2,
-        "bbox": {"top_left_x": 150, "top_left_y": 150, "bottom_right_x": 350, "bottom_right_y": 350},
-        "trigger": "graphic_region_without_object_evidence",
-        "candidate_region_ids": ["CR-P002-002"],
-    }]
-
-
 def test_v75_admission_is_visual_geometry_not_candidate_proxy():
     targets = [{
         "target_id": "V75-C001", "page_number": 10,
