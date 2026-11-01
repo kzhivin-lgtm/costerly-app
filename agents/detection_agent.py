@@ -298,6 +298,77 @@ def _registry_owned_visual_groups(visual_map: dict | None) -> dict[str, dict]:
     }
 
 
+def _presentation_visual_map_with_backfilled_evidence(
+    registry: dict,
+    *,
+    visual_map: dict | None,
+) -> tuple[dict | None, dict]:
+    """Expose locked source-degraded View bboxes to the presentation adapter.
+
+    Ordinary Discovery already writes ``_registry_owned_evidence`` after the
+    Registry is final. The native-graphic Page 23 route reaches the same locked
+    Registry through a different producer and omitted that private sidecar.
+    Reconstruct it only when absent, from the route's already-locked Views.
+    Return a shallow presentation-only map instead of mutating the original:
+    Naming continues to receive the unmodified route payload. This runs after
+    Membership and cannot change object identity or evidence ownership.
+    """
+    if not isinstance(visual_map, dict):
+        return visual_map, {
+            "applied": False, "reason": "visual_map_unavailable", "count": 0,
+        }
+    if isinstance(visual_map.get("_registry_owned_evidence"), list):
+        return visual_map, {
+            "applied": False, "reason": "existing_sidecar", "count": 0,
+        }
+
+    registry_owned_group_ids = {
+        str(group_id)
+        for item in registry.get("objects") or []
+        if isinstance(item, dict)
+        for group_id in item.get("visual_group_ids") or []
+        if str(group_id)
+    }
+    groups_by_id = {
+        str(group.get("group_id") or ""): group
+        for group in visual_map.get("visual_groups") or []
+        if isinstance(group, dict) and str(group.get("group_id") or "")
+    }
+    sidecar: list[dict] = []
+    for group_id in sorted(registry_owned_group_ids):
+        group = groups_by_id.get(group_id)
+        bbox = _registry_group_bbox(group)
+        try:
+            page_number = int(group.get("page_number")) if isinstance(group, dict) else 0
+        except (TypeError, ValueError):
+            page_number = 0
+        if bbox is None or page_number < 1:
+            continue
+        sidecar.append({
+            "group_id": group_id,
+            "page_number": page_number,
+            "bbox": bbox,
+            "representation_kind": str(group.get("representation_kind") or ""),
+            "visual_description": str(group.get("visual_description") or ""),
+        })
+    if sidecar:
+        return {
+            **visual_map,
+            "_registry_owned_evidence": sidecar,
+        }, {
+            "applied": True,
+            "reason": "source_degraded_presentation_backfill",
+            "count": len(sidecar),
+            "group_ids": [item["group_id"] for item in sidecar],
+        }
+    return visual_map, {
+        "applied": False,
+        "reason": "no_valid_owned_bbox",
+        "count": len(sidecar),
+        "group_ids": [item["group_id"] for item in sidecar],
+    }
+
+
 def _registry_group_bbox(group: dict | None) -> dict[str, float] | None:
     """Return one valid Registry-owned bbox in the Fusion coordinate frame."""
     if not isinstance(group, dict):
@@ -1004,12 +1075,18 @@ def run_detection_agent(
     }
     registry = _enforce_shared_track_door_system_quantity(registry)
     _validate_registry_evidence_pages(registry, page_count=len(registry_images))
+    presentation_visual_map, presentation_evidence_audit = (
+        _presentation_visual_map_with_backfilled_evidence(
+            registry,
+            visual_map=_visual_map,
+        )
+    )
     result = _registry_to_detection_result(
         registry,
         company_id=company_id,
         file_name=file_name,
         page_count=len(registry_images),
-        visual_map=_visual_map,
+        visual_map=presentation_visual_map,
         # File Review uses review_required solely for a physical quantity that
         # needs a human decision. Registry metadata fallback and graph review
         # remain auditable in raw usage, but must not turn a proved quantity or
@@ -1032,6 +1109,7 @@ def run_detection_agent(
     )
     if isinstance(visual_registry_usage, dict):
         raw_usage = dict(visual_registry_usage.get("raw_usage") or {})
+        raw_usage["v8_4_1_presentation_evidence"] = presentation_evidence_audit
         raw_usage["v6_19_naming_annotated_pages"] = naming_overlay_audit
         raw_usage["v6_21_naming_source_crops"] = naming_crop_audit
         visual_registry_usage["raw_usage"] = raw_usage

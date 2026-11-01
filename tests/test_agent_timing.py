@@ -585,6 +585,30 @@ def test_processing_stage_exposes_real_phase_and_completion():
     assert 'data-processing-complete="true"' in markup
 
 
+def test_processing_stage_exposes_a_terminal_failure_without_a_live_timer():
+    markup = processing_stage_html(
+        progress_value=0.6,
+        elapsed_seconds=56,
+        complete=True,
+        processing_phase="failed",
+        error_message="RFQ processing failed: invalid render decision",
+    )
+
+    assert 'data-processing-failed="true"' in markup
+    assert 'role="alert"' in markup
+    assert "RFQ processing failed: invalid render decision" in markup
+
+
+def test_processing_error_path_terminates_the_browser_progress_shell():
+    processing_source = Path("screens/processing.py").read_text()
+    guard_source = Path("ui/js_guards.py").read_text()
+    review_source = Path("screens/file_review.py").read_text()
+
+    assert 'processing_phase="failed"' in processing_source
+    assert 'error_message=f"RFQ processing failed: {message}"' in processing_source
+    assert "function processingErrorIsActive()" in guard_source
+    assert "stage.dataset.processingFailed === 'true'" in guard_source
+    assert "file-review-processing-error-marker" in review_source
 def test_processing_stage_exposes_expected_file_review_seconds():
     markup = processing_stage_html(
         processing_phase="detection",

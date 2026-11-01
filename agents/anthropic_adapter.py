@@ -158,10 +158,10 @@ DETECTION_V713_BOUNDED_MEMBERSHIP_REVIEW_PROMPT_VERSION = (
     "detection_v7_13_bounded_membership_review_stream"
 )
 DETECTION_V714_CONFLICT_MEMBERSHIP_PROMPT_VERSION = (
-    # V8.4 intentionally preserves the protected V7.14 runtime path exactly.
-    # This value is telemetry only, so production runs can be distinguished
-    # without changing a prompt, branch, schema, model or merge rule.
-    "detection_v8_4_exact_v7_14_baseline"
+    # V8.4.1 keeps the protected V7.14 Detection runtime unchanged. This
+    # telemetry value distinguishes the UI/Page 23 presentation repair without
+    # changing a prompt, branch, schema, model or merge rule.
+    "detection_v8_4_1_ui_page23_preview_repair"
 )
 DETECTION_V634_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"

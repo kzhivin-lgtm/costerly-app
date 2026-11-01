@@ -28,6 +28,7 @@ def post_upload_stage_html(
     processing_run_token: str | None = None,
     processing_page_count: int | None = None,
     processing_result_run_id: str | None = None,
+    error_message: str | None = None,
 ) -> str:
     """Return the shared fixed-origin post-upload stage HTML."""
     stage_classes = "post-upload-stage"
@@ -117,9 +118,16 @@ def post_upload_stage_html(
         f' data-processing-result-run-id="{html.escape(processing_result_run_id)}"'
         if processing_result_run_id else ""
     )
+    failed_attr = ' data-processing-failed="true"' if error_message else ""
+    error_html = (
+        '<div class="post-upload-stage__error" role="alert">'
+        f'{html.escape(error_message)}'
+        '</div>'
+        if error_message else ""
+    )
 
     return (
-        f'<div class="{stage_classes}"{complete_attr}{phase_attr}{expected_file_review_attr}{plan_attr}{stage_id_attr}{stage_started_attr}{run_token_attr}{page_count_attr}{result_run_id_attr}>'
+        f'<div class="{stage_classes}"{complete_attr}{failed_attr}{phase_attr}{expected_file_review_attr}{plan_attr}{stage_id_attr}{stage_started_attr}{run_token_attr}{page_count_attr}{result_run_id_attr}>'
         '<div class="post-upload-stage__inner">'
         '<div class="post-upload-shell">'
         f'{marker_html}'
@@ -128,6 +136,7 @@ def post_upload_stage_html(
         '</div>'
         f'{progress_html}'
         f'{timer_html}'
+        f'{error_html}'
         f'{slow_html}'
         '</div>'
         '</div>'
@@ -149,6 +158,7 @@ def processing_stage_html(
     processing_run_token: str | None = None,
     processing_page_count: int | None = None,
     processing_result_run_id: str | None = None,
+    error_message: str | None = None,
 ) -> str:
     """Return the shared Processing stage HTML for instant and real screens."""
     return post_upload_stage_html(
@@ -168,4 +178,5 @@ def processing_stage_html(
         processing_run_token=processing_run_token,
         processing_page_count=processing_page_count,
         processing_result_run_id=processing_result_run_id,
+        error_message=error_message,
     )

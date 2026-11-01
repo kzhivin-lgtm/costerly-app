@@ -94,9 +94,9 @@ def test_v5_10_11_separates_full_page_discovery_from_membership_review():
     assert "render-only hypothesis" in review_prompt
 
 
-def test_v84_is_a_telemetry_label_for_the_exact_v714_baseline():
+def test_v841_is_a_telemetry_label_for_the_v714_detection_baseline():
     assert DETECTION_V714_CONFLICT_MEMBERSHIP_PROMPT_VERSION == (
-        "detection_v8_4_exact_v7_14_baseline"
+        "detection_v8_4_1_ui_page23_preview_repair"
     )
 
 

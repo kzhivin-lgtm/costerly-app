@@ -3490,6 +3490,10 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     return Boolean(document.getElementById(FILE_REVIEW_MARKER_ID));
                 }
 
+                function processingErrorIsActive() {
+                    return Boolean(document.querySelector('.file-review-processing-error-marker'));
+                }
+
                 function installStyle() {
                     if (document.getElementById(STYLE_ID)) return;
 
@@ -3856,7 +3860,17 @@ def install_upload_interaction_guards(shell_html: str) -> None:
 
                     const stage = activeProcessingStage();
                     if (!stage) {
+                        if (processingErrorIsActive()) {
+                            finalizeElapsed(seconds);
+                            removeShell();
+                            return;
+                        }
                         if (fileReviewIsActive()) finalizeElapsed(seconds);
+                        return;
+                    }
+                    if (stage.dataset.processingFailed === 'true') {
+                        finalizeElapsed(seconds);
+                        removeShell();
                         return;
                     }
                     syncForecastFromStage(stage);
@@ -4042,7 +4056,11 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 }
 
                 function beginFileReviewTransition(stage) {
-                    if (!stage || stage.dataset.processingComplete !== 'true') return;
+                    if (
+                        !stage ||
+                        stage.dataset.processingComplete !== 'true' ||
+                        stage.dataset.processingFailed === 'true'
+                    ) return;
                     const state = finalizationState(stage);
                     continueFinalization(state);
                     const expectedRunId = stage.dataset.processingResultRunId || '';
@@ -4174,6 +4192,14 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     }
                     if (fileReviewIsActive() && window[LAST_ELAPSED_SECONDS_KEY]) {
                         applyFinalElapsed(Number(window[LAST_ELAPSED_SECONDS_KEY]));
+                    }
+                    if (processingErrorIsActive()) {
+                        const startedAt = Number(window[ELAPSED_STARTED_AT_KEY] || 0);
+                        if (startedAt) {
+                            finalizeElapsed(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
+                        }
+                        removeShell();
+                        return;
                     }
                     beginFileReviewTransition(activeProcessingStage());
                     if (fileReviewIsActive()) {

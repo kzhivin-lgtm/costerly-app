@@ -945,6 +945,10 @@ def _render_processing_error(
 ) -> None:
     """Render the File Review fallback when RFQ processing failed."""
     _render_file_review_header_only(render_header_controls)
+    st.markdown(
+        '<span class="file-review-processing-error-marker" aria-hidden="true"></span>',
+        unsafe_allow_html=True,
+    )
     st.error(f"RFQ processing failed: {message}")
     _back_to_upload_button(clear_processing_error=True)
 

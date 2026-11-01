@@ -9,6 +9,7 @@ from agents.detection_agent import (
     _build_v621_naming_source_crops,
     _compile_confirmed_assembly_set_registry,
     _enforce_shared_track_door_system_quantity,
+    _presentation_visual_map_with_backfilled_evidence,
     _build_v619_naming_annotated_pages,
     _merge_registry_evidence,
     _record_locked_evidence_handoff_audit,
@@ -479,6 +480,46 @@ def test_v616_registry_materializes_only_registry_owned_bbox_regions():
         "top_left_x": 10.0, "top_left_y": 20.0,
         "bottom_right_x": 300.0, "bottom_right_y": 400.0,
     }]
+    assert result["detected_objects"][0]["evidence_page_refs"][0]["presentation_preview_bbox"] == {
+        "top_left_x": 10.0, "top_left_y": 20.0,
+        "bottom_right_x": 300.0, "bottom_right_y": 400.0,
+    }
+
+
+def test_source_degraded_registry_backfills_preview_sidecar_only_after_registry_lock():
+    registry = {"objects": [{
+        "object_id": "object-001", "visual_group_ids": ["native-001"],
+    }]}
+    visual_map = {"visual_groups": [{
+        "group_id": "native-001", "page_number": 1,
+        "representation_kind": "front_elevation",
+        "visual_description": "front view",
+        "bbox": {
+            "top_left_x": 10, "top_left_y": 20,
+            "bottom_right_x": 300, "bottom_right_y": 400,
+        },
+    }]}
+
+    presentation_visual_map, audit = _presentation_visual_map_with_backfilled_evidence(
+        registry, visual_map=visual_map,
+    )
+
+    assert audit == {
+        "applied": True,
+        "reason": "source_degraded_presentation_backfill",
+        "count": 1,
+        "group_ids": ["native-001"],
+    }
+    assert "_registry_owned_evidence" not in visual_map
+    result = _registry_to_detection_result(
+        {"objects": [{
+            "object_id": "object-001", "transport_label": "Object 1",
+            "quantity": 1, "quantity_explicit": False,
+            "estimation_evidence_pages": [1], "visual_group_ids": ["native-001"],
+        }]},
+        company_id="001", file_name="page-23.pdf", page_count=1,
+        visual_map=presentation_visual_map,
+    )
     assert result["detected_objects"][0]["evidence_page_refs"][0]["presentation_preview_bbox"] == {
         "top_left_x": 10.0, "top_left_y": 20.0,
         "bottom_right_x": 300.0, "bottom_right_y": 400.0,

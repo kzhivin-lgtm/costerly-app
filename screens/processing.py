@@ -75,6 +75,7 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
         processing_stage_started_at_ms: int | None = None,
         processing_page_count: int | None = None,
         processing_result_run_id: str | None = None,
+        error_message: str | None = None,
     ) -> None:
         stage_slot.markdown(
             processing_stage_html(
@@ -90,6 +91,7 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
                 processing_run_token=str(screen_started_at_ms),
                 processing_page_count=processing_page_count,
                 processing_result_run_id=processing_result_run_id,
+                error_message=error_message,
             ),
             unsafe_allow_html=True,
         )
@@ -260,7 +262,21 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
 
             result = future.result()
     except Exception as exc:
-        st.session_state.processing_error = str(exc)
+        message = str(exc)
+        # Mark the visible stage as terminal before the rerun. The browser
+        # runtime stops its local timer from this explicit failure signal; the
+        # File Review rerun then renders the same recoverable error.
+        render_stage(
+            stage_progress_floor(phase_state.get("progress_plan"), str(phase_state.get("stage_id") or "")),
+            elapsed_seconds=time.perf_counter() - screen_started,
+            complete=True,
+            processing_phase="failed",
+            processing_stage_id="failed",
+            processing_stage_started_at_ms=int(time.time() * 1000),
+            processing_page_count=initial_page_count,
+            error_message=f"RFQ processing failed: {message}",
+        )
+        st.session_state.processing_error = message
         st.session_state.screen = "file_review"
         st.rerun()
 

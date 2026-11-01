@@ -163,6 +163,19 @@ byte-for-byte V7.14. Only the persisted telemetry label is
 Acceptance: same V7.14 behavior, including its known one extra floor-plan
 package if it occurs; no V8.x floor-plan exclusion experiment is active.
 
+ACTIVE, V8.4.1, P0, Page 23 presentation and terminal Processing error:
+Base: V8.4 exact V7.14 Detection runtime. Scope is deliberately outside
+Discovery, Candidate Regions, Conflict Resolver, Membership, router and object
+assembly. First, source-degraded native-graphic Registry output receives a
+one-use, post-Registry bbox transport only while materializing File Review
+previews, so Page 23's locked three objects can produce them. The original
+route payload remains unchanged for Naming.
+Second, a failed processing worker marks the current stage as terminal, stops
+the client timer and reveals the recoverable File Review error instead of
+leaving a stale progress shell. Acceptance: Page 23 retains exactly three
+objects and exposes presentation bboxes, while a forced Detection validation
+failure visibly stops Processing and presents its actual error.
+
 BENCHMARK, P0, Hasolelim Floor 06 manual Object Evidence island inventory:
 
 This is the owner-provided visual inventory, separate from final package count

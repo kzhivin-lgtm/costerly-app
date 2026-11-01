@@ -479,6 +479,13 @@ def apply_base_css() -> None:
             line-height: 1.45;
         }
 
+        .post-upload-stage__error {
+            margin-top: 14px;
+            color: var(--color-danger, #B42318);
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
         .post-upload-stage__timer {
             margin-top: var(--space-3);
             color: rgba(42, 31, 44, 0.68);
