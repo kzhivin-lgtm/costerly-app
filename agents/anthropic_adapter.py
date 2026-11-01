@@ -3845,47 +3845,6 @@ def normalize_detection_v711_presentation_render_decisions(
     return facts, audit
 
 
-def build_detection_v711_presentation_render_review_schema(
-    *,
-    visual_groups: list[dict[str, Any]],
-) -> dict[str, Any]:
-    """Constrain render attachment IDs to this Review's exact View inventory.
-
-    The membership handoff uses ``|`` as a textual field separator.  Without
-    a dynamic enum, a provider can copy that notation into the scalar
-    ``technical_group_id`` field and turn several IDs into one invalid ID.
-    The schema keeps the existing one-render-to-one-technical-View contract
-    while making that malformed form impossible to return.
-    """
-    schema = copy.deepcopy(DETECTION_V5_MEMBERSHIP_JSON_SCHEMA)
-    object_groups = [
-        group for group in visual_groups
-        if isinstance(group, dict)
-        and group.get("evidence_class") == "object_evidence"
-        and str(group.get("group_id") or "")
-    ]
-    render_ids = sorted(
-        str(group["group_id"])
-        for group in object_groups
-        if str(group.get("representation_kind") or "").lower()
-        == "presentation_render"
-    )
-    if not render_ids:
-        return schema
-    technical_ids = sorted(
-        str(group["group_id"])
-        for group in object_groups
-        if str(group.get("representation_kind") or "").lower()
-        != "presentation_render"
-    )
-    decision_properties = schema["properties"][
-        "presentation_render_decisions"
-    ]["items"]["properties"]
-    decision_properties["render_group_id"]["enum"] = render_ids
-    decision_properties["technical_group_id"]["enum"] = ["", *technical_ids]
-    return schema
-
-
 def attach_detection_v711_presentation_render_components(
     components: list[list[str]],
     edges: list[dict[str, Any]],
@@ -12321,10 +12280,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "`presentation_render_decisions`, even when the candidate technical "
             "View is on another page. Use `attach` only for one non-render View "
             "with exactly `matching_topology` or `unique_geometry` and a concrete "
-            "configuration visible in both images. `technical_group_id` must be "
-            "one exact View ID, never a pipe-delimited, comma-delimited or other "
-            "list. When several technical Views seem relevant, choose one strongest "
-            "technical anchor or return `no_match`. Use `no_match` when no such "
+            "configuration visible in both images. Use `no_match` when no such "
             "proof exists and `unresolved` only when pixels prevent comparison. "
             "For `no_match` or `unresolved`, set technical_group_id to an empty "
             "string and evidence_type to `none`. Do not include presentation "
@@ -12341,9 +12297,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         if v641_budgeted_discovery_active
         else DETECTION_V5_MEMBERSHIP_MAX_TOKENS
     )
-    membership_review_schema = build_detection_v711_presentation_render_review_schema(
-        visual_groups=proposal_for_review["visual_groups"],
-    )
+    membership_review_schema = copy.deepcopy(DETECTION_V5_MEMBERSHIP_JSON_SCHEMA)
     if v714_conflict_membership_active:
         membership_review_schema["required"].append("conflict_pair_decisions")
         membership_review_schema["properties"]["conflict_pair_decisions"] = (

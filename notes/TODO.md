@@ -362,23 +362,6 @@ target nor `P02.V1`; P10 candidate inventory, Resolver targets and package
 assembly remain identical to V7.14. Reject if a non-contained Candidate Region
 is suppressed or any protected stage changes.
 
-ACTIVE EXPERIMENT, V7.19, P0, exact render-attachment ID schema:
-
-Base: V7.18. A failed Floor 06 Review returned pipe-delimited lists of technical
-View IDs in the scalar `technical_group_id` field, which is neither a valid View
-ID nor an accepted attachment. Keep the existing one-render-to-one-technical-
-View contract. At the Review boundary only, derive the existing JSON-schema
-enum from current Object Evidence: a render may name only its exact render ID;
-its target may be the empty string or one exact non-render View ID. Explicitly
-instruct the Review never to serialize a list. Do not choose the first ID,
-add a model call, alter Discovery, floor-plan handling, Candidate Regions,
-Conflict Resolver, ordinary Membership, graph assembly, P10 or UI.
-
-Acceptance: a pipe-delimited `technical_group_id` cannot be emitted. A valid
-attachment retains one explicit technical anchor and existing V7.11 validation;
-`no_match` and `unresolved` retain the empty target. Floor 06 completes or
-reports a distinct, visible failure without changing the protected inventories.
-
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
 contracts are still changing. The current V5 Registry route records zero cache
