@@ -20,6 +20,8 @@ from agents.anthropic_adapter import (
     DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
     DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
     DETECTION_V634_ADA_DISCOVERY_MODEL,
+    DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS,
+    DETECTION_V843_ASSEMBLY_SCOPE_COMPACTION_PROMPT_VERSION,
     DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION,
     DETECTION_V713_MEMBERSHIP_REVIEW_MAX_STREAM_SECONDS,
     apply_benchmark_run_suffix,
@@ -201,6 +203,58 @@ def test_v611_document_scope_candidate_needs_a_real_view_relationship():
                 "kind": "document_set_continuity",
                 "group_ids": ["overview", "detail"],
                 "observation": "The sheets share one title block.",
+            }],
+        }, visual_groups=groups)
+
+
+def test_v843_compacts_only_assembly_scope_audit_prose_to_shared_limit():
+    groups = [
+        {"group_id": "overview", "page_number": 1},
+        {"group_id": "detail", "page_number": 2},
+    ]
+    overlong_observation = (
+        "The overview elevation and the connected detail document one "
+        "commissioned cabinet assembly with shared dimensions, materials, "
+        "hardware references, installation interfaces, and component hierarchy."
+    )
+    assert len(overlong_observation) > DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS
+
+    decision = validate_detection_v611_document_scope({
+        "classification": "assembly_set_candidate",
+        "root_group_ids": ["overview"],
+        "witnesses": [{
+            "kind": "overview_detail_hierarchy",
+            "group_ids": ["overview", "detail"],
+            "observation": overlong_observation,
+        }],
+    }, visual_groups=groups)
+
+    observation = decision["witnesses"][0]["observation"]
+    assert len(observation) <= DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS
+    assert overlong_observation.startswith(observation)
+    assert observation == observation.rstrip()
+    assert decision["witnesses"][0]["group_ids"] == ["overview", "detail"]
+
+    at_limit_observation = "x" * DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS
+    at_limit_decision = validate_detection_v611_document_scope({
+        "classification": "assembly_set_candidate",
+        "root_group_ids": ["overview"],
+        "witnesses": [{
+            "kind": "overview_detail_hierarchy",
+            "group_ids": ["overview", "detail"],
+            "observation": at_limit_observation,
+        }],
+    }, visual_groups=groups)
+    assert at_limit_decision["witnesses"][0]["observation"] == at_limit_observation
+
+    with pytest.raises(ValueError, match="exceeds its compact contract"):
+        validate_detection_v611_document_scope({
+            "classification": "ordinary_object_set",
+            "root_group_ids": [],
+            "witnesses": [{
+                "kind": "overview_detail_hierarchy",
+                "group_ids": ["overview", "detail"],
+                "observation": overlong_observation,
             }],
         }, visual_groups=groups)
 
@@ -1313,6 +1367,9 @@ def test_integrated_visual_registry_rejects_invalid_optional_scope_only():
     assert usage["raw_usage"]["v6_11_document_scope"] is None
     assert usage["raw_usage"]["v6_11_document_scope_validation_error"] == (
         "V6.11 document scope witness references an unknown group"
+    )
+    assert usage["prompt_version"] == (
+        DETECTION_V843_ASSEMBLY_SCOPE_COMPACTION_PROMPT_VERSION
     )
 
 

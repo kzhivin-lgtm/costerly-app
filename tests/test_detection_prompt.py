@@ -1,7 +1,10 @@
 from agents.anthropic_adapter import (
     DETECTION_NO_NAMING_PROMPT_VERSION,
     DETECTION_PROMPT_VERSION,
+    DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS,
+    DETECTION_V843_ASSEMBLY_SCOPE_COMPACTION_PROMPT_VERSION,
     DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION,
+    DETECTION_V611_ASSEMBLY_SCOPE_PROMPT,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
     detection_v5_discovery_json_schema,
 )
@@ -97,6 +100,20 @@ def test_v5_10_11_separates_full_page_discovery_from_membership_review():
 def test_v842_is_the_runtime_label_for_safe_non_render_review_normalization():
     assert DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION == (
         "detection_v8_4_2_safe_non_render_no_match"
+    )
+
+
+def test_v843_assembly_scope_uses_one_shared_observation_limit():
+    schema = detection_v5_discovery_json_schema(include_document_scope=True)
+    observation_schema = schema["properties"]["document_scope"]["properties"][
+        "witnesses"
+    ]["items"]["properties"]["observation"]
+
+    assert observation_schema["maxLength"] == DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS
+    assert str(DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS) in DETECTION_V611_ASSEMBLY_SCOPE_PROMPT
+    assert "target 140 characters" in DETECTION_V611_ASSEMBLY_SCOPE_PROMPT
+    assert DETECTION_V843_ASSEMBLY_SCOPE_COMPACTION_PROMPT_VERSION == (
+        "detection_v8_4_3_assembly_scope_compact_observation"
     )
 
 

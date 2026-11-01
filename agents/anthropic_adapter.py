@@ -163,6 +163,14 @@ DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION = (
     # Membership and merge rules remain unchanged.
     "detection_v8_4_2_safe_non_render_no_match"
 )
+DETECTION_V843_ASSEMBLY_SCOPE_COMPACTION_PROMPT_VERSION = (
+    # V8.4.3 is restricted to the assembly-set scope observation. It aligns
+    # the prompt, schema and deterministic boundary normalizer around one
+    # bounded audit-text contract. Discovery, router and Membership do not
+    # change.
+    "detection_v8_4_3_assembly_scope_compact_observation"
+)
+DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS = 180
 DETECTION_V634_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
 DETECTION_V75_CONFLICT_RESOLVER_PROMPT_VERSION = (
@@ -808,7 +816,10 @@ DETECTION_V5_DISCOVERY_JSON_SCHEMA: dict[str, Any] = {
                                 "type": "array", "maxItems": 8,
                                 "items": {"type": "string"},
                             },
-                            "observation": {"type": "string", "maxLength": 180},
+                            "observation": {
+                                "type": "string",
+                                "maxLength": DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS,
+                            },
                         },
                     },
                 },
@@ -817,13 +828,17 @@ DETECTION_V5_DISCOVERY_JSON_SCHEMA: dict[str, Any] = {
     },
 }
 
-DETECTION_V611_ASSEMBLY_SCOPE_PROMPT = """
+DETECTION_V611_ASSEMBLY_SCOPE_PROMPT = f"""
 
 ASSEMBLY-SET SCOPE OBSERVATION:
 Return one compact `document_scope` observation. This is scope evidence only,
 not an object decision: it cannot merge, remove or reclassify an Island. Name
 at most four root Island IDs. Return at most four witnesses, each citing at
-most eight Island IDs with an observation of at most 180 characters. Use
+most eight Island IDs with one compact observation. Each observation must be
+one sentence, target 140 characters and never exceed
+{DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS} characters after whitespace
+normalization. Compact the sentence before emitting it, do not narrate the
+inspection. Use
 `assembly_set_candidate` only when the PDF documents one commissioned assembly
 through a cited overview or root set plus connected sections, carcasses,
 modules, components or hardware. Common client/order metadata, date, material,
@@ -5317,6 +5332,25 @@ def _validate_and_apply_visual_registry_classifications(
     return enriched, audit
 
 
+def _compact_detection_v611_assembly_scope_observation(observation: object) -> str:
+    """Return the bounded audit prose for an otherwise valid assembly witness.
+
+    The witness IDs and kind carry the structured proof. The observation is
+    explanatory audit text, so compact it deterministically rather than
+    disabling the entire assembly-set compiler when a provider exceeds the
+    shared response limit by a few words.
+    """
+    normalized = " ".join(str(observation).split())
+    if len(normalized) <= DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS:
+        return normalized
+    boundary = normalized.rfind(
+        " ", 0, DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS + 1,
+    )
+    if boundary > 0:
+        return normalized[:boundary]
+    return normalized[:DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS]
+
+
 def validate_detection_v611_document_scope(
     scope: object,
     *,
@@ -5375,12 +5409,19 @@ def validate_detection_v611_document_scope(
             raise ValueError("V6.11 document scope witness exceeds the group limit")
         if any(group_id not in group_ids for group_id in witness_ids):
             raise ValueError("V6.11 document scope witness references an unknown group")
-        if len(normalized_witnesses) >= 4 or len(str(witness["observation"])) > 180:
+        if len(normalized_witnesses) >= 4:
+            raise ValueError("V6.11 document scope exceeds its compact contract")
+        observation = " ".join(str(witness["observation"]).split())
+        if scope["classification"] == "assembly_set_candidate":
+            observation = _compact_detection_v611_assembly_scope_observation(
+                observation,
+            )
+        elif len(observation) > DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS:
             raise ValueError("V6.11 document scope exceeds its compact contract")
         normalized_witnesses.append({
             "kind": str(witness["kind"]),
             "group_ids": witness_ids,
-            "observation": " ".join(str(witness["observation"]).split()),
+            "observation": observation,
         })
     if scope["classification"] == "assembly_set_candidate":
         if not root_group_ids:
@@ -12119,7 +12160,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     v714_conflict_membership_active = bool(
         v714_required_conflict_pairs and not v69_criteria_reconciliation_active
     )
-    if v69_criteria_reconciliation_active:
+    if document_category == "assembly_set":
+        prompt_version = DETECTION_V843_ASSEMBLY_SCOPE_COMPACTION_PROMPT_VERSION
+    elif v69_criteria_reconciliation_active:
         prompt_version = DETECTION_V610_COMBINED_EVIDENCE_REVIEW_PROMPT_VERSION
     elif v714_conflict_membership_active:
         prompt_version = DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION
