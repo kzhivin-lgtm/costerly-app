@@ -362,6 +362,18 @@ target nor `P02.V1`; P10 candidate inventory, Resolver targets and package
 assembly remain identical to V7.14. Reject if a non-contained Candidate Region
 is suppressed or any protected stage changes.
 
+REJECTED EXPERIMENT, V7.19, exact render-attachment ID schema:
+
+V7.19 constrained the Review's structured-output schema to exact render and
+technical View IDs to prevent a pipe-delimited `technical_group_id`. On Floor
+06 run `run_f4288fc8ae4e4a9a9da048845410897d`, the provider then returned zero
+ordinary `object_hypotheses`, only three merge edges, and 54 packages from 63
+Object Evidence Views. The prior V7.18 Review response had 15 hypotheses; its
+only observed defect was the malformed scalar render target. Schema and prompt
+conditioning changed the entire Membership outcome, so the experiment was
+reverted in commit `87b5c81`. Do not use a dynamic enum or change the ordinary
+Review output contract to repair a malformed presentation-render row.
+
 DEFERRED, P2, Anthropic prompt-cache experiment after Detection contract stabilizes:
 Do not enable cache_control while Discovery, Review prompts, models, or Evidence
 contracts are still changing. The current V5 Registry route records zero cache
