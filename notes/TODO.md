@@ -154,6 +154,15 @@ used for this test. Acceptance: a whole-page architectural layout is still
 discarded; a bounded object plan on a multi-Island page remains Object Evidence;
 Floor 06 live run changes only this classification outcome, not recall or Q.
 
+ACTIVE BASELINE, V8.4, P0, exact protected V7.14 runtime:
+Base: protected `detection-v7.14-conflict-membership-2026-10-30` (`39eb723`).
+No functional Detection change: Discovery, Candidate Regions, Conflict Resolver,
+Membership, render handling, dimension ownership, router, Naming and UI remain
+byte-for-byte V7.14. Only the persisted telemetry label is
+`detection_v8_4_exact_v7_14_baseline`, so the next run is auditable as V8.4.
+Acceptance: same V7.14 behavior, including its known one extra floor-plan
+package if it occurs; no V8.x floor-plan exclusion experiment is active.
+
 BENCHMARK, P0, Hasolelim Floor 06 manual Object Evidence island inventory:
 
 This is the owner-provided visual inventory, separate from final package count

@@ -1,6 +1,7 @@
 from agents.anthropic_adapter import (
     DETECTION_NO_NAMING_PROMPT_VERSION,
     DETECTION_PROMPT_VERSION,
+    DETECTION_V714_CONFLICT_MEMBERSHIP_PROMPT_VERSION,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
     detection_v5_discovery_json_schema,
 )
@@ -91,6 +92,12 @@ def test_v5_10_11_separates_full_page_discovery_from_membership_review():
     )
     assert "presentation_render" in proposal_prompt
     assert "render-only hypothesis" in review_prompt
+
+
+def test_v84_is_a_telemetry_label_for_the_exact_v714_baseline():
+    assert DETECTION_V714_CONFLICT_MEMBERSHIP_PROMPT_VERSION == (
+        "detection_v8_4_exact_v7_14_baseline"
+    )
 
 
 def test_v657_discovery_schema_bounds_non_evidence_text_only():
