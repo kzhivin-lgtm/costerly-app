@@ -71,9 +71,9 @@ material identity and explicit hardware count; it persists no structured
 geometry and zero parts. Object-to-Estimate must make that geometry available
 to the BOM Composer without weakening Detection's evidence contract.
 
-## Implemented first path
+## Earlier V4.7 first path (superseded by V4.14)
 
-The V4 runtime now preserves the V4.2 evidence result and writes two new
+The V4.7 runtime preserved the V4.2 evidence result and wrote two new
 immutable fact results for each new input: `estimation_object_to_estimate_v1`
 and `estimation_approximate_bom_v1`. The geometry agent sees every supplied
 private evidence page in bounded batches, and the deterministic builder either
