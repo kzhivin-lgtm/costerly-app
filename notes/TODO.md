@@ -3294,7 +3294,7 @@ run must retain cm scale, cover the visible large assemblies, purchase integer
 sheet units and remain on Objects at terminal completion. Do not replay LF1
 without explicit owner authorization.
 
-V4.18 implementation, 2026-11-02, within approved task `3.17.4.3`: coverage
+V4.18 implementation, 2026-11-02, commit `eba4fae`, within approved task `3.17.4.3`: coverage
 is optional audit metadata, never an eligibility gate for geometry, BOM,
 material demand, price or terminal status. The visual request may omit region,
 page or batch acknowledgements. The deterministic composer preserves valid
