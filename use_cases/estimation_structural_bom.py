@@ -71,27 +71,35 @@ def _refs(value: Any, *, allowed: set[str], required: bool, field: str) -> list[
     return list(value)
 
 
-def _unit_context(raw: Any, *, allowed: set[str]) -> tuple[str, list[str], str | None]:
+def _unit_context(raw: Any, *, allowed: set[str]) -> tuple[str, list[str], str | None, list[str]]:
     if not isinstance(raw, Mapping):
         raise ValueError("document_unit is required")
     unit = str(raw.get("unit") or "").casefold()
     if unit not in _UNIT_TO_MM:
         raise ValueError("document_unit.unit must be mm, cm or m")
     basis = str(raw.get("basis") or "")
-    refs = _refs(raw.get("evidence_refs"), allowed=allowed, required=basis == "explicit_source", field="document_unit.evidence_refs")
     reason = str(raw.get("assumption_reason") or "").strip() or None
     if basis not in {"explicit_source", "document_convention_assumption"}:
         raise ValueError("document_unit.basis is invalid")
+    raw_refs = raw.get("evidence_refs")
+    normalizations: list[str] = []
+    if basis == "document_convention_assumption":
+        # The assumption itself is the provenance. A model may redundantly
+        # attach refs, but retaining them would falsely upgrade it to source
+        # evidence. Discard the metadata contradiction and continue.
+        refs = []
+        if raw_refs not in (None, []):
+            normalizations.append("document_unit_assumption_refs_discarded")
+    else:
+        refs = _refs(raw_refs, allowed=allowed, required=True, field="document_unit.evidence_refs")
     if basis == "document_convention_assumption" and not reason:
         raise ValueError("document_unit assumption requires a reason")
-    if basis == "document_convention_assumption" and refs:
-        raise ValueError("document_unit assumption may not claim source evidence")
-    return unit, refs, reason
+    return unit, refs, reason, normalizations
 
 
 def _resolve_document_unit(
     *, extraction: Mapping[str, Any], allowed: set[str], dimension_scale_gate: Mapping[str, Any] | None = None,
-) -> tuple[str, list[str], str | None, str]:
+) -> tuple[str, list[str], str | None, str, list[str]]:
     """Use the visual interpretation's one document-wide unit decision.
 
     Unit inference belongs to the visual stage, which can read dimension lines
@@ -99,17 +107,17 @@ def _resolve_document_unit(
     enforces that a cited source unit remains explicit and converts the chosen
     document convention consistently.
     """
-    unit, refs, reason = _unit_context(extraction.get("document_unit"), allowed=allowed)
+    unit, refs, reason, normalizations = _unit_context(extraction.get("document_unit"), allowed=allowed)
     raw_context = extraction.get("document_unit") or {}
     if str(raw_context.get("basis") or "") == "explicit_source":
-        return unit, refs, reason, "explicit_source"
+        return unit, refs, reason, "explicit_source", normalizations
     decision = (dimension_scale_gate or {}).get("decision")
     if isinstance(decision, Mapping) and str(decision.get("required_unit") or "") in _UNIT_TO_MM:
         return (
             str(decision["required_unit"]), [], str(decision.get("reason") or "").strip() or None,
-            "ocr_scale_guard",
+            "ocr_scale_guard", normalizations,
         )
-    return unit, refs, reason, "model_document_convention"
+    return unit, refs, reason, "model_document_convention", normalizations
 
 
 def _expected_region_ids(payload: Mapping[str, Any]) -> set[str]:
@@ -245,7 +253,7 @@ def build_structural_assembly_bom(
         raise ValueError("structural BOM requires Dimension Graph")
     allowed_refs = _allowed_refs(payload)
     allowed_families = {str(item) for item in allowed_material_families if str(item)}
-    document_unit, document_unit_refs, document_unit_reason, document_unit_basis = _resolve_document_unit(
+    document_unit, document_unit_refs, document_unit_reason, document_unit_basis, normalizations = _resolve_document_unit(
         extraction=extraction, allowed=allowed_refs, dimension_scale_gate=dimension_scale_gate,
     )
     object_payload = payload.get("object") or {}
@@ -452,7 +460,7 @@ def build_structural_assembly_bom(
     preview_refs = sorted(ref for ref in allowed_refs if ref.startswith("storage://"))
     return {
         "contract_version": ASSEMBLY_BOM_V1,
-        "composition_version": "structural_bom_v4_18",
+        "composition_version": "structural_bom_v4_19",
         "input_id": str(input_row.get("input_id") or ""), "object_input_revision": int(input_row.get("object_input_revision") or 1),
         "run_id": str(payload.get("run_id") or ""), "company_id": str(payload.get("company_id") or ""),
         "object_id": str(object_payload.get("object_id") or ""), "object_name": str(object_payload.get("object_name") or ""),
@@ -465,6 +473,7 @@ def build_structural_assembly_bom(
         },
         "assemblies": assemblies, "materials": materials, "parts": parts,
         "assumptions": list(dict.fromkeys(assumptions)),
+        "normalizations": normalizations,
         "omissions": [str(item) for item in extraction.get("omissions") or [] if str(item).strip()],
         "coverage": coverage, "coverage_audit": coverage_audit,
         "primary_preview_ref": preview_refs[0],

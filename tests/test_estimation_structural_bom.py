@@ -113,6 +113,30 @@ def test_unitless_document_convention_is_converted_consistently():
     assert explicit_result["document_unit"]["unit"] == "mm"
 
 
+def test_unit_assumption_refs_are_discarded_and_audited_not_rejected():
+    row = _input()
+    extraction = {
+        "document_unit": {
+            "unit": "cm", "basis": "document_convention_assumption", "evidence_refs": [OCR_REF],
+            "assumption_reason": "The drawing is unitless.",
+        },
+        "assemblies": [{
+            "assembly_id": "table", "assembly_role": "table", "quantity": 1, "evidence_refs": [REF],
+            "dimensions": {"width": _dimension(160), "depth": _dimension(115)}, "counts": {},
+            "material_roles": [{"role": "visible_sheet", "source_name": "MDF", "family": "mdf_hdf", "basis": "construction_assumption", "evidence_refs": []}],
+        }], "secondary_items": [], "omissions": [],
+    }
+
+    result = build_structural_assembly_bom(
+        input_row=row, dimension_graph=build_dimension_graph(input_row=row), extraction=extraction,
+        allowed_material_families=["mdf_hdf"],
+    )
+
+    assert result["status"] == "ready"
+    assert result["document_unit"]["evidence_refs"] == []
+    assert result["normalizations"] == ["document_unit_assumption_refs_discarded"]
+
+
 def test_scale_gate_overrides_only_a_unitless_model_mm_convention():
     row = _input()
     row["input_payload"]["object"]["evidence_pages"] = [{

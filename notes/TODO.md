@@ -3312,6 +3312,21 @@ result and query its fact/trace rows. Focused tests pass 12/12. The broader
 Estimation selection currently has 123 passes and three pre-existing failing
 handoff expectations about evidence artifact/OCR retention, outside V4.18.
 
+V4.19 implementation, 2026-11-02, within approved task `3.17.4.3`: the new
+V4.18 trace from `run_9d213e4cb78c4f2d9d7a9bb9e8aa6954`, input
+`e2fc6d97-ebf8-43a1-874b-a363ca598644`, isolated a false hard failure in
+structural composition: `document_convention_assumption` redundantly carried
+source refs. A source claim and assumption cannot coexist, but refs do not
+make a unitless-document assumption unusable. V4.19 discards them only for
+that assumption basis, records
+`document_unit_assumption_refs_discarded` in immutable BOM `normalizations`,
+and continues the calculation. Explicit-source units still require valid
+immutable refs. The same input's deterministic Scale Gate requires `cm` from
+the unitless furniture readings 265, 187, 160, 158, 145, 115 and 90, so this
+normalization cannot reintroduce the rejected mm micro-object path. Focused
+structural, trace, runtime, Scale Gate, Material Engine and Object Detail
+tests pass 68/68. Pending: deploy and obtain one owner-run V4.19 witness.
+
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
 commercial object. The existing immutable `estimation_input_v4` carries its
