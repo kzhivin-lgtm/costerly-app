@@ -3069,6 +3069,27 @@ dimensions and deliberately emits zero parts. The next task must therefore add
 bounded BOM geometry extraction or deterministic construction recipes before
 attempting any material-quantity or cost completion.
 
+ACTIVE, P0, USER APPROVED, 3.17.4.3 Object-to-Estimate and approximate BOM
+foundation: build the material-only Estimation cycle for sketches, architect
+drawings and production documents without restoring external dimensions to the
+Detection public contract. Object-to-Estimate reads immutable evidence and may
+produce cited geometry or explicitly declared construction assumptions. A
+deterministic BOM Composer converts that brief into visible facade, internal
+carcass, backing, finish and hardware demands for the whole project; the
+existing estimate-wide Material Engine then nests and rounds common materials
+across all objects. It must estimate rather than fabricate a precision shop
+cut-list: standard thicknesses and construction recipes are permitted, hidden
+micron-level gaps are not required. Automatic QA precedes the result; manual
+edits are a feedback loop that invalidates only the dependent BOM, purchasing
+and QA stages. C/I/A is the sole material price authority. `A` requires a
+future Price Research tool to persist source candidates, units, purchase
+formats and a versioned Israel projection when only Global evidence exists;
+that tool is a dependency before the always-priced production promise can be
+accepted. Acceptance for this increment: no Detection regression, cited versus
+assumed geometry is explicit, no model price/catalog choice, no invented
+precision parts, and a real wardrobe/cabinet package reaches an auditable
+approximate BOM preview.
+
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
 commercial object. The existing immutable `estimation_input_v4` carries its
