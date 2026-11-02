@@ -35,6 +35,7 @@ _ASSUMPTION_RULES = frozenset({
     "formica_as_melamine_faced_particleboard",
     "paint_is_finish_not_board",
     "default_paint_finish_kit_per_finished_object",
+    "unitless_technical_drawing_centimetre_interpretation",
 })
 _FORBIDDEN_TERMS = frozenset({
     "price", "cost", "rate", "hour", "labor", "operation", "machine",

@@ -17,6 +17,7 @@ from typing import Literal, Mapping, Sequence
 
 PurchaseKind = Literal["sheet", "linear_stock", "linear_cut", "volume_direct", "piece", "direct"]
 PlanStatus = Literal["planned", "needs_review"]
+_MAX_SHEET_SPLIT_PIECES_PER_FINISHED_PART = 256
 
 
 class MaterialEngineError(ValueError):
@@ -204,6 +205,10 @@ def _split_sheet_part(
         raise MaterialEngineError("sheet dimensions must exceed kerf")
     length_count = int(_ceil(length / usable_length))
     width_count = int(_ceil(width / usable_width))
+    if length_count * width_count > _MAX_SHEET_SPLIT_PIECES_PER_FINISHED_PART:
+        raise MaterialEngineError(
+            "sheet panel split exceeds geometry safety limit; check source dimensions"
+        )
     lengths = [min(usable_length, length - usable_length * index) for index in range(length_count)]
     widths = [min(usable_width, width - usable_width * index) for index in range(width_count)]
     return tuple((segment_length, segment_width) for segment_length in lengths for segment_width in widths)

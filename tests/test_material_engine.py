@@ -55,6 +55,16 @@ def test_engine_nests_demands_from_multiple_objects_before_rounding_to_sheets():
     }
 
 
+def test_engine_rejects_pathological_sheet_fragmentation_before_nesting():
+    plan = plan_material_purchases(
+        demands=(_demand("invalid-building-panel", length_mm=265000, width_mm=160000),),
+        candidates=(_sheet(),),
+    )
+
+    assert plan.status == "needs_review"
+    assert any("geometry safety limit" in reason for reason in plan.reason_codes)
+
+
 def test_engine_selects_lowest_total_sheet_basket_not_lowest_single_sheet_price():
     demand = _demand(
         "large-panel", quantity=2, length_mm=1500, width_mm=700,

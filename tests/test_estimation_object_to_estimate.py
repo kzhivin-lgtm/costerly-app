@@ -1,6 +1,7 @@
 import pytest
 
 from use_cases.estimation_approximate_bom import compose_approximate_bom_v1
+from use_cases.estimation_object_to_estimate import build_object_to_estimate_brief
 from use_cases.estimation_object_to_estimate_contract import (
     OBJECT_TO_ESTIMATE_V1,
     validate_object_to_estimate_v1,
@@ -73,6 +74,33 @@ def test_construction_brief_rejects_assumption_claiming_evidence():
 
     with pytest.raises(ValueError, match="assumption may not claim evidence"):
         validate_object_to_estimate_v1(brief)
+
+
+def test_unitless_technical_furniture_drawing_normalises_the_model_100x_error():
+    input_row = {
+        "input_id": "input-1", "object_input_revision": 1,
+        "input_payload": {
+            "contract_version": "estimation_input_v4", "run_id": "run-1", "company_id": "company-1",
+            "object": {"object_id": "object-1", "object_name": "Cabinet", "quantity": 1},
+            "evidence": {"artifacts": [{"storage_ref": REF}], "ocr_blocks": [], "ocr_literal_items": []},
+        },
+    }
+    extraction = {
+        "object_kind": "cabinet",
+        "dimensions": [
+            {"key": "width", "value": 160000, "confidence": 90, "evidence_refs": [REF]},
+            {"key": "depth", "value": 72000, "confidence": 90, "evidence_refs": [REF]},
+            {"key": "height", "value": 265000, "confidence": 90, "evidence_refs": [REF]},
+        ],
+        "counts": [], "material_roles": [],
+    }
+
+    brief = build_object_to_estimate_brief(input_row=input_row, extraction=extraction)
+
+    assert {axis: brief["dimensions_mm"][axis]["value_mm"] for axis in ("width", "depth", "height")} == {
+        "width": 1600.0, "depth": 720.0, "height": 2650.0,
+    }
+    assert "unitless_technical_drawing_centimetre_interpretation" in brief["assumptions"]
 
 
 def test_wardrobe_recipe_composes_approximate_parts_without_source_claims():

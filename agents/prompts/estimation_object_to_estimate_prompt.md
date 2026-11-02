@@ -10,7 +10,10 @@ Inspect every supplied private source page. Return raw JSON only:
 Each measurement claim is
 `{"key":"width|depth|height","value":positive_finished_mm,"confidence":0..100,"evidence_refs":[...]}`.
 Use finished dimensions, not paper-space millimetres. Apply a visibly stated
-drawing scale when present. Cite only exact `source_evidence_ref` or OCR
+drawing scale when present. When a furniture drawing has no printed unit, do
+not blindly multiply the visible value by 1,000: use the complete object scale
+to return millimetres, for example 160/72/265 on one cabinet drawing normally
+means 1600/720/2650 mm. Cite only exact `source_evidence_ref` or OCR
 `block_ref` values from this batch. Do not estimate a missing dimension.
 
 Each count claim is

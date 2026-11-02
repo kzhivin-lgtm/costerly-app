@@ -20,6 +20,8 @@ _DEFAULT_COUNTS = {
     "door_count": (1, "default_single_door"),
     "shelf_count_per_bay": (1, "default_single_shelf_per_bay"),
 }
+_UNIT_NORMALISATION_MIN_IMPLAUSIBLE_MM = 50_000
+_UNIT_NORMALISATION_MAX_IMPLAUSIBLE_MM = 500_000
 
 
 def _normalised_phrase(value: Any) -> str:
@@ -87,6 +89,29 @@ def _best_claim(
     return max(valid, key=lambda claim: (_confidence(claim.get("confidence")), tuple(claim.get("evidence_refs") or ()))) if valid else None
 
 
+def _needs_unitless_centimetre_normalisation(
+    claims: Mapping[str, Mapping[str, Any] | None],
+) -> bool:
+    """Detect the model's 100x unitless-drawing conversion error conservatively.
+
+    The source values remain cited. The conversion itself is recorded as a
+    named construction assumption because a unitless drawing cannot prove it.
+    Requiring two implausible cabinet axes prevents a single large legitimate
+    installation dimension from being silently rescaled.
+    """
+    values = [
+        _positive(claim.get("value"))
+        for claim in claims.values()
+        if claim is not None
+    ]
+    implausible = [
+        value for value in values
+        if value is not None
+        and _UNIT_NORMALISATION_MIN_IMPLAUSIBLE_MM <= value <= _UNIT_NORMALISATION_MAX_IMPLAUSIBLE_MM
+    ]
+    return len(implausible) >= 2
+
+
 def build_object_to_estimate_brief(
     *, input_row: Mapping[str, Any], extraction: Mapping[str, Any],
 ) -> dict[str, Any]:
@@ -110,14 +135,25 @@ def build_object_to_estimate_brief(
     if object_kind != extraction_kind:
         assumptions.append("default_cabinet_archetype")
 
+    selected_dimension_claims = {
+        axis: _best_claim(dimensions_claims, expected_key=axis, allowed_refs=allowed_refs)
+        for axis in _DEFAULT_DIMENSIONS_MM
+    }
+    normalise_unitless_centimetres = _needs_unitless_centimetre_normalisation(selected_dimension_claims)
+    if normalise_unitless_centimetres:
+        assumptions.append("unitless_technical_drawing_centimetre_interpretation")
+
     dimensions = {}
     for axis, (default_value, default_rule) in _DEFAULT_DIMENSIONS_MM.items():
-        claim = _best_claim(dimensions_claims, expected_key=axis, allowed_refs=allowed_refs)
+        claim = selected_dimension_claims[axis]
         if claim is None:
             assumptions.append(default_rule)
             dimensions[axis] = {"value_mm": default_value, "basis": "assumption", "evidence_refs": [], "assumption_rule": default_rule}
         else:
-            dimensions[axis] = {"value_mm": claim["value"], "basis": "evidence", "evidence_refs": list(claim["evidence_refs"]), "assumption_rule": None}
+            value_mm = float(claim["value"])
+            if normalise_unitless_centimetres and value_mm >= _UNIT_NORMALISATION_MIN_IMPLAUSIBLE_MM:
+                value_mm /= 100
+            dimensions[axis] = {"value_mm": value_mm, "basis": "evidence", "evidence_refs": list(claim["evidence_refs"]), "assumption_rule": None}
 
     counts = {}
     for name, (default_value, default_rule) in _DEFAULT_COUNTS.items():
