@@ -61,6 +61,7 @@ class MaterialEngineResult:
     reason_codes: tuple[str, ...] = ()
     candidate_authorities: tuple[tuple[str, str], ...] = ()
     candidate_display_names: tuple[tuple[str, str], ...] = ()
+    candidate_purchase_forms: tuple[tuple[str, Mapping[str, Any]], ...] = ()
     applied_defaults: tuple[Mapping[str, Any], ...] = ()
     assumption_fallbacks: tuple[Mapping[str, Any], ...] = ()
 
@@ -151,6 +152,7 @@ def material_plan_snapshot(
     plan = result.plan
     authorities = dict(result.candidate_authorities)
     display_names = dict(result.candidate_display_names)
+    purchase_forms = dict(result.candidate_purchase_forms)
     lines = []
     for line in plan.lines if plan else ():
         lines.append({
@@ -159,6 +161,10 @@ def material_plan_snapshot(
             "authority": authorities.get(line.candidate_id),
             "display_name": display_names.get(line.candidate_id),
             "purchase_kind": line.purchase_kind,
+            "purchasable_dimensions": dict(
+                purchase_forms.get(line.candidate_id, {}).get("purchasable_dimensions") or {}
+            ),
+            "package_quantity": purchase_forms.get(line.candidate_id, {}).get("package_quantity"),
             "purchase_quantity": float(line.purchase_quantity),
             "price_per_purchase_unit": float(line.price_per_purchase_unit),
             "total_cost": float(line.total_cost),
@@ -1252,6 +1258,19 @@ def build_material_plan(
             (candidate_id, candidate.display_name)
             for candidate_id, candidate in candidates.items()
             if candidate.display_name
+        )),
+        candidate_purchase_forms=tuple(sorted(
+            (
+                candidate_id,
+                {
+                    "purchasable_dimensions": {
+                        str(key): float(value)
+                        for key, value in dict(candidate.purchasable_dimensions or {}).items()
+                    },
+                    "package_quantity": float(candidate.package_quantity),
+                },
+            )
+            for candidate_id, candidate in candidates.items()
         )),
         applied_defaults=tuple(sorted(
             applied_defaults,

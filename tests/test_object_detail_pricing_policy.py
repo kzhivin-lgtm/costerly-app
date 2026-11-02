@@ -2,6 +2,7 @@ import pandas as pd
 
 from ui.object_detail_view import _group_summary_value, _number_text, _quantity, _row_values, _table_html
 from use_cases import estimation
+from use_cases.estimation import _material_rows_from_plan
 
 
 def _section():
@@ -73,6 +74,50 @@ def test_project_allocation_never_displays_an_effective_area_price():
     assert "₪212" in values[3]
     assert "contenteditable" not in values[2]
     assert ">I</span>" in values[3]
+
+
+def test_material_purchase_table_shows_demand_and_purchase_without_allocation_language():
+    section = {
+        "key": "material", "title": "Materials",
+        "columns": ["Material", "Required material", "Purchase unit", "Purchase quantity", "Total"],
+        "rows": [{
+            "item": "Veneered MDF 18 mm", "price_source": "A", "required_material": "5.2 m²",
+            "purchase_unit": "sheet 2440 × 1220 mm", "purchase_quantity": "2 sheet", "total": 400,
+        }],
+    }
+
+    values = _row_values(section, section["rows"][0])
+    html = _table_html(section)
+
+    assert ">A</span>Veneered MDF 18 mm" in values[0]
+    assert values[1] == "5.2 m²"
+    assert values[2] == "sheet 2440 × 1220 mm"
+    assert values[3] == "2 sheet"
+    assert "Project allocation" not in html
+    assert "Project material plan" not in html
+
+
+def test_assumption_rows_hide_assembly_roles_but_preserve_net_demand_and_purchase():
+    rows = _material_rows_from_plan({
+        "lines": [{
+            "authority": "assumption", "display_name": "Cabinet Carcass", "purchase_kind": "sheet",
+            "purchasable_dimensions": {"length_mm": 2440, "width_mm": 1220},
+            "purchase_quantity": 2, "total_cost": 400,
+            "allocations": [{
+                "object_id": "object-1", "material_requirement_id": "board", "length_mm": 2650,
+                "width_mm": 430, "quantity": 2,
+            }],
+        }],
+        "assumption_fallbacks": [{
+            "material_requirement_id": "board", "source_name": "Cabinet Carcass",
+            "material_family": "particleboard", "specification": {"thickness_mm": 18},
+        }],
+    }, object_id="object-1")
+
+    assert rows == [{
+        "item": "Particleboard 18 mm", "price_source": "A", "required_material": "2.3 m²",
+        "purchase_unit": "sheet 2440 × 1220 mm", "purchase_quantity": "2 sheet", "total": 400.0,
+    }]
 
 
 def test_nan_values_do_not_crash_object_detail_number_rendering():

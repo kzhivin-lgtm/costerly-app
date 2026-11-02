@@ -25,12 +25,29 @@ from db.repositories import (
     upsert_rfq_estimate_shell,
 )
 from db.supabase_client import get_supabase_client
+from agents.estimation_v3_material_facts_agent import ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION
 from use_cases.estimation_object_to_estimate_runtime import ESTIMATION_ACTIVE_BOM_AGENT_VERSION
 from db.company_access import assert_estimate_owned, assert_run_owned
 from state.company_auth import company_auth_enabled
 from state.session import get_company_id
 from models.estimation import ObjectEstimateSeed
 from use_cases.retry import read_with_retry
+
+
+_ASSUMPTION_MATERIAL_DISPLAY_NAMES = {
+    "mdf_hdf": "MDF",
+    "melamine_faced_particleboard": "LDSP",
+    "particleboard": "Particleboard",
+    "fibreboard_hardboard": "Hardboard",
+    "timber_solid_wood_panel": "Solid wood panel",
+    "paint_lacquer_stain": "Paint finish",
+    "metal_round_bar_rod_wire": "Furniture leg",
+    "purchased_fabricated_component": "Furniture leg",
+}
+_ASSUMPTION_ROLE_WORDS = frozenset({
+    "cabinet", "carcass", "facade", "table", "seat", "worktop", "countertop",
+    "drawer", "panel", "backing", "sheet", "leg",
+})
 
 
 def _assert_screen_estimate_access(client: Any, estimate_id: str) -> None:
@@ -394,14 +411,20 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
     object_row = matching.iloc[0].to_dict()
     canonical_quantity = _number(object_row.get("quantity"), 1)
     facts_result = {}
-    try:
-        facts_result = fetch_latest_estimation_facts_by_object(
-            client,
-            run_id=str(object_row.get("run_id") or ""),
-            agent_version=ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION,
-        ).get(object_id) or {}
-    except Exception:
-        facts_result = {}
+    for agent_version in (
+        ESTIMATION_ACTIVE_BOM_AGENT_VERSION,
+        ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION,
+    ):
+        try:
+            facts_result = fetch_latest_estimation_facts_by_object(
+                client,
+                run_id=str(object_row.get("run_id") or ""),
+                agent_version=agent_version,
+            ).get(object_id) or {}
+        except Exception:
+            facts_result = {}
+        if facts_result:
+            break
     facts_payload = facts_result.get("facts_payload") or {}
     settings = _first_row(
         fetch_company_overhead_settings(client, str(object_row.get("company_id")))
@@ -474,7 +497,10 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
                 }
             )
 
-    if not material_rows:
+    plan_material_rows = _material_rows_from_plan(material_plan, object_id=object_id)
+    if plan_material_rows:
+        material_rows = plan_material_rows
+    elif not material_rows:
         material_rows = _material_rows_from_material_facts(facts_payload)
 
     material_total = sum(_number(row.get("cost"), 0) for row in material_rows)
@@ -522,17 +548,13 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
             company_id=str(object_row.get("company_id") or ""),
         ),
         "facts_status": facts_result.get("status"),
-        "project_material_purchases": _project_material_purchase_rows(material_plan),
+        "elements": _element_rows_from_bom(facts_payload),
         "sections": [
             {
                 "key": "material",
-                "title": "Material cost",
-                "metrics": [
-                    ("Cost", material_total),
-                    (f"VAT {_format_number(vat_percent)}%", round(material_total * vat_percent / 100, 2)),
-                    ("Total", round(material_total * (1 + vat_percent / 100), 2)),
-                ],
-                "columns": ["Item", "Unit", "Material per item", "Unit cost", "Final cost"],
+                "title": "Materials",
+                "metrics": [],
+                "columns": ["Material", "Required material", "Purchase unit", "Purchase quantity", "Total"],
                 "rows": material_rows,
             },
         ],
@@ -566,6 +588,133 @@ def _material_rows_from_material_facts(facts_payload: dict[str, Any]) -> list[di
             "cost": None,
         })
     return rows
+
+
+def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -> list[dict[str, Any]]:
+    """Project nesting is internal; render the selected material and physical demand."""
+    assumption_by_requirement = {
+        str(row.get("material_requirement_id") or ""): row
+        for row in plan_snapshot.get("assumption_fallbacks") or []
+        if isinstance(row, dict)
+    }
+    rows = []
+    for line in plan_snapshot.get("lines") or []:
+        if not isinstance(line, dict):
+            continue
+        allocations = [
+            allocation for allocation in line.get("allocations") or []
+            if isinstance(allocation, dict) and str(allocation.get("object_id") or "") == object_id
+        ]
+        if not allocations:
+            continue
+        purchase_kind = str(line.get("purchase_kind") or "")
+        required_value, required_unit = _required_material_volume(allocations, purchase_kind=purchase_kind)
+        if required_value <= 0:
+            continue
+        authority = {"company": "C", "israel_reference": "I"}.get(
+            str(line.get("authority") or ""), "A"
+        )
+        requirement_ids = {
+            str(allocation.get("material_requirement_id") or "") for allocation in allocations
+        }
+        fallback = (
+            assumption_by_requirement[next(iter(requirement_ids))]
+            if authority == "A" and len(requirement_ids) == 1
+            and next(iter(requirement_ids), "") in assumption_by_requirement else None
+        )
+        rows.append({
+            "item": (
+                _assumption_material_display_name(fallback)
+                if isinstance(fallback, dict) else str(line.get("display_name") or "Material")
+            ),
+            "price_source": authority,
+            "required_material": f"{_format_number(required_value)} {required_unit}",
+            "purchase_unit": _purchase_unit_display(line),
+            "purchase_quantity": (
+                f"{_format_number(_number(line.get('purchase_quantity'), 0))} "
+                f"{_purchase_unit_label(purchase_kind)}"
+            ),
+            "total": _number(line.get("total_cost"), 0),
+        })
+    return rows
+
+
+def _assumption_material_display_name(fallback: dict[str, Any]) -> str:
+    source_name = " ".join(str(fallback.get("source_name") or "").split()).strip()
+    words = {word.strip(" ,./-_").casefold() for word in source_name.split()}
+    family = str(fallback.get("material_family") or "")
+    name = (
+        source_name if source_name and not (words & _ASSUMPTION_ROLE_WORDS)
+        else _ASSUMPTION_MATERIAL_DISPLAY_NAMES.get(family, "Material")
+    )
+    specification = fallback.get("specification") or {}
+    thickness = _number(specification.get("thickness_mm"), 0) if isinstance(specification, dict) else 0
+    return f"{name} {_format_number(thickness)} mm" if thickness > 0 else name
+
+
+def _required_material_volume(
+    allocations: list[dict[str, Any]], *, purchase_kind: str,
+) -> tuple[float, str]:
+    if purchase_kind == "sheet":
+        area_mm2 = sum(
+            _number(allocation.get("area_mm2"), 0)
+            or (
+                _number(allocation.get("length_mm"), 0)
+                * _number(allocation.get("width_mm"), 0)
+                * _number(allocation.get("quantity"), 1)
+            )
+            for allocation in allocations
+        )
+        return area_mm2 / 1_000_000, "m²"
+    if purchase_kind in {"linear_stock", "linear_cut"}:
+        length_mm = sum(
+            _number(allocation.get("length_mm"), 0) * _number(allocation.get("quantity"), 1)
+            for allocation in allocations
+        )
+        return length_mm / 1_000, "m"
+    if purchase_kind == "volume_direct":
+        volume_mm3 = sum(_number(allocation.get("volume_mm3"), 0) for allocation in allocations)
+        return volume_mm3 / 1_000_000_000, "m³"
+    return sum(_number(allocation.get("quantity"), 0) for allocation in allocations), "piece"
+
+
+def _purchase_unit_display(line: dict[str, Any]) -> str:
+    purchase_kind = str(line.get("purchase_kind") or "")
+    dimensions = line.get("purchasable_dimensions") or {}
+    if purchase_kind == "sheet":
+        length = _number(dimensions.get("length_mm"), 0) if isinstance(dimensions, dict) else 0
+        width = _number(dimensions.get("width_mm"), 0) if isinstance(dimensions, dict) else 0
+        if length > 0 and width > 0:
+            return f"sheet {_format_number(length)} × {_format_number(width)} mm"
+        return "sheet"
+    if purchase_kind == "linear_stock":
+        length = _number(dimensions.get("length_mm"), 0) if isinstance(dimensions, dict) else 0
+        return f"stock {_format_number(length)} mm" if length > 0 else "stock length"
+    return "piece" if purchase_kind in {"piece", "direct"} else _purchase_unit_label(purchase_kind)
+
+
+def _element_rows_from_bom(facts_payload: dict[str, Any]) -> list[dict[str, Any]]:
+    labels = {
+        "carcass_side": "Side panel", "carcass_top_bottom": "Top / bottom panel",
+        "carcass_back": "Back panel", "facade": "Front panel", "drawer_front": "Drawer front",
+        "drawer_bottom": "Drawer bottom", "drawer_side": "Drawer side", "drawer_back": "Drawer back",
+        "top": "Top panel", "leg": "Leg",
+    }
+    result = []
+    for part in facts_payload.get("parts") or []:
+        if not isinstance(part, dict):
+            continue
+        length = _number(part.get("length_mm"), 0)
+        width = _number(part.get("width_mm"), 0)
+        result.append({
+            "label": labels.get(str(part.get("component_role") or ""), "Element"),
+            "quantity": _number(part.get("quantity"), 0),
+            "size": (
+                f"{_format_number(length)} × {_format_number(width)} mm"
+                if length > 0 and width > 0 else ""
+            ),
+        })
+    return result
 
 
 def _estimation_preview_url(

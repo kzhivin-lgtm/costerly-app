@@ -86,6 +86,14 @@ def _source_marker(value: object) -> str:
 def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]:
     """Map normalized estimate rows to visible table cells."""
     columns = section["columns"]
+    if columns == ["Material", "Required material", "Purchase unit", "Purchase quantity", "Total"]:
+        return [
+            _source_marker(row.get("price_source")) + _escape(row.get("item")),
+            _escape(row.get("required_material")),
+            _escape(row.get("purchase_unit")),
+            _escape(row.get("purchase_quantity")),
+            f'<span class="object-detail-row-cost">{_money(row.get("total"))}</span>',
+        ]
     if columns[0] == "Work":
         return [
             _escape(row.get("work")),
@@ -174,6 +182,20 @@ def _table_html(section: dict[str, object]) -> str:
     )
 
     body_parts: list[str] = []
+    if columns == ["Material", "Required material", "Purchase unit", "Purchase quantity", "Total"]:
+        for row in rows:
+            values = _row_values(section, row)
+            body_parts.append(
+                '<div class="object-detail-table-row">'
+                + "".join(f'<div class="object-detail-table-cell">{value}</div>' for value in values)
+                + "</div>"
+            )
+        return (
+            f'<div class="{table_class}" data-section="{_escape(section_key)}">'
+            f'<div class="object-detail-table-head-row">{header}</div>'
+            f'{"".join(body_parts)}'
+            '</div>'
+        )
     grouped_rows: dict[object, list[dict[str, object]]] = {}
     for row in rows:
         grouped_rows.setdefault(row.get("group"), []).append(row)
@@ -255,33 +277,27 @@ def _final_html(data: dict[str, object]) -> str:
     )
 
 
-def _project_material_purchases_html(rows: object) -> str:
-    """Render the one authoritative purchase plan above per-object allocations."""
+def _elements_html(rows: object) -> str:
+    """Keep structural decomposition available without making it a cost table."""
     if not isinstance(rows, list) or not rows:
         return ""
-    header = "".join(
-        f'<div class="object-detail-table-head">{label}</div>'
-        for label in ("Material", "Project purchase", "Purchase price", "Plan total")
-    )
     body = []
     for row in rows:
         if not isinstance(row, dict):
             continue
         body.append(
-            '<div class="object-detail-table-row object-detail-project-purchase-row">'
-            f'<div class="object-detail-table-cell">{_escape(row.get("item"))}{_source_marker(row.get("price_source"))}</div>'
-            f'<div class="object-detail-table-cell">{_escape(row.get("purchase"))}</div>'
-            f'<div class="object-detail-table-cell">{_money(row.get("unit_price"))}</div>'
-            f'<div class="object-detail-table-cell">{_money(row.get("total_cost"))}</div>'
-            '</div>'
+            '<li class="object-detail-elements-row">'
+            f'{_escape(_number_text(row.get("quantity")))} × {_escape(row.get("label"))}'
+            f' <span>{_escape(row.get("size"))}</span>'
+            '</li>'
         )
     if not body:
         return ""
     return (
-        '<section class="object-detail-section object-detail-section--cols-4" data-section="project-material-plan">'
-        '<div class="object-detail-section-header"><div class="object-detail-section-title">Project material plan</div></div>'
-        '<div class="object-detail-table object-detail-table--cols-4" data-section="project-material-plan">'
-        f'<div class="object-detail-table-head-row">{header}</div>{"".join(body)}</div></section>'
+        '<details class="object-detail-elements">'
+        '<summary>Elements</summary>'
+        f'<ul>{"".join(body)}</ul>'
+        '</details>'
     )
 
 
@@ -419,8 +435,8 @@ def detail_html(
 ) -> str:
     """Render Object Detail sections, totals, and footer actions."""
     return (
-        _project_material_purchases_html(data.get("project_material_purchases"))
-        + "".join(_section_html(section) for section in data["sections"])
+        "".join(_section_html(section) for section in data["sections"])
+        + _elements_html(data.get("elements"))
         + _final_html(data)
         + _footer_html(
             run_id=run_id,

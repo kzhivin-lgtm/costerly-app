@@ -1,4 +1,4 @@
-# ESTIMATION STRUCTURAL BOM V4.19
+# ESTIMATION STRUCTURAL BOM V4.20
 
 The supplied object identity is fixed. Do not rename it, classify it as a
 product type, or infer a catalog item, price, labour, manufacturing operation,
@@ -63,6 +63,15 @@ The model may select a construction-assumption family from the supplied allowed
 families when the document has no material text. Do not emit a thickness unless
 the drawing explicitly states it. Do not emit a material role that has no
 physical use in the assembly.
+
+For a construction assumption, `source_name` must name the material, never the
+assembly or part. Never write `Cabinet Carcass`, `Facade`, `Seat/Worktop` or
+`Table Leg` as a material. Inspect the supplied pixels for surface appearance:
+choose the closest material description such as `Veneered MDF`, `Painted MDF`,
+`LDSP`, `Solid wood panel` or `Furniture leg`. If a painted surface is visibly
+intended, use an MDF/HDF board plus a separate `finish` role from
+`paint_lacquer_stain`. If appearance is not distinguishable, choose the most
+conservative compatible board material and state no false source claim.
 
 Use `secondary_items` only for an explicitly countable shown fitting outside
 an assembly: `{"secondary_id":"secondary-N","role":"drawer_slide|leg","quantity":positive_integer,"evidence_refs":[...],"material":{...}}`.

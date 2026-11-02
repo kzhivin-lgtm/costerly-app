@@ -3327,6 +3327,25 @@ normalization cannot reintroduce the rejected mm micro-object path. Focused
 structural, trace, runtime, Scale Gate, Material Engine and Object Detail
 tests pass 68/68. Pending: deploy and obtain one owner-run V4.19 witness.
 
+V4.20 implementation, 2026-11-02, within approved task `3.17.4.3`: the
+accepted V4.19 witness `run_af762e31361047e4a151415c3e2b7285` exposed a
+product-layer regression, not a Material Engine purchase error. Object Detail
+rendered its internal allocation representation twice, as `Project Material
+Plan` and `Material Cost`, and leaked assembly labels such as `Cabinet
+Carcass` and `Cabinet Facade` as material names. V4.20 renders one Materials
+table only: material name with leading C/I/A marker, strict net required
+material volume, purchasable unit/format, whole project purchase quantity and
+total. Whole-stock nesting remains estimate-wide internally. Per-object
+structural panels become a closed Elements list rather than a second cost
+table. Snapshot data now persists supplier/assumption purchase dimensions for
+the displayed format. Assumption names suppress assembly-role words, while the
+visual prompt directs the model to select a material description from surface
+appearance, including Veneered MDF, Painted MDF, LDSP, solid wood or furniture
+legs. Current immutable V4.19 output is not rewritten; its UI becomes
+non-generic where the stored family permits. Focused structural, runtime,
+Material Engine, Object Detail and Objects checks pass 65/65. Pending: deploy
+and obtain a fresh V4.20 witness for the visual material-selection change.
+
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
 commercial object. The existing immutable `estimation_input_v4` carries its

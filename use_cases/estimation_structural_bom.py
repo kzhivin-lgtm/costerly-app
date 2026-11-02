@@ -32,6 +32,21 @@ _FAMILY_PREFERENCE = {
     "drawer_slide": ("hardware_drawer_slide",),
     "leg": ("purchased_fabricated_component",),
 }
+_CONSTRUCTION_MATERIAL_NAMES = {
+    "mdf_hdf": "MDF",
+    "melamine_faced_particleboard": "LDSP",
+    "particleboard": "Particleboard",
+    "fibreboard_hardboard": "Hardboard",
+    "timber_solid_wood_panel": "Solid wood panel",
+    "paint_lacquer_stain": "Paint finish",
+    "hardware_drawer_slide": "Drawer slide",
+    "purchased_fabricated_component": "Furniture leg",
+    "metal_round_bar_rod_wire": "Furniture leg",
+}
+_ROLE_WORDS = frozenset({
+    "cabinet", "carcass", "facade", "table", "seat", "worktop", "countertop",
+    "drawer", "panel", "backing", "sheet", "leg",
+})
 def _positive(value: Any, *, field: str) -> float:
     if isinstance(value, bool):
         raise ValueError(f"{field} must be a positive number")
@@ -236,6 +251,17 @@ def _default_thickness(role: str) -> float | None:
     return None
 
 
+def _construction_material_name(*, raw_name: object, family: str, role: str) -> str:
+    """Keep assembly labels out of the material resolver and customer UI."""
+    name = " ".join(str(raw_name or "").split()).strip()
+    words = {word.strip(" ,./-_").casefold() for word in name.split()}
+    if name and not (words & _ROLE_WORDS):
+        return name
+    if role == "leg":
+        return "Furniture leg"
+    return _CONSTRUCTION_MATERIAL_NAMES.get(family, "Material")
+
+
 def build_structural_assembly_bom(
     *, input_row: Mapping[str, Any], dimension_graph: Mapping[str, Any], extraction: Mapping[str, Any],
     allowed_material_families: Sequence[str], dimension_scale_gate: Mapping[str, Any] | None = None,
@@ -275,10 +301,14 @@ def build_structural_assembly_bom(
         if family not in allowed_families:
             family = _default_family(role=role, allowed=allowed_families)
             assumptions.append(f"Default {role} material family: {family}")
-        source_name = str(raw.get("source_name") or f"Assumed {role.replace('_', ' ')}").strip()
         basis = str(raw.get("basis") or "construction_assumption")
         if basis not in {"source_evidence", "construction_assumption"}:
             raise ValueError(f"material role {role} has invalid basis")
+        source_name = str(raw.get("source_name") or "").strip()
+        if basis == "construction_assumption":
+            source_name = _construction_material_name(raw_name=source_name, family=family, role=role)
+        elif not source_name:
+            source_name = _CONSTRUCTION_MATERIAL_NAMES.get(family, "Material")
         refs = _refs(raw.get("evidence_refs"), allowed=allowed_refs, required=basis == "source_evidence", field=f"material_roles.{role}.evidence_refs")
         if basis == "construction_assumption" and refs:
             raise ValueError(f"material role {role} assumption may not claim source evidence")
@@ -460,7 +490,7 @@ def build_structural_assembly_bom(
     preview_refs = sorted(ref for ref in allowed_refs if ref.startswith("storage://"))
     return {
         "contract_version": ASSEMBLY_BOM_V1,
-        "composition_version": "structural_bom_v4_19",
+        "composition_version": "structural_bom_v4_20",
         "input_id": str(input_row.get("input_id") or ""), "object_input_revision": int(input_row.get("object_input_revision") or 1),
         "run_id": str(payload.get("run_id") or ""), "company_id": str(payload.get("company_id") or ""),
         "object_id": str(object_payload.get("object_id") or ""), "object_name": str(object_payload.get("object_name") or ""),

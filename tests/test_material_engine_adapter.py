@@ -507,6 +507,7 @@ def test_material_plan_snapshot_preserves_purchase_and_object_traceability():
     assert snapshot["status"] == "planned"
     assert snapshot["lines"][0]["authority"] == "company"
     assert snapshot["lines"][0]["display_name"] == "Plywood 18 mm"
+    assert snapshot["lines"][0]["purchasable_dimensions"] == {"length_mm": 2440.0, "width_mm": 1220.0}
     assert snapshot["lines"][0]["total_cost"] == 100.0
     assert snapshot["lines"][0]["allocations"] == [{
         "demand_id": "cabinet-a:side-a", "purchase_index": 1,
