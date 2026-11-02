@@ -658,9 +658,9 @@ def _material_norms_from_plan(plan_snapshot: dict[str, Any]) -> dict[tuple[str, 
         purchase_kind = str(line.get("purchase_kind") or "")
         if purchase_kind == "sheet":
             unit, divisor, dimension = "m²", 1_000_000.0, "area"
-        elif purchase_kind == "linear_stock":
+        elif purchase_kind in {"linear_stock", "linear_cut"}:
             unit, divisor, dimension = "m", 1_000.0, "length"
-        elif purchase_kind == "piece":
+        elif purchase_kind in {"piece", "direct"}:
             unit, divisor, dimension = "piece", 1.0, "quantity"
         else:
             continue
@@ -747,28 +747,6 @@ def apply_material_plan_allocations(
         object_id = str(line.get("object_id") or "")
         requirement_id = _material_requirement_id(line)
         assumption = assumption_fallbacks.get((object_id, requirement_id))
-        if assumption is not None:
-            update_rfq_estimate_line(
-                client,
-                estimate_id=estimate_id,
-                line_id=str(line.get("line_id") or ""),
-                values={
-                    "item_name": f"Assumption: {assumption['source_name']}",
-                    "unit": assumption.get("unit"),
-                    "quantity": assumption.get("quantity_per_item"),
-                    "unit_cost": None,
-                    "cost": None,
-                    "needs_price": True,
-                    "needs_review": True,
-                    "notes": (
-                        "Assumption Fallback after neither Company Catalog nor Israel Reference "
-                        f"could supply the requirement ({assumption['reason_code']})."
-                    ),
-                    "updated_at": datetime.now(UTC).isoformat(),
-                },
-            )
-            affected_object_ids.add(object_id)
-            continue
         allocated_cost = allocation_costs.get((object_id, requirement_id))
         norm = material_norms.get((object_id, requirement_id))
         if allocated_cost is None or norm is None:
@@ -778,6 +756,26 @@ def apply_material_plan_allocations(
             continue
         quantity_per_item = total_required_quantity / max(object_quantities.get(object_id, 1), 1)
         effective_unit_cost = round(allocated_cost / total_required_quantity, 4)
+        if assumption is not None:
+            rationale = (assumption.get("assumption_price") or {}).get("rationale") or []
+            update_rfq_estimate_line(
+                client,
+                estimate_id=estimate_id,
+                line_id=str(line.get("line_id") or ""),
+                values={
+                    "item_name": f"Assumption: {assumption['source_name']}",
+                    "unit": unit,
+                    "quantity": quantity_per_item,
+                    "unit_cost": effective_unit_cost,
+                    "cost": round(allocated_cost, 2),
+                    "needs_price": False,
+                    "needs_review": False,
+                    "notes": " ".join(str(item) for item in rationale),
+                    "updated_at": datetime.now(UTC).isoformat(),
+                },
+            )
+            affected_object_ids.add(object_id)
+            continue
         update_rfq_estimate_line(
             client,
             estimate_id=estimate_id,

@@ -395,10 +395,12 @@ def test_profile_dimension_never_uses_an_unrelated_family_default():
         },
     )
 
-    assert result.plan is None
+    assert result.plan is not None
+    assert result.plan.status == "planned"
+    assert result.plan.lines[0].candidate_id.startswith("assumption:")
     assert result.applied_defaults == ()
     assert result.assumption_fallbacks[0]["reason_code"] == "material_pricing_key_incomplete"
-    assert result.assumption_fallbacks[0]["selection_key"] is None
+    assert result.assumption_fallbacks[0]["selection_key"] == "assumption:metal_tube:tube"
 
 
 def test_melamine_one_sided_missing_thickness_uses_generic_laminated_default_position():
@@ -586,27 +588,31 @@ def test_manual_norm_scales_by_the_object_target_quantity():
     }]
 
 
-def test_plan_records_assumption_fallback_only_after_company_and_israel_have_no_candidate():
+def test_plan_prices_assumption_fallback_after_company_and_israel_have_no_candidate():
     result = build_material_plan(
         facts_by_object={"cabinet-a": _facts("cabinet-a", "side-a")},
         catalogs=_catalogs(),
     )
 
-    assert result.plan is None
+    assert result.plan is not None
+    assert result.plan.status == "planned"
+    assert result.plan.lines[0].total_cost == Decimal("200")
     assert result.unresolved_requirement_ids == ()
     assert result.reason_codes == ("assumption_fallback",)
-    assert result.assumption_fallbacks == ({
-        "object_id": "cabinet-a",
-        "material_requirement_id": "plywood",
-        "source_name": "Plywood",
-        "material_family": "plywood",
-        "specification": {"thickness_mm": 18},
-        "selection_key": "plywood|thickness=18",
-        "quantity_per_item": 1.0,
-        "unit": "m2",
-        "reason_code": "no_company_or_israel_candidate",
-        "resolution": "assumption_fallback",
-    },)
+    fallback = result.assumption_fallbacks[0]
+    assert fallback["reason_code"] == "no_company_or_israel_candidate"
+    assert fallback["resolution"] == "assumption_fallback"
+    assert fallback["assumption_price"] == {
+        "contract_version": "estimation_assumption_price_v1",
+        "material_requirement_id": "plywood", "amount": 200.0,
+        "currency": "ILS", "unit": "sheet", "confidence": 0.0,
+        "basis_kind": "estimator_allowance",
+        "rationale": [
+            "No compatible Company Catalog or Israel Reference purchase candidate was available.",
+            "A fixed 200 ILS allowance was applied for sheet (no_company_or_israel_candidate).",
+        ],
+        "source_candidates": [],
+    }
 
 
 def test_plan_uses_evidenced_count_only_for_discrete_resolved_materials():
@@ -802,7 +808,9 @@ def test_plan_does_not_treat_a_profile_count_as_a_linear_demand():
 
     result = build_material_plan(facts_by_object={"shelf-a": facts}, catalogs=catalogs)
 
-    assert result.plan is None
+    assert result.plan is not None
+    assert result.plan.status == "planned"
+    assert result.plan.lines[0].candidate_id.startswith("assumption:")
     assert result.unresolved_requirement_ids == ()
     assert result.reason_codes == ("assumption_fallback",)
     assert result.assumption_fallbacks[0]["reason_code"] == "material_geometry_required"
@@ -841,7 +849,7 @@ def test_interim_sheet_count_receives_a_nonzero_cost_share_next_to_known_parts()
     assert material_plan_object_cost_allocations(result)[("shelf-a", "fallback")] > Decimal("0")
 
 
-def test_partial_purchase_plan_stays_review_required_when_another_fact_is_unresolved():
+def test_every_purchase_plan_is_priced_when_another_fact_needs_assumption():
     facts = _facts("cabinet-a", "side-a")
     facts["materials"].append({
         "requirement_id": "unknown", "source_name": "Unknown", "family": "unknown",
@@ -854,8 +862,8 @@ def test_partial_purchase_plan_stays_review_required_when_another_fact_is_unreso
     )
 
     assert result.plan is not None
-    assert result.plan.status == "needs_review"
-    assert len(result.plan.lines) == 1
+    assert result.plan.status == "planned"
+    assert len(result.plan.lines) == 2
     assert result.unresolved_requirement_ids == ()
     assert result.reason_codes == ("assumption_fallback",)
     assert result.assumption_fallbacks[0]["reason_code"] == "material_pricing_key_incomplete"

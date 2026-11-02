@@ -13,6 +13,7 @@ from datetime import date
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from hashlib import sha256
 import json
+import re
 from typing import Any, Mapping, Sequence
 
 from use_cases.material_identity_resolution import _hard_compatibility, normalize_material_phrase
@@ -31,6 +32,10 @@ from use_cases.material_identity_status import (
 )
 from use_cases.material_price_resolver import _canonical_unit, _effective
 from use_cases.metal_mass_calculator import kilograms_per_metre, kilograms_per_sheet
+from use_cases.estimation_assumption_price_contract import (
+    ASSUMPTION_PRICE_V1,
+    validate_assumption_price_v1,
+)
 
 
 _LINEAR_UNITS = frozenset({"lm", "mm", "cm"})
@@ -41,6 +46,8 @@ _REFERENCE_DISCRETE_PACKAGE_QUANTITIES = {
     "dozen": Decimal("12"),
 }
 _DRAWER_SLIDE_LAST_RESORT_DEPTH_MM = 400
+_ASSUMPTION_ALLOWANCE_ILS = Decimal("200")
+_ASSUMPTION_SHEET_DIMENSIONS = {"length_mm": Decimal("2440"), "width_mm": Decimal("1220")}
 
 
 @dataclass(frozen=True)
@@ -213,6 +220,70 @@ def _positive(value: Any) -> Decimal | None:
 
 def _canonical_requirement_unit(value: Any) -> str:
     return _canonical_unit(str(value or "")).replace("²", "2")
+
+
+def _assumption_selection_key(*, material_family: str, requirement_id: str) -> str:
+    """Keep no-source allowance groups deterministic without pretending C or I matched."""
+    family = re.sub(r"[^a-z0-9_.:-]+", "_", str(material_family or "material").casefold()).strip("_")
+    requirement = re.sub(r"[^a-z0-9_.:-]+", "_", str(requirement_id or "requirement").casefold()).strip("_")
+    return f"assumption:{family or 'material'}:{requirement or 'requirement'}"
+
+
+def _assumption_candidate(
+    *, object_id: str, requirement_id: str, material: Mapping[str, Any],
+    selection_key: str | None, parts: Sequence[Mapping[str, Any]], reason_code: str,
+) -> tuple[MaterialSupplyCandidate, dict[str, Any]]:
+    """Create the mandatory, visibly low-confidence A purchase candidate.
+
+    The price is an explicit ILS allowance, not a hidden C/I catalog match.
+    Geometry receives a conventional whole sheet so the ordinary project-wide
+    nesting algorithm still determines how many allowance sheets are needed.
+    """
+    material_family = str(material.get("family") or "material")
+    has_sheet_geometry = any(
+        _positive(part.get("length_mm")) is not None and _positive(part.get("width_mm")) is not None
+        for part in parts
+    )
+    raw_unit = str(material.get("unit") or "").strip()
+    normalized_unit = _canonical_requirement_unit(raw_unit)
+    if has_sheet_geometry:
+        purchase_kind, rationale_unit, dimensions = "sheet", "sheet", _ASSUMPTION_SHEET_DIMENSIONS
+    elif normalized_unit in {"m", "mm", "cm", "lm"} or material_family == "edge_banding":
+        purchase_kind, rationale_unit, dimensions = "linear_cut", "m", None
+    elif material_family.startswith("hardware_") or normalized_unit in {"piece", "set"}:
+        purchase_kind, rationale_unit, dimensions = "piece", "piece", None
+    else:
+        purchase_kind, rationale_unit, dimensions = "direct", "piece", None
+    resolved_key = selection_key or _assumption_selection_key(
+        material_family=material_family, requirement_id=requirement_id,
+    )
+    assumption_price = validate_assumption_price_v1({
+        "contract_version": ASSUMPTION_PRICE_V1,
+        "material_requirement_id": requirement_id,
+        "amount": float(_ASSUMPTION_ALLOWANCE_ILS), "currency": "ILS", "unit": rationale_unit,
+        "confidence": 0, "basis_kind": "estimator_allowance",
+        "rationale": [
+            "No compatible Company Catalog or Israel Reference purchase candidate was available.",
+            f"A fixed 200 ILS allowance was applied for {rationale_unit} ({reason_code}).",
+        ],
+        "source_candidates": [],
+    })
+    candidate = MaterialSupplyCandidate(
+        candidate_id=f"assumption:{object_id}:{requirement_id}:{purchase_kind}",
+        material_family=material_family, selection_key=resolved_key,
+        purchase_kind=purchase_kind, price_per_purchase_unit=_ASSUMPTION_ALLOWANCE_ILS,
+        currency="ILS", purchasable_dimensions=dimensions, authority="assumption",
+        display_name=f"Assumption: {str(material.get('source_name') or material_family)}",
+    )
+    fallback = {
+        "object_id": object_id, "material_requirement_id": requirement_id,
+        "source_name": str(material.get("source_name") or material_family),
+        "material_family": material_family, "specification": dict(material.get("specification") or {}),
+        "selection_key": resolved_key, "quantity_per_item": None, "unit": rationale_unit,
+        "reason_code": reason_code, "resolution": "assumption_fallback",
+        "assumption_price": assumption_price,
+    }
+    return candidate, fallback
 
 
 def _present_value(value: Any) -> bool:
@@ -856,9 +927,11 @@ def build_material_plan(
                     "quantity_per_item": (
                         None if total_quantity is None else float(total_quantity / object_quantity)
                     ),
+                    "object_quantity": float(object_quantity),
                     "unit": material.get("unit"),
                     "reason_code": reason_code,
                     "resolution": "assumption_fallback",
+                    "parts": [dict(part) for part in parts],
                 })
 
             parts = parts_by_requirement.get(requirement_id) or []
@@ -1047,18 +1120,61 @@ def build_material_plan(
                 reasons.add("assumption_fallback")
                 continue
             demands.append(direct_demand)
-    plan = plan_material_purchases(demands=demands, candidates=tuple(candidates.values())) if demands else None
-    if plan and (unresolved or assumption_fallbacks):
-        # A partially priced document is not Final Approval-ready. Keep the
-        # resolved purchase lines as traceable diagnostics, but carry every
-        # earlier Resolver gap into the plan status rather than allowing one
-        # successful demand to turn the whole estimate green.
-        plan = replace(
-            plan,
-            status="needs_review",
-            unresolved_demand_ids=tuple(sorted(set((*plan.unresolved_demand_ids, *unresolved)))),
-            reason_codes=tuple(sorted(set((*plan.reason_codes, *reasons)))),
+    for fallback in assumption_fallbacks:
+        object_id = str(fallback["object_id"])
+        requirement_id = str(fallback["material_requirement_id"])
+        material = {
+            "source_name": fallback["source_name"], "family": fallback["material_family"],
+            "specification": fallback["specification"], "unit": fallback.get("unit"),
+        }
+        parts = tuple(item for item in fallback.pop("parts", []) if isinstance(item, Mapping))
+        candidate, priced_fallback = _assumption_candidate(
+            object_id=object_id, requirement_id=requirement_id, material=material,
+            selection_key=fallback.get("selection_key"), parts=parts,
+            reason_code=str(fallback["reason_code"]),
         )
+        candidates[candidate.candidate_id] = candidate
+        fallback.update({
+            "selection_key": candidate.selection_key, "unit": priced_fallback["unit"],
+            "assumption_price": priced_fallback["assumption_price"],
+        })
+        if candidate.purchase_kind == "sheet" and parts:
+            appended = 0
+            for part in parts:
+                try:
+                    demands.append(MaterialDemand(
+                        demand_id=f"{object_id}:{part.get('part_id')}:assumption",
+                        object_id=object_id, material_family=candidate.material_family,
+                        selection_key=candidate.selection_key, quantity=part.get("quantity"), unit="piece",
+                        compatible_candidate_ids=(candidate.candidate_id,),
+                        part_id=str(part.get("part_id") or "") or None,
+                        material_requirement_id=requirement_id,
+                        length_mm=part.get("length_mm"), width_mm=part.get("width_mm"),
+                        rotation_allowed=bool(part.get("rotation_allowed")),
+                    ))
+                    appended += 1
+                except MaterialEngineError:
+                    continue
+            if appended:
+                continue
+        quantity_per_item = _positive(fallback.get("quantity_per_item")) or Decimal("1")
+        object_quantity = _positive(fallback.get("object_quantity")) or Decimal("1")
+        total_quantity = quantity_per_item * object_quantity
+        demand_kwargs: dict[str, Any] = {}
+        if candidate.purchase_kind == "linear_cut":
+            demand_kwargs["linear_length_mm"] = total_quantity * Decimal("1000")
+            total_quantity = Decimal("1")
+        demands.append(MaterialDemand(
+            demand_id=f"{object_id}:{requirement_id}:assumption",
+            object_id=object_id, material_family=candidate.material_family,
+            selection_key=candidate.selection_key,
+            quantity=total_quantity, unit="piece",
+            compatible_candidate_ids=(candidate.candidate_id,),
+            material_requirement_id=requirement_id,
+            **demand_kwargs,
+        ))
+        reasons.add("assumption_fallback")
+    plan = plan_material_purchases(demands=demands, candidates=tuple(candidates.values())) if demands else None
     if plan and plan.status == "needs_review":
         unresolved.extend(plan.unresolved_demand_ids)
         reasons.update(plan.reason_codes)

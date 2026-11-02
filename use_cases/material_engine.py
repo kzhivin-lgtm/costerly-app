@@ -94,7 +94,7 @@ class MaterialSupplyCandidate:
     purchasable_dimensions: Mapping[str, Decimal | int | float | str] | None = None
     package_quantity: Decimal | int | float | str = Decimal("1")
     kerf_mm: Decimal | int | float | str = Decimal("0")
-    authority: Literal["company", "israel_reference"] = "company"
+    authority: Literal["company", "israel_reference", "assumption"] = "company"
     display_name: str = ""
     offer_id: str | None = None
     reference_price_id: str | None = None
@@ -581,7 +581,14 @@ def plan_material_purchases(
             candidate = candidate_by_id.get(candidate_id)
             if candidate is None or candidate.selection_key != selection_key:
                 continue
-            plan = _plan_candidate(demands=group, candidate=candidate)
+            try:
+                plan = _plan_candidate(demands=group, candidate=candidate)
+            except MaterialEngineError as exc:
+                # A C/I candidate may be physically unusable for an incomplete
+                # source fact. Keep evaluating the mandatory A candidate in
+                # the same group instead of aborting the whole estimate.
+                group_reasons.add(str(exc))
+                continue
             if plan.line is not None:
                 possible.append(plan.line)
             elif plan.reason_code:
@@ -590,14 +597,22 @@ def plan_material_purchases(
             unresolved.extend(demand.demand_id for demand in group)
             reasons.update(group_reasons or {"no_complete_purchase_candidate"})
             continue
-        # The accepted commercial rule is company-first, then Israel fallback.
-        # Price is compared only inside the authority lane that can supply the
-        # complete group, never across Company and Israel candidates.
+        # The accepted commercial rule is company-first, then Israel, then a
+        # priced Assumption Fallback. Price is compared only inside the first
+        # authority lane that can supply the complete group.
         company_possible = [
             line for line in possible
             if candidate_by_id[line.candidate_id].authority == "company"
         ]
-        eligible = company_possible or possible
+        israel_possible = [
+            line for line in possible
+            if candidate_by_id[line.candidate_id].authority == "israel_reference"
+        ]
+        assumption_possible = [
+            line for line in possible
+            if candidate_by_id[line.candidate_id].authority == "assumption"
+        ]
+        eligible = company_possible or israel_possible or assumption_possible
         currencies = {line.currency for line in eligible}
         if len(currencies) > 1:
             unresolved.extend(demand.demand_id for demand in group)
