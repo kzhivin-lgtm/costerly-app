@@ -3357,6 +3357,14 @@ not a raw model response or exception fragment. Pending: focused tests,
 deployment, and one fresh production witness that reaches priced terminal
 completion.
 
+V4.22 implementation, 2026-11-02, commit `88cacbe`, within approved task `3.17.4.3`: optional
+model count fields no longer reject an otherwise usable assembly merely because
+they contain zero. `facades` and `shelves` retain zero as an intentional
+absence; `drawers`, `top_layers`, and `legs` revert to their conventional
+structural defaults when zero or malformed. Structural traces classify
+remaining local dimension, count, unit, material-role and evidence validators
+with bounded codes. Pending: focused tests, deployment, and one fresh witness.
+
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
 commercial object. The existing immutable `estimation_input_v4` carries its
