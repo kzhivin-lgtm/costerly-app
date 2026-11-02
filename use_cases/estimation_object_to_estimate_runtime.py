@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+import re
 from typing import Any, Mapping, Sequence
 
 from agents.estimation_assembly_bom_agent import (
@@ -38,9 +39,27 @@ _SAFE_FAILURE_PREFIXES = (
 )
 
 
+def _structural_failure_code(message: str) -> str | None:
+    """Return a bounded diagnostic code, never a model response fragment."""
+    normalized = " ".join(message.split())
+    patterns = (
+        (r"^structural BOM has no material demand$", "no_material_demand"),
+        (r"^assembly requires unique id and supported structural role$", "invalid_assembly_identity_or_role"),
+        (r"^[^ ]+\.dimensions must be an object$", "assembly_dimensions_not_an_object"),
+        (r"^[^ ]+ lacks dimensions required by [a-z_]+$", "assembly_missing_required_dimensions"),
+        (r"^[^ ]+\.counts must be an object$", "assembly_counts_not_an_object"),
+        (r"^secondary item requires a unique id$", "invalid_secondary_item_identity"),
+        (r"^secondary item role is unsupported$", "unsupported_secondary_item_role"),
+        (r"^secondary item requires material$", "secondary_item_missing_material"),
+    )
+    return next((code for pattern, code in patterns if re.match(pattern, normalized)), None)
+
+
 def _safe_failure_message(exc: Exception) -> str:
     """Keep the diagnostic actionable without storing provider output or secrets."""
     message = " ".join(str(exc).split())
+    if code := _structural_failure_code(message):
+        return code
     if message.startswith(_SAFE_FAILURE_PREFIXES):
         return message[:400]
     return "Unexpected technical failure. Raw provider responses and exception details are not retained."
@@ -51,9 +70,16 @@ def _record_failure_trace(
 ) -> None:
     """Tracing must never mask the original technical failure."""
     try:
+        structural_validation = stage == "structural_composition" and isinstance(exc, ValueError)
+        safe_message = (
+            _structural_failure_code(str(exc)) or "structural_validation_failed"
+            if structural_validation else _safe_failure_message(exc)
+        )
         insert_estimation_failure_trace(
             client, input_id=input_id, agent_version=ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,
-            stage=stage, error_type=type(exc).__name__, error_message=_safe_failure_message(exc),
+            stage=stage,
+            error_type=("StructuralValidationError" if structural_validation else type(exc).__name__),
+            error_message=safe_message,
         )
     except Exception:
         pass

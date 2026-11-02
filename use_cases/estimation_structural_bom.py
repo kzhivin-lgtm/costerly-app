@@ -262,6 +262,54 @@ def _construction_material_name(*, raw_name: object, family: str, role: str) -> 
     return _CONSTRUCTION_MATERIAL_NAMES.get(family, "Material")
 
 
+def _required_dimensions(assembly_role: str) -> set[str]:
+    return {
+        "box_carcass": {"width", "height", "depth"},
+        "drawer_bank": {"width", "height", "depth"},
+        "shelf_stack": {"width", "height", "depth"},
+        "table": {"width", "depth"},
+        "countertop": {"width", "depth"},
+        "vertical_panel": {"width", "height"},
+        "facade_set": {"width", "height"},
+    }[assembly_role]
+
+
+def _recoverable_assemblies(extraction: Mapping[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+    """Discard only incomplete assembly candidates and retain usable demand.
+
+    A visual model can recognise several large assemblies but lack one required
+    dimension for a secondary one. That is an auditable omission, not a reason
+    to throw away every other sourced material demand in the estimate.
+    """
+    usable: list[dict[str, Any]] = []
+    omissions: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for index, raw in enumerate(extraction.get("assemblies") or [], start=1):
+        if not isinstance(raw, Mapping):
+            omissions.append({"kind": "assembly", "identifier": f"assembly-{index}", "reason_code": "not_an_object"})
+            continue
+        assembly_id = str(raw.get("assembly_id") or "").strip()
+        role = str(raw.get("assembly_role") or "").strip()
+        if not assembly_id or assembly_id in seen or role not in _ROLES:
+            omissions.append({"kind": "assembly", "identifier": assembly_id or f"assembly-{index}", "reason_code": "invalid_identity_or_role"})
+            continue
+        seen.add(assembly_id)
+        dimensions = raw.get("dimensions")
+        if not isinstance(dimensions, Mapping):
+            omissions.append({"kind": "assembly", "identifier": assembly_id, "reason_code": "dimensions_not_an_object"})
+            continue
+        missing = sorted(name for name in _required_dimensions(role) if dimensions.get(name) is None)
+        if missing:
+            omissions.append({"kind": "assembly", "identifier": assembly_id, "reason_code": "missing_required_dimensions"})
+            continue
+        normalized = dict(raw)
+        if not isinstance(raw.get("counts"), Mapping):
+            normalized["counts"] = {}
+            omissions.append({"kind": "assembly", "identifier": assembly_id, "reason_code": "invalid_counts_defaulted"})
+        usable.append(normalized)
+    return usable, omissions
+
+
 def build_structural_assembly_bom(
     *, input_row: Mapping[str, Any], dimension_graph: Mapping[str, Any], extraction: Mapping[str, Any],
     allowed_material_families: Sequence[str], dimension_scale_gate: Mapping[str, Any] | None = None,
@@ -289,6 +337,7 @@ def build_structural_assembly_bom(
     assemblies: list[dict[str, Any]] = []
     assumptions: list[str] = []
     requirement_ids: dict[tuple[str, str, str], str] = {}
+    usable_assemblies, structural_omissions = _recoverable_assemblies(extraction)
 
     if document_unit_reason:
         assumptions.append(f"Document unit: {document_unit_reason}")
@@ -344,9 +393,7 @@ def build_structural_assembly_bom(
         })
 
     seen_assemblies: set[str] = set()
-    for raw in extraction.get("assemblies") or []:
-        if not isinstance(raw, Mapping):
-            continue
+    for raw in usable_assemblies:
         assembly_id = str(raw.get("assembly_id") or "").strip()
         assembly_role = str(raw.get("assembly_role") or "").strip()
         if not assembly_id or assembly_id in seen_assemblies or assembly_role not in _ROLES:
@@ -366,12 +413,7 @@ def build_structural_assembly_bom(
             for name in ("width", "height", "depth")
             if dimensions.get(name) is not None
         }
-        required_dimensions = {
-            "box_carcass": {"width", "height", "depth"}, "drawer_bank": {"width", "height", "depth"},
-            "shelf_stack": {"width", "height", "depth"}, "table": {"width", "depth"},
-            "countertop": {"width", "depth"}, "vertical_panel": {"width", "height"},
-            "facade_set": {"width", "height"},
-        }[assembly_role]
+        required_dimensions = _required_dimensions(assembly_role)
         if not required_dimensions.issubset(parsed_dimensions):
             raise ValueError(f"{assembly_id} lacks dimensions required by {assembly_role}")
         material_roles = {
@@ -463,19 +505,27 @@ def build_structural_assembly_bom(
     secondary_ids: set[str] = set()
     for index, raw in enumerate(extraction.get("secondary_items") or [], start=1):
         if not isinstance(raw, Mapping):
+            structural_omissions.append({"kind": "secondary_item", "identifier": f"secondary-{index}", "reason_code": "not_an_object"})
             continue
         secondary_id = str(raw.get("secondary_id") or f"secondary-{index}")
         if secondary_id in secondary_ids:
-            raise ValueError("secondary item requires a unique id")
+            structural_omissions.append({"kind": "secondary_item", "identifier": secondary_id, "reason_code": "duplicate_identity"})
+            continue
         secondary_ids.add(secondary_id)
         role = str(raw.get("role") or "")
         if role not in {"drawer_slide", "leg"}:
-            raise ValueError("secondary item role is unsupported")
-        count = _integer(raw.get("quantity"), field=f"secondary_items.{role}.quantity")
-        refs = _refs(raw.get("evidence_refs"), allowed=allowed_refs, required=True, field=f"secondary_items.{role}.evidence_refs")
+            structural_omissions.append({"kind": "secondary_item", "identifier": secondary_id, "reason_code": "unsupported_role"})
+            continue
+        try:
+            count = _integer(raw.get("quantity"), field=f"secondary_items.{role}.quantity")
+            _refs(raw.get("evidence_refs"), allowed=allowed_refs, required=True, field=f"secondary_items.{role}.evidence_refs")
+        except ValueError:
+            structural_omissions.append({"kind": "secondary_item", "identifier": secondary_id, "reason_code": "invalid_quantity_or_evidence"})
+            continue
         material = raw.get("material")
         if not isinstance(material, Mapping):
-            raise ValueError("secondary item requires material")
+            structural_omissions.append({"kind": "secondary_item", "identifier": secondary_id, "reason_code": "missing_material"})
+            continue
         requirement_id = material_requirement({role: material}, role)
         target = next(item for item in materials if item["requirement_id"] == requirement_id)
         target["quantity"] = (target.get("quantity") or 0) + count * object_quantity
@@ -490,7 +540,7 @@ def build_structural_assembly_bom(
     preview_refs = sorted(ref for ref in allowed_refs if ref.startswith("storage://"))
     return {
         "contract_version": ASSEMBLY_BOM_V1,
-        "composition_version": "structural_bom_v4_20",
+        "composition_version": "structural_bom_v4_21",
         "input_id": str(input_row.get("input_id") or ""), "object_input_revision": int(input_row.get("object_input_revision") or 1),
         "run_id": str(payload.get("run_id") or ""), "company_id": str(payload.get("company_id") or ""),
         "object_id": str(object_payload.get("object_id") or ""), "object_name": str(object_payload.get("object_name") or ""),
@@ -504,6 +554,7 @@ def build_structural_assembly_bom(
         "assemblies": assemblies, "materials": materials, "parts": parts,
         "assumptions": list(dict.fromkeys(assumptions)),
         "normalizations": normalizations,
+        "structural_omissions": structural_omissions,
         "omissions": [str(item) for item in extraction.get("omissions") or [] if str(item).strip()],
         "coverage": coverage, "coverage_audit": coverage_audit,
         "primary_preview_ref": preview_refs[0],

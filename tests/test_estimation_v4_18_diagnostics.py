@@ -51,6 +51,27 @@ def test_assembly_failure_persists_safe_stage_trace_without_provider_details(mon
         "input_id": "input-1",
         "agent_version": bom_runtime.ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,
         "stage": "structural_composition",
-        "error_type": "ValueError",
-        "error_message": "structural BOM has no material demand",
+        "error_type": "StructuralValidationError",
+        "error_message": "no_material_demand",
+    }]
+
+
+def test_structural_validation_trace_persists_a_code_without_model_content(monkeypatch):
+    traces = []
+    monkeypatch.setattr(
+        bom_runtime, "insert_estimation_failure_trace",
+        lambda _client, **kwargs: traces.append(kwargs) or "trace-1",
+    )
+
+    bom_runtime._record_failure_trace(
+        client=object(), input_id="input-1", stage="structural_composition",
+        exc=ValueError("assembly-2 lacks dimensions required by facade_set"),
+    )
+
+    assert traces == [{
+        "input_id": "input-1",
+        "agent_version": bom_runtime.ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,
+        "stage": "structural_composition",
+        "error_type": "StructuralValidationError",
+        "error_message": "assembly_missing_required_dimensions",
     }]

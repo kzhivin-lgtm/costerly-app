@@ -197,3 +197,33 @@ def test_coverage_audits_an_unassigned_visible_region_without_suppressing_bom():
         "status": "not_provided", "expected_region_count": 1,
         "covered_region_ids": [], "missing_region_ids": ["p1-region-001"], "invalid_entry_count": 0,
     }
+
+
+def test_incomplete_secondary_assembly_is_omitted_without_discarding_usable_demand():
+    row = _input()
+    result = build_structural_assembly_bom(
+        input_row=row,
+        dimension_graph=build_dimension_graph(input_row=row),
+        allowed_material_families=["mdf_hdf"],
+        extraction={
+            "document_unit": {"unit": "cm", "basis": "explicit_source", "evidence_refs": [OCR_REF]},
+            "assemblies": [
+                {
+                    "assembly_id": "table", "assembly_role": "table", "quantity": 1, "evidence_refs": [REF],
+                    "dimensions": {"width": _dimension(160), "depth": _dimension(115)}, "counts": {},
+                    "material_roles": [{"role": "visible_sheet", "source_name": "MDF", "family": "mdf_hdf", "basis": "construction_assumption", "evidence_refs": []}],
+                },
+                {
+                    "assembly_id": "incomplete-facades", "assembly_role": "facade_set", "quantity": 1, "evidence_refs": [REF],
+                    "dimensions": {"width": _dimension(80)}, "counts": {"facades": 2}, "material_roles": [],
+                },
+            ],
+            "secondary_items": [], "omissions": [],
+        },
+    )
+
+    assert result["status"] == "ready"
+    assert [assembly["assembly_id"] for assembly in result["assemblies"]] == ["table"]
+    assert result["structural_omissions"] == [{
+        "kind": "assembly", "identifier": "incomplete-facades", "reason_code": "missing_required_dimensions",
+    }]
