@@ -223,6 +223,7 @@ def run_mistral_direct_pdf_evidence_ocr(
         result.get("pages") or [],
         native_text_blocks=native_inspection.get("text_blocks") or [],
         native_graphic_regions=native_inspection.get("graphic_regions") or [],
+        vector_line_segments=native_inspection.get("vector_line_segments") or [],
         page_profiles=native_inspection.get("page_profiles") or [],
     )
     result["page_title_fields"] = build_page_title_fields(
@@ -797,6 +798,7 @@ def run_mistral_document_evidence_ocr(
         pages,
         native_text_blocks=native_text_blocks,
         native_graphic_regions=native_graphic_regions,
+        vector_line_segments=native_inspection.get("vector_line_segments") or [],
         page_profiles=page_profiles,
     )
     result["page_title_fields"] = build_page_title_fields(

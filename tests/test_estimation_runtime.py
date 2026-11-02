@@ -89,7 +89,7 @@ def test_v4_runtime_routes_all_objects_through_geometry_bom_path(monkeypatch):
     assert [event[0] for event in events] == ["v4_run"]
     assert result["estimation"]["status"] == "completed"
     assert result["estimation"]["estimated_objects"] == 1
-    assert result["estimation_version"] == "v4_object_to_estimate_bom"
+    assert result["estimation_version"] == "v4_12_assembly_first_bom"
 
 
 def test_all_ignored_objects_finish_as_empty_v4_estimate(monkeypatch):

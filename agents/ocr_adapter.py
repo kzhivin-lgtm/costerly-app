@@ -335,6 +335,7 @@ def build_ocr_evidence(
     *,
     native_text_blocks: list[dict[str, Any]] | None = None,
     native_graphic_regions: list[dict[str, Any]] | None = None,
+    vector_line_segments: list[dict[str, Any]] | None = None,
     page_profiles: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Create a deterministic evidence index without semantic interpretation."""
@@ -531,6 +532,11 @@ def build_ocr_evidence(
         "literal_items": literal_items,
         "declared_dimension_literals": deduplicated_literals,
         "graphic_regions": graphic_regions,
+        "vector_line_segments": [
+            dict(segment)
+            for segment in vector_line_segments or []
+            if isinstance(segment, dict) and isinstance(segment.get("page_number"), int)
+        ],
         # Passive V6.1 document inspection. These profiles are deliberately
         # distinct from source facts: Form XObjects and vector paths do not
         # become text evidence or object claims.

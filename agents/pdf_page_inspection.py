@@ -24,6 +24,7 @@ _TEXT_LAYER_SPARSE_MAX_SPANS = 3
 # by the uncompressed page content stream, not by an after-the-fact list size.
 _VECTOR_DETAIL_CONTENT_BYTES_LIMIT = 500_000
 _VECTOR_CLUSTER_DRAWING_LIMIT = 1_500
+_VECTOR_DIMENSION_SEGMENT_LIMIT = 10_000
 _FORM_XOBJECT_INVENTORY_LIMIT = 64
 _VECTOR_PATH_START_RE = re.compile(rb"(?<![A-Za-z])(?:m|re)(?![A-Za-z])")
 _PROFILE_KEYS = (
@@ -205,6 +206,46 @@ def _native_image_regions_for_page(page: Any, *, page_number: int, dpi: int) -> 
     return regions
 
 
+def _vector_line_segments_for_page(
+    drawings: list[dict[str, Any]], *, page: Any, page_number: int, dpi: int,
+) -> list[dict[str, Any]]:
+    """Return bounded native straight-line candidates, not drawing semantics.
+
+    TU Wien's reconstruction work begins by associating numbers, dimension
+    lines and views.  The inspection layer only preserves the first source
+    ingredient. It deliberately does not decide that a line is a dimension
+    line, infer an axis, or assign it to an object.
+    """
+    scale = dpi / 72
+    result: list[dict[str, Any]] = []
+    for drawing in drawings:
+        for item in drawing.get("items") or []:
+            if len(result) >= _VECTOR_DIMENSION_SEGMENT_LIMIT:
+                return result
+            if not isinstance(item, (tuple, list)) or len(item) < 3 or item[0] != "l":
+                continue
+            first, second = item[1], item[2]
+            try:
+                first_point = first * page.rotation_matrix
+                second_point = second * page.rotation_matrix
+                x1, y1 = float(first_point.x) * scale, float(first_point.y) * scale
+                x2, y2 = float(second_point.x) * scale, float(second_point.y) * scale
+            except (AttributeError, TypeError, ValueError):
+                continue
+            dx, dy = abs(x2 - x1), abs(y2 - y1)
+            if max(dx, dy) < 8 or (dx > 2 and dy > 2):
+                continue
+            result.append({
+                "segment_id": f"vector:p{page_number}:l{len(result) + 1:05d}",
+                "page_number": page_number,
+                "orientation": "horizontal" if dx >= dy else "vertical",
+                "start": {"x": round(x1, 3), "y": round(y1, 3)},
+                "end": {"x": round(x2, 3), "y": round(y2, 3)},
+                "coordinate_basis": "native_pdf_vector_rendered_pixels",
+            })
+    return result
+
+
 def _form_xobject_inventory(raw_xobjects: list[Any]) -> tuple[list[dict[str, Any]], int]:
     """Return a bounded inventory of Form XObject placements, not objects."""
     inventory: list[dict[str, Any]] = []
@@ -245,6 +286,7 @@ def inspect_native_pdf_pages(
     source_seconds = {"native_text": 0.0, "image_xobjects": 0.0, "form_xobjects": 0.0, "vector_summary": 0.0}
     text_blocks: list[dict[str, Any]] = []
     graphic_regions: list[dict[str, Any]] = []
+    vector_line_segments: list[dict[str, Any]] = []
     profiles: list[dict[str, Any]] = []
     try:
         document = fitz.open(stream=file_bytes, filetype="pdf")
@@ -342,6 +384,9 @@ def inspect_native_pdf_pages(
                     vector_item_count = sum(
                         len(drawing.get("items") or []) for drawing in drawings
                     )
+                    vector_line_segments.extend(_vector_line_segments_for_page(
+                        drawings, page=page, page_number=page_index, dpi=dpi,
+                    ))
                     if drawings and len(drawings) <= _VECTOR_CLUSTER_DRAWING_LIMIT:
                         try:
                             # cluster_drawings accepts get_drawings() output,
@@ -421,6 +466,7 @@ def inspect_native_pdf_pages(
         "contract_version": PDF_PAGE_INSPECTION_CONTRACT_VERSION,
         "text_blocks": text_blocks,
         "graphic_regions": graphic_regions,
+        "vector_line_segments": vector_line_segments,
         "page_profiles": profiles,
         "sources": {
             "status": "succeeded",

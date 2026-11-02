@@ -247,7 +247,17 @@ def _assumption_candidate(
     raw_unit = str(material.get("unit") or "").strip()
     normalized_unit = _canonical_requirement_unit(raw_unit)
     if has_sheet_geometry:
-        purchase_kind, rationale_unit, dimensions = "sheet", "sheet", _ASSUMPTION_SHEET_DIMENSIONS
+        # The A fallback must remain physically capable of producing every
+        # declared finished panel. Do not recycle a conventional 2440x1220
+        # sheet when the evidence requires a larger one, and never split the
+        # panel to make a catalogue format appear compatible.
+        max_length = max(_positive(part.get("length_mm")) or Decimal("0") for part in parts)
+        max_width = max(_positive(part.get("width_mm")) or Decimal("0") for part in parts)
+        dimensions = {
+            "length_mm": max(_ASSUMPTION_SHEET_DIMENSIONS["length_mm"], max_length + Decimal("3")),
+            "width_mm": max(_ASSUMPTION_SHEET_DIMENSIONS["width_mm"], max_width + Decimal("3")),
+        }
+        purchase_kind, rationale_unit = "sheet", "sheet"
     elif normalized_unit in {"m", "mm", "cm", "lm"} or material_family == "edge_banding":
         purchase_kind, rationale_unit, dimensions = "linear_cut", "m", None
     elif material_family.startswith("hardware_") or normalized_unit in {"piece", "set"}:
@@ -289,6 +299,30 @@ def _assumption_candidate(
         "assumption_price": assumption_price,
     }
     return candidate, fallback
+
+
+def _sheet_candidate_fits_finished_parts(
+    candidate: MaterialSupplyCandidate, parts: Sequence[Mapping[str, Any]],
+) -> bool:
+    """Return whether one stock sheet can physically produce every part type."""
+    if candidate.purchase_kind != "sheet":
+        return False
+    dimensions = dict(candidate.purchasable_dimensions or {})
+    stock_length = _positive(dimensions.get("length_mm"))
+    stock_width = _positive(dimensions.get("width_mm"))
+    kerf = _positive(candidate.kerf_mm) or Decimal("0")
+    if stock_length is None or stock_width is None:
+        return False
+    for part in parts:
+        length = _positive(part.get("length_mm"))
+        width = _positive(part.get("width_mm"))
+        if length is None or width is None:
+            return False
+        unrotated = length + kerf <= stock_length and width + kerf <= stock_width
+        rotated = bool(part.get("rotation_allowed")) and width + kerf <= stock_length and length + kerf <= stock_width
+        if not unrotated and not rotated:
+            return False
+    return True
 
 
 def _present_value(value: Any) -> bool:
@@ -1017,6 +1051,12 @@ def build_material_plan(
             if not candidate_ids:
                 add_assumption_fallback(
                     reason_code="no_company_or_israel_candidate", selection_key=selection_key,
+                )
+                reasons.add("assumption_fallback")
+                continue
+            if parts and not any(_sheet_candidate_fits_finished_parts(candidate, parts) for candidate in compatible):
+                add_assumption_fallback(
+                    reason_code="no_physically_compatible_company_or_israel_candidate", selection_key=selection_key,
                 )
                 reasons.add("assumption_fallback")
                 continue

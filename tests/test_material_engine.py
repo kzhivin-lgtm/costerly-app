@@ -62,7 +62,7 @@ def test_engine_rejects_pathological_sheet_fragmentation_before_nesting():
     )
 
     assert plan.status == "needs_review"
-    assert any("geometry safety limit" in reason for reason in plan.reason_codes)
+    assert plan.reason_codes == ("finished_part_exceeds_purchasable_sheet",)
 
 
 def test_engine_selects_lowest_total_sheet_basket_not_lowest_single_sheet_price():
@@ -236,12 +236,13 @@ def test_engine_prices_solid_timber_by_exact_part_volume():
     assert plan.lines[0].total_cost == Decimal("50")
 
 
-def test_engine_splits_an_oversized_finished_panel_across_joinable_stock_panels():
+def test_engine_never_splits_an_oversized_finished_panel_into_fictitious_cut_parts():
     plan = plan_material_purchases(
         demands=(_demand("oversize", length_mm=2500, width_mm=1200),),
         candidates=(_sheet(),),
     )
 
-    assert plan.status == "planned"
-    assert plan.lines[0].purchase_quantity == Decimal("2")
-    assert sum(allocation.length_mm * allocation.width_mm for allocation in plan.lines[0].allocations) == Decimal("3000000")
+    assert plan.status == "needs_review"
+    assert plan.lines == ()
+    assert plan.unresolved_demand_ids == ("oversize",)
+    assert plan.reason_codes == ("finished_part_exceeds_purchasable_sheet",)

@@ -164,3 +164,45 @@ def publish_estimation_approximate_bom_object(
         status="running", progress_percent=70, progress_label="approximate_bom_ready",
     )
     return {"status": "ready", "material_line_count": len(lines)}
+
+
+def publish_estimation_assembly_bom_object(
+    *, client: Any, estimate_id: str, input_row: Mapping[str, Any], agent_version: str,
+) -> dict[str, Any]:
+    """Publish V4.12 assembly-first demand lines before project-wide costing."""
+    input_id = str(input_row.get("input_id") or "")
+    object_id = str(input_row.get("object_id") or "")
+    fact_result = fetch_estimation_fact_result(client, input_id=input_id, agent_version=agent_version)
+    facts = dict((fact_result or {}).get("facts_payload") or {})
+    if facts.get("contract_version") != "estimation_assembly_bom_v1":
+        raise RuntimeError("assembly-first BOM is missing after composition")
+    lines = []
+    for index, material in enumerate(facts.get("materials") or [], start=1):
+        if not isinstance(material, Mapping):
+            continue
+        lines.append({
+            "estimate_id": estimate_id, "object_id": object_id, "company_id": str(facts["company_id"]),
+            "line_id": f"{object_id}_material_{index:04d}", "section": "material", "group_name": "Materials",
+            "item_name": str(material.get("source_name") or material.get("family") or "Material"),
+            "catalog_match_query": str(material.get("family") or ""), "unit": None, "unit_cost": None,
+            "quantity": None, "cost": None, "source": "estimation_assembly_bom_v1",
+            "sort_order": index * 10, "needs_price": True, "needs_review": False, "confidence": None,
+            "quantity_basis": "per_finished_item",
+            "notes": "Assembly-first approximate BOM. Awaiting estimate-wide Material Plan.",
+            "raw_agent_json": {
+                "facts": dict(material), "bom_contract": facts["contract_version"],
+                "assemblies": facts.get("assemblies") or [], "assumptions": facts.get("assumptions") or [],
+            },
+        })
+    if not lines:
+        raise RuntimeError("assembly-first BOM has no material demands")
+    replace_rfq_estimate_lines_for_object(client, estimate_id=estimate_id, object_id=object_id, lines=lines)
+    update_rfq_object_estimate_totals(
+        client, estimate_id=estimate_id, object_id=object_id,
+        self_cost_ex_vat=None, vat_amount=None, self_cost_total=None,
+    )
+    update_rfq_object_estimate_progress(
+        client, estimate_id=estimate_id, object_id=object_id,
+        status="running", progress_percent=70, progress_label="assembly_bom_ready",
+    )
+    return {"status": "ready", "material_line_count": len(lines)}

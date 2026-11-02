@@ -285,7 +285,7 @@ def test_plan_combines_part_demands_across_objects_before_sheet_rounding():
     }
 
 
-def test_plan_keeps_company_catalog_priority_when_it_can_cover_joinable_panels():
+def test_plan_skips_physically_incompatible_company_sheet_for_compatible_israel_sheet():
     result = build_material_plan(
         facts_by_object={"cabinet-a": _facts("cabinet-a", "side-a", length=2000, width=1000)},
         catalogs=_catalogs(
@@ -298,7 +298,9 @@ def test_plan_keeps_company_catalog_priority_when_it_can_cover_joinable_panels()
 
     assert result.plan is not None
     assert result.plan.status == "planned"
-    assert result.plan.lines[0].candidate_id == "company-offer:small"
+    assert result.plan.lines[0].candidate_id == (
+        "israel-reference:reference-plywood-18:reference-price-plywood-18:reference-format-plywood-2440"
+    )
 
 
 def test_plan_keeps_complete_company_basket_even_when_reference_is_cheaper():
@@ -613,6 +615,20 @@ def test_plan_prices_assumption_fallback_after_company_and_israel_have_no_candid
         ],
         "source_candidates": [],
     }
+
+
+def test_oversized_finished_part_uses_dimension_compatible_assumption_not_sheet_split():
+    result = build_material_plan(
+        facts_by_object={"cabinet-a": _facts("cabinet-a", "tall-side", length=2650, width=600)},
+        catalogs=_catalogs(_offer("company-sheet", dimensions={"length_mm": 2440, "width_mm": 1220})),
+    )
+
+    assert result.plan is not None
+    assert result.plan.status == "planned"
+    assert result.plan.lines[0].candidate_id == "assumption:cabinet-a:plywood:sheet"
+    assert result.plan.lines[0].purchase_quantity == Decimal("1")
+    assert result.plan.lines[0].allocations[0].length_mm == Decimal("2650")
+    assert result.assumption_fallbacks[0]["reason_code"] == "no_physically_compatible_company_or_israel_candidate"
 
 
 def test_plan_uses_evidenced_count_only_for_discrete_resolved_materials():

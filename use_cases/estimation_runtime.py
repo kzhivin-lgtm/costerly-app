@@ -20,7 +20,10 @@ from db.supabase_client import get_supabase_client
 from use_cases.estimation_handoff import persist_estimation_inputs
 from use_cases.estimation_originals import describe_estimation_original
 from use_cases.estimation_object_to_estimate_runtime import (
+    ESTIMATION_ACTIVE_BOM_AGENT_VERSION,
+    ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,
     ESTIMATION_APPROXIMATE_BOM_AGENT_VERSION,
+    run_assembly_first_bom_batch,
     run_object_to_estimate_bom_batch,
 )
 from use_cases.material_engine_adapter import (
@@ -30,7 +33,10 @@ from use_cases.material_engine_adapter import (
 )
 from use_cases.estimation_material_context import build_estimation_material_context
 from use_cases.estimation_assumption_fallbacks import persist_material_assumption_fallbacks
-from use_cases.estimation_v3_material_publisher import publish_estimation_approximate_bom_object
+from use_cases.estimation_v3_material_publisher import (
+    publish_estimation_approximate_bom_object,
+    publish_estimation_assembly_bom_object,
+)
 from db.repositories import update_rfq_object_estimate_progress
 from use_cases.estimation_progress import set_object_progress
 
@@ -58,11 +64,12 @@ def _build_and_persist_material_plan(
     run_id: str,
     company_id: str,
     catalogs: Mapping[str, object] | None = None,
+    bom_agent_version: str = ESTIMATION_ACTIVE_BOM_AGENT_VERSION,
 ) -> dict[str, object]:
     """Compute one estimate-wide plan from the latest facts and user norms."""
     shared_catalogs = catalogs or build_estimation_material_context(client, company_id)["catalogs"]
     facts_by_object = fetch_latest_estimation_facts_by_object(
-        client, run_id=run_id, agent_version=ESTIMATION_APPROXIMATE_BOM_AGENT_VERSION,
+        client, run_id=run_id, agent_version=bom_agent_version,
     )
     override_rows = fetch_rfq_estimate_material_norm_overrides(client, estimate_id)
     overrides = _material_norm_overrides_by_requirement(override_rows)
@@ -214,9 +221,16 @@ def _run_estimation_v4_1_for_all_objects(
     client: object,
     estimate_id: str,
     created_inputs: list[dict[str, object]],
+    bom_agent_version: str = ESTIMATION_APPROXIMATE_BOM_AGENT_VERSION,
+    bom_runner: object | None = None,
+    bom_publisher: object | None = None,
 ) -> dict[str, object]:
     """Build cited geometry, deterministic BOM and one project-wide material plan."""
     failed: dict[str, str] = {}
+    if bom_runner is None:
+        bom_runner = run_object_to_estimate_bom_batch
+    if bom_publisher is None:
+        bom_publisher = publish_estimation_approximate_bom_object
     completed_inputs: list[str] = []
     total = len(created_inputs)
     valid_inputs: list[dict[str, object]] = []
@@ -247,7 +261,7 @@ def _run_estimation_v4_1_for_all_objects(
 
     for input_row in valid_inputs:
         mark_geometry_start(input_row)
-    facts_result = run_object_to_estimate_bom_batch(
+    facts_result = bom_runner(
         client=client,
         inputs=valid_inputs,
         allowed_material_families=sorted(shared_context["families"]),
@@ -276,6 +290,7 @@ def _run_estimation_v4_1_for_all_objects(
                     run_id=run_id,
                     company_id=company_id,
                     catalogs=shared_context["catalogs"],
+                    bom_agent_version=bom_agent_version,
                 )
                 material_plan_snapshot_data = snapshot
                 material_plan_summary = {
@@ -363,11 +378,13 @@ def _run_estimation_v4_1_for_all_objects(
             label="approximate_bom_ready_for_costing",
         )
         try:
-            published = publish_estimation_approximate_bom_object(
-                client=client,
-                estimate_id=estimate_id,
-                input_row=input_row,
-            )
+            if bom_agent_version == ESTIMATION_APPROXIMATE_BOM_AGENT_VERSION:
+                published = bom_publisher(client=client, estimate_id=estimate_id, input_row=input_row)
+            else:
+                published = bom_publisher(
+                    client=client, estimate_id=estimate_id, input_row=input_row,
+                    agent_version=bom_agent_version,
+                )
             completed_inputs.append(input_id)
             if published.get("status") != "ready":
                 failed[input_id] = f"unexpected_publisher_status:{published.get('status')}"
@@ -394,6 +411,18 @@ def _run_estimation_v4_1_for_all_objects(
         "failed": failed,
         "material_engine_plan": material_plan_summary,
     }
+
+
+def _run_estimation_v4_12_for_all_objects(
+    *, client: object, estimate_id: str, created_inputs: list[dict[str, object]],
+) -> dict[str, object]:
+    """Run V4.12's graph plus assembly-first BOM through existing costing."""
+    return _run_estimation_v4_1_for_all_objects(
+        client=client, estimate_id=estimate_id, created_inputs=created_inputs,
+        bom_agent_version=ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,
+        bom_runner=run_assembly_first_bom_batch,
+        bom_publisher=publish_estimation_assembly_bom_object,
+    )
 
 
 def submit_estimation_job(
@@ -478,7 +507,7 @@ def _run_estimation_job(
 
     inputs_available = bool(created_inputs)
     if inputs_available:
-        estimation_result = _run_estimation_v4_1_for_all_objects(
+        estimation_result = _run_estimation_v4_12_for_all_objects(
                 client=client,
                 estimate_id=estimate_id,
                 created_inputs=created_inputs,
@@ -492,7 +521,7 @@ def _run_estimation_job(
                 "estimated_objects": len(estimation_result["processed_input_ids"]),
                 "failed_objects": estimation_result["failed"],
             },
-            "estimation_version": "v4_object_to_estimate_bom",
+            "estimation_version": "v4_12_assembly_first_bom",
         }
     if shell and int(shell.get("object_count") or 0) == 0:
         return {

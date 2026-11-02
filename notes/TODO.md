@@ -3157,6 +3157,27 @@ only when its defining source facts are present, otherwise emit cited geometry
 plus explicit assumptions. Do not introduce a generic shop-drawing engine or
 change Detection object identity/boundaries.
 
+V4.12 implementation in progress, 2026-11-02: the owner approved replacement
+of the V4.11 `object_kind -> wardrobe/cabinet recipe` path. The new active
+pipeline is fixed Detection object identity -> immutable source pages/OCR ->
+TU Wien-inspired Geometry and Dimension Graph -> assembly-first construction
+interpretation -> structural BOM -> project-wide Material Engine -> C/I/A
+material cost. The graph stores source numeric OCR nodes, bounded native PDF
+straight-line candidates, Detection-owned view regions and only candidate
+relations. It does not infer an axis, a completed drawing or construction.
+Large inputs use bounded visual page batches followed by a text-only cited
+reconciliation pass, so all pages are observed without one giant vision call.
+The assembly contract prohibits object renaming, product-type classification,
+generic wardrobe defaults, price/labor/manufacturing/overhead output and fake
+cut-parts. Material Engine now rejects an oversized finished panel instead of
+splitting it; where no C/I sheet is physically compatible it creates a
+dimension-compatible, immediately priced A fallback with an explicit reason.
+This is an approximate universal construction interpreter, not a precision
+shop-drawing engine. Pending acceptance: apply the additive V4.12 fact-result
+constraint, deploy, inspect SQL, then run an owner-approved controlled object
+and audit graph, assembly BOM, C/I/A plan and terminal progress. No paid cloud
+replay is authorised by this implementation approval alone.
+
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
 commercial object. The existing immutable `estimation_input_v4` carries its

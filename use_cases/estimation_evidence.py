@@ -117,6 +117,27 @@ def build_estimation_input(
 
     blocks = cited_ocr_items("text_blocks", "b")
     literal_items = cited_ocr_items("literal_items", "l")
+    # Estimation needs the source capabilities that Detection already observed
+    # in order to distinguish a vector-drawing dimension route from a raster
+    # visual-only route.  These are evidence descriptors, not object facts.
+    geometry_context = {
+        "page_profiles": [
+            dict(item)
+            for item in evidence.get("page_profiles") or []
+            if isinstance(item, Mapping) and item.get("page_number") in pages
+        ],
+        "graphic_regions": [
+            dict(item)
+            for item in evidence.get("graphic_regions") or []
+            if isinstance(item, Mapping) and item.get("page_number") in pages
+        ],
+        "vector_line_segments": [
+            dict(item)
+            for item in evidence.get("vector_line_segments") or []
+            if isinstance(item, Mapping) and item.get("page_number") in pages
+        ],
+        "rendering": dict(ocr_package.get("rendering") or {}),
+    }
     artifacts = _artifact_payload(evidence_artifacts, pages)
     if not artifacts:
         raise ValueError("at least one full source-page artifact is required")
@@ -141,6 +162,7 @@ def build_estimation_input(
             "ocr_blocks": blocks,
             "ocr_literal_items": literal_items,
             "artifacts": list(artifacts),
+            "geometry_context": geometry_context,
         },
         "versions": {key: str(value) for key, value in versions.items()},
     }
