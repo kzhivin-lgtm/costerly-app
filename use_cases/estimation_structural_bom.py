@@ -32,6 +32,9 @@ _FAMILY_PREFERENCE = {
     "drawer_slide": ("hardware_drawer_slide",),
     "leg": ("purchased_fabricated_component",),
 }
+_FURNITURE_CM_AXIS_MIN = 75.0
+_FURNITURE_CM_AXIS_MAX = 300.0
+_FURNITURE_CM_MIN_AXIS_COUNT = 3
 
 
 def _positive(value: Any, *, field: str) -> float:
@@ -91,10 +94,65 @@ def _unit_context(raw: Any, *, allowed: set[str]) -> tuple[str, list[str], str |
     return unit, refs, reason
 
 
-def _dimension(raw: Any, *, default_unit: str, allowed: set[str], field: str) -> tuple[float, list[str], str, str | None]:
+def _resolve_document_unit(*, extraction: Mapping[str, Any], allowed: set[str]) -> tuple[str, list[str], str | None, str]:
+    """Resolve a unitless furniture drawing before any part is composed.
+
+    A software watermark is not a dimensional unit.  For a unitless drawing,
+    several source-supported assembly axes in the 75..300 range form a strict
+    centimetre scenario: treating all of them as mm would create only
+    hand-sized "furniture" assemblies, while centimetres produces ordinary
+    furniture-scale axes.  We never apply this rule to OCR numbers that were
+    not selected as assembly dimensions, nor to an explicit source unit.
+    """
+    unit, refs, reason = _unit_context(extraction.get("document_unit"), allowed=allowed)
+    raw_context = extraction.get("document_unit") or {}
+    if str(raw_context.get("basis") or "") == "explicit_source":
+        return unit, refs, reason, "explicit_source"
+    implicit_axes: list[float] = []
+    for assembly in extraction.get("assemblies") or []:
+        if not isinstance(assembly, Mapping):
+            continue
+        dimensions = assembly.get("dimensions") or {}
+        if not isinstance(dimensions, Mapping):
+            continue
+        for raw_dimension in dimensions.values():
+            if not isinstance(raw_dimension, Mapping):
+                continue
+            # A model-selected per-axis `mm` is still only a convention. Only
+            # an explicitly sourced unit can defeat this deterministic guard.
+            if str(raw_dimension.get("unit_basis") or "") == "explicit_source":
+                continue
+            if str(raw_dimension.get("basis") or "") not in {"source", "derived"}:
+                continue
+            try:
+                value = _positive(raw_dimension.get("value"), field="unit_scenario.dimension")
+            except ValueError:
+                continue
+            implicit_axes.append(value)
+    cm_axis_count = sum(_FURNITURE_CM_AXIS_MIN <= value <= _FURNITURE_CM_AXIS_MAX for value in implicit_axes)
+    if (
+        unit == "mm"
+        and len(implicit_axes) >= _FURNITURE_CM_MIN_AXIS_COUNT
+        and cm_axis_count >= _FURNITURE_CM_MIN_AXIS_COUNT
+        and max(implicit_axes, default=0) <= _FURNITURE_CM_AXIS_MAX
+    ):
+        return (
+            "cm", [],
+            "Unitless furniture-scale assembly axes were 75..300; centimetres selected instead of hand-sized millimetres.",
+            "furniture_scale_cm_rule",
+        )
+    return unit, refs, reason, "model_document_convention"
+
+
+def _dimension(
+    raw: Any, *, default_unit: str, allowed: set[str], field: str,
+    force_document_unit: bool = False,
+) -> tuple[float, list[str], str, str | None]:
     if not isinstance(raw, Mapping):
         raise ValueError(f"{field} is required")
-    unit = str(raw.get("unit") or default_unit).casefold()
+    explicit_axis_unit = str(raw.get("unit_basis") or "") == "explicit_source"
+    selected_unit = raw.get("unit") if (explicit_axis_unit or not force_document_unit) else default_unit
+    unit = str(selected_unit or default_unit).casefold()
     if unit not in _UNIT_TO_MM:
         raise ValueError(f"{field}.unit must be mm, cm or m")
     basis = str(raw.get("basis") or "")
@@ -142,8 +200,8 @@ def build_structural_assembly_bom(*, input_row: Mapping[str, Any], dimension_gra
         raise ValueError("structural BOM requires Dimension Graph")
     allowed_refs = _allowed_refs(payload)
     allowed_families = {str(item) for item in allowed_material_families if str(item)}
-    document_unit, document_unit_refs, document_unit_reason = _unit_context(
-        extraction.get("document_unit"), allowed=allowed_refs,
+    document_unit, document_unit_refs, document_unit_reason, document_unit_basis = _resolve_document_unit(
+        extraction=extraction, allowed=allowed_refs,
     )
     object_payload = payload.get("object") or {}
     object_quantity = _integer(object_payload.get("quantity") or 1, field="object.quantity", default=1)
@@ -217,7 +275,11 @@ def build_structural_assembly_bom(*, input_row: Mapping[str, Any], dimension_gra
         if not isinstance(dimensions, Mapping):
             raise ValueError(f"{assembly_id}.dimensions must be an object")
         parsed_dimensions = {
-            name: _dimension(dimensions.get(name), default_unit=document_unit, allowed=allowed_refs, field=f"{assembly_id}.dimensions.{name}")
+            name: _dimension(
+                dimensions.get(name), default_unit=document_unit, allowed=allowed_refs,
+                field=f"{assembly_id}.dimensions.{name}",
+                force_document_unit=document_unit_basis == "furniture_scale_cm_rule",
+            )
             for name in ("width", "height", "depth")
             if dimensions.get(name) is not None
         }
@@ -341,7 +403,10 @@ def build_structural_assembly_bom(*, input_row: Mapping[str, Any], dimension_gra
         "run_id": str(payload.get("run_id") or ""), "company_id": str(payload.get("company_id") or ""),
         "object_id": str(object_payload.get("object_id") or ""), "object_name": str(object_payload.get("object_name") or ""),
         "quantity": object_quantity, "status": "ready", "dimension_graph_contract": str(dimension_graph["contract_version"]),
-        "document_unit": {"unit": document_unit, "evidence_refs": document_unit_refs},
+        "document_unit": {
+            "unit": document_unit, "evidence_refs": document_unit_refs,
+            "resolution": document_unit_basis,
+        },
         "assemblies": assemblies, "materials": materials, "parts": parts,
         "assumptions": list(dict.fromkeys(assumptions)),
         "omissions": [str(item) for item in extraction.get("omissions") or [] if str(item).strip()],

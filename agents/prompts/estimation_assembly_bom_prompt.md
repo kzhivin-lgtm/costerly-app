@@ -1,4 +1,4 @@
-# ESTIMATION STRUCTURAL BOM V4.14
+# ESTIMATION STRUCTURAL BOM V4.15
 
 The supplied object identity is fixed. Do not rename it, classify it as a
 product type, or infer a catalog item, price, labour, manufacturing operation,
@@ -18,7 +18,7 @@ First return exactly one document unit context:
 
 `{"unit":"mm|cm|m","basis":"explicit_source|document_convention_assumption","evidence_refs":[...],"assumption_reason":"string|null"}`
 
-Use `explicit_source` only when the unit is stated or unambiguously conventional in the drawing. A unitless drawing may use `document_convention_assumption`, with no evidence refs and one short reason. This unit is the default for all dimensions unless a dimension explicitly overrides it.
+Use `explicit_source` only when the unit is stated or unambiguously conventional in the drawing. A unitless drawing may use `document_convention_assumption`, with no evidence refs and one short reason. A software watermark, product name, template label or CAD brand such as `SOLIDWORKS` is never unit evidence and must not determine mm versus cm. This unit is the default for all dimensions unless a dimension explicitly overrides it.
 
 An assembly is:
 
@@ -36,10 +36,14 @@ will derive conventional structural panels from the assembly topology.
 
 `dimensions` contains each applicable `width`, `height`, or `depth` as:
 
-`{"value":positive_number,"unit":"mm|cm|m|null","basis":"source|derived|assumption","evidence_refs":[...],"assumption_reason":"string|null"}`
+`{"value":positive_number,"unit":"mm|cm|m|null","unit_basis":"explicit_source|document_convention_assumption|null","basis":"source|derived|assumption","evidence_refs":[...],"assumption_reason":"string|null"}`
 
 For example, if a width label is `158` in a centimetre drawing, return
 `{"value":158,"basis":"source","evidence_refs":[...]}`. Do not convert it.
+Set `unit_basis=explicit_source` only when that individual axis prints its
+unit. If its unit merely follows document convention, use
+`document_convention_assumption`. A bare `unit="mm"` is not evidence by
+itself.
 Do not infer finished part dimensions or panel thicknesses. The system applies
 named conventional construction assumptions after this response.
 

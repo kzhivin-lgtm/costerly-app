@@ -77,3 +77,45 @@ def test_structural_composer_does_not_create_unused_sheet_demands_for_a_table():
     assert len(result["materials"]) == 1
     assert len(result["parts"]) == 1
     assert result["parts"][0]["quantity"] == 2
+
+
+def test_unitless_furniture_scale_rule_overrides_model_mm_without_touching_explicit_units():
+    row = _input()
+    extraction = {
+        "document_unit": {
+            "unit": "mm", "basis": "document_convention_assumption", "evidence_refs": [],
+            "assumption_reason": "CAD watermark uses metric defaults.",
+        },
+        "assemblies": [{
+            "assembly_id": "cabinet", "assembly_role": "box_carcass", "quantity": 1, "evidence_refs": [REF],
+            "dimensions": {"width": _dimension(160), "height": _dimension(265), "depth": _dimension(158)},
+            "counts": {}, "material_roles": [],
+        }], "secondary_items": [], "omissions": [],
+    }
+
+    result = build_structural_assembly_bom(
+        input_row=row, dimension_graph=build_dimension_graph(input_row=row), extraction=extraction,
+        allowed_material_families=["melamine_faced_particleboard", "fibreboard_hardboard"],
+    )
+
+    assert result["document_unit"] == {
+        "unit": "cm", "evidence_refs": [], "resolution": "furniture_scale_cm_rule",
+    }
+    assert next(part for part in result["parts"] if part["component_role"] == "carcass_side")["length_mm"] == 2650
+    assert "Unitless furniture-scale assembly axes" in result["assumptions"][0]
+
+    extraction["assemblies"][0]["dimensions"]["width"]["unit"] = "mm"
+    model_mm_result = build_structural_assembly_bom(
+        input_row=row, dimension_graph=build_dimension_graph(input_row=row), extraction=extraction,
+        allowed_material_families=["melamine_faced_particleboard", "fibreboard_hardboard"],
+    )
+    assert next(part for part in model_mm_result["parts"] if part["component_role"] == "carcass_top_bottom")["length_mm"] == 1600
+
+    extraction["document_unit"] = {
+        "unit": "mm", "basis": "explicit_source", "evidence_refs": [OCR_REF], "assumption_reason": None,
+    }
+    explicit_result = build_structural_assembly_bom(
+        input_row=row, dimension_graph=build_dimension_graph(input_row=row), extraction=extraction,
+        allowed_material_families=["melamine_faced_particleboard", "fibreboard_hardboard"],
+    )
+    assert explicit_result["document_unit"]["unit"] == "mm"
