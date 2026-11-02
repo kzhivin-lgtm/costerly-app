@@ -89,7 +89,7 @@ names and allocated cost. Unresolved requirements stay visible without a
 price. This is not a fallback price and does not make the partial plan
 approved.
 
-## V4 priced Assumption Fallback, approved 2026-11-02
+## V4 automatic priced Assumption Fallback, approved 2026-11-02
 
 This section supersedes the earlier V3 rule that a Catalog Gap could leave a
 material line without a price. For Estimation V4, every physical material
@@ -99,13 +99,13 @@ estimate-local `A` Assumption Price. It can be grounded in an Israel listing,
 a Global listing with an Israel projection, an analogous material, or an
 explicit estimator allowance without an external source.
 
-The result remains `review_required` where confidence is below the applicable
-approval threshold, but its cost is not blank. An `A` record must preserve the
-chosen amount, currency, unit, confidence, reasoning, material identity and
-source/conversion inputs when present. It also creates or updates the existing
-deduplicated Catalog Gap Job. The Material Engine still does not invent the
-price itself: it consumes the priced A candidate supplied by this orchestration
-boundary and then applies the ordinary package and project-wide rounding rules.
+Confidence does not change the result status, block publication or require
+approval. An `A` record must preserve the chosen amount, currency, unit,
+confidence, rationale, material identity and source/conversion inputs when
+present. It also creates or updates the existing deduplicated Catalog Gap Job
+silently. The Material Engine still does not invent the price itself: it
+consumes the priced A candidate supplied by this orchestration boundary and
+then applies the ordinary package and project-wide rounding rules.
 
 ## Resolver outcomes and strict defaults, 2026-10-15
 

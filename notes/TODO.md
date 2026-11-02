@@ -3087,12 +3087,14 @@ unpriced error, and may range from cited Israel price through Global projection
 to a documented estimator allowance. It must persist amount, currency, unit,
 confidence and reasoning, and keep low-confidence results review-required.
 The future Price Research tool improves an A record and captures sources,
-units, purchase formats and a versioned Israel projection. Every A also opens
-or updates the existing deduplicated Catalog Gap Job. Acceptance for this
-increment: no Detection regression, cited versus assumed geometry is explicit,
-no model price/catalog choice, no invented precision parts, every material
-demand has C, I or priced A, and a real wardrobe/cabinet package reaches an
-auditable approximate BOM preview.
+units, purchase formats and a versioned Israel projection. Confidence and
+assumption rationale are explanatory only, never a result gate, user approval
+request or correction requirement. Every A also silently opens or updates the
+existing deduplicated Catalog Gap Job. Acceptance for this increment: no
+Detection regression, cited versus assumed geometry is explicit, no model
+price/catalog choice, no invented precision parts, every material demand has
+C, I or priced A, and a real wardrobe/cabinet package reaches an automatic
+approximate BOM and material-cost result.
 
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one

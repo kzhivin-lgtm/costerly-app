@@ -41,7 +41,7 @@ def _brief(**overrides):
             "family": "mdf_hdf", "specification": {"board_type": "mdf", "thickness_mm": 18},
             "evidence_refs": [REF],
         }],
-        "assumptions": [], "review_items": [], "primary_preview_ref": REF,
+        "assumptions": [], "primary_preview_ref": REF,
     }
     brief.update(overrides)
     return brief
@@ -77,7 +77,7 @@ def test_construction_brief_rejects_assumption_claiming_evidence():
 def test_wardrobe_recipe_composes_approximate_parts_without_source_claims():
     bom = compose_approximate_bom_v1(_brief())
 
-    assert bom["status"] == "review_required"
+    assert bom["status"] == "ready"
     assert bom["recipe_version"] == "wardrobe_carcass_v1"
     assert {item["requirement_id"] for item in bom["materials"]} == {
         "visible_facade", "internal_carcass", "backing",

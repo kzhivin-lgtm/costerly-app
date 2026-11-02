@@ -21,8 +21,9 @@ found. It carries the chosen amount and unit plus an explicit confidence and
 reasoning trail. The possible evidence levels are intentionally broad: a
 current Israel listing, a Global listing projected to Israel, an analogous
 material, or an unreferenced estimator allowance such as `200 ILS`. Low
-confidence does not remove the cost. It keeps the estimate review-required and
-creates the work needed to improve the source.
+confidence does not remove the cost, block the result or ask the customer to
+approve anything. It only records the source quality and silently creates work
+to improve the source.
 
 ## Automatic cycle
 
@@ -50,13 +51,14 @@ creates the work needed to improve the source.
 6. **Project purchasing.** The existing Material Engine combines compatible
    demands across every object, nests sheets, packs linear stock, rounds
    packages and allocates resulting purchase cost back to each object.
-7. **Automatic quality control.** Check complete material assignments, source
-   evidence or declared assumptions, compatible physical formats, duplicate
-   parts, purchase-plan reconciliation and all assumption traces.
-8. **Result and edit loop.** Render the estimate only after QA. User edits to
-   dimensions, recipe choice, material role or quantity invalidate and rerun
-   only steps 3 through 7, followed by QA again. They are not a stage before
-   quality control.
+7. **Automatic audit.** Check material assignments, source evidence or
+   declared assumptions, compatible physical formats, duplicate parts,
+   purchase-plan reconciliation and all assumption traces. The audit is
+   diagnostic and never withholds the material cost.
+8. **Result and optional edit loop.** Render the material estimate with its
+   C/I/A and confidence immediately. A voluntary user edit to dimensions,
+   recipe choice, material role or quantity invalidates and reruns only steps
+   3 through 7. It is never required to obtain a result.
 
 ## First witness
 

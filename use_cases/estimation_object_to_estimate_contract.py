@@ -103,7 +103,7 @@ def validate_object_to_estimate_v1(brief: Mapping[str, Any]) -> dict[str, Any]:
     required = {
         "contract_version", "input_id", "object_input_revision", "run_id", "company_id",
         "object_id", "object_name", "quantity", "status", "object_kind", "dimensions_mm",
-        "counts", "material_roles", "assumptions", "review_items", "primary_preview_ref",
+        "counts", "material_roles", "assumptions", "primary_preview_ref",
     }
     if set(brief) != required:
         raise ValueError("object-to-estimate brief has unsupported fields")
@@ -116,7 +116,7 @@ def validate_object_to_estimate_v1(brief: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("object-to-estimate brief requires a positive object_input_revision")
     if _positive_number(brief.get("quantity")) is None:
         raise ValueError("object-to-estimate brief requires a positive quantity")
-    if brief.get("status") not in {"ready", "review_required", "failed"}:
+    if brief.get("status") not in {"ready", "failed"}:
         raise ValueError("object-to-estimate brief has unsupported status")
     if brief.get("object_kind") not in _OBJECT_KINDS:
         raise ValueError("object-to-estimate brief has unsupported object_kind")
@@ -161,23 +161,8 @@ def validate_object_to_estimate_v1(brief: Mapping[str, Any]) -> dict[str, Any]:
     if len(set(assumptions)) != len(assumptions):
         raise ValueError("assumptions must not repeat a rule")
 
-    reviews = brief.get("review_items")
-    if not isinstance(reviews, list):
-        raise ValueError("review_items must be a list")
-    for index, value in enumerate(reviews, start=1):
-        if not isinstance(value, Mapping) or set(value) != {"code", "severity", "path", "message", "evidence_refs"}:
-            raise ValueError(f"review_items[{index}] has an invalid shape")
-        if value.get("severity") not in {"warning", "blocking"}:
-            raise ValueError(f"review_items[{index}] has an invalid severity")
-        if not all(isinstance(value.get(key), str) and value[key] for key in ("code", "path", "message")):
-            raise ValueError(f"review_items[{index}] is incomplete")
-        _evidence_refs(value.get("evidence_refs"), name=f"review_items[{index}]")
-
-    if brief["status"] == "ready" and any(review.get("severity") == "blocking" for review in reviews):
-        raise ValueError("ready object-to-estimate brief may not have blocking review items")
     return {
         **dict(brief), "quantity": _positive_number(brief["quantity"]),
         "dimensions_mm": normalized_dimensions, "counts": normalized_counts,
         "material_roles": normalized_roles, "assumptions": list(assumptions),
-        "review_items": [dict(item) for item in reviews],
     }

@@ -1,6 +1,6 @@
 """Mandatory, auditable price fallback for an unresolved material demand.
 
-This contract holds a short user-reviewable rationale, not private model
+This contract holds a short user-visible rationale, not private model
 reasoning.  An assumption can be weak, but it may never make an estimate
 material line unpriced.
 """

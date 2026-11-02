@@ -132,6 +132,6 @@ def compose_approximate_bom_v1(brief: Mapping[str, Any]) -> dict[str, Any]:
         "object_id": normalized["object_id"], "object_name": normalized["object_name"],
         "quantity": normalized["quantity"], "dimensions_mm": dimensions,
         "materials": materials, "parts": parts, "assumptions": assumptions,
-        "review_items": list(normalized["review_items"]), "status": "review_required",
+        "status": "ready",
         "primary_preview_ref": normalized["primary_preview_ref"],
     }
