@@ -1,5 +1,14 @@
 # Done Log
 
+Estimation V4.10 material-progress repair `d0f1ac2`: separates confirmed
+geometry, project Material Plan and terminal result states. An infrastructure
+failure after BOM facts now becomes a visible terminal technical failure,
+instead of a running row that the UI visually advanced to an unconfirmed 70%.
+C/I/A behaviour is unchanged, so a missing source still receives priced A and
+is not treated as an error. Focused regression suite: 40 passed. The next live
+run must verify a successful complete price result and a recoverable technical
+outage state, завершена 02.11
+
 Detection V8.4.5 global batched assembly-scope production checkpoint `4c9ff38`:
 after V6.41 merged all Discovery batches, one optional scope-only review now
 uses the fixed Object Evidence crops and bounded local facts. It cannot alter

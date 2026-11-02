@@ -3132,6 +3132,21 @@ demands. Acceptance: a new run records these named assumptions, price plan
 contains no paint-as-board or compact-laminate Formica line, each shown fitting
 is separately costed, and the final project material result is C/I/A priced.
 
+V4.10 production repair, 2026-11-02: commit `d0f1ac2` separates actual
+geometry, project-material-plan and terminal states. A technical plan failure
+now ends the object with `material_plan_technical_failure` rather than
+publishing a permanently running intermediate BOM state. The UI can no longer
+animate an initial geometry checkpoint to 70% as if BOM were confirmed.
+This does not alter C/I/A: absent catalog coverage remains an immediate priced
+Assumption Fallback, while a database or storage outage remains visible as a
+technical failure. Focused runtime, Material Engine and progress tests passed.
+
+Next approved analysis within 3.17.4.3: define the bounded BOM scenario
+resolver from immutable evidence. It must select a simple construction recipe
+only when its defining source facts are present, otherwise emit cited geometry
+plus explicit assumptions. Do not introduce a generic shop-drawing engine or
+change Detection object identity/boundaries.
+
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
 commercial object. The existing immutable `estimation_input_v4` carries its
