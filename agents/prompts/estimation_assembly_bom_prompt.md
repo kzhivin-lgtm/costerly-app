@@ -18,7 +18,7 @@ First return exactly one document unit context:
 
 `{"unit":"mm|cm|m","basis":"explicit_source|document_convention_assumption","evidence_refs":[...],"assumption_reason":"string|null"}`
 
-Use `explicit_source` only when the unit is stated or unambiguously conventional in the drawing. A unitless drawing may use `document_convention_assumption`, with no evidence refs and one short reason. This unit is the default for all dimensions unless a dimension explicitly overrides it.
+Use `explicit_source` only when the unit is stated or unambiguously conventional in the drawing. A unitless drawing may use `document_convention_assumption`, with no evidence refs and one short reason. Infer that convention from the actual dimension lines and the physical scale of the depicted object as a whole. Ignore titles, labels and other non-dimensional text. This unit is the default for all dimensions unless a dimension explicitly overrides it.
 
 An assembly is:
 

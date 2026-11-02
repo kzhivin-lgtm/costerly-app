@@ -32,10 +32,6 @@ _FAMILY_PREFERENCE = {
     "drawer_slide": ("hardware_drawer_slide",),
     "leg": ("purchased_fabricated_component",),
 }
-_FURNITURE_PRIMARY_SPAN_MIN_MM = 450.0
-_FURNITURE_PRIMARY_SPAN_MAX_MM = 6000.0
-
-
 def _positive(value: Any, *, field: str) -> float:
     if isinstance(value, bool):
         raise ValueError(f"{field} must be a positive number")
@@ -94,88 +90,17 @@ def _unit_context(raw: Any, *, allowed: set[str]) -> tuple[str, list[str], str |
 
 
 def _resolve_document_unit(*, extraction: Mapping[str, Any], allowed: set[str]) -> tuple[str, list[str], str | None, str]:
-    """Resolve a unitless furniture drawing before any part is composed.
+    """Use the visual interpretation's one document-wide unit decision.
 
-    A unitless document is resolved by comparing complete scale scenarios for
-    primary assemblies, not by trusting one value or document metadata. Each
-    assembly contributes one vote from its source/derived width, height and
-    depth axes. Counts, thicknesses and unassigned OCR numbers are excluded.
-    A valid scenario makes a majority of assemblies furniture-scale without
-    making a material number of them micro-furniture or architecture-scale.
+    Unit inference belongs to the visual stage, which can read dimension lines
+    in the context of the whole drawing. The deterministic composer only
+    enforces that a cited source unit remains explicit and converts the chosen
+    document convention consistently.
     """
     unit, refs, reason = _unit_context(extraction.get("document_unit"), allowed=allowed)
     raw_context = extraction.get("document_unit") or {}
     if str(raw_context.get("basis") or "") == "explicit_source":
         return unit, refs, reason, "explicit_source"
-    assemblies: list[list[float]] = []
-    for assembly in extraction.get("assemblies") or []:
-        if not isinstance(assembly, Mapping):
-            continue
-        dimensions = assembly.get("dimensions") or {}
-        if not isinstance(dimensions, Mapping):
-            continue
-        axes: list[float] = []
-        for raw_dimension in dimensions.values():
-            if not isinstance(raw_dimension, Mapping):
-                continue
-            # A model-selected per-axis `mm` is still only a convention. Only
-            # an explicitly sourced unit can defeat this deterministic guard.
-            if str(raw_dimension.get("unit_basis") or "") == "explicit_source":
-                continue
-            if str(raw_dimension.get("basis") or "") not in {"source", "derived"}:
-                continue
-            try:
-                value = _positive(raw_dimension.get("value"), field="unit_scenario.dimension")
-            except ValueError:
-                continue
-            axes.append(value)
-        # One isolated number has no physical scale. Two or three assigned
-        # outer axes describe a primary assembly and count exactly once.
-        if len(axes) >= 2:
-            assemblies.append(axes)
-    if not assemblies:
-        return unit, refs, reason, "model_document_convention"
-
-    def scenario_score(candidate_unit: str) -> tuple[int, int, int]:
-        multiplier = _UNIT_TO_MM[candidate_unit]
-        plausible = micro = oversized = 0
-        for axes in assemblies:
-            span = max(axes) * multiplier
-            if span < _FURNITURE_PRIMARY_SPAN_MIN_MM:
-                micro += 1
-            elif span > _FURNITURE_PRIMARY_SPAN_MAX_MM:
-                oversized += 1
-            else:
-                plausible += 1
-        return plausible, micro, oversized
-
-    scores = {candidate: scenario_score(candidate) for candidate in _UNIT_TO_MM}
-    # Candidate ranking is deterministic. A candidate needs a majority of
-    # physical assemblies in the furniture envelope. Ties retain the model's
-    # declared convention because geometry alone has no further evidence.
-    majority = len(assemblies) // 2 + 1
-    viable = [
-        candidate for candidate, (plausible, micro, oversized) in scores.items()
-        if plausible >= majority and plausible > micro and plausible > oversized
-    ]
-    if viable:
-        selected = max(
-            viable,
-            key=lambda candidate: (
-                scores[candidate][0], -scores[candidate][1] - scores[candidate][2],
-                candidate == unit,
-            ),
-        )
-        selected_score = scores[selected]
-        return (
-            selected, [],
-            (
-                "Unitless primary-assembly scenario selected "
-                f"{selected}: {selected_score[0]}/{len(assemblies)} furniture-scale, "
-                f"{selected_score[1]} micro, {selected_score[2]} oversized."
-            ),
-            "primary_assembly_scale_scenario",
-        )
     return unit, refs, reason, "model_document_convention"
 
 
@@ -313,10 +238,7 @@ def build_structural_assembly_bom(*, input_row: Mapping[str, Any], dimension_gra
             name: _dimension(
                 dimensions.get(name), default_unit=document_unit, allowed=allowed_refs,
                 field=f"{assembly_id}.dimensions.{name}",
-                # A scale scenario supersedes every model-convention axis unit.
-                # Only `unit_basis=explicit_source` remains authoritative inside
-                # `_dimension`, so a model cannot silently mix cm and mm.
-                force_document_unit=document_unit_basis == "primary_assembly_scale_scenario",
+                force_document_unit=False,
             )
             for name in ("width", "height", "depth")
             if dimensions.get(name) is not None

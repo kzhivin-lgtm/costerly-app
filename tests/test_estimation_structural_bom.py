@@ -79,11 +79,11 @@ def test_structural_composer_does_not_create_unused_sheet_demands_for_a_table():
     assert result["parts"][0]["quantity"] == 2
 
 
-def test_unitless_primary_assembly_scenario_overrides_model_convention_without_touching_explicit_units():
+def test_unitless_document_convention_is_converted_consistently():
     row = _input()
     extraction = {
         "document_unit": {
-            "unit": "mm", "basis": "document_convention_assumption", "evidence_refs": [],
+            "unit": "cm", "basis": "document_convention_assumption", "evidence_refs": [],
             "assumption_reason": "A unitless drawing convention was selected.",
         },
         "assemblies": [{
@@ -98,18 +98,8 @@ def test_unitless_primary_assembly_scenario_overrides_model_convention_without_t
         allowed_material_families=["melamine_faced_particleboard", "fibreboard_hardboard"],
     )
 
-    assert result["document_unit"] == {
-        "unit": "cm", "evidence_refs": [], "resolution": "primary_assembly_scale_scenario",
-    }
+    assert result["document_unit"] == {"unit": "cm", "evidence_refs": [], "resolution": "model_document_convention"}
     assert next(part for part in result["parts"] if part["component_role"] == "carcass_side")["length_mm"] == 2650
-    assert "Unitless primary-assembly scenario selected cm" in result["assumptions"][0]
-
-    extraction["assemblies"][0]["dimensions"]["width"]["unit"] = "mm"
-    model_mm_result = build_structural_assembly_bom(
-        input_row=row, dimension_graph=build_dimension_graph(input_row=row), extraction=extraction,
-        allowed_material_families=["melamine_faced_particleboard", "fibreboard_hardboard"],
-    )
-    assert next(part for part in model_mm_result["parts"] if part["component_role"] == "carcass_top_bottom")["length_mm"] == 1600
 
     extraction["document_unit"] = {
         "unit": "mm", "basis": "explicit_source", "evidence_refs": [OCR_REF], "assumption_reason": None,
@@ -119,32 +109,3 @@ def test_unitless_primary_assembly_scenario_overrides_model_convention_without_t
         allowed_material_families=["melamine_faced_particleboard", "fibreboard_hardboard"],
     )
     assert explicit_result["document_unit"]["unit"] == "mm"
-
-
-def test_unit_scenario_prefers_mm_for_normal_millimetre_furniture_and_m_for_small_values():
-    row = _input()
-    base = {
-        "document_unit": {
-            "unit": "cm", "basis": "document_convention_assumption", "evidence_refs": [],
-            "assumption_reason": "Unitless convention.",
-        },
-        "assemblies": [{
-            "assembly_id": "cabinet", "assembly_role": "box_carcass", "quantity": 1, "evidence_refs": [REF],
-            "dimensions": {"width": _dimension(1600), "height": _dimension(2650), "depth": _dimension(720)},
-            "counts": {}, "material_roles": [],
-        }], "secondary_items": [], "omissions": [],
-    }
-    mm_result = build_structural_assembly_bom(
-        input_row=row, dimension_graph=build_dimension_graph(input_row=row), extraction=base,
-        allowed_material_families=["melamine_faced_particleboard", "fibreboard_hardboard"],
-    )
-    assert mm_result["document_unit"]["unit"] == "mm"
-
-    base["assemblies"][0]["dimensions"] = {
-        "width": _dimension(1.6), "height": _dimension(2.65), "depth": _dimension(0.72),
-    }
-    metre_result = build_structural_assembly_bom(
-        input_row=row, dimension_graph=build_dimension_graph(input_row=row), extraction=base,
-        allowed_material_families=["melamine_faced_particleboard", "fibreboard_hardboard"],
-    )
-    assert metre_result["document_unit"]["unit"] == "m"

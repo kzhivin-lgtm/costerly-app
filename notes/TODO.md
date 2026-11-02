@@ -3234,20 +3234,17 @@ area price, and disallow insulation-board candidates for structural hardboard
 backing. Re-run only after those three failures have focused tests and owner
 approval for the next V4 release.
 
-V4.15 unit scenario resolver, 2026-11-02, commit `3e5eb94`: repair in
-progress from the rejected V4.14 witness. When a document has no cited source
-unit, the composer considers only `width`/`height`/`depth` already assigned to
-each physical assembly, not raw OCR tokens, titles or other document metadata.
-For each `mm`/`cm`/`m` candidate it gives one vote to every assembly with two
-or more source or derived axes, then selects a candidate only if a majority
-falls in the `450..6000 mm` primary-furniture envelope and is not dominated by
-micro or architectural scale. Thus an unlabelled `160/265/158` assembly can
-resolve to `1600/2650/1580 mm`, but normal `1600/2650/720` resolves to `mm`
-and `1.6/2.65/0.72` resolves to `m`. A naked model-convention unit on an axis
-does not override this result. Only `unit_basis=explicit_source` may do so.
-This fixes scale only, not V4.14's false assignment of `20 x 72` as a table.
-Keep the live witness rejected until the assembly-semantic and
-material-compatibility repairs are implemented and verified.
+V4.15 document-unit interpretation, 2026-11-02, commits `3e5eb94` and
+`cb81dfa`: repair in progress from the rejected V4.14 witness. Unit inference
+belongs to the visual stage, which can read the actual dimension lines and the
+physical scale of the object as a whole. It declares exactly one document unit:
+a cited source unit when printed, otherwise a named convention assumption. The
+deterministic composer then only applies that one conversion consistently. It
+does not derive units from OCR token frequency, titles, labels or other
+non-dimensional document metadata. This fixes scale only, not V4.14's false
+assignment of `20 x 72` as a table. Keep the live witness rejected until the
+assembly-semantic and material-compatibility repairs are implemented and
+verified.
 
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
