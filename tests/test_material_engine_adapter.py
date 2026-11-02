@@ -499,7 +499,9 @@ def test_hardware_default_can_use_active_package_price():
 def test_material_plan_snapshot_preserves_purchase_and_object_traceability():
     result = build_material_plan(
         facts_by_object={"cabinet-a": _facts("cabinet-a", "side-a", length=1200, width=600)},
-        catalogs=_catalogs(_offer("company", price="100")),
+        catalogs=_catalogs(_offer("company", price="100", dimensions={
+            "length_mm": 2440, "width_mm": 1220, "format_source": "approved_catalog_default",
+        })),
     )
 
     snapshot = material_plan_snapshot(result)

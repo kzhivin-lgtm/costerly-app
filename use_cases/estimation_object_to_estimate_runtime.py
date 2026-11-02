@@ -77,14 +77,18 @@ def _record_failure_trace(
     """Tracing must never mask the original technical failure."""
     try:
         structural_validation = stage == "structural_composition" and isinstance(exc, ValueError)
+        material_plan_validation = stage == "material_plan" and isinstance(exc, ValueError)
         safe_message = (
             _structural_failure_code(str(exc)) or "structural_validation_failed"
             if structural_validation else _safe_failure_message(exc)
         )
+        if material_plan_validation:
+            safe_message = "material_plan_validation_failed"
         insert_estimation_failure_trace(
             client, input_id=input_id, agent_version=ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,
             stage=stage,
-            error_type=("StructuralValidationError" if structural_validation else type(exc).__name__),
+            error_type=("StructuralValidationError" if structural_validation else
+                        "MaterialPlanValidationError" if material_plan_validation else type(exc).__name__),
             error_message=safe_message,
         )
     except Exception:

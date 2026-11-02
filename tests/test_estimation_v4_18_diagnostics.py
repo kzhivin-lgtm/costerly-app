@@ -120,3 +120,19 @@ def test_stage_marker_records_only_bounded_metadata(monkeypatch):
         "estimation_stage": "structural_composition", "input_id": "input-1",
         "reason_code": "bom_ready", "part_count": 4,
     }
+
+
+def test_material_plan_validation_trace_does_not_persist_the_exception_message(monkeypatch):
+    traces = []
+    monkeypatch.setattr(
+        bom_runtime, "insert_estimation_failure_trace",
+        lambda _client, **kwargs: traces.append(kwargs) or "trace-1",
+    )
+
+    bom_runtime._record_failure_trace(
+        client=object(), input_id="input-1", stage="material_plan",
+        exc=ValueError("could not convert string to float: approved_catalog_default"),
+    )
+
+    assert traces[0]["error_type"] == "MaterialPlanValidationError"
+    assert traces[0]["error_message"] == "material_plan_validation_failed"

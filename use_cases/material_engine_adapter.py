@@ -45,6 +45,9 @@ _REFERENCE_DISCRETE_PACKAGE_QUANTITIES = {
     "pair": Decimal("2"),
     "dozen": Decimal("12"),
 }
+_PHYSICAL_PURCHASABLE_DIMENSION_KEYS = frozenset({
+    "length_mm", "width_mm", "height_mm", "thickness_mm", "diameter_mm",
+})
 _DRAWER_SLIDE_LAST_RESORT_DEPTH_MM = 400
 _ASSUMPTION_ALLOWANCE_ILS = Decimal("200")
 _ASSUMPTION_SHEET_DIMENSIONS = {"length_mm": Decimal("2440"), "width_mm": Decimal("1220")}
@@ -222,6 +225,18 @@ def _decimal(value: Any) -> Decimal | None:
 def _positive(value: Any) -> Decimal | None:
     result = _decimal(value)
     return result if result is not None and result > 0 else None
+
+
+def _physical_purchase_dimensions(value: Mapping[str, Any] | None) -> dict[str, float]:
+    """Expose physical format dimensions, never catalog provenance metadata."""
+    result: dict[str, float] = {}
+    for key, raw in dict(value or {}).items():
+        if str(key) not in _PHYSICAL_PURCHASABLE_DIMENSION_KEYS:
+            continue
+        numeric = _positive(raw)
+        if numeric is not None:
+            result[str(key)] = float(numeric)
+    return result
 
 
 def _canonical_requirement_unit(value: Any) -> str:
@@ -1263,10 +1278,9 @@ def build_material_plan(
             (
                 candidate_id,
                 {
-                    "purchasable_dimensions": {
-                        str(key): float(value)
-                        for key, value in dict(candidate.purchasable_dimensions or {}).items()
-                    },
+                    "purchasable_dimensions": _physical_purchase_dimensions(
+                        candidate.purchasable_dimensions
+                    ),
                     "package_quantity": float(candidate.package_quantity),
                 },
             )
