@@ -23,18 +23,29 @@ create index if not exists rfq_estimation_failure_traces_input_idx
 
 alter table public.rfq_estimation_failure_traces enable row level security;
 
-drop policy if exists rfq_estimation_failure_traces_company_member_read
-    on public.rfq_estimation_failure_traces;
-create policy rfq_estimation_failure_traces_company_member_read
-    on public.rfq_estimation_failure_traces
-    for select to authenticated
-    using (exists (
-        select 1
-        from public.rfq_estimation_object_inputs input
-        join public.company_members member on member.company_id = input.company_id
-        where input.input_id = rfq_estimation_failure_traces.input_id
-          and member.user_id = (select auth.uid())
-    ));
+do $policy$
+begin
+    if not exists (
+        select 1 from pg_policies
+        where schemaname = 'public'
+          and tablename = 'rfq_estimation_failure_traces'
+          and policyname = 'rfq_estimation_failure_traces_company_member_read'
+    ) then
+        execute $sql$
+            create policy rfq_estimation_failure_traces_company_member_read
+                on public.rfq_estimation_failure_traces
+                for select to authenticated
+                using (exists (
+                    select 1
+                    from public.rfq_estimation_object_inputs input
+                    join public.company_members member on member.company_id = input.company_id
+                    where input.input_id = rfq_estimation_failure_traces.input_id
+                      and member.user_id = (select auth.uid())
+                ))
+        $sql$;
+    end if;
+end
+$policy$;
 
 revoke all on public.rfq_estimation_failure_traces from anon;
 grant select on public.rfq_estimation_failure_traces to authenticated;
