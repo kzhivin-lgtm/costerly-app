@@ -3365,6 +3365,20 @@ structural defaults when zero or malformed. Structural traces classify
 remaining local dimension, count, unit, material-role and evidence validators
 with bounded codes. Pending: focused tests, deployment, and one fresh witness.
 
+V4.23 implementation, 2026-11-02, within approved task `3.17.4.3`: a model
+reference outside the immutable evidence package no longer fails the complete
+BOM. Invalid source or derived dimension refs downgrade the value to a named
+construction assumption; invalid source-material refs downgrade the material
+to `construction_assumption`; missing assembly refs use the supplied full-page
+artifact. Each transformation is retained in BOM `normalizations`. No invalid
+ref is ever persisted as source evidence. Every completed or failed cycle
+stage now writes a bounded `agent_usage_events` marker: Dimension Graph,
+evidence-artifact load, Assembly Agent, structural composition, BOM
+persistence, Material Plan, publisher and allocation. A marker contains only
+stage, immutable input ID, outcome, safe reason code and aggregate counts; it
+never retains the prompt, raw provider output, chain-of-thought or credentials.
+Pending: focused tests, deployment, and one fresh production witness.
+
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
 commercial object. The existing immutable `estimation_input_v4` carries its

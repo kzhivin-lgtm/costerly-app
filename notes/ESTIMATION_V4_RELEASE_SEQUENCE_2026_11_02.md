@@ -28,6 +28,7 @@ not an internal immutable fact-contract suffix.
 | V4.20 | `156f9a1` | Object Detail exposes one physical material table: C/I/A material, required net volume, purchasable format, project-rounded purchase quantity and total. Assembly roles move to collapsed Elements, and visible material names cannot be assembly labels |
 | V4.21 | `0b030ea` | Incomplete secondary assemblies and secondary items become bounded `structural_omissions`, while usable material demand continues through pricing. Structural validation traces persist a safe reason code, never provider output |
 | V4.22 | `88cacbe` | Optional zero counts are interpreted as absent where meaningful or replaced with the structural default where a physical assembly requires a positive count. Remaining structural validation failures emit a bounded reason code |
+| V4.23 | `a7d3a2b` | Unsupported model evidence refs are downgraded to named assumptions or a supplied full-page artifact, so they can never become false source claims or block usable BOM demand. Every V4 stage emits a bounded persisted success/failure marker |
 
 Rule from 2026-11-02: every subsequent Estimation deployment receives the next
 sequential V4 release number in its commit message, change note, deployment
