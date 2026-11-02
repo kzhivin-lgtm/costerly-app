@@ -113,6 +113,36 @@ def test_wardrobe_recipe_preserves_explicit_hardware_quantity_as_project_demand(
 
     bom = compose_approximate_bom_v1(brief)
 
-    hardware = next(item for item in bom["materials"] if item["requirement_id"] == "hardware")
+    hardware = next(item for item in bom["materials"] if item["requirement_id"] == "hardware_handle")
     assert hardware["quantity"] == 12.0
     assert hardware["unit"] == "piece"
+
+
+def test_wardrobe_recipe_prices_paint_once_as_finish_and_keeps_fittings_separate():
+    brief = _brief(material_roles=[
+        {
+            "role": "finish", "source_name": "Paint Nirlat ISO 11V",
+            "family": "paint_lacquer_stain", "specification": {}, "quantity": None, "unit": None,
+            "evidence_refs": [REF],
+        },
+        {
+            "role": "hardware", "source_name": "Handle 160 mm",
+            "family": "hardware_handle", "specification": {}, "quantity": 4, "unit": "piece",
+            "evidence_refs": [REF],
+        },
+        {
+            "role": "hardware", "source_name": "Hinge",
+            "family": "hardware_hinge", "specification": {}, "quantity": 8, "unit": "piece",
+            "evidence_refs": [REF],
+        },
+    ])
+
+    bom = compose_approximate_bom_v1(brief)
+
+    by_requirement = {item["requirement_id"]: item for item in bom["materials"]}
+    assert by_requirement["visible_facade"]["family"] == "mdf_hdf"
+    assert by_requirement["paint_lacquer_stain"]["quantity"] == 2.0
+    assert by_requirement["paint_lacquer_stain"]["unit"] == "piece"
+    assert by_requirement["hardware_handle"]["quantity"] == 8.0
+    assert by_requirement["hardware_hinge"]["quantity"] == 16.0
+    assert "default_paint_finish_kit_per_finished_object" in bom["assumptions"]

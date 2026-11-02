@@ -32,6 +32,9 @@ _ASSUMPTION_RULES = frozenset({
     "default_internal_melamine_faced_particleboard",
     "default_backing_hardboard",
     "default_visible_facade_mdf",
+    "formica_as_melamine_faced_particleboard",
+    "paint_is_finish_not_board",
+    "default_paint_finish_kit_per_finished_object",
 })
 _FORBIDDEN_TERMS = frozenset({
     "price", "cost", "rate", "hour", "labor", "operation", "machine",
@@ -142,14 +145,20 @@ def validate_object_to_estimate_v1(brief: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(roles, list):
         raise ValueError("material_roles must be a list")
     normalized_roles = []
-    seen_roles: set[str] = set()
+    # A cabinet can have a handle, hinges, slides and legs at the same time.
+    # Those are separate purchasable demands, while a construction role such
+    # as the carcass still has exactly one declared material.
+    seen_structural_roles: set[str] = set()
     for index, value in enumerate(roles, start=1):
         if not isinstance(value, Mapping) or set(value) != {"role", "source_name", "family", "specification", "quantity", "unit", "evidence_refs"}:
             raise ValueError(f"material_roles[{index}] has an invalid shape")
         role = value.get("role")
-        if role not in _MATERIAL_ROLES or role in seen_roles:
+        if role not in _MATERIAL_ROLES:
             raise ValueError(f"material_roles[{index}] has an invalid role")
-        seen_roles.add(role)
+        if role in {"visible_facade", "internal_carcass", "backing"}:
+            if role in seen_structural_roles:
+                raise ValueError(f"material_roles[{index}] has an invalid role")
+            seen_structural_roles.add(role)
         if not isinstance(value.get("source_name"), str) or not value["source_name"]:
             raise ValueError(f"material_roles[{index}] requires source_name")
         if not isinstance(value.get("family"), str) or not value["family"]:

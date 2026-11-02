@@ -88,6 +88,25 @@ recorded in the plan, but never deletes or blocks the already priced material
 line. A real production witness and SQL readback remain required before this
 path can be accepted as production behavior.
 
+## V4.9 simplification decision
+
+For this estimation stage, a source naming Formica is normalized to ordinary
+`melamine_faced_particleboard` (LDSP). The source name and an explicit
+`formica_as_melamine_faced_particleboard` assumption remain visible, but the
+system does not pursue a precise Formica format or compact-laminate recipe.
+
+Paint, lacquer and Nirlat-like names are always a `finish`, never the board
+behind a facade. In the absence of an explicit paint quantity, the recipe adds
+one standard paint set per finished object. This is a bounded pricing norm,
+not a coating-shop formula. It permits C/I selection when a paint offer exists
+and otherwise emits the mandatory A price.
+
+The evidence extractor may emit multiple `hardware` rows. The BOM preserves
+each separately identified handle, hinge, drawer slide or leg as its own
+purchase requirement and multiplies its shown count by object quantity.
+Generic rails, connectors, hangers and fastening sundries are not individual
+hardware demands in this material-only recipe.
+
 ## Deferred dependency: Price Research for A
 
 When neither C nor I supplies a compatible material, the Resolver must first

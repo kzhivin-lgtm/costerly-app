@@ -22,6 +22,30 @@ _DEFAULT_COUNTS = {
 }
 
 
+def _normalised_phrase(value: Any) -> str:
+    return " ".join(str(value or "").casefold().replace("_", " ").split())
+
+
+def _is_formica(claim: Mapping[str, Any]) -> bool:
+    return "formica" in _normalised_phrase(claim.get("source_name")) or "formica" in _normalised_phrase(claim.get("family"))
+
+
+def _is_paint(claim: Mapping[str, Any]) -> bool:
+    source = _normalised_phrase(claim.get("source_name"))
+    family = _normalised_phrase(claim.get("family"))
+    return any(token in source or token in family for token in ("paint", "nirlat", "lacquer", "stain", "color"))
+
+
+def _formica_specification(specification: Mapping[str, Any]) -> dict[str, Any]:
+    """Keep only ordinary LDSP attributes when Formica is intentionally simplified."""
+    result: dict[str, Any] = {}
+    for key in ("thickness_mm", "thickness", "decor", "colour", "color"):
+        value = specification.get(key)
+        if value not in (None, "", [], {}):
+            result[key] = value
+    return result
+
+
 def _positive(value: Any) -> float | None:
     if isinstance(value, bool):
         return None
@@ -105,13 +129,14 @@ def build_object_to_estimate_brief(
             counts[name] = {"value": int(float(claim["value"])), "basis": "evidence", "evidence_refs": list(claim["evidence_refs"]), "assumption_rule": None}
 
     roles = []
-    seen_roles: set[str] = set()
+    seen_structural_roles: set[str] = set()
+    seen_auxiliary_roles: set[tuple[str, str, str]] = set()
     for claim in extraction.get("material_roles") or []:
         if not isinstance(claim, Mapping):
             continue
         role = str(claim.get("role") or "")
         refs = claim.get("evidence_refs")
-        if role in seen_roles or role not in {"visible_facade", "internal_carcass", "backing", "finish", "hardware"}:
+        if role not in {"visible_facade", "internal_carcass", "backing", "finish", "hardware"}:
             continue
         if not isinstance(refs, list) or not refs or not all(isinstance(ref, str) and ref in allowed_refs for ref in refs):
             continue
@@ -119,10 +144,36 @@ def build_object_to_estimate_brief(
             continue
         if not isinstance(claim.get("family"), str) or not claim["family"]:
             continue
-        seen_roles.add(role)
+        family = str(claim["family"])
+        specification = dict(claim.get("specification") or {})
+        if _is_formica(claim):
+            family = "melamine_faced_particleboard"
+            specification = _formica_specification(specification)
+            if "formica_as_melamine_faced_particleboard" not in assumptions:
+                assumptions.append("formica_as_melamine_faced_particleboard")
+        if _is_paint(claim):
+            if role != "finish" and "paint_is_finish_not_board" not in assumptions:
+                assumptions.append("paint_is_finish_not_board")
+            role = "finish"
+            family = "paint_lacquer_stain"
+            # A board specification accidentally attached to a paint name is
+            # not a paint purchase specification.
+            specification = {
+                key: value for key, value in specification.items()
+                if key in {"colour", "color", "finish", "paint_type"}
+            }
+        if role in {"visible_facade", "internal_carcass", "backing"}:
+            if role in seen_structural_roles:
+                continue
+            seen_structural_roles.add(role)
+        else:
+            auxiliary_key = (role, _normalised_phrase(claim["source_name"]), family)
+            if auxiliary_key in seen_auxiliary_roles:
+                continue
+            seen_auxiliary_roles.add(auxiliary_key)
         roles.append({
-            "role": role, "source_name": claim["source_name"], "family": claim["family"],
-            "specification": dict(claim.get("specification") or {}),
+            "role": role, "source_name": claim["source_name"], "family": family,
+            "specification": specification,
             "quantity": claim.get("quantity"), "unit": claim.get("unit"),
             "evidence_refs": list(refs),
         })

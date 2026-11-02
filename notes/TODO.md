@@ -3114,6 +3114,24 @@ increments are retrospectively numbered V4.1 through V4.7 in
 V4.8 and every following Estimation deployment must use the next sequential
 V4 number in its commit, release note and checkpoint.
 
+V4.8 production repair, 2026-11-02: commit `b9e35c9` makes the completed
+Material Engine purchase plan advance the object from 70% to terminal
+`materials_costed`, and requirement-scopes every A fallback so incompatible
+sheet and direct demands cannot share one candidate. Focused regression checks
+passed. The saved wardrobe plan was recalculated without a Cloud call and SQL
+readback confirmed a planned five-line C/I/A plan, empty unresolved list,
+terminal 100% object state and two synced assumption records. This verifies
+completion mechanics, not material-quality acceptance.
+
+ACTIVE, P0, USER APPROVED, 3.17.4.3 V4.9 simplified material recipe: Formica
+is ordinary LDSP, paint is only a finish with one standard paint set per
+finished object when its consumption is unstated, and every separately shown
+handle, hinge, drawer slide or leg remains an independent purchase demand.
+Do not create individual rails, connectors, hangers or generic fastening
+demands. Acceptance: a new run records these named assumptions, price plan
+contains no paint-as-board or compact-laminate Formica line, each shown fitting
+is separately costed, and the final project material result is C/I/A priced.
+
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
 commercial object. The existing immutable `estimation_input_v4` carries its

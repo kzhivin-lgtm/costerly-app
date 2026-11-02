@@ -7,6 +7,7 @@ rectangle is a recipe result, never a fact claimed from the source document.
 
 from __future__ import annotations
 
+import re
 from typing import Any, Mapping
 
 from use_cases.estimation_object_to_estimate_contract import validate_object_to_estimate_v1
@@ -23,6 +24,27 @@ def _recipe_role(
     if role in source_roles:
         return dict(source_roles[role]), False
     return dict(defaults[role]), True
+
+
+def _auxiliary_requirement_id(
+    *, role: str, role_material: Mapping[str, Any], used_ids: set[str], ordinal: int,
+) -> str:
+    """Keep every visible fitting separate in the Material Engine plan."""
+    family = re.sub(r"[^a-z0-9]+", "_", str(role_material.get("family") or "").casefold()).strip("_")
+    base = family or role
+    if base not in used_ids:
+        used_ids.add(base)
+        return base
+    value = f"{base}_{ordinal}"
+    while value in used_ids:
+        ordinal += 1
+        value = f"{base}_{ordinal}"
+    used_ids.add(value)
+    return value
+
+
+def _is_paint_finish(role_material: Mapping[str, Any]) -> bool:
+    return str(role_material.get("family") or "").casefold() == "paint_lacquer_stain"
 
 
 def compose_approximate_bom_v1(brief: Mapping[str, Any]) -> dict[str, Any]:
@@ -47,7 +69,11 @@ def compose_approximate_bom_v1(brief: Mapping[str, Any]) -> dict[str, Any]:
     door_count = counts.get("door_count", {"value": bay_count})["value"]
     shelf_count = counts.get("shelf_count_per_bay", {"value": 1})["value"]
 
-    source_roles = {str(item["role"]): item for item in normalized["material_roles"]}
+    source_roles = {
+        str(item["role"]): item
+        for item in normalized["material_roles"]
+        if str(item["role"]) in {"visible_facade", "internal_carcass", "backing"}
+    }
     defaults = {
         "visible_facade": {
             "role": "visible_facade", "source_name": "Assumed visible facade MDF",
@@ -105,19 +131,31 @@ def compose_approximate_bom_v1(brief: Mapping[str, Any]) -> dict[str, Any]:
     # multiplied by the finished-object quantity here, before project-wide
     # aggregation; otherwise the mandatory A fallback remains an auditable
     # provisional allowance.
+    used_requirement_ids = {"visible_facade", "internal_carcass", "backing"}
     for role in ("finish", "hardware"):
-        role_material = source_roles.get(role)
-        if role_material is None:
-            continue
-        requirement(
-            role_material,
-            requirement_id=role,
-            default=False,
-            default_rule="",
-        )
-        if role_material.get("quantity") is not None:
-            materials[-1]["quantity"] = float(role_material["quantity"]) * normalized["quantity"]
-            materials[-1]["unit"] = role_material.get("unit")
+        for ordinal, role_material in enumerate(
+            (item for item in normalized["material_roles"] if item["role"] == role), start=1,
+        ):
+            requirement(
+                role_material,
+                requirement_id=_auxiliary_requirement_id(
+                    role=role, role_material=role_material,
+                    used_ids=used_requirement_ids, ordinal=ordinal,
+                ),
+                default=False,
+                default_rule="",
+            )
+            if role_material.get("quantity") is not None:
+                materials[-1]["quantity"] = float(role_material["quantity"]) * normalized["quantity"]
+                materials[-1]["unit"] = role_material.get("unit")
+            elif role == "finish" and _is_paint_finish(role_material):
+                # V4 is an estimate, not a coating-shop recipe. One standard
+                # paint set per finished object is the deliberately bounded
+                # material norm until a source declares consumption.
+                materials[-1]["quantity"] = float(normalized["quantity"])
+                materials[-1]["unit"] = "piece"
+                if "default_paint_finish_kit_per_finished_object" not in assumptions:
+                    assumptions.append("default_paint_finish_kit_per_finished_object")
     if "derived_equal_bay_width" not in assumptions:
         assumptions.append("derived_equal_bay_width")
     if "derived_equal_door_width" not in assumptions:

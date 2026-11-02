@@ -49,3 +49,41 @@ def test_builder_rejects_unknown_reference_by_replacing_it_with_a_declared_defau
     assert brief["object_kind"] == "cabinet"
     assert brief["dimensions_mm"]["width"]["basis"] == "assumption"
     assert "default_cabinet_width_1000mm" in brief["assumptions"]
+
+
+def test_builder_normalizes_formica_and_never_uses_paint_as_a_board():
+    brief = build_object_to_estimate_brief(input_row=_input_row(), extraction={
+        "object_kind": "wardrobe",
+        "material_roles": [
+            {
+                "role": "visible_facade", "source_name": "Paint Nirlat ISO 11V",
+                "family": "mdf_hdf", "specification": {"board_type": "mdf"},
+                "quantity": None, "unit": None, "evidence_refs": [BLOCK],
+            },
+            {
+                "role": "internal_carcass", "source_name": "Formica 686",
+                "family": "compact_laminate", "specification": {"thickness_mm": 18, "core": "kraft"},
+                "quantity": None, "unit": None, "evidence_refs": [BLOCK],
+            },
+            {
+                "role": "hardware", "source_name": "Handle 160 mm",
+                "family": "hardware_handle", "specification": {},
+                "quantity": 4, "unit": "piece", "evidence_refs": [BLOCK],
+            },
+            {
+                "role": "hardware", "source_name": "Hinge",
+                "family": "hardware_hinge", "specification": {},
+                "quantity": 8, "unit": "piece", "evidence_refs": [BLOCK],
+            },
+        ],
+    })
+
+    roles = {(item["role"], item["source_name"]): item for item in brief["material_roles"]}
+    assert roles[("finish", "Paint Nirlat ISO 11V")]["family"] == "paint_lacquer_stain"
+    assert roles[("internal_carcass", "Formica 686")]["family"] == "melamine_faced_particleboard"
+    assert roles[("internal_carcass", "Formica 686")]["specification"] == {"thickness_mm": 18}
+    assert {item["source_name"] for item in brief["material_roles"] if item["role"] == "hardware"} == {
+        "Handle 160 mm", "Hinge",
+    }
+    assert "paint_is_finish_not_board" in brief["assumptions"]
+    assert "formica_as_melamine_faced_particleboard" in brief["assumptions"]

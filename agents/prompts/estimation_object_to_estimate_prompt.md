@@ -18,6 +18,10 @@ Each count claim is
 
 Each material role is
 `{"role":"visible_facade|internal_carcass|backing|finish|hardware","source_name":"...","family":"one allowed family code","specification":{},"quantity":positive_number_or_null,"unit":"piece|set|m|m²|kg|l|null","evidence_refs":[...]}`.
+Repeat `hardware` once for every separately shown handle, hinge, drawer slide,
+leg or other purchasable fitting. Keep a paint or lacquer only as `finish`,
+never as `visible_facade` or `internal_carcass`. If the source calls a board
+Formica, return its shown name but use family `melamine_faced_particleboard`.
 Return a role only when its source identity is shown or stated. Do not select a
 catalog item, price, labor, manufacturing operation, overhead, sale price or
 hidden precision detail. Set quantity and unit only when the source explicitly
