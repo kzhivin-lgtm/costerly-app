@@ -816,6 +816,42 @@ def test_plan_does_not_treat_a_profile_count_as_a_linear_demand():
     assert result.assumption_fallbacks[0]["reason_code"] == "material_geometry_required"
 
 
+def test_known_discrete_material_keeps_catalog_authority_when_its_count_is_assumed():
+    facts = {
+        "object_id": "cabinet-a", "quantity": 2,
+        "materials": [{
+            "requirement_id": "handle", "source_name": "Handle", "family": "hardware_handle",
+            "specification": {}, "quantity": None, "unit": None,
+        }],
+        "parts": [],
+    }
+    catalogs = _catalogs(_offer(
+        "piece", item_id="handle", price="12", source_unit="piece", purchase_unit="piece",
+        calculation_unit="piece", normalized_unit="piece", dimensions={}, price_scope="retail_package",
+    ))
+    catalogs["items"] = [{
+        "company_material_id": "handle", "canonical_name": "Handle", "normalized_name": "handle",
+        "status": "private", "specifications": {"material_family": "hardware_handle"},
+    }]
+    catalogs["material_families"] = [{
+        "family_id": "family-plywood", "family_code": "hardware_handle", "active": True,
+    }]
+    catalogs["material_pricing_policies"] = [{
+        "family_id": "family-plywood", "pricing_key_attribute_codes": [],
+        "purchase_format_policy": "not_required", "active": True,
+    }]
+
+    result = build_material_plan(facts_by_object={"cabinet-a": facts}, catalogs=catalogs)
+
+    assert result.plan is not None
+    assert result.plan.status == "planned"
+    assert result.plan.lines[0].candidate_id == "company-offer:piece"
+    assert result.plan.lines[0].purchase_quantity == Decimal("2")
+    assert result.assumption_fallbacks == ()
+    assert "assumed_discrete_quantity" in result.reason_codes
+    assert result.applied_defaults[-1]["default_type"] == "assumed_one_discrete_item_per_finished_object"
+
+
 def test_plan_uses_a_positive_count_as_interim_sheets_only_for_sheet_candidates():
     facts = {
         "object_id": "shelf-a",

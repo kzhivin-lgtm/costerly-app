@@ -1,7 +1,8 @@
 # Estimation 3.17.4.3: Object-to-Estimate and approximate BOM plan
 
-Status: active, owner-approved on 2026-11-02. This plan is the design boundary
-for the first material-only BOM increment, not a claim of implemented behavior.
+Status: active implementation, owner-approved on 2026-11-02. The first
+runtime path is intentionally bounded to wardrobe/cabinet construction, not a
+claim of universal production-calculation coverage.
 
 ## Product rule
 
@@ -68,6 +69,24 @@ widths and panel thicknesses. V4.2 preserves the page but extracts only
 material identity and explicit hardware count; it persists no structured
 geometry and zero parts. Object-to-Estimate must make that geometry available
 to the BOM Composer without weakening Detection's evidence contract.
+
+## Implemented first path
+
+The V4 runtime now preserves the V4.2 evidence result and writes two new
+immutable fact results for each new input: `estimation_object_to_estimate_v1`
+and `estimation_approximate_bom_v1`. The geometry agent sees every supplied
+private evidence page in bounded batches, and the deterministic builder either
+retains a cited dimension/count or inserts a named construction default. The
+first recipe creates facade, carcass, shelf and backing rectangles, and keeps a
+shown finish or hardware role as a separate demand. Explicit shown fitting
+counts are multiplied by finished-object quantity before project aggregation.
+
+The Material Engine then selects C, I or the mandatory priced A fallback. Each
+A line has a user-visible rationale and a silent, deduplicated Catalog Gap Job
+plus an estimate-local assumption record. An internal job-write outage is
+recorded in the plan, but never deletes or blocks the already priced material
+line. A real production witness and SQL readback remain required before this
+path can be accepted as production behavior.
 
 ## Deferred dependency: Price Research for A
 

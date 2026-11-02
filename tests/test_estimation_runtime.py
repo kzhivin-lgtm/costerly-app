@@ -50,7 +50,7 @@ def test_submit_creates_estimate_shell_before_background_job(monkeypatch):
     }
 
 
-def test_v4_1_material_runtime_routes_all_objects_through_the_current_path(monkeypatch):
+def test_v4_runtime_routes_all_objects_through_geometry_bom_path(monkeypatch):
     events = []
     monkeypatch.setattr(runtime, "get_supabase_client", lambda: object())
     monkeypatch.setattr(runtime, "fetch_rfq_run", lambda _client, _run_id: _Frame([{}]))
@@ -71,7 +71,7 @@ def test_v4_1_material_runtime_routes_all_objects_through_the_current_path(monke
     monkeypatch.setattr(
         runtime,
         "_run_estimation_v4_1_for_all_objects",
-        lambda **kwargs: events.append(("v4_1_run", kwargs["created_inputs"])) or {
+        lambda **kwargs: events.append(("v4_run", kwargs["created_inputs"])) or {
             "processed_input_ids": ["input-1"], "failed": {}
         },
     )
@@ -86,13 +86,13 @@ def test_v4_1_material_runtime_routes_all_objects_through_the_current_path(monke
         shell={"estimate_id": "estimate-1"},
     )
 
-    assert [event[0] for event in events] == ["v4_1_run"]
+    assert [event[0] for event in events] == ["v4_run"]
     assert result["estimation"]["status"] == "completed"
     assert result["estimation"]["estimated_objects"] == 1
-    assert result["estimation_version"] == "v4_2_materials"
+    assert result["estimation_version"] == "v4_object_to_estimate_bom"
 
 
-def test_all_ignored_objects_finish_as_empty_v4_1_estimate(monkeypatch):
+def test_all_ignored_objects_finish_as_empty_v4_estimate(monkeypatch):
     monkeypatch.setattr(runtime, "get_supabase_client", lambda: object())
     monkeypatch.setattr(runtime, "fetch_rfq_run", lambda _client, _run_id: _Frame([{}]))
     monkeypatch.setattr(runtime, "fetch_rfq_detected_objects", lambda _client, _run_id: _Frame([]))
@@ -109,7 +109,7 @@ def test_all_ignored_objects_finish_as_empty_v4_1_estimate(monkeypatch):
     }
 
 
-def test_material_engine_plan_runs_after_facts_and_cannot_block_object_publishing(monkeypatch):
+def test_material_engine_plan_runs_after_bom_and_cannot_block_object_publishing(monkeypatch):
     events = []
     facts = {
         "object-1": {"facts_payload": {"object_id": "object-1", "materials": [], "parts": []}},
@@ -119,11 +119,12 @@ def test_material_engine_plan_runs_after_facts_and_cannot_block_object_publishin
     captured_facts = {}
     monkeypatch.setattr(
         runtime,
-        "run_estimation_v4_1_material_facts_batch",
-        lambda **kwargs: captured_facts.update(kwargs) or events.append("facts") or {"failed": {}},
+        "run_object_to_estimate_bom_batch",
+        lambda **kwargs: captured_facts.update(kwargs) or events.append("bom") or {"failed": {}},
     )
     monkeypatch.setattr(runtime, "fetch_latest_estimation_facts_by_object", lambda _client, **_kwargs: facts)
     monkeypatch.setattr(runtime, "fetch_rfq_estimate_material_norm_overrides", lambda *_args, **_kwargs: SimpleNamespace(empty=True))
+    monkeypatch.setattr(runtime, "persist_material_assumption_fallbacks", lambda **_kwargs: 0)
     monkeypatch.setattr(
         runtime,
         "build_material_plan",
@@ -141,7 +142,7 @@ def test_material_engine_plan_runs_after_facts_and_cannot_block_object_publishin
         "upsert_rfq_estimate_material_plan",
         lambda *_args, **_kwargs: events.append("material_plan_persisted"),
     )
-    monkeypatch.setattr(runtime, "publish_estimation_v4_1_material_object", lambda **_kwargs: events.append("publish") or {"status": "review_required"})
+    monkeypatch.setattr(runtime, "publish_estimation_approximate_bom_object", lambda **_kwargs: events.append("publish") or {"status": "ready"})
     monkeypatch.setattr(runtime, "_set_object_progress", lambda _client, **_kwargs: None)
     monkeypatch.setattr(runtime, "update_rfq_object_estimate_progress", lambda _client, **_kwargs: None)
 
@@ -153,8 +154,8 @@ def test_material_engine_plan_runs_after_facts_and_cannot_block_object_publishin
         }],
     )
 
-    assert events == ["facts", "material_plan", "material_plan_persisted", "publish"]
-    assert captured_facts["material_context"] == {"catalogs": {}, "families": {"mdf"}}
+    assert events == ["bom", "material_plan", "material_plan_persisted", "publish"]
+    assert captured_facts["allowed_material_families"] == ["mdf"]
     assert result["processed_input_ids"] == ["input-1"]
     assert result["material_engine_plan"] == {
         "status": "planned", "demand_count": 1, "candidate_count": 1,

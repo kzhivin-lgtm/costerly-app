@@ -71,3 +71,29 @@ def test_v3_publisher_keeps_unmeasured_material_identity_without_a_fake_norm(mon
     assert line["unit"] is None
     assert line["quantity"] is None
     assert line["notes"] == "Material identified. Awaiting deterministic Material Plan."
+
+
+def test_approximate_bom_publisher_keeps_recipe_demand_non_blocking_until_allocation(monkeypatch):
+    facts = {
+        "contract_version": "estimation_approximate_bom_v1", "company_id": "company-1",
+        "assumptions": ["default_internal_melamine_faced_particleboard"],
+        "materials": [{
+            "requirement_id": "internal_carcass", "source_name": "Assumed internal LDSP",
+            "family": "melamine_faced_particleboard", "specification": {"thickness_mm": 18},
+            "quantity": None, "unit": None, "evidence_refs": [], "basis": "construction_assumption",
+        }],
+    }
+    captured = {}
+    monkeypatch.setattr(publisher, "fetch_estimation_fact_result", lambda *_args, **_kwargs: {"facts_payload": facts})
+    monkeypatch.setattr(publisher, "replace_rfq_estimate_lines_for_object", lambda *_args, **kwargs: captured.update(kwargs))
+    monkeypatch.setattr(publisher, "update_rfq_object_estimate_totals", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(publisher, "update_rfq_object_estimate_progress", lambda *_args, **kwargs: captured.setdefault("progress", kwargs))
+
+    result = publisher.publish_estimation_approximate_bom_object(
+        client=object(), estimate_id="estimate-1", input_row={"input_id": "input-1", "object_id": "object-1"},
+    )
+
+    assert result == {"status": "ready", "material_line_count": 1}
+    assert captured["lines"][0]["needs_review"] is False
+    assert captured["lines"][0]["needs_price"] is True
+    assert captured["progress"]["status"] == "running"

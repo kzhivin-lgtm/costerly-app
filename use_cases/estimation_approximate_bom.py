@@ -53,16 +53,19 @@ def compose_approximate_bom_v1(brief: Mapping[str, Any]) -> dict[str, Any]:
             "role": "visible_facade", "source_name": "Assumed visible facade MDF",
             "family": "mdf_hdf", "specification": {"board_type": "mdf", "thickness_mm": 18},
             "evidence_refs": [],
+            "quantity": None, "unit": None,
         },
         "internal_carcass": {
             "role": "internal_carcass", "source_name": "Assumed internal melamine faced particleboard",
             "family": "melamine_faced_particleboard", "specification": {"thickness_mm": 18},
             "evidence_refs": [],
+            "quantity": None, "unit": None,
         },
         "backing": {
             "role": "backing", "source_name": "Assumed hardboard backing",
             "family": "fibreboard_hardboard", "specification": {"thickness_mm": 3},
             "evidence_refs": [],
+            "quantity": None, "unit": None,
         },
     }
     facade, facade_default = _recipe_role(role="visible_facade", defaults=defaults, source_roles=source_roles)
@@ -96,6 +99,25 @@ def compose_approximate_bom_v1(brief: Mapping[str, Any]) -> dict[str, Any]:
     requirement(facade, requirement_id="visible_facade", default=facade_default, default_rule="default_visible_facade_mdf")
     requirement(carcass, requirement_id="internal_carcass", default=carcass_default, default_rule="default_internal_melamine_faced_particleboard")
     requirement(backing, requirement_id="backing", default=backing_default, default_rule="default_backing_hardboard")
+    # A named finish or fitting is a separate material demand even when the
+    # sketch supplies no usable quantity.  That prevents a visible handle,
+    # rail or coating from silently disappearing.  An explicit quantity is
+    # multiplied by the finished-object quantity here, before project-wide
+    # aggregation; otherwise the mandatory A fallback remains an auditable
+    # provisional allowance.
+    for role in ("finish", "hardware"):
+        role_material = source_roles.get(role)
+        if role_material is None:
+            continue
+        requirement(
+            role_material,
+            requirement_id=role,
+            default=False,
+            default_rule="",
+        )
+        if role_material.get("quantity") is not None:
+            materials[-1]["quantity"] = float(role_material["quantity"]) * normalized["quantity"]
+            materials[-1]["unit"] = role_material.get("unit")
     if "derived_equal_bay_width" not in assumptions:
         assumptions.append("derived_equal_bay_width")
     if "derived_equal_door_width" not in assumptions:

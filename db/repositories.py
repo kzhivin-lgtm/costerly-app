@@ -217,7 +217,7 @@ def fetch_latest_estimation_facts_by_object(
         return {}
     result_rows_query = (
         client.table("rfq_estimation_object_fact_results")
-        .select("input_id,agent_version,status,facts_payload,created_at")
+        .select("fact_result_id,input_id,agent_version,status,facts_payload,created_at")
         .in_("input_id", input_ids)
         .order("created_at", desc=True)
     )
@@ -700,6 +700,138 @@ def upsert_rfq_estimate_material_plan(
         },
         on_conflict="estimate_id",
     ).execute()
+
+
+def create_or_update_catalog_gap_job(
+    client: Client,
+    *,
+    gap_fingerprint: str,
+    gap_type: str,
+    market_code: str,
+    normalized_statement: str,
+    route_critical_attributes: dict,
+) -> str:
+    """Return one durable, deduplicated Staff research job for a material gap."""
+    existing_rows = (
+        client.table("catalog_gap_jobs")
+        .select("gap_job_id,occurrence_count")
+        .eq("gap_fingerprint", gap_fingerprint)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    now = datetime.now(UTC).isoformat()
+    if existing_rows:
+        existing = dict(existing_rows[0])
+        gap_job_id = str(existing["gap_job_id"])
+        client.table("catalog_gap_jobs").update({
+            "occurrence_count": int(existing.get("occurrence_count") or 0) + 1,
+            "updated_at": now,
+        }).eq("gap_job_id", gap_job_id).execute()
+        return gap_job_id
+    rows = (
+        client.table("catalog_gap_jobs")
+        .insert({
+            "gap_fingerprint": gap_fingerprint,
+            "gap_type": gap_type,
+            "market_code": market_code,
+            "normalized_statement": normalized_statement,
+            "route_critical_attributes": route_critical_attributes,
+            "status": "research_pending",
+            "occurrence_count": 1,
+            "updated_at": now,
+        })
+        .select("gap_job_id")
+        .execute()
+        .data
+        or []
+    )
+    if len(rows) != 1 or not rows[0].get("gap_job_id"):
+        raise RuntimeError("Catalog Gap Job insert did not return gap_job_id.")
+    return str(rows[0]["gap_job_id"])
+
+
+def fetch_active_estimate_case_assumptions(client: Client, *, estimate_id: str) -> list[dict]:
+    rows = (
+        client.table("estimate_case_assumptions")
+        .select("assumption_id,object_id,chosen_assumption")
+        .eq("estimate_id", estimate_id)
+        .eq("status", "active")
+        .execute()
+        .data
+        or []
+    )
+    return [dict(row) for row in rows]
+
+
+def insert_estimate_case_assumption(
+    client: Client,
+    *,
+    estimate_id: str,
+    object_id: str,
+    company_id: str,
+    fact_result_id: str | None,
+    gap_job_id: str,
+    assumption_kind: str,
+    chosen_assumption: dict,
+    research_sources: list,
+    calculation_impact: dict,
+    confidence: float,
+) -> str:
+    rows = (
+        client.table("estimate_case_assumptions")
+        .insert({
+            "estimate_id": estimate_id,
+            "object_id": object_id,
+            "company_id": company_id,
+            "fact_result_id": fact_result_id,
+            "gap_job_id": gap_job_id,
+            "assumption_kind": assumption_kind,
+            "chosen_assumption": chosen_assumption,
+            "research_sources": research_sources,
+            "calculation_impact": calculation_impact,
+            "confidence": confidence,
+        })
+        .select("assumption_id")
+        .execute()
+        .data
+        or []
+    )
+    if len(rows) != 1 or not rows[0].get("assumption_id"):
+        raise RuntimeError("Estimate Assumption insert did not return assumption_id.")
+    return str(rows[0]["assumption_id"])
+
+
+def update_estimate_case_assumption(
+    client: Client,
+    *,
+    assumption_id: str,
+    gap_job_id: str,
+    fact_result_id: str | None,
+    chosen_assumption: dict,
+    research_sources: list,
+    calculation_impact: dict,
+    confidence: float,
+) -> None:
+    client.table("estimate_case_assumptions").update({
+        "gap_job_id": gap_job_id,
+        "fact_result_id": fact_result_id,
+        "chosen_assumption": chosen_assumption,
+        "research_sources": research_sources,
+        "calculation_impact": calculation_impact,
+        "confidence": confidence,
+    }).eq("assumption_id", assumption_id).execute()
+
+
+def insert_catalog_gap_job_occurrence(
+    client: Client, *, gap_job_id: str, assumption_id: str, company_id: str,
+) -> None:
+    client.table("catalog_gap_job_occurrences").insert({
+        "gap_job_id": gap_job_id,
+        "assumption_id": assumption_id,
+        "company_id": company_id,
+    }).execute()
 
 
 def upsert_rfq_estimate_material_norm_override(

@@ -39,6 +39,7 @@ def _brief(**overrides):
         "material_roles": [{
             "role": "visible_facade", "source_name": "Paint Nirlat IS0011W",
             "family": "mdf_hdf", "specification": {"board_type": "mdf", "thickness_mm": 18},
+            "quantity": None, "unit": None,
             "evidence_refs": [REF],
         }],
         "assumptions": [], "primary_preview_ref": REF,
@@ -101,3 +102,17 @@ def test_wardrobe_recipe_rejects_impossible_carcass_geometry():
 
     with pytest.raises(ValueError, match="incompatible with carcass thickness"):
         compose_approximate_bom_v1(brief)
+
+
+def test_wardrobe_recipe_preserves_explicit_hardware_quantity_as_project_demand():
+    brief = _brief(material_roles=[{
+        "role": "hardware", "source_name": "Domicile handle AL100",
+        "family": "hardware_handle", "specification": {}, "quantity": 6, "unit": "piece",
+        "evidence_refs": [REF],
+    }])
+
+    bom = compose_approximate_bom_v1(brief)
+
+    hardware = next(item for item in bom["materials"] if item["requirement_id"] == "hardware")
+    assert hardware["quantity"] == 12.0
+    assert hardware["unit"] == "piece"

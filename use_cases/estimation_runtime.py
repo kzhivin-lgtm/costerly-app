@@ -19,15 +19,18 @@ from db.repositories import (
 from db.supabase_client import get_supabase_client
 from use_cases.estimation_handoff import persist_estimation_inputs
 from use_cases.estimation_originals import describe_estimation_original
-from use_cases.estimation_v4_1_material_facts import run_estimation_v4_1_material_facts_batch
-from agents.estimation_v4_1_material_facts_agent import ESTIMATION_V4_2_MATERIAL_FACTS_AGENT_VERSION
+from use_cases.estimation_object_to_estimate_runtime import (
+    ESTIMATION_APPROXIMATE_BOM_AGENT_VERSION,
+    run_object_to_estimate_bom_batch,
+)
 from use_cases.material_engine_adapter import (
     material_plan_input_fingerprint,
     material_plan_snapshot,
     build_material_plan,
 )
 from use_cases.estimation_material_context import build_estimation_material_context
-from use_cases.estimation_v3_material_publisher import publish_estimation_v4_1_material_object
+from use_cases.estimation_assumption_fallbacks import persist_material_assumption_fallbacks
+from use_cases.estimation_v3_material_publisher import publish_estimation_approximate_bom_object
 from db.repositories import update_rfq_object_estimate_progress
 from use_cases.estimation_progress import set_object_progress
 
@@ -59,7 +62,7 @@ def _build_and_persist_material_plan(
     """Compute one estimate-wide plan from the latest facts and user norms."""
     shared_catalogs = catalogs or build_estimation_material_context(client, company_id)["catalogs"]
     facts_by_object = fetch_latest_estimation_facts_by_object(
-        client, run_id=run_id, agent_version=ESTIMATION_V4_2_MATERIAL_FACTS_AGENT_VERSION,
+        client, run_id=run_id, agent_version=ESTIMATION_APPROXIMATE_BOM_AGENT_VERSION,
     )
     override_rows = fetch_rfq_estimate_material_norm_overrides(client, estimate_id)
     overrides = _material_norm_overrides_by_requirement(override_rows)
@@ -74,6 +77,24 @@ def _build_and_persist_material_plan(
         material_norm_overrides=overrides,
     )
     snapshot = material_plan_snapshot(result, input_fingerprint=fingerprint)
+    try:
+        snapshot["assumption_job_sync"] = {
+            "status": "synced",
+            "count": persist_material_assumption_fallbacks(
+                client=client,
+                estimate_id=estimate_id,
+                company_id=company_id,
+                facts_by_object=facts_by_object,
+                plan_snapshot=snapshot,
+            ),
+        }
+    except Exception as exc:
+        # Research-job persistence must be observable, but an internal staff
+        # queue outage cannot turn an already priced A line back into an error.
+        snapshot["assumption_job_sync"] = {
+            "status": "failed",
+            "error": f"{type(exc).__name__}: {exc}",
+        }
     plan = result.plan
     upsert_rfq_estimate_material_plan(
         client,
@@ -170,7 +191,7 @@ def _run_estimation_v4_1_for_all_objects(
     estimate_id: str,
     created_inputs: list[dict[str, object]],
 ) -> dict[str, object]:
-    """Extract material facts, build one plan, then publish material rows."""
+    """Build cited geometry, deterministic BOM and one project-wide material plan."""
     failed: dict[str, str] = {}
     completed_inputs: list[str] = []
     total = len(created_inputs)
@@ -185,7 +206,7 @@ def _run_estimation_v4_1_for_all_objects(
         valid_inputs.append(input_row)
         index_by_input[input_id] = index
 
-    def mark_facts_start(input_row: Mapping[str, object]) -> None:
+    def mark_geometry_start(input_row: Mapping[str, object]) -> None:
         input_id = str(input_row.get("input_id") or "")
         object_id = str(input_row.get("object_id") or "")
         _set_object_progress(
@@ -193,7 +214,7 @@ def _run_estimation_v4_1_for_all_objects(
             estimate_id=estimate_id,
             object_id=object_id,
             percent=max(1, int((index_by_input[input_id] - 1) * 45 / max(total, 1))),
-            label="extracting_object_facts",
+            label="building_object_geometry",
         )
 
     first_payload = valid_inputs[0].get("input_payload") if valid_inputs else None
@@ -201,11 +222,11 @@ def _run_estimation_v4_1_for_all_objects(
     shared_context = build_estimation_material_context(client, company_id) if company_id else None
 
     for input_row in valid_inputs:
-        mark_facts_start(input_row)
-    facts_result = run_estimation_v4_1_material_facts_batch(
+        mark_geometry_start(input_row)
+    facts_result = run_object_to_estimate_bom_batch(
         client=client,
         inputs=valid_inputs,
-        material_context=shared_context,
+        allowed_material_families=sorted(shared_context["families"]),
     )
 
     material_plan_summary: dict[str, object] = {"status": "not_run"}
@@ -236,8 +257,8 @@ def _run_estimation_v4_1_for_all_objects(
                     "reason_codes": snapshot["reason_codes"],
                 }
             except Exception as exc:
-                # Facts extraction and object publishing must stay usable if
-                # purchase planning encounters malformed catalog data.
+                # The material result is still retained as immutable facts if
+                # a technical Engine failure occurs.
                 material_plan_summary = {
                     "status": "failed",
                     "error": f"{type(exc).__name__}: {exc}",
@@ -255,7 +276,7 @@ def _run_estimation_v4_1_for_all_objects(
                 object_id=object_id,
                 status="failed",
                 progress_percent=100,
-                progress_label="object_facts_failed",
+                progress_label="object_to_estimate_bom_failed",
             )
             continue
         _set_object_progress(
@@ -263,17 +284,16 @@ def _run_estimation_v4_1_for_all_objects(
             estimate_id=estimate_id,
             object_id=object_id,
             percent=55,
-            label="object_facts_ready_for_costing",
+            label="approximate_bom_ready_for_costing",
         )
         try:
-            published = publish_estimation_v4_1_material_object(
+            published = publish_estimation_approximate_bom_object(
                 client=client,
                 estimate_id=estimate_id,
                 input_row=input_row,
-                allowed_material_families=set(shared_context["families"]),
             )
             completed_inputs.append(input_id)
-            if published.get("status") not in {"complete", "review_required"}:
+            if published.get("status") != "ready":
                 failed[input_id] = f"unexpected_publisher_status:{published.get('status')}"
         except Exception as exc:
             failed[input_id] = f"{type(exc).__name__}: {exc}"
@@ -283,7 +303,7 @@ def _run_estimation_v4_1_for_all_objects(
                 object_id=object_id,
                 status="failed",
                 progress_percent=100,
-                progress_label="v3_material_publisher_failed",
+                progress_label="approximate_bom_publisher_failed",
             )
     if material_plan_snapshot_data:
         from use_cases.estimation import apply_material_plan_allocations
@@ -354,7 +374,7 @@ def _run_estimation_job(
     ignored_object_ids: set[str],
     shell: dict[str, object] | None,
 ) -> dict[str, object]:
-    """Persist the immutable V4 handoff, then run bounded V4.1 material extraction."""
+    """Persist the immutable V4 handoff, then run geometry, BOM and material planning."""
     created_inputs: list[dict[str, object]] = []
     client = get_supabase_client()
     try:
@@ -378,7 +398,7 @@ def _run_estimation_job(
             )
             created_inputs = handoff["created_inputs"]
     except Exception as exc:
-        raise RuntimeError(f"Estimation V4.1 handoff failed: {exc}") from exc
+        raise RuntimeError(f"Estimation V4 handoff failed: {exc}") from exc
 
     inputs_available = bool(created_inputs)
     if inputs_available:
@@ -396,7 +416,7 @@ def _run_estimation_job(
                 "estimated_objects": len(estimation_result["processed_input_ids"]),
                 "failed_objects": estimation_result["failed"],
             },
-            "estimation_version": "v4_2_materials",
+            "estimation_version": "v4_object_to_estimate_bom",
         }
     if shell and int(shell.get("object_count") or 0) == 0:
         return {
@@ -408,6 +428,6 @@ def _run_estimation_job(
                 "estimated_objects": 0,
                 "failed_objects": {},
             },
-            "estimation_version": "v4_2_materials",
+            "estimation_version": "v4_object_to_estimate_bom",
         }
-    raise RuntimeError("Estimation V4.2 input handoff produced no estimable objects.")
+    raise RuntimeError("Estimation V4 input handoff produced no estimable objects.")

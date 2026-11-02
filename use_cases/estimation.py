@@ -25,7 +25,7 @@ from db.repositories import (
     upsert_rfq_estimate_shell,
 )
 from db.supabase_client import get_supabase_client
-from agents.estimation_v3_material_facts_agent import ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION
+from use_cases.estimation_object_to_estimate_runtime import ESTIMATION_APPROXIMATE_BOM_AGENT_VERSION
 from db.company_access import assert_estimate_owned, assert_run_owned
 from state.company_auth import company_auth_enabled
 from state.session import get_company_id
@@ -204,7 +204,7 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
                 facts_by_object = fetch_latest_estimation_facts_by_object(
                     client,
                     run_id=run_id,
-                    agent_version=ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION,
+                    agent_version=ESTIMATION_APPROXIMATE_BOM_AGENT_VERSION,
                 )
             except Exception:
                 facts_by_object = {}

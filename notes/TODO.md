@@ -3085,7 +3085,8 @@ and QA stages. C/I/A is the sole material price authority. Every demand must
 carry a cost: `A` is an immediate estimate-local Assumption Price, not an
 unpriced error, and may range from cited Israel price through Global projection
 to a documented estimator allowance. It must persist amount, currency, unit,
-confidence and reasoning, and keep low-confidence results review-required.
+confidence and reasoning, and keep low-confidence results visible as
+assumptions, never review-required.
 The future Price Research tool improves an A record and captures sources,
 units, purchase formats and a versioned Israel projection. Confidence and
 assumption rationale are explanatory only, never a result gate, user approval
@@ -3095,6 +3096,17 @@ Detection regression, cited versus assumed geometry is explicit, no model
 price/catalog choice, no invented precision parts, every material demand has
 C, I or priced A, and a real wardrobe/cabinet package reaches an automatic
 approximate BOM and material-cost result.
+
+Implementation update, 2026-11-02: local code now writes separate immutable
+`estimation_object_to_estimate_v1` and `estimation_approximate_bom_v1`
+results, then uses the existing project-wide Material Engine. The initial
+wardrobe/cabinet recipe covers visible facade, internal carcass, backing and
+shelves, preserves named finish/hardware demands, and carries shown hardware
+piece counts into the estimate-wide plan. The new runtime is not accepted yet:
+deploy the additive fact-result constraint, read it back with the pre-existing
+Catalog-Gap tables, then run one controlled saved wardrobe/cabinet witness and
+inspect all three immutable results, final C/I/A lines, price totals and any
+created assumption/job records.
 
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one

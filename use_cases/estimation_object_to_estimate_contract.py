@@ -16,10 +16,17 @@ _OBJECT_KINDS = frozenset({"wardrobe", "cabinet"})
 _DIMENSION_NAMES = frozenset({"width", "depth", "height"})
 _COUNT_NAMES = frozenset({"bay_count", "door_count", "shelf_count_per_bay"})
 _MATERIAL_ROLES = frozenset({"visible_facade", "internal_carcass", "backing", "finish", "hardware"})
+_DIRECT_UNITS = frozenset({"piece", "set", "m", "m²", "kg", "l"})
 _ASSUMPTION_RULES = frozenset({
     "default_carcass_thickness_18mm",
     "default_backing_thickness_3mm",
     "default_single_shelf_per_bay",
+    "default_single_bay",
+    "default_single_door",
+    "default_cabinet_width_1000mm",
+    "default_cabinet_depth_600mm",
+    "default_cabinet_height_2000mm",
+    "default_cabinet_archetype",
     "derived_equal_bay_width",
     "derived_equal_door_width",
     "default_internal_melamine_faced_particleboard",
@@ -137,7 +144,7 @@ def validate_object_to_estimate_v1(brief: Mapping[str, Any]) -> dict[str, Any]:
     normalized_roles = []
     seen_roles: set[str] = set()
     for index, value in enumerate(roles, start=1):
-        if not isinstance(value, Mapping) or set(value) != {"role", "source_name", "family", "specification", "evidence_refs"}:
+        if not isinstance(value, Mapping) or set(value) != {"role", "source_name", "family", "specification", "quantity", "unit", "evidence_refs"}:
             raise ValueError(f"material_roles[{index}] has an invalid shape")
         role = value.get("role")
         if role not in _MATERIAL_ROLES or role in seen_roles:
@@ -149,9 +156,24 @@ def validate_object_to_estimate_v1(brief: Mapping[str, Any]) -> dict[str, Any]:
             raise ValueError(f"material_roles[{index}] requires family")
         if not isinstance(value.get("specification"), Mapping):
             raise ValueError(f"material_roles[{index}] requires specification")
+        quantity = value.get("quantity")
+        unit = value.get("unit")
+        if quantity is None:
+            if unit is not None:
+                raise ValueError(f"material_roles[{index}] unit requires quantity")
+            normalized_quantity = None
+            normalized_unit = None
+        else:
+            normalized_quantity = _positive_number(quantity)
+            if normalized_quantity is None:
+                raise ValueError(f"material_roles[{index}] quantity must be positive")
+            if unit not in _DIRECT_UNITS:
+                raise ValueError(f"material_roles[{index}] has an unsupported unit")
+            normalized_unit = str(unit)
         normalized_roles.append({
             "role": role, "source_name": value["source_name"], "family": value["family"],
             "specification": dict(value["specification"]),
+            "quantity": normalized_quantity, "unit": normalized_unit,
             "evidence_refs": _evidence_refs(value.get("evidence_refs"), name=f"material_roles[{index}]"),
         })
 

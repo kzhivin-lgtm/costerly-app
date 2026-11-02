@@ -1083,16 +1083,31 @@ def build_material_plan(
                 reasons.add("assumption_fallback")
             if parts:
                 continue
+            # Explicit historical/manual units remain supported. Newly
+            # extracted V3 facts leave this null and obtain a unit only from a
+            # discrete resolved candidate.
+            direct_unit = str(material.get("unit") or "").strip() or _direct_count_unit(compatible)
+            if material_quantity is None and direct_unit is not None:
+                # Source authority and consumption basis are independent. A
+                # resolver-cleared discrete C/I item stays C/I when a rough
+                # sketch omitted its count; the conservative one-per-finished
+                # item quantity is an explicit construction assumption, not a
+                # fake loss of catalog coverage.
+                material_quantity = object_quantity
+                applied_defaults.append({
+                    "object_id": str(object_id),
+                    "material_requirement_id": requirement_id,
+                    "default_type": "assumed_one_discrete_item_per_finished_object",
+                    "quantity_per_item": 1.0,
+                    "unit": direct_unit,
+                })
+                reasons.add("assumed_discrete_quantity")
             if material_quantity is None:
                 add_assumption_fallback(
                     reason_code="material_quantity_missing", selection_key=selection_key,
                 )
                 reasons.add("assumption_fallback")
                 continue
-            # Explicit historical/manual units remain supported. Newly
-            # extracted V3 facts leave this null and obtain a unit only from a
-            # discrete resolved candidate.
-            direct_unit = str(material.get("unit") or "").strip() or _direct_count_unit(compatible)
             if direct_unit is None:
                 direct_unit = _interim_sheet_count_unit(compatible)
                 if direct_unit is not None:
