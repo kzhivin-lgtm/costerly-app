@@ -3327,7 +3327,7 @@ normalization cannot reintroduce the rejected mm micro-object path. Focused
 structural, trace, runtime, Scale Gate, Material Engine and Object Detail
 tests pass 68/68. Pending: deploy and obtain one owner-run V4.19 witness.
 
-V4.20 implementation, 2026-11-02, within approved task `3.17.4.3`: the
+V4.20 implementation, 2026-11-02, commit `156f9a1`, within approved task `3.17.4.3`: the
 accepted V4.19 witness `run_af762e31361047e4a151415c3e2b7285` exposed a
 product-layer regression, not a Material Engine purchase error. Object Detail
 rendered its internal allocation representation twice, as `Project Material
