@@ -89,7 +89,9 @@ def _unit_context(raw: Any, *, allowed: set[str]) -> tuple[str, list[str], str |
     return unit, refs, reason
 
 
-def _resolve_document_unit(*, extraction: Mapping[str, Any], allowed: set[str]) -> tuple[str, list[str], str | None, str]:
+def _resolve_document_unit(
+    *, extraction: Mapping[str, Any], allowed: set[str], dimension_scale_gate: Mapping[str, Any] | None = None,
+) -> tuple[str, list[str], str | None, str]:
     """Use the visual interpretation's one document-wide unit decision.
 
     Unit inference belongs to the visual stage, which can read dimension lines
@@ -101,7 +103,63 @@ def _resolve_document_unit(*, extraction: Mapping[str, Any], allowed: set[str]) 
     raw_context = extraction.get("document_unit") or {}
     if str(raw_context.get("basis") or "") == "explicit_source":
         return unit, refs, reason, "explicit_source"
+    decision = (dimension_scale_gate or {}).get("decision")
+    if isinstance(decision, Mapping) and str(decision.get("required_unit") or "") in _UNIT_TO_MM:
+        return (
+            str(decision["required_unit"]), [], str(decision.get("reason") or "").strip() or None,
+            "ocr_scale_guard",
+        )
     return unit, refs, reason, "model_document_convention"
+
+
+def _expected_region_ids(payload: Mapping[str, Any]) -> set[str]:
+    result: set[str] = set()
+    for page in ((payload.get("object") or {}).get("evidence_pages") or []):
+        if not isinstance(page, Mapping):
+            continue
+        try:
+            page_number = int(page.get("page_number"))
+        except (TypeError, ValueError):
+            continue
+        for index, region in enumerate(page.get("regions") or [], start=1):
+            if isinstance(region, Mapping):
+                result.add(f"p{page_number}-region-{index:03d}")
+    return result
+
+
+def _validate_coverage(
+    *, extraction: Mapping[str, Any], expected_region_ids: set[str], assembly_ids: set[str], secondary_ids: set[str],
+) -> list[dict[str, str]]:
+    if not expected_region_ids:
+        return []
+    coverage = extraction.get("coverage")
+    if not isinstance(coverage, list):
+        raise ValueError("structural BOM requires coverage for every supplied region")
+    result: list[dict[str, str]] = []
+    seen: set[str] = set()
+    allowed_exclusions = {"unshown_fasteners", "minor_unmeasured_trim", "reference_only", "non_material_annotation"}
+    for raw in coverage:
+        if not isinstance(raw, Mapping):
+            raise ValueError("structural BOM coverage entry must be an object")
+        region_id = str(raw.get("region_id") or "")
+        disposition = str(raw.get("disposition") or "")
+        target_id = str(raw.get("target_id") or "")
+        reason = str(raw.get("reason") or "")
+        if not region_id or region_id in seen or region_id not in expected_region_ids:
+            raise ValueError("structural BOM coverage has an unknown or duplicate region")
+        seen.add(region_id)
+        if disposition == "assembly" and target_id in assembly_ids:
+            pass
+        elif disposition == "secondary_item" and target_id in secondary_ids:
+            pass
+        elif disposition == "excluded" and reason in allowed_exclusions:
+            target_id = ""
+        else:
+            raise ValueError("structural BOM coverage has an unsupported material disposition")
+        result.append({"region_id": region_id, "disposition": disposition, "target_id": target_id, "reason": reason})
+    if seen != expected_region_ids:
+        raise ValueError("structural BOM coverage is incomplete")
+    return result
 
 
 def _dimension(
@@ -146,7 +204,10 @@ def _default_thickness(role: str) -> float | None:
     return None
 
 
-def build_structural_assembly_bom(*, input_row: Mapping[str, Any], dimension_graph: Mapping[str, Any], extraction: Mapping[str, Any], allowed_material_families: Sequence[str]) -> dict[str, Any]:
+def build_structural_assembly_bom(
+    *, input_row: Mapping[str, Any], dimension_graph: Mapping[str, Any], extraction: Mapping[str, Any],
+    allowed_material_families: Sequence[str], dimension_scale_gate: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     """Expand bounded assembly topology to auditable material parts.
 
     All dimensions remain attributed to immutable evidence.  Conventional
@@ -161,7 +222,7 @@ def build_structural_assembly_bom(*, input_row: Mapping[str, Any], dimension_gra
     allowed_refs = _allowed_refs(payload)
     allowed_families = {str(item) for item in allowed_material_families if str(item)}
     document_unit, document_unit_refs, document_unit_reason, document_unit_basis = _resolve_document_unit(
-        extraction=extraction, allowed=allowed_refs,
+        extraction=extraction, allowed=allowed_refs, dimension_scale_gate=dimension_scale_gate,
     )
     object_payload = payload.get("object") or {}
     object_quantity = _integer(object_payload.get("quantity") or 1, field="object.quantity", default=1)
@@ -337,9 +398,14 @@ def build_structural_assembly_bom(*, input_row: Mapping[str, Any], dimension_gra
             material["quantity"] = (material.get("quantity") or 0) + assembly_quantity * object_quantity
             material["unit"] = "piece"
 
-    for raw in extraction.get("secondary_items") or []:
+    secondary_ids: set[str] = set()
+    for index, raw in enumerate(extraction.get("secondary_items") or [], start=1):
         if not isinstance(raw, Mapping):
             continue
+        secondary_id = str(raw.get("secondary_id") or f"secondary-{index}")
+        if secondary_id in secondary_ids:
+            raise ValueError("secondary item requires a unique id")
+        secondary_ids.add(secondary_id)
         role = str(raw.get("role") or "")
         if role not in {"drawer_slide", "leg"}:
             raise ValueError("secondary item role is unsupported")
@@ -355,10 +421,14 @@ def build_structural_assembly_bom(*, input_row: Mapping[str, Any], dimension_gra
 
     if not parts and not any(item.get("quantity") for item in materials):
         raise ValueError("structural BOM has no material demand")
+    coverage = _validate_coverage(
+        extraction=extraction, expected_region_ids=_expected_region_ids(payload),
+        assembly_ids=seen_assemblies, secondary_ids=secondary_ids,
+    )
     preview_refs = sorted(ref for ref in allowed_refs if ref.startswith("storage://"))
     return {
         "contract_version": ASSEMBLY_BOM_V1,
-        "composition_version": "structural_bom_v4_15",
+        "composition_version": "structural_bom_v4_17",
         "input_id": str(input_row.get("input_id") or ""), "object_input_revision": int(input_row.get("object_input_revision") or 1),
         "run_id": str(payload.get("run_id") or ""), "company_id": str(payload.get("company_id") or ""),
         "object_id": str(object_payload.get("object_id") or ""), "object_name": str(object_payload.get("object_name") or ""),
@@ -366,9 +436,12 @@ def build_structural_assembly_bom(*, input_row: Mapping[str, Any], dimension_gra
         "document_unit": {
             "unit": document_unit, "evidence_refs": document_unit_refs,
             "resolution": document_unit_basis,
+            **({"scale_gate": dict((dimension_scale_gate or {}).get("decision") or {})}
+               if document_unit_basis == "ocr_scale_guard" else {}),
         },
         "assemblies": assemblies, "materials": materials, "parts": parts,
         "assumptions": list(dict.fromkeys(assumptions)),
         "omissions": [str(item) for item in extraction.get("omissions") or [] if str(item).strip()],
+        "coverage": coverage,
         "primary_preview_ref": preview_refs[0],
     }

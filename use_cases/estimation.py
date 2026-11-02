@@ -430,6 +430,10 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
                         raw_agent_json.get("price_source")
                         if isinstance(raw_agent_json, dict) else None
                     ),
+                    "material_plan_allocation": (
+                        raw_agent_json.get("material_plan_allocation")
+                        if isinstance(raw_agent_json, dict) else None
+                    ),
                     "locked": item.get("source") == "pricing_policy",
                     "policy_percent": (
                         raw_agent_json.get("percent")
@@ -518,6 +522,7 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
             company_id=str(object_row.get("company_id") or ""),
         ),
         "facts_status": facts_result.get("status"),
+        "project_material_purchases": _project_material_purchase_rows(material_plan),
         "sections": [
             {
                 "key": "material",
@@ -644,15 +649,40 @@ def _material_total_cost(*, unit_cost: float, quantity_per_item: float, object_q
     return round(unit_cost * quantity_per_item * max(object_quantity, 1), 2)
 
 
-def _material_norms_from_plan(plan_snapshot: dict[str, Any]) -> dict[tuple[str, str], tuple[str, float]]:
-    """Return deterministic net norms, never rounded purchase quantities.
+def _purchase_unit_label(purchase_kind: object) -> str:
+    return {
+        "sheet": "sheet",
+        "linear_stock": "stock length",
+        "linear_cut": "cut length",
+        "piece": "piece",
+        "direct": "purchase unit",
+        "volume_direct": "m³",
+    }.get(str(purchase_kind or ""), "purchase unit")
 
-    Object Detail describes what one finished item consumes.  A plan line may
-    buy whole sheets or stock bars, but those purchasing units must not be
-    copied into an individual object's norm.  The selected candidate supplies
-    the physical form, while its allocations supply the net area, length or
-    count for each material requirement.
-    """
+
+def _project_material_purchase_rows(plan_snapshot: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return actual estimate-wide purchases, never per-object consumption norms."""
+    result = []
+    for line in plan_snapshot.get("lines") or []:
+        if not isinstance(line, dict):
+            continue
+        quantity = _number(line.get("purchase_quantity"), 0)
+        if quantity <= 0:
+            continue
+        result.append({
+            "item": str(line.get("display_name") or "Material"),
+            "purchase": f"{_format_number(quantity)} {_purchase_unit_label(line.get('purchase_kind'))}",
+            "unit_price": _number(line.get("price_per_purchase_unit"), 0),
+            "total_cost": _number(line.get("total_cost"), 0),
+            "price_source": {"company": "C", "israel_reference": "I"}.get(
+                str(line.get("authority") or ""), "A"
+            ),
+        })
+    return result
+
+
+def _material_norms_from_plan(plan_snapshot: dict[str, Any]) -> dict[tuple[str, str], tuple[str, float]]:
+    """Return internal allocation weights, never rendered purchase quantities."""
     result: dict[tuple[str, str], tuple[str, float]] = {}
     for line in plan_snapshot.get("lines") or []:
         if not isinstance(line, dict):
@@ -736,6 +766,19 @@ def apply_material_plan_allocations(
         for allocation in line.get("allocations") or []
         if isinstance(allocation, dict)
     }
+    purchase_context = {
+        (str(allocation.get("object_id") or ""), str(allocation.get("material_requirement_id") or "")): {
+            "purchase_kind": str(line.get("purchase_kind") or ""),
+            "purchase_quantity": _number(line.get("purchase_quantity"), 0),
+            "purchase_unit": _purchase_unit_label(line.get("purchase_kind")),
+            "price_per_purchase_unit": _number(line.get("price_per_purchase_unit"), 0),
+            "purchase_total_cost": _number(line.get("total_cost"), 0),
+        }
+        for line in plan_snapshot.get("lines") or []
+        if isinstance(line, dict)
+        for allocation in line.get("allocations") or []
+        if isinstance(allocation, dict)
+    }
     assumption_fallbacks = {
         (str(row.get("object_id") or ""), str(row.get("material_requirement_id") or "")): row
         for row in plan_snapshot.get("assumption_fallbacks") or []
@@ -744,11 +787,6 @@ def apply_material_plan_allocations(
     if not allocation_costs and not assumption_fallbacks:
         return
     lines_df = fetch_rfq_estimate_lines(client, estimate_id)
-    objects_df = fetch_rfq_object_estimates(client, estimate_id)
-    object_quantities = {
-        str(row.get("object_id") or ""): _number(row.get("quantity"), 1)
-        for _, row in objects_df.iterrows()
-    }
     affected_object_ids: set[str] = set()
     for _, item in lines_df.iterrows():
         line = item.to_dict()
@@ -761,11 +799,16 @@ def apply_material_plan_allocations(
         norm = material_norms.get((object_id, requirement_id))
         if allocated_cost is None or norm is None:
             continue
-        unit, total_required_quantity = norm
+        _unit, total_required_quantity = norm
         if total_required_quantity <= 0:
             continue
-        quantity_per_item = total_required_quantity / max(object_quantities.get(object_id, 1), 1)
-        effective_unit_cost = round(allocated_cost / total_required_quantity, 4)
+        context = purchase_context.get((object_id, requirement_id))
+        if context is None:
+            continue
+        raw_agent_json = {
+            **(line.get("raw_agent_json") if isinstance(line.get("raw_agent_json"), dict) else {}),
+            "material_plan_allocation": {**context, "allocated_cost": round(allocated_cost, 2)},
+        }
         if assumption is not None:
             rationale = (assumption.get("assumption_price") or {}).get("rationale") or []
             update_rfq_estimate_line(
@@ -774,17 +817,14 @@ def apply_material_plan_allocations(
                 line_id=str(line.get("line_id") or ""),
                 values={
                     "item_name": str(assumption["source_name"]),
-                    "unit": unit,
-                    "quantity": quantity_per_item,
-                    "unit_cost": effective_unit_cost,
+                    "unit": "project allocation",
+                    "quantity": None,
+                    "unit_cost": None,
                     "cost": round(allocated_cost, 2),
                     "needs_price": False,
                     "needs_review": False,
                     "notes": " ".join(str(item) for item in rationale),
-                    "raw_agent_json": {
-                        **(line.get("raw_agent_json") if isinstance(line.get("raw_agent_json"), dict) else {}),
-                        "price_source": "A",
-                    },
+                    "raw_agent_json": {**raw_agent_json, "price_source": "A"},
                     "updated_at": datetime.now(UTC).isoformat(),
                 },
             )
@@ -795,14 +835,14 @@ def apply_material_plan_allocations(
             estimate_id=estimate_id,
             line_id=str(line.get("line_id") or ""),
             values={
-                "unit_cost": effective_unit_cost,
-                "unit": unit,
-                "quantity": quantity_per_item,
+                "unit_cost": None,
+                "unit": "project allocation",
+                "quantity": None,
                 "cost": round(allocated_cost, 2),
                 "needs_price": False,
                 "notes": "Allocated from the estimate-wide Material Plan",
                 "raw_agent_json": {
-                    **(line.get("raw_agent_json") if isinstance(line.get("raw_agent_json"), dict) else {}),
+                    **raw_agent_json,
                     "price_source": {"company": "C", "israel_reference": "I"}.get(
                         resolved_authorities.get((object_id, requirement_id)), "A"
                     ),

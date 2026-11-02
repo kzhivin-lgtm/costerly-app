@@ -70,7 +70,7 @@ def test_v4_runtime_routes_all_objects_through_geometry_bom_path(monkeypatch):
     monkeypatch.setattr(runtime, "describe_estimation_original", lambda **_kwargs: object())
     monkeypatch.setattr(
         runtime,
-        "_run_estimation_v4_14_for_all_objects",
+        "_run_estimation_v4_17_for_all_objects",
         lambda **kwargs: events.append(("v4_run", kwargs["created_inputs"])) or {
             "processed_input_ids": ["input-1"], "failed": {}
         },
@@ -89,7 +89,7 @@ def test_v4_runtime_routes_all_objects_through_geometry_bom_path(monkeypatch):
     assert [event[0] for event in events] == ["v4_run"]
     assert result["estimation"]["status"] == "completed"
     assert result["estimation"]["estimated_objects"] == 1
-    assert result["estimation_version"] == "v4_14_structural_bom_composer"
+    assert result["estimation_version"] == "v4_17_structural_bom_composer"
 
 
 def test_all_ignored_objects_finish_as_empty_v4_estimate(monkeypatch):

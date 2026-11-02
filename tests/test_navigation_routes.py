@@ -661,8 +661,10 @@ def test_file_review_refreshes_only_object_cards_for_deferred_artifacts():
     dynamic = source.index("def _render_file_review_dynamic_content")
     navigation = source.index('"CONTINUE TO OBJECTS ESTIMATION"')
 
-    assert "@st.fragment(run_every=2.0)" in source[:dynamic]
-    assert "st.rerun(scope=\"app\")" not in source
+    poll = source.index("def _poll_file_review_deferred_work")
+    rerun = source.index('st.rerun(scope="app")', poll)
+    assert "@st.fragment(run_every=2.0)" in source[dynamic:poll]
+    assert poll < rerun
     assert dynamic < navigation
     assert source.index("_publish_deferred_file_review_work(run_id)", dynamic) < source.index(
         "_render_object_card(item)", dynamic

@@ -57,6 +57,24 @@ def test_price_source_is_shown_as_minimal_marker_beside_editable_unit_cost():
     assert '>A</span>' in values[3]
 
 
+def test_project_allocation_never_displays_an_effective_area_price():
+    row = {
+        "item": "LDSP 18 mm", "unit": "project allocation", "qty": None, "unit_cost": None,
+        "cost": 212, "price_source": "I",
+        "material_plan_allocation": {
+            "purchase_quantity": 1, "purchase_unit": "sheet", "price_per_purchase_unit": 212,
+        },
+    }
+
+    values = _row_values(_section(), row)
+
+    assert "Project allocation" in values[1]
+    assert "1 sheet" in values[2]
+    assert "₪212" in values[3]
+    assert "contenteditable" not in values[2]
+    assert ">I</span>" in values[3]
+
+
 def test_nan_values_do_not_crash_object_detail_number_rendering():
     assert _number_text(float("nan")) == ""
     assert _quantity(float("nan")) == "—"

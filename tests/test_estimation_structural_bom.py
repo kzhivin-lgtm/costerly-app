@@ -1,3 +1,5 @@
+import pytest
+
 from use_cases.estimation_dimension_graph import build_dimension_graph
 from use_cases.estimation_structural_bom import build_structural_assembly_bom
 
@@ -109,3 +111,59 @@ def test_unitless_document_convention_is_converted_consistently():
         allowed_material_families=["melamine_faced_particleboard", "fibreboard_hardboard"],
     )
     assert explicit_result["document_unit"]["unit"] == "mm"
+
+
+def test_scale_gate_overrides_only_a_unitless_model_mm_convention():
+    row = _input()
+    row["input_payload"]["object"]["evidence_pages"] = [{
+        "page_number": 1,
+        "regions": [{"top_left_x": 1, "top_left_y": 1, "bottom_right_x": 10, "bottom_right_y": 10}],
+    }]
+    extraction = {
+        "document_unit": {
+            "unit": "mm", "basis": "document_convention_assumption", "evidence_refs": [],
+            "assumption_reason": "Model convention.",
+        },
+        "assemblies": [{
+            "assembly_id": "cabinet", "assembly_role": "box_carcass", "quantity": 1, "evidence_refs": [REF],
+            "dimensions": {"width": _dimension(160), "height": _dimension(265), "depth": _dimension(158)},
+            "counts": {}, "material_roles": [],
+        }],
+        "secondary_items": [], "omissions": [],
+        "coverage": [{"region_id": "p1-region-001", "disposition": "assembly", "target_id": "cabinet", "reason": ""}],
+    }
+
+    result = build_structural_assembly_bom(
+        input_row=row, dimension_graph=build_dimension_graph(input_row=row), extraction=extraction,
+        dimension_scale_gate={"decision": {"required_unit": "cm", "reason": "OCR scale witness."}},
+        allowed_material_families=["melamine_faced_particleboard", "fibreboard_hardboard"],
+    )
+
+    assert result["document_unit"]["resolution"] == "ocr_scale_guard"
+    assert result["document_unit"]["unit"] == "cm"
+    assert result["document_unit"]["scale_gate"]["required_unit"] == "cm"
+    assert next(part for part in result["parts"] if part["component_role"] == "carcass_side")["length_mm"] == 2650
+    assert result["coverage"][0]["target_id"] == "cabinet"
+
+
+def test_coverage_rejects_an_unassigned_visible_region():
+    row = _input()
+    row["input_payload"]["object"]["evidence_pages"] = [{
+        "page_number": 1,
+        "regions": [{"top_left_x": 1, "top_left_y": 1, "bottom_right_x": 10, "bottom_right_y": 10}],
+    }]
+    extraction = {
+        "document_unit": {"unit": "cm", "basis": "explicit_source", "evidence_refs": [OCR_REF]},
+        "assemblies": [{
+            "assembly_id": "table", "assembly_role": "table", "quantity": 1, "evidence_refs": [REF],
+            "dimensions": {"width": _dimension(160), "depth": _dimension(115)},
+            "counts": {}, "material_roles": [{"role": "visible_sheet", "source_name": "MDF", "family": "mdf_hdf", "basis": "construction_assumption", "evidence_refs": []}],
+        }],
+        "secondary_items": [], "omissions": [], "coverage": [],
+    }
+
+    with pytest.raises(ValueError, match="coverage is incomplete"):
+        build_structural_assembly_bom(
+            input_row=row, dimension_graph=build_dimension_graph(input_row=row), extraction=extraction,
+            allowed_material_families=["mdf_hdf"],
+        )

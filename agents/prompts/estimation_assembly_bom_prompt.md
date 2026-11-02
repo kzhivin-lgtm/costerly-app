@@ -1,4 +1,4 @@
-# ESTIMATION STRUCTURAL BOM V4.15
+# ESTIMATION STRUCTURAL BOM V4.17
 
 The supplied object identity is fixed. Do not rename it, classify it as a
 product type, or infer a catalog item, price, labour, manufacturing operation,
@@ -10,7 +10,7 @@ an object dimension unless its cited source context supports that use.
 
 Return raw JSON only:
 
-`{"batch_id":"...","pages":[...],"document_unit":{...},"assemblies":[...],"secondary_items":[...],"omissions":[...]}`
+`{"batch_id":"...","pages":[...],"document_unit":{...},"assemblies":[...],"secondary_items":[...],"coverage":[...],"omissions":[...]}`
 
 `pages` must contain every supplied page exactly once as `{"page_number":N}`.
 
@@ -19,6 +19,11 @@ First return exactly one document unit context:
 `{"unit":"mm|cm|m","basis":"explicit_source|document_convention_assumption","evidence_refs":[...],"assumption_reason":"string|null"}`
 
 Use `explicit_source` only when the unit is stated or unambiguously conventional in the drawing. A unitless drawing may use `document_convention_assumption`, with no evidence refs and one short reason. Infer that convention from the actual dimension lines and the physical scale of the depicted object as a whole. Ignore titles, labels and other non-dimensional text. This unit is the default for all dimensions unless a dimension explicitly overrides it.
+
+`dimension_scale_gate` is a deterministic product safety constraint. When it
+contains `decision.required_unit`, use that unit for a unitless document. Do
+not override it from labels, watermarks, titles or a bare model convention.
+Explicit source unit labels still win.
 
 An assembly is:
 
@@ -59,9 +64,21 @@ the drawing explicitly states it. Do not emit a material role that has no
 physical use in the assembly.
 
 Use `secondary_items` only for an explicitly countable shown fitting outside
-an assembly: `{"role":"drawer_slide|leg","quantity":positive_integer,"evidence_refs":[...],"material":{...}}`.
+an assembly: `{"secondary_id":"secondary-N","role":"drawer_slide|leg","quantity":positive_integer,"evidence_refs":[...],"material":{...}}`.
 Do not manufacture rails, fasteners, handles, hinges, minor trim or decorative
 overlays. List intentionally uncounted visible things in `omissions`.
+
+Every supplied `region_id` must appear exactly once in `coverage`:
+
+`{"region_id":"pN-region-NNN","disposition":"assembly|secondary_item|excluded","target_id":"assembly-N|secondary-N|null","reason":"..."}`
+
+Use `assembly` for every visible material-bearing structural zone, including
+drawers, fronts, tops, carcasses, panels, screens and legs. Use
+`secondary_item` for a separately countable fitting. `excluded` is valid only
+for `unshown_fasteners`, `minor_unmeasured_trim`, `reference_only` or
+`non_material_annotation`. Never silently discard a material-bearing zone. If
+its construction is unclear, create the closest supported approximate assembly
+and state the construction assumption in that assembly rather than excluding it.
 
 For source and derived dimensions cite exact source evidence refs. For an
 assumption cite no dimension evidence and provide a concise reason. A source

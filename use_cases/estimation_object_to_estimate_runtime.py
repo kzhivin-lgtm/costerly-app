@@ -21,6 +21,7 @@ from use_cases.estimation_approximate_bom import APPROXIMATE_BOM_V1, compose_app
 from use_cases.estimation_artifacts import download_evidence_artifact
 from use_cases.estimation_structural_bom import build_structural_assembly_bom
 from use_cases.estimation_dimension_graph import DIMENSION_GRAPH_V1, build_dimension_graph
+from use_cases.estimation_dimension_scale import build_dimension_scale_gate
 from use_cases.estimation_object_to_estimate import build_object_to_estimate_brief
 
 
@@ -89,6 +90,7 @@ def run_assembly_first_bom_batch(
                     client, input_id=input_id, agent_version=ESTIMATION_DIMENSION_GRAPH_AGENT_VERSION,
                     facts_payload=graph, agent_usage_event_id=graph_usage_id,
                 ))
+            dimension_scale_gate = build_dimension_scale_gate(dimension_graph=graph)
             payload = row.get("input_payload") or {}
             page_bytes = {}
             for artifact in ((payload.get("evidence") or {}).get("artifacts") or []):
@@ -99,10 +101,12 @@ def run_assembly_first_bom_batch(
                     page_bytes[storage_ref] = download_evidence_artifact(client=client, storage_ref=storage_ref)
             result = run_estimation_assembly_bom_agent(
                 input_row=row, evidence_page_bytes_by_ref=page_bytes, dimension_graph=graph,
+                dimension_scale_gate=dimension_scale_gate,
                 allowed_material_families=allowed_material_families,
             )
             bom = build_structural_assembly_bom(
                 input_row=row, dimension_graph=graph, extraction=result["extraction"],
+                dimension_scale_gate=dimension_scale_gate,
                 allowed_material_families=allowed_material_families,
             )
             usage_id = insert_agent_usage_event_returning_id(client, result["usage_event"])

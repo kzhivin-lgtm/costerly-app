@@ -75,6 +75,14 @@ def _input_html(value: object, kind: str = "text", field: str = "") -> str:
     )
 
 
+def _source_marker(value: object) -> str:
+    source = str(value or "").upper()
+    return (
+        f'<span class="object-detail-material-source" data-source="{_escape(source)}">{_escape(source)}</span>'
+        if source in {"C", "I", "A"} else ""
+    )
+
+
 def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]:
     """Map normalized estimate rows to visible table cells."""
     columns = section["columns"]
@@ -109,11 +117,17 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
             _escape(f"{percent}%" if percent else ""),
             f'<span class="object-detail-row-cost">{_money(row.get("cost"))}</span>',
         ]
-    source = str(row.get("price_source") or "").upper()
-    source_marker = (
-        f'<span class="object-detail-material-source" data-source="{_escape(source)}">{_escape(source)}</span>'
-        if source in {"C", "I", "A"} else ""
-    )
+    source_marker = _source_marker(row.get("price_source"))
+    allocation = row.get("material_plan_allocation")
+    if isinstance(allocation, dict):
+        purchase = f"{_number_text(allocation.get('purchase_quantity'))} {allocation.get('purchase_unit') or 'purchase unit'}"
+        return [
+            _escape(row.get("item")),
+            _escape("Project allocation"),
+            _escape(purchase),
+            _escape(_money(allocation.get("price_per_purchase_unit"))) + source_marker,
+            f'<span class="object-detail-row-cost">{_money(row.get("cost"))}</span>',
+        ]
     unit_cost = _input_html(_money(row.get("unit_cost")), "money", "unit_cost") + source_marker
     return [
         _escape(row.get("item")),
@@ -238,6 +252,36 @@ def _final_html(data: dict[str, object]) -> str:
         f'<div class="object-detail-final-value object-detail-final-total" data-final="total">{_money(summary["total"])}</div>'
         '</div>'
         '</div>'
+    )
+
+
+def _project_material_purchases_html(rows: object) -> str:
+    """Render the one authoritative purchase plan above per-object allocations."""
+    if not isinstance(rows, list) or not rows:
+        return ""
+    header = "".join(
+        f'<div class="object-detail-table-head">{label}</div>'
+        for label in ("Material", "Project purchase", "Purchase price", "Plan total")
+    )
+    body = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        body.append(
+            '<div class="object-detail-table-row object-detail-project-purchase-row">'
+            f'<div class="object-detail-table-cell">{_escape(row.get("item"))}{_source_marker(row.get("price_source"))}</div>'
+            f'<div class="object-detail-table-cell">{_escape(row.get("purchase"))}</div>'
+            f'<div class="object-detail-table-cell">{_money(row.get("unit_price"))}</div>'
+            f'<div class="object-detail-table-cell">{_money(row.get("total_cost"))}</div>'
+            '</div>'
+        )
+    if not body:
+        return ""
+    return (
+        '<section class="object-detail-section object-detail-section--cols-4" data-section="project-material-plan">'
+        '<div class="object-detail-section-header"><div class="object-detail-section-title">Project material plan</div></div>'
+        '<div class="object-detail-table object-detail-table--cols-4" data-section="project-material-plan">'
+        f'<div class="object-detail-table-head-row">{header}</div>{"".join(body)}</div></section>'
     )
 
 
@@ -375,7 +419,8 @@ def detail_html(
 ) -> str:
     """Render Object Detail sections, totals, and footer actions."""
     return (
-        "".join(_section_html(section) for section in data["sections"])
+        _project_material_purchases_html(data.get("project_material_purchases"))
+        + "".join(_section_html(section) for section in data["sections"])
         + _final_html(data)
         + _footer_html(
             run_id=run_id,

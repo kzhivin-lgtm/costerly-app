@@ -60,6 +60,9 @@ def test_partial_material_plan_publishes_resolved_canonical_line(monkeypatch):
     })
 
     assert updates[0]["values"]["item_name"] == "MDF 20 mm 1220 × 2440 mm, raw"
+    assert updates[0]["values"]["unit"] == "project allocation"
+    assert updates[0]["values"]["quantity"] is None
+    assert updates[0]["values"]["unit_cost"] is None
     assert updates[0]["values"]["cost"] == 244
     assert updates[0]["values"]["needs_price"] is False
     assert updates[0]["values"]["raw_agent_json"]["price_source"] == "C"
@@ -97,8 +100,23 @@ def test_assumption_fallback_is_published_as_a_priced_material_line(monkeypatch)
     })
 
     assert updates[0]["values"]["item_name"] == "Sliding door track"
-    assert updates[0]["values"]["quantity"] == 4.13
-    assert updates[0]["values"]["unit_cost"] == round(200 / 4.13, 4)
+    assert updates[0]["values"]["unit"] == "project allocation"
+    assert updates[0]["values"]["quantity"] is None
+    assert updates[0]["values"]["unit_cost"] is None
     assert updates[0]["values"]["cost"] == 200
     assert updates[0]["values"]["needs_price"] is False
     assert updates[0]["values"]["raw_agent_json"]["price_source"] == "A"
+
+
+def test_project_material_purchase_rows_preserve_whole_sheet_cost():
+    rows = estimation._project_material_purchase_rows({
+        "lines": [{
+            "display_name": "LDSP 18 mm", "purchase_kind": "sheet", "purchase_quantity": 2,
+            "price_per_purchase_unit": 211.99, "total_cost": 423.98, "authority": "israel_reference",
+        }],
+    })
+
+    assert rows == [{
+        "item": "LDSP 18 mm", "purchase": "2 sheet", "unit_price": 211.99,
+        "total_cost": 423.98, "price_source": "I",
+    }]
