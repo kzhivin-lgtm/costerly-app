@@ -164,6 +164,45 @@ def test_material_engine_plan_runs_after_bom_and_cannot_block_object_publishing(
     }
 
 
+def test_material_plan_technical_failure_ends_each_object_instead_of_leaving_70_percent(monkeypatch):
+    progress = []
+
+    monkeypatch.setattr(runtime, "build_estimation_material_context", lambda *_args: {"catalogs": {}, "families": {"mdf"}})
+    monkeypatch.setattr(runtime, "run_object_to_estimate_bom_batch", lambda **_kwargs: {"failed": {}})
+    monkeypatch.setattr(
+        runtime,
+        "_build_and_persist_material_plan",
+        lambda **_kwargs: (_ for _ in ()).throw(ConnectionError("temporary database outage")),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "_set_object_progress",
+        lambda _client, **kwargs: progress.append(("running", kwargs["percent"], kwargs["label"])),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "_set_object_technical_failure",
+        lambda _client, **kwargs: progress.append(("failed", 100, kwargs["label"])),
+    )
+
+    result = runtime._run_estimation_v4_1_for_all_objects(
+        client=object(), estimate_id="estimate-1",
+        created_inputs=[{
+            "input_id": "input-1", "object_id": "object-1",
+            "input_payload": {"company_id": "company-1", "run_id": "run-1"},
+        }],
+    )
+
+    assert result["processed_input_ids"] == []
+    assert result["failed"] == {"input-1": "material_plan_technical_failure"}
+    assert result["material_engine_plan"]["status"] == "failed"
+    assert progress == [
+        ("running", 1, "building_object_geometry"),
+        ("running", 55, "building_project_material_plan"),
+        ("failed", 100, "material_plan_technical_failure"),
+    ]
+
+
 class _Row:
     def __init__(self, value):
         self._value = value

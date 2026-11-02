@@ -185,6 +185,30 @@ def _set_object_progress(
     )
 
 
+def _set_object_technical_failure(
+    client: object,
+    *,
+    estimate_id: str,
+    object_id: str,
+    label: str,
+) -> None:
+    """End a technical failure instead of leaving a running percentage behind."""
+    set_object_progress(
+        estimate_id=estimate_id,
+        object_id=object_id,
+        percent=100,
+        status="failed",
+    )
+    update_rfq_object_estimate_progress(
+        client,
+        estimate_id=estimate_id,
+        object_id=object_id,
+        status="failed",
+        progress_percent=100,
+        progress_label=label,
+    )
+
+
 def _run_estimation_v4_1_for_all_objects(
     *,
     client: object,
@@ -235,6 +259,16 @@ def _run_estimation_v4_1_for_all_objects(
         first_payload = valid_inputs[0].get("input_payload")
         run_id = str(first_payload.get("run_id") or "") if isinstance(first_payload, Mapping) else ""
         if run_id:
+            for input_row in valid_inputs:
+                input_id = str(input_row["input_id"])
+                if input_id not in facts_result["failed"]:
+                    _set_object_progress(
+                        client,
+                        estimate_id=estimate_id,
+                        object_id=str(input_row["object_id"]),
+                        percent=55,
+                        label="building_project_material_plan",
+                    )
             try:
                 snapshot = _build_and_persist_material_plan(
                     client=client,
@@ -257,12 +291,54 @@ def _run_estimation_v4_1_for_all_objects(
                     "reason_codes": snapshot["reason_codes"],
                 }
             except Exception as exc:
-                # The material result is still retained as immutable facts if
-                # a technical Engine failure occurs.
+                # A real infrastructure error is distinct from an unavailable
+                # catalog item. Do not publish the intermediate 70% BOM state
+                # as if costing were still in progress.
                 material_plan_summary = {
                     "status": "failed",
                     "error": f"{type(exc).__name__}: {exc}",
                 }
+                for input_row in valid_inputs:
+                    input_id = str(input_row["input_id"])
+                    if input_id in facts_result["failed"]:
+                        continue
+                    failed[input_id] = "material_plan_technical_failure"
+                    _set_object_technical_failure(
+                        client,
+                        estimate_id=estimate_id,
+                        object_id=str(input_row["object_id"]),
+                        label="material_plan_technical_failure",
+                    )
+                return {
+                    "processed_input_ids": completed_inputs,
+                    "failed": failed,
+                    "material_engine_plan": material_plan_summary,
+                }
+
+    if material_plan_snapshot_data is None:
+        # A missing company context or run identity is also a technical
+        # failure. It must not fall through to the intermediate BOM publisher
+        # and create a permanently running 70% row.
+        material_plan_summary = {
+            "status": "failed",
+            "error": "material_plan_not_available",
+        }
+        for input_row in valid_inputs:
+            input_id = str(input_row["input_id"])
+            if input_id in facts_result["failed"]:
+                continue
+            failed[input_id] = "material_plan_not_available"
+            _set_object_technical_failure(
+                client,
+                estimate_id=estimate_id,
+                object_id=str(input_row["object_id"]),
+                label="material_plan_not_available",
+            )
+        return {
+            "processed_input_ids": completed_inputs,
+            "failed": failed,
+            "material_engine_plan": material_plan_summary,
+        }
 
     for input_row in valid_inputs:
         object_id = str(input_row["object_id"])

@@ -262,7 +262,9 @@ def _smooth_progress_curve(base: int) -> tuple[int, float]:
         return 95, 3.0
     if base >= 35:
         return 85, 1.8
-    return 70, 1.2
+    # Geometry has not completed yet. A visual timer must never present its
+    # eventual 70% BOM checkpoint as a server-confirmed state.
+    return 45, 1.2
 
 
 def _smooth_progress_percent(row: dict[str, object]) -> int:
