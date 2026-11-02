@@ -77,7 +77,32 @@ def _input_html(value: object, kind: str = "text", field: str = "", line_id: str
 
 
 def _material_input_html(*, value: object, field: str, line_id: str, unit: str) -> str:
-    return '<span class="object-detail-material-input">' + _input_html(value, "number", field, line_id) + f'<span class="object-detail-material-input-unit">{_escape(unit)}</span></span>'
+    has_unit = bool(str(unit or "").strip())
+    modifier = " object-detail-material-input--with-unit" if has_unit else " object-detail-material-input--bare"
+    unit_html = (
+        f'<span class="object-detail-material-input-unit">{_escape(unit)}</span>'
+        if has_unit else ""
+    )
+    return (
+        f'<span class="object-detail-material-input{modifier}">'
+        + _input_html(value, "number", field, line_id)
+        + unit_html
+        + "</span>"
+    )
+
+
+def _purchase_unit_html(value: object) -> str:
+    """Keep a sheet type and its dimensions legible within a compact column."""
+    text = str(value or "").strip()
+    purchase_kind, separator, dimensions = text.partition(" ")
+    if purchase_kind.lower() == "sheet" and separator and dimensions.strip():
+        return (
+            '<span class="object-detail-purchase-unit">'
+            f'<span class="object-detail-purchase-unit-kind">{_escape(purchase_kind)}</span>'
+            f'<span class="object-detail-purchase-unit-dimensions">{_escape(dimensions.strip())}</span>'
+            "</span>"
+        )
+    return _escape(value)
 
 
 def _source_marker(value: object) -> str:
@@ -93,10 +118,10 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
     columns = section["columns"]
     if columns == ["Material", "Required material", "Purchase unit", "Purchase quantity", "Total"]:
         return [
-            _source_marker(row.get("price_source")) + " " + _escape(row.get("item")),
+            _source_marker(row.get("price_source")) + f'<span class="object-detail-material-name">{_escape(row.get("item"))}</span>',
             _material_input_html(value=_number_text(row.get("required_material_value")), field="required_material", line_id=str(row.get("required_material_line_id") or ""), unit=str(row.get("required_material_unit") or "")),
-            _escape(row.get("purchase_unit")),
-            _material_input_html(value=_number_text(row.get("purchase_quantity_value")), field="purchase_quantity", line_id=str(row.get("purchase_quantity_line_id") or ""), unit=str(row.get("purchase_quantity_unit") or "")),
+            _purchase_unit_html(row.get("purchase_unit")),
+            _material_input_html(value=_number_text(row.get("purchase_quantity_value")), field="purchase_quantity", line_id=str(row.get("purchase_quantity_line_id") or ""), unit=""),
             f'<span class="object-detail-row-cost">{_money(row.get("total"))}</span>',
         ]
     if columns[0] == "Work":

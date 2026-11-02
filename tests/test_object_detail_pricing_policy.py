@@ -91,10 +91,11 @@ def test_material_purchase_table_shows_demand_and_purchase_without_allocation_la
     values = _row_values(section, section["rows"][0])
     html = _table_html(section)
 
-    assert ">A</span> Veneered MDF 18 mm" in values[0]
+    assert ">A</span><span class=\"object-detail-material-name\">Veneered MDF 18 mm</span>" in values[0]
     assert "required_material" in values[1]
-    assert values[2] == "sheet 2440 × 1220 mm"
+    assert "object-detail-purchase-unit" in values[2]
     assert "purchase_quantity" in values[3]
+    assert "sheet" not in values[3]
     assert "Project allocation" not in html
     assert "Project material plan" not in html
 

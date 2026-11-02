@@ -372,7 +372,7 @@ def apply_object_detail_css() -> None:
             justify-content: center;
             min-width: 17px;
             height: 17px;
-            margin-left: 5px;
+            margin: 0 6px 0 0;
             border: 1px solid rgba(42, 31, 44, 0.24);
             border-radius: 50%;
             color: rgba(42, 31, 44, 0.66);
@@ -382,9 +382,67 @@ def apply_object_detail_css() -> None:
             line-height: 1;
         }
 
-        .object-detail-material-input { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
-        .object-detail-material-input .object-detail-cell-input { width: min(100%, 92px); }
-        .object-detail-material-input-unit { min-width: max-content; color: rgba(42, 31, 44, 0.72); font-family: var(--font-mono); font-size: 12px; font-weight: 700; }
+        .object-detail-material-input {
+            width: min(100%, 136px);
+            min-height: 34px;
+            border: 1px solid rgba(42, 31, 44, 0.16);
+            border-radius: 8px;
+            background: #FFFFFF;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--color-text-strong);
+        }
+
+        .object-detail-material-input:focus-within {
+            border-color: rgba(128, 73, 198, 0.58);
+            box-shadow: 0 0 0 3px rgba(128, 73, 198, 0.14);
+        }
+
+        .object-detail-material-input .object-detail-cell-input {
+            width: auto;
+            min-width: 0;
+            min-height: 32px;
+            flex: 1 1 auto;
+            border: 0;
+            border-radius: 7px 0 0 7px;
+            background: transparent;
+            box-shadow: none;
+            padding: 6px 4px 6px 10px;
+        }
+
+        .object-detail-material-input--bare .object-detail-cell-input {
+            border-radius: 7px;
+            padding-right: 10px;
+        }
+
+        .object-detail-material-input-unit {
+            flex: 0 0 auto;
+            padding: 0 10px 0 2px;
+            color: rgba(42, 31, 44, 0.72);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .object-detail-purchase-unit {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            max-width: 100%;
+            text-align: center;
+        }
+
+        .object-detail-purchase-unit-kind,
+        .object-detail-purchase-unit-dimensions {
+            display: block;
+        }
+
+        .object-detail-purchase-unit-dimensions {
+            white-space: nowrap;
+        }
 
         .object-detail-cell-input--text {
             width: min(100%, 190px);

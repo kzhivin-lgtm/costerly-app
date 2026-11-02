@@ -31,6 +31,7 @@ not an internal immutable fact-contract suffix.
 | V4.23 | `a7d3a2b` | Unsupported model evidence refs are downgraded to named assumptions or a supplied full-page artifact, so they can never become false source claims or block usable BOM demand. Every V4 stage emits a bounded persisted success/failure marker |
 | V4.24 | `797dc33` | Purchase-format metadata is kept out of physical dimensions, so catalog fields such as `format_source` can never break Material Plan serialization |
 | V4.25 | `484c531` | Resolver uses Company Catalog first, then Israel Reference, and only then A. Sheet planning is aggregate-area estimation with 10% offcut allowance, not a finished-panel fit gate. Required Material and Purchase Quantity are persisted editable inputs |
+| V4.26 | pending | Material-table input presentation: required units sit inside their editable field, purchase units stack type above dimensions, purchase quantity carries no duplicated unit, and C/I/A markers have a durable visual gap before the material name |
 
 Rule from 2026-11-02: every subsequent Estimation deployment receives the next
 sequential V4 release number in its commit message, change note, deployment
