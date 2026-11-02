@@ -24,6 +24,7 @@ from use_cases.estimation_object_to_estimate_runtime import (
     ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,
     ESTIMATION_APPROXIMATE_BOM_AGENT_VERSION,
     _record_failure_trace,
+    _record_stage_event,
     run_assembly_first_bom_batch,
     run_object_to_estimate_bom_batch,
 )
@@ -325,6 +326,12 @@ def _run_estimation_v4_1_for_all_objects(
                     "assumption_fallback_count": len(snapshot.get("assumption_fallbacks") or ()),
                     "reason_codes": snapshot["reason_codes"],
                 }
+                for input_row in successful_inputs:
+                    _record_stage_event(
+                        client=client, input_row=input_row, stage="material_plan", status="succeeded",
+                        details={"reason_code": str(snapshot.get("status") or "planned"),
+                                 "material_count": len(snapshot.get("lines") or ())},
+                    )
             except Exception as exc:
                 # A real infrastructure error is distinct from an unavailable
                 # catalog item. Do not publish the intermediate 70% BOM state
@@ -339,6 +346,10 @@ def _run_estimation_v4_1_for_all_objects(
                         continue
                     _record_failure_trace(
                         client=client, input_id=input_id, stage="material_plan", exc=exc,
+                    )
+                    _record_stage_event(
+                        client=client, input_row=input_row, stage="material_plan", status="failed",
+                        details={"reason_code": "material_plan_technical_failure"},
                     )
                     failed[input_id] = "material_plan_technical_failure"
                     _set_object_technical_failure(
@@ -368,6 +379,10 @@ def _run_estimation_v4_1_for_all_objects(
             _record_failure_trace(
                 client=client, input_id=input_id, stage="material_plan",
                 exc=RuntimeError("Material plan was not available."),
+            )
+            _record_stage_event(
+                client=client, input_row=input_row, stage="material_plan", status="failed",
+                details={"reason_code": "material_plan_not_available"},
             )
             failed[input_id] = "material_plan_not_available"
             _set_object_technical_failure(
@@ -419,9 +434,22 @@ def _run_estimation_v4_1_for_all_objects(
                     client=client, input_id=input_id, stage="publisher",
                     exc=RuntimeError("Publisher did not produce a ready result."),
                 )
+                _record_stage_event(
+                    client=client, input_row=input_row, stage="publisher", status="failed",
+                    details={"reason_code": "publisher_not_ready"},
+                )
+            else:
+                _record_stage_event(
+                    client=client, input_row=input_row, stage="publisher", status="succeeded",
+                    details={"reason_code": "published"},
+                )
         except Exception as exc:
             failed[input_id] = f"{type(exc).__name__}: {exc}"
             _record_failure_trace(client=client, input_id=input_id, stage="publisher", exc=exc)
+            _record_stage_event(
+                client=client, input_row=input_row, stage="publisher", status="failed",
+                details={"reason_code": "publisher_technical_failure"},
+            )
             update_rfq_object_estimate_progress(
                 client,
                 estimate_id=estimate_id,
@@ -439,12 +467,22 @@ def _run_estimation_v4_1_for_all_objects(
                 estimate_id=estimate_id,
                 plan_snapshot=material_plan_snapshot_data,
             )
+            for input_row in valid_inputs:
+                if str(input_row.get("input_id") or "") in completed_inputs:
+                    _record_stage_event(
+                        client=client, input_row=input_row, stage="allocation", status="succeeded",
+                        details={"reason_code": "allocated"},
+                    )
         except Exception as exc:
             for input_row in valid_inputs:
                 input_id = str(input_row["input_id"])
                 if input_id not in completed_inputs:
                     continue
                 _record_failure_trace(client=client, input_id=input_id, stage="allocation", exc=exc)
+                _record_stage_event(
+                    client=client, input_row=input_row, stage="allocation", status="failed",
+                    details={"reason_code": "material_allocation_technical_failure"},
+                )
                 failed[input_id] = "material_allocation_technical_failure"
                 _set_object_technical_failure(
                     client, estimate_id=estimate_id,
@@ -458,10 +496,10 @@ def _run_estimation_v4_1_for_all_objects(
     }
 
 
-def _run_estimation_v4_22_for_all_objects(
+def _run_estimation_v4_23_for_all_objects(
     *, client: object, estimate_id: str, created_inputs: list[dict[str, object]],
 ) -> dict[str, object]:
-    """Run V4.22 structural composition through estimate-wide costing."""
+    """Run V4.23 structural composition through estimate-wide costing."""
     return _run_estimation_v4_1_for_all_objects(
         client=client, estimate_id=estimate_id, created_inputs=created_inputs,
         bom_agent_version=ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,
@@ -552,7 +590,7 @@ def _run_estimation_job(
 
     inputs_available = bool(created_inputs)
     if inputs_available:
-        estimation_result = _run_estimation_v4_22_for_all_objects(
+        estimation_result = _run_estimation_v4_23_for_all_objects(
                 client=client,
                 estimate_id=estimate_id,
                 created_inputs=created_inputs,
@@ -566,7 +604,7 @@ def _run_estimation_job(
                 "estimated_objects": len(estimation_result["processed_input_ids"]),
                 "failed_objects": estimation_result["failed"],
             },
-            "estimation_version": "v4_22_structural_bom_composer",
+            "estimation_version": "v4_23_structural_bom_composer",
         }
     if shell and int(shell.get("object_count") or 0) == 0:
         return {

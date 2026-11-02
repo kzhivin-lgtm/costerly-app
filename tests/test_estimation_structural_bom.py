@@ -252,3 +252,36 @@ def test_optional_zero_counts_do_not_reject_a_usable_table_assembly():
     assert result["status"] == "ready"
     assert next(part for part in result["parts"] if part["component_role"] == "top")["quantity"] == 1
     assert next(material for material in result["materials"] if material["family"] == "purchased_fabricated_component")["quantity"] == 2
+
+
+def test_invalid_model_citations_become_audited_assumptions_not_a_terminal_failure():
+    row = _input()
+    invalid_ref = "page-1"
+    result = build_structural_assembly_bom(
+        input_row=row,
+        dimension_graph=build_dimension_graph(input_row=row),
+        allowed_material_families=["mdf_hdf"],
+        extraction={
+            "document_unit": {"unit": "cm", "basis": "explicit_source", "evidence_refs": [invalid_ref]},
+            "assemblies": [{
+                "assembly_id": "table", "assembly_role": "table", "quantity": 1, "evidence_refs": [invalid_ref],
+                "dimensions": {
+                    "width": {"value": 160, "basis": "source", "evidence_refs": [invalid_ref]},
+                    "depth": {"value": 115, "basis": "derived", "evidence_refs": [invalid_ref]},
+                },
+                "counts": {},
+                "material_roles": [{"role": "visible_sheet", "source_name": "MDF", "family": "mdf_hdf", "basis": "source_evidence", "evidence_refs": [invalid_ref]}],
+            }], "secondary_items": [], "omissions": [],
+        },
+    )
+
+    assert result["status"] == "ready"
+    assert result["document_unit"]["evidence_refs"] == []
+    assert result["assemblies"][0]["evidence_refs"] == [REF]
+    assert result["materials"][0]["basis"] == "construction_assumption"
+    assert set(result["normalizations"]) >= {
+        "document_unit_invalid_refs_downgraded",
+        "assembly_invalid_refs_replaced_with_page_artifact",
+        "dimension_invalid_refs_downgraded_to_assumption",
+        "material_invalid_refs_downgraded_to_assumption",
+    }

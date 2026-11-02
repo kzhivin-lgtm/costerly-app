@@ -15,7 +15,7 @@ from agents.estimation_object_to_estimate_agent import (
     run_estimation_object_to_estimate_agent,
 )
 from db.repositories import (
-    fetch_estimation_fact_result, insert_agent_usage_event_returning_id,
+    fetch_estimation_fact_result, insert_agent_usage_event, insert_agent_usage_event_returning_id,
     insert_estimation_fact_result, insert_estimation_failure_trace,
 )
 from use_cases.estimation_approximate_bom import APPROXIMATE_BOM_V1, compose_approximate_bom_v1
@@ -91,6 +91,44 @@ def _record_failure_trace(
         pass
 
 
+def _record_stage_event(
+    *, client: Any, input_row: Mapping[str, Any], stage: str, status: str,
+    details: Mapping[str, Any] | None = None,
+) -> None:
+    """Persist a bounded marker for every completed or failed V4 stage.
+
+    This is an operational trace, not model output. It contains identifiers,
+    counts and normalized reason codes only, so a failure remains diagnosable
+    without retaining prompt, response, chain-of-thought or credentials.
+    """
+    try:
+        payload = input_row.get("input_payload") or {}
+        object_payload = payload.get("object") or {}
+        now = datetime.now(UTC).isoformat()
+        insert_agent_usage_event(client, {
+            "company_id": str(payload.get("company_id") or ""),
+            "run_id": str(payload.get("run_id") or ""),
+            "file_name": str((payload.get("document") or {}).get("file_name") or ""),
+            "object_id": str(object_payload.get("object_id") or ""),
+            "object_name": str(object_payload.get("object_name") or ""),
+            "agent_name": "estimation", "operation": "estimation_stage",
+            "model": "deterministic", "prompt_version": ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,
+            "input_tokens": 0, "output_tokens": 0,
+            "input_cost_usd": None, "output_cost_usd": None, "total_cost_usd": None,
+            "status": status, "started_at": now, "finished_at": now,
+            "error_message": (str((details or {}).get("reason_code") or "")[:400] or None),
+            "raw_usage": {
+                "estimation_stage": stage,
+                "input_id": str(input_row.get("input_id") or ""),
+                **{str(key): value for key, value in (details or {}).items()
+                   if key in {"reason_code", "page_count", "assembly_count", "part_count", "material_count", "normalization_count", "fact_result_id"}},
+            },
+        })
+    except Exception:
+        # Observability must never change the outcome of an estimate.
+        pass
+
+
 def _dimension_graph_usage(*, payload: Mapping[str, Any], graph: Mapping[str, Any]) -> dict[str, Any]:
     """Persist deterministic graph provenance beside the LLM provenance."""
     object_payload = payload.get("object") or {}
@@ -151,6 +189,11 @@ def run_assembly_first_bom_batch(
                     client, input_id=input_id, agent_version=ESTIMATION_DIMENSION_GRAPH_AGENT_VERSION,
                     facts_payload=graph, agent_usage_event_id=graph_usage_id,
                 ))
+            _record_stage_event(
+                client=client, input_row=row, stage="dimension_graph", status="succeeded",
+                details={"reason_code": "reused" if graph_existing else "built",
+                         "page_count": len(graph.get("views") or ()), "normalization_count": 0},
+            )
             dimension_scale_gate = build_dimension_scale_gate(dimension_graph=graph)
             payload = row.get("input_payload") or {}
             stage = "evidence_artifact"
@@ -161,11 +204,20 @@ def run_assembly_first_bom_batch(
                 storage_ref = str(artifact.get("storage_ref") or "")
                 if storage_ref:
                     page_bytes[storage_ref] = download_evidence_artifact(client=client, storage_ref=storage_ref)
+            _record_stage_event(
+                client=client, input_row=row, stage="evidence_artifacts", status="succeeded",
+                details={"reason_code": "loaded", "page_count": len(page_bytes)},
+            )
             stage = "assembly_agent"
             result = run_estimation_assembly_bom_agent(
                 input_row=row, evidence_page_bytes_by_ref=page_bytes, dimension_graph=graph,
                 dimension_scale_gate=dimension_scale_gate,
                 allowed_material_families=allowed_material_families,
+            )
+            usage_id = insert_agent_usage_event_returning_id(client, result["usage_event"])
+            _record_stage_event(
+                client=client, input_row=row, stage="assembly_agent", status="succeeded",
+                details={"reason_code": "response_validated"},
             )
             stage = "structural_composition"
             bom = build_structural_assembly_bom(
@@ -173,16 +225,31 @@ def run_assembly_first_bom_batch(
                 dimension_scale_gate=dimension_scale_gate,
                 allowed_material_families=allowed_material_families,
             )
-            stage = "usage_persistence"
-            usage_id = insert_agent_usage_event_returning_id(client, result["usage_event"])
+            _record_stage_event(
+                client=client, input_row=row, stage="structural_composition", status="succeeded",
+                details={
+                    "reason_code": "bom_ready", "assembly_count": len(bom.get("assemblies") or ()),
+                    "part_count": len(bom.get("parts") or ()), "material_count": len(bom.get("materials") or ()),
+                    "normalization_count": len(bom.get("normalizations") or ()),
+                },
+            )
             stage = "bom_persistence"
-            created.append(insert_estimation_fact_result(
+            fact_result_id = insert_estimation_fact_result(
                 client, input_id=input_id, agent_version=ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,
                 facts_payload=bom, agent_usage_event_id=usage_id,
-            ))
+            )
+            created.append(fact_result_id)
+            _record_stage_event(
+                client=client, input_row=row, stage="bom_persistence", status="succeeded",
+                details={"reason_code": "persisted", "fact_result_id": fact_result_id},
+            )
         except Exception as exc:
             failed[input_id] = f"{type(exc).__name__}: {exc}"
             _record_failure_trace(client=client, input_id=input_id, stage=stage, exc=exc)
+            _record_stage_event(
+                client=client, input_row=row, stage=stage, status="failed",
+                details={"reason_code": _safe_failure_message(exc)},
+            )
     return {"created_result_ids": created, "reused_input_ids": reused, "failed": failed}
 
 

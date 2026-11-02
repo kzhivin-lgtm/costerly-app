@@ -328,6 +328,100 @@ def _recoverable_assemblies(extraction: Mapping[str, Any]) -> tuple[list[dict[st
     return usable, omissions
 
 
+def _valid_model_refs(value: object, *, allowed: set[str]) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str) and item in allowed]
+
+
+def _normalize_model_references(
+    extraction: Mapping[str, Any], *, allowed: set[str],
+) -> tuple[dict[str, Any], list[str]]:
+    """Downgrade unsupported model citations to explicit assumptions.
+
+    Evidence references are an integrity boundary, not a calculation gate. A
+    model may echo a page label or Dimension Graph id rather than an immutable
+    ref. Keep the estimate approximate, but never retain that as a false source
+    claim or reject otherwise usable assemblies.
+    """
+    normalized = dict(extraction)
+    markers: list[str] = []
+    page_refs = sorted(ref for ref in allowed if ref.startswith("storage://"))
+
+    document_unit = extraction.get("document_unit")
+    if isinstance(document_unit, Mapping):
+        unit = dict(document_unit)
+        basis = str(unit.get("basis") or "")
+        refs = _valid_model_refs(unit.get("evidence_refs"), allowed=allowed)
+        if basis == "explicit_source" and not refs:
+            unit["basis"] = "document_convention_assumption"
+            unit["evidence_refs"] = []
+            unit["assumption_reason"] = "The supplied unit citation was not an immutable evidence reference."
+            markers.append("document_unit_invalid_refs_downgraded")
+        elif basis == "document_convention_assumption" and unit.get("evidence_refs") not in (None, []):
+            unit["evidence_refs"] = []
+            markers.append("document_unit_assumption_refs_discarded")
+        normalized["document_unit"] = unit
+
+    assemblies: list[Any] = []
+    for raw in extraction.get("assemblies") or []:
+        if not isinstance(raw, Mapping):
+            assemblies.append(raw)
+            continue
+        assembly = dict(raw)
+        refs = _valid_model_refs(assembly.get("evidence_refs"), allowed=allowed)
+        if not refs and page_refs:
+            assembly["evidence_refs"] = [page_refs[0]]
+            markers.append("assembly_invalid_refs_replaced_with_page_artifact")
+        else:
+            assembly["evidence_refs"] = refs
+        dimensions = assembly.get("dimensions")
+        if isinstance(dimensions, Mapping):
+            normalized_dimensions: dict[str, Any] = {}
+            for axis, raw_dimension in dimensions.items():
+                if not isinstance(raw_dimension, Mapping):
+                    normalized_dimensions[str(axis)] = raw_dimension
+                    continue
+                dimension = dict(raw_dimension)
+                basis = str(dimension.get("basis") or "")
+                refs = _valid_model_refs(dimension.get("evidence_refs"), allowed=allowed)
+                if basis in {"source", "derived"} and not refs:
+                    dimension["basis"] = "assumption"
+                    dimension["evidence_refs"] = []
+                    dimension["assumption_reason"] = "The supplied dimension citation was not an immutable evidence reference."
+                    markers.append("dimension_invalid_refs_downgraded_to_assumption")
+                elif basis == "assumption" and dimension.get("evidence_refs") not in (None, []):
+                    dimension["evidence_refs"] = []
+                    markers.append("dimension_assumption_refs_discarded")
+                else:
+                    dimension["evidence_refs"] = refs
+                normalized_dimensions[str(axis)] = dimension
+            assembly["dimensions"] = normalized_dimensions
+        material_roles: list[Any] = []
+        for raw_material in assembly.get("material_roles") or []:
+            if not isinstance(raw_material, Mapping):
+                material_roles.append(raw_material)
+                continue
+            material = dict(raw_material)
+            basis = str(material.get("basis") or "construction_assumption")
+            refs = _valid_model_refs(material.get("evidence_refs"), allowed=allowed)
+            if basis == "source_evidence" and not refs:
+                material["basis"] = "construction_assumption"
+                material["evidence_refs"] = []
+                markers.append("material_invalid_refs_downgraded_to_assumption")
+            elif basis == "construction_assumption":
+                if material.get("evidence_refs") not in (None, []):
+                    markers.append("material_assumption_refs_discarded")
+                material["evidence_refs"] = []
+            else:
+                material["evidence_refs"] = refs
+            material_roles.append(material)
+        assembly["material_roles"] = material_roles
+        assemblies.append(assembly)
+    normalized["assemblies"] = assemblies
+    return normalized, list(dict.fromkeys(markers))
+
+
 def build_structural_assembly_bom(
     *, input_row: Mapping[str, Any], dimension_graph: Mapping[str, Any], extraction: Mapping[str, Any],
     allowed_material_families: Sequence[str], dimension_scale_gate: Mapping[str, Any] | None = None,
@@ -344,10 +438,12 @@ def build_structural_assembly_bom(
     if dimension_graph.get("contract_version") != "estimation_dimension_graph_v1":
         raise ValueError("structural BOM requires Dimension Graph")
     allowed_refs = _allowed_refs(payload)
+    extraction, reference_normalizations = _normalize_model_references(extraction, allowed=allowed_refs)
     allowed_families = {str(item) for item in allowed_material_families if str(item)}
     document_unit, document_unit_refs, document_unit_reason, document_unit_basis, normalizations = _resolve_document_unit(
         extraction=extraction, allowed=allowed_refs, dimension_scale_gate=dimension_scale_gate,
     )
+    normalizations = [*reference_normalizations, *normalizations]
     object_payload = payload.get("object") or {}
     object_quantity = _integer(object_payload.get("quantity") or 1, field="object.quantity", default=1)
     materials: list[dict[str, Any]] = []
@@ -568,7 +664,7 @@ def build_structural_assembly_bom(
     preview_refs = sorted(ref for ref in allowed_refs if ref.startswith("storage://"))
     return {
         "contract_version": ASSEMBLY_BOM_V1,
-        "composition_version": "structural_bom_v4_22",
+        "composition_version": "structural_bom_v4_23",
         "input_id": str(input_row.get("input_id") or ""), "object_input_revision": int(input_row.get("object_input_revision") or 1),
         "run_id": str(payload.get("run_id") or ""), "company_id": str(payload.get("company_id") or ""),
         "object_id": str(object_payload.get("object_id") or ""), "object_name": str(object_payload.get("object_name") or ""),

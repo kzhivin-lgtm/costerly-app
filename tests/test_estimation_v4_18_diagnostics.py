@@ -91,3 +91,32 @@ def test_structural_validation_trace_classifies_invalid_count_without_field_cont
 
     assert traces[0]["error_type"] == "StructuralValidationError"
     assert traces[0]["error_message"] == "invalid_assembly_count"
+
+
+def test_stage_marker_records_only_bounded_metadata(monkeypatch):
+    events = []
+    monkeypatch.setattr(
+        bom_runtime, "insert_agent_usage_event",
+        lambda _client, event: events.append(event),
+    )
+
+    bom_runtime._record_stage_event(
+        client=object(),
+        input_row={
+            "input_id": "input-1",
+            "input_payload": {
+                "company_id": "company-1", "run_id": "run-1",
+                "document": {"file_name": "drawing.pdf"},
+                "object": {"object_id": "object-1", "object_name": "Locked name"},
+            },
+        },
+        stage="structural_composition", status="succeeded",
+        details={"reason_code": "bom_ready", "part_count": 4, "raw_response": "must-not-persist"},
+    )
+
+    assert events[0]["operation"] == "estimation_stage"
+    assert events[0]["status"] == "succeeded"
+    assert events[0]["raw_usage"] == {
+        "estimation_stage": "structural_composition", "input_id": "input-1",
+        "reason_code": "bom_ready", "part_count": 4,
+    }
