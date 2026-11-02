@@ -3213,6 +3213,27 @@ LF1 run, and inspect source dimensions, derived part list, sheet allocations,
 C/I/A markers and terminal estimate state. No paid replay has been authorised
 by this implementation step.
 
+V4.14 live witness rejected, 2026-11-02: run
+`run_02f896ef8e8c4c03bfc6b52bba7b09e7`, input
+`a8c957e2-d3d8-40c6-b777-749f3dcabd3d`, reached terminal `materials_costed`
+but is not an acceptable BOM result. Its immutable OCR contains only unitless
+dimensions `20, 43, 75, 72, 19, 90, 145, 4, 158, 160, 265, 187, 160, 115`.
+The V4.14 visual response assumed millimetres solely from a `SOLIDWORKS`
+watermark, producing a `160 x 265 x 158 mm` box, `115 x 160 mm` facade,
+`20 x 72 mm` table and `19 x 90 x 145 mm` shelf stack. This is false for the
+known centimetre drawing and proves that a watermark is not a unit authority.
+The resulting `0.0198 m²` visible MDF allocation converts the one-sheet
+`₪200` A fallback into a misleading `₪10,080.65/m²` Object Detail unit cost.
+Separately, the `fibreboard_hardboard|thickness=3` resolver selection rendered
+as `Hardboard, 3 mm, Softboard insulation fibreboard`, a physically
+incompatible backing choice. Do not accept V4.14 or reuse this result.
+Within approved task 3.17.4.3, the next repair must add a bounded unit-scenario
+resolver and reject an unsupported global unit before composition; it must
+also make Object Detail distinguish purchase price from allocated effective
+area price, and disallow insulation-board candidates for structural hardboard
+backing. Re-run only after those three failures have focused tests and owner
+approval for the next V4 release.
+
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
 commercial object. The existing immutable `estimation_input_v4` carries its
