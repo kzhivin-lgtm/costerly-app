@@ -3157,7 +3157,7 @@ only when its defining source facts are present, otherwise emit cited geometry
 plus explicit assumptions. Do not introduce a generic shop-drawing engine or
 change Detection object identity/boundaries.
 
-V4.12 implementation in progress, 2026-11-02: the owner approved replacement
+V4.12 implementation, 2026-11-02: the owner approved replacement
 of the V4.11 `object_kind -> wardrobe/cabinet recipe` path. The new active
 pipeline is fixed Detection object identity -> immutable source pages/OCR ->
 TU Wien-inspired Geometry and Dimension Graph -> assembly-first construction
@@ -3177,6 +3177,18 @@ shop-drawing engine. Pending acceptance: apply the additive V4.12 fact-result
 constraint, deploy, inspect SQL, then run an owner-approved controlled object
 and audit graph, assembly BOM, C/I/A plan and terminal progress. No paid cloud
 replay is authorised by this implementation approval alone.
+
+V4.13 pending deployment, 2026-11-02: the first controlled assembly response
+preserved source values such as `160`, `265` and `115` but did not name their
+unit, and omitted board thicknesses. The V4.13 contract now requires each
+part's cited `length_value`/`width_value`, `dimension_unit` and basis; it
+deterministically converts explicit `mm`/`cm`/`m` to internal millimetres and
+records a named document-convention assumption when a drawing is unitless.
+Board parts also require an explicit or construction-assumed `thickness_mm`.
+This is a contract correction, not a product classifier or a new fact-result
+version. Pending acceptance remains the V4.12 additive SQL constraint, V4.13
+deploy, SQL readback, and an owner-approved controlled run that reaches a
+terminal C/I/A-priced material result.
 
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
