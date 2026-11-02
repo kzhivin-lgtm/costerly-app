@@ -14,7 +14,7 @@ not an internal immutable fact-contract suffix.
 | V4.6 | `9d5266d` | Material Engine prices every unresolved material through A |
 | V4.7 | `c7482f8` | Full geometry brief, wardrobe/cabinet BOM runtime and Catalog Gap initiation |
 | V4.8 | `b9e35c9` | Correct V4.7 purchase-plan grouping and terminal completion state |
-| V4.9 | pending | Simplify Formica to LDSP, keep paint only as a finish, and preserve separate visible fittings |
+| V4.9 | `9796ba3` | Simplify Formica to LDSP, keep paint only as a finish, and preserve separate visible fittings |
 
 Rule from 2026-11-02: every subsequent Estimation deployment receives the next
 sequential V4 release number in its commit message, change note, deployment
