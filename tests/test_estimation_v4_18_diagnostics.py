@@ -75,3 +75,19 @@ def test_structural_validation_trace_persists_a_code_without_model_content(monke
         "error_type": "StructuralValidationError",
         "error_message": "assembly_missing_required_dimensions",
     }]
+
+
+def test_structural_validation_trace_classifies_invalid_count_without_field_content(monkeypatch):
+    traces = []
+    monkeypatch.setattr(
+        bom_runtime, "insert_estimation_failure_trace",
+        lambda _client, **kwargs: traces.append(kwargs) or "trace-1",
+    )
+
+    bom_runtime._record_failure_trace(
+        client=object(), input_id="input-1", stage="structural_composition",
+        exc=ValueError("assembly-7.counts.legs must be a whole positive number"),
+    )
+
+    assert traces[0]["error_type"] == "StructuralValidationError"
+    assert traces[0]["error_message"] == "invalid_assembly_count"

@@ -68,6 +68,24 @@ def _integer(value: Any, *, field: str, default: int = 0) -> int:
     return int(result)
 
 
+def _optional_count(value: Any, *, field: str, default: int, zero_is_meaningful: bool) -> int:
+    """Read an optional model count without turning an explicit zero into a failure."""
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return default
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return default
+    if result < 0 or int(result) != result:
+        return default
+    count = int(result)
+    if count == 0 and not zero_is_meaningful:
+        return default
+    return count
+
+
 def _allowed_refs(payload: Mapping[str, Any]) -> set[str]:
     evidence = payload.get("evidence") or {}
     return {
@@ -438,7 +456,9 @@ def build_structural_assembly_bom(
         internal = None
         backing = None
         internal_thickness = 0.0
-        facade_count = _integer(counts.get("facades"), field=f"{assembly_id}.counts.facades", default=0)
+        facade_count = _optional_count(
+            counts.get("facades"), field=f"{assembly_id}.counts.facades", default=0, zero_is_meaningful=True,
+        )
         if assembly_role in {"drawer_bank", "vertical_panel", "facade_set"} or facade_count:
             visible = material_requirement(material_roles, "visible_sheet")
         if assembly_role in {"box_carcass", "drawer_bank", "shelf_stack"}:
@@ -460,11 +480,15 @@ def build_structural_assembly_bom(
             panel("carcass_side", internal, 2, height, depth)
             panel("carcass_top_bottom", internal, 2, width, depth)
             panel("carcass_back", backing, 1, width, height)
-            shelf_count = _integer(counts.get("shelves"), field=f"{assembly_id}.counts.shelves", default=0)
+            shelf_count = _optional_count(
+                counts.get("shelves"), field=f"{assembly_id}.counts.shelves", default=0, zero_is_meaningful=True,
+            )
             panel("shelf", internal, shelf_count, max(width - 2 * internal_thickness, 1), depth)
         if assembly_role == "drawer_bank":
             assert visible is not None
-            drawer_count = _integer(counts.get("drawers"), field=f"{assembly_id}.counts.drawers", default=1)
+            drawer_count = _optional_count(
+                counts.get("drawers"), field=f"{assembly_id}.counts.drawers", default=1, zero_is_meaningful=False,
+            )
             drawer_width = max(width / drawer_count, 1)
             drawer_height = max(height / drawer_count, 1)
             panel("drawer_front", visible, drawer_count, drawer_width, drawer_height)
@@ -488,10 +512,14 @@ def build_structural_assembly_bom(
             panel("facade", visible, count, width / count, height)
         elif assembly_role in {"table", "countertop"}:
             worktop = material_requirement(material_roles, "worktop_sheet") if "worktop_sheet" in material_roles else material_requirement(material_roles, "visible_sheet")
-            top_count = _integer(counts.get("top_layers"), field=f"{assembly_id}.counts.top_layers", default=1)
+            top_count = _optional_count(
+                counts.get("top_layers"), field=f"{assembly_id}.counts.top_layers", default=1, zero_is_meaningful=False,
+            )
             panel("top", worktop, top_count, width, depth)
         if assembly_role == "table" and "leg" in material_roles:
-            leg_count = _integer(counts.get("legs"), field=f"{assembly_id}.counts.legs", default=2)
+            leg_count = _optional_count(
+                counts.get("legs"), field=f"{assembly_id}.counts.legs", default=2, zero_is_meaningful=False,
+            )
             requirement_id = material_requirement(material_roles, "leg")
             material = next(item for item in materials if item["requirement_id"] == requirement_id)
             material["quantity"] = (material.get("quantity") or 0) + leg_count * assembly_quantity * object_quantity
@@ -540,7 +568,7 @@ def build_structural_assembly_bom(
     preview_refs = sorted(ref for ref in allowed_refs if ref.startswith("storage://"))
     return {
         "contract_version": ASSEMBLY_BOM_V1,
-        "composition_version": "structural_bom_v4_21",
+        "composition_version": "structural_bom_v4_22",
         "input_id": str(input_row.get("input_id") or ""), "object_input_revision": int(input_row.get("object_input_revision") or 1),
         "run_id": str(payload.get("run_id") or ""), "company_id": str(payload.get("company_id") or ""),
         "object_id": str(object_payload.get("object_id") or ""), "object_name": str(object_payload.get("object_name") or ""),

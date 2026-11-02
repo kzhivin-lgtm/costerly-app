@@ -227,3 +227,28 @@ def test_incomplete_secondary_assembly_is_omitted_without_discarding_usable_dema
     assert result["structural_omissions"] == [{
         "kind": "assembly", "identifier": "incomplete-facades", "reason_code": "missing_required_dimensions",
     }]
+
+
+def test_optional_zero_counts_do_not_reject_a_usable_table_assembly():
+    row = _input()
+    result = build_structural_assembly_bom(
+        input_row=row,
+        dimension_graph=build_dimension_graph(input_row=row),
+        allowed_material_families=["mdf_hdf", "purchased_fabricated_component"],
+        extraction={
+            "document_unit": {"unit": "cm", "basis": "explicit_source", "evidence_refs": [OCR_REF]},
+            "assemblies": [{
+                "assembly_id": "table", "assembly_role": "table", "quantity": 1, "evidence_refs": [REF],
+                "dimensions": {"width": _dimension(160), "depth": _dimension(115)},
+                "counts": {"top_layers": 0, "legs": 0},
+                "material_roles": [
+                    {"role": "visible_sheet", "source_name": "MDF", "family": "mdf_hdf", "basis": "construction_assumption", "evidence_refs": []},
+                    {"role": "leg", "source_name": "Furniture leg", "family": "purchased_fabricated_component", "basis": "construction_assumption", "evidence_refs": []},
+                ],
+            }], "secondary_items": [], "omissions": [],
+        },
+    )
+
+    assert result["status"] == "ready"
+    assert next(part for part in result["parts"] if part["component_role"] == "top")["quantity"] == 1
+    assert next(material for material in result["materials"] if material["family"] == "purchased_fabricated_component")["quantity"] == 2

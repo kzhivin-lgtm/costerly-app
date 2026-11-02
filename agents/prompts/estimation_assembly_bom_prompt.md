@@ -1,4 +1,4 @@
-# ESTIMATION STRUCTURAL BOM V4.20
+# ESTIMATION STRUCTURAL BOM V4.22
 
 The supplied object identity is fixed. Do not rename it, classify it as a
 product type, or infer a catalog item, price, labour, manufacturing operation,

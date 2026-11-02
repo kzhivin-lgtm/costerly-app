@@ -51,6 +51,12 @@ def _structural_failure_code(message: str) -> str | None:
         (r"^secondary item requires a unique id$", "invalid_secondary_item_identity"),
         (r"^secondary item role is unsupported$", "unsupported_secondary_item_role"),
         (r"^secondary item requires material$", "secondary_item_missing_material"),
+        (r"^document_unit.*$", "invalid_document_unit"),
+        (r"^material role .*$", "invalid_material_role"),
+        (r"^[^ ]+\.dimensions\.[^. ]+.*$", "invalid_assembly_dimension"),
+        (r"^[^ ]+\.counts\.[^. ]+.*$", "invalid_assembly_count"),
+        (r"^secondary_items\.[^. ]+\.quantity.*$", "invalid_secondary_item_quantity"),
+        (r"^.* must contain immutable evidence references$", "invalid_evidence_references"),
     )
     return next((code for pattern, code in patterns if re.match(pattern, normalized)), None)
 
