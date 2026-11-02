@@ -351,6 +351,7 @@ def test_objects_screen_refreshes_active_estimation_in_a_server_fragment():
         "def render_objects_screen", 1
     )[0]
     assert "_render_objects_table_content" in fragment_source
+    assert "st.rerun()" not in fragment_source
     assert "_render_objects_actions" not in fragment_source
     assert "_install_objects_price_input_runtime" not in fragment_source
 

@@ -510,7 +510,10 @@ def _render_live_objects_content(*, estimate_id: str, run_id: str | None) -> Non
         st.session_state.get("estimation_batch_future"), Future
     ):
         st.session_state.pop("objects_live_poll_estimate_id", None)
-        st.rerun()
+        # Stay inside the Objects fragment when the worker becomes terminal.
+        # A full app rerun can replay a durable File Review route while the
+        # browser is still reconciling the Objects transition. This fragment
+        # can load and render the just-persisted terminal rows directly.
 
     # The first fragment render stays on the already prepared seed rows so the
     # Objects transition is not delayed by an extra Supabase read. Timed
