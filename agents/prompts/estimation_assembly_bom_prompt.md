@@ -18,11 +18,27 @@ An assembly is:
 
 `{"assembly_id":"assembly-N","evidence_refs":[...],"components":[...]}`
 
+Every `evidence_refs`, `geometry_evidence_refs` and source-material
+`evidence_refs` value must be copied exactly from one supplied
+`source_evidence_ref` or OCR `block_ref`. Never use a page label, `page-N`, a
+Dimension Graph `dimension_id`, a view id, a segment id, an assembly id or a
+description as an evidence reference.
+
 Decompose the fixed object into large physical assemblies first. Then enumerate
 only the approximate material-bearing components required to build those
 assemblies. A component is:
 
-`{"component_id":"...","component_role":"...","quantity":positive_integer,"length_mm":positive_number,"width_mm":positive_number,"material":{"source_name":"...","family":"one allowed family code","specification":{},"basis":"source_evidence|construction_assumption","evidence_refs":[...]},"geometry_basis":"evidence|derived|assumption","geometry_evidence_refs":[...],"assumption_reason":"string|null"}`
+`{"component_id":"...","component_role":"...","quantity":positive_integer,"length_value":positive_number,"width_value":positive_number,"dimension_unit":"mm|cm|m","dimension_unit_basis":"explicit_source|document_convention_assumption","material":{"source_name":"...","family":"one allowed family code","specification":{"thickness_mm":positive_number},"basis":"source_evidence|construction_assumption","evidence_refs":[...]},"geometry_basis":"evidence|derived|assumption","geometry_evidence_refs":[...],"assumption_reason":"string|null"}`
+
+`length_value` and `width_value` are the numeric values read from the drawing
+or selected by an explicit construction assumption. `dimension_unit` is their
+source unit. If the document convention is centimetres, return
+`length_value=158`, `dimension_unit="cm"`; the system, not you, converts that
+to 1580 mm. For unitless source dimensions, choose mm, cm or m only as an
+explicit `document_convention_assumption` and state that choice in
+`assumption_reason`.
+Every flat structural panel must carry a positive `thickness_mm`, cited or
+assumed. An empty material specification is invalid.
 
 Use a component only when its broad construction is visible, stated, or a
 bounded conventional inference. Do not manufacture tiny gaps, decorative

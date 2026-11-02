@@ -413,10 +413,10 @@ def _run_estimation_v4_1_for_all_objects(
     }
 
 
-def _run_estimation_v4_12_for_all_objects(
+def _run_estimation_v4_13_for_all_objects(
     *, client: object, estimate_id: str, created_inputs: list[dict[str, object]],
 ) -> dict[str, object]:
-    """Run V4.12's graph plus assembly-first BOM through existing costing."""
+    """Run V4.13's graph plus assembly-first BOM through existing costing."""
     return _run_estimation_v4_1_for_all_objects(
         client=client, estimate_id=estimate_id, created_inputs=created_inputs,
         bom_agent_version=ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,
@@ -507,7 +507,7 @@ def _run_estimation_job(
 
     inputs_available = bool(created_inputs)
     if inputs_available:
-        estimation_result = _run_estimation_v4_12_for_all_objects(
+        estimation_result = _run_estimation_v4_13_for_all_objects(
                 client=client,
                 estimate_id=estimate_id,
                 created_inputs=created_inputs,
@@ -521,7 +521,7 @@ def _run_estimation_job(
                 "estimated_objects": len(estimation_result["processed_input_ids"]),
                 "failed_objects": estimation_result["failed"],
             },
-            "estimation_version": "v4_12_assembly_first_bom",
+            "estimation_version": "v4_13_assembly_first_bom_units",
         }
     if shell and int(shell.get("object_count") or 0) == 0:
         return {

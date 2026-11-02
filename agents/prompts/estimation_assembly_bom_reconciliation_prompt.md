@@ -15,9 +15,13 @@ Return raw JSON only:
 
 Each assembly and component must use the exact schema from the visual pass:
 `assembly_id`, `evidence_refs`, and `components`; each component must contain
-`component_id`, `component_role`, `quantity`, `length_mm`, `width_mm`,
+`component_id`, `component_role`, `quantity`, `length_value`, `width_value`, `dimension_unit`, `dimension_unit_basis`,
 `material`, `geometry_basis`, `geometry_evidence_refs`, and
 `assumption_reason`.
+
+Every evidence reference must be an exact original `storage://...` source
+reference or OCR `block_ref` preserved in a batch observation. Do not return a
+page label, graph id, view id or segment id as evidence.
 
 Prefer fewer well-supported large assemblies to a fake complete shop drawing.
 Do not split a finished component merely to fit a purchasable sheet.

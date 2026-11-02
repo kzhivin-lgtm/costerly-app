@@ -28,7 +28,7 @@ def _extraction(*, material_basis="construction_assumption", material_refs=None)
         "assemblies": [{
             "assembly_id": "base", "evidence_refs": [REF], "components": [{
                 "component_id": "top", "component_role": "horizontal_panel", "quantity": 1,
-                "length_mm": 1600, "width_mm": 600,
+                "length_value": 160, "width_value": 60, "dimension_unit": "cm", "dimension_unit_basis": "explicit_source",
                 "geometry_basis": "evidence", "geometry_evidence_refs": [OCR_REF], "assumption_reason": None,
                 "material": {
                     "source_name": "assumed MDF", "family": "mdf", "specification": {"thickness_mm": 18},
@@ -76,3 +76,23 @@ def test_assembly_bom_rejects_unknown_material_family():
             input_row=row, dimension_graph=build_dimension_graph(input_row=row), extraction=_extraction(),
             allowed_material_families=["plywood"],
         )
+
+
+def test_assembly_bom_converts_explicit_document_unit_assumption_deterministically():
+    row = _input()
+    extraction = _extraction()
+    component = extraction["assemblies"][0]["components"][0]
+    component["geometry_basis"] = "derived"
+    component["dimension_unit_basis"] = "document_convention_assumption"
+    component["assumption_reason"] = "Unitless drawing dimensions follow centimetre convention."
+
+    result = build_assembly_bom(
+        input_row=row, dimension_graph=build_dimension_graph(input_row=row), extraction=extraction,
+        allowed_material_families=["mdf"],
+    )
+
+    assert result["parts"][0]["length_mm"] == 1600
+    assert result["parts"][0]["dimension_unit"] == "cm"
+    assert result["assumptions"] == [
+        "Dimension unit assumption: Unitless drawing dimensions follow centimetre convention."
+    ]

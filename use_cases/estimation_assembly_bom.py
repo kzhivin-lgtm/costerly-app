@@ -7,6 +7,7 @@ from typing import Any, Mapping, Sequence
 
 
 ASSEMBLY_BOM_V1 = "estimation_assembly_bom_v1"
+_DIMENSION_UNITS_TO_MM = {"mm": 1.0, "cm": 10.0, "m": 1000.0}
 
 
 def _positive(value: Any) -> float | None:
@@ -42,6 +43,14 @@ def _integer(value: Any, *, field: str) -> int:
     if number is None or int(number) != number:
         raise ValueError(f"{field} must be a positive integer")
     return int(number)
+
+
+def _dimension_mm(value: Any, unit: Any, *, field: str) -> float:
+    number = _positive(value)
+    multiplier = _DIMENSION_UNITS_TO_MM.get(str(unit or "").casefold())
+    if number is None or multiplier is None:
+        raise ValueError(f"{field} requires a positive source value and mm, cm or m unit")
+    return round(number * multiplier, 3)
 
 
 def build_assembly_bom(*, input_row: Mapping[str, Any], dimension_graph: Mapping[str, Any], extraction: Mapping[str, Any], allowed_material_families: Sequence[str]) -> dict[str, Any]:
@@ -98,13 +107,24 @@ def build_assembly_bom(*, input_row: Mapping[str, Any], dimension_graph: Mapping
                 raise ValueError(f"{assembly_id} component requires a unique id and role")
             component_ids.add(component_id)
             quantity = _integer(raw_component.get("quantity"), field=f"{assembly_id}.{component_id}.quantity")
-            length = _positive(raw_component.get("length_mm"))
-            width = _positive(raw_component.get("width_mm"))
-            if length is None or width is None:
-                raise ValueError(f"{assembly_id}.{component_id} requires positive finished length and width")
+            length = _dimension_mm(
+                raw_component.get("length_value"), raw_component.get("dimension_unit"),
+                field=f"{assembly_id}.{component_id}.length",
+            )
+            width = _dimension_mm(
+                raw_component.get("width_value"), raw_component.get("dimension_unit"),
+                field=f"{assembly_id}.{component_id}.width",
+            )
+            unit_basis = str(raw_component.get("dimension_unit_basis") or "")
+            if unit_basis not in {"explicit_source", "document_convention_assumption"}:
+                raise ValueError(f"{assembly_id}.{component_id} requires a dimension_unit_basis")
             geometry_basis = str(raw_component.get("geometry_basis") or "")
             geometry_refs = _refs(raw_component.get("geometry_evidence_refs"), allowed=allowed_refs, required=geometry_basis in {"evidence", "derived"}, field=f"{assembly_id}.{component_id}.geometry_evidence_refs")
             assumption_reason = raw_component.get("assumption_reason")
+            if unit_basis == "document_convention_assumption":
+                if not isinstance(assumption_reason, str) or not assumption_reason.strip():
+                    raise ValueError(f"{assembly_id}.{component_id} unit convention requires an assumption reason")
+                assumptions.append(f"Dimension unit assumption: {assumption_reason.strip()}")
             if geometry_basis == "assumption":
                 if geometry_refs or not isinstance(assumption_reason, str) or not assumption_reason.strip():
                     raise ValueError(f"{assembly_id}.{component_id} assumption requires a reason and no source geometry")
@@ -137,8 +157,10 @@ def build_assembly_bom(*, input_row: Mapping[str, Any], dimension_graph: Mapping
             parts.append({
                 "part_id": part_id, "assembly_id": assembly_id, "component_role": role,
                 "material_requirement_id": material_requirement_id, "quantity": quantity,
-                "length_mm": round(length, 3), "width_mm": round(width, 3), "rotation_allowed": True,
+                "length_mm": length, "width_mm": width, "rotation_allowed": True,
                 "basis": geometry_basis, "evidence_refs": geometry_refs,
+                "dimension_unit": str(raw_component.get("dimension_unit") or ""),
+                "dimension_unit_basis": unit_basis,
                 "assumption_reason": assumption_reason.strip() if isinstance(assumption_reason, str) else None,
             })
             assembly_components.append(part_id)
