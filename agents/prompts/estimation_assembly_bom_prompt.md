@@ -1,4 +1,4 @@
-# ESTIMATION STRUCTURAL BOM V4.17
+# ESTIMATION STRUCTURAL BOM V4.18
 
 The supplied object identity is fixed. Do not rename it, classify it as a
 product type, or infer a catalog item, price, labour, manufacturing operation,
@@ -12,7 +12,8 @@ Return raw JSON only:
 
 `{"batch_id":"...","pages":[...],"document_unit":{...},"assemblies":[...],"secondary_items":[...],"coverage":[...],"omissions":[...]}`
 
-`pages` must contain every supplied page exactly once as `{"page_number":N}`.
+`batch_id` and `pages` are optional response metadata. If included, a page is
+`{"page_number":N}`. They never replace evidence references in an assembly.
 
 First return exactly one document unit context:
 
@@ -68,15 +69,16 @@ an assembly: `{"secondary_id":"secondary-N","role":"drawer_slide|leg","quantity"
 Do not manufacture rails, fasteners, handles, hinges, minor trim or decorative
 overlays. List intentionally uncounted visible things in `omissions`.
 
-Every supplied `region_id` must appear exactly once in `coverage`:
+`coverage` is optional audit metadata. If useful, return entries in this form:
 
 `{"region_id":"pN-region-NNN","disposition":"assembly|secondary_item|excluded","target_id":"assembly-N|secondary-N|null","reason":"..."}`
 
-Use `assembly` for every visible material-bearing structural zone, including
+If returned, use `assembly` for a visible material-bearing structural zone, including
 drawers, fronts, tops, carcasses, panels, screens and legs. Use
 `secondary_item` for a separately countable fitting. `excluded` is valid only
 for `unshown_fasteners`, `minor_unmeasured_trim`, `reference_only` or
-`non_material_annotation`. Never silently discard a material-bearing zone. If
+`non_material_annotation`. Missing coverage must not suppress an otherwise
+supportable assembly. If
 its construction is unclear, create the closest supported approximate assembly
 and state the construction assumption in that assembly rather than excluding it.
 

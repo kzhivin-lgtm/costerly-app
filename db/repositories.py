@@ -327,6 +327,29 @@ def insert_estimation_fact_result(
     return str(rows[0]["fact_result_id"])
 
 
+def insert_estimation_failure_trace(
+    client: Client,
+    *,
+    input_id: str,
+    agent_version: str,
+    stage: str,
+    error_type: str,
+    error_message: str,
+) -> str:
+    """Persist a bounded technical trace, never a model response or CoT."""
+    response = client.table("rfq_estimation_failure_traces").insert({
+        "input_id": input_id,
+        "agent_version": agent_version,
+        "stage": stage,
+        "error_type": error_type[:120],
+        "error_message": error_message[:400],
+    }).execute()
+    rows = response.data or []
+    if len(rows) != 1 or not rows[0].get("failure_trace_id"):
+        raise RuntimeError("Estimation failure trace insert did not return failure_trace_id.")
+    return str(rows[0]["failure_trace_id"])
+
+
 def insert_agent_usage_events(client: Client, usage_events: list[dict]) -> None:
     """Insert runtime diagnostics in one request using the current DB schema."""
     rows = []

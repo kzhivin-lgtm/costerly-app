@@ -23,6 +23,7 @@ from use_cases.estimation_object_to_estimate_runtime import (
     ESTIMATION_ACTIVE_BOM_AGENT_VERSION,
     ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,
     ESTIMATION_APPROXIMATE_BOM_AGENT_VERSION,
+    _record_failure_trace,
     run_assembly_first_bom_batch,
     run_object_to_estimate_bom_batch,
 )
@@ -336,6 +337,9 @@ def _run_estimation_v4_1_for_all_objects(
                     input_id = str(input_row["input_id"])
                     if input_id in facts_result["failed"]:
                         continue
+                    _record_failure_trace(
+                        client=client, input_id=input_id, stage="material_plan", exc=exc,
+                    )
                     failed[input_id] = "material_plan_technical_failure"
                     _set_object_technical_failure(
                         client,
@@ -361,6 +365,10 @@ def _run_estimation_v4_1_for_all_objects(
             input_id = str(input_row["input_id"])
             if input_id in facts_result["failed"]:
                 continue
+            _record_failure_trace(
+                client=client, input_id=input_id, stage="material_plan",
+                exc=RuntimeError("Material plan was not available."),
+            )
             failed[input_id] = "material_plan_not_available"
             _set_object_technical_failure(
                 client,
@@ -407,8 +415,13 @@ def _run_estimation_v4_1_for_all_objects(
             completed_inputs.append(input_id)
             if published.get("status") != "ready":
                 failed[input_id] = f"unexpected_publisher_status:{published.get('status')}"
+                _record_failure_trace(
+                    client=client, input_id=input_id, stage="publisher",
+                    exc=RuntimeError("Publisher did not produce a ready result."),
+                )
         except Exception as exc:
             failed[input_id] = f"{type(exc).__name__}: {exc}"
+            _record_failure_trace(client=client, input_id=input_id, stage="publisher", exc=exc)
             update_rfq_object_estimate_progress(
                 client,
                 estimate_id=estimate_id,
@@ -420,11 +433,24 @@ def _run_estimation_v4_1_for_all_objects(
     if material_plan_snapshot_data:
         from use_cases.estimation import apply_material_plan_allocations
 
-        apply_material_plan_allocations(
-            client,
-            estimate_id=estimate_id,
-            plan_snapshot=material_plan_snapshot_data,
-        )
+        try:
+            apply_material_plan_allocations(
+                client,
+                estimate_id=estimate_id,
+                plan_snapshot=material_plan_snapshot_data,
+            )
+        except Exception as exc:
+            for input_row in valid_inputs:
+                input_id = str(input_row["input_id"])
+                if input_id not in completed_inputs:
+                    continue
+                _record_failure_trace(client=client, input_id=input_id, stage="allocation", exc=exc)
+                failed[input_id] = "material_allocation_technical_failure"
+                _set_object_technical_failure(
+                    client, estimate_id=estimate_id,
+                    object_id=str(input_row["object_id"]),
+                    label="material_allocation_technical_failure",
+                )
     return {
         "processed_input_ids": completed_inputs,
         "failed": failed,
@@ -432,10 +458,10 @@ def _run_estimation_v4_1_for_all_objects(
     }
 
 
-def _run_estimation_v4_17_for_all_objects(
+def _run_estimation_v4_18_for_all_objects(
     *, client: object, estimate_id: str, created_inputs: list[dict[str, object]],
 ) -> dict[str, object]:
-    """Run V4.17 structural composition through estimate-wide costing."""
+    """Run V4.18 structural composition through estimate-wide costing."""
     return _run_estimation_v4_1_for_all_objects(
         client=client, estimate_id=estimate_id, created_inputs=created_inputs,
         bom_agent_version=ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,
@@ -526,7 +552,7 @@ def _run_estimation_job(
 
     inputs_available = bool(created_inputs)
     if inputs_available:
-        estimation_result = _run_estimation_v4_17_for_all_objects(
+        estimation_result = _run_estimation_v4_18_for_all_objects(
                 client=client,
                 estimate_id=estimate_id,
                 created_inputs=created_inputs,
@@ -540,7 +566,7 @@ def _run_estimation_job(
                 "estimated_objects": len(estimation_result["processed_input_ids"]),
                 "failed_objects": estimation_result["failed"],
             },
-            "estimation_version": "v4_17_structural_bom_composer",
+            "estimation_version": "v4_18_structural_bom_composer",
         }
     if shell and int(shell.get("object_count") or 0) == 0:
         return {

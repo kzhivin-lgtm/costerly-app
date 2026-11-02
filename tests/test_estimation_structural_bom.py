@@ -146,7 +146,7 @@ def test_scale_gate_overrides_only_a_unitless_model_mm_convention():
     assert result["coverage"][0]["target_id"] == "cabinet"
 
 
-def test_coverage_rejects_an_unassigned_visible_region():
+def test_coverage_audits_an_unassigned_visible_region_without_suppressing_bom():
     row = _input()
     row["input_payload"]["object"]["evidence_pages"] = [{
         "page_number": 1,
@@ -162,8 +162,14 @@ def test_coverage_rejects_an_unassigned_visible_region():
         "secondary_items": [], "omissions": [], "coverage": [],
     }
 
-    with pytest.raises(ValueError, match="coverage is incomplete"):
-        build_structural_assembly_bom(
-            input_row=row, dimension_graph=build_dimension_graph(input_row=row), extraction=extraction,
-            allowed_material_families=["mdf_hdf"],
-        )
+    result = build_structural_assembly_bom(
+        input_row=row, dimension_graph=build_dimension_graph(input_row=row), extraction=extraction,
+        allowed_material_families=["mdf_hdf"],
+    )
+
+    assert result["status"] == "ready"
+    assert result["coverage"] == []
+    assert result["coverage_audit"] == {
+        "status": "not_provided", "expected_region_count": 1,
+        "covered_region_ids": [], "missing_region_ids": ["p1-region-001"], "invalid_entry_count": 0,
+    }

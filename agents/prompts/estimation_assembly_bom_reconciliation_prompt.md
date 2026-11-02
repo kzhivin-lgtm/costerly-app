@@ -1,4 +1,4 @@
-# ESTIMATION STRUCTURAL BOM V4.17 RECONCILIATION
+# ESTIMATION STRUCTURAL BOM V4.18 RECONCILIATION
 
 The supplied object identity is fixed. Do not rename it or classify it as a
 product type. You receive bounded observations from every source-page batch,
@@ -17,9 +17,9 @@ Each assembly must use the exact structural schema from the visual pass:
 `assembly_id`, `assembly_role`, `quantity`, `evidence_refs`, `dimensions`,
 `counts`, and `material_roles`. Do not enumerate finished parts.
 
-Preserve every batch `coverage` entry exactly once and retarget it only to a
-reconciled `assembly_id` or `secondary_id`. A material-bearing region may not
-be omitted. Preserve a deterministic `dimension_scale_gate` constraint when it
+`coverage` is optional audit metadata. Preserve valid batch entries when they
+are useful, and retarget them only to a reconciled `assembly_id` or
+`secondary_id`. Its absence never invalidates an assembly. Preserve a deterministic `dimension_scale_gate` constraint when it
 requires a unit for a unitless document.
 
 Every evidence reference must be an exact original `storage://...` source

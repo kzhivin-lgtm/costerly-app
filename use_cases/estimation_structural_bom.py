@@ -127,26 +127,37 @@ def _expected_region_ids(payload: Mapping[str, Any]) -> set[str]:
     return result
 
 
-def _validate_coverage(
+def _audit_coverage(
     *, extraction: Mapping[str, Any], expected_region_ids: set[str], assembly_ids: set[str], secondary_ids: set[str],
-) -> list[dict[str, str]]:
+) -> tuple[list[dict[str, str]], dict[str, Any]]:
+    """Return valid ledger entries plus a non-blocking completeness audit.
+
+    Coverage protects against unnoticed omissions, but it is not source
+    evidence and cannot be allowed to suppress an otherwise usable estimate.
+    A missing, duplicated, or unsupported entry remains diagnosable in facts.
+    """
     if not expected_region_ids:
-        return []
+        return [], {
+            "status": "not_applicable", "expected_region_count": 0,
+            "covered_region_ids": [], "missing_region_ids": [], "invalid_entry_count": 0,
+        }
     coverage = extraction.get("coverage")
-    if not isinstance(coverage, list):
-        raise ValueError("structural BOM requires coverage for every supplied region")
+    coverage_items = coverage if isinstance(coverage, list) else []
     result: list[dict[str, str]] = []
     seen: set[str] = set()
+    invalid_entry_count = 0
     allowed_exclusions = {"unshown_fasteners", "minor_unmeasured_trim", "reference_only", "non_material_annotation"}
-    for raw in coverage:
+    for raw in coverage_items:
         if not isinstance(raw, Mapping):
-            raise ValueError("structural BOM coverage entry must be an object")
+            invalid_entry_count += 1
+            continue
         region_id = str(raw.get("region_id") or "")
         disposition = str(raw.get("disposition") or "")
         target_id = str(raw.get("target_id") or "")
         reason = str(raw.get("reason") or "")
         if not region_id or region_id in seen or region_id not in expected_region_ids:
-            raise ValueError("structural BOM coverage has an unknown or duplicate region")
+            invalid_entry_count += 1
+            continue
         seen.add(region_id)
         if disposition == "assembly" and target_id in assembly_ids:
             pass
@@ -155,11 +166,24 @@ def _validate_coverage(
         elif disposition == "excluded" and reason in allowed_exclusions:
             target_id = ""
         else:
-            raise ValueError("structural BOM coverage has an unsupported material disposition")
+            invalid_entry_count += 1
+            continue
         result.append({"region_id": region_id, "disposition": disposition, "target_id": target_id, "reason": reason})
-    if seen != expected_region_ids:
-        raise ValueError("structural BOM coverage is incomplete")
-    return result
+    covered_region_ids = {item["region_id"] for item in result}
+    missing_region_ids = sorted(expected_region_ids - covered_region_ids)
+    if not coverage_items:
+        status = "not_provided"
+    elif not missing_region_ids and invalid_entry_count == 0:
+        status = "complete"
+    else:
+        status = "partial"
+    return result, {
+        "status": status,
+        "expected_region_count": len(expected_region_ids),
+        "covered_region_ids": sorted(covered_region_ids),
+        "missing_region_ids": missing_region_ids,
+        "invalid_entry_count": invalid_entry_count,
+    }
 
 
 def _dimension(
@@ -421,14 +445,14 @@ def build_structural_assembly_bom(
 
     if not parts and not any(item.get("quantity") for item in materials):
         raise ValueError("structural BOM has no material demand")
-    coverage = _validate_coverage(
+    coverage, coverage_audit = _audit_coverage(
         extraction=extraction, expected_region_ids=_expected_region_ids(payload),
         assembly_ids=seen_assemblies, secondary_ids=secondary_ids,
     )
     preview_refs = sorted(ref for ref in allowed_refs if ref.startswith("storage://"))
     return {
         "contract_version": ASSEMBLY_BOM_V1,
-        "composition_version": "structural_bom_v4_17",
+        "composition_version": "structural_bom_v4_18",
         "input_id": str(input_row.get("input_id") or ""), "object_input_revision": int(input_row.get("object_input_revision") or 1),
         "run_id": str(payload.get("run_id") or ""), "company_id": str(payload.get("company_id") or ""),
         "object_id": str(object_payload.get("object_id") or ""), "object_name": str(object_payload.get("object_name") or ""),
@@ -442,6 +466,6 @@ def build_structural_assembly_bom(
         "assemblies": assemblies, "materials": materials, "parts": parts,
         "assumptions": list(dict.fromkeys(assumptions)),
         "omissions": [str(item) for item in extraction.get("omissions") or [] if str(item).strip()],
-        "coverage": coverage,
+        "coverage": coverage, "coverage_audit": coverage_audit,
         "primary_preview_ref": preview_refs[0],
     }

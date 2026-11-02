@@ -70,7 +70,7 @@ def test_v4_runtime_routes_all_objects_through_geometry_bom_path(monkeypatch):
     monkeypatch.setattr(runtime, "describe_estimation_original", lambda **_kwargs: object())
     monkeypatch.setattr(
         runtime,
-        "_run_estimation_v4_17_for_all_objects",
+        "_run_estimation_v4_18_for_all_objects",
         lambda **kwargs: events.append(("v4_run", kwargs["created_inputs"])) or {
             "processed_input_ids": ["input-1"], "failed": {}
         },
@@ -89,7 +89,7 @@ def test_v4_runtime_routes_all_objects_through_geometry_bom_path(monkeypatch):
     assert [event[0] for event in events] == ["v4_run"]
     assert result["estimation"]["status"] == "completed"
     assert result["estimation"]["estimated_objects"] == 1
-    assert result["estimation_version"] == "v4_17_structural_bom_composer"
+    assert result["estimation_version"] == "v4_18_structural_bom_composer"
 
 
 def test_all_ignored_objects_finish_as_empty_v4_estimate(monkeypatch):
@@ -184,6 +184,12 @@ def test_material_plan_technical_failure_ends_each_object_instead_of_leaving_70_
         "_set_object_technical_failure",
         lambda _client, **kwargs: progress.append(("failed", 100, kwargs["label"])),
     )
+    traces = []
+    monkeypatch.setattr(
+        runtime,
+        "_record_failure_trace",
+        lambda **kwargs: traces.append((kwargs["input_id"], kwargs["stage"], type(kwargs["exc"]).__name__)),
+    )
 
     result = runtime._run_estimation_v4_1_for_all_objects(
         client=object(), estimate_id="estimate-1",
@@ -201,6 +207,7 @@ def test_material_plan_technical_failure_ends_each_object_instead_of_leaving_70_
         ("running", 55, "building_project_material_plan"),
         ("failed", 100, "material_plan_technical_failure"),
     ]
+    assert traces == [("input-1", "material_plan", "ConnectionError")]
 
 
 class _Row:

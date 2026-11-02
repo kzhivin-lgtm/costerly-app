@@ -19,7 +19,7 @@ from agents.estimation_v4_1_material_facts_agent import (
 )
 
 
-ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION = "estimation_assembly_bom_v4_17"
+ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION = "estimation_assembly_bom_v4_18"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_assembly_bom_prompt.md"
 RECONCILIATION_PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_assembly_bom_reconciliation_prompt.md"
 
@@ -56,26 +56,22 @@ def _content(*, batch: Mapping[str, Any], payload: Mapping[str, Any], dimension_
 
 
 def _validate_coverage(*, response: Mapping[str, Any], expected_region_ids: set[str]) -> list[dict[str, Any]]:
+    """Preserve declared coverage for audit, without making it a model-output gate.
+
+    A visual response can still form a bounded material estimate when it has
+    not produced the optional coverage ledger.  The deterministic composer
+    records completeness and invalid entries in ``coverage_audit`` instead.
+    """
     coverage = response.get("coverage")
-    if not expected_region_ids:
-        return [] if coverage in (None, []) else [dict(item) for item in coverage if isinstance(item, Mapping)]
     if not isinstance(coverage, list):
-        raise ValueError("assembly BOM response requires coverage for every supplied region")
-    normalized = [dict(item) for item in coverage if isinstance(item, Mapping)]
-    region_ids = [str(item.get("region_id") or "") for item in normalized]
-    if set(region_ids) != expected_region_ids or len(region_ids) != len(set(region_ids)):
-        raise ValueError("assembly BOM response coverage is incomplete or duplicated")
-    return normalized
+        return []
+    return [dict(item) for item in coverage if isinstance(item, Mapping)]
 
 
 def _validate_response(*, response: Mapping[str, Any], batch: Mapping[str, Any]) -> dict[str, Any]:
-    if response.get("batch_id") != batch["batch_id"]:
-        raise ValueError("assembly BOM response batch_id does not match request")
-    expected = {int(page["page_number"]) for page in batch["pages"]}
-    pages = response.get("pages")
-    actual = [int(page.get("page_number")) for page in pages or [] if isinstance(page, Mapping) and str(page.get("page_number") or "").isdigit()]
-    if not isinstance(pages, list) or set(actual) != expected or len(actual) != len(pages):
-        raise ValueError("assembly BOM response page coverage is incomplete or duplicated")
+    # Batch/page acknowledgements are optional response metadata. The request
+    # already bounds the pixels supplied to this call, so their absence must
+    # never discard usable assemblies and dimensions.
     document_unit = response.get("document_unit")
     assemblies = response.get("assemblies")
     if not isinstance(assemblies, list):

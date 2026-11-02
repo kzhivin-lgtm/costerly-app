@@ -3294,6 +3294,24 @@ run must retain cm scale, cover the visible large assemblies, purchase integer
 sheet units and remain on Objects at terminal completion. Do not replay LF1
 without explicit owner authorization.
 
+V4.18 implementation, 2026-11-02, within approved task `3.17.4.3`: coverage
+is optional audit metadata, never an eligibility gate for geometry, BOM,
+material demand, price or terminal status. The visual request may omit region,
+page or batch acknowledgements. The deterministic composer preserves valid
+coverage rows and records `coverage_audit` as `complete`, `partial`,
+`not_provided` or `not_applicable`; it still composes supported assemblies and
+Material Engine prices their demand. A new additive
+`rfq_estimation_failure_traces` table records a bounded stage, exception type
+and safe message for actual technical failures: dimension graph, evidence
+artifact, assembly provider, structural composition, persistence, project
+material plan, publisher or allocation. It never stores raw provider response
+or chain-of-thought. `failed` therefore means a hard technical failure, not a
+missing coverage declaration. Pending: apply the additive SQL migration,
+deploy, then obtain one owner-run production witness with a terminal priced
+result and query its fact/trace rows. Focused tests pass 12/12. The broader
+Estimation selection currently has 123 passes and three pre-existing failing
+handoff expectations about evidence artifact/OCR retention, outside V4.18.
+
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
 commercial object. The existing immutable `estimation_input_v4` carries its

@@ -15,7 +15,7 @@ from agents.estimation_object_to_estimate_agent import (
 )
 from db.repositories import (
     fetch_estimation_fact_result, insert_agent_usage_event_returning_id,
-    insert_estimation_fact_result,
+    insert_estimation_fact_result, insert_estimation_failure_trace,
 )
 from use_cases.estimation_approximate_bom import APPROXIMATE_BOM_V1, compose_approximate_bom_v1
 from use_cases.estimation_artifacts import download_evidence_artifact
@@ -29,6 +29,34 @@ ESTIMATION_APPROXIMATE_BOM_AGENT_VERSION = "estimation_approximate_bom_v1"
 ESTIMATION_DIMENSION_GRAPH_AGENT_VERSION = DIMENSION_GRAPH_V1
 ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION = STRUCTURAL_BOM_AGENT_VERSION
 ESTIMATION_ACTIVE_BOM_AGENT_VERSION = ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION
+
+
+_SAFE_FAILURE_PREFIXES = (
+    "assembly BOM response ", "assembly reconciliation ", "structural BOM ",
+    "document_unit", "material role ", "no material families are available",
+    "persisted object-to-estimate brief ", "Estimation Object Facts ",
+)
+
+
+def _safe_failure_message(exc: Exception) -> str:
+    """Keep the diagnostic actionable without storing provider output or secrets."""
+    message = " ".join(str(exc).split())
+    if message.startswith(_SAFE_FAILURE_PREFIXES):
+        return message[:400]
+    return "Unexpected technical failure. Raw provider responses and exception details are not retained."
+
+
+def _record_failure_trace(
+    *, client: Any, input_id: str, stage: str, exc: Exception,
+) -> None:
+    """Tracing must never mask the original technical failure."""
+    try:
+        insert_estimation_failure_trace(
+            client, input_id=input_id, agent_version=ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,
+            stage=stage, error_type=type(exc).__name__, error_message=_safe_failure_message(exc),
+        )
+    except Exception:
+        pass
 
 
 def _dimension_graph_usage(*, payload: Mapping[str, Any], graph: Mapping[str, Any]) -> dict[str, Any]:
@@ -75,6 +103,7 @@ def run_assembly_first_bom_batch(
         if existing:
             reused.append(input_id)
             continue
+        stage = "dimension_graph"
         try:
             graph_existing = fetch_estimation_fact_result(
                 client, input_id=input_id, agent_version=ESTIMATION_DIMENSION_GRAPH_AGENT_VERSION,
@@ -92,6 +121,7 @@ def run_assembly_first_bom_batch(
                 ))
             dimension_scale_gate = build_dimension_scale_gate(dimension_graph=graph)
             payload = row.get("input_payload") or {}
+            stage = "evidence_artifact"
             page_bytes = {}
             for artifact in ((payload.get("evidence") or {}).get("artifacts") or []):
                 if not isinstance(artifact, Mapping) or artifact.get("artifact_kind") != "page":
@@ -99,23 +129,28 @@ def run_assembly_first_bom_batch(
                 storage_ref = str(artifact.get("storage_ref") or "")
                 if storage_ref:
                     page_bytes[storage_ref] = download_evidence_artifact(client=client, storage_ref=storage_ref)
+            stage = "assembly_agent"
             result = run_estimation_assembly_bom_agent(
                 input_row=row, evidence_page_bytes_by_ref=page_bytes, dimension_graph=graph,
                 dimension_scale_gate=dimension_scale_gate,
                 allowed_material_families=allowed_material_families,
             )
+            stage = "structural_composition"
             bom = build_structural_assembly_bom(
                 input_row=row, dimension_graph=graph, extraction=result["extraction"],
                 dimension_scale_gate=dimension_scale_gate,
                 allowed_material_families=allowed_material_families,
             )
+            stage = "usage_persistence"
             usage_id = insert_agent_usage_event_returning_id(client, result["usage_event"])
+            stage = "bom_persistence"
             created.append(insert_estimation_fact_result(
                 client, input_id=input_id, agent_version=ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,
                 facts_payload=bom, agent_usage_event_id=usage_id,
             ))
         except Exception as exc:
             failed[input_id] = f"{type(exc).__name__}: {exc}"
+            _record_failure_trace(client=client, input_id=input_id, stage=stage, exc=exc)
     return {"created_result_ids": created, "reused_input_ids": reused, "failed": failed}
 
 
