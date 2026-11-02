@@ -53,6 +53,16 @@ _ASSUMPTION_ALLOWANCE_ILS = Decimal("200")
 _ASSUMPTION_SHEET_DIMENSIONS = {"length_mm": Decimal("2440"), "width_mm": Decimal("1220")}
 
 
+def _complete_common_sheet_finish(*, material_family: str, source_name: object, specifications: Mapping[str, Any]) -> dict[str, Any]:
+    effective = dict(specifications)
+    phrase = normalize_material_phrase(str(source_name or ""))
+    if material_family == "mdf_hdf" and not _present_value(effective.get("board_type")):
+        effective["board_type"] = "mdf"
+    if material_family == "mdf_hdf" and "veneer" in phrase and not _present_value(effective.get("surface")):
+        effective["surface"] = "veneer_two_sided"
+    return effective
+
+
 @dataclass(frozen=True)
 class MaterialEngineResult:
     """Document-wide Material Engine outcome and explicit catalog gaps."""
@@ -73,6 +83,7 @@ def material_plan_input_fingerprint(
     *,
     facts_by_object: Mapping[str, Mapping[str, Any]],
     material_norm_overrides: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
+    material_purchase_overrides: Mapping[str, Mapping[str, Any]] | None = None,
     material_default_variants: Sequence[Mapping[str, Any]] = (),
 ) -> str:
     """Fingerprint the complete Material Engine input, including manual norms."""
@@ -82,6 +93,7 @@ def material_plan_input_fingerprint(
             f"{object_id}:{requirement_id}": dict(value)
             for (object_id, requirement_id), value in sorted((material_norm_overrides or {}).items())
         },
+        "material_purchase_overrides": {str(key): dict(value) for key, value in sorted((material_purchase_overrides or {}).items())},
         "material_default_variants": [
             dict(value) for value in sorted(
                 material_default_variants,
@@ -95,6 +107,16 @@ def material_plan_input_fingerprint(
     }
     encoded = json.dumps(payload, sort_keys=True, default=str, separators=(",", ":"))
     return sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _apply_purchase_quantity_overrides(plan: MaterialPlan | None, overrides: Mapping[str, Mapping[str, Any]]) -> MaterialPlan | None:
+    if plan is None or not overrides:
+        return plan
+    return replace(plan, lines=tuple(
+        replace(line, purchase_quantity=quantity, total_cost=line.price_per_purchase_unit * quantity, purchase_quantity_is_manual=True)
+        if (quantity := _positive((overrides.get(line.selection_key) or {}).get("purchase_quantity"))) is not None else line
+        for line in plan.lines
+    ))
 
 
 def _allocation_weight(allocation: Any) -> Decimal:
@@ -169,6 +191,7 @@ def material_plan_snapshot(
             ),
             "package_quantity": purchase_forms.get(line.candidate_id, {}).get("package_quantity"),
             "purchase_quantity": float(line.purchase_quantity),
+            "purchase_quantity_is_manual": line.purchase_quantity_is_manual,
             "price_per_purchase_unit": float(line.price_per_purchase_unit),
             "total_cost": float(line.total_cost),
             "currency": line.currency,
@@ -943,6 +966,7 @@ def build_material_plan(
     facts_by_object: Mapping[str, Mapping[str, Any]],
     catalogs: Mapping[str, Sequence[Mapping[str, Any]]],
     material_norm_overrides: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
+    material_purchase_overrides: Mapping[str, Mapping[str, Any]] | None = None,
     vat_percent: Decimal | int | float | str = Decimal("18"),
 ) -> MaterialEngineResult:
     """Build one document-wide purchase plan from facts and approved norms.
@@ -995,9 +1019,10 @@ def build_material_plan(
                 })
 
             parts = parts_by_requirement.get(requirement_id) or []
+            specs = _complete_common_sheet_finish(material_family=str(material.get("family") or ""), source_name=material.get("source_name"), specifications=dict(material.get("specification") or {}))
             specs, drawer_slide_trace = _apply_drawer_slide_last_resort_default(
                 material_family=str(material.get("family") or ""),
-                specifications=dict(material.get("specification") or {}),
+                specifications=specs,
                 material_pricing_policies=catalogs.get("material_pricing_policies") or (),
                 material_families=catalogs.get("material_families") or (),
             )
@@ -1065,7 +1090,7 @@ def build_material_plan(
                     if default_trace is not None else None
                 ),
             )
-            compatible = (*company_candidates, *reference_candidates)
+            compatible = company_candidates or reference_candidates
             for candidate in compatible:
                 candidates[candidate.candidate_id] = candidate
             candidate_ids = tuple(candidate.candidate_id for candidate in compatible)
@@ -1075,19 +1100,14 @@ def build_material_plan(
                 )
                 reasons.add("assumption_fallback")
                 continue
-            if parts and not any(_sheet_candidate_fits_finished_parts(candidate, parts) for candidate in compatible):
-                add_assumption_fallback(
-                    reason_code="no_physically_compatible_company_or_israel_candidate", selection_key=selection_key,
-                )
-                reasons.add("assumption_fallback")
-                continue
             override = overrides.get((str(object_id), requirement_id))
             object_quantity = _positive(facts.get("quantity")) or Decimal("1")
             material_quantity = _positive(material.get("quantity"))
             if override:
                 override_unit = str(override.get("unit") or "")
                 override_quantity = _positive(override.get("quantity_per_item"))
-                if override_quantity is None or _canonical_requirement_unit(override_unit) != _canonical_requirement_unit(material.get("unit")):
+                sheet_area_override = bool(parts) and all(candidate.purchase_kind == "sheet" for candidate in compatible) and _canonical_requirement_unit(override_unit) in {"m2", "sqm", "square_meter", "square_metre"}
+                if override_quantity is None or (not sheet_area_override and _canonical_requirement_unit(override_unit) != _canonical_requirement_unit(material.get("unit"))):
                     add_assumption_fallback(
                         reason_code="manual_material_norm_invalid", selection_key=selection_key,
                     )
@@ -1256,6 +1276,7 @@ def build_material_plan(
         ))
         reasons.add("assumption_fallback")
     plan = plan_material_purchases(demands=demands, candidates=tuple(candidates.values())) if demands else None
+    plan = _apply_purchase_quantity_overrides(plan, material_purchase_overrides or {})
     if plan and plan.status == "needs_review":
         unresolved.extend(plan.unresolved_demand_ids)
         reasons.update(plan.reason_codes)

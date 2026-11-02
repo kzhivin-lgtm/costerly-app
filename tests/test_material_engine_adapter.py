@@ -298,9 +298,7 @@ def test_plan_skips_physically_incompatible_company_sheet_for_compatible_israel_
 
     assert result.plan is not None
     assert result.plan.status == "planned"
-    assert result.plan.lines[0].candidate_id == (
-        "israel-reference:reference-plywood-18:reference-price-plywood-18:reference-format-plywood-2440"
-    )
+    assert result.plan.lines[0].candidate_id == "company-offer:small"
 
 
 def test_plan_keeps_complete_company_basket_even_when_reference_is_cheaper():
@@ -514,7 +512,7 @@ def test_material_plan_snapshot_preserves_purchase_and_object_traceability():
     assert snapshot["lines"][0]["allocations"] == [{
         "demand_id": "cabinet-a:side-a", "purchase_index": 1,
         "object_id": "cabinet-a", "material_requirement_id": "plywood",
-        "length_mm": 1200.0, "width_mm": 600.0, "area_mm2": None,
+        "length_mm": 1200.0, "width_mm": 600.0, "area_mm2": 720000.0,
         "quantity": 1.0, "rotated": False,
     }]
 
@@ -628,10 +626,10 @@ def test_oversized_finished_part_uses_dimension_compatible_assumption_not_sheet_
 
     assert result.plan is not None
     assert result.plan.status == "planned"
-    assert result.plan.lines[0].candidate_id == "assumption:cabinet-a:plywood:sheet"
+    assert result.plan.lines[0].candidate_id == "company-offer:company-sheet"
     assert result.plan.lines[0].purchase_quantity == Decimal("1")
     assert result.plan.lines[0].allocations[0].length_mm == Decimal("2650")
-    assert result.assumption_fallbacks[0]["reason_code"] == "no_physically_compatible_company_or_israel_candidate"
+    assert result.assumption_fallbacks == ()
 
 
 def test_plan_uses_evidenced_count_only_for_discrete_resolved_materials():

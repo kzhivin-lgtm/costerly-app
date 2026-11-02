@@ -382,6 +382,10 @@ def apply_object_detail_css() -> None:
             line-height: 1;
         }
 
+        .object-detail-material-input { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
+        .object-detail-material-input .object-detail-cell-input { width: min(100%, 92px); }
+        .object-detail-material-input-unit { min-width: max-content; color: rgba(42, 31, 44, 0.72); font-family: var(--font-mono); font-size: 12px; font-weight: 700; }
+
         .object-detail-cell-input--text {
             width: min(100%, 190px);
             font-size: 12px;

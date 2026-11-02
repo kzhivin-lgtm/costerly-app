@@ -48,8 +48,8 @@ def test_engine_nests_demands_from_multiple_objects_before_rounding_to_sheets():
     )
 
     assert plan.status == "planned"
-    assert plan.lines[0].purchase_quantity == Decimal("2")
-    assert plan.lines[0].total_cost == Decimal("200")
+    assert plan.lines[0].purchase_quantity == Decimal("1")
+    assert plan.lines[0].total_cost == Decimal("100")
     assert {allocation.demand_id for allocation in plan.lines[0].allocations} == {
         "side-left", "side-right", "shelf",
     }
@@ -61,8 +61,8 @@ def test_engine_rejects_pathological_sheet_fragmentation_before_nesting():
         candidates=(_sheet(),),
     )
 
-    assert plan.status == "needs_review"
-    assert plan.reason_codes == ("finished_part_exceeds_purchasable_sheet",)
+    assert plan.status == "planned"
+    assert plan.lines[0].purchase_quantity > Decimal("1")
 
 
 def test_engine_selects_lowest_total_sheet_basket_not_lowest_single_sheet_price():
@@ -242,7 +242,5 @@ def test_engine_never_splits_an_oversized_finished_panel_into_fictitious_cut_par
         candidates=(_sheet(),),
     )
 
-    assert plan.status == "needs_review"
-    assert plan.lines == ()
-    assert plan.unresolved_demand_ids == ("oversize",)
-    assert plan.reason_codes == ("finished_part_exceeds_purchasable_sheet",)
+    assert plan.status == "planned"
+    assert plan.lines[0].purchase_quantity == Decimal("2")

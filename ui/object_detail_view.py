@@ -64,15 +64,20 @@ def _metric_html(label: str, value: object) -> str:
     )
 
 
-def _input_html(value: object, kind: str = "text", field: str = "") -> str:
+def _input_html(value: object, kind: str = "text", field: str = "", line_id: str = "") -> str:
     """Render an editable visual field wired by the Object Detail input guard."""
     field_attr = f' data-field="{_escape(field)}"' if field else ""
+    line_id_attr = f' data-line-id="{_escape(line_id)}"' if line_id else ""
     inputmode = "text" if kind == "text" else "decimal"
     return (
         f'<div class="object-detail-cell-input object-detail-cell-input--{kind}" '
         f'role="textbox" contenteditable="true" tabindex="0" inputmode="{inputmode}"'
-        f'{field_attr}>{_escape(value)}</div>'
+        f'{field_attr}{line_id_attr}>{_escape(value)}</div>'
     )
+
+
+def _material_input_html(*, value: object, field: str, line_id: str, unit: str) -> str:
+    return '<span class="object-detail-material-input">' + _input_html(value, "number", field, line_id) + f'<span class="object-detail-material-input-unit">{_escape(unit)}</span></span>'
 
 
 def _source_marker(value: object) -> str:
@@ -88,10 +93,10 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
     columns = section["columns"]
     if columns == ["Material", "Required material", "Purchase unit", "Purchase quantity", "Total"]:
         return [
-            _source_marker(row.get("price_source")) + _escape(row.get("item")),
-            _escape(row.get("required_material")),
+            _source_marker(row.get("price_source")) + " " + _escape(row.get("item")),
+            _material_input_html(value=_number_text(row.get("required_material_value")), field="required_material", line_id=str(row.get("required_material_line_id") or ""), unit=str(row.get("required_material_unit") or "")),
             _escape(row.get("purchase_unit")),
-            _escape(row.get("purchase_quantity")),
+            _material_input_html(value=_number_text(row.get("purchase_quantity_value")), field="purchase_quantity", line_id=str(row.get("purchase_quantity_line_id") or ""), unit=str(row.get("purchase_quantity_unit") or "")),
             f'<span class="object-detail-row-cost">{_money(row.get("total"))}</span>',
         ]
     if columns[0] == "Work":
@@ -186,7 +191,7 @@ def _table_html(section: dict[str, object]) -> str:
         for row in rows:
             values = _row_values(section, row)
             body_parts.append(
-                '<div class="object-detail-table-row">'
+                '<div class="object-detail-table-row" data-section="materials">'
                 + "".join(f'<div class="object-detail-table-cell">{value}</div>' for value in values)
                 + "</div>"
             )

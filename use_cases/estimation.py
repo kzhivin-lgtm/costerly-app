@@ -20,6 +20,7 @@ from db.repositories import (
     update_rfq_object_estimate_progress,
     update_rfq_object_estimate_totals,
     upsert_rfq_estimate_material_norm_override,
+    upsert_rfq_estimate_material_purchase_override,
     mark_rfq_estimate_material_plan_stale,
     reset_rfq_object_estimate_approvals,
     upsert_rfq_estimate_shell,
@@ -628,12 +629,12 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
                 if isinstance(fallback, dict) else str(line.get("display_name") or "Material")
             ),
             "price_source": authority,
-            "required_material": f"{_format_number(required_value)} {required_unit}",
+            "required_material_value": required_value, "required_material_unit": required_unit,
+            "required_material_line_id": f"__material_requirement__:{next(iter(requirement_ids))}" if len(requirement_ids) == 1 else "",
             "purchase_unit": _purchase_unit_display(line),
-            "purchase_quantity": (
-                f"{_format_number(_number(line.get('purchase_quantity'), 0))} "
-                f"{_purchase_unit_label(purchase_kind)}"
-            ),
+            "purchase_quantity_value": _number(line.get("purchase_quantity"), 0),
+            "purchase_quantity_unit": _purchase_unit_label(purchase_kind),
+            "purchase_quantity_line_id": f"__material_purchase__:{line.get('selection_key')}",
             "total": _number(line.get("total_cost"), 0),
         })
     return rows
@@ -1191,6 +1192,8 @@ def apply_object_detail_snapshot(
         "allocation_basis",
     }
     edits_by_line: dict[str, dict[str, Any]] = {}
+    required_material_edits: dict[str, Any] = {}
+    purchase_quantity_edits: dict[str, Any] = {}
     object_quantity: Any = None
     for edit in edits:
         if not isinstance(edit, dict):
@@ -1200,11 +1203,15 @@ def apply_object_detail_snapshot(
         if line_id == "__object__" and field == "object_quantity":
             object_quantity = edit.get("value")
             continue
+        if line_id.startswith("__material_requirement__:") and field == "required_material":
+            required_material_edits[line_id.removeprefix("__material_requirement__:")] = edit.get("value"); continue
+        if line_id.startswith("__material_purchase__:") and field == "purchase_quantity":
+            purchase_quantity_edits[line_id.removeprefix("__material_purchase__:")] = edit.get("value"); continue
         if not line_id or field not in allowed_fields:
             continue
         edits_by_line.setdefault(line_id, {})[field] = edit.get("value")
 
-    if not edits_by_line and object_quantity is None:
+    if not edits_by_line and not required_material_edits and not purchase_quantity_edits and object_quantity is None:
         return True
 
     if object_quantity is not None:
@@ -1214,7 +1221,7 @@ def apply_object_detail_snapshot(
             object_id=object_id,
             quantity=_number_from_edit(object_quantity),
         )
-    if not edits_by_line:
+    if not edits_by_line and not required_material_edits and not purchase_quantity_edits:
         return False if object_quantity is not None else True
 
     client = get_supabase_client()
@@ -1298,6 +1305,17 @@ def apply_object_detail_snapshot(
             values=updates,
         )
 
+    if required_material_edits:
+        current_plan = _first_row(fetch_rfq_estimate_material_plan(client, estimate_id))
+        material_norms = _material_norms_from_plan(current_plan.get("plan_payload") if isinstance(current_plan.get("plan_payload"), dict) else {})
+        source_line_ids = {_material_requirement_id(item.to_dict()): str(item.to_dict().get("line_id") or "") for _, item in lines_df.iterrows() if _material_requirement_id(item.to_dict())}
+        for requirement_id, value in required_material_edits.items():
+            current = material_norms.get((object_id, requirement_id))
+            if current is None: raise ValueError("Material requirement cannot be edited without a current physical unit.")
+            unit, _ = current; total_required = _number_from_edit(value)
+            if total_required <= 0: raise ValueError("Required material must be greater than zero.")
+            material_norm_overrides.append((requirement_id, total_required / current_object_quantity, unit, source_line_ids.get(requirement_id, "")))
+
     for requirement_id, quantity_per_item, unit, source_line_id in material_norm_overrides:
         upsert_rfq_estimate_material_norm_override(
             client,
@@ -1310,14 +1328,19 @@ def apply_object_detail_snapshot(
             source_line_id=source_line_id,
         )
 
-    material_input_changed = bool(material_norm_overrides) or object_quantity is not None
+    for selection_key, value in purchase_quantity_edits.items():
+        purchase_quantity = _number_from_edit(value)
+        if not selection_key or purchase_quantity <= 0: raise ValueError("Purchase quantity must be greater than zero.")
+        upsert_rfq_estimate_material_purchase_override(client, estimate_id=estimate_id, selection_key=selection_key, company_id=str(object_row.get("company_id") or ""), purchase_quantity=purchase_quantity)
+
+    material_input_changed = bool(material_norm_overrides) or bool(purchase_quantity_edits) or object_quantity is not None
     if material_input_changed:
         _invalidate_and_queue_material_plan(
             client,
             estimate_id=estimate_id,
             company_id=str(object_row.get("company_id") or ""),
             run_id=str(object_row.get("run_id") or run_id or ""),
-            reason_code="material_norm_changed" if material_norm_overrides else "object_quantity_changed",
+            reason_code="material_norm_changed" if material_norm_overrides else "purchase_quantity_changed" if purchase_quantity_edits else "object_quantity_changed",
         )
 
     _recalculate_object_estimate_totals(

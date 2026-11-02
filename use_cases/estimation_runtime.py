@@ -11,6 +11,7 @@ from db.repositories import (
     fetch_latest_estimation_facts_by_object,
     fetch_latest_ocr_result,
     fetch_rfq_estimate_material_norm_overrides,
+    fetch_rfq_estimate_material_purchase_overrides,
     fetch_rfq_object_estimates,
     fetch_rfq_detected_objects,
     fetch_rfq_run,
@@ -59,6 +60,12 @@ def _material_norm_overrides_by_requirement(rows: object) -> dict[tuple[str, str
     }
 
 
+def _material_purchase_overrides_by_selection_key(rows: object) -> dict[str, dict[str, object]]:
+    if rows is None or getattr(rows, "empty", True):
+        return {}
+    return {str(row.get("selection_key") or ""): dict(row) for _, row in rows.iterrows() if str(row.get("selection_key") or "")}
+
+
 def _build_and_persist_material_plan(
     *,
     client: object,
@@ -75,15 +82,18 @@ def _build_and_persist_material_plan(
     )
     override_rows = fetch_rfq_estimate_material_norm_overrides(client, estimate_id)
     overrides = _material_norm_overrides_by_requirement(override_rows)
+    purchase_overrides = _material_purchase_overrides_by_selection_key(fetch_rfq_estimate_material_purchase_overrides(client, estimate_id))
     fingerprint = material_plan_input_fingerprint(
         facts_by_object=facts_by_object,
         material_norm_overrides=overrides,
+        material_purchase_overrides=purchase_overrides,
         material_default_variants=shared_catalogs.get("material_default_variants") or (),
     )
     result = build_material_plan(
         facts_by_object=facts_by_object,
         catalogs=shared_catalogs,
         material_norm_overrides=overrides,
+        material_purchase_overrides=purchase_overrides,
     )
     snapshot = material_plan_snapshot(result, input_fingerprint=fingerprint)
     try:

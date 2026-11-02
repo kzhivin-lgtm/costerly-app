@@ -2350,7 +2350,7 @@ def install_object_detail_input_guard(
             function handleInput(event) {
                 const ctx = inputContext(event);
                 if (!ctx || ctx.input.classList.contains("object-detail-cell-input--text")) return;
-                updateRowCost(ctx.input.closest(".object-detail-table-row"));
+                if (ctx.field !== "required_material" && ctx.field !== "purchase_quantity") updateRowCost(ctx.input.closest(".object-detail-table-row"));
             }
 
             function handlePaste(event) {
@@ -2377,13 +2377,13 @@ def install_object_detail_input_guard(
                 if (!ctx.input.classList.contains("object-detail-cell-input--text")) {
                     if (ctx.input.classList.contains("object-detail-cell-input--percent")) {
                         setEditableValue(ctx.input, `${formatNumber(readNumber(nextValue))}%`);
-                    } else if (ctx.field === "quantity" || ctx.field === "hours") {
+                    } else if (ctx.field === "quantity" || ctx.field === "hours" || ctx.field === "required_material" || ctx.field === "purchase_quantity") {
                         setEditableValue(ctx.input, formatNumber(readNumber(nextValue)));
                     } else {
                         setEditableValue(ctx.input, formatMoney(nextValue));
                     }
                 }
-                updateCalculations(ctx.input.closest(".object-detail-table-row"));
+                if (ctx.field !== "required_material" && ctx.field !== "purchase_quantity") updateCalculations(ctx.input.closest(".object-detail-table-row"));
             }
 
             function findApproveButton(target) {
@@ -2394,14 +2394,12 @@ def install_object_detail_input_guard(
 
             function snapshotEdits() {
                 const edits = Array.from(parentDoc.querySelectorAll(".object-detail-table-row")).flatMap((row) => {
-                    const lineId = row.dataset.lineId || "";
-                    if (!lineId) return [];
                     return Array.from(row.querySelectorAll(".object-detail-cell-input[data-field]")).map((input) => ({
-                        line_id: lineId,
+                        line_id: input.dataset.lineId || row.dataset.lineId || "",
                         field: input.dataset.field || "",
                         value: normalizeInputValue(input),
                         originalValue: input.dataset.originalValue ?? normalizeInputValue(input),
-                    })).filter((edit) => edit.field && edit.value !== edit.originalValue);
+                    })).filter((edit) => edit.line_id && edit.field && edit.value !== edit.originalValue);
                 });
                 const quantity = objectQuantityInput();
                 if (quantity) {

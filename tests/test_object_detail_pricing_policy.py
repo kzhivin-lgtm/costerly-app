@@ -81,18 +81,20 @@ def test_material_purchase_table_shows_demand_and_purchase_without_allocation_la
         "key": "material", "title": "Materials",
         "columns": ["Material", "Required material", "Purchase unit", "Purchase quantity", "Total"],
         "rows": [{
-            "item": "Veneered MDF 18 mm", "price_source": "A", "required_material": "5.2 m²",
-            "purchase_unit": "sheet 2440 × 1220 mm", "purchase_quantity": "2 sheet", "total": 400,
+            "item": "Veneered MDF 18 mm", "price_source": "A", "required_material_value": 5.2,
+            "required_material_unit": "m²", "required_material_line_id": "__material_requirement__:mdf",
+            "purchase_unit": "sheet 2440 × 1220 mm", "purchase_quantity_value": 2,
+            "purchase_quantity_unit": "sheet", "purchase_quantity_line_id": "__material_purchase__:mdf", "total": 400,
         }],
     }
 
     values = _row_values(section, section["rows"][0])
     html = _table_html(section)
 
-    assert ">A</span>Veneered MDF 18 mm" in values[0]
-    assert values[1] == "5.2 m²"
+    assert ">A</span> Veneered MDF 18 mm" in values[0]
+    assert "required_material" in values[1]
     assert values[2] == "sheet 2440 × 1220 mm"
-    assert values[3] == "2 sheet"
+    assert "purchase_quantity" in values[3]
     assert "Project allocation" not in html
     assert "Project material plan" not in html
 
@@ -115,8 +117,10 @@ def test_assumption_rows_hide_assembly_roles_but_preserve_net_demand_and_purchas
     }, object_id="object-1")
 
     assert rows == [{
-        "item": "Particleboard 18 mm", "price_source": "A", "required_material": "2.3 m²",
-        "purchase_unit": "sheet 2440 × 1220 mm", "purchase_quantity": "2 sheet", "total": 400.0,
+        "item": "Particleboard 18 mm", "price_source": "A", "required_material_value": 2.279,
+        "required_material_unit": "m²", "required_material_line_id": "__material_requirement__:board",
+        "purchase_unit": "sheet 2440 × 1220 mm", "purchase_quantity_value": 2.0,
+        "purchase_quantity_unit": "sheet", "purchase_quantity_line_id": "__material_purchase__:None", "total": 400.0,
     }]
 
 

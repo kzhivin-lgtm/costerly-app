@@ -18,6 +18,7 @@ from typing import Literal, Mapping, Sequence
 PurchaseKind = Literal["sheet", "linear_stock", "linear_cut", "volume_direct", "piece", "direct"]
 PlanStatus = Literal["planned", "needs_review"]
 _MAX_SHEET_SPLIT_PIECES_PER_FINISHED_PART = 256
+_APPROXIMATE_SHEET_WASTE_FACTOR = Decimal("1.10")
 
 
 class MaterialEngineError(ValueError):
@@ -125,6 +126,7 @@ class MaterialPurchaseLine:
     total_cost: Decimal
     currency: str
     allocations: tuple[MaterialAllocation, ...]
+    purchase_quantity_is_manual: bool = False
 
 
 @dataclass(frozen=True)
@@ -224,20 +226,26 @@ def _place_sheet_parts(
     sheet_length, sheet_width = _candidate_dimensions(candidate)
     if sheet_width is None:
         raise MaterialEngineError("sheet candidate requires width_mm")
-    kerf = _decimal(candidate.kerf_mm, "candidate.kerf_mm")
-    parts: list[tuple[Decimal, Decimal, MaterialDemand, int, bool]] = []
-    aggregate_demands: list[tuple[MaterialDemand, Decimal]] = []
-    direct_sheet_demands: list[tuple[MaterialDemand, int]] = []
+    total_area = Decimal("0")
+    direct_sheet_quantity = Decimal("0")
+    allocations: list[MaterialAllocation] = []
     for demand in demands:
         if str(demand.unit or "").strip().casefold() in {"sheet", "sheets"}:
-            direct_sheet_demands.append((
-                demand,
-                _whole(_demand_quantity(demand, whole=True), "demand.quantity"),
+            quantity = _whole(_demand_quantity(demand, whole=True), "demand.quantity")
+            direct_sheet_quantity += Decimal(quantity)
+            allocations.append(MaterialAllocation(
+                demand_id=demand.demand_id, purchase_index=1, object_id=demand.object_id,
+                material_requirement_id=demand.material_requirement_id,
+                area_mm2=quantity * sheet_length * sheet_width, quantity=Decimal(quantity),
             ))
             continue
         area = _demand_area(demand)
         if area is not None:
-            aggregate_demands.append((demand, area))
+            total_area += area
+            allocations.append(MaterialAllocation(
+                demand_id=demand.demand_id, purchase_index=1, object_id=demand.object_id,
+                material_requirement_id=demand.material_requirement_id, area_mm2=area,
+            ))
             continue
         # A sheet-form Company offer is not compatible with a discrete demand
         # such as a complete door system. Reject only this candidate so a
@@ -246,131 +254,19 @@ def _place_sheet_parts(
             return _CandidatePlan(line=None, reason_code="sheet_geometry_required")
         quantity = _whole(_demand_quantity(demand, whole=True), "demand.quantity")
         length, width = _demand_dimensions(demand)
-        split_parts = _split_sheet_part(
-            length=length,
-            width=width,
-            sheet_length=sheet_length,
-            sheet_width=sheet_width,
-            kerf=kerf,
-        )
-        for index in range(quantity):
-            for split_index, (split_length, split_width) in enumerate(split_parts):
-                parts.append((
-                    split_length, split_width, demand,
-                    index * len(split_parts) + split_index, demand.rotation_allowed,
-                ))
-    # Largest rectangles first gives a deterministic, conservative nesting
-    # heuristic.  The plan records the exact placements, so a later optimiser
-    # can replace this strategy without changing the external contract.
-    parts.sort(key=lambda part: (-part[0] * part[1], -max(part[0], part[1]), part[2].demand_id, part[3]))
-    sheets: list[list[tuple[Decimal, Decimal, Decimal, Decimal]]] = []
-    allocations: list[MaterialAllocation] = []
-
-    for length, width, demand, _index, rotation_allowed in parts:
-        # Kerf is clearance between rectangular cuts.  Inflating each part is
-        # deliberately conservative and avoids hiding a kerf requirement in a
-        # percentage-waste rule.
-        orientations = [(length + kerf, width + kerf, False)]
-        if rotation_allowed and length != width:
-            orientations.append((width + kerf, length + kerf, True))
-        placed = False
-        for sheet_index, free_rectangles in enumerate(sheets, start=1):
-            for free_index, (x, y, free_length, free_width) in enumerate(tuple(free_rectangles)):
-                fitting = [
-                    orientation for orientation in orientations
-                    if orientation[0] <= free_length and orientation[1] <= free_width
-                ]
-                if not fitting:
-                    continue
-                used_length, used_width, rotated = min(
-                    fitting,
-                    key=lambda orientation: (
-                        min(free_length - orientation[0], free_width - orientation[1]),
-                        max(free_length - orientation[0], free_width - orientation[1]),
-                        orientation[2],
-                    ),
-                )
-                del free_rectangles[free_index]
-                right = (x + used_length, y, free_length - used_length, used_width)
-                below = (x, y + used_width, free_length, free_width - used_width)
-                if right[2] > 0 and right[3] > 0:
-                    free_rectangles.append(right)
-                if below[2] > 0 and below[3] > 0:
-                    free_rectangles.append(below)
-                allocations.append(MaterialAllocation(
-                    demand_id=demand.demand_id, purchase_index=sheet_index,
-                    object_id=demand.object_id,
-                    material_requirement_id=demand.material_requirement_id,
-                    length_mm=length, width_mm=width, quantity=Decimal("1"), rotated=rotated,
-                ))
-                placed = True
-                break
-            if placed:
-                break
-        if placed:
-            continue
-        fitting = [
-            orientation for orientation in orientations
-            if orientation[0] <= sheet_length and orientation[1] <= sheet_width
-        ]
-        if not fitting:
-            return _CandidatePlan(line=None, reason_code="demand_exceeds_purchasable_sheet")
-        used_length, used_width, rotated = min(
-            fitting,
-            key=lambda orientation: (sheet_length - orientation[0], sheet_width - orientation[1], orientation[2]),
-        )
-        free_rectangles = []
-        right = (used_length, Decimal("0"), sheet_length - used_length, used_width)
-        below = (Decimal("0"), used_width, sheet_length, sheet_width - used_width)
-        if right[2] > 0 and right[3] > 0:
-            free_rectangles.append(right)
-        if below[2] > 0 and below[3] > 0:
-            free_rectangles.append(below)
-        sheets.append(free_rectangles)
+        area = length * width * quantity
+        total_area += area
         allocations.append(MaterialAllocation(
-            demand_id=demand.demand_id, purchase_index=len(sheets),
+            demand_id=demand.demand_id, purchase_index=1,
             object_id=demand.object_id,
             material_requirement_id=demand.material_requirement_id,
-            length_mm=length, width_mm=width, quantity=Decimal("1"), rotated=rotated,
+            length_mm=length, width_mm=width, area_mm2=area, quantity=Decimal(quantity),
         ))
 
-    # A row already expressed in sheets is a physical purchase instruction,
-    # not a geometric area that should be re-nested.
-    for demand, quantity in direct_sheet_demands:
-        for _ in range(quantity):
-            sheets.append([])
-            allocations.append(MaterialAllocation(
-                demand_id=demand.demand_id,
-                purchase_index=len(sheets),
-                object_id=demand.object_id,
-                material_requirement_id=demand.material_requirement_id,
-                # A fallback whole-sheet count has no cut geometry, but its
-                # allocation must remain comparable with known sheet parts.
-                area_mm2=sheet_length * sheet_width,
-                quantity=Decimal("1"),
-            ))
-
-    # A manual norm is intentionally allowed without invented part geometry.
-    # It cannot safely consume fragmented offcuts left by known rectangles:
-    # area alone does not prove that a physical piece fits.  It therefore adds
-    # whole sheets by area. This deliberately conservative commercial estimate
-    # never claims that an exact cut layout exists for the manual adjustment.
-    sheet_capacity = sheet_length * sheet_width
-    for demand, area in aggregate_demands:
-        outstanding = area
-        while outstanding > 0:
-            used = min(outstanding, sheet_capacity)
-            sheets.append([])
-            outstanding -= used
-            allocations.append(MaterialAllocation(
-                demand_id=demand.demand_id, purchase_index=len(sheets),
-                object_id=demand.object_id,
-                material_requirement_id=demand.material_requirement_id,
-                area_mm2=used,
-            ))
-
     price = _positive(candidate.price_per_purchase_unit, "candidate.price_per_purchase_unit")
-    quantity = Decimal(len(sheets))
+    quantity = direct_sheet_quantity + _ceil(
+        total_area * _APPROXIMATE_SHEET_WASTE_FACTOR / (sheet_length * sheet_width)
+    )
     return _CandidatePlan(line=MaterialPurchaseLine(
         selection_key=candidate.selection_key,
         candidate_id=candidate.candidate_id,

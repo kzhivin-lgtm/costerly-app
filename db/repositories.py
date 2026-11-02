@@ -701,6 +701,10 @@ def fetch_rfq_estimate_material_norm_overrides(client: Client, estimate_id: str)
     )
 
 
+def fetch_rfq_estimate_material_purchase_overrides(client: Client, estimate_id: str) -> pd.DataFrame:
+    return fetch_table(client, "rfq_estimate_material_purchase_overrides", order_by="selection_key", filters={"estimate_id": estimate_id})
+
+
 def upsert_rfq_estimate_material_plan(
     client: Client,
     *,
@@ -882,6 +886,13 @@ def upsert_rfq_estimate_material_norm_override(
         },
         on_conflict="estimate_id,object_id,material_requirement_id",
     ).execute()
+
+
+def upsert_rfq_estimate_material_purchase_override(client: Client, *, estimate_id: str, selection_key: str, company_id: str, purchase_quantity: float) -> None:
+    client.table("rfq_estimate_material_purchase_overrides").upsert({
+        "estimate_id": estimate_id, "selection_key": selection_key, "company_id": company_id,
+        "purchase_quantity": purchase_quantity, "updated_at": datetime.now(UTC).isoformat(),
+    }, on_conflict="estimate_id,selection_key").execute()
 
 
 def mark_rfq_estimate_material_plan_stale(

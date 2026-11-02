@@ -124,6 +124,7 @@ def test_material_engine_plan_runs_after_bom_and_cannot_block_object_publishing(
     )
     monkeypatch.setattr(runtime, "fetch_latest_estimation_facts_by_object", lambda _client, **_kwargs: facts)
     monkeypatch.setattr(runtime, "fetch_rfq_estimate_material_norm_overrides", lambda *_args, **_kwargs: SimpleNamespace(empty=True))
+    monkeypatch.setattr(runtime, "fetch_rfq_estimate_material_purchase_overrides", lambda *_args, **_kwargs: SimpleNamespace(empty=True))
     monkeypatch.setattr(runtime, "persist_material_assumption_fallbacks", lambda **_kwargs: 0)
     monkeypatch.setattr(
         runtime,
