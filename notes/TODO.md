@@ -3312,7 +3312,7 @@ result and query its fact/trace rows. Focused tests pass 12/12. The broader
 Estimation selection currently has 123 passes and three pre-existing failing
 handoff expectations about evidence artifact/OCR retention, outside V4.18.
 
-V4.19 implementation, 2026-11-02, within approved task `3.17.4.3`: the new
+V4.19 implementation, 2026-11-02, commit `7bfe531`, within approved task `3.17.4.3`: the new
 V4.18 trace from `run_9d213e4cb78c4f2d9d7a9bb9e8aa6954`, input
 `e2fc6d97-ebf8-43a1-874b-a363ca598644`, isolated a false hard failure in
 structural composition: `document_convention_assumption` redundantly carried

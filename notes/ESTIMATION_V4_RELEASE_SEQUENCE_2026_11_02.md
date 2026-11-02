@@ -24,7 +24,7 @@ not an internal immutable fact-contract suffix.
 | V4.16 | `1cee460` | Objects terminal refresh remains inside its timed fragment. Completion renders persisted terminal rows directly and does not start an app-wide rerun that can replay File Review navigation |
 | V4.17 | `72c946f` | OCR Dimension Scale Gate constrains unitless micro-scale furniture to centimetres, coverage ledger prevents silent visible-region omission, and Object Detail shows whole project purchase units separately from allocated object cost |
 | V4.18 | `eba4fae` | Coverage is optional audit metadata and can never reject an otherwise usable BOM. Bounded technical traces record rare hard failures by stage without retaining raw provider output or chain-of-thought |
-| V4.19 | pending | A model's redundant evidence refs on a document-unit assumption are discarded and explicitly audited rather than rejecting an otherwise usable BOM |
+| V4.19 | `7bfe531` | A model's redundant evidence refs on a document-unit assumption are discarded and explicitly audited rather than rejecting an otherwise usable BOM |
 
 Rule from 2026-11-02: every subsequent Estimation deployment receives the next
 sequential V4 release number in its commit message, change note, deployment
