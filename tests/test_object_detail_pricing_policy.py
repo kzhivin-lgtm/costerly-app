@@ -43,17 +43,18 @@ def test_material_cells_swap_quantity_and_unit_cost_without_changing_grid_shape(
     assert "₪104" in values[3]
 
 
-def test_assumption_is_shown_in_unit_cost_input_not_in_material_name():
+def test_price_source_is_shown_as_minimal_marker_beside_editable_unit_cost():
     row = {
         "item": "Metal profile angle", "unit": "m", "qty": 6.59,
-        "unit_cost": None, "cost": None, "assumption": True,
+        "unit_cost": 31, "cost": 204, "price_source": "A",
     }
 
     values = _row_values(_section(), row)
 
     assert values[0] == "Metal profile angle"
-    assert "Assumption" in values[3]
-    assert 'data-field="unit_cost"' not in values[3]
+    assert 'data-field="unit_cost"' in values[3]
+    assert 'object-detail-material-source' in values[3]
+    assert '>A</span>' in values[3]
 
 
 def test_nan_values_do_not_crash_object_detail_number_rendering():

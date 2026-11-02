@@ -288,7 +288,7 @@ def _assumption_candidate(
         material_family=material_family, selection_key=resolved_key,
         purchase_kind=purchase_kind, price_per_purchase_unit=_ASSUMPTION_ALLOWANCE_ILS,
         currency="ILS", purchasable_dimensions=dimensions, authority="assumption",
-        display_name=f"Assumption: {str(material.get('source_name') or material_family)}",
+        display_name=str(material.get("source_name") or material_family),
     )
     fallback = {
         "object_id": object_id, "material_requirement_id": requirement_id,

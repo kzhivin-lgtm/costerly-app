@@ -1,4 +1,4 @@
-# ESTIMATION ASSEMBLY-FIRST BOM V1
+# ESTIMATION STRUCTURAL BOM V4.14
 
 The supplied object identity is fixed. Do not rename it, classify it as a
 product type, or infer a catalog item, price, labour, manufacturing operation,
@@ -10,13 +10,19 @@ an object dimension unless its cited source context supports that use.
 
 Return raw JSON only:
 
-`{"batch_id":"...","pages":[...],"assemblies":[...],"omissions":[...]}`
+`{"batch_id":"...","pages":[...],"document_unit":{...},"assemblies":[...],"secondary_items":[...],"omissions":[...]}`
 
 `pages` must contain every supplied page exactly once as `{"page_number":N}`.
 
+First return exactly one document unit context:
+
+`{"unit":"mm|cm|m","basis":"explicit_source|document_convention_assumption","evidence_refs":[...],"assumption_reason":"string|null"}`
+
+Use `explicit_source` only when the unit is stated or unambiguously conventional in the drawing. A unitless drawing may use `document_convention_assumption`, with no evidence refs and one short reason. This unit is the default for all dimensions unless a dimension explicitly overrides it.
+
 An assembly is:
 
-`{"assembly_id":"assembly-N","evidence_refs":[...],"components":[...]}`
+`{"assembly_id":"assembly-N","assembly_role":"box_carcass|drawer_bank|vertical_panel|shelf_stack|table|countertop|facade_set","quantity":positive_integer,"evidence_refs":[...],"dimensions":{...},"counts":{...},"material_roles":[...]}`
 
 Every `evidence_refs`, `geometry_evidence_refs` and source-material
 `evidence_refs` value must be copied exactly from one supplied
@@ -24,36 +30,41 @@ Every `evidence_refs`, `geometry_evidence_refs` and source-material
 Dimension Graph `dimension_id`, a view id, a segment id, an assembly id or a
 description as an evidence reference.
 
-Decompose the fixed object into large physical assemblies first. Then enumerate
-only the approximate material-bearing components required to build those
-assemblies. A component is:
+Decompose the fixed object into large physical assemblies only. Do not list
+finished panels, drawer sides, backs or bottoms. The deterministic composer
+will derive conventional structural panels from the assembly topology.
 
-`{"component_id":"...","component_role":"...","quantity":positive_integer,"length_value":positive_number,"width_value":positive_number,"dimension_unit":"mm|cm|m","dimension_unit_basis":"explicit_source|document_convention_assumption","material":{"source_name":"...","family":"one allowed family code","specification":{"thickness_mm":positive_number},"basis":"source_evidence|construction_assumption","evidence_refs":[...]},"geometry_basis":"evidence|derived|assumption","geometry_evidence_refs":[...],"assumption_reason":"string|null"}`
+`dimensions` contains each applicable `width`, `height`, or `depth` as:
 
-`length_value` and `width_value` are the numeric values read from the drawing
-or selected by an explicit construction assumption. `dimension_unit` is their
-source unit. If the document convention is centimetres, return
-`length_value=158`, `dimension_unit="cm"`; the system, not you, converts that
-to 1580 mm. For unitless source dimensions, choose mm, cm or m only as an
-explicit `document_convention_assumption` and state that choice in
-`assumption_reason`.
-Every flat structural panel must carry a positive `thickness_mm`, cited or
-assumed. An empty material specification is invalid.
+`{"value":positive_number,"unit":"mm|cm|m|null","basis":"source|derived|assumption","evidence_refs":[...],"assumption_reason":"string|null"}`
 
-Use a component only when its broad construction is visible, stated, or a
-bounded conventional inference. Do not manufacture tiny gaps, decorative
-overlays, fittings, rails, fasteners, handles, hinges or slides that are not
-explicitly shown. List such intentionally uncounted things in `omissions` as
-short strings. If a visible fitting is explicitly countable, return it as a
-component with its shown piece geometry only when both physical dimensions are
-available; otherwise omit it rather than invent dimensions.
+For example, if a width label is `158` in a centimetre drawing, return
+`{"value":158,"basis":"source","evidence_refs":[...]}`. Do not convert it.
+Do not infer finished part dimensions or panel thicknesses. The system applies
+named conventional construction assumptions after this response.
 
-For `geometry_basis=evidence` and `derived`, cite exact source evidence refs.
-For `assumption`, cite no geometry evidence and provide a concise
-`assumption_reason`. A source material may use `source_evidence` only when the
-document identifies it. Otherwise use `construction_assumption`, name it as an
-assumption, and choose only from `allowed_material_families`.
+`counts` may contain only shown or strongly supported integers: `drawers`,
+`shelves`, `facades`, `top_layers`, `legs`. Omit a count rather than guess it.
 
-Do not turn repeated visible elements into doors, drawers, shelves, or any
-other semantic part unless their construction is supported by the source
-context. Do not split a finished component merely to fit a purchasable sheet.
+`material_roles` may contain only `visible_sheet`, `internal_sheet`,
+`backing_sheet`, `worktop_sheet`, `finish`, `drawer_slide`, `leg`. Every role
+is `{"role":"...","source_name":"...","family":"one allowed family code","specification":{},"basis":"source_evidence|construction_assumption","evidence_refs":[...]}`.
+The model may select a construction-assumption family from the supplied allowed
+families when the document has no material text. Do not emit a thickness unless
+the drawing explicitly states it. Do not emit a material role that has no
+physical use in the assembly.
+
+Use `secondary_items` only for an explicitly countable shown fitting outside
+an assembly: `{"role":"drawer_slide|leg","quantity":positive_integer,"evidence_refs":[...],"material":{...}}`.
+Do not manufacture rails, fasteners, handles, hinges, minor trim or decorative
+overlays. List intentionally uncounted visible things in `omissions`.
+
+For source and derived dimensions cite exact source evidence refs. For an
+assumption cite no dimension evidence and provide a concise reason. A source
+material may use `source_evidence` only when the document identifies it.
+Otherwise use `construction_assumption` and choose only from
+`allowed_material_families`.
+
+Do not turn repeated visible elements into drawers, shelves or facades unless
+their construction is supported by source context. Do not split a finished
+component merely to fit a purchasable sheet.

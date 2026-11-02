@@ -267,13 +267,32 @@ def _run_estimation_v4_1_for_all_objects(
         allowed_material_families=sorted(shared_context["families"]),
     )
 
+    successful_inputs = [
+        input_row for input_row in valid_inputs
+        if str(input_row.get("input_id") or "") not in facts_result["failed"]
+    ]
+    if not successful_inputs:
+        for input_row in valid_inputs:
+            input_id = str(input_row["input_id"])
+            object_id = str(input_row["object_id"])
+            failed[input_id] = str(facts_result["failed"].get(input_id) or "structural_bom_failed")
+            update_rfq_object_estimate_progress(
+                client, estimate_id=estimate_id, object_id=object_id,
+                status="failed", progress_percent=100, progress_label="structural_bom_failed",
+            )
+        return {
+            "processed_input_ids": completed_inputs,
+            "failed": failed,
+            "material_engine_plan": {"status": "not_run", "reason": "no_structural_bom"},
+        }
+
     material_plan_summary: dict[str, object] = {"status": "not_run"}
     material_plan_snapshot_data: dict[str, object] | None = None
-    if shared_context and valid_inputs:
-        first_payload = valid_inputs[0].get("input_payload")
+    if shared_context and successful_inputs:
+        first_payload = successful_inputs[0].get("input_payload")
         run_id = str(first_payload.get("run_id") or "") if isinstance(first_payload, Mapping) else ""
         if run_id:
-            for input_row in valid_inputs:
+            for input_row in successful_inputs:
                 input_id = str(input_row["input_id"])
                 if input_id not in facts_result["failed"]:
                     _set_object_progress(
@@ -313,7 +332,7 @@ def _run_estimation_v4_1_for_all_objects(
                     "status": "failed",
                     "error": f"{type(exc).__name__}: {exc}",
                 }
-                for input_row in valid_inputs:
+                for input_row in successful_inputs:
                     input_id = str(input_row["input_id"])
                     if input_id in facts_result["failed"]:
                         continue
@@ -413,10 +432,10 @@ def _run_estimation_v4_1_for_all_objects(
     }
 
 
-def _run_estimation_v4_13_for_all_objects(
+def _run_estimation_v4_14_for_all_objects(
     *, client: object, estimate_id: str, created_inputs: list[dict[str, object]],
 ) -> dict[str, object]:
-    """Run V4.13's graph plus assembly-first BOM through existing costing."""
+    """Run V4.14's structural composition through estimate-wide costing."""
     return _run_estimation_v4_1_for_all_objects(
         client=client, estimate_id=estimate_id, created_inputs=created_inputs,
         bom_agent_version=ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,
@@ -507,7 +526,7 @@ def _run_estimation_job(
 
     inputs_available = bool(created_inputs)
     if inputs_available:
-        estimation_result = _run_estimation_v4_13_for_all_objects(
+        estimation_result = _run_estimation_v4_14_for_all_objects(
                 client=client,
                 estimate_id=estimate_id,
                 created_inputs=created_inputs,
@@ -521,7 +540,7 @@ def _run_estimation_job(
                 "estimated_objects": len(estimation_result["processed_input_ids"]),
                 "failed_objects": estimation_result["failed"],
             },
-            "estimation_version": "v4_13_assembly_first_bom_units",
+            "estimation_version": "v4_14_structural_bom_composer",
         }
     if shell and int(shell.get("object_count") or 0) == 0:
         return {

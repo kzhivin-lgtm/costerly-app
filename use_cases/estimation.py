@@ -54,9 +54,8 @@ def _material_plan_blocking_state(row: Any) -> tuple[str, str]:
         count = assumption_count or unresolved_count
         count_text = f"{count} material requirement{'s' if count != 1 else ''}"
         return (
-            "MATERIALS NEED REVIEW",
-            f"Materials need review: {count_text} require Assumption Fallback after neither Company "
-            "Catalog nor Israel Reference could supply them. "
+            "MATERIAL PLAN INCOMPLETE",
+            f"The material plan did not produce a priced allocation for {count_text}. "
             "Approval remains unavailable.",
         )
     if status == "failed":
@@ -427,7 +426,10 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
                     "unit_cost": item.get("unit_cost"),
                     "qty": item.get("quantity"),
                     "cost": item.get("cost"),
-                    "assumption": str(item.get("notes") or "").startswith("Assumption Fallback"),
+                    "price_source": (
+                        raw_agent_json.get("price_source")
+                        if isinstance(raw_agent_json, dict) else None
+                    ),
                     "locked": item.get("source") == "pricing_policy",
                     "policy_percent": (
                         raw_agent_json.get("percent")
@@ -726,6 +728,14 @@ def apply_material_plan_allocations(
         for allocation in line.get("allocations") or []
         if isinstance(allocation, dict) and str(line.get("display_name") or "")
     }
+    resolved_authorities = {
+        (str(allocation.get("object_id") or ""), str(allocation.get("material_requirement_id") or "")):
+        str(line.get("authority") or "")
+        for line in plan_snapshot.get("lines") or []
+        if isinstance(line, dict)
+        for allocation in line.get("allocations") or []
+        if isinstance(allocation, dict)
+    }
     assumption_fallbacks = {
         (str(row.get("object_id") or ""), str(row.get("material_requirement_id") or "")): row
         for row in plan_snapshot.get("assumption_fallbacks") or []
@@ -763,7 +773,7 @@ def apply_material_plan_allocations(
                 estimate_id=estimate_id,
                 line_id=str(line.get("line_id") or ""),
                 values={
-                    "item_name": f"Assumption: {assumption['source_name']}",
+                    "item_name": str(assumption["source_name"]),
                     "unit": unit,
                     "quantity": quantity_per_item,
                     "unit_cost": effective_unit_cost,
@@ -771,6 +781,10 @@ def apply_material_plan_allocations(
                     "needs_price": False,
                     "needs_review": False,
                     "notes": " ".join(str(item) for item in rationale),
+                    "raw_agent_json": {
+                        **(line.get("raw_agent_json") if isinstance(line.get("raw_agent_json"), dict) else {}),
+                        "price_source": "A",
+                    },
                     "updated_at": datetime.now(UTC).isoformat(),
                 },
             )
@@ -787,6 +801,12 @@ def apply_material_plan_allocations(
                 "cost": round(allocated_cost, 2),
                 "needs_price": False,
                 "notes": "Allocated from the estimate-wide Material Plan",
+                "raw_agent_json": {
+                    **(line.get("raw_agent_json") if isinstance(line.get("raw_agent_json"), dict) else {}),
+                    "price_source": {"company": "C", "israel_reference": "I"}.get(
+                        resolved_authorities.get((object_id, requirement_id)), "A"
+                    ),
+                },
                 "updated_at": datetime.now(UTC).isoformat(),
                 **({"item_name": resolved_names[(object_id, requirement_id)]}
                    if resolved_names.get((object_id, requirement_id)) else {}),

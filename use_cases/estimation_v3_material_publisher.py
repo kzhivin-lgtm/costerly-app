@@ -185,10 +185,10 @@ def publish_estimation_assembly_bom_object(
             "line_id": f"{object_id}_material_{index:04d}", "section": "material", "group_name": "Materials",
             "item_name": str(material.get("source_name") or material.get("family") or "Material"),
             "catalog_match_query": str(material.get("family") or ""), "unit": None, "unit_cost": None,
-            "quantity": None, "cost": None, "source": "estimation_assembly_bom_v1",
+            "quantity": None, "cost": None, "source": agent_version,
             "sort_order": index * 10, "needs_price": True, "needs_review": False, "confidence": None,
             "quantity_basis": "per_finished_item",
-            "notes": "Assembly-first approximate BOM. Awaiting estimate-wide Material Plan.",
+            "notes": "Structural approximate BOM. Awaiting estimate-wide Material Plan.",
             "raw_agent_json": {
                 "facts": dict(material), "bom_contract": facts["contract_version"],
                 "assemblies": facts.get("assemblies") or [], "assumptions": facts.get("assumptions") or [],

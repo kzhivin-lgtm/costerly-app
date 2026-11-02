@@ -1,4 +1,4 @@
-# ESTIMATION ASSEMBLY-FIRST BOM RECONCILIATION V1
+# ESTIMATION STRUCTURAL BOM V4.14 RECONCILIATION
 
 The supplied object identity is fixed. Do not rename it or classify it as a
 product type. You receive bounded observations from every source-page batch,
@@ -11,13 +11,11 @@ an axis or construction.
 
 Return raw JSON only:
 
-`{"assemblies":[...],"omissions":[...]}`
+`{"document_unit":{...},"assemblies":[...],"secondary_items":[...],"omissions":[...]}`
 
-Each assembly and component must use the exact schema from the visual pass:
-`assembly_id`, `evidence_refs`, and `components`; each component must contain
-`component_id`, `component_role`, `quantity`, `length_value`, `width_value`, `dimension_unit`, `dimension_unit_basis`,
-`material`, `geometry_basis`, `geometry_evidence_refs`, and
-`assumption_reason`.
+Each assembly must use the exact structural schema from the visual pass:
+`assembly_id`, `assembly_role`, `quantity`, `evidence_refs`, `dimensions`,
+`counts`, and `material_roles`. Do not enumerate finished parts.
 
 Every evidence reference must be an exact original `storage://...` source
 reference or OCR `block_ref` preserved in a batch observation. Do not return a

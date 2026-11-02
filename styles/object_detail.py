@@ -366,6 +366,22 @@ def apply_object_detail_css() -> None:
             box-shadow: 0 0 0 3px rgba(128, 73, 198, 0.14);
         }
 
+        .object-detail-material-source {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 17px;
+            height: 17px;
+            margin-left: 5px;
+            border: 1px solid rgba(42, 31, 44, 0.24);
+            border-radius: 50%;
+            color: rgba(42, 31, 44, 0.66);
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
         .object-detail-cell-input--text {
             width: min(100%, 190px);
             font-size: 12px;

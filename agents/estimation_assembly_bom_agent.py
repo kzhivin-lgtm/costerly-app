@@ -19,7 +19,7 @@ from agents.estimation_v4_1_material_facts_agent import (
 )
 
 
-ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION = "estimation_assembly_bom_v1"
+ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION = "estimation_assembly_bom_v4_14"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_assembly_bom_prompt.md"
 RECONCILIATION_PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_assembly_bom_reconciliation_prompt.md"
 
@@ -57,10 +57,18 @@ def _validate_response(*, response: Mapping[str, Any], batch: Mapping[str, Any])
     actual = [int(page.get("page_number")) for page in pages or [] if isinstance(page, Mapping) and str(page.get("page_number") or "").isdigit()]
     if not isinstance(pages, list) or set(actual) != expected or len(actual) != len(pages):
         raise ValueError("assembly BOM response page coverage is incomplete or duplicated")
+    document_unit = response.get("document_unit")
     assemblies = response.get("assemblies")
     if not isinstance(assemblies, list):
         raise ValueError("assembly BOM response requires assemblies")
-    return {"assemblies": [dict(item) for item in assemblies if isinstance(item, Mapping)], "omissions": [str(item) for item in response.get("omissions") or [] if str(item).strip()]}
+    if not isinstance(document_unit, Mapping):
+        raise ValueError("assembly BOM response requires document_unit")
+    return {
+        "document_unit": dict(document_unit),
+        "assemblies": [dict(item) for item in assemblies if isinstance(item, Mapping)],
+        "secondary_items": [dict(item) for item in response.get("secondary_items") or [] if isinstance(item, Mapping)],
+        "omissions": [str(item) for item in response.get("omissions") or [] if str(item).strip()],
+    }
 
 
 def _reconciliation_content(
@@ -86,11 +94,14 @@ def _reconciliation_content(
 
 
 def _validate_reconciliation(*, response: Mapping[str, Any]) -> dict[str, Any]:
+    document_unit = response.get("document_unit")
     assemblies = response.get("assemblies")
-    if not isinstance(assemblies, list):
+    if not isinstance(document_unit, Mapping) or not isinstance(assemblies, list):
         raise ValueError("assembly reconciliation requires assemblies")
     return {
+        "document_unit": dict(document_unit),
         "assemblies": [dict(item) for item in assemblies if isinstance(item, Mapping)],
+        "secondary_items": [dict(item) for item in response.get("secondary_items") or [] if isinstance(item, Mapping)],
         "omissions": [str(item) for item in response.get("omissions") or [] if str(item).strip()],
     }
 
@@ -126,7 +137,12 @@ def run_estimation_assembly_bom_agent(*, input_row: Mapping[str, Any], evidence_
             "page_numbers": [page["page_number"] for page in batch["pages"]],
         })
     if len(observations) == 1:
-        parsed = {"assemblies": observations[0]["assemblies"], "omissions": observations[0]["omissions"]}
+        parsed = {
+            "document_unit": observations[0]["document_unit"],
+            "assemblies": observations[0]["assemblies"],
+            "secondary_items": observations[0]["secondary_items"],
+            "omissions": observations[0]["omissions"],
+        }
     else:
         response = _create_message_with_hard_timeout(
             client, timeout_seconds=TIMEOUT_SECONDS, model=selected_model, max_tokens=MAX_OUTPUT_TOKENS,

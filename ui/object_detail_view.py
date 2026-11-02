@@ -109,11 +109,12 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
             _escape(f"{percent}%" if percent else ""),
             f'<span class="object-detail-row-cost">{_money(row.get("cost"))}</span>',
         ]
-    unit_cost = (
-        _input_html("Assumption", "money")
-        if row.get("assumption")
-        else _input_html(_money(row.get("unit_cost")), "money", "unit_cost")
+    source = str(row.get("price_source") or "").upper()
+    source_marker = (
+        f'<span class="object-detail-material-source" data-source="{_escape(source)}">{_escape(source)}</span>'
+        if source in {"C", "I", "A"} else ""
     )
+    unit_cost = _input_html(_money(row.get("unit_cost")), "money", "unit_cost") + source_marker
     return [
         _escape(row.get("item")),
         _escape(row.get("unit")),

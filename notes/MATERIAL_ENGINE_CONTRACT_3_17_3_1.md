@@ -113,7 +113,7 @@ After a material requirement is recognised, the persisted plan has exactly
 three outcomes: Company Catalog allocation, Israel Reference allocation, or
 `Assumption Fallback`. The fallback carries the requirement's source name,
 Family, specification, net quantity, unit and reason. It has no invented
-price, is visible in Object Detail as `Assumption: <source name>`, and keeps
+price, is visible in Object Detail with the `A` source marker beside its price, and keeps
 the estimate review-required.
 
 A Family Default completes only a recognised Family or explicitly declared

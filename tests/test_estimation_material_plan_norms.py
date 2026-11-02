@@ -54,7 +54,7 @@ def test_partial_material_plan_publishes_resolved_canonical_line(monkeypatch):
         "status": "needs_review",
         "object_material_costs": [{"object_id": "cabinet", "material_requirement_id": "mdf", "cost_ex_vat": 244}],
         "lines": [{
-            "display_name": "MDF 20 mm 1220 × 2440 mm, raw", "purchase_kind": "sheet",
+            "display_name": "MDF 20 mm 1220 × 2440 mm, raw", "authority": "company", "purchase_kind": "sheet",
             "allocations": [{"object_id": "cabinet", "material_requirement_id": "mdf", "area_mm2": 1_000_000}],
         }],
     })
@@ -62,6 +62,7 @@ def test_partial_material_plan_publishes_resolved_canonical_line(monkeypatch):
     assert updates[0]["values"]["item_name"] == "MDF 20 mm 1220 × 2440 mm, raw"
     assert updates[0]["values"]["cost"] == 244
     assert updates[0]["values"]["needs_price"] is False
+    assert updates[0]["values"]["raw_agent_json"]["price_source"] == "C"
 
 
 def test_assumption_fallback_is_published_as_a_priced_material_line(monkeypatch):
@@ -95,8 +96,9 @@ def test_assumption_fallback_is_published_as_a_priced_material_line(monkeypatch)
         }],
     })
 
-    assert updates[0]["values"]["item_name"] == "Assumption: Sliding door track"
+    assert updates[0]["values"]["item_name"] == "Sliding door track"
     assert updates[0]["values"]["quantity"] == 4.13
     assert updates[0]["values"]["unit_cost"] == round(200 / 4.13, 4)
     assert updates[0]["values"]["cost"] == 200
     assert updates[0]["values"]["needs_price"] is False
+    assert updates[0]["values"]["raw_agent_json"]["price_source"] == "A"

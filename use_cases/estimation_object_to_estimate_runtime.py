@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from typing import Any, Mapping, Sequence
 
 from agents.estimation_assembly_bom_agent import (
-    ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,
+    ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION as STRUCTURAL_BOM_AGENT_VERSION,
     run_estimation_assembly_bom_agent,
 )
 from agents.estimation_object_to_estimate_agent import (
@@ -19,14 +19,14 @@ from db.repositories import (
 )
 from use_cases.estimation_approximate_bom import APPROXIMATE_BOM_V1, compose_approximate_bom_v1
 from use_cases.estimation_artifacts import download_evidence_artifact
-from use_cases.estimation_assembly_bom import ASSEMBLY_BOM_V1, build_assembly_bom
+from use_cases.estimation_structural_bom import build_structural_assembly_bom
 from use_cases.estimation_dimension_graph import DIMENSION_GRAPH_V1, build_dimension_graph
 from use_cases.estimation_object_to_estimate import build_object_to_estimate_brief
 
 
 ESTIMATION_APPROXIMATE_BOM_AGENT_VERSION = "estimation_approximate_bom_v1"
 ESTIMATION_DIMENSION_GRAPH_AGENT_VERSION = DIMENSION_GRAPH_V1
-ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION = ASSEMBLY_BOM_V1
+ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION = STRUCTURAL_BOM_AGENT_VERSION
 ESTIMATION_ACTIVE_BOM_AGENT_VERSION = ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION
 
 
@@ -101,7 +101,7 @@ def run_assembly_first_bom_batch(
                 input_row=row, evidence_page_bytes_by_ref=page_bytes, dimension_graph=graph,
                 allowed_material_families=allowed_material_families,
             )
-            bom = build_assembly_bom(
+            bom = build_structural_assembly_bom(
                 input_row=row, dimension_graph=graph, extraction=result["extraction"],
                 allowed_material_families=allowed_material_families,
             )
