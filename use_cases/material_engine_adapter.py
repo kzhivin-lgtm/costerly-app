@@ -254,7 +254,12 @@ def _assumption_candidate(
         purchase_kind, rationale_unit, dimensions = "piece", "piece", None
     else:
         purchase_kind, rationale_unit, dimensions = "direct", "piece", None
-    resolved_key = selection_key or _assumption_selection_key(
+    # An A is a priced estimate-local fallback, not a physically compatible
+    # substitute for another demand which merely shares the same incomplete
+    # C/I pricing key.  Keep it requirement-scoped so, for example, a painted
+    # facade sheet and an unspecified paint finish never need one impossible
+    # purchase candidate to satisfy both a sheet and a direct demand.
+    resolved_key = _assumption_selection_key(
         material_family=material_family, requirement_id=requirement_id,
     )
     assumption_price = validate_assumption_price_v1({

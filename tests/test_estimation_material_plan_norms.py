@@ -48,6 +48,7 @@ def test_partial_material_plan_publishes_resolved_canonical_line(monkeypatch):
         lambda _client, **kwargs: updates.append(kwargs),
     )
     monkeypatch.setattr(estimation, "_recalculate_object_estimate_totals", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(estimation, "update_rfq_object_estimate_progress", lambda *_args, **_kwargs: None)
 
     estimation.apply_material_plan_allocations(client=object(), estimate_id="estimate-1", plan_snapshot={
         "status": "needs_review",
@@ -77,6 +78,7 @@ def test_assumption_fallback_is_published_as_a_priced_material_line(monkeypatch)
         lambda _client, **kwargs: updates.append(kwargs),
     )
     monkeypatch.setattr(estimation, "_recalculate_object_estimate_totals", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(estimation, "update_rfq_object_estimate_progress", lambda *_args, **_kwargs: None)
 
     estimation.apply_material_plan_allocations(client=object(), estimate_id="estimate-1", plan_snapshot={
         "status": "planned",

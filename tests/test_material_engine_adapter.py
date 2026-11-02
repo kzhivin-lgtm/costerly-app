@@ -885,6 +885,45 @@ def test_interim_sheet_count_receives_a_nonzero_cost_share_next_to_known_parts()
     assert material_plan_object_cost_allocations(result)[("shelf-a", "fallback")] > Decimal("0")
 
 
+def test_assumption_fallbacks_with_one_incomplete_ci_key_stay_physically_separate():
+    facts = {
+        "object_id": "cabinet-a", "quantity": 1,
+        "materials": [
+            {
+                "requirement_id": "visible_facade", "source_name": "Paint Nirlat",
+                "family": "paint_lacquer_stain", "specification": {}, "quantity": None, "unit": None,
+            },
+            {
+                "requirement_id": "finish", "source_name": "Paint Nirlat",
+                "family": "paint_lacquer_stain", "specification": {}, "quantity": None, "unit": None,
+            },
+        ],
+        "parts": [{
+            "part_id": "facade", "material_requirement_id": "visible_facade", "quantity": 1,
+            "length_mm": 2000, "width_mm": 600, "rotation_allowed": True,
+        }],
+    }
+    catalogs = {
+        "items": [], "offers": [], "reference_positions": [],
+        "material_pricing_policies": [{
+            "family_id": "paint", "pricing_key_attribute_codes": [],
+            "purchase_format_policy": "not_required", "active": True,
+        }],
+        "material_families": [{"family_id": "paint", "family_code": "paint_lacquer_stain", "active": True}],
+    }
+
+    result = build_material_plan(facts_by_object={"cabinet-a": facts}, catalogs=catalogs)
+
+    assert result.plan is not None
+    assert result.plan.status == "planned"
+    assert result.unresolved_requirement_ids == ()
+    assert {line.purchase_kind for line in result.plan.lines} == {"sheet", "direct"}
+    assert {fallback["selection_key"] for fallback in result.assumption_fallbacks} == {
+        "assumption:paint_lacquer_stain:finish",
+        "assumption:paint_lacquer_stain:visible_facade",
+    }
+
+
 def test_every_purchase_plan_is_priced_when_another_fact_needs_assumption():
     facts = _facts("cabinet-a", "side-a")
     facts["materials"].append({

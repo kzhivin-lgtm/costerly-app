@@ -799,6 +799,14 @@ def apply_material_plan_allocations(
             estimate_id=estimate_id,
             object_id=object_id,
         )
+        update_rfq_object_estimate_progress(
+            client,
+            estimate_id=estimate_id,
+            object_id=object_id,
+            status="completed",
+            progress_percent=100,
+            progress_label="materials_costed",
+        )
 
 
 def update_object_quantity(

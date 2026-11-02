@@ -3108,6 +3108,12 @@ Catalog-Gap tables, then run one controlled saved wardrobe/cabinet witness and
 inspect all three immutable results, final C/I/A lines, price totals and any
 created assumption/job records.
 
+Release numbering correction, 2026-11-02: the published Estimation runtime
+increments are retrospectively numbered V4.1 through V4.7 in
+`notes/ESTIMATION_V4_RELEASE_SEQUENCE_2026_11_02.md`. The next correction is
+V4.8 and every following Estimation deployment must use the next sequential
+V4 number in its commit, release note and checkpoint.
+
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
 commercial object. The existing immutable `estimation_input_v4` carries its
