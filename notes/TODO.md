@@ -3234,6 +3234,21 @@ area price, and disallow insulation-board candidates for structural hardboard
 backing. Re-run only after those three failures have focused tests and owner
 approval for the next V4 release.
 
+V4.15 unit guard, 2026-11-02, commit `3e5eb94`: completed the first repair
+from the rejected V4.14 witness. For a document whose unit is only a model
+convention, not a cited source unit, the composer now evaluates only numbers
+already assigned as assembly dimensions. If at least three such axes are in
+the unitless furniture range `75..300`, it deterministically selects `cm`;
+thus `160/265/158` become `1600/2650/1580 mm`. It deliberately excludes
+unassigned OCR values such as counts, and explicit source `mm`/`cm`/`m`
+remains authoritative. A CAD brand or watermark cannot establish units. The
+same rule overrides a naked model-selected per-axis `mm`; only
+`unit_basis=explicit_source` may defeat it. Focused structural, runtime,
+Material Engine and Object Detail checks: 49 passed. This fixes scale only,
+not V4.14's false assignment of `20 x 72` as a table. Keep the live witness
+rejected until the assembly-semantic and material-compatibility repairs are
+implemented and verified.
+
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
 commercial object. The existing immutable `estimation_input_v4` carries its

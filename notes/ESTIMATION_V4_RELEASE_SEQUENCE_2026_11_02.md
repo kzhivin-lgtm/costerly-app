@@ -20,6 +20,7 @@ not an internal immutable fact-contract suffix.
 | V4.12 | `3e7c04c` | Assembly-first BOM: immutable TU Wien-inspired number, native-vector-line and Detection-view graph; bounded visual batches with reconciliation; no `object_kind` recipe; no fictional splitting of an oversized finished panel, with a dimension-compatible priced A fallback instead |
 | V4.13 | `76d51fb` | Assembly BOM dimensions preserve the cited source value and unit, then deterministically normalise `mm`, `cm` or `m` to millimetres. Unitless drawing conventions are explicit named assumptions, and every board part carries an explicit or assumed thickness |
 | V4.14 | `b5bdf53` | Structural BOM composer: the visual stage emits document unit, large physical assemblies, source dimensions and shown counts; deterministic code expands them into conventional panels, drawer parts and discrete fittings before estimate-wide C/I/A purchasing. Object Detail shows a minimal `C`, `I` or `A` price-source marker |
+| V4.15 | `3e5eb94` | Unitless furniture-scale guard: when at least three model-assigned, unitless assembly axes are 75..300, deterministic resolution selects centimetres instead of hand-sized millimetres. Explicit source units remain authoritative and CAD watermarks cannot choose a unit |
 
 Rule from 2026-11-02: every subsequent Estimation deployment receives the next
 sequential V4 release number in its commit message, change note, deployment
