@@ -3246,6 +3246,31 @@ assignment of `20 x 72` as a table. Keep the live witness rejected until the
 assembly-semantic and material-compatibility repairs are implemented and
 verified.
 
+V4.15 live witness rejected, 2026-11-02: `Lev_1.pdf` run
+`run_8b0edca5395747cabcd469a06b1eee88`, input
+`ed468ad2-28ea-4b81-b640-9f07979b0a43`, completed terminally but remains
+unacceptable. The V4.15 Haiku response again selected `mm`, with the recorded
+assumption that the drawing's scale indicated millimetres. It then reduced the
+shown 158 cm width, 265 cm height and 160 cm depth to a `158 x 265 x 160 mm`
+box. The deterministic composer produced only two 18 mm LDSP sides, two top/
+bottom panels and one 3 mm backing; it explicitly omitted the seat/bench,
+legs, dividers, drawer fronts and drawer components. Material Engine correctly
+priced that false demand as one Israel-reference LDSP sheet (₪211.99) and one
+Israel-reference softboard insulation fibreboard sheet (₪50.90), total
+₪262.89 ex VAT. No raw visual-model response or chain-of-thought is persisted,
+only its typed BOM, assumptions, usage and the immutable evidence input. Do
+not treat terminal state, price or C/I marker as Estimation acceptance.
+
+V4.16 Objects terminal-navigation repair, 2026-11-02, commit `1cee460`:
+when the background Estimation future becomes terminal, the timed Objects
+fragment now clears its poll marker and renders the persisted terminal rows in
+place. It does not call app-wide `st.rerun()`, which could re-enter the durable
+File Review route while the browser reconciles the Objects screen. Focused
+Objects navigation checks passed. One unrelated File Review navigation test is
+currently stale: it expects a removed `run_every=2.0` fragment and fails before
+this Objects path. Pending production verification: a terminal estimation must
+remain on Objects and expose its terminal rows without a File Review return.
+
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
 commercial object. The existing immutable `estimation_input_v4` carries its
