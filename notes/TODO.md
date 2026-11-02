@@ -3387,7 +3387,17 @@ numeric physical dimensions (`length_mm`, `width_mm`, `height_mm`,
 `thickness_mm`, `diameter_mm`) and retains metadata outside the UI-format
 contract. A Material Plan `ValueError` is now recorded as the bounded
 `material_plan_validation_failed` code, never its raw exception content.
-Pending: focused tests, deployment, and one fresh production witness.
+The fresh production witness is now `run_d82f58af38f84a4eb6fc3a2dbb8faeab`:
+`Cabinet` reached `completed / materials_costed / 100%` and persisted the
+Material Plan, publisher and allocation stages. It is a technical terminal
+cycle checkpoint, not quote acceptance. All three displayed material lines
+are `A`, including Veneered MDF 18 mm, LDSP 18 mm and Hardboard 3 mm. The
+persisted reasons are `material_pricing_key_incomplete` for Veneered MDF and
+`no_physically_compatible_company_or_israel_candidate` for the other two.
+Next active repair within `3.17.4.3`: a read-only company-610 Resolver audit,
+then an approved correction to the earliest missing Family/Pricing-Key/
+physical-compatibility constraint. Full evidence:
+`notes/ESTIMATION_V4_24_TERMINAL_CYCLE_CHECKPOINT_2026_11_02.md`.
 
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
