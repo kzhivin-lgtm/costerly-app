@@ -3346,6 +3346,17 @@ non-generic where the stored family permits. Focused structural, runtime,
 Material Engine, Object Detail and Objects checks pass 65/65. Pending: deploy
 and obtain a fresh V4.20 witness for the visual material-selection change.
 
+V4.21 implementation, 2026-11-02, commit `0b030ea`, within approved task `3.17.4.3`: an
+incomplete or malformed secondary assembly no longer discards usable BOM
+demand from other assemblies. The structural composer records a compact
+`structural_omissions` item with an identifier and reason code, then proceeds
+with valid assemblies and valid discrete fittings. It still fails if no
+material demand can be assembled at all. Failure traces preserve a bounded
+structural validation code such as `assembly_missing_required_dimensions`,
+not a raw model response or exception fragment. Pending: focused tests,
+deployment, and one fresh production witness that reaches priced terminal
+completion.
+
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
 commercial object. The existing immutable `estimation_input_v4` carries its

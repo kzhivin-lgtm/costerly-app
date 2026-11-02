@@ -26,6 +26,7 @@ not an internal immutable fact-contract suffix.
 | V4.18 | `eba4fae` | Coverage is optional audit metadata and can never reject an otherwise usable BOM. Bounded technical traces record rare hard failures by stage without retaining raw provider output or chain-of-thought |
 | V4.19 | `7bfe531` | A model's redundant evidence refs on a document-unit assumption are discarded and explicitly audited rather than rejecting an otherwise usable BOM |
 | V4.20 | `156f9a1` | Object Detail exposes one physical material table: C/I/A material, required net volume, purchasable format, project-rounded purchase quantity and total. Assembly roles move to collapsed Elements, and visible material names cannot be assembly labels |
+| V4.21 | `0b030ea` | Incomplete secondary assemblies and secondary items become bounded `structural_omissions`, while usable material demand continues through pricing. Structural validation traces persist a safe reason code, never provider output |
 
 Rule from 2026-11-02: every subsequent Estimation deployment receives the next
 sequential V4 release number in its commit message, change note, deployment
