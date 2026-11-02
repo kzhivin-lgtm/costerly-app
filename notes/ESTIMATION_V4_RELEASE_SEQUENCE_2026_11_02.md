@@ -29,6 +29,7 @@ not an internal immutable fact-contract suffix.
 | V4.21 | `0b030ea` | Incomplete secondary assemblies and secondary items become bounded `structural_omissions`, while usable material demand continues through pricing. Structural validation traces persist a safe reason code, never provider output |
 | V4.22 | `88cacbe` | Optional zero counts are interpreted as absent where meaningful or replaced with the structural default where a physical assembly requires a positive count. Remaining structural validation failures emit a bounded reason code |
 | V4.23 | `a7d3a2b` | Unsupported model evidence refs are downgraded to named assumptions or a supplied full-page artifact, so they can never become false source claims or block usable BOM demand. Every V4 stage emits a bounded persisted success/failure marker |
+| V4.24 | `797dc33` | Purchase-format metadata is kept out of physical dimensions, so catalog fields such as `format_source` can never break Material Plan serialization |
 
 Rule from 2026-11-02: every subsequent Estimation deployment receives the next
 sequential V4 release number in its commit message, change note, deployment

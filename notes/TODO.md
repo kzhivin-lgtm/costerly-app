@@ -3379,6 +3379,16 @@ stage, immutable input ID, outcome, safe reason code and aggregate counts; it
 never retains the prompt, raw provider output, chain-of-thought or credentials.
 Pending: focused tests, deployment, and one fresh production witness.
 
+V4.24 implementation, 2026-11-02, commit `797dc33`, within approved task `3.17.4.3`: Material
+Plan reached persisted V4.23 BOM facts, then failed while serializing a catalog
+format because the data correctly carried both physical dimensions and
+`format_source` metadata. The purchase-format snapshot now exports only known
+numeric physical dimensions (`length_mm`, `width_mm`, `height_mm`,
+`thickness_mm`, `diameter_mm`) and retains metadata outside the UI-format
+contract. A Material Plan `ValueError` is now recorded as the bounded
+`material_plan_validation_failed` code, never its raw exception content.
+Pending: focused tests, deployment, and one fresh production witness.
+
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
 commercial object. The existing immutable `estimation_input_v4` carries its
