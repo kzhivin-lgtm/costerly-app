@@ -9,6 +9,15 @@ is not treated as an error. Focused regression suite: 40 passed. The next live
 run must verify a successful complete price result and a recoverable technical
 outage state, завершена 02.11
 
+Estimation V4.11 unitless furniture-dimension repair `5874031`: the saved
+`Lev_1.pdf` witness exposed a 100x conversion error that turned a
+1600 x 720 x 2650 mm cabinet into building-scale sheet parts. The runtime now
+records a named centimetre interpretation assumption for the bounded
+unitless-cabinet pattern, and Material Engine caps a single panel at 256 split
+pieces before nesting. Regression suite: 56 passed. The next live step is to
+replay the saved immutable Lev evidence into a new revision, then inspect the
+real C/I/A plan and price, завершена 02.11
+
 Detection V8.4.5 global batched assembly-scope production checkpoint `4c9ff38`:
 after V6.41 merged all Discovery batches, one optional scope-only review now
 uses the fixed Object Evidence crops and bounded local facts. It cannot alter

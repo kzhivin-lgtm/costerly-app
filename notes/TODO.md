@@ -3141,6 +3141,16 @@ This does not alter C/I/A: absent catalog coverage remains an immediate priced
 Assumption Fallback, while a database or storage outage remains visible as a
 technical failure. Focused runtime, Material Engine and progress tests passed.
 
+V4.11 production repair, 2026-11-02: `Lev_1.pdf` exposed a geometry-agent
+unit error, `160/72/265` was emitted as `160000/72000/265000 mm`, which made
+the sheet splitter enumerate a building-sized panel. Commit `5874031` records
+an explicit `unitless_technical_drawing_centimetre_interpretation` assumption
+when two or more cited cabinet axes are implausibly 50,000-500,000 mm, then
+normalises those values by 100. Separately, Material Engine bounds one finished
+panel to 256 split pieces and returns a diagnosable unresolved plan instead of
+unbounded nesting. This is not a general unit detector. It is a bounded guard
+for unitless cabinet/wardrobe drawings, pending scenario-resolver work.
+
 Next approved analysis within 3.17.4.3: define the bounded BOM scenario
 resolver from immutable evidence. It must select a simple construction recipe
 only when its defining source facts are present, otherwise emit cited geometry
