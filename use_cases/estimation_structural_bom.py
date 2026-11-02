@@ -1,4 +1,4 @@
-"""V4.14 structural composition for an approximate material BOM.
+"""V4.15 structural composition for an approximate material BOM.
 
 The visual model identifies large physical assemblies and source dimensions.
 This module, not the model, expands those assemblies into conventional
@@ -32,9 +32,8 @@ _FAMILY_PREFERENCE = {
     "drawer_slide": ("hardware_drawer_slide",),
     "leg": ("purchased_fabricated_component",),
 }
-_FURNITURE_CM_AXIS_MIN = 75.0
-_FURNITURE_CM_AXIS_MAX = 300.0
-_FURNITURE_CM_MIN_AXIS_COUNT = 3
+_FURNITURE_PRIMARY_SPAN_MIN_MM = 450.0
+_FURNITURE_PRIMARY_SPAN_MAX_MM = 6000.0
 
 
 def _positive(value: Any, *, field: str) -> float:
@@ -97,24 +96,25 @@ def _unit_context(raw: Any, *, allowed: set[str]) -> tuple[str, list[str], str |
 def _resolve_document_unit(*, extraction: Mapping[str, Any], allowed: set[str]) -> tuple[str, list[str], str | None, str]:
     """Resolve a unitless furniture drawing before any part is composed.
 
-    A software watermark is not a dimensional unit.  For a unitless drawing,
-    several source-supported assembly axes in the 75..300 range form a strict
-    centimetre scenario: treating all of them as mm would create only
-    hand-sized "furniture" assemblies, while centimetres produces ordinary
-    furniture-scale axes.  We never apply this rule to OCR numbers that were
-    not selected as assembly dimensions, nor to an explicit source unit.
+    A unitless document is resolved by comparing complete scale scenarios for
+    primary assemblies, not by trusting one value or document metadata. Each
+    assembly contributes one vote from its source/derived width, height and
+    depth axes. Counts, thicknesses and unassigned OCR numbers are excluded.
+    A valid scenario makes a majority of assemblies furniture-scale without
+    making a material number of them micro-furniture or architecture-scale.
     """
     unit, refs, reason = _unit_context(extraction.get("document_unit"), allowed=allowed)
     raw_context = extraction.get("document_unit") or {}
     if str(raw_context.get("basis") or "") == "explicit_source":
         return unit, refs, reason, "explicit_source"
-    implicit_axes: list[float] = []
+    assemblies: list[list[float]] = []
     for assembly in extraction.get("assemblies") or []:
         if not isinstance(assembly, Mapping):
             continue
         dimensions = assembly.get("dimensions") or {}
         if not isinstance(dimensions, Mapping):
             continue
+        axes: list[float] = []
         for raw_dimension in dimensions.values():
             if not isinstance(raw_dimension, Mapping):
                 continue
@@ -128,18 +128,53 @@ def _resolve_document_unit(*, extraction: Mapping[str, Any], allowed: set[str]) 
                 value = _positive(raw_dimension.get("value"), field="unit_scenario.dimension")
             except ValueError:
                 continue
-            implicit_axes.append(value)
-    cm_axis_count = sum(_FURNITURE_CM_AXIS_MIN <= value <= _FURNITURE_CM_AXIS_MAX for value in implicit_axes)
-    if (
-        unit == "mm"
-        and len(implicit_axes) >= _FURNITURE_CM_MIN_AXIS_COUNT
-        and cm_axis_count >= _FURNITURE_CM_MIN_AXIS_COUNT
-        and max(implicit_axes, default=0) <= _FURNITURE_CM_AXIS_MAX
-    ):
+            axes.append(value)
+        # One isolated number has no physical scale. Two or three assigned
+        # outer axes describe a primary assembly and count exactly once.
+        if len(axes) >= 2:
+            assemblies.append(axes)
+    if not assemblies:
+        return unit, refs, reason, "model_document_convention"
+
+    def scenario_score(candidate_unit: str) -> tuple[int, int, int]:
+        multiplier = _UNIT_TO_MM[candidate_unit]
+        plausible = micro = oversized = 0
+        for axes in assemblies:
+            span = max(axes) * multiplier
+            if span < _FURNITURE_PRIMARY_SPAN_MIN_MM:
+                micro += 1
+            elif span > _FURNITURE_PRIMARY_SPAN_MAX_MM:
+                oversized += 1
+            else:
+                plausible += 1
+        return plausible, micro, oversized
+
+    scores = {candidate: scenario_score(candidate) for candidate in _UNIT_TO_MM}
+    # Candidate ranking is deterministic. A candidate needs a majority of
+    # physical assemblies in the furniture envelope. Ties retain the model's
+    # declared convention because geometry alone has no further evidence.
+    majority = len(assemblies) // 2 + 1
+    viable = [
+        candidate for candidate, (plausible, micro, oversized) in scores.items()
+        if plausible >= majority and plausible > micro and plausible > oversized
+    ]
+    if viable:
+        selected = max(
+            viable,
+            key=lambda candidate: (
+                scores[candidate][0], -scores[candidate][1] - scores[candidate][2],
+                candidate == unit,
+            ),
+        )
+        selected_score = scores[selected]
         return (
-            "cm", [],
-            "Unitless furniture-scale assembly axes were 75..300; centimetres selected instead of hand-sized millimetres.",
-            "furniture_scale_cm_rule",
+            selected, [],
+            (
+                "Unitless primary-assembly scenario selected "
+                f"{selected}: {selected_score[0]}/{len(assemblies)} furniture-scale, "
+                f"{selected_score[1]} micro, {selected_score[2]} oversized."
+            ),
+            "primary_assembly_scale_scenario",
         )
     return unit, refs, reason, "model_document_convention"
 
@@ -278,7 +313,10 @@ def build_structural_assembly_bom(*, input_row: Mapping[str, Any], dimension_gra
             name: _dimension(
                 dimensions.get(name), default_unit=document_unit, allowed=allowed_refs,
                 field=f"{assembly_id}.dimensions.{name}",
-                force_document_unit=document_unit_basis == "furniture_scale_cm_rule",
+                # A scale scenario supersedes every model-convention axis unit.
+                # Only `unit_basis=explicit_source` remains authoritative inside
+                # `_dimension`, so a model cannot silently mix cm and mm.
+                force_document_unit=document_unit_basis == "primary_assembly_scale_scenario",
             )
             for name in ("width", "height", "depth")
             if dimensions.get(name) is not None
@@ -398,7 +436,7 @@ def build_structural_assembly_bom(*, input_row: Mapping[str, Any], dimension_gra
     preview_refs = sorted(ref for ref in allowed_refs if ref.startswith("storage://"))
     return {
         "contract_version": ASSEMBLY_BOM_V1,
-        "composition_version": "structural_bom_v4_14",
+        "composition_version": "structural_bom_v4_15",
         "input_id": str(input_row.get("input_id") or ""), "object_input_revision": int(input_row.get("object_input_revision") or 1),
         "run_id": str(payload.get("run_id") or ""), "company_id": str(payload.get("company_id") or ""),
         "object_id": str(object_payload.get("object_id") or ""), "object_name": str(object_payload.get("object_name") or ""),
