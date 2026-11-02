@@ -22,6 +22,7 @@ not an internal immutable fact-contract suffix.
 | V4.14 | `b5bdf53` | Structural BOM composer: the visual stage emits document unit, large physical assemblies, source dimensions and shown counts; deterministic code expands them into conventional panels, drawer parts and discrete fittings before estimate-wide C/I/A purchasing. Object Detail shows a minimal `C`, `I` or `A` price-source marker |
 | V4.15 | `3e5eb94` | Unit interpretation is model-led: the visual stage reads the dimension lines and object scale as a whole, declares one source-cited or assumed document unit, then the deterministic composer converts it consistently. Non-dimensional document metadata is not input |
 | V4.16 | `1cee460` | Objects terminal refresh remains inside its timed fragment. Completion renders persisted terminal rows directly and does not start an app-wide rerun that can replay File Review navigation |
+| V4.17 | `72c946f` | OCR Dimension Scale Gate constrains unitless micro-scale furniture to centimetres, coverage ledger prevents silent visible-region omission, and Object Detail shows whole project purchase units separately from allocated object cost |
 
 Rule from 2026-11-02: every subsequent Estimation deployment receives the next
 sequential V4 release number in its commit message, change note, deployment

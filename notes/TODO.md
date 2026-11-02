@@ -3266,10 +3266,33 @@ when the background Estimation future becomes terminal, the timed Objects
 fragment now clears its poll marker and renders the persisted terminal rows in
 place. It does not call app-wide `st.rerun()`, which could re-enter the durable
 File Review route while the browser reconciles the Objects screen. Focused
-Objects navigation checks passed. One unrelated File Review navigation test is
-currently stale: it expects a removed `run_every=2.0` fragment and fails before
-this Objects path. Pending production verification: a terminal estimation must
-remain on Objects and expose its terminal rows without a File Review return.
+Objects navigation checks passed. The File Review deferred-work route retains
+its separate timed fragment and its test now checks that actual route rather
+than an obsolete source ordering. Pending production verification: a terminal
+estimation must remain on Objects and expose its terminal rows without a File
+Review return.
+
+V4.17 implementation, 2026-11-02, commit `72c946f`, within approved task
+`3.17.4.3`: (1) `Dimension Scale Gate` reads only immutable OCR dimension
+literals in the existing Dimension Graph. An explicit source unit always wins.
+For a unitless furniture object with at least three 40-400 readings, it records
+an auditable centimetre safety constraint and overrides only a model convention
+that would reduce the object to a sub-400 mm micro-object. It uses no embedding
+and no additional cloud call. (2) The assembly response now carries a compact
+coverage ledger. Every Detection-provided visual region maps to an assembly,
+countable secondary item or one bounded non-material exclusion; the structural
+composer rejects an unassigned material region rather than silently dropping
+it. (3) Material Engine purchase rounding stays estimate-wide, but Object
+Detail now displays the actual Project Material Plan in purchasable units and
+an object's allocated cost separately. It no longer writes or renders an
+effective m²/length unit price derived from a whole-sheet or stock purchase.
+`C/I/A` remains the compact source marker. Focused dimension, structural BOM,
+Material Engine, runtime, Object Detail and Objects navigation checks passed:
+`104 passed`; UI/navigation subset `53 passed`. This code is not production
+accepted yet. Required witness: a fresh owner-authorized unitless furniture
+run must retain cm scale, cover the visible large assemblies, purchase integer
+sheet units and remain on Objects at terminal completion. Do not replay LF1
+without explicit owner authorization.
 
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
