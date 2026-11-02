@@ -1,8 +1,8 @@
 # Estimation 3.17.4.3: Object-to-Estimate and approximate BOM plan
 
-Status: active implementation, owner-approved on 2026-11-02. The first
-runtime path is intentionally bounded to wardrobe/cabinet construction, not a
-claim of universal production-calculation coverage.
+Status: active implementation, owner-approved on 2026-11-02. V4.14 replaces
+the original wardrobe/cabinet recipe with a bounded structural composer. It is
+not a claim of universal production-calculation coverage.
 
 ## Product rule
 
@@ -31,15 +31,16 @@ to improve the source.
 1. **Evidence package.** Detection and File Review lock object identity and
    quantity, then save immutable pages, regions, OCR and original-file links.
    Detection does not need to publish external dimensions.
-2. **Object-to-Estimate.** Read the complete evidence package to build a
-   construction brief: object archetype, cited measurements when available,
-   material and finish clues, visible-versus-internal roles, hardware facts and
-   declared construction assumptions where a sketch lacks detail.
-3. **Approximate BOM Composer.** Apply deterministic, versioned construction
-   recipes to that brief. A wardrobe or cabinet recipe may create facade,
-   carcass, backing, shelf, finish and hardware demands. It uses standard
-   thicknesses and construction conventions, but never calls its approximate
-   details source facts or a precision manufacturing cut-list.
+2. **Structural interpretation.** Read the complete evidence package to emit
+   one document-unit context, cited dimensions, large physical assemblies,
+   shown counts and material/finish clues. It does not rename the object or
+   enumerate finished panels.
+3. **Structural BOM Composer.** Apply deterministic, versioned assembly
+   templates to that interpretation. A box carcass, drawer bank, panel stack,
+   table or facade set becomes conventional facade, carcass, backing, shelf,
+   drawer and fitting demands. It uses named standard-thickness and
+   construction assumptions, but never calls approximate details source facts
+   or claims a precision manufacturing cut-list.
 4. **Material Demand.** Combine BOM details into net sheet area, linear length,
    pieces and required specifications, multiplied by finished-object quantity.
 5. **Material resolution and price.** Select compatible Company Catalog
@@ -87,6 +88,25 @@ plus an estimate-local assumption record. An internal job-write outage is
 recorded in the plan, but never deletes or blocks the already priced material
 line. A real production witness and SQL readback remain required before this
 path can be accepted as production behavior.
+
+## V4.14 structural composer
+
+V4.14 keeps the same immutable fact-result contract, but uses a new active
+agent version so a prior failed V4.13 object can be processed without mutating
+its evidence. The visual contract no longer requires a model to invent every
+cut part or thickness. It returns only the source-supported assembly topology
+and dimensions. The composer owns conventional panel expansion and named
+defaults. This is the needed boundary for approximate consumption: model
+uncertainty is limited to visual interpretation, and equations, count
+multiplication and sheet geometry remain deterministic.
+
+Before Material Engine runs, the runtime now requires at least one successful
+structural BOM. If none exists, each affected object terminates as
+`structural_bom_failed`; no empty plan is persisted or displayed as a pending
+price calculation. On a completed allocation, Object Detail stores and shows
+only a compact `C`, `I` or `A` source marker beside unit cost. The material
+name remains the selected or assumed material name, without an `Assumption:`
+prefix.
 
 ## V4.9 simplification decision
 

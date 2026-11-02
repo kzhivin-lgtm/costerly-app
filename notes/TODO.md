@@ -3190,6 +3190,29 @@ version. Pending acceptance remains the V4.12 additive SQL constraint, V4.13
 deploy, SQL readback, and an owner-approved controlled run that reaches a
 terminal C/I/A-priced material result.
 
+V4.14 implementation, 2026-11-02, commit `b5bdf53`: the previous visual
+stage was responsible for every finished panel, dimension axis, material
+thickness and fitting geometry. A single omitted thickness rejected the whole
+BOM. The new active structural contract keeps fixed Detection identity and
+immutable evidence, but asks the visual stage only for a document-unit context,
+large physical assembly topology, source dimensions, shown counts and material
+roles. The deterministic Structural BOM Composer then creates conventional
+carcass panels, backs, shelves, drawer faces and boxes, table/countertop layers
+and separately counted slides or legs. It carries source dimensions into mm,
+records defaults such as board thickness as construction assumptions, never
+splits a finished part to fit a purchasable sheet, and leaves whole-project
+nesting to Material Engine. A failed structural result now terminates at 100%
+without persisting an empty `needs_review` material plan. Assumption text was
+removed from the material row: allocation stores `C`, `I` or `A` provenance and
+Object Detail renders only that compact marker beside unit price. Focused
+structural, Material Engine, runtime and Object Detail tests: 75 passed.
+The broader Estimation test selection had 68 passed and three pre-existing
+Evidence Handoff failures about preview/OCR fixture expectations, outside this
+runtime path. Pending: deploy V4.14, perform SQL read-only audit after a real
+LF1 run, and inspect source dimensions, derived part list, sheet allocations,
+C/I/A markers and terminal estimate state. No paid replay has been authorised
+by this implementation step.
+
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
 commercial object. The existing immutable `estimation_input_v4` carries its
