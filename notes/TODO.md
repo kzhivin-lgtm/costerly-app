@@ -514,6 +514,17 @@ database contract allowlist or adding a partially persisted intermediate row.
 Pending acceptance: repeat Lev 1 from its immutable input, inspect its
 Calculation handoff and resulting hardware facts.
 
+IMPLEMENTED locally, pending production witness, Estimation V5.6.2 2VN Scope
+binding repair, 2026-11-03:
+[verified] The first successful V5.6.1 Lev 1 witness locked the correct three
+drawers and zero doors, but Calculation returned generic assembly ids. Scope
+renamed them after 2VN, so the accepted 720-mm depth witness was detached and
+the 600-mm fallback selected 500-mm slides. V5.6.2 remaps compatible
+Calculation assembly ids and their dimension bindings to Scope ids before 2VN
+resolution. Pending acceptance: fresh immutable Lev 1 witness must retain the
+720-mm drawer depth and return three 600-mm drawer-slide sets with zero hinge
+or gas-lift demand.
+
 ACTIVE, V6.59, P0, New Estimate to Upload client-transition observability:
 The evidence rejects server-side auth, Supabase, and Upload rendering as the
 source of the reported 3-4 second warm navigation: prior successful

@@ -37,3 +37,18 @@ def test_calculation_handoff_persists_scope_not_an_opaque_prompt():
     assert handoff["contract_version"] == "estimation_calculation_handoff_v1"
     assert handoff["composition_scope"]["zones"][0]["counts"] == {"drawers": 3}
     assert handoff["dimension_graph_summary"] == {"contract_version": "estimation_dimension_graph_v1", "dimension_count": 2, "view_count": 1}
+
+
+def test_scope_gate_remaps_calculation_dimension_bindings_before_2vn():
+    scope = validate_composition_scope(scope=_scope(), input_id="input-1")
+    result = apply_composition_scope(extraction={
+        "assemblies": [
+            {"assembly_id": "assembly-1", "assembly_role": "drawer_bank", "dimensions": {"depth": {"value": 72}}},
+            {"assembly_id": "assembly-2", "assembly_role": "vertical_panel", "dimensions": {}},
+        ],
+        "dimension_bindings": [{"assembly_id": "assembly-1", "axis": "depth"}],
+    }, scope=scope)
+
+    assert result["assemblies"][0]["assembly_id"] == "drawers"
+    assert result["assemblies"][0]["dimensions"] == {"depth": {"value": 72}}
+    assert result["dimension_bindings"] == [{"assembly_id": "drawers", "axis": "depth"}]

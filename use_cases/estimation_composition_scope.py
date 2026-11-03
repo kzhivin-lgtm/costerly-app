@@ -92,9 +92,21 @@ def apply_composition_scope(*, extraction: Mapping[str, Any], scope: Mapping[str
         str(item.get("assembly_id") or ""): dict(item)
         for item in extraction.get("assemblies") or [] if isinstance(item, Mapping)
     }
+    remaining = list(calculated.values())
+    remapped_ids: dict[str, str] = {}
     assemblies: list[dict[str, Any]] = []
     for scope_id, zone in allowed.items():
-        candidate = calculated.get(scope_id, {})
+        candidate = calculated.get(scope_id)
+        if candidate is None:
+            # A model may preserve the previous generic assembly ids despite
+            # the Calculation instruction. Match the only compatible physical
+            # role in scope order, then remap its 2VN bindings before they are
+            # resolved. It never grants permission for a new zone.
+            candidate = next((item for item in remaining if str(item.get("assembly_role") or "") == zone["assembly_role"]), {})
+        candidate_id = str(candidate.get("assembly_id") or "")
+        if candidate_id:
+            remapped_ids[candidate_id] = scope_id
+            remaining = [item for item in remaining if str(item.get("assembly_id") or "") != candidate_id]
         assembly = dict(candidate)
         assembly.update({
             "assembly_id": scope_id,
@@ -111,8 +123,16 @@ def apply_composition_scope(*, extraction: Mapping[str, Any], scope: Mapping[str
         dict(item) for item in extraction.get("secondary_items") or []
         if isinstance(item, Mapping) and str(item.get("role") or "") == "leg"
     ]
+    bindings = []
+    for raw in extraction.get("dimension_bindings") or []:
+        if not isinstance(raw, Mapping):
+            continue
+        source_id = str(raw.get("assembly_id") or "")
+        if source_id not in remapped_ids:
+            continue
+        bindings.append({**dict(raw), "assembly_id": remapped_ids[source_id]})
     return {
-        **dict(extraction), "assemblies": assemblies, "secondary_items": secondary_items,
+        **dict(extraction), "assemblies": assemblies, "dimension_bindings": bindings, "secondary_items": secondary_items,
         "composition_scope": dict(scope),
     }
 

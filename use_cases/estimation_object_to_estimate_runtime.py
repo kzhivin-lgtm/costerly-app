@@ -270,10 +270,8 @@ def run_assembly_first_bom_batch(
                 details={"reason_code": "response_validated"},
             )
             stage = "2vn_geometry"
-            extraction, two_vn = resolve_2vn_geometry(
-                dimension_graph=graph, extraction=result["extraction"],
-            )
-            extraction = apply_composition_scope(extraction=extraction, scope=scope)
+            extraction = apply_composition_scope(extraction=result["extraction"], scope=scope)
+            extraction, two_vn = resolve_2vn_geometry(dimension_graph=graph, extraction=extraction)
             _record_stage_event(
                 client=client, input_row=row, stage="2vn_geometry", status="succeeded",
                 details={"reason_code": "axis_resolution_ready"},
