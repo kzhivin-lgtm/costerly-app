@@ -125,10 +125,6 @@ def _row_html(
     object_key = _escape(_object_key(row))
     estimate_key = _estimate_key(estimate_id)
     run_key = _run_key(run_id)
-    # A terminal estimation status is not enough to make Review interactive.
-    # The button becomes a promise that Object Detail has already been loaded
-    # into this session's immutable snapshot cache.
-    review_ready = "true" if bool(row.get("review_ready", False)) else "false"
 
     return (
         '<div class="objects-pricing-row" '
@@ -136,7 +132,6 @@ def _row_html(
         f'data-estimate-id="{estimate_key}" '
         f'data-run-id="{run_key}" '
         f'data-object-route-token="{_attribute(row.get("route_token"))}" '
-        f'data-review-ready="{review_ready}" '
         f'data-navigation-key="{_attribute(object_detail_navigation_key(row.get("object_key")))}">'
         '<div>'
         f'<div class="objects-pricing-name">{_escape(row.get("name"))}</div>'

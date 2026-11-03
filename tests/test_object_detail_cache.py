@@ -1,5 +1,4 @@
 from concurrent.futures import Future
-from pathlib import Path
 
 import streamlit as st
 
@@ -49,13 +48,6 @@ def test_object_detail_consumes_completed_prefetch_snapshot(monkeypatch):
     assert object_detail._load_object_detail_or_render_error(context)["name"] == "Cabinet"
     assert st.session_state.object_detail_data_cache[("estimate-1", "object-1")]["name"] == "Cabinet"
     assert st.session_state.object_detail_prefetch_futures == {}
-
-
-def test_persisted_detail_changes_keep_server_cache_invalidation_only():
-    source = (Path(__file__).parents[1] / "screens/object_detail.py").read_text()
-
-    assert "_consume_pending_object_detail_changes()" in source
-    assert "invalidate_workflow_display_snapshot_cache" not in source
 
 
 def test_invalidating_estimate_discards_all_its_detail_cache_and_prefetches():
@@ -119,57 +111,6 @@ def test_prefetch_runtime_passes_explicit_company_scope(monkeypatch):
     }
 
 
-def test_object_detail_warms_objects_return_only_when_its_snapshot_is_missing(monkeypatch):
-    st.session_state.clear()
-    context = object_detail.ObjectDetailContext(
-        estimate_id="estimate-1", object_id="object-1", run_id="run-1",
-    )
-    st.session_state.objects_estimation_data_cache = {"estimate-1": {"rows": [{"object_key": "object-1"}]}}
-    st.session_state.objects_estimation_cache_dirty = set()
-    submitted = []
-    monkeypatch.setattr(
-        object_detail, "submit_objects_return_prefetch",
-        lambda **kwargs: submitted.append(kwargs) or Future(),
-    )
-
-    object_detail._warm_objects_return_snapshot(context=context, company_id="610")
-
-    assert submitted == []
-
-
-def test_objects_screen_adopts_completed_return_prefetch_without_a_database_read():
-    st.session_state.clear()
-    prefetched = Future()
-    prefetched.set_result({"rows": [{"object_key": "object-1"}]})
-    st.session_state.objects_return_prefetch_futures = {"estimate-1": prefetched}
-    st.session_state.objects_estimation_data_cache = {}
-    st.session_state.objects_estimation_cache_dirty = {"estimate-1"}
-
-    objects._consume_objects_return_prefetch("estimate-1")
-
-    assert st.session_state.objects_estimation_data_cache["estimate-1"]["rows"][0]["object_key"] == "object-1"
-    assert st.session_state.objects_estimation_cache_dirty == set()
-    assert st.session_state.objects_return_prefetch_futures == {}
-
-
-def test_plain_back_restores_a_stale_objects_snapshot_before_its_refresh(monkeypatch):
-    st.session_state.clear()
-    cached = {"rows": [{"object_key": "object-1"}], "summary": {}}
-    st.session_state.objects_estimation_data_cache = {"estimate-1": cached}
-    st.session_state.objects_estimation_cache_dirty = {"estimate-1"}
-    st.session_state.objects_estimation_seed_rows = []
-    st.session_state.estimation_batch_future = None
-    monkeypatch.setattr(
-        objects,
-        "load_objects_estimation_data",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("unexpected synchronous refresh")),
-    )
-
-    state = objects._current_objects_state("estimate-1")
-
-    assert state.data is cached
-
-
 def test_review_waits_for_object_detail_prefetch_not_the_global_material_plan(monkeypatch):
     """A terminal object becomes clickable only after its own detail is cached."""
     st.session_state.clear()
@@ -216,24 +157,6 @@ def test_review_action_is_disabled_until_its_prefetch_snapshot_is_ready():
     assert "Preparing Review" in html
     assert "aria-disabled=\"true\"" in html
     assert "href=" not in html
-
-
-def test_terminal_row_exposes_review_readiness_for_the_client_progress_runtime():
-    from ui import objects_pricing
-
-    pending = objects_pricing._row_html(
-        {"object_key": "object-1", "status": "completed", "review_ready": False},
-        with_review=True, show_sale_total=True, estimate_id="estimate-1", run_id="run-1",
-    )
-    ready = objects_pricing._row_html(
-        {"object_key": "object-1", "status": "completed", "review_ready": True},
-        with_review=True, show_sale_total=True, estimate_id="estimate-1", run_id="run-1",
-    )
-
-    assert 'data-review-ready="false"' in pending
-    assert 'data-review-ready="true"' in ready
-    assert "Preparing Review" in pending
-    assert "Review" in ready
 
 
 def test_failed_prefetch_falls_back_once_without_fragment_retry(monkeypatch):

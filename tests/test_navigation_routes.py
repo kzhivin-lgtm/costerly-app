@@ -343,16 +343,6 @@ def test_objects_runtime_stops_dom_writers_before_workflow_navigation():
     assert 'observer.observe(parentDoc.documentElement, { childList: true, subtree: true })' in source
 
 
-def test_client_progress_cannot_enable_review_before_its_prefetched_snapshot_is_ready():
-    source = Path("ui/js_guards.py").read_text()
-
-    action_source = source.split("function setAction(row, objectId, status)", 1)[1].split(
-        "function saleInput", 1
-    )[0]
-    assert 'row.dataset.reviewReady !== "true"' in action_source
-    assert "Preparing Review" in action_source
-
-
 def test_objects_screen_does_not_install_the_react_mutating_live_progress_runtime():
     source = Path("screens/objects.py").read_text()
 
@@ -366,7 +356,6 @@ def test_objects_screen_refreshes_active_estimation_in_a_server_fragment():
     assert "@st.fragment(run_every=1.5)" in source
     assert "def _render_live_objects_content" in source
     assert "_persisted_objects_state(estimate_id)" in source
-    assert "refresh_needed = bool(" in source
     assert 'st.container(key="objects_live_pricing")' in source
     assert 'st.session_state.pop("objects_live_poll_estimate_id", None)' in source
 
@@ -751,22 +740,10 @@ def test_objects_initializes_action_state_before_live_fragment_branch():
     source = Path("screens/objects.py").read_text()
     state_index = source.index("screen_state = _current_objects_state(estimate_id)")
     live_index = source.index(
-        "refresh_pending = bool("
+        'if estimate_id and isinstance(st.session_state.get("estimation_batch_future"), Future):'
     )
 
     assert state_index < live_index
-
-
-def test_review_and_plain_back_keep_the_existing_data_prefetch_path():
-    guard_source = Path("ui/js_guards.py").read_text()
-    objects_source = Path("screens/objects.py").read_text()
-    wrapper_source = Path("cloudflare/index.html").read_text()
-
-    assert "def install_workflow_display_snapshot_cache" not in guard_source
-    assert "_install_ready_detail_display_snapshots(" not in objects_source
-    assert "displayCached: event.data.displayCached === true" not in wrapper_source
-    assert "concealInternalTransition(pendingTransition.name);" in wrapper_source
-    assert '[class*="st-key-${CSS.escape(bridgeKey)}"] button' in guard_source
 
 
 def test_file_review_transitions_follow_the_current_editable_summary_marker():

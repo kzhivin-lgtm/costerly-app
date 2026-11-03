@@ -955,10 +955,6 @@ def signal_app_ready_to_embed(
                     parentDocument.querySelectorAll('[data-testid="stException"]')
                 ).some((element) => !existingExceptions.has(element));
                 const reportTargetFailure = () => {
-                    const displayCache = parentWindow.__costerlyWorkflowDisplaySnapshots;
-                    if (displayCache && typeof displayCache.release === "function") {
-                        displayCache.release();
-                    }
                     window.top.postMessage({
                         type: "costerly:transition-failed",
                         transition,
@@ -1157,10 +1153,6 @@ def signal_app_ready_to_embed(
                         transition,
                         transitionId,
                     }, "*");
-                    const displayCache = parentWindow.__costerlyWorkflowDisplaySnapshots;
-                    if (displayCache && typeof displayCache.releaseFor === "function") {
-                        displayCache.releaseFor(targetScreenFor(transition));
-                    }
                     if (observer) observer.disconnect();
                     return true;
                 };
@@ -1194,9 +1186,7 @@ def signal_app_ready_to_embed(
                         const bridgeKey = String(control.dataset.streamlitBridgeKey || "");
                         const objectId = String(control.dataset.objectId || "");
                         let bridgeButton = bridgeKey
-                            ? parentDocument.querySelector(
-                                `[class*="st-key-${CSS.escape(bridgeKey)}"] button`
-                            )
+                            ? parentDocument.querySelector(`.st-key-${CSS.escape(bridgeKey)} button`)
                             : null;
                         if (!bridgeButton && objectId) {
                             bridgeButton = Array.from(parentDocument.querySelectorAll(
@@ -1210,8 +1200,7 @@ def signal_app_ready_to_embed(
                             )).find((button) => String(button.textContent || "").trim()
                                 === "Back to Objects") || null;
                         }
-                        const usesWarmUpload = transition === "new_estimate";
-                        if (bridgeButton || usesWarmUpload) event.preventDefault();
+                        if (bridgeButton) event.preventDefault();
                         parentWindow.scrollTo({ top: 0, left: 0, behavior: "auto" });
                         parentDocument.documentElement.scrollTop = 0;
                         parentDocument.body.scrollTop = 0;
@@ -1222,10 +1211,9 @@ def signal_app_ready_to_embed(
                             transitionId,
                             sourceScreen: currentScreen(),
                             targetScreen: targetScreenFor(transition),
-                            bridgeFound: Boolean(bridgeButton),
                         }, "*");
                         observeTargetScreen(transition, transitionId);
-                        if (bridgeButton && !usesWarmUpload) bridgeButton.click();
+                        if (bridgeButton) bridgeButton.click();
                     };
                     parentWindow[transitionHandlerKey] = handler;
                     parentDocument.addEventListener("click", handler, {
@@ -2817,18 +2805,6 @@ def install_objects_progress_sync(
                 if (!cell) return;
 
                 if (status === "completed" || status === "review_required") {
-                    // Backend progress can reach a terminal state before the
-                    // server-side Objects fragment has stored the immutable
-                    // Object Detail snapshot. Never manufacture a clickable
-                    // Review link from progress alone: the server replaces
-                    // this state only after the prefetch is ready.
-                    if (row.dataset.reviewReady !== "true") {
-                        cell.innerHTML = (
-                            '<span class="objects-pricing-review-button objects-pricing-review-button--disabled" '
-                            + 'aria-disabled="true">Preparing Review</span>'
-                        );
-                        return;
-                    }
                     if (
                         cell.querySelector(".objects-pricing-review-button--done")
                         || String(cell.textContent || "").trim().toLowerCase() === "done"

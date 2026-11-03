@@ -22,7 +22,6 @@ from use_cases.estimation import (
     approve_object_estimate,
     load_object_detail_data,
 )
-from use_cases.object_detail_runtime import submit_objects_return_prefetch
 from state.company_auth import company_auth_enabled
 from state.session import invalidate_object_detail_cache
 
@@ -56,7 +55,6 @@ def render_object_detail_screen(
     if data is None:
         return
 
-    _warm_objects_return_snapshot(context=context, company_id=str(company_id))
     _render_object_detail(data, context, render_header_controls=render_header_controls)
     _install_object_detail_runtime(context)
     install_workflow_header_alignment_guard("h1.object-detail-title")
@@ -90,10 +88,9 @@ def _back_to_objects_button() -> None:
     )
 
 
-def _consume_pending_object_detail_changes() -> bool:
-    snapshot_changed = _consume_pending_object_detail_snapshot()
-    edit_changed = _consume_pending_object_detail_edit()
-    return bool(snapshot_changed or edit_changed)
+def _consume_pending_object_detail_changes() -> None:
+    _consume_pending_object_detail_snapshot()
+    _consume_pending_object_detail_edit()
 
 
 def _approve_after_pending_changes(context: ObjectDetailContext) -> bool:
@@ -145,39 +142,6 @@ def _load_object_detail_or_render_error(context: ObjectDetailContext) -> dict[st
         st.error(f"Could not load Object Detail: {exc}")
         _back_to_objects_button()
         return None
-
-
-def _warm_objects_return_snapshot(*, context: ObjectDetailContext, company_id: str) -> None:
-    """Prepare the unchanged Objects screen before the user can go back.
-
-    The common Objects -> Review path already has a clean session snapshot, so
-    this returns without I/O. A deep link or a stale snapshot starts a bounded
-    background read while Object Detail is visible. Back never invalidates the
-    snapshot unless the user changed or approved data.
-    """
-    estimate_id = context.estimate_id
-    cache = st.session_state.setdefault("objects_estimation_data_cache", {})
-    dirty_estimates = st.session_state.setdefault("objects_estimation_cache_dirty", set())
-    if estimate_id in cache and estimate_id not in dirty_estimates:
-        return
-    futures = st.session_state.setdefault("objects_return_prefetch_futures", {})
-    future = futures.get(estimate_id)
-    if future is None:
-        futures[estimate_id] = submit_objects_return_prefetch(
-            estimate_id=estimate_id, company_id=company_id,
-        )
-        return
-    if not future.done():
-        return
-    try:
-        cache[estimate_id] = future.result()
-        dirty_estimates.discard(estimate_id)
-    except Exception:
-        # The ordinary Objects screen keeps its established visible error and
-        # fallback path. A speculative read must not prevent the detail view.
-        pass
-    finally:
-        futures.pop(estimate_id, None)
 
 
 def _render_object_detail(
@@ -357,6 +321,3 @@ def _mark_objects_estimation_dirty(estimate_id: str) -> None:
         return
     invalidate_object_detail_cache(estimate_id)
     st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
-    # A return snapshot is valid only while Object Detail has stayed read-only.
-    # Do not let a pre-edit background read overwrite the changed Objects view.
-    st.session_state.setdefault("objects_return_prefetch_futures", {}).pop(estimate_id, None)
