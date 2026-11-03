@@ -3399,7 +3399,7 @@ then an approved correction to the earliest missing Family/Pricing-Key/
 physical-compatibility constraint. Full evidence:
 `notes/ESTIMATION_V4_24_TERMINAL_CYCLE_CHECKPOINT_2026_11_02.md`.
 
-ACTIVE, V4.27, P0, Profile material allowances: restore three locked formula rows after
+IMPLEMENTED, pending fresh production witness, V4.27, P0, Profile material allowances: restore three locked formula rows after
 the Material Plan allocation. Consumables and Packaging must use the saved Pricing Cost
 percentages against primary material cost. Paint consumables must use the saved percentage
 against coating material cost only. They are formula allowances, not catalog products, so
