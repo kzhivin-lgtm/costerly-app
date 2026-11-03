@@ -38,7 +38,9 @@ def _expected_axis(*, projection: str, orientation: str, top_plan_axis: str | No
             return top_plan_axis if top_plan_axis in {"width", "depth"} else None
         return "depth" if top_plan_axis == "width" else "width" if top_plan_axis == "depth" else None
     if projection == "section":
-        return "height" if orientation == "vertical" else None
+        if orientation == "vertical":
+            return "height"
+        return top_plan_axis if top_plan_axis in {"width", "depth"} else None
     return None
 
 
@@ -88,6 +90,7 @@ def resolve_2vn_geometry(*, dimension_graph: Mapping[str, Any], extraction: Mapp
         views[view_id] = {"projection": projection, "horizontal_axis": top_plan_axis}
 
     bindings_by_assembly_axis: dict[tuple[str, str], Mapping[str, Any]] = {}
+    rejected_keys: set[tuple[str, str]] = set()
     rejected: list[dict[str, str]] = []
     for raw in extraction.get("dimension_bindings") or []:
         if not isinstance(raw, Mapping):
@@ -100,6 +103,7 @@ def resolve_2vn_geometry(*, dimension_graph: Mapping[str, Any], extraction: Mapp
         resolution = str(raw.get("resolution") or "")
         if axis not in _AXES or view_id not in views or orientation not in _ORIENTATIONS or dimension_id not in numbers or resolution not in _RESOLUTIONS:
             rejected.append({"assembly_id": assembly_id, "axis": axis, "reason": "invalid_binding"})
+            rejected_keys.add((assembly_id, axis))
             continue
         expected = _expected_axis(
             projection=views[view_id]["projection"], orientation=orientation,
@@ -107,6 +111,7 @@ def resolve_2vn_geometry(*, dimension_graph: Mapping[str, Any], extraction: Mapp
         )
         if expected != axis:
             rejected.append({"assembly_id": assembly_id, "axis": axis, "reason": "axis_projection_mismatch"})
+            rejected_keys.add((assembly_id, axis))
             continue
         bindings_by_assembly_axis.setdefault((assembly_id, axis), raw)
 
@@ -123,6 +128,13 @@ def resolve_2vn_geometry(*, dimension_graph: Mapping[str, Any], extraction: Mapp
                 continue
             binding = bindings_by_assembly_axis.get((assembly_id, axis))
             if binding is None:
+                if (assembly_id, axis) in rejected_keys:
+                    # A rejected source binding cannot be allowed to retain its
+                    # raw number. Remove it so the deterministic composer uses
+                    # a peer or bounded construction assumption instead.
+                    updated_dimensions.pop(axis, None)
+                    outcomes["rejected_to_fallback"] += 1
+                    continue
                 outcomes["unbound"] += 1
                 continue
             number = numbers[str(binding["dimension_id"])]

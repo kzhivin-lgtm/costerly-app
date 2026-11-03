@@ -28,6 +28,13 @@ def test_assembly_failure_persists_safe_stage_trace_without_provider_details(mon
     monkeypatch.setattr(bom_runtime, "insert_agent_usage_event_returning_id", lambda *_args, **_kwargs: "usage-1")
     monkeypatch.setattr(bom_runtime, "insert_estimation_fact_result", lambda *_args, **_kwargs: "fact-1")
     monkeypatch.setattr(
+        bom_runtime, "run_estimation_composition_analyze_agent",
+        lambda **_kwargs: {"scopes_by_input": {"input-1": {
+            "contract_version": "estimation_composition_scope_v1", "input_id": "input-1", "object_id": "object-1",
+            "object_summary": "drawer unit", "zones": [{"scope_id": "drawers", "assembly_role": "drawer_bank", "operability": "drawer", "counts": {"drawers": 3}, "front_groups": [], "evidence_refs": []}], "assumptions": [],
+        }}, "usage_event": {}},
+    )
+    monkeypatch.setattr(
         bom_runtime, "run_estimation_assembly_bom_agent",
         lambda **_kwargs: {"extraction": {}, "usage_event": {}},
     )

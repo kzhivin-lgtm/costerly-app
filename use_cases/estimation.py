@@ -815,20 +815,32 @@ def _element_rows_from_bom(facts_payload: dict[str, Any]) -> list[dict[str, Any]
         "top": "Top panel", "leg": "Leg",
     }
     result = []
+    drawer_assemblies = {
+        str(assembly.get("assembly_id") or ""): sum(
+            _number(group.get("quantity"), 0)
+            for group in assembly.get("front_groups") or []
+            if isinstance(group, dict) and group.get("front_kind") == "drawer_front"
+        )
+        for assembly in facts_payload.get("assemblies") or []
+        if isinstance(assembly, dict)
+    }
+    for assembly_id, quantity in drawer_assemblies.items():
+        if quantity > 0:
+            result.append({"label": "Drawer box", "quantity": quantity, "size": ""})
+    grouped: dict[tuple[str, str], dict[str, Any]] = {}
     for part in facts_payload.get("parts") or []:
         if not isinstance(part, dict):
             continue
+        if (str(part.get("assembly_id") or "") in drawer_assemblies
+                and str(part.get("component_role") or "") in {"drawer_front", "drawer_bottom", "drawer_side", "drawer_back"}):
+            continue
         length = _number(part.get("length_mm"), 0)
         width = _number(part.get("width_mm"), 0)
-        result.append({
-            "label": labels.get(str(part.get("component_role") or ""), "Element"),
-            "quantity": _number(part.get("quantity"), 0),
-            "size": (
-                f"{_format_number(length)} × {_format_number(width)} mm"
-                if length > 0 and width > 0 else ""
-            ),
-        })
-    return result
+        label = labels.get(str(part.get("component_role") or ""), "Element")
+        size = f"{_format_number(length)} × {_format_number(width)} mm" if length > 0 and width > 0 else ""
+        key = (label, size)
+        grouped.setdefault(key, {"label": label, "quantity": 0, "size": size})["quantity"] += _number(part.get("quantity"), 0)
+    return [*result, *grouped.values()]
 
 
 def _estimation_preview_url(

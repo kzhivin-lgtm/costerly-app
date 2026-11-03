@@ -52,7 +52,8 @@ def test_2vn_rejects_a_physical_axis_that_disagrees_with_the_projection():
 
     assert resolved["dimension_bindings"] == []
     assert audit["rejected_bindings"] == [{"assembly_id": "lower", "axis": "depth", "reason": "axis_projection_mismatch"}]
-    assert resolved["assemblies"][0]["dimensions"]["depth"]["basis"] == "derived"
+    assert "depth" not in resolved["assemblies"][0]["dimensions"]
+    assert audit["binding_outcomes"] == {"rejected_to_fallback": 1}
 
 
 def test_2vn_keeps_an_incomplete_drawing_usable_with_cross_view_derivation():
@@ -63,3 +64,12 @@ def test_2vn_keeps_an_incomplete_drawing_usable_with_cross_view_derivation():
 
     assert resolved["assemblies"][0]["dimensions"]["depth"]["basis"] == "derived"
     assert audit["binding_outcomes"] == {"derived": 1}
+
+
+def test_2vn_accepts_a_section_horizontal_axis_when_it_is_declared():
+    extraction = _extraction(axis="depth", projection="section", orientation="horizontal")
+    extraction["view_interpretations"][0]["horizontal_axis"] = "depth"
+    resolved, audit = resolve_2vn_geometry(dimension_graph=build_dimension_graph(input_row=_input()), extraction=extraction)
+
+    assert resolved["assemblies"][0]["dimensions"]["depth"]["basis"] == "source"
+    assert audit["binding_outcomes"] == {"direct": 1}

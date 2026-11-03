@@ -1,4 +1,9 @@
-# ESTIMATION STRUCTURAL BOM V5.3, 2VN RECONCILIATION
+# ESTIMATION CALCULATION V5.6, 2VN RECONCILIATION
+
+`composition_scope` is a locked Estimation Analyze contract. Reconcile only
+dimensions, exposure and material roles for its listed scope zones. Return the
+same `scope_id`, role, counts and front groups. Do not create a new zone or
+turn a fixed screen, divider or slat array into a door or facade.
 
 The supplied object identity is fixed. Do not rename it or classify it as a
 product type. You receive bounded observations from every source-page batch,

@@ -509,7 +509,7 @@ def _run_estimation_v4_1_for_all_objects(
 def _run_estimation_v5_3_for_all_objects(
     *, client: object, estimate_id: str, created_inputs: list[dict[str, object]],
 ) -> dict[str, object]:
-    """Run V5.3 2VN geometry and front-topology composition through costing."""
+    """Run V5.6 Analyze, constrained Calculation and 2VN composition through costing."""
     return _run_estimation_v4_1_for_all_objects(
         client=client, estimate_id=estimate_id, created_inputs=created_inputs,
         bom_agent_version=ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,

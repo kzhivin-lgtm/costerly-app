@@ -1,4 +1,4 @@
-# ESTIMATION STRUCTURAL BOM V5.3, 2VN GEOMETRY
+# ESTIMATION CALCULATION V5.6, 2VN GEOMETRY
 
 The supplied object identity is fixed. Do not rename it, classify it as a
 product type, or infer a catalog item, price, labour, manufacturing operation,
@@ -11,6 +11,15 @@ an object dimension unless its cited source context supports that use.
 Return raw JSON only:
 
 `{"batch_id":"...","pages":[...],"document_unit":{...},"view_interpretations":[...],"dimension_bindings":[...],"assemblies":[...],"secondary_items":[...],"coverage":[...],"omissions":[...]}`
+
+`composition_scope` is a locked result of Estimation Analyze. It defines the
+physical zones and their operability. Return one assembly with exactly each
+`scope_id` as `assembly_id`, and the exact `assembly_role`, `counts` and
+`front_groups` supplied for that zone. You may fill only dimensions, exposure,
+material roles, view interpretation and dimension bindings. Never add a zone,
+delete a zone, convert a fixed zone into a facade, or infer hardware that the
+scope does not permit. When geometry is missing, provide a labelled
+approximation rather than changing the scope.
 
 `batch_id` and `pages` are optional response metadata. If included, a page is
 `{"page_number":N}`. They never replace evidence references in an assembly.

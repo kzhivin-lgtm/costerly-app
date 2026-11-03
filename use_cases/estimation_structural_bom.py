@@ -278,6 +278,12 @@ def _construction_material_name(*, raw_name: object, family: str, role: str) -> 
     """Keep assembly labels out of the material resolver and customer UI."""
     name = " ".join(str(raw_name or "").split()).strip()
     words = {word.strip(" ,./-_").casefold() for word in name.split()}
+    # A model's generic placeholder is never a usable material name. In
+    # particular, drawer-slide demand must remain recognisable to the catalog
+    # and to a person reviewing the estimate.
+    if name.casefold() in {"material", "unknown", "n/a", "na"}:
+        name = ""
+        words = set()
     if name and not (words & _ROLE_WORDS):
         return name
     if role == "leg":

@@ -10,6 +10,7 @@ from agents.estimation_assembly_bom_agent import (
     ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION as STRUCTURAL_BOM_AGENT_VERSION,
     run_estimation_assembly_bom_agent,
 )
+from agents.estimation_composition_analyze_agent import ESTIMATION_COMPOSITION_ANALYZE_AGENT_VERSION, run_estimation_composition_analyze_agent
 from agents.estimation_object_to_estimate_agent import (
     ESTIMATION_OBJECT_TO_ESTIMATE_AGENT_VERSION,
     run_estimation_object_to_estimate_agent,
@@ -24,6 +25,7 @@ from use_cases.estimation_structural_bom import build_structural_assembly_bom
 from use_cases.estimation_dimension_graph import DIMENSION_GRAPH_V1, build_dimension_graph
 from use_cases.estimation_dimension_scale import build_dimension_scale_gate
 from use_cases.estimation_2vn_resolver import resolve_2vn_geometry
+from use_cases.estimation_composition_scope import apply_composition_scope, calculation_handoff, validate_composition_scope
 from use_cases.estimation_object_to_estimate import build_object_to_estimate_brief
 
 
@@ -167,6 +169,11 @@ def run_assembly_first_bom_batch(
     cited observations when an object spans more than one batch.
     """
     created, reused, failed = [], [], {}
+    prepared: dict[str, dict[str, Any]] = {}
+    pending_rows: list[Mapping[str, Any]] = []
+    # First build only deterministic geometry and collect full-page evidence.
+    # The following Analyze pass sees all pending objects together, before any
+    # object-specific Calculation is allowed to decompose them.
     for row in inputs:
         input_id = str(row.get("input_id") or "")
         if not input_id:
@@ -178,7 +185,6 @@ def run_assembly_first_bom_batch(
         if existing:
             reused.append(input_id)
             continue
-        stage = "dimension_graph"
         try:
             graph_existing = fetch_estimation_fact_result(
                 client, input_id=input_id, agent_version=ESTIMATION_DIMENSION_GRAPH_AGENT_VERSION,
@@ -201,7 +207,6 @@ def run_assembly_first_bom_batch(
             )
             dimension_scale_gate = build_dimension_scale_gate(dimension_graph=graph)
             payload = row.get("input_payload") or {}
-            stage = "evidence_artifact"
             page_bytes = {}
             for artifact in ((payload.get("evidence") or {}).get("artifacts") or []):
                 if not isinstance(artifact, Mapping) or artifact.get("artifact_kind") != "page":
@@ -213,21 +218,79 @@ def run_assembly_first_bom_batch(
                 client=client, input_row=row, stage="evidence_artifacts", status="succeeded",
                 details={"reason_code": "loaded", "page_count": len(page_bytes)},
             )
-            stage = "assembly_agent"
+            prepared[input_id] = {"row": row, "graph": graph, "dimension_scale_gate": dimension_scale_gate, "page_bytes": page_bytes}
+            pending_rows.append(row)
+        except Exception as exc:
+            failed[input_id] = f"{type(exc).__name__}: {exc}"
+            _record_failure_trace(client=client, input_id=input_id, stage="preparation", exc=exc)
+            _record_stage_event(client=client, input_row=row, stage="preparation", status="failed", details={"reason_code": _safe_failure_message(exc)})
+
+    # Composition Scope is persisted separately, which makes the exact input
+    # to Calculation inspectable and prevents a later model pass from silently
+    # reinterpreting the same rectangle as a new kind of furniture front.
+    scopes: dict[str, dict[str, Any]] = {}
+    missing_scope_rows: list[Mapping[str, Any]] = []
+    for row in pending_rows:
+        input_id = str(row["input_id"])
+        stored = fetch_estimation_fact_result(client, input_id=input_id, agent_version=ESTIMATION_COMPOSITION_ANALYZE_AGENT_VERSION)
+        if stored:
+            try:
+                scopes[input_id] = validate_composition_scope(scope=dict(stored.get("facts_payload") or {}), input_id=input_id)
+                continue
+            except ValueError:
+                pass
+        missing_scope_rows.append(row)
+    if missing_scope_rows:
+        try:
+            all_page_bytes = {
+                ref: page for item in prepared.values() for ref, page in item["page_bytes"].items()
+            }
+            analysis = run_estimation_composition_analyze_agent(inputs=pending_rows, page_bytes_by_ref=all_page_bytes)
+            analysis_usage_id = insert_agent_usage_event_returning_id(client, analysis["usage_event"])
+            for row in pending_rows:
+                input_id = str(row["input_id"])
+                scope = validate_composition_scope(scope=analysis["scopes_by_input"][input_id], input_id=input_id)
+                scopes[input_id] = scope
+                if input_id in {str(item["input_id"]) for item in missing_scope_rows}:
+                    created.append(insert_estimation_fact_result(
+                        client, input_id=input_id, agent_version=ESTIMATION_COMPOSITION_ANALYZE_AGENT_VERSION,
+                        facts_payload=scope, agent_usage_event_id=analysis_usage_id,
+                    ))
+                _record_stage_event(client=client, input_row=row, stage="estimation_analyze", status="succeeded", details={"reason_code": "composition_scope_ready", "assembly_count": len(scope["zones"])})
+        except Exception as exc:
+            for row in pending_rows:
+                input_id = str(row["input_id"])
+                failed[input_id] = f"{type(exc).__name__}: {exc}"
+                _record_failure_trace(client=client, input_id=input_id, stage="estimation_analyze", exc=exc)
+                _record_stage_event(client=client, input_row=row, stage="estimation_analyze", status="failed", details={"reason_code": _safe_failure_message(exc)})
+
+    for row in pending_rows:
+        input_id = str(row["input_id"])
+        if input_id in failed:
+            continue
+        prepared_item = prepared[input_id]
+        graph = prepared_item["graph"]
+        dimension_scale_gate = prepared_item["dimension_scale_gate"]
+        page_bytes = prepared_item["page_bytes"]
+        scope = scopes[input_id]
+        stage = "calculation_agent"
+        try:
             result = run_estimation_assembly_bom_agent(
                 input_row=row, evidence_page_bytes_by_ref=page_bytes, dimension_graph=graph,
                 dimension_scale_gate=dimension_scale_gate,
                 allowed_material_families=allowed_material_families,
+                composition_scope=scope,
             )
             usage_id = insert_agent_usage_event_returning_id(client, result["usage_event"])
             _record_stage_event(
-                client=client, input_row=row, stage="assembly_agent", status="succeeded",
+                client=client, input_row=row, stage="calculation_agent", status="succeeded",
                 details={"reason_code": "response_validated"},
             )
             stage = "2vn_geometry"
             extraction, two_vn = resolve_2vn_geometry(
                 dimension_graph=graph, extraction=result["extraction"],
             )
+            extraction = apply_composition_scope(extraction=extraction, scope=scope)
             _record_stage_event(
                 client=client, input_row=row, stage="2vn_geometry", status="succeeded",
                 details={"reason_code": "axis_resolution_ready"},
@@ -238,6 +301,8 @@ def run_assembly_first_bom_batch(
                 dimension_scale_gate=dimension_scale_gate,
                 allowed_material_families=allowed_material_families,
             )
+            bom["composition_scope"] = scope
+            bom["calculation_handoff"] = calculation_handoff(scope=scope, dimension_graph=graph)
             _record_stage_event(
                 client=client, input_row=row, stage="structural_composition", status="succeeded",
                 details={
