@@ -453,6 +453,24 @@ the retained File Review cache can operate directly. Require production
 evidence of the controller version, stage-plan receipt, stage transitions,
 cache hit and exactly one Python callback before accepting.
 
+IMPLEMENTED locally, pending production upload witness, V6.62 upload callback
+ordering repair, 2026-11-03:
+[verified] The production trace `1acb8b63-3c60-4c7b-91d0-ebd6e498a770`
+recorded `browser.rfq_upload_selected` from `drop`, followed by
+`browser.transition_click` for `upload_to_processing` and a 15.3-second
+timeout with `python_runs=0`. There was no `server.rfq_upload_accepted`, no
+`server.rfq_processing_queued`, and no Detection usage event, so the document
+never entered Detection. The repair keeps the first file-selection visual
+acknowledgement local and non-intercepting. It starts the outer
+`upload_to_processing` transition only when the real server Processing marker
+appears. If that marker never arrives, the local shell is removed after 18
+seconds, the native uploader remains available for retry, and
+`browser.upload_callback_timeout` is persisted. Local verification: five
+targeted controller, upload-boundary, and runtime-event tests passed, plus
+`py_compile` and `git diff --check`. Pending acceptance: one authenticated
+drag-and-drop upload must emit exactly one server upload acceptance and one
+real Processing transition, with no callback-timeout event.
+
 ACTIVE, V6.59, P0, New Estimate to Upload client-transition observability:
 The evidence rejects server-side auth, Supabase, and Upload rendering as the
 source of the reported 3-4 second warm navigation: prior successful

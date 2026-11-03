@@ -851,8 +851,8 @@ def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signal
     assert "function visibleProgressNode(stage)" in source
     assert "writeProgress(percent)" in source
     assert "syncForecastFromStage(stage)" in source
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_20" in source
-    assert "costerly-upload-runtime-v1120-migrated" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_21" in source
+    assert "costerly-upload-runtime-v1121-migrated" in source
     assert "parentWindow.location.reload();" in source
     assert "function finalizationState(stage)" in source
     assert "function advanceFinalization(state)" in source
@@ -889,12 +889,25 @@ def test_processing_cycle_persists_ocr_page_count_for_future_forecasts():
 def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():
     source = getsource(install_upload_interaction_guards)
 
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_20" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_21" in source
     assert "function uploadScreenIsActive()" in source
     assert "document.querySelector('.upload-screen-active')" in source
     assert "if (!uploadScreenIsActive()) return;" in source
     assert "if (uploadScreenIsActive() && dropzone && dropHasFiles(event))" in source
     assert "costerly:rfq-upload-selected" in source
+    assert "costerly:upload-callback-timeout" in source
+    assert "pointer-events: none" in source
+    assert "UPLOAD_CALLBACK_GRACE_MS = 18000" in source
+    assert "function releaseUnconfirmedUpload()" in source
+    assert "function reportProcessingVisible()" in source
+    show_shell = source.split("function showShell(source)", 1)[1].split(
+        "function dropHasFiles", 1
+    )[0]
+    processing_visible = source.split("function reportProcessingVisible()", 1)[1].split(
+        "function beginUploadCycle", 1
+    )[0]
+    assert "'upload_to_processing'" not in show_shell
+    assert "startTransition(" in processing_visible
 
 
 def test_last_estimate_uses_its_native_callback_without_outer_transition_shell():

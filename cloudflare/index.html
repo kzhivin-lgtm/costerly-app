@@ -437,6 +437,21 @@
           if (
             event.origin === appOrigin &&
             event.data &&
+            event.data.type === "costerly:upload-callback-timeout"
+          ) {
+            mark("browser.upload_callback_timeout", {
+              status: "timeout",
+              metadata: {
+                source: safeRouteValue(event.data.source),
+                cycle_id: safeRouteValue(event.data.cycleId),
+              },
+            });
+            if (ready) persistTimeline();
+            return;
+          }
+          if (
+            event.origin === appOrigin &&
+            event.data &&
             event.data.type === "costerly:recovery-fragment-consumed"
           ) {
             window.history.replaceState(

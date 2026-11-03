@@ -3347,7 +3347,12 @@ def install_upload_processing_shell(shell_html: str) -> None:
 
 
 def install_upload_interaction_guards(shell_html: str) -> None:
-    """Install upload dragover and instant processing shell from one component."""
+    """Install upload dragover and a non-blocking pending-upload shell.
+
+    The browser may observe a native drop before Streamlit has accepted the
+    file into its callback.  Keep that first visual acknowledgement local;
+    only the real Processing marker is allowed to start the outer transition.
+    """
     shell_html_json = json.dumps(shell_html)
 
     components.html(
@@ -3356,7 +3361,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
         (() => {
             const parentWindow = window.parent;
             const parentDoc = parentWindow.document;
-            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_20";
+            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_21";
             const oldMarker = parentDoc.getElementById(markerId);
 
             if (oldMarker) {
@@ -3371,9 +3376,10 @@ def install_upload_interaction_guards(shell_html: str) -> None:
             const legacyMarker = parentDoc.getElementById(
                 "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_19"
             );
-            const migrationKey = "costerly-upload-runtime-v1120-migrated";
+            const migrationKey = "costerly-upload-runtime-v1121-migrated";
             const legacyInstalled = Boolean(
-                parentWindow.__costerlyUploadInteractionGuardsV1119Installed
+                parentWindow.__costerlyUploadInteractionGuardsV1119Installed ||
+                parentWindow.__costerlyUploadInteractionGuardsV1120Installed
             );
             const activeProcessing = Boolean(
                 parentDoc.getElementById("costerly-processing-screen-active") ||
@@ -3387,7 +3393,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
             }
 
             const previousRuntime = parentWindow.__costerlyUploadInteractionRuntime;
-            if (previousRuntime && previousRuntime.version === "v1120") {
+            if (previousRuntime && previousRuntime.version === "v1121") {
                 return;
             }
             if (previousRuntime && typeof previousRuntime.dispose === "function") {
@@ -3407,11 +3413,11 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const REAL_PROCESSING_MARKER_ID = 'costerly-processing-screen-active';
                 const FILE_REVIEW_MARKER_ID = 'costerly-file-review-screen-active';
                 const SHELL_ACTIVE_CLASS = 'costerly-upload-processing-shell-active';
-                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1120';
-                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1120';
-                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1120Installed';
+                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1121';
+                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1121';
+                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1121Installed';
                 const RUNTIME_KEY = '__costerlyUploadInteractionRuntime';
-                const RUNTIME_VERSION = 'v1120';
+                const RUNTIME_VERSION = 'v1121';
                 const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAtV5';
                 const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimerV5';
                 const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSecondsV5';
@@ -3421,10 +3427,12 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const PROCESSING_COMPLETE_STYLED_OBSERVER_KEY = '__costerlyProcessingToReviewStyledObserverV5';
                 const PROCESSING_COMPLETE_EXPECTED_RUN_ID_KEY = '__costerlyProcessingToReviewRunIdV5';
                 const RFQ_UPLOAD_CYCLE_ID_KEY = '__costerlyRfqUploadCycleIdV5';
+                const UPLOAD_CALLBACK_GRACE_MS = 18000;
                 let disposed = false;
                 let clearDragTimer = null;
                 let watcher = null;
                 let slowTimer = null;
+                let uploadCallbackTimer = null;
 
                 if (window[INSTALLED_FLAG]) {
                     return;
@@ -3509,6 +3517,10 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                             z-index: 2147483000;
                             box-sizing: border-box;
                             overflow: hidden;
+                            /* This is acknowledgement, not a modal. Native
+                             * Streamlit file transfer must remain untouched
+                             * until Python confirms it has received the file. */
+                            pointer-events: none;
                         }
 
                         #${SHELL_ID}[data-slow="true"] .post-upload-stage__slow {
@@ -3925,6 +3937,28 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         window.clearTimeout(slowTimer);
                         slowTimer = null;
                     }
+                    if (uploadCallbackTimer) {
+                        window.clearTimeout(uploadCallbackTimer);
+                        uploadCallbackTimer = null;
+                    }
+                }
+
+                function releaseUnconfirmedUpload() {
+                    uploadCallbackTimer = null;
+                    if (disposed || realProcessingIsActive() || !uploadScreenIsActive()) return;
+                    const shell = document.getElementById(SHELL_ID);
+                    if (!shell) return;
+
+                    // Do not leave a simulated Processing state over an
+                    // upload that never reached Streamlit. The native uploader
+                    // remains visible so the user can retry without a reload.
+                    window.top.postMessage({
+                        type: 'costerly:upload-callback-timeout',
+                        source: shell.dataset.source || 'unknown',
+                        cycleId: window[RFQ_UPLOAD_CYCLE_ID_KEY] || '',
+                    }, '*');
+                    finalizeElapsed(Math.max(0, Math.floor(browserElapsedSeconds())));
+                    removeShell();
                 }
 
                 function startTransition(name, sourceScreen, targetScreen, key, cycleId = '') {
@@ -3943,8 +3977,17 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 }
 
                 function reportProcessingVisible() {
-                    const transitionId = window[PROCESSING_TRANSITION_ID_KEY];
-                    if (!transitionId) return;
+                    if (uploadCallbackTimer) {
+                        window.clearTimeout(uploadCallbackTimer);
+                        uploadCallbackTimer = null;
+                    }
+                    const transitionId = startTransition(
+                        'upload_to_processing',
+                        'upload',
+                        'processing',
+                        PROCESSING_TRANSITION_ID_KEY,
+                        window[RFQ_UPLOAD_CYCLE_ID_KEY] || '',
+                    );
                     window.top.postMessage({
                         type: 'costerly:transition-stage',
                         transition: 'upload_to_processing',
@@ -4108,14 +4151,13 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     }
                     document.documentElement.classList.add(SHELL_ACTIVE_CLASS);
                     document.body.classList.add(SHELL_ACTIVE_CLASS);
-                    startTransition(
-                        'upload_to_processing',
-                        'upload',
-                        'processing',
-                        PROCESSING_TRANSITION_ID_KEY,
-                        cycleId,
-                    );
                     startElapsed();
+                    if (!shellAlreadyVisible) {
+                        uploadCallbackTimer = window.setTimeout(
+                            releaseUnconfirmedUpload,
+                            UPLOAD_CALLBACK_GRACE_MS,
+                        );
+                    }
 
                     startWatcher();
                 }
@@ -4237,6 +4279,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         window[ELAPSED_TIMER_KEY] = null;
                         window.clearTimeout(clearDragTimer);
                         window.clearTimeout(slowTimer);
+                        window.clearTimeout(uploadCallbackTimer);
                         if (window[RUNTIME_KEY]?.version === RUNTIME_VERSION) {
                             delete window[RUNTIME_KEY];
                         }

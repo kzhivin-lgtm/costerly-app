@@ -44,6 +44,13 @@ def test_wrapper_records_each_rfq_upload_selection_before_server_processing():
     assert 'cycle_id: safeRouteValue(event.data.cycleId)' in wrapper
 
 
+def test_wrapper_records_a_dropped_upload_callback_without_starting_processing():
+    wrapper = (ROOT / "cloudflare/index.html").read_text()
+
+    assert 'event.data.type === "costerly:upload-callback-timeout"' in wrapper
+    assert 'mark("browser.upload_callback_timeout"' in wrapper
+
+
 def test_runtime_event_has_trace_boundaries_and_redacts_sensitive_metadata(monkeypatch):
     captured = []
     monkeypatch.setattr(runtime, "_enqueue", captured.append)
