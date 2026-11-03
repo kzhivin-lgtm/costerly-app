@@ -492,7 +492,7 @@ Calculation composition contract, 2026-11-03:
 [verified] V5.3 left visual semantics and construction decomposition in one
 model request. The fresh Lev 1 witness could therefore use a rejected 20-cm
 depth and reclassify a fixed screen as hinged facades despite a front-topology
-prompt. V5.6 adds one whole-file Estimation Analyze pass that persists an
+prompt. V5.6 adds one whole-file Estimation Analyze pass that creates an
 immutable `estimation_composition_scope_v1` for each object, then passes that
 scope to the per-object Calculation call. A deterministic gate permits the
 second call to fill only geometry and material roles of locked zones. It also
@@ -502,6 +502,17 @@ V5.6`, run fresh Lev 1 and Lev 2 witnesses, inspect the persisted
 `calculation_handoff`, and verify Lev 1 has three 600-mm drawer-slide sets,
 zero hinges and zero gas lifts. Contract:
 `notes/ESTIMATION_V5_6_ANALYZE_CALCULATION_CONTRACT_2026_11_03.md`.
+
+IMPLEMENTED locally, pending production witness, Estimation V5.6.1 Scope
+persistence repair, 2026-11-03:
+[verified] The first V5.6 live witness reached the new Analyze response but
+the facts table only allows established BOM contract versions. V5.6.1 keeps
+Analyze usage as its own immutable usage event and stores the normalized Scope
+and exact Calculation handoff in the final existing assembly-BOM fact it
+constrained. This preserves the inspectable contract without weakening the
+database contract allowlist or adding a partially persisted intermediate row.
+Pending acceptance: repeat Lev 1 from its immutable input, inspect its
+Calculation handoff and resulting hardware facts.
 
 ACTIVE, V6.59, P0, New Estimate to Upload client-transition observability:
 The evidence rejects server-side auth, Supabase, and Upload rendering as the

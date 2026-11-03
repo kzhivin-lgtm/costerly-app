@@ -10,7 +10,7 @@ from agents.estimation_assembly_bom_agent import (
     ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION as STRUCTURAL_BOM_AGENT_VERSION,
     run_estimation_assembly_bom_agent,
 )
-from agents.estimation_composition_analyze_agent import ESTIMATION_COMPOSITION_ANALYZE_AGENT_VERSION, run_estimation_composition_analyze_agent
+from agents.estimation_composition_analyze_agent import run_estimation_composition_analyze_agent
 from agents.estimation_object_to_estimate_agent import (
     ESTIMATION_OBJECT_TO_ESTIMATE_AGENT_VERSION,
     run_estimation_object_to_estimate_agent,
@@ -225,37 +225,20 @@ def run_assembly_first_bom_batch(
             _record_failure_trace(client=client, input_id=input_id, stage="preparation", exc=exc)
             _record_stage_event(client=client, input_row=row, stage="preparation", status="failed", details={"reason_code": _safe_failure_message(exc)})
 
-    # Composition Scope is persisted separately, which makes the exact input
-    # to Calculation inspectable and prevents a later model pass from silently
-    # reinterpreting the same rectangle as a new kind of furniture front.
+    # Analyze precedes every Calculation batch. Its normalized Scope is carried
+    # directly into Calculation and retained in the final immutable BOM fact.
     scopes: dict[str, dict[str, Any]] = {}
-    missing_scope_rows: list[Mapping[str, Any]] = []
-    for row in pending_rows:
-        input_id = str(row["input_id"])
-        stored = fetch_estimation_fact_result(client, input_id=input_id, agent_version=ESTIMATION_COMPOSITION_ANALYZE_AGENT_VERSION)
-        if stored:
-            try:
-                scopes[input_id] = validate_composition_scope(scope=dict(stored.get("facts_payload") or {}), input_id=input_id)
-                continue
-            except ValueError:
-                pass
-        missing_scope_rows.append(row)
-    if missing_scope_rows:
+    if pending_rows:
         try:
             all_page_bytes = {
                 ref: page for item in prepared.values() for ref, page in item["page_bytes"].items()
             }
             analysis = run_estimation_composition_analyze_agent(inputs=pending_rows, page_bytes_by_ref=all_page_bytes)
-            analysis_usage_id = insert_agent_usage_event_returning_id(client, analysis["usage_event"])
+            insert_agent_usage_event_returning_id(client, analysis["usage_event"])
             for row in pending_rows:
                 input_id = str(row["input_id"])
                 scope = validate_composition_scope(scope=analysis["scopes_by_input"][input_id], input_id=input_id)
                 scopes[input_id] = scope
-                if input_id in {str(item["input_id"]) for item in missing_scope_rows}:
-                    created.append(insert_estimation_fact_result(
-                        client, input_id=input_id, agent_version=ESTIMATION_COMPOSITION_ANALYZE_AGENT_VERSION,
-                        facts_payload=scope, agent_usage_event_id=analysis_usage_id,
-                    ))
                 _record_stage_event(client=client, input_row=row, stage="estimation_analyze", status="succeeded", details={"reason_code": "composition_scope_ready", "assembly_count": len(scope["zones"])})
         except Exception as exc:
             for row in pending_rows:
