@@ -174,6 +174,50 @@ def resolve_2vn_geometry(*, dimension_graph: Mapping[str, Any], extraction: Mapp
                 outcomes["unverified"] += 1
         assembly["dimensions"] = updated_dimensions
 
+    # A shallow drawer face is often printed beside the side-view depth.  If a
+    # drawer bank's alleged direct depth is no greater than its own front
+    # height, it is not a credible usable drawer depth for an approximate BOM.
+    # Prefer the largest numeric candidate attached to a declared side-depth
+    # view, retain its immutable citation, and mark it derived rather than
+    # pretending the heuristic is a direct measurement.
+    depth_views = {
+        view_id for view_id, value in views.items()
+        if value["projection"] in {"side_elevation", "section"} and value["horizontal_axis"] == "depth"
+    }
+    side_depth_numbers = [
+        number for number in numbers.values()
+        if any(relation.get("relation") == "nearest_view_candidate" and relation.get("to_view_id") in depth_views
+               for relation in relations_by_dimension.get(str(number.get("dimension_id") or ""), []))
+    ]
+    for assembly in assemblies:
+        if str(assembly.get("assembly_role") or "") != "drawer_bank":
+            continue
+        dimensions = assembly.get("dimensions") or {}
+        if not isinstance(dimensions, Mapping):
+            continue
+        height_mm = _dimension_mm(dimension=dimensions.get("height") or {}, document_unit=document_unit)
+        depth_mm = _dimension_mm(dimension=dimensions.get("depth") or {}, document_unit=document_unit)
+        if height_mm is None or depth_mm is None or depth_mm > height_mm or not side_depth_numbers:
+            continue
+        candidate = max(side_depth_numbers, key=lambda item: _number_mm(number=item, document_unit=document_unit))
+        candidate_mm = _number_mm(number=candidate, document_unit=document_unit)
+        if candidate_mm <= depth_mm:
+            continue
+        updated = dict(dimensions)
+        updated["depth"] = {
+            "value": candidate["numeric_value"], "unit": candidate.get("printed_unit") or document_unit,
+            "basis": "derived", "evidence_refs": list(candidate.get("evidence_refs") or []),
+            "assumption_reason": "Drawer depth was reconciled to the larger side-view depth candidate because the original depth was no greater than the drawer front height.",
+        }
+        assembly["dimensions"] = updated
+        outcomes["drawer_depth_cross_view"] += 1
+        witnesses.append({
+            "assembly_id": str(assembly.get("assembly_id") or ""), "axis": "depth", "view_id": "cross_side_view",
+            "dimension_id": str(candidate.get("dimension_id") or ""), "resolution": "linked_zone",
+            "score": 0.0, "numeric_match": True, "verification": "drawer_depth_cross_view",
+            "evidence_refs": list(candidate.get("evidence_refs") or []),
+        })
+
     normalized["view_interpretations"] = [
         {"view_id": view_id, **value} for view_id, value in sorted(views.items())
     ]
