@@ -414,20 +414,23 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "must-not-leak" not in wrapper + function
 
 
-def test_new_estimate_clears_outer_route_and_recovers_only_a_missing_callback():
+def test_new_estimate_clears_outer_route_and_activates_a_real_warm_upload_screen():
     wrapper = (ROOT / "cloudflare/index.html").read_text()
 
     assert "function resetOuterRouteForNewEstimate()" in wrapper
     assert 'nextUrl.pathname = "/";' in wrapper
     assert "window.history.replaceState({costerlyRoute: true}, \"\", nextPath);" in wrapper
-    assert "const NEW_ESTIMATE_CALLBACK_GRACE_MS = 2500;" in wrapper
-    assert "function recoverNewEstimateWithFreshIframe(pendingTransition)" in wrapper
-    assert "pendingTransition.callbackReceived" in wrapper
-    assert 'const recoveryUrl = new URL(frame.src);' in wrapper
-    assert 'recoveryUrl.searchParams.set("screen", "upload");' in wrapper
+    assert 'id="costerly-upload-warm-frame"' in wrapper
+    assert "function warmUploadFrame({restart = false} = {})" in wrapper
+    assert "function activateWarmUpload(pendingTransition)" in wrapper
+    assert "uploadWarmFrame.classList.add(\"is-active\", \"is-ready\");" in wrapper
+    assert "activeTraceId = uploadWarmTraceId;" in wrapper
+    assert 'mark("browser.upload_warm_activated"' in wrapper
+    assert 'mark("browser.upload_warm_timeout"' in wrapper
+    assert "recoverNewEstimateWithFreshIframe" not in wrapper
     assert 'mark("browser.new_estimate_route_cleared"' in wrapper
-    assert 'mark("browser.new_estimate_callback_received"' in wrapper
-    assert "pendingTransition.serverTargetReady = true;" in wrapper
+    assert "event.data.traceId === uploadWarmTraceId" in wrapper
+    assert "event.data.traceId === activeTraceId" in wrapper
 
 
 def test_new_estimate_callback_timing_is_carried_into_the_next_server_run():
@@ -539,8 +542,9 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     observer_source = ready_signal.split("function installTransitionObserver()", 1)[1].split(
         "function postReady()", 1
     )[0]
-    assert "if (bridgeButton) event.preventDefault();" in observer_source
-    assert "if (bridgeButton) bridgeButton.click();" in observer_source
+    assert "if (bridgeButton || usesWarmUpload) event.preventDefault();" in observer_source
+    assert "if (bridgeButton && !usesWarmUpload) bridgeButton.click();" in observer_source
+    assert 'bridgeFound: Boolean(bridgeButton)' in observer_source
     assert 'String(control.dataset.streamlitBridgeKey || "")' in observer_source
     assert 'transition === "object_detail_to_objects"' in observer_source
     assert '=== "Back to Objects"' in observer_source

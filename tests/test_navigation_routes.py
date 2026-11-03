@@ -766,6 +766,7 @@ def test_review_and_plain_back_keep_the_existing_data_prefetch_path():
     assert "_install_ready_detail_display_snapshots(" not in objects_source
     assert "displayCached: event.data.displayCached === true" not in wrapper_source
     assert "concealInternalTransition(pendingTransition.name);" in wrapper_source
+    assert '[class*="st-key-${CSS.escape(bridgeKey)}"] button' in guard_source
 
 
 def test_file_review_transitions_follow_the_current_editable_summary_marker():

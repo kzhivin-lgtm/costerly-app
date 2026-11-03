@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>costerly.ai</title>
-    <meta name="costerly-wrapper-version" content="estimation-v5.6.7-transition-recovery" />
+    <meta name="costerly-wrapper-version" content="estimation-v5.6.8-warm-upload" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
@@ -24,7 +24,9 @@
         background: #F1EFEF;
       }
 
-      iframe {
+      iframe.app-frame {
+        position: fixed;
+        inset: 0;
         width: 100vw;
         height: 100vh;
         border: 0;
@@ -34,11 +36,23 @@
         transition: opacity 120ms ease;
       }
 
-      iframe.is-ready {
+      iframe.app-frame.is-active {
+        visibility: visible;
+        pointer-events: auto;
+        z-index: 1;
+      }
+
+      iframe.app-frame.is-warm {
+        visibility: hidden;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      iframe.app-frame.is-ready {
         opacity: 1;
       }
 
-      iframe.is-transitioning {
+      iframe.app-frame.is-transitioning {
         opacity: 0;
         pointer-events: none;
         transition: none;
@@ -94,8 +108,17 @@
     <div class="app-loading-mask" id="app-loading-mask" aria-hidden="true"></div>
     <iframe
       id="costerly-app-frame"
+      class="app-frame is-active"
       data-src="https://core.costerly.ai/?embed=true"
       title="costerly.ai"
+      allow="clipboard-write; clipboard-read; fullscreen"
+    ></iframe>
+    <iframe
+      id="costerly-upload-warm-frame"
+      class="app-frame is-warm"
+      title="Prepared new estimate"
+      aria-hidden="true"
+      tabindex="-1"
       allow="clipboard-write; clipboard-read; fullscreen"
     ></iframe>
     <div class="embed-footer-mask">
@@ -103,12 +126,13 @@
     </div>
     <script>
       (() => {
-        const BUILD_VERSION = "estimation-v5.6.7";
+        const BUILD_VERSION = "estimation-v5.6.8";
         const startedAt = performance.now();
         const traceId = crypto.randomUUID();
         const timeline = [];
         const mask = document.getElementById("app-loading-mask");
-        const frame = document.getElementById("costerly-app-frame");
+        let frame = document.getElementById("costerly-app-frame");
+        const uploadWarmFrame = document.getElementById("costerly-upload-warm-frame");
         const backendByHostname = Object.freeze({
           "staging.costerly.ai": "https://core.costerly.ai/?embed=true",
         });
@@ -132,6 +156,10 @@
         const routeKeys = ["screen", "run_id", "estimate_id", "object_id", "route_token"];
         const outerParams = new URLSearchParams(window.location.search);
         appUrl.searchParams.set("obs_trace", traceId);
+        const uploadWarmTraceId = crypto.randomUUID();
+        let activeTraceId = traceId;
+        let uploadWarmStarted = false;
+        let uploadWarmReady = false;
         routeKeys.forEach((key) => {
           const value = outerParams.get(key);
           if (value) appUrl.searchParams.set(key, value);
@@ -159,12 +187,9 @@
         let internalTransitionTimer = null;
         let iframeLoadAtMs = null;
         let ready = false;
-        // The former 900 ms watchdog raced ordinary warm Streamlit reruns,
-        // which historically reach a styled Upload in up to two seconds. A
-        // New Estimate fallback is valid only after the server has failed to
-        // acknowledge its callback, never merely because rendering is still
-        // in progress.
-        const NEW_ESTIMATE_CALLBACK_GRACE_MS = 2500;
+        // New Estimate is a screen swap to a real, already-started Upload
+        // session. The old callback/reload fallback is intentionally absent:
+        // it was the source of the second gray screen after an apparent hit.
         const readyRunIds = new Set();
         const pendingTransitions = [];
         const expectedScreens = {
@@ -318,31 +343,63 @@
           });
         }
 
-        function recoverNewEstimateWithFreshIframe(pendingTransition) {
+        function warmUploadFrame({restart = false} = {}) {
           if (
-            pendingTransition.routeRecoveryAttempted ||
-            pendingTransition.serverTargetReady ||
-            pendingTransition.callbackReceived
-          ) {
-            return;
-          }
-          pendingTransition.routeRecoveryAttempted = true;
-          mark("browser.new_estimate_iframe_recovery", {
-            status: "unknown",
+            !uploadWarmFrame ||
+            uploadWarmReady ||
+            (uploadWarmStarted && !restart)
+          ) return;
+          uploadWarmStarted = true;
+          uploadWarmReady = false;
+          const warmUrl = new URL(frame.dataset.src || appUrl.toString());
+          routeKeys.forEach((key) => warmUrl.searchParams.delete(key));
+          warmUrl.searchParams.set("screen", "upload");
+          warmUrl.searchParams.set("obs_trace", uploadWarmTraceId);
+          uploadWarmFrame.src = warmUrl.toString();
+          mark("browser.upload_warm_started");
+        }
+
+        function settleTransition(pendingTransition, source) {
+          const index = pendingTransitions.indexOf(pendingTransition);
+          if (index >= 0) pendingTransitions.splice(index, 1);
+          window.clearTimeout(pendingTransition.timeoutId);
+          window.clearTimeout(pendingTransition.recoveryTimerId);
+          mark("browser.transition_ready", {
+            screen: "upload",
             duration_ms: performance.now() - pendingTransition.startedAt,
             metadata: {
+              transition: pendingTransition.name,
               transition_id: pendingTransition.id,
+              source,
               python_runs: pendingTransition.pythonRuns,
-              callback_received: pendingTransition.callbackReceived,
             },
           });
-          // `frame.src`, unlike `data-src`, retains this outer page's trace
-          // correlation parameter. Keep it while removing only workflow
-          // context, otherwise the fresh app-ready would be ignored.
-          const recoveryUrl = new URL(frame.src);
-          routeKeys.forEach((key) => recoveryUrl.searchParams.delete(key));
-          recoveryUrl.searchParams.set("screen", "upload");
-          frame.src = recoveryUrl.toString();
+          mark("browser.transition_styled", {
+            duration_ms: performance.now() - pendingTransition.startedAt,
+            metadata: {
+              transition: pendingTransition.name,
+              transition_id: pendingTransition.id,
+              source,
+            },
+          });
+        }
+
+        function activateWarmUpload(pendingTransition) {
+          if (!uploadWarmReady || !uploadWarmFrame) return false;
+          const previousFrame = frame;
+          previousFrame.classList.remove("is-active", "is-ready", "is-transitioning");
+          previousFrame.classList.add("is-warm");
+          uploadWarmFrame.classList.remove("is-warm", "is-transitioning");
+          uploadWarmFrame.classList.add("is-active", "is-ready");
+          frame = uploadWarmFrame;
+          activeTraceId = uploadWarmTraceId;
+          settleTransition(pendingTransition, "warm_upload_frame");
+          revealInternalTransition("warm_upload_frame");
+          mark("browser.upload_warm_activated", {
+            duration_ms: performance.now() - pendingTransition.startedAt,
+          });
+          if (ready) persistTimeline();
+          return true;
         }
 
         window.addEventListener("popstate", () => {
@@ -499,6 +556,7 @@
               sourceScreen: safeRouteValue(event.data.sourceScreen),
               targetScreen: safeRouteValue(event.data.targetScreen),
               cycleId: safeRouteValue(event.data.cycleId),
+              bridgeFound: event.data.bridgeFound === true,
               startedAt: performance.now(),
               visible: false,
               pythonRuns: 0,
@@ -510,20 +568,17 @@
             pendingTransitions.push(pendingTransition);
             if (pendingTransition.name === "new_estimate") {
               resetOuterRouteForNewEstimate();
-              // A visible Upload marker can belong to retained stale DOM. Do
-              // not consider it a reset. The callback itself records an
-              // explicit acknowledgement in the next real app-ready. Only
-              // if that acknowledgement never arrives do we replace the
-              // iframe with a clean Upload route.
-              mark("browser.new_estimate_callback_grace_started", {
-                metadata: {
-                  transition_id: pendingTransition.id,
-                  grace_ms: NEW_ESTIMATE_CALLBACK_GRACE_MS,
-                },
-              });
+              if (activateWarmUpload(pendingTransition)) return;
+              warmUploadFrame();
               pendingTransition.recoveryTimerId = window.setTimeout(() => {
-                recoverNewEstimateWithFreshIframe(pendingTransition);
-              }, NEW_ESTIMATE_CALLBACK_GRACE_MS);
+                if (activateWarmUpload(pendingTransition)) return;
+                mark("browser.upload_warm_timeout", {
+                  status: "timeout",
+                  duration_ms: performance.now() - pendingTransition.startedAt,
+                  metadata: {transition_id: pendingTransition.id},
+                });
+                revealInternalTransition("warm_upload_timeout");
+              }, 10000);
             }
             concealInternalTransition(pendingTransition.name);
             mark("browser.transition_click", {
@@ -533,6 +588,7 @@
                 source_screen: pendingTransition.sourceScreen,
                 target_screen: pendingTransition.targetScreen,
                 cycle_id: pendingTransition.cycleId,
+                bridge_found: pendingTransition.bridgeFound,
               },
             });
             pendingTransition.timeoutId = window.setTimeout(() => {
@@ -692,7 +748,26 @@
             event.origin === appOrigin &&
             event.data &&
             event.data.type === "costerly:app-ready" &&
-            event.data.traceId === traceId
+            event.data.traceId === uploadWarmTraceId &&
+            frame !== uploadWarmFrame
+          ) {
+            if (event.data.screen === "upload") {
+              uploadWarmReady = true;
+              mark("browser.upload_warm_ready", {
+                duration_ms: performance.now() - startedAt,
+              });
+              const pendingTransition = pendingTransitions.find(
+                (item) => item.name === "new_estimate"
+              );
+              if (pendingTransition) activateWarmUpload(pendingTransition);
+            }
+            return;
+          }
+          if (
+            event.origin === appOrigin &&
+            event.data &&
+            event.data.type === "costerly:app-ready" &&
+            event.data.traceId === activeTraceId
           ) {
             const runId = String(event.data.runId || "");
             if (runId && readyRunIds.has(runId)) return;
@@ -868,6 +943,9 @@
               persistTimeline();
             } else {
               revealApp("app_ready", screen);
+            }
+            if (screen !== "upload" && frame !== uploadWarmFrame) {
+              warmUploadFrame({restart: uploadWarmStarted && !uploadWarmReady});
             }
           }
         });

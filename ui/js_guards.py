@@ -1194,7 +1194,9 @@ def signal_app_ready_to_embed(
                         const bridgeKey = String(control.dataset.streamlitBridgeKey || "");
                         const objectId = String(control.dataset.objectId || "");
                         let bridgeButton = bridgeKey
-                            ? parentDocument.querySelector(`.st-key-${CSS.escape(bridgeKey)} button`)
+                            ? parentDocument.querySelector(
+                                `[class*="st-key-${CSS.escape(bridgeKey)}"] button`
+                            )
                             : null;
                         if (!bridgeButton && objectId) {
                             bridgeButton = Array.from(parentDocument.querySelectorAll(
@@ -1208,7 +1210,8 @@ def signal_app_ready_to_embed(
                             )).find((button) => String(button.textContent || "").trim()
                                 === "Back to Objects") || null;
                         }
-                        if (bridgeButton) event.preventDefault();
+                        const usesWarmUpload = transition === "new_estimate";
+                        if (bridgeButton || usesWarmUpload) event.preventDefault();
                         parentWindow.scrollTo({ top: 0, left: 0, behavior: "auto" });
                         parentDocument.documentElement.scrollTop = 0;
                         parentDocument.body.scrollTop = 0;
@@ -1219,9 +1222,10 @@ def signal_app_ready_to_embed(
                             transitionId,
                             sourceScreen: currentScreen(),
                             targetScreen: targetScreenFor(transition),
+                            bridgeFound: Boolean(bridgeButton),
                         }, "*");
                         observeTargetScreen(transition, transitionId);
-                        if (bridgeButton) bridgeButton.click();
+                        if (bridgeButton && !usesWarmUpload) bridgeButton.click();
                     };
                     parentWindow[transitionHandlerKey] = handler;
                     parentDocument.addEventListener("click", handler, {
