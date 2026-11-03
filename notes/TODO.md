@@ -480,6 +480,18 @@ static-observability failures. Pending acceptance: live authenticated timing for
 both New Estimate → Upload and Objects → Review, with no stale route, no empty
 File Review terminal state, and no stale detail after an edit.
 
+IMPLEMENTED, pending production interaction witness, Estimation V4.29, New Estimate dead-callback recovery, 2026-11-03:
+[verified] The V4.28 production trace `f232f994-ca20-4283-87f0-8c5aac30b892`
+recorded a New Estimate click with `python_runs=0`; two later clicks emitted a
+visual `transition_styled` event but no server rerun. A visible Upload marker
+therefore cannot be accepted as a state reset. V4.29 replaces the outer URL
+with `/` at click time and keeps the transition pending until a real Upload
+app-ready. If no matching server run arrives within 900 ms, the wrapper reloads
+only its iframe after removing all workflow parameters and setting
+`screen=upload`, which creates a clean Streamlit session. Acceptance: the next
+production New Estimate both shows `/` immediately and reaches Upload without a
+timeout, then Last Estimate restores the latest completed File Review.
+
 CHECKPOINT, owner-accepted, V6.38-V6.40 quantity and Document Identity:
 `notes/DETECTION_V6_40_DOCUMENT_IDENTITY_QUANTITY_CHECKPOINT_2026_10_27.md`.
 The ordinary `300119_f2.pdf` witness published `ПОДДОН=5` and `СТЕЙШН=1` from

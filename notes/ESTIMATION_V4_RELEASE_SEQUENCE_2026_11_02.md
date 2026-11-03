@@ -34,6 +34,7 @@ not an internal immutable fact-contract suffix.
 | V4.26 | `cbac71f` | Material-table input presentation: required units sit inside their editable field, purchase units stack type above dimensions, purchase quantity carries no duplicated unit, and C/I/A markers have a durable visual gap before the material name |
 | V4.27 | `80e71f0` | Restore Profile-owned locked material allowances: Consumables and Packaging use primary material cost, while Paint consumables use coating material cost |
 | V4.28 | `4e87892` | New Estimate clears the durable workflow URL immediately and Object Detail warms completed read-only snapshots. First uncached Review parallelizes independent reads; every edit, approval, recalculation and new Estimate invalidates the snapshot |
+| V4.29 | `f891e56` | A visible Upload marker no longer proves New Estimate succeeded. The outer wrapper replaces the old workflow URL immediately and, if no real Upload app-ready follows within 900 ms, replaces only the stale iframe with a clean Upload route |
 
 Rule from 2026-11-02: every subsequent Estimation deployment receives the next
 sequential V4 release number in its commit message, change note, deployment

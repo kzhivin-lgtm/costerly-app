@@ -481,3 +481,12 @@ Estimation V4.26: Material-table presentation keeps editable Required Material v
 Estimation V4.27: restored the three Profile-owned locked formula rows after the physical Material Plan is allocated. Consumables and Packaging apply their saved Pricing Cost percentages to the object's primary material cost; Paint consumables applies its saved percentage only to coating material cost. The rows are not catalog materials or editable purchases, and their costs recalculate when a material plan changes. Focused regression suite passed, pending a fresh production witness, сохранена 03.11
 
 Estimation V4.28 screen-transition and Object Detail warm-read candidate `4e87892`: New Estimate removes a prior durable Object route immediately while preserving the native state-reset callback. File Review actions render before a terminal deferred-work poll can trigger a rerun. Finished Object Details are warmed through a bounded two-worker read-only queue; an uncached Review parallelizes independent object, lines and Material Plan reads. Every detail edit, approval, material-plan recalculation, estimation completion and New Estimate invalidates the affected snapshot. Targeted checks: 20 passed. Wider route and detail checks: 71 passed, with two pre-existing unrelated static-observability failures. Production interaction acceptance remains pending, сохранена 03.11
+
+Estimation V4.29 New Estimate dead-callback recovery `f891e56`: production trace
+`f232f994-ca20-4283-87f0-8c5aac30b892` proved that a visual Upload marker can
+appear although New Estimate never reaches Python. The wrapper now replaces the
+old durable workflow URL at click time and treats the callback as failed unless
+an actual Upload app-ready arrives. After 900 ms without that server result, it
+restarts only the iframe on clean `screen=upload`, preserving authentication but
+creating a fresh Streamlit workflow session. Focused navigation checks: 3
+passed. Production interaction acceptance remains pending, сохранена 03.11
