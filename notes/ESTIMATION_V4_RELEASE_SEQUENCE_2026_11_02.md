@@ -40,3 +40,9 @@ Rule from 2026-11-02: every subsequent Estimation deployment receives the next
 sequential V4 release number in its commit message, change note, deployment
 report and any protected checkpoint. A runtime correction stays in its own
 numbered release even when it reuses an existing immutable contract version.
+
+The detailed V4.27-V4.29 implementation checkpoint and seamless-chat handoff
+are `notes/ESTIMATION_V4_29_NAVIGATION_AND_OBJECT_DETAIL_IMPLEMENTATION_CHECKPOINT_2026_11_03.md`
+and `notes/ESTIMATION_V4_29_FULL_CHAT_HANDOFF_2026_11_03.md`. They record
+published implementation and pending production acceptance, not an
+owner-accepted runtime witness.

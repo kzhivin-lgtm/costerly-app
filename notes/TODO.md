@@ -491,6 +491,11 @@ only its iframe after removing all workflow parameters and setting
 `screen=upload`, which creates a clean Streamlit session. Acceptance: the next
 production New Estimate both shows `/` immediately and reaches Upload without a
 timeout, then Last Estimate restores the latest completed File Review.
+Full implementation checkpoint and cross-chat handoff:
+`notes/ESTIMATION_V4_29_NAVIGATION_AND_OBJECT_DETAIL_IMPLEMENTATION_CHECKPOINT_2026_11_03.md`
+and `notes/ESTIMATION_V4_29_FULL_CHAT_HANDOFF_2026_11_03.md`. They do not
+close this active item: the next required evidence remains one authenticated
+V4.29 interaction witness with runtime trace readback.
 
 CHECKPOINT, owner-accepted, V6.38-V6.40 quantity and Document Identity:
 `notes/DETECTION_V6_40_DOCUMENT_IDENTITY_QUANTITY_CHECKPOINT_2026_10_27.md`.

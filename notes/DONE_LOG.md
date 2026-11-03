@@ -490,3 +490,11 @@ an actual Upload app-ready arrives. After 900 ms without that server result, it
 restarts only the iframe on clean `screen=upload`, preserving authentication but
 creating a fresh Streamlit workflow session. Focused navigation checks: 3
 passed. Production interaction acceptance remains pending, сохранена 03.11
+
+V4.27-V4.29 implementation checkpoint and full-chat handoff, 2026-11-03:
+`notes/ESTIMATION_V4_29_NAVIGATION_AND_OBJECT_DETAIL_IMPLEMENTATION_CHECKPOINT_2026_11_03.md`
+and `notes/ESTIMATION_V4_29_FULL_CHAT_HANDOFF_2026_11_03.md`. The records
+preserve exact trace, commits, test outcomes, protected contracts, rejected
+witnesses, pending production acceptance, and next evidence protocol. No
+Detection benchmark entry was changed because these releases did not change
+Detection behavior.
