@@ -389,11 +389,18 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "must-not-leak" not in wrapper + function
 
 
-def test_new_estimate_clears_outer_workflow_route_before_upload_renders():
+def test_new_estimate_clears_outer_route_and_recovers_a_dead_callback():
     wrapper = (ROOT / "cloudflare/index.html").read_text()
 
-    assert 'if (pendingTransition.name === "new_estimate")' in wrapper
-    assert 'syncOuterRoute({screen: "upload"}, "upload");' in wrapper
+    assert "function resetOuterRouteForNewEstimate()" in wrapper
+    assert 'nextUrl.pathname = "/";' in wrapper
+    assert "window.history.replaceState({costerlyRoute: true}, \"\", nextPath);" in wrapper
+    assert "const NEW_ESTIMATE_SERVER_GRACE_MS = 900;" in wrapper
+    assert "function recoverNewEstimateWithFreshIframe(pendingTransition)" in wrapper
+    assert 'const recoveryUrl = new URL(frame.src);' in wrapper
+    assert 'recoveryUrl.searchParams.set("screen", "upload");' in wrapper
+    assert 'mark("browser.new_estimate_route_cleared"' in wrapper
+    assert "pendingTransition.serverTargetReady = true;" in wrapper
 
 
 def test_streamlit_ready_message_carries_server_build_version():
