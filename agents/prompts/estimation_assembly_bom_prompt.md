@@ -1,4 +1,4 @@
-# ESTIMATION STRUCTURAL BOM V5.1
+# ESTIMATION STRUCTURAL BOM V5.2
 
 The supplied object identity is fixed. Do not rename it, classify it as a
 product type, or infer a catalog item, price, labour, manufacturing operation,
@@ -61,13 +61,38 @@ response. Do not infer precision shop-cut gaps.
 `counts` may contain only shown or strongly supported integers: `drawers`,
 `shelves`, `facades`, `top_layers`, `legs`.
 
-Use `front_groups` for every visibly countable cabinet front. A group is
+Use `front_groups` only for a visibly operable cabinet front. A group is
 `{"front_kind":"drawer_front|hinged_facade|lift_up_facade","quantity":positive_integer,"arrangement":"stacked|side_by_side"}`.
 `stacked` means fronts share the block width and divide its height. `side_by_side`
 means they share the block height and divide its width. Count fronts only once
 from the canonical elevation. A perspective view may confirm a group but never
 duplicates it. `drawer_front` describes a physical drawer, `hinged_facade` a
 vertical door, and `lift_up_facade` a horizontal flap.
+
+Classify operability before counting any hardware. A rectangle, seam, repeated
+panel or vertical strip is not automatically a front. It must visibly close a
+cabinet opening and have a coherent operating form in the canonical elevation.
+
+- A lower, shallow, landscape row of rectangular faces is a `drawer_bank`.
+  Keep it separate from any tall cabinet or screen above it. Put its actual
+  number in `counts.drawers` and one `drawer_front` group. Side-by-side lower
+  drawers use `arrangement:"side_by_side"`; vertically stacked drawers use
+  `arrangement:"stacked"`.
+- A tall, portrait leaf is `hinged_facade` only when it is visibly a door that
+  closes a cabinet bay. A visible door boundary, handle, hinge cue, or enclosed
+  storage opening is supporting evidence. Do not call a tall strip a door just
+  because several strips repeat.
+- A landscape flap that closes an upper or middle cabinet opening is a
+  `lift_up_facade`, never a hinged vertical door.
+- Repeated tall narrow slats, screens, dividers, open shelving uprights,
+  decorative overlays and fixed carcass panels are structural material, not
+  operable fronts. Represent their material as a `vertical_panel`,
+  `shelf_stack`, or `box_carcass` as appropriate, with no `front_groups` and
+  no hinge, gas-lift or drawer-slide role.
+
+When the drawing is incomplete, keep the estimate approximate, but prefer a
+fixed structural panel over invented operating hardware. Do not manufacture a
+hinge, gas lift or drawer slide to explain a repeated rectangular pattern.
 
 `exposure` is optional and only declares externally visible carcass ends, for
 example `{"left":true,"right":false}`. A facade/front and an exposed end use

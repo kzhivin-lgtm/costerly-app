@@ -19,7 +19,7 @@ from agents.estimation_v4_1_material_facts_agent import (
 )
 
 
-ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION = "estimation_assembly_bom_v5_1"
+ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION = "estimation_assembly_bom_v5_2"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_assembly_bom_prompt.md"
 RECONCILIATION_PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_assembly_bom_reconciliation_prompt.md"
 

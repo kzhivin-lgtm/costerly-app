@@ -1,5 +1,6 @@
 import pytest
 
+from agents.estimation_assembly_bom_agent import PROMPT_PATH
 from use_cases.estimation_assembly_bom import ASSEMBLY_BOM_V1, build_assembly_bom
 from use_cases.estimation_dimension_graph import build_dimension_graph
 
@@ -96,3 +97,12 @@ def test_assembly_bom_converts_explicit_document_unit_assumption_deterministical
     assert result["assumptions"] == [
         "Dimension unit assumption: Unitless drawing dimensions follow centimetre convention."
     ]
+
+
+def test_v5_2_prompt_requires_operability_before_front_hardware():
+    prompt = PROMPT_PATH.read_text(encoding="utf-8")
+
+    assert "Classify operability before counting any hardware" in prompt
+    assert "lower, shallow, landscape row" in prompt
+    assert "tall narrow slats, screens, dividers" in prompt
+    assert "fixed structural panel over invented operating hardware" in prompt

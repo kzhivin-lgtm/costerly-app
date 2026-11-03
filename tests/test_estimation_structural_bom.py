@@ -118,6 +118,49 @@ def test_cabinet_block_composes_front_hardware_by_topology_and_purchase_unit():
     ]
 
 
+def test_lev1_lower_drawers_are_not_confused_with_a_tall_fixed_screen():
+    """Lev 1 has three lower drawers and a decorative fixed slat screen."""
+    row = _input()
+    result = build_structural_assembly_bom(
+        input_row=row,
+        dimension_graph=build_dimension_graph(input_row=row),
+        allowed_material_families=[
+            "mdf_hdf", "melamine_faced_particleboard", "fibreboard_hardboard",
+            "hardware_drawer_slide", "hardware_hinge", "hardware_lift_system",
+        ],
+        extraction={
+            "document_unit": {"unit": "cm", "basis": "explicit_source", "evidence_refs": [OCR_REF]},
+            "assemblies": [
+                {
+                    "assembly_id": "lower-drawers", "assembly_role": "drawer_bank", "quantity": 1,
+                    "evidence_refs": [REF],
+                    "dimensions": {"width": _dimension(158), "height": _dimension(43), "depth": _dimension(72)},
+                    "counts": {"drawers": 3},
+                    "front_groups": [{"front_kind": "drawer_front", "quantity": 3, "arrangement": "side_by_side"}],
+                    "material_roles": [],
+                },
+                {
+                    "assembly_id": "fixed-screen", "assembly_role": "vertical_panel", "quantity": 1,
+                    "evidence_refs": [REF],
+                    "dimensions": {"width": _dimension(160), "height": _dimension(265), "depth": _dimension(2)},
+                    "counts": {}, "front_groups": [], "material_roles": [],
+                },
+            ],
+            "secondary_items": [], "omissions": [],
+        },
+    )
+
+    by_family = {material["family"]: material for material in result["materials"]}
+    assert by_family["hardware_drawer_slide"]["quantity"] == 3
+    assert by_family["hardware_drawer_slide"]["unit"] == "set"
+    assert by_family["hardware_drawer_slide"]["specification"]["depth_mm"] == 600
+    assert "hardware_hinge" not in by_family
+    assert "hardware_lift_system" not in by_family
+    assert {part["component_role"] for part in result["parts"]} >= {
+        "drawer_front", "drawer_bottom", "drawer_side", "drawer_back", "vertical_panel",
+    }
+
+
 def test_missing_cabinet_dimension_uses_auditable_peer_or_construction_default():
     row = _input()
     result = build_structural_assembly_bom(
