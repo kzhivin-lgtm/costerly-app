@@ -47,7 +47,7 @@ def install_workflow_header_alignment_guard(
             function targets() {
                 return {
                     title: activeElement(titleSelector),
-                    actions: activeElement(".st-key-costerly_header_controls"),
+                    actions: activeElement('[class*="st-key-costerly_header_controls"]'),
                 };
             }
 
@@ -759,6 +759,10 @@ def signal_app_ready_to_embed(
             }
 
             function transitionName(control) {
+                const hasControlKey = (key) => Boolean(
+                    control.closest(`.st-key-${key}`) ||
+                    control.closest(`[class*="st-key-${key}_recovery"]`)
+                );
                 if (control.closest(".objects-pricing-review-button")) {
                     return "objects_to_object_detail";
                 }
@@ -771,7 +775,7 @@ def signal_app_ready_to_embed(
                 if (control.closest(".st-key-final_approval")) {
                     return "objects_to_projects";
                 }
-                if (control.closest(".st-key-header_new_estimate")) {
+                if (control.closest(".st-key-header_new_estimate") || hasControlKey("header_new_estimate")) {
                     if (currentScreen() === "account") return "profile_to_upload";
                     if (currentScreen() === "admin") return "admin_to_upload";
                     if (currentScreen() === "projects") return "projects_to_upload";
@@ -785,24 +789,25 @@ def signal_app_ready_to_embed(
                     // directly instead of covering it with that shell.
                     return null;
                 }
-                if (control.closest(".st-key-open_company_account")) {
+                if (hasControlKey("header_last_estimate")) return null;
+                if (control.closest(".st-key-open_company_account") || hasControlKey("open_company_account")) {
                     if (currentScreen() === "upload") return "upload_to_profile";
                     if (currentScreen() === "admin") return "admin_to_profile";
                     if (currentScreen() === "projects") return "projects_to_profile";
                     return "open_profile";
                 }
-                if (control.closest(".st-key-open_platform_admin")) {
+                if (control.closest(".st-key-open_platform_admin") || hasControlKey("open_platform_admin")) {
                     if (currentScreen() === "upload") return "upload_to_admin";
                     if (currentScreen() === "account") return "profile_to_admin";
                     if (currentScreen() === "projects") return "projects_to_admin";
                     return "open_admin";
                 }
-                if (control.closest(".st-key-open_projects")) {
+                if (control.closest(".st-key-open_projects") || hasControlKey("open_projects")) {
                     if (currentScreen() === "account") return "profile_to_projects";
                     if (currentScreen() === "admin") return "admin_to_projects";
                     return "upload_to_projects";
                 }
-                if (control.closest(".st-key-company_sign_out")) {
+                if (control.closest(".st-key-company_sign_out") || hasControlKey("company_sign_out")) {
                     if (currentScreen() === "account") return "profile_to_sign_out";
                     if (currentScreen() === "upload") return "upload_to_sign_out";
                     if (currentScreen() === "projects") return "projects_to_sign_out";
@@ -943,6 +948,26 @@ def signal_app_ready_to_embed(
                 let visibleReported = false;
                 let styledReported = false;
                 let frameRequest = null;
+                const existingExceptions = new Set(
+                    parentDocument.querySelectorAll('[data-testid="stException"]')
+                );
+                const targetRenderFailed = () => Array.from(
+                    parentDocument.querySelectorAll('[data-testid="stException"]')
+                ).some((element) => !existingExceptions.has(element));
+                const reportTargetFailure = () => {
+                    window.top.postMessage({
+                        type: "costerly:transition-failed",
+                        transition,
+                        transitionId,
+                        reason: "target_render_exception",
+                    }, "*");
+                    if (observer) observer.disconnect();
+                    if (frameRequest !== null) {
+                        window.parent.cancelAnimationFrame(frameRequest);
+                        frameRequest = null;
+                    }
+                    return true;
+                };
                 const requiresStyledTarget =
                     transition === "upload_to_profile" ||
                     transition === "profile_to_upload" ||
@@ -971,7 +996,7 @@ def signal_app_ready_to_embed(
                     transition === "object_detail_approve_to_objects";
                 const styledTargetReady = () => {
                     const headerControls = parentDocument.querySelector(
-                        ".st-key-costerly_header_controls"
+                        '[class*="st-key-costerly_header_controls"]'
                     );
                     const controlsReady = () => Boolean(
                         headerControls && headerControls.querySelectorAll("button").length >= 2
@@ -1092,6 +1117,10 @@ def signal_app_ready_to_embed(
                 };
                 const reportIfVisible = () => {
                     if (styledReported) return true;
+                    // A terminal Streamlit exception is the destination, not
+                    // a slow target. Release the transition so the user can
+                    // see the actionable server error instead of a mask.
+                    if (targetRenderFailed()) return reportTargetFailure();
                     if (!parentDocument.querySelector(selector)) return false;
                     if (!visibleReported) {
                         visibleReported = true;
@@ -3361,7 +3390,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
         (() => {
             const parentWindow = window.parent;
             const parentDoc = parentWindow.document;
-            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_21";
+            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_22";
             const oldMarker = parentDoc.getElementById(markerId);
 
             if (oldMarker) {
@@ -3376,10 +3405,11 @@ def install_upload_interaction_guards(shell_html: str) -> None:
             const legacyMarker = parentDoc.getElementById(
                 "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_19"
             );
-            const migrationKey = "costerly-upload-runtime-v1121-migrated";
+            const migrationKey = "costerly-upload-runtime-v1122-migrated";
             const legacyInstalled = Boolean(
                 parentWindow.__costerlyUploadInteractionGuardsV1119Installed ||
-                parentWindow.__costerlyUploadInteractionGuardsV1120Installed
+                parentWindow.__costerlyUploadInteractionGuardsV1120Installed ||
+                parentWindow.__costerlyUploadInteractionGuardsV1121Installed
             );
             const activeProcessing = Boolean(
                 parentDoc.getElementById("costerly-processing-screen-active") ||
@@ -3393,7 +3423,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
             }
 
             const previousRuntime = parentWindow.__costerlyUploadInteractionRuntime;
-            if (previousRuntime && previousRuntime.version === "v1121") {
+            if (previousRuntime && previousRuntime.version === "v1122") {
                 return;
             }
             if (previousRuntime && typeof previousRuntime.dispose === "function") {
@@ -3413,11 +3443,11 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const REAL_PROCESSING_MARKER_ID = 'costerly-processing-screen-active';
                 const FILE_REVIEW_MARKER_ID = 'costerly-file-review-screen-active';
                 const SHELL_ACTIVE_CLASS = 'costerly-upload-processing-shell-active';
-                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1121';
-                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1121';
-                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1121Installed';
+                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1122';
+                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1122';
+                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1122Installed';
                 const RUNTIME_KEY = '__costerlyUploadInteractionRuntime';
-                const RUNTIME_VERSION = 'v1121';
+                const RUNTIME_VERSION = 'v1122';
                 const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAtV5';
                 const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimerV5';
                 const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSecondsV5';
@@ -4024,8 +4054,14 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     let observer = null;
                     let frameRequest = null;
                     let reported = false;
+                    const existingExceptions = new Set(
+                        document.querySelectorAll('[data-testid="stException"]')
+                    );
+                    const targetRenderFailed = () => Array.from(
+                        document.querySelectorAll('[data-testid="stException"]')
+                    ).some((element) => !existingExceptions.has(element));
                     const controlsReady = () => {
-                        const controls = document.querySelector('.st-key-costerly_header_controls');
+                        const controls = document.querySelector('[class*="st-key-costerly_header_controls"]');
                         return Boolean(controls && controls.querySelectorAll('button').length >= 2);
                     };
                     const matchingReviewMarker = () => Array.from(
@@ -4048,6 +4084,17 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     };
                     const report = () => {
                         if (reported) return true;
+                        if (targetRenderFailed()) {
+                            window.top.postMessage({
+                                type: 'costerly:transition-failed',
+                                transition: 'processing_to_file_review',
+                                transitionId,
+                                reason: 'target_render_exception',
+                            }, '*');
+                            removeShell();
+                            stop();
+                            return true;
+                        }
                         if (!fileReviewReady()) {
                             if (frameRequest === null) {
                                 frameRequest = window.requestAnimationFrame(() => {

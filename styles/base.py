@@ -267,7 +267,7 @@ def apply_base_css() -> None:
             overflow: visible !important;
         }
 
-        .st-key-costerly_header_controls {
+        [class*="st-key-costerly_header_controls"] {
             position: fixed !important;
             top: calc(var(--app-header-top) + 15px);
             right: max(28px, calc((100vw - var(--post-upload-width)) / 2));
@@ -278,8 +278,8 @@ def apply_base_css() -> None:
             transition: opacity 140ms ease;
         }
 
-        .st-key-costerly_header_controls:hover,
-        .st-key-costerly_header_controls:focus-within {
+        [class*="st-key-costerly_header_controls"]:hover,
+        [class*="st-key-costerly_header_controls"]:focus-within {
             opacity: 1;
         }
 
@@ -292,12 +292,12 @@ def apply_base_css() -> None:
             overflow: visible !important;
         }
 
-        .stApp:has(.company-profile-active) .st-key-costerly_screen_header_primary .st-key-costerly_header_controls,
-        .stApp:has(#costerly-file-review-screen-active) .st-key-costerly_screen_header_primary .st-key-costerly_header_controls,
-        .stApp:has(.objects-estimation-header) .st-key-costerly_screen_header_primary .st-key-costerly_header_controls,
-        .stApp:has(.object-detail-shell) .st-key-costerly_screen_header_primary .st-key-costerly_header_controls,
-        .stApp:has(.projects-screen-active) .st-key-costerly_screen_header_primary .st-key-costerly_header_controls,
-        .stApp:has(.platform-admin-active) .st-key-costerly_screen_header_primary .st-key-costerly_header_controls {
+        .stApp:has(.company-profile-active) .st-key-costerly_screen_header_primary [class*="st-key-costerly_header_controls"],
+        .stApp:has(#costerly-file-review-screen-active) .st-key-costerly_screen_header_primary [class*="st-key-costerly_header_controls"],
+        .stApp:has(.objects-estimation-header) .st-key-costerly_screen_header_primary [class*="st-key-costerly_header_controls"],
+        .stApp:has(.object-detail-shell) .st-key-costerly_screen_header_primary [class*="st-key-costerly_header_controls"],
+        .stApp:has(.projects-screen-active) .st-key-costerly_screen_header_primary [class*="st-key-costerly_header_controls"],
+        .stApp:has(.platform-admin-active) .st-key-costerly_screen_header_primary [class*="st-key-costerly_header_controls"] {
             position: absolute !important;
             top: 50% !important;
             right: 0 !important;
@@ -317,26 +317,26 @@ def apply_base_css() -> None:
             margin-bottom: 0 !important;
         }
 
-        .st-key-costerly_header_controls [data-testid="stHorizontalBlock"] {
+        [class*="st-key-costerly_header_controls"] [data-testid="stHorizontalBlock"] {
             width: fit-content !important;
             gap: 6px;
             height: 30px !important;
             align-items: center !important;
         }
 
-        .st-key-costerly_header_controls [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+        [class*="st-key-costerly_header_controls"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
             flex: 0 0 auto !important;
             width: auto !important;
             min-width: 0 !important;
         }
 
-        .st-key-costerly_header_controls [data-testid="stVerticalBlock"] {
+        [class*="st-key-costerly_header_controls"] [data-testid="stVerticalBlock"] {
             gap: 0 !important;
             min-height: 30px !important;
             justify-content: center !important;
         }
 
-        .st-key-costerly_header_controls button {
+        [class*="st-key-costerly_header_controls"] button {
             width: auto !important;
             height: 30px !important;
             min-height: 30px !important;
@@ -351,17 +351,17 @@ def apply_base_css() -> None:
             backdrop-filter: blur(10px);
         }
 
-        .st-key-costerly_header_controls button p {
+        [class*="st-key-costerly_header_controls"] button p {
             white-space: nowrap !important;
         }
 
-        .st-key-costerly_header_controls [data-testid="stColumn"]:last-child button {
+        [class*="st-key-costerly_header_controls"] [data-testid="stColumn"]:last-child button {
             width: 30px !important;
             min-width: 30px !important;
             padding: 0 !important;
         }
 
-        .st-key-costerly_header_controls [data-testid="stColumn"]:last-child button p {
+        [class*="st-key-costerly_header_controls"] [data-testid="stColumn"]:last-child button p {
             font-size: 0 !important;
             display: flex !important;
             align-items: center !important;
@@ -371,13 +371,13 @@ def apply_base_css() -> None:
             line-height: 1 !important;
         }
 
-        .stApp .st-key-costerly_header_controls [data-testid="stColumn"]:last-child div[data-testid="stButton"] button {
+        .stApp [class*="st-key-costerly_header_controls"] [data-testid="stColumn"]:last-child div[data-testid="stButton"] button {
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
         }
 
-        .st-key-costerly_header_controls [data-testid="stColumn"]:last-child button p::before {
+        [class*="st-key-costerly_header_controls"] [data-testid="stColumn"]:last-child button p::before {
             content: "";
             display: block;
             flex: 0 0 14px;
@@ -655,7 +655,7 @@ def apply_base_css() -> None:
 
         /* This must follow the global button contract above. The shared
            header is intentionally compact on every non-Processing screen. */
-        .stApp .st-key-costerly_header_controls div[data-testid="stButton"] button {
+        .stApp [class*="st-key-costerly_header_controls"] div[data-testid="stButton"] button {
             width: auto !important;
             height: 30px !important;
             min-height: 30px !important;
@@ -684,7 +684,7 @@ def apply_base_css() -> None:
                 width: var(--app-header-width);
             }
 
-            .st-key-costerly_header_controls {
+            [class*="st-key-costerly_header_controls"] {
                 top: calc(var(--app-header-top) + 8px);
                 right: 14px;
                 width: calc(100vw - 28px) !important;

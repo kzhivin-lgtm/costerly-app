@@ -51,6 +51,19 @@ def test_wrapper_records_a_dropped_upload_callback_without_starting_processing()
     assert 'mark("browser.upload_callback_timeout"' in wrapper
 
 
+def test_terminal_target_exception_releases_the_correlated_transition():
+    """A rendered Streamlit exception must be visible, not hidden by a mask."""
+    wrapper = (ROOT / "cloudflare/index.html").read_text()
+    ready_signal = (ROOT / "ui/js_guards.py").read_text()
+
+    assert 'type: "costerly:transition-failed"' in ready_signal
+    assert "target_render_exception" in ready_signal
+    assert "existingExceptions" in ready_signal
+    assert 'event.data.type === "costerly:transition-failed"' in wrapper
+    assert 'mark("browser.transition_failed"' in wrapper
+    assert 'revealInternalTransition("target_error")' in wrapper
+
+
 def test_runtime_event_has_trace_boundaries_and_redacts_sensitive_metadata(monkeypatch):
     captured = []
     monkeypatch.setattr(runtime, "_enqueue", captured.append)
@@ -331,6 +344,9 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert 'mark("browser.transition_visible"' in wrapper
     assert 'mark("browser.transition_ready"' in wrapper
     assert 'mark("browser.transition_timeout"' in wrapper
+    assert 'event.data.type === "costerly:transition-failed"' in wrapper
+    assert 'mark("browser.transition_failed"' in wrapper
+    assert 'revealInternalTransition("target_error")' in wrapper
     assert 'concealInternalTransition(pendingTransition.name)' in wrapper
     assert '"upload_to_profile"' in wrapper
     assert '"profile_to_upload"' in wrapper
@@ -437,7 +453,7 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert 'type: "costerly:transition-click"' in ready_signal
     assert 'control.closest(".objects-pricing-review-button")' in ready_signal
     assert 'control.closest(".object-detail-footer-button--secondary")' in ready_signal
-    assert 'control.closest(".st-key-header_last_estimate")' in ready_signal
+    assert 'hasControlKey("header_last_estimate")' in ready_signal
     assert 'file_review_to_objects: "objects"' in ready_signal
     assert 'last_estimate: "file_review"' in ready_signal
     assert 'objects_to_file_review: "file_review"' in ready_signal
@@ -452,6 +468,8 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert "cycleId," in ready_signal
     assert 'type: "costerly:transition-visible"' in ready_signal
     assert 'type: "costerly:transition-styled"' in ready_signal
+    assert 'type: "costerly:transition-failed"' in ready_signal
+    assert "target_render_exception" in ready_signal
     assert "new MutationObserver(reportIfVisible)" in ready_signal
     assert "const styledTargetReady = () =>" in ready_signal
     assert "function reportFileReviewStyled(transitionId)" in ready_signal

@@ -25,7 +25,7 @@ def apply_upload_css() -> None:
             top: calc(var(--app-header-top) - var(--app-content-top) - 16px);
         }
 
-        .stApp:has(.upload-screen-active) [data-testid="stLayoutWrapper"]:has(.st-key-costerly_header_controls) {
+        .stApp:has(.upload-screen-active) [data-testid="stLayoutWrapper"]:has([class*="st-key-costerly_header_controls"]) {
             position: relative !important;
             order: 20 !important;
             left: 50vw;
@@ -35,7 +35,7 @@ def apply_upload_css() -> None:
             justify-content: center !important;
         }
 
-        .stApp:has(.upload-screen-active) .st-key-costerly_header_controls {
+        .stApp:has(.upload-screen-active) [class*="st-key-costerly_header_controls"] {
             position: static !important;
             top: auto !important;
             right: auto !important;
@@ -46,18 +46,18 @@ def apply_upload_css() -> None:
         }
 
         .stApp:has(.upload-screen-active)
-        .st-key-costerly_header_controls [data-testid="stHorizontalBlock"] {
+        [class*="st-key-costerly_header_controls"] [data-testid="stHorizontalBlock"] {
             gap: 8px !important;
             height: 32px !important;
         }
 
         .stApp:has(.upload-screen-active)
-        .st-key-costerly_header_controls [data-testid="stVerticalBlock"] {
+        [class*="st-key-costerly_header_controls"] [data-testid="stVerticalBlock"] {
             min-height: 32px !important;
         }
 
         .stApp:has(.upload-screen-active)
-        .st-key-costerly_header_controls button {
+        [class*="st-key-costerly_header_controls"] button {
             height: 32px !important;
             min-height: 32px !important;
             max-height: 32px !important;
@@ -81,7 +81,7 @@ def apply_upload_css() -> None:
         }
 
         .stApp:has(.upload-screen-active)
-        [data-testid="stVerticalBlock"]:has(> [data-testid="stLayoutWrapper"] .st-key-costerly_header_controls) {
+        [data-testid="stVerticalBlock"]:has(> [data-testid="stLayoutWrapper"] [class*="st-key-costerly_header_controls"]) {
             gap: 0 !important;
         }
 

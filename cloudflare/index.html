@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>costerly.ai</title>
-    <meta name="costerly-wrapper-version" content="v3.12.1-r2-price-source-feedback" />
+    <meta name="costerly-wrapper-version" content="v3.12.1-r3-transition-fail-open" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
@@ -103,7 +103,7 @@
     </div>
     <script>
       (() => {
-        const BUILD_VERSION = "3.12.1-r2";
+        const BUILD_VERSION = "3.12.1-r3";
         const startedAt = performance.now();
         const traceId = crypto.randomUUID();
         const timeline = [];
@@ -537,6 +537,37 @@
               });
               if (ready) persistTimeline();
             }, 15000);
+            if (ready) persistTimeline();
+            return;
+          }
+          if (
+            event.origin === appOrigin &&
+            event.data &&
+            event.data.type === "costerly:transition-failed" &&
+            typeof event.data.transitionId === "string"
+          ) {
+            const transitionIndex = pendingTransitions.findIndex(
+              (item) => item.id === event.data.transitionId
+            );
+            if (transitionIndex < 0) return;
+            const pendingTransition = pendingTransitions[transitionIndex];
+            pendingTransitions.splice(transitionIndex, 1);
+            window.clearTimeout(pendingTransition.timeoutId);
+            window.clearTimeout(pendingTransition.recoveryTimerId);
+            mark("browser.transition_failed", {
+              status: "error",
+              duration_ms: performance.now() - pendingTransition.startedAt,
+              metadata: {
+                transition: pendingTransition.name,
+                transition_id: pendingTransition.id,
+                source_screen: pendingTransition.sourceScreen,
+                target_screen: pendingTransition.targetScreen,
+                reason: safeRouteValue(event.data.reason) || "target_render_error",
+              },
+            });
+            if (maskedInternalTransitions.has(pendingTransition.name)) {
+              revealInternalTransition("target_error");
+            }
             if (ready) persistTimeline();
             return;
           }

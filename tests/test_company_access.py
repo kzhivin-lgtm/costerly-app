@@ -1139,12 +1139,12 @@ def test_upload_dashboard_has_compact_centered_navigation_and_preserves_logo():
     assert "transform: translateX(-50%);" in css
     assert "height: 32px !important;" in css
     assert "padding: 0 9px !important;" in css
-    assert '[data-testid="stVerticalBlock"]:has(> [data-testid="stLayoutWrapper"] .st-key-costerly_header_controls)' in css
+    assert '[data-testid="stVerticalBlock"]:has(> [data-testid="stLayoutWrapper"] [class*="st-key-costerly_header_controls"])' in css
     assert "gap: 0 !important;" in css
     assert "font-size: 24px;" in css
 
     base_css = (Path(__file__).parents[1] / "styles/base.py").read_text()
-    assert ".stApp .st-key-costerly_header_controls div[data-testid=\"stButton\"] button" in base_css
+    assert ".stApp [class*=\"st-key-costerly_header_controls\"] div[data-testid=\"stButton\"] button" in base_css
 
 
 def test_upload_to_profile_navigation_runs_before_render_without_explicit_rerun():

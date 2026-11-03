@@ -851,8 +851,8 @@ def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signal
     assert "function visibleProgressNode(stage)" in source
     assert "writeProgress(percent)" in source
     assert "syncForecastFromStage(stage)" in source
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_21" in source
-    assert "costerly-upload-runtime-v1121-migrated" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_22" in source
+    assert "costerly-upload-runtime-v1122-migrated" in source
     assert "parentWindow.location.reload();" in source
     assert "function finalizationState(stage)" in source
     assert "function advanceFinalization(state)" in source
@@ -889,7 +889,7 @@ def test_processing_cycle_persists_ocr_page_count_for_future_forecasts():
 def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():
     source = getsource(install_upload_interaction_guards)
 
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_21" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_22" in source
     assert "function uploadScreenIsActive()" in source
     assert "document.querySelector('.upload-screen-active')" in source
     assert "if (!uploadScreenIsActive()) return;" in source

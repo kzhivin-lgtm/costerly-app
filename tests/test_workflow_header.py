@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from streamlit.errors import StreamlitDuplicateElementKey
+
+from ui import app_header
 from ui.layout import post_upload_header_html
 from ui.object_detail_view import hero_html
 
@@ -11,6 +14,42 @@ def test_workflow_header_mark_precedes_the_full_title():
     assert 'class="workflow-title-primary"' in html
     assert 'class="workflow-title-mark"' in html
     assert 'class="workflow-title-text">File Review</span>' in html
+
+
+def test_header_controls_recover_from_a_stale_streamlit_container_key(monkeypatch):
+    """A target screen remains actionable after Streamlit rejects a stale rail."""
+    rendered_keys: list[str] = []
+
+    class Column:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    class Container(Column):
+        pass
+
+    def container(*, key):
+        if key == "costerly_header_controls":
+            raise StreamlitDuplicateElementKey("stale key")
+        assert key == "costerly_header_controls_recovery"
+        return Container()
+
+    monkeypatch.setattr(app_header.st, "container", container)
+    monkeypatch.setattr(app_header.st, "columns", lambda count: [Column() for _ in range(count)])
+    monkeypatch.setattr(
+        app_header.st,
+        "button",
+        lambda _label, *, key, **_kwargs: rendered_keys.append(key),
+    )
+
+    app_header.render_account_header_controls(
+        on_profile=lambda: None,
+        on_sign_out=lambda: None,
+    )
+
+    assert rendered_keys == ["open_company_account_recovery", "company_sign_out_recovery"]
 
 
 def test_object_detail_keeps_black_label_and_lilac_object_name():
