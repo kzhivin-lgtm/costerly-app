@@ -33,6 +33,7 @@ not an internal immutable fact-contract suffix.
 | V4.25 | `484c531` | Resolver uses Company Catalog first, then Israel Reference, and only then A. Sheet planning is aggregate-area estimation with 10% offcut allowance, not a finished-panel fit gate. Required Material and Purchase Quantity are persisted editable inputs |
 | V4.26 | `cbac71f` | Material-table input presentation: required units sit inside their editable field, purchase units stack type above dimensions, purchase quantity carries no duplicated unit, and C/I/A markers have a durable visual gap before the material name |
 | V4.27 | `80e71f0` | Restore Profile-owned locked material allowances: Consumables and Packaging use primary material cost, while Paint consumables use coating material cost |
+| V4.28 | `4e87892` | New Estimate clears the durable workflow URL immediately and Object Detail warms completed read-only snapshots. First uncached Review parallelizes independent reads; every edit, approval, recalculation and new Estimate invalidates the snapshot |
 
 Rule from 2026-11-02: every subsequent Estimation deployment receives the next
 sequential V4 release number in its commit message, change note, deployment

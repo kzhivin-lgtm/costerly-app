@@ -465,7 +465,7 @@ Acceptance: a live authenticated File Review → New Estimate transition records
 one `browser.transition_ready` or `browser.transition_styled`, one Python run,
 and no client timeout.
 
-IN PROGRESS, V6.59, Object Detail screen-read repair, 2026-11-03:
+IMPLEMENTED, pending production interaction witness, Estimation V4.28, Object Detail screen-read repair, 2026-11-03:
 [verified] A completed Object Review had no detail cache and loaded object,
 lines, material plan, facts, and company settings in a serial request chain.
 The bounded repair clears the stale outer Object route as soon as New Estimate
