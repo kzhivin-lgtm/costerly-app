@@ -379,28 +379,75 @@ def _render_object_detail_navigation_bridges(data: dict[str, object]) -> None:
             )
 
 
-def _prefetch_completed_object_details(
+def _prepare_completed_object_detail_reviews(
     *, estimate_id: str | None, company_id: str, data: dict[str, object],
-) -> None:
-    """Warm finished detail snapshots after Objects is visible, never before it."""
-    if not estimate_id or not bool(data.get("material_plan_ready")):
-        return
+) -> dict[str, object]:
+    """Make Review interactive only after its Object Detail snapshot is warm.
+
+    An individual object can become reviewable while another estimation task or
+    the estimate-wide material plan is still running.  That global state must
+    not postpone the object-specific read.  The timed Objects fragment calls
+    this on the same refresh that first sees the terminal object row.
+    """
+    if not estimate_id:
+        return data
     estimate_key = str(estimate_id)
     cache = st.session_state.setdefault("object_detail_data_cache", {})
     dirty_estimates = st.session_state.setdefault("object_detail_data_cache_dirty", set())
     futures = st.session_state.setdefault("object_detail_prefetch_futures", {})
-    for row in data.get("rows") or []:
+    failed_prefetches = st.session_state.setdefault("object_detail_prefetch_failed", set())
+    prepared_rows: list[dict[str, object]] = []
+    for source_row in data.get("rows") or []:
+        row = dict(source_row)
         object_id = str(row.get("object_key") or "")
         if not object_id or objects_pricing.row_status(row) not in {"completed", "review_required"}:
+            prepared_rows.append(row)
             continue
         cache_key = (estimate_key, object_id)
-        if (cache_key in cache and estimate_key not in dirty_estimates) or cache_key in futures:
+        if cache_key in cache and estimate_key not in dirty_estimates:
+            row["review_ready"] = True
+            prepared_rows.append(row)
             continue
-        futures[cache_key] = submit_object_detail_prefetch(
-            estimate_id=estimate_key,
-            object_id=object_id,
-            company_id=str(company_id),
-        )
+
+        prefetch = futures.get(cache_key)
+        if prefetch is None:
+            if cache_key in failed_prefetches:
+                # The speculative read already failed once. Do not keep a
+                # completed estimate permanently disabled or retry on every
+                # fragment refresh. Object Detail retains its normal explicit
+                # read and error path when the user chooses to continue.
+                row["review_ready"] = True
+                prepared_rows.append(row)
+                continue
+            futures[cache_key] = submit_object_detail_prefetch(
+                estimate_id=estimate_key,
+                object_id=object_id,
+                company_id=str(company_id),
+            )
+            row["review_ready"] = False
+            prepared_rows.append(row)
+            continue
+
+        if not prefetch.done():
+            row["review_ready"] = False
+            prepared_rows.append(row)
+            continue
+
+        try:
+            cache[cache_key] = prefetch.result()
+            dirty_estimates.discard(estimate_key)
+            failed_prefetches.discard(cache_key)
+            futures.pop(cache_key, None)
+            row["review_ready"] = True
+        except Exception:
+            # A speculative read never blocks a completed estimate. Avoid an
+            # unbounded fragment retry; the explicit Object Detail path has
+            # its established fallback read and error handling.
+            futures.pop(cache_key, None)
+            failed_prefetches.add(cache_key)
+            row["review_ready"] = True
+        prepared_rows.append(row)
+    return {**data, "rows": prepared_rows}
 
 
 def _complete_final_approval(*, company_id: str, run_id: str, estimate_id: str) -> None:
@@ -529,7 +576,9 @@ def _render_objects_table_content(
 
 
 @st.fragment(run_every=1.5)
-def _render_live_objects_content(*, estimate_id: str, run_id: str | None) -> None:
+def _render_live_objects_content(
+    *, estimate_id: str, run_id: str | None, company_id: str,
+) -> None:
     """Safely refresh persisted Estimation rows without mutating React-owned DOM."""
     future_before = st.session_state.get("estimation_batch_future")
     _consume_estimation_future()
@@ -550,11 +599,20 @@ def _render_live_objects_content(*, estimate_id: str, run_id: str | None) -> Non
         screen_state = _current_objects_state(estimate_id)
     else:
         screen_state = _persisted_objects_state(estimate_id)
+    prepared_data = _prepare_completed_object_detail_reviews(
+        estimate_id=estimate_id,
+        company_id=company_id,
+        data=_data_with_progress(screen_state.data, estimate_id),
+    )
     with st.container(key="objects_live_pricing"):
         _render_objects_table_content(
             estimate_id=estimate_id,
             run_id=run_id,
-            screen_state=screen_state,
+            screen_state=ObjectsScreenState(
+                data=prepared_data,
+                data_error=screen_state.data_error,
+                cache_warning=screen_state.cache_warning,
+            ),
         )
 
 
@@ -592,9 +650,22 @@ def render_objects_screen(
     if _final_approval_ready(screen_state.data):
         _load_existing_proposal_url(company_id=company_id, estimate_id=estimate_id)
     if estimate_id and isinstance(st.session_state.get("estimation_batch_future"), Future):
-        _render_live_objects_content(estimate_id=str(estimate_id), run_id=run_id)
+        _render_live_objects_content(
+            estimate_id=str(estimate_id),
+            run_id=run_id,
+            company_id=company_id,
+        )
     else:
         st.session_state.pop("objects_live_poll_estimate_id", None)
+        screen_state = ObjectsScreenState(
+            data=_prepare_completed_object_detail_reviews(
+                estimate_id=estimate_id,
+                company_id=company_id,
+                data=_data_with_progress(screen_state.data, estimate_id),
+            ),
+            data_error=screen_state.data_error,
+            cache_warning=screen_state.cache_warning,
+        )
         _render_objects_table_content(
             estimate_id=estimate_id,
             run_id=run_id,
@@ -604,13 +675,12 @@ def render_objects_screen(
     # Actions and JavaScript runtimes remain outside the timed fragment. They
     # are installed once per full render and cannot flicker or be replaced by a
     # progress-only refresh.
-    action_data = _data_with_progress(screen_state.data, estimate_id)
-    _render_object_detail_navigation_bridges(action_data)
-    _prefetch_completed_object_details(
+    action_data = _prepare_completed_object_detail_reviews(
         estimate_id=estimate_id,
         company_id=company_id,
-        data=action_data,
+        data=_data_with_progress(screen_state.data, estimate_id),
     )
+    _render_object_detail_navigation_bridges(action_data)
     _render_objects_actions(
         company_id=company_id,
         run_id=run_id,

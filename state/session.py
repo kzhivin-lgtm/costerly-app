@@ -115,6 +115,9 @@ def init_state() -> None:
     if "object_detail_prefetch_futures" not in st.session_state:
         st.session_state.object_detail_prefetch_futures = {}
 
+    if "object_detail_prefetch_failed" not in st.session_state:
+        st.session_state.object_detail_prefetch_failed = set()
+
 
 def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
     """Remove every estimate-scoped session value before a new upload cycle.
@@ -197,6 +200,7 @@ def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
     st.session_state.object_detail_data_cache = {}
     st.session_state.object_detail_data_cache_dirty = set()
     st.session_state.object_detail_prefetch_futures = {}
+    st.session_state.object_detail_prefetch_failed = set()
 
     for key in list(st.session_state):
         if str(key).startswith((
@@ -246,6 +250,11 @@ def invalidate_object_detail_cache(estimate_id: str) -> None:
         if isinstance(key, tuple) and key and key[0] == estimate_key:
             # A running read is harmless, but its snapshot is no longer valid.
             futures.pop(key, None)
+    failed_prefetches = st.session_state.setdefault("object_detail_prefetch_failed", set())
+    failed_prefetches.difference_update(
+        key for key in list(failed_prefetches)
+        if isinstance(key, tuple) and key and key[0] == estimate_key
+    )
 
 
 def go_to(screen: str) -> None:

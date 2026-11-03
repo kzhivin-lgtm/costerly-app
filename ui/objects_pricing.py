@@ -194,6 +194,14 @@ def _review_action_html(
 ) -> str:
     status = _row_status(row)
     if status in {"completed", "review_required"}:
+        # Review is a readiness promise, not merely an estimation-status
+        # label. The Objects fragment warms the immutable detail snapshot
+        # before this link becomes interactive.
+        if not bool(row.get("review_ready", True)):
+            return (
+                '<span class="objects-pricing-review-button objects-pricing-review-button--disabled" '
+                'aria-disabled="true">Preparing Review</span>'
+            )
         action_label = "Done" if row.get("reviewed") else "Review"
         action_class = " objects-pricing-review-button--done" if row.get("reviewed") else ""
         object_id = quote(str(row.get("object_key") or ""))
