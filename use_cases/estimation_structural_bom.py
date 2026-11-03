@@ -21,7 +21,7 @@ _ROLES = {
 }
 _MATERIAL_ROLES = {
     "visible_sheet", "internal_sheet", "backing_sheet", "worktop_sheet",
-    "finish", "drawer_slide", "leg",
+    "finish", "drawer_slide", "hinge", "gas_lift", "leg",
 }
 _FAMILY_PREFERENCE = {
     "visible_sheet": ("mdf_hdf", "melamine_faced_particleboard", "particleboard"),
@@ -30,6 +30,8 @@ _FAMILY_PREFERENCE = {
     "worktop_sheet": ("mdf_hdf", "melamine_faced_particleboard", "particleboard"),
     "finish": ("paint_lacquer_stain",),
     "drawer_slide": ("hardware_drawer_slide",),
+    "hinge": ("hardware_hinge",),
+    "gas_lift": ("hardware_lift_system",),
     "leg": ("purchased_fabricated_component",),
 }
 _CONSTRUCTION_MATERIAL_NAMES = {
@@ -40,6 +42,8 @@ _CONSTRUCTION_MATERIAL_NAMES = {
     "timber_solid_wood_panel": "Solid wood panel",
     "paint_lacquer_stain": "Paint finish",
     "hardware_drawer_slide": "Drawer slide",
+    "hardware_hinge": "Cabinet hinge",
+    "hardware_lift_system": "Gas lift",
     "purchased_fabricated_component": "Furniture leg",
     "metal_round_bar_rod_wire": "Furniture leg",
 }
@@ -293,7 +297,7 @@ def _required_dimensions(assembly_role: str) -> set[str]:
 
 
 def _recoverable_assemblies(extraction: Mapping[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
-    """Discard only incomplete assembly candidates and retain usable demand.
+    """Discard only invalid assembly identities, never incomplete geometry.
 
     A visual model can recognise several large assemblies but lack one required
     dimension for a secondary one. That is an auditable omission, not a reason
@@ -312,20 +316,74 @@ def _recoverable_assemblies(extraction: Mapping[str, Any]) -> tuple[list[dict[st
             omissions.append({"kind": "assembly", "identifier": assembly_id or f"assembly-{index}", "reason_code": "invalid_identity_or_role"})
             continue
         seen.add(assembly_id)
-        dimensions = raw.get("dimensions")
-        if not isinstance(dimensions, Mapping):
-            omissions.append({"kind": "assembly", "identifier": assembly_id, "reason_code": "dimensions_not_an_object"})
-            continue
-        missing = sorted(name for name in _required_dimensions(role) if dimensions.get(name) is None)
-        if missing:
-            omissions.append({"kind": "assembly", "identifier": assembly_id, "reason_code": "missing_required_dimensions"})
-            continue
         normalized = dict(raw)
+        if not isinstance(raw.get("dimensions"), Mapping):
+            normalized["dimensions"] = {}
+            omissions.append({"kind": "assembly", "identifier": assembly_id, "reason_code": "dimensions_defaulted"})
         if not isinstance(raw.get("counts"), Mapping):
             normalized["counts"] = {}
             omissions.append({"kind": "assembly", "identifier": assembly_id, "reason_code": "invalid_counts_defaulted"})
         usable.append(normalized)
     return usable, omissions
+
+
+_DIMENSION_DEFAULTS_MM = {"width": 600.0, "height": 720.0, "depth": 600.0}
+_FRONT_KINDS = {"drawer_front", "hinged_facade", "lift_up_facade"}
+_FRONT_ARRANGEMENTS = {"stacked", "side_by_side"}
+
+
+def _front_groups(raw: Mapping[str, Any], *, assembly_role: str, counts: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Normalise visual front topology, with a backward-compatible fallback.
+
+    The visual stage identifies fronts.  This function deliberately does not
+    select hardware or a shop-fitting system, it only gives the deterministic
+    composer the topology needed for approximate quantities.
+    """
+    groups: list[dict[str, Any]] = []
+    for index, candidate in enumerate(raw.get("front_groups") or [], start=1):
+        if not isinstance(candidate, Mapping):
+            continue
+        kind = str(candidate.get("front_kind") or "")
+        if kind not in _FRONT_KINDS:
+            continue
+        quantity = _optional_count(
+            candidate.get("quantity"), field=f"front_groups.{index}.quantity", default=1, zero_is_meaningful=True,
+        )
+        if quantity <= 0:
+            continue
+        arrangement = str(candidate.get("arrangement") or "stacked")
+        if arrangement not in _FRONT_ARRANGEMENTS:
+            arrangement = "stacked"
+        groups.append({"front_kind": kind, "quantity": quantity, "arrangement": arrangement})
+    if groups:
+        return groups
+    drawer_count = _optional_count(counts.get("drawers"), field="counts.drawers", default=0, zero_is_meaningful=True)
+    facade_count = _optional_count(counts.get("facades"), field="counts.facades", default=0, zero_is_meaningful=True)
+    if assembly_role == "drawer_bank" and drawer_count:
+        return [{"front_kind": "drawer_front", "quantity": drawer_count, "arrangement": "stacked"}]
+    if facade_count:
+        return [{"front_kind": "hinged_facade", "quantity": facade_count, "arrangement": "side_by_side"}]
+    return []
+
+
+def _front_size(*, width: float, height: float, group: Mapping[str, Any]) -> tuple[float, float]:
+    quantity = int(group["quantity"])
+    if group["arrangement"] == "side_by_side":
+        return max(width / quantity, 1), height
+    return width, max(height / quantity, 1)
+
+
+def _slide_depth_mm(cabinet_depth_mm: float) -> int:
+    """Use the owner-approved depth minus 100 mm, rounded down by 100 mm."""
+    return max(100, int((max(cabinet_depth_mm - 100, 100)) // 100) * 100)
+
+
+def _hinges_per_facade(height_mm: float) -> int:
+    if height_mm > 2000:
+        return 4
+    if height_mm > 600:
+        return 3
+    return 2
 
 
 def _valid_model_refs(value: object, *, allowed: set[str]) -> list[str]:
@@ -453,10 +511,35 @@ def build_structural_assembly_bom(
     requirement_ids: dict[tuple[str, str, str], str] = {}
     usable_assemblies, structural_omissions = _recoverable_assemblies(extraction)
 
+    # A drawing often states one cabinet depth once and leaves its connected
+    # peers unlabelled.  We only copy a peer value when it is the sole value
+    # for that axis in this object.  Otherwise the construction default below
+    # is safer than pretending unrelated cabinets share a depth.
+    peer_dimensions: dict[str, list[tuple[float, list[str]]]] = {"width": [], "height": [], "depth": []}
+    for candidate in usable_assemblies:
+        raw_dimensions = candidate.get("dimensions") or {}
+        if not isinstance(raw_dimensions, Mapping):
+            continue
+        for axis in peer_dimensions:
+            if raw_dimensions.get(axis) is None:
+                continue
+            try:
+                value, refs, _basis, _reason = _dimension(
+                    raw_dimensions[axis], default_unit=document_unit, allowed=allowed_refs,
+                    field=f"peer.dimensions.{axis}", force_document_unit=False,
+                )
+            except ValueError:
+                continue
+            if refs:
+                peer_dimensions[axis].append((value, refs))
+
     if document_unit_reason:
         assumptions.append(f"Document unit: {document_unit_reason}")
 
-    def material_requirement(raw_materials: Mapping[str, Mapping[str, Any]], role: str) -> str:
+    def material_requirement(
+        raw_materials: Mapping[str, Mapping[str, Any]], role: str,
+        *, extra_specification: Mapping[str, Any] | None = None,
+    ) -> str:
         raw = raw_materials.get(role) or {}
         if not isinstance(raw, Mapping):
             raw = {}
@@ -476,6 +559,8 @@ def build_structural_assembly_bom(
         if basis == "construction_assumption" and refs:
             raise ValueError(f"material role {role} assumption may not claim source evidence")
         specification = dict(raw.get("specification") or {}) if isinstance(raw.get("specification"), Mapping) else {}
+        if extra_specification:
+            specification.update(dict(extra_specification))
         thickness = specification.get("thickness_mm")
         if role in {"visible_sheet", "internal_sheet", "backing_sheet", "worktop_sheet"}:
             if thickness is None:
@@ -494,6 +579,20 @@ def build_structural_assembly_bom(
             "quantity": None, "unit": None,
         })
         return requirement_id
+
+    def add_hardware(*, raw_materials: Mapping[str, Mapping[str, Any]], role: str, quantity: int, unit: str, extra_specification: Mapping[str, Any] | None = None) -> None:
+        if quantity <= 0:
+            return
+        # Narrow test fixtures may intentionally omit the hardware family.
+        # Production catalog context contains these global families.  Do not
+        # substitute sheet material for a fitting merely to manufacture demand.
+        if not any(family in allowed_families for family in _FAMILY_PREFERENCE[role]):
+            assumptions.append(f"No enabled family for {role}; hardware demand retained in topology only.")
+            return
+        requirement_id = material_requirement(raw_materials, role, extra_specification=extra_specification)
+        material = next(item for item in materials if item["requirement_id"] == requirement_id)
+        material["quantity"] = (material.get("quantity") or 0) + quantity * object_quantity
+        material["unit"] = unit
 
     def add_part(*, assembly_id: str, role: str, requirement_id: str, quantity: int, length: float, width: float, refs: list[str], basis: str, reason: str | None) -> None:
         if quantity <= 0 or length <= 0 or width <= 0:
@@ -518,18 +617,35 @@ def build_structural_assembly_bom(
         dimensions = raw.get("dimensions") or {}
         if not isinstance(dimensions, Mapping):
             raise ValueError(f"{assembly_id}.dimensions must be an object")
-        parsed_dimensions = {
-            name: _dimension(
-                dimensions.get(name), default_unit=document_unit, allowed=allowed_refs,
-                field=f"{assembly_id}.dimensions.{name}",
-                force_document_unit=False,
-            )
-            for name in ("width", "height", "depth")
-            if dimensions.get(name) is not None
-        }
         required_dimensions = _required_dimensions(assembly_role)
-        if not required_dimensions.issubset(parsed_dimensions):
-            raise ValueError(f"{assembly_id} lacks dimensions required by {assembly_role}")
+        parsed_dimensions: dict[str, tuple[float, list[str], str, str | None]] = {}
+        for name in ("width", "height", "depth"):
+            raw_dimension = dimensions.get(name)
+            if raw_dimension is not None:
+                try:
+                    parsed_dimensions[name] = _dimension(
+                        raw_dimension, default_unit=document_unit, allowed=allowed_refs,
+                        field=f"{assembly_id}.dimensions.{name}", force_document_unit=False,
+                    )
+                    continue
+                except ValueError:
+                    pass
+            if name not in required_dimensions:
+                continue
+            known_values = peer_dimensions[name]
+            unique_values = {round(value, 3) for value, _refs_value in known_values}
+            if len(unique_values) == 1 and known_values:
+                peer_value, peer_refs = known_values[0]
+                parsed_dimensions[name] = (
+                    peer_value, peer_refs, "derived",
+                    f"Derived from the only source-supported {name} shared by this object's cabinet blocks.",
+                )
+            else:
+                parsed_dimensions[name] = (
+                    _DIMENSION_DEFAULTS_MM[name], [], "assumption",
+                    f"Default cabinet {name}: {_DIMENSION_DEFAULTS_MM[name]:g} mm because the drawing does not resolve it.",
+                )
+            assumptions.append(f"{assembly_id} {name}: {parsed_dimensions[name][3]}")
         material_roles = {
             str(item.get("role") or ""): item
             for item in raw.get("material_roles") or []
@@ -544,18 +660,35 @@ def build_structural_assembly_bom(
         depth = parsed_dimensions.get("depth", (0, [], "", None))[0]
         dimension_basis = "source" if all(value[2] == "source" for value in parsed_dimensions.values()) else "derived"
         dimension_reason = next((value[3] for value in parsed_dimensions.values() if value[3]), None)
+        front_groups = _front_groups(raw, assembly_role=assembly_role, counts=counts)
+        hardware_topology: list[dict[str, Any]] = []
+        for group in front_groups:
+            quantity = int(group["quantity"])
+            _front_width, front_height = _front_size(width=width, height=height, group=group)
+            if group["front_kind"] == "drawer_front":
+                hardware_topology.append({
+                    "role": "drawer_slide", "quantity": quantity, "purchase_unit": "set",
+                    "depth_mm": _slide_depth_mm(depth),
+                })
+            elif group["front_kind"] == "hinged_facade":
+                hardware_topology.append({
+                    "role": "hinge", "quantity": quantity * _hinges_per_facade(front_height), "purchase_unit": "piece",
+                })
+            elif group["front_kind"] == "lift_up_facade":
+                hardware_topology.append({"role": "gas_lift", "quantity": quantity, "purchase_unit": "set"})
         assemblies.append({
             "assembly_id": assembly_id, "assembly_role": assembly_role, "quantity": assembly_quantity,
             "evidence_refs": assembly_refs, "dimension_refs": dimensions_refs,
+            "front_groups": front_groups, "hardware": hardware_topology,
         })
         visible = None
         internal = None
         backing = None
         internal_thickness = 0.0
-        facade_count = _optional_count(
-            counts.get("facades"), field=f"{assembly_id}.counts.facades", default=0, zero_is_meaningful=True,
-        )
-        if assembly_role in {"drawer_bank", "vertical_panel", "facade_set"} or facade_count:
+        facade_count = sum(group["quantity"] for group in front_groups if group["front_kind"] != "drawer_front")
+        exposure = raw.get("exposure") if isinstance(raw.get("exposure"), Mapping) else {}
+        exposed_sides = {side for side in ("left", "right") if bool(exposure.get(side))}
+        if assembly_role in {"drawer_bank", "vertical_panel", "facade_set"} or facade_count or exposed_sides:
             visible = material_requirement(material_roles, "visible_sheet")
         if assembly_role in {"box_carcass", "drawer_bank", "shelf_stack"}:
             internal = material_requirement(material_roles, "internal_sheet")
@@ -573,7 +706,12 @@ def build_structural_assembly_bom(
 
         if assembly_role in {"box_carcass", "drawer_bank", "shelf_stack"}:
             assert internal is not None and backing is not None
-            panel("carcass_side", internal, 2, height, depth)
+            for side in ("left", "right"):
+                if side in exposed_sides:
+                    assert visible is not None
+                    panel("carcass_side_exposed", visible, 1, height, depth)
+                else:
+                    panel("carcass_side", internal, 1, height, depth)
             panel("carcass_top_bottom", internal, 2, width, depth)
             panel("carcass_back", backing, 1, width, height)
             shelf_count = _optional_count(
@@ -582,30 +720,58 @@ def build_structural_assembly_bom(
             panel("shelf", internal, shelf_count, max(width - 2 * internal_thickness, 1), depth)
         if assembly_role == "drawer_bank":
             assert visible is not None
-            drawer_count = _optional_count(
-                counts.get("drawers"), field=f"{assembly_id}.counts.drawers", default=1, zero_is_meaningful=False,
-            )
-            drawer_width = max(width / drawer_count, 1)
-            drawer_height = max(height / drawer_count, 1)
-            panel("drawer_front", visible, drawer_count, drawer_width, drawer_height)
-            panel("drawer_bottom", internal, drawer_count, max(drawer_width - 2 * internal_thickness, 1), max(depth - internal_thickness, 1))
-            panel("drawer_side", internal, drawer_count * 2, max(depth - internal_thickness, 1), max(drawer_height - 2 * internal_thickness, 1))
-            panel("drawer_back", internal, drawer_count, max(drawer_width - 2 * internal_thickness, 1), max(drawer_height - 2 * internal_thickness, 1))
-            if "drawer_slide" in material_roles:
-                requirement_id = material_requirement(material_roles, "drawer_slide")
-                material = next(item for item in materials if item["requirement_id"] == requirement_id)
-                material["quantity"] = (material.get("quantity") or 0) + drawer_count * assembly_quantity * object_quantity
-                material["unit"] = "piece"
+            drawer_groups = [group for group in front_groups if group["front_kind"] == "drawer_front"]
+            if not drawer_groups:
+                drawer_groups = [{"front_kind": "drawer_front", "quantity": 1, "arrangement": "stacked"}]
+            for group in drawer_groups:
+                drawer_width, drawer_height = _front_size(width=width, height=height, group=group)
+                drawer_count = int(group["quantity"])
+                panel("drawer_front", visible, drawer_count, drawer_width, drawer_height)
+                panel("drawer_bottom", internal, drawer_count, max(drawer_width - 2 * internal_thickness, 1), max(depth - internal_thickness, 1))
+                panel("drawer_side", internal, drawer_count * 2, max(depth - internal_thickness, 1), max(drawer_height - 2 * internal_thickness, 1))
+                panel("drawer_back", internal, drawer_count, max(drawer_width - 2 * internal_thickness, 1), max(drawer_height - 2 * internal_thickness, 1))
+                add_hardware(
+                    raw_materials=material_roles, role="drawer_slide", quantity=drawer_count * assembly_quantity,
+                    unit="set", extra_specification={"depth_mm": _slide_depth_mm(depth)},
+                )
         elif assembly_role == "box_carcass" and facade_count:
             assert visible is not None
-            panel("facade", visible, facade_count, width / facade_count, height)
+            for group in front_groups:
+                if group["front_kind"] == "drawer_front":
+                    continue
+                front_width, front_height = _front_size(width=width, height=height, group=group)
+                panel("facade", visible, int(group["quantity"]), front_width, front_height)
+                if group["front_kind"] == "hinged_facade":
+                    add_hardware(
+                        raw_materials=material_roles, role="hinge",
+                        quantity=int(group["quantity"]) * _hinges_per_facade(front_height) * assembly_quantity,
+                        unit="piece",
+                    )
+                elif group["front_kind"] == "lift_up_facade":
+                    add_hardware(
+                        raw_materials=material_roles, role="gas_lift",
+                        quantity=int(group["quantity"]) * assembly_quantity, unit="set",
+                    )
         elif assembly_role == "vertical_panel":
             assert visible is not None
             panel("vertical_panel", visible, 1, width, height)
         elif assembly_role == "facade_set":
             assert visible is not None
-            count = facade_count or 1
-            panel("facade", visible, count, width / count, height)
+            groups = front_groups or [{"front_kind": "hinged_facade", "quantity": 1, "arrangement": "side_by_side"}]
+            for group in groups:
+                front_width, front_height = _front_size(width=width, height=height, group=group)
+                panel("facade", visible, int(group["quantity"]), front_width, front_height)
+                if group["front_kind"] == "hinged_facade":
+                    add_hardware(
+                        raw_materials=material_roles, role="hinge",
+                        quantity=int(group["quantity"]) * _hinges_per_facade(front_height) * assembly_quantity,
+                        unit="piece",
+                    )
+                elif group["front_kind"] == "lift_up_facade":
+                    add_hardware(
+                        raw_materials=material_roles, role="gas_lift",
+                        quantity=int(group["quantity"]) * assembly_quantity, unit="set",
+                    )
         elif assembly_role in {"table", "countertop"}:
             worktop = material_requirement(material_roles, "worktop_sheet") if "worktop_sheet" in material_roles else material_requirement(material_roles, "visible_sheet")
             top_count = _optional_count(
@@ -616,10 +782,7 @@ def build_structural_assembly_bom(
             leg_count = _optional_count(
                 counts.get("legs"), field=f"{assembly_id}.counts.legs", default=2, zero_is_meaningful=False,
             )
-            requirement_id = material_requirement(material_roles, "leg")
-            material = next(item for item in materials if item["requirement_id"] == requirement_id)
-            material["quantity"] = (material.get("quantity") or 0) + leg_count * assembly_quantity * object_quantity
-            material["unit"] = "piece"
+            add_hardware(raw_materials=material_roles, role="leg", quantity=leg_count * assembly_quantity, unit="piece")
         if "finish" in material_roles:
             requirement_id = material_requirement(material_roles, "finish")
             material = next(item for item in materials if item["requirement_id"] == requirement_id)
@@ -637,7 +800,7 @@ def build_structural_assembly_bom(
             continue
         secondary_ids.add(secondary_id)
         role = str(raw.get("role") or "")
-        if role not in {"drawer_slide", "leg"}:
+        if role not in {"drawer_slide", "hinge", "gas_lift", "leg"}:
             structural_omissions.append({"kind": "secondary_item", "identifier": secondary_id, "reason_code": "unsupported_role"})
             continue
         try:
@@ -650,10 +813,8 @@ def build_structural_assembly_bom(
         if not isinstance(material, Mapping):
             structural_omissions.append({"kind": "secondary_item", "identifier": secondary_id, "reason_code": "missing_material"})
             continue
-        requirement_id = material_requirement({role: material}, role)
-        target = next(item for item in materials if item["requirement_id"] == requirement_id)
-        target["quantity"] = (target.get("quantity") or 0) + count * object_quantity
-        target["unit"] = "piece"
+        unit = "piece" if role in {"hinge", "leg"} else "set"
+        add_hardware(raw_materials={role: material}, role=role, quantity=count, unit=unit)
 
     if not parts and not any(item.get("quantity") for item in materials):
         raise ValueError("structural BOM has no material demand")
@@ -664,7 +825,7 @@ def build_structural_assembly_bom(
     preview_refs = sorted(ref for ref in allowed_refs if ref.startswith("storage://"))
     return {
         "contract_version": ASSEMBLY_BOM_V1,
-        "composition_version": "structural_bom_v4_24",
+        "composition_version": "structural_bom_v5_1",
         "input_id": str(input_row.get("input_id") or ""), "object_input_revision": int(input_row.get("object_input_revision") or 1),
         "run_id": str(payload.get("run_id") or ""), "company_id": str(payload.get("company_id") or ""),
         "object_id": str(object_payload.get("object_id") or ""), "object_name": str(object_payload.get("object_name") or ""),

@@ -3431,6 +3431,26 @@ then an approved correction to the earliest missing Family/Pricing-Key/
 physical-compatibility constraint. Full evidence:
 `notes/ESTIMATION_V4_24_TERMINAL_CYCLE_CHECKPOINT_2026_11_02.md`.
 
+ACTIVE, P0, USER APPROVED, 3.17.4.4 Estimation V5.1 Cabinet Block and
+Hardware Composer, 2026-11-03: move the active approximate-construction
+contract from V4.24's incomplete-assembly omission rule to non-blocking Cabinet
+Blocks. The immutable Estimation input remains the start of the cycle and
+Detection/V4.29 navigation remain protected. A missing envelope axis must
+resolve as explicit source, auditable peer-derived value, or named construction
+default, never silently disappear or stop cost composition. Default hidden and
+visible board thickness is 18 mm where source does not state it. One block has
+front topology, exposure and nested hardware: every drawer front creates one
+drawer-slide purchase set with `floor((depth_mm - 100) / 100) * 100`; each
+hinged facade creates individual hinges using `<=600:2, >600:3, >2000:4`; each
+lift-up facade creates one gas-lift purchase set. Visible fronts/exposed ends,
+hidden carcass, backing, finish and worktop remain distinct material demands.
+The model recognises topology only. Composer derives conventional parts and
+hardware. Resolver/Engine alone choose catalog and price. Acceptance: Lev_1
+and Lev_2 rule tests pass, a fresh V5.1 BOM is persisted with explicit units
+and assumptions, and a controlled cabinet/kitchen witness reaches terminal
+C/I/A cost without a Detection or V4.29 navigation regression. Contract:
+`notes/ESTIMATION_V5_1_CABINET_BLOCK_CONTRACT_2026_11_03.md`.
+
 IMPLEMENTED, pending fresh production witness, V4.27, P0, Profile material allowances: restore three locked formula rows after
 the Material Plan allocation. Consumables and Packaging must use the saved Pricing Cost
 percentages against primary material cost. Paint consumables must use the saved percentage

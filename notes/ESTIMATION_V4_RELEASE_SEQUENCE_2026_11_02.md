@@ -36,10 +36,13 @@ not an internal immutable fact-contract suffix.
 | V4.28 | `4e87892` | New Estimate clears the durable workflow URL immediately and Object Detail warms completed read-only snapshots. First uncached Review parallelizes independent reads; every edit, approval, recalculation and new Estimate invalidates the snapshot |
 | V4.29 | `f891e56` | A visible Upload marker no longer proves New Estimate succeeded. The outer wrapper replaces the old workflow URL immediately and, if no real Upload app-ready follows within 900 ms, replaces only the stale iframe with a clean Upload route |
 
-Rule from 2026-11-02: every subsequent Estimation deployment receives the next
-sequential V4 release number in its commit message, change note, deployment
-report and any protected checkpoint. A runtime correction stays in its own
-numbered release even when it reuses an existing immutable contract version.
+Rule from 2026-11-02 applied through V4.29: each V4 runtime correction received
+the next sequential V4 release number. Starting 2026-11-03, the owner approved
+the V5.1 Cabinet Block and Hardware Composer as the new Estimation construction
+line. Its contract and acceptance record are
+`notes/ESTIMATION_V5_1_CABINET_BLOCK_CONTRACT_2026_11_03.md`. V4.29 remains a
+separate, pending authenticated-navigation witness and is not retroactively
+renumbered.
 
 The detailed V4.27-V4.29 implementation checkpoint and seamless-chat handoff
 are `notes/ESTIMATION_V4_29_NAVIGATION_AND_OBJECT_DETAIL_IMPLEMENTATION_CHECKPOINT_2026_11_03.md`

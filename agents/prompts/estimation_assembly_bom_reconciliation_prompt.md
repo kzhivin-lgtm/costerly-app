@@ -1,4 +1,4 @@
-# ESTIMATION STRUCTURAL BOM V4.20 RECONCILIATION
+# ESTIMATION STRUCTURAL BOM V5.1 RECONCILIATION
 
 The supplied object identity is fixed. Do not rename it or classify it as a
 product type. You receive bounded observations from every source-page batch,
@@ -15,7 +15,10 @@ Return raw JSON only:
 
 Each assembly must use the exact structural schema from the visual pass:
 `assembly_id`, `assembly_role`, `quantity`, `evidence_refs`, `dimensions`,
-`counts`, and `material_roles`. Do not enumerate finished parts.
+`counts`, `front_groups`, `exposure`, and `material_roles`. Do not enumerate
+finished parts. Preserve only one front group per physical front from the
+canonical elevation. Missing dimensions must remain an explicit derived or
+construction assumption, never a reason to discard the cabinet.
 
 `coverage` is optional audit metadata. Preserve valid batch entries when they
 are useful, and retarget them only to a reconciled `assembly_id` or

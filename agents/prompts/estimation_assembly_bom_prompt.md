@@ -1,4 +1,4 @@
-# ESTIMATION STRUCTURAL BOM V4.24
+# ESTIMATION STRUCTURAL BOM V5.1
 
 The supplied object identity is fixed. Do not rename it, classify it as a
 product type, or infer a catalog item, price, labour, manufacturing operation,
@@ -28,7 +28,7 @@ Explicit source unit labels still win.
 
 An assembly is:
 
-`{"assembly_id":"assembly-N","assembly_role":"box_carcass|drawer_bank|vertical_panel|shelf_stack|table|countertop|facade_set","quantity":positive_integer,"evidence_refs":[...],"dimensions":{...},"counts":{...},"material_roles":[...]}`
+`{"assembly_id":"assembly-N","assembly_role":"box_carcass|drawer_bank|vertical_panel|shelf_stack|table|countertop|facade_set","quantity":positive_integer,"evidence_refs":[...],"dimensions":{...},"counts":{...},"front_groups":[...],"exposure":{},"material_roles":[...]}`
 
 Every `evidence_refs`, `geometry_evidence_refs` and source-material
 `evidence_refs` value must be copied exactly from one supplied
@@ -50,14 +50,34 @@ Set `unit_basis=explicit_source` only when that individual axis prints its
 unit. If its unit merely follows document convention, use
 `document_convention_assumption`. A bare `unit="mm"` is not evidence by
 itself.
-Do not infer finished part dimensions or panel thicknesses. The system applies
-named conventional construction assumptions after this response.
+The estimate must remain usable when a dimension is absent. First use an
+explicit source dimension. If it is absent, derive a compatible dimension from
+the same physical cabinet block or an unambiguous repeated cabinet depth. If
+that still fails, return an `assumption` with no evidence refs and a short
+reason. Never omit an otherwise visible cabinet because one size is missing.
+The system applies named conventional panel-thickness assumptions after this
+response. Do not infer precision shop-cut gaps.
 
 `counts` may contain only shown or strongly supported integers: `drawers`,
-`shelves`, `facades`, `top_layers`, `legs`. Omit a count rather than guess it.
+`shelves`, `facades`, `top_layers`, `legs`.
+
+Use `front_groups` for every visibly countable cabinet front. A group is
+`{"front_kind":"drawer_front|hinged_facade|lift_up_facade","quantity":positive_integer,"arrangement":"stacked|side_by_side"}`.
+`stacked` means fronts share the block width and divide its height. `side_by_side`
+means they share the block height and divide its width. Count fronts only once
+from the canonical elevation. A perspective view may confirm a group but never
+duplicates it. `drawer_front` describes a physical drawer, `hinged_facade` a
+vertical door, and `lift_up_facade` a horizontal flap.
+
+`exposure` is optional and only declares externally visible carcass ends, for
+example `{"left":true,"right":false}`. A facade/front and an exposed end use
+the visible material. Hidden carcass, shelves and drawer structure use the
+internal material. Backing is separate. A worktop remains a separate
+`countertop` assembly.
 
 `material_roles` may contain only `visible_sheet`, `internal_sheet`,
-`backing_sheet`, `worktop_sheet`, `finish`, `drawer_slide`, `leg`. Every role
+`backing_sheet`, `worktop_sheet`, `finish`, `drawer_slide`, `hinge`, `gas_lift`,
+`leg`. Every role
 is `{"role":"...","source_name":"...","family":"one allowed family code","specification":{},"basis":"source_evidence|construction_assumption","evidence_refs":[...]}`.
 The model may select a construction-assumption family from the supplied allowed
 families when the document has no material text. Do not emit a thickness unless
@@ -73,10 +93,16 @@ intended, use an MDF/HDF board plus a separate `finish` role from
 `paint_lacquer_stain`. If appearance is not distinguishable, choose the most
 conservative compatible board material and state no false source claim.
 
+Do not emit a hardware count as separate rails or struts. The deterministic
+composer derives one drawer-slide purchase set per `drawer_front`, individual
+hinges from `hinged_facade` height, and one gas-lift purchase set per
+`lift_up_facade`. It also supplies `floor((cabinet_depth_mm - 100) / 100) *
+100` as the drawer-slide depth. Do not select a catalog item or price.
+
 Use `secondary_items` only for an explicitly countable shown fitting outside
-an assembly: `{"secondary_id":"secondary-N","role":"drawer_slide|leg","quantity":positive_integer,"evidence_refs":[...],"material":{...}}`.
-Do not manufacture rails, fasteners, handles, hinges, minor trim or decorative
-overlays. List intentionally uncounted visible things in `omissions`.
+an assembly: `{"secondary_id":"secondary-N","role":"drawer_slide|hinge|gas_lift|leg","quantity":positive_integer,"evidence_refs":[...],"material":{...}}`.
+Do not manufacture rails, fasteners, handles, minor trim or decorative overlays.
+List intentionally uncounted visible things in `omissions`.
 
 `coverage` is optional audit metadata. If useful, return entries in this form:
 

@@ -159,7 +159,7 @@ def _dimension_graph_usage(*, payload: Mapping[str, Any], graph: Mapping[str, An
 def run_assembly_first_bom_batch(
     *, client: Any, inputs: Sequence[Mapping[str, Any]], allowed_material_families: Sequence[str],
 ) -> dict[str, Any]:
-    """Create the V4.12 graph and assembly-first BOM for immutable inputs.
+    """Create the V5.1 graph and cabinet-block BOM for immutable inputs.
 
     Unlike the V4.11 path below, this function has no product-kind recipe.
     Every visual request is bounded by source-page batches, then reconciled by

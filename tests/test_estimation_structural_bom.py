@@ -56,8 +56,90 @@ def test_structural_drawer_bank_expands_into_real_panels_and_discrete_slides():
         "carcass_side", "carcass_top_bottom", "carcass_back", "drawer_front", "drawer_bottom", "drawer_side", "drawer_back",
     }
     assert next(part for part in result["parts"] if part["component_role"] == "carcass_side")["length_mm"] == 430
-    assert next(material for material in result["materials"] if material["family"] == "hardware_drawer_slide")["quantity"] == 3
+    slide = next(material for material in result["materials"] if material["family"] == "hardware_drawer_slide")
+    assert slide["quantity"] == 3
+    assert slide["unit"] == "set"
+    assert slide["specification"]["depth_mm"] == 600
+    drawer_front = next(part for part in result["parts"] if part["component_role"] == "drawer_front")
+    assert (drawer_front["length_mm"], drawer_front["width_mm"]) == (1580, pytest.approx(143.333))
     assert result["omissions"] == ["unshown fasteners"]
+
+
+def test_cabinet_block_composes_front_hardware_by_topology_and_purchase_unit():
+    row = _input()
+    result = build_structural_assembly_bom(
+        input_row=row,
+        dimension_graph=build_dimension_graph(input_row=row),
+        allowed_material_families=[
+            "mdf_hdf", "melamine_faced_particleboard", "fibreboard_hardboard",
+            "hardware_drawer_slide", "hardware_hinge", "hardware_lift_system",
+        ],
+        extraction={
+            "document_unit": {"unit": "cm", "basis": "explicit_source", "evidence_refs": [OCR_REF]},
+            "assemblies": [
+                {
+                    "assembly_id": "lower-drawers", "assembly_role": "drawer_bank", "quantity": 1,
+                    "evidence_refs": [REF],
+                    "dimensions": {"width": _dimension(90), "height": _dimension(72), "depth": _dimension(65)},
+                    "counts": {"drawers": 5},
+                    "front_groups": [{"front_kind": "drawer_front", "quantity": 5, "arrangement": "stacked"}],
+                    "material_roles": [],
+                },
+                {
+                    "assembly_id": "upper", "assembly_role": "box_carcass", "quantity": 1,
+                    "evidence_refs": [REF],
+                    "dimensions": {"width": _dimension(120), "height": _dimension(110), "depth": _dimension(35)},
+                    "counts": {},
+                    "front_groups": [
+                        {"front_kind": "hinged_facade", "quantity": 3, "arrangement": "side_by_side"},
+                        {"front_kind": "lift_up_facade", "quantity": 2, "arrangement": "side_by_side"},
+                    ],
+                    "exposure": {"left": True, "right": False},
+                    "material_roles": [],
+                },
+            ],
+            "secondary_items": [], "omissions": [],
+        },
+    )
+
+    by_family = {material["family"]: material for material in result["materials"]}
+    assert by_family["hardware_drawer_slide"]["quantity"] == 5
+    assert by_family["hardware_drawer_slide"]["unit"] == "set"
+    assert by_family["hardware_drawer_slide"]["specification"]["depth_mm"] == 500
+    assert by_family["hardware_hinge"]["quantity"] == 9
+    assert by_family["hardware_hinge"]["unit"] == "piece"
+    assert by_family["hardware_lift_system"]["quantity"] == 2
+    assert by_family["hardware_lift_system"]["unit"] == "set"
+    assert any(part["component_role"] == "carcass_side_exposed" for part in result["parts"])
+    upper = next(assembly for assembly in result["assemblies"] if assembly["assembly_id"] == "upper")
+    assert upper["hardware"] == [
+        {"role": "hinge", "quantity": 9, "purchase_unit": "piece"},
+        {"role": "gas_lift", "quantity": 2, "purchase_unit": "set"},
+    ]
+
+
+def test_missing_cabinet_dimension_uses_auditable_peer_or_construction_default():
+    row = _input()
+    result = build_structural_assembly_bom(
+        input_row=row,
+        dimension_graph=build_dimension_graph(input_row=row),
+        allowed_material_families=["melamine_faced_particleboard", "fibreboard_hardboard"],
+        extraction={
+            "document_unit": {"unit": "cm", "basis": "explicit_source", "evidence_refs": [OCR_REF]},
+            "assemblies": [
+                {"assembly_id": "known", "assembly_role": "box_carcass", "quantity": 1, "evidence_refs": [REF],
+                 "dimensions": {"width": _dimension(80), "height": _dimension(72), "depth": _dimension(65)},
+                 "counts": {}, "material_roles": []},
+                {"assembly_id": "peer", "assembly_role": "box_carcass", "quantity": 1, "evidence_refs": [REF],
+                 "dimensions": {"width": _dimension(40), "height": _dimension(72)},
+                 "counts": {}, "material_roles": []},
+            ], "secondary_items": [], "omissions": [],
+        },
+    )
+
+    peer = next(assembly for assembly in result["assemblies"] if assembly["assembly_id"] == "peer")
+    assert peer["assembly_role"] == "box_carcass"
+    assert any("peer depth: Derived from the only source-supported depth" in item for item in result["assumptions"])
 
 
 def test_structural_composer_does_not_create_unused_sheet_demands_for_a_table():
@@ -199,7 +281,7 @@ def test_coverage_audits_an_unassigned_visible_region_without_suppressing_bom():
     }
 
 
-def test_incomplete_secondary_assembly_is_omitted_without_discarding_usable_demand():
+def test_incomplete_secondary_assembly_is_composed_with_an_auditable_default():
     row = _input()
     result = build_structural_assembly_bom(
         input_row=row,
@@ -223,10 +305,9 @@ def test_incomplete_secondary_assembly_is_omitted_without_discarding_usable_dema
     )
 
     assert result["status"] == "ready"
-    assert [assembly["assembly_id"] for assembly in result["assemblies"]] == ["table"]
-    assert result["structural_omissions"] == [{
-        "kind": "assembly", "identifier": "incomplete-facades", "reason_code": "missing_required_dimensions",
-    }]
+    assert [assembly["assembly_id"] for assembly in result["assemblies"]] == ["table", "incomplete-facades"]
+    assert any("incomplete-facades height: Default cabinet height" in item for item in result["assumptions"])
+    assert result["structural_omissions"] == []
 
 
 def test_optional_zero_counts_do_not_reject_a_usable_table_assembly():
