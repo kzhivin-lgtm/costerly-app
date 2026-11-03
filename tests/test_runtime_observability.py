@@ -389,6 +389,13 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "must-not-leak" not in wrapper + function
 
 
+def test_new_estimate_clears_outer_workflow_route_before_upload_renders():
+    wrapper = (ROOT / "cloudflare/index.html").read_text()
+
+    assert 'if (pendingTransition.name === "new_estimate")' in wrapper
+    assert 'syncOuterRoute({screen: "upload"}, "upload");' in wrapper
+
+
 def test_streamlit_ready_message_carries_server_build_version():
     source = (ROOT / "ui/js_guards.py").read_text()
     app_source = (ROOT / "app.py").read_text()

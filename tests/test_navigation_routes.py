@@ -289,6 +289,18 @@ def test_file_review_navigation_uses_widget_callbacks_not_a_second_rerun():
     assert "st.rerun()" not in continue_source
 
 
+def test_file_review_terminal_actions_precede_deferred_poll_fragment():
+    """A terminal poll rerun must never prevent Continue from reaching the DOM."""
+    source = Path("screens/file_review.py").read_text()
+    review_screen = source.split("def render_file_review_screen", 1)[1].split(
+        "def _object_edits_snapshot", 1
+    )[0]
+
+    assert review_screen.index('"CONTINUE TO OBJECTS ESTIMATION"') < review_screen.index(
+        "_poll_file_review_deferred_work(run_id)"
+    )
+
+
 def test_active_estimation_opens_seeded_objects_without_waiting_for_supabase(monkeypatch):
     st.session_state.clear()
     st.session_state.estimation_batch_future = Future()

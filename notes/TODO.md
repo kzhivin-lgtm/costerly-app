@@ -465,6 +465,21 @@ Acceptance: a live authenticated File Review → New Estimate transition records
 one `browser.transition_ready` or `browser.transition_styled`, one Python run,
 and no client timeout.
 
+IN PROGRESS, V6.59, Object Detail screen-read repair, 2026-11-03:
+[verified] A completed Object Review had no detail cache and loaded object,
+lines, material plan, facts, and company settings in a serial request chain.
+The bounded repair clears the stale outer Object route as soon as New Estimate
+is clicked, preserves the native server callback, reads the independent first
+Review projections concurrently, and prefetches ready Object Details through a
+two-worker read-only queue after Objects is already visible. Snapshots are
+discarded after any detail edit, approval, estimation completion, recalculation,
+or New Estimate. The prefetch result is advisory: a failed or missing snapshot
+falls back to the normal authorized read. Local targeted checks: 20 passed;
+the wider route and detail group: 71 passed, with two pre-existing unrelated
+static-observability failures. Pending acceptance: live authenticated timing for
+both New Estimate → Upload and Objects → Review, with no stale route, no empty
+File Review terminal state, and no stale detail after an edit.
+
 CHECKPOINT, owner-accepted, V6.38-V6.40 quantity and Document Identity:
 `notes/DETECTION_V6_40_DOCUMENT_IDENTITY_QUANTITY_CHECKPOINT_2026_10_27.md`.
 The ordinary `300119_f2.pdf` witness published `ПОДДОН=5` and `СТЕЙШН=1` from

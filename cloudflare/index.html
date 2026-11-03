@@ -442,6 +442,13 @@
               timeoutId: null,
             };
             pendingTransitions.push(pendingTransition);
+            if (pendingTransition.name === "new_estimate") {
+              // New Estimate deliberately abandons the prior workflow context.
+              // The server callback remains authoritative for state, but the
+              // browser must not keep presenting an old Object URL while the
+              // fresh Upload screen is rendering.
+              syncOuterRoute({screen: "upload"}, "upload");
+            }
             concealInternalTransition(pendingTransition.name);
             mark("browser.transition_click", {
               metadata: {

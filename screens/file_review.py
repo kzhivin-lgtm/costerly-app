@@ -1044,7 +1044,6 @@ def render_file_review_screen(
     install_workflow_header_alignment_guard()
 
     _render_file_review_dynamic_content(run_id)
-    _poll_file_review_deferred_work(run_id)
 
     col_back, col_next = st.columns(2, gap="small")
 
@@ -1066,6 +1065,11 @@ def render_file_review_screen(
             "objects": data["objects"],
         },
     )
+
+    # This fragment can issue a full rerun when deferred work becomes terminal.
+    # Keep it after the two terminal actions so that an interrupted File Review
+    # render cannot leave a completed new run without any way to continue.
+    _poll_file_review_deferred_work(run_id)
 
 
 

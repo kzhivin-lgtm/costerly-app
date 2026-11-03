@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from typing import Any
 
@@ -60,9 +61,11 @@ _MATERIAL_POLICY_SPECS = (
 )
 
 
-def _assert_screen_estimate_access(client: Any, estimate_id: str) -> None:
+def _assert_screen_estimate_access(
+    client: Any, estimate_id: str, *, company_id: str | None = None,
+) -> None:
     if company_auth_enabled():
-        assert_estimate_owned(client, estimate_id, get_company_id())
+        assert_estimate_owned(client, estimate_id, company_id or get_company_id())
 
 
 def _material_plan_status(row: Any) -> str:
@@ -389,20 +392,34 @@ def _objects_project_pricing(
     )
 
 
-def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, Any]:
+def load_object_detail_data(
+    *, estimate_id: str, object_id: str, company_id: str | None = None,
+) -> dict[str, Any]:
     """Load one object's persisted estimation lines for Object Detail."""
     client = get_supabase_client()
-    _assert_screen_estimate_access(client, estimate_id)
-    objects_df = fetch_rfq_object_estimates(client, estimate_id)
-    lines_df = fetch_rfq_estimate_lines_for_object(
-        client,
-        estimate_id=estimate_id,
-        object_id=object_id,
-    )
-    try:
-        material_plan_df = fetch_rfq_estimate_material_plan(client, estimate_id)
-    except Exception:
-        material_plan_df = None
+    _assert_screen_estimate_access(client, estimate_id, company_id=company_id)
+
+    # These three projections are independent.  Object Detail used to make
+    # them serially, so first Review paid their combined network latency.
+    # They are read-only and use the same request-scoped client already shared
+    # safely with the estimation runtime.
+    with ThreadPoolExecutor(max_workers=3, thread_name_prefix="object-detail-read") as executor:
+        objects_future = executor.submit(fetch_rfq_object_estimates, client, estimate_id)
+        lines_future = executor.submit(
+            fetch_rfq_estimate_lines_for_object,
+            client,
+            estimate_id=estimate_id,
+            object_id=object_id,
+        )
+        material_plan_future = executor.submit(
+            fetch_rfq_estimate_material_plan, client, estimate_id,
+        )
+        objects_df = objects_future.result()
+        lines_df = lines_future.result()
+        try:
+            material_plan_df = material_plan_future.result()
+        except Exception:
+            material_plan_df = None
     material_plan_row = (
         material_plan_df.iloc[0].to_dict()
         if material_plan_df is not None and not material_plan_df.empty
@@ -421,24 +438,31 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
     object_row = matching.iloc[0].to_dict()
     canonical_quantity = _number(object_row.get("quantity"), 1)
     facts_result = {}
-    for agent_version in (
-        ESTIMATION_ACTIVE_BOM_AGENT_VERSION,
-        ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION,
-    ):
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="object-detail-read") as executor:
+        facts_future = executor.submit(
+            fetch_latest_estimation_facts_by_object,
+            client,
+            run_id=str(object_row.get("run_id") or ""),
+            agent_version=ESTIMATION_ACTIVE_BOM_AGENT_VERSION,
+        )
+        settings_future = executor.submit(
+            fetch_company_overhead_settings, client, str(object_row.get("company_id")),
+        )
+        try:
+            facts_result = facts_future.result().get(object_id) or {}
+        except Exception:
+            facts_result = {}
+        settings = _first_row(settings_future.result())
+    if not facts_result:
         try:
             facts_result = fetch_latest_estimation_facts_by_object(
                 client,
                 run_id=str(object_row.get("run_id") or ""),
-                agent_version=agent_version,
+                agent_version=ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION,
             ).get(object_id) or {}
         except Exception:
             facts_result = {}
-        if facts_result:
-            break
     facts_payload = facts_result.get("facts_payload") or {}
-    settings = _first_row(
-        fetch_company_overhead_settings(client, str(object_row.get("company_id")))
-    )
     vat_percent = _number(settings.get("vat_percent"), 18)
     employer_load_percent = _number(settings.get("employer_load_percent"), 25)
 

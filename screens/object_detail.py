@@ -23,6 +23,7 @@ from use_cases.estimation import (
     load_object_detail_data,
 )
 from state.company_auth import company_auth_enabled
+from state.session import invalidate_object_detail_cache
 
 
 @dataclass(frozen=True)
@@ -104,12 +105,40 @@ def _approve_after_pending_changes(context: ObjectDetailContext) -> bool:
 
 
 def _load_object_detail_or_render_error(context: ObjectDetailContext) -> dict[str, object] | None:
+    cache_key = (context.estimate_id, context.object_id)
+    cache = st.session_state.setdefault("object_detail_data_cache", {})
+    dirty_estimates = st.session_state.setdefault("object_detail_data_cache_dirty", set())
+    if cache_key in cache and context.estimate_id not in dirty_estimates:
+        return cache[cache_key]
+
+    prefetches = st.session_state.setdefault("object_detail_prefetch_futures", {})
+    prefetch = prefetches.pop(cache_key, None)
     try:
-        return load_object_detail_data(
-            estimate_id=context.estimate_id,
-            object_id=context.object_id,
+        data = (
+            prefetch.result()
+            if prefetch is not None
+            else load_object_detail_data(
+                estimate_id=context.estimate_id,
+                object_id=context.object_id,
+            )
         )
+        cache[cache_key] = data
+        dirty_estimates.discard(context.estimate_id)
+        return data
     except Exception as exc:
+        # A speculative read must never make a valid Review unavailable. Retry
+        # once on the normal request path before showing a real load failure.
+        if prefetch is not None:
+            try:
+                data = load_object_detail_data(
+                    estimate_id=context.estimate_id,
+                    object_id=context.object_id,
+                )
+                cache[cache_key] = data
+                dirty_estimates.discard(context.estimate_id)
+                return data
+            except Exception as retry_exc:
+                exc = retry_exc
         st.error(f"Could not load Object Detail: {exc}")
         _back_to_objects_button()
         return None
@@ -202,6 +231,7 @@ def _consume_pending_object_detail_edit() -> bool:
         field=str(pending.get("field") or ""),
         value=str(pending.get("value") or ""),
     )
+    invalidate_object_detail_cache(estimate_id)
     _mark_objects_estimation_dirty(estimate_id)
     return True
 
@@ -222,6 +252,7 @@ def _consume_pending_object_detail_snapshot() -> bool:
         run_id=str(st.session_state.get("current_run_id") or ""),
         edits=edits if isinstance(edits, list) else [],
     )
+    invalidate_object_detail_cache(estimate_id)
     _mark_objects_estimation_dirty(estimate_id)
     return bool(edits)
 
@@ -288,4 +319,5 @@ def _approve_current_object_and_return(
 def _mark_objects_estimation_dirty(estimate_id: str) -> None:
     if not estimate_id:
         return
+    invalidate_object_detail_cache(estimate_id)
     st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)

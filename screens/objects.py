@@ -19,12 +19,14 @@ from ui.screen_transition import (
     OBJECTS_MARKER_ID,
 )
 from use_cases.estimation import load_objects_estimation_data
+from use_cases.object_detail_runtime import submit_object_detail_prefetch
 from use_cases.final_approval import final_approval
 from use_cases.estimation_progress import clear_estimate_progress, get_estimate_progress
 from use_cases.proposal_pdf import load_estimate_proposal_url
 from db.supabase_client import get_supabase_client
 from db.workflow_routes import ensure_object_workflow_route_tokens, workflow_route_key
 from state.company_auth import company_auth_enabled
+from state.session import invalidate_object_detail_cache
 
 
 @dataclass(frozen=True)
@@ -56,6 +58,7 @@ def _consume_estimation_future() -> None:
         estimate_id = st.session_state.get("current_estimate_id")
         if estimate_id:
             st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
+            invalidate_object_detail_cache(str(estimate_id))
     except Exception as exc:
         st.session_state.last_estimation_error = str(exc)
     finally:
@@ -376,6 +379,30 @@ def _render_object_detail_navigation_bridges(data: dict[str, object]) -> None:
             )
 
 
+def _prefetch_completed_object_details(
+    *, estimate_id: str | None, company_id: str, data: dict[str, object],
+) -> None:
+    """Warm finished detail snapshots after Objects is visible, never before it."""
+    if not estimate_id or not bool(data.get("material_plan_ready")):
+        return
+    estimate_key = str(estimate_id)
+    cache = st.session_state.setdefault("object_detail_data_cache", {})
+    dirty_estimates = st.session_state.setdefault("object_detail_data_cache_dirty", set())
+    futures = st.session_state.setdefault("object_detail_prefetch_futures", {})
+    for row in data.get("rows") or []:
+        object_id = str(row.get("object_key") or "")
+        if not object_id or objects_pricing.row_status(row) not in {"completed", "review_required"}:
+            continue
+        cache_key = (estimate_key, object_id)
+        if (cache_key in cache and estimate_key not in dirty_estimates) or cache_key in futures:
+            continue
+        futures[cache_key] = submit_object_detail_prefetch(
+            estimate_id=estimate_key,
+            object_id=object_id,
+            company_id=str(company_id),
+        )
+
+
 def _complete_final_approval(*, company_id: str, run_id: str, estimate_id: str) -> None:
     """Freeze the estimate and keep its proposal available on Objects."""
     try:
@@ -579,6 +606,11 @@ def render_objects_screen(
     # progress-only refresh.
     action_data = _data_with_progress(screen_state.data, estimate_id)
     _render_object_detail_navigation_bridges(action_data)
+    _prefetch_completed_object_details(
+        estimate_id=estimate_id,
+        company_id=company_id,
+        data=action_data,
+    )
     _render_objects_actions(
         company_id=company_id,
         run_id=run_id,

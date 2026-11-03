@@ -106,6 +106,15 @@ def init_state() -> None:
     if "objects_estimation_cache_dirty" not in st.session_state:
         st.session_state.objects_estimation_cache_dirty = set()
 
+    if "object_detail_data_cache" not in st.session_state:
+        st.session_state.object_detail_data_cache = {}
+
+    if "object_detail_data_cache_dirty" not in st.session_state:
+        st.session_state.object_detail_data_cache_dirty = set()
+
+    if "object_detail_prefetch_futures" not in st.session_state:
+        st.session_state.object_detail_prefetch_futures = {}
+
 
 def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
     """Remove every estimate-scoped session value before a new upload cycle.
@@ -185,6 +194,9 @@ def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
     st.session_state.file_review_data_cache = retained_file_review_cache
     st.session_state.objects_estimation_data_cache = {}
     st.session_state.objects_estimation_cache_dirty = set()
+    st.session_state.object_detail_data_cache = {}
+    st.session_state.object_detail_data_cache_dirty = set()
+    st.session_state.object_detail_prefetch_futures = {}
 
     for key in list(st.session_state):
         if str(key).startswith((
@@ -217,6 +229,23 @@ def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
 def set_screen(screen: str) -> None:
     """Change the active screen from a widget callback before the next render."""
     st.session_state.screen = screen
+
+
+def invalidate_object_detail_cache(estimate_id: str) -> None:
+    """Discard read-only Object Detail snapshots after estimate data changes."""
+    estimate_key = str(estimate_id or "")
+    if not estimate_key:
+        return
+    st.session_state.setdefault("object_detail_data_cache_dirty", set()).add(estimate_key)
+    cache = st.session_state.setdefault("object_detail_data_cache", {})
+    for key in list(cache):
+        if isinstance(key, tuple) and key and key[0] == estimate_key:
+            cache.pop(key, None)
+    futures = st.session_state.setdefault("object_detail_prefetch_futures", {})
+    for key in list(futures):
+        if isinstance(key, tuple) and key and key[0] == estimate_key:
+            # A running read is harmless, but its snapshot is no longer valid.
+            futures.pop(key, None)
 
 
 def go_to(screen: str) -> None:
