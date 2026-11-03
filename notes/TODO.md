@@ -525,6 +525,16 @@ resolution. Pending acceptance: fresh immutable Lev 1 witness must retain the
 720-mm drawer depth and return three 600-mm drawer-slide sets with zero hinge
 or gas-lift demand.
 
+IMPLEMENTED locally, pending production witness, Estimation V5.6.3 Calculation
+fact-version transition, 2026-11-03:
+[verified] V5.6.2 corrected Scope-to-2VN remapping but retained the V5.6
+Calculation fact version. Existing V5.6.1 facts would therefore be reused for
+the same immutable input and conceal the repaired code. V5.6.3 advances the
+Calculation fact version, so a controlled replay writes a separate immutable
+fact and the active material/object-detail readers select it. Pending
+acceptance: the fresh Lev 1 V5.6.3 witness must expose the corrected 600-mm
+slide-set result.
+
 ACTIVE, V6.59, P0, New Estimate to Upload client-transition observability:
 The evidence rejects server-side auth, Supabase, and Upload rendering as the
 source of the reported 3-4 second warm navigation: prior successful
