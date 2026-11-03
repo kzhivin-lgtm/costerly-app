@@ -547,6 +547,22 @@ Acceptance: a live authenticated File Review → New Estimate transition records
 one `browser.transition_ready` or `browser.transition_styled`, one Python run,
 and no client timeout.
 
+IMPLEMENTED locally, not deployed, V6.59 New Estimate warm-transition repair,
+2026-11-03:
+[verified] The V4.29 recovery treated a missing Upload app-ready after 900 ms
+as a dead callback. That threshold overlaps the already measured 0.5-2.0
+second normal styled-transition range, so it could destroy a live warm
+Streamlit session and force a fresh iframe load. The repair waits 2.5 seconds
+only for an explicit callback acknowledgement written by `_open_new_estimate`
+and consumed by the next app run. A real callback cancels recovery even while
+Upload is still rendering; a truly absent callback alone receives the existing
+clean-iframe fallback. Runtime events now separate callback reset time,
+callback-to-run time, browser acknowledgement, and fallback activation.
+Pending acceptance: an authenticated File Review → New Estimate click must
+reach Upload without `browser.new_estimate_iframe_recovery`; the trace must
+contain `server.new_estimate_callback_consumed` and
+`browser.new_estimate_callback_received`. No deployment was made.
+
 IMPLEMENTED, pending production interaction witness, Estimation V4.28, Object Detail screen-read repair, 2026-11-03:
 [verified] A completed Object Review had no detail cache and loaded object,
 lines, material plan, facts, and company settings in a serial request chain.

@@ -1697,12 +1697,23 @@ def _open_new_estimate() -> None:
     """Start a clean upload cycle, including when the next file is identical."""
     from state.session import reset_new_estimate_session, set_screen
 
+    callback_started_at = time.perf_counter()
     reset_new_estimate_session(clear_upload_widget=True)
+    reset_completed_at = time.perf_counter()
     # app.py restores File Review, Objects, and Object Detail from route
     # parameters during the following rerun. Clear that old workflow route
     # before changing the screen, otherwise it wins over this new upload.
     st.query_params.clear()
     set_screen("upload")
+    # Widget callbacks run before app.py creates its RuntimeTrace. Carry only
+    # timing facts into that next run so the browser can distinguish this
+    # callback from a late app-ready message belonging to the old screen.
+    callback_completed_at = time.perf_counter()
+    st.session_state._new_estimate_callback_timing = {
+        "callback_completed_epoch_ms": round(time.time() * 1000, 3),
+        "reset_session_ms": round((reset_completed_at - callback_started_at) * 1000, 3),
+        "callback_total_ms": round((callback_completed_at - callback_started_at) * 1000, 3),
+    }
 
 
 def _open_projects() -> None:

@@ -412,18 +412,31 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "must-not-leak" not in wrapper + function
 
 
-def test_new_estimate_clears_outer_route_and_recovers_a_dead_callback():
+def test_new_estimate_clears_outer_route_and_recovers_only_a_missing_callback():
     wrapper = (ROOT / "cloudflare/index.html").read_text()
 
     assert "function resetOuterRouteForNewEstimate()" in wrapper
     assert 'nextUrl.pathname = "/";' in wrapper
     assert "window.history.replaceState({costerlyRoute: true}, \"\", nextPath);" in wrapper
-    assert "const NEW_ESTIMATE_SERVER_GRACE_MS = 900;" in wrapper
+    assert "const NEW_ESTIMATE_CALLBACK_GRACE_MS = 2500;" in wrapper
     assert "function recoverNewEstimateWithFreshIframe(pendingTransition)" in wrapper
+    assert "pendingTransition.callbackReceived" in wrapper
     assert 'const recoveryUrl = new URL(frame.src);' in wrapper
     assert 'recoveryUrl.searchParams.set("screen", "upload");' in wrapper
     assert 'mark("browser.new_estimate_route_cleared"' in wrapper
+    assert 'mark("browser.new_estimate_callback_received"' in wrapper
     assert "pendingTransition.serverTargetReady = true;" in wrapper
+
+
+def test_new_estimate_callback_timing_is_carried_into_the_next_server_run():
+    company_auth = (ROOT / "state/company_auth.py").read_text()
+    app_source = (ROOT / "app.py").read_text()
+
+    assert "_new_estimate_callback_timing" in company_auth
+    assert '"callback_completed_epoch_ms"' in company_auth
+    assert '"reset_session_ms"' in company_auth
+    assert "new_estimate_callback_received=True" in app_source
+    assert '"server.new_estimate_callback_consumed"' in app_source
 
 
 def test_streamlit_ready_message_carries_server_build_version():

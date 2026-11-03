@@ -159,7 +159,12 @@
         let internalTransitionTimer = null;
         let iframeLoadAtMs = null;
         let ready = false;
-        const NEW_ESTIMATE_SERVER_GRACE_MS = 900;
+        // The former 900 ms watchdog raced ordinary warm Streamlit reruns,
+        // which historically reach a styled Upload in up to two seconds. A
+        // New Estimate fallback is valid only after the server has failed to
+        // acknowledge its callback, never merely because rendering is still
+        // in progress.
+        const NEW_ESTIMATE_CALLBACK_GRACE_MS = 2500;
         const readyRunIds = new Set();
         const pendingTransitions = [];
         const expectedScreens = {
@@ -314,7 +319,11 @@
         }
 
         function recoverNewEstimateWithFreshIframe(pendingTransition) {
-          if (pendingTransition.routeRecoveryAttempted || pendingTransition.serverTargetReady) {
+          if (
+            pendingTransition.routeRecoveryAttempted ||
+            pendingTransition.serverTargetReady ||
+            pendingTransition.callbackReceived
+          ) {
             return;
           }
           pendingTransition.routeRecoveryAttempted = true;
@@ -324,6 +333,7 @@
             metadata: {
               transition_id: pendingTransition.id,
               python_runs: pendingTransition.pythonRuns,
+              callback_received: pendingTransition.callbackReceived,
             },
           });
           // `frame.src`, unlike `data-src`, retains this outer page's trace
@@ -494,19 +504,26 @@
               pythonRuns: 0,
               timeoutId: null,
               recoveryTimerId: null,
+              callbackReceived: false,
               serverTargetReady: false,
             };
             pendingTransitions.push(pendingTransition);
             if (pendingTransition.name === "new_estimate") {
               resetOuterRouteForNewEstimate();
               // A visible Upload marker can belong to retained stale DOM. Do
-              // not consider it a reset. If the native callback has not
-              // produced a real Upload app-ready shortly, replace only the
-              // iframe with a clean Upload route and therefore a fresh
-              // Streamlit session.
+              // not consider it a reset. The callback itself records an
+              // explicit acknowledgement in the next real app-ready. Only
+              // if that acknowledgement never arrives do we replace the
+              // iframe with a clean Upload route.
+              mark("browser.new_estimate_callback_grace_started", {
+                metadata: {
+                  transition_id: pendingTransition.id,
+                  grace_ms: NEW_ESTIMATE_CALLBACK_GRACE_MS,
+                },
+              });
               pendingTransition.recoveryTimerId = window.setTimeout(() => {
                 recoverNewEstimateWithFreshIframe(pendingTransition);
-              }, NEW_ESTIMATE_SERVER_GRACE_MS);
+              }, NEW_ESTIMATE_CALLBACK_GRACE_MS);
             }
             concealInternalTransition(pendingTransition.name);
             mark("browser.transition_click", {
@@ -775,6 +792,25 @@
             }
             pendingTransitions.forEach((item) => {
               item.pythonRuns += 1;
+              if (
+                item.name === "new_estimate" &&
+                !item.callbackReceived &&
+                metadata.new_estimate_callback_received === true
+              ) {
+                item.callbackReceived = true;
+                window.clearTimeout(item.recoveryTimerId);
+                item.recoveryTimerId = null;
+                mark("browser.new_estimate_callback_received", {
+                  duration_ms: performance.now() - item.startedAt,
+                  metadata: {
+                    transition_id: item.id,
+                    python_runs: item.pythonRuns,
+                    callback_to_run_ms: metadata.new_estimate_callback_to_run_ms,
+                    reset_session_ms: metadata.new_estimate_reset_session_ms,
+                    callback_total_ms: metadata.new_estimate_callback_total_ms,
+                  },
+                });
+              }
             });
             const failedSignIn =
               screen === "login" &&

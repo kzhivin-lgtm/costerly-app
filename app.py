@@ -314,6 +314,38 @@ def main() -> None:
         python_imports_ms=round((init_started_at - _SCRIPT_STARTED_AT) * 1000, 3),
         **_RUNTIME_VERSIONS,
     )
+    new_estimate_callback_timing = st.session_state.pop(
+        "_new_estimate_callback_timing", None
+    )
+    if isinstance(new_estimate_callback_timing, dict):
+        callback_completed_epoch_ms = float(
+            new_estimate_callback_timing.get("callback_completed_epoch_ms") or 0
+        )
+        callback_to_run_ms = (
+            max(0.0, run_started_epoch_ms - callback_completed_epoch_ms)
+            if callback_completed_epoch_ms > 0
+            else None
+        )
+        reset_session_ms = float(
+            new_estimate_callback_timing.get("reset_session_ms") or 0
+        )
+        callback_total_ms = float(
+            new_estimate_callback_timing.get("callback_total_ms") or 0
+        )
+        trace.annotate(
+            new_estimate_callback_received=True,
+            new_estimate_callback_to_run_ms=callback_to_run_ms,
+            new_estimate_reset_session_ms=reset_session_ms,
+            new_estimate_callback_total_ms=callback_total_ms,
+        )
+        trace.event(
+            "server.new_estimate_callback_consumed",
+            duration_ms=callback_total_ms,
+            metadata={
+                "callback_to_run_ms": callback_to_run_ms,
+                "reset_session_ms": reset_session_ms,
+            },
+        )
     emit_completed_action(st.session_state, trace)
     trace.event(
         "server.run_start",
