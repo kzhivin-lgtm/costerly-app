@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>costerly.ai</title>
-    <meta name="costerly-wrapper-version" content="estimation-v5.6.4-drawer-depth" />
+    <meta name="costerly-wrapper-version" content="estimation-v5.6.6-display-snapshots" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
@@ -103,7 +103,7 @@
     </div>
     <script>
       (() => {
-        const BUILD_VERSION = "estimation-v5.6.4";
+        const BUILD_VERSION = "estimation-v5.6.6";
         const startedAt = performance.now();
         const traceId = crypto.randomUUID();
         const timeline = [];
@@ -506,6 +506,7 @@
               recoveryTimerId: null,
               callbackReceived: false,
               serverTargetReady: false,
+              displayCached: event.data.displayCached === true,
             };
             pendingTransitions.push(pendingTransition);
             if (pendingTransition.name === "new_estimate") {
@@ -525,7 +526,12 @@
                 recoverNewEstimateWithFreshIframe(pendingTransition);
               }, NEW_ESTIMATE_CALLBACK_GRACE_MS);
             }
-            concealInternalTransition(pendingTransition.name);
+            // A paint-ready snapshot is rendered inside the Streamlit document
+            // before its callback starts. Do not cover it with the outer mask
+            // while the real destination is being rebuilt underneath.
+            if (!pendingTransition.displayCached) {
+              concealInternalTransition(pendingTransition.name);
+            }
             mark("browser.transition_click", {
               metadata: {
                 transition: pendingTransition.name,
@@ -533,6 +539,7 @@
                 source_screen: pendingTransition.sourceScreen,
                 target_screen: pendingTransition.targetScreen,
                 cycle_id: pendingTransition.cycleId,
+                display_cached: pendingTransition.displayCached,
               },
             });
             pendingTransition.timeoutId = window.setTimeout(() => {

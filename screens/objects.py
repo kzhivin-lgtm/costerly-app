@@ -8,12 +8,15 @@ from typing import Callable
 import streamlit as st
 
 from config import get_optional_secret
+from styles.object_detail import apply_object_detail_css
 from styles.objects import apply_objects_css
 from ui.js_guards import (
+    install_workflow_display_snapshot_cache,
     install_objects_price_input_guard,
     install_workflow_header_alignment_guard,
 )
 from ui import objects_pricing
+from ui import object_detail_view
 from ui.layout import render_post_upload_header
 from ui.screen_transition import (
     OBJECTS_MARKER_ID,
@@ -476,6 +479,48 @@ def _prepare_completed_object_detail_reviews(
     return {**data, "rows": prepared_rows}
 
 
+def _install_ready_detail_display_snapshots(
+    *, estimate_id: str | None, run_id: str | None, data: dict[str, object],
+) -> None:
+    """Publish complete Detail screens to the browser before Review is enabled.
+
+    This is deliberately separate from the session-data cache.  The latter
+    removes database latency, while these snapshots cover Streamlit's DOM
+    replacement interval so clicking Review has an immediate visual result.
+    """
+    if not estimate_id:
+        return
+    cache = st.session_state.setdefault("object_detail_data_cache", {})
+    snapshots: dict[str, str] = {}
+    for row in data.get("rows") or []:
+        object_id = str(row.get("object_key") or "")
+        if not object_id or not bool(row.get("review_ready")):
+            continue
+        detail = cache.get((str(estimate_id), object_id))
+        if not isinstance(detail, dict):
+            continue
+        snapshots[object_id] = (
+            '<div class="costerly-display-snapshot-detail">'
+            '<p class="costerly-display-snapshot-note">Opening prepared review</p>'
+            + object_detail_view.hero_html(detail)
+            + object_detail_view.detail_html(
+                detail,
+                run_id=run_id or detail.get("run_id") or "",
+                estimate_id=estimate_id,
+                object_id=object_id,
+            )
+            + "</div>"
+        )
+    # The snapshot uses the exact existing Detail markup and styles.  Keep
+    # those styles present on Objects until the real Detail screen takes over.
+    if snapshots:
+        apply_object_detail_css()
+    install_workflow_display_snapshot_cache(
+        estimate_id=str(estimate_id),
+        detail_snapshots=snapshots,
+    )
+
+
 def _complete_final_approval(*, company_id: str, run_id: str, estimate_id: str) -> None:
     """Freeze the estimate and keep its proposal available on Objects."""
     try:
@@ -648,6 +693,11 @@ def _render_live_objects_content(
                 cache_warning=screen_state.cache_warning,
             ),
         )
+    _install_ready_detail_display_snapshots(
+        estimate_id=estimate_id,
+        run_id=run_id,
+        data=prepared_data,
+    )
 
 
 def render_objects_screen(
@@ -721,6 +771,11 @@ def render_objects_screen(
         estimate_id=estimate_id,
         company_id=company_id,
         data=_data_with_progress(screen_state.data, estimate_id),
+    )
+    _install_ready_detail_display_snapshots(
+        estimate_id=estimate_id,
+        run_id=run_id,
+        data=action_data,
     )
     _render_object_detail_navigation_bridges(action_data)
     _render_objects_actions(

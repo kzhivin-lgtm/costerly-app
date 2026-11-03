@@ -757,6 +757,21 @@ def test_objects_initializes_action_state_before_live_fragment_branch():
     assert state_index < live_index
 
 
+def test_review_and_plain_back_use_browser_display_snapshots_during_streamlit_reruns():
+    guard_source = Path("ui/js_guards.py").read_text()
+    objects_source = Path("screens/objects.py").read_text()
+    wrapper_source = Path("cloudflare/index.html").read_text()
+
+    assert "def install_workflow_display_snapshot_cache" in guard_source
+    assert "displayCache.showDetail(objectId)" in guard_source
+    assert "displayCache.showObjects()" in guard_source
+    assert "displayCache.releaseFor(targetScreenFor(transition))" in guard_source
+    assert "_install_ready_detail_display_snapshots(" in objects_source
+    assert "object_detail_view.detail_html(" in objects_source
+    assert "displayCached: event.data.displayCached === true" in wrapper_source
+    assert "if (!pendingTransition.displayCached)" in wrapper_source
+
+
 def test_file_review_transitions_follow_the_current_editable_summary_marker():
     source = Path("ui/js_guards.py").read_text()
 

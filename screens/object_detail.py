@@ -12,6 +12,7 @@ from styles.object_detail import apply_object_detail_css
 from ui import object_detail_view
 from ui.layout import render_screen_header
 from ui.js_guards import (
+    invalidate_workflow_display_snapshot_cache,
     install_object_detail_input_guard,
     install_workflow_header_alignment_guard,
 )
@@ -48,7 +49,8 @@ def render_object_detail_screen(
         return
 
     apply_object_detail_css()
-    _consume_pending_object_detail_changes()
+    if _consume_pending_object_detail_changes():
+        invalidate_workflow_display_snapshot_cache()
     if _approve_after_pending_changes(context):
         st.rerun()
 
@@ -90,9 +92,10 @@ def _back_to_objects_button() -> None:
     )
 
 
-def _consume_pending_object_detail_changes() -> None:
-    _consume_pending_object_detail_snapshot()
-    _consume_pending_object_detail_edit()
+def _consume_pending_object_detail_changes() -> bool:
+    snapshot_changed = _consume_pending_object_detail_snapshot()
+    edit_changed = _consume_pending_object_detail_edit()
+    return bool(snapshot_changed or edit_changed)
 
 
 def _approve_after_pending_changes(context: ObjectDetailContext) -> bool:
