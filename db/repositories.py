@@ -958,6 +958,16 @@ def replace_rfq_estimate_lines_for_object(
         ).execute()
 
 
+def upsert_rfq_estimate_lines(client: Client, *, lines: list[dict]) -> None:
+    """Persist additive deterministic lines without replacing the object BOM."""
+    if not lines:
+        return
+    client.table("rfq_estimate_lines").upsert(
+        lines,
+        on_conflict="estimate_id,line_id",
+    ).execute()
+
+
 def replace_rfq_overhead_lines_for_object(
     client: Client,
     *,

@@ -36,10 +36,12 @@ def test_object_norms_are_derived_from_linear_stock_allocations():
 
 def test_partial_material_plan_publishes_resolved_canonical_line(monkeypatch):
     updates = []
-    monkeypatch.setattr(estimation, "fetch_rfq_estimate_lines", lambda *_args: pd.DataFrame([{
+    source_lines = [{
         "section": "material", "object_id": "cabinet", "line_id": "line-1",
         "raw_agent_json": {"facts": {"requirement_id": "mdf"}},
-    }]))
+    }]
+    monkeypatch.setattr(estimation, "fetch_rfq_estimate_lines", lambda *_args: pd.DataFrame(source_lines))
+    monkeypatch.setattr(estimation, "fetch_rfq_estimate_lines_for_object", lambda *_args, **_kwargs: pd.DataFrame(source_lines))
     monkeypatch.setattr(estimation, "fetch_rfq_object_estimates", lambda *_args: pd.DataFrame([{
         "object_id": "cabinet", "quantity": 1,
     }]))
@@ -47,6 +49,8 @@ def test_partial_material_plan_publishes_resolved_canonical_line(monkeypatch):
         estimation, "update_rfq_estimate_line",
         lambda _client, **kwargs: updates.append(kwargs),
     )
+    monkeypatch.setattr(estimation, "fetch_company_overhead_settings", lambda *_args: pd.DataFrame())
+    monkeypatch.setattr(estimation, "upsert_rfq_estimate_lines", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(estimation, "_recalculate_object_estimate_totals", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(estimation, "update_rfq_object_estimate_progress", lambda *_args, **_kwargs: None)
 
@@ -70,10 +74,12 @@ def test_partial_material_plan_publishes_resolved_canonical_line(monkeypatch):
 
 def test_assumption_fallback_is_published_as_a_priced_material_line(monkeypatch):
     updates = []
-    monkeypatch.setattr(estimation, "fetch_rfq_estimate_lines", lambda *_args: pd.DataFrame([{
+    source_lines = [{
         "section": "material", "object_id": "cabinet", "line_id": "line-1",
         "raw_agent_json": {"facts": {"requirement_id": "track"}},
-    }]))
+    }]
+    monkeypatch.setattr(estimation, "fetch_rfq_estimate_lines", lambda *_args: pd.DataFrame(source_lines))
+    monkeypatch.setattr(estimation, "fetch_rfq_estimate_lines_for_object", lambda *_args, **_kwargs: pd.DataFrame(source_lines))
     monkeypatch.setattr(estimation, "fetch_rfq_object_estimates", lambda *_args: pd.DataFrame([{
         "object_id": "cabinet", "quantity": 1,
     }]))
@@ -81,6 +87,8 @@ def test_assumption_fallback_is_published_as_a_priced_material_line(monkeypatch)
         estimation, "update_rfq_estimate_line",
         lambda _client, **kwargs: updates.append(kwargs),
     )
+    monkeypatch.setattr(estimation, "fetch_company_overhead_settings", lambda *_args: pd.DataFrame())
+    monkeypatch.setattr(estimation, "upsert_rfq_estimate_lines", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(estimation, "_recalculate_object_estimate_totals", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(estimation, "update_rfq_object_estimate_progress", lambda *_args, **_kwargs: None)
 
@@ -106,6 +114,59 @@ def test_assumption_fallback_is_published_as_a_priced_material_line(monkeypatch)
     assert updates[0]["values"]["cost"] == 200
     assert updates[0]["values"]["needs_price"] is False
     assert updates[0]["values"]["raw_agent_json"]["price_source"] == "A"
+
+
+def test_material_plan_adds_locked_profile_allowances_after_priced_materials(monkeypatch):
+    updates = []
+    policy_lines = []
+    source_lines = [{
+        "section": "material", "object_id": "cabinet", "line_id": "line-1", "company_id": "company-1",
+        "cost": 1000.0, "source": "estimation_assembly_bom_v4_24",
+        "raw_agent_json": {"facts": {"requirement_id": "mdf", "family": "mdf_hdf"}},
+    }]
+    monkeypatch.setattr(estimation, "fetch_rfq_estimate_lines", lambda *_args: pd.DataFrame(source_lines))
+    monkeypatch.setattr(estimation, "fetch_rfq_estimate_lines_for_object", lambda *_args, **_kwargs: pd.DataFrame(source_lines))
+    monkeypatch.setattr(estimation, "fetch_rfq_object_estimates", lambda *_args: pd.DataFrame([
+        {"object_id": "cabinet", "quantity": 1, "company_id": "company-1"},
+    ]))
+    monkeypatch.setattr(estimation, "fetch_company_overhead_settings", lambda *_args: pd.DataFrame([{
+        "consumables_percent": 5, "paint_consumables_percent": 10, "packaging_percent": 1,
+    }]))
+    monkeypatch.setattr(estimation, "update_rfq_estimate_line", lambda _client, **kwargs: updates.append(kwargs))
+    monkeypatch.setattr(estimation, "upsert_rfq_estimate_lines", lambda _client, *, lines: policy_lines.extend(lines))
+    monkeypatch.setattr(estimation, "_recalculate_object_estimate_totals", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(estimation, "update_rfq_object_estimate_progress", lambda *_args, **_kwargs: None)
+
+    estimation.apply_material_plan_allocations(client=object(), estimate_id="estimate-1", plan_snapshot={
+        "status": "planned",
+        "object_material_costs": [{"object_id": "cabinet", "material_requirement_id": "mdf", "cost_ex_vat": 1000}],
+        "lines": [{"purchase_kind": "sheet", "allocations": [{
+            "object_id": "cabinet", "material_requirement_id": "mdf", "area_mm2": 1_000_000,
+        }]}],
+    })
+
+    assert [line["item_name"] for line in policy_lines] == ["Consumables", "Paint consumables", "Packaging"]
+    assert [line["cost"] for line in policy_lines] == [50.0, 0.0, 10.0]
+    assert all(line["source"] == "pricing_policy" for line in policy_lines)
+
+
+def test_profile_paint_consumables_use_only_coating_material_cost():
+    lines = pd.DataFrame([
+        {"section": "material", "source": "catalog", "cost": 1000,
+         "raw_agent_json": {"facts": {"family": "mdf_hdf"}}},
+        {"section": "material", "source": "catalog", "cost": 500,
+         "raw_agent_json": {"facts": {"family": "wood_coatings"}}},
+    ])
+
+    primary, coating = estimation._material_policy_base_totals(lines)
+    policies = estimation._material_policy_lines(
+        estimate_id="estimate-1", object_id="cabinet", company_id="company-1",
+        settings={"consumables_percent": 5, "paint_consumables_percent": 10, "packaging_percent": 1},
+        primary_material_total=primary, coating_material_total=coating,
+    )
+
+    assert (primary, coating) == (1500.0, 500.0)
+    assert [line["cost"] for line in policies] == [75.0, 50.0, 15.0]
 
 
 def test_project_material_purchase_rows_preserve_whole_sheet_cost():

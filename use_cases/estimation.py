@@ -21,6 +21,7 @@ from db.repositories import (
     update_rfq_object_estimate_totals,
     upsert_rfq_estimate_material_norm_override,
     upsert_rfq_estimate_material_purchase_override,
+    upsert_rfq_estimate_lines,
     mark_rfq_estimate_material_plan_stale,
     reset_rfq_object_estimate_approvals,
     upsert_rfq_estimate_shell,
@@ -49,6 +50,14 @@ _ASSUMPTION_ROLE_WORDS = frozenset({
     "cabinet", "carcass", "facade", "table", "seat", "worktop", "countertop",
     "drawer", "panel", "backing", "sheet", "leg",
 })
+_COATING_MATERIAL_FAMILIES = frozenset({
+    "wood_coatings", "metal_coatings", "paint_lacquer_stain",
+})
+_MATERIAL_POLICY_SPECS = (
+    ("consumables", "Consumables", "consumables_percent", "materials", 5.0),
+    ("paint_consumables", "Paint consumables", "paint_consumables_percent", "coatings", 10.0),
+    ("packaging", "Packaging", "packaging_percent", "materials", 1.0),
+)
 
 
 def _assert_screen_estimate_access(client: Any, estimate_id: str) -> None:
@@ -500,7 +509,7 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
 
     plan_material_rows = _material_rows_from_plan(material_plan, object_id=object_id)
     if plan_material_rows:
-        material_rows = plan_material_rows
+        material_rows = plan_material_rows + _material_policy_rows_from_lines(lines_df)
     elif not material_rows:
         material_rows = _material_rows_from_material_facts(facts_payload)
 
@@ -640,6 +649,26 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
     return rows
 
 
+def _material_policy_rows_from_lines(lines_df: Any) -> list[dict[str, Any]]:
+    """Render locked Profile formulas after the physical Material Plan rows."""
+    rows = []
+    for _, item in lines_df.iterrows():
+        line = item.to_dict()
+        if str(line.get("section") or "") != "material" or str(line.get("source") or "") != "pricing_policy":
+            continue
+        raw = line.get("raw_agent_json") or {}
+        if not isinstance(raw, dict):
+            raw = {}
+        rows.append({
+            "item": str(line.get("item_name") or "Formula"),
+            "locked": True,
+            "policy_percent": _number(raw.get("percent"), 0),
+            "policy_basis": str(raw.get("basis") or "materials"),
+            "total": _number(line.get("cost"), 0),
+        })
+    return rows
+
+
 def _assumption_material_display_name(fallback: dict[str, Any]) -> str:
     source_name = " ".join(str(fallback.get("source_name") or "").split()).strip()
     words = {word.strip(" ,./-_").casefold() for word in source_name.split()}
@@ -677,6 +706,66 @@ def _required_material_volume(
         volume_mm3 = sum(_number(allocation.get("volume_mm3"), 0) for allocation in allocations)
         return volume_mm3 / 1_000_000_000, "m³"
     return sum(_number(allocation.get("quantity"), 0) for allocation in allocations), "piece"
+
+
+def _material_policy_base_totals(lines_df: Any) -> tuple[float, float]:
+    """Return the Profile formula bases, excluding the formula rows themselves."""
+    primary_material_total = 0.0
+    coating_material_total = 0.0
+    for _, item in lines_df.iterrows():
+        row = item.to_dict()
+        if str(row.get("section") or "") != "material" or str(row.get("source") or "") == "pricing_policy":
+            continue
+        cost = _number(row.get("cost"), 0)
+        primary_material_total += cost
+        raw = row.get("raw_agent_json") or {}
+        facts = raw.get("facts") if isinstance(raw, dict) else {}
+        family = str((facts or {}).get("family") or "") if isinstance(facts, dict) else ""
+        if family in _COATING_MATERIAL_FAMILIES:
+            coating_material_total += cost
+    return round(primary_material_total, 2), round(coating_material_total, 2)
+
+
+def _material_policy_lines(
+    *, estimate_id: str, object_id: str, company_id: str, settings: dict[str, Any],
+    primary_material_total: float, coating_material_total: float,
+) -> list[dict[str, Any]]:
+    """Build the three Profile-owned, non-editable material allowances."""
+    lines = []
+    for offset, (policy_key, label, setting_key, basis, default_percent) in enumerate(_MATERIAL_POLICY_SPECS):
+        percent = _number(settings.get(setting_key), default_percent)
+        base = coating_material_total if basis == "coatings" else primary_material_total
+        amount = round(max(base, 0) * percent / 100, 2)
+        basis_label = "coating material cost" if basis == "coatings" else "primary material cost"
+        lines.append({
+            "estimate_id": estimate_id,
+            "object_id": object_id,
+            "company_id": company_id,
+            "line_id": f"{object_id}_material_policy_{policy_key}",
+            "section": "material",
+            "group_name": "Materials",
+            "item_name": label,
+            "catalog_match_query": None,
+            "unit": "formula",
+            "unit_cost": None,
+            "quantity": None,
+            "cost": amount,
+            "source": "pricing_policy",
+            "sort_order": 900 + offset * 10,
+            "needs_price": False,
+            "needs_review": False,
+            "confidence": 100,
+            "quantity_basis": "formula",
+            "notes": f"{_format_number(percent)}% of {basis_label}",
+            "raw_agent_json": {
+                "policy": f"{policy_key}_percent_of_{basis}",
+                "percent": percent,
+                "basis": basis,
+                "base_material_cost": base,
+                "locked": True,
+            },
+        })
+    return lines
 
 
 def _purchase_unit_display(line: dict[str, Any]) -> str:
@@ -1004,6 +1093,32 @@ def apply_material_plan_allocations(
         )
         affected_object_ids.add(object_id)
     for object_id in affected_object_ids:
+        object_rows = fetch_rfq_estimate_lines_for_object(
+            client,
+            estimate_id=estimate_id,
+            object_id=object_id,
+        )
+        object_context = _object_material_context(
+            client,
+            estimate_id=estimate_id,
+            object_id=object_id,
+        )
+        settings = _first_row(fetch_company_overhead_settings(
+            client,
+            str(object_context.get("company_id") or ""),
+        ))
+        primary_material_total, coating_material_total = _material_policy_base_totals(object_rows)
+        upsert_rfq_estimate_lines(
+            client,
+            lines=_material_policy_lines(
+                estimate_id=estimate_id,
+                object_id=object_id,
+                company_id=str(object_context.get("company_id") or ""),
+                settings=settings,
+                primary_material_total=primary_material_total,
+                coating_material_total=coating_material_total,
+            ),
+        )
         _recalculate_object_estimate_totals(
             client,
             estimate_id=estimate_id,
@@ -1396,21 +1511,7 @@ def _recalculate_object_estimate_totals(
         estimate_id=estimate_id,
         object_id=object_id,
     )
-    primary_material_total = sum(
-        _number(row.get("cost"), 0)
-        for _, item in lines_df.iterrows()
-        if (row := item.to_dict()).get("section") == "material"
-        and row.get("source") != "pricing_policy"
-    )
-    coating_material_total = sum(
-        _number(row.get("cost"), 0)
-        for _, item in lines_df.iterrows()
-        if (row := item.to_dict()).get("section") == "material"
-        and row.get("source") != "pricing_policy"
-        and isinstance(row.get("raw_agent_json"), dict)
-        and str((row.get("raw_agent_json") or {}).get("facts", {}).get("family") or "")
-        in {"wood_coatings", "metal_coatings"}
-    )
+    primary_material_total, coating_material_total = _material_policy_base_totals(lines_df)
     for _, item in lines_df.iterrows():
         row = item.to_dict()
         if row.get("section") != "material" or row.get("source") != "pricing_policy":

@@ -3399,6 +3399,15 @@ then an approved correction to the earliest missing Family/Pricing-Key/
 physical-compatibility constraint. Full evidence:
 `notes/ESTIMATION_V4_24_TERMINAL_CYCLE_CHECKPOINT_2026_11_02.md`.
 
+ACTIVE, V4.27, P0, Profile material allowances: restore three locked formula rows after
+the Material Plan allocation. Consumables and Packaging must use the saved Pricing Cost
+percentages against primary material cost. Paint consumables must use the saved percentage
+against coating material cost only. They are formula allowances, not catalog products, so
+they must not be editable, resolved through C/I/A, or become purchase units. Acceptance:
+a new production Estimation run persists all three rows, updates the object self cost, and
+shows the exact saved Profile percentages. The separate assembly-loss instability remains
+the next task after this witness.
+
 Detection readiness update, 2026-11-01: V8.4.5 has an owner-verified positive
 large multi-page assembly witness, `24-215. Кухня. СБ.pdf`, now compiled to one
 commercial object. The existing immutable `estimation_input_v4` carries its

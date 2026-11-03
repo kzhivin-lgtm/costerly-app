@@ -100,6 +100,25 @@ def test_material_purchase_table_shows_demand_and_purchase_without_allocation_la
     assert "Project material plan" not in html
 
 
+def test_material_purchase_table_shows_locked_profile_formula_without_purchase_inputs():
+    section = {
+        "key": "material", "title": "Materials",
+        "columns": ["Material", "Required material", "Purchase unit", "Purchase quantity", "Total"],
+        "rows": [{
+            "item": "Paint consumables", "locked": True, "policy_percent": 10,
+            "policy_basis": "coatings", "total": 25,
+        }],
+    }
+
+    values = _row_values(section, section["rows"][0])
+
+    assert all("contenteditable" not in value for value in values)
+    assert values[1] == "10% of coating materials"
+    assert values[2] == "Formula"
+    assert values[3] == "—"
+    assert "₪25" in values[4]
+
+
 def test_assumption_rows_hide_assembly_roles_but_preserve_net_demand_and_purchase():
     rows = _material_rows_from_plan({
         "lines": [{

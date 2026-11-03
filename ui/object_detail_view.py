@@ -117,6 +117,16 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
     """Map normalized estimate rows to visible table cells."""
     columns = section["columns"]
     if columns == ["Material", "Required material", "Purchase unit", "Purchase quantity", "Total"]:
+        if row.get("locked"):
+            percent = _number_text(row.get("policy_percent"))
+            basis = "coating materials" if row.get("policy_basis") == "coatings" else "primary materials"
+            return [
+                _escape(row.get("item")),
+                _escape(f"{percent}% of {basis}" if percent else "Formula"),
+                _escape("Formula"),
+                _escape("—"),
+                f'<span class="object-detail-row-cost">{_money(row.get("total"))}</span>',
+            ]
         return [
             _source_marker(row.get("price_source")) + f'<span class="object-detail-material-name">{_escape(row.get("item"))}</span>',
             _material_input_html(value=_number_text(row.get("required_material_value")), field="required_material", line_id=str(row.get("required_material_line_id") or ""), unit=str(row.get("required_material_unit") or "")),
