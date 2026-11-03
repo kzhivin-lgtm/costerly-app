@@ -51,44 +51,11 @@ def test_object_detail_consumes_completed_prefetch_snapshot(monkeypatch):
     assert st.session_state.object_detail_prefetch_futures == {}
 
 
-def test_ready_review_publishes_a_browser_ready_detail_snapshot(monkeypatch):
-    st.session_state.clear()
-    detail = {
-        "name": "Cabinet",
-        "quantity": 1,
-        "confidence": "High",
-        "preview_label": "Preview",
-        "sections": [],
-        "elements": [],
-        "self_cost": {"title": "Self cost", "excl_vat": 10, "vat": 2, "total": 12},
-        "material_plan_ready": True,
-    }
-    st.session_state.object_detail_data_cache = {("estimate-1", "object-1"): detail}
-    captured = {}
-    monkeypatch.setattr(objects, "apply_object_detail_css", lambda: captured.setdefault("css", True))
-    monkeypatch.setattr(
-        objects,
-        "install_workflow_display_snapshot_cache",
-        lambda **kwargs: captured.update(kwargs),
-    )
-
-    objects._install_ready_detail_display_snapshots(
-        estimate_id="estimate-1",
-        run_id="run-1",
-        data={"rows": [{"object_key": "object-1", "review_ready": True}]},
-    )
-
-    assert captured["estimate_id"] == "estimate-1"
-    assert captured["css"] is True
-    assert "Cabinet" in captured["detail_snapshots"]["object-1"]
-    assert "BACK TO OBJECTS" in captured["detail_snapshots"]["object-1"]
-
-
-def test_persisted_detail_changes_invalidate_browser_display_snapshots():
+def test_persisted_detail_changes_keep_server_cache_invalidation_only():
     source = (Path(__file__).parents[1] / "screens/object_detail.py").read_text()
 
-    assert "if _consume_pending_object_detail_changes():" in source
-    assert "invalidate_workflow_display_snapshot_cache()" in source
+    assert "_consume_pending_object_detail_changes()" in source
+    assert "invalidate_workflow_display_snapshot_cache" not in source
 
 
 def test_invalidating_estimate_discards_all_its_detail_cache_and_prefetches():

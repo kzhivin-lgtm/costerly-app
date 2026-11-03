@@ -396,8 +396,10 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "event.data.buildVersion" in wrapper
     assert "event.data.metrics && event.data.metrics.server_build_version" in wrapper
     assert 'mark("browser.build_mismatch"' in wrapper
-    assert 'window.sessionStorage.getItem(reloadGuardKey) !== mismatchPair' in wrapper
-    assert "window.location.reload()" in wrapper
+    assert 'recovery: "deferred"' in wrapper
+    mismatch_start = wrapper.index('mark("browser.build_mismatch"')
+    mismatch_end = wrapper.index("const appReadySentAt", mismatch_start)
+    assert "window.location.reload()" not in wrapper[mismatch_start:mismatch_end]
     assert "pythonRuns: 0" in wrapper
     assert "python_runs: pendingTransition.pythonRuns" in wrapper
     assert 'startupProbe === "anonymous"' in wrapper

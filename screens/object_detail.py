@@ -12,7 +12,6 @@ from styles.object_detail import apply_object_detail_css
 from ui import object_detail_view
 from ui.layout import render_screen_header
 from ui.js_guards import (
-    invalidate_workflow_display_snapshot_cache,
     install_object_detail_input_guard,
     install_workflow_header_alignment_guard,
 )
@@ -49,8 +48,7 @@ def render_object_detail_screen(
         return
 
     apply_object_detail_css()
-    if _consume_pending_object_detail_changes():
-        invalidate_workflow_display_snapshot_cache()
+    _consume_pending_object_detail_changes()
     if _approve_after_pending_changes(context):
         st.rerun()
 

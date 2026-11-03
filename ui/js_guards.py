@@ -6,163 +6,6 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 
-def install_workflow_display_snapshot_cache(
-    *,
-    estimate_id: str,
-    detail_snapshots: dict[str, str],
-) -> None:
-    """Keep paint-ready workflow screens outside Streamlit's replaceable tree.
-
-    A session-data cache prevents duplicate reads, but cannot prevent Streamlit
-    from clearing and rebuilding its DOM on a route change.  This cache holds
-    a non-interactive visual snapshot in the browser for that short hand-off:
-    Review shows its already-built Detail snapshot immediately and a plain Back
-    restores the captured Objects snapshot.  The real Streamlit destination
-    still loads underneath and replaces the snapshot only after it is styled.
-    """
-    estimate_id_json = json.dumps(str(estimate_id))
-    snapshots_json = json.dumps(detail_snapshots).replace("</", "<\\/")
-    components.html(
-        """
-        <script>
-        (() => {
-            const parentWindow = window.parent;
-            const parentDoc = parentWindow.document;
-            const STORE_KEY = "__costerlyWorkflowDisplaySnapshots";
-            const estimateId = __ESTIMATE_ID__;
-            const detailSnapshots = __DETAIL_SNAPSHOTS__;
-            const existing = parentWindow[STORE_KEY] || {};
-            const store = parentWindow[STORE_KEY] = {
-                ...existing,
-                estimateId,
-                details: detailSnapshots,
-            };
-
-            function ensureStyles() {
-                if (parentDoc.getElementById("costerly-display-snapshot-styles")) return;
-                const style = parentDoc.createElement("style");
-                style.id = "costerly-display-snapshot-styles";
-                style.textContent = `
-                    #costerly-display-snapshot-overlay {
-                        position: fixed;
-                        inset: 0;
-                        z-index: 2147483500;
-                        overflow: auto;
-                        box-sizing: border-box;
-                        padding: 28px max(24px, calc((100vw - 1180px) / 2));
-                        background: #F1EFEF;
-                        color: #2A1F2C;
-                    }
-                    #costerly-display-snapshot-overlay [contenteditable="true"] {
-                        pointer-events: none;
-                    }
-                    #costerly-display-snapshot-overlay a,
-                    #costerly-display-snapshot-overlay button {
-                        pointer-events: none;
-                    }
-                    #costerly-display-snapshot-overlay .stElementContainer,
-                    #costerly-display-snapshot-overlay [data-testid="stElementContainer"] {
-                        max-width: 100%;
-                    }
-                    .costerly-display-snapshot-note {
-                        margin: 0 0 18px;
-                        color: rgba(42, 31, 44, .58);
-                        font: 700 11px/1.2 var(--font-mono, monospace);
-                        letter-spacing: .08em;
-                        text-transform: uppercase;
-                    }
-                `;
-                parentDoc.head.appendChild(style);
-            }
-
-            function appContentClone() {
-                const source = parentDoc.querySelector("[data-testid='stMainBlockContainer']")
-                    || parentDoc.querySelector("section.main .block-container")
-                    || parentDoc.querySelector("section.main");
-                if (!source) return "";
-                const clone = source.cloneNode(true);
-                clone.querySelectorAll("iframe, script, style").forEach((node) => node.remove());
-                clone.querySelectorAll("[contenteditable='true']").forEach((node) => {
-                    node.setAttribute("contenteditable", "false");
-                });
-                return clone.outerHTML;
-            }
-
-            function removeOverlay() {
-                const overlay = parentDoc.getElementById("costerly-display-snapshot-overlay");
-                if (overlay) overlay.remove();
-                window.clearTimeout(store.timeoutId);
-                store.timeoutId = null;
-                store.activeTarget = null;
-            }
-
-            function show(html, target) {
-                if (!html) return false;
-                ensureStyles();
-                removeOverlay();
-                const overlay = parentDoc.createElement("div");
-                overlay.id = "costerly-display-snapshot-overlay";
-                overlay.dataset.targetScreen = target;
-                overlay.setAttribute("aria-busy", "true");
-                overlay.innerHTML = html;
-                parentDoc.body.appendChild(overlay);
-                store.activeTarget = target;
-                // Never hide an actionable target error behind a stale visual
-                // snapshot.  Normal release happens as soon as the target is
-                // fully styled, this is only the fail-open guard.
-                store.timeoutId = window.setTimeout(removeOverlay, 12000);
-                return true;
-            }
-
-            store.showDetail = (objectId) => {
-                store.objectsHtml = appContentClone();
-                const snapshot = store.details[String(objectId || "")];
-                return show(snapshot || "", "object_detail");
-            };
-            store.showObjects = () => {
-                const draft = parentWindow.__costerlyObjectDetailDraft;
-                if (draft && typeof draft.snapshotEdits === "function" && draft.snapshotEdits().length) {
-                    return false;
-                }
-                return show(store.objectsHtml || "", "objects");
-            };
-            store.releaseFor = (screen) => {
-                if (store.activeTarget === String(screen || "")) removeOverlay();
-            };
-            store.release = removeOverlay;
-        })();
-        </script>
-        """.replace("__ESTIMATE_ID__", estimate_id_json)
-        .replace("__DETAIL_SNAPSHOTS__", snapshots_json),
-        height=0,
-        width=0,
-    )
-
-
-def invalidate_workflow_display_snapshot_cache() -> None:
-    """Drop browser snapshots after a persisted Detail mutation.
-
-    A visual return cache is valid only for a read-only Detail visit.  The
-    server already invalidates its data snapshots on a mutation; this mirrors
-    that rule in the browser before a later Back can reveal an old table.
-    """
-    components.html(
-        """
-        <script>
-        (() => {
-            const store = window.parent.__costerlyWorkflowDisplaySnapshots;
-            if (!store) return;
-            if (typeof store.release === "function") store.release();
-            store.details = {};
-            store.objectsHtml = "";
-        })();
-        </script>
-        """,
-        height=0,
-        width=0,
-    )
-
-
 def install_workflow_header_alignment_guard(
     title_selector: str = "h1.workflow-title",
 ) -> None:
@@ -1365,16 +1208,6 @@ def signal_app_ready_to_embed(
                             )).find((button) => String(button.textContent || "").trim()
                                 === "Back to Objects") || null;
                         }
-                        const displayCache = parentWindow.__costerlyWorkflowDisplaySnapshots;
-                        const displayCached = Boolean(
-                            displayCache && (
-                                transition === "objects_to_object_detail"
-                                    ? displayCache.showDetail(objectId)
-                                    : transition === "object_detail_to_objects"
-                                        ? displayCache.showObjects()
-                                        : false
-                            )
-                        );
                         if (bridgeButton) event.preventDefault();
                         parentWindow.scrollTo({ top: 0, left: 0, behavior: "auto" });
                         parentDocument.documentElement.scrollTop = 0;
@@ -1386,7 +1219,6 @@ def signal_app_ready_to_embed(
                             transitionId,
                             sourceScreen: currentScreen(),
                             targetScreen: targetScreenFor(transition),
-                            displayCached,
                         }, "*");
                         observeTargetScreen(transition, transitionId);
                         if (bridgeButton) bridgeButton.click();
