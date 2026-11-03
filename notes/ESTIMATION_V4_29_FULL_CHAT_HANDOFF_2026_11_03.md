@@ -303,7 +303,8 @@ before a new patch. Do not call it cache without evidence.
 * Do not omit price. A is mandatory fallback.
 * Do not show Project Allocation/Plan or duplicate cost UI.
 * Do not add generic hardware/labor to materials.
-* Do not use V6 for Estimation. Next runtime number is V4.30.
+* Do not use any Detection release number for Estimation. Next runtime number is
+  V4.30.
 * Do not rewrite origin/main merely to rename neutral V4.28 code commit.
 * Do not replay 39-page kitchen without bounded question and authorization.
 

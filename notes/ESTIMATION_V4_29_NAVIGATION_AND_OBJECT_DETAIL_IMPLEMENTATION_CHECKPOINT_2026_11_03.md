@@ -27,7 +27,8 @@ Before creating this record, the implementation worktree
 pushed to `origin/main`. This documentation record must itself be committed and
 pushed before it can be called published. The numbering authority is
 `notes/ESTIMATION_V4_RELEASE_SEQUENCE_2026_11_02.md`; next Estimation runtime
-release is V4.30, not a Detection V6 number.
+release is V4.30. Detection has its own independent release line and benchmark
+history, including later protected checkpoints.
 
 ## Production diagnosis that motivated V4.29
 
