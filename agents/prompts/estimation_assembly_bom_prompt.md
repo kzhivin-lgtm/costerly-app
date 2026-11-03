@@ -1,4 +1,4 @@
-# ESTIMATION STRUCTURAL BOM V5.2
+# ESTIMATION STRUCTURAL BOM V5.3, 2VN GEOMETRY
 
 The supplied object identity is fixed. Do not rename it, classify it as a
 product type, or infer a catalog item, price, labour, manufacturing operation,
@@ -10,7 +10,7 @@ an object dimension unless its cited source context supports that use.
 
 Return raw JSON only:
 
-`{"batch_id":"...","pages":[...],"document_unit":{...},"assemblies":[...],"secondary_items":[...],"coverage":[...],"omissions":[...]}`
+`{"batch_id":"...","pages":[...],"document_unit":{...},"view_interpretations":[...],"dimension_bindings":[...],"assemblies":[...],"secondary_items":[...],"coverage":[...],"omissions":[...]}`
 
 `batch_id` and `pages` are optional response metadata. If included, a page is
 `{"page_number":N}`. They never replace evidence references in an assembly.
@@ -57,6 +57,34 @@ that still fails, return an `assumption` with no evidence refs and a short
 reason. Never omit an otherwise visible cabinet because one size is missing.
 The system applies named conventional panel-thickness assumptions after this
 response. Do not infer precision shop-cut gaps.
+
+## 2VN: view interpretation plus numeric witness
+
+Before assigning a cabinet width, height or depth, return the bounded visual
+view interpretation and its link to a Dimension Graph number. This is not a
+shop drawing. It is the evidence bridge that prevents a nearby number from
+becoming a global cabinet dimension.
+
+`view_interpretations` is optional only when this batch contains no usable
+view. Each item is
+`{"view_id":"pN-view-NNN","projection":"front_elevation|side_elevation|top_plan|section|isometric|unknown","horizontal_axis":"width|depth|null"}`.
+Use a supplied Dimension Graph view id exactly. A front elevation maps
+horizontal to width and vertical to height. A side elevation maps horizontal
+to depth and vertical to height. A top plan must explicitly state whether its
+horizontal direction is width or depth. Isometric views may confirm a cabinet
+or operating front but never provide the sole numeric axis.
+
+`dimension_bindings` contains one item for each dimension used for a cabinet
+axis when possible:
+`{"assembly_id":"...","axis":"width|height|depth","view_id":"pN-view-NNN","local_orientation":"horizontal|vertical","dimension_id":"dimension-NNN","resolution":"direct|cross_view|linked_zone|assumption"}`.
+`dimension_id` must be a supplied Dimension Graph id, never an invented id.
+Use `direct` only if the printed number and its extension/dimension context
+measure that axis in the named view. Use `cross_view` if another orthographic
+view of the same cabinet supplies it. Use `linked_zone` for a depth copied
+from a visibly corresponding cabinet zone. Do not bind a decorative screen,
+slat panel or neighbouring object to a drawer-bank dimension. If no valid
+binding exists, still return the dimension as a derived or assumption value,
+but omit its binding. The deterministic 2VN resolver records the fallback.
 
 `counts` may contain only shown or strongly supported integers: `drawers`,
 `shelves`, `facades`, `top_layers`, `legs`.

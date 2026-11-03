@@ -471,18 +471,21 @@ targeted controller, upload-boundary, and runtime-event tests passed, plus
 drag-and-drop upload must emit exactly one server upload acceptance and one
 real Processing transition, with no callback-timeout event.
 
-IMPLEMENTED locally, pending production witness, Estimation V5.2 front
-topology, 2026-11-03:
+IMPLEMENTED locally, pending production witness, Estimation V5.3 2VN geometry
+and front topology, 2026-11-03:
 [verified] Lev 1 V5.1 run `run_b1752d1c73cc4f64be117984d98eb74e` classified
 the tall fixed screen as six `hinged_facade` fronts, which produced 12 hinges,
-and missed the lower three-drawer bank. V5.2 requires the visual Cabinet Block
-to establish operability before hardware: lower shallow drawer rows are
+and missed the lower three-drawer bank. V5.3 requires 2VN geometry resolution:
+a visual view interpretation is verified against immutable Dimension Graph
+number/view/vector candidates before an axis becomes direct source geometry.
+The visual Cabinet Block then establishes operability before hardware: lower shallow drawer rows are
 separate `drawer_bank` assemblies, upper/middle landscape flaps are lift-up
 facades, and repeated slats, dividers and fixed panels are structural rather
 than operating fronts. The deterministic Lev 1 fixture expects three 600-mm
 drawer-slide sets, zero hinges and zero gas lifts. Pending acceptance: a fresh
-Lev 1 production run with persisted V5.2 facts, material plan and Object
-Detail inspection.
+Lev 1 and Lev 2 production runs with persisted V5.3 facts, 2VN witness audit,
+material plan and Object Detail inspection. Contract:
+`notes/ESTIMATION_V5_3_2VN_GEOMETRY_CONTRACT_2026_11_03.md`.
 
 ACTIVE, V6.59, P0, New Estimate to Upload client-transition observability:
 The evidence rejects server-side auth, Supabase, and Upload rendering as the

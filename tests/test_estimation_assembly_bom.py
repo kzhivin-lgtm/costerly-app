@@ -99,10 +99,12 @@ def test_assembly_bom_converts_explicit_document_unit_assumption_deterministical
     ]
 
 
-def test_v5_2_prompt_requires_operability_before_front_hardware():
+def test_v5_3_prompt_requires_2vn_axis_binding_and_operability_before_front_hardware():
     prompt = PROMPT_PATH.read_text(encoding="utf-8")
 
     assert "Classify operability before counting any hardware" in prompt
     assert "lower, shallow, landscape row" in prompt
     assert "tall narrow slats, screens, dividers" in prompt
     assert "fixed structural panel over invented operating hardware" in prompt
+    assert "2VN: view interpretation plus numeric witness" in prompt
+    assert "dimension_bindings" in prompt

@@ -12,6 +12,7 @@ import json
 from typing import Any, Mapping, Sequence
 
 from use_cases.estimation_assembly_bom import ASSEMBLY_BOM_V1
+from use_cases.estimation_2vn_resolver import TWO_VN_V1
 
 
 _UNIT_TO_MM = {"mm": 1.0, "cm": 10.0, "m": 1000.0}
@@ -483,6 +484,7 @@ def _normalize_model_references(
 def build_structural_assembly_bom(
     *, input_row: Mapping[str, Any], dimension_graph: Mapping[str, Any], extraction: Mapping[str, Any],
     allowed_material_families: Sequence[str], dimension_scale_gate: Mapping[str, Any] | None = None,
+    two_vn: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Expand bounded assembly topology to auditable material parts.
 
@@ -495,6 +497,8 @@ def build_structural_assembly_bom(
         raise ValueError("structural BOM requires estimation_input_v4")
     if dimension_graph.get("contract_version") != "estimation_dimension_graph_v1":
         raise ValueError("structural BOM requires Dimension Graph")
+    if two_vn is not None and two_vn.get("contract_version") != TWO_VN_V1:
+        raise ValueError("structural BOM requires valid 2VN geometry")
     allowed_refs = _allowed_refs(payload)
     extraction, reference_normalizations = _normalize_model_references(extraction, allowed=allowed_refs)
     allowed_families = {str(item) for item in allowed_material_families if str(item)}
@@ -825,11 +829,12 @@ def build_structural_assembly_bom(
     preview_refs = sorted(ref for ref in allowed_refs if ref.startswith("storage://"))
     return {
         "contract_version": ASSEMBLY_BOM_V1,
-        "composition_version": "structural_bom_v5_2",
+        "composition_version": "structural_bom_v5_3_2vn",
         "input_id": str(input_row.get("input_id") or ""), "object_input_revision": int(input_row.get("object_input_revision") or 1),
         "run_id": str(payload.get("run_id") or ""), "company_id": str(payload.get("company_id") or ""),
         "object_id": str(object_payload.get("object_id") or ""), "object_name": str(object_payload.get("object_name") or ""),
         "quantity": object_quantity, "status": "ready", "dimension_graph_contract": str(dimension_graph["contract_version"]),
+        "two_vn": dict(two_vn or {"contract_version": TWO_VN_V1, "status": "not_supplied"}),
         "document_unit": {
             "unit": document_unit, "evidence_refs": document_unit_refs,
             "resolution": document_unit_basis,

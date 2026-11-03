@@ -1,4 +1,4 @@
-# ESTIMATION STRUCTURAL BOM V5.2 RECONCILIATION
+# ESTIMATION STRUCTURAL BOM V5.3, 2VN RECONCILIATION
 
 The supplied object identity is fixed. Do not rename it or classify it as a
 product type. You receive bounded observations from every source-page batch,
@@ -11,7 +11,7 @@ an axis or construction.
 
 Return raw JSON only:
 
-`{"document_unit":{...},"assemblies":[...],"secondary_items":[...],"coverage":[...],"omissions":[...]}`
+`{"document_unit":{...},"view_interpretations":[...],"dimension_bindings":[...],"assemblies":[...],"secondary_items":[...],"coverage":[...],"omissions":[...]}`
 
 Each assembly must use the exact structural schema from the visual pass:
 `assembly_id`, `assembly_role`, `quantity`, `evidence_refs`, `dimensions`,
@@ -33,3 +33,10 @@ page label, graph id, view id or segment id as evidence.
 
 Prefer fewer well-supported large assemblies to a fake complete shop drawing.
 Do not split a finished component merely to fit a purchasable sheet.
+
+Preserve or reconcile `view_interpretations` and `dimension_bindings` from
+the batch observations. A direct binding must retain the same supplied
+Dimension Graph id, view id, physical axis and local orientation. Do not
+invent a binding merely to complete an assembly. An unresolved dimension is an
+allowed explicit derivation or assumption, because estimation must finish even
+when the document is incomplete.

@@ -19,7 +19,7 @@ from agents.estimation_v4_1_material_facts_agent import (
 )
 
 
-ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION = "estimation_assembly_bom_v5_2"
+ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION = "estimation_assembly_bom_v5_3"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_assembly_bom_prompt.md"
 RECONCILIATION_PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_assembly_bom_reconciliation_prompt.md"
 
@@ -90,6 +90,8 @@ def _validate_response(*, response: Mapping[str, Any], batch: Mapping[str, Any])
         "secondary_items": [dict(item) for item in response.get("secondary_items") or [] if isinstance(item, Mapping)],
         "omissions": [str(item) for item in response.get("omissions") or [] if str(item).strip()],
         "coverage": _validate_coverage(response=response, expected_region_ids=expected_region_ids),
+        "view_interpretations": [dict(item) for item in response.get("view_interpretations") or [] if isinstance(item, Mapping)],
+        "dimension_bindings": [dict(item) for item in response.get("dimension_bindings") or [] if isinstance(item, Mapping)],
     }
 
 
@@ -126,6 +128,8 @@ def _validate_reconciliation(*, response: Mapping[str, Any]) -> dict[str, Any]:
         "secondary_items": [dict(item) for item in response.get("secondary_items") or [] if isinstance(item, Mapping)],
         "omissions": [str(item) for item in response.get("omissions") or [] if str(item).strip()],
         "coverage": [dict(item) for item in response.get("coverage") or [] if isinstance(item, Mapping)],
+        "view_interpretations": [dict(item) for item in response.get("view_interpretations") or [] if isinstance(item, Mapping)],
+        "dimension_bindings": [dict(item) for item in response.get("dimension_bindings") or [] if isinstance(item, Mapping)],
     }
 
 
@@ -165,6 +169,8 @@ def run_estimation_assembly_bom_agent(*, input_row: Mapping[str, Any], evidence_
             "assemblies": observations[0]["assemblies"],
             "secondary_items": observations[0]["secondary_items"],
             "omissions": observations[0]["omissions"], "coverage": observations[0]["coverage"],
+            "view_interpretations": observations[0]["view_interpretations"],
+            "dimension_bindings": observations[0]["dimension_bindings"],
         }
     else:
         response = _create_message_with_hard_timeout(

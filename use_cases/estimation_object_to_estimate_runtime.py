@@ -23,6 +23,7 @@ from use_cases.estimation_artifacts import download_evidence_artifact
 from use_cases.estimation_structural_bom import build_structural_assembly_bom
 from use_cases.estimation_dimension_graph import DIMENSION_GRAPH_V1, build_dimension_graph
 from use_cases.estimation_dimension_scale import build_dimension_scale_gate
+from use_cases.estimation_2vn_resolver import resolve_2vn_geometry
 from use_cases.estimation_object_to_estimate import build_object_to_estimate_brief
 
 
@@ -223,9 +224,17 @@ def run_assembly_first_bom_batch(
                 client=client, input_row=row, stage="assembly_agent", status="succeeded",
                 details={"reason_code": "response_validated"},
             )
+            stage = "2vn_geometry"
+            extraction, two_vn = resolve_2vn_geometry(
+                dimension_graph=graph, extraction=result["extraction"],
+            )
+            _record_stage_event(
+                client=client, input_row=row, stage="2vn_geometry", status="succeeded",
+                details={"reason_code": "axis_resolution_ready"},
+            )
             stage = "structural_composition"
             bom = build_structural_assembly_bom(
-                input_row=row, dimension_graph=graph, extraction=result["extraction"],
+                input_row=row, dimension_graph=graph, extraction=extraction, two_vn=two_vn,
                 dimension_scale_gate=dimension_scale_gate,
                 allowed_material_families=allowed_material_families,
             )
