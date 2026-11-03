@@ -2805,6 +2805,18 @@ def install_objects_progress_sync(
                 if (!cell) return;
 
                 if (status === "completed" || status === "review_required") {
+                    // Backend progress can reach a terminal state before the
+                    // server-side Objects fragment has stored the immutable
+                    // Object Detail snapshot. Never manufacture a clickable
+                    // Review link from progress alone: the server replaces
+                    // this state only after the prefetch is ready.
+                    if (row.dataset.reviewReady !== "true") {
+                        cell.innerHTML = (
+                            '<span class="objects-pricing-review-button objects-pricing-review-button--disabled" '
+                            + 'aria-disabled="true">Preparing Review</span>'
+                        );
+                        return;
+                    }
                     if (
                         cell.querySelector(".objects-pricing-review-button--done")
                         || String(cell.textContent || "").trim().toLowerCase() === "done"

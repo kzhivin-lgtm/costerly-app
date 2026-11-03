@@ -118,6 +118,9 @@ def init_state() -> None:
     if "object_detail_prefetch_failed" not in st.session_state:
         st.session_state.object_detail_prefetch_failed = set()
 
+    if "objects_return_prefetch_futures" not in st.session_state:
+        st.session_state.objects_return_prefetch_futures = {}
+
 
 def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
     """Remove every estimate-scoped session value before a new upload cycle.
@@ -201,6 +204,7 @@ def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
     st.session_state.object_detail_data_cache_dirty = set()
     st.session_state.object_detail_prefetch_futures = {}
     st.session_state.object_detail_prefetch_failed = set()
+    st.session_state.objects_return_prefetch_futures = {}
 
     for key in list(st.session_state):
         if str(key).startswith((

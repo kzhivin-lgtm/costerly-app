@@ -196,10 +196,12 @@ def build_estimate_id(run_id: str) -> str:
     return f"{run_id}_estimate_{estimate_stamp}"
 
 
-def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
+def load_objects_estimation_data(
+    estimate_id: str, *, company_id: str | None = None,
+) -> dict[str, Any]:
     """Load current object estimate statuses for the Objects Estimation screen."""
     client = get_supabase_client()
-    _assert_screen_estimate_access(client, estimate_id)
+    _assert_screen_estimate_access(client, estimate_id, company_id=company_id)
     objects_df = read_with_retry(lambda: fetch_rfq_object_estimates(client, estimate_id))
     try:
         overrides_df = read_with_retry(lambda: fetch_rfq_estimate_pricing_overrides(client, estimate_id))

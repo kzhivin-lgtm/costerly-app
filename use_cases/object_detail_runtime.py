@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import Future, ThreadPoolExecutor
 
-from use_cases.estimation import load_object_detail_data
+from use_cases.estimation import load_object_detail_data, load_objects_estimation_data
 
 
 # Detail prefetching is deliberately separate from the single estimation worker.
@@ -21,5 +21,14 @@ def submit_object_detail_prefetch(
         load_object_detail_data,
         estimate_id=estimate_id,
         object_id=object_id,
+        company_id=company_id,
+    )
+
+
+def submit_objects_return_prefetch(*, estimate_id: str, company_id: str) -> Future:
+    """Warm the unchanged Objects screen while its detail screen is visible."""
+    return _OBJECT_DETAIL_PREFETCH_EXECUTOR.submit(
+        load_objects_estimation_data,
+        estimate_id,
         company_id=company_id,
     )

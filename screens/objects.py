@@ -199,6 +199,23 @@ def _mark_objects_cache_dirty_when_estimation_runs(estimate_id: str | None) -> N
         st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
 
 
+def _consume_objects_return_prefetch(estimate_id: str | None) -> None:
+    """Adopt an Objects snapshot prepared while Object Detail was open."""
+    if not estimate_id:
+        return
+    futures = st.session_state.setdefault("objects_return_prefetch_futures", {})
+    future = futures.get(str(estimate_id))
+    if not isinstance(future, Future) or not future.done():
+        return
+    try:
+        st.session_state.setdefault("objects_estimation_data_cache", {})[str(estimate_id)] = future.result()
+        st.session_state.setdefault("objects_estimation_cache_dirty", set()).discard(str(estimate_id))
+    except Exception:
+        pass
+    finally:
+        futures.pop(str(estimate_id), None)
+
+
 def _current_objects_state(estimate_id: str | None) -> ObjectsScreenState:
     """Return Objects Estimation data plus user-visible error/warning strings."""
     if not estimate_id:
@@ -218,6 +235,15 @@ def _current_objects_state(estimate_id: str | None) -> ObjectsScreenState:
                 "summary": {"project_price": None, "vat": None, "total": None},
             }
         )
+
+    # A plain Back must restore the exact Objects snapshot immediately. The
+    # batch may have finished while Object Detail was open, which marks that
+    # snapshot stale, but it does not make the user's last rendered page
+    # unusable. The timed fragment refreshes it after the shell is visible.
+    cache = st.session_state.setdefault("objects_estimation_data_cache", {})
+    dirty_estimates = st.session_state.setdefault("objects_estimation_cache_dirty", set())
+    if estimate_id in cache and estimate_id in dirty_estimates:
+        return ObjectsScreenState(data=cache[estimate_id])
 
     try:
         data, cache_warning = _load_objects_screen_data(estimate_id)
@@ -594,11 +620,19 @@ def _render_live_objects_content(
     # The first fragment render stays on the already prepared seed rows so the
     # Objects transition is not delayed by an extra Supabase read. Timed
     # fragment reruns then replace the seed with persisted per-object results.
+    refresh_needed = bool(
+        isinstance(st.session_state.get("estimation_batch_future"), Future)
+        or estimate_id in st.session_state.setdefault("objects_estimation_cache_dirty", set())
+    )
     if st.session_state.get("objects_live_poll_estimate_id") != estimate_id:
         st.session_state.objects_live_poll_estimate_id = estimate_id
         screen_state = _current_objects_state(estimate_id)
-    else:
+    elif refresh_needed:
         screen_state = _persisted_objects_state(estimate_id)
+    else:
+        # Keep the fragment inert after its one post-return refresh. It may
+        # remain mounted by Streamlit, but must not poll a settled estimate.
+        screen_state = _current_objects_state(estimate_id)
     prepared_data = _prepare_completed_object_detail_reviews(
         estimate_id=estimate_id,
         company_id=company_id,
@@ -627,6 +661,7 @@ def render_objects_screen(
 
     estimate_id = st.session_state.get("current_estimate_id")
     run_id = st.session_state.get("current_run_id")
+    _consume_objects_return_prefetch(estimate_id)
     _mark_objects_cache_dirty_when_estimation_runs(estimate_id)
 
     render_post_upload_header(
@@ -649,7 +684,14 @@ def render_objects_screen(
     )
     if _final_approval_ready(screen_state.data):
         _load_existing_proposal_url(company_id=company_id, estimate_id=estimate_id)
-    if estimate_id and isinstance(st.session_state.get("estimation_batch_future"), Future):
+    refresh_pending = bool(
+        estimate_id
+        and str(estimate_id) in st.session_state.setdefault("objects_estimation_cache_dirty", set())
+    )
+    if estimate_id and (
+        isinstance(st.session_state.get("estimation_batch_future"), Future)
+        or refresh_pending
+    ):
         _render_live_objects_content(
             estimate_id=str(estimate_id),
             run_id=run_id,
