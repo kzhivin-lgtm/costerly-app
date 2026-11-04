@@ -6,6 +6,7 @@ def test_screen_transition_marker_is_invisible_and_screen_scoped():
 
     assert 'id="costerly-screen-object_detail"' in markup
     assert 'data-costerly-screen="object_detail"' in markup
+    assert 'data-costerly-core-build="unknown"' in markup
     assert 'style="display:none"' in markup
 
 

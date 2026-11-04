@@ -47,6 +47,106 @@ def _empty_objects_data() -> dict[str, object]:
     }
 
 
+def prepared_objects_data_from_seed_rows(
+    rows: list[dict[str, object]],
+) -> dict[str, object]:
+    """Build the complete first-paint Objects payload from reviewed rows.
+
+    File Review calls this before it enables Continue.  Keeping this tiny
+    builder here means the destination owns its rendering shape, while the
+    source screen can hand off a complete, read-free payload rather than a
+    partial collection of seed rows.
+    """
+    prepared_rows = [dict(row) for row in rows]
+    return {
+        "rows": prepared_rows,
+        "project_costs": _project_cost_rows_for_seed(prepared_rows, allow_totals=False),
+        "summary": {
+            "project_price": None,
+            "vat": None,
+            "total": None,
+            "project_pricing_ready": False,
+        },
+    }
+
+
+def prepare_objects_navigation_state(
+    *,
+    company_id: str,
+    run_id: str,
+    estimate_id: str,
+    seed_rows: list[dict[str, object]] | None = None,
+) -> dict[str, object] | None:
+    """Return the full Objects state required before File Review enables Continue.
+
+    A new estimate has no durable rows yet, so its already-reviewed seed is
+    the complete first-paint state.  Reopening a completed estimate resolves
+    its cached or durable rows here, before the navigation click, including
+    Object Detail route tokens.  The callback therefore only swaps prepared
+    state and never starts an additional read.
+    """
+    if seed_rows is not None:
+        return {
+            "data": prepared_objects_data_from_seed_rows(seed_rows),
+            "data_error": None,
+            "cache_warning": None,
+        }
+
+    state = _current_objects_state(estimate_id)
+    if state.data_error:
+        return None
+    return {
+        "data": _data_with_object_routes(
+            state.data,
+            company_id=company_id,
+            run_id=run_id,
+            estimate_id=estimate_id,
+        ),
+        "data_error": None,
+        "cache_warning": state.cache_warning,
+    }
+
+
+def _consume_prepared_objects_navigation_state(
+    *,
+    company_id: str,
+    run_id: str | None,
+    estimate_id: str | None,
+) -> ObjectsScreenState | None:
+    """Consume one File Review handoff only when it belongs to this screen.
+
+    The payload exists for the first destination render only.  Subsequent
+    fragment or ordinary reruns return to normal cache freshness rules, so a
+    completed background calculation cannot remain visually frozen.
+    """
+    prepared = st.session_state.get("objects_navigation_ready")
+    if not isinstance(prepared, dict):
+        return None
+    if (
+        str(prepared.get("company_id") or "") != str(company_id)
+        or str(prepared.get("run_id") or "") != str(run_id or "")
+        or str(prepared.get("estimate_id") or "") != str(estimate_id or "")
+    ):
+        return None
+    st.session_state.pop("objects_navigation_ready", None)
+    data = prepared.get("data")
+    if not isinstance(data, dict):
+        return None
+    return ObjectsScreenState(
+        data=data,
+        data_error=(
+            str(prepared["data_error"])
+            if prepared.get("data_error")
+            else None
+        ),
+        cache_warning=(
+            str(prepared["cache_warning"])
+            if prepared.get("cache_warning")
+            else None
+        ),
+    )
+
+
 def _consume_estimation_future() -> None:
     """Store the background estimation result once the worker is done."""
     future = st.session_state.get("estimation_batch_future")
@@ -252,14 +352,7 @@ def _current_objects_state(estimate_id: str | None) -> ObjectsScreenState:
     seed_rows = st.session_state.get("objects_estimation_seed_rows") or []
     future = st.session_state.get("estimation_batch_future")
     if seed_rows and isinstance(future, Future) and not future.done():
-        rows = [dict(row) for row in seed_rows]
-        return ObjectsScreenState(
-            data={
-                "rows": rows,
-                "project_costs": _project_cost_rows_for_seed(rows),
-                "summary": {"project_price": None, "vat": None, "total": None},
-            }
-        )
+        return ObjectsScreenState(data=prepared_objects_data_from_seed_rows(seed_rows))
 
     try:
         data, cache_warning = _load_objects_screen_data(estimate_id)
@@ -398,9 +491,35 @@ def _data_with_object_routes(
     return {**data, "rows": rows}
 
 
+def _cache_routed_objects_data(
+    *, estimate_id: str | None, data: dict[str, object], data_error: str | None,
+) -> None:
+    """Retain route-enriched terminal rows for a later File Review return."""
+    if not estimate_id or data_error:
+        return
+    st.session_state.setdefault("objects_estimation_data_cache", {})[str(estimate_id)] = data
+    st.session_state.setdefault("objects_estimation_cache_dirty", set()).discard(
+        str(estimate_id)
+    )
+
+
 def _open_object_detail(object_id: str) -> None:
     st.session_state.current_object_id = str(object_id)
     st.session_state.screen = "object_detail"
+
+
+def _back_to_file_review_with_ready_cache(company_id: str) -> None:
+    """Return to the exact File Review snapshot already rendered this session."""
+    run_id = str(st.session_state.get("current_run_id") or "")
+    review_cache = st.session_state.get("file_review_data_cache", {})
+    review_data = review_cache.get(run_id) if isinstance(review_cache, dict) else None
+    if run_id and isinstance(review_data, dict):
+        st.session_state.file_review_navigation_ready = {
+            "company_id": company_id,
+            "run_id": run_id,
+            "data": review_data,
+        }
+    st.session_state.screen = "file_review"
 
 
 def _render_object_detail_navigation_bridges(data: dict[str, object]) -> None:
@@ -545,8 +664,6 @@ def _render_objects_actions(
     data: dict[str, object],
 ) -> None:
     """Render bottom navigation actions for Objects Estimation."""
-    from state.session import set_screen
-
     col_back, col_generate = st.columns(2, gap="small")
     proposal_ready = bool(
         st.session_state.get("proposal_pdf_urls_by_estimate", {}).get(str(estimate_id))
@@ -556,8 +673,8 @@ def _render_objects_actions(
         "BACK TO FILE REVIEW",
         type="secondary",
         use_container_width=True,
-        on_click=set_screen,
-        args=("file_review",),
+        on_click=_back_to_file_review_with_ready_cache,
+        args=(company_id,),
     )
 
     col_generate.button(
@@ -641,10 +758,22 @@ def _render_live_objects_content(
         screen_state = _current_objects_state(estimate_id)
     else:
         screen_state = _persisted_objects_state(estimate_id)
+    routed_data = _data_with_object_routes(
+        screen_state.data,
+        company_id=company_id,
+        run_id=run_id,
+        estimate_id=estimate_id,
+    )
+    if not isinstance(st.session_state.get("estimation_batch_future"), Future):
+        _cache_routed_objects_data(
+            estimate_id=estimate_id,
+            data=routed_data,
+            data_error=screen_state.data_error,
+        )
     prepared_data = _prepare_completed_object_detail_reviews(
         estimate_id=estimate_id,
         company_id=company_id,
-        data=_data_with_progress(screen_state.data, estimate_id),
+        data=_data_with_progress(routed_data, estimate_id),
     )
     with st.container(key="objects_live_pricing"):
         _render_objects_table_content(
@@ -683,17 +812,29 @@ def render_objects_screen(
     _start_prepared_estimation_launch()
     _consume_estimation_future()
     _mark_objects_cache_dirty_when_estimation_runs(estimate_id)
-    screen_state = _current_objects_state(estimate_id)
-    screen_state = ObjectsScreenState(
-        data=_data_with_object_routes(
-            screen_state.data,
-            company_id=company_id,
-            run_id=run_id,
-            estimate_id=estimate_id,
-        ),
-        data_error=screen_state.data_error,
-        cache_warning=screen_state.cache_warning,
+    screen_state = _consume_prepared_objects_navigation_state(
+        company_id=company_id,
+        run_id=run_id,
+        estimate_id=estimate_id,
     )
+    if screen_state is None:
+        screen_state = _current_objects_state(estimate_id)
+        screen_state = ObjectsScreenState(
+            data=_data_with_object_routes(
+                screen_state.data,
+                company_id=company_id,
+                run_id=run_id,
+                estimate_id=estimate_id,
+            ),
+            data_error=screen_state.data_error,
+            cache_warning=screen_state.cache_warning,
+        )
+    if not isinstance(st.session_state.get("estimation_batch_future"), Future):
+        _cache_routed_objects_data(
+            estimate_id=estimate_id,
+            data=screen_state.data,
+            data_error=screen_state.data_error,
+        )
     if _final_approval_ready(screen_state.data):
         _load_existing_proposal_url(company_id=company_id, estimate_id=estimate_id)
     if estimate_id and isinstance(st.session_state.get("estimation_batch_future"), Future):

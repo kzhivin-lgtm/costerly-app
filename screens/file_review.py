@@ -415,18 +415,21 @@ def _sync_durable_document_identity_once(run_id: str) -> None:
     st.session_state[synced_key] = True
 
 
-def _render_file_review_metadata_inputs(run_id: str) -> None:
+def _render_file_review_metadata_inputs(
+    run_id: str, *, refresh_identity: bool = True,
+) -> None:
     """Render editable metadata and publish title-block results in place."""
-    work = st.session_state.get("file_review_deferred_work")
-    if isinstance(work, dict) and work.get("run_id") == run_id and work.get("document_identity"):
-        published = _publish_persisted_document_identity(
-            run_id,
-            load_file_review_document_identity_publication(run_id),
-        )
-        if published:
-            _mark_deferred_work_complete(run_id, "document_identity")
-    else:
-        _sync_durable_document_identity_once(run_id)
+    if refresh_identity:
+        work = st.session_state.get("file_review_deferred_work")
+        if isinstance(work, dict) and work.get("run_id") == run_id and work.get("document_identity"):
+            published = _publish_persisted_document_identity(
+                run_id,
+                load_file_review_document_identity_publication(run_id),
+            )
+            if published:
+                _mark_deferred_work_complete(run_id, "document_identity")
+        else:
+            _sync_durable_document_identity_once(run_id)
 
     data = st.session_state.setdefault("file_review_data_cache", {}).get(run_id)
     run = data.get("run") if isinstance(data, dict) else None
@@ -467,6 +470,7 @@ def _render_review_card(
     *,
     run_id: str,
     timings: dict[str, object] | None,
+    refresh_identity: bool = True,
 ) -> None:
     """Render editable project metadata inside the established summary card."""
     with st.container(border=True):
@@ -476,7 +480,10 @@ def _render_review_card(
             'aria-hidden="true"></span>',
             unsafe_allow_html=True,
         )
-        _render_file_review_metadata_inputs(run_id)
+        _render_file_review_metadata_inputs(
+            run_id,
+            refresh_identity=refresh_identity,
+        )
         timing_slot = st.empty()
         timing_slot.markdown(_timing_html(timings), unsafe_allow_html=True)
         st.session_state[f"file_review_timing_slot.{run_id}"] = timing_slot
@@ -499,6 +506,19 @@ def _refresh_live_timing_row(run_id: str) -> None:
         _timing_html(_merged_timings(st.session_state.get("current_agent_timings"), persisted)),
         unsafe_allow_html=True,
     )
+
+
+def _mark_objects_launch_plan_stale() -> None:
+    """Force the next File Review render to prepare the edited destination."""
+    st.session_state.objects_estimation_launch_plan = None
+
+
+def _toggle_object_ignored(object_id: str) -> None:
+    """Apply Ignore before the next readiness bundle is built."""
+    edits = st.session_state.setdefault("file_review_object_edits", {})
+    edit = edits.setdefault(object_id, {})
+    edit["ignored"] = not bool(edit.get("ignored"))
+    _mark_objects_launch_plan_stale()
 
 
 def _render_object_card(item: dict[str, object]) -> None:
@@ -578,16 +598,17 @@ def _render_object_card(item: dict[str, object]) -> None:
             "QTY",
             value=str(edit.get("quantity") or "1"),
             key=f"{edit_key}.quantity",
+            on_change=_mark_objects_launch_plan_stale,
             label_visibility="collapsed",
         )
-        ignore_clicked = col_ignore.button(
+        col_ignore.button(
             "IGNORE",
             key=f"{edit_key}.ignore",
             use_container_width=True,
             type="secondary",
+            on_click=_toggle_object_ignored,
+            args=(object_id,),
         )
-        if ignore_clicked:
-            edit["ignored"] = not bool(edit.get("ignored"))
 
         if edit.get("ignored"):
             st.markdown(
@@ -792,13 +813,15 @@ def _publish_deferred_file_review_work(run_id: str) -> None:
     # navigation rail while Streamlit reconciles File Review.
 
 
-def _render_file_review_dynamic_content(run_id: str) -> None:
+def _render_file_review_dynamic_content(
+    run_id: str, *, refresh_deferred_work: bool = True,
+) -> None:
     """Render object cards from the stable File Review snapshot."""
     # Naming updates a keyed text input. It must complete before this fragment
     # creates that input, otherwise Streamlit rejects the session-state write.
     # Preview publication also invalidates the cached object snapshot, so load
     # the cards only after either terminal artifact is published.
-    if _has_deferred_work(run_id):
+    if refresh_deferred_work and _has_deferred_work(run_id):
         _publish_deferred_file_review_work(run_id)
     _refresh_live_timing_row(run_id)
 
@@ -1042,6 +1065,31 @@ def _record_first_file_review_render(run_id: str, company_id: str) -> None:
     )
 
 
+def _consume_prepared_file_review_navigation(
+    *, company_id: str, run_id: str,
+) -> dict[str, object] | None:
+    """Consume the in-session Objects back-navigation snapshot once.
+
+    Returning without edits must not read the same File Review source again.
+    This receipt is only honored for the exact company and run that created it;
+    refresh and direct URLs still take the normal ownership and data path.
+    """
+    prepared = st.session_state.get("file_review_navigation_ready")
+    if not isinstance(prepared, dict):
+        return None
+    if (
+        str(prepared.get("company_id") or "") != str(company_id)
+        or str(prepared.get("run_id") or "") != str(run_id)
+    ):
+        return None
+    st.session_state.pop("file_review_navigation_ready", None)
+    data = prepared.get("data")
+    if not isinstance(data, dict):
+        return None
+    st.session_state.setdefault("file_review_data_cache", {})[run_id] = data
+    return data
+
+
 def render_file_review_screen(
     company_id: str,
     *,
@@ -1062,18 +1110,26 @@ def render_file_review_screen(
 
     _record_first_file_review_render(str(run_id), company_id)
 
-    try:
-        data = _load_file_review_screen_data(run_id)
-    except Exception as exc:
-        _render_load_error(exc, render_header_controls)
-        return
+    prepared_data = _consume_prepared_file_review_navigation(
+        company_id=company_id,
+        run_id=str(run_id),
+    )
+    if prepared_data is not None:
+        data = prepared_data
+    else:
+        try:
+            data = _load_file_review_screen_data(run_id)
+        except Exception as exc:
+            _render_load_error(exc, render_header_controls)
+            return
 
     _sync_run_metadata_state(run_id, data["run"])
     # A retained File Review cache can predate deferred Naming.  Hydrate its
     # narrow, durable name snapshot before object edits and widgets are
     # initialized, so a stale blank browser value cannot compete with the
     # canonical saved name on a later Last Estimate restore.
-    _sync_durable_naming_once(run_id)
+    if prepared_data is None:
+        _sync_durable_naming_once(run_id)
     _sync_object_edit_state(run_id, data["objects"])
     with st.container():
         st.markdown(
@@ -1088,10 +1144,14 @@ def render_file_review_screen(
         _render_review_card(
             run_id=run_id,
             timings=_merged_timings(st.session_state.get("current_agent_timings"), data.get("timings")),
+            refresh_identity=prepared_data is None,
         )
     install_workflow_header_alignment_guard()
 
-    _render_file_review_dynamic_content(run_id)
+    _render_file_review_dynamic_content(
+        run_id,
+        refresh_deferred_work=prepared_data is None,
+    )
     launch_plan = _prepare_objects_launch_plan(
         company_id=company_id,
         run_id=str(run_id),
@@ -1116,16 +1176,17 @@ def render_file_review_screen(
         kwargs={
             "company_id": company_id,
             "run_id": run_id,
-            "objects": data["objects"],
-            "source": data.get("source"),
         },
         disabled=launch_plan is None,
     )
     if launch_plan is None:
         source_error = st.session_state.get(_source_restore_error_key(str(run_id)))
+        readiness_error = st.session_state.get(
+            f"objects_estimation_readiness_error.{run_id}"
+        )
         st.caption(
-            str(source_error)
-            if source_error
+            str(readiness_error or source_error)
+            if readiness_error or source_error
             else "Objects Estimation is restoring its source file. Please wait a moment."
         )
 
@@ -1168,6 +1229,13 @@ def _current_estimate_matches_run(run_id: str) -> bool:
         return True
 
     return False
+
+
+def _current_estimate_is_reusable(run_id: str) -> bool:
+    """Reuse only a stable estimate, never one whose worker is still running."""
+    return _current_estimate_matches_run(run_id) and not isinstance(
+        st.session_state.get("estimation_batch_future"), Future
+    )
 
 
 def _prepare_objects_estimation_seed(
@@ -1288,42 +1356,89 @@ def _prepare_objects_launch_plan(
     objects: list[dict[str, object]],
     source: object = None,
 ) -> dict[str, object] | None:
-    """Create the zero-I/O Objects launch snapshot used by the next screen.
+    """Create the complete Objects readiness bundle used by the next screen.
 
-    This is preparation, not Estimation.  It has no database write, route
-    token, model call or background job.  Its only purpose is to make the
-    button's next screen fully renderable before the button is enabled.
+    This is preparation, not Estimation.  New estimates prepare reviewed seed
+    rows and source bytes. Reopened completed estimates resolve their durable
+    rows and route tokens here. In both cases the callback only swaps a
+    ready-made state and never does an additional read or plan build.
     """
     _sync_object_edits_from_widget_values(objects)
     object_edits = _object_edits_snapshot()
     ignored_object_ids = _ignored_object_ids(object_edits)
-    source_payload = _source_bytes_for_objects_plan(
-        company_id=company_id,
-        run_id=run_id,
-        source=source,
+    edits_changed = _file_review_edits_changed(objects, object_edits)
+    reuse_existing_estimate = bool(
+        not edits_changed and _current_estimate_is_reusable(run_id)
     )
-    if source_payload is None:
-        st.session_state.objects_estimation_launch_plan = None
-        return None
-    file_name, file_bytes = source_payload
+    estimate_id = (
+        str(st.session_state.get("current_estimate_id"))
+        if reuse_existing_estimate
+        else build_estimate_id(run_id)
+    )
 
-    _prepare_objects_estimation_seed(
-        objects=objects,
-        object_edits=object_edits,
-        ignored_object_ids=ignored_object_ids,
-    )
+    if reuse_existing_estimate:
+        # A completed estimate needs no RFQ bytes. Its full screen, including
+        # Review routes, is prepared while File Review is still on screen.
+        from screens.objects import prepare_objects_navigation_state
+
+        screen_state = prepare_objects_navigation_state(
+            company_id=company_id,
+            run_id=run_id,
+            estimate_id=estimate_id,
+        )
+        if screen_state is None:
+            st.session_state.objects_estimation_launch_plan = None
+            st.session_state[f"objects_estimation_readiness_error.{run_id}"] = (
+                "Objects Estimation is refreshing its saved result. Please wait a moment."
+            )
+            return None
+        file_name = None
+        file_bytes = None
+        seed_rows: list[dict[str, object]] = []
+    else:
+        source_payload = _source_bytes_for_objects_plan(
+            company_id=company_id,
+            run_id=run_id,
+            source=source,
+        )
+        if source_payload is None:
+            st.session_state.objects_estimation_launch_plan = None
+            return None
+        file_name, file_bytes = source_payload
+        _prepare_objects_estimation_seed(
+            objects=objects,
+            object_edits=object_edits,
+            ignored_object_ids=ignored_object_ids,
+        )
+        seed_rows = [
+            dict(row)
+            for row in st.session_state.objects_estimation_seed_rows
+        ]
+        from screens.objects import prepare_objects_navigation_state
+
+        screen_state = prepare_objects_navigation_state(
+            company_id=company_id,
+            run_id=run_id,
+            estimate_id=estimate_id,
+            seed_rows=seed_rows,
+        )
+
     plan = {
         "company_id": company_id,
         "run_id": run_id,
-        "file_name": str(file_name),
+        "estimate_id": estimate_id,
+        "reuse_existing_estimate": reuse_existing_estimate,
+        "file_name": str(file_name or ""),
         "file_bytes": file_bytes,
         "metadata_values": _run_metadata_snapshot(),
         "object_edits": object_edits,
         "ignored_object_ids": ignored_object_ids,
-        "edits_changed": _file_review_edits_changed(objects, object_edits),
-        "seed_rows": [dict(row) for row in st.session_state.objects_estimation_seed_rows],
+        "edits_changed": edits_changed,
+        "seed_rows": seed_rows,
+        "screen_state": screen_state,
     }
     st.session_state.objects_estimation_launch_plan = plan
+    st.session_state.pop(f"objects_estimation_readiness_error.{run_id}", None)
     return plan
 
 
@@ -1336,10 +1451,8 @@ def _continue_to_objects_estimation(
     *,
     company_id: str,
     run_id: str,
-    objects: list[dict[str, object]],
-    source: object = None,
 ) -> None:
-    """Move to pre-seeded Objects, then let its worker persist the accepted plan."""
+    """Swap to the already-prepared Objects state without rebuilding it."""
     action_started_at = time.perf_counter()
     phase_durations_ms: dict[str, float] = {}
     action_status = "ok"
@@ -1356,21 +1469,15 @@ def _continue_to_objects_estimation(
             payload["error_code"] = action_error_code
         st.session_state._runtime_completed_action = payload
 
-    phase_started_at = time.perf_counter()
-    plan = _prepare_objects_launch_plan(
-        company_id=company_id,
-        run_id=run_id,
-        objects=objects,
-        source=source,
-    )
-    phase_durations_ms["continue_launch_plan_ms"] = (
-        time.perf_counter() - phase_started_at
-    ) * 1000
-
-    if plan is None:
+    plan = st.session_state.get("objects_estimation_launch_plan")
+    if (
+        not isinstance(plan, dict)
+        or str(plan.get("company_id") or "") != str(company_id)
+        or str(plan.get("run_id") or "") != str(run_id)
+        or not isinstance(plan.get("screen_state"), dict)
+    ):
         st.session_state.last_estimation_error = (
-            "Objects Estimation is not ready because the uploaded file is missing. "
-            "Please upload the file again."
+            "Objects Estimation is still preparing its reviewed source. Please wait a moment."
         )
         action_status = "error"
         action_error_code = "launch_plan_unavailable"
@@ -1380,14 +1487,14 @@ def _continue_to_objects_estimation(
     # Reopening an unchanged durable estimate remains a read path.  A newly
     # accepted snapshot, or one with File Review edits, receives a fresh shell
     # after Objects has painted its prepared seed rows.
-    reuse_existing_estimate = bool(
-        not plan["edits_changed"] and _current_estimate_matches_run(run_id)
-    )
-    estimate_id = (
-        str(st.session_state.get("current_estimate_id"))
-        if reuse_existing_estimate
-        else build_estimate_id(run_id)
-    )
+    reuse_existing_estimate = bool(plan.get("reuse_existing_estimate"))
+    estimate_id = str(plan.get("estimate_id") or "")
+    if not estimate_id:
+        st.session_state.last_estimation_error = "Objects Estimation has no prepared estimate ID."
+        action_status = "error"
+        action_error_code = "prepared_estimate_id_missing"
+        record_action()
+        return
     st.session_state.current_estimate_id = estimate_id
     st.session_state.current_estimate_run_id = run_id
     st.session_state.current_object_id = None
@@ -1412,6 +1519,12 @@ def _continue_to_objects_estimation(
             "run_id": run_id,
             "company_id": company_id,
         }
+    st.session_state.objects_navigation_ready = {
+        "company_id": company_id,
+        "run_id": run_id,
+        "estimate_id": estimate_id,
+        **dict(plan["screen_state"]),
+    }
     st.session_state.objects_estimation_launch_plan = None
     _mark_objects_estimation_cache_dirty(estimate_id)
 

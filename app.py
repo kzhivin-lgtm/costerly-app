@@ -298,7 +298,10 @@ def _signal_ready(trace, screen: str, *, company_id: str | None = None) -> None:
     trace.event("server.app_ready_component_enqueued")
     # Keep a stable, invisible source-screen marker in the Streamlit DOM.  It
     # is consumed by browser timing instrumentation only and has no CSS role.
-    st.markdown(screen_transition_marker_html(screen), unsafe_allow_html=True)
+    st.markdown(
+        screen_transition_marker_html(screen, build_version=trace.build_version),
+        unsafe_allow_html=True,
+    )
     signal_app_ready_to_embed(
         screen,
         trace_id=trace.trace_id,
@@ -383,7 +386,7 @@ def main() -> None:
         requested_trace_id=st.query_params.get("obs_trace"),
         screen=str(st.session_state.get("screen") or "upload"),
         started_at=_SCRIPT_STARTED_AT,
-        build_version="estimation-v5.7.0.5",
+        build_version="estimation-v5.8-navigation-readiness",
     )
     trace.annotate(
         run_sequence=st.session_state._runtime_run_sequence,

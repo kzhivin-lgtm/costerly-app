@@ -407,7 +407,7 @@ def test_streamlit_ready_message_carries_server_build_version():
     app_source = (ROOT / "app.py").read_text()
 
     assert "trace.annotate(server_build_version=trace.build_version)" in app_source
-    assert "st.markdown(screen_transition_marker_html(screen), unsafe_allow_html=True)" in app_source
+    assert "screen_transition_marker_html(screen, build_version=trace.build_version)" in app_source
     assert "        build_version=trace.build_version,\n" not in app_source
     assert "build_version: str" not in source
 

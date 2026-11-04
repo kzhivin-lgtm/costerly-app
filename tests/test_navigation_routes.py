@@ -408,10 +408,19 @@ def test_continue_uses_prepared_launch_without_sync_persistence(monkeypatch):
         lambda **_kwargs: (_ for _ in ()).throw(AssertionError("callback must not persist")),
     )
 
-    file_review._continue_to_objects_estimation(
+    plan = file_review._prepare_objects_launch_plan(
         company_id="company-1",
         run_id="run-1",
         objects=objects_input,
+    )
+
+    assert plan is not None
+    assert plan["estimate_id"] == "estimate-new"
+    assert plan["screen_state"]["data"]["rows"][0]["object_key"] == "object-1"
+
+    file_review._continue_to_objects_estimation(
+        company_id="company-1",
+        run_id="run-1",
     )
 
     assert st.session_state.screen == "objects"
@@ -425,6 +434,72 @@ def test_continue_uses_prepared_launch_without_sync_persistence(monkeypatch):
         "run_id": "run-1",
         "company_id": "company-1",
     }
+    assert st.session_state.objects_navigation_ready["data"]["rows"][0]["object_key"] == "object-1"
+
+
+def test_continue_callback_only_consumes_the_ready_bundle():
+    source = Path("screens/file_review.py").read_text()
+    callback_source = source.split("def _continue_to_objects_estimation", 1)[1].split(
+        "def _mark_estimation_batch_started", 1
+    )[0]
+
+    assert "_prepare_objects_launch_plan(" not in callback_source
+    assert "objects_estimation_launch_plan" in callback_source
+    assert "objects_navigation_ready" in callback_source
+
+
+def test_reopen_completed_estimate_prepares_objects_without_source_bytes(monkeypatch):
+    st.session_state.clear()
+    st.session_state.current_estimate_id = "estimate-old"
+    st.session_state.current_estimate_run_id = "run-1"
+    st.session_state.file_review_run_metadata = {
+        "project_name": "Hall", "partner": "unknown", "client": "unknown",
+    }
+    st.session_state.file_review_object_edits = {
+        "object-1": {
+            "name": "Cabinet", "expected_name": "Cabinet", "quantity": "1", "ignored": False,
+        }
+    }
+    prepared = []
+    monkeypatch.setattr(
+        objects,
+        "prepare_objects_navigation_state",
+        lambda **kwargs: prepared.append(kwargs) or {
+            "data": {"rows": [{"object_key": "object-1"}], "project_costs": [], "summary": {}},
+            "data_error": None,
+            "cache_warning": None,
+        },
+    )
+
+    plan = file_review._prepare_objects_launch_plan(
+        company_id="company-1",
+        run_id="run-1",
+        objects=[{"object_id": "object-1", "name": "Cabinet", "quantity": 1}],
+    )
+
+    assert plan is not None
+    assert plan["reuse_existing_estimate"] is True
+    assert plan["file_bytes"] is None
+    assert prepared == [{
+        "company_id": "company-1",
+        "run_id": "run-1",
+        "estimate_id": "estimate-old",
+    }]
+
+
+def test_objects_back_navigation_uses_the_cached_file_review_snapshot():
+    st.session_state.clear()
+    st.session_state.current_run_id = "run-1"
+    review_data = {"run": {"run_id": "run-1"}, "objects": []}
+    st.session_state.file_review_data_cache = {"run-1": review_data}
+
+    objects._back_to_file_review_with_ready_cache("company-1")
+    restored = file_review._consume_prepared_file_review_navigation(
+        company_id="company-1", run_id="run-1",
+    )
+
+    assert st.session_state.screen == "file_review"
+    assert restored is review_data
 
 
 def test_restored_file_review_source_is_used_for_a_prepared_launch(monkeypatch):
@@ -630,7 +705,7 @@ def test_file_review_renders_all_three_editable_project_fields():
     assert '"partner": "Partner"' in source
     assert '"client": "Client"' in source
     assert "save_file_review_run_metadata" in source
-    assert "continue_launch_plan_ms" in source
+    assert "objects_navigation_ready" in source
     assert "objects_estimation_launch_plan" in source
 
 
