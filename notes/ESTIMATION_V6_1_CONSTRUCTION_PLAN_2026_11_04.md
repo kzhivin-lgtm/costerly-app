@@ -139,10 +139,27 @@ No production facts, estimates or catalogs were changed by the lookup.
 `tools/replay_estimation_v6.py` can execute the same Analyze, Calculation, 2VN,
 composer and purchasing path while saving results only to a fresh local JSON.
 Its default mode is read-only; `--execute` enables paid provider calls.
-The execution attempt was rejected by access review before the process started:
-explicit owner approval is required to send LF1 evidence to Anthropic and incur
-the calls. This is not a successful model witness or a model-quality failure.
-Approval was requested; no alternative transport or bypass was attempted.
+The first execution attempt was rejected by access review before the process
+started. The owner subsequently explicitly authorized one paid LF1 replay and
+Anthropic evidence transmission. No alternative transport or bypass was used.
+
+The authorized replay ran on `fab06ff` and failed after 28.95 seconds at
+`normalize_construction_scope`: `construction panel groups require a fixed
+panel assembly`. Analyze returned a parseable response with a usable palette,
+but at least one zone supplied nonempty `panel_groups` with an assembly role
+other than `vertical_panel`. Calculation was not called. The replay wrote only
+`/private/tmp/estimation-v6-lf1-witness-01.json`; no database writes occurred.
+
+This is a failed live acceptance gate, not a completed BOM. The agent currently
+builds its usage event and returns its response only after normalization, so
+the failed witness has no raw model response or token/cost data. Consequently,
+the exact offending zone and whether its groups represent a valid construction
+cannot be established from this run. Empty usage does not mean a free call.
+
+The next bounded step is to retain raw response and provider usage before
+validation, then obtain approval for one additional paid replay. Inspect the
+recovered scope before changing the guard or composer. Do not manufacture a
+passing result by dropping the groups or loosening the rule without evidence.
 
 Pending acceptance: a real LF1 model witness, then a multi-object / separate
 legend witness, followed by authenticated production behavior and owner review.

@@ -546,9 +546,15 @@ project Material Engine after C/I/A resolution, with whole-sheet rounding.
 Do not claim geometric offcut reuse from aggregate area. Labor is excluded.
 Base: e608f37. Acceptance and bounded scope:
 `notes/ESTIMATION_V6_1_CONSTRUCTION_PLAN_2026_11_04.md`.
-Live LF1 replay is awaiting explicit approval for paid Anthropic calls and
-source-evidence transmission after access-review rejection. No production
-write or deployment has occurred. Retain the V5.8.2 production checkpoint.
+Owner approved one paid LF1 replay and Anthropic evidence transmission.
+[verified] The replay received an Analyze response but failed normalization
+after 28.95 seconds: `construction panel groups require a fixed panel assembly`.
+Calculation was not called. Raw Analyze output and usage were not retained
+before validation, so the offending zone and actual cost are unknown. Next:
+retain raw response/usage before validation, then request one additional paid
+replay to distinguish model-contract drift from an overly narrow composer
+contract. Do not remove the guard without evidence. No production write or
+deployment has occurred. Retain the V5.8.2 production checkpoint.
 [verified] Local suite: 1657 passed, 10 unchanged baseline failures; 18 new
 tests cover the V6.1 contract. Real model quality and latency remain unknown.
 
