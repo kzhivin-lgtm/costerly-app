@@ -487,6 +487,117 @@ def test_reopen_completed_estimate_prepares_objects_without_source_bytes(monkeyp
     }]
 
 
+def test_reopen_active_estimate_resumes_its_worker_without_a_new_launch(monkeypatch):
+    """Back/Continue must not turn one active estimate into a second job."""
+    st.session_state.clear()
+    active_worker = Future()
+    st.session_state.current_estimate_id = "estimate-live"
+    st.session_state.current_estimate_run_id = "run-1"
+    st.session_state.estimation_batch_future = active_worker
+    st.session_state.prepared_estimate_access = {
+        "estimate_id": "estimate-live", "run_id": "run-1", "company_id": "company-1",
+    }
+    st.session_state.objects_estimation_seed_rows = [{
+        "object_key": "object-1", "name": "Cabinet", "quantity": 1, "status": "running",
+    }]
+    st.session_state.file_review_object_edits = {
+        "object-1": {
+            "name": "Cabinet", "expected_name": "Cabinet", "quantity": "1", "ignored": False,
+        }
+    }
+    prepared = []
+    monkeypatch.setattr(
+        file_review,
+        "build_estimate_id",
+        lambda _run_id: (_ for _ in ()).throw(AssertionError("must not create a second estimate")),
+    )
+    monkeypatch.setattr(
+        objects,
+        "prepare_objects_navigation_state",
+        lambda **kwargs: prepared.append(kwargs) or {
+            "data": {"rows": kwargs.get("seed_rows") or [], "project_costs": [], "summary": {}},
+            "data_error": None,
+            "cache_warning": None,
+        },
+    )
+
+    plan = file_review._prepare_objects_launch_plan(
+        company_id="company-1",
+        run_id="run-1",
+        objects=[{"object_id": "object-1", "name": "Cabinet", "quantity": 1}],
+    )
+
+    assert plan is not None
+    assert plan["reuse_existing_estimate"] is True
+    assert plan["estimate_id"] == "estimate-live"
+    assert plan["file_bytes"] is None
+    assert prepared[0]["seed_rows"] == st.session_state.objects_estimation_seed_rows
+
+    file_review._continue_to_objects_estimation(company_id="company-1", run_id="run-1")
+
+    assert st.session_state.screen == "objects"
+    assert st.session_state.current_estimate_id == "estimate-live"
+    assert st.session_state.estimation_batch_future is active_worker
+    assert st.session_state.objects_estimation_launch_request is None
+    assert st.session_state.prepared_estimate_access == {
+        "estimate_id": "estimate-live", "run_id": "run-1", "company_id": "company-1",
+    }
+
+
+def test_reopen_pending_estimate_keeps_its_undispatched_launch(monkeypatch):
+    """The callback-to-first-render request belongs to the current estimate."""
+    st.session_state.clear()
+    request = {
+        "company_id": "company-1", "run_id": "run-1", "estimate_id": "estimate-live",
+        "file_name": "cabinet.pdf", "file_bytes": b"pdf",
+    }
+    st.session_state.current_estimate_id = "estimate-live"
+    st.session_state.current_estimate_run_id = "run-1"
+    st.session_state.objects_estimation_launch_request = request
+    st.session_state.prepared_estimate_access = {
+        "estimate_id": "estimate-live", "run_id": "run-1", "company_id": "company-1",
+    }
+    st.session_state.objects_estimation_seed_rows = [{
+        "object_key": "object-1", "name": "Cabinet", "quantity": 1, "status": "pending",
+    }]
+    st.session_state.file_review_object_edits = {
+        "object-1": {
+            "name": "Cabinet", "expected_name": "Cabinet", "quantity": "1", "ignored": False,
+        }
+    }
+    prepared = []
+    monkeypatch.setattr(
+        file_review,
+        "build_estimate_id",
+        lambda _run_id: (_ for _ in ()).throw(AssertionError("must retain pending launch")),
+    )
+    monkeypatch.setattr(
+        objects,
+        "prepare_objects_navigation_state",
+        lambda **kwargs: prepared.append(kwargs) or {
+            "data": {"rows": kwargs.get("seed_rows") or [], "project_costs": [], "summary": {}},
+            "data_error": None,
+            "cache_warning": None,
+        },
+    )
+
+    plan = file_review._prepare_objects_launch_plan(
+        company_id="company-1",
+        run_id="run-1",
+        objects=[{"object_id": "object-1", "name": "Cabinet", "quantity": 1}],
+    )
+    assert plan is not None
+    assert plan["reuse_existing_estimate"] is True
+    assert prepared[0]["seed_rows"] == st.session_state.objects_estimation_seed_rows
+
+    file_review._continue_to_objects_estimation(company_id="company-1", run_id="run-1")
+
+    assert st.session_state.objects_estimation_launch_request is request
+    assert st.session_state.prepared_estimate_access == {
+        "estimate_id": "estimate-live", "run_id": "run-1", "company_id": "company-1",
+    }
+
+
 def test_objects_back_navigation_uses_the_cached_file_review_snapshot():
     st.session_state.clear()
     st.session_state.current_run_id = "run-1"

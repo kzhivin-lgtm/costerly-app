@@ -1232,9 +1232,33 @@ def _current_estimate_matches_run(run_id: str) -> bool:
 
 
 def _current_estimate_is_reusable(run_id: str) -> bool:
-    """Reuse only a stable estimate, never one whose worker is still running."""
-    return _current_estimate_matches_run(run_id) and not isinstance(
-        st.session_state.get("estimation_batch_future"), Future
+    """Return whether this File Review still owns the same estimate.
+
+    A live worker is part of the same estimate, not a reason to create another
+    one.  In particular, a Back to File Review -> Continue round trip must
+    resume the active estimate ID and its worker rather than enqueueing a
+    duplicate calculation.
+    """
+    return _current_estimate_matches_run(run_id)
+
+
+def _matching_estimation_launch_is_pending(
+    *,
+    company_id: str,
+    run_id: str,
+    estimate_id: str,
+) -> bool:
+    """Return whether Objects has an unconsumed launch for this exact estimate.
+
+    The request exists for the short callback-to-first-render gap.  Keeping it
+    intact matters if a user returns before Objects dispatches the worker.
+    """
+    request = st.session_state.get("objects_estimation_launch_request")
+    return bool(
+        isinstance(request, dict)
+        and str(request.get("company_id") or "") == str(company_id)
+        and str(request.get("run_id") or "") == str(run_id)
+        and str(request.get("estimate_id") or "") == str(estimate_id)
     )
 
 
@@ -1377,15 +1401,32 @@ def _prepare_objects_launch_plan(
     )
 
     if reuse_existing_estimate:
-        # A completed estimate needs no RFQ bytes. Its full screen, including
-        # Review routes, is prepared while File Review is still on screen.
+        # A completed estimate needs no RFQ bytes.  A still-running estimate
+        # also stays on this read-free path: use its existing seed rows while
+        # its worker persists the durable shell in the background.
         from screens.objects import prepare_objects_navigation_state
 
-        screen_state = prepare_objects_navigation_state(
+        active_future = st.session_state.get("estimation_batch_future")
+        active_worker = isinstance(active_future, Future)
+        resume_seed_rows = [
+            dict(row)
+            for row in (st.session_state.get("objects_estimation_seed_rows") or [])
+        ]
+        launch_pending = _matching_estimation_launch_is_pending(
             company_id=company_id,
             run_id=run_id,
             estimate_id=estimate_id,
         )
+        prepare_kwargs: dict[str, object] = {
+            "company_id": company_id,
+            "run_id": run_id,
+            "estimate_id": estimate_id,
+        }
+        if active_worker or launch_pending:
+            # There is no durable shell during a worker/request handoff.  The
+            # reviewed rows are the complete first paint in that short window.
+            prepare_kwargs["seed_rows"] = resume_seed_rows
+        screen_state = prepare_objects_navigation_state(**prepare_kwargs)
         if screen_state is None:
             st.session_state.objects_estimation_launch_plan = None
             st.session_state[f"objects_estimation_readiness_error.{run_id}"] = (
@@ -1394,7 +1435,7 @@ def _prepare_objects_launch_plan(
             return None
         file_name = None
         file_bytes = None
-        seed_rows: list[dict[str, object]] = []
+        seed_rows = resume_seed_rows if (active_worker or launch_pending) else []
     else:
         source_payload = _source_bytes_for_objects_plan(
             company_id=company_id,
@@ -1499,8 +1540,21 @@ def _continue_to_objects_estimation(
     st.session_state.current_estimate_run_id = run_id
     st.session_state.current_object_id = None
     if reuse_existing_estimate:
-        st.session_state.objects_estimation_launch_request = None
-        st.session_state.prepared_estimate_access = None
+        active_worker = isinstance(st.session_state.get("estimation_batch_future"), Future)
+        launch_pending = _matching_estimation_launch_is_pending(
+            company_id=company_id,
+            run_id=run_id,
+            estimate_id=estimate_id,
+        )
+        # Do not erase a request the first Objects render has not dispatched
+        # yet.  Conversely, discard only a stale request for another estimate.
+        if not launch_pending:
+            st.session_state.objects_estimation_launch_request = None
+        # `app.py` needs this receipt until the active worker creates its
+        # durable estimate shell.  Clearing it on Back caused the ownership
+        # error and left the same calculation stranded mid-progress.
+        if not active_worker and not launch_pending:
+            st.session_state.prepared_estimate_access = None
     else:
         st.session_state.approved_object_keys = set()
         st.session_state.last_estimation_result = None
