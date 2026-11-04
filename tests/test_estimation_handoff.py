@@ -1,8 +1,10 @@
 from io import BytesIO
+from json import JSONDecodeError
 
 from PIL import Image
 
 from use_cases import estimation_handoff
+from use_cases import estimation_artifacts
 from use_cases.estimation_handoff import persist_estimation_inputs
 from use_cases.estimation_originals import describe_estimation_original
 
@@ -44,6 +46,32 @@ class _Client:
 def _image_bytes():
     image = Image.new("RGB", (100, 100), "white")
     output = BytesIO(); image.save(output, "PNG"); return output.getvalue()
+
+
+def test_page_artifact_retries_an_empty_storage_response(monkeypatch):
+    class _FlakyBucket:
+        def __init__(self): self.calls = 0
+        def upload(self, *_args, **_kwargs):
+            self.calls += 1
+            if self.calls == 1:
+                raise JSONDecodeError("Expecting value", "", 0)
+
+    bucket = _FlakyBucket()
+
+    class _FlakyStorage:
+        def from_(self, _name): return bucket
+
+    class _FlakyClient:
+        storage = _FlakyStorage()
+
+    monkeypatch.setattr(estimation_artifacts, "sleep", lambda _seconds: None)
+    artifact = estimation_artifacts.persist_page_artifact(
+        client=_FlakyClient(), company_id="company-1", run_id="run-1",
+        object_id="object-1", page_number=1, page_bytes=_image_bytes(),
+    )
+
+    assert bucket.calls == 2
+    assert artifact.storage_ref.startswith("storage://rfq-estimation-evidence/company-1/run-1/object-1/")
 
 
 def test_shadow_handoff_persists_preview_input_and_artifact():

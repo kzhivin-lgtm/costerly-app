@@ -158,10 +158,18 @@ def _consume_estimation_future() -> None:
         st.session_state.last_estimation_error = None
         estimate_id = st.session_state.get("current_estimate_id")
         if estimate_id:
+            st.session_state.setdefault("estimation_terminal_failures", {}).pop(
+                str(estimate_id), None,
+            )
             st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
             invalidate_object_detail_cache(str(estimate_id))
     except Exception as exc:
         st.session_state.last_estimation_error = str(exc)
+        estimate_id = st.session_state.get("current_estimate_id")
+        if estimate_id:
+            st.session_state.setdefault("estimation_terminal_failures", {})[
+                str(estimate_id)
+            ] = str(exc)
     finally:
         st.session_state.prepared_estimate_access = None
         clear_estimate_progress(st.session_state.get("current_estimate_id"))
@@ -197,6 +205,9 @@ def _start_prepared_estimation_launch() -> None:
             edits_changed=bool(request.get("edits_changed")),
             ignored_object_ids=set(request.get("ignored_object_ids") or set()),
             create_shell=bool(request.get("create_shell")),
+        )
+        st.session_state.setdefault("estimation_terminal_failures", {}).pop(
+            estimate_id, None,
         )
     except Exception as exc:
         st.session_state.last_estimation_error = str(exc)
@@ -257,6 +268,23 @@ def _data_with_progress(data: dict[str, object], estimate_id: str | None) -> dic
                 row["progress_percent"] = progress.get("percent")
                 row["progress_updated_at"] = progress.get("updated_at")
                 break
+
+    # A worker can fail after its first optimistic progress update. Preserve
+    # that terminal state in this session even if the same infrastructure
+    # incident also prevents the durable failure write.
+    local_failures = st.session_state.get("estimation_terminal_failures", {})
+    local_failure = (
+        local_failures.get(str(estimate_id))
+        if isinstance(local_failures, dict) and estimate_id
+        else None
+    )
+    if local_failure:
+        for row in rows:
+            if objects_pricing.row_status(row) in {"running", "pending"}:
+                row["status"] = "failed"
+                row["progress_percent"] = 100
+                row["progress_label"] = "estimation_handoff_failed"
+                row["self_cost_unit"] = None
 
     for row in rows:
         status = objects_pricing.row_status(row)

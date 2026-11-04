@@ -228,6 +228,38 @@ def _set_object_technical_failure(
     )
 
 
+def _mark_handoff_failure(
+    *,
+    client: object,
+    estimate_id: str,
+    objects: list[Mapping[str, object]],
+    ignored_object_ids: set[str],
+) -> None:
+    """End every known estimate row if immutable evidence handoff fails.
+
+    A handoff happens before an Estimation input exists, so it has no input ID
+    for the normal per-input failure trace. It still has reviewed object IDs.
+    Those rows must become terminal failures rather than lingering at the
+    optimistic geometry progress cap after the worker has exited.
+    """
+    for item in objects:
+        object_id = str(item.get("object_id") or "")
+        if not object_id or object_id in ignored_object_ids:
+            continue
+        try:
+            _set_object_technical_failure(
+                client,
+                estimate_id=estimate_id,
+                object_id=object_id,
+                label="estimation_handoff_failed",
+            )
+        except Exception:
+            # Preserve the original handoff error. The local progress state is
+            # written before the durable update, so this session can still
+            # leave the misleading running state.
+            continue
+
+
 def _run_estimation_v4_1_for_all_objects(
     *,
     client: object,
@@ -660,15 +692,17 @@ def _run_estimation_job(
     """Persist the immutable V4 handoff, then run geometry, BOM and material planning."""
     created_inputs: list[dict[str, object]] = []
     client = get_supabase_client()
+    object_rows_data: list[dict[str, object]] = []
     try:
         run_rows = fetch_rfq_run(client, run_id)
         object_rows = fetch_rfq_detected_objects(client, run_id)
+        object_rows_data = [row.to_dict() for _, row in object_rows.iterrows()]
         ocr = fetch_latest_ocr_result(client, run_id)
         if not run_rows.empty and ocr and ocr.get("ocr_event_id"):
             handoff = persist_estimation_inputs(
                 client=client,
                 run=run_rows.iloc[0].to_dict(),
-                objects=[row.to_dict() for _, row in object_rows.iterrows()],
+                objects=object_rows_data,
                 ignored_object_ids=ignored_object_ids,
                 file_name=file_name,
                 file_bytes=file_bytes,
@@ -681,6 +715,12 @@ def _run_estimation_job(
             )
             created_inputs = handoff["created_inputs"]
     except Exception as exc:
+        _mark_handoff_failure(
+            client=client,
+            estimate_id=estimate_id,
+            objects=object_rows_data,
+            ignored_object_ids=ignored_object_ids,
+        )
         raise RuntimeError(f"Estimation V4 handoff failed: {exc}") from exc
 
     inputs_available = bool(created_inputs)

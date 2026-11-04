@@ -1,6 +1,9 @@
 import use_cases.estimation_runtime as runtime
 from decimal import Decimal
+from json import JSONDecodeError
 from types import SimpleNamespace
+
+import pytest
 
 
 def test_submit_creates_estimate_shell_before_background_job(monkeypatch):
@@ -174,6 +177,45 @@ def test_v5_3_runtime_routes_all_objects_through_2vn_geometry_bom_path(monkeypat
     assert result["estimation"]["status"] == "completed"
     assert result["estimation"]["estimated_objects"] == 1
     assert result["estimation_version"] == "v5_3_2vn_geometry_composer"
+
+
+def test_handoff_failure_ends_known_objects_instead_of_leaving_progress_running(monkeypatch):
+    terminal_updates = []
+    monkeypatch.setattr(runtime, "get_supabase_client", lambda: object())
+    monkeypatch.setattr(runtime, "fetch_rfq_run", lambda _client, _run_id: _Frame([{"run_id": "run-1"}]))
+    monkeypatch.setattr(
+        runtime,
+        "fetch_rfq_detected_objects",
+        lambda _client, _run_id: _Frame([{"object_id": "object-1"}]),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "fetch_latest_ocr_result",
+        lambda _client, _run_id: {"ocr_event_id": "ocr-1", "ocr_result": {}},
+    )
+    monkeypatch.setattr(runtime, "describe_estimation_original", lambda **_kwargs: object())
+    monkeypatch.setattr(
+        runtime,
+        "persist_estimation_inputs",
+        lambda **_kwargs: (_ for _ in ()).throw(JSONDecodeError("Expecting value", "", 0)),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "_set_object_technical_failure",
+        lambda _client, **kwargs: terminal_updates.append(kwargs),
+    )
+
+    with pytest.raises(RuntimeError, match="Estimation V4 handoff failed: Expecting value"):
+        runtime._run_estimation_job(
+            estimate_id="estimate-1", run_id="run-1", company_id="company-1",
+            file_name="drawing.pdf", file_bytes=b"pdf", ignored_object_ids=set(),
+            shell={"estimate_id": "estimate-1"},
+        )
+
+    assert terminal_updates == [{
+        "estimate_id": "estimate-1", "object_id": "object-1",
+        "label": "estimation_handoff_failed",
+    }]
 
 
 def test_all_ignored_objects_finish_as_empty_v4_estimate(monkeypatch):

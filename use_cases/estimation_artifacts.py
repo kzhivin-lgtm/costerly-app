@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from hashlib import sha256
 from io import BytesIO
+from json import JSONDecodeError
+from time import sleep
 from typing import Any
 
 from PIL import Image
@@ -12,6 +14,38 @@ from use_cases.estimation_evidence import EvidenceArtifact
 
 
 EVIDENCE_BUCKET = "rfq-estimation-evidence"
+_IDEMPOTENT_UPLOAD_ATTEMPTS = 3
+
+
+def _upload_immutable_artifact(
+    *,
+    client: Any,
+    path: str,
+    payload: bytes,
+    content_type: str,
+) -> None:
+    """Upload a content-addressed artifact through a bounded safe retry.
+
+    Supabase Storage can acknowledge a successful write with an empty response
+    body. Its Python SDK then raises ``JSONDecodeError`` while reading the
+    response. The target here is immutable and uses upsert, so a retry cannot
+    create a second artifact or change its contents.
+    """
+    for attempt in range(_IDEMPOTENT_UPLOAD_ATTEMPTS):
+        try:
+            client.storage.from_(EVIDENCE_BUCKET).upload(
+                path,
+                payload,
+                file_options={"content-type": content_type, "upsert": "true"},
+            )
+            return
+        except JSONDecodeError as exc:
+            is_empty_response = exc.msg == "Expecting value" and exc.pos == 0
+            if not is_empty_response or attempt >= _IDEMPOTENT_UPLOAD_ATTEMPTS - 1:
+                raise RuntimeError(
+                    "Evidence storage returned an empty response after retrying the upload."
+                ) from exc
+            sleep(0.2 * (attempt + 1))
 
 
 def evidence_signed_url(*, client: Any, storage_ref: str, company_id: str) -> str | None:
@@ -51,10 +85,13 @@ def persist_preview_artifact(*, client: Any, company_id: str, run_id: str, objec
         raise ValueError("preview identity and bytes are required")
     digest = sha256(webp_bytes).hexdigest()
     path = f"{company_id}/{run_id}/{object_id}/{digest}.webp"
-    client.storage.from_(EVIDENCE_BUCKET).upload(
+    _upload_immutable_artifact(
+        client=client,
         # Content-addressed paths are immutable by definition. Upsert makes a
         # repeated File Review revision idempotent when the crop did not change.
-        path, webp_bytes, file_options={"content-type": "image/webp", "upsert": "true"}
+        path=path,
+        payload=webp_bytes,
+        content_type="image/webp",
     )
     return EvidenceArtifact(
         storage_ref=f"storage://{EVIDENCE_BUCKET}/{path}",
@@ -73,8 +110,11 @@ def persist_page_artifact(*, client: Any, company_id: str, run_id: str, object_i
     payload = output.getvalue()
     digest = sha256(payload).hexdigest()
     path = f"{company_id}/{run_id}/{object_id}/page-{page_number}-{digest}.webp"
-    client.storage.from_(EVIDENCE_BUCKET).upload(
-        path, payload, file_options={"content-type": "image/webp", "upsert": "true"}
+    _upload_immutable_artifact(
+        client=client,
+        path=path,
+        payload=payload,
+        content_type="image/webp",
     )
     return EvidenceArtifact(
         storage_ref=f"storage://{EVIDENCE_BUCKET}/{path}",

@@ -598,6 +598,22 @@ def test_reopen_pending_estimate_keeps_its_undispatched_launch(monkeypatch):
     }
 
 
+def test_terminal_worker_failure_replaces_the_local_running_progress():
+    st.session_state.clear()
+    st.session_state.estimation_terminal_failures = {"estimate-1": "handoff failed"}
+
+    rendered = objects._data_with_progress({
+        "rows": [{"object_key": "object-1", "status": "running", "progress_percent": 1}],
+        "project_costs": [],
+        "summary": {},
+    }, "estimate-1")
+
+    assert rendered["rows"] == [{
+        "object_key": "object-1", "status": "failed", "progress_percent": 100,
+        "progress_label": "estimation_handoff_failed", "self_cost_unit": None,
+    }]
+
+
 def test_objects_back_navigation_uses_the_cached_file_review_snapshot():
     st.session_state.clear()
     st.session_state.current_run_id = "run-1"
