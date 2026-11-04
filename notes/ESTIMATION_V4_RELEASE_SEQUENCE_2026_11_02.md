@@ -49,3 +49,21 @@ are `notes/ESTIMATION_V4_29_NAVIGATION_AND_OBJECT_DETAIL_IMPLEMENTATION_CHECKPOI
 and `notes/ESTIMATION_V4_29_FULL_CHAT_HANDOFF_2026_11_03.md`. They record
 published implementation and pending production acceptance, not an
 owner-accepted runtime witness.
+
+## Estimation V5 navigation and handoff recovery sequence
+
+The following releases are on the approved V5 construction line, but are
+strictly navigation and handoff recovery releases. They do not redefine the
+Cabinet Block or Calculation contract.
+
+| Release | Published commit | Runtime change |
+| --- | --- | --- |
+| V5.8 | `512bf6e` | Prepare source data and target readiness before the corresponding navigation control becomes actionable |
+| V5.8.1 | `7405e67` | Preserve an active or pending estimate across File Review and Objects navigation, rather than starting a second estimate |
+| V5.8.2 | `710165d` | Retry a bounded transient blank Storage response during immutable evidence-page upload, and end unrecoverable handoff failures as terminal object failures |
+
+V5.8.2 is deployed with wrapper marker
+`estimation-v5.8.2-handoff-recovery`. It is a recovery checkpoint pending a
+fresh authenticated LF1 interaction witness, not an owner-accepted visual
+transition checkpoint. Full record:
+`notes/ESTIMATION_V5_8_2_PRODUCTION_CHECKPOINT_2026_11_04.md`.

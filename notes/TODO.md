@@ -535,6 +535,24 @@ fact and the active material/object-detail readers select it. Pending
 acceptance: the fresh Lev 1 V5.6.3 witness must expose the corrected 600-mm
 slide-set result.
 
+CHECKPOINT, deployed, pending authenticated interaction witness, 3.17.4.4
+Estimation V5.8.2 handoff recovery, 2026-11-04: [verified] V5.8
+(`512bf6e`) prepared navigation targets and V5.8.1 (`7405e67`) preserved an
+active or pending estimate during File Review and Objects navigation. The
+owner's V5.8.1 live test confirmed that Back and Continue no longer reset the
+calculation, but surfaced a distinct terminal failure:
+`Expecting value: line 1 column 1 (char 0)` left an object visually at 45%.
+V5.8.2 (`710165d`) retries only the safe content-addressed immutable Storage
+upload when its response body is blank, then ends a final handoff failure as
+`Failed / 100%` rather than a live `Estimating` row. Production marker:
+`estimation-v5.8.2-handoff-recovery`. Local verification: 403 focused tests;
+full suite `1639 passed, 10 failed` with the established unrelated baseline.
+Pending acceptance: a fresh authenticated LF1 run must retain its estimate
+through Back/Continue, complete after one transient Storage response, or show
+terminal `Failed` after three failures. This does not accept Cabinet Block,
+2VN, Analyze/Calculation, materials, pricing or visual transition quality.
+Record: `notes/ESTIMATION_V5_8_2_PRODUCTION_CHECKPOINT_2026_11_04.md`.
+
 ACTIVE, V6.59, P0, New Estimate to Upload client-transition observability:
 The evidence rejects server-side auth, Supabase, and Upload rendering as the
 source of the reported 3-4 second warm navigation: prior successful

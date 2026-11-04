@@ -498,3 +498,16 @@ preserve exact trace, commits, test outcomes, protected contracts, rejected
 witnesses, pending production acceptance, and next evidence protocol. No
 Detection benchmark entry was changed because these releases did not change
 Detection behavior.
+
+Estimation V5.8.2 deployed recovery checkpoint `710165d`, 2026-11-04:
+V5.8 source readiness (`512bf6e`) and V5.8.1 active-estimate resume
+(`7405e67`) remain intact. V5.8.2 retries only the transient blank Storage
+JSON response during content-addressed immutable evidence-page upload and
+turns a final handoff failure into `Failed / 100%`, including a browser-session
+terminal overlay. Production returned wrapper marker
+`estimation-v5.8.2-handoff-recovery`; 403 focused tests passed, and the full
+suite recorded 1,639 passed with the established 10 unrelated failures. The
+owner's V5.8.1 live run verified that Back/Continue stopped resetting the
+estimate, but the fresh post-V5.8.2 authenticated LF1 witness remains required
+before visual transition and terminal-cycle acceptance. Record:
+`notes/ESTIMATION_V5_8_2_PRODUCTION_CHECKPOINT_2026_11_04.md`.
