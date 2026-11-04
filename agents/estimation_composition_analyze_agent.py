@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 from datetime import UTC, datetime
 import json
 from hashlib import sha256
@@ -16,6 +15,9 @@ from agents.anthropic_adapter import (
 from agents.estimation_v4_1_material_facts_agent import (
     MAX_OUTPUT_TOKENS, TIMEOUT_SECONDS, _create_message_with_hard_timeout, _json_object,
 )
+from agents.estimation_visual_evidence import page_content
+from use_cases.estimation_dimension_graph import build_dimension_graph
+from use_cases.estimation_dimension_scale import build_dimension_scale_gate
 
 
 ESTIMATION_COMPOSITION_ANALYZE_AGENT_VERSION = "estimation_analyze_v6_1"
@@ -74,17 +76,32 @@ def _content(*, inputs: Sequence[Mapping[str, Any]], page_bytes_by_ref: Mapping[
     all_inputs = [*inputs, *context_inputs]
     pages, objects = _page_manifest(all_inputs, page_bytes_by_ref)
     requested = {str(row.get("input_id")) for row in inputs}
+    dimension_context = []
+    for row in all_inputs:
+        graph = build_dimension_graph(input_row=row)
+        scale = build_dimension_scale_gate(dimension_graph=graph)
+        convention = (scale.get("decision") or {}).get("required_unit")
+        numbers = []
+        for number in graph.get("dimension_numbers") or []:
+            unit = number.get("printed_unit") or convention
+            factor = {"mm": 1, "cm": 10, "m": 1000}.get(unit)
+            numbers.append({**number, "interpreted_value_mm": number["numeric_value"] * factor if factor else None,
+                            "unit_basis": "explicit_source" if number.get("printed_unit") else "scale_policy_assumption"})
+        dimension_context.append({"input_id": row.get("input_id"), "dimension_scale_gate": scale,
+                                  "dimension_numbers": numbers})
     content: list[dict[str, Any]] = []
+    detail_budget = 12
     for page in pages:
-        content.extend((
-            {"type": "text", "text": json.dumps({"source_evidence_ref": page["storage_ref"], "source_aliases": page["source_aliases"], "page_number": page["page_number"]})},
-            {"type": "image", "source": {"type": "base64", "media_type": "image/webp", "data": base64.b64encode(page["bytes"]).decode("ascii")}},
-        ))
+        visual, used = page_content(page_bytes=page["bytes"], storage_ref=page["storage_ref"], page_number=page["page_number"],
+                                   payloads=[row.get("input_payload") or {} for row in all_inputs], detail_budget=detail_budget)
+        content.extend(visual)
+        detail_budget -= used
     content.append({"type": "text", "text": json.dumps({
         "contract_version": COMPOSITION_SCOPE_V1,
         "objects": [obj for obj in objects if obj["input_id"] in requested],
         "accepted_context_objects": [{**obj, "construction_scope": next((row.get("accepted_construction_scope") for row in context_inputs if row.get("input_id") == obj["input_id"]), None)} for obj in objects if obj["input_id"] not in requested],
         "allowed_material_families": sorted(allowed_material_families),
+        "dimension_context": dimension_context,
         "source_text": list({str(item["block_ref"]): dict(item)
             for row in all_inputs for container in ("evidence", "document_context")
             for kind in ("ocr_blocks", "ocr_literal_items")
@@ -117,9 +134,10 @@ def run_estimation_composition_analyze_agent(*, inputs: Sequence[Mapping[str, An
     selected_model = model or get_secret("CLAUDE_ESTIMATION_ANALYZE_MODEL", DEFAULT_CLAUDE_AGENT_MODEL)
     client = get_anthropic_client().with_options(timeout=TIMEOUT_SECONDS, max_retries=0)
     started_at = datetime.now(UTC).isoformat()
+    prompt = PROMPT_PATH.read_text(encoding="utf-8").strip()
     response = _create_message_with_hard_timeout(
         client, timeout_seconds=TIMEOUT_SECONDS, model=selected_model, max_tokens=min(24000, max(MAX_OUTPUT_TOKENS, len(inputs) * 2500)),
-        temperature=0, system=PROMPT_PATH.read_text(encoding="utf-8").strip(),
+        temperature=0, system=prompt,
         messages=[{"role": "user", "content": _content(inputs=inputs, page_bytes_by_ref=page_bytes_by_ref, allowed_material_families=allowed_material_families, context_inputs=context_inputs)}],
     )
     parsed = _json_object(extract_text_from_claude_response(response))
@@ -127,7 +145,7 @@ def run_estimation_composition_analyze_agent(*, inputs: Sequence[Mapping[str, An
     if not isinstance(scopes, list):
         raise ValueError("composition analyze response requires object_scopes")
     input_ids = {str(row.get("input_id") or "") for row in inputs}
-    from use_cases.estimation_construction_plan import evidence_refs, normalize_palette, normalize_construction_scope
+    from use_cases.estimation_construction_plan import evidence_refs, normalize_palette, normalize_construction_scope, validate_thickness_witnesses
     allowed_refs = evidence_refs([*inputs, *context_inputs])
     palette = normalize_palette(parsed.get("material_palette"), allowed_refs=allowed_refs, families=allowed_material_families)
     scopes_by_input: dict[str, dict[str, Any]] = {}
@@ -139,6 +157,9 @@ def run_estimation_composition_analyze_agent(*, inputs: Sequence[Mapping[str, An
         if scope["object_id"] != str(((owner.get("input_payload") or {}).get("object") or {}).get("object_id") or ""):
             raise ValueError("composition scope changed locked object identity")
         scope = normalize_construction_scope(scope, palette=palette, allowed_refs=allowed_refs)
+        graph = build_dimension_graph(input_row=owner)
+        scope = validate_thickness_witnesses(scope, dimension_graph=graph,
+                                            dimension_scale_gate=build_dimension_scale_gate(dimension_graph=graph))
         if scope["input_id"] in scopes_by_input:
             raise ValueError("composition analyze response has duplicate input_id")
         scopes_by_input[scope["input_id"]] = scope

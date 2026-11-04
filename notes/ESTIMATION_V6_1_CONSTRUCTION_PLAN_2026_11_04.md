@@ -2,6 +2,10 @@
 
 Work: 3.17.4.5. Status: local implementation, live acceptance pending.
 Owner authorized V6.1 on 2026-11-04. Base: e608f37, matching remote main.
+Latest owner clarification: Haiku is the required production route for both
+passes. Stronger models are permitted only for diagnosis, not acceptance or
+promotion. Functional quality must come from bounded contracts, prompts and
+deterministic tools while retaining a fast, inexpensive result.
 V5.8.2 navigation/recovery, Detection identity and material-only scope remain
 protected. Pre-existing TODO changes belong to the owner.
 
@@ -156,10 +160,116 @@ the failed witness has no raw model response or token/cost data. Consequently,
 the exact offending zone and whether its groups represent a valid construction
 cannot be established from this run. Empty usage does not mean a free call.
 
-The next bounded step is to retain raw response and provider usage before
-validation, then obtain approval for one additional paid replay. Inspect the
-recovered scope before changing the guard or composer. Do not manufacture a
-passing result by dropping the groups or loosening the rule without evidence.
+The owner subsequently authorized all necessary bounded paid replays until
+production readiness and personal acceptance. The replay tool now saves raw
+text, usage, request fingerprint and immutable input/catalog/page snapshots
+before parsing. Identical provider requests can be reused offline; changed
+requests require explicit `--execute`. No production writes are performed.
+
+## Diagnostic witnesses after the initial failure
+
+Local capsules: `/private/tmp/estimation-v6-lf1-witness-NN.json`.
+
+| Witness | Result | Evidence and conclusion |
+| --- | --- | --- |
+| 02 | Haiku Analyze rejected, 28.95 s | False hinged screen, four legs, conflicting material families. Original fixed-panel guard correctly rejected semantic errors. |
+| 03 | Sonnet Analyze timed out at 90 s | No response retained; quality unknown. |
+| 04 | Computed, NOT accepted, 134.47 s | Sonnet Analyze 98.69 s, Haiku Calculation 35.39 s. Correct fixed screen/three drawers/two supports, but invented stock variants, duplicate enclosure, wrong thickness, missing group dimensions and 500-mm slides. |
+| 05 | Analyze rejected, 68.02 s | Clearer contract removed duplicate enclosure and preserved horizontal drawers. Fixed decorative screen was labelled facade_set, with no operating fronts. Thickness interpretation remained wrong. |
+| 06 | Analyze rejected, 72.34 s | Coordinate-aware view details preserved; invalid palette provenance `derived`, continued cm/mm and material mistakes. Crops alone did not establish semantic correctness. |
+| 07 | Adaptive-high Sonnet timed out, 180.26 s | Same evidence and prompt, reasoning enabled; no completed answer. |
+| 08 | Stream diagnostic timed out, 180.29 s | First provider event at 2.299 s, no text token before timeout. Connection establishment is not the dominant delay. No accepted output or complete usage. |
+| 09/10 | Strict schema rejected before inference | Both original and simplified schemas exceeded the provider grammar limit (HTTP 400). Approach abandoned after two failures; experimental schema code/tests removed. |
+| 11 | Adaptive-medium exhausted output, 227.85 s | 10,646 input and 12,000 output tokens, stop_reason=max_tokens, zero text blocks. The output budget was consumed before the JSON answer, not a connection timeout. |
+| 12 | Computed, NOT accepted, 155.23 s | Bounded thinking returned Analyze in 120.57 s (10,675 input / 6,774 output tokens), but still converted 19 cm into 19-mm stock, treated 4 as a gap and assumed compact laminate. Haiku Calculation misclassified plan/side views, multiplied frame-envelope area and lost 720-mm depth under the unchanged 2VN guard. |
+| 13 | Opus diagnostic, NOT accepted, 177.27 s | Analyze correctly selected 40-mm ribs from two 20-mm veneered boards, painted MDF and two purchased legs. Rib count, edge width and thickness inheritance remained unresolved. Haiku geometry still wrong. Not a production route. |
+| 14 | Sonnet Calculation diagnostic, NOT accepted, 52.56 s | Reused 13 Analyze without another paid Analyze. Better group face dimensions and 600-mm slides, but wrong worktop footprint, a derived height bound to a different source number, and invalid orientation. Not a production route. |
+| 15 | Target Haiku Analyze failed, 23.82 s | 13,415 input / 2,427 output tokens. Explicit unit context did not establish correct semantics: drawers omitted, decorative groups assigned to a closed carcass, 40-mm interpretation contradicted by 20-mm assignments. Guard retained. |
+| 16 | Observation-only diagnostic, 15.35 s | Haiku saw three drawer/compartment fronts but confused view ids, units and supports. Simplifying only the output request did not solve visual reasoning. 5,777 input / 1,463 output tokens. |
+| 17 | Labelled-view observation, 15.16 s | Generated headers improved image/id association but did not fix projection classification, units or moving-front interpretation. 6,040 input / 1,377 output tokens. Not a BOM. |
+| 18 | Target Haiku Analyze failed, 24.62 s | Same full contract as 15, with explicit generated view labels. Fixed-panel guard again rejected groups on a non-panel assembly. This prompt/evidence-presentation approach is stopped after two unsuccessful full Haiku runs. |
+
+Diagnostic 16 isolates Haiku visual recognition from the large BOM/material
+response contract. It uses the same source pixels with concise observation
+instructions, no catalogs or formal BOM schema, and cannot publish an estimate.
+This is a discriminating diagnostic, not an added production pass.
+
+## Next consequential decision, awaiting owner confirmation
+
+Proposal, not implemented or approved: simplify the model-facing Analyze
+contract to semantic assemblies, material intent and source observations.
+Keep one shared Analyze plus per-object Calculation and the existing persisted
+construction/BOM/Engine contracts. Extend the deterministic compiler to derive
+layer count, required edge width and default role expansion, rather than asking
+Haiku to redundantly specify all mutually dependent purchasing/construction
+fields. Preserve explicit overrides, source constraints and recorded assumptions.
+The model still owns visual interpretation; deterministic code cannot establish
+an unseen material or correct a wrong drawer/slat count without evidence.
+No guarantee of Haiku acceptance is inferred from this proposal.
+
+Source/assumption rationale is retained in facts/capsules. An owner-visible
+UI inspection path for the new rationale has not been verified; relevant
+Object Detail renderers do not directly reference the new rationale fields.
+Any UI change needs the established scenario agreement and live interaction
+verification; no UI patch is included in these experiments.
+
+Additional deterministic checks: contradicted numeric thickness citations lose
+source authority without silently changing chosen stock; assumed edge width
+must cover the finished panel thickness, not just one laminated layer. Explicit
+source edge-width contradictions fail. The existing numeric/projection 2VN
+guards are not weakened to make a witness pass.
+
+Inspection confirmed source OCR/view coordinates use the 200-DPI frame
+(3307 x 2339), while the saved page image is 1985 x 1404. Previously neither
+Analyze nor Calculation described this mapping. Evidence presentation now
+includes the documented source frame, normalized view boxes and bounded
+same-source detail images (12 per request maximum). Unknown frames never
+authorize a crop. This changes presentation only, not Detection membership.
+
+The 04 Calculation received 18,231 input tokens; its scope alone was 29,195
+JSON characters because material descriptions were repeated per role. The
+geometry handoff now supplies one palette plus compact role assignments.
+Full provenance, economic alternatives and immutable facts remain in the
+authoritative plan. No additional model call or background activity is added.
+
+Two deterministic contract repairs have focused tests: malformed V6 front
+groups fail instead of silently becoming stacked; an explicitly fixed,
+zero-front decorative facade with panel groups uses the fixed-panel composer.
+Hinged or drawer-bearing facade groups still fail. An inconsistent assumed
+finished thickness follows selected stock layers with a recorded correction;
+source/derived contradictions fail rather than rewriting source authority.
+
+Production defaults and timeout are still unchanged. Neither prompt refinement
+nor evidence crops have yet established a passing LF1 gate. Strict-schema
+transport was rejected twice and removed, not promoted. Adaptive thinking also
+has no accepted witness. Replay 12 isolates a bounded thinking allocation from
+the answer allocation, keeping the same source and Analyze prompt. The CLI-only
+option does not change the production route. This deprecated but still supported
+Sonnet 4.6 option is diagnostic, not a future-proof routing decision:
+https://platform.claude.com/docs/en/build-with-claude/extended-thinking.
+
+Calculation now has a V6-only geometry prompt, including dimensions for each
+locked panel group; the legacy prompt remains intact. Legacy same-run inputs
+share source context at read time so a separate-page legend remains traceable
+in each object's composer. Object-owned geometry and immutable records are
+unchanged. Focused construction/evidence/replay/scope/BOM/2VN tests: 37 passed,
+including V6 versus legacy prompt routing. Latest complete suite: 1674 passed,
+the same 10 baseline failures, 29 warnings, 10.60 seconds. No new failing test.
+
+Owner emphasized compact latency for ten objects with 3-4 islands each.
+Agent-proposed, not approved SLA: <=60 s for a simple single object and 2-3 min
+for ten ordinary objects, with a compact shared Analyze and bounded parallel
+Calculation (suggested concurrency 3). Current Calculation remains serial.
+At the measured 35 s/object, ten serial calculations alone imply about six
+minutes; this is an extrapolation, not a ten-object benchmark. Parallel
+orchestration and incremental UI publication require agreement on the tradeoff
+and preservation of cancellation, write ownership and accepted navigation.
+
+Owner clarification after the latency discussion: remove the hard proposed
+time budget and finish the functionally correct cycle first. Routing and
+parallelism are deferred, not acceptance prerequisites. Efficiency still means
+no redundant paid calls or repeated payloads; all necessary bounded functional
+replays remain authorized. No production route is selected solely by latency.
 
 Pending acceptance: a real LF1 model witness, then a multi-object / separate
 legend witness, followed by authenticated production behavior and owner review.

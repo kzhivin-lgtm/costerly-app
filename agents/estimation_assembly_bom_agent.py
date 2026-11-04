@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-import base64
 from datetime import UTC, datetime
 import json
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Mapping, Sequence
+
+from use_cases.estimation_composition_scope import geometry_scope
+from agents.estimation_visual_evidence import page_content
 
 from agents.anthropic_adapter import (
     DEFAULT_CLAUDE_AGENT_MODEL, build_agent_usage_event, extract_text_from_claude_response,
@@ -21,17 +23,19 @@ from agents.estimation_v4_1_material_facts_agent import (
 
 ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION = "estimation_calculation_v6_1"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_assembly_bom_prompt.md"
+V6_PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_calculation_v6_prompt.md"
 RECONCILIATION_PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_assembly_bom_reconciliation_prompt.md"
 
 
 def _content(*, batch: Mapping[str, Any], payload: Mapping[str, Any], dimension_graph: Mapping[str, Any], dimension_scale_gate: Mapping[str, Any], allowed_material_families: Sequence[str], composition_scope: Mapping[str, Any] | None = None) -> list[dict[str, Any]]:
     content: list[dict[str, Any]] = []
     pages = []
+    detail_budget = 12
     for page in batch["pages"]:
-        content.extend((
-            {"type": "text", "text": json.dumps({"source_evidence_ref": page["storage_ref"], "page_number": page["page_number"]})},
-            {"type": "image", "source": {"type": "base64", "media_type": "image/webp", "data": base64.b64encode(page["bytes"]).decode("ascii")}},
-        ))
+        visual, used = page_content(page_bytes=page["bytes"], storage_ref=page["storage_ref"], page_number=page["page_number"],
+                                   payloads=[payload], views=dimension_graph.get("views") or [], detail_budget=detail_budget)
+        content.extend(visual)
+        detail_budget -= used
         pages.append({
             "page_number": page["page_number"], "source_evidence_ref": page["storage_ref"],
             "regions": [
@@ -50,7 +54,7 @@ def _content(*, batch: Mapping[str, Any], payload: Mapping[str, Any], dimension_
         },
         "pages": pages, "dimension_graph": dimension_graph,
         "dimension_scale_gate": dimension_scale_gate,
-        "composition_scope": dict(composition_scope or {}),
+        "composition_scope": geometry_scope(composition_scope),
         "allowed_material_families": sorted(allowed_material_families),
     }, ensure_ascii=False, separators=(",", ":"))})
     return content
@@ -113,7 +117,7 @@ def _reconciliation_content(
             "quantity": object_payload.get("quantity"),
         },
         "dimension_graph": dimension_graph, "dimension_scale_gate": dimension_scale_gate,
-        "composition_scope": dict(composition_scope or {}),
+        "composition_scope": geometry_scope(composition_scope),
         "batch_observations": list(batch_extractions),
         "allowed_material_families": sorted(allowed_material_families),
     }, ensure_ascii=False, separators=(",", ":"))}]
@@ -141,6 +145,7 @@ def run_estimation_assembly_bom_agent(*, input_row: Mapping[str, Any], evidence_
     selected_model = model or get_secret("CLAUDE_ESTIMATION_ASSEMBLY_BOM_MODEL", DEFAULT_CLAUDE_AGENT_MODEL)
     client = get_anthropic_client().with_options(timeout=TIMEOUT_SECONDS, max_retries=0)
     started_at = datetime.now(UTC).isoformat()
+    prompt_path = V6_PROMPT_PATH if (composition_scope or {}).get("construction_version") else PROMPT_PATH
     responses: list[Any] = []
     observations: list[dict[str, Any]] = []
     diagnostics: list[dict[str, Any]] = []
@@ -154,7 +159,7 @@ def run_estimation_assembly_bom_agent(*, input_row: Mapping[str, Any], evidence_
         resolved_batch = {**batch, "pages": pages}
         response = _create_message_with_hard_timeout(
             client, timeout_seconds=TIMEOUT_SECONDS, model=selected_model, max_tokens=MAX_OUTPUT_TOKENS,
-            temperature=0, system=PROMPT_PATH.read_text(encoding="utf-8").strip(),
+            temperature=0, system=prompt_path.read_text(encoding="utf-8").strip(),
             messages=[{"role": "user", "content": _content(batch=resolved_batch, payload=payload, dimension_graph=dimension_graph, dimension_scale_gate=dimension_scale_gate, allowed_material_families=allowed_material_families, composition_scope=composition_scope)}],
         )
         responses.append(response)

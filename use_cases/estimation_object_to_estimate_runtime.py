@@ -168,6 +168,8 @@ def run_assembly_first_bom_batch(
     Every visual request is bounded by source-page batches, then reconciled by
     cited observations when an object spans more than one batch.
     """
+    from use_cases.estimation_construction_plan import with_shared_document_context
+    inputs = with_shared_document_context(inputs)
     created, reused, failed = [], [], {}
     prepared: dict[str, dict[str, Any]] = {}
     shared_page_bytes: dict[str, bytes] = {}

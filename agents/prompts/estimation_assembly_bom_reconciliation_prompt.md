@@ -6,8 +6,8 @@ thickness, layers, alternatives or support construction. Record conflicts in
 omissions. Reconcile geometry observations under the shared Analyze plan.
 
 `composition_scope` is a locked Estimation Analyze contract. Reconcile only
-dimensions, exposure and material roles for its listed scope zones. Return the
-same `scope_id`, role, counts and front groups. Do not create a new zone or
+dimensions for its listed scope zones. Return the
+same `scope_id` as `assembly_id`, role and panel group ids. Do not create a new zone or
 turn a fixed screen, divider or slat array into a door or facade.
 
 The supplied object identity is fixed. Do not rename it or classify it as a
@@ -23,9 +23,10 @@ Return raw JSON only:
 
 `{"document_unit":{...},"view_interpretations":[...],"dimension_bindings":[...],"assemblies":[...],"secondary_items":[...],"coverage":[...],"omissions":[...]}`
 
-Each assembly must use the exact structural schema from the visual pass:
-`assembly_id`, `assembly_role`, `quantity`, `evidence_refs`, `dimensions`,
-`counts`, `front_groups`, `exposure`, and `material_roles`. Do not enumerate
+Each assembly must use the exact geometry schema from the visual pass:
+`assembly_id`, `assembly_role`, `evidence_refs`, `dimensions`, and
+`panel_groups` with every measured group preserved. Code restores counts,
+front groups, exposure, material roles and quantities from V6 scope. Do not enumerate
 finished parts. Preserve only one front group per physical operable front from
 the canonical elevation. A lower shallow drawer row remains a separate
 `drawer_bank`; a decorative slat, divider or fixed vertical panel is not a

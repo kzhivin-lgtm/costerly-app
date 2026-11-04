@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Any, Mapping
 
 from agents.estimation_composition_analyze_agent import COMPOSITION_SCOPE_V1
@@ -14,6 +15,37 @@ _FRONT_BY_OPERABILITY = {
     "fixed": [], "none": [],
     "drawer": ["drawer_front"], "hinged": ["hinged_facade"], "lift_up": ["lift_up_facade"],
 }
+
+
+def geometry_scope(scope: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Lossless geometry contract projection, not another persisted plan.
+
+    Calculation needs each purchasing material description once, not repeated
+    for every assigned role plus every economic alternative. Full provenance
+    and alternatives remain in the authoritative scope restored by the composer.
+    """
+    result = deepcopy(dict(scope or {}))
+    if not result.get("construction_version"):
+        return result
+    used = set()
+    for zone in result.get("zones") or []:
+        zone.pop("material_assignments", None)
+        roles = []
+        for material in zone.get("material_roles") or []:
+            used.add(material["material_id"])
+            roles.append({key: material[key] for key in (
+                "role", "material_id", "finished_thickness_mm", "layer_count",
+                "thickness_basis", "thickness_evidence_refs", "construction_reason", "applies_to_roles",
+            ) if key in material})
+        zone["material_roles"] = roles
+    result["material_palette"] = {
+        key: {field: value[field] for field in (
+            "source_name", "family", "specification", "intent_basis", "evidence_chain",
+            "attribute_assumptions", "reason",
+        ) if field in value}
+        for key, value in result.get("material_palette", {}).items() if key in used
+    }
+    return result
 
 
 def _positive_int(value: object) -> int:
@@ -51,8 +83,12 @@ def validate_composition_scope(*, scope: Mapping[str, Any], input_id: str) -> di
         groups = []
         for group in raw_groups:
             if not isinstance(group, Mapping) or str(group.get("front_kind") or "") not in allowed_fronts:
+                if scope.get("construction_version"):
+                    raise ValueError("construction front group contradicts operability or has no valid front_kind")
                 continue
             quantity = _positive_int(group.get("quantity"))
+            if scope.get("construction_version") and (not quantity or group.get("arrangement") not in {"stacked", "side_by_side"}):
+                raise ValueError("construction front group requires positive quantity and explicit arrangement")
             if quantity:
                 groups.append({
                     "front_kind": str(group["front_kind"]), "quantity": quantity,

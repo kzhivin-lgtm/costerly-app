@@ -4,8 +4,8 @@ import json
 import pytest
 
 from agents.estimation_composition_analyze_agent import _content, _page_manifest
-from use_cases.estimation_construction_plan import normalize_palette, normalize_construction_scope
-from use_cases.estimation_composition_scope import validate_composition_scope, apply_composition_scope
+from use_cases.estimation_construction_plan import normalize_palette, normalize_construction_scope, with_shared_document_context, validate_thickness_witnesses
+from use_cases.estimation_composition_scope import validate_composition_scope, apply_composition_scope, geometry_scope
 from use_cases.estimation_structural_bom import build_structural_assembly_bom
 from use_cases.estimation_dimension_graph import build_dimension_graph
 from use_cases.estimation_2vn_resolver import resolve_2vn_geometry
@@ -71,6 +71,22 @@ def test_first_pass_preserves_text_context_and_deduplicates_page_aliases():
     assert len(json.loads(content[-1]["text"])["source_text"]) == 1
 
 
+def test_shared_legacy_context_preserves_cross_object_legend_without_expanding_geometry():
+    a, b = input_row(), input_row()
+    a["input_payload"].pop("document_context")
+    b["input_id"] = "i2"
+    b["input_payload"]["object"]["object_id"] = "other"
+    original = deepcopy(a)
+    hydrated = with_shared_document_context([a, b])
+    assert hydrated[0]["input_payload"]["document_context"]["ocr_blocks"][0]["block_ref"] == LEGEND
+    assert hydrated[0]["input_payload"]["object"] == a["input_payload"]["object"]
+    assert hydrated[0]["input_payload"]["evidence"] == a["input_payload"]["evidence"]
+    assert a == original
+    b["input_payload"]["run_id"] = "different-file-run"
+    with pytest.raises(ValueError, match="one company/file run"):
+        with_shared_document_context([a, b])
+
+
 def test_linked_material_requires_both_callout_and_definition():
     raw = {"material_id": "V", "family": "mdf_hdf", "basis": "linked_source", "evidence_chain": [
         {"ref": REF, "kind": "callout", "observation": "VN11"}, {"ref": LEGEND, "kind": "definition", "observation": "oak veneer"}]}
@@ -78,6 +94,23 @@ def test_linked_material_requires_both_callout_and_definition():
     assert result["basis"] == "source_evidence" and result["evidence_refs"] == [REF, LEGEND]
     result = normalize_palette([raw], allowed_refs={REF}, families=FAMILIES)["V"]
     assert result["basis"] == "construction_assumption" and result["evidence_refs"] == []
+
+
+@pytest.mark.parametrize("number,printed_unit,expected", [(4, None, "source"), (19, None, "assumption"), (40, "mm", "source")])
+def test_thickness_source_respects_numeric_units_without_changing_selected_stock(number, printed_unit, expected):
+    locked = scope([zone()])
+    role = locked["zones"][0]["material_roles"][0]
+    role.update(thickness_basis="source", thickness_evidence_refs=[REF])
+    result = validate_thickness_witnesses(locked, dimension_graph={"dimension_numbers": [
+        {"numeric_value": number, "printed_unit": printed_unit, "evidence_refs": [REF]}]},
+        dimension_scale_gate={"decision": {"required_unit": "cm"}})
+    checked = result["zones"][0]["material_roles"][0]
+    assert checked["thickness_basis"] == expected
+    assert checked["finished_thickness_mm"] == 40 and checked["layer_count"] == 2
+    assert role["thickness_basis"] == "source"  # The input contract is not mutated.
+    if expected == "assumption":
+        assert checked["thickness_evidence_refs"] == []
+        assert "contradicted_thickness_source_downgraded" in checked["normalizations"]
 
 
 def test_drawers_lock_materials_arrangement_layers_and_hardware():
@@ -110,6 +143,52 @@ def test_missing_hidden_roles_reuse_stock_not_new_hardboard_family():
     assert next(m for m in assignments if m["role"] == "internal_sheet")["layer_count"] == 1
 
 
+def test_assumed_edge_width_covers_both_layers_but_source_edge_conflict_fails():
+    p = palette()
+    p["E"]["specification"]["width_mm"] = 22
+    raw = {"zones": [zone()]}
+    result = normalize_construction_scope(raw, palette=p, allowed_refs={REF, LEGEND})
+    edge = result["zones"][0]["material_roles"][0]["edge_material"]
+    assert edge["specification"]["width_mm"] == 40
+    assert "assumed_edge_width_covers_finished_panel" in edge["normalizations"]
+    assert p["E"]["specification"]["width_mm"] == 22
+    p["E"]["basis"] = "source_evidence"
+    with pytest.raises(ValueError, match="specified edge width"):
+        normalize_construction_scope(raw, palette=p, allowed_refs={REF, LEGEND})
+
+
+def test_geometry_handoff_shares_material_descriptions_without_mutating_locked_scope():
+    locked = scope([zone()])
+    original = deepcopy(locked)
+    compact = geometry_scope(locked)
+    assert locked == original
+    assert len(json.dumps(compact)) < len(json.dumps(locked)) * .7
+    roles = compact["zones"][0]["material_roles"]
+    assert next(r for r in roles if r["role"] == "visible_sheet")["finished_thickness_mm"] == 40
+    assert all("specification" not in r and "alternatives" not in r for r in roles)
+    assert compact["material_palette"]["V"]["specification"]["thickness_mm"] == 20
+    assert compact["zones"][0]["front_groups"] == locked["zones"][0]["front_groups"]
+
+
+def test_assumed_finished_thickness_follows_stock_but_source_conflict_is_not_silently_rewritten():
+    z = zone(material_assignments=[{"role": "visible_sheet", "material_id": "V", "finished_thickness_mm": 16}])
+    material = scope([z])["zones"][0]["material_roles"][0]
+    assert material["finished_thickness_mm"] == 20
+    assert "assumed_finished_thickness_aligned_to_selected_stock_layers" in material["normalizations"]
+    z["material_assignments"][0].update(thickness_basis="source", thickness_evidence_refs=[REF])
+    with pytest.raises(ValueError, match="contradicts purchased stock"):
+        scope([z])
+
+
+@pytest.mark.parametrize("group", [
+    {"type": "drawer_front", "quantity": 3, "arrangement": "side_by_side"},
+    {"front_kind": "drawer_front", "quantity": 3},
+])
+def test_v6_invalid_front_schema_cannot_silently_turn_horizontal_drawers_into_stacked(group):
+    with pytest.raises(ValueError, match="construction front group"):
+        scope([zone(front_groups=[group])])
+
+
 def test_top_layers_are_not_doubled_twice_and_finish_excludes_buried_faces():
     z = zone("countertop", counts={"top_layers": 2}, material_assignments=[
         {"role": "worktop_sheet", "material_id": "V", "layer_count": 2, "finished_thickness_mm": 40},
@@ -129,6 +208,15 @@ def test_repeated_fixed_panel_groups_and_supports_are_counted_once():
     assert result["parts"][0]["width_mm"] == 60
     assert next(m for m in result["materials"] if m["family"] == "purchased_fabricated_component")["quantity"] == 2
     assert not any(m["family"].startswith("hardware_") for m in result["materials"])
+
+
+def test_only_explicitly_fixed_decorative_facade_groups_can_use_panel_composer():
+    z = zone("facade_set", counts={}, front_groups=[], panel_groups=[
+        {"group_id": "r", "component_role": "rib", "quantity": 7, "material_role": "visible_sheet"}])
+    assert scope([z])["zones"][0]["assembly_role"] == "vertical_panel"
+    z["operability"] = "hinged"
+    with pytest.raises(ValueError, match="fixed panel assembly"):
+        scope([z])
 
 
 def test_v6_2vn_downgrades_unbound_source_without_losing_estimate():

@@ -17,6 +17,43 @@ MATERIAL_ROLES = {
 HIDDEN_ROLES = {"internal_sheet", "backing_sheet"}
 
 
+def with_shared_document_context(inputs: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """Read-time compatibility for legacy inputs from the SAME immutable run.
+
+    Full-file Analyze can cite a legend owned by another input's source page.
+    Each subsequent composer must retain those same validated references. This
+    adds shared context only; it never changes object-owned geometry/membership
+    or writes back to the immutable input records.
+    """
+    identities = {(str((row.get("input_payload") or {}).get("company_id") or ""),
+                   str((row.get("input_payload") or {}).get("run_id") or "")) for row in inputs}
+    if len(identities) > 1:
+        raise ValueError("shared construction context requires one company/file run")
+    collected: dict[str, dict[str, Any]] = {kind: {} for kind in ("artifacts", "ocr_blocks", "ocr_literal_items")}
+    for row in inputs:
+        for container in ("document_context", "evidence"):
+            for kind, items in collected.items():
+                for item in ((row.get("input_payload") or {}).get(container) or {}).get(kind) or []:
+                    if not isinstance(item, Mapping):
+                        continue
+                    if kind == "artifacts" and item.get("artifact_kind") != "page":
+                        continue
+                    ref = item.get("storage_ref") if kind == "artifacts" else item.get("block_ref")
+                    if ref:
+                        items.setdefault(str(ref), deepcopy(dict(item)))
+    result = []
+    for row in inputs:
+        copied = deepcopy(dict(row))
+        payload = copied.setdefault("input_payload", {})
+        context = payload.setdefault("document_context", {})
+        context.update({kind: list(items.values()) for kind, items in collected.items()})
+        context.setdefault("contract_version", "estimation_document_context_v6_1")
+        context["source_input_ids"] = sorted(str(item.get("input_id") or "") for item in inputs)
+        context["boundary"] = "Shared immutable file context, not object geometry membership."
+        result.append(copied)
+    return result
+
+
 def evidence_refs(inputs: Sequence[Mapping[str, Any]]) -> set[str]:
     return {
         str(item.get("storage_ref") or item.get("block_ref"))
@@ -34,6 +71,39 @@ def positive(value: Any, default: float) -> float:
         return result if math.isfinite(result) and result > 0 else default
     except (ValueError, TypeError):
         return default
+
+
+def validate_thickness_witnesses(scope: Mapping[str, Any], *, dimension_graph: Mapping[str, Any],
+                                 dimension_scale_gate: Mapping[str, Any]) -> dict[str, Any]:
+    """Numeric consistency only, never infer ownership of a dimension line.
+
+    A known 19-cm reference cannot prove 19-mm stock. Preserve the selected
+    construction as an assumption, but remove its contradicted source claim.
+    Without an explicit unit or the existing scale guard, do not guess a unit.
+    """
+    result = deepcopy(dict(scope))
+    convention = (dimension_scale_gate.get("decision") or {}).get("required_unit")
+    scales = {"mm": 1, "cm": 10, "m": 1000}
+    numeric_by_ref = {}
+    for number in dimension_graph.get("dimension_numbers") or []:
+        scale = scales.get(number.get("printed_unit") or convention)
+        if scale is None:
+            continue
+        for ref in number.get("evidence_refs") or []:
+            numeric_by_ref[ref] = float(number["numeric_value"]) * scale
+    for zone in result.get("zones") or []:
+        for material in zone.get("material_roles") or []:
+            if material.get("thickness_basis") != "source":
+                continue
+            values = [numeric_by_ref[ref] for ref in material.get("thickness_evidence_refs") or [] if ref in numeric_by_ref]
+            thickness = float(material.get("finished_thickness_mm") or 0)
+            if values and not any(abs(thickness - value) <= 1 for value in values):
+                reason = "Cited dimension does not match finished thickness in the source unit; selected construction retained as an assumption."
+                material.update(thickness_basis="assumption", thickness_evidence_refs=[],
+                                construction_reason=f"{material.get('construction_reason') or ''} {reason}".strip())
+                material.setdefault("normalizations", []).append("contradicted_thickness_source_downgraded")
+                result.setdefault("assumptions", []).append(f"{zone['scope_id']}/{material['role']}: {reason}")
+    return result
 
 
 def normalize_palette(raw: Any, *, allowed_refs: set[str], families: Sequence[str]) -> dict[str, dict[str, Any]]:
@@ -99,7 +169,11 @@ def lock_zone_materials(zone: Mapping[str, Any], palette: Mapping[str, Mapping[s
         if material["thickness_basis"] not in {"source", "derived", "assumption"} or (material["thickness_basis"] == "source" and not material["thickness_evidence_refs"]):
             material["thickness_basis"] = "assumption"
         if stock and abs(material["finished_thickness_mm"] - stock * material["layer_count"]) > 1:
-            material["normalizations"].append("stock_build_up_does_not_match_finished_thickness")
+            if material["thickness_basis"] != "assumption":
+                raise ValueError("source or derived finished thickness contradicts purchased stock layers")
+            material["finished_thickness_mm"] = stock * material["layer_count"]
+            material["normalizations"].append("assumed_finished_thickness_aligned_to_selected_stock_layers")
+            material["construction_reason"] += " Inconsistent assumed finished thickness aligned to the selected purchased stock layers."
         material["alternatives"] = []
         if role == "finish":
             material["applies_to_roles"] = [str(value) for value in assignment.get("applies_to_roles") or ["visible_sheet", "carcass_sheet", "worktop_sheet"]
@@ -119,6 +193,14 @@ def lock_zone_materials(zone: Mapping[str, Any], palette: Mapping[str, Mapping[s
                 raise ValueError("construction edge references unknown material")
             edge = deepcopy(palette[edge_id])
             edge["role"] = "edge_banding"
+            edge_width = positive(edge["specification"].get("width_mm"), 0)
+            finished = material["finished_thickness_mm"]
+            if finished and edge_width < finished:
+                if edge["basis"] == "source_evidence" and edge_width:
+                    raise ValueError("specified edge width is smaller than finished panel thickness")
+                edge["specification"]["width_mm"] = finished
+                edge["normalizations"].append("assumed_edge_width_covers_finished_panel")
+                edge["reason"] += " Assumed edge width raised to cover the finished panel thickness, not one purchased layer."
             material["edge_material"] = edge
             material["alternatives"] = []  # A substitution would also need an edge-system comparison.
         result.append(material)
@@ -162,6 +244,15 @@ def normalize_construction_scope(scope: Mapping[str, Any], *, palette: Mapping[s
     result["material_palette"] = deepcopy(dict(palette))
     ids = {str(zone.get("scope_id") or "") for zone in result["zones"]}
     for zone in result["zones"]:
+        # A decorative "facade" is not an operating front. Canonicalize only
+        # the fully fixed, zero-front contract; never rescue a hinged screen.
+        if (zone.get("assembly_role") == "facade_set" and zone.get("panel_groups")
+                and zone.get("operability") in {"fixed", "none"}
+                and not zone.get("front_groups")
+                and not any((zone.get("counts") or {}).get(key) for key in ("drawers", "facades"))):
+            zone["assembly_role"] = "vertical_panel"
+            result.setdefault("assumptions", []).append(
+                f"{zone['scope_id']}: fixed decorative facade groups use the fixed panel composer; no operating hardware.")
         zone["material_roles"] = lock_zone_materials(zone, palette, allowed_refs=allowed_refs)
         zone["quantity"] = max(1, int(positive(zone.get("quantity"), 1)))
         zone["evidence_refs"] = [ref for ref in zone.get("evidence_refs") or [] if ref in allowed_refs]

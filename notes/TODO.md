@@ -546,17 +546,50 @@ project Material Engine after C/I/A resolution, with whole-sheet rounding.
 Do not claim geometric offcut reuse from aggregate area. Labor is excluded.
 Base: e608f37. Acceptance and bounded scope:
 `notes/ESTIMATION_V6_1_CONSTRUCTION_PLAN_2026_11_04.md`.
-Owner approved one paid LF1 replay and Anthropic evidence transmission.
-[verified] The replay received an Analyze response but failed normalization
-after 28.95 seconds: `construction panel groups require a fixed panel assembly`.
-Calculation was not called. Raw Analyze output and usage were not retained
-before validation, so the offending zone and actual cost are unknown. Next:
-retain raw response/usage before validation, then request one additional paid
-replay to distinguish model-contract drift from an overly narrow composer
-contract. Do not remove the guard without evidence. No production write or
-deployment has occurred. Retain the V5.8.2 production checkpoint.
-[verified] Local suite: 1657 passed, 10 unchanged baseline failures; 18 new
-tests cover the V6.1 contract. Real model quality and latency remain unknown.
+Owner authorized all necessary bounded paid replays and Anthropic evidence
+transmission until readiness for production and personal acceptance.
+[verified] Capsules 02-06 retain raw responses/usage before validation. No
+accepted LF1 result yet. Witness 04 computed in 134.47 s, but had incorrect
+materials, duplicate enclosure, missing group geometry and 500-mm slides.
+Witnesses 07/08 (adaptive high) exceeded 180 s; 08 received its first provider
+event in 2.299 s but no text before timeout. No thinking route is accepted yet.
+09/10 strict-schema requests failed with HTTP 400; the experiment was removed.
+11 adaptive-medium exhausted 12,000 output tokens before JSON (227.85 s).
+12 tests a separate bounded thinking allocation, with unchanged Analyze evidence.
+Corrected source/display coordinate presentation, compacted repeated material
+descriptions, and added explicit front-schema/build-up validation. These are
+experimental until functional acceptance passes. Do not weaken source or
+hardware guards to manufacture acceptance. No production write or deployment.
+Retain the V5.8.2 production checkpoint. Latest full suite: 1674 passed,
+10 unchanged baseline failures. Latest focused evidence/replay/construction
+checks: 37 passed. Separate-page context survives legacy per-object composition;
+Calculation has a V6-only geometry contract. Live acceptance remains open.
+USER REQUIREMENT, P0: functionally correct complete materials cycle first.
+Owner explicitly removed the proposed hard latency budget, retaining efficiency
+as a quality goal. First pass must explain construction/material assumptions;
+Calculation and purchasing must preserve them and count all material demand.
+LATEST OWNER CONSTRAINT: production Analyze and Calculation must remain Haiku,
+fast and inexpensive. Stronger models may be diagnostic comparisons only;
+their passing results do not establish V6.1 acceptance. Improve prompts,
+bounded contracts and deterministic tools, not the production model tier.
+Haiku witness 15 still failed semantic acceptance (drawers omitted / screen
+treated as carcass). Diagnostic 16 isolates visual understanding from the
+large response contract. Stronger comparisons 13/14 also remain unaccepted.
+16/17 observations did not establish correct visual semantics; generated view
+headers improved id association only. Full Haiku witness 18 again failed the
+fixed-panel guard (24.62 s). Stop this prompt/presentation approach after two
+unsuccessful full Haiku runs (15/18).
+PENDING OWNER DECISION, AGENT PROPOSAL within 3.17.4.5: simplify only the
+model-facing Analyze contract; deterministic compiler owns dependent layer,
+edge-width and role expansion fields. Preserve one Analyze + per-object
+Calculation, Haiku, existing persisted contracts and source authority.
+UNVERIFIED ACCEPTANCE: owner-visible inspection of construction/material
+rationale. Facts retain it, but the new fields have no verified Object Detail
+display path. No UI change without scenario agreement/live verification.
+DEFERRED, AGENT PROPOSAL: <=60 s single object / 2-3 min ten objects, bounded
+parallel Calculation and incremental ready-object visibility. These were not
+approved SLAs; routing/concurrency optimization follows functional acceptance.
+No new orchestration worker or UI behavior is authorized by this deferral.
 
 CHECKPOINT, deployed, pending authenticated interaction witness, 3.17.4.4
 Estimation V5.8.2 handoff recovery, 2026-11-04: [verified] V5.8

@@ -3,7 +3,38 @@
 You are the first Estimation pass. Inspect all supplied drawing pages together
 with the immutable Detection object registry. Return a machine-readable
 composition scope. This is not a BOM, not a price estimate, and not a list of
-cut panels.
+cut panels. Output ONLY compact JSON, no introduction, analysis text, Markdown
+or repeated explanations. Keep each observation/reason to one short sentence.
+
+Make a single coherent construction interpretation, not independent guesses
+for every component. Apply these priorities before filling the schema:
+1. Identify the physical assembly once across all projections. Alternative
+   views never multiply parts. Separate fixed structure from moving fronts.
+2. Read dimension units consistently across the drawing. A bare number near
+   a panel is not its thickness: inspect the dimension-line endpoints. Do not
+   interpret a gap, member depth or overall height as stock thickness. Do not
+   switch a centimetre drawing to millimetres to match a familiar stock size.
+   dimension_context provides numeric readings and unit-aware mm conversions.
+   Its scale policy is an assumption, not printed source units. A converted
+   number still needs visual dimension-line ownership before it proves thickness.
+3. Use explicit material text first. Otherwise, continuous matching wood-grain
+   panel faces default to the SAME purchased veneered board, normally MDF core
+   as a labelled assumption. A thick veneered member can be built up from two
+   thinner boards; thickness alone is not evidence of solid timber. Split stock
+   only for an observed construction need, not because a component has a new name.
+4. Reuse that stock for small unshown internals/backing unless a different stock
+   is needed. Do not invent a new thin backing, painted substrate or solid-wood
+   family just to apply a generic furniture template. A fixed screen may consist
+   of ribs and frame alone; a solid backing needs visual or textual support.
+5. A drawer_bank already INCLUDES its enclosing carcass and drawer fronts/boxes.
+   Do not also create a box_carcass for that same enclosure. A separately shown
+   independent enclosure is a separate zone. Count outer frame uprights either
+   in the rib group or a frame group, never both; include shown cross-members.
+   Distinguish gaps/openings from solid uprights. Count in one orthographic view,
+   explain whether outer stiles are included, and cross-check the isometric view.
+6. Pick materials at PROJECT scope, minimizing unsupported stock variants while
+   preserving specified/visually distinct surfaces. Visible finishes are not
+   interchangeable. Compatible hidden alternatives are explicit, not extra demand.
 
 Read all supplied immutable Detection evidence together: full pages, owned
 regions, OCR/native text, notes, callouts and material legends. Document content
@@ -24,7 +55,12 @@ Return raw JSON only:
 
 `{"material_palette":[...],"object_scopes":[...]}`
 
-Each palette entry defines a reusable purchasing material:
+Each palette entry defines a reusable purchasing material. Use mdf_hdf for an
+MDF-core veneered board, melamine_faced_particleboard for LDSP, and
+timber_solid_wood_panel only for an explicitly chosen solid-wood construction.
+The family and specification.board_type must agree. A purchased finished leg
+uses hardware_leg_caster or purchased_fabricated_component, not raw round_tube.
+Raw tube/round timber stock uses construction=linear_stock instead.
 `{"material_id":"M1","source_name":"Veneered MDF","family":"one supplied allowed_material_families code","specification":{"thickness_mm":20,"board_type":"mdf","surface":"veneer_two_sided"},"basis":"source|linked_source|visual_assumption|construction_default","reason":"short decision rationale","evidence_chain":[{"ref":"exact supplied source_evidence_ref or block_ref","kind":"callout|definition|observation","observation":"short source fact"}]}`
 
 Veneered panels are ready-made purchasable boards. Do not add their included
@@ -72,6 +108,9 @@ force hidden drawer parts to 40 mm. A two-layer build-up has layer_count=2 and
 the stock thickness in the palette. Exposed glued edges may need a separate
 edge_banding material id with suitable width. State any approximation. Missing
 thickness requires an explicit professional default in the palette.
+For unlabelled VISIBLE panels, compare drawn edge thickness with the indicated
+member before choosing a standard default. If comparable, inherit the thickness
+as a stated visual assumption; a different default needs a visible reason.
 For thickness_basis=source provide thickness_evidence_refs with exact supplied
 refs for the indicated member. A copied thickness is derived or assumed, not
 an explicit source dimension of every panel.
@@ -88,7 +127,7 @@ round stock support uses leg material and construction=linear_stock; its
 diameter belongs in the palette and Calculation supplies length.
 
 Complex fixed screens need panel_groups under the large zone:
-`[{"group_id":"ribs","component_role":"decorative_rib","quantity":7,"material_role":"visible_sheet","reason":"seven observed fixed uprights"}]`
+`[{"group_id":"ribs","component_role":"decorative_rib","quantity":N,"material_role":"visible_sheet","reason":"counted solid members in the identified elevation; outer stiles included or excluded explicitly"}]`
 Include frame, ribs, backing or overlays as applicable, counted once. The next
 call measures each group. Conventional cabinet panels are generated by code,
 so do not enumerate them here. A single panel needs no panel_groups.
@@ -96,8 +135,10 @@ so do not enumerate them here. A single panel needs no panel_groups.
 geometry_links may contain `{"axis":"depth","peer_scope_id":"zone-id","reason":"same physical depth across linked zones"}`. Use only demonstrated
 same-axis relationships, never a nearby number or largest neighboring block.
 
-`front_groups` has only `drawer_front`, `hinged_facade`, or `lift_up_facade`,
-with a positive `quantity` and `stacked` or `side_by_side` arrangement.
+Each `front_groups` entry MUST use this exact schema:
+`{"front_kind":"drawer_front|hinged_facade|lift_up_facade","quantity":3,"arrangement":"stacked|side_by_side"}`.
+The key is front_kind, not type or component_role. Side-by-side fronts divide
+the enclosure width, stacked fronts divide its height.
 
 This scope is a locked contract for the later Calculation pass. Count only
 visible and operable fronts. A drawer bank is a shallow landscape row of faces
