@@ -63,6 +63,7 @@ def _consume_estimation_future() -> None:
     except Exception as exc:
         st.session_state.last_estimation_error = str(exc)
     finally:
+        st.session_state.prepared_estimate_access = None
         clear_estimate_progress(st.session_state.get("current_estimate_id"))
         st.session_state.estimation_batch_future = None
 
@@ -80,6 +81,7 @@ def _start_prepared_estimation_launch() -> None:
     file_bytes = request.get("file_bytes")
     if not estimate_id or not run_id or not company_id or not file_name or not isinstance(file_bytes, bytes):
         st.session_state.objects_estimation_launch_request = None
+        st.session_state.prepared_estimate_access = None
         st.session_state.last_estimation_error = "The prepared Objects launch is incomplete. Please return to File Review."
         return
 
@@ -98,6 +100,7 @@ def _start_prepared_estimation_launch() -> None:
         )
     except Exception as exc:
         st.session_state.last_estimation_error = str(exc)
+        st.session_state.prepared_estimate_access = None
     finally:
         # The Future owns an immutable copy of the input.  Retaining PDF bytes
         # in Session State after dispatch is unnecessary and risks a stale

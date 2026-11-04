@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from concurrent.futures import Future
+from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import UTC, datetime
 import html
 import time
@@ -31,6 +31,10 @@ from use_cases.rfq_processing import (
     save_file_review_run_metadata,
 )
 from use_cases.estimation_artifacts import evidence_signed_url
+from use_cases.estimation_originals import (
+    load_estimation_original,
+    stored_original_from_metadata,
+)
 from db.supabase_client import get_supabase_client
 
 
@@ -39,6 +43,12 @@ _RUN_METADATA_LABELS = {
     "partner": "Partner",
     "client": "Client",
 }
+
+
+_SOURCE_RESTORE_EXECUTOR = ThreadPoolExecutor(
+    max_workers=2,
+    thread_name_prefix="file-review-source",
+)
 
 
 def _escape(value: object) -> str:
@@ -809,6 +819,13 @@ def _poll_file_review_deferred_work(run_id: str) -> None:
     The visible widgets stay outside the polling fragment. This prevents the
     former two-second remount of metadata, object cards and timing rows.
     """
+    source_future = st.session_state.get(_source_restore_future_key(run_id))
+    if isinstance(source_future, Future) and source_future.done():
+        # The primary button lives outside this fragment. One full rerun turns
+        # a completed private-source read into an enabled, fully prepared
+        # Continue action without remounting widgets every polling interval.
+        st.rerun(scope="app")
+
     work = st.session_state.get("file_review_deferred_work")
     if not isinstance(work, dict) or work.get("run_id") != run_id:
         return
@@ -1046,6 +1063,7 @@ def render_file_review_screen(
         company_id=company_id,
         run_id=str(run_id),
         objects=data["objects"],
+        source=data.get("source"),
     )
 
     col_back, col_next = st.columns(2, gap="small")
@@ -1066,11 +1084,17 @@ def render_file_review_screen(
             "company_id": company_id,
             "run_id": run_id,
             "objects": data["objects"],
+            "source": data.get("source"),
         },
         disabled=launch_plan is None,
     )
     if launch_plan is None:
-        st.caption("Objects Estimation is preparing its source file. Please wait a moment.")
+        source_error = st.session_state.get(_source_restore_error_key(str(run_id)))
+        st.caption(
+            str(source_error)
+            if source_error
+            else "Objects Estimation is restoring its source file. Please wait a moment."
+        )
 
     # This fragment can issue a full rerun when deferred work becomes terminal.
     # Keep it after the two terminal actions so that an interrupted File Review
@@ -1150,11 +1174,86 @@ def _sync_object_edits_from_widget_values(objects: list[dict[str, object]]) -> N
             edit["quantity"] = str(st.session_state.get(quantity_key) or "").strip()
 
 
+def _source_bytes_cache_key(run_id: str) -> str:
+    return f"file_review_source_bytes.{run_id}"
+
+
+def _source_restore_future_key(run_id: str) -> str:
+    return f"file_review_source_restore_future.{run_id}"
+
+
+def _source_restore_error_key(run_id: str) -> str:
+    return f"file_review_source_restore_error.{run_id}"
+
+
+def _restore_file_review_source_bytes(
+    *, company_id: str, source: dict[str, object],
+) -> bytes:
+    """Read and verify a private RFQ source outside the Streamlit render path."""
+    stored = stored_original_from_metadata(source)
+    if stored is None:
+        raise ValueError("The RFQ source record is incomplete.")
+    return load_estimation_original(
+        client=get_supabase_client(), company_id=company_id, stored=stored,
+    )
+
+
+def _source_bytes_for_objects_plan(
+    *, company_id: str,
+    run_id: str,
+    source: object,
+) -> tuple[str, bytes] | None:
+    """Return current source bytes or start one non-blocking durable restore."""
+    file_name = str(st.session_state.get("uploaded_file_name") or "")
+    file_bytes = st.session_state.get("uploaded_file_bytes")
+    if file_name and isinstance(file_bytes, bytes):
+        return file_name, file_bytes
+
+    cached_bytes = st.session_state.get(_source_bytes_cache_key(run_id))
+    run_data = st.session_state.get("file_review_data_cache", {}).get(run_id, {})
+    run_name = str((run_data.get("run") or {}).get("file_name") or "")
+    if run_name and isinstance(cached_bytes, bytes):
+        return run_name, cached_bytes
+
+    if not isinstance(source, dict):
+        st.session_state[_source_restore_error_key(run_id)] = (
+            "This historical RFQ has no durable source link. Upload it again to estimate it."
+        )
+        return None
+
+    future_key = _source_restore_future_key(run_id)
+    future = st.session_state.get(future_key)
+    if isinstance(future, Future):
+        if not future.done():
+            return None
+        try:
+            restored = future.result()
+        except Exception as exc:
+            st.session_state[_source_restore_error_key(run_id)] = str(exc)
+            return None
+        finally:
+            st.session_state.pop(future_key, None)
+        st.session_state[_source_bytes_cache_key(run_id)] = restored
+        st.session_state.pop(_source_restore_error_key(run_id), None)
+        if run_name:
+            return run_name, restored
+        st.session_state[_source_restore_error_key(run_id)] = "The RFQ file name is unavailable."
+        return None
+
+    st.session_state[future_key] = _SOURCE_RESTORE_EXECUTOR.submit(
+        _restore_file_review_source_bytes,
+        company_id=company_id,
+        source=dict(source),
+    )
+    return None
+
+
 def _prepare_objects_launch_plan(
     *,
     company_id: str,
     run_id: str,
     objects: list[dict[str, object]],
+    source: object = None,
 ) -> dict[str, object] | None:
     """Create the zero-I/O Objects launch snapshot used by the next screen.
 
@@ -1165,11 +1264,15 @@ def _prepare_objects_launch_plan(
     _sync_object_edits_from_widget_values(objects)
     object_edits = _object_edits_snapshot()
     ignored_object_ids = _ignored_object_ids(object_edits)
-    file_name = st.session_state.get("uploaded_file_name")
-    file_bytes = st.session_state.get("uploaded_file_bytes")
-    if not file_name or not isinstance(file_bytes, bytes):
+    source_payload = _source_bytes_for_objects_plan(
+        company_id=company_id,
+        run_id=run_id,
+        source=source,
+    )
+    if source_payload is None:
         st.session_state.objects_estimation_launch_plan = None
         return None
+    file_name, file_bytes = source_payload
 
     _prepare_objects_estimation_seed(
         objects=objects,
@@ -1201,6 +1304,7 @@ def _continue_to_objects_estimation(
     company_id: str,
     run_id: str,
     objects: list[dict[str, object]],
+    source: object = None,
 ) -> None:
     """Move to pre-seeded Objects, then let its worker persist the accepted plan."""
     action_started_at = time.perf_counter()
@@ -1224,6 +1328,7 @@ def _continue_to_objects_estimation(
         company_id=company_id,
         run_id=run_id,
         objects=objects,
+        source=source,
     )
     phase_durations_ms["continue_launch_plan_ms"] = (
         time.perf_counter() - phase_started_at
@@ -1255,6 +1360,7 @@ def _continue_to_objects_estimation(
     st.session_state.current_object_id = None
     if reuse_existing_estimate:
         st.session_state.objects_estimation_launch_request = None
+        st.session_state.prepared_estimate_access = None
     else:
         st.session_state.approved_object_keys = set()
         st.session_state.last_estimation_result = None
@@ -1264,6 +1370,14 @@ def _continue_to_objects_estimation(
             **plan,
             "estimate_id": estimate_id,
             "create_shell": True,
+        }
+        # `app.py` may validate screen ownership before Objects gets its first
+        # render. This record is session-local and exists only until the
+        # background worker creates the durable estimate shell.
+        st.session_state.prepared_estimate_access = {
+            "estimate_id": estimate_id,
+            "run_id": run_id,
+            "company_id": company_id,
         }
     st.session_state.objects_estimation_launch_plan = None
     _mark_objects_estimation_cache_dirty(estimate_id)

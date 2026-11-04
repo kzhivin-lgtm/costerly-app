@@ -70,7 +70,10 @@ from db.company_access import assert_run_owned
 from state.session import get_company_id
 from use_cases.retry import read_with_retry
 from use_cases.platform_admin import record_rfq_upload
-from use_cases.estimation_originals import persist_estimation_original
+from use_cases.estimation_originals import (
+    persist_estimation_original,
+    stored_original_metadata,
+)
 from use_cases.detection_previews import create_detection_previews
 
 
@@ -917,6 +920,32 @@ def process_uploaded_rfq(
         original = original_future.result()
     except Exception as exc:
         print(f"[Estimation Original] Could not store source: {exc}")
+    if original is not None:
+        # The private source already exists in Storage. Its immutable identity
+        # belongs in the processing ledger so File Review can restore it after
+        # a browser refresh without duplicating document bytes.
+        original_metadata = stored_original_metadata(original)
+        cycle_event["raw_usage"]["estimation_original"] = original_metadata
+        # This small durable link must exist before File Review is shown. The
+        # larger cycle event is intentionally deferred, which otherwise leaves
+        # a refresh-sized window with a stored source but no recoverable owner.
+        source_event = _runtime_event(
+            agent_name="orchestration",
+            operation="rfq_source_original",
+            company_id=company_id,
+            run_id=run_id,
+            file_name=file_name,
+            model="deterministic",
+            prompt_version="rfq_source_reference_v1",
+            started_at=cycle_started_at,
+            finished_at=datetime.now(UTC).isoformat(),
+            duration_seconds=0,
+            raw_usage={"estimation_original": original_metadata},
+        )
+        try:
+            insert_agent_usage_event(client, source_event)
+        except Exception as exc:
+            print(f"[Estimation Original] Could not persist source reference: {exc}")
     cycle_event["raw_usage"]["post_cycle_estimation_original_wait_seconds"] = round(
         time.perf_counter() - original_wait_started,
         3,
@@ -979,7 +1008,49 @@ def load_file_review_data(run_id: str) -> dict[str, Any]:
         "run": _normalize_run(run),
         "objects": [_normalize_object(item) for item in objects],
         "timings": _latest_runtime_timings(usage_df),
+        "source": _persisted_estimation_original(usage_df),
     }
+
+
+def _persisted_estimation_original(usage_df: pd.DataFrame) -> dict[str, object] | None:
+    """Return the newest valid private-original identity for a reviewed RFQ."""
+    if usage_df.empty:
+        return None
+    cycle_rows = usage_df[
+        usage_df.get("operation", pd.Series(dtype=str)).isin(
+            {"rfq_processing_cycle", "rfq_source_original"}
+        )
+    ]
+    for _, row in cycle_rows.iloc[::-1].iterrows():
+        raw_usage = row.get("raw_usage")
+        if isinstance(raw_usage, str):
+            try:
+                raw_usage = json.loads(raw_usage)
+            except (TypeError, ValueError):
+                raw_usage = {}
+        if not isinstance(raw_usage, dict):
+            continue
+        source = raw_usage.get("estimation_original")
+        if not isinstance(source, dict):
+            continue
+        try:
+            size_bytes = int(source.get("size_bytes") or 0)
+        except (TypeError, ValueError):
+            continue
+        storage_ref = str(source.get("storage_ref") or "")
+        content_sha256 = str(source.get("content_sha256") or "")
+        if (
+            storage_ref.startswith("storage://rfq-estimation-originals/")
+            and len(content_sha256) == 64
+            and size_bytes > 0
+        ):
+            return {
+                "storage_ref": storage_ref,
+                "content_sha256": content_sha256,
+                "mime_type": str(source.get("mime_type") or "application/octet-stream"),
+                "size_bytes": size_bytes,
+            }
+    return None
 
 
 def record_file_review_first_render(
@@ -1137,6 +1208,7 @@ def build_file_review_data(
     detection_result: dict[str, Any],
     *,
     timings: dict[str, Any] | None = None,
+    original: Any = None,
 ) -> dict[str, Any]:
     """Adapt the just-persisted Detection result for first File Review render.
 
@@ -1154,6 +1226,7 @@ def build_file_review_data(
             if isinstance(item, dict)
         ],
         "timings": dict(timings or {}),
+        "source": stored_original_metadata(original) if original is not None else None,
     }
 
 

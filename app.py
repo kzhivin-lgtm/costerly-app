@@ -139,6 +139,19 @@ def _remember_workflow_route_token(
     st.session_state.setdefault("workflow_route_tokens", {})[route_key] = route_token
 
 
+def _is_prepared_estimate_pending(
+    *, estimate_id: object, run_id: object, company_id: object,
+) -> bool:
+    """Allow only this session's just-accepted estimate through its shell gap."""
+    pending = st.session_state.get("prepared_estimate_access")
+    return bool(
+        isinstance(pending, dict)
+        and str(pending.get("estimate_id") or "") == str(estimate_id or "")
+        and str(pending.get("run_id") or "") == str(run_id or "")
+        and str(pending.get("company_id") or "") == str(company_id or "")
+    )
+
+
 def _browser_route(screen: str, *, company_id: str | None = None) -> dict[str, str]:
     """Return the safe, durable browser route for the rendered screen."""
     if screen == "account":
@@ -179,6 +192,15 @@ def _browser_route(screen: str, *, company_id: str | None = None) -> dict[str, s
         estimate_id = str(st.session_state.get("current_estimate_id") or "")
         if not run_id or not estimate_id:
             return {"screen": "upload"}
+        if screen == "objects" and _is_prepared_estimate_pending(
+            estimate_id=estimate_id,
+            run_id=run_id,
+            company_id=company_id,
+        ):
+            # The durable shell is being created by the destination worker.
+            # Publishing its estimate id now would turn a normal URL rerun into
+            # an ownership failure before that worker reaches Supabase.
+            return {"screen": "objects", "run_id": run_id}
         object_id = str(st.session_state.get("current_object_id") or "")
         if company_id:
             try:
@@ -306,7 +328,7 @@ def main() -> None:
         requested_trace_id=st.query_params.get("obs_trace"),
         screen=str(st.session_state.get("screen") or "upload"),
         started_at=_SCRIPT_STARTED_AT,
-        build_version="estimation-v5.7.0.2",
+        build_version="estimation-v5.7.0.3",
     )
     trace.annotate(
         run_sequence=st.session_state._runtime_run_sequence,
@@ -768,7 +790,15 @@ def main() -> None:
             estimate_id = st.session_state.get("current_estimate_id")
             if screen in {"file_review", "objects", "object_detail"} and run_id:
                 assert_run_owned(client, str(run_id), company_id)
-            if screen in {"objects", "object_detail"} and estimate_id:
+            if (
+                screen in {"objects", "object_detail"}
+                and estimate_id
+                and not _is_prepared_estimate_pending(
+                    estimate_id=estimate_id,
+                    run_id=run_id,
+                    company_id=company_id,
+                )
+            ):
                 assert_estimate_owned(client, str(estimate_id), company_id)
         except PermissionError:
             st.session_state.current_run_id = None

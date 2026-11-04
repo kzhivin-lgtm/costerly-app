@@ -1,7 +1,8 @@
 # Estimation V5.7.0 Navigation Readiness
 
 Status: active. Task `5.7.0.1` is production-verified after a hard refresh;
-task `5.7.0.2` is implemented locally, pending production acceptance.
+task `5.7.0.3` corrects two V5.7.0.2 launch regressions and is pending
+production acceptance.
 
 ## Objective
 
@@ -92,9 +93,10 @@ existing durable metadata save, edit application, estimate-shell creation and
 Estimation work on the single existing executor after it begins rendering.
 
 An unchanged existing estimate remains the prior read path. It does not create
-a second shell or resubmit a calculation. This avoids a materially different
-product behavior: no Anthropic work or orphaned estimate record is created
-until the user explicitly presses Continue.
+a second shell or resubmit a calculation. This is protected baseline behavior,
+not a V5.7.0.2 improvement. The change only avoids a materially different
+product behavior for a new accepted launch: no Anthropic work or orphaned
+estimate record is created until the user explicitly presses Continue.
 
 ### V5.7.0.2 local verification
 
@@ -107,11 +109,37 @@ until the user explicitly presses Continue.
   file changed by V5.7.0.2.
 - `git diff --check` passed.
 
-Production acceptance requires one new RFQ and one unchanged Last Estimate:
+Production acceptance requires one new RFQ. The unchanged Last Estimate case
+is a regression check for existing behavior, not evidence of an improvement:
 
 1. On File Review, Continue must paint seeded Objects immediately with no
    synchronous metadata/save or estimate-shell delay.
 2. The background job must then persist and progress normally, with no duplicate
    estimate shell.
-3. Returning to an unchanged File Review and pressing Continue must reopen the
-   existing estimate without a new Estimation run.
+3. Returning to an unchanged File Review and pressing Continue must retain the
+   existing no-new-run behavior.
+
+## V5.7.0.3 correction: durable source and pending shell ownership
+
+V5.7.0.2 incorrectly treated the current Streamlit session's uploaded bytes as
+the only valid File Review source. A refresh could therefore render a real
+persisted RFQ while disabling Continue. It also assigned a new estimate ID
+before Objects had created its durable shell, allowing the global ownership
+guard to reject the session-local transition.
+
+Processing already stores the original in private Storage. V5.7.0.3 writes its
+immutable Storage reference, SHA-256, MIME type and byte length to the existing
+`rfq_source_original` processing-ledger event before File Review appears. A
+restored File Review starts one verified private-source read in the background;
+only after it completes can Continue become active. The source bytes never
+enter browser history or wrapper telemetry.
+
+For a newly accepted Continue, the temporary estimate identity is valid only
+inside the same server session until its worker persists the shell. During that
+bounded interval Objects publishes a run-only route, checks run ownership, and
+does not test ownership of the not-yet-durable estimate. Once the worker is
+terminal, normal durable estimate ownership and route-token behavior resumes.
+
+Historical RFQs created before V5.7.0.3 may lack the ledger reference even
+though a private original exists. The application must not guess a document
+from Storage; those runs show a specific re-upload requirement instead.

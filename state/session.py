@@ -144,6 +144,7 @@ def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
         "estimation_batch_future",
         "objects_estimation_launch_plan",
         "objects_estimation_launch_request",
+        "prepared_estimate_access",
         "last_estimation_result",
         "last_estimation_error",
         "file_review_object_edits_run_id",
@@ -212,6 +213,9 @@ def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
             "file_review_deferred_name_echoes.",
             "file_review_preview_published.",
             "file_review_preview_terminal.",
+            "file_review_source_bytes.",
+            "file_review_source_restore_future.",
+            "file_review_source_restore_error.",
         )):
             st.session_state.pop(key, None)
     # The File Review payload may be retained for an immediate Last Estimate,

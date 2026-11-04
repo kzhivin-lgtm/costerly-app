@@ -298,6 +298,7 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
         build_file_review_data(
             result["detection_result"],
             timings=result.get("timings"),
+            original=result.get("original"),
         )
     )
 

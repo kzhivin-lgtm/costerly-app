@@ -181,6 +181,22 @@ def test_workflow_route_uses_a_short_token_when_company_context_is_available(mon
     }
 
 
+def test_prepared_objects_route_does_not_publish_an_unpersisted_estimate_id():
+    st.session_state.clear()
+    st.session_state.current_run_id = "run-123"
+    st.session_state.current_estimate_id = "estimate-456"
+    st.session_state.prepared_estimate_access = {
+        "run_id": "run-123",
+        "estimate_id": "estimate-456",
+        "company_id": "company-1",
+    }
+
+    assert app._browser_route("objects", company_id="company-1") == {
+        "screen": "objects",
+        "run_id": "run-123",
+    }
+
+
 def test_file_review_route_keeps_the_active_estimate_for_refresh_recovery():
     st.session_state.clear()
     st.session_state.current_run_id = "run-123"
@@ -358,6 +374,32 @@ def test_continue_uses_prepared_launch_without_sync_persistence(monkeypatch):
     request = st.session_state.objects_estimation_launch_request
     assert request["estimate_id"] == "estimate-new"
     assert request["file_bytes"] == b"pdf"
+    assert st.session_state.prepared_estimate_access == {
+        "estimate_id": "estimate-new",
+        "run_id": "run-1",
+        "company_id": "company-1",
+    }
+
+
+def test_restored_file_review_source_is_used_for_a_prepared_launch(monkeypatch):
+    st.session_state.clear()
+    st.session_state.file_review_run_metadata = {
+        "project_name": "Hall", "partner": "unknown", "client": "unknown",
+    }
+    st.session_state.file_review_data_cache = {
+        "run-1": {"run": {"file_name": "cabinet.pdf"}},
+    }
+    st.session_state["file_review_source_bytes.run-1"] = b"restored-pdf"
+    plan = file_review._prepare_objects_launch_plan(
+        company_id="company-1",
+        run_id="run-1",
+        objects=[{"object_id": "object-1", "name": "Cabinet", "quantity": 1}],
+        source={"storage_ref": "storage://rfq-estimation-originals/company-1/a.pdf"},
+    )
+
+    assert plan is not None
+    assert plan["file_name"] == "cabinet.pdf"
+    assert plan["file_bytes"] == b"restored-pdf"
 
 
 def test_objects_dispatches_prepared_launch_without_waiting_for_result(monkeypatch):
