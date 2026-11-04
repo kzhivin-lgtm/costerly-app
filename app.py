@@ -45,6 +45,7 @@ from db.workflow_routes import (
 from styles.base import apply_base_css
 from ui.js_guards import (
     clear_upload_processing_shell,
+    retire_legacy_post_upload_transition_guard,
     scroll_parent_to_top,
     signal_app_ready_to_embed,
 )
@@ -328,7 +329,7 @@ def main() -> None:
         requested_trace_id=st.query_params.get("obs_trace"),
         screen=str(st.session_state.get("screen") or "upload"),
         started_at=_SCRIPT_STARTED_AT,
-        build_version="estimation-v5.7.0.3",
+        build_version="estimation-v5.7.0.4",
     )
     trace.annotate(
         run_sequence=st.session_state._runtime_run_sequence,
@@ -379,6 +380,10 @@ def main() -> None:
     )
     with trace.span("server.base_css"):
         apply_base_css()
+    # A tab that survived the retired V5.6 snapshot-shell implementation can
+    # otherwise keep its capture listener after deployment and paint a partial
+    # old screen over this live Streamlit render.
+    retire_legacy_post_upload_transition_guard()
 
     auth_enabled = company_auth_enabled()
     access = None

@@ -447,13 +447,53 @@ def test_workflow_screens_do_not_install_react_mutating_transition_shells():
     assert "install_post_upload_transition_guard" not in Path("screens/objects.py").read_text()
 
 
-def test_objects_runtime_stops_dom_writers_before_workflow_navigation():
+def test_app_retires_a_legacy_snapshot_transition_runtime_before_rendering():
+    source = Path("app.py").read_text()
+    guard_source = Path("ui/js_guards.py").read_text()
+
+    assert "retire_legacy_post_upload_transition_guard()" in source
+    assert 'removeEventListener("click", handler, true)' in guard_source
+    assert '"costerly-post-upload-transition-shell"' in guard_source
+
+
+def test_file_review_restores_blank_teardown_values_from_its_review_snapshot():
+    st.session_state.clear()
+    run_id = "run-1"
+    st.session_state.file_review_run_metadata_run_id = run_id
+    st.session_state.file_review_run_metadata = {
+        "project_name": "",
+        "partner": "Studio Oak",
+        "client": "",
+    }
+    st.session_state.file_review_object_edits_run_id = run_id
+    st.session_state.file_review_object_edits = {
+        "object-1": {"name": "", "expected_name": "Cabinet", "quantity": ""},
+    }
+
+    file_review._sync_run_metadata_state(
+        run_id,
+        {"project_name": "Hall", "partner": "Studio Oak", "client": "Client One"},
+    )
+    file_review._sync_object_edit_state(
+        run_id,
+        [{"object_id": "object-1", "name": "Cabinet", "quantity": 1}],
+    )
+
+    assert st.session_state.file_review_run_metadata == {
+        "project_name": "Hall",
+        "partner": "Studio Oak",
+        "client": "Client One",
+    }
+    assert st.session_state.file_review_object_edits["object-1"] == {
+        "name": "Cabinet", "expected_name": "Cabinet", "quantity": "1",
+    }
+
+
+def test_retired_dom_mutating_objects_progress_runtime_is_not_shipped():
     source = Path("ui/js_guards.py").read_text()
 
-    assert 'const NAVIGATION_CLEANUP_KEY = "__costerlyObjectsNavigationCleanup"' in source
-    assert 'parentDoc.addEventListener("pointerdown", stopForWorkflowNavigation, true)' in source
-    assert 'parentWindow[PRICE_INPUT_CLEANUP_KEY]();' in source
-    assert 'observer.observe(parentDoc.documentElement, { childList: true, subtree: true })' in source
+    assert "def install_objects_progress_sync" not in source
+    assert "def install_post_upload_transition_guard" not in source
 
 
 def test_objects_screen_does_not_install_the_react_mutating_live_progress_runtime():

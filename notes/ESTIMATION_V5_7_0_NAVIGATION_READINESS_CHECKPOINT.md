@@ -1,7 +1,7 @@
 # Estimation V5.7.0 Navigation Readiness
 
 Status: active. Task `5.7.0.1` is production-verified after a hard refresh;
-task `5.7.0.3` corrects two V5.7.0.2 launch regressions and is pending
+task `5.7.0.4` removes retired screen-loading runtimes and is pending
 production acceptance.
 
 ## Objective
@@ -143,3 +143,35 @@ terminal, normal durable estimate ownership and route-token behavior resumes.
 Historical RFQs created before V5.7.0.3 may lack the ledger reference even
 though a private original exists. The application must not guess a document
 from Storage; those runs show a specific re-upload requirement instead.
+
+## V5.7.0.4 correction: one screen-loading path
+
+The V5.6 snapshot transition guard was no longer installed by V5.7, but a
+browser tab kept open across deployment retained its capture-phase handler. On
+Continue or Back it inserted a synthetic target header above Streamlit's stale
+source DOM, producing the mixed File Review and Objects screenshots. V5.7.0.4
+retires that handler, its shell, style, marker and body classes before every
+product render. It does not introduce a replacement transition shell.
+
+The review also removes three dead implementations: the snapshot transition
+installer, its obsolete header helper, and the unused direct-DOM Objects
+progress runtime. Header controls now have one identity. A duplicate Streamlit
+key is no longer converted into a second, visible navigation rail. File Review
+repairs empty widget teardown acknowledgements from its durable in-session
+review snapshot, and a delayed File Review fragment cannot request a rerun
+after navigation has entered Objects.
+
+### V5.7.0.4 local verification
+
+- `py_compile` passed for `app.py`, UI guards, screen-transition helpers,
+  File Review and Objects.
+- Navigation, workflow header, timing and observability tests: 178 passed.
+- `git diff --check` passed.
+
+Production acceptance is one repeated interaction in the same existing tab:
+
+1. File Review → Objects must never show a synthetic Objects title over File
+   Review content.
+2. Objects → File Review twice must retain Project, Partner, Client and Object
+   name values.
+3. Exactly one header control rail is visible on both screens.

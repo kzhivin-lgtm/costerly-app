@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from streamlit.errors import StreamlitDuplicateElementKey
+from pathlib import Path
 
 from ui import app_header
 from ui.layout import post_upload_header_html
@@ -16,8 +16,7 @@ def test_workflow_header_mark_precedes_the_full_title():
     assert 'class="workflow-title-text">File Review</span>' in html
 
 
-def test_header_controls_recover_from_a_stale_streamlit_container_key(monkeypatch):
-    """A target screen remains actionable after Streamlit rejects a stale rail."""
+def test_header_controls_have_one_stable_identity_and_no_recovery_rail(monkeypatch):
     rendered_keys: list[str] = []
 
     class Column:
@@ -27,16 +26,7 @@ def test_header_controls_recover_from_a_stale_streamlit_container_key(monkeypatc
         def __exit__(self, *_args):
             return False
 
-    class Container(Column):
-        pass
-
-    def container(*, key):
-        if key == "costerly_header_controls":
-            raise StreamlitDuplicateElementKey("stale key")
-        assert key == "costerly_header_controls_recovery"
-        return Container()
-
-    monkeypatch.setattr(app_header.st, "container", container)
+    monkeypatch.setattr(app_header.st, "container", lambda *, key: Column())
     monkeypatch.setattr(app_header.st, "columns", lambda count: [Column() for _ in range(count)])
     monkeypatch.setattr(
         app_header.st,
@@ -49,7 +39,8 @@ def test_header_controls_recover_from_a_stale_streamlit_container_key(monkeypatc
         on_sign_out=lambda: None,
     )
 
-    assert rendered_keys == ["open_company_account_recovery", "company_sign_out_recovery"]
+    assert rendered_keys == ["open_company_account", "company_sign_out"]
+    assert "recovery" not in Path("ui/app_header.py").read_text()
 
 
 def test_object_detail_keeps_black_label_and_lilac_object_name():

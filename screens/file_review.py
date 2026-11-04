@@ -114,6 +114,16 @@ def _ensure_object_edit(object_id: str, item: dict[str, object]) -> dict[str, ob
 def _sync_run_metadata_state(run_id: str, run: dict[str, object]) -> None:
     """Keep editable project metadata scoped to one RFQ run."""
     if st.session_state.get("file_review_run_metadata_run_id") == run_id:
+        # Streamlit may retain an empty widget acknowledgement while this
+        # screen is unmounted. Empty project metadata is never a valid saved
+        # value, so restore the durable review snapshot before returning.
+        edits = st.session_state.get("file_review_run_metadata")
+        if not isinstance(edits, dict):
+            edits = {}
+            st.session_state.file_review_run_metadata = edits
+        for field in _RUN_METADATA_LABELS:
+            if not str(edits.get(field) or "").strip():
+                edits[field] = str(run.get(field) or "unknown").strip() or "unknown"
         return
     for field in _RUN_METADATA_LABELS:
         st.session_state.pop(f"file_review_run_metadata.{field}", None)
@@ -435,7 +445,12 @@ def _render_file_review_metadata_inputs(run_id: str) -> None:
         canonical_value = str(
             st.session_state.file_review_run_metadata.get(field) or "unknown"
         )
-        if widget_key not in st.session_state:
+        # A blank acknowledgement can survive a screen swap even though the
+        # File Review callback rejects empty metadata. Treat it as teardown
+        # residue, not as an edit, and hydrate the canonical saved value.
+        if widget_key not in st.session_state or not str(
+            st.session_state.get(widget_key) or ""
+        ).strip():
             st.session_state[widget_key] = canonical_value
         input_col.text_input(
             label,
@@ -600,6 +615,18 @@ def _sync_object_edit_state(run_id: str, objects: list[dict[str, object]]) -> No
     for item in objects:
         object_id = _object_id(item)
         initial_names.setdefault(object_id, str(item.get("name") or ""))
+        edit = edits.get(object_id)
+        if not isinstance(edit, dict):
+            continue
+        if not str(edit.get("name") or "").strip():
+            recovered_name = str(
+                edit.get("expected_name") or item.get("name") or ""
+            ).strip()
+            if recovered_name:
+                edit["name"] = recovered_name
+                edit["expected_name"] = recovered_name
+        if not str(edit.get("quantity") or "").strip():
+            edit["quantity"] = str(item.get("quantity") or "1")
 
 
 def _load_file_review_screen_data(run_id: str) -> dict[str, object]:
@@ -819,6 +846,12 @@ def _poll_file_review_deferred_work(run_id: str) -> None:
     The visible widgets stay outside the polling fragment. This prevents the
     former two-second remount of metadata, object cards and timing rows.
     """
+    # A fragment timer can outlive a click by one Streamlit event turn. It
+    # must never request a File Review rerun after its user has entered
+    # Objects, otherwise the two routes race and expose partial old DOM.
+    if st.session_state.get("screen") != "file_review":
+        return
+
     source_future = st.session_state.get(_source_restore_future_key(run_id))
     if isinstance(source_future, Future) and source_future.done():
         # The primary button lives outside this fragment. One full rerun turns
