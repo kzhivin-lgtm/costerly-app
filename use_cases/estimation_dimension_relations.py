@@ -177,7 +177,7 @@ def projection_hypotheses(relations: list[dict]) -> dict:
 
 
 def dimension_relations(evidence: dict) -> dict:
-    frames = {p["page_number"]: p["coordinate_frame"] for p in evidence["pages"]}
+    frames = {p["page_number"]: p.get("coordinate_frame") for p in evidence["pages"]}
     segments = []
     for number in evidence["dimensions"]:
         frame = frames.get(number["page_number"])

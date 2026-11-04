@@ -1,6 +1,6 @@
 """Read-only database replay of immutable inputs through V6.1.
 
---execute explicitly enables paid Analyze/Calculation calls. Results are saved
+--execute explicitly enables paid provider calls. Results are saved
 locally only, never published to estimates or production fact tables.
 """
 from __future__ import annotations
@@ -19,6 +19,7 @@ from types import SimpleNamespace
 
 import agents.estimation_composition_analyze_agent as analyze_module
 import agents.estimation_assembly_bom_agent as calculation_module
+import agents.estimation_geometry_verification_agent as verification_module
 
 from agents.estimation_composition_analyze_agent import run_estimation_composition_analyze_agent
 from agents.estimation_assembly_bom_agent import run_estimation_assembly_bom_agent
@@ -44,7 +45,7 @@ def capture_provider_responses(witness, save, *, cached=(), allow_calls=True, re
     orchestration is unchanged; the original call and response are preserved.
     """
     originals = []
-    for stage, module in (("analyze", analyze_module), ("calculation", calculation_module)):
+    for stage, module in (("analyze", analyze_module), ("calculation", calculation_module), ("verification", verification_module)):
         original = module._create_message_with_hard_timeout
         originals.append((module, original))
         def captured(client, *, _original=original, _stage=stage, **kwargs):
@@ -102,6 +103,8 @@ def main():
     parser.add_argument("--secrets-file", type=Path)
     parser.add_argument("--execute", action="store_true")
     parser.add_argument("--replay", type=Path, help="Reuse recorded input/catalog snapshot and matching provider responses")
+    parser.add_argument("--fresh-provider", action="store_true", help="Keep replayed immutable inputs but do not reuse provider responses; requires --execute")
+    parser.add_argument("--geometry-verification", action="store_true", help="Experimental bounded third Haiku call on detected contradictions, replay only; not accepted for production")
     parser.add_argument("--analyze-model", help="Controlled Analyze model experiment")
     parser.add_argument("--calculation-model", help="Controlled Calculation model experiment")
     parser.add_argument("--analyze-timeout", type=float, help="Diagnostic timeout, production setting unchanged")
@@ -118,6 +121,10 @@ def main():
     parser.add_argument("--measurement-axes", action="store_true", help="Supply deterministic axis candidates in the minimal geometry diagnostic")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    if args.fresh_provider and not args.execute:
+        parser.error("--fresh-provider requires --execute")
+    if args.geometry_verification and args.observe_only:
+        parser.error("--geometry-verification cannot be combined with --observe-only")
     if args.observe_view and (not args.observe_only or len(args.input_ids) != 1):
         parser.error("--observe-view requires --observe-only and exactly one input")
     if args.observe_relations and not args.observe_only:
@@ -179,7 +186,7 @@ def main():
     if args.analyze_thinking_budget:
         overrides = {"analyze": {"thinking": {"type": "enabled", "budget_tokens": args.analyze_thinking_budget},
                                  "max_tokens": 16000}}
-    capture = capture_provider_responses(witness, save, cached=prior.get("provider_responses") or [], allow_calls=args.execute,
+    capture = capture_provider_responses(witness, save, cached=[] if args.fresh_provider else prior.get("provider_responses") or [], allow_calls=args.execute,
                                          request_overrides=overrides, stream_stages=("analyze",) if args.stream_analyze else ())
     capture.__enter__()
     try:
@@ -312,10 +319,18 @@ def main():
             result = run_estimation_assembly_bom_agent(input_row=row, evidence_page_bytes_by_ref=page_bytes,
                 dimension_graph=graph, dimension_scale_gate=scale, allowed_material_families=context["families"], composition_scope=scope, model=args.calculation_model)
             witness["usage"].append(result["usage_event"])
+            if args.geometry_verification:
+                review = verification_module.verify_geometry_once(extraction=result["extraction"], scope=scope,
+                    input_row=row, page_bytes_by_ref=page_bytes)
+                result["extraction"] = review["extraction"]
+                if review.get("usage_event"):
+                    witness["usage"].append(review["usage_event"])
             extraction, audit = resolve_2vn_geometry(dimension_graph=graph, extraction=apply_composition_scope(extraction=result["extraction"], scope=scope))
             bom = build_structural_assembly_bom(input_row=row, dimension_graph=graph, extraction=extraction, two_vn=audit,
                 dimension_scale_gate=scale, allowed_material_families=context["families"])
             bom["composition_scope"] = scope
+            if extraction.get("geometry_verification"):
+                bom["geometry_verification"] = extraction["geometry_verification"]
             facts[bom["object_id"]] = bom
             witness["objects"].append({"input_id": row["input_id"], "raw_calculation": result["extraction"], "bom": bom})
             print(json.dumps({"calculated": row["input_id"], "assemblies": len(bom["assemblies"]), "parts": len(bom["parts"]), "materials": len(bom["materials"])}), flush=True)

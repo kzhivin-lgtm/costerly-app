@@ -628,12 +628,26 @@ ARCHITECTURE STRATEGIES, USER REQUEST, within 3.17.4.5 (same outcome, no new blo
 - DEFERRED, P2, strategy 1, construction templates: retain as an alternative,
   not the current implementation. Owner rejects the manual preparation burden.
   Revisit only if evidence-first fails and owner chooses this trade-off.
-- PENDING, P1, strategy 3, bounded targeted verification/repair: agent recommends
-  evaluating this fork after 29-37 exposed persistent semantic ownership errors.
-  Owner decision is needed before changing production model-call topology.
-  At most a bounded repair of identified conflicts,
-  not another unrestricted whole-project pass or model-vote proof. No extra
-  runtime request is authorized merely by recording this follow-up.
+- BLOCKED, P0, strategy 3, bounded targeted verification/repair: owner approved
+  conditional third Haiku request after discussion of 29-37. Same work 3.17.4.5.
+  One shared Analyze, per-object Calculation, then at most one targeted review
+  for detected contradictions. No request when no contradiction is detected.
+  Preserve source/assumption authority; revalidate patches deterministically.
+  [verified] Implemented and tested in LF1 trials 38-40, NOT accepted: the
+  verifier can choose an axis-compatible number for the wrong physical part.
+  Fresh full cycle 39 took 74.26 s; verification took 3.878-6.043 s across trials.
+  Trial 39's forbidden-axis patch was rejected atomically. Trial 40 corrected
+  projection context and removed inherited narrative, but still selected a
+  190 mm countertop width. Stop prompt-only retries of this candidate selector.
+  Production integration/cache-version changes withdrawn; retain only explicit
+  CLI --geometry-verification diagnostics. No deployment or DB writes.
+  Cached 41/42 verify default two-stage behavior and opt-in review separately,
+  zero paid calls. Full suite 1740 passed, same 10 baseline failures.
+  Blocker: physical dimension-to-component ownership, not request scheduling.
+  PENDING, AGENT PROPOSAL within this objective: test explicit spatial boundary
+  attachment before choosing a numeric candidate; revise the interpretation
+  contract only after owner discussion. Do not add a fourth request by default.
+  Whole-cycle materials/counts/geometry acceptance remains open.
 DEFERRED, AGENT PROPOSAL: <=60 s single object / 2-3 min ten objects, bounded
 parallel Calculation and incremental ready-object visibility. These were not
 approved SLAs; routing/concurrency optimization follows functional acceptance.

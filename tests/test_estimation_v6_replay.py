@@ -53,6 +53,8 @@ def test_diagnostic_thinking_options_are_fingerprinted_and_do_not_store_thinking
 @pytest.mark.parametrize("v6", [False, True])
 def test_calculation_selects_geometry_prompt_only_for_locked_v6_scope(monkeypatch, v6):
     import agents.estimation_assembly_bom_agent as calculation
+    import agents.estimation_geometry_verification_agent as verification
+    monkeypatch.setattr(verification, "verify_geometry_once", lambda **kw: pytest.fail("Unaccepted verifier reached normal Calculation"))
     requests = []
     monkeypatch.setattr(calculation, "get_anthropic_client", lambda: SimpleNamespace(with_options=lambda **kw: object()))
     monkeypatch.setattr(calculation, "build_v4_1_evidence_batches", lambda payload: [{"batch_id": "b", "pages": []}])
@@ -65,11 +67,13 @@ def test_calculation_selects_geometry_prompt_only_for_locked_v6_scope(monkeypatc
         composition_scope={"construction_version": "estimation_construction_v6_1"} if v6 else None)
     expected = calculation.V6_PROMPT_PATH if v6 else calculation.PROMPT_PATH
     assert requests[0]["system"] == expected.read_text().strip()
+    assert len(requests) == 1
 
 
 @pytest.mark.parametrize("flags", [
     ["--observe-relations"], ["--observe-view", "v"], ["--reobserve-ownership"],
-    ["--observe-measurements"], ["--measurement-axes"],
+    ["--observe-measurements"], ["--measurement-axes"], ["--fresh-provider"],
+    ["--geometry-verification", "--observe-only"],
 ])
 def test_invalid_diagnostic_modes_fail_before_provider_or_database_access(monkeypatch, tmp_path, flags):
     from tools import replay_estimation_v6 as replay

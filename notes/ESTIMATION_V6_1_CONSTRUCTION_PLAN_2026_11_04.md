@@ -211,7 +211,8 @@ This is a discriminating diagnostic, not an added production pass.
 Owner chose strategy 2 after considering (1) construction templates,
 (2) an evidence map before construction, and (3) targeted verification/repair.
 Manual template-library preparation is not desired. All three alternatives
-are tracked in the authoritative TODO under 3.17.4.5; only strategy 2 is active.
+are tracked in the authoritative TODO under 3.17.4.5. Initially only strategy 2
+was active; the later approved strategy-3 experiment is recorded below.
 Owner subsequently authorized autonomous bounded experiments until a genuine
 blocker, without approval per attempt. Haiku/materials-only and protected
 production boundaries remain. Read-only diagnostics may vary the observation
@@ -331,6 +332,86 @@ tests. Final affected relation/replay files: 26 passed in 1.95 s; offline LF1
 reconciliation still applies. This validates diagnostic safety, not model acceptance.
 Production checkpoint remains V5.8.2; comparison base is local WIP 4fd40d9.
 Existing unrelated 50-line TODO changes are preserved outside this commit.
+
+#### 2026-11-05: approved conditional verification, trials 38-42, not accepted
+
+Owner approved implementing the conditional third Haiku request. Same work
+3.17.4.5, materials-only, no Detection mutation, manual template library or
+stronger production model. Intended topology: one shared Analyze, Calculation
+per object, and at most one short review only when deterministic checks detect
+a contradiction. This is not three mandatory calls for every object; the
+existing Calculation batching/reconciliation can itself use more than one
+provider request for larger evidence packs.
+
+Implemented `use_cases/estimation_geometry_verification.py` and
+`agents/estimation_geometry_verification_agent.py`. Triggers: disagreement with
+view directions, incompatible dimension axis, or source numeric mismatch.
+They do NOT cover all wrong materials, counts, hidden parts, or plausible
+same-axis selection of another component's dimension. Reviewer must return
+exactly one source-ID patch or explicit unresolved reason per target. Code
+copies the candidate numeric value, rejects extra targets/fields and invalid
+axis choices atomically, preserves all non-target fields, and reruns conflict
+checks. Patches stay estimating assumptions, never independently verified source
+dimensions. Raw responses and short decision rationales are recorded, not
+private model thinking.
+
+Bounds: 8 targets, 3 object-owned pages, 24 candidates per target, 20,000 context
+characters, 6 detail crops, 1600 output tokens, 30 s hard timeout, zero SDK
+retries. Model is fixed to `claude-haiku-4-5-20251001`. Missing evidence, foreign
+input identity or exceeded caps makes no request. An unchanged extraction with
+an attempted review cannot request again; changed geometry is marked for review,
+not silently retried. Failure retains original geometry. Returned-response
+usage is recorded separately even if its patch fails validation; timeout before
+a response cannot establish actual billed usage. The existing hard-timeout
+helper does not guarantee cancellation of an already-running remote request.
+
+Initial integration was after Calculation and before 2VN, with a changed facts
+cache version and separately persisted usage/audit. These runtime changes were
+WITHDRAWN after live failure. Final code is CLI-only, opt-in via
+`--geometry-verification`. Normal Calculation, production cache version, runtime
+and UI are byte-identical to pre-experiment HEAD d6f9b60. No new worker, poller,
+timer, interaction or production latency was introduced. The failed automatic
+patch approach is not a new verified checkpoint.
+
+Immutable input `db175c9d-b911-434e-a3ed-de612640f96f`, run
+`run_1cba0b2491dc413c9a3be2fdd526226b`, company 610/object-001.
+Witness paths: `/private/tmp/estimation-v6-lf1-witness-NN.json`.
+
+| Trial | Intervention and actual result |
+| --- | --- |
+| 38 | Reuse Analyze/Calculation 35; new review 3.878 s, 6988 input / 257 output tokens. Two patches accepted as assumptions, but countertop width 1580 instead of 1600 and false attribution of printed 40 to support. Zero detected conflicts is not semantic acceptance. Total 5.09 s excludes original Analyze/Calculation. |
+| 39 | Fresh Analyze 35.471 s + Calculation 31.873 s + review 5.644 s; total 74.26 s. Reviewer selected a height-only source for countertop depth. Entire patch rejected, original geometry retained, needs_review. Analyze also retains wrong material/thickness/support/member interpretation. |
+| 40 | Exact cached 39 Analyze/Calculation, only review changes. Offline preflight confirmed two conditional projection corrections and six targets. Source scope preserved; reviewer gets copied reconciled projections with old ownership withdrawn, role/ID rather than first-reader shape/count narrative. New review 6.043 s, 8192 input / 526 output tokens; total 7.23 s. Still chooses 190 countertop width, 720 depth and 2650 screen height with false physical justifications. One unresolved thickness, status needs_review. Failed physical-ownership gate. |
+| 41 | After withdrawing production integration: cached default replay, 1.03 s, only Analyze + Calculation, no verification audit or paid call. |
+| 42 | Same cached input with explicit --geometry-verification, 1.32 s; all three responses reused, zero paid calls. Same geometry as trial 40, still not accepted. |
+
+The final diagnostic retains trial-40 conditional projection context. It is a
+hypothesis, not a source correction, and cannot mutate the authoritative scope.
+Missing coordinate-frame metadata conservatively yields no relation candidates.
+Reproduction of 42: run `python -m tools.replay_estimation_v6` with this input ID,
+`--replay /private/tmp/estimation-v6-lf1-witness-40.json`,
+`--geometry-verification`, the established local secrets file, and a new output
+path, WITHOUT `--execute`. `--fresh-provider --execute` deliberately bypasses
+provider-response reuse while retaining immutable input/catalog/page snapshots;
+it is only for explicitly paid full-cycle validation.
+
+Conclusion: bounded review and axis restrictions prevent some contradictions,
+but the hypothesis that this short repair selector produces an acceptable LF1
+estimate is rejected by these trials. More confident prose or agreeing model
+readings do not establish physical ownership. Stop this prompt-only loop.
+Next proposal, not an approved contract change: test explicit source-local
+component boundaries and dimension-to-boundary attachment before numeric choice,
+within the existing evidence-first workflow, not a default fourth request.
+Material selection, count/shape errors, full LF1, legends, multi-object scaling
+and owner-visible assumption review are still unaccepted/unverified.
+
+Final verification: 1740 passed, same 10 known baseline failures, 29 warnings,
+16.26 s. Tests cover atomic allowlists, zero-call paths, caps, timeout/malformed
+usage, input isolation, immutable scope, no repeated review, and normal
+Calculation's exclusion of the unaccepted verifier. The default/opt-in cached
+witnesses additionally verify real local orchestration without new paid calls.
+No database writes, push or deploy. Production checkpoint remains V5.8.2.
+Preserve the unrelated 50 TODO lines outside the experiment commit.
 
 Owner explicitly approved this change on 2026-11-04: simplify the model-facing Analyze
 contract to semantic assemblies, material intent and source observations.
