@@ -212,6 +212,10 @@ Owner chose strategy 2 after considering (1) construction templates,
 (2) an evidence map before construction, and (3) targeted verification/repair.
 Manual template-library preparation is not desired. All three alternatives
 are tracked in the authoritative TODO under 3.17.4.5; only strategy 2 is active.
+Owner subsequently authorized autonomous bounded experiments until a genuine
+blocker, without approval per attempt. Haiku/materials-only and protected
+production boundaries remain. Read-only diagnostics may vary the observation
+contract; no additional production model stage is implied.
 Extend existing Dimension Graph and 2VN, not a parallel estimation system.
 First enrich source numbers with line/end-point candidates in the same known
 coordinate frame. Keep candidate topology separate from model-interpreted
@@ -257,12 +261,76 @@ Verification: 62 focused checks passed; complete suite 1697 passed, the same
 LF1 material estimate. Tests establish reference/coordinate/provenance contracts,
 not physical interpretation. The combined map+construction model request is
 stopped after witnesses 25/26. Next discriminating diagnostic is cross-view
-dimension constraints for projection and physical ownership. Do not introduce
+dimension constraints for projection and physical ownership, investigated below. Do not introduce
 an extra production vision stage or claim Haiku success based on this WIP.
 Open: true extension/arrow endpoints, reliable projections, member-level
 measurements, live indexed-legend case, ten-object output/latency budget and
 owner-visible rationale/conflict review. Manual template preparation remains
 deferred; the bounded repair alternative remains pending in TODO.
+
+#### 2026-11-05: cross-view constraints, trials 29-37, not accepted
+
+Implemented a CLI-only diagnostic in `use_cases/estimation_dimension_relations.py`.
+It joins equal printed values with compatible pixel spans, and printed sums
+with aligned interval endpoints on the same page. Pixel spans do not create
+new measurements. Relations remain candidates, not proof of physical ownership.
+On LF1 it finds 187 = 72 + 115 and the two orthogonal 160 spans without any
+file-specific constants. Orthographic axis-domain consistency makes the central
+upper view a conditional top-plan hypothesis. Bounded minimum-edit search uses
+existing view readings to select width/depth orientation only when unambiguous.
+Assumptions explicitly exclude rotated elevations, oblique cuts and coincidental
+correspondences. Incomplete search, non-orthographic input or ambiguity never
+authorizes an arbitrary assignment. Caps: 256 segments, 80 relations, 4096
+assignment search states. No production caller is wired to this experiment.
+
+Changed projections invalidate old ownership. The optional reobserve diagnostic
+withdraws ALL dependent ownership, retains immutable source numbers, and saves
+the superseded interpretation outside Calculation transport. Existing 2VN guards
+still downgrade unsupported model source claims. Geometry scope transports the
+assumption audit only when explicitly present; ordinary production behavior is
+unchanged. A no-op reconciliation now stops before paid Calculation.
+
+All witnesses are local `/private/tmp/estimation-v6-lf1-<name>-NN.json` capsules,
+Haiku `claude-haiku-4-5-20251001`, with requests, text responses, usage and source
+snapshots. No private thinking contents, DB writes, push or deployment.
+
+| Witness | Controlled question | Result |
+| --- | --- | --- |
+| projection-29 | Equalities/aligned sums added to isolated projection probe | Still front elevation, provider 1.848 s |
+| axes-30 | Joint physical axes before projection names | Still front; rejected true cross-view match as coincidence, 15.452 s |
+| axes-31 | Same task with 2048-token Haiku thinking budget | Still front, 19.731 s; no stronger-model route |
+| projection-32 | Add computed conditional projection domains | Model still ignores top-plan candidate, total 2.36 s |
+| witness-33 | Reconcile projections before Calculation, cached Analyze 26 | INVALID intervention: section-without-axis made solver abstain; paid Calculation therefore did not test correction, total 51.47 s |
+| witness-34 | Respect existing 2VN section vertical=height convention; offline preflight proves changes | Calculation accepts top-plan/side projections, but old ownership still gives base height 1450 and top 200 x 1870; Calculation 41.243 s |
+| witness-35 | Same corrected projections, withdraw prior ownership | Base depth 720 recovered, but height 1450, screen 2650 and top 1870 x 1150 remain wrong; Calculation 40.885 s |
+| measurements-36 | Minimal geometry-only output, no BOM/ref repetition | 5.02 s provider; base 1580 x 430 x 720 correct, top 1870 x 750 and supports wrong |
+| measurements-37 | Same compact task plus code-computed axis candidates | 6.489 s provider; top depth 1150 and support height 750 improve, top width still 1870 despite depth-only candidate; screen still 2650; support cross-section absurd |
+
+Comparison caveat: 33-35 reuse Analyze 26, so wall times exclude its original
+35.512 s and these runs cannot validate a fresh end-to-end material selection.
+That Analyze also has wrong solid-wood/default thickness, member/support count
+and support shape. Neither geometry improvement nor passing tests repairs it.
+Trials 36/37 are observations, not estimates, and do not compile a BOM.
+
+Conclusion: source geometry constraints can correct a projection as an audited
+assumption; they do not establish component ownership, count, material or a
+complete valid estimate. Longer reasoning and shrinking output did not remove
+the semantic barrier. Stop cosmetic retries of these contracts. Do not promote
+this diagnostic into production or infer impossibility of Haiku in every design.
+The next proposed architectural fork is bounded verification of specific
+contradictions with an explicit spatial/ownership contract (strategy 3), not an
+unlimited loop or a per-object second full Analyze. This changes the model-call
+topology and needs an owner decision before production adoption. Strategy 1 stays
+deferred, and materials-only / Haiku / immutable Detection boundaries remain.
+
+Full local verification: 1717 passed, the same 10 pre-existing failures,
+29 warnings, 16.60 s. A final candidate-ambiguity guard preserves distinct line
+interpretations instead of selecting the first; its extra regression test brings
+the new relation/constraint/provenance tests to 16, plus 5 CLI mode-validation
+tests. Final affected relation/replay files: 26 passed in 1.95 s; offline LF1
+reconciliation still applies. This validates diagnostic safety, not model acceptance.
+Production checkpoint remains V5.8.2; comparison base is local WIP 4fd40d9.
+Existing unrelated 50-line TODO changes are preserved outside this commit.
 
 Owner explicitly approved this change on 2026-11-04: simplify the model-facing Analyze
 contract to semantic assemblies, material intent and source observations.

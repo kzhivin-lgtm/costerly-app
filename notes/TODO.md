@@ -609,16 +609,29 @@ ARCHITECTURE STRATEGIES, USER REQUEST, within 3.17.4.5 (same outcome, no new blo
   provider, 2,941 input / 90 output tokens). Prompt load alone is not established
   as the cause. Exact cached replay 28 verifies final guards without paid calls.
   Stop this combined-map prompt approach after 25/26, retain experimental code
-  for comparison, no deploy. Next bounded diagnostic: cross-view dimensional
-  constraints for projection/ownership, not another cosmetic prompt retry.
+  for comparison, no deploy. Cross-view dimensional diagnostics 29-37 completed
+  locally; no accepted estimate. Code reconciles plan/side projections under
+  recorded assumptions; correcting projections and withdrawing prior ownership
+  still leaves wrong component dimensions. Compact geometry 36/37 took 5.02 /
+  6.489 s provider time, but wrong top width / screen height / support section
+  remain. Thinking-budget probe 31 did not fix perception. Trial 33 was an invalid
+  intervention (solver abstained), not evidence against correction. New preflight
+  stops no-op reconciliation before paid Calculation. Details/capsules in the
+  existing V6.1 construction decision record. No production route added.
+  Owner authorized continued bounded experiments without per-attempt approval.
+  Preserve Haiku/materials-only and production boundaries. Diagnostic relation
+  graph checks printed equalities/sums against line spans across existing views;
+  no projection/physical ownership is promoted from numeric coincidence alone.
   Short outside-label dimensions/chain endpoints remain candidates, not arrowhead
   proofs. Ten-object latency/output capacity and live legend/UI acceptance are
   unverified; no automatic source-based claim from aggregate candidate counts.
 - DEFERRED, P2, strategy 1, construction templates: retain as an alternative,
   not the current implementation. Owner rejects the manual preparation burden.
   Revisit only if evidence-first fails and owner chooses this trade-off.
-- PENDING, P2, strategy 3, bounded targeted verification/repair: retain for later
-  evaluation after strategy 2. At most a bounded repair of identified conflicts,
+- PENDING, P1, strategy 3, bounded targeted verification/repair: agent recommends
+  evaluating this fork after 29-37 exposed persistent semantic ownership errors.
+  Owner decision is needed before changing production model-call topology.
+  At most a bounded repair of identified conflicts,
   not another unrestricted whole-project pass or model-vote proof. No extra
   runtime request is authorized merely by recording this follow-up.
 DEFERRED, AGENT PROPOSAL: <=60 s single object / 2-3 min ten objects, bounded

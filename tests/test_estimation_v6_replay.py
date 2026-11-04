@@ -65,3 +65,16 @@ def test_calculation_selects_geometry_prompt_only_for_locked_v6_scope(monkeypatc
         composition_scope={"construction_version": "estimation_construction_v6_1"} if v6 else None)
     expected = calculation.V6_PROMPT_PATH if v6 else calculation.PROMPT_PATH
     assert requests[0]["system"] == expected.read_text().strip()
+
+
+@pytest.mark.parametrize("flags", [
+    ["--observe-relations"], ["--observe-view", "v"], ["--reobserve-ownership"],
+    ["--observe-measurements"], ["--measurement-axes"],
+])
+def test_invalid_diagnostic_modes_fail_before_provider_or_database_access(monkeypatch, tmp_path, flags):
+    from tools import replay_estimation_v6 as replay
+    monkeypatch.setattr("sys.argv", ["replay", "input", "--output", str(tmp_path / "unused.json"), *flags])
+    monkeypatch.setattr(replay, "get_supabase_client", lambda: pytest.fail("Invalid mode reached database"))
+    with pytest.raises(SystemExit) as error:
+        replay.main()
+    assert error.value.code == 2

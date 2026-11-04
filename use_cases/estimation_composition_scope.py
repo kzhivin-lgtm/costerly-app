@@ -30,7 +30,7 @@ def geometry_scope(scope: Mapping[str, Any] | None) -> dict[str, Any]:
     if result.get("evidence_map"):
         result["evidence_map"] = {key: value for key, value in result["evidence_map"].items()
             if key in {"contract_version", "input_id", "view_readings", "dimension_readings",
-                       "uninterpreted_dimension_ids", "dimension_scale_gate", "limitations", "conflicts", "status", "index_links"}}
+                       "uninterpreted_dimension_ids", "dimension_scale_gate", "limitations", "conflicts", "status", "index_links", "projection_assumption_audit"}}
     used = set()
     for zone in result.get("zones") or []:
         zone.pop("material_assignments", None)
