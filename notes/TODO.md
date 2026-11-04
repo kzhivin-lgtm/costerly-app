@@ -560,9 +560,9 @@ Corrected source/display coordinate presentation, compacted repeated material
 descriptions, and added explicit front-schema/build-up validation. These are
 experimental until functional acceptance passes. Do not weaken source or
 hardware guards to manufacture acceptance. No production write or deployment.
-Retain the V5.8.2 production checkpoint. Latest full suite: 1683 passed,
-10 unchanged baseline failures. Latest focused semantic/replay/construction
-checks: 36 passed. Separate-page context survives legacy per-object composition;
+Retain the V5.8.2 production checkpoint. Latest full suite: 1697 passed,
+10 unchanged baseline failures. Latest focused map/2VN/semantic/replay/construction
+checks: 62 passed. Separate-page context survives legacy per-object composition;
 Calculation has a V6-only geometry contract. Live acceptance remains open.
 USER REQUIREMENT, P0: functionally correct complete materials cycle first.
 Owner explicitly removed the proposed hard latency budget, retaining efficiency
@@ -588,11 +588,39 @@ without DB writes, but selected solid wood, wrong member/support counts and
 incorrect geometry. Deterministic 40-mm finished / 2 x 20-mm purchased build-up
 is supported; it is not proof that Haiku selects it reliably. Owner clarified
 this is a possible construction, not mandatory stock thickness. Preserve
-explicit 40-mm stock as one layer and count its edge only once. Next diagnostic
-must isolate visual/axis interpretation, not repeat cosmetic prompt changes.
+explicit 40-mm stock as one layer and count its edge only once. Evidence-first
+implementation/diagnostics below continue the visual/axis investigation.
 UNVERIFIED ACCEPTANCE: owner-visible inspection of construction/material
 rationale. Facts retain it, but the new fields have no verified Object Detail
 display path. No UI change without scenario agreement/live verification.
+ARCHITECTURE STRATEGIES, USER REQUEST, within 3.17.4.5 (same outcome, no new block):
+- ACTIVE, P0, strategy 2, evidence-first map, approved by owner: extend existing
+  Dimension Graph/2VN with source-local dimension lines/endpoints, view candidates,
+  indexed text/legend context and explicit interpretation provenance before
+  construction. Preserve Haiku and immutable Detection membership. First gate:
+  source-frame-correct LF1 line witnesses and a read-only full-cycle replay;
+  later gates include legends and multiple objects. No manual template library.
+  [verified] First local slice: raster/native candidate lines in source coordinates,
+  explicit view/boundary readings, cross-page index links, scoped measurement
+  references and conflict downgrade through 2VN. CPU-only LF1 preparation ~0.45 s.
+  Full Haiku witnesses 25/26 completed in 79.33/80.86 s but remain NOT accepted:
+  top-plan classification, material/thickness choices and geometry still wrong.
+  Isolated projection probe 27 also called the plan a front elevation (1.98 s
+  provider, 2,941 input / 90 output tokens). Prompt load alone is not established
+  as the cause. Exact cached replay 28 verifies final guards without paid calls.
+  Stop this combined-map prompt approach after 25/26, retain experimental code
+  for comparison, no deploy. Next bounded diagnostic: cross-view dimensional
+  constraints for projection/ownership, not another cosmetic prompt retry.
+  Short outside-label dimensions/chain endpoints remain candidates, not arrowhead
+  proofs. Ten-object latency/output capacity and live legend/UI acceptance are
+  unverified; no automatic source-based claim from aggregate candidate counts.
+- DEFERRED, P2, strategy 1, construction templates: retain as an alternative,
+  not the current implementation. Owner rejects the manual preparation burden.
+  Revisit only if evidence-first fails and owner chooses this trade-off.
+- PENDING, P2, strategy 3, bounded targeted verification/repair: retain for later
+  evaluation after strategy 2. At most a bounded repair of identified conflicts,
+  not another unrestricted whole-project pass or model-vote proof. No extra
+  runtime request is authorized merely by recording this follow-up.
 DEFERRED, AGENT PROPOSAL: <=60 s single object / 2-3 min ten objects, bounded
 parallel Calculation and incremental ready-object visibility. These were not
 approved SLAs; routing/concurrency optimization follows functional acceptance.

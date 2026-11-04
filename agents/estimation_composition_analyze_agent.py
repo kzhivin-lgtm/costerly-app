@@ -18,9 +18,10 @@ from agents.estimation_v4_1_material_facts_agent import (
 from agents.estimation_visual_evidence import page_content
 from use_cases.estimation_dimension_graph import build_dimension_graph
 from use_cases.estimation_dimension_scale import build_dimension_scale_gate
+from use_cases.estimation_evidence_map import build_evidence_map, interpret_evidence_map
 
 
-ESTIMATION_COMPOSITION_ANALYZE_AGENT_VERSION = "estimation_analyze_v6_1"
+ESTIMATION_COMPOSITION_ANALYZE_AGENT_VERSION = "estimation_analyze_v6_1_evidence_map_v1"
 COMPOSITION_SCOPE_V1 = "estimation_composition_scope_v1"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_composition_analyze_prompt.md"
 
@@ -72,7 +73,7 @@ def _page_manifest(inputs: Sequence[Mapping[str, Any]], page_bytes_by_ref: Mappi
     return list(pages.values()), objects
 
 
-def _content(*, inputs: Sequence[Mapping[str, Any]], page_bytes_by_ref: Mapping[str, bytes], allowed_material_families: Sequence[str] = (), context_inputs: Sequence[Mapping[str, Any]] = ()) -> list[dict[str, Any]]:
+def _content(*, inputs: Sequence[Mapping[str, Any]], page_bytes_by_ref: Mapping[str, bytes], allowed_material_families: Sequence[str] = (), context_inputs: Sequence[Mapping[str, Any]] = (), evidence_maps: Mapping[str, Any] | None = None) -> list[dict[str, Any]]:
     all_inputs = [*inputs, *context_inputs]
     pages, objects = _page_manifest(all_inputs, page_bytes_by_ref)
     requested = {str(row.get("input_id")) for row in inputs}
@@ -101,7 +102,10 @@ def _content(*, inputs: Sequence[Mapping[str, Any]], page_bytes_by_ref: Mapping[
         "objects": [obj for obj in objects if obj["input_id"] in requested],
         "accepted_context_objects": [{**obj, "construction_scope": next((row.get("accepted_construction_scope") for row in context_inputs if row.get("input_id") == obj["input_id"]), None)} for obj in objects if obj["input_id"] not in requested],
         "allowed_material_families": sorted(allowed_material_families),
-        "dimension_context": dimension_context,
+        "dimension_context": [] if evidence_maps else dimension_context,
+        # Shared text/legends already appear once in source_text below.
+        "evidence_maps": [{key: value for key, value in evidence.items() if key != "text_nodes"}
+                          for evidence in (evidence_maps or {}).values()],
         "source_text": list({str(item["block_ref"]): dict(item)
             for row in all_inputs for container in ("evidence", "document_context")
             for kind in ("ocr_blocks", "ocr_literal_items")
@@ -135,12 +139,15 @@ def run_estimation_composition_analyze_agent(*, inputs: Sequence[Mapping[str, An
     client = get_anthropic_client().with_options(timeout=TIMEOUT_SECONDS, max_retries=0)
     started_at = datetime.now(UTC).isoformat()
     prompt = PROMPT_PATH.read_text(encoding="utf-8").strip()
+    page_cache: dict = {}
+    evidence_maps = {str(row["input_id"]): build_evidence_map(input_row=row, page_bytes_by_ref=page_bytes_by_ref, page_cache=page_cache) for row in inputs}
     response = _create_message_with_hard_timeout(
         client, timeout_seconds=TIMEOUT_SECONDS, model=selected_model, max_tokens=min(24000, max(MAX_OUTPUT_TOKENS, len(inputs) * 2500)),
         temperature=0, system=prompt,
-        messages=[{"role": "user", "content": _content(inputs=inputs, page_bytes_by_ref=page_bytes_by_ref, allowed_material_families=allowed_material_families, context_inputs=context_inputs)}],
+        messages=[{"role": "user", "content": _content(inputs=inputs, page_bytes_by_ref=page_bytes_by_ref, allowed_material_families=allowed_material_families, context_inputs=context_inputs, evidence_maps=evidence_maps)}],
     )
     parsed = _json_object(extract_text_from_claude_response(response))
+    readings = {obj.get("input_id"): obj.get("evidence_readings") for obj in parsed.get("objects") or []}
     from use_cases.estimation_semantic_plan import compile_semantic_plan
     parsed = compile_semantic_plan(parsed, inputs=inputs)
     scopes = parsed.get("object_scopes")
@@ -159,6 +166,8 @@ def run_estimation_composition_analyze_agent(*, inputs: Sequence[Mapping[str, An
         if scope["object_id"] != str(((owner.get("input_payload") or {}).get("object") or {}).get("object_id") or ""):
             raise ValueError("composition scope changed locked object identity")
         scope = normalize_construction_scope(scope, palette=palette, allowed_refs=allowed_refs)
+        scope["evidence_map"] = interpret_evidence_map(readings.get(scope["input_id"]),
+            source_map=evidence_maps[scope["input_id"]], zone_ids={zone["scope_id"] for zone in scope["zones"]})
         graph = build_dimension_graph(input_row=owner)
         scope = validate_thickness_witnesses(scope, dimension_graph=graph,
                                             dimension_scale_gate=build_dimension_scale_gate(dimension_graph=graph))

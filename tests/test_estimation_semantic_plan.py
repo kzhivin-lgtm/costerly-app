@@ -90,6 +90,24 @@ def test_assumed_minor_stock_variation_reuses_source_driven_stock_with_audit():
     assert source["finished_thickness_mm"] == 40 and source["thickness_basis"] == "source"
 
 
+def test_same_view_labels_on_different_objects_never_cross_source_ownership():
+    raw, row = fixture()
+    row["input_payload"]["object"]["evidence_pages"] = [{"page_number": 1, "regions": [
+        {"top_left_x": 1, "top_left_y": 1, "bottom_right_x": 50, "bottom_right_y": 50}]}]
+    row["input_payload"]["evidence"]["artifacts"] = [{"artifact_kind": "page", "page_number": 1, "storage_ref": PAGE}]
+    other = deepcopy(row)
+    other["input_id"] = "i2"
+    other["input_payload"]["object"]["object_id"] = "o2"
+    other["input_payload"]["evidence"]["artifacts"][0]["storage_ref"] = "storage://other"
+    raw["objects"][0]["zones"][0]["evidence_refs"] = ["p1-view-001"]
+    raw["objects"].append({**deepcopy(raw["objects"][0]), "input_id": "i2", "object_id": "o2"})
+    result = compile_semantic_plan(raw, inputs=[row, other])
+    assert [s["zones"][0]["evidence_refs"] for s in result["object_scopes"]] == [[PAGE], ["storage://other"]]
+    raw["materials"][0]["evidence_chain"] = [{"ref": "p1-view-001", "kind": "observation"}]
+    with pytest.raises(ValueError, match="ambiguous"):
+        compile_semantic_plan(raw, inputs=[row, other])
+
+
 @pytest.mark.parametrize("error", ["cycle", "stock", "identity", "fractional_count"])
 def test_semantic_compiler_rejects_contradictions(error):
     raw, row = fixture()

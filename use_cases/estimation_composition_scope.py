@@ -27,6 +27,10 @@ def geometry_scope(scope: Mapping[str, Any] | None) -> dict[str, Any]:
     result = deepcopy(dict(scope or {}))
     if not result.get("construction_version"):
         return result
+    if result.get("evidence_map"):
+        result["evidence_map"] = {key: value for key, value in result["evidence_map"].items()
+            if key in {"contract_version", "input_id", "view_readings", "dimension_readings",
+                       "uninterpreted_dimension_ids", "dimension_scale_gate", "limitations", "conflicts", "status", "index_links"}}
     used = set()
     for zone in result.get("zones") or []:
         zone.pop("material_assignments", None)
@@ -118,7 +122,7 @@ def validate_composition_scope(*, scope: Mapping[str, Any], input_id: str) -> di
     if not zones:
         raise ValueError("composition scope has no valid zones")
     return {
-        **({key: scope[key] for key in ("construction_version", "material_palette") if key in scope}),
+        **({key: scope[key] for key in ("construction_version", "material_palette", "evidence_map") if key in scope}),
         "contract_version": COMPOSITION_SCOPE_V1, "status": "ready", "input_id": input_id,
         "object_id": str(scope.get("object_id") or ""), "object_summary": str(scope.get("object_summary") or ""),
         "zones": zones, "assumptions": [str(item) for item in scope.get("assumptions") or [] if str(item).strip()],

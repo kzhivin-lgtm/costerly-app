@@ -14,6 +14,20 @@ objects. Locate each supplied view_id by its normalized bbox/detail label.
 OCR/view pixel coordinates belong to the documented source-render frame, which
 may differ from the displayed image size.
 
+composition_scope.evidence_map retains source numbers and Analyze's explicit
+view_readings/dimension_readings. Begin with this map. It describes WHICH
+physical boundaries a number measures, including whole-object readings with
+scope_id null that must not be copied to every zone. Its numeric values come
+from immutable OCR; physical ownership remains a visual interpretation.
+Use measurement_id on a source axis to reference its dimension_id instead of
+retyping value, unit, refs and a duplicate binding, for example:
+{"measurement_id":"dimension-004"}.
+Only use this for a reading assigned to this SAME scope_id and axis. Code will
+restore the number and its view binding. Derived geometry still needs source
+refs and a short subtraction/sum description. If the map is contradicted by
+the pixels, do not use measurement_id; report the conflict in omissions and
+give an explicit estimating assumption. Never silently reassign its ownership.
+
 Output:
 {"document_unit":{...},"view_interpretations":[...],"dimension_bindings":[...],"assemblies":[...],"omissions":[]}
 

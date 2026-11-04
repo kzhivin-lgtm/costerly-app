@@ -68,6 +68,9 @@ def resolve_2vn_geometry(*, dimension_graph: Mapping[str, Any], extraction: Mapp
 
     normalized = dict(extraction)
     strict = bool((extraction.get("composition_scope") or {}).get("construction_version"))
+    evidence_map = (extraction.get("composition_scope") or {}).get("evidence_map") or {}
+    ownership_readings = {r["dimension_id"]: r for r in evidence_map.get("dimension_readings") or []}
+    map_views = {v["view_id"]: v for v in evidence_map.get("view_readings") or []}
     assemblies = [dict(item) for item in extraction.get("assemblies") or [] if isinstance(item, Mapping)]
     normalized["assemblies"] = assemblies
     document = extraction.get("document_unit") or {}
@@ -154,12 +157,24 @@ def resolve_2vn_geometry(*, dimension_graph: Mapping[str, Any], extraction: Mapp
             numeric_match = value_mm is not None and abs(value_mm - number_value_mm) <= max(3.0, number_value_mm * 0.003)
             resolution = str(binding["resolution"])
             verified_direct = resolution == "direct" and numeric_match and score >= 0.85
+            ownership = ownership_readings.get(str(binding["dimension_id"]))
+            map_view = map_views.get(str(binding["view_id"])) or {}
+            ownership_agrees = bool(ownership and ownership.get("scope_id") == assembly_id
+                and ownership.get("ownership_status") != "conflicting"
+                and ownership.get("axis") == axis and ownership.get("view_id") == binding["view_id"]
+                and ownership.get("local_orientation") == binding["local_orientation"]
+                and map_view.get("projection") == views[str(binding["view_id"])]["projection"]
+                and (map_view.get("horizontal_axis") or "") == views[str(binding["view_id"])]["horizontal_axis"])
+            if evidence_map and not ownership_agrees:
+                verified_direct = False
             witness = {
                 "assembly_id": assembly_id, "axis": axis, "view_id": str(binding["view_id"]),
                 "dimension_id": str(binding["dimension_id"]), "resolution": resolution,
                 "score": round(score, 2), "numeric_match": numeric_match,
                 "verification": "direct" if verified_direct else "cross_view_or_assumption",
                 "evidence_refs": list(number.get("evidence_refs") or []),
+                **({"ownership_reading_agrees": ownership_agrees,
+                    "ownership_validation": "model_interpretation_not_independent_geometric_proof"} if evidence_map else {}),
             }
             witnesses.append(witness)
             if strict and not numeric_match:
@@ -173,7 +188,7 @@ def resolve_2vn_geometry(*, dimension_graph: Mapping[str, Any], extraction: Mapp
                                 "assumption_reason": None})
                 updated_dimensions[axis] = updated
                 outcomes["direct"] += 1
-            elif resolution in {"cross_view", "linked_zone"}:
+            elif resolution in {"cross_view", "linked_zone"} and (not evidence_map or ownership_agrees):
                 updated = dict(raw_dimension)
                 updated.update({"basis": "derived", "evidence_refs": list(number.get("evidence_refs") or [])})
                 updated_dimensions[axis] = updated
@@ -184,6 +199,21 @@ def resolve_2vn_geometry(*, dimension_graph: Mapping[str, Any], extraction: Mapp
                         "assumption_reason": "Numeric candidate does not establish this zone's dimension; visual estimating assumption."}
                 outcomes["unverified"] += 1
         assembly["dimensions"] = updated_dimensions
+        if evidence_map:
+            # Current map bindings target assembly axes, not individual cut
+            # faces. Do not let an unbound group bypass source validation.
+            groups = []
+            for group in assembly.get("panel_groups") or []:
+                dims = {}
+                for axis, dimension in (group.get("dimensions") or {}).items():
+                    dims[axis] = dict(dimension)
+                    if dimension.get("basis") == "source":
+                        dims[axis].update(basis="assumption", evidence_refs=[],
+                            assumption_reason="Member cut-face interpretation has no independently bound evidence-map measurement.")
+                        outcomes["unbound_member_face"] += 1
+                groups.append({**group, "dimensions": dims})
+            if groups:
+                assembly["panel_groups"] = groups
 
     # A shallow drawer face is often printed beside the side-view depth.  If a
     # drawer bank's alleged direct depth is no greater than its own front

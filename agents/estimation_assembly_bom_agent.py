@@ -10,6 +10,7 @@ from typing import Any, Mapping, Sequence
 
 from use_cases.estimation_composition_scope import geometry_scope
 from agents.estimation_visual_evidence import page_content
+from use_cases.estimation_evidence_map import apply_evidence_measurements
 
 from agents.anthropic_adapter import (
     DEFAULT_CLAUDE_AGENT_MODEL, build_agent_usage_event, extract_text_from_claude_response,
@@ -21,7 +22,7 @@ from agents.estimation_v4_1_material_facts_agent import (
 )
 
 
-ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION = "estimation_calculation_v6_1"
+ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION = "estimation_calculation_v6_1_evidence_map_v1"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_assembly_bom_prompt.md"
 V6_PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_calculation_v6_prompt.md"
 RECONCILIATION_PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_assembly_bom_reconciliation_prompt.md"
@@ -207,4 +208,5 @@ def run_estimation_assembly_bom_agent(*, input_row: Mapping[str, Any], evidence_
                              "composition_scope": bool(composition_scope),
                              "dimension_scale_gate": dict(dimension_scale_gate)},
     )
+    parsed = apply_evidence_measurements(parsed, scope=composition_scope or {})
     return {"extraction": parsed, "usage_event": usage}

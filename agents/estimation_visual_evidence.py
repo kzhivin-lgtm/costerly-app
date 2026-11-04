@@ -8,22 +8,7 @@ import math
 from typing import Any, Mapping, Sequence
 
 from PIL import Image, ImageDraw, ImageFont
-
-
-def _source_frame(payload: Mapping[str, Any], page_number: int) -> tuple[float, float] | None:
-    geometry = (payload.get("evidence") or {}).get("geometry_context") or {}
-    dpi = (geometry.get("rendering") or {}).get("dpi")
-    for profile in geometry.get("page_profiles") or []:
-        if profile.get("page_number") != page_number:
-            continue
-        points = profile.get("page_size_points") or {}
-        try:
-            width, height = float(points["width"]) * float(dpi) / 72, float(points["height"]) * float(dpi) / 72
-            if all(math.isfinite(value) and value > 0 for value in (width, height)):
-                return width, height
-        except (TypeError, ValueError, KeyError):
-            pass
-    return None
+from use_cases.estimation_dimension_graph import source_coordinate_frame as _source_frame
 
 
 def page_content(*, page_bytes: bytes, storage_ref: str, page_number: int,

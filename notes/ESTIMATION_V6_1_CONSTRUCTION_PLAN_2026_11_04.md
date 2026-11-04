@@ -194,6 +194,10 @@ Local capsules: `/private/tmp/estimation-v6-lf1-witness-NN.json`.
 | 18 | Target Haiku Analyze failed, 24.62 s | Same full contract as 15, with explicit generated view labels. Fixed-panel guard again rejected groups on a non-panel assembly. This prompt/evidence-presentation approach is stopped after two unsuccessful full Haiku runs. |
 | 19 | Compact Haiku Analyze, NOT accepted, 18.62 s | Four physical zones and three drawers identified; six inner uprights but frame members omitted. Source 40-mm member and assumed 18-mm cabinet conflicted in one stock family. Compiler now preserves source thickness and records alignment of assumed minor variations to shared stock. |
 | 20 | Compact Haiku full cycle, NOT accepted, 48.93 s | Four assemblies, 12 part rows and five material rows computed. Model selected solid wood, seven inner uprights and one support; Calculation misclassified the top plan, used stock thickness as cut-face size and wrong cabinet/worktop dimensions. Completion and shorter latency do not establish acceptance. Capsule: `/private/tmp/estimation-v6-lf1-witness-20.json`. No database writes. |
+| 25 | Evidence-first Haiku full cycle, NOT accepted, 79.33 s | Analyze 38.29 s, 17,404 input / 4,321 output; Calculation 40.062 s, 20,156 input / 4,966 output. Four zones, three drawers, six inner uprights plus frame and two supports, but plan labelled elevation, thickness 18/25 rather than justified 40 and contradictory assembly dimensions. Capsule `/private/tmp/estimation-v6-lf1-witness-25.json`. |
+| 26 | Evidence-first with conflicts, NOT accepted, 80.86 s | Analyze 35.512 s, 17,498 input / 4,033 output; Calculation 44.378 s, 19,713 input / 5,757 output. Repeated projection failure, incorrect solid-wood choices and one support. Same approach stopped after two full witnesses. Capsule `/private/tmp/estimation-v6-lf1-witness-26.json`. |
+| 27 | Isolated projection diagnostic, failed | Full page plus ONLY the named top-plan detail, no BOM/material/schema task. Haiku still answered front_elevation, width/height. Provider 1.976 s, 2,941 input / 90 output. Heavy prompt load alone does not explain this error; this single witness does not establish general model incapability. `/private/tmp/estimation-v6-lf1-projection-27.json`. |
+| 28 | Exact cached replay, NOT accepted, 0.88 s | Both provider responses reused by request hash, no paid calls. Final 2VN guards downgrade conflicting ownership/projection and unbound member cut faces instead of certifying them. `/private/tmp/estimation-v6-lf1-replay-28.json`. |
 
 Diagnostic 16 isolates Haiku visual recognition from the large BOM/material
 response contract. It uses the same source pixels with concise observation
@@ -201,6 +205,64 @@ instructions, no catalogs or formal BOM schema, and cannot publish an estimate.
 This is a discriminating diagnostic, not an added production pass.
 
 ## Approved compact Analyze contract
+
+### Approved direction: evidence-first, strategy 2
+
+Owner chose strategy 2 after considering (1) construction templates,
+(2) an evidence map before construction, and (3) targeted verification/repair.
+Manual template-library preparation is not desired. All three alternatives
+are tracked in the authoritative TODO under 3.17.4.5; only strategy 2 is active.
+Extend existing Dimension Graph and 2VN, not a parallel estimation system.
+First enrich source numbers with line/end-point candidates in the same known
+coordinate frame. Keep candidate topology separate from model-interpreted
+physical ownership, and keep raw source context/legends available. A line or
+number near a view never by itself proves an assembly dimension.
+LF1's immutable input has no vector_line_segments, despite a vector-capable
+source profile. The bounded first implementation therefore needs a raster
+candidate path on existing full-page evidence; no Detection repair, extra
+model stage or private local-PDF dependency in production is authorized.
+The previous WIP commit 934cc9e is a reproducible comparison, not an accepted
+functional checkpoint. V5.8.2 remains the production checkpoint.
+
+Implemented first slice in `use_cases/estimation_evidence_map.py`:
+- Reuses Dimension Graph, source coordinate frame and scale policy. Native
+  rendered-pixel lines are preferred; missing lines use bounded raster scan
+  candidates. No vector capability is fabricated from page profile counts.
+- Returns source numbers, candidate lines/endpoints, crossing candidates and
+  known views. Raster stroke endpoints are NOT verified arrowheads. Short
+  outside-label dimensions and chained spans remain explicitly uncertain.
+- Keeps raw text and same-literal index candidates across document context.
+  Candidate VN11 joins do not prove that a legend applies to every object.
+- Analyze emits view and physical-boundary readings before construction.
+  Known refs/ownership are validated, contradictory axis values are recorded
+  as needs_review. Calculation can reference a reading without retyping its
+  numeric value/unit/ref/binding. Unknown or foreign ids cannot be substituted.
+- Full map survives existing scope/fact persistence; model transport omits
+  duplicate raw graph/text. Shared object-local view ids cannot cross owners.
+  Conflicting bindings and unbound group faces cannot become source geometry.
+- Runtime versions now include `evidence_map_v1`, preventing reuse of older
+  Calculation facts as if they were generated with the new contract.
+
+Offline line witnesses: `/private/tmp/lf1-evidence-map-21` through `-24`.
+21 exposed OCR character strokes in candidates. 22 rejected the masking
+experiment because OCR boxes clipped real lines. 23 removes only strokes
+fully contained in OCR boxes and preserves long dimension strokes. 24 tested
+crossing-count ranking; it worsened leader/chain choices and was discarded.
+The retained ranking is 23, with no forced endpoint ownership. Visual review
+of overlays, not candidate count, established these limitations. Preparation
+was ~0.45 s on LF1; this is not a multi-object performance benchmark.
+
+Verification: 62 focused checks passed; complete suite 1697 passed, the same
+10 baseline failures, 29 warnings, 15.73 s. No DB writes, deployment or accepted
+LF1 material estimate. Tests establish reference/coordinate/provenance contracts,
+not physical interpretation. The combined map+construction model request is
+stopped after witnesses 25/26. Next discriminating diagnostic is cross-view
+dimension constraints for projection and physical ownership. Do not introduce
+an extra production vision stage or claim Haiku success based on this WIP.
+Open: true extension/arrow endpoints, reliable projections, member-level
+measurements, live indexed-legend case, ten-object output/latency budget and
+owner-visible rationale/conflict review. Manual template preparation remains
+deferred; the bounded repair alternative remains pending in TODO.
 
 Owner explicitly approved this change on 2026-11-04: simplify the model-facing Analyze
 contract to semantic assemblies, material intent and source observations.
@@ -221,8 +283,8 @@ Explicit source stock, linked legends and unknown-material family escape routes
 remain available. Cyclic thickness references and incompatible stock fail.
 Witness 20 does not establish correct visual semantics. Do not continue cosmetic
 prompt retries or override the witness with LF1-specific counts/materials.
-Next diagnostic must isolate the remaining visual-to-geometry interpretation
-from deterministic stock/layer expansion, retaining both failed raw responses.
+The subsequent evidence-first experiment above isolates the remaining
+visual-to-geometry interpretation from deterministic stock/layer expansion.
 Local compact-contract verification: 36 focused semantic/construction/replay
 tests passed; full suite 1683 passed, the same 10 baseline failures and 29
 warnings. Explicit 20-mm and 40-mm stock both preserve a 40-mm finished member,
@@ -275,7 +337,7 @@ locked panel group; the legacy prompt remains intact. Legacy same-run inputs
 share source context at read time so a separate-page legend remains traceable
 in each object's composer. Object-owned geometry and immutable records are
 unchanged. Focused construction/evidence/replay/scope/BOM/2VN tests: 37 passed,
-including V6 versus legacy prompt routing. Latest complete suite: 1674 passed,
+including V6 versus legacy prompt routing. Before compact/evidence-first changes: 1674 passed,
 the same 10 baseline failures, 29 warnings, 10.60 seconds. No new failing test.
 
 Owner emphasized compact latency for ten objects with 3-4 islands each.

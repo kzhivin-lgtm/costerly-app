@@ -78,19 +78,27 @@ def compile_semantic_plan(raw: Mapping[str, Any], *, inputs: Sequence[Mapping[st
     raw = deepcopy(dict(raw))
     # Known view ids are locators on existing source pages, not new evidence.
     # Resolve only ids present in the immutable graph, never invented labels.
-    view_refs = {}
+    view_refs, owned_view_refs, ambiguous_views = {}, {}, set()
     for row in inputs:
+        owned = owned_view_refs.setdefault(str(row["input_id"]), {})
         payload = row["input_payload"]
         pages = {a.get("page_number"): a["storage_ref"] for a in (payload.get("evidence") or {}).get("artifacts") or []
                  if a.get("artifact_kind") == "page" and a.get("storage_ref")}
         for view in build_dimension_graph(input_row=row).get("views") or []:
             if view["page_number"] in pages:
-                view_refs[view["view_id"]] = pages[view["page_number"]]
+                ref = pages[view["page_number"]]
+                owned[view["view_id"]] = ref
+                if view["view_id"] in view_refs and view_refs[view["view_id"]] != ref:
+                    ambiguous_views.add(view["view_id"])
+                view_refs[view["view_id"]] = ref
     for obj in raw.get("objects") or []:
+        owned = owned_view_refs.get(str(obj.get("input_id")), {})
         for zone in obj.get("zones") or []:
-            zone["evidence_refs"] = list(dict.fromkeys(view_refs.get(ref, ref) for ref in zone.get("evidence_refs") or []))
+            zone["evidence_refs"] = list(dict.fromkeys(owned.get(ref, ref) for ref in zone.get("evidence_refs") or []))
     for material in raw.get("materials") or []:
         for link in material.get("evidence_chain") or []:
+            if link.get("ref") in ambiguous_views:
+                raise ValueError("shared material evidence requires a source ref, not an ambiguous object-local view id")
             if link.get("ref") in view_refs:
                 view_id = link["ref"]
                 link["ref"] = view_refs[view_id]

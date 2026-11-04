@@ -9,13 +9,30 @@ OCR number as a global object dimension.
 from __future__ import annotations
 
 from collections import defaultdict
-from math import hypot
+from math import hypot, isfinite
 import re
 from typing import Any, Mapping
 
 
 DIMENSION_GRAPH_V1 = "estimation_dimension_graph_v1"
 _NUMBER = re.compile(r"^\s*(?:Ø\s*)?(\d+(?:[.,]\d+)?)\s*(mm|cm|m)?\s*$", re.IGNORECASE)
+
+
+def source_coordinate_frame(payload: Mapping[str, Any], page_number: int) -> tuple[float, float] | None:
+    """Documented OCR/view render frame, never inferred from observed boxes."""
+    geometry = (payload.get("evidence") or {}).get("geometry_context") or {}
+    dpi = (geometry.get("rendering") or {}).get("dpi")
+    for profile in geometry.get("page_profiles") or []:
+        if profile.get("page_number") != page_number:
+            continue
+        points = profile.get("page_size_points") or {}
+        try:
+            frame = float(points["width"]) * float(dpi) / 72, float(points["height"]) * float(dpi) / 72
+            if all(isfinite(v) and v > 0 for v in frame):
+                return frame
+        except (TypeError, ValueError, KeyError):
+            pass
+    return None
 
 
 def _bbox(value: Any) -> dict[str, float] | None:
@@ -26,7 +43,7 @@ def _bbox(value: Any) -> dict[str, float] | None:
         right, bottom = float(value["bottom_right_x"]), float(value["bottom_right_y"])
     except (KeyError, TypeError, ValueError):
         return None
-    if right <= left or bottom <= top:
+    if not all(isfinite(v) for v in (left, top, right, bottom)) or right <= left or bottom <= top:
         return None
     return {"top_left_x": left, "top_left_y": top, "bottom_right_x": right, "bottom_right_y": bottom}
 
@@ -121,7 +138,7 @@ def _vector_line_candidates(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
         except (KeyError, TypeError, ValueError):
             continue
         segment_id = str(item.get("segment_id") or "").strip()
-        if not segment_id or page_number < 1 or (x1 == x2 and y1 == y2):
+        if not segment_id or page_number < 1 or not all(isfinite(v) for v in (x1, y1, x2, y2)) or (x1 == x2 and y1 == y2):
             continue
         result.append({
             "segment_id": segment_id, "page_number": page_number,
