@@ -153,6 +153,60 @@ def _is_prepared_estimate_pending(
     )
 
 
+def _workflow_access_cache_key(
+    *,
+    company_id: str,
+    run_id: object,
+    estimate_id: object = None,
+) -> tuple[str, str, str]:
+    """Return the session-only ownership receipt for an already checked route.
+
+    A normal File Review -> Objects transition stays in one authenticated
+    Streamlit session. Re-reading the same ownership rows before the target
+    screen writes its first element leaves the prior screen visibly stale.
+    This receipt is deliberately narrow: it is scoped to company, run and
+    estimate, and direct/restored URLs still perform their normal validation.
+    """
+    return (
+        str(company_id),
+        str(run_id or ""),
+        str(estimate_id or ""),
+    )
+
+
+def _remember_validated_workflow_access(
+    *,
+    company_id: str,
+    run_id: object,
+    estimate_id: object = None,
+) -> None:
+    if not run_id:
+        return
+    st.session_state.setdefault("validated_workflow_access", set()).add(
+        _workflow_access_cache_key(
+            company_id=company_id,
+            run_id=run_id,
+            estimate_id=estimate_id,
+        )
+    )
+
+
+def _has_validated_workflow_access(
+    *,
+    company_id: str,
+    run_id: object,
+    estimate_id: object = None,
+) -> bool:
+    if not run_id:
+        return False
+    receipts = st.session_state.get("validated_workflow_access", set())
+    return _workflow_access_cache_key(
+        company_id=company_id,
+        run_id=run_id,
+        estimate_id=estimate_id,
+    ) in receipts
+
+
 def _browser_route(screen: str, *, company_id: str | None = None) -> dict[str, str]:
     """Return the safe, durable browser route for the rendered screen."""
     if screen == "account":
@@ -329,7 +383,7 @@ def main() -> None:
         requested_trace_id=st.query_params.get("obs_trace"),
         screen=str(st.session_state.get("screen") or "upload"),
         started_at=_SCRIPT_STARTED_AT,
-        build_version="estimation-v5.7.0.4",
+        build_version="estimation-v5.7.0.5",
     )
     trace.annotate(
         run_sequence=st.session_state._runtime_run_sequence,
@@ -742,6 +796,17 @@ def main() -> None:
                 st.error("This RFQ or estimate is not available to your company.")
                 _signal_ready(trace, "company_access_error")
                 return
+            else:
+                _remember_validated_workflow_access(
+                    company_id=company_id,
+                    run_id=requested_run_id,
+                )
+                if requested_estimate_id:
+                    _remember_validated_workflow_access(
+                        company_id=company_id,
+                        run_id=requested_run_id,
+                        estimate_id=requested_estimate_id,
+                    )
         object_detail_edit_line = st.query_params.get("od_edit_line")
         object_detail_edit_field = st.query_params.get("od_edit_field")
         object_detail_edit_value = st.query_params.get("od_edit_value")
@@ -793,11 +858,29 @@ def main() -> None:
             client = get_supabase_client()
             run_id = st.session_state.get("current_run_id")
             estimate_id = st.session_state.get("current_estimate_id")
-            if screen in {"file_review", "objects", "object_detail"} and run_id:
+            run_receipt_exists = _has_validated_workflow_access(
+                company_id=company_id,
+                run_id=run_id,
+            )
+            estimate_receipt_exists = _has_validated_workflow_access(
+                company_id=company_id,
+                run_id=run_id,
+                estimate_id=estimate_id,
+            )
+            if (
+                screen in {"file_review", "objects", "object_detail"}
+                and run_id
+                and not run_receipt_exists
+            ):
                 assert_run_owned(client, str(run_id), company_id)
+                _remember_validated_workflow_access(
+                    company_id=company_id,
+                    run_id=run_id,
+                )
             if (
                 screen in {"objects", "object_detail"}
                 and estimate_id
+                and not estimate_receipt_exists
                 and not _is_prepared_estimate_pending(
                     estimate_id=estimate_id,
                     run_id=run_id,
@@ -805,6 +888,11 @@ def main() -> None:
                 )
             ):
                 assert_estimate_owned(client, str(estimate_id), company_id)
+                _remember_validated_workflow_access(
+                    company_id=company_id,
+                    run_id=run_id,
+                    estimate_id=estimate_id,
+                )
         except PermissionError:
             st.session_state.current_run_id = None
             st.session_state.current_estimate_id = None

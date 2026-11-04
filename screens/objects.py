@@ -665,16 +665,11 @@ def render_objects_screen(
 ) -> None:
     """Render the object pricing review screen from persisted estimate data."""
     apply_objects_css()
-    # The File Review callback has already populated the visible seed rows.
-    # Dispatch persistence after the destination begins rendering so a click
-    # never waits for Supabase before the user sees Objects Estimation.
-    _start_prepared_estimation_launch()
-    _consume_estimation_future()
-
     estimate_id = st.session_state.get("current_estimate_id")
     run_id = st.session_state.get("current_run_id")
-    _mark_objects_cache_dirty_when_estimation_runs(estimate_id)
-
+    # Emit the target screen before even queueing the worker. Streamlit marks
+    # prior elements stale while a rerun is in flight, so submitting work first
+    # could leave File Review visibly beneath a new Objects heading.
     render_post_upload_header(
         "Objects Estimation",
         "Review objects → Set sale price → Final Approval",
@@ -682,6 +677,12 @@ def render_objects_screen(
         marker_id=OBJECTS_MARKER_ID,
         render_header_controls=render_header_controls,
     )
+    # The File Review callback already populated visible seed rows. Queue
+    # persistence only after the native destination header exists, so a click
+    # never waits for worker setup before Objects starts replacing File Review.
+    _start_prepared_estimation_launch()
+    _consume_estimation_future()
+    _mark_objects_cache_dirty_when_estimation_runs(estimate_id)
     screen_state = _current_objects_state(estimate_id)
     screen_state = ObjectsScreenState(
         data=_data_with_object_routes(

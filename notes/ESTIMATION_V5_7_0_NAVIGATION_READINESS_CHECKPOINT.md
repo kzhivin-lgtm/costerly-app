@@ -175,3 +175,31 @@ Production acceptance is one repeated interaction in the same existing tab:
 2. Objects → File Review twice must retain Project, Partner, Client and Object
    name values.
 3. Exactly one header control rail is visible on both screens.
+
+## V5.7.0.5 correction: target-first render inside the active session
+
+The V5.7.0.4 cleanup removed an obsolete browser shell, but it did not remove
+two synchronous waits inside the current Streamlit route. On File Review →
+Objects, `app.py` re-read ownership for the already validated run before the
+target screen wrote its first element. Objects then submitted its background
+job before emitting its own heading. During either wait, Streamlit could show
+the stale File Review DOM and then replace only the heading, which matches the
+production screenshots.
+
+V5.7.0.5 keeps direct and restored workflow URLs fully validated. For an
+ordinary in-session transition, it records the successful company/run or
+company/run/estimate ownership check in session state and does not repeat the
+same read before the target render. The receipt is cleared by New Estimate.
+Objects now writes its native destination header before starting the worker;
+it adds no browser shell, overlay, route replacement or artificial screen.
+
+### V5.7.0.5 local verification
+
+- `py_compile` passed for `app.py`, Session State and Objects.
+- `tests/test_navigation_routes.py`: 54 passed.
+- The new route tests prove the target header is emitted before worker setup
+  and that a receipt is bound to the exact company, run and estimate context.
+
+Production acceptance remains the same real authenticated scenario: File
+Review → Objects, then Objects → File Review, repeated twice in the same tab.
+At no point may File Review content remain under an Objects heading.

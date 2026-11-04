@@ -345,6 +345,52 @@ def test_active_estimation_opens_seeded_objects_without_waiting_for_supabase(mon
     assert state.data["rows"][0]["object_key"] == "object-1"
 
 
+def test_objects_emits_its_target_header_before_starting_the_background_worker():
+    source = Path("screens/objects.py").read_text()
+    render_source = source.split("def render_objects_screen", 1)[1].split(
+        "def _render_objects_table_content", 1
+    )[0]
+
+    assert render_source.index('"Objects Estimation"') < render_source.index(
+        "_start_prepared_estimation_launch()"
+    )
+
+
+def test_validated_workflow_access_skips_a_repeat_ownership_read_for_same_session():
+    st.session_state.clear()
+
+    app._remember_validated_workflow_access(
+        company_id="company-1",
+        run_id="run-1",
+    )
+
+    assert app._has_validated_workflow_access(
+        company_id="company-1",
+        run_id="run-1",
+    ) is True
+    assert app._has_validated_workflow_access(
+        company_id="company-2",
+        run_id="run-1",
+    ) is False
+    assert app._has_validated_workflow_access(
+        company_id="company-1",
+        run_id="run-1",
+        estimate_id="estimate-1",
+    ) is False
+
+    app._remember_validated_workflow_access(
+        company_id="company-1",
+        run_id="run-1",
+        estimate_id="estimate-1",
+    )
+
+    assert app._has_validated_workflow_access(
+        company_id="company-1",
+        run_id="run-1",
+        estimate_id="estimate-1",
+    ) is True
+
+
 def test_continue_uses_prepared_launch_without_sync_persistence(monkeypatch):
     st.session_state.clear()
     st.session_state.uploaded_file_name = "cabinet.pdf"
