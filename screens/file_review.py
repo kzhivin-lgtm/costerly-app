@@ -20,8 +20,6 @@ from ui.screen_transition import (
 )
 from use_cases.estimation import build_estimate_id
 from use_cases.estimation_progress import set_object_progress
-from use_cases.estimation_runtime import submit_estimation_job
-from use_cases.latest_estimate import load_latest_estimate_route_for_run
 from use_cases.rfq_processing import (
     FileReviewNameConflict,
     load_file_review_data,
@@ -1044,6 +1042,11 @@ def render_file_review_screen(
     install_workflow_header_alignment_guard()
 
     _render_file_review_dynamic_content(run_id)
+    launch_plan = _prepare_objects_launch_plan(
+        company_id=company_id,
+        run_id=str(run_id),
+        objects=data["objects"],
+    )
 
     col_back, col_next = st.columns(2, gap="small")
 
@@ -1064,7 +1067,10 @@ def render_file_review_screen(
             "run_id": run_id,
             "objects": data["objects"],
         },
+        disabled=launch_plan is None,
     )
+    if launch_plan is None:
+        st.caption("Objects Estimation is preparing its source file. Please wait a moment.")
 
     # This fragment can issue a full rerun when deferred work becomes terminal.
     # Keep it after the two terminal actions so that an interrupted File Review
@@ -1122,68 +1128,72 @@ def _prepare_objects_estimation_seed(
     )
 
 
-def _estimation_job_active() -> bool:
-    """Return whether the background estimation worker is still running."""
-    current_future = st.session_state.get("estimation_batch_future")
-    return isinstance(current_future, Future) and not current_future.done()
+def _sync_object_edits_from_widget_values(objects: list[dict[str, object]]) -> None:
+    """Capture the latest browser widget values before a navigation callback.
+
+    Streamlit invokes a button callback before the regular render body.  A
+    quantity field changed immediately before Continue therefore lives in its
+    widget key first, not necessarily in ``file_review_object_edits``.  The
+    launch plan must take that accepted browser value, rather than the previous
+    render's value.
+    """
+    edits = st.session_state.setdefault("file_review_object_edits", {})
+    for item in objects:
+        object_id = _object_id(item)
+        edit = edits.setdefault(object_id, _default_object_edit(item))
+        edit_key = f"file_review_object_edits.{object_id}"
+        name_key = f"{edit_key}.name"
+        quantity_key = f"{edit_key}.quantity"
+        if name_key in st.session_state:
+            edit["name"] = str(st.session_state.get(name_key) or "").strip()
+        if quantity_key in st.session_state:
+            edit["quantity"] = str(st.session_state.get(quantity_key) or "").strip()
+
+
+def _prepare_objects_launch_plan(
+    *,
+    company_id: str,
+    run_id: str,
+    objects: list[dict[str, object]],
+) -> dict[str, object] | None:
+    """Create the zero-I/O Objects launch snapshot used by the next screen.
+
+    This is preparation, not Estimation.  It has no database write, route
+    token, model call or background job.  Its only purpose is to make the
+    button's next screen fully renderable before the button is enabled.
+    """
+    _sync_object_edits_from_widget_values(objects)
+    object_edits = _object_edits_snapshot()
+    ignored_object_ids = _ignored_object_ids(object_edits)
+    file_name = st.session_state.get("uploaded_file_name")
+    file_bytes = st.session_state.get("uploaded_file_bytes")
+    if not file_name or not isinstance(file_bytes, bytes):
+        st.session_state.objects_estimation_launch_plan = None
+        return None
+
+    _prepare_objects_estimation_seed(
+        objects=objects,
+        object_edits=object_edits,
+        ignored_object_ids=ignored_object_ids,
+    )
+    plan = {
+        "company_id": company_id,
+        "run_id": run_id,
+        "file_name": str(file_name),
+        "file_bytes": file_bytes,
+        "metadata_values": _run_metadata_snapshot(),
+        "object_edits": object_edits,
+        "ignored_object_ids": ignored_object_ids,
+        "edits_changed": _file_review_edits_changed(objects, object_edits),
+        "seed_rows": [dict(row) for row in st.session_state.objects_estimation_seed_rows],
+    }
+    st.session_state.objects_estimation_launch_plan = plan
+    return plan
 
 
 def _mark_objects_estimation_cache_dirty(estimate_id: object) -> None:
     if estimate_id:
         st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(str(estimate_id))
-
-
-def _submit_objects_estimation_job(
-    *,
-    company_id: str,
-    run_id: str,
-    object_edits: dict[str, dict[str, object]],
-    edits_changed: bool,
-    ignored_object_ids: set[str],
-    create_shell: bool,
-) -> bool:
-    """Submit async estimation work; return False when upload bytes are missing."""
-    file_name = st.session_state.get("uploaded_file_name")
-    file_bytes = st.session_state.get("uploaded_file_bytes")
-    if not file_name or not file_bytes:
-        st.session_state.last_estimation_error = (
-            "Uploaded file bytes are missing. Please upload the file again."
-        )
-        return False
-
-    estimate_id = (
-        build_estimate_id(run_id)
-        if create_shell
-        else str(st.session_state.get("current_estimate_id"))
-    )
-    if create_shell:
-        st.session_state.current_estimate_id = estimate_id
-        st.session_state.current_estimate_run_id = run_id
-        st.session_state.current_object_id = None
-        st.session_state.approved_object_keys = set()
-        st.session_state.last_estimation_result = None
-        st.session_state.last_estimation_error = None
-
-    _mark_estimation_batch_started(estimate_id)
-    try:
-        st.session_state.estimation_batch_future = submit_estimation_job(
-            estimate_id=estimate_id,
-            run_id=run_id,
-            company_id=company_id,
-            file_name=file_name,
-            file_bytes=file_bytes,
-            object_edits=object_edits,
-            edits_changed=edits_changed,
-            ignored_object_ids=ignored_object_ids,
-            create_shell=create_shell,
-        )
-    except Exception as exc:
-        st.session_state.current_estimate_id = None
-        st.session_state.current_estimate_run_id = None
-        st.session_state.last_estimation_error = str(exc)
-        return False
-    _mark_objects_estimation_cache_dirty(estimate_id)
-    return True
 
 
 def _continue_to_objects_estimation(
@@ -1192,7 +1202,7 @@ def _continue_to_objects_estimation(
     run_id: str,
     objects: list[dict[str, object]],
 ) -> None:
-    """Prepare estimate state and move from File Review to Objects Estimation."""
+    """Move to pre-seeded Objects, then let its worker persist the accepted plan."""
     action_started_at = time.perf_counter()
     phase_durations_ms: dict[str, float] = {}
     action_status = "ok"
@@ -1210,82 +1220,53 @@ def _continue_to_objects_estimation(
         st.session_state._runtime_completed_action = payload
 
     phase_started_at = time.perf_counter()
-    try:
-        saved_metadata = save_file_review_run_metadata(
-            run_id=run_id,
-            values=_run_metadata_snapshot(),
-            company_id=company_id,
+    plan = _prepare_objects_launch_plan(
+        company_id=company_id,
+        run_id=run_id,
+        objects=objects,
+    )
+    phase_durations_ms["continue_launch_plan_ms"] = (
+        time.perf_counter() - phase_started_at
+    ) * 1000
+
+    if plan is None:
+        st.session_state.last_estimation_error = (
+            "Objects Estimation is not ready because the uploaded file is missing. "
+            "Please upload the file again."
         )
-    except Exception as exc:
-        st.session_state.file_review_metadata_save_error = str(exc)
         action_status = "error"
-        action_error_code = "metadata_save_failed"
+        action_error_code = "launch_plan_unavailable"
         record_action()
         return
-    st.session_state.file_review_run_metadata.update(saved_metadata)
-    phase_durations_ms["continue_metadata_save_ms"] = (
-        time.perf_counter() - phase_started_at
-    ) * 1000
 
-    phase_started_at = time.perf_counter()
-    object_edits = _object_edits_snapshot()
-    edits_changed = _file_review_edits_changed(objects, object_edits)
-    ignored_object_ids = _ignored_object_ids(object_edits)
-    _prepare_objects_estimation_seed(
-        objects=objects,
-        object_edits=object_edits,
-        ignored_object_ids=ignored_object_ids,
+    # Reopening an unchanged durable estimate remains a read path.  A newly
+    # accepted snapshot, or one with File Review edits, receives a fresh shell
+    # after Objects has painted its prepared seed rows.
+    reuse_existing_estimate = bool(
+        not plan["edits_changed"] and _current_estimate_matches_run(run_id)
     )
-    phase_durations_ms["continue_seed_prepare_ms"] = (
-        time.perf_counter() - phase_started_at
-    ) * 1000
-
-    current_estimate_matches_run = _current_estimate_matches_run(run_id)
-    if not edits_changed and not current_estimate_matches_run:
-        phase_started_at = time.perf_counter()
-        try:
-            from db.supabase_client import get_supabase_client
-
-            persisted_route = load_latest_estimate_route_for_run(
-                get_supabase_client(),
-                company_id,
-                run_id,
-            )
-        except Exception:
-            persisted_route = None
-        phase_durations_ms["continue_estimate_lookup_ms"] = (
-            time.perf_counter() - phase_started_at
-        ) * 1000
-        if persisted_route:
-            st.session_state.current_estimate_id = persisted_route["estimate_id"]
-            st.session_state.current_estimate_run_id = persisted_route["run_id"]
-            st.session_state.current_object_id = None
-            current_estimate_matches_run = True
-    create_shell = bool(edits_changed or not current_estimate_matches_run)
-    should_submit_estimation = create_shell or (
-        _estimation_job_active() and not current_estimate_matches_run
+    estimate_id = (
+        str(st.session_state.get("current_estimate_id"))
+        if reuse_existing_estimate
+        else build_estimate_id(run_id)
     )
-
-    if should_submit_estimation:
-        phase_started_at = time.perf_counter()
-        submitted = _submit_objects_estimation_job(
-            company_id=company_id,
-            run_id=run_id,
-            object_edits=object_edits,
-            edits_changed=edits_changed,
-            ignored_object_ids=ignored_object_ids,
-            create_shell=create_shell,
-        )
-        phase_durations_ms["continue_estimation_submit_ms"] = (
-            time.perf_counter() - phase_started_at
-        ) * 1000
-        if not submitted:
-            action_status = "error"
-            action_error_code = "estimation_submit_failed"
-            record_action()
-            return
-    elif current_estimate_matches_run:
-        _mark_objects_estimation_cache_dirty(st.session_state.get("current_estimate_id"))
+    st.session_state.current_estimate_id = estimate_id
+    st.session_state.current_estimate_run_id = run_id
+    st.session_state.current_object_id = None
+    if reuse_existing_estimate:
+        st.session_state.objects_estimation_launch_request = None
+    else:
+        st.session_state.approved_object_keys = set()
+        st.session_state.last_estimation_result = None
+        st.session_state.last_estimation_error = None
+        _mark_estimation_batch_started(estimate_id)
+        st.session_state.objects_estimation_launch_request = {
+            **plan,
+            "estimate_id": estimate_id,
+            "create_shell": True,
+        }
+    st.session_state.objects_estimation_launch_plan = None
+    _mark_objects_estimation_cache_dirty(estimate_id)
 
     st.session_state.screen = "objects"
     record_action()

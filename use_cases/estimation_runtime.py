@@ -5,7 +5,7 @@ from threading import RLock
 from typing import Mapping
 
 from use_cases.estimation import start_estimation_for_run
-from use_cases.rfq_processing import apply_file_review_edits
+from use_cases.rfq_processing import apply_file_review_edits, save_file_review_run_metadata
 from agents.anthropic_adapter import DETECTION_PROMPT_VERSION
 from db.repositories import (
     fetch_latest_estimation_facts_by_object,
@@ -552,6 +552,91 @@ def submit_estimation_job(
 
     return _ESTIMATION_EXECUTOR.submit(
         _run_estimation_job,
+        estimate_id=estimate_id,
+        run_id=run_id,
+        company_id=company_id,
+        file_name=file_name,
+        file_bytes=file_bytes,
+        ignored_object_ids=ignored_object_ids,
+        shell=shell,
+    )
+
+
+def submit_prepared_estimation_job(
+    *,
+    estimate_id: str,
+    run_id: str,
+    company_id: str,
+    file_name: str,
+    file_bytes: bytes,
+    object_edits: Mapping[str, Mapping[str, object]],
+    metadata_values: Mapping[str, str],
+    edits_changed: bool,
+    ignored_object_ids: set[str],
+    create_shell: bool,
+) -> Future:
+    """Queue the existing durable launch after Objects has painted its seed rows.
+
+    The caller has already captured immutable File Review input.  Keeping all
+    writes inside the worker is deliberate: a Streamlit button callback can
+    switch to the seeded Objects screen without waiting on Supabase, while the
+    same persistence and Estimation work still begins only after explicit user
+    intent.
+    """
+    return _ESTIMATION_EXECUTOR.submit(
+        _persist_prepared_launch_and_run,
+        estimate_id=estimate_id,
+        run_id=run_id,
+        company_id=company_id,
+        file_name=file_name,
+        file_bytes=file_bytes,
+        object_edits={
+            str(object_id): dict(edit)
+            for object_id, edit in object_edits.items()
+        },
+        metadata_values={str(field): str(value) for field, value in metadata_values.items()},
+        edits_changed=edits_changed,
+        ignored_object_ids=set(ignored_object_ids),
+        create_shell=create_shell,
+    )
+
+
+def _persist_prepared_launch_and_run(
+    *,
+    estimate_id: str,
+    run_id: str,
+    company_id: str,
+    file_name: str,
+    file_bytes: bytes,
+    object_edits: dict[str, dict[str, object]],
+    metadata_values: dict[str, str],
+    edits_changed: bool,
+    ignored_object_ids: set[str],
+    create_shell: bool,
+) -> dict[str, object]:
+    """Persist an accepted launch snapshot, then run the unchanged Estimation job."""
+    save_file_review_run_metadata(
+        run_id=run_id,
+        values=metadata_values,
+        company_id=company_id,
+    )
+    if edits_changed:
+        ignored_object_ids = apply_file_review_edits(
+            run_id=run_id,
+            company_id=company_id,
+            object_edits=object_edits,
+        )
+
+    shell = None
+    if create_shell:
+        shell = start_estimation_for_run(
+            run_id=run_id,
+            company_id=company_id,
+            ignored_object_ids=ignored_object_ids,
+            estimate_id=estimate_id,
+        )
+
+    return _run_estimation_job(
         estimate_id=estimate_id,
         run_id=run_id,
         company_id=company_id,

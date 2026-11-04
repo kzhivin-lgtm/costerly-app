@@ -1,6 +1,7 @@
 # Estimation V5.7.0 Navigation Readiness
 
-Status: active, task `5.7.0.1` implemented locally, pending production acceptance.
+Status: active. Task `5.7.0.1` is production-verified after a hard refresh;
+task `5.7.0.2` is implemented locally, pending production acceptance.
 
 ## Objective
 
@@ -67,9 +68,50 @@ intentionally tolerates a temporary build mismatch without reloading the page,
 so deploy convergence must be verified by the recorded wrapper/core versions
 and an authenticated interaction, not by an automatic browser refresh.
 
-## Next task
+## Task sequence
 
-`5.7.0.2` prepares actual route data before enabling File Review → Objects and
-Objects → Review. It must not begin until the single-iframe transport witness
-passes, because preparation cannot compensate for a click that never reaches
-core.
+`5.7.0.1` establishes the single-iframe transport boundary. `5.7.0.2` begins
+only after its refreshed production witness, because preparation cannot
+compensate for a click that never reaches core. This task first prepares File
+Review → Objects. Objects → Review remains a separate second target within the
+same task.
+
+## V5.7.0.2 decision: File Review → Objects prepared launch
+
+The first target in this task is File Review → Objects.  File Review creates an
+in-memory `ObjectsLaunchPlan` after its editable cards render. It contains the
+accepted metadata snapshot, latest widget values, ignored-object set, source
+bytes and fully renderable seed rows. This preparation performs **no** database
+write, route-token creation, model call or Estimation job.
+
+Continue is enabled only when that plan has the retained source file. Its
+callback recomputes the plan once to capture a value edited immediately before
+the click, puts the seed rows and immutable request into Session State, and
+changes the screen. It does not wait for Supabase. Objects dispatches the
+existing durable metadata save, edit application, estimate-shell creation and
+Estimation work on the single existing executor after it begins rendering.
+
+An unchanged existing estimate remains the prior read path. It does not create
+a second shell or resubmit a calculation. This avoids a materially different
+product behavior: no Anthropic work or orphaned estimate record is created
+until the user explicitly presses Continue.
+
+### V5.7.0.2 local verification
+
+- `py_compile` for File Review, Objects, runtime and Session State passed.
+- Targeted navigation, runtime and observability group: 73 passed.
+- Broader File Review, Objects, workflow-route, runtime and observability
+  group: 81 passed.
+- Full suite: 1,620 passed, 10 pre-existing failures in Processing handshake,
+  Estimation handoff and material-policy expectations. None are in a source
+  file changed by V5.7.0.2.
+- `git diff --check` passed.
+
+Production acceptance requires one new RFQ and one unchanged Last Estimate:
+
+1. On File Review, Continue must paint seeded Objects immediately with no
+   synchronous metadata/save or estimate-shell delay.
+2. The background job must then persist and progress normally, with no duplicate
+   estimate shell.
+3. Returning to an unchanged File Review and pressing Continue must reopen the
+   existing estimate without a new Estimation run.

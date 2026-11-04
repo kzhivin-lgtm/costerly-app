@@ -19,6 +19,7 @@ from ui.screen_transition import (
     OBJECTS_MARKER_ID,
 )
 from use_cases.estimation import load_objects_estimation_data
+from use_cases.estimation_runtime import submit_prepared_estimation_job
 from use_cases.object_detail_runtime import submit_object_detail_prefetch
 from use_cases.final_approval import final_approval
 from use_cases.estimation_progress import clear_estimate_progress, get_estimate_progress
@@ -64,6 +65,44 @@ def _consume_estimation_future() -> None:
     finally:
         clear_estimate_progress(st.session_state.get("current_estimate_id"))
         st.session_state.estimation_batch_future = None
+
+
+def _start_prepared_estimation_launch() -> None:
+    """Queue the accepted File Review plan without delaying Objects' first paint."""
+    request = st.session_state.get("objects_estimation_launch_request")
+    if not isinstance(request, dict):
+        return
+
+    estimate_id = str(request.get("estimate_id") or "")
+    run_id = str(request.get("run_id") or "")
+    company_id = str(request.get("company_id") or "")
+    file_name = str(request.get("file_name") or "")
+    file_bytes = request.get("file_bytes")
+    if not estimate_id or not run_id or not company_id or not file_name or not isinstance(file_bytes, bytes):
+        st.session_state.objects_estimation_launch_request = None
+        st.session_state.last_estimation_error = "The prepared Objects launch is incomplete. Please return to File Review."
+        return
+
+    try:
+        st.session_state.estimation_batch_future = submit_prepared_estimation_job(
+            estimate_id=estimate_id,
+            run_id=run_id,
+            company_id=company_id,
+            file_name=file_name,
+            file_bytes=file_bytes,
+            object_edits=request.get("object_edits") or {},
+            metadata_values=request.get("metadata_values") or {},
+            edits_changed=bool(request.get("edits_changed")),
+            ignored_object_ids=set(request.get("ignored_object_ids") or set()),
+            create_shell=bool(request.get("create_shell")),
+        )
+    except Exception as exc:
+        st.session_state.last_estimation_error = str(exc)
+    finally:
+        # The Future owns an immutable copy of the input.  Retaining PDF bytes
+        # in Session State after dispatch is unnecessary and risks a stale
+        # request starting after a later navigation.
+        st.session_state.objects_estimation_launch_request = None
 
 
 def _objects_price_input_config() -> tuple[str | None, str | None, str | None]:
@@ -623,6 +662,10 @@ def render_objects_screen(
 ) -> None:
     """Render the object pricing review screen from persisted estimate data."""
     apply_objects_css()
+    # The File Review callback has already populated the visible seed rows.
+    # Dispatch persistence after the destination begins rendering so a click
+    # never waits for Supabase before the user sees Objects Estimation.
+    _start_prepared_estimation_launch()
     _consume_estimation_future()
 
     estimate_id = st.session_state.get("current_estimate_id")

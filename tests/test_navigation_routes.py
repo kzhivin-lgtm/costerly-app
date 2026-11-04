@@ -329,6 +329,77 @@ def test_active_estimation_opens_seeded_objects_without_waiting_for_supabase(mon
     assert state.data["rows"][0]["object_key"] == "object-1"
 
 
+def test_continue_uses_prepared_launch_without_sync_persistence(monkeypatch):
+    st.session_state.clear()
+    st.session_state.uploaded_file_name = "cabinet.pdf"
+    st.session_state.uploaded_file_bytes = b"pdf"
+    st.session_state.file_review_run_metadata = {
+        "project_name": "Hall",
+        "partner": "unknown",
+        "client": "unknown",
+    }
+    objects_input = [{"object_id": "object-1", "name": "Cabinet", "quantity": 1}]
+    monkeypatch.setattr(file_review, "build_estimate_id", lambda _run_id: "estimate-new")
+    monkeypatch.setattr(
+        file_review,
+        "save_file_review_run_metadata",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("callback must not persist")),
+    )
+
+    file_review._continue_to_objects_estimation(
+        company_id="company-1",
+        run_id="run-1",
+        objects=objects_input,
+    )
+
+    assert st.session_state.screen == "objects"
+    assert st.session_state.current_estimate_id == "estimate-new"
+    assert st.session_state.objects_estimation_seed_rows[0]["object_key"] == "object-1"
+    request = st.session_state.objects_estimation_launch_request
+    assert request["estimate_id"] == "estimate-new"
+    assert request["file_bytes"] == b"pdf"
+
+
+def test_objects_dispatches_prepared_launch_without_waiting_for_result(monkeypatch):
+    st.session_state.clear()
+    submitted = []
+    future = Future()
+    st.session_state.objects_estimation_launch_request = {
+        "estimate_id": "estimate-new",
+        "run_id": "run-1",
+        "company_id": "company-1",
+        "file_name": "cabinet.pdf",
+        "file_bytes": b"pdf",
+        "object_edits": {"object-1": {"name": "Cabinet"}},
+        "metadata_values": {"project_name": "Hall"},
+        "ignored_object_ids": {"object-2"},
+        "edits_changed": True,
+        "create_shell": True,
+    }
+    monkeypatch.setattr(
+        objects,
+        "submit_prepared_estimation_job",
+        lambda **kwargs: submitted.append(kwargs) or future,
+    )
+
+    objects._start_prepared_estimation_launch()
+
+    assert st.session_state.estimation_batch_future is future
+    assert st.session_state.objects_estimation_launch_request is None
+    assert submitted == [{
+        "estimate_id": "estimate-new",
+        "run_id": "run-1",
+        "company_id": "company-1",
+        "file_name": "cabinet.pdf",
+        "file_bytes": b"pdf",
+        "object_edits": {"object-1": {"name": "Cabinet"}},
+        "metadata_values": {"project_name": "Hall"},
+        "edits_changed": True,
+        "ignored_object_ids": {"object-2"},
+        "create_shell": True,
+    }]
+
+
 def test_workflow_screens_do_not_install_react_mutating_transition_shells():
     assert "install_post_upload_transition_guard" not in Path("screens/file_review.py").read_text()
     assert "install_post_upload_transition_guard" not in Path("screens/objects.py").read_text()
@@ -431,7 +502,8 @@ def test_file_review_renders_all_three_editable_project_fields():
     assert '"partner": "Partner"' in source
     assert '"client": "Client"' in source
     assert "save_file_review_run_metadata" in source
-    assert "continue_metadata_save_ms" in source
+    assert "continue_launch_plan_ms" in source
+    assert "objects_estimation_launch_plan" in source
 
 
 def test_file_review_metadata_state_does_not_leak_between_runs():

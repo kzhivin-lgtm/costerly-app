@@ -50,6 +50,90 @@ def test_submit_creates_estimate_shell_before_background_job(monkeypatch):
     }
 
 
+def test_prepared_submit_defers_all_persistence_to_executor(monkeypatch):
+    submitted = []
+    future = object()
+
+    class Executor:
+        def submit(self, fn, **kwargs):
+            submitted.append((fn, kwargs))
+            return future
+
+    monkeypatch.setattr(runtime, "_ESTIMATION_EXECUTOR", Executor())
+
+    result = runtime.submit_prepared_estimation_job(
+        estimate_id="estimate-1",
+        run_id="run-1",
+        company_id="company-1",
+        file_name="cabinet.pdf",
+        file_bytes=b"pdf",
+        object_edits={"object-1": {"name": "Cabinet"}},
+        metadata_values={"project_name": "Hall"},
+        edits_changed=True,
+        ignored_object_ids={"object-2"},
+        create_shell=True,
+    )
+
+    assert result is future
+    assert submitted == [(
+        runtime._persist_prepared_launch_and_run,
+        {
+            "estimate_id": "estimate-1",
+            "run_id": "run-1",
+            "company_id": "company-1",
+            "file_name": "cabinet.pdf",
+            "file_bytes": b"pdf",
+            "object_edits": {"object-1": {"name": "Cabinet"}},
+            "metadata_values": {"project_name": "Hall"},
+            "edits_changed": True,
+            "ignored_object_ids": {"object-2"},
+            "create_shell": True,
+        },
+    )]
+
+
+def test_prepared_worker_persists_accepted_snapshot_before_estimation(monkeypatch):
+    events = []
+    monkeypatch.setattr(
+        runtime,
+        "save_file_review_run_metadata",
+        lambda **kwargs: events.append(("metadata", kwargs)),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "apply_file_review_edits",
+        lambda **kwargs: events.append(("edits", kwargs)) or {"ignored-after-save"},
+    )
+    monkeypatch.setattr(
+        runtime,
+        "start_estimation_for_run",
+        lambda **kwargs: events.append(("shell", kwargs)) or {"status": "pending"},
+    )
+    monkeypatch.setattr(
+        runtime,
+        "_run_estimation_job",
+        lambda **kwargs: events.append(("job", kwargs)) or {"status": "completed"},
+    )
+
+    result = runtime._persist_prepared_launch_and_run(
+        estimate_id="estimate-1",
+        run_id="run-1",
+        company_id="company-1",
+        file_name="cabinet.pdf",
+        file_bytes=b"pdf",
+        object_edits={"object-1": {"name": "Cabinet"}},
+        metadata_values={"project_name": "Hall"},
+        edits_changed=True,
+        ignored_object_ids={"object-2"},
+        create_shell=True,
+    )
+
+    assert result == {"status": "completed"}
+    assert [event[0] for event in events] == ["metadata", "edits", "shell", "job"]
+    assert events[-1][1]["ignored_object_ids"] == {"ignored-after-save"}
+    assert events[-1][1]["shell"] == {"status": "pending"}
+
+
 def test_v5_3_runtime_routes_all_objects_through_2vn_geometry_bom_path(monkeypatch):
     events = []
     monkeypatch.setattr(runtime, "get_supabase_client", lambda: object())
