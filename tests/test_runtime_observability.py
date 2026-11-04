@@ -25,15 +25,13 @@ def test_streamlit_and_cloudflare_build_versions_match():
     assert "COSTERLY_BUILD_VERSION" not in app_source
 
 
-def test_wrapper_recovers_only_a_dropped_safe_header_target_after_deploy():
+def test_wrapper_reports_a_dropped_header_target_without_replacing_the_iframe():
     wrapper = (ROOT / "cloudflare/index.html").read_text()
 
     assert 'screen === "upload"' in wrapper
     assert '["account", "admin", "projects"].includes(item.targetScreen)' in wrapper
-    assert "!item.routeRecoveryAttempted" in wrapper
-    assert 'mark("browser.transition_route_recovery"' in wrapper
-    assert 'recoveryUrl.searchParams.set("screen", droppedHeaderTarget.targetScreen)' in wrapper
-    assert "frame.src = recoveryUrl.toString();" in wrapper
+    assert 'mark("browser.transition_target_mismatch"' in wrapper
+    assert "frame.src = recoveryUrl.toString();" not in wrapper
 
 
 def test_wrapper_records_each_rfq_upload_selection_before_server_processing():
@@ -51,8 +49,8 @@ def test_wrapper_records_a_dropped_upload_callback_without_starting_processing()
     assert 'mark("browser.upload_callback_timeout"' in wrapper
 
 
-def test_terminal_target_exception_releases_the_correlated_transition():
-    """A rendered Streamlit exception must be visible, not hidden by a mask."""
+def test_terminal_target_exception_closes_the_correlated_transition_without_a_mask():
+    """A rendered Streamlit exception must stay visible to the user."""
     wrapper = (ROOT / "cloudflare/index.html").read_text()
     ready_signal = (ROOT / "ui/js_guards.py").read_text()
 
@@ -61,7 +59,7 @@ def test_terminal_target_exception_releases_the_correlated_transition():
     assert "existingExceptions" in ready_signal
     assert 'event.data.type === "costerly:transition-failed"' in wrapper
     assert 'mark("browser.transition_failed"' in wrapper
-    assert 'revealInternalTransition("target_error")' in wrapper
+    assert "revealInternalTransition" not in wrapper
 
 
 def test_runtime_event_has_trace_boundaries_and_redacts_sensitive_metadata(monkeypatch):
@@ -321,7 +319,7 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert '"staging.costerly.ai": "https://core.costerly.ai/?embed=true"' in wrapper
     assert "const appOrigin = appUrl.origin" in wrapper
     assert 'appUrl.searchParams.set("obs_trace", traceId)' in wrapper
-    assert 'const routeKeys = ["screen", "profile_tab", "run_id", "estimate_id", "object_id", "route_token"]' in wrapper
+    assert 'const routeKeys = ["screen", "run_id", "estimate_id", "object_id", "route_token"]' in wrapper
     assert "appUrl.searchParams.set(key, value)" in wrapper
     assert "function syncOuterRoute(route, renderedScreen)" in wrapper
     assert 'else if (["admin", "projects"].includes(screen))' in wrapper
@@ -346,42 +344,16 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert 'mark("browser.transition_timeout"' in wrapper
     assert 'event.data.type === "costerly:transition-failed"' in wrapper
     assert 'mark("browser.transition_failed"' in wrapper
-    assert 'revealInternalTransition("target_error")' in wrapper
-    assert 'concealInternalTransition(pendingTransition.name)' in wrapper
-    assert '"upload_to_profile"' in wrapper
-    assert '"profile_to_upload"' in wrapper
-    assert '"upload_to_admin"' in wrapper
-    assert '"profile_to_admin"' in wrapper
-    assert '"admin_to_profile"' in wrapper
-    assert '"admin_to_upload"' in wrapper
-    assert '"profile_to_sign_out"' in wrapper
-    assert '"upload_to_sign_out"' in wrapper
-    assert '"processing_to_file_review"' in wrapper
-    assert '"file_review_to_objects"' in wrapper
-    assert '"objects_to_file_review"' in wrapper
-    assert '"objects_to_object_detail"' in wrapper
-    assert '"object_detail_to_objects"' in wrapper
-    assert '"object_detail_approve_to_objects"' in wrapper
-    assert '"upload_to_projects"' in wrapper
-    assert '"projects_to_upload"' in wrapper
-    assert '"back_to_upload"' in wrapper
-    assert '"last_estimate"' in wrapper
-    masked_transitions = wrapper.split("const maskedInternalTransitions = new Set([", 1)[1].split("]);", 1)[0]
-    assert '"sign_in"' not in masked_transitions
-    assert "maskedInternalTransitions.has(pendingTransition.name)" in wrapper
+    assert "revealInternalTransition" not in wrapper
+    assert "concealInternalTransition" not in wrapper
     assert "pendingTransition.readyReported = true" in wrapper
-    assert "if (!maskedInternalTransitions.has(pendingTransition.name))" in wrapper
-    assert "const loginTargetReady =" in wrapper
-    assert "metadata.auth_css_ready === true" in wrapper
-    assert 'source: "target_app_ready"' in wrapper
-    assert 'mark("browser.internal_transition_timeout"' in wrapper
-    internal_timeout_source = wrapper.split("function concealInternalTransition", 1)[1].split(
-        "function revealInternalTransition", 1
-    )[0]
-    assert "10000" in internal_timeout_source
+    assert "pendingTransition.styledReported = true" in wrapper
+    assert "pendingTransition.stageReported = true" in wrapper
+    assert 'mark("browser.transition_stage"' in wrapper
+    assert "maskedInternalTransitions" not in wrapper
     assert 'window.setTimeout(() => mask.remove()' not in wrapper
-    assert "iframe.is-transitioning" in wrapper
-    assert ".app-loading-mask.is-transitioning" in wrapper
+    assert "iframe.is-transitioning" not in wrapper
+    assert ".app-loading-mask.is-transitioning" not in wrapper
     assert "app-transition-status" not in wrapper
     assert "is-sign-in" not in wrapper
     assert 'metadata.completed_action === "auth_sign_in"' in wrapper
@@ -396,8 +368,8 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "event.data.buildVersion" in wrapper
     assert "event.data.metrics && event.data.metrics.server_build_version" in wrapper
     assert 'mark("browser.build_mismatch"' in wrapper
-    assert 'window.sessionStorage.getItem(reloadGuardKey) !== mismatchPair' in wrapper
-    assert "window.location.reload()" in wrapper
+    assert 'recovery: "deferred_to_next_user_refresh"' in wrapper
+    assert "reloadGuardKey" not in wrapper
     assert "pythonRuns: 0" in wrapper
     assert "python_runs: pendingTransition.pythonRuns" in wrapper
     assert 'startupProbe === "anonymous"' in wrapper
@@ -412,18 +384,22 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "must-not-leak" not in wrapper + function
 
 
-def test_new_estimate_clears_outer_route_and_recovers_a_dead_callback():
+def test_new_estimate_clears_outer_route_without_replacing_the_live_iframe():
     wrapper = (ROOT / "cloudflare/index.html").read_text()
+    app_source = (ROOT / "app.py").read_text()
+    auth_source = (ROOT / "state/company_auth.py").read_text()
 
     assert "function resetOuterRouteForNewEstimate()" in wrapper
     assert 'nextUrl.pathname = "/";' in wrapper
     assert "window.history.replaceState({costerlyRoute: true}, \"\", nextPath);" in wrapper
-    assert "const NEW_ESTIMATE_SERVER_GRACE_MS = 900;" in wrapper
-    assert "function recoverNewEstimateWithFreshIframe(pendingTransition)" in wrapper
-    assert 'const recoveryUrl = new URL(frame.src);' in wrapper
-    assert 'recoveryUrl.searchParams.set("screen", "upload");' in wrapper
     assert 'mark("browser.new_estimate_route_cleared"' in wrapper
-    assert "pendingTransition.serverTargetReady = true;" in wrapper
+    assert "recoverNewEstimateWithFreshIframe" not in wrapper
+    assert "new_estimate_iframe_recovery" not in wrapper
+    assert 'mark("browser.new_estimate_callback_received"' in wrapper
+    assert "server.new_estimate_callback_consumed" in app_source
+    assert "new_estimate_callback_received=True" in app_source
+    assert "_new_estimate_callback_timing" in auth_source
+    assert "missing receipt must not" in auth_source
 
 
 def test_streamlit_ready_message_carries_server_build_version():
@@ -460,7 +436,7 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert "'upload_to_processing'" in ready_signal
     assert "'processing_to_file_review'" in ready_signal
     assert "type: 'costerly:transition-stage'" in ready_signal
-    assert "const RFQ_UPLOAD_CYCLE_ID_KEY = '__costerlyRfqUploadCycleId';" in ready_signal
+    assert "const RFQ_UPLOAD_CYCLE_ID_KEY = '__costerlyRfqUploadCycleIdV5';" in ready_signal
     assert "function beginUploadCycle()" in ready_signal
     assert "window[PROCESSING_TRANSITION_ID_KEY] = null;" in ready_signal
     assert "window[PROCESSING_COMPLETE_TRANSITION_ID_KEY] = null;" in ready_signal
@@ -472,8 +448,8 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert "target_render_exception" in ready_signal
     assert "new MutationObserver(reportIfVisible)" in ready_signal
     assert "const styledTargetReady = () =>" in ready_signal
-    assert "function reportFileReviewStyled(transitionId)" in ready_signal
-    assert "reportFileReviewStyled(transitionId);" in ready_signal
+    assert "function reportFileReviewStyled(transitionId, expectedRunId = '')" in ready_signal
+    assert "reportFileReviewStyled(transitionId, expectedRunId);" in ready_signal
     assert 'transition === "upload_to_profile"' in ready_signal
     assert 'transition === "profile_to_upload"' in ready_signal
     assert 'transition === "upload_to_admin"' in ready_signal
@@ -568,13 +544,14 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert 'searchParams.set("refresh_token"' not in wrapper
     assert 'event.data.type === "costerly:transition-styled"' in wrapper
     assert 'mark("browser.transition_styled"' in wrapper
-    assert 'revealInternalTransition("target_styled")' in wrapper
+    assert "revealInternalTransition" not in wrapper
     styled_handler = wrapper.split(
         'event.data.type === "costerly:transition-styled"', 1
     )[1].split(
         'event.data.type === "costerly:transition-visible"', 1
     )[0]
-    assert "maskedInternalTransitions.has(pendingTransition.name)" in styled_handler
+    assert "pendingTransition.styledReported = true" in styled_handler
+    assert "pendingTransitions.splice" not in styled_handler
 
 
 def test_scroll_reset_component_stays_out_of_main_layout(monkeypatch):

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>costerly.ai</title>
-    <meta name="costerly-wrapper-version" content="estimation-v5.6.9-rollback-v5.6.4" />
+    <meta name="costerly-wrapper-version" content="estimation-v5.7.0-navigation-readiness" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
@@ -38,12 +38,6 @@
         opacity: 1;
       }
 
-      iframe.is-transitioning {
-        opacity: 0;
-        pointer-events: none;
-        transition: none;
-      }
-
       .app-loading-mask {
         position: fixed;
         inset: 0;
@@ -56,11 +50,6 @@
 
       .app-loading-mask.is-hidden {
         opacity: 0;
-      }
-
-      .app-loading-mask.is-transitioning {
-        opacity: 1;
-        transition: none;
       }
 
       .embed-footer-mask {
@@ -103,7 +92,7 @@
     </div>
     <script>
       (() => {
-        const BUILD_VERSION = "estimation-v5.6.9";
+        const BUILD_VERSION = "estimation-v5.7.0";
         const startedAt = performance.now();
         const traceId = crypto.randomUUID();
         const timeline = [];
@@ -156,10 +145,8 @@
           appUrl.searchParams.set("startup_probe", "anonymous");
         }
         let fallbackTimer = null;
-        let internalTransitionTimer = null;
         let iframeLoadAtMs = null;
         let ready = false;
-        const NEW_ESTIMATE_SERVER_GRACE_MS = 900;
         const readyRunIds = new Set();
         const pendingTransitions = [];
         const expectedScreens = {
@@ -173,32 +160,6 @@
           profile_to_sign_out: ["login"],
           upload_to_sign_out: ["login"],
         };
-        const maskedInternalTransitions = new Set([
-          "upload_to_profile",
-          "profile_to_upload",
-          "upload_to_admin",
-          "profile_to_admin",
-          "admin_to_profile",
-          "admin_to_upload",
-          "profile_to_sign_out",
-          "upload_to_sign_out",
-          "processing_to_file_review",
-          "file_review_to_objects",
-          "objects_to_file_review",
-          "objects_to_object_detail",
-          "object_detail_to_objects",
-          "object_detail_approve_to_objects",
-          "upload_to_projects",
-          "profile_to_projects",
-          "admin_to_projects",
-          "projects_to_upload",
-          "projects_to_profile",
-          "projects_to_admin",
-          "objects_to_projects",
-          "back_to_upload",
-          "new_estimate",
-          "last_estimate",
-        ]);
         const startupPhases = new Set([
           "auth_component_script",
           "auth_component_render",
@@ -313,28 +274,6 @@
           });
         }
 
-        function recoverNewEstimateWithFreshIframe(pendingTransition) {
-          if (pendingTransition.routeRecoveryAttempted || pendingTransition.serverTargetReady) {
-            return;
-          }
-          pendingTransition.routeRecoveryAttempted = true;
-          mark("browser.new_estimate_iframe_recovery", {
-            status: "unknown",
-            duration_ms: performance.now() - pendingTransition.startedAt,
-            metadata: {
-              transition_id: pendingTransition.id,
-              python_runs: pendingTransition.pythonRuns,
-            },
-          });
-          // `frame.src`, unlike `data-src`, retains this outer page's trace
-          // correlation parameter. Keep it while removing only workflow
-          // context, otherwise the fresh app-ready would be ignored.
-          const recoveryUrl = new URL(frame.src);
-          routeKeys.forEach((key) => recoveryUrl.searchParams.delete(key));
-          recoveryUrl.searchParams.set("screen", "upload");
-          frame.src = recoveryUrl.toString();
-        }
-
         window.addEventListener("popstate", () => {
           window.location.reload();
         });
@@ -373,40 +312,6 @@
             mask.classList.add("is-hidden");
           }
           persistTimeline();
-        }
-
-        function concealInternalTransition(transition) {
-          if (!maskedInternalTransitions.has(transition)) return;
-          window.clearTimeout(internalTransitionTimer);
-          if (frame) {
-            frame.classList.add("is-transitioning");
-            frame.classList.remove("is-ready");
-          }
-          if (mask) {
-            mask.classList.add("is-transitioning");
-            mask.classList.remove("is-hidden");
-          }
-          internalTransitionTimer = window.setTimeout(
-            () => revealInternalTransition("timeout"),
-            10000
-          );
-        }
-
-        function revealInternalTransition(source) {
-          window.clearTimeout(internalTransitionTimer);
-          internalTransitionTimer = null;
-          if (frame) {
-            frame.classList.remove("is-transitioning");
-            frame.classList.add("is-ready");
-          }
-          if (mask) {
-            mask.classList.remove("is-transitioning");
-            mask.classList.add("is-hidden");
-          }
-          if (source === "timeout") {
-            mark("browser.internal_transition_timeout", {status: "timeout"});
-            persistTimeline();
-          }
         }
 
         mark("browser.wrapper_start", {metadata: navigationMetadata()});
@@ -493,22 +398,16 @@
               visible: false,
               pythonRuns: 0,
               timeoutId: null,
-              recoveryTimerId: null,
-              serverTargetReady: false,
+              styledReported: false,
+              stageReported: false,
             };
             pendingTransitions.push(pendingTransition);
             if (pendingTransition.name === "new_estimate") {
               resetOuterRouteForNewEstimate();
-              // A visible Upload marker can belong to retained stale DOM. Do
-              // not consider it a reset. If the native callback has not
-              // produced a real Upload app-ready shortly, replace only the
-              // iframe with a clean Upload route and therefore a fresh
-              // Streamlit session.
-              pendingTransition.recoveryTimerId = window.setTimeout(() => {
-                recoverNewEstimateWithFreshIframe(pendingTransition);
-              }, NEW_ESTIMATE_SERVER_GRACE_MS);
             }
-            concealInternalTransition(pendingTransition.name);
+            // V5.7.0 has one navigation owner: the existing Streamlit
+            // session. The wrapper records the intent but never hides or
+            // replaces its iframe during an internal route change.
             mark("browser.transition_click", {
               metadata: {
                 transition: pendingTransition.name,
@@ -522,7 +421,6 @@
               const index = pendingTransitions.indexOf(pendingTransition);
               if (index < 0) return;
               pendingTransitions.splice(index, 1);
-              window.clearTimeout(pendingTransition.recoveryTimerId);
               mark("browser.transition_timeout", {
                 status: "timeout",
                 duration_ms: performance.now() - pendingTransition.startedAt,
@@ -553,7 +451,6 @@
             const pendingTransition = pendingTransitions[transitionIndex];
             pendingTransitions.splice(transitionIndex, 1);
             window.clearTimeout(pendingTransition.timeoutId);
-            window.clearTimeout(pendingTransition.recoveryTimerId);
             mark("browser.transition_failed", {
               status: "error",
               duration_ms: performance.now() - pendingTransition.startedAt,
@@ -565,9 +462,6 @@
                 reason: safeRouteValue(event.data.reason) || "target_render_error",
               },
             });
-            if (maskedInternalTransitions.has(pendingTransition.name)) {
-              revealInternalTransition("target_error");
-            }
             if (ready) persistTimeline();
             return;
           }
@@ -582,13 +476,8 @@
             );
             if (transitionIndex < 0) return;
             const pendingTransition = pendingTransitions[transitionIndex];
-            const awaitingNewEstimateServer =
-              pendingTransition.name === "new_estimate" && !pendingTransition.serverTargetReady;
-            if (!awaitingNewEstimateServer) {
-              pendingTransitions.splice(transitionIndex, 1);
-              window.clearTimeout(pendingTransition.timeoutId);
-              window.clearTimeout(pendingTransition.recoveryTimerId);
-            }
+            if (pendingTransition.styledReported) return;
+            pendingTransition.styledReported = true;
             mark("browser.transition_styled", {
               duration_ms: performance.now() - pendingTransition.startedAt,
               metadata: {
@@ -597,9 +486,6 @@
                 cycle_id: pendingTransition.cycleId,
               },
             });
-            if (maskedInternalTransitions.has(pendingTransition.name)) {
-              revealInternalTransition("target_styled");
-            }
             if (ready) persistTimeline();
             return;
           }
@@ -615,14 +501,12 @@
             );
             if (transitionIndex < 0) return;
             const pendingTransition = pendingTransitions[transitionIndex];
-            const awaitingNewEstimateServer =
-              pendingTransition.name === "new_estimate" && !pendingTransition.serverTargetReady;
-            if (!awaitingNewEstimateServer) {
-              pendingTransitions.splice(transitionIndex, 1);
-              window.clearTimeout(pendingTransition.timeoutId);
-              window.clearTimeout(pendingTransition.recoveryTimerId);
-            }
-            mark("browser.transition_ready", {
+            if (pendingTransition.stageReported) return;
+            pendingTransition.stageReported = true;
+            // A stage marker proves that a target shell exists. It is not a
+            // completed route: only the correlated core app-ready closes the
+            // transition and makes its timing comparable across screens.
+            mark("browser.transition_stage", {
               screen: String(event.data.screen || "unknown"),
               duration_ms: performance.now() - pendingTransition.startedAt,
               metadata: {
@@ -683,18 +567,14 @@
             const screen = event.data.screen || "unknown";
             const droppedHeaderTarget = pendingTransitions.find((item) => (
               screen === "upload" &&
-              !item.routeRecoveryAttempted &&
               ["account", "admin", "projects"].includes(item.targetScreen)
             ));
             if (droppedHeaderTarget) {
-              // On a fresh Streamlit process the browser can emit the header
-              // click while the old websocket is being replaced. The outer
-              // transition is recorded, but its callback never reaches the
-              // new Python session, which renders Upload. Recover only this
-              // proven mismatch by requesting the safe durable route once.
-              droppedHeaderTarget.routeRecoveryAttempted = true;
-              mark("browser.transition_route_recovery", {
-                status: "unknown",
+              // A lost browser-to-Streamlit callback is an observable
+              // transport failure, not permission to create a competing
+              // iframe route. Preserve the visible session and report it.
+              mark("browser.transition_target_mismatch", {
+                status: "error",
                 metadata: {
                   transition: droppedHeaderTarget.name,
                   transition_id: droppedHeaderTarget.id,
@@ -702,11 +582,6 @@
                   received_screen: screen,
                 },
               });
-              const recoveryUrl = new URL(frame.src);
-              routeKeys.forEach((key) => recoveryUrl.searchParams.delete(key));
-              recoveryUrl.searchParams.set("screen", droppedHeaderTarget.targetScreen);
-              frame.src = recoveryUrl.toString();
-              return;
             }
             syncOuterRoute(event.data.route || {}, screen);
             const serverBuildVersion = String(
@@ -715,33 +590,16 @@
               ""
             );
             if (serverBuildVersion && serverBuildVersion !== BUILD_VERSION) {
-              const mismatchPair = `${BUILD_VERSION}:${serverBuildVersion}`;
-              const reloadGuardKey = "costerly:build-mismatch-reload";
-              let reloadOnce = false;
-              try {
-                if (window.sessionStorage.getItem(reloadGuardKey) !== mismatchPair) {
-                  window.sessionStorage.setItem(reloadGuardKey, mismatchPair);
-                  reloadOnce = true;
-                }
-              } catch (_) {}
               mark("browser.build_mismatch", {
                 screen,
                 status: "error",
                 metadata: {
                   wrapper_build: BUILD_VERSION,
                   server_build: serverBuildVersion,
-                  reload_once: reloadOnce,
+                  recovery: "deferred_to_next_user_refresh",
                 },
               });
               persistTimeline();
-              if (reloadOnce) {
-                window.setTimeout(() => window.location.reload(), 50);
-                return;
-              }
-            } else if (serverBuildVersion) {
-              try {
-                window.sessionStorage.removeItem("costerly:build-mismatch-reload");
-              } catch (_) {}
             }
             const appReadySentAt = Number(event.data.sentAt);
             const appReadyDeliveryMs = Number.isFinite(appReadySentAt)
@@ -776,6 +634,24 @@
             pendingTransitions.forEach((item) => {
               item.pythonRuns += 1;
             });
+            const newEstimateCallback = pendingTransitions.find((item) => (
+              item.name === "new_estimate" &&
+              metadata.new_estimate_callback_received === true &&
+              !item.callbackReceived
+            ));
+            if (newEstimateCallback) {
+              newEstimateCallback.callbackReceived = true;
+              mark("browser.new_estimate_callback_received", {
+                duration_ms: performance.now() - newEstimateCallback.startedAt,
+                metadata: {
+                  transition_id: newEstimateCallback.id,
+                  python_runs: newEstimateCallback.pythonRuns,
+                  callback_to_run_ms: metadata.new_estimate_callback_to_run_ms,
+                  reset_session_ms: metadata.new_estimate_reset_session_ms,
+                  callback_total_ms: metadata.new_estimate_callback_total_ms,
+                },
+              });
+            }
             const failedSignIn =
               screen === "login" &&
               metadata.completed_action === "auth_sign_in" &&
@@ -787,7 +663,6 @@
             });
             if (transitionIndex >= 0) {
               const pendingTransition = pendingTransitions[transitionIndex];
-              pendingTransition.serverTargetReady = true;
               if (!pendingTransition.readyReported) {
                 pendingTransition.readyReported = true;
                 mark("browser.transition_ready", {
@@ -804,44 +679,8 @@
                   },
                 });
               }
-              const loginTargetReady =
-                screen === "login" &&
-                metadata.auth_css_ready === true &&
-                (
-                  pendingTransition.name === "profile_to_sign_out" ||
-                  pendingTransition.name === "upload_to_sign_out"
-                );
-              if (loginTargetReady) {
-                pendingTransitions.splice(transitionIndex, 1);
-                window.clearTimeout(pendingTransition.timeoutId);
-                window.clearTimeout(pendingTransition.recoveryTimerId);
-                mark("browser.transition_styled", {
-                  duration_ms: performance.now() - pendingTransition.startedAt,
-                  metadata: {
-                    transition: pendingTransition.name,
-                    transition_id: pendingTransition.id,
-                    source: "target_app_ready",
-                  },
-                });
-                revealInternalTransition("target_app_ready");
-              } else if (maskedInternalTransitions.has(pendingTransition.name)) {
-                pendingTransitions.splice(transitionIndex, 1);
-                window.clearTimeout(pendingTransition.timeoutId);
-                window.clearTimeout(pendingTransition.recoveryTimerId);
-                mark("browser.transition_styled", {
-                  duration_ms: performance.now() - pendingTransition.startedAt,
-                  metadata: {
-                    transition: pendingTransition.name,
-                    transition_id: pendingTransition.id,
-                    source: "target_app_ready",
-                  },
-                });
-                revealInternalTransition("target_app_ready");
-              } else if (!maskedInternalTransitions.has(pendingTransition.name)) {
-                pendingTransitions.splice(transitionIndex, 1);
-                window.clearTimeout(pendingTransition.timeoutId);
-                window.clearTimeout(pendingTransition.recoveryTimerId);
-              }
+              pendingTransitions.splice(transitionIndex, 1);
+              window.clearTimeout(pendingTransition.timeoutId);
             } else {
               mark("browser.app_ready_received", {screen, metadata});
             }

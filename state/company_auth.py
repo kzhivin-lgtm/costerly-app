@@ -1697,12 +1697,23 @@ def _open_new_estimate() -> None:
     """Start a clean upload cycle, including when the next file is identical."""
     from state.session import reset_new_estimate_session, set_screen
 
+    callback_started_at = time.perf_counter()
     reset_new_estimate_session(clear_upload_widget=True)
+    reset_completed_at = time.perf_counter()
     # app.py restores File Review, Objects, and Object Detail from route
     # parameters during the following rerun. Clear that old workflow route
     # before changing the screen, otherwise it wins over this new upload.
     st.query_params.clear()
     set_screen("upload")
+    # This receipt proves that the native Streamlit callback reached the core
+    # session. It is deliberately diagnostic only: a missing receipt must not
+    # cause the public wrapper to replace the still-live core iframe.
+    callback_completed_at = time.perf_counter()
+    st.session_state._new_estimate_callback_timing = {
+        "callback_completed_epoch_ms": round(time.time() * 1000, 3),
+        "reset_session_ms": round((reset_completed_at - callback_started_at) * 1000, 3),
+        "callback_total_ms": round((callback_completed_at - callback_started_at) * 1000, 3),
+    }
 
 
 def _open_projects() -> None:
