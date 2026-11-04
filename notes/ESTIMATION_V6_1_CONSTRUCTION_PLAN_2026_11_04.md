@@ -35,6 +35,10 @@ sheet thickness are distinct. A 40-mm member can explicitly assume two
 the edge material. It must not silently become one 18-mm sheet or automatically
 force every hidden drawer part to 40 mm. Visual similarity is a recorded
 derived relationship, never proof of an explicit source thickness.
+Owner reiterated that 40 mm MAY be two stacked 20-mm panels. This is a
+construction option, not proof of the purchased stock thickness. Preserve an
+explicit 40-mm stock choice as one layer; both options keep a 40-mm finished
+edge. Layer count multiplies sheet demand, not the finished edge perimeter.
 
 Fixed decorative members, countertops and supports remain accountable.
 Analyze describes repeated panel groups; Calculation measures each group;
@@ -188,15 +192,17 @@ Local capsules: `/private/tmp/estimation-v6-lf1-witness-NN.json`.
 | 16 | Observation-only diagnostic, 15.35 s | Haiku saw three drawer/compartment fronts but confused view ids, units and supports. Simplifying only the output request did not solve visual reasoning. 5,777 input / 1,463 output tokens. |
 | 17 | Labelled-view observation, 15.16 s | Generated headers improved image/id association but did not fix projection classification, units or moving-front interpretation. 6,040 input / 1,377 output tokens. Not a BOM. |
 | 18 | Target Haiku Analyze failed, 24.62 s | Same full contract as 15, with explicit generated view labels. Fixed-panel guard again rejected groups on a non-panel assembly. This prompt/evidence-presentation approach is stopped after two unsuccessful full Haiku runs. |
+| 19 | Compact Haiku Analyze, NOT accepted, 18.62 s | Four physical zones and three drawers identified; six inner uprights but frame members omitted. Source 40-mm member and assumed 18-mm cabinet conflicted in one stock family. Compiler now preserves source thickness and records alignment of assumed minor variations to shared stock. |
+| 20 | Compact Haiku full cycle, NOT accepted, 48.93 s | Four assemblies, 12 part rows and five material rows computed. Model selected solid wood, seven inner uprights and one support; Calculation misclassified the top plan, used stock thickness as cut-face size and wrong cabinet/worktop dimensions. Completion and shorter latency do not establish acceptance. Capsule: `/private/tmp/estimation-v6-lf1-witness-20.json`. No database writes. |
 
 Diagnostic 16 isolates Haiku visual recognition from the large BOM/material
 response contract. It uses the same source pixels with concise observation
 instructions, no catalogs or formal BOM schema, and cannot publish an estimate.
 This is a discriminating diagnostic, not an added production pass.
 
-## Next consequential decision, awaiting owner confirmation
+## Approved compact Analyze contract
 
-Proposal, not implemented or approved: simplify the model-facing Analyze
+Owner explicitly approved this change on 2026-11-04: simplify the model-facing Analyze
 contract to semantic assemblies, material intent and source observations.
 Keep one shared Analyze plus per-object Calculation and the existing persisted
 construction/BOM/Engine contracts. Extend the deterministic compiler to derive
@@ -205,7 +211,23 @@ Haiku to redundantly specify all mutually dependent purchasing/construction
 fields. Preserve explicit overrides, source constraints and recorded assumptions.
 The model still owns visual interpretation; deterministic code cannot establish
 an unseen material or correct a wrong drawer/slat count without evidence.
-No guarantee of Haiku acceptance is inferred from this proposal.
+No guarantee of Haiku acceptance is inferred from the approval.
+Implementation in progress: semantic zone/material intent is compiled into the
+existing construction scope. Source numeric thickness references are converted
+by the existing unit guard; visual same-thickness relationships remain assumptions.
+Exact stock/layer multiples and edge widths are calculated, hidden components
+reuse single-layer stock, and painted MDF creates a scoped finish demand.
+Explicit source stock, linked legends and unknown-material family escape routes
+remain available. Cyclic thickness references and incompatible stock fail.
+Witness 20 does not establish correct visual semantics. Do not continue cosmetic
+prompt retries or override the witness with LF1-specific counts/materials.
+Next diagnostic must isolate the remaining visual-to-geometry interpretation
+from deterministic stock/layer expansion, retaining both failed raw responses.
+Local compact-contract verification: 36 focused semantic/construction/replay
+tests passed; full suite 1683 passed, the same 10 baseline failures and 29
+warnings. Explicit 20-mm and 40-mm stock both preserve a 40-mm finished member,
+with two and one layers respectively. This verifies compiler arithmetic, not
+Haiku visual selection, source ownership or production acceptance.
 
 Source/assumption rationale is retained in facts/capsules. An owner-visible
 UI inspection path for the new rationale has not been verified; relevant

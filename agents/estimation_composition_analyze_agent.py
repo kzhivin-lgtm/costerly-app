@@ -141,6 +141,8 @@ def run_estimation_composition_analyze_agent(*, inputs: Sequence[Mapping[str, An
         messages=[{"role": "user", "content": _content(inputs=inputs, page_bytes_by_ref=page_bytes_by_ref, allowed_material_families=allowed_material_families, context_inputs=context_inputs)}],
     )
     parsed = _json_object(extract_text_from_claude_response(response))
+    from use_cases.estimation_semantic_plan import compile_semantic_plan
+    parsed = compile_semantic_plan(parsed, inputs=inputs)
     scopes = parsed.get("object_scopes")
     if not isinstance(scopes, list):
         raise ValueError("composition analyze response requires object_scopes")

@@ -560,9 +560,9 @@ Corrected source/display coordinate presentation, compacted repeated material
 descriptions, and added explicit front-schema/build-up validation. These are
 experimental until functional acceptance passes. Do not weaken source or
 hardware guards to manufacture acceptance. No production write or deployment.
-Retain the V5.8.2 production checkpoint. Latest full suite: 1674 passed,
-10 unchanged baseline failures. Latest focused evidence/replay/construction
-checks: 37 passed. Separate-page context survives legacy per-object composition;
+Retain the V5.8.2 production checkpoint. Latest full suite: 1683 passed,
+10 unchanged baseline failures. Latest focused semantic/replay/construction
+checks: 36 passed. Separate-page context survives legacy per-object composition;
 Calculation has a V6-only geometry contract. Live acceptance remains open.
 USER REQUIREMENT, P0: functionally correct complete materials cycle first.
 Owner explicitly removed the proposed hard latency budget, retaining efficiency
@@ -579,10 +579,17 @@ large response contract. Stronger comparisons 13/14 also remain unaccepted.
 headers improved id association only. Full Haiku witness 18 again failed the
 fixed-panel guard (24.62 s). Stop this prompt/presentation approach after two
 unsuccessful full Haiku runs (15/18).
-PENDING OWNER DECISION, AGENT PROPOSAL within 3.17.4.5: simplify only the
+APPROVED, ACTIVE within 3.17.4.5: owner approved simplifying only the
 model-facing Analyze contract; deterministic compiler owns dependent layer,
 edge-width and role expansion fields. Preserve one Analyze + per-object
 Calculation, Haiku, existing persisted contracts and source authority.
+Compact witnesses 19/20 remain unaccepted. Witness 20 completed in 48.93 s
+without DB writes, but selected solid wood, wrong member/support counts and
+incorrect geometry. Deterministic 40-mm finished / 2 x 20-mm purchased build-up
+is supported; it is not proof that Haiku selects it reliably. Owner clarified
+this is a possible construction, not mandatory stock thickness. Preserve
+explicit 40-mm stock as one layer and count its edge only once. Next diagnostic
+must isolate visual/axis interpretation, not repeat cosmetic prompt changes.
 UNVERIFIED ACCEPTANCE: owner-visible inspection of construction/material
 rationale. Facts retain it, but the new fields have no verified Object Detail
 display path. No UI change without scenario agreement/live verification.
