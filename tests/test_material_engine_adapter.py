@@ -112,6 +112,75 @@ def _facts(object_id: str, part_id: str, *, length=1200, width=600):
     }
 
 
+def _substitution_case():
+    from copy import deepcopy
+    catalogs = _catalogs(_offer("ply", price="200"), _offer("pb", item_id="pb", price="50"))
+    catalogs["items"].append({**_item("pb"), "canonical_name": "Particleboard 18 mm", "normalized_name": "particleboard 18 mm",
+                               "specifications": {"material_family": "particleboard", "thickness_mm": 18}})
+    catalogs["material_families"].append({"family_id": "family-pb", "family_code": "particleboard", "active": True})
+    catalogs["material_pricing_policies"].append({**_policy(), "family_id": "family-pb"})
+    visible = _facts("visible", "v", length=1200, width=1000)
+    hidden = _facts("hidden", "h", length=400, width=400)
+    hidden["materials"][0].update(source_name="Particleboard", family="particleboard", basis="construction_assumption", material_role="internal_sheet",
+                                   material_intent_id="pb", alternatives=[{"material_id": "ply", "family": "plywood", "source_name": "Plywood", "specification": {"thickness_mm": 18}}])
+    return {"visible": deepcopy(visible), "hidden": deepcopy(hidden)}, catalogs
+
+
+def test_v6_hidden_stock_reuses_whole_project_purchase_when_it_saves_a_sheet():
+    facts, catalogs = _substitution_case()
+    result = build_material_plan(facts_by_object=facts, catalogs=catalogs)
+    decision = result.construction_decisions[0]
+    assert decision["selected"] == "ply"
+    assert decision["before_project_cost"] == 250 and decision["after_project_cost"] == 200
+    assert len(result.plan.lines) == 1
+    assert facts["hidden"]["materials"][0]["family"] == "particleboard"  # immutable evidence
+    assert result.selected_materials[0]["facts"]["family"] == "plywood"
+    snapshot = material_plan_snapshot(result)
+    assert snapshot["selected_materials"][0]["facts"]["family"] == "plywood"
+
+
+def test_v6_hidden_stock_keeps_cheaper_new_sheet_when_primary_requires_an_extra_sheet():
+    facts, catalogs = _substitution_case()
+    facts["visible"]["parts"][0].update(length_mm=2400, width_mm=1000)
+    facts["hidden"]["parts"][0].update(length_mm=1000, width_mm=1000)
+    result = build_material_plan(facts_by_object=facts, catalogs=catalogs)
+    assert result.construction_decisions[0]["selected"] == "original"
+    assert result.selected_materials[0]["facts"]["family"] == "particleboard"
+
+
+def test_v6_source_material_and_manual_norm_are_not_substituted():
+    facts, catalogs = _substitution_case()
+    facts["hidden"]["materials"][0]["basis"] = "source_evidence"
+    assert not build_material_plan(facts_by_object=facts, catalogs=catalogs).construction_decisions
+    facts["hidden"]["materials"][0]["basis"] = "construction_assumption"
+    result = build_material_plan(facts_by_object=facts, catalogs=catalogs,
+                                 material_norm_overrides={("hidden", "plywood"): {"unit": "m2", "quantity_per_item": 1}})
+    assert not result.construction_decisions
+
+
+def test_v6_assumption_allowance_is_not_economic_evidence_for_substitution():
+    facts, catalogs = _substitution_case()
+    catalogs["offers"] = [offer for offer in catalogs["offers"] if offer["offer_id"] != "pb"]
+    result = build_material_plan(facts_by_object=facts, catalogs=catalogs)
+    assert result.construction_decisions[0]["selected"] == "original"
+    assert "incomplete" in result.construction_decisions[0]["reason"]
+
+
+def test_v6_alternatives_are_grouped_across_objects_and_restore_manual_choice():
+    from copy import deepcopy
+    facts, catalogs = _substitution_case()
+    facts["other-hidden"] = deepcopy(facts["hidden"])
+    result = build_material_plan(facts_by_object=facts, catalogs=catalogs)
+    assert len(result.construction_decisions) == 1
+    assert len(result.construction_decisions[0]["requirements"]) == 2
+    assert result.construction_decisions[0]["selected"] == "ply"
+    assert result.construction_decisions[0]["after_project_cost"] == 200
+    manual = build_material_plan(facts_by_object=facts, catalogs=catalogs,
+                                 material_norm_overrides={("hidden", "plywood"): {"unit": "m2", "quantity_per_item": 1}})
+    original = next(row for row in manual.selected_materials if row["object_id"] == "hidden")
+    assert original["facts"]["family"] == "particleboard"
+
+
 def test_company_candidate_bridge_keeps_all_estimate_ready_supplier_formats():
     selection_key, candidates = company_supply_candidates(
         requirement_name="Plywood", material_family="plywood", specifications={"thickness_mm": 18},

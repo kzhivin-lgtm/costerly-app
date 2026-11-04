@@ -170,7 +170,9 @@ def run_assembly_first_bom_batch(
     """
     created, reused, failed = [], [], {}
     prepared: dict[str, dict[str, Any]] = {}
+    shared_page_bytes: dict[str, bytes] = {}
     pending_rows: list[Mapping[str, Any]] = []
+    context_rows: list[Mapping[str, Any]] = []
     # First build only deterministic geometry and collect full-page evidence.
     # The following Analyze pass sees all pending objects together, before any
     # object-specific Calculation is allowed to decompose them.
@@ -184,6 +186,7 @@ def run_assembly_first_bom_batch(
         )
         if existing:
             reused.append(input_id)
+            context_rows.append({**row, "accepted_construction_scope": (existing.get("facts_payload") or {}).get("composition_scope")})
             continue
         try:
             graph_existing = fetch_estimation_fact_result(
@@ -208,12 +211,14 @@ def run_assembly_first_bom_batch(
             dimension_scale_gate = build_dimension_scale_gate(dimension_graph=graph)
             payload = row.get("input_payload") or {}
             page_bytes = {}
-            for artifact in ((payload.get("evidence") or {}).get("artifacts") or []):
+            for artifact in [item for container in ("evidence", "document_context") for item in (payload.get(container) or {}).get("artifacts") or []]:
                 if not isinstance(artifact, Mapping) or artifact.get("artifact_kind") != "page":
                     continue
                 storage_ref = str(artifact.get("storage_ref") or "")
                 if storage_ref:
-                    page_bytes[storage_ref] = download_evidence_artifact(client=client, storage_ref=storage_ref)
+                    if storage_ref not in shared_page_bytes:
+                        shared_page_bytes[storage_ref] = download_evidence_artifact(client=client, storage_ref=storage_ref)
+                    page_bytes[storage_ref] = shared_page_bytes[storage_ref]
             _record_stage_event(
                 client=client, input_row=row, stage="evidence_artifacts", status="succeeded",
                 details={"reason_code": "loaded", "page_count": len(page_bytes)},
@@ -230,10 +235,18 @@ def run_assembly_first_bom_batch(
     scopes: dict[str, dict[str, Any]] = {}
     if pending_rows:
         try:
+            for row in context_rows:
+                payload = row.get("input_payload") or {}
+                for container in ("evidence", "document_context"):
+                    for artifact in (payload.get(container) or {}).get("artifacts") or []:
+                        ref = str(artifact.get("storage_ref") or "")
+                        if ref and ref not in shared_page_bytes:
+                            shared_page_bytes[ref] = download_evidence_artifact(client=client, storage_ref=ref)
             all_page_bytes = {
                 ref: page for item in prepared.values() for ref, page in item["page_bytes"].items()
             }
-            analysis = run_estimation_composition_analyze_agent(inputs=pending_rows, page_bytes_by_ref=all_page_bytes)
+            all_page_bytes.update(shared_page_bytes)
+            analysis = run_estimation_composition_analyze_agent(inputs=pending_rows, page_bytes_by_ref=all_page_bytes, allowed_material_families=allowed_material_families, context_inputs=context_rows)
             insert_agent_usage_event_returning_id(client, analysis["usage_event"])
             for row in pending_rows:
                 input_id = str(row["input_id"])

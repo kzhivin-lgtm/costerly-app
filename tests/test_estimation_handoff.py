@@ -48,6 +48,26 @@ def _image_bytes():
     output = BytesIO(); image.save(output, "PNG"); return output.getvalue()
 
 
+def test_v6_shared_context_includes_separate_legend_and_image_only_page_once(monkeypatch):
+    source = _image_bytes()
+    client = _Client()
+    monkeypatch.setattr(estimation_handoff, "_render_pages", lambda *_args: [source, source, source])
+    result = persist_estimation_inputs(
+        client=client, run={"run_id": "r", "company_id": "c", "file_name": "drawing.pdf"},
+        objects=[{"object_id": oid, "object_name": oid, "quantity": 1, "evidence_page_refs": [{"page_number": 1}]} for oid in ("a", "b")],
+        ignored_object_ids=set(), file_name="drawing.pdf", file_bytes=source, ocr_event_id="ocr-1",
+        ocr_package={"evidence": {"text_blocks": [{"page_number": 2, "text": "VN11: oak veneer"}]}},
+        original=describe_estimation_original(company_id="c", file_name="drawing.pdf", file_bytes=source), versions={},
+    )
+    assert len(client.uploads) == 3
+    assert len(result["created_inputs"]) == 2
+    for row in result["created_inputs"]:
+        payload = row["input_payload"]
+        assert [p["page_number"] for p in payload["evidence"]["artifacts"]] == [1]
+        assert [p["page_number"] for p in payload["document_context"]["artifacts"]] == [1, 2, 3]
+        assert payload["document_context"]["ocr_blocks"][0]["block_ref"] == "ocr:ocr-1:p2:b0001"
+
+
 def test_page_artifact_retries_an_empty_storage_response(monkeypatch):
     class _FlakyBucket:
         def __init__(self): self.calls = 0

@@ -1,4 +1,19 @@
-# ESTIMATION CALCULATION V5.6, 2VN GEOMETRY
+# ESTIMATION CALCULATION V6.1, LOCKED CONSTRUCTION AND 2VN GEOMETRY
+
+V6.1 composition_scope supplies the shared Analyze interpretation, palette,
+source/legend evidence chains, locked material_roles, panel_groups and explicit
+assumptions. Read this context together with the object images and OCR. Return
+geometry and measured dimensions for each locked panel group. Do
+not reselect material family, finish, thickness, layer count or alternatives.
+Code restores the locked material roles. Record contradictions in omissions.
+For each panel group return its exact group_id and dimensions.width/height
+using the axis-value schema below. Measure its physical panel face, not the
+screen envelope repeated for every rib. Cite measurements or label assumptions.
+Support zones retain quantity/construction; linear_stock needs height. Do not
+repeat supports in secondary_items. Preserve scope geometry_links.
+When construction_version is supplied, omit repeated material_roles, counts,
+front_groups and exposure from the response. Code supplies these locked values.
+The legacy schemas below describe the optional fields for older scopes only.
 
 The supplied object identity is fixed. Do not rename it, classify it as a
 product type, or infer a catalog item, price, labour, manufacturing operation,
@@ -16,7 +31,7 @@ Return raw JSON only:
 physical zones and their operability. Return one assembly with exactly each
 `scope_id` as `assembly_id`, and the exact `assembly_role`, `counts` and
 `front_groups` supplied for that zone. You may fill only dimensions, exposure,
-material roles, view interpretation and dimension bindings. Never add a zone,
+view interpretation and dimension bindings. Never add a zone,
 delete a zone, convert a fixed zone into a facade, or infer hardware that the
 scope does not permit. When geometry is missing, provide a labelled
 approximation rather than changing the scope.
@@ -137,7 +152,7 @@ the visible material. Hidden carcass, shelves and drawer structure use the
 internal material. Backing is separate. A worktop remains a separate
 `countertop` assembly.
 
-`material_roles` may contain only `visible_sheet`, `internal_sheet`,
+Only for historical scopes without construction_version, `material_roles` may contain `visible_sheet`, `internal_sheet`,
 `backing_sheet`, `worktop_sheet`, `finish`, `drawer_slide`, `hinge`, `gas_lift`,
 `leg`. Every role
 is `{"role":"...","source_name":"...","family":"one allowed family code","specification":{},"basis":"source_evidence|construction_assumption","evidence_refs":[...]}`.

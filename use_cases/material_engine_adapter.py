@@ -9,6 +9,7 @@ project-level purchase-plan presentation is being connected.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from copy import deepcopy
 from datetime import date
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from hashlib import sha256
@@ -77,6 +78,8 @@ class MaterialEngineResult:
     candidate_purchase_forms: tuple[tuple[str, Mapping[str, Any]], ...] = ()
     applied_defaults: tuple[Mapping[str, Any], ...] = ()
     assumption_fallbacks: tuple[Mapping[str, Any], ...] = ()
+    construction_decisions: tuple[Mapping[str, Any], ...] = ()
+    selected_materials: tuple[Mapping[str, Any], ...] = ()
 
 
 def material_plan_input_fingerprint(
@@ -232,6 +235,8 @@ def material_plan_snapshot(
         ],
         "applied_material_defaults": [dict(value) for value in result.applied_defaults],
         "assumption_fallbacks": [dict(value) for value in result.assumption_fallbacks],
+        "construction_decisions": [dict(value) for value in result.construction_decisions],
+        "selected_materials": [dict(value) for value in result.selected_materials],
     }
 
 
@@ -962,6 +967,122 @@ def israel_reference_supply_candidates(
 
 
 def build_material_plan(
+    *, facts_by_object: Mapping[str, Mapping[str, Any]],
+    catalogs: Mapping[str, Sequence[Mapping[str, Any]]],
+    material_norm_overrides: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
+    material_purchase_overrides: Mapping[str, Mapping[str, Any]] | None = None,
+    vat_percent: Decimal | int | float | str = Decimal("18"),
+) -> MaterialEngineResult:
+    """Compare permitted hidden-stock alternatives using the existing Engine.
+
+    Bounded deterministic greedy search, not global optimal nesting. A group
+    spans identical interchangeable requirements across all objects so a new
+    sheet is assessed at project scale. No extra model calls. Missing prices
+    cannot win a comparison through a cheaper generic assumption allowance.
+    """
+    kwargs = dict(catalogs=catalogs, material_norm_overrides=material_norm_overrides,
+                  material_purchase_overrides=material_purchase_overrides, vat_percent=vat_percent)
+    current = _build_material_plan(facts_by_object=facts_by_object, **kwargs)
+    payloads = {str(oid): facts for oid, row in facts_by_object.items()
+                if isinstance(facts := row.get("facts_payload", row), Mapping)}
+    if not any(material.get("alternatives") for facts in payloads.values()
+               for material in (facts.get("materials") or []) if isinstance(material, Mapping)):
+        return current
+    groups: dict[str, list[tuple[str, str]]] = {}
+    selection_keys: list[tuple[str, str]] = []
+    options: dict[str, list[dict[str, Any]]] = {}
+    effective = deepcopy(payloads)
+    for oid, facts in sorted(effective.items()):
+        for material in facts.get("materials") or []:
+            rid = str(material.get("requirement_id") or "")
+            if material.get("alternatives"):
+                selection_keys.append((oid, rid))
+            if not material.get("alternatives") or material.get("material_role") not in {"internal_sheet", "backing_sheet"}:
+                continue
+            if material.get("basis") == "source_evidence" or (oid, rid) in (material_norm_overrides or {}):
+                continue
+            if any(int(part.get("layer_count") or 1) != 1 for part in facts.get("parts") or [] if part.get("material_requirement_id") == rid):
+                continue
+            thickness = _positive((material.get("specification") or {}).get("thickness_mm"))
+            alternatives = [dict(alt) for alt in material["alternatives"] if isinstance(alt, Mapping)
+                            and thickness is not None and _positive((alt.get("specification") or {}).get("thickness_mm")) == thickness]
+            if not alternatives:
+                continue
+            key = json.dumps({"family": material.get("family"), "name": material.get("source_name"),
+                              "spec": material.get("specification"), "alternatives": alternatives}, sort_keys=True, default=str)
+            groups.setdefault(key, []).append((oid, rid))
+            options[key] = alternatives
+    if not groups:
+        return replace(current, selected_materials=tuple(
+            {"object_id": oid, "material_requirement_id": rid,
+             "facts": next(item for item in effective[oid]["materials"] if item["requirement_id"] == rid)}
+            for oid, rid in selection_keys))
+
+    def total(result: MaterialEngineResult) -> tuple[str, Decimal] | None:
+        if result.plan is None or result.plan.status != "planned" or result.unresolved_requirement_ids:
+            return None
+        currencies = {line.currency for line in result.plan.lines}
+        if len(currencies) != 1:
+            return None
+        return next(iter(currencies)), sum((line.total_cost for line in result.plan.lines), Decimal("0"))
+
+    def comparable(result: MaterialEngineResult, targets: set[tuple[str, str]]) -> bool:
+        authorities = dict(result.candidate_authorities)
+        seen = set()
+        for line in result.plan.lines if result.plan else ():
+            hits = {(allocation.object_id, str(allocation.material_requirement_id)) for allocation in line.allocations} & targets
+            if hits and authorities.get(line.candidate_id) not in {"company", "israel_reference"}:
+                return False
+            seen.update(hits)
+        return seen == targets
+
+    decisions = []
+    evaluations = 0
+    for key, members in sorted(groups.items()):
+        targets = set(members)
+        baseline = total(current)
+        decision: dict[str, Any] = {"requirements": [{"object_id": oid, "material_requirement_id": rid} for oid, rid in members],
+                                    "strategy": "bounded_project_purchase_comparison", "comparisons": [], "selected": "original"}
+        if material_purchase_overrides:
+            decision["reason"] = "Manual project purchase quantities retained; automatic substitution disabled."
+        elif baseline is None or not comparable(current, targets):
+            decision["reason"] = "Original retained because comparable catalog pricing is incomplete."
+        else:
+            best, best_facts, best_option, best_total = current, effective, None, baseline[1]
+            for alternative in options[key][:3]:
+                if evaluations >= 24:
+                    decision["search_limit_reached"] = True
+                    break
+                trial = deepcopy(effective)
+                for oid, rid in members:
+                    material = next(item for item in trial[oid]["materials"] if item["requirement_id"] == rid)
+                    material.update({field: deepcopy(alternative[field]) for field in
+                                     ("family", "source_name", "specification", "evidence_chain", "intent_basis") if field in alternative})
+                    material.update(material_intent_id=alternative.get("material_id"), basis="construction_assumption", evidence_refs=[],
+                                    decision_reason="Permitted hidden-stock alternative selected by lower rounded whole-project purchase cost.")
+                candidate = _build_material_plan(facts_by_object=trial, **kwargs)
+                evaluations += 1
+                cost = total(candidate)
+                eligible = bool(cost and cost[0] == baseline[0] and comparable(candidate, targets))
+                decision["comparisons"].append({"material_id": alternative.get("material_id"),
+                                                "comparable": eligible, "project_cost": float(cost[1]) if cost else None})
+                if eligible and cost[1] < best_total:
+                    best, best_facts, best_option, best_total = candidate, trial, alternative, cost[1]
+            decision.update(before_project_cost=float(baseline[1]), after_project_cost=float(best_total), currency=baseline[0])
+            decision["reason"] = "Rounded project purchases, area allowance only; usable offcut shapes are not verified."
+            if best_option is not None:
+                current, effective = best, best_facts
+                decision["selected"] = best_option.get("material_id")
+        decisions.append(decision)
+    # Include manually locked originals, so a recalculation never leaves a
+    # stale substituted family in the published line's audit facts.
+    selected = [{"object_id": oid, "material_requirement_id": rid,
+                 "facts": next(item for item in effective[oid]["materials"] if item["requirement_id"] == rid)}
+                for oid, rid in selection_keys]
+    return replace(current, construction_decisions=tuple(decisions), selected_materials=tuple(selected))
+
+
+def _build_material_plan(
     *,
     facts_by_object: Mapping[str, Mapping[str, Any]],
     catalogs: Mapping[str, Sequence[Mapping[str, Any]]],

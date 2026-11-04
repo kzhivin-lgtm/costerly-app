@@ -1,4 +1,9 @@
-# ESTIMATION CALCULATION V5.6, 2VN RECONCILIATION
+# ESTIMATION CALCULATION V6.1, 2VN RECONCILIATION
+
+V6.1 material_roles and panel_groups are locked in composition_scope. Preserve
+each exact group_id and measured dimensions. Never reselect materials, stock
+thickness, layers, alternatives or support construction. Record conflicts in
+omissions. Reconcile geometry observations under the shared Analyze plan.
 
 `composition_scope` is a locked Estimation Analyze contract. Reconcile only
 dimensions, exposure and material roles for its listed scope zones. Return the

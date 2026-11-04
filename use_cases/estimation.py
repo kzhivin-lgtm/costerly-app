@@ -1025,6 +1025,8 @@ def apply_material_plan_allocations(
         if isinstance(row, dict)
     }
     material_norms = _material_norms_from_plan(plan_snapshot)
+    selected_materials = {(str(row.get("object_id")), str(row.get("material_requirement_id"))): row["facts"]
+                          for row in plan_snapshot.get("selected_materials") or [] if isinstance(row, dict) and isinstance(row.get("facts"), dict)}
     resolved_names = {
         (str(allocation.get("object_id") or ""), str(allocation.get("material_requirement_id") or "")):
         str(line.get("display_name") or "")
@@ -1083,6 +1085,7 @@ def apply_material_plan_allocations(
         raw_agent_json = {
             **(line.get("raw_agent_json") if isinstance(line.get("raw_agent_json"), dict) else {}),
             "material_plan_allocation": {**context, "allocated_cost": round(allocated_cost, 2)},
+            **({"facts": selected_materials[(object_id, requirement_id)]} if (object_id, requirement_id) in selected_materials else {}),
         }
         if assumption is not None:
             rationale = (assumption.get("assumption_price") or {}).get("rationale") or []

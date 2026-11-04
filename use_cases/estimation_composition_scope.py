@@ -5,9 +5,10 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from agents.estimation_composition_analyze_agent import COMPOSITION_SCOPE_V1
+from use_cases.estimation_construction_plan import apply_locked_construction
 
 
-_ROLES = {"box_carcass", "drawer_bank", "vertical_panel", "shelf_stack", "table", "countertop", "facade_set"}
+_ROLES = {"box_carcass", "drawer_bank", "vertical_panel", "shelf_stack", "table", "countertop", "facade_set", "support"}
 _OPERABILITY = {"fixed", "drawer", "hinged", "lift_up", "none"}
 _FRONT_BY_OPERABILITY = {
     "fixed": [], "none": [],
@@ -38,7 +39,11 @@ def validate_composition_scope(*, scope: Mapping[str, Any], input_id: str) -> di
         role = str(raw.get("assembly_role") or "").strip()
         operability = str(raw.get("operability") or "").strip()
         if not scope_id or scope_id in seen or role not in _ROLES or operability not in _OPERABILITY:
+            if scope.get("construction_version"):
+                raise ValueError("construction scope has an invalid or duplicate zone")
             continue
+        if scope.get("construction_version") and role == "drawer_bank" and operability != "drawer":
+            raise ValueError("construction drawer bank requires drawer operability")
         seen.add(scope_id)
         counts = dict(raw.get("counts") or {}) if isinstance(raw.get("counts"), Mapping) else {}
         allowed_fronts = _FRONT_BY_OPERABILITY[operability]
@@ -57,23 +62,27 @@ def validate_composition_scope(*, scope: Mapping[str, Any], input_id: str) -> di
         # must not turn a known three-drawer unit into six facades downstream.
         if operability == "drawer":
             quantity = _positive_int(counts.get("drawers")) or sum(item["quantity"] for item in groups)
-            groups = [{"front_kind": "drawer_front", "quantity": quantity, "arrangement": "stacked"}] if quantity else []
-            counts = {"drawers": quantity} if quantity else {}
+            if sum(item["quantity"] for item in groups) != quantity:
+                groups = [{"front_kind": "drawer_front", "quantity": quantity, "arrangement": groups[0]["arrangement"] if groups else "stacked"}] if quantity else []
+            counts = {**{key: value for key, value in counts.items() if key in {"shelves", "top_layers", "legs"}}, "drawers": quantity} if quantity else {}
         elif operability in {"hinged", "lift_up"}:
             quantity = _positive_int(counts.get("facades")) or sum(item["quantity"] for item in groups)
             kind = allowed_fronts[0]
-            groups = [{"front_kind": kind, "quantity": quantity, "arrangement": "side_by_side"}] if quantity else []
-            counts = {"facades": quantity} if quantity else {}
+            if sum(item["quantity"] for item in groups) != quantity:
+                groups = [{"front_kind": kind, "quantity": quantity, "arrangement": groups[0]["arrangement"] if groups else "side_by_side"}] if quantity else []
+            counts = {**{key: value for key, value in counts.items() if key in {"shelves", "top_layers", "legs"}}, "facades": quantity} if quantity else {}
         else:
-            groups, counts = [], {}
+            groups, counts = [], {key: value for key, value in counts.items() if key in {"shelves", "top_layers", "legs"}}
         refs = [str(item) for item in raw.get("evidence_refs") or [] if isinstance(item, str) and item]
         zones.append({
+            **({key: raw[key] for key in ("material_roles", "quantity", "geometry_links", "construction", "panel_groups", "parent_scope_id", "exposure") if key in raw} if scope.get("construction_version") else {}),
             "scope_id": scope_id, "assembly_role": role, "semantic_role": str(raw.get("semantic_role") or role),
             "operability": operability, "counts": counts, "front_groups": groups, "evidence_refs": refs,
         })
     if not zones:
         raise ValueError("composition scope has no valid zones")
     return {
+        **({key: scope[key] for key in ("construction_version", "material_palette") if key in scope}),
         "contract_version": COMPOSITION_SCOPE_V1, "status": "ready", "input_id": input_id,
         "object_id": str(scope.get("object_id") or ""), "object_summary": str(scope.get("object_summary") or ""),
         "zones": zones, "assumptions": [str(item) for item in scope.get("assumptions") or [] if str(item).strip()],
@@ -85,7 +94,7 @@ def apply_composition_scope(*, extraction: Mapping[str, Any], scope: Mapping[str
 
     Zones are created from the Analyze contract, so a Calculation response
     cannot add a new facade set or turn a fixed screen into cabinet doors.
-    It may only fill dimensions, exposure and material roles for those zones.
+    V6 may fill geometry only; legacy inputs may also fill material roles.
     """
     allowed = {str(zone["scope_id"]): zone for zone in scope["zones"]}
     calculated = {
@@ -102,7 +111,8 @@ def apply_composition_scope(*, extraction: Mapping[str, Any], scope: Mapping[str
             # the Calculation instruction. Match the only compatible physical
             # role in scope order, then remap its 2VN bindings before they are
             # resolved. It never grants permission for a new zone.
-            candidate = next((item for item in remaining if str(item.get("assembly_role") or "") == zone["assembly_role"]), {})
+            matches = [item for item in remaining if str(item.get("assembly_role") or "") == zone["assembly_role"]]
+            candidate = matches[0] if len(matches) == 1 else {}
         candidate_id = str(candidate.get("assembly_id") or "")
         if candidate_id:
             remapped_ids[candidate_id] = scope_id
@@ -115,6 +125,8 @@ def apply_composition_scope(*, extraction: Mapping[str, Any], scope: Mapping[str
             "front_groups": list(zone["front_groups"]),
             "evidence_refs": list(candidate.get("evidence_refs") or zone["evidence_refs"]),
         })
+        if scope.get("construction_version"):
+            apply_locked_construction(assembly, zone)
         assemblies.append(assembly)
     # Structural hardware comes only from the locked front topology. Preserve
     # legs as explicit physical components, but do not let Calculation inject
@@ -123,6 +135,8 @@ def apply_composition_scope(*, extraction: Mapping[str, Any], scope: Mapping[str
         dict(item) for item in extraction.get("secondary_items") or []
         if isinstance(item, Mapping) and str(item.get("role") or "") == "leg"
     ]
+    if scope.get("construction_version"):
+        secondary_items = []  # Supports are now counted, material-assigned scope zones.
     bindings = []
     for raw in extraction.get("dimension_bindings") or []:
         if not isinstance(raw, Mapping):
@@ -147,5 +161,6 @@ def calculation_handoff(*, scope: Mapping[str, Any], dimension_graph: Mapping[st
             "dimension_count": len(dimension_graph.get("dimension_numbers") or []),
             "view_count": len(dimension_graph.get("views") or []),
         },
-        "calculation_boundary": "May fill geometry and construction roles only. It may not add, remove or reclassify scope zones or operability.",
+        "calculation_boundary": ("Geometry only. Materials, stock layers, groups, quantities and operability are locked by Analyze."
+                                 if scope.get("construction_version") else "May fill geometry and construction roles only. It may not add, remove or reclassify scope zones or operability."),
     }

@@ -137,7 +137,7 @@ def test_prepared_worker_persists_accepted_snapshot_before_estimation(monkeypatc
     assert events[-1][1]["shell"] == {"status": "pending"}
 
 
-def test_v5_3_runtime_routes_all_objects_through_2vn_geometry_bom_path(monkeypatch):
+def test_v6_1_runtime_routes_all_objects_through_2vn_geometry_bom_path(monkeypatch):
     events = []
     monkeypatch.setattr(runtime, "get_supabase_client", lambda: object())
     monkeypatch.setattr(runtime, "fetch_rfq_run", lambda _client, _run_id: _Frame([{}]))
@@ -176,7 +176,7 @@ def test_v5_3_runtime_routes_all_objects_through_2vn_geometry_bom_path(monkeypat
     assert [event[0] for event in events] == ["v4_run"]
     assert result["estimation"]["status"] == "completed"
     assert result["estimation"]["estimated_objects"] == 1
-    assert result["estimation_version"] == "v5_3_2vn_geometry_composer"
+    assert result["estimation_version"] == "v6_1_locked_construction_materials"
 
 
 def test_handoff_failure_ends_known_objects_instead_of_leaving_progress_running(monkeypatch):

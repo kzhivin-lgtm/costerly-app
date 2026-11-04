@@ -56,6 +56,9 @@ def test_partial_material_plan_publishes_resolved_canonical_line(monkeypatch):
 
     estimation.apply_material_plan_allocations(client=object(), estimate_id="estimate-1", plan_snapshot={
         "status": "needs_review",
+        "selected_materials": [{"object_id": "cabinet", "material_requirement_id": "mdf", "facts": {
+            "requirement_id": "mdf", "family": "mdf_hdf", "material_intent_id": "selected-stock", "basis": "construction_assumption",
+        }}],
         "object_material_costs": [{"object_id": "cabinet", "material_requirement_id": "mdf", "cost_ex_vat": 244}],
         "lines": [{
             "display_name": "MDF 20 mm 1220 × 2440 mm, raw", "authority": "company", "purchase_kind": "sheet",
@@ -70,6 +73,7 @@ def test_partial_material_plan_publishes_resolved_canonical_line(monkeypatch):
     assert updates[0]["values"]["cost"] == 244
     assert updates[0]["values"]["needs_price"] is False
     assert updates[0]["values"]["raw_agent_json"]["price_source"] == "C"
+    assert updates[0]["values"]["raw_agent_json"]["facts"]["material_intent_id"] == "selected-stock"
 
 
 def test_assumption_fallback_is_published_as_a_priced_material_line(monkeypatch):

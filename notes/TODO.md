@@ -535,6 +535,23 @@ fact and the active material/object-detail readers select it. Pending
 acceptance: the fresh Lev 1 V5.6.3 witness must expose the corrected 600-mm
 slide-set result.
 
+ACTIVE, P0, USER REQUEST, 3.17.4.5 Estimation V6.1 construction/material plan
+(local implementation, live acceptance pending):
+One shared Analyze must interpret all available Detection evidence (images,
+OCR, notes and indexed legends), lock large assemblies and explain material
+assignments/assumptions. Object Calculation resolves geometry; deterministic
+composition preserves repeated members, front arrangement, layers and edge
+material. Compare allowed hidden-material alternatives in the existing
+project Material Engine after C/I/A resolution, with whole-sheet rounding.
+Do not claim geometric offcut reuse from aggregate area. Labor is excluded.
+Base: e608f37. Acceptance and bounded scope:
+`notes/ESTIMATION_V6_1_CONSTRUCTION_PLAN_2026_11_04.md`.
+Live LF1 replay is awaiting explicit approval for paid Anthropic calls and
+source-evidence transmission after access-review rejection. No production
+write or deployment has occurred. Retain the V5.8.2 production checkpoint.
+[verified] Local suite: 1657 passed, 10 unchanged baseline failures; 18 new
+tests cover the V6.1 contract. Real model quality and latency remain unknown.
+
 CHECKPOINT, deployed, pending authenticated interaction witness, 3.17.4.4
 Estimation V5.8.2 handoff recovery, 2026-11-04: [verified] V5.8
 (`512bf6e`) prepared navigation targets and V5.8.1 (`7405e67`) preserved an

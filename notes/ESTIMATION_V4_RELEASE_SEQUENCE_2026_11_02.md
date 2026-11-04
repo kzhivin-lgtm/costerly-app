@@ -67,3 +67,12 @@ V5.8.2 is deployed with wrapper marker
 fresh authenticated LF1 interaction witness, not an owner-accepted visual
 transition checkpoint. Full record:
 `notes/ESTIMATION_V5_8_2_PRODUCTION_CHECKPOINT_2026_11_04.md`.
+
+## Approved V6 materials development
+
+V6.1, work 3.17.4.5, is implemented locally, not published or accepted.
+It moves material interpretation into the shared Analyze, locks construction
+for per-object Calculation, and compares permitted hidden-material alternatives
+through the existing project Material Engine. Labor is excluded. See
+`notes/ESTIMATION_V6_1_CONSTRUCTION_PLAN_2026_11_04.md` for verification and the
+pending live-replay authorization. V5.8.2 remains the production release.

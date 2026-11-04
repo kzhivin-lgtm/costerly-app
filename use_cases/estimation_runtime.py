@@ -739,7 +739,7 @@ def _run_estimation_job(
                 "estimated_objects": len(estimation_result["processed_input_ids"]),
                 "failed_objects": estimation_result["failed"],
             },
-            "estimation_version": "v5_3_2vn_geometry_composer",
+            "estimation_version": "v6_1_locked_construction_materials",
         }
     if shell and int(shell.get("object_count") or 0) == 0:
         return {

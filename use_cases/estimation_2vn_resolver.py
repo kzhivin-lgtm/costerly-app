@@ -67,6 +67,7 @@ def resolve_2vn_geometry(*, dimension_graph: Mapping[str, Any], extraction: Mapp
         raise ValueError("2VN resolver requires Dimension Graph")
 
     normalized = dict(extraction)
+    strict = bool((extraction.get("composition_scope") or {}).get("construction_version"))
     assemblies = [dict(item) for item in extraction.get("assemblies") or [] if isinstance(item, Mapping)]
     normalized["assemblies"] = assemblies
     document = extraction.get("document_unit") or {}
@@ -136,6 +137,9 @@ def resolve_2vn_geometry(*, dimension_graph: Mapping[str, Any], extraction: Mapp
                     outcomes["rejected_to_fallback"] += 1
                     continue
                 outcomes["unbound"] += 1
+                if strict and raw_dimension.get("basis") == "source":
+                    updated_dimensions[axis] = {**raw_dimension, "basis": "assumption", "evidence_refs": [],
+                        "assumption_reason": "Visual dimension interpretation without a validated numeric witness."}
                 continue
             number = numbers[str(binding["dimension_id"])]
             value_mm = _dimension_mm(dimension=raw_dimension, document_unit=document_unit)
@@ -158,6 +162,10 @@ def resolve_2vn_geometry(*, dimension_graph: Mapping[str, Any], extraction: Mapp
                 "evidence_refs": list(number.get("evidence_refs") or []),
             }
             witnesses.append(witness)
+            if strict and not numeric_match:
+                updated_dimensions.pop(axis, None)
+                outcomes["rejected_numeric_mismatch"] += 1
+                continue
             if verified_direct:
                 updated = dict(raw_dimension)
                 updated.update({"value": number["numeric_value"], "unit": number.get("printed_unit") or document_unit,
@@ -171,6 +179,9 @@ def resolve_2vn_geometry(*, dimension_graph: Mapping[str, Any], extraction: Mapp
                 updated_dimensions[axis] = updated
                 outcomes["derived"] += 1
             else:
+                if strict:
+                    updated_dimensions[axis] = {**raw_dimension, "basis": "assumption", "evidence_refs": [],
+                        "assumption_reason": "Numeric candidate does not establish this zone's dimension; visual estimating assumption."}
                 outcomes["unverified"] += 1
         assembly["dimensions"] = updated_dimensions
 
@@ -190,6 +201,8 @@ def resolve_2vn_geometry(*, dimension_graph: Mapping[str, Any], extraction: Mapp
                for relation in relations_by_dimension.get(str(number.get("dimension_id") or ""), []))
     ]
     for assembly in assemblies:
+        if strict:
+            break  # V6 permits only explicit zone links, never global largest-number substitution.
         if str(assembly.get("assembly_role") or "") != "drawer_bank":
             continue
         dimensions = assembly.get("dimensions") or {}
@@ -230,5 +243,7 @@ def resolve_2vn_geometry(*, dimension_graph: Mapping[str, Any], extraction: Mapp
         "binding_outcomes": dict(sorted(outcomes.items())),
         "rejected_bindings": rejected,
         "fallback_policy": "unresolved_dimensions_continue_to_peer_or_construction_default",
+        "scope_policy": "explicit_zone_links_only" if strict else "legacy_peer_candidates",
+        "verification_limit": "Numeric and projection consistency, not proof of dimension-line ownership.",
     }
     return normalized, audit

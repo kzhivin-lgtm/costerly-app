@@ -38,6 +38,34 @@ def persist_estimation_inputs(
     estimable = [item for item in objects if str(item.get("object_id") or "") not in ignored_object_ids]
     pages = _render_pages(file_name, file_bytes) if estimable else []
     created, created_inputs, skipped = [], [], {}
+    # Shared pages are context only. They never become Detection object members.
+    page_cache: dict[int, EvidenceArtifact] = {}
+    def stored_page(page: int) -> EvidenceArtifact:
+        if page not in page_cache:
+            page_cache[page] = persist_page_artifact(
+                client=client, company_id=str(run["company_id"]), run_id=str(run["run_id"]),
+                object_id="document-context", page_number=page, page_bytes=pages[page - 1],
+            )
+        return page_cache[page]
+
+    context_text: dict[str, list[dict[str, Any]]] = {}
+    source_evidence = ocr_package.get("evidence") or {}
+    context_pages: set[int] = set(range(1, len(pages) + 1))
+    for source_kind, kind, prefix in (("text_blocks", "ocr_blocks", "b"), ("literal_items", "ocr_literal_items", "l")):
+        context_text[kind] = []
+        for index, item in enumerate(source_evidence.get(source_kind) or [], start=1):
+            if not isinstance(item, Mapping):
+                continue
+            try:
+                page = int(item.get("page_number"))
+            except (TypeError, ValueError):
+                continue
+            if 1 <= page <= len(pages):
+                context_pages.add(page)
+                context_text[kind].append({**dict(item), "block_ref": f"ocr:{ocr_event_id}:p{page}:{prefix}{index:04d}"})
+    # Include image-only context too. A legend may have no OCR block, and a
+    # source page outside object membership must not silently disappear.
+    context_artifacts = [stored_page(page) for page in sorted(context_pages)]
     for item in estimable:
         object_id = str(item.get("object_id") or "")
         selected_pages = _object_pages(item)
@@ -45,14 +73,16 @@ def persist_estimation_inputs(
             skipped[object_id or "unknown"] = "evidence_pages_missing"; continue
         if any(page > len(pages) for page in selected_pages):
             skipped[object_id] = "evidence_page_not_renderable"; continue
-        artifacts = [persist_page_artifact(
-            client=client, company_id=str(run["company_id"]), run_id=str(run["run_id"]),
-            object_id=object_id, page_number=page, page_bytes=pages[page - 1],
-        ) for page in selected_pages]
+        artifacts = [stored_page(page) for page in selected_pages]
         payload = build_estimation_input(
             run=run, detected_object=item, ocr_event_id=ocr_event_id,
             ocr_package=ocr_package, evidence_artifacts=artifacts, versions=versions,
         )
+        payload["document_context"] = {
+            "contract_version": "estimation_document_context_v6_1", **context_text,
+            "artifacts": [{"storage_ref": artifact.storage_ref, "page_number": artifact.page_number, "artifact_kind": "page"} for artifact in context_artifacts],
+            "boundary": "Shared source context, not object membership. Interpret callouts before assigning a definition to a zone.",
+        }
         labels = {int(ref["page_number"]): str(ref.get("source_label") or ref["page_number"])
                   for ref in item.get("evidence_page_refs") or [] if isinstance(ref, Mapping)}
         revision = next_estimation_object_input_revision(client, run_id=str(run["run_id"]), object_id=object_id)
