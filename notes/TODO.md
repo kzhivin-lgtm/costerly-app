@@ -607,6 +607,23 @@ minimal next contract before implementation. Materials only, no labor/pricing.
 Completed here: checkpoint preservation, not the overall V6.2 product objective.
 The dated experimental reports below are retained history; older active/next
 labels do not override this current checkpoint and next-step decision.
+Completed diagnostic, USER REQUEST, 2026-11-05, same 3.17.4.5: test Lev1
+classification and drawers on unchanged r03 before major-assembly work.
+One Haiku 5.5 call, 8.236 s, 13744 input / 1607 output tokens (878 thinking).
+Immutable input db175c9d-b911-434e-a3ed-de612640f96f; full page + six islands,
+no Naming hint or new Detection call. All six semantic view classes match
+visual review: 001/003 axonometric, 002 top, 004 front, 005 side, 006 rear.
+Three side-by-side drawers, zero doors/lift-up fronts; fixed ribs excluded.
+Original strict validation FAILS because model emits shortened enum labels
+(axonometric/top/front_elevation/side/rear). An in-memory diagnostic spelling
+expansion passes the remaining contract, but is NOT applied to runtime or
+saved original. Annotation visual accuracy was not separately verified here.
+Original: /private/tmp/estimation-v6-2-lf1-haiku55-front-count-r03-01.json.
+Durable evidence: notes/evidence/estimation-v6.2-front-count-2026-11-05/lf1-r03-evidence.json.
+Pending P1: exact enum-output compliance before production integration; no
+automatic prompt revision, rerun, silent normalization or production release.
+This confirms this sample's semantic classification/count only, not general
+robustness, large-assembly decomposition, material accuracy or full cycle.
 Owner authorized all necessary bounded paid replays and Anthropic evidence
 transmission until readiness for production and personal acceptance.
 [verified] Capsules 02-06 retain raw responses/usage before validation. No

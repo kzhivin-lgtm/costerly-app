@@ -1,0 +1,147 @@
+{
+  "prompt_version": "estimation_front_count_v6_2_r03",
+  "prompt_sha256": "81b49dc8d2dd4c33a7459d824178ea8601ba241370a401e530bed2748dab0bb0",
+  "request_sha256": "7c720f9805105ad9c55d5d1388da5fec995fe482a9818fc45dc0e82dd4433fe5",
+  "original_witness_sha256": "9e6f7780e758094010258226b309fae61ff841b33fd02ce685d702470971796d",
+  "original_status": "failed",
+  "original_error": "ValueError: invalid island classification",
+  "model": "claude-haiku-5-5",
+  "elapsed_seconds": 8.236,
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 13744,
+    "output_tokens": 1607,
+    "output_tokens_details": {
+      "thinking_tokens": 878
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+  },
+  "response_text": "```json\n{\n  \"island_types\": [\n    {\"view_id\": \"p1-view-001\", \"type\": \"axonometric\"},\n    {\"view_id\": \"p1-view-002\", \"type\": \"top\"},\n    {\"view_id\": \"p1-view-003\", \"type\": \"axonometric\"},\n    {\"view_id\": \"p1-view-004\", \"type\": \"front_elevation\"},\n    {\"view_id\": \"p1-view-005\", \"type\": \"side\"},\n    {\"view_id\": \"p1-view-006\", \"type\": \"rear\"}\n  ],\n  \"front_groups\": [\n    {\n      \"location\": \"lower base storage unit, front elevation\",\n      \"type\": \"drawer\",\n      \"count\": 3,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-004\", \"p1-view-001\", \"p1-view-003\", \"p1-view-005\"],\n      \"uncertainty\": \"Three shallow, wide fronts side by side at the base are read as drawers. The upper slatted panels are fixed and are not operating fronts. The bboxes are estimated from the enlarged front elevation.\",\n      \"fronts\": [\n        {\"id\": \"F01\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [106, 770, 301, 831]},\n        {\"id\": \"F02\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [301, 770, 489, 831]},\n        {\"id\": \"F03\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [494, 770, 682, 831]}\n      ]\n    }\n  ],\n  \"excluded_surfaces\": [\n    {\"id\": \"X01\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [106, 203, 682, 761], \"reason\": \"fixed slatted upper back panels, not operating fronts\"},\n    {\"id\": \"X02\", \"view_id\": \"p1-view-005\", \"bbox_1000\": [540, 620, 700, 880], \"reason\": \"fixed carcass side and base profile, not a door or drawer\"}\n  ],\n  \"totals\": {\n    \"drawers\": 3,\n    \"hinged_doors\": 0,\n    \"lift_up_fronts\": 0,\n    \"unresolved_fronts\": 0,\n    \"total_fronts\": 3\n  }\n}\n```",
+  "parsed_response": {
+    "island_types": [
+      {
+        "view_id": "p1-view-001",
+        "type": "axonometric"
+      },
+      {
+        "view_id": "p1-view-002",
+        "type": "top"
+      },
+      {
+        "view_id": "p1-view-003",
+        "type": "axonometric"
+      },
+      {
+        "view_id": "p1-view-004",
+        "type": "front_elevation"
+      },
+      {
+        "view_id": "p1-view-005",
+        "type": "side"
+      },
+      {
+        "view_id": "p1-view-006",
+        "type": "rear"
+      }
+    ],
+    "front_groups": [
+      {
+        "location": "lower base storage unit, front elevation",
+        "type": "drawer",
+        "count": 3,
+        "count_basis": "clear",
+        "view_ids": [
+          "p1-view-004",
+          "p1-view-001",
+          "p1-view-003",
+          "p1-view-005"
+        ],
+        "uncertainty": "Three shallow, wide fronts side by side at the base are read as drawers. The upper slatted panels are fixed and are not operating fronts. The bboxes are estimated from the enlarged front elevation.",
+        "fronts": [
+          {
+            "id": "F01",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              106,
+              770,
+              301,
+              831
+            ]
+          },
+          {
+            "id": "F02",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              301,
+              770,
+              489,
+              831
+            ]
+          },
+          {
+            "id": "F03",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              494,
+              770,
+              682,
+              831
+            ]
+          }
+        ]
+      }
+    ],
+    "excluded_surfaces": [
+      {
+        "id": "X01",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          106,
+          203,
+          682,
+          761
+        ],
+        "reason": "fixed slatted upper back panels, not operating fronts"
+      },
+      {
+        "id": "X02",
+        "view_id": "p1-view-005",
+        "bbox_1000": [
+          540,
+          620,
+          700,
+          880
+        ],
+        "reason": "fixed carcass side and base profile, not a door or drawer"
+      }
+    ],
+    "totals": {
+      "drawers": 3,
+      "hinged_doors": 0,
+      "lift_up_fronts": 0,
+      "unresolved_fronts": 0,
+      "total_fronts": 3
+    }
+  },
+  "review": {
+    "scope": "One unchanged r03 call; immutable Detection input; no DB writes",
+    "input_id": "db175c9d-b911-434e-a3ed-de612640f96f",
+    "semantic_island_classification": "6/6 match visual review",
+    "drawer_count": "3 matches owner benchmark",
+    "other_fronts": "0 hinged, 0 lift-up; slats excluded",
+    "original_contract": "failed enum labels; no runtime repair",
+    "diagnostic_copy": "Exact documented spelling expansion only; remaining structural validation passes",
+    "annotation_visual_accuracy": "not independently verified in this run",
+    "prompt_changed": false,
+    "provider_calls": 1,
+    "production_deployed": false
+  }
+}

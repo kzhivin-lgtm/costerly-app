@@ -30,6 +30,16 @@ r04 remains archived, not active. Next: major physical assemblies; reuse the
 existing components contract and agree any consequential contract change first.
 No new call stage or work-number change is implied by this checkpoint.
 
+Post-checkpoint Lev1 r03 diagnostic, owner-requested 2026-11-05: same prompt
+and settings, existing immutable Detection input, full page + six crops.
+8.236 s, one call. Semantic classification matches 6/6 islands (two axonometric,
+top, front, side, rear); three drawers, zero doors/lift-up fronts, fixed ribs
+excluded. Original validator rejects shortened enum labels. Diagnostic-only
+spelling expansion passes the remaining schema, not applied to runtime.
+No independent box-accuracy acceptance or full-cycle claim. Evidence:
+notes/evidence/estimation-v6.2-front-count-2026-11-05/lf1-r03-evidence.json.
+Checkpoint tag remains unchanged; this is follow-up evidence, not a new prompt.
+
 Historical experiment: estimation_front_count_v6_2_r04. Added owner-approved
 rule: count candidates in the clearest elevation, check their physical roles
 against available axonometry/perspective, exclude fixed carcass surfaces but
