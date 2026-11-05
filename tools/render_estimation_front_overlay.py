@@ -8,7 +8,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-from agents.estimation_understanding_agent import validate_front_count, ISLAND_TYPES
+from agents.estimation_understanding_agent import validate_front_count, ISLAND_TYPES, validate_assembly_plan, planner_front_ids
 from agents.estimation_v4_1_material_facts_agent import _json_object
 
 COLORS = {'hinged': '#2563eb', 'drawer': '#059669', 'lift_up': '#d97706',
@@ -116,6 +116,40 @@ def render_overlays(witness_path, prefix, *, allow_label_aliases=False):
     rows = [{**front, 'type': group['type'], 'location': group['location']}
             for group in parsed['front_groups'] for front in group['fronts']]
     rows += [{**item, 'type': 'excluded'} for item in parsed['excluded_surfaces']]
+    return render_rows(pages, details, rows, witness_path, prefix, revision,
+        parsed['totals'], normalizations=normalizations, display_revision=display_revision)
+
+
+def planner_banner(width, revision, totals):
+    image = Image.new('RGB', (width, 108), 'white')
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.load_default(size=18)
+    draw.text((16, 10), f'{revision} | MODEL PLAN, NOT VERIFIED CONSTRUCTION', fill='#111827', font=font)
+    draw.text((16, 39), f'Blocks: {totals["blocks"]} | Shared parts: {totals["shared_parts"]}', fill='#374151', font=font)
+    draw.text((16, 72), 'B = assembly block; S = shared part. Boxes are approximate model locators.', fill='#374151', font=font)
+    return image
+
+
+def render_planner_overlays(witness_path, prefix):
+    witness = json.loads(Path(witness_path).read_text())
+    record = next(r for r in reversed(witness['provider_responses']) if r['stage'] == 'assembly_plan')
+    pages, details = decode_evidence_images(record['request'])
+    known = {r['view_id'] for _, meta in pages.values() for r in meta['view_regions']}
+    context = json.loads(record['request']['messages'][0]['content'][-1]['text'])
+    parsed = validate_assembly_plan(_json_object(record['response_text']), known,
+        planner_front_ids(context['fallible_front_reference'], known))
+    palette = list(COLORS)
+    rows = [{'id': item['id'], 'name': item['name'], **item['region'],
+        'type': palette[i % len(palette)], 'kind': 'block' if item in parsed['blocks'] else 'shared_part'}
+        for i, item in enumerate(parsed['blocks'] + parsed['shared_parts'])]
+    return render_rows(pages, details, rows, witness_path, prefix, record['prompt_version'],
+        {'blocks': len(parsed['blocks']), 'shared_parts': len(parsed['shared_parts'])}, make_banner=planner_banner)
+
+
+def render_rows(pages, details, rows, witness_path, prefix, revision, totals,
+                *, normalizations=None, display_revision=None, make_banner=banner):
+    normalizations = normalizations or []
+    display_revision = display_revision or revision
     if not rows:
         raise ValueError('no annotations to render')
     by_view, by_page, warnings = {}, {}, []
@@ -141,7 +175,7 @@ def render_overlays(witness_path, prefix, *, allow_label_aliases=False):
         raise ValueError('refuse overlay overwrite')
     page_ref, items = next(iter(by_page.items()))
     page = draw_annotations(pages[page_ref][0], items)
-    header = banner(page.width, display_revision, parsed['totals'])
+    header = make_banner(page.width, display_revision, totals)
     whole = Image.new('RGB', (page.width, page.height + header.height), 'white')
     whole.paste(header, (0, 0)); whole.paste(page, (0, header.height))
     whole.save(paths['page'])
@@ -152,7 +186,7 @@ def render_overlays(witness_path, prefix, *, allow_label_aliases=False):
         tiles.append(tile)
     tile_height = max(t.height for t in tiles)
     cols = min(2, len(tiles)); width = cols * 900 + 20
-    header = banner(width, display_revision, parsed['totals'])
+    header = make_banner(width, display_revision, totals)
     sheet = Image.new('RGB', (width, header.height + math.ceil(len(tiles) / cols) * (tile_height + 20)), '#f3f4f6')
     sheet.paste(header, (0, 0))
     for i, tile in enumerate(tiles):
@@ -160,7 +194,7 @@ def render_overlays(witness_path, prefix, *, allow_label_aliases=False):
     sheet.save(paths['details'])
     paths['coordinates'].write_text(json.dumps({'prompt_version': revision,
         'source_witness': str(witness_path), 'coordinate_convention': 'bbox_1000 on exact labelled detail; page_pixels exclude added output banner',
-        'model_totals': parsed['totals'], 'display_only_label_normalizations': normalizations,
+        'model_totals': totals, 'display_only_label_normalizations': normalizations,
         'warnings': warnings, 'annotations': rows}, ensure_ascii=False, indent=2))
     return {**{k: str(v) for k, v in paths.items()}, 'warnings': warnings,
         'display_only_label_normalizations': normalizations}
@@ -170,8 +204,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--witness', required=True)
     parser.add_argument('--output-prefix', required=True)
+    parser.add_argument('--planner', action='store_true', help='Render saved Planner block regions instead of Front boxes')
     parser.add_argument('--diagnostic-label-aliases', action='store_true',
         help='Display-only snake_case label spelling normalization; source failure remains unchanged')
     args = parser.parse_args()
-    print(json.dumps(render_overlays(args.witness, args.output_prefix,
-        allow_label_aliases=args.diagnostic_label_aliases)))
+    if args.planner and args.diagnostic_label_aliases:
+        parser.error('Planner has no island-label normalization mode')
+    result = (render_planner_overlays(args.witness, args.output_prefix) if args.planner else
+        render_overlays(args.witness, args.output_prefix, allow_label_aliases=args.diagnostic_label_aliases))
+    print(json.dumps(result))

@@ -1,0 +1,150 @@
+from copy import deepcopy
+from hashlib import sha256
+import json
+from types import SimpleNamespace
+
+import pytest
+
+import agents.estimation_understanding_agent as agent
+from tests.test_estimation_module_understanding import setup
+
+
+def plan():
+    return {'summary': 'Cabinet with two fronts', 'blocks': [{
+        'id': 'B01', 'name': 'Shared carcass', 'contains': 'Two fronted compartments',
+        'reason': 'One practical assembly; boundary assumed', 'front_ids': ['F01', 'F02'],
+        'view_ids': ['p1-view-001'],
+        'region': {'view_id': 'p1-view-001', 'bbox_1000': [100, 100, 800, 800]}}],
+        'shared_parts': [], 'front_conflicts': [], 'uncertainties': []}
+
+
+def front():
+    return {'island_types': [{'view_id': 'p1-view-001', 'type': 'front_elevation'}],
+        'front_groups': [{'fronts': [
+            {'id': fid, 'view_id': 'p1-view-001'} for fid in ('F01', 'F02')]}]}
+
+
+def test_rulebook_preserves_front_identity_and_versions_planner():
+    assert agent.CB_RULEBOOK['front']['name'] == 'CB Front V1'
+    assert agent.CB_RULEBOOK['planner']['name'] == 'CB Planner V2'
+    assert sha256(agent.FRONT_COUNT_PROMPT_PATH.read_text().strip().encode()).hexdigest() == '81b49dc8d2dd4c33a7459d824178ea8601ba241370a401e530bed2748dab0bb0'
+    prompt = agent.PLANNER_PROMPT_PATH.read_text()
+    assert sha256(prompt.strip().encode()).hexdigest() == 'd5e1b0de71d1053f89ba97cfeecc2352ac4ee126b54f9e8b245ce8df733c7335'
+    assert prompt.startswith('CB Planner V2')
+    assert 'Do not invent hidden partitions' in prompt
+    assert 'No target block count' in prompt
+
+
+def test_planner_one_call_retains_images_and_fallible_front_without_repair(monkeypatch):
+    row, pages, _ = setup(monkeypatch)
+    content, _ = agent.prepare_content([row], pages)
+    calls, records = [], []
+    saved = front(); before = deepcopy(saved)
+    def provider(*args, **kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(stop_reason='end_turn', content=[
+            SimpleNamespace(type='text', text=json.dumps(plan()))])
+    monkeypatch.setattr(agent, '_create_message_with_hard_timeout', provider)
+    result = agent.run_assembly_plan(inputs=[row], page_bytes=pages,
+        front_result=saved, front_status='failed', record=lambda *args: records.append(args[0]))
+    assert saved == before
+    assert len(calls) == 1 and records == ['assembly_plan']
+    request = calls[0]
+    assert request['messages'][0]['content'][:-1] == content
+    context = json.loads(request['messages'][0]['content'][-1]['text'])
+    assert context == {'saved_front_status': 'failed', 'fallible_front_reference': saved}
+    assert request['model'] == 'claude-haiku-5-5'
+    assert request['max_tokens'] == 6000 and request['output_config'] == {'effort': 'low'}
+    assert 'tools' not in request and 'temperature' not in request
+    assert result['assembly_plan'] == plan()
+    assert result['prompt_sha256'] == sha256(request['system'].encode()).hexdigest()
+
+
+@pytest.mark.parametrize('bad', ['missing', 'duplicate', 'foreign', 'empty', 'box', 'nan', 'bool',
+    'island', 'region', 'shared', 'self_shared', 'conflict_duplicate', 'unknown_conflict', 'extra'])
+def test_planner_contract_rejects_invalid_ownership_without_repair(bad):
+    p = plan(); b = p['blocks'][0]
+    if bad == 'missing': b['front_ids'].pop()
+    if bad == 'duplicate': p['blocks'].append({**deepcopy(b), 'id': 'B02'})
+    if bad == 'foreign': b['front_ids'] = ['other']
+    if bad == 'empty': p['blocks'] = []
+    if bad == 'box': b['region']['bbox_1000'] = [900, 0, 100, 300]
+    if bad == 'nan': b['region']['bbox_1000'][0] = float('nan')
+    if bad == 'bool': b['region']['bbox_1000'][0] = True
+    if bad == 'island': b['view_ids'] = ['foreign']
+    if bad == 'region': b['region']['view_id'] = 'foreign'
+    if bad in {'shared', 'self_shared'}:
+        p['shared_parts'] = [{'id': 'S01', 'name': 'Worktop', 'block_ids': ['B01', 'B02'] if bad == 'shared' else ['B01', 'B01'],
+            'view_ids': b['view_ids'], 'region': b['region']}]
+    if bad in {'conflict_duplicate', 'unknown_conflict'}:
+        p['front_conflicts'] = [{'front_id': 'F01' if bad == 'conflict_duplicate' else 'foreign', 'reason': 'fixed'}]
+    if bad == 'extra': p['materials'] = []
+    with pytest.raises(ValueError):
+        agent.validate_assembly_plan(p, {'p1-view-001'}, {'F01', 'F02'})
+
+
+def test_explicit_front_conflict_is_not_silently_dropped():
+    p = plan(); p['blocks'][0]['front_ids'] = ['F01']
+    p['front_conflicts'] = [{'front_id': 'F02', 'reason': 'Fixed outer side in overall view'}]
+    before = deepcopy(p)
+    assert agent.validate_assembly_plan(p, {'p1-view-001'}, {'F01', 'F02'}) == before
+
+
+def test_shared_worktop_has_two_existing_parents_and_single_record():
+    p = plan(); first = p['blocks'][0]; first['front_ids'] = ['F01']
+    p['blocks'].append({**deepcopy(first), 'id': 'B02', 'front_ids': ['F02']})
+    p['shared_parts'] = [{'id': 'S01', 'name': 'Continuous worktop', 'block_ids': ['B01', 'B02'],
+        'view_ids': first['view_ids'], 'region': first['region']}]
+    assert agent.validate_assembly_plan(p, {'p1-view-001'}, {'F01', 'F02'}) == p
+
+
+@pytest.mark.parametrize('bad', ['duplicate', 'foreign'])
+def test_invalid_front_reference_stops_before_paid_call(monkeypatch, bad):
+    row, pages, calls = setup(monkeypatch)
+    f = front()
+    if bad == 'duplicate': f['front_groups'][0]['fronts'][1]['id'] = 'F01'
+    else: f['front_groups'][0]['fronts'][0]['view_id'] = 'other'
+    with pytest.raises(ValueError):
+        agent.run_assembly_plan(inputs=[row], page_bytes=pages, front_result=f, front_status='failed')
+    assert calls == []
+
+
+def test_truncated_response_is_recorded_but_not_accepted(monkeypatch):
+    row, pages, _ = setup(monkeypatch)
+    monkeypatch.setattr(agent, '_create_message_with_hard_timeout', lambda *a, **kw:
+        SimpleNamespace(stop_reason='max_tokens', content=[]))
+    records = []
+    with pytest.raises(ValueError, match='did not finish'):
+        agent.run_assembly_plan(inputs=[row], page_bytes=pages, front_result=front(), front_status='failed',
+            record=lambda *args: records.append(args[0]))
+    assert records == ['assembly_plan']
+
+
+def test_planner_overlay_uses_saved_regions_without_editing_witness(monkeypatch, tmp_path):
+    from tools.render_estimation_front_overlay import render_planner_overlays
+    import base64
+    row, pages, _ = setup(monkeypatch)
+    # The minimal agent fixture lacks an OCR coordinate frame and intentionally
+    # has no image crops. Supply the renderer's real labelled-image contract.
+    image = {'type': 'image', 'source': {'data': base64.b64encode(pages['page']).decode()}}
+    region = {'view_id': 'p1-view-001', 'bbox_normalized': [.1, .1, .9, .9]}
+    content = [
+        {'type': 'text', 'text': json.dumps({'source_evidence_ref': 'page',
+            'view_regions': [region], 'displayed_image_pixels': [100, 100]})}, image,
+        {'type': 'text', 'text': json.dumps({'source_evidence_ref': 'page',
+            'detail_of_existing_view': region, 'generated_header_height_px': 32})}, image]
+    content.append({'type': 'text', 'text': json.dumps({'fallible_front_reference': front()})})
+    witness = tmp_path / 'witness.json'
+    witness.write_text(json.dumps({'provider_responses': [{'stage': 'assembly_plan',
+        'prompt_version': 'CB Planner V2', 'request': {'messages': [{'role': 'user', 'content': content}]},
+        'response_text': json.dumps(plan())}]}))
+    original = witness.read_bytes()
+    result = render_planner_overlays(witness, tmp_path / 'overlay')
+    from pathlib import Path
+    coordinates = json.loads(Path(result['coordinates']).read_text())
+    assert coordinates['model_totals'] == {'blocks': 1, 'shared_parts': 0}
+    assert coordinates['annotations'][0]['bbox_1000'] == plan()['blocks'][0]['region']['bbox_1000']
+    assert coordinates['annotations'][0]['kind'] == 'block'
+    assert witness.read_bytes() == original
+    with pytest.raises(ValueError, match='overwrite'):
+        render_planner_overlays(witness, tmp_path / 'overlay')

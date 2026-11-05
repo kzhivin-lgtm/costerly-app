@@ -18,6 +18,31 @@ protected. Pre-existing TODO changes belong to the owner.
 
 ### Current V6.2 boundary and results, 2026-11-05
 
+Latest diagnostic: **CB Planner V2**, simplified after the unexecuted V1 chat
+draft. **CB Front V1** is the short owner-facing alias for exact selected r03;
+its hash and historical technical name remain unchanged. The single Cabinet
+Block rulebook has Front and Planner sections, indexed by CB_RULEBOOK in the
+existing understanding agent. --plan-assemblies consumes a saved Front witness
+with identical immutable inputs/page bytes, then makes ONE Haiku 5.5 low-effort
+Planner call. It does not rerun Front or change production call orchestration.
+Prompt: agents/prompts/cb_planner_v2.md, SHA256
+d5e1b0de71d1053f89ba97cfeecc2352ac4ee126b54f9e8b245ce8df733c7335.
+Output is a short plan: blocks, shared parts, front ownership/conflicts and
+review boxes. Hidden panel detail, materials, dimensions and labor are excluded.
+
+First probes, NOT accepted: Lev1 8.864 s, 2 blocks; Lev2 18.404 s, 4 blocks
+plus shared worktop. Both JSON contracts pass. Lev1 combines drawer base and
+tall screen, invents a booth interpretation and only one table leg. Lev2
+overmerges whole runs/tall structure, calls an L kitchen U-shaped and explicitly
+omits upper open shelving from the blocks. Box review confirms overbroad B03
+(includes B04's location) and incomplete S01 worktop footprint. Scope/geometry
+errors matter more than mismatch with owner's preferred 3/8 block counts.
+No prompt retries, promotion or production changes. Front checkpoint is intact.
+Durable evidence: notes/evidence/cb-planner-v2-2026-11-05/.
+Authoritative status and next proposal remain in notes/TODO.md.
+Verification: 128 focused tests pass; Front hash unchanged. No full-suite,
+production UI or end-to-end material-estimate acceptance claimed.
+
 Current selected prompt: estimation_front_count_v6_2_r03, restored byte-for-byte
 (system SHA256 81b49dc8d2dd4c33a7459d824178ea8601ba241370a401e530bed2748dab0bb0).
 Owner accepted its current imperfections and requested a checkpoint before

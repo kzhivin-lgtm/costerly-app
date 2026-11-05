@@ -1,0 +1,163 @@
+{
+  "prompt_version": "CB Planner V2",
+  "prompt_sha256": "d5e1b0de71d1053f89ba97cfeecc2352ac4ee126b54f9e8b245ce8df733c7335",
+  "request_sha256": "8466239aadac4b733075d5257c423991dfa929ec0fce8190889412e374ea2da9",
+  "original_witness_sha256": "69d7dab29e9d1cab2078a868f29b7034cdb29ac5fe31dc0af8d01543c467121a",
+  "original_status": "assembly_plan_requires_review",
+  "model": "claude-haiku-5-5",
+  "elapsed_seconds": 8.864,
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 13310,
+    "output_tokens": 1612,
+    "output_tokens_details": {
+      "thinking_tokens": 949
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+  },
+  "front_status": "failed",
+  "front_prompt_version": "estimation_front_count_v6_2_r03",
+  "front_witness_sha256": "9e6f7780e758094010258226b309fae61ff841b33fd02ce685d702470971796d",
+  "response_text": "{\n  \"summary\": \"A fixed built-in booth bench with a tall slatted back, a three-drawer base, and an attached fixed table on a single leg.\",\n  \"blocks\": [\n    {\n      \"id\": \"B01\",\n      \"name\": \"Booth bench with slatted back and drawer base\",\n      \"contains\": \"Base carcass with three drawer fronts, seat deck, tall slatted back panel with its vertical slats, and the plinth.\",\n      \"reason\": \"One cabinet block: the base drawers share one carcass and connect directly to the seat and the fixed slatted back. The boundary is supported by the continuous carcass shown in the side and rear views.\",\n      \"front_ids\": [\"F01\", \"F02\", \"F03\"],\n      \"view_ids\": [\"p1-view-001\", \"p1-view-003\", \"p1-view-004\", \"p1-view-005\", \"p1-view-006\"],\n      \"region\": {\"view_id\": \"p1-view-001\", \"bbox_1000\": [70, 120, 650, 940]}\n    },\n    {\n      \"id\": \"B02\",\n      \"name\": \"Fixed table top with single leg\",\n      \"contains\": \"Rectangular table top at seat-height level and its single visible support leg.\",\n      \"reason\": \"A tabletop with its leg forms one practical unit. The boundary is assumed, because the table is shown projecting from the booth but its fixing is not explicit in the drawings.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p1-view-001\", \"p1-view-003\", \"p1-view-005\", \"p1-view-006\"],\n      \"region\": {\"view_id\": \"p1-view-001\", \"bbox_1000\": [640, 470, 930, 770]}\n    }\n  ],\n  \"shared_parts\": [],\n  \"front_conflicts\": [],\n  \"uncertainties\": [\n    \"It is unclear whether the table top is fixed to the booth carcass or to a separate support, so B02 may need to join B01.\",\n    \"The side view suggests the table top projects from the booth side, but the exact fixing is not shown.\"\n  ]\n}",
+  "parsed_response": {
+    "summary": "A fixed built-in booth bench with a tall slatted back, a three-drawer base, and an attached fixed table on a single leg.",
+    "blocks": [
+      {
+        "id": "B01",
+        "name": "Booth bench with slatted back and drawer base",
+        "contains": "Base carcass with three drawer fronts, seat deck, tall slatted back panel with its vertical slats, and the plinth.",
+        "reason": "One cabinet block: the base drawers share one carcass and connect directly to the seat and the fixed slatted back. The boundary is supported by the continuous carcass shown in the side and rear views.",
+        "front_ids": [
+          "F01",
+          "F02",
+          "F03"
+        ],
+        "view_ids": [
+          "p1-view-001",
+          "p1-view-003",
+          "p1-view-004",
+          "p1-view-005",
+          "p1-view-006"
+        ],
+        "region": {
+          "view_id": "p1-view-001",
+          "bbox_1000": [
+            70,
+            120,
+            650,
+            940
+          ]
+        }
+      },
+      {
+        "id": "B02",
+        "name": "Fixed table top with single leg",
+        "contains": "Rectangular table top at seat-height level and its single visible support leg.",
+        "reason": "A tabletop with its leg forms one practical unit. The boundary is assumed, because the table is shown projecting from the booth but its fixing is not explicit in the drawings.",
+        "front_ids": [],
+        "view_ids": [
+          "p1-view-001",
+          "p1-view-003",
+          "p1-view-005",
+          "p1-view-006"
+        ],
+        "region": {
+          "view_id": "p1-view-001",
+          "bbox_1000": [
+            640,
+            470,
+            930,
+            770
+          ]
+        }
+      }
+    ],
+    "shared_parts": [],
+    "front_conflicts": [],
+    "uncertainties": [
+      "It is unclear whether the table top is fixed to the booth carcass or to a separate support, so B02 may need to join B01.",
+      "The side view suggests the table top projects from the booth side, but the exact fixing is not shown."
+    ]
+  },
+  "coordinates": {
+    "prompt_version": "CB Planner V2",
+    "source_witness": "/private/tmp/cb-planner-v2-lev1-01.json",
+    "coordinate_convention": "bbox_1000 on exact labelled detail; page_pixels exclude added output banner",
+    "model_totals": {
+      "blocks": 2,
+      "shared_parts": 0
+    },
+    "display_only_label_normalizations": [],
+    "warnings": [],
+    "annotations": [
+      {
+        "id": "B01",
+        "name": "Booth bench with slatted back and drawer base",
+        "view_id": "p1-view-001",
+        "bbox_1000": [
+          70,
+          120,
+          650,
+          940
+        ],
+        "type": "hinged",
+        "kind": "block",
+        "detail_pixels": [
+          32.34,
+          70.92,
+          300.3,
+          555.54
+        ],
+        "page_pixels": [
+          137.34,
+          122.92,
+          405.3,
+          607.54
+        ]
+      },
+      {
+        "id": "B02",
+        "name": "Fixed table top with single leg",
+        "view_id": "p1-view-001",
+        "bbox_1000": [
+          640,
+          470,
+          930,
+          770
+        ],
+        "type": "drawer",
+        "kind": "block",
+        "detail_pixels": [
+          295.68,
+          277.77,
+          429.66,
+          455.07
+        ],
+        "page_pixels": [
+          400.68,
+          329.77,
+          534.6600000000001,
+          507.07
+        ]
+      }
+    ]
+  },
+  "review": {
+    "semantic_acceptance": "failed",
+    "full_page_overlay_visually_inspected": true,
+    "manual_box_correction": false,
+    "scope": "one isolated Planner call from saved Front; no production change",
+    "issues": [
+      "Base and tall screen merged as one booth assembly",
+      "Only one table leg reported; source shows two"
+    ]
+  }
+}

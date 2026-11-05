@@ -16,6 +16,13 @@ PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_understanding_v6_2
 ISLAND_TYPES_PROMPT_PATH = PROMPT_PATH.with_name("estimation_island_types_v6_2.md")
 FRONT_COUNT_PROMPT_PATH = PROMPT_PATH.with_name("estimation_front_count_v6_2.md")
 FRONT_COUNT_PROMPT_VERSION = "estimation_front_count_v6_2_r03"
+PLANNER_PROMPT_PATH = PROMPT_PATH.with_name("cb_planner_v2.md")
+PLANNER_PROMPT_VERSION = "CB Planner V2"
+# One rulebook, two consumers. Existing Front technical identity stays immutable.
+CB_RULEBOOK = {
+    'front': {'name': 'CB Front V1', 'version': FRONT_COUNT_PROMPT_VERSION, 'path': FRONT_COUNT_PROMPT_PATH},
+    'planner': {'name': PLANNER_PROMPT_VERSION, 'version': PLANNER_PROMPT_VERSION, 'path': PLANNER_PROMPT_PATH},
+}
 
 ISLAND_TYPES = ['Front elevation', 'Side view', 'Rear view', 'Top view',
     'Bottom view', 'Axonometric view', 'Perspective view', 'Section', 'Undetermined']
@@ -238,6 +245,114 @@ def validate_front_count(parsed, known, *, require_annotations=False):
     return parsed
 
 
+def planner_front_ids(front_result, known):
+    """Read fallible saved Front references without repairing its classifications."""
+    if not isinstance(front_result, dict) or not isinstance(front_result.get('front_groups'), list):
+        raise ValueError('saved Front result required')
+    ids = set()
+    for group in front_result['front_groups']:
+        if not isinstance(group, dict) or not isinstance(group.get('fronts'), list):
+            raise ValueError('saved Front annotations required')
+        for front in group['fronts']:
+            if not isinstance(front, dict):
+                raise ValueError('invalid saved Front reference')
+            fid = front.get('id')
+            if (not isinstance(fid, str) or not fid or fid in ids or
+                    front.get('view_id') not in known):
+                raise ValueError('invalid/duplicate/foreign saved Front reference')
+            ids.add(fid)
+    return ids
+
+
+def validate_assembly_plan(parsed, known, front_ids):
+    """Validate scope and references, not buildability or visual correctness."""
+    if not isinstance(parsed, dict) or set(parsed) != {'summary', 'blocks', 'shared_parts', 'front_conflicts', 'uncertainties'}:
+        raise ValueError('invalid Planner fields')
+    def words(value):
+        if not isinstance(value, str) or not value.strip() or len(value) > 1500:
+            raise ValueError('bounded Planner text required')
+    def refs(values, allowed, minimum=1):
+        if (not isinstance(values, list) or len(values) < minimum or
+                any(not isinstance(v, str) or v not in allowed for v in values) or
+                len(set(values)) != len(values)):
+            raise ValueError('invalid Planner references')
+    def region(item):
+        refs(item['view_ids'], known)
+        r = item['region']
+        if not isinstance(r, dict) or set(r) != {'view_id', 'bbox_1000'} or r['view_id'] not in item['view_ids']:
+            raise ValueError('invalid Planner region')
+        b = r['bbox_1000']
+        if (not isinstance(b, list) or len(b) != 4 or
+                any(type(v) not in (int, float) or not math.isfinite(v) or not 0 <= v <= 1000 for v in b) or
+                b[0] >= b[2] or b[1] >= b[3]):
+            raise ValueError('invalid Planner box')
+    words(parsed['summary'])
+    for key in ('blocks', 'shared_parts', 'front_conflicts', 'uncertainties'):
+        if not isinstance(parsed[key], list) or len(parsed[key]) > 200:
+            raise ValueError('bounded Planner lists required')
+    if not parsed['blocks']:
+        raise ValueError('Planner blocks required')
+    ids, assigned = set(), set()
+    def identity(item):
+        words(item['id']); words(item['name'])
+        if item['id'] in ids:
+            raise ValueError('duplicate Planner ID')
+        ids.add(item['id'])
+        region(item)
+    for block in parsed['blocks']:
+        if not isinstance(block, dict) or set(block) != {'id', 'name', 'contains', 'reason', 'front_ids', 'view_ids', 'region'}:
+            raise ValueError('invalid Planner block')
+        identity(block); words(block['contains']); words(block['reason'])
+        refs(block['front_ids'], front_ids, 0)
+        if assigned.intersection(block['front_ids']):
+            raise ValueError('front assigned twice')
+        assigned.update(block['front_ids'])
+    block_ids = set(ids)
+    for part in parsed['shared_parts']:
+        if not isinstance(part, dict) or set(part) != {'id', 'name', 'block_ids', 'view_ids', 'region'}:
+            raise ValueError('invalid shared part')
+        identity(part); refs(part['block_ids'], block_ids, 2)
+    for conflict in parsed['front_conflicts']:
+        if not isinstance(conflict, dict) or set(conflict) != {'front_id', 'reason'}:
+            raise ValueError('invalid front conflict')
+        refs([conflict['front_id']], front_ids); words(conflict['reason'])
+        if conflict['front_id'] in assigned:
+            raise ValueError('front assigned twice')
+        assigned.add(conflict['front_id'])
+    if assigned != front_ids:
+        raise ValueError('omitted Front references')
+    for uncertainty in parsed['uncertainties']:
+        words(uncertainty)
+    return parsed
+
+
+def run_assembly_plan(*, inputs, page_bytes, front_result, front_status, record=None):
+    """One isolated Planner probe consuming saved Front; no implicit Front call."""
+    if len(inputs) != 1:
+        raise ValueError('Planner experiment requires exactly one object')
+    content, manifests = prepare_content(inputs, page_bytes)
+    known = {v['view_id'] for v in manifests[0]['known_views']}
+    if not known:
+        raise ValueError('Planner requires Detection-owned islands')
+    fronts = planner_front_ids(front_result, known)
+    context = json.dumps({'saved_front_status': front_status, 'fallible_front_reference': front_result}, ensure_ascii=False)
+    if len(context) > 100000:
+        raise ValueError('Front reference exceeds bound')
+    content.append({'type': 'text', 'text': context})
+    request = {'model': MODEL, 'max_tokens': 6000, 'output_config': {'effort': 'low'},
+        'system': PLANNER_PROMPT_PATH.read_text().strip(), 'messages': [{'role': 'user', 'content': content}]}
+    response = _create_message_with_hard_timeout(
+        get_anthropic_client().with_options(timeout=60, max_retries=0), timeout_seconds=60, **request)
+    if record:
+        record('assembly_plan', request, response)
+    if getattr(response, 'stop_reason', None) != 'end_turn':
+        raise ValueError('Planner response did not finish normally')
+    parsed = validate_assembly_plan(_json_object(extract_text_from_claude_response(response)), known, fronts)
+    return {'version': VERSION, 'status': 'assembly_plan_requires_review',
+        'prompt_version': PLANNER_PROMPT_VERSION, 'prompt_sha256': sha256(request['system'].encode()).hexdigest(),
+        'input_id': manifests[0]['input_id'], 'assembly_plan': parsed}
+
+
 def run_front_count(*, inputs, page_bytes, record=None):
     """Approved single-object prompt experiment, not an added production stage."""
     if len(inputs) != 1:
@@ -419,13 +534,13 @@ def report_html(result):
 def export_report(witness, path):
     """Retain readable model output even when its transport contract failed."""
     from html import escape
-    records = [r for r in witness.get('provider_responses', []) if r['stage'] in {'understanding', 'island_types', 'island_map', 'front_count'}]
+    records = [r for r in witness.get('provider_responses', []) if r['stage'] in {'understanding', 'island_types', 'island_map', 'front_count', 'assembly_plan'}]
     raw = records[-1]['response_text'] if records else 'No model response received'
     try:
         result = witness.get('understanding') or _json_object(raw)
-        if 'front_count' in result:
+        if 'front_count' in result or 'assembly_plan' in result:
             report = ('<!doctype html><html lang="en"><meta charset="utf-8">'
-                '<h1>V6.2: front count, interpretation requires review</h1>'
+                '<h1>V6.2: interpretation requires review</h1>'
                 '<pre style="white-space:pre-wrap">' + escape(raw) + '</pre></html>')
         else:
             report = report_html(result)

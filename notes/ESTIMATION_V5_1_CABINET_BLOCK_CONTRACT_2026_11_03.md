@@ -11,6 +11,31 @@ replacement for this downstream construction/hardware contract. Its known
 false doors are not certified material demand. The 1000/2000-mm owner hinge
 revision below is tested locally and is not claimed deployed by this checkpoint.
 
+## Shared Cabinet Block rulebook, V6 experimental consumers
+
+One rulebook with two sections, not two mandatory new provider stages:
+
+- **CB Front V1**: front interpretation/counting and hardware mapping. This
+  is the short display name for the exact selected technical prompt
+  `estimation_front_count_v6_2_r03`, not a new prompt or renumbered experiment.
+  Source: agents/prompts/estimation_front_count_v6_2.md. Historical r01/r02/r04
+  identities remain unchanged. Runtime registry: CB_RULEBOOK in
+  agents/estimation_understanding_agent.py.
+- **CB Planner V1**: proposed chat draft, not executed. It included detailed
+  internal-compartment/shared-part reasoning. Owner requested simplification.
+- **CB Planner V2**: agents/prompts/cb_planner_v2.md. Group into large practical
+  preassembled units, balancing assembly effort against manageable transport.
+  No invented hidden partitions, detailed panels, materials or labor. Receives
+  original images plus fallible saved Front output. Short blocks/shared-parts
+  list with referenced fronts and image-local review boxes. Assembly boundaries
+  and transport suitability remain assumptions unless explicitly established.
+
+V2 is a diagnostic candidate, NOT an accepted assembly-planning checkpoint.
+One Planner call per probe consumes an existing Front witness without rerunning
+Front. Production Analyze/Calculation orchestration is unchanged. Keep per-run
+Front IDs local and record conflicts explicitly rather than dropping them.
+The full live results and limitations are in the V6 design record and TODO.
+
 ## Scope
 
 V5.1 starts at the immutable `estimation_input_v4` package. Detection identity,

@@ -624,6 +624,83 @@ Pending P1: exact enum-output compliance before production integration; no
 automatic prompt revision, rerun, silent normalization or production release.
 This confirms this sample's semantic classification/count only, not general
 robustness, large-assembly decomposition, material accuracy or full cycle.
+Major-assembly design discussion, USER REQUEST, 2026-11-05, same 3.17.4.5:
+Status pending contract approval, P0. Cabinet Block must distinguish a physical
+assembly/carcass from its internal compartments and operating fronts. Owner
+prefers practical larger workshop assemblies with shared internal partitions,
+not a separate double-sided cabinet behind every front. Two lift-up compartments
+in one carcass can have two outer sides + one shared partition instead of four
+sides in two separate cabinets. A door pair does not by itself prove two bays
+or a required central partition. These are construction hypotheses unless
+explicit source evidence defines the assembly boundaries.
+Owner Lev2 reference: eight assemblies: separately hanging cabinet; three
+lower assemblies (chamfered-end group, drawer/corner group, remaining lower
+run); upper corner door/open-shelf unit; combined two-lift-up unit; tall unit
+with two drawers/appliance opening/two doors; remaining upper two-door/end
+structure. This is a preferred, subjective decomposition, not a mandatory
+model target. Lev1 reference is THREE assemblies: lower carcass with drawers,
+decorative vertical construction, worktop WITH legs. Supersedes the earlier
+assistant's four-part suggestion as this owner's top-level grouping example.
+AGENT PROPOSAL, not implemented: extend/reuse existing components contract
+with parent membership, front ownership and compartment/shared-part topology;
+record source/visual/assumption basis and one short grouping reason. Preserve
+one shared countertop spanning several carcasses without duplicating material.
+Prefer practical grouping, not unlimited merging for minimal wall count;
+respect explicit construction and plausible support/handling constraints.
+Evaluation proposal: full physical coverage, each front assigned once, no
+duplicated shared parts, distinguish bay count from front count, explain
+assumed boundaries, inspect grouped overlay. Judge justified alternatives,
+not exact eight/three totals. No example counts/IDs in generic model prompt.
+Keep r03 checkpoint intact; no paid call, runtime/schema change or added
+provider stage authorized by this design discussion. Labor remains excluded.
+Owner clarification: Cabinet Block is ONE authoritative rulebook with TWO
+sections consumed by the respective interpretation/planning tools, not two
+independent libraries or an instruction to add provider calls. Owner-selected
+short names: Cabinet Block Front (drawer/hinged/lift-up versus fixed surfaces,
+counting and existing hardware mapping) and Cabinet Block Planner (shared carcasses,
+compartments, partition ownership and assembly boundaries). The latter consumes
+front interpretation rather than maintaining a competing classification policy.
+These short names supersede the proposed Front Interpretation / Assembly Planning names.
+Runtime extraction/wiring and the assembly output contract remain pending.
+OWNER-APPROVED SIMPLIFICATION / CB Planner V2, 2026-11-05, same 3.17.4.5:
+The preceding pending contract/wiring restriction is superseded ONLY for the
+bounded Planner experiment. Front display name is CB Front V1, mapping to the
+unchanged r03 technical prompt/hash. Planner V1 was the unexecuted chat draft;
+V2 is the simplified prompt. Prefer large units that can reasonably be assembled
+before moving them, balancing assembly effort and transport practicality.
+No hidden partition inventory or detailed construction at this stage.
+Implemented via existing understanding agent/probe and shared CB_RULEBOOK;
+not a replacement production pipeline. One Planner call per file consumes
+saved Front plus identical source pages/inputs, no new Front or Detection call.
+Exact fixture equality prevents foreign Front handoff; existing failed Front
+enum status remains visible as fallible context, never silently repaired.
+V2 SHA256 d5e1b0de71d1053f89ba97cfeecc2352ac4ee126b54f9e8b245ce8df733c7335.
+Live results: Lev1 8.864 s, 2 blocks; Lev2 18.404 s, 4 blocks + shared worktop.
+Both complete normally and pass scope/reference/box validation, but semantic
+acceptance FAILS. Lev1 merges the base with the tall decorative structure,
+calls the item a booth bench, and loses one of two table legs. Lev2 groups
+entire lower/upper runs and a tall structure into broad assemblies, calls the
+L-shaped kitchen U-shaped, and explicitly leaves upper open shelving unassigned.
+F24 ambiguity stays assigned as a hinged front instead of a front_conflict.
+It also inserts unsupported mm into one uncertainty despite the prompt ban.
+Review overlays inspected: Lev2 B03 box includes separately assigned B04;
+the shared-worktop box does not cover the complete L footprint. No manual
+coordinate corrections. This is not a pure block-count mismatch: physical
+scope and geometric interpretation are wrong. No automatic V3 prompt retry.
+Artifacts: /private/tmp/cb-planner-v2-lev1-01.json and
+/private/tmp/cb-planner-v2-lev2-01.json; same prefixes with -assembly_plan-raw.txt,
+-overlay-page.png, -overlay-details.png and -overlay-coordinates.json.
+Durable final outputs/reviews: notes/evidence/cb-planner-v2-2026-11-05/.
+Status: completed experiment, not accepted, P0. Front r03 checkpoint remains
+valid within its accepted limits; Planner is opt-in diagnostic only. No main
+merge/deployment/Calculation. Next proposal: review the actual grouping with
+owner, then test physical module boundaries rather than another vague request
+for large blocks. This proposal is not an approved V3 implementation.
+Verification: 128 focused tests pass, including unchanged Front fingerprint,
+Planner prompt hash, one-call/source preservation, ownership/conflict checks,
+invalid boxes/references, truncation recording and non-mutating overlay export.
+Full suite/live product integration were not tested. Structural tests do not
+override the two semantic failures recorded above.
 Owner authorized all necessary bounded paid replays and Anthropic evidence
 transmission until readiness for production and personal acceptance.
 [verified] Capsules 02-06 retain raw responses/usage before validation. No

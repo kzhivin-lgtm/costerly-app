@@ -1,0 +1,323 @@
+{
+  "prompt_version": "CB Planner V2",
+  "prompt_sha256": "d5e1b0de71d1053f89ba97cfeecc2352ac4ee126b54f9e8b245ce8df733c7335",
+  "request_sha256": "f07d51c218e4bc01fdcb660f778920f506d7a7c1f3a07e10b7ede7ecd5120268",
+  "original_witness_sha256": "8e753abeaceca1e05e3ecd8c46f67d09472ca69b3f4ba0b02e40dfb87cb5faef",
+  "original_status": "assembly_plan_requires_review",
+  "model": "claude-haiku-5-5",
+  "elapsed_seconds": 18.404,
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 14679,
+    "output_tokens": 3621,
+    "output_tokens_details": {
+      "thinking_tokens": 2368
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+  },
+  "front_status": "front_count_requires_review",
+  "front_prompt_version": "estimation_front_count_v6_2_r03",
+  "front_witness_sha256": "06f8034557839b4bbf8d78a327e1727bcc1bb6d613ce33c7d897bb16da26d1e8",
+  "response_text": "{\n  \"summary\": \"A U-shaped kitchen run with a 45-degree corner, a return wing ending in a tall tower, and a separate upper cabinet pair.\",\n  \"blocks\": [\n    {\n      \"id\": \"B01\",\n      \"name\": \"Main wall base run with corner stack\",\n      \"contains\": \"Lower base cabinets along the main wall, including five hinged doors, the corner door and two drawers at the right end.\",\n      \"reason\": \"One carcass run along the main wall with a continuous base line. The boundary at the return gap (94) is shown explicitly, so the block stops there. The left end run is included as part of the same base line (assumed).\",\n      \"front_ids\": [\"F01\", \"F02\", \"F03\", \"F04\", \"F05\", \"F06\", \"F07\", \"F08\"],\n      \"view_ids\": [\"p1-view-003\", \"p1-view-001\"],\n      \"region\": {\"view_id\": \"p1-view-003\", \"bbox_1000\": [90, 570, 740, 870]}\n    },\n    {\n      \"id\": \"B02\",\n      \"name\": \"Main wall upper cabinet assembly\",\n      \"contains\": \"Upper cabinets along the main wall, including the tall left upper unit, three portrait doors, and two lift-up fronts.\",\n      \"reason\": \"Hanging units on the same wall are grouped as one upper assembly. The boundary is assumed from the continuous upper line in the front elevation.\",\n      \"front_ids\": [\"F09\", \"F10\", \"F11\", \"F12\", \"F13\", \"F14\"],\n      \"view_ids\": [\"p1-view-003\"],\n      \"region\": {\"view_id\": \"p1-view-003\", \"bbox_1000\": [100, 190, 980, 500]}\n    },\n    {\n      \"id\": \"B03\",\n      \"name\": \"Return wing base run with tall tower\",\n      \"contains\": \"Base cabinets of the return wing with its drawer bank, plus the tall tower at the wing end.\",\n      \"reason\": \"The return run and the tower share one carcass line in the elevation. Grouping the tower here is assumed; it could be separated if it is a distinct unit.\",\n      \"front_ids\": [\"F17\", \"F18\", \"F19\", \"F20\", \"F21\", \"F22\", \"F23\", \"F24\"],\n      \"view_ids\": [\"p1-view-004\", \"p1-view-002\"],\n      \"region\": {\"view_id\": \"p1-view-004\", \"bbox_1000\": [120, 100, 850, 910]}\n    },\n    {\n      \"id\": \"B04\",\n      \"name\": \"Separate upper cabinet pair\",\n      \"contains\": \"A freestanding pair of tall upper cabinet doors, separated from the main run.\",\n      \"reason\": \"Clearly separate hanging unit in the plan and axonometric views, so it is kept as its own block.\",\n      \"front_ids\": [\"F15\", \"F16\"],\n      \"view_ids\": [\"p1-view-004\", \"p1-view-002\"],\n      \"region\": {\"view_id\": \"p1-view-004\", \"bbox_1000\": [120, 105, 345, 475]}\n    }\n  ],\n  \"shared_parts\": [\n    {\n      \"id\": \"S01\",\n      \"name\": \"Continuous worktop with sink and corner\",\n      \"block_ids\": [\"B01\", \"B03\"],\n      \"view_ids\": [\"p1-view-001\", \"p1-view-002\"],\n      \"region\": {\"view_id\": \"p1-view-001\", \"bbox_1000\": [60, 80, 950, 700]}\n    }\n  ],\n  \"front_conflicts\": [],\n  \"uncertainties\": [\n    \"F24 may be a fixed panel rather than a door; it is kept in B03 as a hinged tall front.\",\n    \"The open cubby shelving at the top-left of the axonometric view is not assigned to any block.\",\n    \"Whether the 69 mm left end run belongs to B01 or to the upper group is assumed from the continuous base line.\"\n  ]\n}",
+  "parsed_response": {
+    "summary": "A U-shaped kitchen run with a 45-degree corner, a return wing ending in a tall tower, and a separate upper cabinet pair.",
+    "blocks": [
+      {
+        "id": "B01",
+        "name": "Main wall base run with corner stack",
+        "contains": "Lower base cabinets along the main wall, including five hinged doors, the corner door and two drawers at the right end.",
+        "reason": "One carcass run along the main wall with a continuous base line. The boundary at the return gap (94) is shown explicitly, so the block stops there. The left end run is included as part of the same base line (assumed).",
+        "front_ids": [
+          "F01",
+          "F02",
+          "F03",
+          "F04",
+          "F05",
+          "F06",
+          "F07",
+          "F08"
+        ],
+        "view_ids": [
+          "p1-view-003",
+          "p1-view-001"
+        ],
+        "region": {
+          "view_id": "p1-view-003",
+          "bbox_1000": [
+            90,
+            570,
+            740,
+            870
+          ]
+        }
+      },
+      {
+        "id": "B02",
+        "name": "Main wall upper cabinet assembly",
+        "contains": "Upper cabinets along the main wall, including the tall left upper unit, three portrait doors, and two lift-up fronts.",
+        "reason": "Hanging units on the same wall are grouped as one upper assembly. The boundary is assumed from the continuous upper line in the front elevation.",
+        "front_ids": [
+          "F09",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14"
+        ],
+        "view_ids": [
+          "p1-view-003"
+        ],
+        "region": {
+          "view_id": "p1-view-003",
+          "bbox_1000": [
+            100,
+            190,
+            980,
+            500
+          ]
+        }
+      },
+      {
+        "id": "B03",
+        "name": "Return wing base run with tall tower",
+        "contains": "Base cabinets of the return wing with its drawer bank, plus the tall tower at the wing end.",
+        "reason": "The return run and the tower share one carcass line in the elevation. Grouping the tower here is assumed; it could be separated if it is a distinct unit.",
+        "front_ids": [
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24"
+        ],
+        "view_ids": [
+          "p1-view-004",
+          "p1-view-002"
+        ],
+        "region": {
+          "view_id": "p1-view-004",
+          "bbox_1000": [
+            120,
+            100,
+            850,
+            910
+          ]
+        }
+      },
+      {
+        "id": "B04",
+        "name": "Separate upper cabinet pair",
+        "contains": "A freestanding pair of tall upper cabinet doors, separated from the main run.",
+        "reason": "Clearly separate hanging unit in the plan and axonometric views, so it is kept as its own block.",
+        "front_ids": [
+          "F15",
+          "F16"
+        ],
+        "view_ids": [
+          "p1-view-004",
+          "p1-view-002"
+        ],
+        "region": {
+          "view_id": "p1-view-004",
+          "bbox_1000": [
+            120,
+            105,
+            345,
+            475
+          ]
+        }
+      }
+    ],
+    "shared_parts": [
+      {
+        "id": "S01",
+        "name": "Continuous worktop with sink and corner",
+        "block_ids": [
+          "B01",
+          "B03"
+        ],
+        "view_ids": [
+          "p1-view-001",
+          "p1-view-002"
+        ],
+        "region": {
+          "view_id": "p1-view-001",
+          "bbox_1000": [
+            60,
+            80,
+            950,
+            700
+          ]
+        }
+      }
+    ],
+    "front_conflicts": [],
+    "uncertainties": [
+      "F24 may be a fixed panel rather than a door; it is kept in B03 as a hinged tall front.",
+      "The open cubby shelving at the top-left of the axonometric view is not assigned to any block.",
+      "Whether the 69 mm left end run belongs to B01 or to the upper group is assumed from the continuous base line."
+    ]
+  },
+  "coordinates": {
+    "prompt_version": "CB Planner V2",
+    "source_witness": "/private/tmp/cb-planner-v2-lev2-01.json",
+    "coordinate_convention": "bbox_1000 on exact labelled detail; page_pixels exclude added output banner",
+    "model_totals": {
+      "blocks": 4,
+      "shared_parts": 1
+    },
+    "display_only_label_normalizations": [],
+    "warnings": [],
+    "annotations": [
+      {
+        "id": "B01",
+        "name": "Main wall base run with corner stack",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          90,
+          570,
+          740,
+          870
+        ],
+        "type": "hinged",
+        "kind": "block",
+        "detail_pixels": [
+          77.85,
+          408.11999999999995,
+          640.1,
+          622.92
+        ],
+        "page_pixels": [
+          236.85,
+          1067.12,
+          799.1,
+          1281.92
+        ]
+      },
+      {
+        "id": "B02",
+        "name": "Main wall upper cabinet assembly",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          100,
+          190,
+          980,
+          500
+        ],
+        "type": "drawer",
+        "kind": "block",
+        "detail_pixels": [
+          86.5,
+          136.04,
+          847.6999999999999,
+          358
+        ],
+        "page_pixels": [
+          245.5,
+          795.04,
+          1006.6999999999999,
+          1017
+        ]
+      },
+      {
+        "id": "B03",
+        "name": "Return wing base run with tall tower",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          120,
+          100,
+          850,
+          910
+        ],
+        "type": "lift_up",
+        "kind": "block",
+        "detail_pixels": [
+          90,
+          59.2,
+          637.5,
+          538.72
+        ],
+        "page_pixels": [
+          1179,
+          791.2,
+          1726.5,
+          1270.72
+        ]
+      },
+      {
+        "id": "B04",
+        "name": "Separate upper cabinet pair",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          120,
+          105,
+          345,
+          475
+        ],
+        "type": "unresolved",
+        "kind": "block",
+        "detail_pixels": [
+          90,
+          62.16,
+          258.75,
+          281.2
+        ],
+        "page_pixels": [
+          1179,
+          794.16,
+          1347.75,
+          1013.2
+        ]
+      },
+      {
+        "id": "S01",
+        "name": "Continuous worktop with sink and corner",
+        "view_id": "p1-view-001",
+        "bbox_1000": [
+          60,
+          80,
+          950,
+          700
+        ],
+        "type": "excluded",
+        "kind": "shared_part",
+        "detail_pixels": [
+          56.82,
+          59.68,
+          899.65,
+          522.1999999999999
+        ],
+        "page_pixels": [
+          133.82,
+          38.68,
+          976.65,
+          501.19999999999993
+        ]
+      }
+    ]
+  },
+  "review": {
+    "semantic_acceptance": "failed",
+    "full_page_overlay_visually_inspected": true,
+    "manual_box_correction": false,
+    "scope": "one isolated Planner call from saved Front; no production change",
+    "issues": [
+      "L-shaped kitchen called U-shaped",
+      "Whole runs merged without a convincing handling basis",
+      "Upper open shelving explicitly left unassigned",
+      "Known Front F24 ambiguity retained instead of conflict",
+      "B03 review box includes B04 area; S01 does not cover complete L footprint",
+      "Unsupported mm in uncertainty"
+    ]
+  }
+}
