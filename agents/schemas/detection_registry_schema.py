@@ -1681,17 +1681,108 @@ def compile_detection_v5_object_hypotheses(
     hypotheses: object,
     *,
     visual_groups: list[dict[str, Any]],
+    allow_star_overlaps: bool = False,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Keep non-overlapping multi-View Registry hypotheses as a semantic search boundary."""
+    """Validate multi-View hypotheses, retaining only bounded star overlaps.
+
+    The default remains the historical exclusive-ownership contract. V8.4.7
+    enables the alternative only for the Ada Membership route: hypotheses may
+    share a View when every overlapping hypothesis has one common anchor View.
+    A chain such as AB, BC, CD stays excluded because it has no single anchor.
+    """
     object_group_ids = {
         str(group.get("group_id") or "") for group in visual_groups
         if group.get("evidence_class") == "object_evidence"
     }
     accepted: list[dict[str, Any]] = []
     rejected: list[dict[str, Any]] = []
-    claimed: set[str] = set()
     if not isinstance(hypotheses, list):
         return [], {"accepted": [], "rejected": [{"reason": "object_hypotheses_not_list"}]}
+    if allow_star_overlaps:
+        candidates: list[dict[str, Any]] = []
+        for index, raw in enumerate(hypotheses):
+            if not isinstance(raw, dict) or set(raw) != {"group_ids", "hypothesis_reason", "evidence"}:
+                rejected.append({"index": index, "reason": "object_hypothesis_fields_invalid"})
+                continue
+            group_ids = sorted({str(group_id or "") for group_id in raw["group_ids"]}) if isinstance(raw["group_ids"], list) else []
+            reason = str(raw["hypothesis_reason"] or "").strip()
+            evidence = raw["evidence"] if isinstance(raw["evidence"], list) else []
+            if len(group_ids) < 2 or not reason or not evidence or not set(group_ids).issubset(object_group_ids):
+                rejected.append({"index": index, "reason": "object_hypothesis_members_invalid"})
+                continue
+            candidates.append({
+                "index": index,
+                "group_ids": group_ids,
+                "hypothesis_reason": reason,
+                "evidence": evidence,
+            })
+
+        parent = {row["index"]: row["index"] for row in candidates}
+
+        def root(index: int) -> int:
+            while parent[index] != index:
+                parent[index] = parent[parent[index]]
+                index = parent[index]
+            return index
+
+        for offset, left in enumerate(candidates):
+            left_groups = set(left["group_ids"])
+            for right in candidates[offset + 1:]:
+                if left_groups.intersection(right["group_ids"]):
+                    parent[root(right["index"])] = root(left["index"])
+
+        clusters: dict[int, list[dict[str, Any]]] = {}
+        for row in candidates:
+            clusters.setdefault(root(row["index"]), []).append(row)
+        claimed: set[str] = set()
+        star_overlap_components: list[dict[str, Any]] = []
+        for rows in sorted(clusters.values(), key=lambda items: min(item["index"] for item in items)):
+            rows = sorted(rows, key=lambda item: item["index"])
+            shared_anchor_group_ids = sorted(set.intersection(
+                *(set(row["group_ids"]) for row in rows)
+            ))
+            if len(rows) == 1 or shared_anchor_group_ids:
+                accepted.extend({
+                    "group_ids": row["group_ids"],
+                    "hypothesis_reason": row["hypothesis_reason"],
+                    "evidence": row["evidence"],
+                } for row in rows)
+                claimed.update(
+                    group_id for row in rows for group_id in row["group_ids"]
+                )
+                if len(rows) > 1:
+                    star_overlap_components.append({
+                        "hypothesis_indexes": [row["index"] for row in rows],
+                        "shared_anchor_group_ids": shared_anchor_group_ids,
+                        "group_ids": sorted({
+                            group_id for row in rows for group_id in row["group_ids"]
+                        }),
+                    })
+                continue
+            # Preserve historical first-valid-hypothesis behaviour for an
+            # ambiguous overlap that is not a permitted star.
+            for row in rows:
+                overlap = sorted(set(row["group_ids"]).intersection(claimed))
+                if overlap:
+                    rejected.append({
+                        "index": row["index"],
+                        "reason": "object_hypothesis_overlap_not_star_shaped",
+                        "group_ids": overlap,
+                    })
+                    continue
+                claimed.update(row["group_ids"])
+                accepted.append({
+                    "group_ids": row["group_ids"],
+                    "hypothesis_reason": row["hypothesis_reason"],
+                    "evidence": row["evidence"],
+                })
+        return accepted, {
+            "accepted": accepted,
+            "rejected": rejected,
+            "star_overlap_components": star_overlap_components,
+        }
+
+    claimed: set[str] = set()
     for index, raw in enumerate(hypotheses):
         if not isinstance(raw, dict) or set(raw) != {"group_ids", "hypothesis_reason", "evidence"}:
             rejected.append({"index": index, "reason": "object_hypothesis_fields_invalid"})
@@ -1809,6 +1900,7 @@ def compile_detection_v637_hypothesis_coverage_components(
     semantic_facts: list[dict[str, Any]],
     *,
     visual_groups: list[dict[str, Any]],
+    allow_star_hypothesis_components: bool = False,
 ) -> tuple[list[list[str]], dict[str, Any]]:
     """Accept a multi-view hypothesis only when local facts cover every View.
 
@@ -1824,7 +1916,7 @@ def compile_detection_v637_hypothesis_coverage_components(
         for group in visual_groups
         if isinstance(group, dict) and group.get("evidence_class") == "object_evidence"
     }
-    accepted: list[list[str]] = []
+    accepted_rows: list[dict[str, Any]] = []
     rejected: list[dict[str, Any]] = []
     facts_by_pair: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for fact in semantic_facts:
@@ -1868,10 +1960,76 @@ def compile_detection_v637_hypothesis_coverage_components(
                 "local_fact_pairs": [list(pair) for pair in local_pairs],
             })
             continue
-        accepted.append(group_ids)
+        accepted_rows.append({
+            "index": index,
+            "group_ids": group_ids,
+            "local_fact_pairs": local_pairs,
+        })
+
+    accepted: list[list[str]] = []
+    star_component_audit: list[dict[str, Any]] = []
+    if allow_star_hypothesis_components:
+        parent = {row["index"]: row["index"] for row in accepted_rows}
+
+        def root(index: int) -> int:
+            while parent[index] != index:
+                parent[index] = parent[parent[index]]
+                index = parent[index]
+            return index
+
+        for offset, left in enumerate(accepted_rows):
+            left_groups = set(left["group_ids"])
+            for right in accepted_rows[offset + 1:]:
+                if left_groups.intersection(right["group_ids"]):
+                    parent[root(right["index"])] = root(left["index"])
+
+        clusters: dict[int, list[dict[str, Any]]] = {}
+        for row in accepted_rows:
+            clusters.setdefault(root(row["index"]), []).append(row)
+        for rows in sorted(clusters.values(), key=lambda items: min(item["index"] for item in items)):
+            rows = sorted(rows, key=lambda item: item["index"])
+            if len(rows) == 1:
+                accepted.append(rows[0]["group_ids"])
+                continue
+            shared_anchor_group_ids = sorted(set.intersection(
+                *(set(row["group_ids"]) for row in rows)
+            ))
+            if shared_anchor_group_ids:
+                component = sorted({
+                    group_id for row in rows for group_id in row["group_ids"]
+                })
+                accepted.append(component)
+                star_component_audit.append({
+                    "hypothesis_indexes": [row["index"] for row in rows],
+                    "shared_anchor_group_ids": shared_anchor_group_ids,
+                    "group_ids": component,
+                    "status": "coalesced_after_pair_local_proof",
+                })
+                continue
+            # Defensive only: the V8.4.7 hypothesis validator does not pass a
+            # chain here. A direct caller cannot turn an ambiguous overlap into
+            # one object either.
+            claimed: set[str] = set()
+            for row in rows:
+                overlap = sorted(set(row["group_ids"]).intersection(claimed))
+                if overlap:
+                    rejected.append({
+                        "index": row["index"],
+                        "reason": "membership_hypothesis_overlap_not_star_shaped",
+                        "group_ids": overlap,
+                    })
+                    continue
+                claimed.update(row["group_ids"])
+                accepted.append(row["group_ids"])
+    else:
+        accepted = [row["group_ids"] for row in accepted_rows]
 
     return accepted, {
-        "compiler_version": "v6_37_pair_local_hypothesis_coverage",
+        "compiler_version": (
+            "v8_4_7_star_pair_local_hypothesis_coverage"
+            if allow_star_hypothesis_components
+            else "v6_37_pair_local_hypothesis_coverage"
+        ),
         "accepted": [
             {"group_ids": component, "local_fact_pair_count": sum(
                 set(pair).issubset(set(component)) for pair in facts_by_pair
@@ -1879,6 +2037,10 @@ def compile_detection_v637_hypothesis_coverage_components(
             for component in accepted
         ],
         "rejected": rejected,
+        "star_hypothesis_components": {
+            "active": allow_star_hypothesis_components,
+            "components": star_component_audit,
+        },
     }
 
 

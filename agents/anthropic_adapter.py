@@ -189,6 +189,13 @@ DETECTION_V846_CANDIDATE_EXCEPTION_CONTRACT_VERSION = (
     # downstream visual review can consume it.
     "detection_v8_4_6_candidate_exception_contract"
 )
+DETECTION_V847_STAR_HYPOTHESIS_COMPONENTS_VERSION = (
+    # V8.4.7 repairs a V5.6 exclusivity regression for a single physical
+    # product shown as a plan with multiple independently proved projections.
+    # It is limited to the V6.37 Ada Membership route and never treats a
+    # shared View as merge evidence by itself.
+    "detection_v8_4_7_star_hypothesis_components"
+)
 DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS = 180
 DETECTION_V634_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
@@ -11625,6 +11632,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     v637_ada_covered_pair_local_membership_active = (
         v636_ada_connected_pair_local_membership_active
     )
+    # V8.4.7 is intentionally limited to the route that already requires
+    # pair-local typed evidence for every retained View.
+    v847_star_hypothesis_components_active = (
+        v637_ada_covered_pair_local_membership_active
+    )
     discovery_model = (
         DETECTION_V634_ADA_DISCOVERY_MODEL
         if v634_ada_haiku_discovery_sonnet_review_active
@@ -12540,7 +12552,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             else "pending_fixed_object_evidence_inventory"
         ),
     }
-    if v845_global_batched_assembly_scope_active:
+    if v847_star_hypothesis_components_active:
+        prompt_version = DETECTION_V847_STAR_HYPOTHESIS_COMPONENTS_VERSION
+    elif v845_global_batched_assembly_scope_active:
         prompt_version = DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT_VERSION
     elif v641_budgeted_discovery_active:
         prompt_version = DETECTION_V844_CORE_BBOX_ENVELOPE_FALLBACK_PROMPT_VERSION
@@ -12617,6 +12631,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "For a hypothesis with more than two Views, provide at least two local "
             "pair facts and ensure every declared View appears in at least one of "
             "those facts. The facts may be complementary and need not form a chain. "
+            "When one plan or section is the common reference for multiple "
+            "projections of one physical item, emit one complete hypothesis with "
+            "that shared View and every proved projection. Do not split one item "
+            "into overlapping two-View hypotheses. "
             "Never invent an extra bridge merely to connect the graph. If a View has "
             "no local evidence inside the hypothesis, split it out.\n"
         )
@@ -13125,6 +13143,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "v6_37_ada_covered_pair_local_membership_active": (
             v637_ada_covered_pair_local_membership_active
         ),
+        "v8_4_7_star_hypothesis_components_active": (
+            v847_star_hypothesis_components_active
+        ),
         "v6_34_discovery_model": discovery_model,
         "v6_34_membership_review_model": review_model,
         "v6_10_candidate_pair_count": len(v69_preliminary_pairs),
@@ -13453,6 +13474,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 normalized_hypotheses.append(hypothesis)
             accepted_hypotheses, object_hypothesis_audit = compile_detection_v5_object_hypotheses(
                 normalized_hypotheses, visual_groups=semantic_validation_groups,
+                allow_star_overlaps=v847_star_hypothesis_components_active,
             )
             semantic_facts = []
             for hypothesis in accepted_hypotheses:
@@ -13632,6 +13654,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 compile_detection_v637_hypothesis_coverage_components(
                     accepted_hypotheses, accepted_semantic_facts,
                     visual_groups=semantic_validation_groups,
+                    allow_star_hypothesis_components=(
+                        v847_star_hypothesis_components_active
+                    ),
                 )
             )
             positive_relation_edges = [
@@ -13639,6 +13664,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 *presentation_render_edges,
             ]
             v5_merge_audit["v6_37_pair_local_membership"] = membership_audit
+            v5_merge_audit["v8_4_7_star_hypothesis_components"] = copy.deepcopy(
+                membership_audit["star_hypothesis_components"]
+            )
         else:
             positive_relation_edges, v5_merge_audit = compile_detection_v5_merge_edges(
                 [

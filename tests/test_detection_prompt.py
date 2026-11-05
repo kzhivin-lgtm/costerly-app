@@ -7,6 +7,7 @@ from agents.anthropic_adapter import (
     DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT_VERSION,
     DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT,
     DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION,
+    DETECTION_V847_STAR_HYPOTHESIS_COMPONENTS_VERSION,
     DETECTION_V611_ASSEMBLY_SCOPE_PROMPT,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
     bind_detection_candidate_region_exception_ids,
@@ -139,6 +140,12 @@ def test_v845_scope_is_explicitly_scope_only_after_batched_discovery():
         DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT
     )
     assert "cannot change Membership" in DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT
+
+
+def test_v847_labels_only_the_ada_star_hypothesis_repair():
+    assert DETECTION_V847_STAR_HYPOTHESIS_COMPONENTS_VERSION == (
+        "detection_v8_4_7_star_hypothesis_components"
+    )
 
 
 def test_v657_discovery_schema_bounds_non_evidence_text_only():

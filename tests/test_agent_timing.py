@@ -23,6 +23,7 @@ from agents.anthropic_adapter import (
     DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS,
     DETECTION_V843_ASSEMBLY_SCOPE_COMPACTION_PROMPT_VERSION,
     DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION,
+    DETECTION_V847_STAR_HYPOTHESIS_COMPONENTS_VERSION,
     DETECTION_V713_MEMBERSHIP_REVIEW_MAX_STREAM_SECONDS,
     apply_benchmark_run_suffix,
     build_agent_usage_event,
@@ -1672,11 +1673,12 @@ def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
         DETECTION_V634_ADA_DISCOVERY_MODEL,
         "claude-sonnet-4-6",
     ]
-    assert usage["prompt_version"] == DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION
+    assert usage["prompt_version"] == DETECTION_V847_STAR_HYPOTHESIS_COMPONENTS_VERSION
     assert usage["raw_usage"]["v6_34_ada_haiku_discovery_sonnet_review_active"] is True
     assert usage["raw_usage"]["v6_35_ada_pair_local_membership_active"] is True
     assert usage["raw_usage"]["v6_36_ada_connected_pair_local_membership_active"] is True
     assert usage["raw_usage"]["v6_37_ada_covered_pair_local_membership_active"] is True
+    assert usage["raw_usage"]["v8_4_7_star_hypothesis_components_active"] is True
     assert usage["raw_usage"]["v6_10_combined_evidence_review_active"] is False
     assert usage["raw_usage"]["v6_10_candidate_pair_count"] == 0
     assert usage["raw_usage"]["v6_10_reconciliation_pair_count"] == 0
@@ -1716,6 +1718,134 @@ def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
     assert raised.value.usage_event["raw_usage"]["validation_stage"] == (
         "v5_10_1_discovery_contract"
     )
+
+
+def test_v847_ada_coalesces_a_proved_plan_star_into_one_commercial_object():
+    proposal = _visual_registry_payload({
+        "visual_groups": [
+            {
+                "group_id": "raw-plan", "page_number": 1,
+                "location_hint": "upper left",
+                "visual_description": "L-shaped kitchen plan with corner cabinet",
+                "representation_kind": "plan",
+                "bbox": {"top_left_x": 100, "top_left_y": 100,
+                         "bottom_right_x": 700, "bottom_right_y": 500},
+                "core_bbox": {"top_left_x": 100, "top_left_y": 100,
+                              "bottom_right_x": 700, "bottom_right_y": 500},
+            },
+            {
+                "group_id": "raw-left", "page_number": 1,
+                "location_hint": "lower left",
+                "visual_description": "left elevation of the L-shaped kitchen",
+                "representation_kind": "elevation",
+                "bbox": {"top_left_x": 100, "top_left_y": 600,
+                         "bottom_right_x": 700, "bottom_right_y": 1000},
+                "core_bbox": {"top_left_x": 100, "top_left_y": 600,
+                              "bottom_right_x": 700, "bottom_right_y": 1000},
+            },
+            {
+                "group_id": "raw-right", "page_number": 1,
+                "location_hint": "lower right",
+                "visual_description": "right elevation of the same kitchen tower run",
+                "representation_kind": "elevation",
+                "bbox": {"top_left_x": 800, "top_left_y": 600,
+                         "bottom_right_x": 1400, "bottom_right_y": 1000},
+                "core_bbox": {"top_left_x": 800, "top_left_y": 600,
+                              "bottom_right_x": 1400, "bottom_right_y": 1000},
+            },
+        ],
+    })
+    proposal.pop("object_hypotheses")
+    proposal.pop("semantic_facts")
+    proposal.pop("document_scope")
+    proposal["page_coverage"] = [{
+        "page_number": 1,
+        "visual_group_ids": ["raw-plan", "raw-left", "raw-right"],
+    }]
+    proposal["candidate_region_decisions"] = [
+        {
+            "candidate_region_id": "CR-P001-001", "decision": "accept",
+            "group_id": "raw-plan", "reason": "The anchor encloses the kitchen plan.",
+            "source_fact_ids": [],
+        },
+        {
+            "candidate_region_id": "CR-P001-002", "decision": "accept",
+            "group_id": "raw-left", "reason": "The anchor encloses the left elevation.",
+            "source_fact_ids": [],
+        },
+        {
+            "candidate_region_id": "CR-P001-003", "decision": "accept",
+            "group_id": "raw-right", "reason": "The anchor encloses the right elevation.",
+            "source_fact_ids": [],
+        },
+    ]
+    review = {
+        "object_hypotheses": [
+            {
+                "group_ids": ["view-001", "view-002"],
+                "hypothesis_reason": "The plan and left elevation show the same corner run.",
+                "evidence": [{
+                    "evidence_type": "matching_topology", "strength": "standard",
+                    "observation": "The distinctive corner cabinet run occurs in both Views.",
+                    "source_fact_ids": ["registry_view:view-001", "registry_view:view-002"],
+                }],
+            },
+            {
+                "group_ids": ["view-001", "view-003"],
+                "hypothesis_reason": "The plan and right elevation show the same tower end.",
+                "evidence": [{
+                    "evidence_type": "unique_geometry", "strength": "standard",
+                    "observation": "The distinctive tall end unit occurs in both Views.",
+                    "source_fact_ids": ["registry_view:view-001", "registry_view:view-003"],
+                }],
+            },
+        ],
+        "presentation_render_decisions": [],
+    }
+    ocr_package = {"pages": [{"page_number": 1, "blocks": [
+        {"type": "image", "content": "kitchen plan", "top_left_x": 100,
+         "top_left_y": 100, "bottom_right_x": 700, "bottom_right_y": 500},
+        {"type": "image", "content": "left elevation", "top_left_x": 100,
+         "top_left_y": 600, "bottom_right_x": 700, "bottom_right_y": 1000},
+        {"type": "image", "content": "right elevation", "top_left_x": 800,
+         "top_left_y": 600, "bottom_right_x": 1400, "bottom_right_y": 1000},
+    ]}]}
+
+    def fake_create(*_args, **_kwargs):
+        return _Response(), {
+            "request_started_at": "2026-11-05T00:00:00+00:00",
+            "request_finished_at": "2026-11-05T00:00:01+00:00",
+        }
+
+    with (
+        patch("agents.anthropic_adapter.get_secret", return_value="model"),
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
+        patch(
+            "agents.anthropic_adapter.extract_text_from_claude_response",
+            side_effect=[json.dumps(proposal), json.dumps(review)],
+        ),
+    ):
+        _, registry, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="lev-2.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=ocr_package,
+            model="claude-sonnet-4-6", mistral_anchor_admission=True,
+            document_category="ada_sparse_multi_object",
+        )
+
+    assert [item["visual_group_ids"] for item in registry["objects"]] == [[
+        "view-001", "view-002", "view-003",
+    ]]
+    star_audit = usage["raw_usage"]["v5_merge_audit"][
+        "v8_4_7_star_hypothesis_components"
+    ]
+    assert star_audit["active"] is True
+    assert star_audit["components"] == [{
+        "hypothesis_indexes": [0, 1],
+        "shared_anchor_group_ids": ["view-001"],
+        "group_ids": ["view-001", "view-002", "view-003"],
+        "status": "coalesced_after_pair_local_proof",
+    }]
 
 
 def test_v846_rejects_source_fact_exception_before_membership_review():

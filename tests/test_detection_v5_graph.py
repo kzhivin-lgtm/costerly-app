@@ -258,6 +258,92 @@ def test_v5_object_hypothesis_requires_distinct_non_overlapping_object_views():
     assert audit["rejected"][0]["reason"] == "object_hypothesis_overlaps"
 
 
+def test_v847_star_hypotheses_coalesce_only_after_each_pair_has_local_proof():
+    views = [
+        {"group_id": "view-plan", "evidence_class": "object_evidence"},
+        {"group_id": "view-left", "evidence_class": "object_evidence"},
+        {"group_id": "view-right", "evidence_class": "object_evidence"},
+    ]
+    hypotheses, hypothesis_audit = compile_detection_v5_object_hypotheses([
+        {
+            "group_ids": ["view-plan", "view-left"],
+            "hypothesis_reason": "The plan and left elevation share the corner run.",
+            "evidence": [{"evidence_type": "matching_topology"}],
+        },
+        {
+            "group_ids": ["view-plan", "view-right"],
+            "hypothesis_reason": "The plan and right elevation share the tower run.",
+            "evidence": [{"evidence_type": "unique_geometry"}],
+        },
+    ], visual_groups=views, allow_star_overlaps=True)
+    facts, _ = compile_detection_v5_semantic_facts([
+        {
+            "group_id_a": "view-plan", "group_id_b": "view-left",
+            "evidence_type": "matching_topology", "strength": "standard",
+            "observation": "The same corner cabinet run appears in both Views.",
+            "source_fact_ids": [],
+        },
+        {
+            "group_id_a": "view-plan", "group_id_b": "view-right",
+            "evidence_type": "unique_geometry", "strength": "standard",
+            "observation": "The same tall end unit appears in both Views.",
+            "source_fact_ids": [],
+        },
+    ], visual_groups=views, source_facts=[])
+
+    components, component_audit = compile_detection_v637_hypothesis_coverage_components(
+        hypotheses, facts, visual_groups=views, allow_star_hypothesis_components=True,
+    )
+
+    assert len(hypotheses) == 2
+    assert hypothesis_audit["star_overlap_components"] == [{
+        "hypothesis_indexes": [0, 1],
+        "shared_anchor_group_ids": ["view-plan"],
+        "group_ids": ["view-left", "view-plan", "view-right"],
+    }]
+    assert components == [["view-left", "view-plan", "view-right"]]
+    assert component_audit["star_hypothesis_components"]["components"] == [{
+        "hypothesis_indexes": [0, 1],
+        "shared_anchor_group_ids": ["view-plan"],
+        "group_ids": ["view-left", "view-plan", "view-right"],
+        "status": "coalesced_after_pair_local_proof",
+    }]
+
+
+def test_v847_does_not_promote_a_chain_of_overlapping_hypotheses_to_one_object():
+    views = [
+        {"group_id": f"view-00{index}", "evidence_class": "object_evidence"}
+        for index in range(1, 5)
+    ]
+    hypotheses, audit = compile_detection_v5_object_hypotheses([
+        {
+            "group_ids": ["view-001", "view-002"],
+            "hypothesis_reason": "First pair.",
+            "evidence": [{"evidence_type": "matching_topology"}],
+        },
+        {
+            "group_ids": ["view-002", "view-003"],
+            "hypothesis_reason": "Middle pair.",
+            "evidence": [{"evidence_type": "matching_topology"}],
+        },
+        {
+            "group_ids": ["view-003", "view-004"],
+            "hypothesis_reason": "Last pair.",
+            "evidence": [{"evidence_type": "matching_topology"}],
+        },
+    ], visual_groups=views, allow_star_overlaps=True)
+
+    assert [item["group_ids"] for item in hypotheses] == [
+        ["view-001", "view-002"], ["view-003", "view-004"],
+    ]
+    assert audit["star_overlap_components"] == []
+    assert audit["rejected"] == [{
+        "index": 1,
+        "reason": "object_hypothesis_overlap_not_star_shaped",
+        "group_ids": ["view-002"],
+    }]
+
+
 def test_v571_single_concrete_visual_fact_builds_membership_proof_tree():
     edges, audit = compile_detection_v5_membership_edges(
         [{

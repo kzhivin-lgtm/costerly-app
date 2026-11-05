@@ -386,7 +386,7 @@ def main() -> None:
         requested_trace_id=st.query_params.get("obs_trace"),
         screen=str(st.session_state.get("screen") or "upload"),
         started_at=_SCRIPT_STARTED_AT,
-        build_version="detection-v8.4.6-candidate-exception-contract",
+        build_version="detection-v8.4.7-star-hypothesis-components",
     )
     trace.annotate(
         run_sequence=st.session_state._runtime_run_sequence,
