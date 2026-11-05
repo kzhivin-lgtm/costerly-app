@@ -23,14 +23,25 @@ One rulebook with two sections, not two mandatory new provider stages:
   agents/estimation_understanding_agent.py.
 - **CB Planner V1**: proposed chat draft, not executed. It included detailed
   internal-compartment/shared-part reasoning. Owner requested simplification.
-- **CB Planner V2**: agents/prompts/cb_planner_v2.md. Group into large practical
+- **CB Planner V2** (retained experiment): agents/prompts/cb_planner_v2.md. Group into large practical
   preassembled units, balancing assembly effort against manageable transport.
   No invented hidden partitions, detailed panels, materials or labor. Receives
   original images plus fallible saved Front output. Short blocks/shared-parts
   list with referenced fronts and image-local review boxes. Assembly boundaries
   and transport suitability remain assumptions unless explicitly established.
+- **CB Planner V3** (current diagnostic candidate): agents/prompts/cb_planner_v3.md.
+  Same contract/model/evidence as V2. Owner-approved grouping guideline: up to
+  three horizontal front positions, four only with a specific reason; vertical
+  stacks are not summed, and a corner shares the allowance across both wings.
+  Full-height narrow cabinets remain possible. No hard minimum width. Explicit
+  source construction takes priority. Always list a worktop separately, once,
+  either as its own block or as a shared part spanning several carcasses.
+  The front-count grouping limit does not apply to worktops/decorative panels.
 
-V2 is a diagnostic candidate, NOT an accepted assembly-planning checkpoint.
+V2 failed semantic review; V3 is NOT an accepted assembly-planning checkpoint.
+V3 first probes improve grouping (Lev1 three blocks; Lev2 nine + worktop), but
+retain physical interpretation errors; Lev2 additionally fails front ownership
+validation. These are recorded failures/limitations, not patched outputs.
 One Planner call per probe consumes an existing Front witness without rerunning
 Front. Production Analyze/Calculation orchestration is unchanged. Keep per-run
 Front IDs local and record conflicts explicitly rather than dropping them.

@@ -1,0 +1,213 @@
+{
+  "prompt_version": "CB Planner V3",
+  "prompt_sha256": "28ddc60a1e8b5c6385cb13f738cc98b40d7a9414e86b6aa43e53b685f0e6dac5",
+  "request_sha256": "022184701623d2a7eb18e294893e90cfee96e1bc7bc544ab89551bd7672ad550",
+  "original_witness_sha256": "955539ebc522b6752847268f394dc67a0413ab9ba2d9ab5f0cf32ac75dffab18",
+  "original_status": "assembly_plan_requires_review",
+  "original_error": null,
+  "model": "claude-haiku-5-5",
+  "elapsed_seconds": 11.057,
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 13592,
+    "output_tokens": 2053,
+    "output_tokens_details": {
+      "thinking_tokens": 1218
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+  },
+  "front_status": "failed",
+  "front_prompt_version": "estimation_front_count_v6_2_r03",
+  "front_witness_sha256": "9e6f7780e758094010258226b309fae61ff841b33fd02ce685d702470971796d",
+  "response_text": "{\n  \"summary\": \"A built-in banquette-style bench with a tall slatted back, a three-drawer base, and an attached fixed table with a single pedestal leg.\",\n  \"blocks\": [\n    {\n      \"id\": \"B01\",\n      \"name\": \"Base seat carcass with three drawers\",\n      \"contains\": \"Lower carcass with a three-drawer front row, seat top, and plinth base.\",\n      \"reason\": \"The three drawer fronts sit side by side on one shared base carcass, so they form one cabinet block within the three-front limit. The grouping is an assumed reading of the front elevation, since no explicit construction boundary is shown.\",\n      \"front_ids\": [\"F01\", \"F02\", \"F03\"],\n      \"view_ids\": [\"p1-view-004\", \"p1-view-001\", \"p1-view-003\", \"p1-view-005\"],\n      \"region\": {\"view_id\": \"p1-view-004\", \"bbox_1000\": [95, 760, 700, 880]}\n    },\n    {\n      \"id\": \"B02\",\n      \"name\": \"Tall slatted back panel\",\n      \"contains\": \"Full-height slatted back with vertical fins and recessed panels rising from the base.\",\n      \"reason\": \"This is a fixed upper back surface, not an operating cabinet, so it is kept separate from the drawer carcass. Its join to the base is assumed from the continuous side profile.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p1-view-004\", \"p1-view-006\", \"p1-view-005\"],\n      \"region\": {\"view_id\": \"p1-view-004\", \"bbox_1000\": [95, 200, 700, 760]}\n    },\n    {\n      \"id\": \"B03\",\n      \"name\": \"Fixed table top with pedestal leg\",\n      \"contains\": \"Rectangular table top with its single pedestal leg, projecting from the bench side.\",\n      \"reason\": \"The table top is a worktop-type element and serves only the bench, so it is its own block. Its leg is grouped with it.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p1-view-005\", \"p1-view-003\", \"p1-view-001\"],\n      \"region\": {\"view_id\": \"p1-view-005\", \"bbox_1000\": [470, 650, 840, 870]}\n    }\n  ],\n  \"shared_parts\": [],\n  \"front_conflicts\": [],\n  \"uncertainties\": [\n    \"The connection between the slatted back and the base carcass is inferred from the views and not shown explicitly.\",\n    \"The table top fixing to the bench side is not shown, so it is kept as a separate block.\"\n  ]\n}",
+  "parsed_response": {
+    "summary": "A built-in banquette-style bench with a tall slatted back, a three-drawer base, and an attached fixed table with a single pedestal leg.",
+    "blocks": [
+      {
+        "id": "B01",
+        "name": "Base seat carcass with three drawers",
+        "contains": "Lower carcass with a three-drawer front row, seat top, and plinth base.",
+        "reason": "The three drawer fronts sit side by side on one shared base carcass, so they form one cabinet block within the three-front limit. The grouping is an assumed reading of the front elevation, since no explicit construction boundary is shown.",
+        "front_ids": [
+          "F01",
+          "F02",
+          "F03"
+        ],
+        "view_ids": [
+          "p1-view-004",
+          "p1-view-001",
+          "p1-view-003",
+          "p1-view-005"
+        ],
+        "region": {
+          "view_id": "p1-view-004",
+          "bbox_1000": [
+            95,
+            760,
+            700,
+            880
+          ]
+        }
+      },
+      {
+        "id": "B02",
+        "name": "Tall slatted back panel",
+        "contains": "Full-height slatted back with vertical fins and recessed panels rising from the base.",
+        "reason": "This is a fixed upper back surface, not an operating cabinet, so it is kept separate from the drawer carcass. Its join to the base is assumed from the continuous side profile.",
+        "front_ids": [],
+        "view_ids": [
+          "p1-view-004",
+          "p1-view-006",
+          "p1-view-005"
+        ],
+        "region": {
+          "view_id": "p1-view-004",
+          "bbox_1000": [
+            95,
+            200,
+            700,
+            760
+          ]
+        }
+      },
+      {
+        "id": "B03",
+        "name": "Fixed table top with pedestal leg",
+        "contains": "Rectangular table top with its single pedestal leg, projecting from the bench side.",
+        "reason": "The table top is a worktop-type element and serves only the bench, so it is its own block. Its leg is grouped with it.",
+        "front_ids": [],
+        "view_ids": [
+          "p1-view-005",
+          "p1-view-003",
+          "p1-view-001"
+        ],
+        "region": {
+          "view_id": "p1-view-005",
+          "bbox_1000": [
+            470,
+            650,
+            840,
+            870
+          ]
+        }
+      }
+    ],
+    "shared_parts": [],
+    "front_conflicts": [],
+    "uncertainties": [
+      "The connection between the slatted back and the base carcass is inferred from the views and not shown explicitly.",
+      "The table top fixing to the bench side is not shown, so it is kept as a separate block."
+    ]
+  },
+  "changed_request_fields_vs_v2": [
+    "system"
+  ],
+  "coordinates": {
+    "prompt_version": "CB Planner V3",
+    "source_witness": "/private/tmp/cb-planner-v3-lev1-01.json",
+    "coordinate_convention": "bbox_1000 on exact labelled detail; page_pixels exclude added output banner",
+    "model_totals": {
+      "blocks": 3,
+      "shared_parts": 0
+    },
+    "display_only_label_normalizations": [],
+    "warnings": [],
+    "annotations": [
+      {
+        "id": "B01",
+        "name": "Base seat carcass with three drawers",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          95,
+          760,
+          700,
+          880
+        ],
+        "type": "hinged",
+        "kind": "block",
+        "detail_pixels": [
+          41.99,
+          489.44,
+          309.4,
+          566.72
+        ],
+        "page_pixels": [
+          214.99,
+          1132.44,
+          482.4,
+          1209.72
+        ]
+      },
+      {
+        "id": "B02",
+        "name": "Tall slatted back panel",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          95,
+          200,
+          700,
+          760
+        ],
+        "type": "drawer",
+        "kind": "block",
+        "detail_pixels": [
+          41.99,
+          128.8,
+          309.4,
+          489.44
+        ],
+        "page_pixels": [
+          214.99,
+          771.8,
+          482.4,
+          1132.44
+        ]
+      },
+      {
+        "id": "B03",
+        "name": "Fixed table top with pedestal leg",
+        "view_id": "p1-view-005",
+        "bbox_1000": [
+          470,
+          650,
+          840,
+          870
+        ],
+        "type": "lift_up",
+        "kind": "block",
+        "detail_pixels": [
+          240.64,
+          415.35,
+          430.08,
+          555.93
+        ],
+        "page_pixels": [
+          943.64,
+          1058.35,
+          1133.08,
+          1198.9299999999998
+        ]
+      }
+    ]
+  },
+  "review": {
+    "semantic_acceptance": "partial improvement, not accepted",
+    "full_page_overlay_visually_inspected": true,
+    "manual_coordinate_changes": false,
+    "provider_calls": 1,
+    "issues": [
+      "Three top-level groups now match owner proposal",
+      "One support leg reported instead of two",
+      "Summary still assumes a banquette"
+    ],
+    "overlay_status": "normal validated overlay"
+  }
+}

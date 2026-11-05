@@ -18,7 +18,25 @@ protected. Pre-existing TODO changes belong to the owner.
 
 ### Current V6.2 boundary and results, 2026-11-05
 
-Latest diagnostic: **CB Planner V2**, simplified after the unexecuted V1 chat
+Latest diagnostic: **CB Planner V3**, owner-approved three-horizontal-front
+grouping guideline and always-separate worktop. Vertical stacks are one width
+position; four positions require an explanation, height is unrestricted, no
+hard minimum width, and source-defined construction takes priority. Prompt
+agents/prompts/cb_planner_v3.md, SHA256
+28ddc60a1e8b5c6385cb13f738cc98b40d7a9414e86b6aa43e53b685f0e6dac5.
+Same schema/model/settings/evidence/Front as V2; saved requests differ only in
+system. Lev1: 11.057 s, three intended top-level groups, contract passes, still
+one leg instead of two. Lev2: 18.306 s, nine blocks + shared worktop, now L-shaped
+and more bounded grouping, but F24 is both assigned to B09 and front_conflicts,
+so ORIGINAL validation fails. No repair or extra model call. Tall fixed-frame
+interpretation, open-shelf coverage and cross-view assembly ownership remain
+unresolved. Partial improvement, not a new accepted checkpoint. Both diagrams
+reviewed; Lev2 diagram has INVALID banner and preserves exact raw boxes.
+Evidence: notes/evidence/cb-planner-v3-2026-11-05/. Current queue: notes/TODO.md.
+129 focused tests pass, retaining the original Lev2 rejection as a regression
+witness rather than a corrected plan. Front and V2 prompt hashes are preserved.
+
+Previous diagnostic: **CB Planner V2**, simplified after the unexecuted V1 chat
 draft. **CB Front V1** is the short owner-facing alias for exact selected r03;
 its hash and historical technical name remain unchanged. The single Cabinet
 Block rulebook has Front and Planner sections, indexed by CB_RULEBOOK in the

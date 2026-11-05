@@ -26,13 +26,21 @@ def front():
 
 def test_rulebook_preserves_front_identity_and_versions_planner():
     assert agent.CB_RULEBOOK['front']['name'] == 'CB Front V1'
-    assert agent.CB_RULEBOOK['planner']['name'] == 'CB Planner V2'
+    assert agent.CB_RULEBOOK['planner']['name'] == 'CB Planner V3'
     assert sha256(agent.FRONT_COUNT_PROMPT_PATH.read_text().strip().encode()).hexdigest() == '81b49dc8d2dd4c33a7459d824178ea8601ba241370a401e530bed2748dab0bb0'
     prompt = agent.PLANNER_PROMPT_PATH.read_text()
-    assert sha256(prompt.strip().encode()).hexdigest() == 'd5e1b0de71d1053f89ba97cfeecc2352ac4ee126b54f9e8b245ce8df733c7335'
-    assert prompt.startswith('CB Planner V2')
+    assert sha256(prompt.strip().encode()).hexdigest() == '28ddc60a1e8b5c6385cb13f738cc98b40d7a9414e86b6aa43e53b685f0e6dac5'
+    assert prompt.startswith('CB Planner V3')
     assert 'Do not invent hidden partitions' in prompt
     assert 'No target block count' in prompt
+    assert 'THREE front positions' in prompt
+    assert 'Four is a rare exception' in prompt
+    assert 'across BOTH wings together' in prompt
+    assert 'a stack of drawers occupies one horizontal position' in prompt
+    assert 'full-height block' in prompt
+    assert 'ALWAYS list a worktop as a separate element' in prompt
+    previous = agent.PLANNER_PROMPT_PATH.with_name('cb_planner_v2.md').read_text()
+    assert sha256(previous.strip().encode()).hexdigest() == 'd5e1b0de71d1053f89ba97cfeecc2352ac4ee126b54f9e8b245ce8df733c7335'
 
 
 def test_planner_one_call_retains_images_and_fallible_front_without_repair(monkeypatch):
@@ -88,6 +96,23 @@ def test_explicit_front_conflict_is_not_silently_dropped():
     p['front_conflicts'] = [{'front_id': 'F02', 'reason': 'Fixed outer side in overall view'}]
     before = deepcopy(p)
     assert agent.validate_assembly_plan(p, {'p1-view-001'}, {'F01', 'F02'}) == before
+
+
+def test_v3_recorded_outputs_retain_partial_improvement_and_rejection():
+    root = agent.PLANNER_PROMPT_PATH.parents[2] / 'notes' / 'evidence' / 'cb-planner-v3-2026-11-05'
+    lev1 = json.loads((root / 'lev1-evidence.json').read_text())
+    lev2 = json.loads((root / 'lev2-evidence.json').read_text())
+    for witness in (lev1, lev2):
+        assert witness['changed_request_fields_vs_v2'] == ['system']
+        assert witness['prompt_version'] == 'CB Planner V3'
+    p1 = lev1['parsed_response']
+    assert len(p1['blocks']) == 3
+    assert agent.validate_assembly_plan(p1, {f'p1-view-{i:03d}' for i in range(1, 7)}, {'F01', 'F02', 'F03'}) == p1
+    assert lev2['original_status'] == 'failed'
+    assert len(lev2['parsed_response']['blocks']) == 9
+    with pytest.raises(ValueError, match='front assigned twice'):
+        agent.validate_assembly_plan(lev2['parsed_response'], {f'p1-view-{i:03d}' for i in range(1, 5)},
+            {f'F{i:02d}' for i in range(1, 25)})
 
 
 def test_shared_worktop_has_two_existing_parents_and_single_record():

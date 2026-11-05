@@ -1,0 +1,559 @@
+{
+  "prompt_version": "CB Planner V3",
+  "prompt_sha256": "28ddc60a1e8b5c6385cb13f738cc98b40d7a9414e86b6aa43e53b685f0e6dac5",
+  "request_sha256": "cdafe1978db6d5c0ee4d777cf0c36760f125c502832215ae357d3f8b741689b9",
+  "original_witness_sha256": "5f22142e0c78b8663b6bc24e78e0659dc4018db48a4856f96cabd9571496ab96",
+  "original_status": "failed",
+  "original_error": "ValueError: front assigned twice",
+  "model": "claude-haiku-5-5",
+  "elapsed_seconds": 18.306,
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 14961,
+    "output_tokens": 4081,
+    "output_tokens_details": {
+      "thinking_tokens": 1970
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+  },
+  "front_status": "front_count_requires_review",
+  "front_prompt_version": "estimation_front_count_v6_2_r03",
+  "front_witness_sha256": "06f8034557839b4bbf8d78a327e1727bcc1bb6d613ce33c7d897bb16da26d1e8",
+  "response_text": "{\n  \"summary\": \"An L-shaped kitchen with a main base-and-wall run, a return wing with a tall tower, a separate tall upper unit, and one continuous worktop.\",\n  \"blocks\": [\n    {\n      \"id\": \"B01\",\n      \"name\": \"Main run base, left section\",\n      \"contains\": \"Three base doors on the left end of the main lower run.\",\n      \"reason\": \"Split from the five-door run to keep no more than three front positions across the carcass. The split point is assumed from the even door spacing.\",\n      \"front_ids\": [\"F01\", \"F02\", \"F03\"],\n      \"view_ids\": [\"p1-view-003\"],\n      \"region\": {\"view_id\": \"p1-view-003\", \"bbox_1000\": [100, 653, 380, 854]}\n    },\n    {\n      \"id\": \"B02\",\n      \"name\": \"Main run base, right section with corner stack\",\n      \"contains\": \"Two base doors, plus the corner door above two stacked drawers.\",\n      \"reason\": \"Covers the remaining main-run base and corner. The three side-by-side positions are two doors plus the corner stack. The split from B01 is assumed.\",\n      \"front_ids\": [\"F04\", \"F05\", \"F06\", \"F07\", \"F08\"],\n      \"view_ids\": [\"p1-view-003\"],\n      \"region\": {\"view_id\": \"p1-view-003\", \"bbox_1000\": [380, 576, 731, 854]}\n    },\n    {\n      \"id\": \"B03\",\n      \"name\": \"Main wall tall-over upper cabinets\",\n      \"contains\": \"Three portrait upper doors on one upper carcass over the right end of the main wall.\",\n      \"reason\": \"Three side-by-side fronts sharing one upper run, within the front-position limit.\",\n      \"front_ids\": [\"F09\", \"F10\", \"F11\"],\n      \"view_ids\": [\"p1-view-003\"],\n      \"region\": {\"view_id\": \"p1-view-003\", \"bbox_1000\": [603, 199, 974, 401]}\n    },\n    {\n      \"id\": \"B04\",\n      \"name\": \"Main wall middle upper lift-up pair\",\n      \"contains\": \"Two wide horizontal lift-up fronts on the middle upper section.\",\n      \"reason\": \"Two lift-up fronts sharing one wall cabinet. The shared carcass is an assumed grouping.\",\n      \"front_ids\": [\"F12\", \"F13\"],\n      \"view_ids\": [\"p1-view-003\"],\n      \"region\": {\"view_id\": \"p1-view-003\", \"bbox_1000\": [203, 390, 601, 490]}\n    },\n    {\n      \"id\": \"B05\",\n      \"name\": \"Tall upper unit at main wall left end\",\n      \"contains\": \"One tall upper cabinet with one front at the left end of the main wall.\",\n      \"reason\": \"Tall narrow unit kept as its own block. It is treated as a separate hanging unit, so it is not merged with the neighbouring upper run.\",\n      \"front_ids\": [\"F14\"],\n      \"view_ids\": [\"p1-view-003\"],\n      \"region\": {\"view_id\": \"p1-view-003\", \"bbox_1000\": [109, 199, 200, 490]}\n    },\n    {\n      \"id\": \"B06\",\n      \"name\": \"Return wing upper pair\",\n      \"contains\": \"Two tall portrait doors on a separate upper cabinet in the return wing.\",\n      \"reason\": \"Separately hanging upper pair, kept separate from the base run.\",\n      \"front_ids\": [\"F15\", \"F16\"],\n      \"view_ids\": [\"p1-view-004\", \"p1-view-002\"],\n      \"region\": {\"view_id\": \"p1-view-004\", \"bbox_1000\": [129, 113, 338, 467]}\n    },\n    {\n      \"id\": \"B07\",\n      \"name\": \"Return wing base, door section\",\n      \"contains\": \"Three base doors on the left part of the return wing base run.\",\n      \"reason\": \"Three side-by-side fronts on one base carcass, within the front-position limit. The split is assumed from the joints.\",\n      \"front_ids\": [\"F17\", \"F18\", \"F19\"],\n      \"view_ids\": [\"p1-view-004\"],\n      \"region\": {\"view_id\": \"p1-view-004\", \"bbox_1000\": [127, 663, 443, 904]}\n    },\n    {\n      \"id\": \"B08\",\n      \"name\": \"Return wing base, drawer and end door section\",\n      \"contains\": \"A stack of three drawers and the end base door beside it.\",\n      \"reason\": \"Drawer stack and end door make two side-by-side positions, within the limit. Assigning F20 here is an assumed grouping.\",\n      \"front_ids\": [\"F20\", \"F21\", \"F22\", \"F23\"],\n      \"view_ids\": [\"p1-view-004\", \"p1-view-002\"],\n      \"region\": {\"view_id\": \"p1-view-004\", \"bbox_1000\": [446, 663, 728, 904]}\n    },\n    {\n      \"id\": \"B09\",\n      \"name\": \"Return wing tall tower\",\n      \"contains\": \"One tall tower cabinet with a single tall front at the end of the return wing.\",\n      \"reason\": \"Tall tower kept as one full-height block, as a tall narrow unit.\",\n      \"front_ids\": [\"F24\"],\n      \"view_ids\": [\"p1-view-004\"],\n      \"region\": {\"view_id\": \"p1-view-004\", \"bbox_1000\": [735, 110, 839, 942]}\n    }\n  ],\n  \"shared_parts\": [\n    {\n      \"id\": \"S01\",\n      \"name\": \"L-shaped worktop\",\n      \"block_ids\": [\"B01\", \"B02\", \"B07\", \"B08\"],\n      \"view_ids\": [\"p1-view-002\"],\n      \"region\": {\"view_id\": \"p1-view-002\", \"bbox_1000\": [70, 400, 930, 840]}\n    }\n  ],\n  \"front_conflicts\": [\n    {\n      \"front_id\": \"F24\",\n      \"reason\": \"The tall front may be a fixed panel rather than a door. The leaf boundary is not explicit, so it is kept as a single tall block.\"\n    }\n  ],\n  \"uncertainties\": [\n    \"The grouping of the main run base into B01 and B02 is an assumed split to respect the three-front limit.\",\n    \"F20 is assigned to B08 because it sits at the right end of the return wing base; its carcass boundary is not explicit.\",\n    \"The worktop extent over the return wing and the corner is estimated from the axonometric view.\",\n    \"Whether F24 is a door or a fixed panel affects whether B09 has a front at all.\"\n  ]\n}",
+  "parsed_response": {
+    "summary": "An L-shaped kitchen with a main base-and-wall run, a return wing with a tall tower, a separate tall upper unit, and one continuous worktop.",
+    "blocks": [
+      {
+        "id": "B01",
+        "name": "Main run base, left section",
+        "contains": "Three base doors on the left end of the main lower run.",
+        "reason": "Split from the five-door run to keep no more than three front positions across the carcass. The split point is assumed from the even door spacing.",
+        "front_ids": [
+          "F01",
+          "F02",
+          "F03"
+        ],
+        "view_ids": [
+          "p1-view-003"
+        ],
+        "region": {
+          "view_id": "p1-view-003",
+          "bbox_1000": [
+            100,
+            653,
+            380,
+            854
+          ]
+        }
+      },
+      {
+        "id": "B02",
+        "name": "Main run base, right section with corner stack",
+        "contains": "Two base doors, plus the corner door above two stacked drawers.",
+        "reason": "Covers the remaining main-run base and corner. The three side-by-side positions are two doors plus the corner stack. The split from B01 is assumed.",
+        "front_ids": [
+          "F04",
+          "F05",
+          "F06",
+          "F07",
+          "F08"
+        ],
+        "view_ids": [
+          "p1-view-003"
+        ],
+        "region": {
+          "view_id": "p1-view-003",
+          "bbox_1000": [
+            380,
+            576,
+            731,
+            854
+          ]
+        }
+      },
+      {
+        "id": "B03",
+        "name": "Main wall tall-over upper cabinets",
+        "contains": "Three portrait upper doors on one upper carcass over the right end of the main wall.",
+        "reason": "Three side-by-side fronts sharing one upper run, within the front-position limit.",
+        "front_ids": [
+          "F09",
+          "F10",
+          "F11"
+        ],
+        "view_ids": [
+          "p1-view-003"
+        ],
+        "region": {
+          "view_id": "p1-view-003",
+          "bbox_1000": [
+            603,
+            199,
+            974,
+            401
+          ]
+        }
+      },
+      {
+        "id": "B04",
+        "name": "Main wall middle upper lift-up pair",
+        "contains": "Two wide horizontal lift-up fronts on the middle upper section.",
+        "reason": "Two lift-up fronts sharing one wall cabinet. The shared carcass is an assumed grouping.",
+        "front_ids": [
+          "F12",
+          "F13"
+        ],
+        "view_ids": [
+          "p1-view-003"
+        ],
+        "region": {
+          "view_id": "p1-view-003",
+          "bbox_1000": [
+            203,
+            390,
+            601,
+            490
+          ]
+        }
+      },
+      {
+        "id": "B05",
+        "name": "Tall upper unit at main wall left end",
+        "contains": "One tall upper cabinet with one front at the left end of the main wall.",
+        "reason": "Tall narrow unit kept as its own block. It is treated as a separate hanging unit, so it is not merged with the neighbouring upper run.",
+        "front_ids": [
+          "F14"
+        ],
+        "view_ids": [
+          "p1-view-003"
+        ],
+        "region": {
+          "view_id": "p1-view-003",
+          "bbox_1000": [
+            109,
+            199,
+            200,
+            490
+          ]
+        }
+      },
+      {
+        "id": "B06",
+        "name": "Return wing upper pair",
+        "contains": "Two tall portrait doors on a separate upper cabinet in the return wing.",
+        "reason": "Separately hanging upper pair, kept separate from the base run.",
+        "front_ids": [
+          "F15",
+          "F16"
+        ],
+        "view_ids": [
+          "p1-view-004",
+          "p1-view-002"
+        ],
+        "region": {
+          "view_id": "p1-view-004",
+          "bbox_1000": [
+            129,
+            113,
+            338,
+            467
+          ]
+        }
+      },
+      {
+        "id": "B07",
+        "name": "Return wing base, door section",
+        "contains": "Three base doors on the left part of the return wing base run.",
+        "reason": "Three side-by-side fronts on one base carcass, within the front-position limit. The split is assumed from the joints.",
+        "front_ids": [
+          "F17",
+          "F18",
+          "F19"
+        ],
+        "view_ids": [
+          "p1-view-004"
+        ],
+        "region": {
+          "view_id": "p1-view-004",
+          "bbox_1000": [
+            127,
+            663,
+            443,
+            904
+          ]
+        }
+      },
+      {
+        "id": "B08",
+        "name": "Return wing base, drawer and end door section",
+        "contains": "A stack of three drawers and the end base door beside it.",
+        "reason": "Drawer stack and end door make two side-by-side positions, within the limit. Assigning F20 here is an assumed grouping.",
+        "front_ids": [
+          "F20",
+          "F21",
+          "F22",
+          "F23"
+        ],
+        "view_ids": [
+          "p1-view-004",
+          "p1-view-002"
+        ],
+        "region": {
+          "view_id": "p1-view-004",
+          "bbox_1000": [
+            446,
+            663,
+            728,
+            904
+          ]
+        }
+      },
+      {
+        "id": "B09",
+        "name": "Return wing tall tower",
+        "contains": "One tall tower cabinet with a single tall front at the end of the return wing.",
+        "reason": "Tall tower kept as one full-height block, as a tall narrow unit.",
+        "front_ids": [
+          "F24"
+        ],
+        "view_ids": [
+          "p1-view-004"
+        ],
+        "region": {
+          "view_id": "p1-view-004",
+          "bbox_1000": [
+            735,
+            110,
+            839,
+            942
+          ]
+        }
+      }
+    ],
+    "shared_parts": [
+      {
+        "id": "S01",
+        "name": "L-shaped worktop",
+        "block_ids": [
+          "B01",
+          "B02",
+          "B07",
+          "B08"
+        ],
+        "view_ids": [
+          "p1-view-002"
+        ],
+        "region": {
+          "view_id": "p1-view-002",
+          "bbox_1000": [
+            70,
+            400,
+            930,
+            840
+          ]
+        }
+      }
+    ],
+    "front_conflicts": [
+      {
+        "front_id": "F24",
+        "reason": "The tall front may be a fixed panel rather than a door. The leaf boundary is not explicit, so it is kept as a single tall block."
+      }
+    ],
+    "uncertainties": [
+      "The grouping of the main run base into B01 and B02 is an assumed split to respect the three-front limit.",
+      "F20 is assigned to B08 because it sits at the right end of the return wing base; its carcass boundary is not explicit.",
+      "The worktop extent over the return wing and the corner is estimated from the axonometric view.",
+      "Whether F24 is a door or a fixed panel affects whether B09 has a front at all."
+    ]
+  },
+  "changed_request_fields_vs_v2": [
+    "system"
+  ],
+  "coordinates": {
+    "prompt_version": "CB Planner V3",
+    "source_witness": "/private/tmp/cb-planner-v3-lev2-01.json",
+    "coordinate_convention": "bbox_1000 on exact labelled detail; page_pixels exclude added output banner",
+    "model_totals": {
+      "blocks": 9,
+      "shared_parts": 1
+    },
+    "display_only_label_normalizations": [],
+    "warnings": [],
+    "annotations": [
+      {
+        "id": "B01",
+        "name": "Main run base, left section",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          100,
+          653,
+          380,
+          854
+        ],
+        "type": "hinged",
+        "kind": "block",
+        "detail_pixels": [
+          86.5,
+          467.548,
+          328.7,
+          611.4639999999999
+        ],
+        "page_pixels": [
+          245.5,
+          1126.548,
+          487.7,
+          1270.464
+        ]
+      },
+      {
+        "id": "B02",
+        "name": "Main run base, right section with corner stack",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          380,
+          576,
+          731,
+          854
+        ],
+        "type": "drawer",
+        "kind": "block",
+        "detail_pixels": [
+          328.7,
+          412.416,
+          632.3149999999999,
+          611.4639999999999
+        ],
+        "page_pixels": [
+          487.7,
+          1071.416,
+          791.3149999999999,
+          1270.464
+        ]
+      },
+      {
+        "id": "B03",
+        "name": "Main wall tall-over upper cabinets",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          603,
+          199,
+          974,
+          401
+        ],
+        "type": "lift_up",
+        "kind": "block",
+        "detail_pixels": [
+          521.595,
+          142.484,
+          842.51,
+          287.11600000000004
+        ],
+        "page_pixels": [
+          680.595,
+          801.484,
+          1001.51,
+          946.116
+        ]
+      },
+      {
+        "id": "B04",
+        "name": "Main wall middle upper lift-up pair",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          203,
+          390,
+          601,
+          490
+        ],
+        "type": "unresolved",
+        "kind": "block",
+        "detail_pixels": [
+          175.595,
+          279.24,
+          519.865,
+          350.84
+        ],
+        "page_pixels": [
+          334.595,
+          938.24,
+          678.865,
+          1009.8399999999999
+        ]
+      },
+      {
+        "id": "B05",
+        "name": "Tall upper unit at main wall left end",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          109,
+          199,
+          200,
+          490
+        ],
+        "type": "excluded",
+        "kind": "block",
+        "detail_pixels": [
+          94.285,
+          142.484,
+          173,
+          350.84
+        ],
+        "page_pixels": [
+          253.285,
+          801.484,
+          332,
+          1009.8399999999999
+        ]
+      },
+      {
+        "id": "B06",
+        "name": "Return wing upper pair",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          129,
+          113,
+          338,
+          467
+        ],
+        "type": "hinged",
+        "kind": "block",
+        "detail_pixels": [
+          96.75,
+          66.896,
+          253.50000000000003,
+          276.464
+        ],
+        "page_pixels": [
+          1185.75,
+          798.896,
+          1342.5,
+          1008.4639999999999
+        ]
+      },
+      {
+        "id": "B07",
+        "name": "Return wing base, door section",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          127,
+          663,
+          443,
+          904
+        ],
+        "type": "drawer",
+        "kind": "block",
+        "detail_pixels": [
+          95.25,
+          392.49600000000004,
+          332.25,
+          535.168
+        ],
+        "page_pixels": [
+          1184.25,
+          1124.496,
+          1421.25,
+          1267.1680000000001
+        ]
+      },
+      {
+        "id": "B08",
+        "name": "Return wing base, drawer and end door section",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          446,
+          663,
+          728,
+          904
+        ],
+        "type": "lift_up",
+        "kind": "block",
+        "detail_pixels": [
+          334.5,
+          392.49600000000004,
+          546,
+          535.168
+        ],
+        "page_pixels": [
+          1423.5,
+          1124.496,
+          1635,
+          1267.1680000000001
+        ]
+      },
+      {
+        "id": "B09",
+        "name": "Return wing tall tower",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          735,
+          110,
+          839,
+          942
+        ],
+        "type": "unresolved",
+        "kind": "block",
+        "detail_pixels": [
+          551.25,
+          65.12,
+          629.25,
+          557.664
+        ],
+        "page_pixels": [
+          1640.25,
+          797.12,
+          1718.25,
+          1289.664
+        ]
+      },
+      {
+        "id": "S01",
+        "name": "L-shaped worktop",
+        "view_id": "p1-view-002",
+        "bbox_1000": [
+          70,
+          400,
+          930,
+          840
+        ],
+        "type": "excluded",
+        "kind": "shared_part",
+        "detail_pixels": [
+          38.64,
+          191.60000000000002,
+          513.36,
+          402.35999999999996
+        ],
+        "page_pixels": [
+          1206.64,
+          324.6,
+          1681.3600000000001,
+          535.3599999999999
+        ]
+      }
+    ]
+  },
+  "review": {
+    "semantic_acceptance": "partial improvement, not accepted",
+    "full_page_overlay_visually_inspected": true,
+    "manual_coordinate_changes": false,
+    "provider_calls": 1,
+    "issues": [
+      "Nine blocks plus one separately represented worktop",
+      "L-shaped summary corrected; stated horizontal grouping respects three positions",
+      "F24 simultaneously assigned to B09 and front_conflicts; original validator rejects",
+      "Tall fixed structure still proposed as tower cabinet",
+      "Open shelving not explicitly described in block contents; complete coverage unconfirmed",
+      "Grouped by separate elevation runs; owner's proposed cross-corner/tall assembly grouping not demonstrated"
+    ],
+    "overlay_status": "Diagnostic display of original boxes with INVALID banner; finite/bounded/owned image boxes checked separately, no change to rejected output"
+  }
+}

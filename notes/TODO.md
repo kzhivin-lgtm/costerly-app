@@ -701,6 +701,55 @@ Planner prompt hash, one-call/source preservation, ownership/conflict checks,
 invalid boxes/references, truncation recording and non-mutating overlay export.
 Full suite/live product integration were not tested. Structural tests do not
 override the two semantic failures recorded above.
+OWNER-APPROVED CB Planner V3, 2026-11-05, same 3.17.4.5:
+Owner confirms the countertop is a standalone physical element. Keep it once,
+with references to supported carcasses when shared; it is not merely a label
+inside a base block. Its review rectangle is not a cutting contour.
+Owner approved implementation and testing of the grouping proposal: aim
+for at most three fronts across the width of one cabinet block; four only as
+an explicitly justified rare exception. Full-height narrow cabinets remain
+possible. Owner considered 500-600mm minimum / 1400-1500mm maximum horizontally,
+then proposed front-count grouping instead. Do not implement those dimensions
+as simultaneous hard bounds or apply a horizontal maximum to height.
+Approved refinement: count horizontal front positions, not the sum of
+vertically stacked drawers/doors; for a corner block consider both wings to
+avoid doubling the allowance. Two door leaves do not prove two compartments.
+Do not impose a hard minimum that would erase a necessary narrow cabinet.
+This is an estimating grouping policy, not proof of transportability or a
+universal furniture-manufacturing rule. Source construction still takes priority.
+Countertops/non-cabinet panels are not subject to the facade-count limit.
+CB Planner V3 implemented as a versioned prompt, V2 retained unchanged.
+No schema, provider settings, images, saved Front or production-route changes.
+V3 SHA256 28ddc60a1e8b5c6385cb13f738cc98b40d7a9414e86b6aa43e53b685f0e6dac5.
+128 focused tests pass, including current/previous prompt fingerprints and
+Front r03 identity. Two bounded live probes use the same Lev1/Lev2 inputs as V2.
+Status: completed experiment, partial semantic improvement, not accepted.
+Live probes: Lev1 11.057 s (13592 input / 2053 output tokens), Lev2 18.306 s
+(14961 / 4081). One Haiku 5.5 call each; comparison against each V2 request
+confirms ONLY system changed, including byte-identical evidence/Front context.
+Lev1 now returns the three owner-proposed groups: lower drawer carcass,
+decorative vertical panel and separate tabletop/support assembly. Contract
+passes; model still describes only one support leg instead of two, so this is
+grouping improvement, not full physical-content acceptance.
+Lev2 returns nine blocks + one separate shared worktop, corrects U to L in
+summary and splits rows into groups with at most three stated width positions.
+Original validation FAILS: F24 belongs to B09 and front_conflicts simultaneously.
+No silent deletion/repair. B09 remains a proposed tall cabinet on the known
+ambiguous/fixed structure. Upper open shelving is not explicitly covered;
+cross-corner and full-height assembly interpretation remains unproven.
+Both full-page overlays visually reviewed. Lev2's diagnostic diagram displays
+the original regions under an INVALID banner after separate box/reference
+checks, without treating the rejected plan as valid. Source witness unchanged.
+Artifacts: /private/tmp/cb-planner-v3-lev1-01.json and
+/private/tmp/cb-planner-v3-lev2-01.json, with raw output and overlay suffixes.
+Durable final outputs, comparison and review:
+notes/evidence/cb-planner-v3-2026-11-05/.
+No additional model retries, schema relaxation, main merge or deployment.
+Next: owner review of actual boundaries, especially B09/F24 and the tall-unit
+split. Front V1/r03 checkpoint and historical V2 prompt remain unchanged.
+Final verification: 129 focused tests pass, including replay of both original
+V3 outputs: Lev1 validates and Lev2 still rejects the duplicated F24 ownership.
+No full-cycle or production acceptance inferred from these tests.
 Owner authorized all necessary bounded paid replays and Anthropic evidence
 transmission until readiness for production and personal acceptance.
 [verified] Capsules 02-06 retain raw responses/usage before validation. No
