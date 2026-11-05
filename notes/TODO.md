@@ -591,7 +591,18 @@ project Material Engine after C/I/A resolution, with whole-sheet rounding.
 Do not claim geometric offcut reuse from aggregate area. Labor is excluded.
 Base: e608f37. Acceptance and bounded scope:
 `notes/ESTIMATION_V6_1_CONSTRUCTION_PLAN_2026_11_04.md`.
-CURRENT OWNER CHECKPOINT, 2026-11-05, same 3.17.4.5, P0:
+CURRENT HSL/N68 RESEARCH CHECKPOINT, 2026-11-05, same 3.17.4.5, P0:
+Owner requested complete preservation, not acceptance of failed runs.
+Restart record: notes/ESTIMATION_V6_2_HSL_N68_CHECKPOINT_2026_11_05.md.
+Tag: estimation-v6.2-hsl-n68-research-checkpoint-2026-11-05.
+Selected Front V2 + Planner V4; V5/V6 candidates retained, V6 not promoted
+after N68 scope loss. 166 tests pass on final restored-default tree.
+All baseline/candidate results and private replay archive are preserved.
+Next recommendation: rotation-aware input transport; independent N68 omission,
+Front format/count failures and Planner truncation remain pending below.
+No main merge, deployment, materials-cycle acceptance or new fix authorization.
+
+HISTORICAL OWNER FRONT CHECKPOINT, 2026-11-05, same 3.17.4.5, P0:
 Front interpretation r03 is accepted as a provisional working baseline with
 known visual errors, not production-ready estimation. Exact r03 prompt restored;
 r04 retired from the active route and preserved in prompt history and evidence.
@@ -733,6 +744,91 @@ marked fixed by owner acceptance of segmentation. No production deploy.
 Verification: 166 focused tests pass, including selected V2 default, explicit
 V1 replay, exact prompt hashes, Lev2 Front result and rejection of truncated
 Planner output. git diff --check passes. Protected r03 tag remains unchanged.
+
+HSL saved-package replay, USER REQUEST, 2026-11-05, same 3.17.4.5,
+P0, COMPLETED diagnostic replay; acceptance FAILED: owner explicitly requests existing
+Detection packages, not a locally rebuilt fixture. Latest matching Floor 07
+run found: run_99b433940dcc4fd9abbe0587dc56fb12, 2026-10-27T21:14:59Z,
+nine objects, 34 persisted view_evidence_packages in Detection event
+ba7c98b2-2ad6-44a6-8e8b-cba525d67518. No immutable
+rfq_estimation_object_inputs exist for this run. The 40 inspected Floor 06
+runs contained no nine-object match. Current Front/Planner consumes immutable
+Estimation input_payload plus page bytes, not raw Detection island packages;
+the production handoff creates that payload at Estimation start. Do not claim
+Detection packages are missing or rerun Detection.
+Correction after inspecting actual Lev witnesses: absence of saved immutable
+inputs is NOT a new HSL-specific blocker. Lev1 reused persisted input
+db175c9d-b911-434e-a3ed-de612640f96f. Lev2 already used the existing read-only
+tools/probe_v62_lev2_detection.py bridge: persisted object/island membership
+and OCR from run_189150ebf62447fc958f7c23cc34e3bb, source PDF hash checked
+against OCR, local page rendering, build_estimation_input, no DB writes.
+Its selected replay explicitly records persisted_detection_local_fixture_not_persisted_input.
+Earlier claim that this transport needed a new architecture decision was
+incorrect. Reuse that established approach for HSL without redetection or
+invented object/island membership. Multi-object/document-context handling
+still requires verification; the rejected older HSL fixture added all-document
+context, while the selected Lev2 witness has no document_context field.
+The initial lookup made no provider calls. The subsequently owner-approved
+replay completed 18 calls, with no DB writes, prompt changes or deployment.
+Superseded local fixture experiment used older run_2dce... and whole-document
+OCR, hitting the 100k text bound before provider calls. This does NOT verify
+a failure of the requested latest saved package. Its agent-created preparation
+script was removed; local diagnostic artifacts remain superseded evidence only.
+Executed 2026-11-05 using the existing build_estimation_input route, as in
+Lev2: saved nine object rows, existing OCR and exact Detection regions,
+source SHA256 verified against the persisted OCR, locally rendered page images.
+No synthetic grouping, redetection, added whole-document context, retry or
+response normalization. All 34 island references retained. Selected Front V2
+and Planner V4, claude-haiku-5-5, unchanged prompt/settings. Two concurrent
+object chains, 188.55 seconds provider-batch wall time, 483656 input / 67331
+output tokens across 18 calls. This is a diagnostic timing, not production SLA.
+Front: 0/9 structural passes, eight invalid island-type labels and one
+front-count/box-count mismatch. Existing Planner diagnostic consumes complete
+raw Front JSON with failed status explicitly attached as a fallible reference;
+no Front output was repaired. Planner: 7/9 structural passes; object-001 invalid
+references, object-007 max_tokens truncation. Full-chain acceptance: 0/9.
+Visual review: all nine source pages inspected; exact Planner overlays for
+N57/object-002 and N68/object-005 reviewed. N57 misses separate upper/appliance
+scope and joins physically distinct tops; N60/object-003 invents another run
+from views and emits unsupported millimetre labels. N68 recognizes L layout
+but worktop overlay lies on upper shelving. Counts/schema are not acceptance.
+Earliest confirmed transport defect: source_coordinate_frame calculates frame
+from unrotated page_size_points * dpi/72. PDF pages 3,5,6,8,9,10 have rotation
+270; images and Detection bboxes are in landscape frame. Five objects receive
+no detail crops, object-006 receives two mispositioned crops; all full pages
+remain present. Unrotated pages are unaffected by this particular mismatch.
+P0 pending recommendation, same work number: correct rotation-aware coordinate
+transport and add a rotated-page regression, then replay the same evidence and
+prompts. No fix yet authorized/implemented in this diagnostic iteration. Enum,
+front-count and Planner budget/semantic failures remain separately open;
+the transport defect is not asserted to explain all model errors.
+Durable raw responses, usage, hashes and audit:
+notes/evidence/hsl07-v62-2026-11-05/replay-evidence.json.
+Full local requests/inputs/snapshot/overlays:
+/private/tmp/hsl07-saved-replay-20261105-01/.
+Existing Lev1/Lev2 accepted abstraction and protected r03 checkpoint unchanged.
+
+N68 targeted Planner update, USER REQUEST, 2026-11-05, same 3.17.4.5,
+P0, completed experiment / acceptance FAILED: owner confirms eight hinged
+doors and four drawers. Five lift-up fronts are NOT accepted; Front located
+F01-F03 and F16-F17 on triangular marks in the upper shelf bands.
+CB Planner V5 adds worktop localization on top/axonometric views; an edge-only
+fallback explicitly states missing footprint when no surface view exists.
+CB Planner V6 also limits tall cabinets to at most TWO tall leaves across,
+preserving the one-section-wide rule and the ordinary three-position allowance
+for non-tall blocks. V5 single N68 call: 22.921 s. V6 single N68 call: 22.311 s.
+Both pass structural validation. Exact same input, images, saved failed Front,
+model and settings as V4; only system prompt differs. No Front replay or retry.
+V6 shows S01 on p7-view-001 and tall storage split F07/F08 + F09 (2+1).
+Regression: previously represented wall-1 appliance column is now absent.
+Overlay reviewed without corrections; worktop footprint and drawer box remain
+approximate/incomplete. V4 default restored, V5/V6 prompts retained as candidates.
+V4 is a comparison baseline, not an accepted full HSL solution. No deployment.
+166 focused tests passed with V6 selected; restored-default Planner tests pass
+(25 tests); git diff --check passes.
+Evidence: notes/evidence/hsl07-v62-2026-11-05/n68-planner-v5-v6-evidence.json.
+Next proposed work: diagnose physical scope omission before accepting V6;
+do not attribute all omissions to a prompt rule from a single sample.
 
 Historical CB Front V2 support experiment, 2026-11-05, same 3.17.4.5:
 Add physical legs and tabletop support interpretation to the existing Front

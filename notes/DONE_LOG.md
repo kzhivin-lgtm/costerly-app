@@ -1,5 +1,20 @@
 # Done Log
 
+2026-11-05, 3.17.4.5: full HSL/N68 research checkpoint preserved at owner request.
+Nine saved Detection objects / 34 islands replayed, 18 calls, 188.55 s;
+Front 0/9 and Planner 7/9 structural passes, no full-chain acceptance.
+Confirmed six-page rotation/frame mismatch, not patched. N68 owner accepts
+eight hinged doors/four drawers, not the five inferred lift-ups. Planner V5
+adds worktop view selection; V6 adds at most two tall leaves across. Both
+rules appear in the N68 V6 result, but the appliance column disappears.
+V4 default restored, V5/V6 and exact results retained, no automatic retry.
+166 tests pass on restored-default tree. Private evidence archive outside /tmp
+contains 101 byte-verified content files; raw text/usage/hashes are in Git.
+This completes preservation, not production readiness or semantic acceptance.
+No main merge, deployment, DB writes or alteration of historical r03 tag.
+Tag: estimation-v6.2-hsl-n68-research-checkpoint-2026-11-05.
+Restart: notes/ESTIMATION_V6_2_HSL_N68_CHECKPOINT_2026_11_05.md.
+
 2026-11-05, 3.17.4.5: owner accepts the conceptual construction-segmentation
 stage for the examined simple objects. Lev1 two/three assemblies are both valid
 if complete; three is not a canonical target. CB Front V2/r05 selected as the

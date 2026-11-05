@@ -23,6 +23,9 @@ This file explains where code belongs so the project stays understandable.
 - `use_cases/` contains product flows such as processing an uploaded RFQ.
 - `use_cases/rfq_processing.py` runs detection, writes the result to Supabase, and loads File Review data.
 - `use_cases/estimation.py` starts object estimation by creating pending estimate records from detected objects.
+- Estimation V6.2 research checkpoint/restart: `notes/ESTIMATION_V6_2_HSL_N68_CHECKPOINT_2026_11_05.md`
+  (3.17.4.5). Selected Front V2 + Planner V4, retained V5/V6 experiments, exact
+  HSL evidence and pending defects. Authoritative task states remain in TODO.
 - `use_cases/machinery.py` owns the 27-code storage catalog, the 16-capability
   Company Profile subset, outsourceable-operation boundary, company/supplier
   validation, Supabase persistence, and the bounded production-context snapshot

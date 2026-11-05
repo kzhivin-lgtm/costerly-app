@@ -16,6 +16,13 @@ protected. Pre-existing TODO changes belong to the owner.
 
 ## Decision
 
+Current full research checkpoint and restart instructions:
+notes/ESTIMATION_V6_2_HSL_N68_CHECKPOINT_2026_11_05.md.
+Preservation completed, not full-cycle acceptance. Selected Front V2 + Planner
+V4; V5/V6 retained as tested candidates. HSL transport rotation, Front validation,
+Planner truncation and N68 physical-scope omission remain open. Exact outputs,
+private archive identity and final 166-test verification are in that record.
+
 ### Current V6.2 boundary and results, 2026-11-05
 
 Current Front extension: **CB Front V2** (technical r05, not a renumbered r04).
@@ -66,7 +73,12 @@ removal of the support rule. No prompt retries, hidden fixes or deployment.
 Final verification: 163 focused tests pass; original failures remain in fixtures,
 default r03 and prior Planner prompt hashes preserved; git diff --check passes.
 
-Latest Planner diagnostic: **CB Planner V4**, owner-approved priority for full-height
+Latest tested candidates: **CB Planner V5/V6**, worktop top/axonometric localization
+and at most two tall door leaves across. V6 N68 follows both rules but loses
+the wall-1 appliance column. V4 default restored; candidates and raw results
+retained, not accepted/deployed. See notes/evidence/hsl07-v62-2026-11-05/n68-planner-v5-v6-evidence.json.
+
+Selected Planner diagnostic: **CB Planner V4**, owner-approved priority for full-height
 blocks exactly one section wide, identified before horizontal grouping.
 Keep stacked doors/drawers/shelves/appliance openings together where a continuous
 carcass is plausible; preserve explicit boundaries and separately hanging units.

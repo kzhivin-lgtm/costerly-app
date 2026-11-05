@@ -1,0 +1,460 @@
+{
+  "work_number": "3.17.4.5",
+  "object": "N68 / object-005",
+  "source_run": "run_99b433940dcc4fd9abbe0587dc56fb12",
+  "owner_accepted_front_counts": {
+    "hinged_doors": 8,
+    "drawers": 4
+  },
+  "lift_up_fronts_unaccepted": 5,
+  "runs": [
+    {
+      "prompt_version": "CB Planner V5",
+      "prompt_sha256": "c8a4c285970704c87c2fdc1f0d81108a4df95143f2449d63e70930aadee72a13",
+      "model": "claude-haiku-5-5",
+      "request_sha256": "ba06504abf5fca462addf358991ea686c48402fd5df16b452c8e45faaf40fd9f",
+      "status": "assembly_plan_requires_review",
+      "elapsed_seconds": 22.921,
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 33262,
+        "output_tokens": 4514,
+        "output_tokens_details": {
+          "thinking_tokens": 2817
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "response_text": "{\"summary\":\"An L-shaped kitchen with an upper and base run on wall 1, a tall corner column, and a tall storage, fridge, drawer and upper run on wall 2, shown in two top views and two front elevations.\",\"blocks\":[{\"id\":\"B01\",\"name\":\"Wall 1 upper lift-up cabinet run\",\"contains\":\"Hanging upper cabinets over the wall 1 worktop with three upward-opening fronts.\",\"reason\":\"Three side-by-side lift-up fronts share one hanging carcass run above the base run. Three positions is within the limit. The shared carcass is inferred from the continuous upper line and the strut layout.\",\"front_ids\":[\"F01\",\"F02\",\"F03\"],\"view_ids\":[\"p7-view-003\"],\"region\":{\"view_id\":\"p7-view-003\",\"bbox_1000\":[210,460,713,532]}},{\"id\":\"B02\",\"name\":\"Wall 1 base cabinet run with doors\",\"contains\":\"Base cabinets under the wall 1 worktop with two central doors and one portrait door beside them.\",\"reason\":\"The three base doors form one base carcass run with three front positions. The portrait door F06 may be a plinth or fixed panel, so its operability is inferred. The left fixed end panel is excluded.\",\"front_ids\":[\"F04\",\"F05\",\"F06\"],\"view_ids\":[\"p7-view-003\"],\"region\":{\"view_id\":\"p7-view-003\",\"bbox_1000\":[210,667,713,841]}},{\"id\":\"B03\",\"name\":\"Wall 1 corner tall column\",\"contains\":\"Full-height corner column with a VEN-01 upper unit, an appliance opening (oven/microwave) and a VEN-01 lower unit, all in one section.\",\"reason\":\"The column is one section wide and runs the full height of the wall 1 end, so it is kept as one block. Its continuity with the base run is assumed from the shared end-wall alignment and is not explicit.\",\"front_ids\":[],\"view_ids\":[\"p7-view-003\"],\"region\":{\"view_id\":\"p7-view-003\",\"bbox_1000\":[713,362,835,844]}},{\"id\":\"B04\",\"name\":\"Wall 2 tall storage column\",\"contains\":\"Three equal full-height tall storage doors labelled VEN-01.\",\"reason\":\"Three equal tall doors form one full-height storage run with three front positions. Their continuous height and shared labelling support one carcass.\",\"front_ids\":[\"F07\",\"F08\",\"F09\"],\"view_ids\":[\"p7-view-004\"],\"region\":{\"view_id\":\"p7-view-004\",\"bbox_1000\":[111,360,367,832]}},{\"id\":\"B05\",\"name\":\"Wall 2 fridge tall unit\",\"contains\":\"Two full-height portrait leaves labelled as a fridge housing.\",\"reason\":\"The two leaves form one appliance housing, separate from the storage run by its function. The fridge may be an integrated panel, so the boundary is an assumption.\",\"front_ids\":[\"F10\",\"F11\"],\"view_ids\":[\"p7-view-004\"],\"region\":{\"view_id\":\"p7-view-004\",\"bbox_1000\":[367,360,537,832]}},{\"id\":\"B06\",\"name\":\"Wall 2 base drawer bank\",\"contains\":\"Two columns of two stacked drawer fronts under the wall 2 worktop.\",\"reason\":\"Two side-by-side drawer stacks share one base carcass, giving two front positions. The lowest bands may be a plinth, so the count is an estimate.\",\"front_ids\":[\"F12\",\"F13\",\"F14\",\"F15\"],\"view_ids\":[\"p7-view-004\"],\"region\":{\"view_id\":\"p7-view-004\",\"bbox_1000\":[537,680,758,832]}},{\"id\":\"B07\",\"name\":\"Wall 2 upper lift-up cabinets\",\"contains\":\"Two upward-opening upper fronts over the wall 2 worktop.\",\"reason\":\"Two side-by-side lift-up fronts form one hanging run above the base drawer bank. Two positions is within the limit.\",\"front_ids\":[\"F16\",\"F17\"],\"view_ids\":[\"p7-view-004\"],\"region\":{\"view_id\":\"p7-view-004\",\"bbox_1000\":[537,469,852,536]}}],\"shared_parts\":[{\"id\":\"S01\",\"name\":\"L-shaped worktop\",\"block_ids\":[\"B02\",\"B03\",\"B06\"],\"view_ids\":[\"p7-view-001\",\"p7-view-002\"],\"region\":{\"view_id\":\"p7-view-001\",\"bbox_1000\":[529,214,871,712]}}],\"front_conflicts\":[],\"uncertainties\":[\"The front reference does not list any fronts for the wall 1 corner column (B03), so its door and appliance fronts are unassigned.\",\"The worktop footprint is approximate from the top view; the corner return is not clearly separated.\",\"The wall 1 upper run boundaries behind the worktop are not clearly drawn, so the carcass extent is estimated.\",\"The portrait door F06 and the lowest drawer band F12-F15 may be plinths or fixed panels rather than operable fronts.\",\"The wall 2 fridge leaves may belong to an integrated appliance panel rather than a cabinet.\",\"The corner column may or may not share a carcass with the wall 1 base run; this is assumed from alignment only.\"]}",
+      "input_images_front_and_settings_identical_to_v4": true,
+      "parsed": {
+        "summary": "An L-shaped kitchen with an upper and base run on wall 1, a tall corner column, and a tall storage, fridge, drawer and upper run on wall 2, shown in two top views and two front elevations.",
+        "blocks": [
+          {
+            "id": "B01",
+            "name": "Wall 1 upper lift-up cabinet run",
+            "contains": "Hanging upper cabinets over the wall 1 worktop with three upward-opening fronts.",
+            "reason": "Three side-by-side lift-up fronts share one hanging carcass run above the base run. Three positions is within the limit. The shared carcass is inferred from the continuous upper line and the strut layout.",
+            "front_ids": [
+              "F01",
+              "F02",
+              "F03"
+            ],
+            "view_ids": [
+              "p7-view-003"
+            ],
+            "region": {
+              "view_id": "p7-view-003",
+              "bbox_1000": [
+                210,
+                460,
+                713,
+                532
+              ]
+            }
+          },
+          {
+            "id": "B02",
+            "name": "Wall 1 base cabinet run with doors",
+            "contains": "Base cabinets under the wall 1 worktop with two central doors and one portrait door beside them.",
+            "reason": "The three base doors form one base carcass run with three front positions. The portrait door F06 may be a plinth or fixed panel, so its operability is inferred. The left fixed end panel is excluded.",
+            "front_ids": [
+              "F04",
+              "F05",
+              "F06"
+            ],
+            "view_ids": [
+              "p7-view-003"
+            ],
+            "region": {
+              "view_id": "p7-view-003",
+              "bbox_1000": [
+                210,
+                667,
+                713,
+                841
+              ]
+            }
+          },
+          {
+            "id": "B03",
+            "name": "Wall 1 corner tall column",
+            "contains": "Full-height corner column with a VEN-01 upper unit, an appliance opening (oven/microwave) and a VEN-01 lower unit, all in one section.",
+            "reason": "The column is one section wide and runs the full height of the wall 1 end, so it is kept as one block. Its continuity with the base run is assumed from the shared end-wall alignment and is not explicit.",
+            "front_ids": [],
+            "view_ids": [
+              "p7-view-003"
+            ],
+            "region": {
+              "view_id": "p7-view-003",
+              "bbox_1000": [
+                713,
+                362,
+                835,
+                844
+              ]
+            }
+          },
+          {
+            "id": "B04",
+            "name": "Wall 2 tall storage column",
+            "contains": "Three equal full-height tall storage doors labelled VEN-01.",
+            "reason": "Three equal tall doors form one full-height storage run with three front positions. Their continuous height and shared labelling support one carcass.",
+            "front_ids": [
+              "F07",
+              "F08",
+              "F09"
+            ],
+            "view_ids": [
+              "p7-view-004"
+            ],
+            "region": {
+              "view_id": "p7-view-004",
+              "bbox_1000": [
+                111,
+                360,
+                367,
+                832
+              ]
+            }
+          },
+          {
+            "id": "B05",
+            "name": "Wall 2 fridge tall unit",
+            "contains": "Two full-height portrait leaves labelled as a fridge housing.",
+            "reason": "The two leaves form one appliance housing, separate from the storage run by its function. The fridge may be an integrated panel, so the boundary is an assumption.",
+            "front_ids": [
+              "F10",
+              "F11"
+            ],
+            "view_ids": [
+              "p7-view-004"
+            ],
+            "region": {
+              "view_id": "p7-view-004",
+              "bbox_1000": [
+                367,
+                360,
+                537,
+                832
+              ]
+            }
+          },
+          {
+            "id": "B06",
+            "name": "Wall 2 base drawer bank",
+            "contains": "Two columns of two stacked drawer fronts under the wall 2 worktop.",
+            "reason": "Two side-by-side drawer stacks share one base carcass, giving two front positions. The lowest bands may be a plinth, so the count is an estimate.",
+            "front_ids": [
+              "F12",
+              "F13",
+              "F14",
+              "F15"
+            ],
+            "view_ids": [
+              "p7-view-004"
+            ],
+            "region": {
+              "view_id": "p7-view-004",
+              "bbox_1000": [
+                537,
+                680,
+                758,
+                832
+              ]
+            }
+          },
+          {
+            "id": "B07",
+            "name": "Wall 2 upper lift-up cabinets",
+            "contains": "Two upward-opening upper fronts over the wall 2 worktop.",
+            "reason": "Two side-by-side lift-up fronts form one hanging run above the base drawer bank. Two positions is within the limit.",
+            "front_ids": [
+              "F16",
+              "F17"
+            ],
+            "view_ids": [
+              "p7-view-004"
+            ],
+            "region": {
+              "view_id": "p7-view-004",
+              "bbox_1000": [
+                537,
+                469,
+                852,
+                536
+              ]
+            }
+          }
+        ],
+        "shared_parts": [
+          {
+            "id": "S01",
+            "name": "L-shaped worktop",
+            "block_ids": [
+              "B02",
+              "B03",
+              "B06"
+            ],
+            "view_ids": [
+              "p7-view-001",
+              "p7-view-002"
+            ],
+            "region": {
+              "view_id": "p7-view-001",
+              "bbox_1000": [
+                529,
+                214,
+                871,
+                712
+              ]
+            }
+          }
+        ],
+        "front_conflicts": [],
+        "uncertainties": [
+          "The front reference does not list any fronts for the wall 1 corner column (B03), so its door and appliance fronts are unassigned.",
+          "The worktop footprint is approximate from the top view; the corner return is not clearly separated.",
+          "The wall 1 upper run boundaries behind the worktop are not clearly drawn, so the carcass extent is estimated.",
+          "The portrait door F06 and the lowest drawer band F12-F15 may be plinths or fixed panels rather than operable fronts.",
+          "The wall 2 fridge leaves may belong to an integrated appliance panel rather than a cabinet.",
+          "The corner column may or may not share a carcass with the wall 1 base run; this is assumed from alignment only."
+        ]
+      }
+    },
+    {
+      "prompt_version": "CB Planner V6",
+      "prompt_sha256": "3f13cae5fa825322b50725e45eeb6df066a5528c9319b6857a4b5bc974a0427d",
+      "model": "claude-haiku-5-5",
+      "request_sha256": "44b55323427ef61c68e73a966184133aa8f4f83545f8298d0a8aebab3c577e6c",
+      "status": "assembly_plan_requires_review",
+      "elapsed_seconds": 22.311,
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 33402,
+        "output_tokens": 4735,
+        "output_tokens_details": {
+          "thinking_tokens": 2826
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "response_text": "{\n  \"summary\": \"An L-shaped kitchen run with upper lift-up cabinets and base units on wall 1, a tall storage and fridge column with a drawer bank and upper lift-up cabinets on wall 2, and an L-shaped worktop.\",\n  \"blocks\": [\n    {\n      \"id\": \"B01\",\n      \"name\": \"Wall 1 upper lift-up cabinets\",\n      \"contains\": \"Three upward-opening wall fronts over the wall 1 worktop, with their hanging carcass.\",\n      \"reason\": \"Three side-by-side fronts form one upper hanging run, which stays within the three-position limit. The hanging carcass is kept separate from the base run because it is a separate hanging unit. The shared carcass is an assumption based on the continuous upper line.\",\n      \"front_ids\": [\"F01\", \"F02\", \"F03\"],\n      \"view_ids\": [\"p7-view-003\"],\n      \"region\": {\"view_id\": \"p7-view-003\", \"bbox_1000\": [350, 465, 680, 525]}\n    },\n    {\n      \"id\": \"B02\",\n      \"name\": \"Wall 1 base cabinet run\",\n      \"contains\": \"Two central base doors and one portrait door beside them, under the wall 1 worktop.\",\n      \"reason\": \"The three base fronts form one continuous base run within the three-position limit. The portrait door is assumed to be part of the same carcass because it closes the same access opening; its operability is inferred.\",\n      \"front_ids\": [\"F04\", \"F05\", \"F06\"],\n      \"view_ids\": [\"p7-view-003\"],\n      \"region\": {\"view_id\": \"p7-view-003\", \"bbox_1000\": [403, 664, 710, 828]}\n    },\n    {\n      \"id\": \"B03\",\n      \"name\": \"Wall 2 tall storage pair\",\n      \"contains\": \"Two full-height VEN-01 storage leaves at the left end of wall 2.\",\n      \"reason\": \"Two tall leaves close one section and may not be grouped with a third tall leaf. The section boundary is inferred from the equal leaves and their vertical joints.\",\n      \"front_ids\": [\"F07\", \"F08\"],\n      \"view_ids\": [\"p7-view-004\"],\n      \"region\": {\"view_id\": \"p7-view-004\", \"bbox_1000\": [111, 356, 283, 813]}\n    },\n    {\n      \"id\": \"B04\",\n      \"name\": \"Wall 2 tall storage single\",\n      \"contains\": \"One full-height VEN-01 storage leaf beside the storage pair.\",\n      \"reason\": \"A third tall leaf cannot share a block with the pair under the tall-leaf limit, so it forms its own one-section column. Its carcass is assumed to be separate.\",\n      \"front_ids\": [\"F09\"],\n      \"view_ids\": [\"p7-view-004\"],\n      \"region\": {\"view_id\": \"p7-view-004\", \"bbox_1000\": [283, 356, 367, 813]}\n    },\n    {\n      \"id\": \"B05\",\n      \"name\": \"Wall 2 fridge column\",\n      \"contains\": \"Two full-height leaves labelled as a fridge, forming an appliance column.\",\n      \"reason\": \"Two tall leaves close one appliance section. Grouping them as one column follows the labelled appliance. Whether they belong to an integrated panel is an assumption.\",\n      \"front_ids\": [\"F10\", \"F11\"],\n      \"view_ids\": [\"p7-view-004\"],\n      \"region\": {\"view_id\": \"p7-view-004\", \"bbox_1000\": [367, 430, 537, 813]}\n    },\n    {\n      \"id\": \"B06\",\n      \"name\": \"Wall 2 base drawer bank\",\n      \"contains\": \"Two columns of shallow drawer fronts stacked in two rows under the wall 2 worktop.\",\n      \"reason\": \"The drawers share one horizontal base carcass across two positions, which is within the limit. Stacked drawers count as one position each.\",\n      \"front_ids\": [\"F12\", \"F13\", \"F14\", \"F15\"],\n      \"view_ids\": [\"p7-view-004\"],\n      \"region\": {\"view_id\": \"p7-view-004\", \"bbox_1000\": [537, 667, 758, 738]}\n    },\n    {\n      \"id\": \"B07\",\n      \"name\": \"Wall 2 upper lift-up cabinets\",\n      \"contains\": \"Two upward-opening wall fronts over the wall 2 worktop.\",\n      \"reason\": \"Two side-by-side fronts form one short upper hanging run. It is kept separate from the base drawers because it hangs separately.\",\n      \"front_ids\": [\"F16\", \"F17\"],\n      \"view_ids\": [\"p7-view-004\"],\n      \"region\": {\"view_id\": \"p7-view-004\", \"bbox_1000\": [544, 461, 661, 520]}\n    }\n  ],\n  \"shared_parts\": [\n    {\n      \"id\": \"S01\",\n      \"name\": \"L-shaped worktop\",\n      \"block_ids\": [\"B02\", \"B06\"],\n      \"view_ids\": [\"p7-view-001\"],\n      \"region\": {\"view_id\": \"p7-view-001\", \"bbox_1000\": [529, 283, 824, 742]}\n    }\n  ],\n  \"front_conflicts\": [],\n  \"uncertainties\": [\n    \"The corner between wall 1 and wall 2 is not explicitly constructed; the corner carcass and how it joins the two base runs are not shown.\",\n    \"F06 may be a plinth or fixed panel rather than an operable door; it is kept in B02 pending confirmation.\",\n    \"The fridge leaves F10 and F11 may belong to an integrated appliance panel rather than a cabinet column.\",\n    \"The number of drawer fronts (F12–F15) is estimated; the lowest bands may be a plinth.\",\n    \"The worktop footprint is located from the top view p7-view-001 and may not match the elevations exactly.\"\n  ]\n}",
+      "input_images_front_and_settings_identical_to_v4": true,
+      "parsed": {
+        "summary": "An L-shaped kitchen run with upper lift-up cabinets and base units on wall 1, a tall storage and fridge column with a drawer bank and upper lift-up cabinets on wall 2, and an L-shaped worktop.",
+        "blocks": [
+          {
+            "id": "B01",
+            "name": "Wall 1 upper lift-up cabinets",
+            "contains": "Three upward-opening wall fronts over the wall 1 worktop, with their hanging carcass.",
+            "reason": "Three side-by-side fronts form one upper hanging run, which stays within the three-position limit. The hanging carcass is kept separate from the base run because it is a separate hanging unit. The shared carcass is an assumption based on the continuous upper line.",
+            "front_ids": [
+              "F01",
+              "F02",
+              "F03"
+            ],
+            "view_ids": [
+              "p7-view-003"
+            ],
+            "region": {
+              "view_id": "p7-view-003",
+              "bbox_1000": [
+                350,
+                465,
+                680,
+                525
+              ]
+            }
+          },
+          {
+            "id": "B02",
+            "name": "Wall 1 base cabinet run",
+            "contains": "Two central base doors and one portrait door beside them, under the wall 1 worktop.",
+            "reason": "The three base fronts form one continuous base run within the three-position limit. The portrait door is assumed to be part of the same carcass because it closes the same access opening; its operability is inferred.",
+            "front_ids": [
+              "F04",
+              "F05",
+              "F06"
+            ],
+            "view_ids": [
+              "p7-view-003"
+            ],
+            "region": {
+              "view_id": "p7-view-003",
+              "bbox_1000": [
+                403,
+                664,
+                710,
+                828
+              ]
+            }
+          },
+          {
+            "id": "B03",
+            "name": "Wall 2 tall storage pair",
+            "contains": "Two full-height VEN-01 storage leaves at the left end of wall 2.",
+            "reason": "Two tall leaves close one section and may not be grouped with a third tall leaf. The section boundary is inferred from the equal leaves and their vertical joints.",
+            "front_ids": [
+              "F07",
+              "F08"
+            ],
+            "view_ids": [
+              "p7-view-004"
+            ],
+            "region": {
+              "view_id": "p7-view-004",
+              "bbox_1000": [
+                111,
+                356,
+                283,
+                813
+              ]
+            }
+          },
+          {
+            "id": "B04",
+            "name": "Wall 2 tall storage single",
+            "contains": "One full-height VEN-01 storage leaf beside the storage pair.",
+            "reason": "A third tall leaf cannot share a block with the pair under the tall-leaf limit, so it forms its own one-section column. Its carcass is assumed to be separate.",
+            "front_ids": [
+              "F09"
+            ],
+            "view_ids": [
+              "p7-view-004"
+            ],
+            "region": {
+              "view_id": "p7-view-004",
+              "bbox_1000": [
+                283,
+                356,
+                367,
+                813
+              ]
+            }
+          },
+          {
+            "id": "B05",
+            "name": "Wall 2 fridge column",
+            "contains": "Two full-height leaves labelled as a fridge, forming an appliance column.",
+            "reason": "Two tall leaves close one appliance section. Grouping them as one column follows the labelled appliance. Whether they belong to an integrated panel is an assumption.",
+            "front_ids": [
+              "F10",
+              "F11"
+            ],
+            "view_ids": [
+              "p7-view-004"
+            ],
+            "region": {
+              "view_id": "p7-view-004",
+              "bbox_1000": [
+                367,
+                430,
+                537,
+                813
+              ]
+            }
+          },
+          {
+            "id": "B06",
+            "name": "Wall 2 base drawer bank",
+            "contains": "Two columns of shallow drawer fronts stacked in two rows under the wall 2 worktop.",
+            "reason": "The drawers share one horizontal base carcass across two positions, which is within the limit. Stacked drawers count as one position each.",
+            "front_ids": [
+              "F12",
+              "F13",
+              "F14",
+              "F15"
+            ],
+            "view_ids": [
+              "p7-view-004"
+            ],
+            "region": {
+              "view_id": "p7-view-004",
+              "bbox_1000": [
+                537,
+                667,
+                758,
+                738
+              ]
+            }
+          },
+          {
+            "id": "B07",
+            "name": "Wall 2 upper lift-up cabinets",
+            "contains": "Two upward-opening wall fronts over the wall 2 worktop.",
+            "reason": "Two side-by-side fronts form one short upper hanging run. It is kept separate from the base drawers because it hangs separately.",
+            "front_ids": [
+              "F16",
+              "F17"
+            ],
+            "view_ids": [
+              "p7-view-004"
+            ],
+            "region": {
+              "view_id": "p7-view-004",
+              "bbox_1000": [
+                544,
+                461,
+                661,
+                520
+              ]
+            }
+          }
+        ],
+        "shared_parts": [
+          {
+            "id": "S01",
+            "name": "L-shaped worktop",
+            "block_ids": [
+              "B02",
+              "B06"
+            ],
+            "view_ids": [
+              "p7-view-001"
+            ],
+            "region": {
+              "view_id": "p7-view-001",
+              "bbox_1000": [
+                529,
+                283,
+                824,
+                742
+              ]
+            }
+          }
+        ],
+        "front_conflicts": [],
+        "uncertainties": [
+          "The corner between wall 1 and wall 2 is not explicitly constructed; the corner carcass and how it joins the two base runs are not shown.",
+          "F06 may be a plinth or fixed panel rather than an operable door; it is kept in B02 pending confirmation.",
+          "The fridge leaves F10 and F11 may belong to an integrated appliance panel rather than a cabinet column.",
+          "The number of drawer fronts (F12–F15) is estimated; the lowest bands may be a plinth.",
+          "The worktop footprint is located from the top view p7-view-001 and may not match the elevations exactly."
+        ]
+      }
+    }
+  ],
+  "review": {
+    "v5": "Worktop view moves to top view; tall grouping not yet changed. One isolated call completed before the additional tall-door request. No acceptance claim.",
+    "v6": "Both requested prompt rules exercised: S01 on top view p7-view-001; tall F07/F08 and F09 split 2+1. Seven blocks plus one worktop. Regression: wall-1 appliance column from V4/V5 absent from blocks/shared_parts. Worktop box still approximate/incomplete and drawer box spans only upper portion. Exact unmodified overlay inspected.",
+    "decision": "Retain V5 and V6 prompts/results as diagnostic candidates. Restore V4 default, which is a prior comparison baseline, not a fully accepted HSL solution. No automatic retry, Front change, deployment or DB writes.",
+    "gas_lift_trace": "Front inferred three lift-ups F01-F03 from triangular marks in p7-view-003 and two F16-F17 in p7-view-004. Planner did not recount. Gas-lift classification remains unaccepted."
+  }
+}

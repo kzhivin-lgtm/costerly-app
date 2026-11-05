@@ -16,6 +16,11 @@ readiness or new protected technical checkpoint is implied by that selection.
 
 ## Identity and recovery
 
+Continuation checkpoint: notes/ESTIMATION_V6_2_HSL_N68_CHECKPOINT_2026_11_05.md.
+It preserves the later Front V2 + Planner V4 selection, HSL replay and failed
+V5/V6 N68 candidates. This historical r03 document/tag remains unchanged in
+identity and acceptance scope; do not treat its historical selection as current.
+
 - Worktree: /private/tmp/costerly-estimation-v425
 - Branch: codex/estimation-v425
 - Pre-change commit: f20e343

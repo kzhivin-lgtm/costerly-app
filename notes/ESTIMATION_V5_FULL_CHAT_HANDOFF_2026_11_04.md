@@ -8,10 +8,12 @@ product decisions, runtime boundaries, production incidents, or release state.
 
 2026-11-05 continuation: this document remains the historical V5 handoff, not
 the current V6 acceptance statement. Continue from
-`notes/ESTIMATION_V6_2_FRONT_COUNT_CHECKPOINT_2026_11_05.md` (3.17.4.5).
-Owner selected exact front-count r03 as a provisional baseline with known
-errors; r04 is archived. Next is major-assembly decomposition. No production
-deployment, Detection change, or claim of full material-cycle acceptance.
+`notes/ESTIMATION_V6_2_HSL_N68_CHECKPOINT_2026_11_05.md` (3.17.4.5).
+Current diagnostics select CB Front V2 and Planner V4; r03 remains protected
+history. Later Planner V5/V6 candidates are preserved but not promoted after
+N68 physical-scope loss. Nine-object HSL results, rotation transport defect,
+owner-accepted counts and next proposals are recorded in the new checkpoint.
+No production deployment, Detection change or full material-cycle acceptance.
 
 This is an Estimation-only handoff. Detection, Naming, Document Identity and
 object boundary quality are inputs and protected dependencies, not work to

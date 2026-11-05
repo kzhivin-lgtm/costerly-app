@@ -30,9 +30,21 @@ def test_rulebook_preserves_front_identity_and_versions_planner():
     assert agent.CB_RULEBOOK['planner']['name'] == 'CB Planner V4'
     protected_front = agent.FRONT_COUNT_PROMPT_PATH.with_name('estimation_front_count_v6_2.md')
     assert sha256(protected_front.read_text().strip().encode()).hexdigest() == '81b49dc8d2dd4c33a7459d824178ea8601ba241370a401e530bed2748dab0bb0'
-    prompt = agent.PLANNER_PROMPT_PATH.read_text()
-    assert sha256(prompt.strip().encode()).hexdigest() == '3f6ae0ff17c071066ba1ea46bfcf954949c4d1cc370ab6ecad46b8767de4a749'
-    assert prompt.startswith('CB Planner V4')
+    assert sha256(agent.PLANNER_PROMPT_PATH.read_text().strip().encode()).hexdigest() == '3f6ae0ff17c071066ba1ea46bfcf954949c4d1cc370ab6ecad46b8767de4a749'
+    prompt = agent.PLANNER_PROMPT_PATH.with_name('cb_planner_v6.md').read_text()
+    assert sha256(prompt.strip().encode()).hexdigest() == '3f13cae5fa825322b50725e45eeb6df066a5528c9319b6857a4b5bc974a0427d'
+    assert prompt.startswith('CB Planner V6')
+    v5 = agent.PLANNER_PROMPT_PATH.with_name('cb_planner_v5.md').read_text()
+    assert sha256(v5.strip().encode()).hexdigest() == 'c8a4c285970704c87c2fdc1f0d81108a4df95143f2449d63e70930aadee72a13'
+    assert 'NEVER group more than TWO tall door leaves side by side' in prompt
+    assert 'no three- or four-leaf exception' in prompt
+    assert 'override the one-section-wide column rule' in prompt
+    v4 = agent.PLANNER_PROMPT_PATH.with_name('cb_planner_v4.md').read_text()
+    assert sha256(v4.strip().encode()).hexdigest() == '3f6ae0ff17c071066ba1ea46bfcf954949c4d1cc370ab6ecad46b8767de4a749'
+    assert 'choose a top-view or axonometric island' in prompt
+    assert 'Mark its complete footprint' in prompt
+    assert 'only its edge/thickness, not its top surface' in prompt
+    assert 'full footprint cannot be located' in prompt
     assert 'Do not invent hidden partitions' in prompt
     assert 'No target block count' in prompt
     assert 'THREE front positions' in prompt

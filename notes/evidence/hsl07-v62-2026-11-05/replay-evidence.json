@@ -1,0 +1,929 @@
+{
+  "work_number": "3.17.4.5",
+  "run_id": "run_99b433940dcc4fd9abbe0587dc56fb12",
+  "source_sha256": "45e51f24b04c75b8b0223ef0e60724faaed65f3c34105b1e32c04b16ec005c69",
+  "route": "existing build_estimation_input, saved Detection and OCR, hash-checked source images",
+  "scope": "CB Front V2 and Planner V4, no Calculation/material BOM",
+  "database_writes": false,
+  "wall_seconds_provider_batch": 188.55,
+  "concurrent_object_chains": 2,
+  "calls": 18,
+  "retries": 0,
+  "local_full_witness_directory": "/private/tmp/hsl07-saved-replay-20261105-01",
+  "objects": [
+    {
+      "object_id": "object-001",
+      "page": 3,
+      "preflight": {
+        "object_id": "object-001",
+        "pages": [
+          3
+        ],
+        "views": 3,
+        "image_count": 1,
+        "text_chars": 24426
+      },
+      "source_coordinate_frame": [
+        3308.3333333333335,
+        4677.777777777777
+      ],
+      "actual_image_size": [
+        1989,
+        1407
+      ],
+      "orientation_mismatch": true,
+      "front": {
+        "status": "failed",
+        "error": "ValueError: invalid island classification",
+        "elapsed_seconds": 12.276,
+        "model": "claude-haiku-5-5",
+        "prompt_version": "estimation_front_count_v6_2_r05",
+        "prompt_sha256": "a929fe8ce72fd7cf75c9c100f2ce48c1e1ab2a4da8cb9ce44a9ac16545e0affd",
+        "request_sha256": "7c35ff4b24521ee229d73e2dd7b5a84c442af368b761cf3232304e828f2998d5",
+        "response_id": "msg_011CgkCaYsNGWAqPfKeQMQoS",
+        "stop_reason": "end_turn",
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 20377,
+          "output_tokens": 2168,
+          "output_tokens_details": {
+            "thinking_tokens": 1229
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        },
+        "response_text": "```json\n{\n  \"island_types\": [\n    {\"view_id\": \"p3-view-001\", \"type\": \"section\"},\n    {\"view_id\": \"p3-view-002\", \"type\": \"front_elevation\"},\n    {\"view_id\": \"p3-view-003\", \"type\": \"section\"}\n  ],\n  \"front_groups\": [\n    {\n      \"location\": \"Upper wall-cabinet run, front elevation (dimensioned 30/65/110/120 units)\",\n      \"type\": \"unresolved\",\n      \"count\": null,\n      \"count_basis\": \"undetermined\",\n      \"view_ids\": [\"p3-view-002\", \"p3-view-001\"],\n      \"uncertainty\": \"The elevation shows the run divided into four bays, but the door, lift-up and open-compartment boundaries are not distinguishable at this scale. The section (view-001) confirms a cabinet run with a depth of about 64 but does not resolve individual front leaves. No front boxes are given because no defensible count could be made.\",\n      \"fronts\": []\n    },\n    {\n      \"location\": \"Lower base units beneath the stone worktop (right-hand unit, labelled as drawers)\",\n      \"type\": \"drawer\",\n      \"count\": null,\n      \"count_basis\": \"undetermined\",\n      \"view_ids\": [\"p3-view-003\", \"p3-view-002\"],\n      \"uncertainty\": \"The section (view-003) shows a drawer-type label in the right-hand base unit and a stacked front arrangement, but the individual drawer boundaries are not clear enough to count. Drawer fronts are not counted, so no boxes are given.\",\n      \"fronts\": []\n    }\n  ],\n  \"excluded_surfaces\": [\n    {\"id\": \"X01\", \"view_id\": \"p3-view-003\", \"bbox_1000\": [0, 0, 1000, 1000], \"reason\": \"Hatched wall and structural boundary at the left of the section; fixed, not an operating front. Placeholder box covering the full image, to be refined on review.\"}\n  ],\n  \"tabletop_supports\": [\n    {\n      \"id\": \"T01\",\n      \"location\": \"Stone worktop (NIR-01) over the base cabinet run\",\n      \"leg_count\": 0,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p3-view-003\", \"p3-view-001\"],\n      \"support_scheme\": \"Observed: the worktop is shown in section resting on the continuous base carcass beneath it. No individual legs are visible in any view. The carcass is the observed support.\",\n      \"uncertainty\": \"The base carcass fixings are not shown, so the mechanical connection is not established. No hidden fastening hardware is assumed.\",\n      \"legs\": []\n    }\n  ],\n  \"totals\": {\n    \"drawers\": null,\n    \"hinged_doors\": null,\n    \"lift_up_fronts\": null,\n    \"unresolved_fronts\": null,\n    \"total_fronts\": null\n  }\n}\n```",
+        "witness_sha256": "5882e414184e2c5873635e9e36094f5a6abc2621c864c1fc4272065d9dcd33d5",
+        "totals": {
+          "drawers": null,
+          "hinged_doors": null,
+          "lift_up_fronts": null,
+          "unresolved_fronts": null,
+          "total_fronts": null
+        }
+      },
+      "planner": {
+        "status": "failed",
+        "error": "ValueError: invalid Planner references",
+        "elapsed_seconds": 23.695,
+        "model": "claude-haiku-5-5",
+        "prompt_version": "CB Planner V4",
+        "prompt_sha256": "3f6ae0ff17c071066ba1ea46bfcf954949c4d1cc370ab6ecad46b8767de4a749",
+        "request_sha256": "4271f5d4f7b03d7543c12a3c0043885be56208f9606fb7093912c0f095b63f45",
+        "response_id": "msg_011CgkCbWPonTbts7xAdgyHj",
+        "stop_reason": "end_turn",
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 19667,
+          "output_tokens": 4486,
+          "output_tokens_details": {
+            "thinking_tokens": 3407
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        },
+        "response_text": "{\"summary\":\"A kitchen wall-and-base run with a stone worktop, including two tall columns at the ends of the upper run and a base cabinet run under the worktop.\",\"blocks\":[{\"id\":\"B01\",\"name\":\"Left tall fridge column\",\"contains\":\"Full-height single-door fridge cabinet at the left end of the upper run.\",\"reason\":\"A continuous narrow column one section wide, visible in the section as a full-height unit. Its lower extent beyond the section is assumed, not explicit.\",\"front_ids\":[],\"view_ids\":[\"p3-view-002\",\"p3-view-001\"],\"region\":{\"view_id\":\"p3-view-002\",\"bbox_1000\":[0,0,130,300]}},{\"id\":\"B02\",\"name\":\"Upper wall cabinet middle run\",\"contains\":\"Upper wall cabinets over the middle bays of the run, including the bays dimensioned 65 and 110.\",\"reason\":\"Two adjacent horizontal positions on one hanging run; the shared carcass is assumed from the continuous top line, and the front boundaries are unresolved.\",\"front_ids\":[],\"view_ids\":[\"p3-view-002\",\"p3-view-001\"],\"region\":{\"view_id\":\"p3-view-002\",\"bbox_1000\":[130,0,700,300]}},{\"id\":\"B03\",\"name\":\"Right tall column\",\"contains\":\"Full-height tall cabinet at the right end of the upper run, with the oven or appliance opening shown below.\",\"reason\":\"A full-height column one section wide (the 120 bay, labelled X2), kept together as one unit; its extent is shown in the section and the elevation.\",\"front_ids\":[],\"view_ids\":[\"p3-view-002\",\"p3-view-003\"],\"region\":{\"view_id\":\"p3-view-002\",\"bbox_1000\":[700,0,1000,300]}},{\"id\":\"B04\",\"name\":\"Base cabinet run under worktop\",\"contains\":\"Lower base cabinets beneath the stone worktop, with door and drawer positions at the right.\",\"reason\":\"One continuous base carcass beneath the worktop; the carcass continuity is assumed from the section, and the front boundaries are unresolved.\",\"front_ids\":[],\"view_ids\":[\"p3-view-003\"],\"region\":{\"view_id\":\"p3-view-003\",\"bbox_1000\":[250,600,780,930]}},{\"id\":\"B05\",\"name\":\"Stone worktop\",\"contains\":\"Stone worktop NIR-01 running over the base cabinet run.\",\"reason\":\"The worktop is a separate element, not part of any cabinet block; it serves the base run only.\",\"front_ids\":[],\"view_ids\":[\"p3-view-003\",\"p3-view-001\"],\"region\":{\"view_id\":\"p3-view-003\",\"bbox_1000\":[250,520,780,600]}}],\"shared_parts\":[],\"front_conflicts\":[{\"front_id\":\"X01\",\"reason\":\"Hatched wall and structural boundary at the left of the section; a fixed surface, not an operating front.\"}],\"uncertainties\":[\"Front boundaries of the upper and base runs could not be resolved, so no front IDs are assigned.\",\"The extent of the left fridge column below the section is assumed, not explicit.\",\"Whether the middle upper run is one carcass or two separate units is not confirmed by the drawing.\",\"The base carcass fixings are not shown, so the worktop connection is not established.\"]}",
+        "witness_sha256": "d6e9cec39bb61fce7404918be18bc767685347f223e7419a77396aeadf1902fa",
+        "block_names": [
+          "Left tall fridge column",
+          "Upper wall cabinet middle run",
+          "Right tall column",
+          "Base cabinet run under worktop",
+          "Stone worktop"
+        ],
+        "summary": "A kitchen wall-and-base run with a stone worktop, including two tall columns at the ends of the upper run and a base cabinet run under the worktop.",
+        "shared_parts": []
+      }
+    },
+    {
+      "object_id": "object-002",
+      "page": 4,
+      "preflight": {
+        "object_id": "object-002",
+        "pages": [
+          4
+        ],
+        "views": 7,
+        "image_count": 8,
+        "text_chars": 59071
+      },
+      "source_coordinate_frame": [
+        6691.666666666667,
+        3308.3333333333335
+      ],
+      "actual_image_size": [
+        1975,
+        976
+      ],
+      "orientation_mismatch": false,
+      "front": {
+        "status": "failed",
+        "error": "ValueError: invalid island classification",
+        "elapsed_seconds": 20.151,
+        "model": "claude-haiku-5-5",
+        "prompt_version": "estimation_front_count_v6_2_r05",
+        "prompt_sha256": "a929fe8ce72fd7cf75c9c100f2ce48c1e1ab2a4da8cb9ce44a9ac16545e0affd",
+        "request_sha256": "a8acce2b748925baa2b59d115ec2b0b48b2f5c03a66e7889ea1582ca7caaed75",
+        "response_id": "msg_011CgkCaaEyH9SyX5GmTdccX",
+        "stop_reason": "end_turn",
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 40013,
+          "output_tokens": 3843,
+          "output_tokens_details": {
+            "thinking_tokens": 2605
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        },
+        "response_text": "```json\n{\n  \"island_types\": [\n    {\"view_id\": \"p4-view-001\", \"type\": \"front_elevation\"},\n    {\"view_id\": \"p4-view-002\", \"type\": \"front_elevation\"},\n    {\"view_id\": \"p4-view-003\", \"type\": \"front_elevation\"},\n    {\"view_id\": \"p4-view-004\", \"type\": \"front_elevation\"},\n    {\"view_id\": \"p4-view-005\", \"type\": \"undetermined\"},\n    {\"view_id\": \"p4-view-006\", \"type\": \"front_elevation\"},\n    {\"view_id\": \"p4-view-007\", \"type\": \"front_elevation\"}\n  ],\n  \"front_groups\": [\n    {\n      \"location\": \"tall pantry unit, five vertical door leaves (kitchen wall elevation 004)\",\n      \"type\": \"hinged\",\n      \"count\": 5,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p4-view-004\"],\n      \"uncertainty\": \"Five equal portrait leaves with vertical joints and VEN-01 tags. Each leaf closes a storage opening, so they are counted as hinged doors.\",\n      \"fronts\": [\n        {\"id\": \"F01\", \"view_id\": \"p4-view-004\", \"bbox_1000\": [409, 378, 487, 866]},\n        {\"id\": \"F02\", \"view_id\": \"p4-view-004\", \"bbox_1000\": [487, 378, 570, 866]},\n        {\"id\": \"F03\", \"view_id\": \"p4-view-004\", \"bbox_1000\": [570, 378, 652, 866]},\n        {\"id\": \"F04\", \"view_id\": \"p4-view-004\", \"bbox_1000\": [652, 378, 735, 866]},\n        {\"id\": \"F05\", \"view_id\": \"p4-view-004\", \"bbox_1000\": [735, 378, 822, 866]}\n      ]\n    },\n    {\n      \"location\": \"lower base run beneath stone worktop, two wide fronts (elevation 002)\",\n      \"type\": \"unresolved\",\n      \"count\": 2,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p4-view-002\", \"p4-view-003\"],\n      \"uncertainty\": \"Two wide shallow fronts sit under the worktop, but the fronts are not clearly drawers or lift-ups from the drawing alone. The lower VEN-01 strip is treated as a fixed panel. The same block appears in 003 and is counted only once, from 002.\",\n      \"fronts\": [\n        {\"id\": \"F06\", \"view_id\": \"p4-view-002\", \"bbox_1000\": [146, 519, 359, 625]},\n        {\"id\": \"F07\", \"view_id\": \"p4-view-002\", \"bbox_1000\": [359, 519, 572, 625]}\n      ]\n    }\n  ],\n  \"excluded_surfaces\": [\n    {\"id\": \"X01\", \"view_id\": \"p4-view-001\", \"bbox_1000\": [30, 0, 36, 0], \"reason\": \"placeholder, no exclusion drawn\"}\n  ],\n  \"tabletop_supports\": [\n    {\n      \"id\": \"T01\",\n      \"location\": \"kitchen worktop over base run\",\n      \"leg_count\": 0,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p4-view-001\", \"p4-view-002\", \"p4-view-003\"],\n      \"support_scheme\": \"Observed: the worktop sits on the base carcass and no legs are drawn in any elevation. No attachment is assumed beyond the carcass itself.\",\n      \"uncertainty\": \"\",\n      \"legs\": []\n    }\n  ],\n  \"totals\": {\n    \"drawers\": 0,\n    \"hinged_doors\": 5,\n    \"lift_up_fronts\": 0,\n    \"unresolved_fronts\": 2,\n    \"total_fronts\": 7\n  }\n}\n```",
+        "witness_sha256": "4154df83d19acd7c899870bb421ca77db878f632f6ba941a3993d8a39c2d2b3c",
+        "totals": {
+          "drawers": 0,
+          "hinged_doors": 5,
+          "lift_up_fronts": 0,
+          "unresolved_fronts": 2,
+          "total_fronts": 7
+        }
+      },
+      "planner": {
+        "status": "assembly_plan_requires_review",
+        "error": null,
+        "elapsed_seconds": 21.893,
+        "model": "claude-haiku-5-5",
+        "prompt_version": "CB Planner V4",
+        "prompt_sha256": "3f6ae0ff17c071066ba1ea46bfcf954949c4d1cc370ab6ecad46b8767de4a749",
+        "request_sha256": "c9d3aced2b308d690739a0e33ab32e4b0dc569ea8c7065bc718dbeccb640fb92",
+        "response_id": "msg_011CgkCc82w5i4SpMNXB7PwM",
+        "stop_reason": "end_turn",
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 39583,
+          "output_tokens": 4125,
+          "output_tokens_details": {
+            "thinking_tokens": 2849
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        },
+        "response_text": "{\n  \"summary\": \"A kitchen layout with a main base and worktop run, a return base run, and a tall five-door pantry on the adjacent wall.\",\n  \"blocks\": [\n    {\n      \"id\": \"B01\",\n      \"name\": \"Tall pantry, left three doors\",\n      \"contains\": \"Full-height pantry cabinet carrying the first three hinged door leaves of the five-leaf wall unit.\",\n      \"reason\": \"The reference reads five side-by-side leaves, which exceeds the three-position allowance. Splitting at the joint between leaves three and four keeps each block within the limit. The split point is an assumption: the drawing shows one continuous wall of leaves, not separate carcasses.\",\n      \"front_ids\": [\"F01\", \"F02\", \"F03\"],\n      \"view_ids\": [\"p4-view-004\"],\n      \"region\": {\"view_id\": \"p4-view-004\", \"bbox_1000\": [400, 370, 660, 870]}\n    },\n    {\n      \"id\": \"B02\",\n      \"name\": \"Tall pantry, right two doors\",\n      \"contains\": \"Remaining two hinged door leaves of the same tall pantry wall unit.\",\n      \"reason\": \"Second half of the five-leaf pantry, split from B01 to respect the three-position allowance. Continuity of one carcass is assumed, not explicit.\",\n      \"front_ids\": [\"F04\", \"F05\"],\n      \"view_ids\": [\"p4-view-004\"],\n      \"region\": {\"view_id\": \"p4-view-004\", \"bbox_1000\": [645, 370, 830, 870]}\n    },\n    {\n      \"id\": \"B03\",\n      \"name\": \"Return base run with two wide fronts\",\n      \"contains\": \"Lower base cabinet with two wide shallow fronts and a fixed lower panel, beneath its stone top.\",\n      \"reason\": \"Two side-by-side fronts sharing one base carcass fit one block. Front type is unresolved, but grouping does not depend on it.\",\n      \"front_ids\": [\"F06\", \"F07\"],\n      \"view_ids\": [\"p4-view-002\", \"p4-view-003\", \"p4-view-006\"],\n      \"region\": {\"view_id\": \"p4-view-002\", \"bbox_1000\": [140, 500, 580, 640]}\n    },\n    {\n      \"id\": \"B04\",\n      \"name\": \"Main base run under worktop\",\n      \"contains\": \"Main kitchen base cabinets carrying the sink and cooktop area, under the stone worktop.\",\n      \"reason\": \"Visible base run along the wall. The fallible reference lists no fronts for it, so no front IDs are assigned. Its grouping is assumed from the continuous base line in elevation 001.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p4-view-001\", \"p4-view-002\", \"p4-view-003\"],\n      \"region\": {\"view_id\": \"p4-view-001\", \"bbox_1000\": [200, 350, 700, 920]}\n    }\n  ],\n  \"shared_parts\": [\n    {\n      \"id\": \"S01\",\n      \"name\": \"Stone worktop over base runs\",\n      \"block_ids\": [\"B03\", \"B04\"],\n      \"view_ids\": [\"p4-view-002\"],\n      \"region\": {\"view_id\": \"p4-view-002\", \"bbox_1000\": [140, 130, 600, 320]}\n    }\n  ],\n  \"front_conflicts\": [],\n  \"uncertainties\": [\n    \"The five-leaf tall pantry is split into two blocks only to respect the three-position limit. The true carcass boundary is not drawn.\",\n    \"Whether the two wide fronts in the return base run are drawers, lift-ups or fixed panels is unresolved.\",\n    \"The main base run and the tall appliance column in elevation 001 have no front IDs in the reference and may need separate front review.\",\n    \"Worktop extent across the return and main runs is inferred from the shared NR-01 label, not from an explicit joint line.\"\n  ]\n}",
+        "witness_sha256": "22a5f6b5c742960a697ce9c0bf09f8e371af9d8853156a84ed9927a407b6282f",
+        "block_names": [
+          "Tall pantry, left three doors",
+          "Tall pantry, right two doors",
+          "Return base run with two wide fronts",
+          "Main base run under worktop"
+        ],
+        "summary": "A kitchen layout with a main base and worktop run, a return base run, and a tall five-door pantry on the adjacent wall.",
+        "shared_parts": [
+          "Stone worktop over base runs"
+        ]
+      }
+    },
+    {
+      "object_id": "object-003",
+      "page": 5,
+      "preflight": {
+        "object_id": "object-003",
+        "pages": [
+          5
+        ],
+        "views": 3,
+        "image_count": 1,
+        "text_chars": 29049
+      },
+      "source_coordinate_frame": [
+        3308.3333333333335,
+        4677.777777777777
+      ],
+      "actual_image_size": [
+        1989,
+        1407
+      ],
+      "orientation_mismatch": true,
+      "front": {
+        "status": "failed",
+        "error": "ValueError: front box count differs from group count",
+        "elapsed_seconds": 15.826,
+        "model": "claude-haiku-5-5",
+        "prompt_version": "estimation_front_count_v6_2_r05",
+        "prompt_sha256": "a929fe8ce72fd7cf75c9c100f2ce48c1e1ab2a4da8cb9ce44a9ac16545e0affd",
+        "request_sha256": "a8d4a9fed99e9e990786d9b49487093b39d467e6e335ae3f5c76cffa6861f4ce",
+        "response_id": "msg_011CgkCdKvaJyjiikjxGa1Tc",
+        "stop_reason": "end_turn",
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 23056,
+          "output_tokens": 2896,
+          "output_tokens_details": {
+            "thinking_tokens": 2078
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        },
+        "response_text": "```json\n{\n  \"island_types\": [\n    {\"view_id\": \"p5-view-001\", \"type\": \"Front elevation\"},\n    {\"view_id\": \"p5-view-002\", \"type\": \"Front elevation\"},\n    {\"view_id\": \"p5-view-003\", \"type\": \"Section\"}\n  ],\n  \"front_groups\": [\n    {\n      \"location\": \"Left run of base unit, elevation p5-view-001 (33 and 48 mm bays, labelled X2 H=125 and X2 H=110)\",\n      \"type\": \"unresolved\",\n      \"count\": 2,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p5-view-001\"],\n      \"uncertainty\": \"The two tall bays are labelled X2 with heights 125 and 110, which may be door leaves or a fixed panel. No handle or hinge detail is visible at this scale, and the labels do not state the operating type. Boxes were not placed because enlarged island images with generated headers were not supplied.\",\n      \"fronts\": []\n    },\n    {\n      \"location\": \"Central 62 mm bay of base unit, elevation p5-view-001, with a small circular pull\",\n      \"type\": \"hinged\",\n      \"count\": 1,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p5-view-001\"],\n      \"uncertainty\": \"The square panel with a central circle is most consistent with a portrait door closing an opening. It could also be a drawer front. Boxes were not placed because enlarged island images were not supplied.\",\n      \"fronts\": []\n    },\n    {\n      \"location\": \"Lower drawer stack in the narrow column of the base unit, section A (p5-view-003)\",\n      \"type\": \"drawer\",\n      \"count\": 3,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p5-view-003\"],\n      \"uncertainty\": \"The section shows horizontal divisions in a narrow lower column, which suggests stacked shallow drawers. The section is a cut, not a front view, so the drawer count is inferred. The divisions could also be carcass shelves or internal drawer boxes. Boxes were not placed because enlarged island images were not supplied.\",\n      \"fronts\": []\n    }\n  ],\n  \"excluded_surfaces\": [],\n  \"tabletop_supports\": [],\n  \"totals\": {\n    \"drawers\": 3,\n    \"hinged_doors\": 1,\n    \"lift_up_fronts\": 0,\n    \"unresolved_fronts\": 2,\n    \"total_fronts\": 6\n  }\n}\n```",
+        "witness_sha256": "3def61a095a46ecc168515b5dccc1c891bdd6a5f02163b5552627ca42c56f55e",
+        "totals": {
+          "drawers": 3,
+          "hinged_doors": 1,
+          "lift_up_fronts": 0,
+          "unresolved_fronts": 2,
+          "total_fronts": 6
+        }
+      },
+      "planner": {
+        "status": "assembly_plan_requires_review",
+        "error": null,
+        "elapsed_seconds": 25.914,
+        "model": "claude-haiku-5-5",
+        "prompt_version": "CB Planner V4",
+        "prompt_sha256": "3f6ae0ff17c071066ba1ea46bfcf954949c4d1cc370ab6ecad46b8767de4a749",
+        "request_sha256": "25d3a1b00ef67517161beed4d4739fead8034e227fca8b122d636f504b5891ad",
+        "response_id": "msg_011CgkCeZWv4yquPGGik6sD4",
+        "stop_reason": "end_turn",
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 22236,
+          "output_tokens": 5045,
+          "output_tokens_details": {
+            "thinking_tokens": 3342
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        },
+        "response_text": "{\n  \"summary\": \"A kitchen cabinetry set shown as two base-height elevations and one section, with a worktop and built-in appliances.\",\n  \"blocks\": [\n    {\n      \"id\": \"B01\",\n      \"name\": \"Left base run, three-bay carcass\",\n      \"contains\": \"Base cabinet carcass under the worktop with the 60, 33 and 62 mm bays, including the two tall X2 leaves and the central hinged-looking front.\",\n      \"reason\": \"Three side-by-side front positions form one base carcass, which keeps front count within the three-position allowance. The shared carcass is assumed, not explicitly drawn.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p5-view-001\"],\n      \"region\": {\"view_id\": \"p5-view-001\", \"bbox_1000\": [60, 200, 640, 900]}\n    },\n    {\n      \"id\": \"B02\",\n      \"name\": \"Right base bay, 92 mm\",\n      \"contains\": \"The 92 mm bay at the right end of the left base run, which shows no clear front in the supplied evidence.\",\n      \"reason\": \"It is a separate end bay with no identified front. Its construction is unclear, so it is kept apart from B01 instead of being forced into a three-bay block. Boundary is assumed.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p5-view-001\"],\n      \"region\": {\"view_id\": \"p5-view-001\", \"bbox_1000\": [640, 200, 960, 900]}\n    },\n    {\n      \"id\": \"B03\",\n      \"name\": \"Second run, left cabinets\",\n      \"contains\": \"Base cabinets at the left of the second elevation, including the 35 mm end and 91 mm bay.\",\n      \"reason\": \"These bays sit in one continuous base run with a shared carcass, assumed from the common base height and top line. Boundary is assumed.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p5-view-002\"],\n      \"region\": {\"view_id\": \"p5-view-002\", \"bbox_1000\": [40, 180, 520, 900]}\n    },\n    {\n      \"id\": \"B04\",\n      \"name\": \"Second run, sink or dishwasher bays\",\n      \"contains\": \"Middle cabinets of the second elevation with the 103 and 84 mm bays and the built-in dishwasher region.\",\n      \"reason\": \"Three front positions form one carcass with adjacent bays. The dishwasher and sink-area labels suggest a single appliance-bearing run. Boundary is assumed.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p5-view-002\"],\n      \"region\": {\"view_id\": \"p5-view-002\", \"bbox_1000\": [380, 180, 760, 900]}\n    },\n    {\n      \"id\": \"B05\",\n      \"name\": \"Refrigerator column, 123 mm\",\n      \"contains\": \"The 123 mm refrigerator bay at the right end of the second elevation.\",\n      \"reason\": \"A refrigerator is a separate appliance housing that forms its own column. It is kept separate from the cabinet bays beside it.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p5-view-002\"],\n      \"region\": {\"view_id\": \"p5-view-002\", \"bbox_1000\": [760, 180, 960, 900]}\n    },\n    {\n      \"id\": \"B06\",\n      \"name\": \"Narrow drawer column, section\",\n      \"contains\": \"The narrow 33 mm column in section A with horizontal divisions in its lower part and VEN-01 vent markings above.\",\n      \"reason\": \"It is a narrow cabinet column in the section, so it is treated as one section wide. Its extent is inferred from the cut, and the drawer count is not confirmed. Boundary is assumed.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p5-view-003\"],\n      \"region\": {\"view_id\": \"p5-view-003\", \"bbox_1000\": [260, 480, 400, 990]}\n    }\n  ],\n  \"shared_parts\": [\n    {\n      \"id\": \"S01\",\n      \"name\": \"Worktop over left base run\",\n      \"block_ids\": [\"B01\", \"B02\"],\n      \"view_ids\": [\"p5-view-001\"],\n      \"region\": {\"view_id\": \"p5-view-001\", \"bbox_1000\": [40, 60, 960, 200]}\n    }\n  ],\n  \"front_conflicts\": [],\n  \"uncertainties\": [\n    \"No front IDs were supplied, so front_ids are left empty. The reference front counts are estimates only.\",\n    \"The two X2 tall leaves in view 001 could be doors or a fixed panel. Their status affects the front count of B01.\",\n    \"The dotted areas in the elevations may be a backsplash or open space rather than cabinet surfaces. Their status is unresolved.\",\n    \"The grouping of view 002 bays into B03 and B04 relies on assumed shared carcasses, since the bottom dimensions do not match the top dimensions.\",\n    \"Section A shows a cut through the object, so the drawer count and the extent of the narrow column are inferred, not confirmed.\",\n    \"The relation between the section columns and the elevation bays is unresolved, so the blocks may overlap in the real assembly.\"\n  ]\n}",
+        "witness_sha256": "7f1377994679eeac57c86dbb785073f9ab124f38e477827bde2a5b4bbe3e6c91",
+        "block_names": [
+          "Left base run, three-bay carcass",
+          "Right base bay, 92 mm",
+          "Second run, left cabinets",
+          "Second run, sink or dishwasher bays",
+          "Refrigerator column, 123 mm",
+          "Narrow drawer column, section"
+        ],
+        "summary": "A kitchen cabinetry set shown as two base-height elevations and one section, with a worktop and built-in appliances.",
+        "shared_parts": [
+          "Worktop over left base run"
+        ]
+      }
+    },
+    {
+      "object_id": "object-004",
+      "page": 6,
+      "preflight": {
+        "object_id": "object-004",
+        "pages": [
+          6
+        ],
+        "views": 3,
+        "image_count": 1,
+        "text_chars": 31073
+      },
+      "source_coordinate_frame": [
+        3308.3333333333335,
+        4677.777777777777
+      ],
+      "actual_image_size": [
+        1989,
+        1407
+      ],
+      "orientation_mismatch": true,
+      "front": {
+        "status": "failed",
+        "error": "ValueError: invalid island classification",
+        "elapsed_seconds": 15.399,
+        "model": "claude-haiku-5-5",
+        "prompt_version": "estimation_front_count_v6_2_r05",
+        "prompt_sha256": "a929fe8ce72fd7cf75c9c100f2ce48c1e1ab2a4da8cb9ce44a9ac16545e0affd",
+        "request_sha256": "69f8704bca16b21198d33e680f1651328569f03d628d7a6ea323acb5a70194cb",
+        "response_id": "msg_011CgkCdm6QUw9xSQJe8uW9h",
+        "stop_reason": "end_turn",
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 24234,
+          "output_tokens": 2721,
+          "output_tokens_details": {
+            "thinking_tokens": 1856
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        },
+        "response_text": "```json\n{\n  \"island_types\": [\n    {\"view_id\": \"p6-view-001\", \"type\": \"section\"},\n    {\"view_id\": \"p6-view-002\", \"type\": \"section\"},\n    {\"view_id\": \"p6-view-003\", \"type\": \"front_elevation\"}\n  ],\n  \"front_groups\": [\n    {\n      \"location\": \"Upper wall cabinet run, left-centre (flip-up units with diagonal gas-strut lines)\",\n      \"type\": \"lift_up\",\n      \"count\": 3,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p6-view-003\"],\n      \"uncertainty\": \"Three diagonal strut or hinge triangles are visible in the upper run. The stripe-patterned panels between them may be open compartments or fixed panels, and the enlarged island image needed to place boxes was not supplied. Count is estimated from the triangles only.\",\n      \"fronts\": []\n    },\n    {\n      \"location\": \"Lower right base unit below the worktop, drawer bank\",\n      \"type\": \"drawer\",\n      \"count\": 2,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p6-view-003\", \"p6-view-002\"],\n      \"uncertainty\": \"Two stacked shallow fronts appear in the lower right run. A horizontal division near the middle could indicate one front or two, so the count is estimated.\",\n      \"fronts\": []\n    },\n    {\n      \"location\": \"Lower right base, pull-out waste bin front (מגירת פח)\",\n      \"type\": \"drawer\",\n      \"count\": 1,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p6-view-003\"],\n      \"uncertainty\": \"The label suggests a pull-out bin front. Its opening mechanism is inferred from the label and the front shape.\",\n      \"fronts\": []\n    },\n    {\n      \"location\": \"Lower left base units (VEN-01 and adjacent tall fronts)\",\n      \"type\": \"unresolved\",\n      \"count\": null,\n      \"count_basis\": \"undetermined\",\n      \"view_ids\": [\"p6-view-003\", \"p6-view-001\"],\n      \"uncertainty\": \"Operating movement type and front boundaries cannot be established from the elevation and sections supplied. Hinged versus drawer cannot be resolved without enlarged island views.\",\n      \"fronts\": []\n    }\n  ],\n  \"excluded_surfaces\": [],\n  \"tabletop_supports\": [],\n  \"totals\": {\n    \"drawers\": 3,\n    \"hinged_doors\": null,\n    \"lift_up_fronts\": 3,\n    \"unresolved_fronts\": null,\n    \"total_fronts\": null\n  }\n}\n```",
+        "witness_sha256": "f04336874e20cb727fb1a4389e2203d7022953543f13e1cf2cc86280e55c2174",
+        "totals": {
+          "drawers": 3,
+          "hinged_doors": null,
+          "lift_up_fronts": 3,
+          "unresolved_fronts": null,
+          "total_fronts": null
+        }
+      },
+      "planner": {
+        "status": "assembly_plan_requires_review",
+        "error": null,
+        "elapsed_seconds": 16.447,
+        "model": "claude-haiku-5-5",
+        "prompt_version": "CB Planner V4",
+        "prompt_sha256": "3f6ae0ff17c071066ba1ea46bfcf954949c4d1cc370ab6ecad46b8767de4a749",
+        "request_sha256": "d915150673b030af236aa5506848f75bbb01f1ed8d74f9d381daf03eaad87bda",
+        "response_id": "msg_011CgkCexQpSRDyJ7DtBsfP9",
+        "stop_reason": "end_turn",
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 23444,
+          "output_tokens": 3289,
+          "output_tokens_details": {
+            "thinking_tokens": 2030
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        },
+        "response_text": "{\n  \"summary\": \"A wall-mounted kitchen run with base cabinets, a worktop and splashback, upper flap-up cabinets, and an appliance column at the right end.\",\n  \"blocks\": [\n    {\n      \"id\": \"B01\",\n      \"name\": \"Lower left base cabinets\",\n      \"contains\": \"The base cabinet run to the left of the drawer bank, below the worktop line.\",\n      \"reason\": \"Forms one horizontal base run under the worktop. The boundary with the drawer bank to its right is inferred from the elevation and sections, not explicit construction. Front movement type is unresolved.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p6-view-003\", \"p6-view-001\"],\n      \"region\": {\"view_id\": \"p6-view-003\", \"bbox_1000\": [679, 711, 782, 796]}\n    },\n    {\n      \"id\": \"B02\",\n      \"name\": \"Lower drawer bank base unit\",\n      \"contains\": \"The base cabinet section to the right of B01, with stacked shallow drawer fronts below the worktop.\",\n      \"reason\": \"Groups the drawer bank as one cabinet section in the base run. Drawer count is estimated and the boundary with B01 is inferred from the front division visible in the elevation.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p6-view-003\", \"p6-view-002\"],\n      \"region\": {\"view_id\": \"p6-view-003\", \"bbox_1000\": [782, 711, 845, 796]}\n    },\n    {\n      \"id\": \"B03\",\n      \"name\": \"Full-height appliance column\",\n      \"contains\": \"The right-end column with upper storage, a microwave opening, an oven opening and a pull-out bin front stacked vertically in one section.\",\n      \"reason\": \"Kept as one full-height column, one section wide, because the stacked storage, appliance openings and bin front appear to share one column width. Continuity of the upper storage with the lower appliance section is assumed and not explicit. Its position at the right end is treated as a cabinet column, not the separate 'עמוד' structure.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p6-view-003\"],\n      \"region\": {\"view_id\": \"p6-view-003\", \"bbox_1000\": [845, 547, 888, 796]}\n    },\n    {\n      \"id\": \"B04\",\n      \"name\": \"Upper flap-up wall cabinet run\",\n      \"contains\": \"The upper wall cabinets above the worktop with lift-up flaps shown by diagonal strut lines.\",\n      \"reason\": \"Hangs separately from the base run above the open worktop space, so it is kept as its own block. Flap count is estimated from the strut triangles only.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p6-view-003\"],\n      \"region\": {\"view_id\": \"p6-view-003\", \"bbox_1000\": [679, 608, 845, 643]}\n    }\n  ],\n  \"shared_parts\": [\n    {\n      \"id\": \"S01\",\n      \"name\": \"Worktop and splashback band\",\n      \"block_ids\": [\"B01\", \"B02\", \"B03\"],\n      \"view_ids\": [\"p6-view-003\", \"p6-view-001\"],\n      \"region\": {\"view_id\": \"p6-view-003\", \"bbox_1000\": [675, 700, 890, 725]}\n    }\n  ],\n  \"front_conflicts\": [],\n  \"uncertainties\": [\n    \"No supplied front IDs were available, so no front IDs are assigned; front counts and movement types remain estimates.\",\n    \"Hinged versus drawer operation of the lower left base fronts cannot be resolved from the supplied views.\",\n    \"Continuity of the right-end column between upper storage and lower appliance section is assumed and needs confirmation.\",\n    \"The boundary between B01 and B02 is inferred from front divisions and is not explicit construction.\"\n  ]\n}",
+        "witness_sha256": "a5945eac93167823fca058d1ce95f448ac1b305cec4601039aff77af46ebef98",
+        "block_names": [
+          "Lower left base cabinets",
+          "Lower drawer bank base unit",
+          "Full-height appliance column",
+          "Upper flap-up wall cabinet run"
+        ],
+        "summary": "A wall-mounted kitchen run with base cabinets, a worktop and splashback, upper flap-up cabinets, and an appliance column at the right end.",
+        "shared_parts": [
+          "Worktop and splashback band"
+        ]
+      }
+    },
+    {
+      "object_id": "object-005",
+      "page": 7,
+      "preflight": {
+        "object_id": "object-005",
+        "pages": [
+          7
+        ],
+        "views": 4,
+        "image_count": 5,
+        "text_chars": 42248
+      },
+      "source_coordinate_frame": [
+        5119.444444444444,
+        3308.3333333333335
+      ],
+      "actual_image_size": [
+        1997,
+        1291
+      ],
+      "orientation_mismatch": false,
+      "front": {
+        "status": "failed",
+        "error": "ValueError: invalid island classification",
+        "elapsed_seconds": 30.611,
+        "model": "claude-haiku-5-5",
+        "prompt_version": "estimation_front_count_v6_2_r05",
+        "prompt_sha256": "a929fe8ce72fd7cf75c9c100f2ce48c1e1ab2a4da8cb9ce44a9ac16545e0affd",
+        "request_sha256": "7b265388fc57252d93f4dbe8da6ecbf891f3dd3273988c0662ec6d97731c28d9",
+        "response_id": "msg_011CgkCgN7NjMzmok8fvVWcP",
+        "stop_reason": "end_turn",
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 32468,
+          "output_tokens": 5976,
+          "output_tokens_details": {
+            "thinking_tokens": 3593
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        },
+        "response_text": "```json\n{\n  \"island_types\": [\n    {\"view_id\": \"p7-view-001\", \"type\": \"top_view\"},\n    {\"view_id\": \"p7-view-002\", \"type\": \"top_view\"},\n    {\"view_id\": \"p7-view-003\", \"type\": \"front_elevation\"},\n    {\"view_id\": \"p7-view-004\", \"type\": \"front_elevation\"}\n  ],\n  \"front_groups\": [\n    {\n      \"location\": \"Wall 1 upper run, cabinets over worktop (VEN-01 and COR-01)\",\n      \"type\": \"lift_up\",\n      \"count\": 3,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p7-view-003\"],\n      \"uncertainty\": \"Three gas-strut triangles mark upward-opening fronts. The strut triangles are the only visible evidence of movement, and the exact front boundaries behind the worktop are not clearly drawn.\",\n      \"fronts\": [\n        {\"id\": \"F01\", \"view_id\": \"p7-view-003\", \"bbox_1000\": [352, 469, 406, 523]},\n        {\"id\": \"F02\", \"view_id\": \"p7-view-003\", \"bbox_1000\": [468, 469, 521, 523]},\n        {\"id\": \"F03\", \"view_id\": \"p7-view-003\", \"bbox_1000\": [626, 465, 677, 523]}\n      ]\n    },\n    {\n      \"location\": \"Wall 1 base run, two central doors below worktop\",\n      \"type\": \"hinged\",\n      \"count\": 2,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p7-view-003\"],\n      \"uncertainty\": \"The centre vertical line shows a pair of doors. Their leaves are clearly separated.\",\n      \"fronts\": [\n        {\"id\": \"F04\", \"view_id\": \"p7-view-003\", \"bbox_1000\": [403, 664, 500, 828]},\n        {\"id\": \"F05\", \"view_id\": \"p7-view-003\", \"bbox_1000\": [500, 664, 589, 828]}\n      ]\n    },\n    {\n      \"location\": \"Wall 1 base run, door beside the two-door pair\",\n      \"type\": \"hinged\",\n      \"count\": 1,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p7-view-003\"],\n      \"uncertainty\": \"Portrait front that closes an access opening. It may be a plinth or a fixed panel, so its operability is inferred from the closing role.\",\n      \"fronts\": [\n        {\"id\": \"F06\", \"view_id\": \"p7-view-003\", \"bbox_1000\": [589, 664, 710, 828]}\n      ]\n    },\n    {\n      \"location\": \"Wall 2 tall storage units at the left end (VEN-01)\",\n      \"type\": \"hinged\",\n      \"count\": 3,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p7-view-004\"],\n      \"uncertainty\": \"Three equal portrait fronts with vertical joints, each with its own VEN-01 label.\",\n      \"fronts\": [\n        {\"id\": \"F07\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [111, 356, 200, 813]},\n        {\"id\": \"F08\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [200, 356, 283, 813]},\n        {\"id\": \"F09\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [283, 356, 367, 813]}\n      ]\n    },\n    {\n      \"location\": \"Wall 2 appliance tall units beside the tall units (fridge)\",\n      \"type\": \"hinged\",\n      \"count\": 2,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p7-view-004\"],\n      \"uncertainty\": \"Two portrait leaves are labelled as a fridge. Their operation is inferred from the closing role. The leaves could belong to an integrated appliance panel.\",\n      \"fronts\": [\n        {\"id\": \"F10\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [367, 430, 453, 813]},\n        {\"id\": \"F11\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [453, 430, 537, 813]}\n      ]\n    },\n    {\n      \"location\": \"Wall 2 base run, drawer bank under worktop\",\n      \"type\": \"drawer\",\n      \"count\": 4,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p7-view-004\"],\n      \"uncertainty\": \"Horizontal lines suggest two columns with two rows of shallow wide fronts. The lowest bands may be a plinth or a larger front, so the count could be slightly lower.\",\n      \"fronts\": [\n        {\"id\": \"F12\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [537, 667, 647, 702]},\n        {\"id\": \"F13\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [537, 702, 647, 738]},\n        {\"id\": \"F14\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [647, 667, 758, 702]},\n        {\"id\": \"F15\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [647, 702, 758, 738]}\n      ]\n    },\n    {\n      \"location\": \"Wall 2 upper run, cabinets over worktop\",\n      \"type\": \"lift_up\",\n      \"count\": 2,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p7-view-004\"],\n      \"uncertainty\": \"Two gas-strut triangles mark two upward-opening fronts.\",\n      \"fronts\": [\n        {\"id\": \"F16\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [544, 461, 578, 520]},\n        {\"id\": \"F17\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [625, 461, 661, 520]}\n      ]\n    }\n  ],\n  \"excluded_surfaces\": [\n    {\"id\": \"X01\", \"view_id\": \"p7-view-003\", \"bbox_1000\": [210, 714, 347, 878], \"reason\": \"Fixed carcass end or cross-hatched fixed panel at the left end of wall 1\"},\n    {\"id\": \"X02\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [758, 661, 852, 813], \"reason\": \"Cross-hatched fixed panel at the right end of wall 2\"}\n  ],\n  \"tabletop_supports\": [\n    {\n      \"id\": \"T01\",\n      \"location\": \"L-shaped worktop over the base cabinets, both walls\",\n      \"leg_count\": 0,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p7-view-003\", \"p7-view-004\"],\n      \"support_scheme\": \"Observed: the worktop is carried by the base carcass run on both walls. No legs are visible in either elevation. The carcass is the observed support. No separate attachment is drawn.\",\n      \"uncertainty\": \"No legs are needed in the supported interpretation. Concealed fixings are not shown and are not assumed.\",\n      \"legs\": []\n    }\n  ],\n  \"totals\": {\n    \"drawers\": 4,\n    \"hinged_doors\": 8,\n    \"lift_up_fronts\": 5,\n    \"unresolved_fronts\": 0,\n    \"total_fronts\": 17\n  }\n}\n```",
+        "witness_sha256": "d7abed0846839696d903da67644620ad32d9ed7a837f6d6d2245d7c724ae59b2",
+        "totals": {
+          "drawers": 4,
+          "hinged_doors": 8,
+          "lift_up_fronts": 5,
+          "unresolved_fronts": 0,
+          "total_fronts": 17
+        }
+      },
+      "planner": {
+        "status": "assembly_plan_requires_review",
+        "error": null,
+        "elapsed_seconds": 27.08,
+        "model": "claude-haiku-5-5",
+        "prompt_version": "CB Planner V4",
+        "prompt_sha256": "3f6ae0ff17c071066ba1ea46bfcf954949c4d1cc370ab6ecad46b8767de4a749",
+        "request_sha256": "8e9c3bd4da863715b5626872b8aca5251c30d09f38963ad3d40d4b7f6f7f3875",
+        "response_id": "msg_011CgkCia6kg3QMcVtUK8Fya",
+        "stop_reason": "end_turn",
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 33070,
+          "output_tokens": 5468,
+          "output_tokens_details": {
+            "thinking_tokens": 3549
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        },
+        "response_text": "{\n  \"summary\": \"A two-wall L-shaped kitchen run with upper and base cabinets, a tall appliance column, a tall storage run, and an L-shaped worktop.\",\n  \"blocks\": [\n    {\n      \"id\": \"B01\",\n      \"name\": \"Wall 1 upper cabinet run\",\n      \"contains\": \"Three upward-opening wall cabinet fronts (F01-F03) above the wall 1 worktop line.\",\n      \"reason\": \"Three side-by-side lift-up fronts form one continuous upper run on wall 1, within the three-position allowance. The shared carcass is assumed from the continuous run, not explicitly drawn.\",\n      \"front_ids\": [\"F01\", \"F02\", \"F03\"],\n      \"view_ids\": [\"p7-view-003\"],\n      \"region\": {\"view_id\": \"p7-view-003\", \"bbox_1000\": [350, 462, 680, 530]}\n    },\n    {\n      \"id\": \"B02\",\n      \"name\": \"Wall 1 base cabinet run\",\n      \"contains\": \"Two central hinged doors (F04-F05) and the portrait hinged door beside them (F06) below the worktop.\",\n      \"reason\": \"Three adjacent base fronts form one base run on wall 1 within the three-position allowance. The portrait door is assumed to belong to this run because it closes the same opening.\",\n      \"front_ids\": [\"F04\", \"F05\", \"F06\"],\n      \"view_ids\": [\"p7-view-003\"],\n      \"region\": {\"view_id\": \"p7-view-003\", \"bbox_1000\": [400, 660, 712, 830]}\n    },\n    {\n      \"id\": \"B03\",\n      \"name\": \"Wall 1 tall appliance column\",\n      \"contains\": \"Full-height column at the wall 1 end with VEN-01 upper and lower panels and an appliance zone between them.\",\n      \"reason\": \"This is one section wide and full height, so it is kept as one column. Its fronts were not supplied in the front reference, so no front IDs are assigned. The column is assumed to be one carcass.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p7-view-003\"],\n      \"region\": {\"view_id\": \"p7-view-003\", \"bbox_1000\": [705, 225, 842, 840]}\n    },\n    {\n      \"id\": \"B04\",\n      \"name\": \"Wall 2 tall storage run\",\n      \"contains\": \"Three equal tall hinged doors (F07-F09) at the left end of wall 2.\",\n      \"reason\": \"Three tall doors side by side form one full-height storage unit with three positions, the maximum allowed.\",\n      \"front_ids\": [\"F07\", \"F08\", \"F09\"],\n      \"view_ids\": [\"p7-view-004\"],\n      \"region\": {\"view_id\": \"p7-view-004\", \"bbox_1000\": [108, 352, 370, 815]}\n    },\n    {\n      \"id\": \"B05\",\n      \"name\": \"Wall 2 tall appliance column\",\n      \"contains\": \"Two portrait fridge leaves (F10-F11) in a full-height column beside the tall storage run.\",\n      \"reason\": \"Two leaves labelled as a fridge form one full-height appliance column. Kept separate from B04 to stay within the three-position allowance. Integrated appliance panel is possible.\",\n      \"front_ids\": [\"F10\", \"F11\"],\n      \"view_ids\": [\"p7-view-004\"],\n      \"region\": {\"view_id\": \"p7-view-004\", \"bbox_1000\": [365, 425, 540, 815]}\n    },\n    {\n      \"id\": \"B06\",\n      \"name\": \"Wall 2 base drawer bank\",\n      \"contains\": \"Two columns of two stacked drawers (F12-F15) under the wall 2 worktop.\",\n      \"reason\": \"Two horizontal drawer positions with stacked rows form one base drawer bank. The lowest band is assumed to be part of the drawer bank or plinth.\",\n      \"front_ids\": [\"F12\", \"F13\", \"F14\", \"F15\"],\n      \"view_ids\": [\"p7-view-004\"],\n      \"region\": {\"view_id\": \"p7-view-004\", \"bbox_1000\": [535, 660, 760, 740]}\n    },\n    {\n      \"id\": \"B07\",\n      \"name\": \"Wall 2 upper cabinet run\",\n      \"contains\": \"Two upward-opening wall cabinet fronts (F16-F17) above the wall 2 worktop.\",\n      \"reason\": \"Two adjacent lift-up fronts form one upper run on wall 2. Kept separate from base blocks because it is a hanging unit.\",\n      \"front_ids\": [\"F16\", \"F17\"],\n      \"view_ids\": [\"p7-view-004\"],\n      \"region\": {\"view_id\": \"p7-view-004\", \"bbox_1000\": [540, 455, 665, 525]}\n    }\n  ],\n  \"shared_parts\": [\n    {\n      \"id\": \"S01\",\n      \"name\": \"L-shaped worktop\",\n      \"block_ids\": [\"B02\", \"B03\", \"B06\"],\n      \"view_ids\": [\"p7-view-003\", \"p7-view-004\"],\n      \"region\": {\"view_id\": \"p7-view-003\", \"bbox_1000\": [205, 455, 845, 530]}\n    }\n  ],\n  \"front_conflicts\": [],\n  \"uncertainties\": [\n    \"The front reference marks two fixed surfaces, X01 (left end of wall 1) and X02 (right end of wall 2), which are not cabinet blocks. They are left out of the grouping.\",\n    \"The tall appliance column B03 on wall 1 has no supplied front IDs, so its door count and operation are unresolved.\",\n    \"The corner joint between the wall 1 and wall 2 runs is inferred from the plan views. It is not explicitly drawn as a construction boundary.\",\n    \"The worktop is treated as one L-shaped part. Its wall 2 extent is assumed to join at the corner.\"\n  ]\n}",
+        "witness_sha256": "d27a0f47d1e53ff14f8f046a2353b19bfbe5f2b6d5e5dcd316d342aa48ab59ee",
+        "block_names": [
+          "Wall 1 upper cabinet run",
+          "Wall 1 base cabinet run",
+          "Wall 1 tall appliance column",
+          "Wall 2 tall storage run",
+          "Wall 2 tall appliance column",
+          "Wall 2 base drawer bank",
+          "Wall 2 upper cabinet run"
+        ],
+        "summary": "A two-wall L-shaped kitchen run with upper and base cabinets, a tall appliance column, a tall storage run, and an L-shaped worktop.",
+        "shared_parts": [
+          "L-shaped worktop"
+        ]
+      }
+    },
+    {
+      "object_id": "object-006",
+      "page": 8,
+      "preflight": {
+        "object_id": "object-006",
+        "pages": [
+          8
+        ],
+        "views": 4,
+        "image_count": 3,
+        "text_chars": 41344
+      },
+      "source_coordinate_frame": [
+        3308.3333333333335,
+        4677.777777777777
+      ],
+      "actual_image_size": [
+        1989,
+        1407
+      ],
+      "orientation_mismatch": true,
+      "front": {
+        "status": "failed",
+        "error": "ValueError: invalid island classification",
+        "elapsed_seconds": 17.714,
+        "model": "claude-haiku-5-5",
+        "prompt_version": "estimation_front_count_v6_2_r05",
+        "prompt_sha256": "a929fe8ce72fd7cf75c9c100f2ce48c1e1ab2a4da8cb9ce44a9ac16545e0affd",
+        "request_sha256": "d6195abe47b76a8ed58e6649b3ab000b02a90f60ca12a205742cb70f13f55404",
+        "response_id": "msg_011CgkCgXrmEnabH5U1C3iUY",
+        "stop_reason": "end_turn",
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 30755,
+          "output_tokens": 3156,
+          "output_tokens_details": {
+            "thinking_tokens": 2383
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        },
+        "response_text": "```json\n{\n  \"island_types\": [\n    {\"view_id\": \"p8-view-001\", \"type\": \"top_view\"},\n    {\"view_id\": \"p8-view-003\", \"type\": \"front_elevation\"}\n  ],\n  \"front_groups\": [\n    {\n      \"location\": \"Tall storage unit, elevation 1 (left, H=250 run, 4 vertical fields)\",\n      \"type\": \"hinged\",\n      \"count\": 4,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p8-view-003\"],\n      \"uncertainty\": \"The crop shows only the top portion of the elevation, so the bottoms of the four vertical fields are cut off. The four fields match the 61/48/48/32 cm dimension chain. The 32 cm field is the narrowest and could be a fixed filler rather than a door. The horizontal line in one field could indicate an internal division, not a separate front.\",\n      \"fronts\": [\n        {\"id\": \"F01\", \"view_id\": \"p8-view-003\", \"bbox_1000\": [53, 871, 150, 1000]},\n        {\"id\": \"F02\", \"view_id\": \"p8-view-003\", \"bbox_1000\": [150, 871, 226, 1000]},\n        {\"id\": \"F03\", \"view_id\": \"p8-view-003\", \"bbox_1000\": [226, 871, 303, 1000]},\n        {\"id\": \"F04\", \"view_id\": \"p8-view-003\", \"bbox_1000\": [303, 871, 354, 1000]}\n      ]\n    },\n    {\n      \"location\": \"Base run, elevation 2 (lower VEN-01 fronts, approx. 80 cm high)\",\n      \"type\": \"unresolved\",\n      \"count\": null,\n      \"count_basis\": \"undetermined\",\n      \"view_ids\": [],\n      \"uncertainty\": \"The lower fronts in elevation 2 are not visible in the supplied enlarged crops. The shallow, wide shape suggests drawers, but the movement type and front count cannot be confirmed from the available islands. No boxes are given.\",\n      \"fronts\": []\n    }\n  ],\n  \"excluded_surfaces\": [],\n  \"tabletop_supports\": [],\n  \"totals\": {\n    \"drawers\": null,\n    \"hinged_doors\": 4,\n    \"lift_up_fronts\": 0,\n    \"unresolved_fronts\": null,\n    \"total_fronts\": null\n  }\n}\n```",
+        "witness_sha256": "1b461ca1001b4d1f43973d6b7631e428ed67a6edd23d6a988dbc0484712d82f3",
+        "totals": {
+          "drawers": null,
+          "hinged_doors": 4,
+          "lift_up_fronts": 0,
+          "unresolved_fronts": null,
+          "total_fronts": null
+        }
+      },
+      "planner": {
+        "status": "assembly_plan_requires_review",
+        "error": null,
+        "elapsed_seconds": 25.009,
+        "model": "claude-haiku-5-5",
+        "prompt_version": "CB Planner V4",
+        "prompt_sha256": "3f6ae0ff17c071066ba1ea46bfcf954949c4d1cc370ab6ecad46b8767de4a749",
+        "request_sha256": "9b3fe9d848f102f1d326f6cbeac52d8572a77b7ec010650606b3b1d55389c959",
+        "response_id": "msg_011CgkChtmPAewP2rpN9vYoU",
+        "stop_reason": "end_turn",
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 29900,
+          "output_tokens": 4789,
+          "output_tokens_details": {
+            "thinking_tokens": 3399
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        },
+        "response_text": "{\n  \"summary\": \"A corner kitchen run with a back-wall base run, a vertical wing, a tall four-door storage unit, and a lower base run with a tall appliance column shown in elevation.\",\n  \"blocks\": [\n    {\n      \"id\": \"B01\",\n      \"name\": \"Tall hinged storage column\",\n      \"contains\": \"Full-height tall storage carcass with four side-by-side hinged door fields, as shown in elevation 1.\",\n      \"reason\": \"The four fields share one tall run and match the 61/48/48/32 dimension chain, so they are treated as one continuous tall carcass. This exceeds the three-position allowance. It is kept whole as a rare exception because the fields are part of one tall run and the source shows no explicit separation. The continuity of the carcass is an assumption.\",\n      \"front_ids\": [\"F01\", \"F02\", \"F03\", \"F04\"],\n      \"view_ids\": [\"p8-view-003\"],\n      \"region\": {\"view_id\": \"p8-view-003\", \"bbox_1000\": [50, 869, 354, 1000]}\n    },\n    {\n      \"id\": \"B02\",\n      \"name\": \"Back-wall base run with sink and hob zone\",\n      \"contains\": \"Base cabinets along the back wall, including the sink and appliance zone shown in the plan.\",\n      \"reason\": \"This run is continuous along the back wall in the plan and reads as one assembly. Its individual fronts are not supplied, so no front count is assigned. The boundary with the vertical wing is assumed at the corner.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p8-view-001\"],\n      \"region\": {\"view_id\": \"p8-view-001\", \"bbox_1000\": [0, 332, 322, 557]}\n    },\n    {\n      \"id\": \"B03\",\n      \"name\": \"Vertical wing base cabinets\",\n      \"contains\": \"Cabinets along the short return wing, including the cross-marked block at the corner and the drawer-style base units below it.\",\n      \"reason\": \"The return wing forms one short run at the corner. The cross-marked block at its top is grouped with it as an assumption. It may be a separate tall unit, which is not explicit in the plan.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p8-view-001\"],\n      \"region\": {\"view_id\": \"p8-view-001\", \"bbox_1000\": [322, 332, 430, 1000]}\n    },\n    {\n      \"id\": \"B04\",\n      \"name\": \"Elevation 2 tall appliance column and lower VEN-01 base run\",\n      \"contains\": \"Tall VEN-01 column with appliances below it, and the lower VEN-01 base fronts beside it.\",\n      \"reason\": \"The tall VEN-01 column reads as a narrow full-height section, which is kept whole. The lower base fronts are not visible in the supplied crops, so their front count is unresolved and no front IDs are assigned.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p8-view-003\"],\n      \"region\": {\"view_id\": \"p8-view-003\", \"bbox_1000\": [762, 869, 884, 1000]}\n    }\n  ],\n  \"shared_parts\": [\n    {\n      \"id\": \"S01\",\n      \"name\": \"Continuous worktop along the back-wall run and corner\",\n      \"block_ids\": [\"B02\", \"B03\"],\n      \"view_ids\": [\"p8-view-001\"],\n      \"region\": {\"view_id\": \"p8-view-001\", \"bbox_1000\": [0, 325, 310, 355]}\n    }\n  ],\n  \"front_conflicts\": [],\n  \"uncertainties\": [\n    \"The 32 cm field in B01 (F04) may be a fixed filler rather than a door, which would change the front count.\",\n    \"The horizontal line in one field of B01 may be an internal division rather than a separate front.\",\n    \"The bottoms of the B01 fields are cut off in the supplied crop.\",\n    \"The lower VEN-01 fronts in elevation 2 are not visible in the supplied crops, so their count and movement type are unresolved.\",\n    \"The cross-marked block at the corner in B03 may be a separate tall unit rather than part of the return wing.\",\n    \"The upper wall cabinets shown beside the elevation 2 niche are not assigned to any block.\"\n  ]\n}",
+        "witness_sha256": "3790dfac6274f1644f0375072a4b0ab96a5380d445aa54754f6ac00ed7bc0d11",
+        "block_names": [
+          "Tall hinged storage column",
+          "Back-wall base run with sink and hob zone",
+          "Vertical wing base cabinets",
+          "Elevation 2 tall appliance column and lower VEN-01 base run"
+        ],
+        "summary": "A corner kitchen run with a back-wall base run, a vertical wing, a tall four-door storage unit, and a lower base run with a tall appliance column shown in elevation.",
+        "shared_parts": [
+          "Continuous worktop along the back-wall run and corner"
+        ]
+      }
+    },
+    {
+      "object_id": "object-007",
+      "page": 9,
+      "preflight": {
+        "object_id": "object-007",
+        "pages": [
+          9
+        ],
+        "views": 5,
+        "image_count": 1,
+        "text_chars": 37719
+      },
+      "source_coordinate_frame": [
+        3308.3333333333335,
+        4677.777777777777
+      ],
+      "actual_image_size": [
+        1989,
+        1407
+      ],
+      "orientation_mismatch": true,
+      "front": {
+        "status": "failed",
+        "error": "ValueError: invalid island classification",
+        "elapsed_seconds": 15.593,
+        "model": "claude-haiku-5-5",
+        "prompt_version": "estimation_front_count_v6_2_r05",
+        "prompt_sha256": "a929fe8ce72fd7cf75c9c100f2ce48c1e1ab2a4da8cb9ce44a9ac16545e0affd",
+        "request_sha256": "0ca21a17807eeca368a0b58867e5a456748f3b81c7924caa924803a7df734fbd",
+        "response_id": "msg_011CgkCjnFX3AH6eY5Wthbac",
+        "stop_reason": "end_turn",
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 29268,
+          "output_tokens": 2867,
+          "output_tokens_details": {
+            "thinking_tokens": 2010
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        },
+        "response_text": "```json\n{\n  \"island_types\": [\n    {\"view_id\": \"p9-view-001\", \"type\": \"section\"},\n    {\"view_id\": \"p9-view-002\", \"type\": \"front_elevation\"},\n    {\"view_id\": \"p9-view-003\", \"type\": \"undetermined\"},\n    {\"view_id\": \"p9-view-004\", \"type\": \"section\"},\n    {\"view_id\": \"p9-view-005\", \"type\": \"undetermined\"}\n  ],\n  \"front_groups\": [\n    {\n      \"location\": \"Wall cabinet run, right-hand elevation (upper and base fronts shown in p9-view-002)\",\n      \"type\": \"unresolved\",\n      \"count\": null,\n      \"count_basis\": \"undetermined\",\n      \"view_ids\": [\"p9-view-002\", \"p9-view-004\"],\n      \"uncertainty\": \"No enlarged island images were supplied, so front boundaries cannot be measured and no bounding boxes can be placed. The elevation shows multiple bays, with dimension strings of 30, 85, 160, 102 and 30 mm across the top and H=60/H=120/H=145/H=160 labels, but the operating type of each front (lift-up, hinged or drawer) cannot be resolved from the page-level render. The section p9-view-004 shows VEN-01 upper units and COR-01, but does not establish front counts for the elevation. The page-level crop also does not show whether the narrow 30 mm end strips are operable.\",\n      \"fronts\": []\n    }\n  ],\n  \"excluded_surfaces\": [],\n  \"tabletop_supports\": [\n    {\n      \"id\": \"T01\",\n      \"location\": \"Stone worktop (NIR-01) in the base run, right-hand cabinet section\",\n      \"leg_count\": 0,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p9-view-004\", \"p9-view-002\"],\n      \"support_scheme\": \"Observed: the worktop sits on a continuous hatched base carcass shown in the section p9-view-004. No legs are drawn in either visible view. The support is the carcass itself, not individual legs. No additional attachment is assumed.\",\n      \"uncertainty\": \"The section shows the base as a solid hatched cut. Its internal construction cannot be confirmed from the page-level render, and no legs are visible in the supplied views. Leg count is estimated as zero because no legs are drawn.\",\n      \"legs\": []\n    }\n  ],\n  \"totals\": {\n    \"drawers\": null,\n    \"hinged_doors\": null,\n    \"lift_up_fronts\": null,\n    \"unresolved_fronts\": null,\n    \"total_fronts\": null\n  }\n}\n```",
+        "witness_sha256": "5028ae69a8d5017a72454fe588663b8cc9333175c3f106f303ddbe965d78aefa",
+        "totals": {
+          "drawers": null,
+          "hinged_doors": null,
+          "lift_up_fronts": null,
+          "unresolved_fronts": null,
+          "total_fronts": null
+        }
+      },
+      "planner": {
+        "status": "failed",
+        "error": "ValueError: Planner response did not finish normally",
+        "elapsed_seconds": 30.014,
+        "model": "claude-haiku-5-5",
+        "prompt_version": "CB Planner V4",
+        "prompt_sha256": "3f6ae0ff17c071066ba1ea46bfcf954949c4d1cc370ab6ecad46b8767de4a749",
+        "request_sha256": "76f5ee068709f2d198c5f07e7253f52c20d0cef68018c0dbac8f0acd36e8b509",
+        "response_id": "msg_011CgkCkxtX9TggyHvZLwVsW",
+        "stop_reason": "max_tokens",
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 28496,
+          "output_tokens": 6000,
+          "output_tokens_details": {
+            "thinking_tokens": 4812
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        },
+        "response_text": "{\n  \"summary\": \"A kitchen wall-and-base run with a full-height pantry column at the right end, shown in elevation and a section on a carpentry sheet.\",\n  \"blocks\": [\n    {\n      \"id\": \"B01\",\n      \"name\": \"Full-height pantry column\",\n      \"contains\": \"The 97 mm end column from the upper cabinet level down to the floor, with stacked tall fronts.\",\n      \"reason\": \"The section shows one continuous narrow column from floor to top, and the upper and lower parts share the same 97 mm width. The continuous carcass is an assumption based on the visible alignment, but it is consistent with a tall pantry unit. It is kept as one section, so it is not merged with the neighbouring bays.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p9-view-004\"],\n      \"region\": {\"view_id\": \"p9-view-004\", \"bbox_1000\": [796, 310, 964, 950]}\n    },\n    {\n      \"id\": \"B02\",\n      \"name\": \"Upper wall cabinet run, left\",\n      \"contains\": \"The upper wall cabinets over the left bays: the 30 mm end unit, the 85 mm unit and the 160 mm unit.\",\n      \"reason\": \"These three adjacent upper bays form one hanging run above the base counter. They stay within the three-position allowance. Their continuous carcass is assumed from the shared top line and the regular dimension string.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p9-view-004\"],\n      \"region\": {\"view_id\": \"p9-view-004\", \"bbox_1000\": [260, 310, 685, 460]}\n    },\n    {\n      \"id\": \"B03\",\n      \"name\": \"Upper wall cabinet, 102 mm bay\",\n      \"contains\": \"The 102 mm upper wall cabinet with its two side-by-side fronts, above the appliance column.\",\n      \"reason\": \"This is a separate hanging unit with its own explicit 102 mm dimension and its own X2 front labels. It is kept separate from the run on the left and from the tall column.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p9-view-004\"],\n      \"region\": {\"view_id\": \"p9-view-004\", \"bbox_1000\": [685, 310, 796, 460]}\n    },\n    {\n      \"id\": \"B04\",\n      \"name\": \"Base cabinets, left\",\n      \"contains\": \"The base cabinets under the left 63, 47 and 47 mm bays, with their fronts.\",\n      \"reason\": \"These three adjacent base bays form one run below the counter. They stay within the three-position allowance. Their continuous carcass is assumed from the shared base line.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p9-view-004\"],\n      \"region\": {\"view_id\": \"p9-view-004\", \"bbox_1000\": [260, 730, 531, 950]}\n    },\n    {\n      \"id\": \"B05\",\n      \"name\": \"Base cabinet, 90 mm bay\",\n      \"contains\": \"The base cabinet under the 90 mm bay, with its fronts, below the counter.\",\n      \"reason\": \"This is a separate base bay with its own dimension string. Keeping it separate respects the three-position allowance for the adjacent run.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p9-view-004\"],\n      \"region\": {\"view_id\": \"p9-view-004\", \"bbox_1000\": [531, 730, 685, 950]}\n    },\n    {\n      \"id\": \"B06\",\n      \"name\": \"Appliance base column, 64 mm\",\n      \"contains\": \"The 64 mm base column with the hob and oven area and its drawer or open opening, under the counter level.\",",
+        "witness_sha256": "5714c6acce2654a962b5a0c98b586794ea4de9133a4cc33ae091c5d41d47efe8",
+        "block_names": [],
+        "summary": null,
+        "shared_parts": []
+      }
+    },
+    {
+      "object_id": "object-008",
+      "page": 10,
+      "preflight": {
+        "object_id": "object-008",
+        "pages": [
+          10
+        ],
+        "views": 3,
+        "image_count": 1,
+        "text_chars": 31510
+      },
+      "source_coordinate_frame": [
+        3308.3333333333335,
+        4677.777777777777
+      ],
+      "actual_image_size": [
+        1989,
+        1407
+      ],
+      "orientation_mismatch": true,
+      "front": {
+        "status": "failed",
+        "error": "ValueError: invalid island classification",
+        "elapsed_seconds": 16.418,
+        "model": "claude-haiku-5-5",
+        "prompt_version": "estimation_front_count_v6_2_r05",
+        "prompt_sha256": "a929fe8ce72fd7cf75c9c100f2ce48c1e1ab2a4da8cb9ce44a9ac16545e0affd",
+        "request_sha256": "76fdd5e9a37f7b3f21b6668a19f03974ae985550e62e3c3aa259eb075cf926f0",
+        "response_id": "msg_011CgkCkZdYFG6avPynZJpEa",
+        "stop_reason": "end_turn",
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 24705,
+          "output_tokens": 3396,
+          "output_tokens_details": {
+            "thinking_tokens": 2368
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        },
+        "response_text": "```json\n{\n  \"island_types\": [\n    {\"view_id\": \"p10-view-001\", \"type\": \"section\"},\n    {\"view_id\": \"p10-view-002\", \"type\": \"front_elevation\"},\n    {\"view_id\": \"p10-view-003\", \"type\": \"front_elevation\"}\n  ],\n  \"front_groups\": [\n    {\n      \"location\": \"lower kitchen run, left drawer bank\",\n      \"type\": \"drawer\",\n      \"count\": 3,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p10-view-003\"],\n      \"uncertainty\": \"Three shallow stacked fronts are inferred from horizontal lines. Individual divisions are small at this scale.\",\n      \"fronts\": [\n        {\"id\": \"F01\", \"view_id\": \"p10-view-003\", \"bbox_1000\": [801, 700, 824, 775]}\n      ]\n    },\n    {\n      \"location\": \"lower kitchen run, right drawer bank\",\n      \"type\": \"drawer\",\n      \"count\": 3,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p10-view-003\"],\n      \"uncertainty\": \"Three shallow stacked fronts are inferred from horizontal lines. Individual divisions are small at this scale.\",\n      \"fronts\": [\n        {\"id\": \"F02\", \"view_id\": \"p10-view-003\", \"bbox_1000\": [869, 700, 891, 775]}\n      ]\n    },\n    {\n      \"location\": \"lower kitchen run, centre pair\",\n      \"type\": \"hinged\",\n      \"count\": 2,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p10-view-003\"],\n      \"uncertainty\": \"The centre is read as a pair of door leaves from the diagonal panel lines. Their exact split is not fully legible.\",\n      \"fronts\": [\n        {\"id\": \"F03\", \"view_id\": \"p10-view-003\", \"bbox_1000\": [825, 700, 847, 775]},\n        {\"id\": \"F04\", \"view_id\": \"p10-view-003\", \"bbox_1000\": [847, 700, 869, 775]}\n      ]\n    },\n    {\n      \"location\": \"upper wall cabinets above the lower run\",\n      \"type\": \"lift_up\",\n      \"count\": 2,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p10-view-003\"],\n      \"uncertainty\": \"Two wide horizontal upper fronts are inferred from the orange-hatched openings. The upper boundary is partly obscured by sectioned shading.\",\n      \"fronts\": [\n        {\"id\": \"F05\", \"view_id\": \"p10-view-003\", \"bbox_1000\": [801, 600, 846, 633]},\n        {\"id\": \"F06\", \"view_id\": \"p10-view-003\", \"bbox_1000\": [846, 600, 891, 633]}\n      ]\n    }\n  ],\n  \"excluded_surfaces\": [],\n  \"tabletop_supports\": [],\n  \"totals\": {\n    \"drawers\": 6,\n    \"hinged_doors\": 2,\n    \"lift_up_fronts\": 2,\n    \"unresolved_fronts\": 0,\n    \"total_fronts\": 10\n  }\n}\n```",
+        "witness_sha256": "23d27dbd8865d1dcb38684459088f40a7089fc2146a72bb40fcb032fcb11e4d9",
+        "totals": {
+          "drawers": 6,
+          "hinged_doors": 2,
+          "lift_up_fronts": 2,
+          "unresolved_fronts": 0,
+          "total_fronts": 10
+        }
+      },
+      "planner": {
+        "status": "assembly_plan_requires_review",
+        "error": null,
+        "elapsed_seconds": 23.885,
+        "model": "claude-haiku-5-5",
+        "prompt_version": "CB Planner V4",
+        "prompt_sha256": "3f6ae0ff17c071066ba1ea46bfcf954949c4d1cc370ab6ecad46b8767de4a749",
+        "request_sha256": "6e8042db69347eb1bcf2302fafcf1d631de1b22b7dfd222dc86e97afac765816",
+        "response_id": "msg_011CgkCmsuA6hq61K5J7Gu3C",
+        "stop_reason": "end_turn",
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 24056,
+          "output_tokens": 4785,
+          "output_tokens_details": {
+            "thinking_tokens": 3485
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        },
+        "response_text": "{\n  \"summary\": \"A kitchen run with an integrated fridge column, a full-height appliance column, a base run with drawers and doors, a worktop, and two lift-up wall units above the base run.\",\n  \"blocks\": [\n    {\n      \"id\": \"B01\",\n      \"name\": \"Left full-height tall column (integrated fridge)\",\n      \"contains\": \"Tall column at the left end of the run, one section wide, from floor to worktop height, with its integrated fridge area.\",\n      \"reason\": \"One section wide and continuous from floor to top in the lower elevation, so it is kept as one full-height column. Its carcass continuity is an assumption; no supplied front is assigned to it.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p10-view-003\"],\n      \"region\": {\"view_id\": \"p10-view-003\", \"bbox_1000\": [717, 539, 758, 785]}\n    },\n    {\n      \"id\": \"B02\",\n      \"name\": \"Full-height appliance column (microwave and dishwasher)\",\n      \"contains\": \"One-section-wide tall column with the microwave opening above and a dishwasher below, with the ventilation label.\",\n      \"reason\": \"One section wide and continuous from floor to top, so it is kept whole as a full-height column. Carcass continuity is an assumption; no supplied front is assigned to it.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p10-view-003\"],\n      \"region\": {\"view_id\": \"p10-view-003\", \"bbox_1000\": [758, 539, 800, 785]}\n    },\n    {\n      \"id\": \"B03\",\n      \"name\": \"Lower base run with drawers and centre doors\",\n      \"contains\": \"Base cabinet run under the worktop with a drawer stack on each side and a centre pair of door leaves.\",\n      \"reason\": \"Three side-by-side front positions (drawer bank, door pair, drawer bank) sharing one base carcass, within the three-position allowance. The shared carcass is an inference from the continuous lower run.\",\n      \"front_ids\": [\"F01\", \"F02\", \"F03\", \"F04\"],\n      \"view_ids\": [\"p10-view-003\"],\n      \"region\": {\"view_id\": \"p10-view-003\", \"bbox_1000\": [801, 633, 891, 778]}\n    },\n    {\n      \"id\": \"B04\",\n      \"name\": \"Upper lift-up wall units above the base run\",\n      \"contains\": \"Two side-by-side lift-up wall cabinets above the worktop.\",\n      \"reason\": \"Two front positions forming one hanging wall unit set. It hangs separately from the base run, with the worktop and open workspace between them, so it is kept separate from B03.\",\n      \"front_ids\": [\"F05\", \"F06\"],\n      \"view_ids\": [\"p10-view-003\"],\n      \"region\": {\"view_id\": \"p10-view-003\", \"bbox_1000\": [801, 599, 891, 631]}\n    },\n    {\n      \"id\": \"B05\",\n      \"name\": \"Worktop over the base run\",\n      \"contains\": \"Horizontal worktop slab on top of the base run.\",\n      \"reason\": \"The worktop visibly serves only the lower base run (B03), so it is listed as its own block rather than inside a cabinet.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p10-view-003\"],\n      \"region\": {\"view_id\": \"p10-view-003\", \"bbox_1000\": [800, 628, 892, 640]}\n    }\n  ],\n  \"shared_parts\": [],\n  \"front_conflicts\": [],\n  \"uncertainties\": [\n    \"The left tall column (B01) and the appliance column (B02) have no supplied front IDs, so their front counts are not confirmed by the front reference.\",\n    \"Whether B01 and B02 are separate carcasses from B03 or part of a continuous run is an assumption; the lower elevation shows them as adjacent sections.\",\n    \"The upper lift-up units (B04) are inferred from hatched openings and their boundary is partly obscured by section shading.\"\n  ]\n}",
+        "witness_sha256": "e870da1949b16456c16e5d5fc823ed5415846b3f46a8d8ab6e130cef8225d6cd",
+        "block_names": [
+          "Left full-height tall column (integrated fridge)",
+          "Full-height appliance column (microwave and dishwasher)",
+          "Lower base run with drawers and centre doors",
+          "Upper lift-up wall units above the base run",
+          "Worktop over the base run"
+        ],
+        "summary": "A kitchen run with an integrated fridge column, a full-height appliance column, a base run with drawers and doors, a worktop, and two lift-up wall units above the base run.",
+        "shared_parts": []
+      }
+    },
+    {
+      "object_id": "object-009",
+      "page": 11,
+      "preflight": {
+        "object_id": "object-009",
+        "pages": [
+          11
+        ],
+        "views": 2,
+        "image_count": 3,
+        "text_chars": 22190
+      },
+      "source_coordinate_frame": [
+        2338.8888888888887,
+        3308.3333333333335
+      ],
+      "actual_image_size": [
+        1404,
+        1985
+      ],
+      "orientation_mismatch": false,
+      "front": {
+        "status": "failed",
+        "error": "ValueError: invalid island classification",
+        "elapsed_seconds": 7.383,
+        "model": "claude-haiku-5-5",
+        "prompt_version": "estimation_front_count_v6_2_r05",
+        "prompt_sha256": "a929fe8ce72fd7cf75c9c100f2ce48c1e1ab2a4da8cb9ce44a9ac16545e0affd",
+        "request_sha256": "eab4ae79785444e8ad94660fe50dbd4fac106b9645adc4a7ff15b27e8eb83129",
+        "response_id": "msg_011CgkCoEF3RHHoL2dW8pWHP",
+        "stop_reason": "end_turn",
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 19811,
+          "output_tokens": 1108,
+          "output_tokens_details": {
+            "thinking_tokens": 815
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        },
+        "response_text": "```json\n{\n  \"island_types\": [\n    {\"view_id\": \"p11-view-001\", \"type\": \"top view\"},\n    {\"view_id\": \"p11-view-002\", \"type\": \"front elevation\"}\n  ],\n  \"front_groups\": [],\n  \"excluded_surfaces\": [\n    {\"id\": \"X01\", \"view_id\": \"p11-view-002\", \"bbox_1000\": [34, 108, 915, 889], \"reason\": \"Fixed veneered partition panel (title block: partition, veneer finish). Horizontal bands and vertical grooves are panel joints or decorative ribs, not operable fronts.\"}\n  ],\n  \"tabletop_supports\": [],\n  \"totals\": {\n    \"drawers\": 0,\n    \"hinged_doors\": 0,\n    \"lift_up_fronts\": 0,\n    \"unresolved_fronts\": 0,\n    \"total_fronts\": 0\n  }\n}\n```",
+        "witness_sha256": "785a4e357bb9912da304ca9d92f4b92405773e0e5d6a960db1a71f453ad19407",
+        "totals": {
+          "drawers": 0,
+          "hinged_doors": 0,
+          "lift_up_fronts": 0,
+          "unresolved_fronts": 0,
+          "total_fronts": 0
+        }
+      },
+      "planner": {
+        "status": "assembly_plan_requires_review",
+        "error": null,
+        "elapsed_seconds": 7.329,
+        "model": "claude-haiku-5-5",
+        "prompt_version": "CB Planner V4",
+        "prompt_sha256": "3f6ae0ff17c071066ba1ea46bfcf954949c4d1cc370ab6ecad46b8767de4a749",
+        "request_sha256": "7e9509ab1ff383aca3d79399fc755ec92fef3edb99bcc5fe37e8d00e6dfb3d57",
+        "response_id": "msg_011CgkCoqNuErcsLNrJCNCme",
+        "stop_reason": "end_turn",
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 18517,
+          "output_tokens": 1213,
+          "output_tokens_details": {
+            "thinking_tokens": 751
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        },
+        "response_text": "{\"summary\": \"A veneered partition panel elevation (345 cm wide, 260 cm high) with a small plan location detail; no cabinet fronts are supplied.\",\n\"blocks\": [{\n\"id\": \"B01\",\n\"name\": \"Veneered fixed partition panel\",\n\"contains\": \"The main elevation of the veneered partition, with its horizontal bands and vertical joint lines, as one fixed surface.\",\n\"reason\": \"The front reference marks the surface as a fixed partition, not a cabinet. It has no operable fronts or cabinet carcass, so it is one non-cabinet assembly unit. This is based on the title block and the reference, not on a verified construction detail.\",\n\"front_ids\": [],\n\"view_ids\": [\"p11-view-002\"],\n\"region\": {\"view_id\": \"p11-view-002\", \"bbox_1000\": [34, 110, 910, 900]}\n}],\n\"shared_parts\": [],\n\"front_conflicts\": [],\n\"uncertainties\": [\n\"The fallible front reference failed to save, so no front IDs were supplied. Its zero-front result was used only as a reference.\",\n\"The top-view detail (p11-view-001) shows a wall line, a 349 dimension and some rounded shapes. Its relation to the partition is unclear, so it was not added as a separate block.\",\n\"Whether the partition is one continuous panel or several assembled sections is not shown in the supplied elevation.\"\n]}",
+        "witness_sha256": "1786d6fef867bfaacc2e94ffa76a37bf083195f0120dfed4d5f8ae8ae8661867",
+        "block_names": [
+          "Veneered fixed partition panel"
+        ],
+        "summary": "A veneered partition panel elevation (345 cm wide, 260 cm high) with a small plan location detail; no cabinet fronts are supplied.",
+        "shared_parts": []
+      }
+    }
+  ],
+  "verification": {
+    "front_passes": 0,
+    "planner_structural_passes": 7,
+    "full_chain_passes": 0,
+    "front_errors": {
+      "ValueError: invalid island classification": 8,
+      "ValueError: front box count differs from group count": 1
+    },
+    "planner_errors": {
+      "ValueError: invalid Planner references": 1,
+      "ValueError: Planner response did not finish normally": 1
+    },
+    "orientation_mismatch_pages": [
+      3,
+      5,
+      6,
+      8,
+      9,
+      10
+    ],
+    "input_tokens": 483656,
+    "output_tokens": 67331,
+    "interpretation": "Planner consumed unmodified complete Front JSON as a fallible reference with failed status, as allowed by the existing diagnostic tool. Isolated Planner validity is not full-chain acceptance."
+  },
+  "visual_review": [
+    "All source object pages 3-11 inspected. Exact Planner overlays inspected for objects 002 and 005; not all boxes of all objects were verified.",
+    "N57 object-002: top plans classified as elevations, distinct island described as return, upper/appliance scope not separately represented, shared worktop wrongly unifies distinct tops. B04 named base run but box spans upper units too.",
+    "N60 object-003: Planner invents a second run from multiple views and uses unsupported 92 mm / 123 mm in block names.",
+    "N68 object-005: L layout recognized and seven blocks plus a shared worktop returned; overlay worktop S01 lies over the upper shelf band, and drawer block box does not cover the whole bank. Not accepted as a correct plan.",
+    "N76B object-009: see exact raw response; no semantic acceptance claimed from schema alone.",
+    "Six source pages have PDF rotation 270 degrees. source_coordinate_frame uses unrotated page_size_points times dpi and ignores rotation. The current image path emits no detail crops for five objects and only two mispositioned crops for object-006. All full-page images remain present. This confirms transport error, not its quantitative causal impact on model quality."
+  ]
+}

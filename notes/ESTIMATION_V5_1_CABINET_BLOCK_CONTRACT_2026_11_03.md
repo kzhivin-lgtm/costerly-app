@@ -62,6 +62,16 @@ One rulebook with two sections, not two mandatory new provider stages:
   Lev1 follow-up preserves three groups but still reports one leg and invents
   mm units for bare drawing dimensions. Planner schema passes, semantics do not.
 
+Full research checkpoint: notes/ESTIMATION_V6_2_HSL_N68_CHECKPOINT_2026_11_05.md.
+Owner accepts N68 eight hinged doors and four drawers only. The five lift-up
+fronts inferred from triangular marks are not accepted as gas-lift demand.
+CB Planner V5/V6 are retained diagnostic candidates, not selected defaults.
+V5 localizes worktops on top/axonometric views. V6 also caps tall blocks at
+two tall door leaves across without relaxing one-section-wide columns.
+N68 V6 follows both rules but omits a previously represented appliance column;
+the diagnostic default remains V4. Exact evidence and review are in
+notes/evidence/hsl07-v62-2026-11-05/n68-planner-v5-v6-evidence.json.
+
 Planner V2 failed semantic review. Owner has now accepted abstract segmentation
 on the examined simple objects, including alternative two/three Lev1 groupings.
 V3/V4 are still NOT verified full-cycle/runtime checkpoints; latest Lev2 truncation
