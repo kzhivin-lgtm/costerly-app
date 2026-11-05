@@ -1,0 +1,1172 @@
+{
+  "prompt_version": "estimation_front_count_v6_2_r04",
+  "prompt_sha256": "52d6f563f94add159d2b9c457eedc4dd31bbe47011e293c8bf0b68e266b95a99",
+  "request_sha256": "28f0489fa6801c7d3d2f3eefcc2aee42d00c95af740af4e46470477fe50a4e32",
+  "original_witness_sha256": "8c1af6507dc90874d7f2421599702282245d532a00f761dfd0354f3f525ef5ba",
+  "original_status": "failed",
+  "original_error": "ValueError: invalid island classification",
+  "model": "claude-haiku-5-5",
+  "elapsed_seconds": 26.487,
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 13424,
+    "output_tokens": 5805,
+    "output_tokens_details": {
+      "thinking_tokens": 3166
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+  },
+  "response_text": "```json\n{\n  \"island_types\": [\n    {\"view_id\": \"p1-view-001\", \"type\": \"top_view\"},\n    {\"view_id\": \"p1-view-002\", \"type\": \"axonometric_view\"},\n    {\"view_id\": \"p1-view-003\", \"type\": \"front_elevation\"},\n    {\"view_id\": \"p1-view-004\", \"type\": \"front_elevation\"}\n  ],\n  \"front_groups\": [\n    {\n      \"location\": \"Wing 1 (180 run) upper-left 69 unit, portrait door\",\n      \"type\": \"hinged\",\n      \"count\": 1,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Narrow tall strip at the far left is treated as a fixed side and excluded.\",\n      \"fronts\": [\n        {\"id\": \"F01\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [112, 201, 200, 496]}\n      ]\n    },\n    {\n      \"location\": \"Wing 1 upper cabinets over the 180 run, three tall fronts\",\n      \"type\": \"hinged\",\n      \"count\": 3,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Portrait upper fronts are read as hinged doors. Their opening mechanism is not shown, so the type is inferred from shape.\",\n      \"fronts\": [\n        {\"id\": \"F02\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [602, 201, 735, 407]},\n        {\"id\": \"F03\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [736, 201, 855, 407]},\n        {\"id\": \"F04\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [856, 201, 974, 407]}\n      ]\n    },\n    {\n      \"location\": \"Wing 1 upper horizontal fronts at 75 mm height\",\n      \"type\": \"lift_up\",\n      \"count\": 2,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Wide horizontal upper fronts are read as lift-up fronts.\",\n      \"fronts\": [\n        {\"id\": \"F05\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [204, 393, 402, 496]},\n        {\"id\": \"F06\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [402, 393, 600, 496]}\n      ]\n    },\n    {\n      \"location\": \"Wing 1 lower run, five tall doors\",\n      \"type\": \"hinged\",\n      \"count\": 5,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"\",\n      \"fronts\": [\n        {\"id\": \"F07\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [101, 660, 186, 865]},\n        {\"id\": \"F08\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [186, 660, 282, 865]},\n        {\"id\": \"F09\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [282, 660, 380, 865]},\n        {\"id\": \"F10\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [380, 660, 478, 865]},\n        {\"id\": \"F11\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [478, 660, 576, 865]}\n      ]\n    },\n    {\n      \"location\": \"Wing 1 lower return, near-square front above drawers\",\n      \"type\": \"unresolved\",\n      \"count\": 1,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Shape is closer to square than a shallow drawer and it sits above the drawer stack. Whether it is a hinged door or a drawer is not resolved by the elevation alone.\",\n      \"fronts\": [\n        {\"id\": \"F12\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [606, 581, 732, 742]}\n      ]\n    },\n    {\n      \"location\": \"Wing 1 lower return, two stacked shallow drawers\",\n      \"type\": \"drawer\",\n      \"count\": 2,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"\",\n      \"fronts\": [\n        {\"id\": \"F13\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [606, 744, 732, 804]},\n        {\"id\": \"F14\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [606, 808, 732, 865]}\n      ]\n    },\n    {\n      \"location\": \"Wing 2 (151 run) lower, three stacked drawers\",\n      \"type\": \"drawer\",\n      \"count\": 3,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-004\"],\n      \"uncertainty\": \"\",\n      \"fronts\": [\n        {\"id\": \"F15\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [446, 675, 597, 739]},\n        {\"id\": \"F16\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [446, 744, 597, 827]},\n        {\"id\": \"F17\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [446, 832, 597, 919]}\n      ]\n    },\n    {\n      \"location\": \"Wing 2 (151 run) lower, four portrait doors\",\n      \"type\": \"hinged\",\n      \"count\": 4,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-004\"],\n      \"uncertainty\": \"\",\n      \"fronts\": [\n        {\"id\": \"F18\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [128, 669, 221, 920]},\n        {\"id\": \"F19\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [228, 669, 336, 920]},\n        {\"id\": \"F20\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [338, 669, 443, 920]},\n        {\"id\": \"F21\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [600, 669, 729, 920]}\n      ]\n    },\n    {\n      \"location\": \"Wing 2 (84 run) upper, two tall doors\",\n      \"type\": \"hinged\",\n      \"count\": 2,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-004\"],\n      \"uncertainty\": \"\",\n      \"fronts\": [\n        {\"id\": \"F22\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [128, 114, 228, 478]},\n        {\"id\": \"F23\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [231, 114, 340, 478]}\n      ]\n    }\n  ],\n  \"excluded_surfaces\": [\n    {\"id\": \"X01\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [49, 201, 104, 496], \"reason\": \"fixed carcass side or end panel at the left of the upper and lower run\"},\n    {\"id\": \"X02\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [576, 660, 602, 865], \"reason\": \"narrow fixed filler strip between the lower doors and the drawer return\"},\n    {\"id\": \"X03\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [736, 407, 944, 896], \"reason\": \"tall return unit with no visible operable front boundary in this elevation, treated as fixed carcass\"},\n    {\"id\": \"X04\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [725, 90, 889, 950], \"reason\": \"tall fixed side/tall column at the end of the 151 run, not a clearly operable front\"}\n  ],\n  \"totals\": {\n    \"drawers\": 5,\n    \"hinged_doors\": 15,\n    \"lift_up_fronts\": 2,\n    \"unresolved_fronts\": 1,\n    \"total_fronts\": 23\n  }\n}\n```",
+  "parsed_response": {
+    "island_types": [
+      {
+        "view_id": "p1-view-001",
+        "type": "top_view"
+      },
+      {
+        "view_id": "p1-view-002",
+        "type": "axonometric_view"
+      },
+      {
+        "view_id": "p1-view-003",
+        "type": "front_elevation"
+      },
+      {
+        "view_id": "p1-view-004",
+        "type": "front_elevation"
+      }
+    ],
+    "front_groups": [
+      {
+        "location": "Wing 1 (180 run) upper-left 69 unit, portrait door",
+        "type": "hinged",
+        "count": 1,
+        "count_basis": "clear",
+        "view_ids": [
+          "p1-view-003"
+        ],
+        "uncertainty": "Narrow tall strip at the far left is treated as a fixed side and excluded.",
+        "fronts": [
+          {
+            "id": "F01",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              112,
+              201,
+              200,
+              496
+            ]
+          }
+        ]
+      },
+      {
+        "location": "Wing 1 upper cabinets over the 180 run, three tall fronts",
+        "type": "hinged",
+        "count": 3,
+        "count_basis": "estimated",
+        "view_ids": [
+          "p1-view-003"
+        ],
+        "uncertainty": "Portrait upper fronts are read as hinged doors. Their opening mechanism is not shown, so the type is inferred from shape.",
+        "fronts": [
+          {
+            "id": "F02",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              602,
+              201,
+              735,
+              407
+            ]
+          },
+          {
+            "id": "F03",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              736,
+              201,
+              855,
+              407
+            ]
+          },
+          {
+            "id": "F04",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              856,
+              201,
+              974,
+              407
+            ]
+          }
+        ]
+      },
+      {
+        "location": "Wing 1 upper horizontal fronts at 75 mm height",
+        "type": "lift_up",
+        "count": 2,
+        "count_basis": "clear",
+        "view_ids": [
+          "p1-view-003"
+        ],
+        "uncertainty": "Wide horizontal upper fronts are read as lift-up fronts.",
+        "fronts": [
+          {
+            "id": "F05",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              204,
+              393,
+              402,
+              496
+            ]
+          },
+          {
+            "id": "F06",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              402,
+              393,
+              600,
+              496
+            ]
+          }
+        ]
+      },
+      {
+        "location": "Wing 1 lower run, five tall doors",
+        "type": "hinged",
+        "count": 5,
+        "count_basis": "clear",
+        "view_ids": [
+          "p1-view-003"
+        ],
+        "uncertainty": "",
+        "fronts": [
+          {
+            "id": "F07",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              101,
+              660,
+              186,
+              865
+            ]
+          },
+          {
+            "id": "F08",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              186,
+              660,
+              282,
+              865
+            ]
+          },
+          {
+            "id": "F09",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              282,
+              660,
+              380,
+              865
+            ]
+          },
+          {
+            "id": "F10",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              380,
+              660,
+              478,
+              865
+            ]
+          },
+          {
+            "id": "F11",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              478,
+              660,
+              576,
+              865
+            ]
+          }
+        ]
+      },
+      {
+        "location": "Wing 1 lower return, near-square front above drawers",
+        "type": "unresolved",
+        "count": 1,
+        "count_basis": "estimated",
+        "view_ids": [
+          "p1-view-003"
+        ],
+        "uncertainty": "Shape is closer to square than a shallow drawer and it sits above the drawer stack. Whether it is a hinged door or a drawer is not resolved by the elevation alone.",
+        "fronts": [
+          {
+            "id": "F12",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              606,
+              581,
+              732,
+              742
+            ]
+          }
+        ]
+      },
+      {
+        "location": "Wing 1 lower return, two stacked shallow drawers",
+        "type": "drawer",
+        "count": 2,
+        "count_basis": "clear",
+        "view_ids": [
+          "p1-view-003"
+        ],
+        "uncertainty": "",
+        "fronts": [
+          {
+            "id": "F13",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              606,
+              744,
+              732,
+              804
+            ]
+          },
+          {
+            "id": "F14",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              606,
+              808,
+              732,
+              865
+            ]
+          }
+        ]
+      },
+      {
+        "location": "Wing 2 (151 run) lower, three stacked drawers",
+        "type": "drawer",
+        "count": 3,
+        "count_basis": "clear",
+        "view_ids": [
+          "p1-view-004"
+        ],
+        "uncertainty": "",
+        "fronts": [
+          {
+            "id": "F15",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              446,
+              675,
+              597,
+              739
+            ]
+          },
+          {
+            "id": "F16",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              446,
+              744,
+              597,
+              827
+            ]
+          },
+          {
+            "id": "F17",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              446,
+              832,
+              597,
+              919
+            ]
+          }
+        ]
+      },
+      {
+        "location": "Wing 2 (151 run) lower, four portrait doors",
+        "type": "hinged",
+        "count": 4,
+        "count_basis": "clear",
+        "view_ids": [
+          "p1-view-004"
+        ],
+        "uncertainty": "",
+        "fronts": [
+          {
+            "id": "F18",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              128,
+              669,
+              221,
+              920
+            ]
+          },
+          {
+            "id": "F19",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              228,
+              669,
+              336,
+              920
+            ]
+          },
+          {
+            "id": "F20",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              338,
+              669,
+              443,
+              920
+            ]
+          },
+          {
+            "id": "F21",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              600,
+              669,
+              729,
+              920
+            ]
+          }
+        ]
+      },
+      {
+        "location": "Wing 2 (84 run) upper, two tall doors",
+        "type": "hinged",
+        "count": 2,
+        "count_basis": "clear",
+        "view_ids": [
+          "p1-view-004"
+        ],
+        "uncertainty": "",
+        "fronts": [
+          {
+            "id": "F22",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              128,
+              114,
+              228,
+              478
+            ]
+          },
+          {
+            "id": "F23",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              231,
+              114,
+              340,
+              478
+            ]
+          }
+        ]
+      }
+    ],
+    "excluded_surfaces": [
+      {
+        "id": "X01",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          49,
+          201,
+          104,
+          496
+        ],
+        "reason": "fixed carcass side or end panel at the left of the upper and lower run"
+      },
+      {
+        "id": "X02",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          576,
+          660,
+          602,
+          865
+        ],
+        "reason": "narrow fixed filler strip between the lower doors and the drawer return"
+      },
+      {
+        "id": "X03",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          736,
+          407,
+          944,
+          896
+        ],
+        "reason": "tall return unit with no visible operable front boundary in this elevation, treated as fixed carcass"
+      },
+      {
+        "id": "X04",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          725,
+          90,
+          889,
+          950
+        ],
+        "reason": "tall fixed side/tall column at the end of the 151 run, not a clearly operable front"
+      }
+    ],
+    "totals": {
+      "drawers": 5,
+      "hinged_doors": 15,
+      "lift_up_fronts": 2,
+      "unresolved_fronts": 1,
+      "total_fronts": 23
+    }
+  },
+  "prior_review": {
+    "work_number": "3.17.4.5",
+    "prompt_version": "estimation_front_count_v6_2_r04",
+    "prompt_sha256": "52d6f563f94add159d2b9c457eedc4dd31bbe47011e293c8bf0b68e266b95a99",
+    "model": "claude-haiku-5-5",
+    "elapsed_seconds": 26.487,
+    "calls": 1,
+    "input_tokens": 13424,
+    "output_tokens": 5805,
+    "thinking_tokens": 3166,
+    "estimated_standard_list_cost_usd": 0.0042449,
+    "request_diff_from_r03": [
+      "system"
+    ],
+    "totals": {
+      "hinged_doors": 15,
+      "drawers": 5,
+      "lift_up_fronts": 2,
+      "unresolved_fronts": 1,
+      "total_fronts": 23
+    },
+    "original_contract_validation": "failed: snake_case island type labels",
+    "display_only_normalization": "Enum label spelling only; original witness, counts and coordinates unchanged; FORMAT WARNING shown",
+    "semantic_acceptance": "not accepted",
+    "physical_identity_comparison": [
+      {
+        "r03_id": "F24",
+        "r04_id": "X04",
+        "result": "Tall right fixed surface excluded"
+      },
+      {
+        "r03_id": "F01",
+        "r04_id": "F07",
+        "result": "Owner-rejected side depiction still counted as hinged"
+      },
+      {
+        "r03_id": "F06",
+        "r04_id": "F12",
+        "result": "Changed from hinged to unresolved, not excluded"
+      }
+    ],
+    "full_page_and_detail_overlays_visually_inspected": true,
+    "manual_coordinate_changes": false,
+    "focused_tests_passed": 104,
+    "production_deployed": false
+  },
+  "coordinates": {
+    "prompt_version": "estimation_front_count_v6_2_r04",
+    "source_witness": "/private/tmp/estimation-v6-2-lev2-haiku55-front-count-04.json",
+    "coordinate_convention": "bbox_1000 on exact labelled detail; page_pixels exclude added output banner",
+    "model_totals": {
+      "drawers": 5,
+      "hinged_doors": 15,
+      "lift_up_fronts": 2,
+      "unresolved_fronts": 1,
+      "total_fronts": 23
+    },
+    "display_only_label_normalizations": [
+      {
+        "view_id": "p1-view-001",
+        "from": "top_view",
+        "to": "Top view"
+      },
+      {
+        "view_id": "p1-view-002",
+        "from": "axonometric_view",
+        "to": "Axonometric view"
+      },
+      {
+        "view_id": "p1-view-003",
+        "from": "front_elevation",
+        "to": "Front elevation"
+      },
+      {
+        "view_id": "p1-view-004",
+        "from": "front_elevation",
+        "to": "Front elevation"
+      }
+    ],
+    "warnings": [],
+    "annotations": [
+      {
+        "id": "F01",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          112,
+          201,
+          200,
+          496
+        ],
+        "type": "hinged",
+        "location": "Wing 1 (180 run) upper-left 69 unit, portrait door",
+        "detail_pixels": [
+          96.88,
+          143.916,
+          173,
+          355.136
+        ],
+        "page_pixels": [
+          255.88,
+          802.9159999999999,
+          332,
+          1014.136
+        ]
+      },
+      {
+        "id": "F02",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          602,
+          201,
+          735,
+          407
+        ],
+        "type": "hinged",
+        "location": "Wing 1 upper cabinets over the 180 run, three tall fronts",
+        "detail_pixels": [
+          520.73,
+          143.916,
+          635.775,
+          291.412
+        ],
+        "page_pixels": [
+          679.73,
+          802.9159999999999,
+          794.775,
+          950.412
+        ]
+      },
+      {
+        "id": "F03",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          736,
+          201,
+          855,
+          407
+        ],
+        "type": "hinged",
+        "location": "Wing 1 upper cabinets over the 180 run, three tall fronts",
+        "detail_pixels": [
+          636.64,
+          143.916,
+          739.5749999999999,
+          291.412
+        ],
+        "page_pixels": [
+          795.64,
+          802.9159999999999,
+          898.5749999999999,
+          950.412
+        ]
+      },
+      {
+        "id": "F04",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          856,
+          201,
+          974,
+          407
+        ],
+        "type": "hinged",
+        "location": "Wing 1 upper cabinets over the 180 run, three tall fronts",
+        "detail_pixels": [
+          740.4399999999999,
+          143.916,
+          842.51,
+          291.412
+        ],
+        "page_pixels": [
+          899.4399999999999,
+          802.9159999999999,
+          1001.51,
+          950.412
+        ]
+      },
+      {
+        "id": "F05",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          204,
+          393,
+          402,
+          496
+        ],
+        "type": "lift_up",
+        "location": "Wing 1 upper horizontal fronts at 75 mm height",
+        "detail_pixels": [
+          176.45999999999998,
+          281.38800000000003,
+          347.73,
+          355.136
+        ],
+        "page_pixels": [
+          335.46,
+          940.388,
+          506.73,
+          1014.136
+        ]
+      },
+      {
+        "id": "F06",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          402,
+          393,
+          600,
+          496
+        ],
+        "type": "lift_up",
+        "location": "Wing 1 upper horizontal fronts at 75 mm height",
+        "detail_pixels": [
+          347.73,
+          281.38800000000003,
+          519,
+          355.136
+        ],
+        "page_pixels": [
+          506.73,
+          940.388,
+          678,
+          1014.136
+        ]
+      },
+      {
+        "id": "F07",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          101,
+          660,
+          186,
+          865
+        ],
+        "type": "hinged",
+        "location": "Wing 1 lower run, five tall doors",
+        "detail_pixels": [
+          87.36500000000001,
+          472.56,
+          160.89,
+          619.34
+        ],
+        "page_pixels": [
+          246.365,
+          1131.56,
+          319.89,
+          1278.3400000000001
+        ]
+      },
+      {
+        "id": "F08",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          186,
+          660,
+          282,
+          865
+        ],
+        "type": "hinged",
+        "location": "Wing 1 lower run, five tall doors",
+        "detail_pixels": [
+          160.89,
+          472.56,
+          243.92999999999998,
+          619.34
+        ],
+        "page_pixels": [
+          319.89,
+          1131.56,
+          402.92999999999995,
+          1278.3400000000001
+        ]
+      },
+      {
+        "id": "F09",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          282,
+          660,
+          380,
+          865
+        ],
+        "type": "hinged",
+        "location": "Wing 1 lower run, five tall doors",
+        "detail_pixels": [
+          243.92999999999998,
+          472.56,
+          328.7,
+          619.34
+        ],
+        "page_pixels": [
+          402.92999999999995,
+          1131.56,
+          487.7,
+          1278.3400000000001
+        ]
+      },
+      {
+        "id": "F10",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          380,
+          660,
+          478,
+          865
+        ],
+        "type": "hinged",
+        "location": "Wing 1 lower run, five tall doors",
+        "detail_pixels": [
+          328.7,
+          472.56,
+          413.46999999999997,
+          619.34
+        ],
+        "page_pixels": [
+          487.7,
+          1131.56,
+          572.47,
+          1278.3400000000001
+        ]
+      },
+      {
+        "id": "F11",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          478,
+          660,
+          576,
+          865
+        ],
+        "type": "hinged",
+        "location": "Wing 1 lower run, five tall doors",
+        "detail_pixels": [
+          413.46999999999997,
+          472.56,
+          498.23999999999995,
+          619.34
+        ],
+        "page_pixels": [
+          572.47,
+          1131.56,
+          657.24,
+          1278.3400000000001
+        ]
+      },
+      {
+        "id": "F12",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          606,
+          581,
+          732,
+          742
+        ],
+        "type": "unresolved",
+        "location": "Wing 1 lower return, near-square front above drawers",
+        "detail_pixels": [
+          524.1899999999999,
+          415.996,
+          633.18,
+          531.272
+        ],
+        "page_pixels": [
+          683.1899999999999,
+          1074.996,
+          792.18,
+          1190.272
+        ]
+      },
+      {
+        "id": "F13",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          606,
+          744,
+          732,
+          804
+        ],
+        "type": "drawer",
+        "location": "Wing 1 lower return, two stacked shallow drawers",
+        "detail_pixels": [
+          524.1899999999999,
+          532.704,
+          633.18,
+          575.664
+        ],
+        "page_pixels": [
+          683.1899999999999,
+          1191.704,
+          792.18,
+          1234.664
+        ]
+      },
+      {
+        "id": "F14",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          606,
+          808,
+          732,
+          865
+        ],
+        "type": "drawer",
+        "location": "Wing 1 lower return, two stacked shallow drawers",
+        "detail_pixels": [
+          524.1899999999999,
+          578.528,
+          633.18,
+          619.34
+        ],
+        "page_pixels": [
+          683.1899999999999,
+          1237.528,
+          792.18,
+          1278.3400000000001
+        ]
+      },
+      {
+        "id": "F15",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          446,
+          675,
+          597,
+          739
+        ],
+        "type": "drawer",
+        "location": "Wing 2 (151 run) lower, three stacked drawers",
+        "detail_pixels": [
+          334.5,
+          399.6,
+          447.75,
+          437.488
+        ],
+        "page_pixels": [
+          1423.5,
+          1131.6,
+          1536.75,
+          1169.488
+        ]
+      },
+      {
+        "id": "F16",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          446,
+          744,
+          597,
+          827
+        ],
+        "type": "drawer",
+        "location": "Wing 2 (151 run) lower, three stacked drawers",
+        "detail_pixels": [
+          334.5,
+          440.448,
+          447.75,
+          489.58399999999995
+        ],
+        "page_pixels": [
+          1423.5,
+          1172.4479999999999,
+          1536.75,
+          1221.5839999999998
+        ]
+      },
+      {
+        "id": "F17",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          446,
+          832,
+          597,
+          919
+        ],
+        "type": "drawer",
+        "location": "Wing 2 (151 run) lower, three stacked drawers",
+        "detail_pixels": [
+          334.5,
+          492.544,
+          447.75,
+          544.048
+        ],
+        "page_pixels": [
+          1423.5,
+          1224.5439999999999,
+          1536.75,
+          1276.048
+        ]
+      },
+      {
+        "id": "F18",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          128,
+          669,
+          221,
+          920
+        ],
+        "type": "hinged",
+        "location": "Wing 2 (151 run) lower, four portrait doors",
+        "detail_pixels": [
+          96,
+          396.048,
+          165.75,
+          544.64
+        ],
+        "page_pixels": [
+          1185,
+          1128.048,
+          1254.75,
+          1276.6399999999999
+        ]
+      },
+      {
+        "id": "F19",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          228,
+          669,
+          336,
+          920
+        ],
+        "type": "hinged",
+        "location": "Wing 2 (151 run) lower, four portrait doors",
+        "detail_pixels": [
+          171,
+          396.048,
+          252.00000000000003,
+          544.64
+        ],
+        "page_pixels": [
+          1260,
+          1128.048,
+          1341,
+          1276.6399999999999
+        ]
+      },
+      {
+        "id": "F20",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          338,
+          669,
+          443,
+          920
+        ],
+        "type": "hinged",
+        "location": "Wing 2 (151 run) lower, four portrait doors",
+        "detail_pixels": [
+          253.50000000000003,
+          396.048,
+          332.25,
+          544.64
+        ],
+        "page_pixels": [
+          1342.5,
+          1128.048,
+          1421.25,
+          1276.6399999999999
+        ]
+      },
+      {
+        "id": "F21",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          600,
+          669,
+          729,
+          920
+        ],
+        "type": "hinged",
+        "location": "Wing 2 (151 run) lower, four portrait doors",
+        "detail_pixels": [
+          450,
+          396.048,
+          546.75,
+          544.64
+        ],
+        "page_pixels": [
+          1539,
+          1128.048,
+          1635.75,
+          1276.6399999999999
+        ]
+      },
+      {
+        "id": "F22",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          128,
+          114,
+          228,
+          478
+        ],
+        "type": "hinged",
+        "location": "Wing 2 (84 run) upper, two tall doors",
+        "detail_pixels": [
+          96,
+          67.488,
+          171,
+          282.976
+        ],
+        "page_pixels": [
+          1185,
+          799.488,
+          1260,
+          1014.976
+        ]
+      },
+      {
+        "id": "F23",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          231,
+          114,
+          340,
+          478
+        ],
+        "type": "hinged",
+        "location": "Wing 2 (84 run) upper, two tall doors",
+        "detail_pixels": [
+          173.25,
+          67.488,
+          255.00000000000003,
+          282.976
+        ],
+        "page_pixels": [
+          1262.25,
+          799.488,
+          1344,
+          1014.976
+        ]
+      },
+      {
+        "id": "X01",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          49,
+          201,
+          104,
+          496
+        ],
+        "reason": "fixed carcass side or end panel at the left of the upper and lower run",
+        "type": "excluded",
+        "detail_pixels": [
+          42.385000000000005,
+          143.916,
+          89.96,
+          355.136
+        ],
+        "page_pixels": [
+          201.385,
+          802.9159999999999,
+          248.95999999999998,
+          1014.136
+        ]
+      },
+      {
+        "id": "X02",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          576,
+          660,
+          602,
+          865
+        ],
+        "reason": "narrow fixed filler strip between the lower doors and the drawer return",
+        "type": "excluded",
+        "detail_pixels": [
+          498.23999999999995,
+          472.56,
+          520.73,
+          619.34
+        ],
+        "page_pixels": [
+          657.24,
+          1131.56,
+          679.73,
+          1278.3400000000001
+        ]
+      },
+      {
+        "id": "X03",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          736,
+          407,
+          944,
+          896
+        ],
+        "reason": "tall return unit with no visible operable front boundary in this elevation, treated as fixed carcass",
+        "type": "excluded",
+        "detail_pixels": [
+          636.64,
+          291.412,
+          816.56,
+          641.5360000000001
+        ],
+        "page_pixels": [
+          795.64,
+          950.412,
+          975.56,
+          1300.536
+        ]
+      },
+      {
+        "id": "X04",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          725,
+          90,
+          889,
+          950
+        ],
+        "reason": "tall fixed side/tall column at the end of the 151 run, not a clearly operable front",
+        "type": "excluded",
+        "detail_pixels": [
+          543.75,
+          53.28,
+          666.75,
+          562.4
+        ],
+        "page_pixels": [
+          1632.75,
+          785.28,
+          1755.75,
+          1294.4
+        ]
+      }
+    ]
+  }
+}

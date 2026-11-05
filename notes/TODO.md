@@ -208,6 +208,51 @@ single object, `estimation_input_v4`, OCR event and private source-page
 artifacts read-only. Full record:
 `notes/DETECTION_V8_4_5_GLOBAL_BATCHED_ASSEMBLY_SCOPE_CHECKPOINT_2026_11_01.md`.
 
+PENDING, P0, USER INCIDENT, Lev 2 candidate-exception contract failure,
+2026-11-05 (Detection repair not yet approved/numbered):
+Owner requested rollback to a protected Detection checkpoint or diagnosis.
+[verified] Company 610 event a937a9fd-e729-41da-a5e7-b1bc683b0324,
+2026-11-05T09:30:34.501402Z, Lev 2.pdf, failed visual_registry validation.
+Discovery returned four groups and accepted CR-P001-001 through CR-P001-004,
+but candidate_region_exceptions used OCR source ID SF00001 for footer text.
+The validator requires an actual candidate-region ID, so it rejected this row.
+Saved-response replay reproduced the exact exception without a model call;
+removing that row in memory only made this narrow audit pass, with all four
+candidates covered. This is diagnostic isolation, NOT an accepted repair or
+end-to-end Detection result. Membership had already consumed a provider call
+before the malformed exception was rejected.
+[verified] Remote main remains e608f37; protected V8.4.5 tag resolves to
+4c9ff38. Registry adapter, detector, schemas and Detection prompts on main
+match that checkpoint. Rolling these back would not change the failing rule.
+No code rollback, production write or deployment performed; unrelated local
+TODO edits retained. Estimation V6.2 remains unpublished.
+AGENT PROPOSAL, pending owner approval: bind exception IDs to supplied CR IDs
+in the request contract and validate them before Membership, preserving strict
+coverage/ownership checks. Do not silently discard unknown references. Verify
+saved failure, malformed/duplicate IDs, then a real Lev 2 cycle and protected
+Detection regressions before release. Number the repair only after checking
+the authoritative Detection work block; do not renumber Estimation 3.17.4.5.
+Owner requested causal analysis before any repair. Follow-up read-only audit:
+[verified] The exception validator dates to 57086a8 (2026-10-21), not recent
+UI/Estimation work. The provider schema accepts any string in candidate_region_id;
+runtime later requires membership in the supplied CR inventory. The request
+contains both SF text facts and CR regions. For this run all four CR anchors
+were accepted, but the model additionally used an SF ID as a rejected region.
+Anchor admission checks required decisions/rejections but did not reject this
+extra exception; strict exception validation ran only after Membership.
+[verified] Company 610 persisted history contains one exact matching error.
+The returned Lev history (limit 50, spanning Oct 26-Nov 5) has successful Lev_1
+responses with empty exception lists; only one exact Lev 2.pdf event was found,
+the failure. Prior successful production Lev 2 execution is not established.
+[likely] This exposed a pre-existing reference-type/contract-boundary weakness,
+not a new UI regression. Precise model motivation remains unknown. The model
+called SF00001 footer text, but the failed run has no persisted OCR event or
+complete source-fact inventory here, so that source reading is not independently
+verified. Do not infer that absence of earlier failures proves robustness.
+Earlier enum/early-validation remedy remains a proposal, not an approved fix;
+early validation alone saves wasted Membership work but cannot prevent the
+invalid response. No runtime edits or additional model calls in this audit.
+
 BENCHMARK, P0, Hasolelim Floor 06 manual Object Evidence island inventory:
 
 This is the owner-provided visual inventory, separate from final package count
@@ -546,6 +591,22 @@ project Material Engine after C/I/A resolution, with whole-sheet rounding.
 Do not claim geometric offcut reuse from aggregate area. Labor is excluded.
 Base: e608f37. Acceptance and bounded scope:
 `notes/ESTIMATION_V6_1_CONSTRUCTION_PLAN_2026_11_04.md`.
+CURRENT OWNER CHECKPOINT, 2026-11-05, same 3.17.4.5, P0:
+Front interpretation r03 is accepted as a provisional working baseline with
+known visual errors, not production-ready estimation. Exact r03 prompt restored;
+r04 retired from the active route and preserved in prompt history and evidence.
+Checkpoint: notes/ESTIMATION_V6_2_FRONT_COUNT_CHECKPOINT_2026_11_05.md.
+Tag: estimation-v6.2-front-count-r03-checkpoint-2026-11-05.
+Verification: 106 focused tests pass; dependency suite 54 pass / 3 fail.
+All 3 failures reproduce on clean pre-change f20e343, not new regressions.
+Deferred, P1: door/side ambiguity and broader visual benchmark validation.
+Pending, P0, USER REQUEST: continue with major physical assemblies using all
+Detection evidence; reuse the existing components contract. No new provider
+stage, schema expansion or block/work number has yet been approved. Agree the
+minimal next contract before implementation. Materials only, no labor/pricing.
+Completed here: checkpoint preservation, not the overall V6.2 product objective.
+The dated experimental reports below are retained history; older active/next
+labels do not override this current checkpoint and next-step decision.
 Owner authorized all necessary bounded paid replays and Anthropic evidence
 transmission until readiness for production and personal acceptance.
 [verified] Capsules 02-06 retain raw responses/usage before validation. No
@@ -621,6 +682,672 @@ Full suite: 1759 passed, same 10 baseline failures, 29 warnings, 16.68 s.
 Next: review the accessible first-cycle explanations with owner; establish a
 real Lev 2 Detection input before treating results as handoff acceptance.
 No further prompt-only retries or progression to Calculation in this iteration.
+Lev 2 successful Detection evidence audit, 2026-11-05 (read-only):
+[verified] Latest two successful company 610 runs are
+run_189150ebf62447fc958f7c23cc34e3bb (event 8fd1c7f0-2f36-42bd-b7ae-537460324445,
+10:56:37Z) and run_c63dd16473e645fbb887c55e364af9ca (event
+549568f9-8d0d-4109-b8b3-bba5727625ca, 10:55:47Z). Distinct provider request IDs;
+identical Discovery/review audit hashes, one object-001, quantity 1 inferred,
+four identical owned boxes (plan, render, two technical views). Original PDF
+SHA b69e132814531862c1abbf2ea3910e0221ab013dd2d0fb184400149d6ec02b1d
+matches the supplied sample and has a persisted original artifact in both runs.
+OCR events 29b1d88e-3848-4046-b4b5-662a03fc6869 and
+54c2283f-5ef5-4050-b84d-12e924318c92 contain 18 text blocks: 16 numeric/angle
+labels and two source readings of the SOLIDWORKS footer. Evidence differs only
+in four native-inspection timing values. Coordinate frame 3308x2339 at 200 dpi;
+no vector line segments, literal_items or material specification text.
+Membership audit records L-shape/corner/tower correspondences and render
+attachment, with source refs. These are model interpretations, not verified
+part geometry or material facts; current handoff does not transport them.
+Both runs currently have ZERO rfq_estimation_object_inputs rows and no
+Estimation usage events. Existing runtime persists inputs at estimation-job
+start, not Detection completion. Do not call these completed immutable
+handoffs. Next proposed step is a local read-only diagnostic fixture from
+the latest run's real Detection/OCR/original, without launching production
+Calculation; preserve this distinction from a persisted input_id.
+Successful exception rows reference valid CR IDs but describe accepted islands,
+not actual exclusions. Success therefore does not prove the earlier exception
+contract weakness has been repaired. No Detection fix or deployment in this audit.
+Detection contract audit, 2026-11-05, same work 3.17.4.5 (USER REQUEST):
+CURRENT OWNER POLICY / CABINET DIAGNOSIS, 2026-11-05, 3.17.4.5:
+Owner changed hinge height bands: <=1000 mm:2, >1000 mm:3, >2000 mm:4.
+Implemented in the shared _hinges_per_facade helper, including hardware audit
+and priced-demand paths. Seven boundary cases cover 600,601,1000,1001,1500,
+2000,2001 mm end-to-end through structural BOM; slides/lift sets unchanged.
+Historic 600-mm records below describe superseded policy, not current intent.
+User deferred further response-shortening work: understanding takes priority.
+[verified] Cabinet Block's visual classification is a prompt instruction, not
+a deterministic detector. Structural composer consumes front_kind/quantity/
+arrangement already chosen upstream. Scope gate enforces consistency with the
+upstream operation, not with pixels. Tests supply front topology explicitly;
+passing composition tests do not prove visual recognition. V6.2 components
+reference whole views but lack structured front-level position/orientation/
+bay-closing observations, so a wrong front reading can pass schema validation.
+Bounded diagnostic 03 changes ONLY removal of upstream Membership context
+from probe 02's actual request (exact request comparison confirmed); same
+prompt/images/OCR, one Haiku call, 27.6 s, 9787 input / 3095 output tokens.
+Capsule /private/tmp/estimation-v6-2-lev2-detection-03-no-grounding.json;
+raw /private/tmp/estimation-v6-2-lev2-detection-03-raw.txt.
+It now labels vertical fronts hinged and recognizes a separate hanging module,
+but calls drawers fixed dividers, worktop an upper shelf, plan a side view,
+and still assigns bare numbers millimetres. All output operations are fixed
+or hinged. Structural validation passes, semantic acceptance still fails.
+Thus prior interpretation is not the sole cause; source reading/local physical
+ownership remains unsupported. One paired run is not a general causal proof.
+DEFERRED AGENT PROPOSAL, not approved: test compact structured observations of
+front groups (owned location, upper/lower, orientation, arrangement, bay closure)
+within the SAME first call before deriving operation via existing policies.
+No new template library/reviewer, no invented geometry; do not implement this
+contract change merely because the proposal is recorded. No further prompt
+piling. Full suite 1768 passed / same 10 baseline failures / 29 warnings,
+16.04 s; focused 40 passed. No production deployment or new acceptance claim.
+OWNER ARCHITECTURE CLARIFICATION, 2026-11-05, same work 3.17.4.5:
+Understand whole object from evidence, recognize an applicable construction
+class (e.g. kitchen/cabinet/shelving as cabinet furniture), explicitly select
+Cabinet Block, then apply its interpretation/hardware policy. This must be
+an identifiable module application, not only background prompt wording.
+Before the approved experiment below, understanding had no tool/module-selection
+invocation; the composer acts after model classification. Module applicability
+may be per assembly in mixed objects;
+the kitchen label must not classify every component as a cabinet.
+Owner subsequently authorized applying this idea and running a diagnostic.
+The local route uses explicit tool selection and a second Haiku provider request
+to consume returned instructions within one logical Analyze stage.
+Do not silently introduce a third review stage, manual template-library project,
+or transfer catalog/price authority to the model. Hardware quantities remain
+the existing deterministic policy once physical front topology is established.
+
+ACTIVE, P0, explicit Cabinet Block diagnostic, 2026-11-05, same 3.17.4.5:
+[verified] Local run_understanding_with_modules exposes apply_cabinet_block
+with automatic (not forced) tool choice. First request sees all source evidence
+but not detailed policy. The tool result loads the existing Cabinet policy;
+the continuation retains the original evidence and forbids further tools.
+The old single-call route and production remain unchanged. Non-applicable or
+invalid selection stops; mixed/multi-object routing is not production-ready.
+CLI tools/probe_v62_module_call.py retains both actual requests, provider raw
+responses, usages and module scope without DB writes or Calculation.
+Probe /private/tmp/estimation-v6-2-lev2-module-01.json reuses probe 03's real
+Detection-backed local fixture, omitting Naming and Membership narrative.
+[verified] Both calls contain identical source content, 1 full page + 4 crops.
+Haiku selected Cabinet Block at 10.929 s; completed at 37.336 s total.
+Tokens: selection 9479 input / 880 output, continuation 12941 / 2922.
+No cache hits. Structural validation passes; SEMANTIC ACCEPTANCE FAILS.
+Before tool retrieval the model describes a shelving/storage system, misreads
+the top-left plan as side section and assigns unsupported millimetres. After
+policy retrieval it retains these mistakes, labels the three-drawer stack open
+shelves and emits no drawer/lift_up operations. The worktop is not identified.
+Confirmed: explicit invocation works but did not fix this run's understanding.
+Not established: universal impossibility on Haiku, or a single causal explanation.
+This experiment changes both orchestration and first-stage prompt relative to
+03, so it is not a one-factor causal comparison of tool use alone.
+Raw outputs: /private/tmp/estimation-v6-2-lev2-module-01-module_selection-raw.txt
+and /private/tmp/estimation-v6-2-lev2-module-01-understanding-raw.txt.
+55 focused tests pass; git diff --check passes. Tests verify routing/contracts,
+not visual accuracy. No new accepted checkpoint, commit or deployment.
+Earlier proposed diagnostic was isolated whole-object recognition; the owner
+subsequently chose the Island Map experiment below instead.
+Do not silently retry or pass this output into Calculation.
+
+ACTIVE, P0, USER APPROVED, same 3.17.4.5: Island Map / Карта островов, define view/island
+classification vocabulary and decide Detection versus Estimation ownership.
+Outcome: distinguish plan/elevation/section/3D/detail and relate them across
+the whole object's evidence before interpreting construction. Owner approved
+prompt implementation and a live comparative run. Estimation Analyze owns joint view interpretation;
+Detection preserves source regions, printed view labels and their references,
+not authoritative inferred projections. Separate representation/direction from
+coverage/section/exploded modifiers; permit mixed/unknown rather than forcing
+one island into one view. Classify jointly with whole-object understanding in
+the existing first cycle, not a new per-island call or reviewer chain. Expose
+observable grounds and cross-view matches; a label alone is not verification.
+OWNER DIRECTION: keep view interpretation at the start of Estimation, before
+Cabinet Block application. Approved mechanism:
+jointly inspect the entire evidence set, use informative overall views and source
+labels to orient the object, then map each view using visible correspondences.
+Include view class/direction/coverage, cited grounds and uncertainty in the first
+request's module selection payload; continuation receives this map plus original
+images and module policy. No extra per-island call. Unknown/mixed cases remain
+explicit; map entries are revisable hypotheses, never proof or immutable geometry.
+Require concrete correspondence instead of merely repeating a type label. Check
+reference coverage/enum validity deterministically, but assess actual classification
+against source images. First experiment would retain Lev2 evidence, model and
+Cabinet policy, changing only the first-stage mapping contract and its handoff.
+Acceptance: identify the top-left plan, volumetric view and two elevations without
+inventing units; separately evaluate drawers/lift fronts/worktop, since correct
+view classification alone does not establish correct furniture understanding.
+Local implementation: agents/prompts/estimation_island_map_v6_2.md and the
+existing module route require one map record per Detection-owned island,
+representation/direction/depiction/coverage, observable grounds, owned cross-
+island correspondences and uncertainty. Validate map before returning Cabinet
+policy. Tool continuation retains original images and may explicitly correct a
+map interpretation. No source-only region invention, Detection mutation or new
+provider stage. Local HTML displays the initial map with escaped provider text.
+The policy itself is unchanged; final contract now consumes the map instead of
+forbidding formal classification. Stage-one output cap scales with island count
+(4000 on Lev2 versus 1600 before); latency comparisons must disclose this change.
+67 focused tests passed (1.83 s); no semantic acceptance inferred from tests.
+[verified] Live Island Map results, 2026-11-05, same 3.17.4.5:
+- island-map-01: stopped after selection at 26.418 s because direction=mixed
+  was absent from the schema, despite the intended mixed-island support. This
+  is a contract mismatch, not proof that the image has mixed projections.
+  Added mixed direction to both schema and prompt, with regression coverage.
+- island-map-02: selection completed at 24.553 s; schema passes, Cabinet Block
+  receives the exact map. Final response hit max_tokens=3500 at total 46.059 s.
+- Only that saved continuation was replayed with max_tokens=6000, not another
+  classification request. Exact request diff confirms max_tokens is the sole
+  change and original selection is identical. Full continuation completed in
+  23.235 s, 29069 input / 3919 output tokens; structure/references pass.
+  Default final cap in this diagnostic route is now 6000/object, capped 12000;
+  single-call understanding and production routes remain unchanged. 15 module
+  tests pass after final adjustments; earlier 67 focused tests passed; diff check passes.
+Artifacts: /private/tmp/estimation-v6-2-lev2-island-map-01.json,
+/private/tmp/estimation-v6-2-lev2-island-map-02.json and
+/private/tmp/estimation-v6-2-lev2-island-map-02-continuation.json (.html report,
+-raw.txt untouched full final text). Map raw is ...-island-map-02-module_selection-raw.txt.
+Replay script /private/tmp/continue_lev2_island_map_probe.py preserves the truncated
+attempt and appends the continuation; it does not silently overwrite a success.
+Against module-01, inputs, full-page bytes, actual first-user content and Cabinet
+policy are all exactly equal. Both calls keep 1 full page + 4 crops. Image sizes:
+1985x1404, 947x746, 552x479, 865x716, 750x592; no missing image inferred from labels.
+[verified] SEMANTIC ACCEPTANCE FAILS. Island 001 plan is classified side profile;
+002 correctly axonometric; 003/004 elevations are split conceptually into upper
+facade + lower plan (mixed). Source numbers are still assigned unsupported mm.
+Map correspondences contain invented matches, not merely missing descriptions.
+Partial positive change versus module-01: whole object is now a corner kitchen,
+worktop appears, two drawer-bearing assemblies appear. But quantity=1 counts
+each cabinet, not its actual fronts; no lift_up, drawer-front total unestablished,
+separate hanging cabinet identity not clearly retained. Generic parts and wrong
+cross-view ownership remain. Do not treat occurrence of word 'drawer' as topology
+acceptance or use these groups for deterministic hardware quantities.
+Measured effort: 4 provider calls including schema failure and truncated attempt,
+95.712 s summed invocation elapsed; successful selection + final continuation
+sum to 47.788 s, NOT an independently measured clean end-to-end run. No speed or
+cost improvement claim; successful pair consumed 40346 input / 7435 output tokens
+versus module-01 22420 / 3802. Cache hits zero. One comparison does not establish
+causality or stable recognition improvement. No new accepted checkpoint/deploy.
+OWNER FOLLOW-UP, 2026-11-05: fix view classification first and explain missing
+drawer count in parallel. Owner confirms island 001 top view, 003/004 frontal
+views, five drawers total. These are benchmark annotations, NOT model-input
+hints. Drawer faces are landscape rectangles in vertically stacked banks;
+do not encode 'vertical narrow rectangle = drawer' from the wording slip.
+Implemented --map-only diagnostic, one provider request INSTEAD OF the module
+workflow, not a third production stage. It reuses evidence, taxonomy, coverage
+validation and local report. Production/Calculation are still untouched.
+[verified] ...-island-map-only-01.json: same classification core without module
+selection/decomposition, 19.100 s, 10085 input / 1918 output. Plan misread front,
+lower elevations mixed; sole module-coupling cause not supported. Inspected
+exact decoded sent images: intact readable plan and elevations. Payload text
+has no upstream projection labels, only P1/IDs/regions/OCR numbers and footer.
+[verified] Replaced generic classification paragraph with surface-based criteria:
+start map with informative overall volumetric island; match top/front/side
+surfaces; a gap between wall/base units does not establish independent views.
+Same schema/images/model/output budget. Saved request comparison of map-only
+01/02 differs ONLY in system prompt. ...-island-map-only-02.json completed in
+20.435 s: 002 axonometric, 003 and 004 front, but 001 still side; 004 coverage
+detail wrongly suggests a magnification of 003. Correspondences still invent
+dimensions/parts and quantitative interpretation. Classification PARTIAL,
+not accepted; no full module replay or deployment after this prompt change.
+All paths share /private/tmp/estimation-v6-2-lev2 prefix; raw files have
+-island_map-raw.txt suffix, reports .html. 35 understanding/module tests passed;
+17 module tests passed after prompt replacement, git diff --check clean.
+
+Drawer diagnosis, same owner request/outcome:
+[verified] Final prior response c2 and c4 name a 'cabinet with drawers', each
+quantity=1/operation=drawer. It counts cabinets, not drawer fronts. The V6.2
+generic component schema cannot distinguish these quantity meanings and lacks
+a structured parent/child or front_groups requirement. The prompt ALREADY says
+split fixed parents from moving front groups and count physical fronts, but the
+model violates this and validator only checks positive integer/enums/references.
+Wrong island interpretation adds incorrect cross-view ownership; do not claim
+quantity ambiguity alone explains the visual miscount. No hardware calculation
+was run. Existing assembly/BOM contract already has front_groups with front_kind,
+quantity, arrangement plus counts.drawers; reuse that separation, do not invent
+a competing counting engine. Source/owner benchmark: bank of 3 + bank of 2,
+count once from the two elevations and corroborate (not add) axonometric repeats.
+PROPOSED, needs contract decision: bridge that existing front-group structure
+into understanding so one cabinet cannot pass as one drawer. Current turn changes
+classification diagnostics only; quantity schema/hardware composition unchanged.
+Next unresolved classification diagnostic should address plan-to-volumetric
+surface correspondence, not another broad Cabinet rule or reviewer stage.
+
+OWNER-APPROVED EXPERIMENT, natural visual explanation, same 3.17.4.5:
+Test whether removing the classification schema and detailed instructions fixes
+cross-island recognition. One Haiku request, no Cabinet Block, tools, materials
+or counts. /private/tmp/probe_lev2_natural_visual.py replays map-only-02's exact
+request, changing ONLY system. Same full page + four crops, same OCR/context,
+model, temperature=0 and max_tokens=4000. Prompt asks to describe the volumetric
+whole and explain viewing directions of other islands with visible matches;
+no benchmark answers, kitchen label or preset projection assignments supplied.
+[verified] /private/tmp/estimation-v6-2-lev2-natural-visual-01.json completed in
+7.663 s, claude-haiku-4-5-20251001, 8618 input / 627 output, end_turn, one call,
+zero retries. Matching -raw.txt preserves provider text; .html includes exact
+prompt plus untouched answer. 002 recognized as volumetric/angular form, but
+001 called front, 003 top, 004 side against owner reference top/front/front.
+It again invents mm and cross-view correspondences. No semantic acceptance.
+Question outcome: rejected as a sufficient fix on this case. Natural wording
+is faster/shorter on this run, but not more accurate. This single comparison
+does not prove Haiku categorically cannot solve the task. Production and shared
+classifier prompt/code unchanged; no failed free-form replacement to roll back.
+NEXT AGENT PROPOSAL, not authorized/run: same natural question and images,
+remove OCR/numeric textual context while retaining image-to-island locators,
+to distinguish textual anchoring from visual projection-reading failure.
+This would be a diagnostic input comparison, not permanent context deletion.
+OWNER STRATEGY DISCUSSION, same 3.17.4.5: owner challenges further text-cleaning
+experiments and asks why view classification fails, plus three independent
+strategies. The tentative Sonnet request was interrupted; do NOT run or switch
+models from that phrasing. No new live probe authorized in this discussion.
+Confirmed failure is source-image cross-view interpretation, not missing images
+or a demonstrated OCR cause; general model incapability is still unproven.
+AGENT PROPOSALS, pending choice, specific to island recognition (not replacements
+for earlier whole-Estimation strategies):
+1. Visual few-shot calibration of Haiku: a small fixed set of correctly labelled
+   multi-view examples, not more verbal rules. Evaluate on held-out files;
+   never train/prompt on Lev2 answers then claim independent Lev2 acceptance.
+   Trade-off: curation and additional image-context/token cost; benefit unverified.
+2. Geometry-assisted interpretation: use available PDF vectors, contours and
+   dimension correspondences to check candidate projections. Keep uncertainty
+   for ambiguous/raster sources; no guarantee that geometry uniquely determines
+   view class. Trade-off: substantial implementation and source-format coverage.
+3. Change only the first visual interpreter to a more capable model, if allowed;
+   keep Haiku downstream and deterministic composition. This replaces a request,
+   not adds a reviewer stage. First test identical evidence blindly, do not assume
+   Sonnet succeeds. Production model change requires explicit owner approval.
+Recommended next diagnostic decision: a bounded same-input control with another
+model can test whether a different interpreter can read the packet before major
+geometry investment. One correct answer establishes neither reliability nor
+Haiku impossibility; retain a small held-out acceptance set for any adopted path.
+
+OWNER APPROVAL / SONNET CONTROL, same 3.17.4.5, 2026-11-05:
+Owner now explicitly authorizes Sonnet test (supersedes prior interrupted request).
+Primary outcome is island CLASSIFICATION; cross-island correspondence is only
+supporting evidence, not a mandatory lengthy product output. Geometry-heavy
+implementation is disfavoured as disproportionate. Owner can supply around ten
+examples of each type. Proposed use: labelled full-sheet/object packs, a small
+few-shot subset and separate held-out evaluation files; do not inject all examples
+into every request or mistake prompt examples for weight training. No example
+collection or data-contract rewrite performed in this turn.
+[verified] /private/tmp/probe_lev2_sonnet_visual.py replays natural-visual-01,
+changing ONLY model from claude-haiku-4-5-20251001 to claude-sonnet-4-6 (the
+Sonnet version in repository rate config). Exact prompt, full page + four crops,
+OCR/context, temperature=0 and max_tokens=4000 retained. One call, no retries.
+/private/tmp/estimation-v6-2-lev2-natural-visual-sonnet-01.json completed in
+23.499 s, 8619 input / 1096 output tokens, end_turn, no cache hits. Matching
+-raw.txt and .html retain untouched answer/prompt. Response model confirms 4.6.
+Plan 001 identified correctly; 003 front elevation; 004 called 'side (facade
+from the short perpendicular wall)', which serves the correct second-elevation
+role, not another plan. 002 understood as volumetric corner kitchen. Do not
+score literal front-vs-side terminology without considering elevation of each
+wing. Basic view classification improved on this controlled case, but full
+object understanding NOT accepted: 45-degree end moved to corner junction,
+incorrect tall/standing-cabinet claims and view correspondences remain. No
+Cabinet Block continuation, drawer counting, schema acceptance or production
+integration tested with Sonnet.
+Approximate standard API list-price cost: $0.042297, versus Haiku $0.011753;
+rates verified https://platform.claude.com/docs/en/about-claude/pricing
+Sonnet 4.6 $3 input/$15 output per million, Haiku 4.5 $1/$5. This is calculated
+from usage, not invoice readback. Input images/context make short output nonzero
+cost; no multi-object timing extrapolation accepted.
+Call-budget clarification: current local module diagnostic is TWO Analyze
+provider calls, Calculation excluded. Prepending Sonnet classification makes
+THREE; replacing the existing first interpreter keeps TWO. Neither production
+choice approved by this diagnostic. Do not conflate original logical Analyze/
+per-object Calculation stages with the current local module call count.
+Important new discovery while checking official rates: the tested Haiku is
+4.5, not the entire current Haiku family. Official overview lists Haiku 5.5,
+released 2026-10-07, claude-haiku-5-5, at $0.10/$0.50 per million for prompts
+up to 100k tokens; account availability and performance on our data UNVERIFIED.
+Source: https://platform.claude.com/docs/en/models/haiku-5-5/overview
+API guide says omit temperature/top_p/top_k; default adaptive thinking means a
+future probe must disclose API differences, not claim a model-only request diff.
+OWNER-APPROVED FOLLOW-UP / FIXED ENGLISH TYPES, 2026-11-05, same 3.17.4.5:
+Status: active, P1. Outcome: reliable island classification with only ID:type
+output, using Haiku; geometry matching remains auxiliary. Owner approved an
+English fixed taxonomy and a Haiku 5.5 probe, not a production route change.
+[verified] /private/tmp/probe_lev2_haiku55_types.py retains exact previous
+messages/images/OCR. Changes: system prompt, model=claude-haiku-5-5,
+temperature removed per migration guide, output_config.effort=low.
+max_tokens=4000 retained. No tools, retries, Cabinet or Calculation.
+Probe -01 failed to connect inside sandbox before response. Network-enabled
+probe /private/tmp/estimation-v6-2-lev2-haiku55-types-02.json completed:
+1.916 s, 11629 input / 66 output, zero thinking tokens, end_turn, actual model
+claude-haiku-5-5. Raw answer, literally:
+  island ID: p1-view-001: Top view
+  island ID: p1-view-002: Axonometric view
+  island ID: p1-view-003: Front elevation
+  island ID: p1-view-004: Side view
+Strict format FAIL due literal 'island ID:' prefix. Script's strict parser
+correct_count=0 is NOT semantic accuracy: after ignoring that prefix the
+owner-agreed labels match 3/4; 004 is side instead of second-wing front.
+No plan/elevation confusion in this answer. -review.json records the distinction;
+-raw.txt and -prompt.txt preserve exact response and English prompt.
+Estimated standard list-price cost $0.0011959, not invoice readback.
+Model and prompt changed together, so separate causal contributions unproven.
+No production/shared-code changes; no new accepted checkpoint. Accessible 5.5
+route confirmed for this account, general quality not established by one case.
+OWNER CLARIFICATION / LANGUAGE AUDIT / NEXT BOUNDARY, 2026-11-05:
+Owner accepts Side view for 004. Accepted semantic classification for this case
+is therefore 4/4, not 3/4; the literal prefix format defect remains. Preserve
+original artifact and strict-parser result as historical evidence. No new
+request was run and prompt-versus-model causal attribution remains unisolated.
+Owner confirms the old detailed Island Map is superseded by simple view-type
+classification. Do NOT translate or polish the old map/correspondence contract.
+Next requested discussion is returning to Cabinet Block using classifications
+AND original complete evidence, not labels alone. Full integration has not yet
+been implemented; successful classifier is currently a local probe only.
+User requirement: all agent instructions and generated workflow text in English;
+retain original source evidence, multilingual aliases and quoted examples.
+[verified] Audit: Estimation checkout f20e343 + current local changes, and
+Detection checkout /private/tmp/costerly-detection-v846 at 8eb87f1. Checked 34
+Estimation prompt files, agent Python/inlined request construction, provider
+entrypoints, and Detection prompt/inlined sources. Russian instructions found
+only in the superseded V6.2 Island Map file and two inline blocks in
+estimation_understanding_agent.py (isolated-map and module-selection paths).
+The otherwise English estimation_understanding_v6_2.md explicitly requests
+Russian human-readable output. Other Cyrillic prompt occurrences are source
+examples (legacy Detection, Naming, material facts, Price Source); Python
+occurrences elsewhere are regexes, transliteration or UI/report text, not
+Russian instructions. No remote production runtime verification in this audit.
+No translation/model/source-code edits made in this turn. Existing local dirty
+work preserved. Remaining P1 requirement: integrate simple classification with
+Cabinet Block and English instructions/output without reintroducing old map.
+Owner-requested global Haiku 5.5 migration, including Detection: DEFERRED, P2,
+explicitly 'later'; no model settings changed. Separate migration verification
+must cover sampling compatibility, token budgets, tools and regressions.
+Earlier agent suggestion to run 4.5 control is not the next active task; owner
+redirected discussion to Cabinet Block. Held-out classification tests remain
+pending, not evidence against acceptance of this single corrected case.
+
+OWNER-APPROVED HAIKU 5.5 CABINET REPLAY, 2026-11-05, same 3.17.4.5:
+Status: active, P1. Owner asks to move onward with 5.5 and retry the existing
+whole-object/Cabinet task. Current execution scope stated before work:
+experimental Estimation first cycle only, no Detection/production migration.
+[verified] Local agent now uses claude-haiku-5-5 for direct understanding,
+isolated classification and both tool-selected Analyze requests; low effort,
+no temperature/top_p/top_k, max_tokens caps retained. Full source evidence
+and any adaptive-thinking signatures remain in the tool continuation.
+Replaced old detailed Island Map with island_types [{view_id,type}] and the
+approved nine-type English instructions in estimation_island_types_v6_2.md.
+Removed superseded local map prompt, whose prior contents remain in saved
+request artifacts. Two provider calls remain: classify/select module, then
+apply returned Cabinet policy and produce the existing understanding contract.
+No separate classifier/reviewer call. Prompt, output and local report text are
+English. Source-language data and aliases remain untouched. All classification
+coverage/ID/enum checks remain; no mandatory invented correspondences.
+Standalone classification produces only ID:type lines; legacy --map-only CLI
+flag is an alias of --classify-only, not a second implementation.
+[verified] /private/tmp/estimation-v6-2-lev2-haiku55-cabinet-01.json:
+15.046 s, TWO calls, both actual response model claude-haiku-5-5. Call 1
+4.585 s cumulative; whole evidence byte-equivalent in initial messages to
+natural-visual-01, no accepted labels/counts injected. Input/output total
+28689/3208, approximate standard list-price $0.0044729, not billing readback.
+Raw stage TXT, HTML report and -review.json retained beside witness.
+Reference/schema checks PASS. Four view types correct; Cabinet selected;
+drawer function, two lift-up fronts, detached wall unit and countertop found.
+Semantic acceptance PARTIAL, not ready for Calculation: drawers quantity=null
+instead of five; grouped parent/front semantics persist; chamfered free end
+misplaced at the junction; tall open frame simplified into hinged storage;
+unsupported appliance housing appears in exclusions. No automatic retries,
+no hardware totals or material Calculation, no DB writes, no deploy/checkpoint.
+Next proposed diagnostic: preserve successful classification and make the
+Cabinet output distinguish physical parent assemblies from counted moving
+fronts using the existing front-group contract. This is not implemented by
+this replay and must not be disguised as a classifier fix or a third reviewer.
+Global 5.5 migration remains pending outside this first-cycle experiment;
+Detection and other model callers have NOT been migrated. Existing production
+checkpoint and unrelated dirty changes preserved. No claim of general model
+superiority or prompt-only causality from this combined change.
+Verification: 75 focused tests passed (understanding, module/classification,
+V6 replay, structural BOM, visual evidence); git diff --check passed. Tests
+cover two-call sequencing, unchanged evidence, exact ID/type schema, rejection
+of prefixed/duplicate/foreign IDs, English instructions, unsupported sampling
+parameter omission and thinking-signature preservation. One added empty-answer
+test initially expected ValueError, corrected to the existing adapter's
+RuntimeError; provider behavior was not changed to satisfy the test. Unit tests
+do not establish semantic acceptance. Language scan found no Cyrillic in the
+new instruction sources or local report generator.
+
+OWNER-APPROVED CLASSIFICATION + FRONT COUNTS, 2026-11-05, 3.17.4.5:
+Status: active, P1. Applied the exact approved English prompt to
+agents/prompts/estimation_front_count_v6_2.md and the existing local probe CLI
+as --count-fronts, mutually exclusive with --classify-only. One combined
+request for one object; not a third request or a production architecture
+replacement. The two-call Cabinet route remains available and unchanged.
+Existing evidence preparation and island validation reused. Added bounded
+front-group/reference/count/total validation; unknown counts propagate null,
+absent types total zero, no silent count repair. No hardware/Calculation.
+[verified] /private/tmp/estimation-v6-2-lev2-haiku55-front-count-01.json:
+same initial messages as cabinet-01, actual Haiku 5.5/low, 20.122 seconds,
+one call, 12371 input / 4056 output tokens (2744 thinking), estimated standard
+list cost $0.0032651. No ground-truth labels/counts injected or automatic retry.
+Raw result: drawer groups 2 + 3 = FIVE, lift-up fronts TWO, hinged doors 18,
+total fronts 25. Four semantic view directions correct. Drawer/lift counts
+match owner-described case. Door total is model output, NOT accepted truth:
+right-hand tall side/frame counted as a door and other groups need review.
+Strict contract FAIL: model emits top_view/axonometric_view/front_elevation
+instead of the declared labels, plus Markdown fences. Shared JSON extractor
+strips fences; enum validator rejects. Read-only diagnostic translation of
+enum spelling on an in-memory copy confirms remaining schema/references and
+all arithmetic pass. Original failed artifact and raw text remain unchanged.
+Unsupported mm values also appear in location strings; dimensions were not
+requested. Prompt/report/raw/review artifacts retained, none auto-opened.
+92 focused tests passed, git diff --check passed. This establishes requested
+drawer/lift count improvement, NOT full front inventory or production success.
+Next proposed check: resolve questionable door groups and exact output enums
+without disturbing successful counts; no extra reviewer/model call authorized
+or executed in this experiment. Classification/counting-only performance must
+not be presented as equivalent scope to prior full object understanding.
+Owner preference: do not automatically open code, reports or results; user
+opens them when wanted. No tab was opened during this experiment.
+
+OWNER BENCHMARK / DOORS VERSUS SIDES, 2026-11-05, 3.17.4.5:
+Status: active, P1. Lev 2 owner-counted benchmark: 15 hinged doors, with 16
+acceptable only for the specifically ambiguous narrow end door; never more.
+Five physical drawers imply five slide sets; two lift-up fronts imply two
+gas-lift sets under existing hardware policy. Front-count stage emits fronts,
+not counts of individual struts or hardware totals. Nominal total fronts 22,
+accepted upper total 23 for the stated end-door ambiguity. These numbers are
+review criteria only and MUST NOT be injected into the model's prompt/evidence.
+Owner refinement: distinguish DOOR ROLE from CARCASS SIDE ROLE before using
+rectangle proportions. A door closes an access opening; a side bounds the
+carcass. Very narrow/tall strips default to fixed sides/fillers/posts unless
+explicitly identified or depicted as operable. Do not mistake foreshortening
+or an edge-on normal door for a physically narrow front. No hard numerical
+aspect-ratio cutoff, source cleanup, new geometry engine or extra model call.
+Applied identical policy intent to current count prompt and existing Cabinet
+Block understanding policy so later reuse retains the instruction. Only the
+count prompt changes in the controlled front-count-02 request. Existing exact
+enum/Markdown issue deliberately not patched in this visual-policy experiment.
+
+[verified] Repeat front-count-02, prompt r02: 20.205 s, one Haiku 5.5 call,
+12573 input / 4331 output tokens (2882 thinking), estimated cost $0.0034228.
+Exact request comparison with 01 shows ONLY system changed. Types now use
+declared enum labels; existing JSON parser strips Markdown fences. Schema,
+references and arithmetic pass, but actual counts remain 18 doors, 5 drawers,
+2 lift-up fronts, 25 total. Door benchmark FAIL (15 preferred, 16 maximum).
+Tall return-end element still counted as an inferred door. Drawer uncertainty
+claims possible overlap while count_basis says clear; do not claim robust
+cross-view association just because total five matches. No semantic gain in
+door count from this added policy in this run. No automatic retry or deploy.
+Saved front-count-02 raw/witness/review; nothing auto-opened.
+
+PROMPT REVISION TRACKING, owner requirement, same 3.17.4.5:
+Keep product version V6.2 and work number unchanged. Prompt revisions are
+explicit identities, not new product iterations:
+- estimation_front_count_v6_2_r01: approved classification + count task;
+  experiment front-count-01. System SHA256
+  427c7f0ecf49e2596f62c0eb7a22d9275ab8c87e79c9ef874ae8dd09e63de918.
+- estimation_front_count_v6_2_r02: same task plus doors versus fixed sides and
+  narrow-strip policy; experiment front-count-02. System SHA256
+  c9dbf340d347c48710cd770b4113208c887294b106492ba5c0bba27c0a13b9a7.
+Current prompt content exactly matches the r02 provider request. Historic raw
+request artifacts remain untouched; review sidecars and this ledger identify
+their revisions. Future --count-fronts witnesses persist prompt_version and
+actual-system prompt_sha256 alongside full request hash. Successful agent
+results also expose both. A revision/fingerprint regression test prevents
+unrecorded current prompt edits. Revision numbers are never reused.
+Verification: 93 focused tests passed; prompt numbering changes require no
+paid model retry because the actual system content did not change.
+Next recommendation: inspect the reported door groups against owner markup
+to locate all extra doors before another broad prompt variation. Classification
+and drawer/lift counts remain the preserved partial result, not a full checkpoint.
+
+OWNER-REQUESTED FRONT OVERLAY, 2026-11-05, 3.17.4.5:
+Status: completed deliverable, P1. r02 has no per-front coordinates, so an exact overlay of
+that old answer cannot be reconstructed honestly. Owner authorizes a visual
+overlay; r03 obtains new model-authored individual front boxes and useful
+excluded-side boxes. Do not describe r03 boxes as r02's hidden detections.
+Prompt revision estimation_front_count_v6_2_r03, system SHA256
+81b49dc8d2dd4c33a7459d824178ea8601ba241370a401e530bed2748dab0bb0.
+Same counting rules; added per-front id/view_id/bbox_1000 and excluded_surfaces.
+Each physical front gets one canonical view box. Coordinates normalized to
+0..1000 on EXACT supplied labelled detail image, INCLUDING generated header.
+Known group counts must equal number of front boxes. No count hints injected.
+max_tokens raised 6000 -> 10000 for annotation output, same Haiku 5.5/low and
+60 s timeout/no retries. This is a diagnostic schema revision, not production.
+tools/render_estimation_front_overlay.py renders exact model coordinates with
+Pillow onto saved request images, not generative image editing or manual box
+placement. Full-page inverse transform accounts for existing .015 crop margin
+and 32 px generated header. Separate full-page/detail PNGs and coordinate JSON
+retain source mapping. Invalid coordinates stop rendering; header overlap is
+reported rather than silently shifted. Overlay is model output, not ground truth.
+104 focused tests passed, including annotation counts/IDs/bounds, coordinate
+transform, original-artifact preservation and no output overwrite. Requested
+image may be shown inline; do not automatically open report/code tabs.
+[verified] front-count-03 completed in 29.021 s, one actual Haiku 5.5 call,
+13228 input / 6324 output tokens (3507 thinking), estimated cost $0.0044848.
+Changed request fields versus r02: system and max_tokens only; images/context
+unchanged. Schema/references/arithmetic/annotation coverage pass. Result:
+17 doors, 5 drawers, 2 lift-up fronts, 24 individual front boxes + 3 exclusions.
+Door semantic benchmark still FAIL (15 preferred, 16 maximum). No production
+or inventory checkpoint. Overlay deliverable completed and visually inspected.
+Saved /private/tmp/estimation-v6-2-lev2-haiku55-front-count-03-overlay-page.png,
+-overlay-details.png, -overlay-coordinates.json, -review.json plus raw witness.
+No coordinate warnings; full-page and detail images inspected. Approximate
+boxes follow individual source panels without manual correction. F24 explicitly
+counts tall return-end rectangle as hinged; X03 excludes adjacent side strip.
+F06 above the two drawers also counted as a door, requiring owner/source
+confirmation of physical role. These are r03 annotations, not r02's hidden
+boxes. Show requested image inline only, no automatic file/report navigation.
+
+OWNER-APPROVED FRONT COUNT r04, 2026-11-05, same 3.17.4.5:
+Status: completed experiment, not selected. Owner returned to r03 as sufficient
+for now; further front refinement deferred. Owner identifies r03 F01 and F24 as side/longitudinal
+carcass depictions, not operating doors. These IDs are feedback about r03 only,
+not stable cross-run IDs and MUST NOT be embedded into the next prompt.
+Applied exactly the proposed generic instruction: count using clearest
+elevation, use an available axonometric/perspective view to establish whether
+the candidate closes an opening or forms a fixed side/partition/support.
+Do not drop fronts merely because hidden in axonometry; retain uncertainty.
+No change to model/images/settings/schema in the inference. One call only.
+Prompt identity estimation_front_count_v6_2_r04, system SHA256
+52d6f563f94add159d2b9c457eedc4dd31bbe47011e293c8bf0b68e266b95a99.
+104 focused tests passed before the live run. Preserve r03 artifacts; current
+experiment is not an accepted inventory checkpoint until its actual front
+selection is reviewed, even if totals happen to match.
+Completed r04: one Haiku 5.5 call, 26.487 s, 13424 input / 5805 output tokens
+(3166 thinking), estimated standard-list cost $0.0042449, not billed-cost
+readback. Saved request differs from r03 only in system prompt. Returned
+15 hinged doors, 5 drawers, 2 lift-up fronts, 1 unresolved, total 23.
+Original contract validation FAILED: snake_case island type labels instead
+of the exact allowed enum strings. Raw response also contains Markdown fences.
+For diagnostic display ONLY, renderer now has explicit opt-in label alias
+normalization with FORMAT WARNING. Original failed witness remains unchanged;
+counts and boxes are untouched. Default strict behavior remains unchanged.
+104 focused tests pass after this change. Full-page and detail overlays
+visually inspected; no coordinate warnings or manual corrections.
+Semantic result is partial, NOT accepted: r03 F24 is now excluded as X04,
+but owner-rejected r03 F01 remains counted as r04 F07. Former r03 F06 is
+now unresolved F12, not excluded. Thus 15 doors is not benchmark acceptance.
+Witness: /private/tmp/estimation-v6-2-lev2-haiku55-front-count-04.json
+Review: /private/tmp/estimation-v6-2-lev2-haiku55-front-count-04-review.json
+Overlays: same prefix with -overlay-page.png and -overlay-details.png.
+Earlier proposed next step was review of F07/F12. Superseded by owner's
+decision to keep r03 and move to major assemblies; do not auto-restart this loop.
+No production deployment or accepted-checkpoint change.
+
+Cabinet Block restoration and raw-output request, 2026-11-05, 3.17.4.5:
+[verified] Full operability rules were in the V5.2 assembly/BOM prompt, not
+the V6.2 first-cycle request. Probe 01 did not invoke that agent or the existing
+hardware composer. Owner authorized restoring those rules to understanding.
+Local V6.2 prompt now includes lower shallow/stacked drawer fronts, upper/middle
+landscape lift-up flaps, portrait bay-closing hinged fronts and fixed-screen
+exclusion. Owner's typical 300 mm / occasional 400 mm drawer height is a soft
+context heuristic only. No new template library, hardware engine or threshold
+change: current hinges remain <=600:2, >600:3, >2000:4; slides/lifts remain sets.
+Short Russian prose requested, redundant numerical dimensions excluded from
+first-cycle narrative, enum example now uses valid single values. Prompt-only
+experimental restoration is NOT a new accepted checkpoint.
+[verified] Probe 02 uses byte-identical inputs/images/grouping context to 01;
+actual saved request includes Cabinet Block rules. One Haiku call, 29.044 s,
+11435 input / 2870 output tokens (01: 10867 / 2887). Structural validation passes,
+but semantic acceptance FAILS: vertical lower facades called six drawers,
+lift-up group remains unknown, separate hanging module misread as tall tower,
+unsupported veneer and millimetre assignments persist. Still English and verbose
+(11306 raw chars versus 10983); brevity/language requirement not achieved.
+Do not treat validator success as product acceptance; no further prompt piling,
+Calculation integration or deployment. Missing rules were one real omission,
+not a sufficient explanation of all failures.
+Raw unedited responses exported as
+/private/tmp/estimation-v6-2-lev2-detection-01-raw.txt and
+/private/tmp/estimation-v6-2-lev2-detection-02-raw.txt; report body is model fields
+with HTML headings/escaping, not assistant narrative. Prior chat paraphrase
+was the assistant's translation, not raw model output. User wants direct data.
+45 focused understanding/structural/replay tests passed; git diff --check clean.
+Baseline f20e343 remains the local code checkpoint, V5.8.2 production unchanged.
+
+V6.2 real Detection-backed local probe, 2026-11-05, owner-authorized:
+tools/probe_v62_lev2_detection.py reconstructs a LOCAL fixture from latest run
+run_189150ebf62447fc958f7c23cc34e3bb, exact OCR/event/original hash above.
+No persisted input_id fabricated: local-detection locator and local-render page
+are explicitly labelled, no DB writes. Existing V6.2 request receives 1 full
+page + 4 crops, 18 cited OCR blocks and existing Membership observations with
+exact bbox-derived VG-to-view mapping and SF-to-OCR mapping. No Naming, no
+island-description addition, no Calculation. Optional context appended only
+inside this diagnostic process; production agent/prompt/runtime unchanged.
+[verified] One Haiku call, 10867 input / 2887 output tokens, 29.297 provider /
+29.571 total seconds, end_turn. Capsule/report:
+/private/tmp/estimation-v6-2-lev2-detection-01.json and .html.
+Raw output identifies L-shaped kitchen and countertop but fails acceptance:
+labels 416/300/265 as mm without unit evidence, misplaces 45-degree end detail
+at the L junction, conflates hanging cabinet with tower section, does not
+resolve drawers or lift-up fronts, suggests unsupported veneer/wood-grain.
+It answers in English despite Russian instruction and emits combined literal
+enum strings drawer|hinged and visual_interpretation|construction_assumption.
+Validator rejects unknown operation; raw HTML retained without remapping.
+Several geometric descriptions repeat prior Detection Membership claims;
+context-induced anchoring is a hypothesis until paired same-input comparison,
+not a causal conclusion from this one run. No retry or compensating patch.
+Preflight verified five images/four owned views/18 blocks/no Naming manifest;
+16 understanding tests passed; git diff --check passed. Owner review pending.
+
+[verified by code inspection] V6.2 consumes full pages, owned region boxes,
+raw cited OCR/literals and available document_context. The local V6.1 handoff
+adds all document pages/text as shared context; old immutable inputs do not
+gain that context retroactively. Registry-to-public conversion retains view
+boxes but drops original group IDs, visual descriptions, representation kinds
+and membership grounds. Naming stores name_basis/category_evidence in usage
+audit, not estimation_input_v4; V6.2 also deliberately omits object_name from
+its model request. This is a boundary decision, not proof those observations
+are useless or that every historic run retained a recoverable audit.
+OWNER DECISION, 2026-11-05, P0, pending implementation within 3.17.4.5:
+Do not use Naming labels, name_basis or category_evidence in Analyze. Narrow
+the proposed upstream context extension to existing source-linked grounds
+for grouping views into one physical object. Do not add island-description
+generation or require it from Detection. Earlier broader observation-layer
+proposal is superseded by this scope; grouping grounds remain fallible
+upstream interpretations, not source facts or authority to alter membership.
+Next bounded verification: retrieve actual grouping grounds and exact view
+mapping for the same Detection run; if unavailable, report missing evidence,
+never reconstruct it as Detection output. Compare identical Haiku inputs
+with/without those grounds, keeping Naming absent and all images unchanged.
+Assess whole-object function, major assemblies, operability, material basis,
+cross-view agreement and latency. LF1 and real Detection-backed Lev 2 are
+the intended cases; source-only Lev 2 is not handoff acceptance. Review the
+short reports with owner before promoting the first cycle to a diagnostic
+UI release. No Calculation or automatic estimate publication in this step.
+No runtime, Detection, UI or deployment change made by this audit.
+Audit verification: 29 passed, 3 existing shadow-handoff failures (OCR filtering
+and legacy preview-artifact expectations), 1.96 s. No implementation edits;
+these failures were already listed in the V6.2 full-suite baseline.
 LATEST OWNER CONSTRAINT: production Analyze and Calculation must remain Haiku,
 fast and inexpensive. Stronger models may be diagnostic comparisons only;
 their passing results do not establish V6.1 acceptance. Improve prompts,

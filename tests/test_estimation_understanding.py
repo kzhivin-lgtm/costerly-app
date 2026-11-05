@@ -40,7 +40,28 @@ def test_one_haiku_request_and_explicit_review_status(monkeypatch):
     monkeypatch.setattr(agent, '_create_message_with_hard_timeout', lambda *a, **kw: calls.append(kw) or response)
     result = agent.run_understanding(inputs=[row], page_bytes=pages)
     assert result['status'] == 'interpretation_requires_review'
-    assert len(calls) == 1 and calls[0]['model'] == 'claude-haiku-4-5-20251001'
+    assert len(calls) == 1 and calls[0]['model'] == 'claude-haiku-5-5'
+    assert 'temperature' not in calls[0] and calls[0]['output_config'] == {'effort': 'low'}
+    prompt = calls[0]['system']
+    assert 'Cabinet Block operability policy' in prompt
+    assert 'vertical stack' in prompt and 'lift-up flaps' in prompt
+    assert 'Fixed slats' in prompt and 'never add view counts' in prompt
+    assert 'A door closes an access opening; a carcass side forms a fixed boundary.' in prompt
+    assert 'Do not emit numerical dimensions' in prompt
+    assert 'All human-readable text must be English' in prompt
+    assert 'drawer|hinged' not in prompt
+
+
+@pytest.mark.parametrize('field,value', [
+    ('operation', 'drawer|hinged'),
+    ('basis', 'visual_interpretation|construction_assumption'),
+])
+def test_combined_enum_strings_remain_rejected(field, value):
+    row, pages, parsed = fixture()
+    _, manifests = agent.prepare_content([row], pages)
+    parsed['objects'][0]['components'][0][field] = value
+    with pytest.raises(ValueError):
+        agent.validate_understanding(parsed, manifests)
 
 
 @pytest.mark.parametrize('bad', ['foreign_object','missing_object','duplicate_object','foreign_view','bad_operation','bad_quantity','false_pair','foreign_component'])

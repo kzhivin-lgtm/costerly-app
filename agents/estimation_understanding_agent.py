@@ -1,5 +1,7 @@
 """V6.2 first-cycle-only understanding. Not a BOM or production replacement."""
 import json
+import math
+from hashlib import sha256
 from pathlib import Path
 
 from agents.estimation_composition_analyze_agent import _page_manifest
@@ -9,8 +11,41 @@ from agents.estimation_v4_1_material_facts_agent import _create_message_with_har
 from use_cases.estimation_dimension_graph import build_dimension_graph
 
 VERSION = "estimation_understanding_v6_2"
-MODEL = "claude-haiku-4-5-20251001"
+MODEL = "claude-haiku-5-5"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_understanding_v6_2.md"
+ISLAND_TYPES_PROMPT_PATH = PROMPT_PATH.with_name("estimation_island_types_v6_2.md")
+FRONT_COUNT_PROMPT_PATH = PROMPT_PATH.with_name("estimation_front_count_v6_2.md")
+FRONT_COUNT_PROMPT_VERSION = "estimation_front_count_v6_2_r03"
+
+ISLAND_TYPES = ['Front elevation', 'Side view', 'Rear view', 'Top view',
+    'Bottom view', 'Axonometric view', 'Perspective view', 'Section', 'Undetermined']
+
+
+def island_types_schema():
+    properties = {'view_id': {'type': 'string'},
+        'type': {'type': 'string', 'enum': ISLAND_TYPES}}
+    return {'type': 'array', 'minItems': 1, 'items': {'type': 'object',
+        'additionalProperties': False, 'required': list(properties), 'properties': properties}}
+
+
+def validate_island_types(entries, known):
+    """Validate coverage and references, never certify inferred projections."""
+    if not isinstance(entries, list) or not entries:
+        raise ValueError('island_types required')
+    expected = set(island_types_schema()['items']['required'])
+    seen = set()
+    for entry in entries:
+        if not isinstance(entry, dict) or set(entry) != expected:
+            raise ValueError('invalid island type fields')
+        vid = entry['view_id']
+        if not isinstance(vid, str) or vid not in known or vid in seen:
+            raise ValueError('foreign/duplicate island')
+        seen.add(vid)
+        if not isinstance(entry['type'], str) or entry['type'] not in ISLAND_TYPES:
+            raise ValueError('invalid island classification')
+    if seen != known:
+        raise ValueError('omitted island')
+    return entries
 
 
 def prepare_content(inputs, page_bytes):
@@ -101,31 +136,281 @@ def validate_understanding(parsed, manifests):
 def run_understanding(*, inputs, page_bytes):
     content, manifests = prepare_content(inputs, page_bytes)
     response = _create_message_with_hard_timeout(get_anthropic_client().with_options(timeout=60, max_retries=0),
-        timeout_seconds=60, model=MODEL, max_tokens=min(12000, 3500 * len(inputs)), temperature=0,
+        timeout_seconds=60, model=MODEL, max_tokens=min(12000, 3500 * len(inputs)), output_config={'effort': 'low'},
         system=PROMPT_PATH.read_text().strip(), messages=[{'role': 'user', 'content': content}])
     parsed = validate_understanding(_json_object(extract_text_from_claude_response(response)), manifests)
     return {'version': VERSION, 'status': 'interpretation_requires_review', **parsed}
+
+
+def cabinet_module_policy():
+    """Load existing policy only after explicit module selection, no new library."""
+    prompt = PROMPT_PATH.read_text()
+    start = prompt.index('Cabinet Block operability policy')
+    end = prompt.index('Explicit applicable material notes', start)
+    return prompt[start:end], prompt[:start] + prompt[end:]
+
+
+def validate_front_count(parsed, known, *, require_annotations=False):
+    """Check references and arithmetic, not visual accuracy. Never repair counts."""
+    fields = {'island_types', 'front_groups', 'totals'}
+    if require_annotations:
+        fields.add('excluded_surfaces')
+    if not isinstance(parsed, dict) or set(parsed) != fields:
+        raise ValueError('invalid front-count fields')
+    validate_island_types(parsed['island_types'], known)
+    groups = parsed['front_groups']
+    if not isinstance(groups, list) or len(groups) > 200:
+        raise ValueError('bounded front_groups required')
+    categories = {'drawer': 'drawers', 'hinged': 'hinged_doors',
+                  'lift_up': 'lift_up_fronts', 'unresolved': 'unresolved_fronts'}
+    counts = {key: [] for key in categories.values()}
+    for group in groups:
+        group_fields = {'location', 'type', 'count', 'count_basis', 'view_ids', 'uncertainty'}
+        if require_annotations:
+            group_fields.add('fronts')
+        if not isinstance(group, dict) or set(group) != group_fields:
+            raise ValueError('invalid front group fields')
+        for key in ('location', 'uncertainty'):
+            if not isinstance(group[key], str) or len(group[key]) > 2500:
+                raise ValueError('bounded front group text required')
+        if not group['location'].strip():
+            raise ValueError('physical group location required')
+        kind, basis, count = group['type'], group['count_basis'], group['count']
+        if not isinstance(kind, str) or kind not in categories:
+            raise ValueError('invalid front type')
+        if not isinstance(basis, str) or basis not in {'clear', 'estimated', 'undetermined'}:
+            raise ValueError('invalid count basis')
+        if count is not None and (type(count) is not int or count <= 0):
+            raise ValueError('positive integer or null group count required')
+        if (count is None) != (basis == 'undetermined'):
+            raise ValueError('null count requires undetermined basis')
+        if basis != 'clear' and not group['uncertainty'].strip():
+            raise ValueError('uncertain count needs a specific ambiguity')
+        refs = group['view_ids']
+        if (not isinstance(refs, list) or not refs or
+                any(not isinstance(v, str) or v not in known for v in refs) or
+                len(set(refs)) != len(refs)):
+            raise ValueError('group needs unique object-owned view references')
+        counts[categories[kind]].append(count)
+    def total(values):
+        return None if any(v is None for v in values) else sum(values)
+    expected = {key: total(values) for key, values in counts.items()}
+    expected['total_fronts'] = total(list(expected.values()))
+    totals = parsed['totals']
+    if (not isinstance(totals, dict) or set(totals) != set(expected) or
+            any(v is not None and (type(v) is not int or v < 0) for v in totals.values()) or
+            totals != expected):
+        raise ValueError('front totals do not match group counts')
+    if require_annotations:
+        seen = set()
+        def annotation(item, *, excluded=False):
+            keys = {'id', 'view_id', 'bbox_1000'} | ({'reason'} if excluded else set())
+            if not isinstance(item, dict) or set(item) != keys:
+                raise ValueError('invalid front annotation fields')
+            aid = item['id']
+            if not isinstance(aid, str) or not aid.strip() or len(aid) > 40 or aid in seen:
+                raise ValueError('invalid/duplicate annotation ID')
+            seen.add(aid)
+            if not isinstance(item['view_id'], str) or item['view_id'] not in known:
+                raise ValueError('annotation references foreign island')
+            box = item['bbox_1000']
+            if (not isinstance(box, list) or len(box) != 4 or
+                    any(type(v) not in (int, float) or not math.isfinite(v) or not 0 <= v <= 1000 for v in box) or
+                    box[0] >= box[2] or box[1] >= box[3]):
+                raise ValueError('invalid image-local annotation box')
+            if excluded and (not isinstance(item['reason'], str) or not item['reason'].strip() or len(item['reason']) > 1200):
+                raise ValueError('excluded surface needs bounded reason')
+        for group in groups:
+            fronts = group['fronts']
+            if not isinstance(fronts, list) or len(fronts) > 200:
+                raise ValueError('bounded individual front annotations required')
+            if group['count'] is not None and len(fronts) != group['count']:
+                raise ValueError('front box count differs from group count')
+            for item in fronts:
+                annotation(item)
+                if item['view_id'] not in group['view_ids']:
+                    raise ValueError('front annotation outside group view references')
+        excluded = parsed['excluded_surfaces']
+        if not isinstance(excluded, list) or len(excluded) > 200:
+            raise ValueError('bounded excluded surfaces required')
+        for item in excluded:
+            annotation(item, excluded=True)
+    return parsed
+
+
+def run_front_count(*, inputs, page_bytes, record=None):
+    """Approved single-object prompt experiment, not an added production stage."""
+    if len(inputs) != 1:
+        raise ValueError('front-count experiment requires exactly one object')
+    content, manifests = prepare_content(inputs, page_bytes)
+    known = {v['view_id'] for v in manifests[0]['known_views']}
+    if not known:
+        raise ValueError('front-count experiment requires Detection-owned islands')
+    request = {'model': MODEL, 'max_tokens': 10000, 'output_config': {'effort': 'low'},
+        'system': FRONT_COUNT_PROMPT_PATH.read_text().strip(),
+        'messages': [{'role': 'user', 'content': content}]}
+    response = _create_message_with_hard_timeout(
+        get_anthropic_client().with_options(timeout=60, max_retries=0),
+        timeout_seconds=60, **request)
+    if record:
+        record('front_count', request, response)
+    if getattr(response, 'stop_reason', None) != 'end_turn':
+        raise ValueError('front-count response did not finish normally')
+    parsed = validate_front_count(_json_object(extract_text_from_claude_response(response)), known,
+                                  require_annotations=True)
+    return {'version': VERSION, 'status': 'front_count_requires_review',
+            'prompt_version': FRONT_COUNT_PROMPT_VERSION,
+            'prompt_sha256': sha256(request['system'].encode()).hexdigest(),
+            'input_id': manifests[0]['input_id'], 'front_count': parsed}
+
+
+def run_island_types_only(*, inputs, page_bytes, record=None):
+    """Isolation experiment, one request instead of the module workflow, not a third stage."""
+    content, manifests = prepare_content(inputs, page_bytes)
+    if any(not m['known_views'] for m in manifests):
+        raise ValueError('Classification diagnostic requires Detection-owned islands')
+    ids = [v['view_id'] for m in manifests for v in m['known_views']]
+    if len(ids) != len(set(ids)):
+        raise ValueError('Plain classification requires globally unique island IDs')
+    # Identical classification instructions, without module selection/decomposition.
+    system = ISLAND_TYPES_PROMPT_PATH.read_text() + (
+        '\nReturn exactly one line per island: <original view_id>: <type label>. '
+        'Replace the placeholders, do not print a literal prefix. '
+        'No explanations, headings, JSON, Markdown or other text.')
+    request = {'model': MODEL, 'output_config': {'effort': 'low'}, 'max_tokens': min(12000, 4000 * len(inputs)),
+        'system': system, 'messages': [{'role': 'user', 'content': content}]}
+    response = _create_message_with_hard_timeout(
+        get_anthropic_client().with_options(timeout=60, max_retries=0), timeout_seconds=60, **request)
+    if record:
+        record('island_types', request, response)
+    if getattr(response, 'stop_reason', None) == 'max_tokens':
+        raise ValueError('island classification response truncated')
+    entries = []
+    for line in extract_text_from_claude_response(response).strip().splitlines():
+        parts = line.split(':', 1)
+        if len(parts) != 2:
+            raise ValueError('invalid island classification line')
+        entries.append({'view_id': parts[0].strip(), 'type': parts[1].strip()})
+    known = {v['view_id'] for m in manifests for v in m['known_views']}
+    validate_island_types(entries, known)
+    return {'version': VERSION, 'status': 'island_types_require_review',
+        'classifications': [{'input_id': m['input_id'], 'island_types': [e for e in entries
+            if e['view_id'] in {v['view_id'] for v in m['known_views']}]} for m in manifests], 'objects': []}
+
+
+def run_understanding_with_modules(*, inputs, page_bytes, record=None):
+    """Diagnostic tool-selected Analyze. Two provider calls, no Calculation/DB."""
+    content, manifests = prepare_content(inputs, page_bytes)
+    by_id = {m['input_id']: m for m in manifests}
+    if any(not m['known_views'] for m in manifests):
+        raise ValueError('Classification diagnostic requires Detection-owned islands')
+    tool = {'name': 'apply_cabinet_block',
+        'description': 'Select this construction module for cabinet furniture: kitchens, cabinets, storage/shelving systems or their cabinet assemblies. First identify the physical whole from all evidence. The module returns the existing interpretation rules. Do not select it for unrelated furniture just because it is the only registered module.',
+        'input_schema': {'type': 'object', 'additionalProperties': False,
+            'required': ['input_id', 'island_types', 'whole_object', 'applicable_assemblies', 'excluded_assemblies', 'view_ids'],
+            'properties': {
+                'input_id': {'type': 'string', 'enum': list(by_id)},
+                'island_types': island_types_schema(),
+                'whole_object': {'type': 'string'},
+                'applicable_assemblies': {'type': 'array', 'items': {'type': 'string'}, 'minItems': 1},
+                'excluded_assemblies': {'type': 'array', 'items': {'type': 'string'}},
+                'view_ids': {'type': 'array', 'items': {'type': 'string'}, 'minItems': 1},
+            }}}
+    system = (ISLAND_TYPES_PROMPT_PATH.read_text().strip() + '\n\n'
+        'You are a furniture estimator. Examine all evidence jointly to identify the physical '
+        'whole and its large assemblies. Then explicitly select an applicable construction module '
+        'by calling its tool. Include one island_types entry per known view_id, containing only '
+        'view_id and type. Do not output an essay or a correspondence map. '
+        'Do not count hardware or materials before module selection. Do not rely on Naming. '
+        'If no module applies, report that instead of forcing an unsuitable selection. '
+        'Describe observable applicability, not internal reasoning. All generated text must be English. '
+        'After receiving the module, apply its rules to the original evidence and follow the '
+        'provided result contract. This continues the analysis, not a review by another model. '
+        'Module rules and inferred view types are not source facts. Use the original images '
+        'throughout; page position is not physical position in the object.')
+    client = get_anthropic_client().with_options(timeout=60, max_retries=0)
+    messages = [{'role': 'user', 'content': content}]
+    def call(stage, **kwargs):
+        response = _create_message_with_hard_timeout(client, timeout_seconds=60, model=MODEL,
+            output_config={'effort': 'low'}, system=system, **kwargs)
+        if record:
+            record(stage, {'model': MODEL, 'output_config': {'effort': 'low'}, 'system': system, **kwargs}, response)
+        if getattr(response, 'stop_reason', None) == 'max_tokens':
+            raise ValueError('module response truncated')
+        return response
+    # Map output scales with owned islands, not one provider request per island.
+    map_budget = min(12000, max(1600, 1000 * sum(len(m['known_views']) for m in manifests)))
+    first = call('module_selection', max_tokens=map_budget, messages=messages,
+                 tools=[tool], tool_choice={'type': 'auto'})
+    blocks = [b.model_dump(exclude_none=True) if hasattr(b, 'model_dump') else vars(b) for b in first.content]
+    selected = [b for b in blocks if b.get('type') == 'tool_use']
+    if not selected:
+        raise ValueError('no applicable module selected; no forced fallback')
+    seen, calls, results = set(), set(), []
+    policy, final_contract = cabinet_module_policy()
+    for block in selected:
+        arg = block.get('input') or {}
+        iid = arg.get('input_id')
+        if block.get('name') != tool['name'] or iid not in by_id or iid in seen:
+            raise ValueError('unknown/duplicate module target')
+        if not block.get('id') or block['id'] in calls:
+            raise ValueError('invalid module call id')
+        if set(arg) != set(tool['input_schema']['required']):
+            raise ValueError('invalid module selection fields')
+        known = {v['view_id'] for v in by_id[iid]['known_views']}
+        validate_island_types(arg['island_types'], known)
+        refs = arg['view_ids']
+        if not isinstance(refs, list) or not refs or not set(refs) <= known:
+            raise ValueError('module selection references foreign views')
+        if not isinstance(arg['whole_object'], str) or not arg['whole_object'].strip():
+            raise ValueError('module selection needs whole-object description')
+        for key in ('applicable_assemblies', 'excluded_assemblies'):
+            if not isinstance(arg[key], list) or any(not isinstance(s, str) or not s.strip() for s in arg[key]):
+                raise ValueError('invalid module scope')
+        if not arg['applicable_assemblies']:
+            raise ValueError('module scope is empty')
+        seen.add(iid); calls.add(block['id'])
+        results.append({'type': 'tool_result', 'tool_use_id': block['id'], 'content': json.dumps({
+            'module': 'Cabinet Block', 'input_id': iid, 'scope': arg,
+            'policy': policy, 'boundary': 'Interpret the selected cabinet assemblies. Keep excluded assemblies in the whole-object result with their own roles. No hardware totals, catalogue choices or Calculation in this diagnostic.'}, ensure_ascii=False)})
+    if seen != set(by_id):
+        raise ValueError('not all objects have an applicable module; diagnostic stops')
+    messages = messages + [{'role': 'assistant', 'content': blocks},
+        {'role': 'user', 'content': results + [{'type': 'text', 'text': final_contract}]}]
+    final = call('understanding', max_tokens=min(12000, 6000 * len(inputs)), messages=messages,
+                 tools=[tool], tool_choice={'type': 'none'})
+    parsed = validate_understanding(_json_object(extract_text_from_claude_response(final)), manifests)
+    return {'version': VERSION, 'status': 'interpretation_requires_review',
+            'module_applications': [b['input'] for b in selected], **parsed}
 
 
 def report_html(result):
     """Escaped local review artifact, no scripts, network, or production UI."""
     from html import escape
     def e(x): return escape(str(x))
-    out = ['<!doctype html><html lang="ru"><meta charset="utf-8"><title>Estimation V6.2</title>',
+    out = ['<!doctype html><html lang="en"><meta charset="utf-8"><title>Estimation V6.2</title>',
            '<style>body{font:16px system-ui;max-width:1050px;margin:40px auto;padding:20px;line-height:1.5}td,th{border:1px solid #ddd;padding:9px;vertical-align:top}table{border-collapse:collapse}small{color:#666}</style>',
-           '<h1>Estimation V6.2: понимание предмета</h1><p>Интерпретация модели. Не принятый расчёт и не доказательство правильности</p>']
+           '<h1>Estimation V6.2: object understanding</h1><p>Model interpretation, not an accepted estimate or proof of correctness</p>']
+    for application in result.get('classifications', result.get('module_applications', [])):
+        if not application.get('island_types'):
+            continue
+        out += [f'<h2>Island types</h2><small>Input: {e(application["input_id"])}</small>',
+            '<table><tr><th>Island</th><th>Type</th></tr>']
+        for entry in application['island_types']:
+            out.append(f'<tr><td>{e(entry["view_id"])}</td><td>{e(entry["type"])}</td></tr>')
+        out.append('</table>')
     for obj in result['objects']:
         out += [f'<h2>{e(obj["summary"])}</h2><p>{e(obj["construction_summary"])}</p>',
-                f'<small>Input: {e(obj["input_id"])}</small>', '<h3>Узлы и функции</h3><table><tr><th>Узел</th><th>Функция</th><th>Количество / действие</th><th>Материалы и основание</th></tr>']
+                f'<small>Input: {e(obj["input_id"])}</small>', '<h3>Assemblies and functions</h3><table><tr><th>Component</th><th>Function</th><th>Quantity / operation</th><th>Materials and basis</th></tr>']
         for c in obj['components']:
             out.append(f'<tr><td>{e(c["name"])}</td><td>{e(c["function"])}</td><td>{e(c["quantity"])} / {e(c["operation"])}</td><td>{e(c["material_hypothesis"])}<br><small>{e(c["basis"])}</small></td></tr>')
-        out += ['</table><h3>Что добавляет каждый вид</h3><ul>']
+        out += ['</table><h3>Evidence from each view</h3><ul>']
         for v in obj['views']:
             out.append(f'<li>{e(v["id"])}: {e(v["location"])}. {e(v["observation"])}</li>')
-        out += ['</ul><h3>Сопоставление видов</h3><ul>']
+        out += ['</ul><h3>Cross-view references</h3><ul>']
         for link in obj['cross_view_links']:
             out.append(f'<li>{e(link["component_id"])} ({e(", ".join(link["view_ids"]))}): {e(link["correspondence"])}</li>')
-        out += ['</ul><h3>Неопределённости</h3><ul>']
+        out += ['</ul><h3>Uncertainties</h3><ul>']
         out += [f'<li>{e(issue)}</li>' for issue in obj['uncertainties']]
         out += ['</ul>']
     return '\n'.join(out + ['</html>'])
@@ -134,16 +419,21 @@ def report_html(result):
 def export_report(witness, path):
     """Retain readable model output even when its transport contract failed."""
     from html import escape
-    records = [r for r in witness.get('provider_responses', []) if r['stage'] == 'understanding']
+    records = [r for r in witness.get('provider_responses', []) if r['stage'] in {'understanding', 'island_types', 'island_map', 'front_count'}]
     raw = records[-1]['response_text'] if records else 'No model response received'
     try:
         result = witness.get('understanding') or _json_object(raw)
-        report = report_html(result)
+        if 'front_count' in result:
+            report = ('<!doctype html><html lang="en"><meta charset="utf-8">'
+                '<h1>V6.2: front count, interpretation requires review</h1>'
+                '<pre style="white-space:pre-wrap">' + escape(raw) + '</pre></html>')
+        else:
+            report = report_html(result)
     except (ValueError, KeyError, TypeError):
-        report = '<!doctype html><meta charset="utf-8"><h1>V6.2: неполный ответ</h1><pre style="white-space:pre-wrap">' + escape(raw) + '</pre>'
+        report = '<!doctype html><meta charset="utf-8"><h1>V6.2: incomplete response</h1><pre style="white-space:pre-wrap">' + escape(raw) + '</pre>'
     notice = '<p>Status: ' + escape(witness.get('status', 'unknown')) + '</p><p>Evidence: ' + escape(witness.get('evidence_origin', 'unknown')) + '</p>'
     if witness.get('error'):
-        notice += '<p>Ответ не прошёл проверку: ' + escape(witness['error']) + '</p>'
+        notice += '<p>Validation failed: ' + escape(witness['error']) + '</p>'
     if '<h1>' in report:
         report = report.replace('<h1>', notice + '<h1>', 1)
     else:

@@ -1,0 +1,1151 @@
+{
+  "prompt_version": "estimation_front_count_v6_2_r03",
+  "prompt_sha256": "81b49dc8d2dd4c33a7459d824178ea8601ba241370a401e530bed2748dab0bb0",
+  "request_sha256": "503eafe31b00a1d60b1f60e16d4c679fa59cbd50dc3f5f0ae212a5ff402b21a0",
+  "original_witness_sha256": "06f8034557839b4bbf8d78a327e1727bcc1bb6d613ce33c7d897bb16da26d1e8",
+  "original_status": "front_count_requires_review",
+  "original_error": null,
+  "model": "claude-haiku-5-5",
+  "elapsed_seconds": 29.021,
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 13228,
+    "output_tokens": 6324,
+    "output_tokens_details": {
+      "thinking_tokens": 3507
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+  },
+  "response_text": "```json\n{\n  \"island_types\": [\n    {\"view_id\": \"p1-view-001\", \"type\": \"Top view\"},\n    {\"view_id\": \"p1-view-002\", \"type\": \"Axonometric view\"},\n    {\"view_id\": \"p1-view-003\", \"type\": \"Front elevation\"},\n    {\"view_id\": \"p1-view-004\", \"type\": \"Front elevation\"}\n  ],\n  \"front_groups\": [\n    {\n      \"location\": \"Lower base run, main wall (view-003 left, five doors)\",\n      \"type\": \"hinged\",\n      \"count\": 5,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\", \"p1-view-001\"],\n      \"uncertainty\": \"Five equal portrait doors are clearly separated by vertical joints.\",\n      \"fronts\": [\n        {\"id\": \"F01\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [100, 653, 185, 854]},\n        {\"id\": \"F02\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [186, 653, 281, 854]},\n        {\"id\": \"F03\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [282, 653, 379, 854]},\n        {\"id\": \"F04\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [380, 653, 476, 854]},\n        {\"id\": \"F05\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [478, 653, 574, 854]}\n      ]\n    },\n    {\n      \"location\": \"Lower base run, corner cabinet door above drawers (view-003 right)\",\n      \"type\": \"hinged\",\n      \"count\": 1,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Shown as a near-square front; its operating type is inferred from its closed-opening role, not from hardware.\",\n      \"fronts\": [\n        {\"id\": \"F06\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [603, 576, 731, 733]}\n      ]\n    },\n    {\n      \"location\": \"Lower base run, right corner stack (view-003 right, two drawers)\",\n      \"type\": \"drawer\",\n      \"count\": 2,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\", \"p1-view-004\"],\n      \"uncertainty\": \"Two shallow stacked fronts below the corner door.\",\n      \"fronts\": [\n        {\"id\": \"F07\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [603, 736, 731, 794]},\n        {\"id\": \"F08\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [603, 796, 731, 854]}\n      ]\n    },\n    {\n      \"location\": \"Upper cabinets, right end of main wall (view-003, three portrait doors)\",\n      \"type\": \"hinged\",\n      \"count\": 3,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Portrait upper fronts closing storage openings; treated as hinged per the portrait-door rule.\",\n      \"fronts\": [\n        {\"id\": \"F09\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [603, 199, 734, 401]},\n        {\"id\": \"F10\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [736, 199, 854, 401]},\n        {\"id\": \"F11\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [856, 199, 974, 401]}\n      ]\n    },\n    {\n      \"location\": \"Upper wide horizontal fronts above the 69 mm end run (view-003)\",\n      \"type\": \"lift_up\",\n      \"count\": 2,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Two wide horizontal upper fronts, which fits the lift-up rule.\",\n      \"fronts\": [\n        {\"id\": \"F12\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [203, 390, 401, 490]},\n        {\"id\": \"F13\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [402, 390, 601, 490]}\n      ]\n    },\n    {\n      \"location\": \"Tall upper cabinet at left end of main wall (view-003)\",\n      \"type\": \"hinged\",\n      \"count\": 1,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Narrow strip at its far left is treated as a fixed side and excluded.\",\n      \"fronts\": [\n        {\"id\": \"F14\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [109, 199, 200, 490]}\n      ]\n    },\n    {\n      \"location\": \"Separate upper cabinet pair, return wing (view-004)\",\n      \"type\": \"hinged\",\n      \"count\": 2,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-004\", \"p1-view-002\"],\n      \"uncertainty\": \"Two tall portrait doors meeting at a central joint.\",\n      \"fronts\": [\n        {\"id\": \"F15\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [129, 113, 228, 467]},\n        {\"id\": \"F16\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [231, 113, 338, 467]}\n      ]\n    },\n    {\n      \"location\": \"Lower base run, return wing doors (view-004)\",\n      \"type\": \"hinged\",\n      \"count\": 4,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-004\"],\n      \"uncertainty\": \"Four portrait base doors separated by vertical joints.\",\n      \"fronts\": [\n        {\"id\": \"F17\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [127, 663, 221, 904]},\n        {\"id\": \"F18\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [228, 663, 334, 904]},\n        {\"id\": \"F19\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [337, 663, 443, 904]},\n        {\"id\": \"F20\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [600, 663, 728, 904]}\n      ]\n    },\n    {\n      \"location\": \"Lower base run, return wing drawer bank (view-004)\",\n      \"type\": \"drawer\",\n      \"count\": 3,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-004\", \"p1-view-002\"],\n      \"uncertainty\": \"Three stacked shallow fronts.\",\n      \"fronts\": [\n        {\"id\": \"F21\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [446, 663, 597, 727]},\n        {\"id\": \"F22\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [446, 730, 597, 815]},\n        {\"id\": \"F23\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [446, 819, 597, 904]}\n      ]\n    },\n    {\n      \"location\": \"Tall tower at end of return wing (view-004)\",\n      \"type\": \"hinged\",\n      \"count\": 1,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p1-view-004\"],\n      \"uncertainty\": \"Tall front may be a door or a fixed panel; the shown edges suggest a tall door leaf, but the leaf boundary is not explicit. Count is an estimate.\",\n      \"fronts\": [\n        {\"id\": \"F24\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [735, 110, 839, 942]}\n      ]\n    }\n  ],\n  \"excluded_surfaces\": [\n    {\"id\": \"X01\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [50, 190, 100, 492], \"reason\": \"fixed carcass end side at left of main wall\"},\n    {\"id\": \"X02\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [576, 653, 601, 854], \"reason\": \"narrow filler strip beside lower doors\"},\n    {\"id\": \"X03\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [839, 108, 888, 942], \"reason\": \"fixed side panel of tall tower\"}\n  ],\n  \"totals\": {\n    \"drawers\": 5,\n    \"hinged_doors\": 17,\n    \"lift_up_fronts\": 2,\n    \"unresolved_fronts\": 0,\n    \"total_fronts\": 24\n  }\n}\n```",
+  "parsed_response": {
+    "island_types": [
+      {
+        "view_id": "p1-view-001",
+        "type": "Top view"
+      },
+      {
+        "view_id": "p1-view-002",
+        "type": "Axonometric view"
+      },
+      {
+        "view_id": "p1-view-003",
+        "type": "Front elevation"
+      },
+      {
+        "view_id": "p1-view-004",
+        "type": "Front elevation"
+      }
+    ],
+    "front_groups": [
+      {
+        "location": "Lower base run, main wall (view-003 left, five doors)",
+        "type": "hinged",
+        "count": 5,
+        "count_basis": "clear",
+        "view_ids": [
+          "p1-view-003",
+          "p1-view-001"
+        ],
+        "uncertainty": "Five equal portrait doors are clearly separated by vertical joints.",
+        "fronts": [
+          {
+            "id": "F01",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              100,
+              653,
+              185,
+              854
+            ]
+          },
+          {
+            "id": "F02",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              186,
+              653,
+              281,
+              854
+            ]
+          },
+          {
+            "id": "F03",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              282,
+              653,
+              379,
+              854
+            ]
+          },
+          {
+            "id": "F04",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              380,
+              653,
+              476,
+              854
+            ]
+          },
+          {
+            "id": "F05",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              478,
+              653,
+              574,
+              854
+            ]
+          }
+        ]
+      },
+      {
+        "location": "Lower base run, corner cabinet door above drawers (view-003 right)",
+        "type": "hinged",
+        "count": 1,
+        "count_basis": "estimated",
+        "view_ids": [
+          "p1-view-003"
+        ],
+        "uncertainty": "Shown as a near-square front; its operating type is inferred from its closed-opening role, not from hardware.",
+        "fronts": [
+          {
+            "id": "F06",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              603,
+              576,
+              731,
+              733
+            ]
+          }
+        ]
+      },
+      {
+        "location": "Lower base run, right corner stack (view-003 right, two drawers)",
+        "type": "drawer",
+        "count": 2,
+        "count_basis": "clear",
+        "view_ids": [
+          "p1-view-003",
+          "p1-view-004"
+        ],
+        "uncertainty": "Two shallow stacked fronts below the corner door.",
+        "fronts": [
+          {
+            "id": "F07",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              603,
+              736,
+              731,
+              794
+            ]
+          },
+          {
+            "id": "F08",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              603,
+              796,
+              731,
+              854
+            ]
+          }
+        ]
+      },
+      {
+        "location": "Upper cabinets, right end of main wall (view-003, three portrait doors)",
+        "type": "hinged",
+        "count": 3,
+        "count_basis": "clear",
+        "view_ids": [
+          "p1-view-003"
+        ],
+        "uncertainty": "Portrait upper fronts closing storage openings; treated as hinged per the portrait-door rule.",
+        "fronts": [
+          {
+            "id": "F09",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              603,
+              199,
+              734,
+              401
+            ]
+          },
+          {
+            "id": "F10",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              736,
+              199,
+              854,
+              401
+            ]
+          },
+          {
+            "id": "F11",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              856,
+              199,
+              974,
+              401
+            ]
+          }
+        ]
+      },
+      {
+        "location": "Upper wide horizontal fronts above the 69 mm end run (view-003)",
+        "type": "lift_up",
+        "count": 2,
+        "count_basis": "clear",
+        "view_ids": [
+          "p1-view-003"
+        ],
+        "uncertainty": "Two wide horizontal upper fronts, which fits the lift-up rule.",
+        "fronts": [
+          {
+            "id": "F12",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              203,
+              390,
+              401,
+              490
+            ]
+          },
+          {
+            "id": "F13",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              402,
+              390,
+              601,
+              490
+            ]
+          }
+        ]
+      },
+      {
+        "location": "Tall upper cabinet at left end of main wall (view-003)",
+        "type": "hinged",
+        "count": 1,
+        "count_basis": "clear",
+        "view_ids": [
+          "p1-view-003"
+        ],
+        "uncertainty": "Narrow strip at its far left is treated as a fixed side and excluded.",
+        "fronts": [
+          {
+            "id": "F14",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              109,
+              199,
+              200,
+              490
+            ]
+          }
+        ]
+      },
+      {
+        "location": "Separate upper cabinet pair, return wing (view-004)",
+        "type": "hinged",
+        "count": 2,
+        "count_basis": "clear",
+        "view_ids": [
+          "p1-view-004",
+          "p1-view-002"
+        ],
+        "uncertainty": "Two tall portrait doors meeting at a central joint.",
+        "fronts": [
+          {
+            "id": "F15",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              129,
+              113,
+              228,
+              467
+            ]
+          },
+          {
+            "id": "F16",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              231,
+              113,
+              338,
+              467
+            ]
+          }
+        ]
+      },
+      {
+        "location": "Lower base run, return wing doors (view-004)",
+        "type": "hinged",
+        "count": 4,
+        "count_basis": "clear",
+        "view_ids": [
+          "p1-view-004"
+        ],
+        "uncertainty": "Four portrait base doors separated by vertical joints.",
+        "fronts": [
+          {
+            "id": "F17",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              127,
+              663,
+              221,
+              904
+            ]
+          },
+          {
+            "id": "F18",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              228,
+              663,
+              334,
+              904
+            ]
+          },
+          {
+            "id": "F19",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              337,
+              663,
+              443,
+              904
+            ]
+          },
+          {
+            "id": "F20",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              600,
+              663,
+              728,
+              904
+            ]
+          }
+        ]
+      },
+      {
+        "location": "Lower base run, return wing drawer bank (view-004)",
+        "type": "drawer",
+        "count": 3,
+        "count_basis": "clear",
+        "view_ids": [
+          "p1-view-004",
+          "p1-view-002"
+        ],
+        "uncertainty": "Three stacked shallow fronts.",
+        "fronts": [
+          {
+            "id": "F21",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              446,
+              663,
+              597,
+              727
+            ]
+          },
+          {
+            "id": "F22",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              446,
+              730,
+              597,
+              815
+            ]
+          },
+          {
+            "id": "F23",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              446,
+              819,
+              597,
+              904
+            ]
+          }
+        ]
+      },
+      {
+        "location": "Tall tower at end of return wing (view-004)",
+        "type": "hinged",
+        "count": 1,
+        "count_basis": "estimated",
+        "view_ids": [
+          "p1-view-004"
+        ],
+        "uncertainty": "Tall front may be a door or a fixed panel; the shown edges suggest a tall door leaf, but the leaf boundary is not explicit. Count is an estimate.",
+        "fronts": [
+          {
+            "id": "F24",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              735,
+              110,
+              839,
+              942
+            ]
+          }
+        ]
+      }
+    ],
+    "excluded_surfaces": [
+      {
+        "id": "X01",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          50,
+          190,
+          100,
+          492
+        ],
+        "reason": "fixed carcass end side at left of main wall"
+      },
+      {
+        "id": "X02",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          576,
+          653,
+          601,
+          854
+        ],
+        "reason": "narrow filler strip beside lower doors"
+      },
+      {
+        "id": "X03",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          839,
+          108,
+          888,
+          942
+        ],
+        "reason": "fixed side panel of tall tower"
+      }
+    ],
+    "totals": {
+      "drawers": 5,
+      "hinged_doors": 17,
+      "lift_up_fronts": 2,
+      "unresolved_fronts": 0,
+      "total_fronts": 24
+    }
+  },
+  "prior_review": {
+    "work": "3.17.4.5",
+    "prompt_version": "estimation_front_count_v6_2_r03",
+    "prompt_sha256": "81b49dc8d2dd4c33a7459d824178ea8601ba241370a401e530bed2748dab0bb0",
+    "artifact": "/private/tmp/estimation-v6-2-lev2-haiku55-front-count-03.json",
+    "model": "claude-haiku-5-5",
+    "provider_calls": 1,
+    "elapsed_seconds": 29.021,
+    "input_tokens": 13228,
+    "output_tokens": 6324,
+    "thinking_tokens_included_in_output": 3507,
+    "estimated_standard_list_price_usd": 0.0044848,
+    "validation": "Schema, references, arithmetic, unique annotation IDs and count-to-box correspondence PASS",
+    "actual": {
+      "hinged_doors": 17,
+      "drawers": 5,
+      "lift_up_fronts": 2,
+      "total_fronts": 24
+    },
+    "annotations": {
+      "counted": 24,
+      "excluded": 3,
+      "coordinate_warnings": []
+    },
+    "semantic_acceptance": "Door total exceeds owner maximum 16. Overlay is a successful diagnostic artifact, not a correct inventory checkpoint.",
+    "visual_review": "Viewed both rendered PNGs. Boxes align approximately with individual source panels; exact locations are model estimates, never manually corrected. F24 on the tall return-end rectangle is counted as a door, adjacent X03 excluded as side. F06 above two drawers also counted as a door; whether it closes an opening requires owner/source confirmation.",
+    "relationship_to_r02": "New inference. Do not claim these boxes represent the previous 18-door response, which had no coordinates.",
+    "page_overlay": "/private/tmp/estimation-v6-2-lev2-haiku55-front-count-03-overlay-page.png",
+    "detail_overlay": "/private/tmp/estimation-v6-2-lev2-haiku55-front-count-03-overlay-details.png",
+    "production_changed": false,
+    "automatic_tab_open": false
+  },
+  "coordinates": {
+    "prompt_version": "estimation_front_count_v6_2_r03",
+    "source_witness": "/private/tmp/estimation-v6-2-lev2-haiku55-front-count-03.json",
+    "coordinate_convention": "bbox_1000 on exact labelled detail; page_pixels exclude added output banner",
+    "model_totals": {
+      "drawers": 5,
+      "hinged_doors": 17,
+      "lift_up_fronts": 2,
+      "unresolved_fronts": 0,
+      "total_fronts": 24
+    },
+    "warnings": [],
+    "annotations": [
+      {
+        "id": "F01",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          100,
+          653,
+          185,
+          854
+        ],
+        "type": "hinged",
+        "location": "Lower base run, main wall (view-003 left, five doors)",
+        "detail_pixels": [
+          86.5,
+          467.548,
+          160.025,
+          611.4639999999999
+        ],
+        "page_pixels": [
+          245.5,
+          1126.548,
+          319.025,
+          1270.464
+        ]
+      },
+      {
+        "id": "F02",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          186,
+          653,
+          281,
+          854
+        ],
+        "type": "hinged",
+        "location": "Lower base run, main wall (view-003 left, five doors)",
+        "detail_pixels": [
+          160.89,
+          467.548,
+          243.06500000000003,
+          611.4639999999999
+        ],
+        "page_pixels": [
+          319.89,
+          1126.548,
+          402.06500000000005,
+          1270.464
+        ]
+      },
+      {
+        "id": "F03",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          282,
+          653,
+          379,
+          854
+        ],
+        "type": "hinged",
+        "location": "Lower base run, main wall (view-003 left, five doors)",
+        "detail_pixels": [
+          243.92999999999998,
+          467.548,
+          327.835,
+          611.4639999999999
+        ],
+        "page_pixels": [
+          402.92999999999995,
+          1126.548,
+          486.835,
+          1270.464
+        ]
+      },
+      {
+        "id": "F04",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          380,
+          653,
+          476,
+          854
+        ],
+        "type": "hinged",
+        "location": "Lower base run, main wall (view-003 left, five doors)",
+        "detail_pixels": [
+          328.7,
+          467.548,
+          411.74,
+          611.4639999999999
+        ],
+        "page_pixels": [
+          487.7,
+          1126.548,
+          570.74,
+          1270.464
+        ]
+      },
+      {
+        "id": "F05",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          478,
+          653,
+          574,
+          854
+        ],
+        "type": "hinged",
+        "location": "Lower base run, main wall (view-003 left, five doors)",
+        "detail_pixels": [
+          413.46999999999997,
+          467.548,
+          496.50999999999993,
+          611.4639999999999
+        ],
+        "page_pixels": [
+          572.47,
+          1126.548,
+          655.51,
+          1270.464
+        ]
+      },
+      {
+        "id": "F06",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          603,
+          576,
+          731,
+          733
+        ],
+        "type": "hinged",
+        "location": "Lower base run, corner cabinet door above drawers (view-003 right)",
+        "detail_pixels": [
+          521.595,
+          412.416,
+          632.3149999999999,
+          524.828
+        ],
+        "page_pixels": [
+          680.595,
+          1071.416,
+          791.3149999999999,
+          1183.828
+        ]
+      },
+      {
+        "id": "F07",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          603,
+          736,
+          731,
+          794
+        ],
+        "type": "drawer",
+        "location": "Lower base run, right corner stack (view-003 right, two drawers)",
+        "detail_pixels": [
+          521.595,
+          526.976,
+          632.3149999999999,
+          568.504
+        ],
+        "page_pixels": [
+          680.595,
+          1185.976,
+          791.3149999999999,
+          1227.504
+        ]
+      },
+      {
+        "id": "F08",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          603,
+          796,
+          731,
+          854
+        ],
+        "type": "drawer",
+        "location": "Lower base run, right corner stack (view-003 right, two drawers)",
+        "detail_pixels": [
+          521.595,
+          569.936,
+          632.3149999999999,
+          611.4639999999999
+        ],
+        "page_pixels": [
+          680.595,
+          1228.9360000000001,
+          791.3149999999999,
+          1270.464
+        ]
+      },
+      {
+        "id": "F09",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          603,
+          199,
+          734,
+          401
+        ],
+        "type": "hinged",
+        "location": "Upper cabinets, right end of main wall (view-003, three portrait doors)",
+        "detail_pixels": [
+          521.595,
+          142.484,
+          634.91,
+          287.11600000000004
+        ],
+        "page_pixels": [
+          680.595,
+          801.484,
+          793.91,
+          946.116
+        ]
+      },
+      {
+        "id": "F10",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          736,
+          199,
+          854,
+          401
+        ],
+        "type": "hinged",
+        "location": "Upper cabinets, right end of main wall (view-003, three portrait doors)",
+        "detail_pixels": [
+          636.64,
+          142.484,
+          738.71,
+          287.11600000000004
+        ],
+        "page_pixels": [
+          795.64,
+          801.484,
+          897.71,
+          946.116
+        ]
+      },
+      {
+        "id": "F11",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          856,
+          199,
+          974,
+          401
+        ],
+        "type": "hinged",
+        "location": "Upper cabinets, right end of main wall (view-003, three portrait doors)",
+        "detail_pixels": [
+          740.4399999999999,
+          142.484,
+          842.51,
+          287.11600000000004
+        ],
+        "page_pixels": [
+          899.4399999999999,
+          801.484,
+          1001.51,
+          946.116
+        ]
+      },
+      {
+        "id": "F12",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          203,
+          390,
+          401,
+          490
+        ],
+        "type": "lift_up",
+        "location": "Upper wide horizontal fronts above the 69 mm end run (view-003)",
+        "detail_pixels": [
+          175.595,
+          279.24,
+          346.865,
+          350.84
+        ],
+        "page_pixels": [
+          334.595,
+          938.24,
+          505.865,
+          1009.8399999999999
+        ]
+      },
+      {
+        "id": "F13",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          402,
+          390,
+          601,
+          490
+        ],
+        "type": "lift_up",
+        "location": "Upper wide horizontal fronts above the 69 mm end run (view-003)",
+        "detail_pixels": [
+          347.73,
+          279.24,
+          519.865,
+          350.84
+        ],
+        "page_pixels": [
+          506.73,
+          938.24,
+          678.865,
+          1009.8399999999999
+        ]
+      },
+      {
+        "id": "F14",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          109,
+          199,
+          200,
+          490
+        ],
+        "type": "hinged",
+        "location": "Tall upper cabinet at left end of main wall (view-003)",
+        "detail_pixels": [
+          94.285,
+          142.484,
+          173,
+          350.84
+        ],
+        "page_pixels": [
+          253.285,
+          801.484,
+          332,
+          1009.8399999999999
+        ]
+      },
+      {
+        "id": "F15",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          129,
+          113,
+          228,
+          467
+        ],
+        "type": "hinged",
+        "location": "Separate upper cabinet pair, return wing (view-004)",
+        "detail_pixels": [
+          96.75,
+          66.896,
+          171,
+          276.464
+        ],
+        "page_pixels": [
+          1185.75,
+          798.896,
+          1260,
+          1008.4639999999999
+        ]
+      },
+      {
+        "id": "F16",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          231,
+          113,
+          338,
+          467
+        ],
+        "type": "hinged",
+        "location": "Separate upper cabinet pair, return wing (view-004)",
+        "detail_pixels": [
+          173.25,
+          66.896,
+          253.50000000000003,
+          276.464
+        ],
+        "page_pixels": [
+          1262.25,
+          798.896,
+          1342.5,
+          1008.4639999999999
+        ]
+      },
+      {
+        "id": "F17",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          127,
+          663,
+          221,
+          904
+        ],
+        "type": "hinged",
+        "location": "Lower base run, return wing doors (view-004)",
+        "detail_pixels": [
+          95.25,
+          392.49600000000004,
+          165.75,
+          535.168
+        ],
+        "page_pixels": [
+          1184.25,
+          1124.496,
+          1254.75,
+          1267.1680000000001
+        ]
+      },
+      {
+        "id": "F18",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          228,
+          663,
+          334,
+          904
+        ],
+        "type": "hinged",
+        "location": "Lower base run, return wing doors (view-004)",
+        "detail_pixels": [
+          171,
+          392.49600000000004,
+          250.50000000000003,
+          535.168
+        ],
+        "page_pixels": [
+          1260,
+          1124.496,
+          1339.5,
+          1267.1680000000001
+        ]
+      },
+      {
+        "id": "F19",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          337,
+          663,
+          443,
+          904
+        ],
+        "type": "hinged",
+        "location": "Lower base run, return wing doors (view-004)",
+        "detail_pixels": [
+          252.75000000000003,
+          392.49600000000004,
+          332.25,
+          535.168
+        ],
+        "page_pixels": [
+          1341.75,
+          1124.496,
+          1421.25,
+          1267.1680000000001
+        ]
+      },
+      {
+        "id": "F20",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          600,
+          663,
+          728,
+          904
+        ],
+        "type": "hinged",
+        "location": "Lower base run, return wing doors (view-004)",
+        "detail_pixels": [
+          450,
+          392.49600000000004,
+          546,
+          535.168
+        ],
+        "page_pixels": [
+          1539,
+          1124.496,
+          1635,
+          1267.1680000000001
+        ]
+      },
+      {
+        "id": "F21",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          446,
+          663,
+          597,
+          727
+        ],
+        "type": "drawer",
+        "location": "Lower base run, return wing drawer bank (view-004)",
+        "detail_pixels": [
+          334.5,
+          392.49600000000004,
+          447.75,
+          430.384
+        ],
+        "page_pixels": [
+          1423.5,
+          1124.496,
+          1536.75,
+          1162.384
+        ]
+      },
+      {
+        "id": "F22",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          446,
+          730,
+          597,
+          815
+        ],
+        "type": "drawer",
+        "location": "Lower base run, return wing drawer bank (view-004)",
+        "detail_pixels": [
+          334.5,
+          432.15999999999997,
+          447.75,
+          482.47999999999996
+        ],
+        "page_pixels": [
+          1423.5,
+          1164.1599999999999,
+          1536.75,
+          1214.48
+        ]
+      },
+      {
+        "id": "F23",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          446,
+          819,
+          597,
+          904
+        ],
+        "type": "drawer",
+        "location": "Lower base run, return wing drawer bank (view-004)",
+        "detail_pixels": [
+          334.5,
+          484.84799999999996,
+          447.75,
+          535.168
+        ],
+        "page_pixels": [
+          1423.5,
+          1216.848,
+          1536.75,
+          1267.1680000000001
+        ]
+      },
+      {
+        "id": "F24",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          735,
+          110,
+          839,
+          942
+        ],
+        "type": "hinged",
+        "location": "Tall tower at end of return wing (view-004)",
+        "detail_pixels": [
+          551.25,
+          65.12,
+          629.25,
+          557.664
+        ],
+        "page_pixels": [
+          1640.25,
+          797.12,
+          1718.25,
+          1289.664
+        ]
+      },
+      {
+        "id": "X01",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          50,
+          190,
+          100,
+          492
+        ],
+        "reason": "fixed carcass end side at left of main wall",
+        "type": "excluded",
+        "detail_pixels": [
+          43.25,
+          136.04,
+          86.5,
+          352.272
+        ],
+        "page_pixels": [
+          202.25,
+          795.04,
+          245.5,
+          1011.2719999999999
+        ]
+      },
+      {
+        "id": "X02",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          576,
+          653,
+          601,
+          854
+        ],
+        "reason": "narrow filler strip beside lower doors",
+        "type": "excluded",
+        "detail_pixels": [
+          498.23999999999995,
+          467.548,
+          519.865,
+          611.4639999999999
+        ],
+        "page_pixels": [
+          657.24,
+          1126.548,
+          678.865,
+          1270.464
+        ]
+      },
+      {
+        "id": "X03",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          839,
+          108,
+          888,
+          942
+        ],
+        "reason": "fixed side panel of tall tower",
+        "type": "excluded",
+        "detail_pixels": [
+          629.25,
+          63.936,
+          666,
+          557.664
+        ],
+        "page_pixels": [
+          1718.25,
+          795.936,
+          1755,
+          1289.664
+        ]
+      }
+    ]
+  }
+}

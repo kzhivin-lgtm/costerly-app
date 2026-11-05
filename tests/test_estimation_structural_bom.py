@@ -27,6 +27,33 @@ def _dimension(value):
     return {"value": value, "basis": "source", "evidence_refs": [OCR_REF]}
 
 
+@pytest.mark.parametrize('height_mm,hinges', [(600, 2), (601, 2), (1000, 2),
+    (1001, 3), (1500, 3), (2000, 3), (2001, 4)])
+def test_owner_hinge_height_thresholds_reach_material_demand(height_mm, hinges):
+    row = _input()
+    result = build_structural_assembly_bom(
+        input_row=row, dimension_graph=build_dimension_graph(input_row=row),
+        allowed_material_families=['mdf_hdf', 'melamine_faced_particleboard',
+            'fibreboard_hardboard', 'hardware_hinge'],
+        extraction={
+            'document_unit': {'unit': 'cm', 'basis': 'explicit_source', 'evidence_refs': [OCR_REF]},
+            'assemblies': [{
+                'assembly_id': 'cabinet', 'assembly_role': 'box_carcass', 'quantity': 1,
+                'evidence_refs': [REF],
+                'dimensions': {'width': _dimension(60), 'height': _dimension(height_mm / 10),
+                    'depth': _dimension(60)},
+                'counts': {}, 'material_roles': [],
+                'front_groups': [{'front_kind': 'hinged_facade', 'quantity': 1, 'arrangement': 'side_by_side'}],
+            }],
+            'secondary_items': [], 'omissions': [],
+        })
+    demands = [m for m in result['materials'] if m['family'] == 'hardware_hinge']
+    assert len(demands) == 1
+    assert demands[0]['quantity'] == hinges and demands[0]['unit'] == 'piece'
+    assert result['assemblies'][0]['hardware'] == [
+        {'role': 'hinge', 'quantity': hinges, 'purchase_unit': 'piece'}]
+
+
 def test_structural_drawer_bank_expands_into_real_panels_and_discrete_slides():
     row = _input()
     result = build_structural_assembly_bom(

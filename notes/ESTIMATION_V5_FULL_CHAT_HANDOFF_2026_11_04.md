@@ -6,6 +6,13 @@ product decisions, runtime boundaries, production incidents, or release state.
 
 ## 1. Read this first
 
+2026-11-05 continuation: this document remains the historical V5 handoff, not
+the current V6 acceptance statement. Continue from
+`notes/ESTIMATION_V6_2_FRONT_COUNT_CHECKPOINT_2026_11_05.md` (3.17.4.5).
+Owner selected exact front-count r03 as a provisional baseline with known
+errors; r04 is archived. Next is major-assembly decomposition. No production
+deployment, Detection change, or claim of full material-cycle acceptance.
+
 This is an Estimation-only handoff. Detection, Naming, Document Identity and
 object boundary quality are inputs and protected dependencies, not work to
 change while repairing Estimation unless a read-only audit proves their
@@ -268,7 +275,7 @@ depth. Units matter.
 | Front | Output | Formula / rule | Unit |
 | --- | --- | --- |
 | Drawer front | Drawer slide | `floor((cabinet_depth_mm - 100) / 100) * 100` | **set** |
-| Hinged facade | Hinge | `<=600 mm: 2`; `>600 mm: 3`; `>2000 mm: 4` | **piece** |
+| Hinged facade | Hinge | Historical V5: `<=600 mm: 2`; `>600 mm: 3`; `>2000 mm: 4`. Superseded by owner on 2026-11-05: `<=1000: 2`; `>1000: 3`; `>2000: 4` | **piece** |
 | Lift-up facade | Gas lift / lift system | One system per lift-up facade | **set** |
 
 Examples: 720 mm cabinet depth gives 600 mm slides. A 650 mm cabinet depth

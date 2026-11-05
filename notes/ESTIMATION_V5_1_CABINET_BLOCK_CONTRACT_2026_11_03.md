@@ -4,6 +4,13 @@ Status: implemented locally, pending production witness
 
 Work number: `3.17.4.4`
 
+V6 continuation (3.17.4.5), 2026-11-05: see
+`notes/ESTIMATION_V6_2_FRONT_COUNT_CHECKPOINT_2026_11_05.md`.
+Front-count r03 is an accepted provisional interpretation experiment, not a
+replacement for this downstream construction/hardware contract. Its known
+false doors are not certified material demand. The 1000/2000-mm owner hinge
+revision below is tested locally and is not claimed deployed by this checkpoint.
+
 ## Scope
 
 V5.1 starts at the immutable `estimation_input_v4` package. Detection identity,
@@ -62,8 +69,9 @@ Hardware belongs to its Cabinet Block and is derived only from front topology:
 - Each `drawer_front` creates one `hardware_drawer_slide` purchase **set**.
   Its `depth_mm` is `floor((cabinet_depth_mm - 100) / 100) * 100`.
   `720 mm -> 600 mm`; `650 mm -> 500 mm`.
-- Each `hinged_facade` creates individual `hardware_hinge` demands. V5.1 uses
-  the construction rule `<=600 mm: 2`, `>600 mm: 3`, `>2000 mm: 4` hinges.
+- Each `hinged_facade` creates individual `hardware_hinge` demands. Owner
+  revision 2026-11-05 uses `<=1000 mm: 2`, `>1000 mm: 3`, `>2000 mm: 4` hinges.
+  This supersedes the original V5.1 600-mm threshold; exact 2000 mm gets 3.
 - Each `lift_up_facade` creates one `hardware_lift_system` purchase **set**.
 
 The visual model recognises physical fronts and their arrangement. The

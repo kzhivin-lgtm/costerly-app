@@ -1,5 +1,16 @@
 # Done Log
 
+2026-11-05, 3.17.4.5: owner-selected Estimation V6.2 front-count r03 working
+checkpoint, with known visual errors explicitly retained. Exact r03 prompt
+restored, r04 archived, both final outputs/coordinates/version hashes retained
+under notes/evidence/estimation-v6.2-front-count-2026-11-05. 106 focused tests
+pass. Dependency checks: 54 pass, 3 handoff failures reproduced on clean
+pre-change f20e343. This completes checkpoint preservation only, not full V6.2
+acceptance. No production release, main merge or Detection change. Next owner
+request: major-assembly decomposition. Tag:
+estimation-v6.2-front-count-r03-checkpoint-2026-11-05.
+Full restart record: notes/ESTIMATION_V6_2_FRONT_COUNT_CHECKPOINT_2026_11_05.md.
+
 Estimation V4.10 material-progress repair `d0f1ac2`: separates confirmed
 geometry, project Material Plan and terminal result states. An infrastructure
 failure after BOM facts now becomes a visible terminal technical failure,

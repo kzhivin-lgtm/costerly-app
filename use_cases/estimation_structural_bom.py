@@ -391,9 +391,10 @@ def _slide_depth_mm(cabinet_depth_mm: float) -> int:
 
 
 def _hinges_per_facade(height_mm: float) -> int:
+    """Owner policy, 2026-11-05: 2 up to 1 m, 3 above 1 m, 4 above 2 m."""
     if height_mm > 2000:
         return 4
-    if height_mm > 600:
+    if height_mm > 1000:
         return 3
     return 2
 
