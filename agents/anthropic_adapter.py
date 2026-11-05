@@ -183,6 +183,12 @@ DETECTION_V845_GLOBAL_BATCHED_ASSEMBLY_SCOPE_PROMPT_VERSION = (
     # Island boundary, classification, Membership, or route decision.
     "detection_v8_4_5_global_batched_assembly_scope"
 )
+DETECTION_V846_CANDIDATE_EXCEPTION_CONTRACT_VERSION = (
+    # V8.4.6 binds Discovery's non-Island exception IDs to the supplied
+    # Candidate Region inventory and rejects a malformed response before any
+    # downstream visual review can consume it.
+    "detection_v8_4_6_candidate_exception_contract"
+)
 DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS = 180
 DETECTION_V634_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
@@ -911,6 +917,36 @@ def detection_v5_discovery_json_schema(
         schema["required"].remove("document_scope")
         schema["properties"].pop("document_scope")
     return schema
+
+
+def bind_detection_candidate_region_exception_ids(
+    schema: dict[str, Any],
+    *,
+    candidate_regions: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Bind Discovery exception IDs to this call's Candidate Region inventory.
+
+    Source Facts use ``SF`` IDs and Candidate Regions use ``CR`` IDs. Both
+    inventories are visible to Discovery, so a generic string schema lets a
+    valid-looking but semantically wrong source-fact ID survive until the final
+    audit. Each Discovery call instead receives the exact ``CR`` IDs it may
+    place in ``candidate_region_exceptions``. V6.41 calls this per batch so a
+    page-local response cannot explain a Candidate Region from another batch.
+    """
+    bound_schema = copy.deepcopy(schema)
+    candidate_ids = sorted({
+        str(candidate["candidate_region_id"])
+        for candidate in candidate_regions
+    })
+    exceptions_schema = bound_schema["properties"]["candidate_region_exceptions"]
+    id_schema = exceptions_schema["items"]["properties"]["candidate_region_id"]
+    if candidate_ids:
+        id_schema["enum"] = candidate_ids
+    else:
+        # Claude does not receive maxItems after schema compatibility cleanup,
+        # so runtime validation below remains authoritative for this edge case.
+        exceptions_schema["maxItems"] = 0
+    return bound_schema
 
 # V6.7 is deliberately restricted to the Sonnet boundary-risk route and only
 # to real Mistral image blocks. A text-cluster recall box is not a Mistral
@@ -6950,15 +6986,12 @@ def resolve_detection_v5_source_degraded_continuity_roles(
     return roles, audit
 
 
-def build_detection_candidate_region_audit(
+def validate_detection_candidate_region_exceptions(
     *,
     candidate_regions: list[dict[str, Any]],
     candidate_region_exceptions: object,
-    visual_groups: list[dict[str, Any]],
-    group_bboxes: dict[str, dict[str, int]],
-    group_id_mapping: dict[str, str],
-) -> list[dict[str, Any]]:
-    """Account for Fusion recall candidates without making them Islands."""
+) -> dict[str, str]:
+    """Validate the bounded non-Island explanations emitted by Discovery."""
     if not isinstance(candidate_region_exceptions, list):
         raise ValueError("candidate region exceptions are invalid")
     candidate_ids = {
@@ -6977,6 +7010,22 @@ def build_detection_candidate_region_audit(
         ):
             raise ValueError("candidate region exceptions are invalid")
         exceptions[row["candidate_region_id"]] = str(row["reason"]).strip()
+    return exceptions
+
+
+def build_detection_candidate_region_audit(
+    *,
+    candidate_regions: list[dict[str, Any]],
+    candidate_region_exceptions: object,
+    visual_groups: list[dict[str, Any]],
+    group_bboxes: dict[str, dict[str, int]],
+    group_id_mapping: dict[str, str],
+) -> list[dict[str, Any]]:
+    """Account for Fusion recall candidates without making them Islands."""
+    exceptions = validate_detection_candidate_region_exceptions(
+        candidate_regions=candidate_regions,
+        candidate_region_exceptions=candidate_region_exceptions,
+    )
     page_by_group_id = {
         group_id_mapping[str(group.get("group_id") or "")]: group.get("page_number")
         for group in visual_groups if isinstance(group, dict)
@@ -11610,6 +11659,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     if mistral_anchor_admission_active and not document_scope_enabled:
         proposal_schema["required"].remove("document_scope")
         proposal_schema["properties"].pop("document_scope")
+    proposal_schema = bind_detection_candidate_region_exception_ids(
+        proposal_schema,
+        candidate_regions=candidate_regions,
+    )
     fusion_page_profiles = build_detection_fusion_page_profile_audit(ocr_package)
     candidate_visual_groups = [{
         "group_id": str(candidate["candidate_region_id"]),
@@ -11757,9 +11810,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         proposal_system = build_detection_system_content(
             prompt=proposal_prompt_with_anchor_contract,
         )
-        proposal_output_config = {"format": {"type": "json_schema", "schema": (
-            strip_schema_for_claude(proposal_schema)
-        )}}
         proposal_response: Any | None = None
         proposal_diagnostics: dict[str, Any] | None = None
         for batch_number, batch in enumerate(v641_batches, start=1):
@@ -11776,6 +11826,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 candidate for candidate in candidate_regions
                 if candidate.get("page_number") in page_set
             ]
+            batch_proposal_schema = bind_detection_candidate_region_exception_ids(
+                proposal_schema,
+                candidate_regions=batch_candidates,
+            )
+            batch_output_config = {"format": {"type": "json_schema", "schema": (
+                strip_schema_for_claude(batch_proposal_schema)
+            )}}
             batch_candidate_ids = {
                 str(candidate["candidate_region_id"]) for candidate in batch_candidates
             }
@@ -11823,7 +11880,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 model=discovery_model,
                 system=proposal_system,
                 messages=batch_messages,
-                output_config=proposal_output_config,
+                output_config=batch_output_config,
             )
             if (
                 exact_input_tokens is not None
@@ -11843,7 +11900,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
                 system=proposal_system,
                 messages=batch_messages,
-                output_config=proposal_output_config,
+                output_config=batch_output_config,
             )
             batch_attempts = [
                 {
@@ -11873,7 +11930,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                         temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
                         system=proposal_system,
                         messages=batch_messages,
-                        output_config=proposal_output_config,
+                        output_config=batch_output_config,
                     )
                     batch_attempts.append({
                         "response": batch_response,
@@ -11952,7 +12009,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                     model=discovery_model,
                     system=proposal_system,
                     messages=geometry_retry_messages,
-                    output_config=proposal_output_config,
+                    output_config=batch_output_config,
                 )
                 if (
                     geometry_retry_exact_input_tokens is not None
@@ -11969,7 +12026,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                     temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
                     system=proposal_system,
                     messages=geometry_retry_messages,
-                    output_config=proposal_output_config,
+                    output_config=batch_output_config,
                 )
                 batch_attempts.append({
                     "response": batch_response,
@@ -12298,6 +12355,79 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "status": "legacy_response_without_page_coverage",
             "page_count": len(page_images),
         }]
+    try:
+        validate_detection_candidate_region_exceptions(
+            candidate_regions=candidate_regions,
+            candidate_region_exceptions=proposal_raw_payload[
+                "candidate_region_exceptions"
+            ],
+        )
+    except ValueError as exc:
+        # This must precede Conflict Resolver and Membership. A malformed
+        # exception otherwise consumes a downstream paid call before the final
+        # candidate-region audit rejects the same Discovery response.
+        failure_diagnostics = dict(proposal_diagnostics)
+        failure_diagnostics.update({
+            "validation_error": str(exc),
+            "validation_stage": DETECTION_V846_CANDIDATE_EXCEPTION_CONTRACT_VERSION,
+            "attempt_label": "v8_4_6_candidate_exception_contract_failed",
+            "candidate_region_ids": sorted(
+                str(candidate["candidate_region_id"])
+                for candidate in candidate_regions
+            ),
+            "candidate_region_exceptions": copy.deepcopy(
+                proposal_raw_payload["candidate_region_exceptions"]
+            ),
+            "response_character_count": len(proposal_raw_text),
+            "response_text_sha256": _sha256_text(proposal_raw_text),
+            "v6_13_proposal_truncation_retry": {
+                "attempted": proposal_retry_reason is not None,
+                "reason": proposal_retry_reason,
+                "attempts": proposal_attempt_summaries,
+            },
+        })
+        failure_usage = build_agent_usage_event(
+            agent_name="detection", operation="rfq_detection_visual_registry",
+            company_id=company_id, run_id=None, file_name=file_name,
+            object_id=None, object_name=None, model=discovery_model,
+            prompt_version=prompt_version, response=proposal_response,
+            started_at=proposal_diagnostics["request_started_at"],
+            finished_at=proposal_diagnostics["request_finished_at"],
+            request_diagnostics=failure_diagnostics,
+        )
+        total_input_tokens = sum(
+            int(call["input_tokens"]) for call in proposal_attempt_summaries
+        )
+        total_output_tokens = sum(
+            int(call["output_tokens"]) for call in proposal_attempt_summaries
+        )
+        total_costs = calculate_llm_cost_usd(
+            model=discovery_model,
+            input_tokens=total_input_tokens,
+            output_tokens=total_output_tokens,
+        )
+        failure_usage.update({
+            "input_tokens": total_input_tokens,
+            "output_tokens": total_output_tokens,
+            "input_cost_usd": total_costs["input_cost_usd"],
+            "output_cost_usd": total_costs["output_cost_usd"],
+            "total_cost_usd": total_costs["total_cost_usd"],
+        })
+        failure_usage["raw_usage"].update({
+            "input_tokens": total_input_tokens,
+            "output_tokens": total_output_tokens,
+            "v5_9_total_provider_duration_seconds": round(
+                sum(float(call.get("duration_seconds") or 0)
+                    for call in proposal_attempt_summaries),
+                3,
+            ),
+        })
+        failure_usage["status"] = "failed"
+        failure_usage["error_message"] = str(exc)
+        raise DetectionVisualRegistryValidationError(
+            f"Detection proposal response failed validation: {exc}",
+            usage_event=failure_usage,
+        ) from exc
     proposal_model_payload = copy.deepcopy(proposal_raw_payload)
     proposal_boundary_payload = copy.deepcopy(proposal_raw_payload)
     proposal_scope_payload: dict[str, Any] | None = None

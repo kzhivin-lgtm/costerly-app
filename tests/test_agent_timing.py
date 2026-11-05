@@ -1718,6 +1718,53 @@ def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
     )
 
 
+def test_v846_rejects_source_fact_exception_before_membership_review():
+    proposal = _visual_registry_payload({
+        "visual_groups": [{
+            "group_id": "view_a", "page_number": 1, "location_hint": "left",
+            "visual_description": "one cabinet", "representation_kind": "elevation",
+        }],
+    })
+    proposal.pop("object_hypotheses")
+    proposal.pop("semantic_facts")
+    proposal["page_coverage"] = [{
+        "page_number": 1, "visual_group_ids": ["view_a"],
+    }]
+    proposal["candidate_region_exceptions"] = [{
+        "candidate_region_id": "SF00001",
+        "reason": "footer text is not a distinct drawing",
+    }]
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            return_value=(_Response(), {
+                "request_started_at": "2026-11-05T00:00:00+00:00",
+                "request_finished_at": "2026-11-05T00:00:01+00:00",
+            }),
+        ) as create_message,
+        patch(
+            "agents.anthropic_adapter.extract_text_from_claude_response",
+            return_value=json.dumps(proposal),
+        ),
+        pytest.raises(DetectionVisualRegistryValidationError) as raised,
+    ):
+        run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None, model="model",
+        )
+
+    assert str(raised.value) == (
+        "Detection proposal response failed validation: "
+        "candidate region exceptions are invalid"
+    )
+    assert raised.value.usage_event["raw_usage"]["validation_stage"] == (
+        "detection_v8_4_6_candidate_exception_contract"
+    )
+    create_message.assert_called_once()
+
+
 def test_whole_architectural_floor_plan_is_demoted_to_document_context():
     payload = _visual_registry_payload({
         "visual_groups": [{

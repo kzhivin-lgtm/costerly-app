@@ -9,7 +9,9 @@ from agents.anthropic_adapter import (
     DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION,
     DETECTION_V611_ASSEMBLY_SCOPE_PROMPT,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
+    bind_detection_candidate_region_exception_ids,
     detection_v5_discovery_json_schema,
+    strip_schema_for_claude,
 )
 from agents.prompt_loader import (
     load_detection_agent_prompt,
@@ -151,3 +153,25 @@ def test_v657_discovery_schema_bounds_non_evidence_text_only():
     assert schema["properties"]["candidate_region_exceptions"]["items"][
         "properties"
     ]["reason"]["maxLength"] == 120
+
+
+def test_v846_binds_discovery_exception_ids_to_this_candidate_inventory():
+    schema = bind_detection_candidate_region_exception_ids(
+        detection_v5_discovery_json_schema(include_document_scope=False),
+        candidate_regions=[
+            {"candidate_region_id": "CR-P001-002"},
+            {"candidate_region_id": "CR-P001-001"},
+        ],
+    )
+    batch_schema = bind_detection_candidate_region_exception_ids(
+        schema,
+        candidate_regions=[{"candidate_region_id": "CR-P001-002"}],
+    )
+    provider_schema = strip_schema_for_claude(batch_schema)
+
+    assert provider_schema["properties"]["candidate_region_exceptions"]["items"][
+        "properties"
+    ]["candidate_region_id"]["enum"] == ["CR-P001-002"]
+    assert schema["properties"]["candidate_region_exceptions"]["items"][
+        "properties"
+    ]["candidate_region_id"]["enum"] == ["CR-P001-001", "CR-P001-002"]

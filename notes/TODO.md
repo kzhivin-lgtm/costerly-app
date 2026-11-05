@@ -208,6 +208,20 @@ single object, `estimation_input_v4`, OCR event and private source-page
 artifacts read-only. Full record:
 `notes/DETECTION_V8_4_5_GLOBAL_BATCHED_ASSEMBLY_SCOPE_CHECKPOINT_2026_11_01.md`.
 
+ACTIVE, V8.4.6, P0, Candidate Region exception type contract:
+Base: owner-verified V8.4.5 (`4c9ff38`). Lev 2 exposed a Discovery response
+that put OCR Source Fact `SF00001` in `candidate_region_exceptions`, which
+accepts only Candidate Region `CR-...` IDs. V8.4.6 binds each Discovery
+Structured Output schema to the actual Candidate Region inventory, repeats
+that binding per V6.41 batch, explicitly disambiguates `CR` from `SF` in the
+prompt, and validates the response before Conflict Resolver or Membership.
+It does not alter Fusion candidate generation, Island boundaries,
+classifications, conflict decisions, Membership, object assembly, Naming,
+Estimation, material selection or UI behavior. Acceptance: a fresh production
+Lev 2 run completes past Discovery without the exception validation error, and
+the protected V8.4.5 assembly-scope route remains intact. Record:
+`notes/DETECTION_V8_4_6_CANDIDATE_EXCEPTION_CONTRACT_2026_11_05.md`.
+
 BENCHMARK, P0, Hasolelim Floor 06 manual Object Evidence island inventory:
 
 This is the owner-provided visual inventory, separate from final package count

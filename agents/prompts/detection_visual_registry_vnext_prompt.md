@@ -44,7 +44,8 @@ Return exactly five arrays, in order:
    concrete facts true of the whole set. Do not return singleton Islands. This
    is a hypothesis, not a package or merge decision;
 4. `candidate_region_exceptions`: only Candidate Regions with no returned
-   Island, each with its ID and a concise reason;
+   Island, each with its supplied `CR-...` ID and a concise reason. Never use
+   an `SF...` Source Fact ID here;
 5. `semantic_facts`: only concrete positive facts between two object-evidence
    Islands. Do not return negatives, unknowns, a coverage matrix, packages, or
    graph decisions.
@@ -78,7 +79,8 @@ Return one factual `classification_reason` for every classification.
 
 After visually enumerating Islands, inspect every CANDIDATE REGION on its PNG
 page. Add an Island if it contains a distinct depiction you missed. If it is
-not a distinct Island, put its ID in `candidate_region_exceptions` with one
+not a distinct Island, put that supplied `CR-...` ID, never an `SF...` ID, in
+`candidate_region_exceptions` with one
 concrete reason: `title block`, `legend/schedule`, `dimension annotations`,
 `part of Island <id>`, `duplicate OCR graphic area`, or `no distinct depiction`.
 Do not add exceptions for regions covered by a returned Island. A valid Island
