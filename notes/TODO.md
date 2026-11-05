@@ -721,7 +721,7 @@ summary regresses L to U-shaped, B06 is misnamed corner and the appliance
 opening is not recognized (called panel). Upper open shelves remain unlisted.
 Cross-view physical duplication remains unresolved; worktop ownership includes
 tall B06 without establishing support. Original boxes visually reviewed,
-unchanged. No Lev1 V4 live probe, retry, promotion, main merge or deployment.
+unchanged. No retry, promotion, main merge or deployment.
 Evidence: notes/evidence/cb-planner-v4-2026-11-05/lev2-evidence.json;
 raw witness /private/tmp/cb-planner-v4-lev2-01.json.
 Next: owner review of B06; proposed next diagnosis is cross-view physical
@@ -729,6 +729,22 @@ identity/duplicate assemblies, not another cosmetic grouping-rule revision.
 Front r03 accepted checkpoint and historical V2/V3 remain unchanged.
 Verification: 130 focused tests pass, including saved V4 column ownership and
 retention of its semantic limitations; git diff --check passes.
+Owner-requested Lev1 V4 follow-up completed with the unchanged prompt, one
+Haiku call, 13.370 s, 13888 input / 2233 output tokens. Only system differs
+from the previous Lev1 V3 request. Original Planner validation passes.
+Three groups preserved: B01 low carcass with F01/F02/F03 drawers, B02 fixed
+decorative slatted upright, B03 tabletop with support. No invented tall cabinet
+column. The single-leg error persists although source island 003 shows two.
+Additional semantic failure: output invents mm for 158/265/75 and calls the
+overall 265 height above-seat height, despite the no-dimensions prompt boundary.
+Saved Front enum failure is retained without normalization or a new Front call.
+Source and raw-box overlay visually inspected. Grouping preserved, not full
+content acceptance. Evidence: notes/evidence/cb-planner-v4-2026-11-05/lev1-evidence.json;
+raw witness /private/tmp/cb-planner-v4-lev1-01.json. No runtime/prompt changes.
+Pending before material quantities: multi-view completeness and unit grounding;
+these findings do not authorize an architecture or schema change.
+Follow-up verification: 25 Planner tests pass including the unmodified Lev1
+response and its known errors; git diff --check passes. No full-cycle acceptance.
 
 OWNER-APPROVED CB Planner V3, 2026-11-05, same 3.17.4.5:
 Owner confirms the countertop is a standalone physical element. Keep it once,

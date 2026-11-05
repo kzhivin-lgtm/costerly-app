@@ -31,11 +31,19 @@ with neighbouring sections separated. Not full semantic acceptance: B01/F24
 still treated as a tower, L summary regresses to U, appliance opening is called
 a panel and open shelves remain unlisted. Cross-view duplicate physical scope
 and worktop support ownership are not resolved. Overlay reviewed, no repairs.
-No extra call, Lev1 V4 probe, production-route change or deployment.
+No retry, production-route change or deployment.
 Durable output/review: notes/evidence/cb-planner-v4-2026-11-05/lev2-evidence.json.
 Pending owner review; Front checkpoint and V2/V3 originals retained.
 130 focused tests pass; recorded V4 output retains both the improved column
 and the false tower/U-shaped summary. Tests do not certify semantic acceptance.
+Owner-requested Lev1 V4 follow-up: one unchanged-prompt call, 13.370 s,
+13888 input / 2233 output tokens. Only system differs from Lev1 V3 request.
+Three groups retained (drawer base, fixed decorative upright, tabletop/support),
+original Planner validation passes. Still only one leg instead of two; model
+also invents mm for bare 158/265/75 and misattributes overall height as above-seat
+height. Thus grouping is preserved, not full content acceptance. Saved Front's
+historical enum failure is retained; no Front rerun/normalization. Source page
+and exact-box overlay inspected. Evidence: notes/evidence/cb-planner-v4-2026-11-05/lev1-evidence.json.
 
 Previous diagnostic: **CB Planner V3**, owner-approved three-horizontal-front
 grouping guideline and always-separate worktop. Vertical stacks are one width

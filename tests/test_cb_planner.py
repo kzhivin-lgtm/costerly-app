@@ -138,6 +138,23 @@ def test_v4_recorded_output_groups_column_but_retains_semantic_limits():
     assert witness['review']['classification'] == 'partial improvement, not accepted checkpoint'
 
 
+def test_v4_lev1_preserves_grouping_without_hiding_content_errors():
+    path = agent.PLANNER_PROMPT_PATH.parents[2] / 'notes' / 'evidence' / 'cb-planner-v4-2026-11-05' / 'lev1-evidence.json'
+    witness = json.loads(path.read_text())
+    assert witness['changed_request_fields_vs_v3'] == ['system']
+    assert witness['front_status'] == 'failed'  # Historical Front enums, no repair.
+    assert witness['original_status'] == 'assembly_plan_requires_review'
+    p = witness['parsed_response']
+    assert agent.validate_assembly_plan(p, {f'p1-view-{i:03d}' for i in range(1, 7)},
+        {'F01', 'F02', 'F03'}) == p
+    assert len(p['blocks']) == 3 and not p['shared_parts']
+    assert p['blocks'][0]['front_ids'] == ['F01', 'F02', 'F03']
+    # Preserve observed errors, not desired facts or production acceptance.
+    assert 'single pedestal leg' in p['summary']
+    assert '158 mm' in p['blocks'][0]['reason']
+    assert '75 mm' in p['blocks'][2]['contains']
+
+
 def test_shared_worktop_has_two_existing_parents_and_single_record():
     p = plan(); first = p['blocks'][0]; first['front_ids'] = ['F01']
     p['blocks'].append({**deepcopy(first), 'id': 'B02', 'front_ids': ['F02']})

@@ -44,6 +44,8 @@ One rulebook with two sections, not two mandatory new provider stages:
   Do not bridge separate wall/base cabinets or infer a column from a fixed side.
   Lev2 B06 grouping improves and original contract passes, but false B01 tower,
   U-shaped summary and incomplete physical content prevent full acceptance.
+  Lev1 follow-up preserves three groups but still reports one leg and invents
+  mm units for bare drawing dimensions. Planner schema passes, semantics do not.
 
 V2 failed semantic review; V3/V4 are NOT accepted assembly-planning checkpoints.
 V3 first probes improve grouping (Lev1 three blocks; Lev2 nine + worktop), but
