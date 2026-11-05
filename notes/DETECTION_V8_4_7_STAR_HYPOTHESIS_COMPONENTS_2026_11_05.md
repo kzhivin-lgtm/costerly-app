@@ -2,8 +2,9 @@
 
 ## Status
 
-Implemented from deployed V8.4.6, pending production confirmation on a fresh
-`Lev 2.pdf` run.
+Deployed from V8.4.6 as `0f0380b`. Both `app.costerly.ai` and
+`core.costerly.ai` exposed `detection-v8.4.7-star-hypothesis-components` on
+2026-11-05. Product acceptance remains pending a fresh `Lev 2.pdf` run.
 
 ## Incident witness
 

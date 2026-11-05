@@ -222,7 +222,7 @@ Lev 2 run completes past Discovery without the exception validation error, and
 the protected V8.4.5 assembly-scope route remains intact. Record:
 `notes/DETECTION_V8_4_6_CANDIDATE_EXCEPTION_CONTRACT_2026_11_05.md`.
 
-ACTIVE, V8.4.7, P0, Ada star-hypothesis Membership repair:
+DEPLOYED, P0, V8.4.7, Ada star-hypothesis Membership repair, pending fresh Lev 2 product acceptance:
 Base: deployed V8.4.6 (`cc96bc0`). The fresh Lev 2 run correctly identified
 two independently proved relationships from one plan View, but V5.6's
 exclusive `object_hypotheses` rule accepted the first pair and rejected the
