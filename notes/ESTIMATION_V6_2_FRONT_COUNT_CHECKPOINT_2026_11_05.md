@@ -6,6 +6,14 @@ a full checkpoint, then proceed to major physical assemblies.
 Acceptance scope: a provisional development baseline WITH known visual errors.
 Not a production release, correct BOM, complete material cycle or perfect count.
 
+Later owner decision, 2026-11-05: select CB Front V2/r05 with tabletop supports
+and accept abstract segmentation of the examined simple objects (Lev1 may be
+two or three complete assemblies). This document/tag preserves historical r03,
+not the currently selected prompt. V2 is now the default diagnostic; --front-v1
+replays r03. Current limitations and Lev2 truncated Planner result are recorded
+in notes/TODO.md and ESTIMATION_V6_1_CONSTRUCTION_PLAN_2026_11_04.md. No production
+readiness or new protected technical checkpoint is implied by that selection.
+
 ## Identity and recovery
 
 - Worktree: /private/tmp/costerly-estimation-v425
@@ -13,7 +21,7 @@ Not a production release, correct BOM, complete material cycle or perfect count.
 - Pre-change commit: f20e343
 - Checkpoint tag: estimation-v6.2-front-count-r03-checkpoint-2026-11-05
 - Resolve the exact commit with `git rev-parse estimation-v6.2-front-count-r03-checkpoint-2026-11-05^{commit}`.
-- Active prompt: agents/prompts/estimation_front_count_v6_2.md
+- Prompt at this checkpoint: agents/prompts/estimation_front_count_v6_2.md
 - Version: estimation_front_count_v6_2_r03
 - System SHA256: 81b49dc8d2dd4c33a7459d824178ea8601ba241370a401e530bed2748dab0bb0
 - Archived experiment: agents/prompts/history/estimation_front_count_v6_2_r04.md

@@ -701,7 +701,40 @@ Planner prompt hash, one-call/source preservation, ownership/conflict checks,
 invalid boxes/references, truncation recording and non-mutating overlay export.
 Full suite/live product integration were not tested. Structural tests do not
 override the two semantic failures recorded above.
-PENDING promotion, P0, OWNER REQUEST, CB Front V2 supports, 2026-11-05, same 3.17.4.5:
+OWNER ACCEPTED / COMPLETED segmentation abstraction stage, 2026-11-05,
+same 3.17.4.5, P0: for the examined simple objects, two or three Lev1 assemblies
+are both acceptable when all physical elements remain represented. A combined
+base-and-screen assembly is not itself a regression. Three is convenient, not
+a canonical target. This changes interpretation of the earlier 2-versus-3
+comparison, not its recorded model output. Owner selects CB Front V2 with legs.
+V2 is now the default Front diagnostic; --front-v1 explicitly replays protected
+V1/r03, and --front-supports remains an explicit V2 alias. Prompt bytes unchanged.
+Acceptance is for conceptual segmentation, not exact dimensions, material BOM,
+every front classification, full-cycle reliability or production deployment.
+
+Completed Lev2 regression probe, USER REQUEST; full-cycle status PENDING:
+Front V2: 27.005 s, 14261 input / 6163 output tokens. Exact island enums and
+original contract pass. Five drawers, two lift-up fronts, 15 hinged doors plus
+two unresolved fronts; zero standalone legs, carcass-supported worktop.
+Do not equate 15 with semantic benchmark success: known false F01 side remains,
+and F10/F11 include the appliance opening among unresolved operating candidates.
+Front overlay reviewed without normalization/coordinate changes. Same evidence
+and settings as r03; only system changed. Drawer/lift-up counts are retained;
+no causal effect of support rules established from this single comparison.
+Planner V4: 29.591 s, 15151 input / 6000 output (4124 thinking) tokens.
+stop_reason=max_tokens; original status failed before JSON acceptance. Partial
+eight-block text is NOT a completed plan, shared_parts/remaining JSON truncated.
+Same Planner prompt/settings/images/OCR; only saved Front context differs.
+No automatic retry, output-budget change, JSON salvage or causal attribution
+to support rules. Evidence: notes/evidence/cb-front-v2-2026-11-05/lev2-*-evidence.json.
+Next proposed technical work: isolate Planner output-budget/verbosity failure;
+historical Lev1 island enum reliability also remains open. Neither is silently
+marked fixed by owner acceptance of segmentation. No production deploy.
+Verification: 166 focused tests pass, including selected V2 default, explicit
+V1 replay, exact prompt hashes, Lev2 Front result and rejection of truncated
+Planner output. git diff --check passes. Protected r03 tag remains unchanged.
+
+Historical CB Front V2 support experiment, 2026-11-05, same 3.17.4.5:
 Add physical legs and tabletop support interpretation to the existing Front
 consumer, not a third stage. Consider four legs, two plus attachment, a central
 pedestal or a narrow top with central leg/attachment as contextual possibilities,

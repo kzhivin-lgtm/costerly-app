@@ -22,8 +22,8 @@ PLANNER_PROMPT_PATH = PROMPT_PATH.with_name("cb_planner_v4.md")
 PLANNER_PROMPT_VERSION = "CB Planner V4"
 # One rulebook, two consumers. Existing Front technical identity stays immutable.
 CB_RULEBOOK = {
-    'front': {'name': 'CB Front V1', 'version': FRONT_COUNT_PROMPT_VERSION, 'path': FRONT_COUNT_PROMPT_PATH,
-              'candidate': {'name': 'CB Front V2', 'version': FRONT_SUPPORTS_PROMPT_VERSION, 'path': FRONT_SUPPORTS_PROMPT_PATH}},
+    'front': {'name': 'CB Front V2', 'version': FRONT_SUPPORTS_PROMPT_VERSION, 'path': FRONT_SUPPORTS_PROMPT_PATH,
+              'previous': {'name': 'CB Front V1', 'version': FRONT_COUNT_PROMPT_VERSION, 'path': FRONT_COUNT_PROMPT_PATH}},
     'planner': {'name': PLANNER_PROMPT_VERSION, 'version': PLANNER_PROMPT_VERSION, 'path': PLANNER_PROMPT_PATH},
 }
 
@@ -399,7 +399,7 @@ def run_assembly_plan(*, inputs, page_bytes, front_result, front_status, record=
         'input_id': manifests[0]['input_id'], 'assembly_plan': parsed}
 
 
-def run_front_count(*, inputs, page_bytes, record=None, include_supports=False):
+def run_front_count(*, inputs, page_bytes, record=None, include_supports=True):
     """Approved single-object prompt experiment, not an added production stage."""
     if len(inputs) != 1:
         raise ValueError('front-count experiment requires exactly one object')

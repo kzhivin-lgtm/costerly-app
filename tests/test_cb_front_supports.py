@@ -110,10 +110,11 @@ def test_recorded_support_probe_preserves_original_rejection_and_planner_regress
     assert 'two legs' in p['summary']
 
 
-def test_probe_support_switch_requires_front_mode_before_credentials(monkeypatch):
+@pytest.mark.parametrize('flag', ['--front-supports', '--front-v1'])
+def test_probe_support_switch_requires_front_mode_before_credentials(monkeypatch, flag):
     from tools.probe_v62_module_call import main
     monkeypatch.setattr('sys.argv', ['probe', '--replay', 'unused', '--output', 'unused',
-                                   '--execute', '--front-supports'])
+                                   '--execute', flag])
     with pytest.raises(SystemExit) as error:
         main()
     assert error.value.code == 2
@@ -137,3 +138,26 @@ def test_recorded_repeat_does_not_reproduce_three_to_two_dependency():
         assert len(p['blocks']) == 3
     assert evidence['v2']['front_count']['parsed_response']['tabletop_supports'][0]['leg_count'] == 2
     assert 'two legs' in evidence['v2']['assembly_plan']['parsed_response']['summary']
+
+
+def test_lev2_support_probe_keeps_counts_and_records_truncated_planner():
+    root = Path(__file__).parents[1] / 'notes' / 'evidence' / 'cb-front-v2-2026-11-05'
+    front = json.loads((root / 'lev2-front-evidence.json').read_text())
+    planner = json.loads((root / 'lev2-planner-evidence.json').read_text())
+    p = front['parsed_response']
+    assert front['original_status'] == 'front_count_requires_review'
+    assert front['changed_request_fields'] == ['system']
+    assert validate_front_count(p, {f'p1-view-{i:03d}' for i in range(1, 5)},
+                                require_annotations=True, require_supports=True) == p
+    assert p['totals'] == {'drawers': 5, 'hinged_doors': 15, 'lift_up_fronts': 2,
+                           'unresolved_fronts': 2, 'total_fronts': 24}
+    assert p['tabletop_supports'][0]['leg_count'] == 0
+    assert not p['tabletop_supports'][0]['legs']
+    assert planner['original_status'] == 'failed'
+    assert planner['stop_reason'] == 'max_tokens'
+    assert planner['max_tokens'] == 6000
+    assert planner['parsed_response'] is None
+    assert planner['changed_request_fields'] == ['messages']
+    assert planner['image_and_ocr_content_unchanged']
+    with pytest.raises(json.JSONDecodeError):
+        json.loads(planner['response_text'])

@@ -1,0 +1,54 @@
+{
+  "prompt_version": "CB Planner V4",
+  "prompt_sha256": "3f6ae0ff17c071066ba1ea46bfcf954949c4d1cc370ab6ecad46b8767de4a749",
+  "elapsed_seconds": 29.591,
+  "front_status": "front_count_requires_review",
+  "front_prompt_version": "estimation_front_count_v6_2_r05",
+  "front_witness_sha256": "36cb5e5b07f0b8f399b47eb937789de286f72ee637f664750b40765fca6d60d6",
+  "original_witness": "/private/tmp/cb-planner-v4-lev2-front-v2-01.json",
+  "original_witness_sha256": "e62b2e4058f34e069eb894b78b21c4148e357e6dff2ac4b97583ce4dc501ee4e",
+  "original_status": "failed",
+  "original_error": "ValueError: Planner response did not finish normally",
+  "request_sha256": "532984ab61b1afaacb9c14ce53963e5436d77633e2ee8228d7a6b0d75204b7e2",
+  "model": "claude-haiku-5-5",
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 15151,
+    "output_tokens": 6000,
+    "output_tokens_details": {
+      "thinking_tokens": 4124
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+  },
+  "max_tokens": 6000,
+  "stop_reason": "max_tokens",
+  "response_text": "{\n  \"summary\": \"A two-wing L-shaped kitchen with a base run, a return wing, wall cabinets, a tall right-hand column, and a continuous L-shaped worktop.\",\n  \"blocks\": [\n    {\n      \"id\": \"B01\",\n      \"name\": \"Right tall column\",\n      \"contains\": \"One section-wide full-height column with its upper door, two stacked fronts, and two lower drawers.\",\n      \"reason\": \"This is the one-section full-height column in the main wing. It runs from wall level to base level in one column width, so its fronts are kept together. Continuity of the carcass is assumed from the aligned fronts, not shown explicitly.\",\n      \"front_ids\": [\"F07\", \"F10\", \"F11\", \"F14\", \"F15\"],\n      \"view_ids\": [\"p1-view-003\", \"p1-view-002\"],\n      \"region\": {\"view_id\": \"p1-view-003\", \"bbox_1000\": [596, 190, 748, 868]}\n    },\n    {\n      \"id\": \"B02\",\n      \"name\": \"Main base run left section\",\n      \"contains\": \"Three lower hinged doors of the main base run.\",\n      \"reason\": \"Three side-by-side door positions form one base cabinet block. The main base run has five doors, so it is split here to respect the three-position limit. The split is a grouping choice, not a visible construction boundary.\",\n      \"front_ids\": [\"F01\", \"F02\", \"F03\"],\n      \"view_ids\": [\"p1-view-003\", \"p1-view-002\"],\n      \"region\": {\"view_id\": \"p1-view-003\", \"bbox_1000\": [100, 650, 286, 866]}\n    },\n    {\n      \"id\": \"B03\",\n      \"name\": \"Main base run right section\",\n      \"contains\": \"Two lower hinged doors of the main base run, next to the fixed filler strip.\",\n      \"reason\": \"Continues the main base run from B02 and stops before the column B01. The filler strip is fixed and is not a front. The boundary at the 3-position split is a grouping assumption.\",\n      \"front_ids\": [\"F04\", \"F05\"],\n      \"view_ids\": [\"p1-view-003\", \"p1-view-002\"],\n      \"region\": {\"view_id\": \"p1-view-003\", \"bbox_1000\": [380, 650, 582, 866]}\n    },\n    {\n      \"id\": \"B04\",\n      \"name\": \"Upper left wall run\",\n      \"contains\": \"One tall left wall unit door and two horizontal lift-up fronts above the main base run.\",\n      \"reason\": \"The three fronts form a single left-hand wall run, with the tall door at the end and the lift-up pair beside it. Sharing one carcass is assumed from the adjacent alignment, not shown explicitly.\",\n      \"front_ids\": [\"F06\", \"F12\", \"F13\"],\n      \"view_ids\": [\"p1-view-003\", \"p1-view-002\"],\n      \"region\": {\"view_id\": \"p1-view-003\", \"bbox_1000\": [104, 195, 608, 498]}\n    },\n    {\n      \"id\": \"B05\",\n      \"name\": \"Upper right wall pair over open void\",\n      \"contains\": \"Two upper hinged wall fronts over the open area beside the right column.\",\n      \"reason\": \"These two fronts are side by side and hang over the open space beside the column. They are kept separate from column B01 so the column stays one section wide.\",\n      \"front_ids\": [\"F08\", \"F09\"],\n      \"view_ids\": [\"p1-view-003\", \"p1-view-002\"],\n      \"region\": {\"view_id\": \"p1-view-003\", \"bbox_1000\": [738, 195, 986, 408]}\n    },\n    {\n      \"id\": \"B06\",\n      \"name\": \"Return base doors\",\n      \"contains\": \"Three lower hinged doors in the return base run.\",\n      \"reason\": \"Three side-by-side door positions form one base cabinet block. The return base run has five positions in total, so it is split to respect the three-position limit.\",\n      \"front_ids\": [\"F18\", \"F19\", \"F20\"],\n      \"view_ids\": [\"p1-view-004\", \"p1-view-002\"],\n      \"region\": {\"view_id\": \"p1-view-004\", \"bbox_1000\": [120, 655, 446, 910]}\n    },\n    {\n      \"id\": \"B07\",\n      \"name\": \"Return base door and drawer bank\",\n      \"contains\": \"One lower door and a stack of three drawers in the return base run.\",\n      \"reason\": \"This block holds the remaining two horizontal positions: one door and one stacked drawer bank. It is split from B06 to keep the front count within the limit.\",\n      \"front_ids\": [\"F21\", \"F22\", \"F23\", \"F24\"],\n      \"view_ids\": [\"p1-view-004\", \"p1-view-002\"],\n      \"region\": {\"view_id\": \"p1-view-004\", \"bbox_1000\": [440, 655, 735, 910]}\n    },\n    {\n      \"id\": \"B08\",\n      \"name\": \"Return upper wall pair\",\n      \"contains\": \"Two upper hinged wall fronts on the return wing.\",\n      \"reason\": \"This is a separate hanging wall unit. It is not connected to the base run, and the gap between them is open in the elevation.\",\n      \"front_ids\": [\"F16\", \"F17\"],\n      \"view_ids\": [\"p1-view-004\", \"p1-view-002\"],\n      \"region\": {\"view_id\": \"p1-view-004\", \"bbox_1000\": [120, 100, 345, 476]}\n    }\n  ],\n  \"shared_parts\": [\n    {\n      \"id\": \"S01\",\n      \"name\": \"L-shaped main worktop\",\n      \"block_ids\": [\"B02\", \"B03\", \"B06\", \"B07\"],\n      \"view_ids\": [\"p1-view-001\", \"p1-view-002\"],\n      \"region\": {\"view_id\": \"p1-view-001\", \"bbox_1000\": [0, 0, 1000, 1000]}\n    }\n",
+  "changed_request_fields": [
+    "messages"
+  ],
+  "comparison_witness": "/private/tmp/cb-planner-v4-lev2-01.json",
+  "parsed_response": null,
+  "image_and_ocr_content_unchanged": true,
+  "review": {
+    "classification": "incomplete Planner output; end-to-end regression check not passed",
+    "confirmed": [
+      "Same Planner V4 prompt/settings/images/OCR as prior Lev2 V4; only saved Front context differs",
+      "Provider stop_reason max_tokens, original validator rejects before parsing",
+      "Output ends during shared_parts; no complete valid assembly plan"
+    ],
+    "limitations": [
+      "Partial block list is not an accepted result",
+      "No attribution of truncation specifically to leg rules established from one sample",
+      "No automatic retry, increased token cap, salvage or prompt patch"
+    ],
+    "next": "Investigate output budget/verbosity in isolation while retaining selected Front V2 and accepted abstract segmentation policy; no production readiness claim."
+  }
+}

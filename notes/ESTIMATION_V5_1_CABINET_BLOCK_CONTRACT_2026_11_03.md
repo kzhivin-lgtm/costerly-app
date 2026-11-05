@@ -21,17 +21,21 @@ One rulebook with two sections, not two mandatory new provider stages:
   Source: agents/prompts/estimation_front_count_v6_2.md. Historical r01/r02/r04
   identities remain unchanged. Runtime registry: CB_RULEBOOK in
   agents/estimation_understanding_agent.py.
-- **CB Front V2** (experimental candidate, technical r05): agents/prompts/cb_front_v2.md.
+- **CB Front V2** (owner-selected diagnostic, technical r05): agents/prompts/cb_front_v2.md.
   Same Front pass/evidence, adds tabletop_supports with distinct physical legs,
   support scheme and observed-versus-assumed attachment. One visible leg is not
   proof of one total leg. Use all views; common schemes are clues, not count
   defaults or width cutoffs. Leg boxes/IDs are separate from operating fronts
   and totals; hidden inferred legs require uncertainty, not invented boxes.
   Old r03 and r04 identities remain unchanged. No extra production stage.
-  V2 is opt-in via --count-fronts --front-supports; default is V1/r03.
+  V2 is now the default for --count-fronts; --front-supports explicitly selects
+  the same version. --front-v1 replays unchanged protected r03.
   Lev1 twice identifies two legs, retained by Planner. Planner grouping varies
   two then three blocks; repeated V1 yields three. Simple grouping dependency
-  is not reproduced. Original Front enum validation still fails; not promoted.
+  is not reproduced. Owner accepts either grouping when coverage is preserved.
+  Lev1 enum reliability remains open. Lev2 exact enums pass, five drawers/two
+  lift-ups retained, no invented legs; 15 hinged plus two unresolved is not
+  exact semantic acceptance. Subsequent Planner response truncated at 6000 tokens.
 - **CB Planner V1**: proposed chat draft, not executed. It included detailed
   internal-compartment/shared-part reasoning. Owner requested simplification.
 - **CB Planner V2** (retained experiment): agents/prompts/cb_planner_v2.md. Group into large practical
@@ -58,7 +62,10 @@ One rulebook with two sections, not two mandatory new provider stages:
   Lev1 follow-up preserves three groups but still reports one leg and invents
   mm units for bare drawing dimensions. Planner schema passes, semantics do not.
 
-V2 failed semantic review; V3/V4 are NOT accepted assembly-planning checkpoints.
+Planner V2 failed semantic review. Owner has now accepted abstract segmentation
+on the examined simple objects, including alternative two/three Lev1 groupings.
+V3/V4 are still NOT verified full-cycle/runtime checkpoints; latest Lev2 truncation
+and classification limitations remain open.
 V3 first probes improve grouping (Lev1 three blocks; Lev2 nine + worktop), but
 retain physical interpretation errors; Lev2 additionally fails front ownership
 validation. These are recorded failures/limitations, not patched outputs.

@@ -19,6 +19,23 @@ protected. Pre-existing TODO changes belong to the owner.
 ### Current V6.2 boundary and results, 2026-11-05
 
 Current Front extension: **CB Front V2** (technical r05, not a renumbered r04).
+Latest owner decision: segmentation abstraction on the examined simple objects
+is accepted. Lev1 two or three blocks are both valid grouping options provided
+all parts remain covered; the earlier merged base/screen is not inherently a
+semantic regression. Exact block counts are not benchmarks. Owner selects V2
+as the default Front diagnostic; --front-v1 preserves explicit r03 replay.
+This does not certify material quantities, all classifications or runtime readiness.
+Lev2 V2 regression: Front contract passes, 27.005 s, five drawers/two lift-ups,
+15 hinged + two unresolved, zero standalone legs. One unresolved region is the
+appliance opening and known false lower-side F01 persists, so 15 is not proof
+of benchmark correctness. Same Front evidence/settings, only system changed.
+Planner V4 fails at max_tokens after 29.591 s: 6000 output tokens including 4124
+thinking tokens. JSON is truncated. No accepted assembly plan, repair, retry or
+budget increase. Only saved Front context changed; no causation by leg rules
+established. Full-cycle verification remains pending despite accepted abstraction.
+Evidence: notes/evidence/cb-front-v2-2026-11-05/lev2-*-evidence.json.
+
+Previous experiment and rationale (retained history):
 Owner requested physical legs and tabletop support schemes in the existing
 Front pass. Preserve the accepted r03 file/hash/tag, unchanged front taxonomy
 and totals. New tabletop_supports records leg_count/basis, scheme, uncertainty,
@@ -40,8 +57,9 @@ leg (9.456 + 14.087 s); V2 + same Planner yields three blocks / two legs
 Both repeated Front requests are byte-equivalent as JSON data to their prior
 same-variant requests. Only saved Front response context changes in Planner.
 Both repeated Front enums fail original validation; Planner contracts pass.
-No isolated causal effect or production reliability inferred. V2 remains an
-explicit opt-in (--count-fronts --front-supports), with default V1/r03 retained.
+No isolated causal effect or production reliability inferred. At that point V2
+was opt-in (--count-fronts --front-supports), with default V1/r03 retained;
+superseded by the owner selection recorded above.
 Full outputs/comparison: notes/evidence/cb-front-v2-2026-11-05/.
 Next recommended acceptance prerequisite is exact island enum output, not
 removal of the support rule. No prompt retries, hidden fixes or deployment.

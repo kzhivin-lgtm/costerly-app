@@ -1,5 +1,14 @@
 # Done Log
 
+2026-11-05, 3.17.4.5: owner accepts the conceptual construction-segmentation
+stage for the examined simple objects. Lev1 two/three assemblies are both valid
+if complete; three is not a canonical target. CB Front V2/r05 selected as the
+default diagnostic, r03 file/hash/tag retained with explicit --front-v1 replay.
+Lev2 regression Front preserves five drawers/two lift-ups and invents no legs;
+15 hinged plus two unresolved is not exact semantic acceptance. Planner V4
+hits max_tokens=6000 and returns incomplete JSON, so full-cycle verification
+remains open in TODO. 166 focused tests pass. No deployment or BOM acceptance.
+
 2026-11-05, 3.17.4.5: owner-selected Estimation V6.2 front-count r03 working
 checkpoint, with known visual errors explicitly retained. Exact r03 prompt
 restored, r04 archived, both final outputs/coordinates/version hashes retained

@@ -23,13 +23,16 @@ def main():
     mode.add_argument('--count-fronts', action='store_true', help='One combined classification/front-count experiment')
     mode.add_argument('--plan-assemblies', action='store_true', help='One Planner call using an existing Front witness')
     p.add_argument('--front-witness', type=Path, help='Saved Front output for the exact same evidence; no fresh Front call')
-    p.add_argument('--front-supports', action='store_true', help='Opt into experimental CB Front V2; requires --count-fronts')
+    front_revision = p.add_mutually_exclusive_group()
+    front_revision.add_argument('--front-supports', action='store_true', help='Explicit CB Front V2 (default); requires --count-fronts')
+    front_revision.add_argument('--front-v1', action='store_true', help='Replay protected CB Front V1; requires --count-fronts')
     args = p.parse_args()
     if not args.execute:
         p.error('Explicit --execute required for paid calls')
-    if args.front_supports and not args.count_fronts:
-        p.error('--front-supports requires --count-fronts')
-    front_version = FRONT_SUPPORTS_PROMPT_VERSION if args.front_supports else FRONT_COUNT_PROMPT_VERSION
+    if (args.front_supports or args.front_v1) and not args.count_fronts:
+        p.error('Front revision flags require --count-fronts')
+    include_supports = not args.front_v1
+    front_version = FRONT_SUPPORTS_PROMPT_VERSION if include_supports else FRONT_COUNT_PROMPT_VERSION
     if args.output.exists() or args.output.with_suffix('.html').exists():
         p.error('Refuse to overwrite witness')
     if args.output.with_name(args.output.stem + '-assembly_plan-raw.txt').exists():
@@ -86,7 +89,7 @@ def main():
         run = run_assembly_plan if args.plan_assemblies else run_front_count if args.count_fronts else run_island_types_only if args.classify_only else run_understanding_with_modules
         extra = {'front_result': front_result, 'front_status': front_witness['status']} if args.plan_assemblies else {}
         if args.count_fronts:
-            extra['include_supports'] = args.front_supports
+            extra['include_supports'] = include_supports
         w['understanding'] = run(inputs=w['inputs'],
             page_bytes={k: base64.b64decode(v) for k, v in w['source_pages_base64'].items()}, record=record, **extra)
         w['status'] = ('assembly_plan_requires_review' if args.plan_assemblies else 'front_count_requires_review' if args.count_fronts else

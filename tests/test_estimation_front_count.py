@@ -123,13 +123,14 @@ def test_null_and_absence_are_distinct_and_totals_propagate_unknown():
         agent.validate_front_count(parsed, {'p1-view-001'})
 
 
-@pytest.mark.parametrize('include_supports', [False, True])
+@pytest.mark.parametrize('include_supports', [False, True, None])
 def test_one_combined_call_with_unchanged_evidence_and_english_prompt(monkeypatch, tmp_path, include_supports):
     row, pages, _ = setup(monkeypatch)
     content, _ = agent.prepare_content([row], pages)
     calls, records = [], []
     parsed = annotated()
-    if include_supports:
+    selected_supports = include_supports is not False
+    if selected_supports:
         parsed['tabletop_supports'] = []
     def provider(*args, **kwargs):
         calls.append(kwargs)
@@ -137,9 +138,10 @@ def test_one_combined_call_with_unchanged_evidence_and_english_prompt(monkeypatc
             SimpleNamespace(type='text', text=json.dumps(parsed))])
     monkeypatch.setattr(agent, '_create_message_with_hard_timeout', provider)
     result = agent.run_front_count(inputs=[row], page_bytes=pages,
-        record=lambda stage, request, response: records.append(stage), include_supports=include_supports)
+        record=lambda stage, request, response: records.append(stage),
+        **({} if include_supports is None else {'include_supports': include_supports}))
     assert result['front_count'] == parsed
-    assert result['prompt_version'] == (agent.FRONT_SUPPORTS_PROMPT_VERSION if include_supports else agent.FRONT_COUNT_PROMPT_VERSION)
+    assert result['prompt_version'] == (agent.FRONT_SUPPORTS_PROMPT_VERSION if selected_supports else agent.FRONT_COUNT_PROMPT_VERSION)
     assert result['prompt_sha256'] == sha256(calls[0]['system'].encode()).hexdigest()
     assert len(calls) == 1 and records == ['front_count']
     assert calls[0]['messages'] == [{'role': 'user', 'content': content}]
