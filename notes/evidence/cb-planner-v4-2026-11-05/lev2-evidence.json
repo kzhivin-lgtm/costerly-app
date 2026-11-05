@@ -1,0 +1,605 @@
+{
+  "prompt_version": "CB Planner V4",
+  "prompt_sha256": "3f6ae0ff17c071066ba1ea46bfcf954949c4d1cc370ab6ecad46b8767de4a749",
+  "elapsed_seconds": 27.294,
+  "front_status": "front_count_requires_review",
+  "front_prompt_version": "estimation_front_count_v6_2_r03",
+  "front_witness_sha256": "06f8034557839b4bbf8d78a327e1727bcc1bb6d613ce33c7d897bb16da26d1e8",
+  "request_sha256": "f3c1d6da7e35c8920cfc17af7eb4d91f7800477a7d903234edc674ca49ea73d3",
+  "original_witness_sha256": "3a1cc3dda418269a1770f5efedbebc297e8c29849861b71af829300b1e0d3507",
+  "original_status": "assembly_plan_requires_review",
+  "original_error": null,
+  "model": "claude-haiku-5-5",
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 15257,
+    "output_tokens": 5519,
+    "output_tokens_details": {
+      "thinking_tokens": 3615
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+  },
+  "response_text": "{\"summary\":\"A U-shaped kitchen with a 45-degree corner base, a return wing ending in a full-height tower, and separate upper cabinets, all under one continuous worktop.\",\"blocks\":[{\"id\":\"B01\",\"name\":\"Return-wing full-height tower\",\"contains\":\"Tall tower cabinet at the far end of the return wing, with its single tall door leaf.\",\"reason\":\"A single-section full-height column. Its fixed side panel is excluded. Continuity from the tower's top to bottom is assumed, not explicit.\",\"front_ids\":[\"F24\"],\"view_ids\":[\"p1-view-004\"],\"region\":{\"view_id\":\"p1-view-004\",\"bbox_1000\":[735,110,839,942]}},{\"id\":\"B02\",\"name\":\"Return-wing upper pair\",\"contains\":\"Two hanging upper doors on the return wing, meeting at a central joint.\",\"reason\":\"A separate hanging unit with two doors in one carcass. It is not part of any base run.\",\"front_ids\":[\"F15\",\"F16\"],\"view_ids\":[\"p1-view-004\",\"p1-view-002\"],\"region\":{\"view_id\":\"p1-view-004\",\"bbox_1000\":[129,113,338,467]}},{\"id\":\"B03\",\"name\":\"Return-wing base doors (left)\",\"contains\":\"Three base doors on the left side of the return-wing base run.\",\"reason\":\"Three side-by-side doors in one run section, within the three-position limit. Split from the drawer bank and the right door by the position limit.\",\"front_ids\":[\"F17\",\"F18\",\"F19\"],\"view_ids\":[\"p1-view-004\",\"p1-view-002\"],\"region\":{\"view_id\":\"p1-view-004\",\"bbox_1000\":[127,663,443,904]}},{\"id\":\"B04\",\"name\":\"Return-wing drawer bank and end door\",\"contains\":\"A three-drawer stack and the adjacent base door at the return-wing end.\",\"reason\":\"Two horizontal positions: the drawer stack and one door. Kept together to stay within the position limit. The adjacent door is assumed to share the carcass.\",\"front_ids\":[\"F20\",\"F21\",\"F22\",\"F23\"],\"view_ids\":[\"p1-view-004\",\"p1-view-002\"],\"region\":{\"view_id\":\"p1-view-004\",\"bbox_1000\":[446,663,728,904]}},{\"id\":\"B05\",\"name\":\"Main-wall left tall upper\",\"contains\":\"Single tall upper door at the left end of the main wall.\",\"reason\":\"A single hanging tall cabinet. The open gap below it means it is not bridged to the base run.\",\"front_ids\":[\"F14\"],\"view_ids\":[\"p1-view-003\",\"p1-view-001\"],\"region\":{\"view_id\":\"p1-view-003\",\"bbox_1000\":[109,199,200,490]}},{\"id\":\"B06\",\"name\":\"Corner full-height column\",\"contains\":\"Corner column with an upper door, a base door and two drawers in one vertical section.\",\"reason\":\"A single-section full-height column. The upper door, a panel, the base door and drawers appear vertically aligned in one section. Continuity through the panel is assumed.\",\"front_ids\":[\"F09\",\"F06\",\"F07\",\"F08\"],\"view_ids\":[\"p1-view-003\",\"p1-view-001\"],\"region\":{\"view_id\":\"p1-view-003\",\"bbox_1000\":[603,199,734,854]}},{\"id\":\"B07\",\"name\":\"Main-wall right upper pair\",\"contains\":\"Two hanging upper doors on the main wall, right of the corner column.\",\"reason\":\"A separate hanging pair over the open void, not part of the column below.\",\"front_ids\":[\"F10\",\"F11\"],\"view_ids\":[\"p1-view-003\",\"p1-view-001\"],\"region\":{\"view_id\":\"p1-view-003\",\"bbox_1000\":[736,199,974,401]}},{\"id\":\"B08\",\"name\":\"Main-wall base doors (left)\",\"contains\":\"Three base doors on the left part of the main base run.\",\"reason\":\"Three side-by-side doors within the position limit. Split from the right doors by the limit.\",\"front_ids\":[\"F01\",\"F02\",\"F03\"],\"view_ids\":[\"p1-view-003\",\"p1-view-001\"],\"region\":{\"view_id\":\"p1-view-003\",\"bbox_1000\":[100,653,379,854]}},{\"id\":\"B09\",\"name\":\"Main-wall base doors (right)\",\"contains\":\"Two base doors on the right part of the main base run, next to the filler.\",\"reason\":\"Two doors in one run section. The narrow filler is excluded and not treated as a front.\",\"front_ids\":[\"F04\",\"F05\"],\"view_ids\":[\"p1-view-003\",\"p1-view-001\"],\"region\":{\"view_id\":\"p1-view-003\",\"bbox_1000\":[380,653,574,854]}},{\"id\":\"B10\",\"name\":\"Main-wall lift-up uppers\",\"contains\":\"Two wide horizontal upper fronts over the 180 run.\",\"reason\":\"A separate hanging unit with two lift-up fronts in one carcass.\",\"front_ids\":[\"F12\",\"F13\"],\"view_ids\":[\"p1-view-003\",\"p1-view-001\"],\"region\":{\"view_id\":\"p1-view-003\",\"bbox_1000\":[203,390,601,490]}}],\"shared_parts\":[{\"id\":\"S01\",\"name\":\"Continuous worktop with sink cutout\",\"block_ids\":[\"B03\",\"B04\",\"B06\",\"B08\",\"B09\"],\"view_ids\":[\"p1-view-002\",\"p1-view-001\"],\"region\":{\"view_id\":\"p1-view-002\",\"bbox_1000\":[76,406,745,813]}}],\"front_conflicts\":[],\"uncertainties\":[\"Whether the full-height tower B01 and corner column B06 form continuous carcasses is assumed from visible alignment, not confirmed.\",\"The tall leaf F24 may be a door or fixed panel; it is treated as a door leaf in B01.\",\"Whether the return-wing base door F20 shares a carcass with the drawer bank is assumed from shared alignment.\"]}",
+  "parsed_response": {
+    "summary": "A U-shaped kitchen with a 45-degree corner base, a return wing ending in a full-height tower, and separate upper cabinets, all under one continuous worktop.",
+    "blocks": [
+      {
+        "id": "B01",
+        "name": "Return-wing full-height tower",
+        "contains": "Tall tower cabinet at the far end of the return wing, with its single tall door leaf.",
+        "reason": "A single-section full-height column. Its fixed side panel is excluded. Continuity from the tower's top to bottom is assumed, not explicit.",
+        "front_ids": [
+          "F24"
+        ],
+        "view_ids": [
+          "p1-view-004"
+        ],
+        "region": {
+          "view_id": "p1-view-004",
+          "bbox_1000": [
+            735,
+            110,
+            839,
+            942
+          ]
+        }
+      },
+      {
+        "id": "B02",
+        "name": "Return-wing upper pair",
+        "contains": "Two hanging upper doors on the return wing, meeting at a central joint.",
+        "reason": "A separate hanging unit with two doors in one carcass. It is not part of any base run.",
+        "front_ids": [
+          "F15",
+          "F16"
+        ],
+        "view_ids": [
+          "p1-view-004",
+          "p1-view-002"
+        ],
+        "region": {
+          "view_id": "p1-view-004",
+          "bbox_1000": [
+            129,
+            113,
+            338,
+            467
+          ]
+        }
+      },
+      {
+        "id": "B03",
+        "name": "Return-wing base doors (left)",
+        "contains": "Three base doors on the left side of the return-wing base run.",
+        "reason": "Three side-by-side doors in one run section, within the three-position limit. Split from the drawer bank and the right door by the position limit.",
+        "front_ids": [
+          "F17",
+          "F18",
+          "F19"
+        ],
+        "view_ids": [
+          "p1-view-004",
+          "p1-view-002"
+        ],
+        "region": {
+          "view_id": "p1-view-004",
+          "bbox_1000": [
+            127,
+            663,
+            443,
+            904
+          ]
+        }
+      },
+      {
+        "id": "B04",
+        "name": "Return-wing drawer bank and end door",
+        "contains": "A three-drawer stack and the adjacent base door at the return-wing end.",
+        "reason": "Two horizontal positions: the drawer stack and one door. Kept together to stay within the position limit. The adjacent door is assumed to share the carcass.",
+        "front_ids": [
+          "F20",
+          "F21",
+          "F22",
+          "F23"
+        ],
+        "view_ids": [
+          "p1-view-004",
+          "p1-view-002"
+        ],
+        "region": {
+          "view_id": "p1-view-004",
+          "bbox_1000": [
+            446,
+            663,
+            728,
+            904
+          ]
+        }
+      },
+      {
+        "id": "B05",
+        "name": "Main-wall left tall upper",
+        "contains": "Single tall upper door at the left end of the main wall.",
+        "reason": "A single hanging tall cabinet. The open gap below it means it is not bridged to the base run.",
+        "front_ids": [
+          "F14"
+        ],
+        "view_ids": [
+          "p1-view-003",
+          "p1-view-001"
+        ],
+        "region": {
+          "view_id": "p1-view-003",
+          "bbox_1000": [
+            109,
+            199,
+            200,
+            490
+          ]
+        }
+      },
+      {
+        "id": "B06",
+        "name": "Corner full-height column",
+        "contains": "Corner column with an upper door, a base door and two drawers in one vertical section.",
+        "reason": "A single-section full-height column. The upper door, a panel, the base door and drawers appear vertically aligned in one section. Continuity through the panel is assumed.",
+        "front_ids": [
+          "F09",
+          "F06",
+          "F07",
+          "F08"
+        ],
+        "view_ids": [
+          "p1-view-003",
+          "p1-view-001"
+        ],
+        "region": {
+          "view_id": "p1-view-003",
+          "bbox_1000": [
+            603,
+            199,
+            734,
+            854
+          ]
+        }
+      },
+      {
+        "id": "B07",
+        "name": "Main-wall right upper pair",
+        "contains": "Two hanging upper doors on the main wall, right of the corner column.",
+        "reason": "A separate hanging pair over the open void, not part of the column below.",
+        "front_ids": [
+          "F10",
+          "F11"
+        ],
+        "view_ids": [
+          "p1-view-003",
+          "p1-view-001"
+        ],
+        "region": {
+          "view_id": "p1-view-003",
+          "bbox_1000": [
+            736,
+            199,
+            974,
+            401
+          ]
+        }
+      },
+      {
+        "id": "B08",
+        "name": "Main-wall base doors (left)",
+        "contains": "Three base doors on the left part of the main base run.",
+        "reason": "Three side-by-side doors within the position limit. Split from the right doors by the limit.",
+        "front_ids": [
+          "F01",
+          "F02",
+          "F03"
+        ],
+        "view_ids": [
+          "p1-view-003",
+          "p1-view-001"
+        ],
+        "region": {
+          "view_id": "p1-view-003",
+          "bbox_1000": [
+            100,
+            653,
+            379,
+            854
+          ]
+        }
+      },
+      {
+        "id": "B09",
+        "name": "Main-wall base doors (right)",
+        "contains": "Two base doors on the right part of the main base run, next to the filler.",
+        "reason": "Two doors in one run section. The narrow filler is excluded and not treated as a front.",
+        "front_ids": [
+          "F04",
+          "F05"
+        ],
+        "view_ids": [
+          "p1-view-003",
+          "p1-view-001"
+        ],
+        "region": {
+          "view_id": "p1-view-003",
+          "bbox_1000": [
+            380,
+            653,
+            574,
+            854
+          ]
+        }
+      },
+      {
+        "id": "B10",
+        "name": "Main-wall lift-up uppers",
+        "contains": "Two wide horizontal upper fronts over the 180 run.",
+        "reason": "A separate hanging unit with two lift-up fronts in one carcass.",
+        "front_ids": [
+          "F12",
+          "F13"
+        ],
+        "view_ids": [
+          "p1-view-003",
+          "p1-view-001"
+        ],
+        "region": {
+          "view_id": "p1-view-003",
+          "bbox_1000": [
+            203,
+            390,
+            601,
+            490
+          ]
+        }
+      }
+    ],
+    "shared_parts": [
+      {
+        "id": "S01",
+        "name": "Continuous worktop with sink cutout",
+        "block_ids": [
+          "B03",
+          "B04",
+          "B06",
+          "B08",
+          "B09"
+        ],
+        "view_ids": [
+          "p1-view-002",
+          "p1-view-001"
+        ],
+        "region": {
+          "view_id": "p1-view-002",
+          "bbox_1000": [
+            76,
+            406,
+            745,
+            813
+          ]
+        }
+      }
+    ],
+    "front_conflicts": [],
+    "uncertainties": [
+      "Whether the full-height tower B01 and corner column B06 form continuous carcasses is assumed from visible alignment, not confirmed.",
+      "The tall leaf F24 may be a door or fixed panel; it is treated as a door leaf in B01.",
+      "Whether the return-wing base door F20 shares a carcass with the drawer bank is assumed from shared alignment."
+    ]
+  },
+  "changed_request_fields_vs_v3": [
+    "system"
+  ],
+  "coordinates": {
+    "prompt_version": "CB Planner V4",
+    "source_witness": "/private/tmp/cb-planner-v4-lev2-01.json",
+    "coordinate_convention": "bbox_1000 on exact labelled detail; page_pixels exclude added output banner",
+    "model_totals": {
+      "blocks": 10,
+      "shared_parts": 1
+    },
+    "display_only_label_normalizations": [],
+    "warnings": [],
+    "annotations": [
+      {
+        "id": "B01",
+        "name": "Return-wing full-height tower",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          735,
+          110,
+          839,
+          942
+        ],
+        "type": "hinged",
+        "kind": "block",
+        "detail_pixels": [
+          551.25,
+          65.12,
+          629.25,
+          557.664
+        ],
+        "page_pixels": [
+          1640.25,
+          797.12,
+          1718.25,
+          1289.664
+        ]
+      },
+      {
+        "id": "B02",
+        "name": "Return-wing upper pair",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          129,
+          113,
+          338,
+          467
+        ],
+        "type": "drawer",
+        "kind": "block",
+        "detail_pixels": [
+          96.75,
+          66.896,
+          253.50000000000003,
+          276.464
+        ],
+        "page_pixels": [
+          1185.75,
+          798.896,
+          1342.5,
+          1008.4639999999999
+        ]
+      },
+      {
+        "id": "B03",
+        "name": "Return-wing base doors (left)",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          127,
+          663,
+          443,
+          904
+        ],
+        "type": "lift_up",
+        "kind": "block",
+        "detail_pixels": [
+          95.25,
+          392.49600000000004,
+          332.25,
+          535.168
+        ],
+        "page_pixels": [
+          1184.25,
+          1124.496,
+          1421.25,
+          1267.1680000000001
+        ]
+      },
+      {
+        "id": "B04",
+        "name": "Return-wing drawer bank and end door",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          446,
+          663,
+          728,
+          904
+        ],
+        "type": "unresolved",
+        "kind": "block",
+        "detail_pixels": [
+          334.5,
+          392.49600000000004,
+          546,
+          535.168
+        ],
+        "page_pixels": [
+          1423.5,
+          1124.496,
+          1635,
+          1267.1680000000001
+        ]
+      },
+      {
+        "id": "B05",
+        "name": "Main-wall left tall upper",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          109,
+          199,
+          200,
+          490
+        ],
+        "type": "excluded",
+        "kind": "block",
+        "detail_pixels": [
+          94.285,
+          142.484,
+          173,
+          350.84
+        ],
+        "page_pixels": [
+          253.285,
+          801.484,
+          332,
+          1009.8399999999999
+        ]
+      },
+      {
+        "id": "B06",
+        "name": "Corner full-height column",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          603,
+          199,
+          734,
+          854
+        ],
+        "type": "hinged",
+        "kind": "block",
+        "detail_pixels": [
+          521.595,
+          142.484,
+          634.91,
+          611.4639999999999
+        ],
+        "page_pixels": [
+          680.595,
+          801.484,
+          793.91,
+          1270.464
+        ]
+      },
+      {
+        "id": "B07",
+        "name": "Main-wall right upper pair",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          736,
+          199,
+          974,
+          401
+        ],
+        "type": "drawer",
+        "kind": "block",
+        "detail_pixels": [
+          636.64,
+          142.484,
+          842.51,
+          287.11600000000004
+        ],
+        "page_pixels": [
+          795.64,
+          801.484,
+          1001.51,
+          946.116
+        ]
+      },
+      {
+        "id": "B08",
+        "name": "Main-wall base doors (left)",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          100,
+          653,
+          379,
+          854
+        ],
+        "type": "lift_up",
+        "kind": "block",
+        "detail_pixels": [
+          86.5,
+          467.548,
+          327.835,
+          611.4639999999999
+        ],
+        "page_pixels": [
+          245.5,
+          1126.548,
+          486.835,
+          1270.464
+        ]
+      },
+      {
+        "id": "B09",
+        "name": "Main-wall base doors (right)",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          380,
+          653,
+          574,
+          854
+        ],
+        "type": "unresolved",
+        "kind": "block",
+        "detail_pixels": [
+          328.7,
+          467.548,
+          496.50999999999993,
+          611.4639999999999
+        ],
+        "page_pixels": [
+          487.7,
+          1126.548,
+          655.51,
+          1270.464
+        ]
+      },
+      {
+        "id": "B10",
+        "name": "Main-wall lift-up uppers",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          203,
+          390,
+          601,
+          490
+        ],
+        "type": "excluded",
+        "kind": "block",
+        "detail_pixels": [
+          175.595,
+          279.24,
+          519.865,
+          350.84
+        ],
+        "page_pixels": [
+          334.595,
+          938.24,
+          678.865,
+          1009.8399999999999
+        ]
+      },
+      {
+        "id": "S01",
+        "name": "Continuous worktop with sink cutout",
+        "view_id": "p1-view-002",
+        "bbox_1000": [
+          76,
+          406,
+          745,
+          813
+        ],
+        "type": "hinged",
+        "kind": "shared_part",
+        "detail_pixels": [
+          41.952,
+          194.47400000000002,
+          411.24,
+          389.42699999999996
+        ],
+        "page_pixels": [
+          1209.952,
+          327.47400000000005,
+          1579.24,
+          522.4269999999999
+        ]
+      }
+    ]
+  },
+  "review": {
+    "classification": "partial improvement, not accepted checkpoint",
+    "target": "B06 combines F09,F06,F07,F08 into one full-height single-width section; neighbouring base fronts F04/F05 and upper fronts F10/F11 stay separate",
+    "limitations": [
+      "B01/F24 still falsely treated as tall cabinet; possible duplicate physical representation across views remains unresolved",
+      "Summary regresses from L-shaped to U-shaped, and calls the free-end chamfer a corner",
+      "B06 calls its location corner and the appliance opening a panel; physical interpretation incomplete",
+      "Open shelving not explicitly included in block descriptions",
+      "Shared worktop references tall B06 as a supported block; support ownership not established"
+    ],
+    "verification": "Original contract passes; raw boxes rendered without changes and full-page overlay inspected. One call, no retry, no Front rerun; only request system changed. No Lev1 V4 live test or production verification.",
+    "next": "Owner review B06 grouping before promotion; next candidate diagnosis is cross-view duplicate physical identity, not another grouping-limit tweak"
+  }
+}

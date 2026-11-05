@@ -18,7 +18,26 @@ protected. Pre-existing TODO changes belong to the owner.
 
 ### Current V6.2 boundary and results, 2026-11-05
 
-Latest diagnostic: **CB Planner V3**, owner-approved three-horizontal-front
+Latest diagnostic: **CB Planner V4**, owner-approved priority for full-height
+blocks exactly one section wide, identified before horizontal grouping.
+Keep stacked doors/drawers/shelves/appliance openings together where a continuous
+carcass is plausible; preserve explicit boundaries and separately hanging units.
+Prompt agents/prompts/cb_planner_v4.md, SHA256
+3f6ae0ff17c071066ba1ea46bfcf954949c4d1cc370ab6ecad46b8767de4a749.
+One Lev2 call, 27.294 s, 15257 input / 5519 output tokens. Compared to V3 ONLY
+system changed. Original contract passes; ten blocks + shared worktop.
+Targeted improvement: B06 combines F09/F06/F07/F08 into one narrow tall block,
+with neighbouring sections separated. Not full semantic acceptance: B01/F24
+still treated as a tower, L summary regresses to U, appliance opening is called
+a panel and open shelves remain unlisted. Cross-view duplicate physical scope
+and worktop support ownership are not resolved. Overlay reviewed, no repairs.
+No extra call, Lev1 V4 probe, production-route change or deployment.
+Durable output/review: notes/evidence/cb-planner-v4-2026-11-05/lev2-evidence.json.
+Pending owner review; Front checkpoint and V2/V3 originals retained.
+130 focused tests pass; recorded V4 output retains both the improved column
+and the false tower/U-shaped summary. Tests do not certify semantic acceptance.
+
+Previous diagnostic: **CB Planner V3**, owner-approved three-horizontal-front
 grouping guideline and always-separate worktop. Vertical stacks are one width
 position; four positions require an explanation, height is unrestricted, no
 hard minimum width, and source-defined construction takes priority. Prompt

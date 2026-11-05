@@ -701,6 +701,35 @@ Planner prompt hash, one-call/source preservation, ownership/conflict checks,
 invalid boxes/references, truncation recording and non-mutating overlay export.
 Full suite/live product integration were not tested. Structural tests do not
 override the two semantic failures recorded above.
+PENDING owner review, P0, CB Planner V4, 2026-11-05, same 3.17.4.5:
+Prefer full-height narrow cabinet assemblies exactly one section wide (one
+door compartment or drawer stack), keeping vertically stacked doors, drawers,
+shelves and appliance openings together before horizontal grouping. Preserve
+source boundaries and separate wall units; alignment alone does not prove a
+continuous carcass. No new schema/call stage, no sample-specific IDs or counts.
+Bounded experiment: one Lev2 Planner call with unchanged saved Front/evidence
+and settings. Success requires a coherent single-section tall assembly without
+neighbouring sections or bridging separate units, plus valid front ownership.
+Compare with V3, preserve its original failure and the accepted Front checkpoint.
+Completed one probe: 27.294 s, 15257 input / 5519 output tokens. Only system
+differs from V3 request. Original validation passes without repair. Ten blocks
+plus one shared worktop. B06 now combines F09/F06/F07/F08 into a single-width
+full-height column; former V3 B02/B03 no longer divide its lower/upper parts
+between adjacent cabinets. This targeted grouping improvement is confirmed.
+Semantic acceptance remains partial: B01/F24 still wrongly describes a tower;
+summary regresses L to U-shaped, B06 is misnamed corner and the appliance
+opening is not recognized (called panel). Upper open shelves remain unlisted.
+Cross-view physical duplication remains unresolved; worktop ownership includes
+tall B06 without establishing support. Original boxes visually reviewed,
+unchanged. No Lev1 V4 live probe, retry, promotion, main merge or deployment.
+Evidence: notes/evidence/cb-planner-v4-2026-11-05/lev2-evidence.json;
+raw witness /private/tmp/cb-planner-v4-lev2-01.json.
+Next: owner review of B06; proposed next diagnosis is cross-view physical
+identity/duplicate assemblies, not another cosmetic grouping-rule revision.
+Front r03 accepted checkpoint and historical V2/V3 remain unchanged.
+Verification: 130 focused tests pass, including saved V4 column ownership and
+retention of its semantic limitations; git diff --check passes.
+
 OWNER-APPROVED CB Planner V3, 2026-11-05, same 3.17.4.5:
 Owner confirms the countertop is a standalone physical element. Keep it once,
 with references to supported carcasses when shared; it is not merely a label

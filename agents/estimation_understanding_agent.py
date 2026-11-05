@@ -16,8 +16,8 @@ PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_understanding_v6_2
 ISLAND_TYPES_PROMPT_PATH = PROMPT_PATH.with_name("estimation_island_types_v6_2.md")
 FRONT_COUNT_PROMPT_PATH = PROMPT_PATH.with_name("estimation_front_count_v6_2.md")
 FRONT_COUNT_PROMPT_VERSION = "estimation_front_count_v6_2_r03"
-PLANNER_PROMPT_PATH = PROMPT_PATH.with_name("cb_planner_v3.md")
-PLANNER_PROMPT_VERSION = "CB Planner V3"
+PLANNER_PROMPT_PATH = PROMPT_PATH.with_name("cb_planner_v4.md")
+PLANNER_PROMPT_VERSION = "CB Planner V4"
 # One rulebook, two consumers. Existing Front technical identity stays immutable.
 CB_RULEBOOK = {
     'front': {'name': 'CB Front V1', 'version': FRONT_COUNT_PROMPT_VERSION, 'path': FRONT_COUNT_PROMPT_PATH},

@@ -26,11 +26,11 @@ def front():
 
 def test_rulebook_preserves_front_identity_and_versions_planner():
     assert agent.CB_RULEBOOK['front']['name'] == 'CB Front V1'
-    assert agent.CB_RULEBOOK['planner']['name'] == 'CB Planner V3'
+    assert agent.CB_RULEBOOK['planner']['name'] == 'CB Planner V4'
     assert sha256(agent.FRONT_COUNT_PROMPT_PATH.read_text().strip().encode()).hexdigest() == '81b49dc8d2dd4c33a7459d824178ea8601ba241370a401e530bed2748dab0bb0'
     prompt = agent.PLANNER_PROMPT_PATH.read_text()
-    assert sha256(prompt.strip().encode()).hexdigest() == '28ddc60a1e8b5c6385cb13f738cc98b40d7a9414e86b6aa43e53b685f0e6dac5'
-    assert prompt.startswith('CB Planner V3')
+    assert sha256(prompt.strip().encode()).hexdigest() == '3f6ae0ff17c071066ba1ea46bfcf954949c4d1cc370ab6ecad46b8767de4a749'
+    assert prompt.startswith('CB Planner V4')
     assert 'Do not invent hidden partitions' in prompt
     assert 'No target block count' in prompt
     assert 'THREE front positions' in prompt
@@ -38,6 +38,12 @@ def test_rulebook_preserves_front_identity_and_versions_planner():
     assert 'across BOTH wings together' in prompt
     assert 'a stack of drawers occupies one horizontal position' in prompt
     assert 'full-height block' in prompt
+    assert 'EXACTLY ONE SECTION wide' in prompt
+    assert 'Identify these columns FIRST' in prompt
+    assert 'do not bridge an open workspace' in prompt
+    assert 'turn a fixed side/frame into a' in prompt
+    v3 = agent.PLANNER_PROMPT_PATH.with_name('cb_planner_v3.md').read_text()
+    assert sha256(v3.strip().encode()).hexdigest() == '28ddc60a1e8b5c6385cb13f738cc98b40d7a9414e86b6aa43e53b685f0e6dac5'
     assert 'ALWAYS list a worktop as a separate element' in prompt
     previous = agent.PLANNER_PROMPT_PATH.with_name('cb_planner_v2.md').read_text()
     assert sha256(previous.strip().encode()).hexdigest() == 'd5e1b0de71d1053f89ba97cfeecc2352ac4ee126b54f9e8b245ce8df733c7335'
@@ -113,6 +119,23 @@ def test_v3_recorded_outputs_retain_partial_improvement_and_rejection():
     with pytest.raises(ValueError, match='front assigned twice'):
         agent.validate_assembly_plan(lev2['parsed_response'], {f'p1-view-{i:03d}' for i in range(1, 5)},
             {f'F{i:02d}' for i in range(1, 25)})
+
+
+def test_v4_recorded_output_groups_column_but_retains_semantic_limits():
+    path = agent.PLANNER_PROMPT_PATH.parents[2] / 'notes' / 'evidence' / 'cb-planner-v4-2026-11-05' / 'lev2-evidence.json'
+    witness = json.loads(path.read_text())
+    assert witness['changed_request_fields_vs_v3'] == ['system']
+    assert witness['original_status'] == 'assembly_plan_requires_review'
+    p = witness['parsed_response']
+    assert agent.validate_assembly_plan(p, {f'p1-view-{i:03d}' for i in range(1, 5)},
+        {f'F{i:02d}' for i in range(1, 25)}) == p
+    by_id = {b['id']: b for b in p['blocks']}
+    assert set(by_id['B06']['front_ids']) == {'F09', 'F06', 'F07', 'F08'}
+    assert len(p['blocks']) == 10 and len(p['shared_parts']) == 1
+    # Record observed limitations, not desired semantics or benchmark counts.
+    assert by_id['B01']['front_ids'] == ['F24']
+    assert 'U-shaped' in p['summary']
+    assert witness['review']['classification'] == 'partial improvement, not accepted checkpoint'
 
 
 def test_shared_worktop_has_two_existing_parents_and_single_record():

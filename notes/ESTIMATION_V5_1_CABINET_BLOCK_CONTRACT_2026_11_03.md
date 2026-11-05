@@ -29,7 +29,7 @@ One rulebook with two sections, not two mandatory new provider stages:
   original images plus fallible saved Front output. Short blocks/shared-parts
   list with referenced fronts and image-local review boxes. Assembly boundaries
   and transport suitability remain assumptions unless explicitly established.
-- **CB Planner V3** (current diagnostic candidate): agents/prompts/cb_planner_v3.md.
+- **CB Planner V3** (retained diagnostic): agents/prompts/cb_planner_v3.md.
   Same contract/model/evidence as V2. Owner-approved grouping guideline: up to
   three horizontal front positions, four only with a specific reason; vertical
   stacks are not summed, and a corner shares the allowance across both wings.
@@ -38,7 +38,14 @@ One rulebook with two sections, not two mandatory new provider stages:
   either as its own block or as a shared part spanning several carcasses.
   The front-count grouping limit does not apply to worktops/decorative panels.
 
-V2 failed semantic review; V3 is NOT an accepted assembly-planning checkpoint.
+- **CB Planner V4** (current diagnostic candidate): agents/prompts/cb_planner_v4.md.
+  Same contract/evidence/settings as V3. Identify full-height, exactly
+  one-section-wide columns first, keeping vertically stacked content together.
+  Do not bridge separate wall/base cabinets or infer a column from a fixed side.
+  Lev2 B06 grouping improves and original contract passes, but false B01 tower,
+  U-shaped summary and incomplete physical content prevent full acceptance.
+
+V2 failed semantic review; V3/V4 are NOT accepted assembly-planning checkpoints.
 V3 first probes improve grouping (Lev1 three blocks; Lev2 nine + worktop), but
 retain physical interpretation errors; Lev2 additionally fails front ownership
 validation. These are recorded failures/limitations, not patched outputs.
