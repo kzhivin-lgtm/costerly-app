@@ -1,6 +1,10 @@
-# Estimation V6.1, evidence to construction and project materials
+# Estimation V6: V6.1 experiments and V6.2 whole-object understanding
 
 Work: 3.17.4.5. Status: local implementation, live acceptance pending.
+Current approved iteration: V6.2, 2026-11-05. The historical filename and V6.1
+decisions below are retained for continuity. V5.9 was proposed in discussion
+and withdrawn before any implementation/version change. Published production
+remains V5.8.2; development numbering is not the deployment marker.
 Owner authorized V6.1 on 2026-11-04. Base: e608f37, matching remote main.
 Latest owner clarification: Haiku is the required production route for both
 passes. Stronger models are permitted only for diagnosis, not acceptance or
@@ -10,6 +14,82 @@ V5.8.2 navigation/recovery, Detection identity and material-only scope remain
 protected. Pre-existing TODO changes belong to the owner.
 
 ## Decision
+
+### Current V6.2 boundary and results, 2026-11-05
+
+Owner approved a whole-to-part first cycle and explicitly stopped downstream
+work for now. Explanations must expose observable features, view correspondences
+and assumptions, not private chain-of-thought. Small estimating errors are not
+automatic failure; wrong physical function, major omitted/duplicated assemblies
+and gross geometry remain unacceptable. No universal percentage tolerance is
+inferred from the owner's 1800-versus-2000 example. A separately hanging cabinet,
+drawers, hinged fronts and horizontal lift-up fronts must remain distinguishable.
+Gas-lift provision follows the existing owner policy, not printed evidence.
+
+`agents/estimation_understanding_agent.py` with the V6.2 prompt runs one shared
+Haiku 4.5 request on immutable object membership. All unique full pages precede
+their labelled detail crops; raw cited OCR/legend context remains available.
+It asks for two overview sentences, major components with function/quantity/
+operation/material hypotheses, each view's contribution, concrete cross-view
+matches and uncertainties. It does not request a BOM, numerical dimension
+assignment, prices, hardware counts or formal projection classification.
+An explanation can still be false. Reference/coverage checks do not certify
+semantic correctness. There is no automatic repair/retry or second model vote.
+
+This is exposed through the existing replay tool's `--understanding-only`, not
+the production Calculation path. It rejects other model/observation/repair
+overrides. Application bounds: 64 images, 100000 context characters, 60 s,
+3500 output tokens per object capped at 12000, no SDK retries. Larger cases
+remain unbenchmarked; bounded output is not evidence of ten-object capacity.
+Source-only PDF probes are explicit synthetic local inputs (`--source-pdf`),
+with no Detection/OCR claim, no catalog reads and no writes to production.
+HTML reports escape model content and retain raw malformed/invalid responses
+with their failure status. Working product UI remains unchanged pending agreed
+scenarios. Reports are local review artifacts, not approved estimates.
+
+Detection handoff audit was bounded to LF1's immutable input
+`db175c9d-b911-434e-a3ed-de612640f96f`, not a claim of global Detection correctness.
+It retains all six owned islands and one full 1985x1404 page, 16 OCR blocks,
+coordinate metadata but no native vector segments. Details are crops from
+the same raster, not independent high-resolution rerenders. The code-level
+handoff retains raw pages and OCR with shared document context; LF1's older
+snapshot has no separate document_context. No loss of LF1 islands was found.
+
+Lev 2 source SHA256:
+`b69e132814531862c1abbf2ea3910e0221ab013dd2d0fb184400149d6ec02b1d`.
+Read-only company-610 lookups by name and exact SHA returned no matching
+immutable Estimation input. Its probe used the original one-page PDF through
+the existing bounded renderer, without fabricated Detection regions or OCR.
+Do not compare its single-page presentation with LF1's seven images as though
+this were a controlled file-difficulty experiment.
+
+All capsules/reports are `/private/tmp/estimation-v6-2-<name>.json` / `.html`:
+
+| Name | Result |
+| --- | --- |
+| lev2-prepared | Preparation only; synthetic fixture lacked contract_version. No provider call. Superseded by prepared-02, which passes offline request preparation. |
+| lev2-01 | 28.823 s provider / 28.95 s total, 2593 input + 3165 output tokens. Recognizes a kitchen overall but invents ribbed fronts and misreads several modules; fails the owner operability gate. Returns source_ref instead of input_id, rejected without remapping. Raw answer/report retained. |
+| lf1-01 | 27.503 s provider / 27.75 s total, 9557 input + 2898 output. Name hint Cabinet is present. Invents a closed cabinet with seven hinged doors and one leg. Semantic failure despite valid JSON/references. |
+| lf1-02 | 29.525 s provider / 29.80 s total, 9534 input + 3226 output. Removes object_name and its retrieval-hint descriptor only from the outgoing manifest; immutable input unchanged. Same images/prompt. Now identifies fixed slatted panel, three drawers and two supports. Still wrong number/units/measurement assertions and some false view matches. |
+| lf1-03 | 29.342 s provider / 29.62 s total, 9534 input + 3226 output. Fresh provider call, request hash identical to 02, same returned interpretation. Confirms repeatability of this one case, not general reliability. |
+
+The naming ablation gives concrete evidence of sensitivity to upstream labels;
+general causal attribution remains limited by one named baseline. Final V6.2
+transport omits Detection's semantic name, while retaining IDs/membership and
+the original name in the source audit. The global/major-parts reading improved
+on LF1, but neither file passes full first-cycle acceptance. In particular the
+model keeps injecting unsupported dimensions despite the non-geometric task.
+Do not silently strip those errors and present the remaining prose as verified.
+Stop this iteration at owner review of the explanations; no Calculation/deploy.
+
+Verification: 1759 passed, the same 10 previously recorded baseline failures,
+29 warnings, 16.68 s. New tests cover one Haiku call, source/legend retention,
+per-object view coverage/isolation, quantities/operations, no Calculation/DB
+entry from first-cycle replay, name-hint removal, HTML escaping and readable
+failed answers. Two-object mocked orchestration is not live multi-object
+acceptance. Preserve the unrelated 50 TODO lines outside the commit.
+
+### Historical V6.1 decision (not a production acceptance claim)
 
 Use one shared Analyze over Detection's immutable evidence, followed by
 object Calculation. Analyze owns large assemblies, repeated members,

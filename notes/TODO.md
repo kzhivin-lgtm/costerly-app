@@ -535,7 +535,7 @@ fact and the active material/object-detail readers select it. Pending
 acceptance: the fresh Lev 1 V5.6.3 witness must expose the corrected 600-mm
 slide-set result.
 
-ACTIVE, P0, USER REQUEST, 3.17.4.5 Estimation V6.1 construction/material plan
+ACTIVE, P0, USER REQUEST, 3.17.4.5 Estimation V6.2 whole-object understanding
 (local implementation, live acceptance pending):
 One shared Analyze must interpret all available Detection evidence (images,
 OCR, notes and indexed legends), lock large assemblies and explain material
@@ -560,7 +560,7 @@ Corrected source/display coordinate presentation, compacted repeated material
 descriptions, and added explicit front-schema/build-up validation. These are
 experimental until functional acceptance passes. Do not weaken source or
 hardware guards to manufacture acceptance. No production write or deployment.
-Retain the V5.8.2 production checkpoint. Latest full suite: 1697 passed,
+Retain the V5.8.2 production checkpoint. V6.1 evidence-map suite: 1697 passed,
 10 unchanged baseline failures. Latest focused map/2VN/semantic/replay/construction
 checks: 62 passed. Separate-page context survives legacy per-object composition;
 Calculation has a V6-only geometry contract. Live acceptance remains open.
@@ -568,6 +568,59 @@ USER REQUIREMENT, P0: functionally correct complete materials cycle first.
 Owner explicitly removed the proposed hard latency budget, retaining efficiency
 as a quality goal. First pass must explain construction/material assumptions;
 Calculation and purchasing must preserve them and count all material demand.
+ACTIVE FOCUS, P0, owner clarification 2026-11-05: focus next on Analyze's
+whole-object understanding across ALL owned islands and applicable document
+context, not a chain of model reviewers. Make its object/construction/material
+interpretation readable in one or two sentences. Acceptance is useful estimating
+accuracy, not zero error: preserve physical function, major assemblies and
+plausible dimensions; assess smaller errors by material/purchasing impact,
+without treating the owner's 1800-vs-2000 example as a universal tolerance.
+Owner endorsed whole-object-first interpretation and requires an accessible
+short explanation of observations, cross-view correspondences and assumptions.
+Stop at first-cycle understanding for now; do not advance Calculation or add
+reviewer stages. Inspect Detection handoff before attributing perception errors
+to the model. Working UI explanation is an owner idea, pending scenario/location
+agreement, not authorization for an unverified UI change.
+Owner supplied /Users/qb/Desktop/SAMPLES/JOLD/Lev 2.pdf as a possible first
+independent understanding case alongside LF1. Read-only source review shows
+one kitchen assembly through a plan, axonometric and two elevations; no material
+specification text. This is the reviewing agent's interpretation, not a Haiku
+result or verification of this file's persisted Detection package. Prefer a
+paired evaluation: Lev 2 for conventional composition, LF1 for less conventional
+geometry. V6.2 first-cycle experiments are now approved; no production contract
+replacement or Calculation integration until first-cycle acceptance.
+Owner clarified Lev 2 acceptance: identify the separately hanging cabinet as
+a distinct physical assembly within the same kitchen, the sliding drawers,
+and horizontal lift-up fronts. Gas-lift provision follows the existing owner
+construction policy for lift-up fronts; this is not an explicit hardware
+specification printed in the PDF. Analyze must expose these functional
+distinctions and their observation/assumption basis. Hardware quantities and
+selection stay downstream; no new Calculation work is authorized here.
+V6.2, 2026-11-05: owner confirmed this number after reviewing V6.1 history.
+V5.9 was a withdrawn discussion label, never a code version or release. Keep
+3.17.4.5; do not erase V6.1 experiments or renumber the production V5.8.2.
+[verified] Implemented local --understanding-only mode: one shared Haiku request,
+whole pages before owned details, short whole-object/construction descriptions,
+components/operation, per-view observations, explicit cross-view matches and
+uncertainties. No Calculation, hardware counts, automatic reviewer or DB writes.
+Readable escaped HTML reports persist even for invalid answers; working UI
+placement is still pending scenario agreement. Raw responses/usage retained.
+[verified] LF1-01 with Detection name Cabinet misread the screen as hinged doors.
+LF1-02 removes that naming hint from request context only: fixed slat panel,
+three drawers and two supports recovered. LF1-03 repeats the byte-identical
+request independently and returns the same interpretation. 27.75 / 29.80 /
+29.62 s total respectively. This supports naming-anchor sensitivity; it does
+not establish universal causality or correct geometry/materials. Numerical
+claims in the explanation and some cross-view matches remain wrong.
+Lev2-01 source-only: no matching immutable input found in company 610 by file
+name or exact PDF hash. Full-page probe took 28.95 s, confused multiple facade
+functions and returned source_ref as input_id (rejected). NOT a Detection test
+or accepted kitchen result. Capsules/reports: /private/tmp/estimation-v6-2-*.json
+and corresponding .html. Functional first-cycle acceptance remains OPEN.
+Full suite: 1759 passed, same 10 baseline failures, 29 warnings, 16.68 s.
+Next: review the accessible first-cycle explanations with owner; establish a
+real Lev 2 Detection input before treating results as handoff acceptance.
+No further prompt-only retries or progression to Calculation in this iteration.
 LATEST OWNER CONSTRAINT: production Analyze and Calculation must remain Haiku,
 fast and inexpensive. Stronger models may be diagnostic comparisons only;
 their passing results do not establish V6.1 acceptance. Improve prompts,

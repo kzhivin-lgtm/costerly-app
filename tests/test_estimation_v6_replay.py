@@ -74,6 +74,8 @@ def test_calculation_selects_geometry_prompt_only_for_locked_v6_scope(monkeypatc
     ["--observe-relations"], ["--observe-view", "v"], ["--reobserve-ownership"],
     ["--observe-measurements"], ["--measurement-axes"], ["--fresh-provider"],
     ["--geometry-verification", "--observe-only"],
+    ["--source-pdf", "missing.pdf"], ["--understanding-only", "--observe-only"],
+    ["--understanding-only", "--analyze-model", "other"],
 ])
 def test_invalid_diagnostic_modes_fail_before_provider_or_database_access(monkeypatch, tmp_path, flags):
     from tools import replay_estimation_v6 as replay

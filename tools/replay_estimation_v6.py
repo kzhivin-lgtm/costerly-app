@@ -20,6 +20,7 @@ from types import SimpleNamespace
 import agents.estimation_composition_analyze_agent as analyze_module
 import agents.estimation_assembly_bom_agent as calculation_module
 import agents.estimation_geometry_verification_agent as verification_module
+import agents.estimation_understanding_agent as understanding_module
 
 from agents.estimation_composition_analyze_agent import run_estimation_composition_analyze_agent
 from agents.estimation_assembly_bom_agent import run_estimation_assembly_bom_agent
@@ -45,7 +46,7 @@ def capture_provider_responses(witness, save, *, cached=(), allow_calls=True, re
     orchestration is unchanged; the original call and response are preserved.
     """
     originals = []
-    for stage, module in (("analyze", analyze_module), ("calculation", calculation_module), ("verification", verification_module)):
+    for stage, module in (("analyze", analyze_module), ("calculation", calculation_module), ("verification", verification_module), ("understanding", understanding_module)):
         original = module._create_message_with_hard_timeout
         originals.append((module, original))
         def captured(client, *, _original=original, _stage=stage, **kwargs):
@@ -97,6 +98,28 @@ def capture_provider_responses(witness, save, *, cached=(), allow_calls=True, re
             module._create_message_with_hard_timeout = original
 
 
+def source_probe(path, input_id):
+    """Explicitly synthetic source-only input, never a Detection handoff."""
+    from io import BytesIO
+    from PIL import Image
+    from agents.detection_page_images import render_detection_pdf_pages
+    raw = path.read_bytes()
+    rendered, _ = render_detection_pdf_pages(raw)
+    pages, artifacts = {}, []
+    for n, content in enumerate(rendered, 1):
+        buffer = BytesIO()
+        Image.open(BytesIO(content)).save(buffer, format='WEBP', quality=95)
+        ref = f'source-probe:{sha256(raw).hexdigest()}:p{n}'
+        pages[ref] = buffer.getvalue()
+        artifacts.append({'storage_ref': ref, 'page_number': n, 'artifact_kind': 'page'})
+    payload = {'contract_version': 'estimation_input_v4', 'input_origin': 'source_only_probe_not_detection',
+        'company_id': 'local-diagnostic', 'run_id': 'source-probe:' + sha256(raw).hexdigest(),
+        'document': {'file_name': path.name}, 'object': {'object_id': 'source-probe', 'object_name': '',
+        'quantity': 1, 'evidence_pages': [{'page_number': n, 'regions': []} for n in range(1, len(rendered) + 1)]},
+        'evidence': {'artifacts': artifacts, 'ocr_blocks': [], 'ocr_literal_items': [], 'geometry_context': {}}}
+    return [{'input_id': input_id, 'input_payload': payload}], pages
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input_ids", nargs="+")
@@ -105,6 +128,8 @@ def main():
     parser.add_argument("--replay", type=Path, help="Reuse recorded input/catalog snapshot and matching provider responses")
     parser.add_argument("--fresh-provider", action="store_true", help="Keep replayed immutable inputs but do not reuse provider responses; requires --execute")
     parser.add_argument("--geometry-verification", action="store_true", help="Experimental bounded third Haiku call on detected contradictions, replay only; not accepted for production")
+    parser.add_argument("--understanding-only", action="store_true", help="V6.2 whole-object first cycle only; no Calculation, no automatic reviewer")
+    parser.add_argument("--source-pdf", type=Path, help="Explicit source-only diagnostic without Detection; requires --understanding-only and one local input id")
     parser.add_argument("--analyze-model", help="Controlled Analyze model experiment")
     parser.add_argument("--calculation-model", help="Controlled Calculation model experiment")
     parser.add_argument("--analyze-timeout", type=float, help="Diagnostic timeout, production setting unchanged")
@@ -121,6 +146,13 @@ def main():
     parser.add_argument("--measurement-axes", action="store_true", help="Supply deterministic axis candidates in the minimal geometry diagnostic")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    if args.source_pdf and (not args.understanding_only or args.replay or len(args.input_ids) != 1):
+        parser.error("--source-pdf requires --understanding-only, one id, and no --replay")
+    if args.understanding_only and any((args.observe_only, args.observe_view, args.observe_relations,
+            args.observe_measurements, args.measurement_axes, args.projection_assumptions, args.reobserve_ownership,
+            args.geometry_verification, args.analyze_model, args.calculation_model, args.analyze_effort,
+            args.analyze_thinking_budget, args.stream_analyze, args.analyze_timeout, args.calculation_timeout)):
+        parser.error("V6.2 understanding is one fixed Haiku request, without other experimental routes")
     if args.fresh_provider and not args.execute:
         parser.error("--fresh-provider requires --execute")
     if args.geometry_verification and args.observe_only:
@@ -143,26 +175,29 @@ def main():
         calculation_module.TIMEOUT_SECONDS = args.calculation_timeout
     if args.output.exists():
         raise SystemExit("Output already exists; choose a fresh witness path")
+    if args.understanding_only and args.output.with_suffix('.html').exists():
+        raise SystemExit("Report already exists; choose a fresh witness path")
     if args.secrets_file:
         for key, value in tomllib.loads(args.secrets_file.read_text()).items():
             if isinstance(value, (str, int, float)):
                 os.environ.setdefault(key, str(value))
     prior = json.loads(args.replay.read_text()) if args.replay else {}
-    client = None if prior else get_supabase_client()
-    inputs = prior.get("inputs") or [fetch_estimation_object_input(client, input_id=i) for i in args.input_ids]
+    source_inputs, source_pages = source_probe(args.source_pdf, args.input_ids[0]) if args.source_pdf else (None, {})
+    client = None if prior or source_inputs else get_supabase_client()
+    inputs = source_inputs or prior.get("inputs") or [fetch_estimation_object_input(client, input_id=i) for i in args.input_ids]
     if prior and [row["input_id"] for row in inputs] != args.input_ids:
         raise SystemExit("Replay input ids do not match")
     if any(row is None for row in inputs):
         raise SystemExit("Unknown input")
     if len({row["input_payload"]["run_id"] for row in inputs}) != 1:
         raise SystemExit("Supply objects from one file run only")
-    context = prior.get("catalog_context") or build_estimation_material_context(client, inputs[0]["input_payload"]["company_id"])
+    context = {'families': [], 'catalogs': {}} if args.understanding_only else prior.get("catalog_context") or build_estimation_material_context(client, inputs[0]["input_payload"]["company_id"])
     # The first diagnostic capsule serialized this set with default=str.
     # Read that local historical format safely; all new capsules store a list.
     if isinstance(context["families"], str):
         context["families"] = ast.literal_eval(context["families"])
     context["families"] = sorted(context["families"])
-    page_bytes = {key: base64.b64decode(value) for key, value in prior.get("source_pages_base64", {}).items()}
+    page_bytes = source_pages or {key: base64.b64decode(value) for key, value in prior.get("source_pages_base64", {}).items()}
     for row in inputs:
         for container in ("evidence", "document_context"):
             for artifact in (row["input_payload"].get(container) or {}).get("artifacts") or []:
@@ -172,6 +207,8 @@ def main():
     print(json.dumps({"objects": len(inputs), "pages": len(page_bytes), "database_writes": False}), flush=True)
     witness = {"version": "v6.1", "input_ids": args.input_ids, "database_writes": False, "objects": [], "usage": [], "status": "running",
                "inputs": inputs, "catalog_context": context, "source_pages_base64": {key: base64.b64encode(value).decode() for key, value in page_bytes.items()}}
+    if args.understanding_only:
+        witness.update(version='v6.2', evidence_origin='source_only_no_detection_no_ocr' if args.source_pdf else prior.get('evidence_origin', 'immutable_detection_input'))
     def save():
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(witness, ensure_ascii=False, indent=2, default=str))
@@ -190,6 +227,11 @@ def main():
                                          request_overrides=overrides, stream_stages=("analyze",) if args.stream_analyze else ())
     capture.__enter__()
     try:
+        if args.understanding_only:
+            witness['understanding'] = understanding_module.run_understanding(inputs=inputs, page_bytes=page_bytes)
+            witness['status'] = 'understanding_requires_review_not_estimate'
+            understanding_module.export_report(witness, args.output.with_suffix('.html'))
+            return
         if args.observe_only:
             from agents.estimation_visual_evidence import page_content
             visual = []
@@ -339,6 +381,8 @@ def main():
     except Exception as exc:
         witness["status"] = "failed"
         witness["error"] = f"{type(exc).__name__}: {exc}"
+        if args.understanding_only:
+            understanding_module.export_report(witness, args.output.with_suffix('.html'))
         raise
     finally:
         capture.__exit__(None, None, None)
