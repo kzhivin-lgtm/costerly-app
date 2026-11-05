@@ -1,0 +1,373 @@
+{
+  "prompt_version": "estimation_front_count_v6_2_r05",
+  "prompt_sha256": "a929fe8ce72fd7cf75c9c100f2ce48c1e1ab2a4da8cb9ce44a9ac16545e0affd",
+  "elapsed_seconds": 16.227,
+  "front_status": null,
+  "front_prompt_version": null,
+  "front_witness_sha256": null,
+  "request_sha256": "d614f122aa2e5a7ed94d02937344afe5fb77e8e72f24e5dd5df38b7ce00e3b40",
+  "original_witness_sha256": "bb8657769b0f3367125328b61a5da820570bed5a7ede4b05d1d1e65f11fc5424",
+  "original_status": "failed",
+  "original_error": "ValueError: invalid island classification",
+  "model": "claude-haiku-5-5",
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 14777,
+    "output_tokens": 2774,
+    "output_tokens_details": {
+      "thinking_tokens": 1740
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+  },
+  "response_text": "```json\n{\n  \"island_types\": [\n    {\"view_id\": \"p1-view-001\", \"type\": \"axonometric_view\"},\n    {\"view_id\": \"p1-view-002\", \"type\": \"top_view\"},\n    {\"view_id\": \"p1-view-003\", \"type\": \"axonometric_view\"},\n    {\"view_id\": \"p1-view-004\", \"type\": \"front_elevation\"},\n    {\"view_id\": \"p1-view-005\", \"type\": \"side_view\"},\n    {\"view_id\": \"p1-view-006\", \"type\": \"rear_view\"}\n  ],\n  \"front_groups\": [\n    {\n      \"location\": \"Lower front of bench base, left-to-right row of three shallow drawers\",\n      \"type\": \"drawer\",\n      \"count\": 3,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-004\", \"p1-view-001\"],\n      \"uncertainty\": \"None material. Three wide, shallow fronts are outlined side by side in the front elevation and match the three drawer fronts in the axonometric view.\",\n      \"fronts\": [\n        {\"id\": \"F01\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [105, 769, 298, 831]},\n        {\"id\": \"F02\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [298, 769, 488, 831]},\n        {\"id\": \"F03\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [488, 769, 674, 831]}\n      ]\n    }\n  ],\n  \"excluded_surfaces\": [\n    {\"id\": \"X01\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [105, 203, 674, 763], \"reason\": \"Fixed vertical slatted backrest panels; not operating fronts\"}\n  ],\n  \"tabletop_supports\": [\n    {\n      \"id\": \"T01\",\n      \"location\": \"Cantilevered table top at seat-side height, extending from the backrest side of the bench\",\n      \"leg_count\": 2,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p1-view-003\", \"p1-view-001\", \"p1-view-005\"],\n      \"support_scheme\": \"Two visible legs in the rear-right axonometric support the table top. The profile view shows one leg at the table edge. The table's other edge is attached to the bench/backrest structure; this attachment is assumed from proximity and is not separately detailed in the drawing.\",\n      \"uncertainty\": \"Leg count is estimated because the side and front views overlap and the view 001 leg may duplicate one seen in view 003. The connection to the bench structure is assumed, not clearly shown.\",\n      \"legs\": [\n        {\"id\": \"L01\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [516, 862, 556, 966]},\n        {\"id\": \"L02\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [767, 776, 804, 853]}\n      ]\n    }\n  ],\n  \"totals\": {\n    \"drawers\": 3,\n    \"hinged_doors\": 0,\n    \"lift_up_fronts\": 0,\n    \"unresolved_fronts\": 0,\n    \"total_fronts\": 3\n  }\n}\n```",
+  "parsed_response": {
+    "island_types": [
+      {
+        "view_id": "p1-view-001",
+        "type": "axonometric_view"
+      },
+      {
+        "view_id": "p1-view-002",
+        "type": "top_view"
+      },
+      {
+        "view_id": "p1-view-003",
+        "type": "axonometric_view"
+      },
+      {
+        "view_id": "p1-view-004",
+        "type": "front_elevation"
+      },
+      {
+        "view_id": "p1-view-005",
+        "type": "side_view"
+      },
+      {
+        "view_id": "p1-view-006",
+        "type": "rear_view"
+      }
+    ],
+    "front_groups": [
+      {
+        "location": "Lower front of bench base, left-to-right row of three shallow drawers",
+        "type": "drawer",
+        "count": 3,
+        "count_basis": "clear",
+        "view_ids": [
+          "p1-view-004",
+          "p1-view-001"
+        ],
+        "uncertainty": "None material. Three wide, shallow fronts are outlined side by side in the front elevation and match the three drawer fronts in the axonometric view.",
+        "fronts": [
+          {
+            "id": "F01",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              105,
+              769,
+              298,
+              831
+            ]
+          },
+          {
+            "id": "F02",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              298,
+              769,
+              488,
+              831
+            ]
+          },
+          {
+            "id": "F03",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              488,
+              769,
+              674,
+              831
+            ]
+          }
+        ]
+      }
+    ],
+    "excluded_surfaces": [
+      {
+        "id": "X01",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          105,
+          203,
+          674,
+          763
+        ],
+        "reason": "Fixed vertical slatted backrest panels; not operating fronts"
+      }
+    ],
+    "tabletop_supports": [
+      {
+        "id": "T01",
+        "location": "Cantilevered table top at seat-side height, extending from the backrest side of the bench",
+        "leg_count": 2,
+        "count_basis": "estimated",
+        "view_ids": [
+          "p1-view-003",
+          "p1-view-001",
+          "p1-view-005"
+        ],
+        "support_scheme": "Two visible legs in the rear-right axonometric support the table top. The profile view shows one leg at the table edge. The table's other edge is attached to the bench/backrest structure; this attachment is assumed from proximity and is not separately detailed in the drawing.",
+        "uncertainty": "Leg count is estimated because the side and front views overlap and the view 001 leg may duplicate one seen in view 003. The connection to the bench structure is assumed, not clearly shown.",
+        "legs": [
+          {
+            "id": "L01",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              516,
+              862,
+              556,
+              966
+            ]
+          },
+          {
+            "id": "L02",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              767,
+              776,
+              804,
+              853
+            ]
+          }
+        ]
+      }
+    ],
+    "totals": {
+      "drawers": 3,
+      "hinged_doors": 0,
+      "lift_up_fronts": 0,
+      "unresolved_fronts": 0,
+      "total_fronts": 3
+    }
+  },
+  "changed_request_fields": [
+    "system"
+  ],
+  "comparison_witness": "/private/tmp/estimation-v6-2-lf1-haiku55-front-count-r03-01.json",
+  "coordinates": {
+    "prompt_version": "estimation_front_count_v6_2_r05",
+    "source_witness": "/private/tmp/cb-front-v2-lev1-01.json",
+    "coordinate_convention": "bbox_1000 on exact labelled detail; page_pixels exclude added output banner",
+    "model_totals": {
+      "drawers": 3,
+      "hinged_doors": 0,
+      "lift_up_fronts": 0,
+      "unresolved_fronts": 0,
+      "total_fronts": 3,
+      "legs": 2
+    },
+    "display_only_label_normalizations": [
+      {
+        "view_id": "p1-view-001",
+        "from": "axonometric_view",
+        "to": "Axonometric view"
+      },
+      {
+        "view_id": "p1-view-002",
+        "from": "top_view",
+        "to": "Top view"
+      },
+      {
+        "view_id": "p1-view-003",
+        "from": "axonometric_view",
+        "to": "Axonometric view"
+      },
+      {
+        "view_id": "p1-view-004",
+        "from": "front_elevation",
+        "to": "Front elevation"
+      },
+      {
+        "view_id": "p1-view-005",
+        "from": "side_view",
+        "to": "Side view"
+      },
+      {
+        "view_id": "p1-view-006",
+        "from": "rear_view",
+        "to": "Rear view"
+      }
+    ],
+    "warnings": [],
+    "annotations": [
+      {
+        "id": "F01",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          105,
+          769,
+          298,
+          831
+        ],
+        "type": "drawer",
+        "location": "Lower front of bench base, left-to-right row of three shallow drawers",
+        "detail_pixels": [
+          46.41,
+          495.236,
+          131.716,
+          535.164
+        ],
+        "page_pixels": [
+          219.41,
+          1138.2359999999999,
+          304.716,
+          1178.164
+        ]
+      },
+      {
+        "id": "F02",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          298,
+          769,
+          488,
+          831
+        ],
+        "type": "drawer",
+        "location": "Lower front of bench base, left-to-right row of three shallow drawers",
+        "detail_pixels": [
+          131.716,
+          495.236,
+          215.696,
+          535.164
+        ],
+        "page_pixels": [
+          304.716,
+          1138.2359999999999,
+          388.696,
+          1178.164
+        ]
+      },
+      {
+        "id": "F03",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          488,
+          769,
+          674,
+          831
+        ],
+        "type": "drawer",
+        "location": "Lower front of bench base, left-to-right row of three shallow drawers",
+        "detail_pixels": [
+          215.696,
+          495.236,
+          297.908,
+          535.164
+        ],
+        "page_pixels": [
+          388.696,
+          1138.2359999999999,
+          470.908,
+          1178.164
+        ]
+      },
+      {
+        "id": "X01",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          105,
+          203,
+          674,
+          763
+        ],
+        "reason": "Fixed vertical slatted backrest panels; not operating fronts",
+        "type": "excluded",
+        "detail_pixels": [
+          46.41,
+          130.732,
+          297.908,
+          491.372
+        ],
+        "page_pixels": [
+          219.41,
+          773.732,
+          470.908,
+          1134.372
+        ]
+      },
+      {
+        "id": "L01",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          516,
+          862,
+          556,
+          966
+        ],
+        "type": "leg",
+        "location": "Cantilevered table top at seat-side height, extending from the backrest side of the bench",
+        "support_id": "T01",
+        "detail_pixels": [
+          237.876,
+          504.27,
+          256.31600000000003,
+          565.11
+        ],
+        "page_pixels": [
+          1677.876,
+          584.27,
+          1696.316,
+          645.11
+        ]
+      },
+      {
+        "id": "L02",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          767,
+          776,
+          804,
+          853
+        ],
+        "type": "leg",
+        "location": "Cantilevered table top at seat-side height, extending from the backrest side of the bench",
+        "support_id": "T01",
+        "detail_pixels": [
+          353.587,
+          453.96000000000004,
+          370.644,
+          499.005
+        ],
+        "page_pixels": [
+          1793.587,
+          533.96,
+          1810.644,
+          579.005
+        ]
+      }
+    ]
+  },
+  "review": {
+    "classification": "visual support improvement, original format validation failed",
+    "confirmed": [
+      "Three drawer fronts retained; two distinct legs identified on island 003",
+      "Both L boxes locate actual legs; L02 is slightly offset rather than a precise contour",
+      "Scheme describes two legs and explicitly assumed attachment to structure"
+    ],
+    "limitations": [
+      "Original island type enums are snake_case, so original validation fails; diagnostic overlay changes spellings only with FORMAT WARNING",
+      "Leg count marked estimated; attachment is an assumption",
+      "Single sample, no Lev2 Front V2 regression probe or production acceptance"
+    ],
+    "next": "Resolve exact enum contract separately before candidate promotion; do not relax validator or silently repair saved output."
+  }
+}

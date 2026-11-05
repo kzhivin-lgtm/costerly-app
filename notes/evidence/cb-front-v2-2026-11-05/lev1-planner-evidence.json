@@ -1,0 +1,171 @@
+{
+  "prompt_version": "CB Planner V4",
+  "prompt_sha256": "3f6ae0ff17c071066ba1ea46bfcf954949c4d1cc370ab6ecad46b8767de4a749",
+  "elapsed_seconds": 11.991,
+  "front_status": "failed",
+  "front_prompt_version": "estimation_front_count_v6_2_r05",
+  "front_witness_sha256": "bb8657769b0f3367125328b61a5da820570bed5a7ede4b05d1d1e65f11fc5424",
+  "request_sha256": "b7014cf4f399c8005daeb2fdcdbafe9101faf0434919597e1ecf488808a60ff9",
+  "original_witness_sha256": "a609cf78eb3865c477045e93eee7869fd5c86b0633d704730f73bafd02dfb998",
+  "original_status": "assembly_plan_requires_review",
+  "original_error": null,
+  "model": "claude-haiku-5-5",
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 14163,
+    "output_tokens": 2060,
+    "output_tokens_details": {
+      "thinking_tokens": 1297
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+  },
+  "response_text": "{\n  \"summary\": \"A built-in bench with a three-drawer seat base, a tall slatted backrest, and a cantilevered table top on two legs.\",\n  \"blocks\": [\n    {\n      \"id\": \"B01\",\n      \"name\": \"Bench base with drawers and slatted backrest\",\n      \"contains\": \"Seat base carcass with three side-by-side drawer fronts, plus the full-width fixed slatted backrest rising from it.\",\n      \"reason\": \"The three drawers share one low base carcass, so they form one cabinet block with three front positions, within the limit. The slatted backrest is a fixed panel, not a cabinet, but it rises from the same base and reads as one bench assembly. The continuity between base and backrest is assumed from the front and rear views, which show them meeting at the seat line without a visible gap.\",\n      \"front_ids\": [\"F01\", \"F02\", \"F03\"],\n      \"view_ids\": [\"p1-view-004\", \"p1-view-001\", \"p1-view-005\", \"p1-view-006\"],\n      \"region\": {\"view_id\": \"p1-view-004\", \"bbox_1000\": [100, 200, 680, 840]}\n    },\n    {\n      \"id\": \"B02\",\n      \"name\": \"Cantilevered table top with legs\",\n      \"contains\": \"Single table top at seat-side height with its supporting legs.\",\n      \"reason\": \"The table top is a separate worktop-type element, listed on its own. It serves only the bench, so it is its own block. Its legs belong with it. The attachment to the bench structure is assumed from proximity.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p1-view-003\", \"p1-view-001\", \"p1-view-005\"],\n      \"region\": {\"view_id\": \"p1-view-003\", \"bbox_1000\": [250, 550, 940, 990]}\n    }\n  ],\n  \"shared_parts\": [],\n  \"front_conflicts\": [],\n  \"uncertainties\": [\n    \"The table top's attachment to the bench structure is assumed, not detailed in the drawing.\",\n    \"Leg count under the table top is estimated (two legs in the axonometric view, one at the table edge in the side view), so it may be overlapping views.\",\n    \"Whether the backrest is a continuous part of the bench base carcass or a separate fixed assembly is not explicit; it is grouped with the base by assumption.\"\n  ]\n}",
+  "parsed_response": {
+    "summary": "A built-in bench with a three-drawer seat base, a tall slatted backrest, and a cantilevered table top on two legs.",
+    "blocks": [
+      {
+        "id": "B01",
+        "name": "Bench base with drawers and slatted backrest",
+        "contains": "Seat base carcass with three side-by-side drawer fronts, plus the full-width fixed slatted backrest rising from it.",
+        "reason": "The three drawers share one low base carcass, so they form one cabinet block with three front positions, within the limit. The slatted backrest is a fixed panel, not a cabinet, but it rises from the same base and reads as one bench assembly. The continuity between base and backrest is assumed from the front and rear views, which show them meeting at the seat line without a visible gap.",
+        "front_ids": [
+          "F01",
+          "F02",
+          "F03"
+        ],
+        "view_ids": [
+          "p1-view-004",
+          "p1-view-001",
+          "p1-view-005",
+          "p1-view-006"
+        ],
+        "region": {
+          "view_id": "p1-view-004",
+          "bbox_1000": [
+            100,
+            200,
+            680,
+            840
+          ]
+        }
+      },
+      {
+        "id": "B02",
+        "name": "Cantilevered table top with legs",
+        "contains": "Single table top at seat-side height with its supporting legs.",
+        "reason": "The table top is a separate worktop-type element, listed on its own. It serves only the bench, so it is its own block. Its legs belong with it. The attachment to the bench structure is assumed from proximity.",
+        "front_ids": [],
+        "view_ids": [
+          "p1-view-003",
+          "p1-view-001",
+          "p1-view-005"
+        ],
+        "region": {
+          "view_id": "p1-view-003",
+          "bbox_1000": [
+            250,
+            550,
+            940,
+            990
+          ]
+        }
+      }
+    ],
+    "shared_parts": [],
+    "front_conflicts": [],
+    "uncertainties": [
+      "The table top's attachment to the bench structure is assumed, not detailed in the drawing.",
+      "Leg count under the table top is estimated (two legs in the axonometric view, one at the table edge in the side view), so it may be overlapping views.",
+      "Whether the backrest is a continuous part of the bench base carcass or a separate fixed assembly is not explicit; it is grouped with the base by assumption."
+    ]
+  },
+  "changed_request_fields": [
+    "messages"
+  ],
+  "comparison_witness": "/private/tmp/cb-planner-v4-lev1-01.json",
+  "coordinates": {
+    "prompt_version": "CB Planner V4",
+    "source_witness": "/private/tmp/cb-planner-v4-lev1-front-v2-01.json",
+    "coordinate_convention": "bbox_1000 on exact labelled detail; page_pixels exclude added output banner",
+    "model_totals": {
+      "blocks": 2,
+      "shared_parts": 0
+    },
+    "display_only_label_normalizations": [],
+    "warnings": [],
+    "annotations": [
+      {
+        "id": "B01",
+        "name": "Bench base with drawers and slatted backrest",
+        "view_id": "p1-view-004",
+        "bbox_1000": [
+          100,
+          200,
+          680,
+          840
+        ],
+        "type": "hinged",
+        "kind": "block",
+        "detail_pixels": [
+          44.2,
+          128.8,
+          300.56,
+          540.96
+        ],
+        "page_pixels": [
+          217.2,
+          771.8,
+          473.56,
+          1183.96
+        ]
+      },
+      {
+        "id": "B02",
+        "name": "Cantilevered table top with legs",
+        "view_id": "p1-view-003",
+        "bbox_1000": [
+          250,
+          550,
+          940,
+          990
+        ],
+        "type": "drawer",
+        "kind": "block",
+        "detail_pixels": [
+          115.25,
+          321.75,
+          433.34,
+          579.15
+        ],
+        "page_pixels": [
+          1555.25,
+          401.75,
+          1873.34,
+          659.15
+        ]
+      }
+    ]
+  },
+  "image_and_ocr_content_unchanged": true,
+  "review": {
+    "classification": "two legs retained, grouping regression versus prior three assemblies",
+    "confirmed": [
+      "Unchanged Planner V4 summary now says two legs",
+      "Original Planner contract passes; no dimensions invented in this response"
+    ],
+    "limitations": [
+      "Combines base and decorative screen into B01, leaving only two assemblies",
+      "Saved Front remains failed; this is a diagnostic continuation, not acceptance",
+      "No causal claim that new support field alone caused regrouping; whole saved Front text changed and provider variability is uncontrolled"
+    ],
+    "next": "Keep default Front r03; retain V2 opt-in candidate. Further grouping fixes need a separate diagnosis."
+  }
+}

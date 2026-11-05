@@ -15,6 +15,8 @@ def test_front_count_prompt_revision_identity():
     expected = {'estimation_front_count_v6_2_r03':
         '81b49dc8d2dd4c33a7459d824178ea8601ba241370a401e530bed2748dab0bb0'}
     assert sha256(agent.FRONT_COUNT_PROMPT_PATH.read_text().strip().encode()).hexdigest() == expected[agent.FRONT_COUNT_PROMPT_VERSION]
+    assert agent.FRONT_SUPPORTS_PROMPT_VERSION == 'estimation_front_count_v6_2_r05'
+    assert sha256(agent.FRONT_SUPPORTS_PROMPT_PATH.read_text().strip().encode()).hexdigest() == 'a929fe8ce72fd7cf75c9c100f2ce48c1e1ab2a4da8cb9ce44a9ac16545e0affd'
 
 
 def test_archived_r04_prompt_keeps_its_original_identity():
@@ -121,20 +123,23 @@ def test_null_and_absence_are_distinct_and_totals_propagate_unknown():
         agent.validate_front_count(parsed, {'p1-view-001'})
 
 
-def test_one_combined_call_with_unchanged_evidence_and_english_prompt(monkeypatch, tmp_path):
+@pytest.mark.parametrize('include_supports', [False, True])
+def test_one_combined_call_with_unchanged_evidence_and_english_prompt(monkeypatch, tmp_path, include_supports):
     row, pages, _ = setup(monkeypatch)
     content, _ = agent.prepare_content([row], pages)
     calls, records = [], []
     parsed = annotated()
+    if include_supports:
+        parsed['tabletop_supports'] = []
     def provider(*args, **kwargs):
         calls.append(kwargs)
         return SimpleNamespace(stop_reason='end_turn', content=[
             SimpleNamespace(type='text', text=json.dumps(parsed))])
     monkeypatch.setattr(agent, '_create_message_with_hard_timeout', provider)
     result = agent.run_front_count(inputs=[row], page_bytes=pages,
-        record=lambda stage, request, response: records.append(stage))
+        record=lambda stage, request, response: records.append(stage), include_supports=include_supports)
     assert result['front_count'] == parsed
-    assert result['prompt_version'] == agent.FRONT_COUNT_PROMPT_VERSION
+    assert result['prompt_version'] == (agent.FRONT_SUPPORTS_PROMPT_VERSION if include_supports else agent.FRONT_COUNT_PROMPT_VERSION)
     assert result['prompt_sha256'] == sha256(calls[0]['system'].encode()).hexdigest()
     assert len(calls) == 1 and records == ['front_count']
     assert calls[0]['messages'] == [{'role': 'user', 'content': content}]

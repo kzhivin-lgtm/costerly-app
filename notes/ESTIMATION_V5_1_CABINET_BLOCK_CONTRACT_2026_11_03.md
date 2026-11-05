@@ -15,12 +15,23 @@ revision below is tested locally and is not claimed deployed by this checkpoint.
 
 One rulebook with two sections, not two mandatory new provider stages:
 
-- **CB Front V1**: front interpretation/counting and hardware mapping. This
+- **CB Front V1** (protected checkpoint): front interpretation/counting and hardware mapping. This
   is the short display name for the exact selected technical prompt
   `estimation_front_count_v6_2_r03`, not a new prompt or renumbered experiment.
   Source: agents/prompts/estimation_front_count_v6_2.md. Historical r01/r02/r04
   identities remain unchanged. Runtime registry: CB_RULEBOOK in
   agents/estimation_understanding_agent.py.
+- **CB Front V2** (experimental candidate, technical r05): agents/prompts/cb_front_v2.md.
+  Same Front pass/evidence, adds tabletop_supports with distinct physical legs,
+  support scheme and observed-versus-assumed attachment. One visible leg is not
+  proof of one total leg. Use all views; common schemes are clues, not count
+  defaults or width cutoffs. Leg boxes/IDs are separate from operating fronts
+  and totals; hidden inferred legs require uncertainty, not invented boxes.
+  Old r03 and r04 identities remain unchanged. No extra production stage.
+  V2 is opt-in via --count-fronts --front-supports; default is V1/r03.
+  Lev1 twice identifies two legs, retained by Planner. Planner grouping varies
+  two then three blocks; repeated V1 yields three. Simple grouping dependency
+  is not reproduced. Original Front enum validation still fails; not promoted.
 - **CB Planner V1**: proposed chat draft, not executed. It included detailed
   internal-compartment/shared-part reasoning. Owner requested simplification.
 - **CB Planner V2** (retained experiment): agents/prompts/cb_planner_v2.md. Group into large practical

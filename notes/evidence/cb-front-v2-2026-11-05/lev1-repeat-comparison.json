@@ -1,0 +1,568 @@
+{
+  "v1": {
+    "front_count": {
+      "prompt_version": "estimation_front_count_v6_2_r03",
+      "prompt_sha256": "81b49dc8d2dd4c33a7459d824178ea8601ba241370a401e530bed2748dab0bb0",
+      "elapsed_seconds": 9.456,
+      "front_status": null,
+      "front_prompt_version": null,
+      "front_witness_sha256": null,
+      "original_witness": "/private/tmp/cb-front-v1-lev1-repeat-02.json",
+      "original_witness_sha256": "35feee1c8ca882c368ba9796cef5b1333b0631762f096ff8cdfdf2e0950d4ac8",
+      "original_status": "failed",
+      "original_error": "ValueError: invalid island classification",
+      "request_sha256": "7c720f9805105ad9c55d5d1388da5fec995fe482a9818fc45dc0e82dd4433fe5",
+      "model": "claude-haiku-5-5",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 13744,
+        "output_tokens": 1483,
+        "output_tokens_details": {
+          "thinking_tokens": 832
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "response_text": "```json\n{\n  \"island_types\": [\n    {\"view_id\": \"p1-view-001\", \"type\": \"axonometric\"},\n    {\"view_id\": \"p1-view-002\", \"type\": \"top\"},\n    {\"view_id\": \"p1-view-003\", \"type\": \"axonometric\"},\n    {\"view_id\": \"p1-view-004\", \"type\": \"front\"},\n    {\"view_id\": \"p1-view-005\", \"type\": \"side\"},\n    {\"view_id\": \"p1-view-006\", \"type\": \"rear\"}\n  ],\n  \"front_groups\": [\n    {\n      \"location\": \"base storage unit, front face, lower row\",\n      \"type\": \"drawer\",\n      \"count\": 3,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-004\", \"p1-view-001\", \"p1-view-005\"],\n      \"uncertainty\": \"Three shallow, wide fronts stacked in the lower base band are consistent across the front elevation and the axonometric view. Drawer status is inferred from shape and position, not from a visible pull or slide.\",\n      \"fronts\": [\n        {\"id\": \"F01\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [107, 770, 303, 830]},\n        {\"id\": \"F02\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [306, 770, 493, 830]},\n        {\"id\": \"F03\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [498, 770, 687, 830]}\n      ]\n    }\n  ],\n  \"excluded_surfaces\": [\n    {\"id\": \"X01\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [100, 200, 690, 760], \"reason\": \"fixed ribbed backrest panels with decorative slats; not operable\"}\n  ],\n  \"totals\": {\n    \"drawers\": 3,\n    \"hinged_doors\": 0,\n    \"lift_up_fronts\": 0,\n    \"unresolved_fronts\": 0,\n    \"total_fronts\": 3\n  }\n}\n```",
+      "parsed_response": {
+        "island_types": [
+          {
+            "view_id": "p1-view-001",
+            "type": "axonometric"
+          },
+          {
+            "view_id": "p1-view-002",
+            "type": "top"
+          },
+          {
+            "view_id": "p1-view-003",
+            "type": "axonometric"
+          },
+          {
+            "view_id": "p1-view-004",
+            "type": "front"
+          },
+          {
+            "view_id": "p1-view-005",
+            "type": "side"
+          },
+          {
+            "view_id": "p1-view-006",
+            "type": "rear"
+          }
+        ],
+        "front_groups": [
+          {
+            "location": "base storage unit, front face, lower row",
+            "type": "drawer",
+            "count": 3,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-004",
+              "p1-view-001",
+              "p1-view-005"
+            ],
+            "uncertainty": "Three shallow, wide fronts stacked in the lower base band are consistent across the front elevation and the axonometric view. Drawer status is inferred from shape and position, not from a visible pull or slide.",
+            "fronts": [
+              {
+                "id": "F01",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  107,
+                  770,
+                  303,
+                  830
+                ]
+              },
+              {
+                "id": "F02",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  306,
+                  770,
+                  493,
+                  830
+                ]
+              },
+              {
+                "id": "F03",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  498,
+                  770,
+                  687,
+                  830
+                ]
+              }
+            ]
+          }
+        ],
+        "excluded_surfaces": [
+          {
+            "id": "X01",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              100,
+              200,
+              690,
+              760
+            ],
+            "reason": "fixed ribbed backrest panels with decorative slats; not operable"
+          }
+        ],
+        "totals": {
+          "drawers": 3,
+          "hinged_doors": 0,
+          "lift_up_fronts": 0,
+          "unresolved_fronts": 0,
+          "total_fronts": 3
+        }
+      },
+      "changed_request_fields_vs_same_variant_previous": []
+    },
+    "assembly_plan": {
+      "prompt_version": "CB Planner V4",
+      "prompt_sha256": "3f6ae0ff17c071066ba1ea46bfcf954949c4d1cc370ab6ecad46b8767de4a749",
+      "elapsed_seconds": 14.087,
+      "front_status": "failed",
+      "front_prompt_version": "estimation_front_count_v6_2_r03",
+      "front_witness_sha256": "35feee1c8ca882c368ba9796cef5b1333b0631762f096ff8cdfdf2e0950d4ac8",
+      "original_witness": "/private/tmp/cb-planner-v4-lev1-front-v1-repeat-02.json",
+      "original_witness_sha256": "3a8b78572d31a319c87350ad627e8ee580cee7d72f5175188d220026e5b53f4b",
+      "original_status": "assembly_plan_requires_review",
+      "original_error": null,
+      "request_sha256": "21d085a254f4a7ae724f66862718a38e84b874f2405ce3e615c16c93374e27d7",
+      "model": "claude-haiku-5-5",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 13811,
+        "output_tokens": 2559,
+        "output_tokens_details": {
+          "thinking_tokens": 1571
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "response_text": "{\n  \"summary\": \"A fixed built-in banquette with a tall slatted backrest, a base with three drawer fronts, and an attached side table on a single pedestal leg.\",\n  \"blocks\": [\n    {\n      \"id\": \"B01\",\n      \"name\": \"base storage bench with three drawers\",\n      \"contains\": \"Lower carcass with a seat deck on top and three side-by-side drawer fronts in the base band, plus the plinth.\",\n      \"reason\": \"The three drawer fronts sit side by side in one carcass across the width, so this is one cabinet block at the three-position limit. The seat deck and plinth belong to the same carcass. The drawer count is taken from the fallible front reference and matches the front elevation.\",\n      \"front_ids\": [\"F01\", \"F02\", \"F03\"],\n      \"view_ids\": [\"p1-view-004\", \"p1-view-001\", \"p1-view-005\"],\n      \"region\": {\"view_id\": \"p1-view-004\", \"bbox_1000\": [95, 770, 700, 860]}\n    },\n    {\n      \"id\": \"B02\",\n      \"name\": \"tall ribbed backrest panel\",\n      \"contains\": \"Full-height fixed backrest with vertical slats and decorative inset panels, rising from the rear of the base.\",\n      \"reason\": \"This is a separate tall fixed panel, not a cabinet, so it is kept as its own assembly. It is assumed to be fixed to the rear of the base B01 rather than a separate carcass. Its full height and width make it a practical separate workshop unit.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p1-view-004\", \"p1-view-005\", \"p1-view-006\"],\n      \"region\": {\"view_id\": \"p1-view-004\", \"bbox_1000\": [90, 70, 705, 780]}\n    },\n    {\n      \"id\": \"B03\",\n      \"name\": \"fixed side table top with pedestal leg\",\n      \"contains\": \"Flat table top projecting from the right side of the bench, with one visible pedestal leg beneath it.\",\n      \"reason\": \"The table top is a worktop-type surface and is listed separately, not inside a cabinet block. It serves only this bench, so it is its own block. The attachment to the base side is not explicit in the drawings and is treated as an assumption.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p1-view-003\", \"p1-view-005\", \"p1-view-001\"],\n      \"region\": {\"view_id\": \"p1-view-003\", \"bbox_1000\": [260, 545, 950, 970]}\n    }\n  ],\n  \"shared_parts\": [],\n  \"front_conflicts\": [],\n  \"uncertainties\": [\n    \"The table's attachment to the base side and the number of table legs are not explicit in the drawings; only one leg is clearly visible in the side view.\",\n    \"The backrest is assumed to be fixed to the base carcass rather than a separate assembly; the joint is not explicitly drawn.\",\n    \"The three drawer fronts are inferred from shape and position; no pulls or slides are visible.\"\n  ]\n}",
+      "parsed_response": {
+        "summary": "A fixed built-in banquette with a tall slatted backrest, a base with three drawer fronts, and an attached side table on a single pedestal leg.",
+        "blocks": [
+          {
+            "id": "B01",
+            "name": "base storage bench with three drawers",
+            "contains": "Lower carcass with a seat deck on top and three side-by-side drawer fronts in the base band, plus the plinth.",
+            "reason": "The three drawer fronts sit side by side in one carcass across the width, so this is one cabinet block at the three-position limit. The seat deck and plinth belong to the same carcass. The drawer count is taken from the fallible front reference and matches the front elevation.",
+            "front_ids": [
+              "F01",
+              "F02",
+              "F03"
+            ],
+            "view_ids": [
+              "p1-view-004",
+              "p1-view-001",
+              "p1-view-005"
+            ],
+            "region": {
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                95,
+                770,
+                700,
+                860
+              ]
+            }
+          },
+          {
+            "id": "B02",
+            "name": "tall ribbed backrest panel",
+            "contains": "Full-height fixed backrest with vertical slats and decorative inset panels, rising from the rear of the base.",
+            "reason": "This is a separate tall fixed panel, not a cabinet, so it is kept as its own assembly. It is assumed to be fixed to the rear of the base B01 rather than a separate carcass. Its full height and width make it a practical separate workshop unit.",
+            "front_ids": [],
+            "view_ids": [
+              "p1-view-004",
+              "p1-view-005",
+              "p1-view-006"
+            ],
+            "region": {
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                90,
+                70,
+                705,
+                780
+              ]
+            }
+          },
+          {
+            "id": "B03",
+            "name": "fixed side table top with pedestal leg",
+            "contains": "Flat table top projecting from the right side of the bench, with one visible pedestal leg beneath it.",
+            "reason": "The table top is a worktop-type surface and is listed separately, not inside a cabinet block. It serves only this bench, so it is its own block. The attachment to the base side is not explicit in the drawings and is treated as an assumption.",
+            "front_ids": [],
+            "view_ids": [
+              "p1-view-003",
+              "p1-view-005",
+              "p1-view-001"
+            ],
+            "region": {
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                260,
+                545,
+                950,
+                970
+              ]
+            }
+          }
+        ],
+        "shared_parts": [],
+        "front_conflicts": [],
+        "uncertainties": [
+          "The table's attachment to the base side and the number of table legs are not explicit in the drawings; only one leg is clearly visible in the side view.",
+          "The backrest is assumed to be fixed to the base carcass rather than a separate assembly; the joint is not explicitly drawn.",
+          "The three drawer fronts are inferred from shape and position; no pulls or slides are visible."
+        ]
+      },
+      "changed_request_fields_vs_same_variant_previous": [
+        "messages"
+      ],
+      "image_and_ocr_content_unchanged": true
+    }
+  },
+  "v2": {
+    "front_count": {
+      "prompt_version": "estimation_front_count_v6_2_r05",
+      "prompt_sha256": "a929fe8ce72fd7cf75c9c100f2ce48c1e1ab2a4da8cb9ce44a9ac16545e0affd",
+      "elapsed_seconds": 15.097,
+      "front_status": null,
+      "front_prompt_version": null,
+      "front_witness_sha256": null,
+      "original_witness": "/private/tmp/cb-front-v2-lev1-repeat-02.json",
+      "original_witness_sha256": "c908e6e2db7d88a1214fd667451224a8e821a052499f723c4e534d2c6ab94400",
+      "original_status": "failed",
+      "original_error": "ValueError: invalid island classification",
+      "request_sha256": "d614f122aa2e5a7ed94d02937344afe5fb77e8e72f24e5dd5df38b7ce00e3b40",
+      "model": "claude-haiku-5-5",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 14777,
+        "output_tokens": 2754,
+        "output_tokens_details": {
+          "thinking_tokens": 1725
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "response_text": "```json\n{\n  \"island_types\": [\n    {\"view_id\": \"p1-view-001\", \"type\": \"axonometric\"},\n    {\"view_id\": \"p1-view-002\", \"type\": \"top\"},\n    {\"view_id\": \"p1-view-003\", \"type\": \"axonometric\"},\n    {\"view_id\": \"p1-view-004\", \"type\": \"front\"},\n    {\"view_id\": \"p1-view-005\", \"type\": \"side\"},\n    {\"view_id\": \"p1-view-006\", \"type\": \"rear\"}\n  ],\n  \"front_groups\": [\n    {\n      \"location\": \"Lower seat base, front face, three side-by-side fronts\",\n      \"type\": \"drawer\",\n      \"count\": 3,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-004\", \"p1-view-001\"],\n      \"uncertainty\": \"Three shallow, wide fronts in the base are consistently shown in the front elevation and the axonometric view. No gaps or hinges indicate doors or lift-up fronts.\",\n      \"fronts\": [\n        {\"id\": \"F01\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [105, 781, 295, 844]},\n        {\"id\": \"F02\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [298, 781, 484, 844]},\n        {\"id\": \"F03\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [486, 781, 674, 844]}\n      ]\n    }\n  ],\n  \"excluded_surfaces\": [\n    {\"id\": \"X01\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [93, 206, 686, 778], \"reason\": \"Fixed slatted backrest panel with decorative ribs and inset slots; not an operating front\"}\n  ],\n  \"tabletop_supports\": [\n    {\n      \"id\": \"T01\",\n      \"location\": \"Freestanding-side table top projecting from the seat base\",\n      \"leg_count\": 2,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\", \"p1-view-006\", \"p1-view-005\", \"p1-view-001\"],\n      \"support_scheme\": \"Two observed legs under the free projecting side of the table top in the axonometric view. The side view shows one leg in profile, and the rear view shows two vertical supports. The table's other side attaches to the seat base carcass; this attachment is assumed from the drawings and not shown as a distinct connection.\",\n      \"uncertainty\": \"The leg positions in the rear view are read from the table support zone and may partly overlap the seat base. The count of two is supported by the axonometric view.\",\n      \"legs\": [\n        {\"id\": \"L01\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [522, 842, 556, 946]},\n        {\"id\": \"L02\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [767, 754, 804, 839]}\n      ]\n    }\n  ],\n  \"totals\": {\n    \"drawers\": 3,\n    \"hinged_doors\": 0,\n    \"lift_up_fronts\": 0,\n    \"unresolved_fronts\": 0,\n    \"total_fronts\": 3\n  }\n}\n```",
+      "parsed_response": {
+        "island_types": [
+          {
+            "view_id": "p1-view-001",
+            "type": "axonometric"
+          },
+          {
+            "view_id": "p1-view-002",
+            "type": "top"
+          },
+          {
+            "view_id": "p1-view-003",
+            "type": "axonometric"
+          },
+          {
+            "view_id": "p1-view-004",
+            "type": "front"
+          },
+          {
+            "view_id": "p1-view-005",
+            "type": "side"
+          },
+          {
+            "view_id": "p1-view-006",
+            "type": "rear"
+          }
+        ],
+        "front_groups": [
+          {
+            "location": "Lower seat base, front face, three side-by-side fronts",
+            "type": "drawer",
+            "count": 3,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-004",
+              "p1-view-001"
+            ],
+            "uncertainty": "Three shallow, wide fronts in the base are consistently shown in the front elevation and the axonometric view. No gaps or hinges indicate doors or lift-up fronts.",
+            "fronts": [
+              {
+                "id": "F01",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  105,
+                  781,
+                  295,
+                  844
+                ]
+              },
+              {
+                "id": "F02",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  298,
+                  781,
+                  484,
+                  844
+                ]
+              },
+              {
+                "id": "F03",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  486,
+                  781,
+                  674,
+                  844
+                ]
+              }
+            ]
+          }
+        ],
+        "excluded_surfaces": [
+          {
+            "id": "X01",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              93,
+              206,
+              686,
+              778
+            ],
+            "reason": "Fixed slatted backrest panel with decorative ribs and inset slots; not an operating front"
+          }
+        ],
+        "tabletop_supports": [
+          {
+            "id": "T01",
+            "location": "Freestanding-side table top projecting from the seat base",
+            "leg_count": 2,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-003",
+              "p1-view-006",
+              "p1-view-005",
+              "p1-view-001"
+            ],
+            "support_scheme": "Two observed legs under the free projecting side of the table top in the axonometric view. The side view shows one leg in profile, and the rear view shows two vertical supports. The table's other side attaches to the seat base carcass; this attachment is assumed from the drawings and not shown as a distinct connection.",
+            "uncertainty": "The leg positions in the rear view are read from the table support zone and may partly overlap the seat base. The count of two is supported by the axonometric view.",
+            "legs": [
+              {
+                "id": "L01",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  522,
+                  842,
+                  556,
+                  946
+                ]
+              },
+              {
+                "id": "L02",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  767,
+                  754,
+                  804,
+                  839
+                ]
+              }
+            ]
+          }
+        ],
+        "totals": {
+          "drawers": 3,
+          "hinged_doors": 0,
+          "lift_up_fronts": 0,
+          "unresolved_fronts": 0,
+          "total_fronts": 3
+        }
+      },
+      "changed_request_fields_vs_same_variant_previous": []
+    },
+    "assembly_plan": {
+      "prompt_version": "CB Planner V4",
+      "prompt_sha256": "3f6ae0ff17c071066ba1ea46bfcf954949c4d1cc370ab6ecad46b8767de4a749",
+      "elapsed_seconds": 10.993,
+      "front_status": "failed",
+      "front_prompt_version": "estimation_front_count_v6_2_r05",
+      "front_witness_sha256": "c908e6e2db7d88a1214fd667451224a8e821a052499f723c4e534d2c6ab94400",
+      "original_witness": "/private/tmp/cb-planner-v4-lev1-front-v2-repeat-02.json",
+      "original_witness_sha256": "0ccc4c8786def77630914a1d60284af4c200973835d365855e4b4fb679ec938d",
+      "original_status": "assembly_plan_requires_review",
+      "original_error": null,
+      "request_sha256": "a4e1cf358b4723471b6f66fda712d032e1a4b9fdf3cd090e0c789ef35ff098ad",
+      "model": "claude-haiku-5-5",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 14158,
+        "output_tokens": 2009,
+        "output_tokens_details": {
+          "thinking_tokens": 1148
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "response_text": "{\"summary\": \"A built-in banquette unit with a slatted backrest, a seat base carrying three drawer fronts, and an attached freestanding-side table top on two legs.\", \"blocks\": [{\"id\": \"B01\", \"name\": \"Seat base with drawers\", \"contains\": \"Lower seat carcass with the wood seat top, three side-by-side drawer fronts and the plinth.\", \"reason\": \"The three drawer fronts share one low carcass across the width of the base, so they form one cabinet block within the three-position allowance. The drawers are not stacked, so the base is treated as one horizontal section.\", \"front_ids\": [\"F01\", \"F02\", \"F03\"], \"view_ids\": [\"p1-view-004\", \"p1-view-005\", \"p1-view-006\", \"p1-view-001\"], \"region\": {\"view_id\": \"p1-view-004\", \"bbox_1000\": [90, 770, 690, 880]}}, {\"id\": \"B02\", \"name\": \"Fixed slatted backrest panel\", \"contains\": \"Tall fixed backrest panel with vertical slats, inset slots and the top rail, rising from the rear of the seat base.\", \"reason\": \"The backrest is a fixed decorative surface, not an operating cabinet, so it is kept as a separate non-cabinet assembly. It is assumed to be fixed to the base carcass; the joint is not shown as a distinct connection.\", \"front_ids\": [], \"view_ids\": [\"p1-view-004\", \"p1-view-005\", \"p1-view-006\", \"p1-view-001\"], \"region\": {\"view_id\": \"p1-view-004\", \"bbox_1000\": [93, 206, 686, 778]}}, {\"id\": \"B03\", \"name\": \"Freestanding-side table top with two legs\", \"contains\": \"Projecting table top with its support legs on the free side away from the seat base.\", \"reason\": \"The table top is a separate worktop-type element serving only the seating area, so it is listed on its own. Its attachment to the seat base is assumed from the drawings.\", \"front_ids\": [], \"view_ids\": [\"p1-view-003\", \"p1-view-006\", \"p1-view-005\", \"p1-view-001\"], \"region\": {\"view_id\": \"p1-view-003\", \"bbox_1000\": [260, 540, 930, 960]}}], \"shared_parts\": [], \"front_conflicts\": [], \"uncertainties\": [\"The table top is assumed to attach to the seat base carcass at its other side; no distinct connection is shown.\", \"The backrest is assumed to be fixed to the seat base; the exact joint is not shown.\", \"The two table legs in the rear view may partly overlap the seat base, so their exact positions are approximate.\"]}",
+      "parsed_response": {
+        "summary": "A built-in banquette unit with a slatted backrest, a seat base carrying three drawer fronts, and an attached freestanding-side table top on two legs.",
+        "blocks": [
+          {
+            "id": "B01",
+            "name": "Seat base with drawers",
+            "contains": "Lower seat carcass with the wood seat top, three side-by-side drawer fronts and the plinth.",
+            "reason": "The three drawer fronts share one low carcass across the width of the base, so they form one cabinet block within the three-position allowance. The drawers are not stacked, so the base is treated as one horizontal section.",
+            "front_ids": [
+              "F01",
+              "F02",
+              "F03"
+            ],
+            "view_ids": [
+              "p1-view-004",
+              "p1-view-005",
+              "p1-view-006",
+              "p1-view-001"
+            ],
+            "region": {
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                90,
+                770,
+                690,
+                880
+              ]
+            }
+          },
+          {
+            "id": "B02",
+            "name": "Fixed slatted backrest panel",
+            "contains": "Tall fixed backrest panel with vertical slats, inset slots and the top rail, rising from the rear of the seat base.",
+            "reason": "The backrest is a fixed decorative surface, not an operating cabinet, so it is kept as a separate non-cabinet assembly. It is assumed to be fixed to the base carcass; the joint is not shown as a distinct connection.",
+            "front_ids": [],
+            "view_ids": [
+              "p1-view-004",
+              "p1-view-005",
+              "p1-view-006",
+              "p1-view-001"
+            ],
+            "region": {
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                93,
+                206,
+                686,
+                778
+              ]
+            }
+          },
+          {
+            "id": "B03",
+            "name": "Freestanding-side table top with two legs",
+            "contains": "Projecting table top with its support legs on the free side away from the seat base.",
+            "reason": "The table top is a separate worktop-type element serving only the seating area, so it is listed on its own. Its attachment to the seat base is assumed from the drawings.",
+            "front_ids": [],
+            "view_ids": [
+              "p1-view-003",
+              "p1-view-006",
+              "p1-view-005",
+              "p1-view-001"
+            ],
+            "region": {
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                260,
+                540,
+                930,
+                960
+              ]
+            }
+          }
+        ],
+        "shared_parts": [],
+        "front_conflicts": [],
+        "uncertainties": [
+          "The table top is assumed to attach to the seat base carcass at its other side; no distinct connection is shown.",
+          "The backrest is assumed to be fixed to the seat base; the exact joint is not shown.",
+          "The two table legs in the rear view may partly overlap the seat base, so their exact positions are approximate."
+        ]
+      },
+      "changed_request_fields_vs_same_variant_previous": [
+        "messages"
+      ],
+      "image_and_ocr_content_unchanged": true
+    }
+  },
+  "review": {
+    "classification": "simple deterministic three-versus-two dependency not reproduced; causal frequency effect inconclusive",
+    "results": [
+      {
+        "variant": "Front V1 initial + Planner V4",
+        "blocks": 3,
+        "planner_leg_description": 1
+      },
+      {
+        "variant": "Front V2 initial + Planner V4",
+        "blocks": 2,
+        "planner_leg_description": 2
+      },
+      {
+        "variant": "Front V1 repeat + Planner V4",
+        "blocks": 3,
+        "planner_leg_description": 1
+      },
+      {
+        "variant": "Front V2 repeat + Planner V4",
+        "blocks": 3,
+        "planner_leg_description": 2
+      }
+    ],
+    "observations": [
+      "Both repeated Front requests exactly match their respective earlier requests, including prompt, image/OCR content and settings",
+      "Planner V4 system/settings/images unchanged, only new saved Front response context differs",
+      "Both repeated Front outputs fail original island enum validation; no silent repair",
+      "Both repeated Planner outputs pass structural validation",
+      "Two distinct legs recognized by Front V2 twice and retained in Planner both times"
+    ],
+    "limits": [
+      "Small sample, no estimate of failure probability or statistical causal conclusion",
+      "Whole Front responses vary; the isolated effect of tabletop_supports was not tested",
+      "No Lev2 Front V2 or live production validation"
+    ],
+    "decision": "Keep candidate available explicitly; r03 remains default and protected. Recommend next resolving the exact island enum contract before promoting V2; do not remove the support rule based on the non-reproduced regrouping hypothesis."
+  }
+}

@@ -26,8 +26,10 @@ def front():
 
 def test_rulebook_preserves_front_identity_and_versions_planner():
     assert agent.CB_RULEBOOK['front']['name'] == 'CB Front V1'
+    assert agent.CB_RULEBOOK['front']['candidate']['name'] == 'CB Front V2'
     assert agent.CB_RULEBOOK['planner']['name'] == 'CB Planner V4'
-    assert sha256(agent.FRONT_COUNT_PROMPT_PATH.read_text().strip().encode()).hexdigest() == '81b49dc8d2dd4c33a7459d824178ea8601ba241370a401e530bed2748dab0bb0'
+    protected_front = agent.FRONT_COUNT_PROMPT_PATH.with_name('estimation_front_count_v6_2.md')
+    assert sha256(protected_front.read_text().strip().encode()).hexdigest() == '81b49dc8d2dd4c33a7459d824178ea8601ba241370a401e530bed2748dab0bb0'
     prompt = agent.PLANNER_PROMPT_PATH.read_text()
     assert sha256(prompt.strip().encode()).hexdigest() == '3f6ae0ff17c071066ba1ea46bfcf954949c4d1cc370ab6ecad46b8767de4a749'
     assert prompt.startswith('CB Planner V4')

@@ -18,7 +18,37 @@ protected. Pre-existing TODO changes belong to the owner.
 
 ### Current V6.2 boundary and results, 2026-11-05
 
-Latest diagnostic: **CB Planner V4**, owner-approved priority for full-height
+Current Front extension: **CB Front V2** (technical r05, not a renumbered r04).
+Owner requested physical legs and tabletop support schemes in the existing
+Front pass. Preserve the accepted r03 file/hash/tag, unchanged front taxonomy
+and totals. New tabletop_supports records leg_count/basis, scheme, uncertainty,
+owned views and individual leg boxes. All-view counting precedes support-scheme
+inference; typical one/two/four-leg arrangements are not hard requirements.
+Connections must be distinguished as observed or assumed. No hard width cutoff,
+invented fasteners or boxes for hidden inferred legs. Prompt cb_front_v2.md,
+SHA256 a929fe8ce72fd7cf75c9c100f2ce48c1e1ab2a4da8cb9ce44a9ac16545e0affd.
+One Front call, then unchanged Planner V4 on saved output for the Lev1 diagnostic;
+no new production stage. 159 focused tests pass before live probe.
+Active results/acceptance remain in notes/TODO.md, not a promoted checkpoint.
+Live Lev1: Front V2 sees two legs and three drawers (16.227 s), but original
+validation rejects snake_case island enums. Raw data preserved, diagnostic
+overlay uses spelling-only aliases with FORMAT WARNING. Planner V4 retains
+two legs (11.991 s) but initially merges the base and screen into two blocks.
+Owner-requested repeat: old V1 + unchanged Planner yields three blocks / one
+leg (9.456 + 14.087 s); V2 + same Planner yields three blocks / two legs
+(15.097 + 10.993 s). Thus the deterministic grouping dependency did not recur.
+Both repeated Front requests are byte-equivalent as JSON data to their prior
+same-variant requests. Only saved Front response context changes in Planner.
+Both repeated Front enums fail original validation; Planner contracts pass.
+No isolated causal effect or production reliability inferred. V2 remains an
+explicit opt-in (--count-fronts --front-supports), with default V1/r03 retained.
+Full outputs/comparison: notes/evidence/cb-front-v2-2026-11-05/.
+Next recommended acceptance prerequisite is exact island enum output, not
+removal of the support rule. No prompt retries, hidden fixes or deployment.
+Final verification: 163 focused tests pass; original failures remain in fixtures,
+default r03 and prior Planner prompt hashes preserved; git diff --check passes.
+
+Latest Planner diagnostic: **CB Planner V4**, owner-approved priority for full-height
 blocks exactly one section wide, identified before horizontal grouping.
 Keep stacked doors/drawers/shelves/appliance openings together where a continuous
 carcass is plausible; preserve explicit boundaries and separately hanging units.

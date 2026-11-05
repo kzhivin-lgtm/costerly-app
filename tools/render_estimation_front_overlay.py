@@ -12,7 +12,7 @@ from agents.estimation_understanding_agent import validate_front_count, ISLAND_T
 from agents.estimation_v4_1_material_facts_agent import _json_object
 
 COLORS = {'hinged': '#2563eb', 'drawer': '#059669', 'lift_up': '#d97706',
-          'unresolved': '#9333ea', 'excluded': '#e11d48'}
+          'unresolved': '#9333ea', 'excluded': '#e11d48', 'leg': '#0891b2'}
 
 
 def decode_evidence_images(request):
@@ -110,14 +110,21 @@ def render_overlays(witness_path, prefix, *, allow_label_aliases=False):
                 normalizations.append({'view_id': item.get('view_id'),
                     'from': original, 'to': item['type']})
     known = {r['view_id'] for _, meta in pages.values() for r in meta['view_regions']}
-    validate_front_count(parsed, known, require_annotations=True)
     revision = record.get('prompt_version', witness.get('prompt_version', 'unknown revision'))
+    has_supports = revision == 'estimation_front_count_v6_2_r05' or 'tabletop_supports' in parsed
+    validate_front_count(parsed, known, require_annotations=True, require_supports=has_supports)
     display_revision = revision + (' | FORMAT WARNING' if normalizations else '')
     rows = [{**front, 'type': group['type'], 'location': group['location']}
             for group in parsed['front_groups'] for front in group['fronts']]
     rows += [{**item, 'type': 'excluded'} for item in parsed['excluded_surfaces']]
+    rows += [{**leg, 'type': 'leg', 'location': support['location'], 'support_id': support['id']}
+             for support in parsed.get('tabletop_supports', []) for leg in support['legs']]
+    totals = dict(parsed['totals'])
+    if has_supports:
+        counts = [s['leg_count'] for s in parsed['tabletop_supports']]
+        totals['legs'] = None if any(n is None for n in counts) else sum(counts)
     return render_rows(pages, details, rows, witness_path, prefix, revision,
-        parsed['totals'], normalizations=normalizations, display_revision=display_revision)
+        totals, normalizations=normalizations, display_revision=display_revision)
 
 
 def planner_banner(width, revision, totals):
@@ -138,7 +145,7 @@ def render_planner_overlays(witness_path, prefix):
     context = json.loads(record['request']['messages'][0]['content'][-1]['text'])
     parsed = validate_assembly_plan(_json_object(record['response_text']), known,
         planner_front_ids(context['fallible_front_reference'], known))
-    palette = list(COLORS)
+    palette = [kind for kind in COLORS if kind != 'leg']
     rows = [{'id': item['id'], 'name': item['name'], **item['region'],
         'type': palette[i % len(palette)], 'kind': 'block' if item in parsed['blocks'] else 'shared_part'}
         for i, item in enumerate(parsed['blocks'] + parsed['shared_parts'])]

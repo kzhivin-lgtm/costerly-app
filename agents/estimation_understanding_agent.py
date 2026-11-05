@@ -16,11 +16,14 @@ PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_understanding_v6_2
 ISLAND_TYPES_PROMPT_PATH = PROMPT_PATH.with_name("estimation_island_types_v6_2.md")
 FRONT_COUNT_PROMPT_PATH = PROMPT_PATH.with_name("estimation_front_count_v6_2.md")
 FRONT_COUNT_PROMPT_VERSION = "estimation_front_count_v6_2_r03"
+FRONT_SUPPORTS_PROMPT_PATH = PROMPT_PATH.with_name("cb_front_v2.md")
+FRONT_SUPPORTS_PROMPT_VERSION = "estimation_front_count_v6_2_r05"
 PLANNER_PROMPT_PATH = PROMPT_PATH.with_name("cb_planner_v4.md")
 PLANNER_PROMPT_VERSION = "CB Planner V4"
 # One rulebook, two consumers. Existing Front technical identity stays immutable.
 CB_RULEBOOK = {
-    'front': {'name': 'CB Front V1', 'version': FRONT_COUNT_PROMPT_VERSION, 'path': FRONT_COUNT_PROMPT_PATH},
+    'front': {'name': 'CB Front V1', 'version': FRONT_COUNT_PROMPT_VERSION, 'path': FRONT_COUNT_PROMPT_PATH,
+              'candidate': {'name': 'CB Front V2', 'version': FRONT_SUPPORTS_PROMPT_VERSION, 'path': FRONT_SUPPORTS_PROMPT_PATH}},
     'planner': {'name': PLANNER_PROMPT_VERSION, 'version': PLANNER_PROMPT_VERSION, 'path': PLANNER_PROMPT_PATH},
 }
 
@@ -157,11 +160,15 @@ def cabinet_module_policy():
     return prompt[start:end], prompt[:start] + prompt[end:]
 
 
-def validate_front_count(parsed, known, *, require_annotations=False):
+def validate_front_count(parsed, known, *, require_annotations=False, require_supports=False):
     """Check references and arithmetic, not visual accuracy. Never repair counts."""
     fields = {'island_types', 'front_groups', 'totals'}
     if require_annotations:
         fields.add('excluded_surfaces')
+    if require_supports:
+        if not require_annotations:
+            raise ValueError('support interpretation requires annotations')
+        fields.add('tabletop_supports')
     if not isinstance(parsed, dict) or set(parsed) != fields:
         raise ValueError('invalid front-count fields')
     validate_island_types(parsed['island_types'], known)
@@ -242,6 +249,45 @@ def validate_front_count(parsed, known, *, require_annotations=False):
             raise ValueError('bounded excluded surfaces required')
         for item in excluded:
             annotation(item, excluded=True)
+        if require_supports:
+            supports = parsed['tabletop_supports']
+            if not isinstance(supports, list) or len(supports) > 200:
+                raise ValueError('bounded tabletop supports required')
+            for support in supports:
+                if not isinstance(support, dict) or set(support) != {
+                        'id', 'location', 'leg_count', 'count_basis', 'view_ids',
+                        'support_scheme', 'uncertainty', 'legs'}:
+                    raise ValueError('invalid tabletop support fields')
+                sid = support['id']
+                if not isinstance(sid, str) or not sid.strip() or len(sid) > 40 or sid in seen:
+                    raise ValueError('invalid/duplicate support ID')
+                seen.add(sid)
+                for key in ('location', 'support_scheme', 'uncertainty'):
+                    value = support[key]
+                    if not isinstance(value, str) or len(value) > 2500 or (key != 'uncertainty' and not value.strip()):
+                        raise ValueError('bounded support description required')
+                refs = support['view_ids']
+                if (not isinstance(refs, list) or not refs or
+                        any(not isinstance(v, str) or v not in known for v in refs) or len(set(refs)) != len(refs)):
+                    raise ValueError('support needs unique object-owned views')
+                count, basis = support['leg_count'], support['count_basis']
+                if count is not None and (type(count) is not int or count < 0 or count > 200):
+                    raise ValueError('bounded nonnegative leg count or null required')
+                if not isinstance(basis, str) or basis not in {'clear', 'estimated', 'undetermined'}:
+                    raise ValueError('invalid support count basis')
+                if (count is None) != (basis == 'undetermined'):
+                    raise ValueError('null leg count requires undetermined basis')
+                if basis != 'clear' and not support['uncertainty'].strip():
+                    raise ValueError('uncertain support count needs explanation')
+                legs = support['legs']
+                if not isinstance(legs, list) or len(legs) > 200:
+                    raise ValueError('bounded leg annotations required')
+                if count is not None and (len(legs) > count or (basis == 'clear' and len(legs) != count)):
+                    raise ValueError('leg annotations disagree with count')
+                for leg in legs:
+                    annotation(leg)
+                    if leg['view_id'] not in refs:
+                        raise ValueError('leg annotation outside support views')
     return parsed
 
 
@@ -353,7 +399,7 @@ def run_assembly_plan(*, inputs, page_bytes, front_result, front_status, record=
         'input_id': manifests[0]['input_id'], 'assembly_plan': parsed}
 
 
-def run_front_count(*, inputs, page_bytes, record=None):
+def run_front_count(*, inputs, page_bytes, record=None, include_supports=False):
     """Approved single-object prompt experiment, not an added production stage."""
     if len(inputs) != 1:
         raise ValueError('front-count experiment requires exactly one object')
@@ -361,8 +407,10 @@ def run_front_count(*, inputs, page_bytes, record=None):
     known = {v['view_id'] for v in manifests[0]['known_views']}
     if not known:
         raise ValueError('front-count experiment requires Detection-owned islands')
+    prompt_path = FRONT_SUPPORTS_PROMPT_PATH if include_supports else FRONT_COUNT_PROMPT_PATH
+    prompt_version = FRONT_SUPPORTS_PROMPT_VERSION if include_supports else FRONT_COUNT_PROMPT_VERSION
     request = {'model': MODEL, 'max_tokens': 10000, 'output_config': {'effort': 'low'},
-        'system': FRONT_COUNT_PROMPT_PATH.read_text().strip(),
+        'system': prompt_path.read_text().strip(),
         'messages': [{'role': 'user', 'content': content}]}
     response = _create_message_with_hard_timeout(
         get_anthropic_client().with_options(timeout=60, max_retries=0),
@@ -372,9 +420,9 @@ def run_front_count(*, inputs, page_bytes, record=None):
     if getattr(response, 'stop_reason', None) != 'end_turn':
         raise ValueError('front-count response did not finish normally')
     parsed = validate_front_count(_json_object(extract_text_from_claude_response(response)), known,
-                                  require_annotations=True)
+                                  require_annotations=True, require_supports=include_supports)
     return {'version': VERSION, 'status': 'front_count_requires_review',
-            'prompt_version': FRONT_COUNT_PROMPT_VERSION,
+            'prompt_version': prompt_version,
             'prompt_sha256': sha256(request['system'].encode()).hexdigest(),
             'input_id': manifests[0]['input_id'], 'front_count': parsed}
 

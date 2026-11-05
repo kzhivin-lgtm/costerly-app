@@ -701,6 +701,57 @@ Planner prompt hash, one-call/source preservation, ownership/conflict checks,
 invalid boxes/references, truncation recording and non-mutating overlay export.
 Full suite/live product integration were not tested. Structural tests do not
 override the two semantic failures recorded above.
+PENDING promotion, P0, OWNER REQUEST, CB Front V2 supports, 2026-11-05, same 3.17.4.5:
+Add physical legs and tabletop support interpretation to the existing Front
+consumer, not a third stage. Consider four legs, two plus attachment, a central
+pedestal or a narrow top with central leg/attachment as contextual possibilities,
+not mandatory counts. No hard width cutoff: a broad pedestal can support a wider
+top. Distinguish observed connection from assumed attachment. Compare all views
+before interpreting one visible leg as a single-leg design; no forced Lev1 count.
+Implementation candidate CB Front V2 / estimation_front_count_v6_2_r05;
+original r03 file/hash and archived r04 remain immutable. No production route
+change. English prompt agents/prompts/cb_front_v2.md. Add tabletop_supports,
+separate from unchanged front totals: physical leg count/basis, scheme, ambiguity,
+owned views and individual L-ID boxes. No boxes for hidden inferred legs.
+Legacy validators remain explicit; no silent output repair. Shared overlay
+renders leg boxes and separate display totals; Planner palette stays unchanged.
+Bounded verification: one Lev1 Front call, then unchanged Planner V4 consuming
+that saved result. Pass requires source-supported two distinct legs, preserved
+three drawer fronts, correct references and downstream retention. Same images,
+Haiku settings and call count per stage; do not inject the sample benchmark.
+159 focused tests pass before live probe. Source images/Front checkpoint protected.
+First probe: Front V2 16.227 s, 14777 input / 2774 output tokens; three drawers,
+two distinct leg boxes on island 003, explicitly assumed attachment. Original
+validation FAILS on snake_case island enums. Diagnostic overlay only expands
+spelling on a copy with FORMAT WARNING; raw witness and counts stay unchanged.
+Unchanged Planner V4, 11.991 s, 14163 / 2060 tokens: two legs retained, but base
+and screen merged into one block, giving TWO rather than prior THREE assemblies.
+Only system differs in the Front request; only saved Front context differs in
+the Planner request (images/OCR/settings/system unchanged). This does not prove
+the added support field caused regrouping: other Front text changed as well.
+No promotion: default Front restored to exact V1/r03; V2 available only through
+--count-fronts --front-supports, with explicit version/hash recording. Planner
+V4 unchanged. Evidence: notes/evidence/cb-front-v2-2026-11-05/.
+USER REQUEST repeat comparison: run old Front V1 then same Planner V4; if three
+blocks recur, run Front V2 then same Planner. Record every failure, not selected
+successes. Repeated 3-versus-2 would support, not establish, a causal dependency.
+Repeat completed: V1 Front 9.456 s + Planner 14.087 s gives THREE blocks / one
+described leg. V2 Front 15.097 s + Planner 10.993 s gives THREE blocks / two legs.
+Both repeated Front requests exactly match their earlier same-variant requests;
+Planner system/settings/images unchanged. Only new saved Front responses vary.
+Sequence is V1 3, V2 2, V1 3, V2 3 blocks. Simple deterministic 3-to-2 dependency
+is not reproduced. A probability effect remains unknown at this sample size.
+V2 identifies two legs twice and Planner retains them twice. Both repeated
+Front outputs still fail enum validation; both Planner contracts pass.
+No repairs or additional retries. Durable comparison:
+notes/evidence/cb-front-v2-2026-11-05/lev1-repeat-comparison.json.
+Recommendation: retain support candidate; next resolve exact island enum output
+contract before promotion. Do not remove the support rule based on this
+non-reproduced grouping hypothesis. No Lev2 V2/production acceptance.
+Final verification: 163 focused tests pass, including original Front rejections,
+support/reference validation, unchanged default r03, exact-box overlay and both
+repeat outcomes. git diff --check passes. No full production-cycle verification.
+
 PENDING owner review, P0, CB Planner V4, 2026-11-05, same 3.17.4.5:
 Prefer full-height narrow cabinet assemblies exactly one section wide (one
 door compartment or drawer stack), keeping vertically stacked doors, drawers,
