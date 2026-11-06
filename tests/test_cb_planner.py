@@ -63,6 +63,35 @@ def test_rulebook_preserves_front_identity_and_versions_planner():
     assert sha256(previous.strip().encode()).hexdigest() == 'd5e1b0de71d1053f89ba97cfeecc2352ac4ee126b54f9e8b245ce8df733c7335'
 
 
+def test_v7_candidate_full_depth_and_whole_carcass_without_recounting():
+    prompt = agent.PLANNER_PROMPT_PATH.with_name('cb_planner_v7.md').read_text()
+    assert prompt.startswith('CB Planner V7')
+    assert sha256(prompt.strip().encode()).hexdigest() == 'd3271d697f5398e699511d8a261f3f8734bf744835b52b894188d37d819cd848'
+    assert 'entire width and depth' in prompt
+    assert 'reaches the wall at the' in prompt
+    assert 'shallower wall cabinets or shelving above' in prompt
+    assert 'not a hard classification threshold' in prompt
+    assert 'unless explicit construction' in prompt
+    assert 'Do not extend a worktop through full-height cabinets' in prompt
+    assert 'including its corner and both wings' in prompt
+    assert 'the complete base carcass' in prompt
+    assert 'without silently inventing or recounting drawer fronts' in prompt
+    assert 'section through an already represented assembly' in prompt
+    assert 'NEVER group more than TWO tall door leaves' in prompt
+    assert 'choose a top-view or axonometric island' in prompt
+    assert agent.PLANNER_PROMPT_VERSION == 'CB Planner V4'
+    evidence = agent.PLANNER_PROMPT_PATH.parents[2] / 'notes/evidence/hsl07-v62-2026-11-05/n68-planner-v5-v6-evidence.json'
+    saved = json.loads(evidence.read_text())
+    v6 = next(r for r in saved['runs'] if r['prompt_version'] == 'CB Planner V6')
+    drawer_block = next(b for b in v6['parsed']['blocks'] if b['id'] == 'B06')
+    assert drawer_block['front_ids'] == ['F12', 'F13', 'F14', 'F15']
+    benchmark = json.loads(evidence.with_name('n68-owner-benchmark-2026-11-06.json').read_text())
+    assert benchmark['expected']['drawers'] == 6
+    assert benchmark['expected']['hinged_doors'] == 8
+    assert benchmark['expected']['lift_up_fronts'] is None
+    assert benchmark['expected']['drawers'] - len(drawer_block['front_ids']) == 2
+
+
 def test_planner_one_call_retains_images_and_fallible_front_without_repair(monkeypatch):
     row, pages, _ = setup(monkeypatch)
     content, _ = agent.prepare_content([row], pages)

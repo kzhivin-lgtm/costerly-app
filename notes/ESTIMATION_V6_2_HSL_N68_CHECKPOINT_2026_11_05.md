@@ -5,6 +5,14 @@ Owner requested full checkpoint preservation after reviewing the N68 V6 overlay.
 This is a reproducible research checkpoint, NOT production or semantic acceptance.
 The existing authoritative backlog remains notes/TODO.md.
 
+Continuation, 2026-11-06: owner corrected N68 from four to SIX drawers,
+with eight hinged doors unchanged and lift-ups still unaccepted. The historical
+counts below describe the checkpoint, not the new benchmark. Two lower drawers
+are absent already in Front; Planner box expansion alone is insufficient.
+CB Planner V7 is a new unrun coverage/localization candidate, not a promoted
+default. See TODO and n68-owner-benchmark-2026-11-06.json in the evidence folder.
+The earlier crossed-region/column omission claim needs identity revalidation.
+
 ## Identity and protected state
 
 - Worktree: /private/tmp/costerly-estimation-v425

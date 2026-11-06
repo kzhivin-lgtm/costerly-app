@@ -1,0 +1,23 @@
+{
+  "work_number": "3.17.4.5",
+  "source": "explicit owner correction, 2026-11-06",
+  "run_id": "run_99b433940dcc4fd9abbe0587dc56fb12",
+  "object_id": "object-005",
+  "sheet": "N68",
+  "page_number": 7,
+  "expected": {
+    "hinged_doors": 8,
+    "drawers": 6,
+    "lift_up_fronts": null
+  },
+  "correction": "Six drawers, not the previously owner-confirmed four. Two lower drawer fronts were omitted.",
+  "actual_saved_front": {
+    "drawers": 4,
+    "ids": ["F12", "F13", "F14", "F15"],
+    "view_id": "p7-view-004"
+  },
+  "diagnosis": "The omission is already in Front, which describes two columns of two rows and treats lower bands as possibly a plinth or a larger front. Planner assigns those four IDs to B06. Extending B06 alone cannot repair the Front count or hardware demand.",
+  "historical_responses_modified": false,
+  "new_model_run": false,
+  "lift_up_status": "Five inferred lift-ups remain unaccepted, null is not zero."
+}

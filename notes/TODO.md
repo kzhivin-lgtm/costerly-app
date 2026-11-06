@@ -745,6 +745,43 @@ Verification: 166 focused tests pass, including selected V2 default, explicit
 V1 replay, exact prompt hashes, Lev2 Front result and rejection of truncated
 Planner output. git diff --check passes. Protected r03 tag remains unchanged.
 
+N68 owner follow-up, 2026-11-06, same 3.17.4.5, P0:
+IMPLEMENTED CANDIDATE / LIVE VERIFICATION PENDING, CB Planner V7. Owner asks
+that the worktop cover the complete low-base run, full depth to the wall;
+do not offset it by the depth of hanging shelving/cabinets. Approximate base
+heights around 900 mm / up to 1200 mm are context, not a hard threshold.
+Express coverage as an estimating default with explicit-source exceptions;
+do not cover tall cabinets, extend freestanding tops to imaginary walls, or
+split an overall top for an inset sink at this stage. Preserve V5/V6 rules.
+Owner considers the latest V6 generally reasonable and identifies a crossed
+region as a section of an already represented element, not a missing assembly.
+The previous agent claim of a lost appliance column therefore needs targeted
+identity revalidation, not automatic restoration of an extra block. This is
+not proof that the crossed region and the previously named column are identical.
+Verified raw V6 already assigns four drawer IDs F12-F15 to B06, from the saved
+Front's four-drawer group. Its box only spans the upper part of the lower run.
+OWNER CORRECTION in the same discussion: the correct drawer total is SIX,
+not the earlier accepted four. Two lower drawer fronts are omitted already
+in Front, which describes two columns of two rows and questions the lower
+bands. Planner propagates those four IDs. Extending B06 alone will not fix
+the count or hardware demand. Preserve raw four; do not manually rewrite it
+to six or add example-specific counts to prompts. Current benchmark:
+notes/evidence/hsl07-v62-2026-11-05/n68-owner-benchmark-2026-11-06.json.
+V7 asks for the complete carcass box, not just union of supplied front boxes,
+and reconciliation of repeated views/sections without duplicate assemblies.
+Whether the worktop setback was caused by hanging-shelf depth is UNKNOWN;
+the saved response gives no causal explanation. No semantic acceptance or
+promotion of V7, no new model calls. Runtime still selects Front V2 / Planner V4.
+Prompt: agents/prompts/cb_planner_v7.md; SHA256
+d3271d697f5398e699511d8a261f3f8734bf744835b52b894188d37d819cd848.
+Priority next proposal after owner's correction: investigate/fix Front's
+omitted lower row before claiming complete N68 counts. Planner-only V7 replay
+can test top/block localization but cannot validate six-drawer recognition
+while consuming the old four-ID Front. No Front fix or new run implemented.
+26 Planner tests pass including the corrected benchmark fixture. These tests
+preserve the known two-drawer mismatch, not prove it fixed. Checkpoint
+6952b4e and raw V4/V5/V6 witnesses remain intact.
+
 HSL saved-package replay, USER REQUEST, 2026-11-05, same 3.17.4.5,
 P0, COMPLETED diagnostic replay; acceptance FAILED: owner explicitly requests existing
 Detection packages, not a locally rebuilt fixture. Latest matching Floor 07

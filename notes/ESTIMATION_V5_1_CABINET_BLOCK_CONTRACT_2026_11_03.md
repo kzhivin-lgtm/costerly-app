@@ -63,8 +63,19 @@ One rulebook with two sections, not two mandatory new provider stages:
   mm units for bare drawing dimensions. Planner schema passes, semantics do not.
 
 Full research checkpoint: notes/ESTIMATION_V6_2_HSL_N68_CHECKPOINT_2026_11_05.md.
-Owner accepts N68 eight hinged doors and four drawers only. The five lift-up
+Owner benchmark corrected on 2026-11-06: N68 eight hinged doors and SIX
+drawers, superseding the earlier four-drawer confirmation. The five lift-up
 fronts inferred from triangular marks are not accepted as gas-lift demand.
+2026-11-06: CB Planner V7 is a pending, unrun candidate. Owner specifies full
+base-run top coverage, full depth to the wall, not the hanging-shelf depth.
+This is an estimating default subject to explicit construction, not a universal
+furniture fact. Complete carcass localization must not be reduced to front-box
+union. Raw N68 V6 contains four drawer IDs in B06, but the owner confirms six:
+two lower drawers are omitted already in Front. Box expansion alone cannot
+correct the count. Reconcile repeated sections before declaring an assembly.
+Owner's crossed-region clarification requires revisiting the earlier column
+omission claim; it is not permission to add a duplicate block or promote V6.
+
 CB Planner V5/V6 are retained diagnostic candidates, not selected defaults.
 V5 localizes worktops on top/axonometric views. V6 also caps tall blocks at
 two tall door leaves across without relaxing one-section-wide columns.
