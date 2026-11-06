@@ -1000,6 +1000,15 @@ Older tags and 50 unrelated TODO lines retained. Stop further experiments until
 the owner chooses the next task; outstanding quality defects remain pending P0.
 
 Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, ACTIVE, V3 geometry acceptance failed:
+OWNER CLARIFICATION after V3.1: equal subdivision is acceptable at this stage
+when the source does not clearly establish interval sizes. Do not reject an
+estimate solely for equal bays or require precise visual ratios. This is an
+accepted estimating method, not proof of specific dimensions or approval of
+the entire V3.1 result. Adjacent bay widths must still sum to the block width;
+two assumed 500 mm bays require about 1000 mm overall, not 500 mm. The known
+dimension span still constrains the total of all included intervals. Missing
+drawer mounting partition remains unresolved. No additional prompt/run made
+for this clarification; do not manually overwrite the saved model response.
 LATEST APPROVED EXPERIMENT: CB Parts V3.1 adds exactly one generic paragraph
 about distributing a labelled span across visible intervals, including adjacent
 blocks, then summing the target block intervals. No Lev2/B08 numbers or special

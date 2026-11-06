@@ -165,6 +165,14 @@ preserved in notes/evidence/cb-parts-v3-1-2026-11-06/lev2-sized-parts.json.
 The width problem is unresolved. An explicit bay/sum contract is only a next
 proposal requiring approval, not implemented here. Production unchanged.
 
+Owner clarification after this trial: equal subdivision is acceptable for
+unclear interval sizes at this coarse-estimation stage. Precise visual ratios
+are not an acceptance requirement in that case. Keep the overall dimension
+constraint and additive consistency across adjacent bays/blocks. This does not
+verify the particular 500 mm values or accept a 500 mm block containing two
+side-by-side 500 mm bays. Existing raw evidence remains unmodified. The omitted
+mounting partition is a separate unresolved defect, not an approximation choice.
+
 Owner benchmark corrected on 2026-11-06: N68 TEN door-like fronts and SIX
 drawers, superseding the earlier eight-door/four-drawer confirmation. Ten
 comprises five tall, two under sink, one downward-opening dishwasher front,

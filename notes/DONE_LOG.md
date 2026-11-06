@@ -1,5 +1,12 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: owner accepts equal subdivision where interval sizes are
+unclear. Updated acceptance criteria in existing TODO/CB contract: equal bays
+are an acceptable estimate, not an error by themselves; known span totals and
+block/bay sums must still agree. This does not accept the entire V3.1 geometry
+or its missing divider. No new prompt, model call, raw-output correction or
+production change for this clarification.
+
 2026-11-06, 3.17.4.6: owner-approved CB Parts V3.1 one-comment experiment.
 Only prompt header and one universal span-allocation paragraph differ from V3;
 same schema, code arithmetic, full evidence and upstream scope. One Haiku call,
