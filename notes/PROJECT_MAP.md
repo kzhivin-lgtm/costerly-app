@@ -7,6 +7,13 @@ current Understanding text and the three failed first-stage Cycle V5 trials.
 Read before continuing the Understanding contract discussion. This is a
 documentation handoff, not a new product checkpoint or production promotion.
 
+Subsequent approved diagnostic: standalone Understanding V1, exact revised chat
+text in agents/prompts/understanding_v1.md. Existing probe --understanding-v1
+uses run_understanding_v1 in the experimental CB Cycle V5 agent, returning prose
+for review without the old Front schema or downstream calls. Lev1/Lev2 complete
+but semantically unaccepted: notes/evidence/understanding-v1-2026-11-06/simple-object-trials.json.
+No default/product route change. Current task and next proposal remain in TODO.
+
 This file explains where code belongs so the project stays understandable.
 
 ## Entry Point

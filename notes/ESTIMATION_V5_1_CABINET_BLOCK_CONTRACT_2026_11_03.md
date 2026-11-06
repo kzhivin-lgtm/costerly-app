@@ -457,6 +457,15 @@ proposal is not an approved new production architecture or additional call.
 
 ## CB Cycle V5: explicit whole-object understanding, same 3.17.4.6
 
+Subsequent owner-approved isolation, 2026-11-06: Understanding V1 is a separate
+plain-text prompt, agents/prompts/understanding_v1.md, not an overwrite of this
+mixed cycle. --understanding-v1 runs only that prompt on unchanged evidence.
+Output name/description/materials/assumptions is retained as text for review,
+not a valid Front or accepted downstream input. Lev1/Lev2 complete in
+5.291/5.164 s, but visual/unit/material errors remain. No downstream call or
+production integration. Exact evidence and current next action are in TODO
+and notes/evidence/understanding-v1-2026-11-06/simple-object-trials.json.
+
 Owner requested restoring the foundational whole-object interpretation and
 called the next cycle V5. This is an experimental contract version inside
 Estimation V6.2, not an overwrite of historical CB Front V5/Planner V5 files.

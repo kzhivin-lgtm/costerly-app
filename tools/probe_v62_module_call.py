@@ -20,6 +20,7 @@ def main():
     p.add_argument('--execute', action='store_true')
     p.add_argument('--cycle-v5', action='store_true', help='Opt-in whole-object Understanding + Front, then linked Planner; no implicit extra calls')
     mode = p.add_mutually_exclusive_group()
+    mode.add_argument('--understanding-v1', action='store_true', help='One standalone exact Understanding V1 prose call, no Front/Planner/Calculate')
     mode.add_argument('--classify-only', '--map-only', dest='classify_only', action='store_true', help='One isolated classification call, no module continuation')
     mode.add_argument('--count-fronts', action='store_true', help='One combined classification/front-count experiment')
     mode.add_argument('--plan-assemblies', action='store_true', help='One Planner call using an existing Front witness')
@@ -37,6 +38,9 @@ def main():
     include_supports = not args.front_v1
     front_version = FRONT_SUPPORTS_PROMPT_VERSION if include_supports else FRONT_COUNT_PROMPT_VERSION
     planner_version = PLANNER_PROMPT_VERSION
+    if args.understanding_v1:
+        from agents import estimation_cb_cycle_v5_agent as cycle
+        front_version = cycle.UNDERSTANDING_VERSION
     if args.cycle_v5:
         from agents import estimation_cb_cycle_v5_agent as cycle
         front_version, planner_version = cycle.FRONT_VERSION, cycle.PLANNER_VERSION
@@ -44,6 +48,8 @@ def main():
         p.error('Refuse to overwrite witness')
     if args.output.with_name(args.output.stem + '-assembly_plan-raw.txt').exists():
         p.error('Refuse to overwrite raw Planner response')
+    if args.output.with_name(args.output.stem + '-understanding-raw.txt').exists():
+        p.error('Refuse to overwrite raw Understanding response')
     if bool(args.front_witness) != args.plan_assemblies:
         p.error('--front-witness is required only with --plan-assemblies')
     for k, v in tomllib.loads(Path('/Users/qb/costerly-app/.streamlit/secrets.toml').read_text()).items():
@@ -60,7 +66,9 @@ def main():
     w = {k: prior[k] for k in ('inputs', 'source_pages_base64', 'evidence_origin')}
     w.update(version='v6.2', route='island_types_cabinet_module_haiku55_diagnostic', database_writes=False,
         status='running', replay_source=str(args.replay), provider_responses=[])
-    if args.classify_only:
+    if args.understanding_v1:
+        w.update(route='standalone_understanding_v1_diagnostic', prompt_version=front_version)
+    elif args.classify_only:
         w['route'] = 'island_types_only_diagnostic'
     elif args.count_fronts:
         w['route'] = 'island_types_front_count_haiku55_diagnostic'
@@ -81,7 +89,7 @@ def main():
         text = '\n'.join(b['text'] for b in raw['content'] if b['type'] == 'text')
         prompt_identity = ({'prompt_version': planner_version if stage == 'assembly_plan' else front_version,
             'prompt_sha256': sha256(request['system'].encode()).hexdigest()}
-            if stage in {'front_count', 'assembly_plan'} else {})
+            if stage in {'front_count', 'assembly_plan'} or (args.understanding_v1 and stage == 'understanding') else {})
         w.update(prompt_identity)
         w['provider_responses'].append({'stage': stage, 'request': request,
             **prompt_identity,
@@ -100,6 +108,8 @@ def main():
         run = run_assembly_plan if args.plan_assemblies else run_front_count if args.count_fronts else run_island_types_only if args.classify_only else run_understanding_with_modules
         if args.cycle_v5:
             run = cycle.run_assembly_plan if args.plan_assemblies else cycle.run_front_count
+        if args.understanding_v1:
+            run = cycle.run_understanding_v1
         extra = {'front_result': front_result, 'front_status': front_witness['status']} if args.plan_assemblies else {}
         if args.count_fronts:
             extra['include_supports'] = include_supports
@@ -107,6 +117,8 @@ def main():
             page_bytes={k: base64.b64decode(v) for k, v in w['source_pages_base64'].items()}, record=record, **extra)
         w['status'] = ('assembly_plan_requires_review' if args.plan_assemblies else 'front_count_requires_review' if args.count_fronts else
             'island_types_require_review' if args.classify_only else 'understanding_requires_review_not_estimate')
+        if args.understanding_v1:
+            w['status'] = 'understanding_text_requires_review_not_estimate'
     except Exception as exc:
         w['status'] = 'failed'
         w['error'] = f'{type(exc).__name__}: {exc}'

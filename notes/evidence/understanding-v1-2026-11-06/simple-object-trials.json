@@ -1,0 +1,145 @@
+{
+  "work": "3.17.4.6",
+  "prompt_version": "Understanding V1",
+  "purpose": "Owner-approved exact standalone prose prompt, not integrated Analyze or an additional production stage",
+  "accepted": false,
+  "production_promoted": false,
+  "trials": [
+    {
+      "file": "lev1",
+      "prompt_version": "Understanding V1",
+      "status": "understanding_text_requires_review_not_estimate",
+      "semantic_status": "not_accepted",
+      "error": null,
+      "provider_calls": 1,
+      "front_calls": 0,
+      "planner_calls": 0,
+      "calculate_calls": 0,
+      "elapsed_seconds": 5.291,
+      "changed_request_fields_vs_cycle_v5": [
+        "system"
+      ],
+      "source_evidence_unchanged": true,
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "type": "disabled"
+      },
+      "effort": {
+        "effort": "low"
+      },
+      "max_tokens": 14000,
+      "prompt_sha256": "a5f7c75ca8d5148c5b9ed4a97313de8e7837ee8c3a66da7fe7b199e7acf8d9f8",
+      "request_sha256": "51572bf973942cee836374c1a5e98c02b4aed1f61c8ddd7ff592b255292a51c1",
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 12792,
+        "output_tokens": 737,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "raw_response_text": "**name:** Upholstered-back bench seat with integrated table, decorative slatted back panel and drawer base\n\n**description:** This is a single built-in bench unit with a tall slatted back panel (approx. 265 mm high) running along its rear, a 160 mm deep seat body of about 158 mm wide with a 72 mm deep base plinth, and a fixed drawer bank of three drawers across the front of the base. A separate table top (about 187 mm long by 115 mm wide, with a 20 mm rear extension) is cantilevered from the bench side and supported on a single black round leg, forming a booth-style seating arrangement; the bench is a freestanding fixed unit that is likely fixed to the floor or wall during installation.\n\n**materials:**\n- Seat body, drawer fronts and plinth: wood-grain veneered board, finish matching the slatted back, thickness approx. 17–18 mm; basis: inferred from the wood-grain texture in the renders.\n- Slatted back panel: wood-grain veneered board, 20 mm overall panel depth with vertical slats and decorative cut-out openings; basis: specified dimension (20 mm) with inferred veneer finish.\n- Seat top surface: wood-grain veneer over a ~17 mm board, basis: inferred.\n- Table top: light neutral laminate or solid-surface finish, approx. 20 mm thick, basis: inferred from the lighter colour and the 20 mm dimension on the drawing.\n- Table leg: black metal or painted steel round post, basis: inferred from the render.\n- Drawer base and plinth: wood-grain veneered board, basis: inferred.\n\n**assumptions:**\n- The wood-grain panels are ready-made veneered boards on a standard substrate, not solid timber.\n- The drawer base is a three-drawer front unit fixed to a carcass, with the plinth as a separate recessed toe base.\n- The table is a fixed cantilevered top with a single central leg, not a freestanding table.\n- The backrest slats are fixed in place and not adjustable.\n- Default 17 mm LDSP-type substrate is assumed for ordinary panels where the wood-grain finish is veneer; the table top is assumed to be approximately 20 mm.",
+      "private_witness": "/private/tmp/lev1-understanding-v1-20261106-01.json",
+      "private_witness_sha256": "2ef34db0cddd9daf15e51e447cd6e4e94e42266e3c43d1b1ed49f856422a4e38",
+      "replay_source": "/private/tmp/lev1-cb-cycle-v5-20261106-01-front.json",
+      "source_pages_sha256": {
+        "storage://rfq-estimation-evidence/610/run_1cba0b2491dc413c9a3be2fdd526226b/object-001/page-1-2fea9d342ee270de687652dab19539990a5d6371f2751bc657ca89514fbfa606.webp": "2fea9d342ee270de687652dab19539990a5d6371f2751bc657ca89514fbfa606"
+      }
+    },
+    {
+      "file": "lev2",
+      "prompt_version": "Understanding V1",
+      "status": "understanding_text_requires_review_not_estimate",
+      "semantic_status": "not_accepted",
+      "error": null,
+      "provider_calls": 1,
+      "front_calls": 0,
+      "planner_calls": 0,
+      "calculate_calls": 0,
+      "elapsed_seconds": 5.164,
+      "changed_request_fields_vs_cycle_v5": [
+        "system"
+      ],
+      "source_evidence_unchanged": true,
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "type": "disabled"
+      },
+      "effort": {
+        "effort": "low"
+      },
+      "max_tokens": 14000,
+      "prompt_sha256": "a5f7c75ca8d5148c5b9ed4a97313de8e7837ee8c3a66da7fe7b199e7acf8d9f8",
+      "request_sha256": "a3083ca0440de20746fcdf6d53ad04a84129374dfda16f991f1b8519262ac278",
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 12276,
+        "output_tokens": 648,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "raw_response_text": "**name:** L-shaped kitchen run with peninsula, tall unit and wall cabinets\n\n**description:** A kitchen layout of about 416 cm by 300 cm, formed by a long base run (about 416 cm, with a 260 cm return) joined at a 45° chamfered corner with a 25 cm closing panel. The base run carries a sink opening, drawer stack and door bays, topped by a worktop. Above the run are wall cabinets (about 75 cm high, 115 cm high upper units at the left end) and a tall pantry/appliance column (about 265 cm high) at the right end, with a separate upper unit set on the return and an open-ended tall run. The tall column includes a 184 cm high open or appliance void and 94 cm projecting return.\n\n**materials:**\n- Carcass panels (base, wall and tall units): LDSP, 17 mm, default basis.\n- Doors and drawer fronts: veneered or painted board in a sage-green finish, thickness not specified, inferred from the rendered colour; treat as MDF or LDSP with a front-panel thickness to be confirmed.\n- Worktop: finished thickness 30 mm, default basis, in a light beige/stone finish with a darker wood-grain section at the chamfered corner (inferred ready-made veneered board).\n- Plinth/kick: material not specified, assumed to match carcass.\n\n**assumptions:**\n- The rendered green colour is assumed to be a painted or laminate finish; actual surface spec is not given.\n- The 45° chamfered corner and 25 cm dimension are treated as a closing end panel, not an additional unit.\n- The tall column and the 94 cm return are assumed to be a single appliance/pantry assembly within this item.\n- Sink opening and hob/oven positions are inferred from the drawing and the 3D view; exact appliance sizes are not specified.\n- Dimensions are taken as millimetres or centimetres as shown in the source (most figures appear to be cm).",
+      "private_witness": "/private/tmp/lev2-understanding-v1-20261106-01.json",
+      "private_witness_sha256": "590ae81ca382493c26f0adc984f688eb3f9d9960dffcd6e2de0680b70cd85ebd",
+      "replay_source": "/private/tmp/lev2-cb-cycle-v5-20261106-01-front.json",
+      "source_pages_sha256": {
+        "local-render:099bfb240ad0bbc85740ad1a73b81c2c780a15de6c5b9697f56e145315bce3d7:p1": "099bfb240ad0bbc85740ad1a73b81c2c780a15de6c5b9697f56e145315bce3d7"
+      }
+    }
+  ],
+  "review": {
+    "lev1": {
+      "positive": [
+        "Three adjacent drawers described",
+        "Fixed decorative slats, worktop and veneered-board hypothesis present"
+      ],
+      "failures": [
+        "Unsupported upholstered-back label",
+        "One support instead of two visibly shown",
+        "Centimetre-scale dimensions reported as 158/265/187 mm",
+        "Dimension 20 incorrectly treated as specified panel/worktop thickness; 4 cm rib evidence not retained",
+        "Some material assignments duplicated or left as alternatives"
+      ]
+    },
+    "lev2": {
+      "positive": [
+        "Kitchen with lower/wall/tall elements and worktop identified",
+        "17 mm carcass and 30 mm top defaults explicitly marked"
+      ],
+      "failures": [
+        "Description has four sentences rather than one or two",
+        "Chamfer described as run junction; physical layout and dimension ownership remain unaccepted",
+        "Front material remains MDF or LDSP with thickness to be confirmed rather than one selected estimating assumption",
+        "Numerical geometry unnecessarily dominates the summary"
+      ]
+    },
+    "conclusion": "Both complete prose replies are readable and preserved; no JSON schema pass claimed. Neither has full semantic acceptance. One trial per file is not stability or proof that the prompt alone solves visual understanding.",
+    "visual_review_sources": [
+      "/private/tmp/lev1-audit/page-1.png",
+      "/private/tmp/cb-front-v2-lev2-01-overlay-details.png"
+    ],
+    "visual_review_note": "Historical images reviewed as source aids only; old annotations were not new V1 output or input.",
+    "next_proposal": "Discuss focused Understanding V2 restrictions on unnecessary overall numerical geometry and source-versus-assumed thickness; retaining all-view scope/support correctness is separately required. No automatic second trial or prompt rewrite."
+  }
+}

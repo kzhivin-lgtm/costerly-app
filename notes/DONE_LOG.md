@@ -1,5 +1,18 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: tested exact owner-approved standalone Understanding V1
+text on Lev1 and Lev2. Versioned prompt understanding_v1.md; existing module
+probe adds explicit --understanding-v1, no extra automatic stage or defaults.
+One Haiku 5.5 call each, 5.291 / 5.164 s, end_turn, original text preserved.
+Only system differs from V5 request baselines; inputs/pages/messages/model/
+settings match. Readable prose is not semantic acceptance: Lev1 has invented
+upholstery, one rather than two legs, wrong units and thickness; Lev2 exceeds
+description length, retains questionable geometric claims and material options.
+No Front/Planner/Calculate, repair, retry, DB writes, deploy or promotion.
+Evidence: notes/evidence/understanding-v1-2026-11-06/simple-object-trials.json.
+173 focused tests pass, including exact-prompt/evidence isolation, raw capture,
+no implicit paid continuation, readable escaped prose reports and prior routes.
+
 2026-11-06, 3.17.4.6: owner-requested detailed full-chat handoff saved as
 notes/ESTIMATION_V6_FULL_CHAT_HANDOFF_2026_11_06.md. Reconciles V6.1 diagnostics,
 V6.2 interpretation/classification, all recorded Front/Planner/Parts experiment

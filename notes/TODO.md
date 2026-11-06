@@ -1000,6 +1000,27 @@ Older tags and 50 unrelated TODO lines retained. Stop further experiments until
 the owner chooses the next task; outstanding quality defects remain pending P0.
 
 Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, PENDING full-object geometry; research checkpoint preserved:
+LATEST APPROVED EXPERIMENT, Understanding V1, 2026-11-06:
+Owner reviewed the mixed V5 prompt and approved running the replacement text
+shown in chat. Saved verbatim in agents/prompts/understanding_v1.md, separate
+version lineage, not a rewrite of the failed CB Cycle V5 prompt. Existing probe
+--understanding-v1 makes one prose-only Haiku 5.5 low/thinking-disabled call.
+No inherited Front schema, JSON demand, Planner, Calculate or new production
+stage. Defaults and exact prior prompt hashes preserved. Raw text saved before
+review, not silently converted to a successful structured interpretation.
+Lev1 5.291 s and Lev2 5.164 s, one each, end_turn. Inputs/pages/messages and all
+request settings unchanged versus their V5 baselines; ONLY system differs.
+Lev1 retains three drawers but invents upholstery, one leg instead of two,
+cm-scale dimensions as mm, and wrong source-thickness attribution. Lev2 names
+the main kitchen elements and 17/30 mm defaults, but exceeds two sentences,
+misstates chamfer/layout and leaves some material choices unresolved.
+Both readable, neither semantically accepted; no automatic retry or promotion.
+Evidence: notes/evidence/understanding-v1-2026-11-06/simple-object-trials.json.
+NEXT, P0, PROPOSAL: owner review of these exact answers before Understanding V2.
+Removing unnecessary overall numerical geometry is a bounded next candidate,
+not a demonstrated fix for wrong support counts or physical interpretation.
+The earlier merged-schema proposal below is paused by this standalone trial;
+document-wide Analyze/Front/Planner integration and final Parts remain pending.
 OWNER-REQUESTED FULL CHAT HANDOFF completed, 2026-11-06:
 notes/ESTIMATION_V6_FULL_CHAT_HANDOFF_2026_11_06.md preserves the full V6.1/V6.2
 experiment history, current raw Understanding prompt, benchmark corrections,

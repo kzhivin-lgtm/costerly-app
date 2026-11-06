@@ -7,17 +7,20 @@ from use_cases.estimation_cb_cycle_v5 import validate_front, validate_plan, VERS
 
 FRONT_VERSION = VERSION + ': Understanding + Front'
 PLANNER_VERSION = VERSION + ': Planner'
+UNDERSTANDING_VERSION = 'Understanding V1'
 
 
 def prompt(stage):
     folder = existing.PROMPT_PATH.parent
+    if stage == 'understanding':
+        return (folder / 'understanding_v1.md').read_text().strip()
     inherited = 'cb_front_v3.md' if stage == 'front' else 'cb_planner_v7.md'
     extension = 'cb_cycle_v5_understanding.md' if stage == 'front' else 'cb_cycle_v5_planner.md'
     # The versioned extension is last, explicitly defining the outer contract.
     return (folder / inherited).read_text().strip() + '\n\n' + (folder / extension).read_text().strip()
 
 
-def _call(stage, content, record):
+def _call(stage, content, record, *, parse_json=True):
     request = dict(model=existing.MODEL, max_tokens=14000, output_config={'effort': 'low'},
         thinking={'type': 'disabled'}, system=prompt(stage), messages=[{'role': 'user', 'content': content}])
     if record:
@@ -25,11 +28,29 @@ def _call(stage, content, record):
     response = existing._create_message_with_hard_timeout(
         existing.get_anthropic_client().with_options(timeout=120, max_retries=0), timeout_seconds=120, **request)
     if record:
-        record('front_count' if stage == 'front' else 'assembly_plan', request, response)
+        record({'front': 'front_count', 'planner': 'assembly_plan',
+                'understanding': 'understanding'}[stage], request, response)
     if getattr(response, 'stop_reason', None) != 'end_turn':
         raise ValueError('V5 response incomplete')
-    parsed = existing._json_object(existing.extract_text_from_claude_response(response))
+    text = existing.extract_text_from_claude_response(response)
+    if not text.strip():
+        raise ValueError('Empty interpretation response')
+    parsed = existing._json_object(text) if parse_json else text
     return parsed, sha256(request['system'].encode()).hexdigest()
+
+
+def run_understanding_v1(*, inputs, page_bytes, record=None):
+    """Owner-approved exact prose prompt; no Front contract or continuation."""
+    if len(inputs) != 1:
+        raise ValueError('Understanding V1 diagnostic requires exactly one object')
+    content, manifests = existing.prepare_content(inputs, page_bytes)
+    if not manifests[0]['known_views']:
+        raise ValueError('Understanding V1 requires saved object islands')
+    text, digest = _call('understanding', content, record, parse_json=False)
+    return dict(version=UNDERSTANDING_VERSION,
+        status='understanding_text_requires_review_not_estimate',
+        prompt_version=UNDERSTANDING_VERSION, prompt_sha256=digest,
+        input_id=inputs[0]['input_id'], response_text=text)
 
 
 def run_front_count(*, inputs, page_bytes, record=None, include_supports=True):

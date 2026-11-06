@@ -599,7 +599,7 @@ def export_report(witness, path):
     raw = records[-1]['response_text'] if records else 'No model response received'
     try:
         result = witness.get('understanding') or _json_object(raw)
-        if 'front_count' in result or 'assembly_plan' in result:
+        if 'front_count' in result or 'assembly_plan' in result or 'response_text' in result:
             report = ('<!doctype html><html lang="en"><meta charset="utf-8">'
                 '<h1>V6.2: interpretation requires review</h1>'
                 '<pre style="white-space:pre-wrap">' + escape(raw) + '</pre></html>')
