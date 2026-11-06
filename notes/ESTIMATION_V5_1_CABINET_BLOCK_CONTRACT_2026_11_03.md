@@ -91,6 +91,12 @@ unchanged N68. Rejected: five of ten target door-like fronts, four of six
 drawers, three unsupported lift-ups and invalid island enums. No Planner call
 or promotion. Evidence: notes/evidence/hsl07-v62-2026-11-06/n68-front-v4.json.
 
+Owner rollback, 2026-11-06: stop Front V3/V4 experiments, retain unchanged
+Front V2 / Planner V4. Exact-request Lev2 V2 repeat gives five drawers, two
+lift-ups, 18 hinged doors and invalid island enums, versus previous 15 hinged
+and two unresolved with valid enums. Rollback does not establish reliability.
+Evidence: notes/evidence/cb-front-v2-2026-11-06/lev2-rollback-repeat.json.
+
 CB Planner V5/V6 are retained diagnostic candidates, not selected defaults.
 V5 localizes worktops on top/axonometric views. V6 also caps tall blocks at
 two tall door leaves across without relaxing one-section-wide columns.

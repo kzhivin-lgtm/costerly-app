@@ -48,8 +48,13 @@ Later single Front V4 experiment (locate before classifying) regresses to five
 of ten target door-like fronts and four drawers on identical input. Invalid
 island enums persist. Candidate rejected; defaults unchanged, no Planner run
 or retry. Exact result: notes/evidence/hsl07-v62-2026-11-06/n68-front-v4.json.
-Next proposed diagnostic is model-facing image/input inspection, not another
-unverified prompt expansion. No cause is established by this one comparison.
+The image/input inspection proposal is deferred after owner requests rollback
+and Lev2 on the older version. Front V2 / Planner V4 remain selected; V3/V4
+experimentation stops, historical artifacts retained. One exact-request Lev2
+V2 repeat returns five drawers, two lift-ups, 18 hinged doors, invalid enums.
+Previous identical V2 request returned 15 hinged + two unresolved, valid enums.
+Thus prompt revision alone does not explain the variation; underlying cause
+is unknown. Evidence: notes/evidence/cb-front-v2-2026-11-06/lev2-rollback-repeat.json.
 
 ### Current V6.2 boundary and results, 2026-11-05
 

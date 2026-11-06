@@ -25,6 +25,27 @@ def validate(result):
     return validate_front_count(result, {'p1-view-001'}, require_annotations=True, require_supports=True)
 
 
+def test_lev2_v2_rollback_repeat_preserves_identical_request_failure():
+    import agents.estimation_understanding_agent as agent
+    from hashlib import sha256
+    root = Path(__file__).resolve().parents[1]
+    saved = json.loads((root / 'notes/evidence/cb-front-v2-2026-11-06/lev2-rollback-repeat.json').read_text())
+    assert agent.FRONT_SUPPORTS_PROMPT_PATH.name == 'cb_front_v2.md'
+    assert agent.PLANNER_PROMPT_VERSION == 'CB Planner V4'
+    assert sha256(agent.FRONT_SUPPORTS_PROMPT_PATH.read_text().strip().encode()).hexdigest() == saved['prompt_sha256']
+    assert saved['exact_request_equal'] is True
+    assert saved['request_sha256'] == saved['comparison_request_sha256']
+    assert saved['calls'] == 1 and saved['retries'] == 0
+    parsed = agent._json_object(saved['response_text'])
+    assert parsed == saved['parsed_response']
+    assert parsed['totals'] == dict(drawers=5, hinged_doors=18, lift_up_fronts=2, unresolved_fronts=0, total_fronts=25)
+    assert saved['previous_totals']['hinged_doors'] == 15
+    assert saved['previous_totals']['unresolved_fronts'] == 2
+    assert saved['status'] == 'failed' and saved['review']['accepted'] is False
+    with pytest.raises(ValueError, match='invalid island classification'):
+        agent.validate_front_count(parsed, {f'p1-view-{i:03d}' for i in range(1, 5)}, require_annotations=True, require_supports=True)
+
+
 @pytest.mark.parametrize('count', [0, 1, 2, 4])
 def test_support_counts_are_not_forced_to_one_typical_scheme(count):
     result = supported(count)

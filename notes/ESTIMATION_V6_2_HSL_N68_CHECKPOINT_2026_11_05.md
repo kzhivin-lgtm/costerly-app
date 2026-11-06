@@ -22,6 +22,12 @@ Subsequent Front V4 experiment on unchanged input regresses to five matched
 door-like fronts and four drawers, still failing island enums. Rejected for
 promotion; no Planner run or default change. Separate witness:
 notes/evidence/hsl07-v62-2026-11-06/n68-front-v4.json.
+Owner subsequently requested rollback and Lev2 verification. Front V3/V4
+experimentation stopped; selected Front V2 / Planner V4 never changed. A single
+Lev2 V2 repeat with the exact earlier request gives five drawers, two lift-ups,
+18 hinged doors and invalid enums. Earlier V2 had 15 hinged + two unresolved
+and valid enums. Reliability remains unaccepted. Separate raw witness:
+notes/evidence/cb-front-v2-2026-11-06/lev2-rollback-repeat.json.
 
 ## Identity and protected state
 

@@ -850,11 +850,41 @@ Private witness/overlay: /private/tmp/hsl07-saved-replay-20261105-01/object-005-
 No Planner run, schema change, deployment or DB write. Default remains Front
 V2 + Planner V4, protected checkpoint 6952b4e unchanged. V3 stays historical,
 not a newly accepted default. Pending P0 coverage issue remains open.
-Next PROPOSAL: inspect exact model-facing image readability/scale and input
-budget before another prompt iteration; image quality is not a confirmed cause.
+DEFERRED proposal after owner rollback request: inspect model-facing image
+readability/scale and input budget; image quality is not a confirmed cause.
 Verification: 173 focused tests pass, including exact V4 identity, system-only
 request change, unchanged defaults and preserved rejection of the raw result.
 git diff --check passes; tests do not establish visual acceptance.
+
+Lev2 Front V2 rollback/repeat, USER REQUEST, 2026-11-06, same 3.17.4.5,
+P0, COMPLETED diagnostic / acceptance FAILED:
+Owner requests rollback and Lev2 on the older version. Stop Front V3/V4
+experimentation; retain selected CB Front V2 (r05) + Planner V4. They never
+changed globally, so no runtime reversal or destructive Git revert is needed.
+Preserve candidate files and raw failures as history, not active selections.
+One Front-only replay of /private/tmp/cb-front-v2-lev2-01.json, originating
+from saved Detection run_189150ebf62447fc958f7c23cc34e3bb via the established
+local-input bridge. No Detection rerun, Planner call, DB write or deployment.
+Exact request object equals the prior V2 request: system, images, text and
+settings unchanged. Haiku 5.5, 30.653 s, end_turn. New totals: five drawers,
+18 hinged doors, two lift-up fronts, zero unresolved; no invented legs.
+Owner benchmark: five drawers, two lift-ups, 15 preferred / at most 16 doors.
+Page/detail overlays inspected: known side/appliance-opening candidates remain
+counted as doors (F11, F08, F25, run-local IDs). No semantic acceptance.
+All four intended island classes emitted in invalid snake_case; original
+validator rejects. Display aliases only, no response normalization or retry.
+Prior identical V2 request returned 15 hinged + two unresolved and passed enum
+validation. This is evidence of output variation at fixed application input,
+not proof of its provider-level cause. Do not attribute all regression to V4
+or treat a previous single passing result as established reliability.
+Evidence: notes/evidence/cb-front-v2-2026-11-06/lev2-rollback-repeat.json.
+Private witness/overlays: /private/tmp/cb-front-v2-lev2-rollback-20261106*.
+Pending P0: output-enum contract reliability and separate semantic variability.
+Next PROPOSAL: isolate exact-enum output compliance before another recognition
+prompt revision. No automatic schema change or silent output repair approved.
+Verification: 174 focused tests pass; exact default/hash, identical request
+and preserved failed response checked. git diff --check passes. No claim that
+passing tests resolves visual recognition or provider output reliability.
 
 HSL saved-package replay, USER REQUEST, 2026-11-05, same 3.17.4.5,
 P0, COMPLETED diagnostic replay; acceptance FAILED: owner explicitly requests existing
