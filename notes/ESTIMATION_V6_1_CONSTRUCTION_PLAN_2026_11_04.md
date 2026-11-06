@@ -55,6 +55,15 @@ V2 repeat returns five drawers, two lift-ups, 18 hinged doors, invalid enums.
 Previous identical V2 request returned 15 hinged + two unresolved, valid enums.
 Thus prompt revision alone does not explain the variation; underlying cause
 is unknown. Evidence: notes/evidence/cb-front-v2-2026-11-06/lev2-rollback-repeat.json.
+Three approved fixed-request controls then produce 5/17/2/1, 5/16/2/1 and
+2/11/2/0 (drawers/hinged/lift-up/unresolved). Two format passes, one failure.
+Control 3 explicitly notices three return-wing drawers but drops the entire
+view-004 front set due to possible overlap. Thus correct view classification
+does not ensure correct cross-view physical identity. Known side/opening
+false positives persist in the other controls; no winner or promotion.
+Next proposed diagnostic targets unsupported deduplication, with enum format
+kept separate. No new prompt implemented. Raw results and surface comparison:
+notes/evidence/cb-front-v2-2026-11-06/lev2-three-controls.json.
 
 ### Current V6.2 boundary and results, 2026-11-05
 

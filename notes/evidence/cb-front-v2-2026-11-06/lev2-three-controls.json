@@ -1,0 +1,1418 @@
+{
+  "work_number": "3.17.4.5",
+  "date": "2026-11-06",
+  "file": "Lev 2",
+  "source_run_id": "run_189150ebf62447fc958f7c23cc34e3bb",
+  "evidence_origin": "persisted_detection_local_fixture_not_persisted_input",
+  "experiment": "Three pre-authorized fixed-request control repetitions; not a consensus or selection workflow",
+  "calls": 3,
+  "retries": 0,
+  "database_writes": false,
+  "planner_calls": 0,
+  "execution": "Independent local probes launched concurrently; each has only the same single user input, not shared conversation history. Timing is per call, not sequential cycle time.",
+  "baseline_witness": "/private/tmp/cb-front-v2-lev2-01.json",
+  "baseline_request_sha256": "2f48c087c9baa14b31935e1e5eec890cb4af8c651d5c9c4099bdc70019f4d300",
+  "baseline_totals": {
+    "drawers": 5,
+    "hinged_doors": 15,
+    "lift_up_fronts": 2,
+    "unresolved_fronts": 2,
+    "total_fronts": 24
+  },
+  "request_settings": {
+    "model": "claude-haiku-5-5",
+    "max_tokens": 10000,
+    "output_config": {
+      "effort": "low"
+    }
+  },
+  "runs": [
+    {
+      "run": 1,
+      "original_witness": "/private/tmp/cb-front-v2-lev2-control-20261106-01.json",
+      "original_witness_sha256": "ac502109d4a0c1b4de2a6b1ec9008344aa7a25caed8dde699211f2a2ea390b51",
+      "status": "front_count_requires_review",
+      "error": null,
+      "elapsed_seconds": 32.889,
+      "prompt_version": "estimation_front_count_v6_2_r05",
+      "prompt_sha256": "a929fe8ce72fd7cf75c9c100f2ce48c1e1ab2a4da8cb9ce44a9ac16545e0affd",
+      "request_sha256": "2f48c087c9baa14b31935e1e5eec890cb4af8c651d5c9c4099bdc70019f4d300",
+      "exact_request_equal_to_baseline": true,
+      "stop_reason": "end_turn",
+      "response_model": "claude-haiku-5-5",
+      "response_text": "```json\n{\n  \"island_types\": [\n    {\"view_id\": \"p1-view-001\", \"type\": \"Top view\"},\n    {\"view_id\": \"p1-view-002\", \"type\": \"Axonometric view\"},\n    {\"view_id\": \"p1-view-003\", \"type\": \"Front elevation\"},\n    {\"view_id\": \"p1-view-004\", \"type\": \"Front elevation\"}\n  ],\n  \"front_groups\": [\n    {\n      \"location\": \"Top wing (view-003): tall left storage unit, upper portrait door\",\n      \"type\": \"hinged\",\n      \"count\": 1,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Narrow end strip at far left is treated as a fixed side and excluded.\",\n      \"fronts\": [\n        {\"id\": \"F01\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [109, 200, 200, 494]}\n      ]\n    },\n    {\n      \"location\": \"Top wing (view-003): upper cabinets above the 180 run, right end\",\n      \"type\": \"hinged\",\n      \"count\": 3,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Near-square fronts; hinged is inferred from closing the upper openings. Lift-up is possible for some leaves.\",\n      \"fronts\": [\n        {\"id\": \"F02\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [602, 200, 734, 406]},\n        {\"id\": \"F03\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [736, 200, 854, 406]},\n        {\"id\": \"F04\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [855, 200, 974, 406]}\n      ]\n    },\n    {\n      \"location\": \"Top wing (view-003): wide horizontal upper units, middle run\",\n      \"type\": \"lift_up\",\n      \"count\": 2,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Wide horizontal fronts in upper storage; lift-up is inferred from the Cabinet Block rule.\",\n      \"fronts\": [\n        {\"id\": \"F05\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [203, 392, 401, 494]},\n        {\"id\": \"F06\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [402, 392, 600, 494]}\n      ]\n    },\n    {\n      \"location\": \"Top wing (view-003): tall column below upper units, portrait fronts\",\n      \"type\": \"hinged\",\n      \"count\": 2,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Two stacked portrait fronts above the drawers; the pantry-column opening is not subdivided, so these are inferred doors.\",\n      \"fronts\": [\n        {\"id\": \"F07\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [602, 406, 734, 578]},\n        {\"id\": \"F08\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [604, 580, 734, 740]}\n      ]\n    },\n    {\n      \"location\": \"Top wing (view-003): base drawer bank under tall column\",\n      \"type\": \"drawer\",\n      \"count\": 2,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"\",\n      \"fronts\": [\n        {\"id\": \"F09\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [602, 742, 734, 801]},\n        {\"id\": \"F10\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [602, 803, 734, 861]}\n      ]\n    },\n    {\n      \"location\": \"Top wing (view-003): base run of portrait doors\",\n      \"type\": \"hinged\",\n      \"count\": 5,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"The narrow filler strip beside the last door is excluded.\",\n      \"fronts\": [\n        {\"id\": \"F11\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [102, 658, 185, 861]},\n        {\"id\": \"F12\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [186, 658, 281, 861]},\n        {\"id\": \"F13\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [282, 658, 380, 861]},\n        {\"id\": \"F14\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [381, 658, 476, 861]},\n        {\"id\": \"F15\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [477, 658, 575, 861]}\n      ]\n    },\n    {\n      \"location\": \"Return wing (view-004): upper tall-glass-style pair of doors\",\n      \"type\": \"hinged\",\n      \"count\": 2,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-004\"],\n      \"uncertainty\": \"Pair of portrait leaves; the top is shown as a pair.\",\n      \"fronts\": [\n        {\"id\": \"F16\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [128, 109, 225, 450]},\n        {\"id\": \"F17\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [231, 109, 340, 450]}\n      ]\n    },\n    {\n      \"location\": \"Return wing (view-004): base portrait doors\",\n      \"type\": \"hinged\",\n      \"count\": 4,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-004\"],\n      \"uncertainty\": \"\",\n      \"fronts\": [\n        {\"id\": \"F18\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [126, 635, 222, 867]},\n        {\"id\": \"F19\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [227, 635, 336, 867]},\n        {\"id\": \"F20\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [337, 635, 444, 867]},\n        {\"id\": \"F21\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [601, 635, 730, 867]}\n      ]\n    },\n    {\n      \"location\": \"Return wing (view-004): base drawer bank\",\n      \"type\": \"drawer\",\n      \"count\": 3,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-004\"],\n      \"uncertainty\": \"\",\n      \"fronts\": [\n        {\"id\": \"F22\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [445, 635, 598, 698]},\n        {\"id\": \"F23\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [445, 699, 598, 782]},\n        {\"id\": \"F24\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [445, 784, 598, 867]}\n      ]\n    },\n    {\n      \"location\": \"Return wing (view-004): tall unit at right end\",\n      \"type\": \"unresolved\",\n      \"count\": 1,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p1-view-004\"],\n      \"uncertainty\": \"Tall unit shows handle-like marks at its left edge, but no clear door split. It may be a door or a fixed pantry side.\",\n      \"fronts\": [\n        {\"id\": \"F25\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [736, 104, 840, 904]}\n      ]\n    }\n  ],\n  \"excluded_surfaces\": [\n    {\"id\": \"X01\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [49, 192, 103, 494], \"reason\": \"fixed carcass end side\"},\n    {\"id\": \"X02\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [576, 651, 600, 861], \"reason\": \"narrow filler strip\"},\n    {\"id\": \"X03\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [840, 104, 890, 904], \"reason\": \"fixed end panel of tall unit\"}\n  ],\n  \"tabletop_supports\": [\n    {\n      \"id\": \"T01\",\n      \"location\": \"L-shaped worktop over the base run (views 002 and 001)\",\n      \"leg_count\": 0,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-002\", \"p1-view-004\"],\n      \"support_scheme\": \"Observed: the worktop sits on continuous base cabinet carcasses in both wings. No legs are visible or required for this interpretation.\",\n      \"uncertainty\": \"The worktop's connection to the carcass is not drawn in detail.\",\n      \"legs\": []\n    }\n  ],\n  \"totals\": {\n    \"drawers\": 5,\n    \"hinged_doors\": 17,\n    \"lift_up_fronts\": 2,\n    \"unresolved_fronts\": 1,\n    \"total_fronts\": 25\n  }\n}\n```",
+      "parsed_response": {
+        "island_types": [
+          {
+            "view_id": "p1-view-001",
+            "type": "Top view"
+          },
+          {
+            "view_id": "p1-view-002",
+            "type": "Axonometric view"
+          },
+          {
+            "view_id": "p1-view-003",
+            "type": "Front elevation"
+          },
+          {
+            "view_id": "p1-view-004",
+            "type": "Front elevation"
+          }
+        ],
+        "front_groups": [
+          {
+            "location": "Top wing (view-003): tall left storage unit, upper portrait door",
+            "type": "hinged",
+            "count": 1,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-003"
+            ],
+            "uncertainty": "Narrow end strip at far left is treated as a fixed side and excluded.",
+            "fronts": [
+              {
+                "id": "F01",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  109,
+                  200,
+                  200,
+                  494
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Top wing (view-003): upper cabinets above the 180 run, right end",
+            "type": "hinged",
+            "count": 3,
+            "count_basis": "estimated",
+            "view_ids": [
+              "p1-view-003"
+            ],
+            "uncertainty": "Near-square fronts; hinged is inferred from closing the upper openings. Lift-up is possible for some leaves.",
+            "fronts": [
+              {
+                "id": "F02",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  602,
+                  200,
+                  734,
+                  406
+                ]
+              },
+              {
+                "id": "F03",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  736,
+                  200,
+                  854,
+                  406
+                ]
+              },
+              {
+                "id": "F04",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  855,
+                  200,
+                  974,
+                  406
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Top wing (view-003): wide horizontal upper units, middle run",
+            "type": "lift_up",
+            "count": 2,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-003"
+            ],
+            "uncertainty": "Wide horizontal fronts in upper storage; lift-up is inferred from the Cabinet Block rule.",
+            "fronts": [
+              {
+                "id": "F05",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  203,
+                  392,
+                  401,
+                  494
+                ]
+              },
+              {
+                "id": "F06",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  402,
+                  392,
+                  600,
+                  494
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Top wing (view-003): tall column below upper units, portrait fronts",
+            "type": "hinged",
+            "count": 2,
+            "count_basis": "estimated",
+            "view_ids": [
+              "p1-view-003"
+            ],
+            "uncertainty": "Two stacked portrait fronts above the drawers; the pantry-column opening is not subdivided, so these are inferred doors.",
+            "fronts": [
+              {
+                "id": "F07",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  602,
+                  406,
+                  734,
+                  578
+                ]
+              },
+              {
+                "id": "F08",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  604,
+                  580,
+                  734,
+                  740
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Top wing (view-003): base drawer bank under tall column",
+            "type": "drawer",
+            "count": 2,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-003"
+            ],
+            "uncertainty": "",
+            "fronts": [
+              {
+                "id": "F09",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  602,
+                  742,
+                  734,
+                  801
+                ]
+              },
+              {
+                "id": "F10",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  602,
+                  803,
+                  734,
+                  861
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Top wing (view-003): base run of portrait doors",
+            "type": "hinged",
+            "count": 5,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-003"
+            ],
+            "uncertainty": "The narrow filler strip beside the last door is excluded.",
+            "fronts": [
+              {
+                "id": "F11",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  102,
+                  658,
+                  185,
+                  861
+                ]
+              },
+              {
+                "id": "F12",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  186,
+                  658,
+                  281,
+                  861
+                ]
+              },
+              {
+                "id": "F13",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  282,
+                  658,
+                  380,
+                  861
+                ]
+              },
+              {
+                "id": "F14",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  381,
+                  658,
+                  476,
+                  861
+                ]
+              },
+              {
+                "id": "F15",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  477,
+                  658,
+                  575,
+                  861
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Return wing (view-004): upper tall-glass-style pair of doors",
+            "type": "hinged",
+            "count": 2,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-004"
+            ],
+            "uncertainty": "Pair of portrait leaves; the top is shown as a pair.",
+            "fronts": [
+              {
+                "id": "F16",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  128,
+                  109,
+                  225,
+                  450
+                ]
+              },
+              {
+                "id": "F17",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  231,
+                  109,
+                  340,
+                  450
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Return wing (view-004): base portrait doors",
+            "type": "hinged",
+            "count": 4,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-004"
+            ],
+            "uncertainty": "",
+            "fronts": [
+              {
+                "id": "F18",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  126,
+                  635,
+                  222,
+                  867
+                ]
+              },
+              {
+                "id": "F19",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  227,
+                  635,
+                  336,
+                  867
+                ]
+              },
+              {
+                "id": "F20",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  337,
+                  635,
+                  444,
+                  867
+                ]
+              },
+              {
+                "id": "F21",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  601,
+                  635,
+                  730,
+                  867
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Return wing (view-004): base drawer bank",
+            "type": "drawer",
+            "count": 3,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-004"
+            ],
+            "uncertainty": "",
+            "fronts": [
+              {
+                "id": "F22",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  445,
+                  635,
+                  598,
+                  698
+                ]
+              },
+              {
+                "id": "F23",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  445,
+                  699,
+                  598,
+                  782
+                ]
+              },
+              {
+                "id": "F24",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  445,
+                  784,
+                  598,
+                  867
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Return wing (view-004): tall unit at right end",
+            "type": "unresolved",
+            "count": 1,
+            "count_basis": "estimated",
+            "view_ids": [
+              "p1-view-004"
+            ],
+            "uncertainty": "Tall unit shows handle-like marks at its left edge, but no clear door split. It may be a door or a fixed pantry side.",
+            "fronts": [
+              {
+                "id": "F25",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  736,
+                  104,
+                  840,
+                  904
+                ]
+              }
+            ]
+          }
+        ],
+        "excluded_surfaces": [
+          {
+            "id": "X01",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              49,
+              192,
+              103,
+              494
+            ],
+            "reason": "fixed carcass end side"
+          },
+          {
+            "id": "X02",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              576,
+              651,
+              600,
+              861
+            ],
+            "reason": "narrow filler strip"
+          },
+          {
+            "id": "X03",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              840,
+              104,
+              890,
+              904
+            ],
+            "reason": "fixed end panel of tall unit"
+          }
+        ],
+        "tabletop_supports": [
+          {
+            "id": "T01",
+            "location": "L-shaped worktop over the base run (views 002 and 001)",
+            "leg_count": 0,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-002",
+              "p1-view-004"
+            ],
+            "support_scheme": "Observed: the worktop sits on continuous base cabinet carcasses in both wings. No legs are visible or required for this interpretation.",
+            "uncertainty": "The worktop's connection to the carcass is not drawn in detail.",
+            "legs": []
+          }
+        ],
+        "totals": {
+          "drawers": 5,
+          "hinged_doors": 17,
+          "lift_up_fronts": 2,
+          "unresolved_fronts": 1,
+          "total_fronts": 25
+        }
+      },
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 14261,
+        "output_tokens": 7347,
+        "output_tokens_details": {
+          "thinking_tokens": 4376
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "front_box_counts_by_island": {
+        "p1-view-003": {
+          "hinged": 11,
+          "lift_up": 2,
+          "drawer": 2
+        },
+        "p1-view-004": {
+          "hinged": 6,
+          "drawer": 3,
+          "unresolved": 1
+        }
+      }
+    },
+    {
+      "run": 2,
+      "original_witness": "/private/tmp/cb-front-v2-lev2-control-20261106-02.json",
+      "original_witness_sha256": "db7d9e4f61d564a88c29f5126363ca40d169d4db24f70384b35305f57b47db06",
+      "status": "front_count_requires_review",
+      "error": null,
+      "elapsed_seconds": 34.119,
+      "prompt_version": "estimation_front_count_v6_2_r05",
+      "prompt_sha256": "a929fe8ce72fd7cf75c9c100f2ce48c1e1ab2a4da8cb9ce44a9ac16545e0affd",
+      "request_sha256": "2f48c087c9baa14b31935e1e5eec890cb4af8c651d5c9c4099bdc70019f4d300",
+      "exact_request_equal_to_baseline": true,
+      "stop_reason": "end_turn",
+      "response_model": "claude-haiku-5-5",
+      "response_text": "```json\n{\n  \"island_types\": [\n    {\"view_id\": \"p1-view-001\", \"type\": \"Top view\"},\n    {\"view_id\": \"p1-view-002\", \"type\": \"Axonometric view\"},\n    {\"view_id\": \"p1-view-003\", \"type\": \"Front elevation\"},\n    {\"view_id\": \"p1-view-004\", \"type\": \"Front elevation\"}\n  ],\n  \"front_groups\": [\n    {\n      \"location\": \"Long run base cabinets, left section (view-003 lower row)\",\n      \"type\": \"hinged\",\n      \"count\": 5,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\", \"p1-view-001\"],\n      \"uncertainty\": \"Five tall portrait fronts close base openings. Narrow strip at 490-511 is treated as a fixed filler.\",\n      \"fronts\": [\n        {\"id\": \"F01\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [102, 657, 184, 860]},\n        {\"id\": \"F02\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [186, 657, 281, 860]},\n        {\"id\": \"F03\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [282, 657, 378, 860]},\n        {\"id\": \"F04\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [380, 657, 476, 860]},\n        {\"id\": \"F05\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [477, 657, 572, 860]}\n      ]\n    },\n    {\n      \"location\": \"Upper wall cabinets, right section of long run (view-003 top right)\",\n      \"type\": \"hinged\",\n      \"count\": 3,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Three portrait fronts closing wall openings; they read as doors rather than lift-up fronts.\",\n      \"fronts\": [\n        {\"id\": \"F06\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [602, 200, 735, 404]},\n        {\"id\": \"F07\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [736, 200, 854, 404]},\n        {\"id\": \"F08\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [856, 200, 973, 404]}\n      ]\n    },\n    {\n      \"location\": \"Tall unit front above middle column (view-003)\",\n      \"type\": \"hinged\",\n      \"count\": 1,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Portrait panel above the unresolved middle front; its opening type is inferred from shape and the 184 dimension.\",\n      \"fronts\": [\n        {\"id\": \"F09\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [602, 406, 735, 576]}\n      ]\n    },\n    {\n      \"location\": \"Left tall pantry unit, door at 92-170 in view-003\",\n      \"type\": \"hinged\",\n      \"count\": 1,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p1-view-003\", \"p1-view-001\"],\n      \"uncertainty\": \"Tall portrait panel beside the fixed side strip. Treated as one hinged door; could be a fixed panel.\",\n      \"fronts\": [\n        {\"id\": \"F10\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [108, 200, 200, 494]}\n      ]\n    },\n    {\n      \"location\": \"Upper left wall cabinets, horizontal fronts (view-003)\",\n      \"type\": \"lift_up\",\n      \"count\": 2,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Two wide horizontal fronts in an upper unit.\",\n      \"fronts\": [\n        {\"id\": \"F11\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [203, 393, 401, 494]},\n        {\"id\": \"F12\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [403, 393, 599, 494]}\n      ]\n    },\n    {\n      \"location\": \"Right base section, stacked drawers (view-003 bottom right)\",\n      \"type\": \"drawer\",\n      \"count\": 2,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Two shallow stacked fronts at the base of the right column.\",\n      \"fronts\": [\n        {\"id\": \"F13\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [602, 741, 735, 800]},\n        {\"id\": \"F14\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [602, 803, 735, 860]}\n      ]\n    },\n    {\n      \"location\": \"Middle front above drawers, right column (view-003)\",\n      \"type\": \"unresolved\",\n      \"count\": 1,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Square-ish front above the drawer stack; could be a hinged door or a lift-up front, and the operating type cannot be confirmed.\",\n      \"fronts\": [\n        {\"id\": \"F15\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [605, 581, 731, 739]}\n      ]\n    },\n    {\n      \"location\": \"Short wing upper wall cabinet, two doors (view-004)\",\n      \"type\": \"hinged\",\n      \"count\": 2,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-004\", \"p1-view-002\"],\n      \"uncertainty\": \"Floating upper unit. Its two portrait doors are visible in the elevation and the axonometric view.\",\n      \"fronts\": [\n        {\"id\": \"F16\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [128, 115, 228, 478]},\n        {\"id\": \"F17\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [231, 115, 340, 478]}\n      ]\n    },\n    {\n      \"location\": \"Short wing base cabinets, door fronts (view-004)\",\n      \"type\": \"hinged\",\n      \"count\": 4,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-004\"],\n      \"uncertainty\": \"Four portrait fronts flank the three-drawer stack.\",\n      \"fronts\": [\n        {\"id\": \"F18\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [128, 673, 222, 919]},\n        {\"id\": \"F19\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [228, 673, 336, 919]},\n        {\"id\": \"F20\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [337, 673, 443, 919]},\n        {\"id\": \"F21\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [600, 673, 728, 919]}\n      ]\n    },\n    {\n      \"location\": \"Short wing base cabinets, drawer stack (view-004)\",\n      \"type\": \"drawer\",\n      \"count\": 3,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-004\"],\n      \"uncertainty\": \"Three stacked shallow fronts.\",\n      \"fronts\": [\n        {\"id\": \"F22\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [446, 675, 597, 739]},\n        {\"id\": \"F23\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [446, 742, 597, 827]},\n        {\"id\": \"F24\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [446, 831, 597, 919]}\n      ]\n    }\n  ],\n  \"excluded_surfaces\": [\n    {\"id\": \"X01\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [49, 200, 103, 496], \"reason\": \"fixed carcass side strip at left end of the upper and lower runs\"},\n    {\"id\": \"X02\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [576, 657, 600, 860], \"reason\": \"narrow fixed filler between base doors and the right column\"},\n    {\"id\": \"X03\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [734, 110, 889, 958], \"reason\": \"tall fixed unit side and carcass panel; not an access front\"},\n    {\"id\": \"X04\", \"view_id\": \"p1-view-004\", \"bbox_1000\": [838, 110, 889, 958], \"reason\": \"fixed end panel of the tall unit\"}\n  ],\n  \"tabletop_supports\": [\n    {\n      \"id\": \"T01\",\n      \"location\": \"L-shaped worktop over base run and short wing\",\n      \"leg_count\": 0,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-002\", \"p1-view-003\", \"p1-view-004\"],\n      \"support_scheme\": \"Observed support is continuous base cabinet carcasses along both runs. No free legs are visible in the elevations or the axonometric view. The worktop is carried by the carcasses, not by legs.\",\n      \"uncertainty\": \"Fixing details to the carcass are not shown and are not assumed.\",\n      \"legs\": []\n    }\n  ],\n  \"totals\": {\n    \"drawers\": 5,\n    \"hinged_doors\": 16,\n    \"lift_up_fronts\": 2,\n    \"unresolved_fronts\": 1,\n    \"total_fronts\": 24\n  }\n}\n```",
+      "parsed_response": {
+        "island_types": [
+          {
+            "view_id": "p1-view-001",
+            "type": "Top view"
+          },
+          {
+            "view_id": "p1-view-002",
+            "type": "Axonometric view"
+          },
+          {
+            "view_id": "p1-view-003",
+            "type": "Front elevation"
+          },
+          {
+            "view_id": "p1-view-004",
+            "type": "Front elevation"
+          }
+        ],
+        "front_groups": [
+          {
+            "location": "Long run base cabinets, left section (view-003 lower row)",
+            "type": "hinged",
+            "count": 5,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-003",
+              "p1-view-001"
+            ],
+            "uncertainty": "Five tall portrait fronts close base openings. Narrow strip at 490-511 is treated as a fixed filler.",
+            "fronts": [
+              {
+                "id": "F01",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  102,
+                  657,
+                  184,
+                  860
+                ]
+              },
+              {
+                "id": "F02",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  186,
+                  657,
+                  281,
+                  860
+                ]
+              },
+              {
+                "id": "F03",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  282,
+                  657,
+                  378,
+                  860
+                ]
+              },
+              {
+                "id": "F04",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  380,
+                  657,
+                  476,
+                  860
+                ]
+              },
+              {
+                "id": "F05",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  477,
+                  657,
+                  572,
+                  860
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Upper wall cabinets, right section of long run (view-003 top right)",
+            "type": "hinged",
+            "count": 3,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-003"
+            ],
+            "uncertainty": "Three portrait fronts closing wall openings; they read as doors rather than lift-up fronts.",
+            "fronts": [
+              {
+                "id": "F06",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  602,
+                  200,
+                  735,
+                  404
+                ]
+              },
+              {
+                "id": "F07",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  736,
+                  200,
+                  854,
+                  404
+                ]
+              },
+              {
+                "id": "F08",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  856,
+                  200,
+                  973,
+                  404
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Tall unit front above middle column (view-003)",
+            "type": "hinged",
+            "count": 1,
+            "count_basis": "estimated",
+            "view_ids": [
+              "p1-view-003"
+            ],
+            "uncertainty": "Portrait panel above the unresolved middle front; its opening type is inferred from shape and the 184 dimension.",
+            "fronts": [
+              {
+                "id": "F09",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  602,
+                  406,
+                  735,
+                  576
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Left tall pantry unit, door at 92-170 in view-003",
+            "type": "hinged",
+            "count": 1,
+            "count_basis": "estimated",
+            "view_ids": [
+              "p1-view-003",
+              "p1-view-001"
+            ],
+            "uncertainty": "Tall portrait panel beside the fixed side strip. Treated as one hinged door; could be a fixed panel.",
+            "fronts": [
+              {
+                "id": "F10",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  108,
+                  200,
+                  200,
+                  494
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Upper left wall cabinets, horizontal fronts (view-003)",
+            "type": "lift_up",
+            "count": 2,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-003"
+            ],
+            "uncertainty": "Two wide horizontal fronts in an upper unit.",
+            "fronts": [
+              {
+                "id": "F11",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  203,
+                  393,
+                  401,
+                  494
+                ]
+              },
+              {
+                "id": "F12",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  403,
+                  393,
+                  599,
+                  494
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Right base section, stacked drawers (view-003 bottom right)",
+            "type": "drawer",
+            "count": 2,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-003"
+            ],
+            "uncertainty": "Two shallow stacked fronts at the base of the right column.",
+            "fronts": [
+              {
+                "id": "F13",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  602,
+                  741,
+                  735,
+                  800
+                ]
+              },
+              {
+                "id": "F14",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  602,
+                  803,
+                  735,
+                  860
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Middle front above drawers, right column (view-003)",
+            "type": "unresolved",
+            "count": 1,
+            "count_basis": "estimated",
+            "view_ids": [
+              "p1-view-003"
+            ],
+            "uncertainty": "Square-ish front above the drawer stack; could be a hinged door or a lift-up front, and the operating type cannot be confirmed.",
+            "fronts": [
+              {
+                "id": "F15",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  605,
+                  581,
+                  731,
+                  739
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Short wing upper wall cabinet, two doors (view-004)",
+            "type": "hinged",
+            "count": 2,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-004",
+              "p1-view-002"
+            ],
+            "uncertainty": "Floating upper unit. Its two portrait doors are visible in the elevation and the axonometric view.",
+            "fronts": [
+              {
+                "id": "F16",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  128,
+                  115,
+                  228,
+                  478
+                ]
+              },
+              {
+                "id": "F17",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  231,
+                  115,
+                  340,
+                  478
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Short wing base cabinets, door fronts (view-004)",
+            "type": "hinged",
+            "count": 4,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-004"
+            ],
+            "uncertainty": "Four portrait fronts flank the three-drawer stack.",
+            "fronts": [
+              {
+                "id": "F18",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  128,
+                  673,
+                  222,
+                  919
+                ]
+              },
+              {
+                "id": "F19",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  228,
+                  673,
+                  336,
+                  919
+                ]
+              },
+              {
+                "id": "F20",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  337,
+                  673,
+                  443,
+                  919
+                ]
+              },
+              {
+                "id": "F21",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  600,
+                  673,
+                  728,
+                  919
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Short wing base cabinets, drawer stack (view-004)",
+            "type": "drawer",
+            "count": 3,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-004"
+            ],
+            "uncertainty": "Three stacked shallow fronts.",
+            "fronts": [
+              {
+                "id": "F22",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  446,
+                  675,
+                  597,
+                  739
+                ]
+              },
+              {
+                "id": "F23",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  446,
+                  742,
+                  597,
+                  827
+                ]
+              },
+              {
+                "id": "F24",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  446,
+                  831,
+                  597,
+                  919
+                ]
+              }
+            ]
+          }
+        ],
+        "excluded_surfaces": [
+          {
+            "id": "X01",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              49,
+              200,
+              103,
+              496
+            ],
+            "reason": "fixed carcass side strip at left end of the upper and lower runs"
+          },
+          {
+            "id": "X02",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              576,
+              657,
+              600,
+              860
+            ],
+            "reason": "narrow fixed filler between base doors and the right column"
+          },
+          {
+            "id": "X03",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              734,
+              110,
+              889,
+              958
+            ],
+            "reason": "tall fixed unit side and carcass panel; not an access front"
+          },
+          {
+            "id": "X04",
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              838,
+              110,
+              889,
+              958
+            ],
+            "reason": "fixed end panel of the tall unit"
+          }
+        ],
+        "tabletop_supports": [
+          {
+            "id": "T01",
+            "location": "L-shaped worktop over base run and short wing",
+            "leg_count": 0,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-002",
+              "p1-view-003",
+              "p1-view-004"
+            ],
+            "support_scheme": "Observed support is continuous base cabinet carcasses along both runs. No free legs are visible in the elevations or the axonometric view. The worktop is carried by the carcasses, not by legs.",
+            "uncertainty": "Fixing details to the carcass are not shown and are not assumed.",
+            "legs": []
+          }
+        ],
+        "totals": {
+          "drawers": 5,
+          "hinged_doors": 16,
+          "lift_up_fronts": 2,
+          "unresolved_fronts": 1,
+          "total_fronts": 24
+        }
+      },
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 14261,
+        "output_tokens": 7748,
+        "output_tokens_details": {
+          "thinking_tokens": 4617
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "front_box_counts_by_island": {
+        "p1-view-003": {
+          "hinged": 10,
+          "lift_up": 2,
+          "drawer": 2,
+          "unresolved": 1
+        },
+        "p1-view-004": {
+          "hinged": 6,
+          "drawer": 3
+        }
+      }
+    },
+    {
+      "run": 3,
+      "original_witness": "/private/tmp/cb-front-v2-lev2-control-20261106-03.json",
+      "original_witness_sha256": "42e1ebeb37d8da7bfb4411255910b87687c3b50c3075e77da56b0cb3b424d60c",
+      "status": "failed",
+      "error": "ValueError: invalid island classification",
+      "elapsed_seconds": 28.799,
+      "prompt_version": "estimation_front_count_v6_2_r05",
+      "prompt_sha256": "a929fe8ce72fd7cf75c9c100f2ce48c1e1ab2a4da8cb9ce44a9ac16545e0affd",
+      "request_sha256": "2f48c087c9baa14b31935e1e5eec890cb4af8c651d5c9c4099bdc70019f4d300",
+      "exact_request_equal_to_baseline": true,
+      "stop_reason": "end_turn",
+      "response_model": "claude-haiku-5-5",
+      "response_text": "```json\n{\n  \"island_types\": [\n    {\"view_id\": \"p1-view-001\", \"type\": \"top_view\"},\n    {\"view_id\": \"p1-view-002\", \"type\": \"axonometric_view\"},\n    {\"view_id\": \"p1-view-003\", \"type\": \"front_elevation\"},\n    {\"view_id\": \"p1-view-004\", \"type\": \"front_elevation\"}\n  ],\n  \"front_groups\": [\n    {\n      \"location\": \"Long run upper wall units, right stack above 180 run\",\n      \"type\": \"hinged\",\n      \"count\": 3,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Three portrait upper fronts with clear boundaries in the front elevation.\",\n      \"fronts\": [\n        {\"id\": \"F01\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [602, 200, 734, 406]},\n        {\"id\": \"F02\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [735, 200, 852, 406]},\n        {\"id\": \"F03\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [853, 200, 972, 406]}\n      ]\n    },\n    {\n      \"location\": \"Long run tall base-stack fronts beneath upper right units\",\n      \"type\": \"hinged\",\n      \"count\": 2,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Two near-square portrait fronts; treated as doors because they close storage openings, though their operation is not labelled.\",\n      \"fronts\": [\n        {\"id\": \"F04\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [602, 406, 734, 576]},\n        {\"id\": \"F05\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [602, 580, 734, 739]}\n      ]\n    },\n    {\n      \"location\": \"Left tall upper unit on long run\",\n      \"type\": \"hinged\",\n      \"count\": 1,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Single tall portrait front; the adjacent narrow strip is treated as a fixed side.\",\n      \"fronts\": [\n        {\"id\": \"F06\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [109, 200, 200, 494]}\n      ]\n    },\n    {\n      \"location\": \"Long run lower base run doors\",\n      \"type\": \"hinged\",\n      \"count\": 5,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\", \"p1-view-004\"],\n      \"uncertainty\": \"Five tall portrait base fronts are clearly separated in the long-run elevation. View 004 shows the perpendicular wing and was not counted again.\",\n      \"fronts\": [\n        {\"id\": \"F07\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [102, 650, 184, 860]},\n        {\"id\": \"F08\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [187, 650, 281, 860]},\n        {\"id\": \"F09\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [282, 650, 379, 860]},\n        {\"id\": \"F10\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [380, 650, 475, 860]},\n        {\"id\": \"F11\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [478, 650, 574, 860]}\n      ]\n    },\n    {\n      \"location\": \"Long run upper horizontal units\",\n      \"type\": \"lift_up\",\n      \"count\": 2,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Two wide horizontal upper fronts; lift-up is inferred from the wide upper-unit rule.\",\n      \"fronts\": [\n        {\"id\": \"F12\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [203, 392, 400, 494]},\n        {\"id\": \"F13\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [403, 392, 600, 494]}\n      ]\n    },\n    {\n      \"location\": \"Long run lower right stacked base drawers\",\n      \"type\": \"drawer\",\n      \"count\": 2,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p1-view-003\"],\n      \"uncertainty\": \"Two shallow stacked drawer fronts; the perpendicular wing in view 004 shows three drawers that may partly overlap this run, so only view 003 is counted.\",\n      \"fronts\": [\n        {\"id\": \"F14\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [602, 741, 734, 800]},\n        {\"id\": \"F15\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [602, 800, 734, 860]}\n      ]\n    }\n  ],\n  \"excluded_surfaces\": [\n    {\"id\": \"X01\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [49, 191, 100, 494], \"reason\": \"fixed carcass side at left end of upper run\"},\n    {\"id\": \"X02\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [575, 650, 601, 860], \"reason\": \"narrow fixed filler strip between base run and drawer bank\"},\n    {\"id\": \"X03\", \"view_id\": \"p1-view-003\", \"bbox_1000\": [941, 406, 972, 860], \"reason\": \"narrow end strip of tall return unit, fixed side\"}\n  ],\n  \"tabletop_supports\": [\n    {\n      \"id\": \"T01\",\n      \"location\": \"L-shaped worktop over base run and return\",\n      \"leg_count\": 0,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p1-view-002\", \"p1-view-003\", \"p1-view-004\"],\n      \"support_scheme\": \"Observed: the worktop is carried by continuous base carcasses and cabinet fronts along the L-run. No legs are visible in any view. No hidden fastening is assumed.\",\n      \"uncertainty\": \"\",\n      \"legs\": []\n    }\n  ],\n  \"totals\": {\n    \"drawers\": 2,\n    \"hinged_doors\": 11,\n    \"lift_up_fronts\": 2,\n    \"unresolved_fronts\": 0,\n    \"total_fronts\": 15\n  }\n}\n```",
+      "parsed_response": {
+        "island_types": [
+          {
+            "view_id": "p1-view-001",
+            "type": "top_view"
+          },
+          {
+            "view_id": "p1-view-002",
+            "type": "axonometric_view"
+          },
+          {
+            "view_id": "p1-view-003",
+            "type": "front_elevation"
+          },
+          {
+            "view_id": "p1-view-004",
+            "type": "front_elevation"
+          }
+        ],
+        "front_groups": [
+          {
+            "location": "Long run upper wall units, right stack above 180 run",
+            "type": "hinged",
+            "count": 3,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-003"
+            ],
+            "uncertainty": "Three portrait upper fronts with clear boundaries in the front elevation.",
+            "fronts": [
+              {
+                "id": "F01",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  602,
+                  200,
+                  734,
+                  406
+                ]
+              },
+              {
+                "id": "F02",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  735,
+                  200,
+                  852,
+                  406
+                ]
+              },
+              {
+                "id": "F03",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  853,
+                  200,
+                  972,
+                  406
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Long run tall base-stack fronts beneath upper right units",
+            "type": "hinged",
+            "count": 2,
+            "count_basis": "estimated",
+            "view_ids": [
+              "p1-view-003"
+            ],
+            "uncertainty": "Two near-square portrait fronts; treated as doors because they close storage openings, though their operation is not labelled.",
+            "fronts": [
+              {
+                "id": "F04",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  602,
+                  406,
+                  734,
+                  576
+                ]
+              },
+              {
+                "id": "F05",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  602,
+                  580,
+                  734,
+                  739
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Left tall upper unit on long run",
+            "type": "hinged",
+            "count": 1,
+            "count_basis": "estimated",
+            "view_ids": [
+              "p1-view-003"
+            ],
+            "uncertainty": "Single tall portrait front; the adjacent narrow strip is treated as a fixed side.",
+            "fronts": [
+              {
+                "id": "F06",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  109,
+                  200,
+                  200,
+                  494
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Long run lower base run doors",
+            "type": "hinged",
+            "count": 5,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-003",
+              "p1-view-004"
+            ],
+            "uncertainty": "Five tall portrait base fronts are clearly separated in the long-run elevation. View 004 shows the perpendicular wing and was not counted again.",
+            "fronts": [
+              {
+                "id": "F07",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  102,
+                  650,
+                  184,
+                  860
+                ]
+              },
+              {
+                "id": "F08",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  187,
+                  650,
+                  281,
+                  860
+                ]
+              },
+              {
+                "id": "F09",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  282,
+                  650,
+                  379,
+                  860
+                ]
+              },
+              {
+                "id": "F10",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  380,
+                  650,
+                  475,
+                  860
+                ]
+              },
+              {
+                "id": "F11",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  478,
+                  650,
+                  574,
+                  860
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Long run upper horizontal units",
+            "type": "lift_up",
+            "count": 2,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-003"
+            ],
+            "uncertainty": "Two wide horizontal upper fronts; lift-up is inferred from the wide upper-unit rule.",
+            "fronts": [
+              {
+                "id": "F12",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  203,
+                  392,
+                  400,
+                  494
+                ]
+              },
+              {
+                "id": "F13",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  403,
+                  392,
+                  600,
+                  494
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Long run lower right stacked base drawers",
+            "type": "drawer",
+            "count": 2,
+            "count_basis": "estimated",
+            "view_ids": [
+              "p1-view-003"
+            ],
+            "uncertainty": "Two shallow stacked drawer fronts; the perpendicular wing in view 004 shows three drawers that may partly overlap this run, so only view 003 is counted.",
+            "fronts": [
+              {
+                "id": "F14",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  602,
+                  741,
+                  734,
+                  800
+                ]
+              },
+              {
+                "id": "F15",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  602,
+                  800,
+                  734,
+                  860
+                ]
+              }
+            ]
+          }
+        ],
+        "excluded_surfaces": [
+          {
+            "id": "X01",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              49,
+              191,
+              100,
+              494
+            ],
+            "reason": "fixed carcass side at left end of upper run"
+          },
+          {
+            "id": "X02",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              575,
+              650,
+              601,
+              860
+            ],
+            "reason": "narrow fixed filler strip between base run and drawer bank"
+          },
+          {
+            "id": "X03",
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              941,
+              406,
+              972,
+              860
+            ],
+            "reason": "narrow end strip of tall return unit, fixed side"
+          }
+        ],
+        "tabletop_supports": [
+          {
+            "id": "T01",
+            "location": "L-shaped worktop over base run and return",
+            "leg_count": 0,
+            "count_basis": "clear",
+            "view_ids": [
+              "p1-view-002",
+              "p1-view-003",
+              "p1-view-004"
+            ],
+            "support_scheme": "Observed: the worktop is carried by continuous base carcasses and cabinet fronts along the L-run. No legs are visible in any view. No hidden fastening is assumed.",
+            "uncertainty": "",
+            "legs": []
+          }
+        ],
+        "totals": {
+          "drawers": 2,
+          "hinged_doors": 11,
+          "lift_up_fronts": 2,
+          "unresolved_fronts": 0,
+          "total_fronts": 15
+        }
+      },
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 14261,
+        "output_tokens": 6248,
+        "output_tokens_details": {
+          "thinking_tokens": 4144
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "front_box_counts_by_island": {
+        "p1-view-003": {
+          "hinged": 11,
+          "lift_up": 2,
+          "drawer": 2
+        }
+      }
+    }
+  ],
+  "review": {
+    "accepted": false,
+    "owner_benchmark": {
+      "hinged_doors_preferred": 15,
+      "hinged_doors_possible_upper": 16,
+      "drawers": 5,
+      "lift_up_fronts": 2
+    },
+    "format_passes": 2,
+    "format_failures": 1,
+    "specific_surface_comparison": [
+      {
+        "surface": "Long-run lower left side candidate, view 003",
+        "control_1": "hinged F11",
+        "control_2": "hinged F01",
+        "control_3": "hinged F07",
+        "finding": "Consistently counted despite historical side-wall concern; not a newly introduced V4 error."
+      },
+      {
+        "surface": "Column upper front above appliance opening, view 003",
+        "control_1": "hinged F07",
+        "control_2": "hinged F09",
+        "control_3": "hinged F04",
+        "finding": "All three hinged; baseline V2 had unresolved at this location."
+      },
+      {
+        "surface": "Appliance opening above the two drawers, view 003",
+        "control_1": "hinged F08",
+        "control_2": "unresolved F15",
+        "control_3": "hinged F05",
+        "finding": "Type varies at the same physical region; counting the opening as a front is not accepted."
+      },
+      {
+        "surface": "Tall end side, view 004",
+        "control_1": "unresolved F25",
+        "control_2": "excluded X03",
+        "control_3": "not annotated",
+        "finding": "Run 3 drops all counted fronts on view 004, not just this side."
+      },
+      {
+        "surface": "Return wing, view 004: upper pair, four base fronts, three drawers",
+        "control_1": "2 hinged upper + 4 hinged base + 3 drawers, plus the unresolved end side",
+        "control_2": "2 hinged upper + 4 hinged base + 3 drawers",
+        "control_3": "no counted fronts on this island",
+        "finding": "Run 3 explicitly mentions three drawers but omits the perpendicular wing due to possible overlap. Nine candidates present in both earlier controls are absent."
+      }
+    ],
+    "stable": "All three identify the intended four view classes, two lift-up fronts, two long-run drawers and zero legs. Control 3 spells all island enums incorrectly.",
+    "major_failure": "Control 3 recognizes the perpendicular wing and three drawers in its final uncertainty but counts only view 003, citing possible overlap. Same evidence and correct semantic view class do not ensure physical-identity reconciliation. This is a concrete failure mechanism in the output, not proof of model-internal reasoning.",
+    "overlay": "All three exact detail overlays inspected. Control 3 display uses enum aliases only; raw response remains failed. Run 1 return-wing boxes have noticeable vertical offsets. Counts alone are insufficient acceptance.",
+    "conclusion": "Fixed-request variability confirmed. Two controls preserve drawer/lift counts; none establishes full semantic correctness. Three samples cannot estimate a production error rate.",
+    "decision": "Stop after exactly three approved calls. Keep Front V2 / Planner V4 defaults and protected checkpoint, no prompt change, output repair or deployment.",
+    "next_proposed": "Test one bounded identity rule: do not suppress a different wing as duplicate merely on possible overlap; duplicate removal needs a specific same-physical-front correspondence. Keep output enum compliance as a separate issue, not a substitute for coverage."
+  }
+}

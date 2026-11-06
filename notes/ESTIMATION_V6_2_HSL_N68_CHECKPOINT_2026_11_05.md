@@ -28,6 +28,11 @@ Lev2 V2 repeat with the exact earlier request gives five drawers, two lift-ups,
 18 hinged doors and invalid enums. Earlier V2 had 15 hinged + two unresolved
 and valid enums. Reliability remains unaccepted. Separate raw witness:
 notes/evidence/cb-front-v2-2026-11-06/lev2-rollback-repeat.json.
+Three further approved fixed-request controls preserve the variability and
+localize a major failure: one response drops all return-wing fronts on an
+unsupported possible-overlap assumption, including three drawers it explicitly
+mentions. All checkpoints/defaults remain unchanged; no reliable acceptance.
+See notes/evidence/cb-front-v2-2026-11-06/lev2-three-controls.json.
 
 ## Identity and protected state
 

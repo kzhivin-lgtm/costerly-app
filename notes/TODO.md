@@ -886,6 +886,36 @@ Verification: 174 focused tests pass; exact default/hash, identical request
 and preserved failed response checked. git diff --check passes. No claim that
 passing tests resolves visual recognition or provider output reliability.
 
+Owner-approved continuation: THREE fixed-request Lev2 V2 controls, same
+3.17.4.5, 2026-11-06, COMPLETED diagnostic / NOT ACCEPTED as reliable.
+Exactly three calls, independent probes launched concurrently, no automatic
+retry or winner selection. Every request object and source input equals the
+baseline V2, including system, images, text and settings. No prompt revision.
+Control 1: drawers 5, hinged 17, lift-ups 2, unresolved 1; valid format, 32.889 s.
+Control 2: drawers 5, hinged 16, lift-ups 2, unresolved 1; valid format, 34.119 s.
+Control 3: drawers 2, hinged 11, lift-ups 2, unresolved 0; invalid enums, 28.799 s.
+Exact overlays inspected: the long-run lower side candidate is counted in all
+three; the appliance-opening candidate switches hinged/unresolved/hinged.
+The tall end side switches unresolved/excluded/unannotated. Control 3 omits
+ALL counted fronts on view 004, including its three drawers, four base fronts
+and two upper doors. Its raw uncertainty explicitly notices three drawers but
+suppresses them due to possible overlap with the perpendicular wing. It has
+the correct intended view class, so classification alone cannot prevent this.
+This establishes a concrete unsupported-deduplication failure in the output,
+not the model's hidden reasoning or a production error rate. Count 16 in
+control 2 is not semantic acceptance: known false surfaces remain. Control 1
+also shifts return-wing boxes vertically. No result is selected as a new truth.
+Evidence: notes/evidence/cb-front-v2-2026-11-06/lev2-three-controls.json.
+Private raw/overlays: /private/tmp/cb-front-v2-lev2-control-20261106-0[1-3]*.
+Pending P0 now localized further: physical-front identity across views,
+fixed-side/opening discrimination, and independent exact-enum compliance.
+Next PROPOSAL: one bounded same-object correspondence rule before suppressing
+a different wing as a duplicate. Not implemented or authorized by this record.
+Stop after the agreed three calls; default Front V2 / Planner V4 unchanged.
+Verification: 177 focused tests pass, preserving all three differing raw
+responses, exact request identity, format failures and view-004 omission.
+git diff --check passes; semantic reliability remains unaccepted.
+
 HSL saved-package replay, USER REQUEST, 2026-11-05, same 3.17.4.5,
 P0, COMPLETED diagnostic replay; acceptance FAILED: owner explicitly requests existing
 Detection packages, not a locally rebuilt fixture. Latest matching Floor 07

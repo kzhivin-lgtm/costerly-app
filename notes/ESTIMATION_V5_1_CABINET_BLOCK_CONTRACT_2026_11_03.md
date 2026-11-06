@@ -96,6 +96,12 @@ Front V2 / Planner V4. Exact-request Lev2 V2 repeat gives five drawers, two
 lift-ups, 18 hinged doors and invalid island enums, versus previous 15 hinged
 and two unresolved with valid enums. Rollback does not establish reliability.
 Evidence: notes/evidence/cb-front-v2-2026-11-06/lev2-rollback-repeat.json.
+Three later owner-approved identical-request controls return respectively
+(drawers/hinged/lift-up/unresolved) 5/17/2/1, 5/16/2/1, 2/11/2/0. The third
+omits the entire perpendicular-wing front set due to possible overlap, while
+still recognizing that island as a front elevation. Exact-enum validation
+passes twice, fails once. No semantic acceptance or changed default.
+Evidence: notes/evidence/cb-front-v2-2026-11-06/lev2-three-controls.json.
 
 CB Planner V5/V6 are retained diagnostic candidates, not selected defaults.
 V5 localizes worktops on top/axonometric views. V6 also caps tall blocks at

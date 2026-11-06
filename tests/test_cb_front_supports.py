@@ -55,6 +55,32 @@ def test_support_counts_are_not_forced_to_one_typical_scheme(count):
     assert planner_front_ids(result, {'p1-view-001'}) == {'F0', 'F1', 'F2'}
 
 
+@pytest.mark.parametrize('index,expected', [(0, (5, 17, 2, 1)), (1, (5, 16, 2, 1)), (2, (2, 11, 2, 0))])
+def test_lev2_fixed_request_controls_preserve_variation(index, expected):
+    import agents.estimation_understanding_agent as agent
+    root = Path(__file__).resolve().parents[1]
+    evidence = json.loads((root / 'notes/evidence/cb-front-v2-2026-11-06/lev2-three-controls.json').read_text())
+    assert evidence['calls'] == 3 and evidence['retries'] == 0
+    run = evidence['runs'][index]
+    assert run['exact_request_equal_to_baseline'] is True
+    assert run['request_sha256'] == evidence['baseline_request_sha256']
+    parsed = agent._json_object(run['response_text'])
+    assert parsed == run['parsed_response']
+    assert tuple(parsed['totals'][k] for k in ('drawers', 'hinged_doors', 'lift_up_fronts', 'unresolved_fronts')) == expected
+    known = {f'p1-view-{i:03d}' for i in range(1, 5)}
+    if index == 2:
+        assert run['status'] == 'failed'
+        with pytest.raises(ValueError, match='invalid island classification'):
+            validate_front_count(parsed, known, require_annotations=True, require_supports=True)
+        assert not any(f['view_id'] == 'p1-view-004' for g in parsed['front_groups'] for f in g['fronts'])
+        assert any('three drawers that may partly overlap' in g['uncertainty'] for g in parsed['front_groups'])
+    else:
+        assert run['status'] == 'front_count_requires_review'
+        assert validate_front_count(parsed, known, require_annotations=True, require_supports=True) == parsed
+        assert run['front_box_counts_by_island']['p1-view-004']['drawer'] == 3
+    assert evidence['review']['accepted'] is False
+
+
 def test_hidden_inferred_legs_require_uncertainty_not_invented_boxes():
     result = supported()
     group = result['tabletop_supports'][0]
