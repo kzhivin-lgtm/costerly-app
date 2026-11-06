@@ -1,5 +1,13 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: owner clarified the final CB Parts deliverable: quantity
+AND dimensions for every major part, grouped by object/block across all objects.
+Count-only V2 is intermediate; assistant-authored B08 sizes are not model proof.
+Recorded new 30 mm finished-worktop fallback (specific source/context thickness
+wins), retaining 17 mm ordinary LDSP fallback. Updated the existing TODO and
+Cabinet Block contract, no new backlog list. CB Parts V3 sized-list proposal
+remains pending; no code/prompt change, paid call, deployment or quality claim.
+
 2026-11-06, 3.17.4.6: recorded owner acceptance of the discussed B08 coarse
 parts quantities with a missing drawer-bay divider correction. Added the
 approved shared mounting-wall rule and future approximate 600 mm worktop-to-wall-

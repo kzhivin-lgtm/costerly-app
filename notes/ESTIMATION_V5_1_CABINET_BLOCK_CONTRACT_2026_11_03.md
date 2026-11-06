@@ -120,6 +120,21 @@ Owner review after V2, 2026-11-06, same 3.17.4.6:
 These decisions are recorded for the next numbered prompt update. V2 raw
 output, selectors and protected checkpoints remain unchanged in this iteration.
 
+Latest owner clarification, same 3.17.4.6: the final CB Parts result must be
+the practical part list WITH quantity and dimensions, across all project
+objects and their blocks. V2 count-only was a bounded intermediate experiment.
+The manual assistant-sized B08 list is a format/abstraction example, not proof
+of model geometry capability. Model output must be reviewed independently.
+New estimating default: WORKTOP finished thickness 30 mm if no specific value
+is supported. Explicit/contextual 40 mm or other thickness overrides that
+fallback. Ordinary LDSP panels remain 17 mm by default. This rule chooses
+neither the worktop material nor its stock/lamination route. It is an owner
+cost-estimating assumption, not a universal material/manufacturing standard.
+Maintain one document Analyze and one Calculate per object; combine their
+lists in code. Proposed CB Parts V3 adds coarse sizes to the compact list,
+including the approved internal divider and the conditional 600 mm clearance
+assumption. No new prompt, selection change or paid run is made in this note.
+
 Owner benchmark corrected on 2026-11-06: N68 TEN door-like fronts and SIX
 drawers, superseding the earlier eight-door/four-drawer confirmation. Ten
 comprises five tall, two under sink, one downward-opening dishwasher front,

@@ -999,7 +999,24 @@ No model calls, main merge, deployment or defect repair in this preservation.
 Older tags and 50 unrelated TODO lines retained. Stop further experiments until
 the owner chooses the next task; outstanding quality defects remain pending P0.
 
-Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, PENDING drawer-divider update:
+Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, PENDING sized-parts revision:
+LATEST OWNER OUTCOME: CB Parts must itself deliver the discussed practical
+parts breakdown WITH quantities and dimensions for ALL objects, grouped by
+object/block. The assistant's manual B08 estimate illustrates the desired
+result; it is not a model benchmark. Quantity-only V2 was an intermediate
+experiment, not the final deliverable. Keep one Calculate per object, following
+one document-wide Analyze; aggregation across objects is deterministic.
+NEW OWNER DEFAULT: finished worktop thickness 30 mm when unspecified. Specific
+source/context thickness (for example 40 mm) takes priority. Other ordinary
+LDSP panels retain 17 mm fallback; worktop thickness does not choose its material.
+NEXT REVISION PROPOSAL (CB Parts V3, not implemented): retain compact part rows
+and add size/thickness; interpret all views to infer coarse block/bay geometry,
+derive constituent panels, retain explicit estimating assumptions where sizes
+are absent. Reuse code for unit conversion/arithmetic and drawer depth. Include
+the approved divider rule and optional 600 mm clearance fallback. Do not restore
+V1's verbose combined material/evidence/formula output or add a model call.
+Acceptance must use actual unedited model output for the complete object, not
+assistant-authored dimensions. No runtime/prompt change in this record-only turn.
 OWNER REVIEW, 2026-11-06: accepts the discussed B08 coarse parts/quantities,
 subject to adding one internal divider between the drawer bay and adjacent
 door bay. This does not verify all nine blocks, B09 or stability. The manual
@@ -1021,7 +1038,7 @@ source 2650 overall height minus 1150 hanging-unit height minus assumed 600
 clearance gives 900. This is the worktop TOP elevation, not automatically the
 carcass panel height; plinth/support and top thickness are separate when present.
 No prompt selector change or new model run in this record-only iteration.
-CURRENT OWNER OVERRIDE: response is ONLY a list of major parts and quantities.
+HISTORICAL V2 EXPERIMENT: response is ONLY a list of major parts and quantities.
 CB Parts V2 stays inside Calculate, one call per object. No dimensions,
 materials, formulas, 2VN bindings, explanatory output or additional stage.
 Return original block/shared IDs with name/quantity rows. Whole-object images
