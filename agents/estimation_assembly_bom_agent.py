@@ -241,10 +241,12 @@ def _run_cb_parts(*, input_row, page_bytes, dimension_graph, dimension_scale_gat
         rule = rule["v3_2"]
     elif version == rule["v3_3"]["version"]:
         rule = rule["v3_3"]
+    elif version == rule["v3_4"]["version"]:
+        rule = rule["v3_4"]
     elif version != rule["version"]:
         raise ValueError("unknown CB Parts version")
     count_only = version == "CB Parts V2"
-    bay_based = version == "CB Parts V3.3"
+    bay_based = version in ("CB Parts V3.3", "CB Parts V3.4")
     sized = version in ("CB Parts V3", "CB Parts V3.1", "CB Parts V3.2")
     if scope.get("input_id") != input_row.get("input_id"):
         raise ValueError("CB Parts scope belongs to a different input")
@@ -287,7 +289,9 @@ def _run_cb_parts(*, input_row, page_bytes, dimension_graph, dimension_scale_gat
     parsed = _json_object(extract_text_from_claude_response(response))
     if bay_based:
         from use_cases.estimation_cb_bays import compose_cb_bay_parts
-        result = {"parts_sized": compose_cb_bay_parts(parsed, scope=scope),
+        from use_cases.estimation_cb_spans import compose_cb_span_parts
+        compose = compose_cb_span_parts if version == "CB Parts V3.4" else compose_cb_bay_parts
+        result = {"parts_sized": compose(parsed, scope=scope),
             "status": "cb_parts_bays_requires_review", "upstream_status": scope.get("upstream_status", {})}
     elif sized:
         result = {"parts_sized": compose_cb_sized_parts(parsed, scope=scope),

@@ -1000,7 +1000,25 @@ Older tags and 50 unrelated TODO lines retained. Stop further experiments until
 the owner chooses the next task; outstanding quality defects remain pending P0.
 
 Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, PENDING full-object geometry; research checkpoint preserved:
-LATEST OWNER DECISION: run two more unchanged V3.3 calls, then create the full
+LATEST USER-APPROVED EXPERIMENT after checkpoint: CB Parts V3.4 associates
+labelled horizontal spans with endpoints and cross-block bay intervals. Model
+returns relative weights; code conserves each total, converts units and passes
+derived bay widths to the unchanged V3.3 parts compiler. Unanchored numeric
+fallbacks stay visibly assumed. Reject duplicate allocation, numeric width plus
+span, unknown references or null widths without anchors; no source proof is
+implied by internal arithmetic. Same complete Lev2 input, no fixture dimensions
+inserted in the prompt, no additional stage or model, explicit V3.4 selection.
+One trial 9.270 s, 2415 output tokens: all declared span totals conserved, but
+151 cm assigned to the wrong interval membership/weights. B07 three doors
+collapsed to one bay (weight 3), B08 door plus drawers to one bay (weight 1.3),
+giving B08 only 456.5 mm. Side-by-side topology regressed; B06 pair also collapsed.
+Whole reply fails B01 heights. Do not present the allocation audit as accepted
+parts. Evidence: notes/evidence/cb-parts-v3-4-2026-11-06/lev2-span-trial.json.
+221 relevant tests pass; semantic objective NOT ACHIEVED. V3.3 checkpoint/tag
+and ordinary defaults unchanged. No new checkpoint or deploy. Next proposal,
+not approved: isolate dimension-line membership on a fixed bay topology before
+asking the model to regenerate parts/topology together with span association.
+Prior owner preservation decision: run two more unchanged V3.3 calls, then create the full
 checkpoint immediately. Preservation accepted with known limitations; it is
 not production or complete-object geometry acceptance. Do not resume experiments
 merely because pending defects remain. No deploy has occurred for this work.

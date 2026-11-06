@@ -260,6 +260,40 @@ notes/evidence/cb-parts-v3-3-2026-11-06/four-run-checkpoint.json.
 Stop at preservation; further dimension/source association work is pending,
 not automatically authorized. No deployment has been made for this iteration.
 
+## CB Parts V3.4 approved span-allocation experiment, same 3.17.4.6
+
+Problem confirmed from V3.3: block-local width sums do not constrain the sum of
+intervals inside a source dimension spanning several blocks. The model repeatedly
+assigned 151 cm to B07 alone and guessed B08 independently. Owner approved
+testing an explicit source-span/interval contract, not another prose-only rule.
+
+Model returns width_spans with source label/value/unit, island ID, normalized
+endpoints and ordered weighted members referencing block/bay IDs. Anchored bay
+widths must be null. Code allocates the dimension total proportionally, records
+every interval (including explicitly labelled non-bay areas), converts units,
+then invokes the unchanged V3.3 compiler. One bay may use only one allocation
+span; overlapping/nested evidence must not allocate it twice. Numeric widths
+without a reliable span remain unanchored model assumptions. Invalid references,
+duplicate assignments or simultaneous numeric/anchored widths fail validation.
+Raw answers are immutable; resolved widths and their audit are separate.
+
+This guarantees conservation, NOT correct dimension reading or association.
+Endpoint coordinates/labels are model-authored and marked unverified. Choosing
+the wrong intervals still produces a mathematically consistent wrong estimate.
+No extra model call, catalog/template library, Detection edit or numeric repair.
+
+Initial whole-Lev2 trial: 9.270 s, 2415 output tokens, same inputs/settings except
+prompt/version. Four span totals conserved. However 151 cm allocated to all B07
+doors collapsed into one bay at weight 3 and all B08 fronts collapsed into one
+bay at weight 1.3; B08 allocation about 456.5 mm. This regresses side-by-side
+topology and remains an unaccepted interpretation. B06 pair also collapsed.
+Whole-object validation fails height consistency, no accepted parts emitted.
+Raw response and diagnostic allocation in
+notes/evidence/cb-parts-v3-4-2026-11-06/lev2-span-trial.json.
+Protected checkpoint a9b8df8, prior prompts and defaults unchanged. Further
+isolation of span membership on fixed topology is only a proposal, not an
+approved architecture change or silently inserted extra production stage.
+
 Owner benchmark corrected on 2026-11-06: N68 TEN door-like fronts and SIX
 drawers, superseding the earlier eight-door/four-drawer confirmation. Ten
 comprises five tall, two under sink, one downward-opening dishwasher front,

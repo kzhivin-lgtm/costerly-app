@@ -83,6 +83,12 @@ This file explains where code belongs so the project stays understandable.
   each; complete objects 0/4 pass. Exact replies, per-block audits, 22-file
   private archive/manifest and safe restart are documented. No default promotion
   or deploy. Preserve as research with known limits, stop further experiments.
+- Post-checkpoint explicitly approved experiment: CB Parts V3.4,
+  `agents/prompts/cb_parts_v3_4.md`, `use_cases/estimation_cb_spans.py`,
+  `--parts-version V3.4`. Conserves cross-block dimension-span totals from
+  model-associated endpoints/weights before the V3.3 compiler. One Lev2 trial
+  failed topology/height despite conserved totals; no default/checkpoint change.
+  `notes/evidence/cb-parts-v3-4-2026-11-06/lev2-span-trial.json`.
 - `use_cases/machinery.py` owns the 27-code storage catalog, the 16-capability
   Company Profile subset, outsourceable-operation boundary, company/supplier
   validation, Supabase persistence, and the bounded production-context snapshot

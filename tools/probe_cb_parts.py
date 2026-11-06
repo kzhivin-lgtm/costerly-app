@@ -43,7 +43,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--execute", action="store_true")
     parser.add_argument("--omit-block-locator", help="Explicit diagnostic: omit only this block's region from the model context")
-    parser.add_argument("--parts-version", choices=("V1", "V2", "V3", "V3.1", "V3.2", "V3.3"), default="V3")
+    parser.add_argument("--parts-version", choices=("V1", "V2", "V3", "V3.1", "V3.2", "V3.3", "V3.4"), default="V3")
     args = parser.parse_args()
     if not args.execute:
         parser.error("--execute required for one paid Calculate call")

@@ -1,5 +1,18 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: implemented/tested approved CB Parts V3.4 span allocation
+experiment after the protected V3.3 checkpoint. One Haiku call, same images and
+scope, 9.270 s, 2415 output tokens. Model associates printed dimensions with
+weighted bay intervals; code conserves totals and derives widths across blocks.
+Arithmetic PASS, geometry/topology FAIL: span 151 allocated to collapsed B07
+and B08 bays, B08 only 456.5 mm with side-by-side door/drawers stacked together.
+Whole reply fails B01 height validation. Raw response/allocation audit retained
+at notes/evidence/cb-parts-v3-4-2026-11-06/lev2-span-trial.json. No correction,
+prompt retry, default promotion, deploy or replacement of checkpoint a9b8df8.
+221 relevant tests pass, not model acceptance. Association against fixed bay
+topology is a proposed next diagnostic, not implemented or authorized here.
+
+
 2026-11-06, 3.17.4.6: owner requested two more V3.3 runs then immediate full
 checkpoint, explicitly without deployment. Completed exactly two calls with
 unchanged requests, 9.473/9.674 s. B08 widths 350+270=620 and 500+500=1000 mm,
