@@ -1,5 +1,16 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: owner-requested full-chat handoff update through standalone
+Understanding V1/V2. Updated the existing authoritative handoff, not a second
+summary. Reconciled current state, version map, commits, code/evidence map,
+verification limits and safe restart; kept historical V5 prompt unchanged.
+Sections 34-35 preserve experiment design, four results, timings/tokens, known
+errors, private replay paths and exact V2 text. No new calls, prompt changes,
+production writes, deployment, semantic acceptance or quality checkpoint.
+Verified 35 consecutive sections, unchanged historical V5 prompt, exact V2
+snapshot, both prompt hashes, all four timings/token totals, private capsule
+hashes and 7/5 image counts. Removed stale restart claims; diff check passes.
+
 2026-11-06, 3.17.4.6: owner-approved Understanding V2 focus-only experiment.
 V1 remains immutable; V2 adds one paragraph excluding non-thickness sizes and
 focusing construction/materials/supports with visible leg count. Same packets,

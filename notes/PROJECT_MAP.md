@@ -3,7 +3,9 @@
 Latest complete Estimation V6 chat handoff, 2026-11-06, work 3.17.4.6:
 `notes/ESTIMATION_V6_FULL_CHAT_HANDOFF_2026_11_06.md`.
 Includes V6.1 trials, Front/Planner/Parts versions, protected checkpoints,
-current Understanding text and the three failed first-stage Cycle V5 trials.
+the three failed first-stage Cycle V5 trials and standalone Understanding V1/V2.
+Sections 34-35 contain the four latest trials, comparison, exact V2 prompt and
+current restart point. Section 33 is the historical mixed Cycle V5 prompt.
 Read before continuing the Understanding contract discussion. This is a
 documentation handoff, not a new product checkpoint or production promotion.
 

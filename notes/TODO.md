@@ -1000,6 +1000,11 @@ Older tags and 50 unrelated TODO lines retained. Stop further experiments until
 the owner chooses the next task; outstanding quality defects remain pending P0.
 
 Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, PENDING full-object geometry; research checkpoint preserved:
+OWNER-REQUESTED HANDOFF UPDATE completed, 2026-11-06:
+Existing ESTIMATION_V6_FULL_CHAT_HANDOFF_2026_11_06.md reconciled through V1/V2,
+including sections 34-35, raw-evidence paths, exact V2 prompt, commits, measured
+comparison and non-acceptance. Stale current/restart statements corrected.
+Documentation only; no further call, prompt change, new acceptance or deploy.
 LATEST APPROVED EXPERIMENT, Understanding V2, 2026-11-06:
 Owner approved the bounded focus-only change: no non-thickness sizes in the
 answer, focus on construction/materials/supports and visible leg count.
