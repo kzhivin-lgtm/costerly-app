@@ -1,0 +1,103 @@
+{
+  "work": "3.17.4.6",
+  "prompt_version": "CB Parts V1",
+  "accepted": false,
+  "scope": "one Calculate call per experiment from saved Lev2 Front V3/Planner V7; not integrated Analyze",
+  "changed_request_fields_02_to_03": [
+    "thinking"
+  ],
+  "same_evidence": true,
+  "runs": [
+    {
+      "index": 1,
+      "private_witness": "/private/tmp/lev2-cb-parts-v1-20261106-01.json",
+      "status": "failed",
+      "error": "RuntimeError: Estimation V4.1 material-facts request exceeded the 60-second limit.",
+      "elapsed_seconds": 60.342,
+      "timeout_seconds": 60,
+      "prompt_sha256": null,
+      "thinking": "provider_default",
+      "stop_reason": null,
+      "usage": null,
+      "response_text": null,
+      "request_sha256": null,
+      "upstream_status": {
+        "front": "failed",
+        "planner": "assembly_plan_requires_review",
+        "origin": "saved_separate_probes_not_integrated_Analyze"
+      }
+    },
+    {
+      "index": 2,
+      "private_witness": "/private/tmp/lev2-cb-parts-v1-20261106-02.json",
+      "status": "failed",
+      "error": "ValueError: CB Parts response did not finish normally",
+      "elapsed_seconds": 69.568,
+      "timeout_seconds": 120,
+      "prompt_sha256": "0dc15abc8fc5dc4ecc664715236b7ede41029548fb1675ad823d8ea7da3cf63c",
+      "thinking": "provider_default",
+      "stop_reason": "max_tokens",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 22528,
+        "output_tokens": 14000,
+        "output_tokens_details": {
+          "thinking_tokens": 13971
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "response_text": "```json\n{\n \"document_unit\":{\"unit\":\"cm\",\"basis\":\"document_convention",
+      "request_sha256": "fafdc70a84aba2623335cdd0c0f54e59fefa4a42a0362de7fc53b408ad804b3b",
+      "upstream_status": {
+        "front": "failed",
+        "planner": "assembly_plan_requires_review",
+        "origin": "saved_separate_probes_not_integrated_Analyze"
+      }
+    },
+    {
+      "index": 3,
+      "private_witness": "/private/tmp/lev2-cb-parts-v1-20261106-03.json",
+      "status": "failed",
+      "error": "JSONDecodeError: Expecting ',' delimiter: line 27 column 3 (char 2707)",
+      "elapsed_seconds": 16.921,
+      "timeout_seconds": 120,
+      "prompt_sha256": "0dc15abc8fc5dc4ecc664715236b7ede41029548fb1675ad823d8ea7da3cf63c",
+      "thinking": {
+        "type": "disabled"
+      },
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 22527,
+        "output_tokens": 4816,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "response_text": "```json\n{\n \"document_unit\":{\"unit\":\"cm\",\"basis\":\"document_convention_assumption\",\"evidence_refs\":[\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0012\",\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0009\",\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0013\",\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0006\",\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0002\",\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0008\",\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0010\",\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0004\"],\"assumption_reason\":\"No printed unit; furniture-scale guard requires centimetres to keep a plausible physical size.\"},\n \"materials\":[],\n \"view_interpretations\":[\n  {\"view_id\":\"p1-view-001\",\"projection\":\"top_plan\",\"horizontal_axis\":\"width\"},\n  {\"view_id\":\"p1-view-002\",\"projection\":\"isometric\",\"horizontal_axis\":null},\n  {\"view_id\":\"p1-view-003\",\"projection\":\"front_elevation\",\"horizontal_axis\":\"width\"},\n  {\"view_id\":\"p1-view-004\",\"projection\":\"front_elevation\",\"horizontal_axis\":\"width\"}\n ],\n \"dimension_bindings\":[\n  {\"assembly_id\":\"object-001\",\"axis\":\"height\",\"view_id\":\"p1-view-003\",\"local_orientation\":\"vertical\",\"dimension_id\":\"dimension-005\",\"resolution\":\"direct\"},\n  {\"assembly_id\":\"object-001\",\"axis\":\"width\",\"view_id\":\"p1-view-003\",\"local_orientation\":\"horizontal\",\"dimension_id\":\"dimension-001\",\"resolution\":\"direct\"},\n  {\"assembly_id\":\"object-001\",\"axis\":\"width\",\"view_id\":\"p1-view-004\",\"local_orientation\":\"horizontal\",\"dimension_id\":\"dimension-007\",\"resolution\":\"direct\"},\n  {\"assembly_id\":\"object-001\",\"axis\":\"height\",\"view_id\":\"p1-view-004\",\"local_orientation\":\"vertical\",\"dimension_id\":\"dimension-008\",\"resolution\":\"direct\"}\n ],\n \"blocks\":[\n  {\"id\":\"B01\",\"dimensions\":{\n    \"width\":{\"value\":180,\"basis\":\"source\",\"evidence_refs\":[\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0002\"],\"assumption_reason\":null},\n    \"height\":{\"value\":75,\"basis\":\"source\",\"evidence_refs\":[\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0005\"],\"assumption_reason\":null},\n    \"depth\":{\"value\":35,\"basis\":\"assumption\",\"evidence_refs\":[],\"assumption_reason\":\"Typical upper cabinet depth; not dimensioned in drawing.\"}},\n   \"parts\":[\n    {\"role\":\"side\",\"quantity\":2,\"size\":[\"height\",\"depth\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Upper carcass sides at run ends\"},\n    {\"role\":\"horizontal\",\"quantity\":2,\"size\":[\"width\",\"depth\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Top and bottom of upper run\"},\n    {\"role\":\"back\",\"quantity\":1,\"size\":[\"width\",\"height\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Back panel\"},\n    {\"role\":\"facade\",\"quantity\":3,\"size\":[\"width\",\"height\"],\"material_id\":\"M0\",\"front_ids\":[\"F01\",\"F02\",\"F03\"],\"note\":\"Pantry door and two lift-up fronts; fronts listed as supplied\"}\n   ]}\n  },\n  {\"id\":\"B02\",\"dimensions\":{\n    \"width\":{\"value\":69,\"basis\":\"source\",\"evidence_refs\":[\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0003\"],\"assumption_reason\":null},\n    \"height\":{\"value\":184,\"basis\":\"source\",\"evidence_refs\":[\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0006\"],\"assumption_reason\":null},\n    \"depth\":{\"value\":60,\"basis\":\"assumption\",\"evidence_refs\":[],\"assumption_reason\":\"Assumed tall column depth; not dimensioned in drawing.\"}},\n   \"parts\":[\n    {\"role\":\"side\",\"quantity\":2,\"size\":[\"height\",\"depth\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Column carcass sides\"},\n    {\"role\":\"horizontal\",\"quantity\":2,\"size\":[\"width\",\"depth\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Top and bottom of column\"},\n    {\"role\":\"back\",\"quantity\":1,\"size\":[\"width\",\"height\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Back panel\"},\n    {\"role\":\"facade\",\"quantity\":5,\"size\":[\"width\",\"height\"],\"material_id\":\"M0\",\"front_ids\":[\"F04\",\"F07\",\"F08\",\"F09\",\"F10\"],\"note\":\"Upper door and stacked middle doors, plus two drawer fronts\"},\n    {\"role\":\"drawer_box\",\"quantity\":2,\"size\":[\"width\",\"height\"],\"material_id\":\"M0\",\"front_ids\":[\"F09\",\"F10\"],\"note\":\"Shallow drawer stack at column base; height estimated from front\"}\n   ]}\n  },\n  {\"id\":\"B03\",\"dimensions\":{\n    \"width\":{\"value\":84,\"basis\":\"source\",\"evidence_refs\":[\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0007\"],\"assumption_reason\":null},\n    \"height\":{\"value\":115,\"basis\":\"source\",\"evidence_refs\":[\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0010\"],\"assumption_reason\":null},\n    \"depth\":{\"value\":35,\"basis\":\"assumption\",\"evidence_refs\":[],\"assumption_reason\":\"Typical upper cabinet depth; not dimensioned in drawing.\"}},\n   \"parts\":[\n    {\"role\":\"side\",\"quantity\":2,\"size\":[\"height\",\"depth\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Upper pair carcass sides\"},\n    {\"role\":\"horizontal\",\"quantity\":2,\"size\":[\"width\",\"depth\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Top and bottom\"},\n    {\"role\":\"back\",\"quantity\":1,\"size\":[\"width\",\"height\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Back panel\"},\n    {\"role\":\"facade\",\"quantity\":2,\"size\":[\"width\",\"height\"],\"material_id\":\"M0\",\"front_ids\":[\"F16\",\"F17\"],\"note\":\"Two tall hanging doors\"}\n   ]}\n  },\n  {\"id\":\"B04\",\"dimensions\":{\n    \"width\":{\"value\":151,\"basis\":\"source\",\"evidence_refs\":[\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0008\"],\"assumption_reason\":null},\n    \"height\":{\"value\":84,\"basis\":\"assumption\",\"evidence_refs\":[],\"assumption_reason\":\"Base cabinet height estimated; base run height not dimensioned directly in source.\"},\n    \"depth\":{\"value\":60,\"basis\":\"assumption\",\"evidence_refs\":[],\"assumption_reason\":\"Assumed base cabinet depth; not dimensioned in drawing.\"}},\n   \"parts\":[\n    {\"role\":\"side\",\"quantity\":2,\"size\":[\"height\",\"depth\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Base carcass sides\"},\n    {\"role\":\"horizontal\",\"quantity\":2,\"size\":[\"width\",\"depth\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Top and bottom of base run\"},\n    {\"role\":\"back\",\"quantity\":1,\"size\":[\"width\",\"height\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Back panel\"},\n    {\"role\":\"facade\",\"quantity\":3,\"size\":[\"width\",\"height\"],\"material_id\":\"M0\",\"front_ids\":[\"F11\",\"F12\",\"F13\"],\"note\":\"Three lower doors\"}\n   ]}\n  },\n  {\"id\":\"B05\",\"dimensions\":{\n    \"width\":{\"value\":94,\"basis\":\"source\",\"evidence_refs\":[\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0004\"],\"assumption_reason\":null},\n    \"height\":{\"value\":84,\"basis\":\"assumption\",\"evidence_refs\":[],\"assumption_reason\":\"Base cabinet height estimated.\"},\n    \"depth\":{\"value\":60,\"basis\":\"assumption\",\"evidence_refs\":[],\"assumption_reason\":\"Assumed base cabinet depth.\"}},\n   \"parts\":[\n    {\"role\":\"side\",\"quantity\":2,\"size\":[\"height\",\"depth\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Base carcass sides\"},\n    {\"role\":\"horizontal\",\"quantity\":2,\"size\":[\"width\",\"depth\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Top and bottom\"},\n    {\"role\":\"back\",\"quantity\":1,\"size\":[\"width\",\"height\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Back panel\"},\n    {\"role\":\"facade\",\"quantity\":2,\"size\":[\"width\",\"height\"],\"material_id\":\"M0\",\"front_ids\":[\"F14\",\"F15\"],\"note\":\"Two lower doors\"}\n   ]}\n  },\n  {\"id\":\"B06\",\"dimensions\":{\n    \"width\":{\"value\":151,\"basis\":\"source\",\"evidence_refs\":[\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0008\"],\"assumption_reason\":null},\n    \"height\":{\"value\":84,\"basis\":\"assumption\",\"evidence_refs\":[],\"assumption_reason\":\"Base cabinet height estimated.\"},\n    \"depth\":{\"value\":60,\"basis\":\"assumption\",\"evidence_refs\":[],\"assumption_reason\":\"Assumed base cabinet depth.\"}},\n   \"parts\":[\n    {\"role\":\"side\",\"quantity\":2,\"size\":[\"height\",\"depth\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Base carcass sides\"},\n    {\"role\":\"horizontal\",\"quantity\":2,\"size\":[\"width\",\"depth\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Top and bottom\"},\n    {\"role\":\"back\",\"quantity\":1,\"size\":[\"width\",\"height\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Back panel\"},\n    {\"role\":\"facade\",\"quantity\":4,\"size\":[\"width\",\"height\"],\"material_id\":\"M0\",\"front_ids\":[\"F18\",\"F19\",\"F20\",\"F21\"],\"note\":\"Three doors and end door\"},\n    {\"role\":\"drawer_box\",\"quantity\":3,\"size\":[\"width\",\"height\"],\"material_id\":\"M0\",\"front_ids\":[\"F22\",\"F23\",\"F24\"],\"note\":\"Three shallow drawers\"},\n    {\"role\":\"facade\",\"quantity\":3,\"size\":[\"width\",\"height\"],\"material_id\":\"M0\",\"front_ids\":[\"F22\",\"F23\",\"F24\"],\"note\":\"Drawer fronts\"}\n   ]}\n  },\n  {\"id\":\"B07\",\"dimensions\":{\n    \"width\":{\"value\":25,\"basis\":\"source\",\"evidence_refs\":[\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0015\"],\"assumption_reason\":null},\n    \"height\":{\"value\":265,\"basis\":\"source\",\"evidence_refs\":[\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0009\"],\"assumption_reason\":null},\n    \"depth\":{\"value\":60,\"basis\":\"assumption\",\"evidence_refs\":[],\"assumption_reason\":\"Assumed tall end column depth; front and elevation show a narrow column.\"}},\n   \"parts\":[\n    {\"role\":\"side\",\"quantity\":2,\"size\":[\"height\",\"depth\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Tall end column sides\"},\n    {\"role\":\"horizontal\",\"quantity\":2,\"size\":[\"width\",\"depth\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Top and bottom\"},\n    {\"role\":\"back\",\"quantity\":1,\"size\":[\"width\",\"height\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"Back panel\"}\n   ]}\n  },\n  {\"id\":\"S01\",\"dimensions\":{\n    \"width\":{\"value\":416,\"basis\":\"source\",\"evidence_refs\":[\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0011\"],\"assumption_reason\":null},\n    \"height\":{\"value\":4,\"basis\":\"assumption\",\"evidence_refs\":[],\"assumption_reason\":\"Worktop thickness assumed; not dimensioned.\"},\n    \"depth\":{\"value\":60,\"basis\":\"assumption\",\"evidence_refs\":[],\"assumption_reason\":\"Base-run depth assumed.\"}},\n   \"parts\":[\n    {\"role\":\"worktop\",\"quantity\":1,\"size\":[\"width\",\"depth\"],\"material_id\":\"M0\",\"front_ids\":[],\"note\":\"L-shaped worktop as non-overlapping rectangles; sized to the 416 cm run envelope and base depth; empty corner not charged\"}\n   ]}\n  }\n ],\n \"conflicts\":[\n  {\"description\":\"Planner block B04/B05 split of wing 003 lower run and B07/B08 wing 004 run is not contradictory but the fronts use stacked drawers counted as one position; drawer_box assignments for B06 duplicate facades F22-F24 within the same block.\",\"affected_ids\":[\"F22\",\"F23\",\"F24\"]},\n  {\"description\":\"Planner B09 tall end column has no front IDs; treated as fixed panel carcass with no facade.\",\"affected_ids\":[]}\n ],\n \"omissions\":[\n  \"Tall end column B09 front type unresolved; no facade charged.\",\n  \"Base and upper carcass depths, base height, worktop thickness not dimensioned in source; estimated.\",\n  \"Lower-run horizontal divisions between drawers not separately itemized beyond drawer_box entries.\"\n ]\n}\n```",
+      "request_sha256": "aa90e69c2183be518901ecf73af27e799079387db3a755de6616e0a60fa0d9bb",
+      "upstream_status": {
+        "front": "failed",
+        "planner": "assembly_plan_requires_review",
+        "origin": "saved_separate_probes_not_integrated_Analyze"
+      }
+    }
+  ]
+}

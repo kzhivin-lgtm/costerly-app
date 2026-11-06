@@ -1,5 +1,20 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: CB Parts V1 implemented as opt-in mode INSIDE Calculate,
+not an additional model stage. Coarse groups, owner LDSP 17 mm fallback, explicit
+thickness/layers, shared partition/front coverage, deterministic drawer expansion
+and depth rule, 2VN envelope audit and existing assembly BOM contract reused.
+146 focused tests pass, including single-call behavior, no legacy batching,
+multiple pages, raw truncation capture, front/drawer coverage, 40=2x20 and unit
+provenance. Existing BOM preview supports local replay refs without changing
+the historical storage-ref selection. V3/V7 prompt hashes/defaults unchanged.
+Three Lev2 trials: 60 s timeout; 69.568 s max_tokens (13971 thinking tokens of
+14000); thinking disabled completes in 16.921 s but malformed JSON and visible
+unit/front-size/assignment errors. No raw repair, no successful BOM or production
+acceptance. Text-only evidence: notes/evidence/cb-parts-v1-2026-11-06/lev2-calculation.json.
+Private envelopes stay outside Git. No main merge, deployment, DB writes,
+Detection rerun or new checkpoint. Task remains pending revision in TODO.
+
 2026-11-06, 3.17.4.5: owner-requested Front V3 + Planner V7 research checkpoint,
 explicitly PARTIALLY COMPROMISED ("частично скомпрометирован"). Three Lev2 pairs
 retain 17 doors / 5 drawers / 2 lift-ups, known false fronts; Front enums pass

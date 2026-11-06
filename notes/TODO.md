@@ -999,6 +999,57 @@ No model calls, main merge, deployment or defect repair in this preservation.
 Older tags and 50 unrelated TODO lines retained. Stop further experiments until
 the owner chooses the next task; outstanding quality defects remain pending P0.
 
+Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, PENDING revision:
+Outcome: derive component quantities and dimensions from the large assembly
+blocks, preserving the partially compromised V3/V7 checkpoint. This is the next
+functional stage, not permission to repair or promote the prior stages.
+Name: CB Parts V1. Next task within existing Estimation work block: 3.17.4.6;
+remote branch/main rechecked at 7b48d7f/8eb87f1 before assignment, no reuse.
+OWNER APPROVAL, 2026-11-06: implement CB Parts inside Calculate, not Analyze.
+Target remains one Analyze call for all document objects, then one Calculate
+call per object covering all its blocks. Withdraw the agent proposal for an
+additional standalone CB Parts call. Front, Planner and Parts are logical
+responsibilities, not automatically separate model calls. Recent Front/Planner
+paired experiments are not verification of the integrated document-wide Analyze.
+Approved placement: coarse parts inside Calculate, consuming block/front IDs,
+original whole-object Detection evidence and dimension/material context from
+Analyze. Reuse deterministic arithmetic and 2VN where suitable.
+Output: block ID, part role, quantity, finished length/width/thickness, source
+or derivation or explicit assumption. Approximate estimation, not CNC-ready cuts.
+OWNER REQUIREMENTS: estimate large panels and drawer bodies, not fine joinery;
+ignore gaps and clearances. Default to LDSP 17 mm absent contrary evidence;
+specific material/thickness evidence (for example 40 mm) overrides the fallback.
+Drawer depth follows the slide rule: cabinet depth minus 100 mm, rounded down
+to a 100 mm step (720 -> 600). New opt-in CB Parts expansion uses that helper;
+legacy structural expansion is unchanged. Shared internal partitions counted once. Never derive
+physical size from Planner overlay boxes or silently trust incorrect front IDs.
+Existing use_cases/estimation_structural_bom.py expands conventional panels,
+but also selects material defaults/hardware and uses fixed topology assumptions;
+reuse relevant helpers only after contract review, not the full behavior blindly.
+No labor, prices, catalog selection, stock nesting or sheet purchasing in this
+new stage. First diagnostic uses the entire saved Lev2 plan (nine blocks plus
+shared worktop), including B08's three drawers + adjacent door and all views.
+Implementation is opt-in via existing Calculate entry point, one request even
+for multiple pages. Prior Front V3/Planner V7 and ordinary selectors unchanged.
+Verification: 146 relevant tests pass; three paid calls, zero accepted results.
+01 timed out at 60.342 s without returned answer. 02 with 120 s transport bound
+returned max_tokens at 69.568 s: 13971/14000 output tokens were thinking, only
+68 visible characters. 03 changed ONLY thinking=disabled, same prompt/input:
+16.921 s, end_turn, 4816 output tokens, zero thinking, but malformed JSON.
+Unrepaired visible answer also has cm-valued numbers in mm-only axes, facade
+groups charged at whole-block size, wrong front/block assignments and incomplete
+L-worktop geometry. Not merely a formatting defect. No semantic acceptance or
+promotion. Full raw visible output/usage/request-difference record:
+notes/evidence/cb-parts-v1-2026-11-06/lev2-calculation.json.
+Private original requests/responses: /private/tmp/lev2-cb-parts-v1-20261106-0[1-3].json.
+Provider documentation confirms Haiku 5.5 thinking is on by default and may be
+disabled at low effort: https://platform.claude.com/docs/en/build-with-claude/thinking.
+Do not keep increasing tokens or silently repair outputs. AGENT PROPOSAL for
+next revision: source-unit dimensions converted by code, explicit size groups
+for unequal fronts and strict structured output; no added model call. Not yet
+implemented/accepted. Integrated document-wide Analyze and production acceptance
+remain pending. Protected upstream checkpoint and production remain unchanged.
+
 HSL saved-package replay, USER REQUEST, 2026-11-05, same 3.17.4.5,
 P0, COMPLETED diagnostic replay; acceptance FAILED: owner explicitly requests existing
 Detection packages, not a locally rebuilt fixture. Latest matching Floor 07

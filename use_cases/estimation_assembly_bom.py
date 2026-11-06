@@ -168,6 +168,9 @@ def build_assembly_bom(*, input_row: Mapping[str, Any], dimension_graph: Mapping
     if not parts or not materials:
         raise ValueError("assembly BOM has no material-bearing components")
     preview_refs = sorted(ref for ref in allowed_refs if ref.startswith("storage://"))
+    if not preview_refs:
+        preview_refs = [item["storage_ref"] for item in (payload.get("evidence") or {}).get("artifacts") or []
+            if isinstance(item, Mapping) and item.get("artifact_kind") == "page" and item.get("storage_ref") in allowed_refs]
     return {
         "contract_version": ASSEMBLY_BOM_V1,
         "input_id": str(input_row.get("input_id") or ""),
@@ -179,5 +182,5 @@ def build_assembly_bom(*, input_row: Mapping[str, Any], dimension_graph: Mapping
         "assemblies": assemblies, "materials": materials, "parts": parts,
         "assumptions": list(dict.fromkeys(assumptions)),
         "omissions": [str(item) for item in extraction.get("omissions") or [] if str(item).strip()],
-        "primary_preview_ref": preview_refs[0],
+        "primary_preview_ref": preview_refs[0] if preview_refs else None,
     }

@@ -67,6 +67,28 @@ Additional owner-requested Front V3 + Planner V7 snapshot, PARTIALLY COMPROMISED
 notes/ESTIMATION_V6_2_FRONT_V3_PLANNER_V7_PARTIALLY_COMPROMISED_CHECKPOINT_2026_11_06.md.
 Known failures retained, defaults unchanged. B08's drawer/door grouping is
 permissible; its localization is wrong. Preservation is not semantic acceptance.
+
+2026-11-06, 3.17.4.6: owner approved CB Parts V1 INSIDE Calculate. Product target
+remains one shared Analyze plus one Calculate per object, not three stages of
+model calls. Front/Planner are logical Analyze responsibilities; their recent
+separate research calls do not establish this integration. The opt-in Parts
+route bypasses legacy Calculate batching/reconciliation and makes one request.
+Estimate large panels only, no gaps/clearances/joinery. LDSP 17 mm is the fallback
+when no contrary material/thickness evidence exists. Specific thickness overrides
+locally; 40 mm can be an explicitly assumed two-layer 20 mm construction.
+Use compact part groups, front/block IDs, arithmetic face dimensions, explicit
+assumptions. Shared partitions/worktops once. Drawer body expansion uses the
+slide-depth helper (720 -> 600), five panels per box, facade separate. No arbitrary
+backing/drawer sheet family. No labor, catalog selection, prices or stock nesting.
+Preserve raw replies before validation; 2VN checks envelope axes, not proof of
+individual panel topology. Coarse panel faces retain assumption provenance.
+Code: agents/prompts/cb_parts_v1.md, use_cases/estimation_cb_parts.py.
+The protected V3/V7 checkpoint, normal V2/V4 defaults and legacy route remain.
+CB Parts V1 is NOT ACCEPTED: all three initial Lev2 trials fail. Disabling
+thinking changes output completion (16.921 s) but yields invalid JSON and
+wrong unit/front-size semantics. Do not describe synthetic contract tests as
+visual/material acceptance. Next revision remains a proposal in TODO.
+
 Owner benchmark corrected on 2026-11-06: N68 TEN door-like fronts and SIX
 drawers, superseding the earlier eight-door/four-drawer confirmation. Ten
 comprises five tall, two under sink, one downward-opening dishwasher front,

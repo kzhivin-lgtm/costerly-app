@@ -31,6 +31,15 @@ This file explains where code belongs so the project stays understandable.
   (same 3.17.4.5). Exact Lev2 paired-run evidence, known failures and private
   recovery archive. Explicit research pair, not a change to V2/V4 defaults or
   a production release. Earlier checkpoint remains protected.
+- CB Parts V1, 3.17.4.6: `agents/prompts/cb_parts_v1.md`, opt-in inside
+  `run_estimation_assembly_bom_agent(cb_parts_scope=...)`; deterministic expansion
+  in `use_cases/estimation_cb_parts.py`, local replay `tools/probe_cb_parts.py`.
+  One Calculate request per object, no additional Parts stage. Reuses 2VN,
+  slide-depth policy and existing assembly BOM shape. Not a production route;
+  recent saved Front/Planner probes are not integrated document-wide Analyze.
+  V1 live acceptance FAILED (0/3): timeout/thinking exhaustion, then malformed
+  and semantically wrong output with thinking disabled. See TODO and
+  `notes/evidence/cb-parts-v1-2026-11-06/lev2-calculation.json` before reuse.
 - `use_cases/machinery.py` owns the 27-code storage catalog, the 16-capability
   Company Profile subset, outsourceable-operation boundary, company/supplier
   validation, Supabase persistence, and the bounded production-context snapshot

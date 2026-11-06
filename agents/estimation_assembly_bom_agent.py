@@ -140,7 +140,11 @@ def _validate_reconciliation(*, response: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def run_estimation_assembly_bom_agent(*, input_row: Mapping[str, Any], evidence_page_bytes_by_ref: Mapping[str, bytes], dimension_graph: Mapping[str, Any], dimension_scale_gate: Mapping[str, Any], allowed_material_families: Sequence[str], composition_scope: Mapping[str, Any] | None = None, model: str | None = None) -> dict[str, Any]:
+def run_estimation_assembly_bom_agent(*, input_row: Mapping[str, Any], evidence_page_bytes_by_ref: Mapping[str, bytes], dimension_graph: Mapping[str, Any], dimension_scale_gate: Mapping[str, Any], allowed_material_families: Sequence[str], composition_scope: Mapping[str, Any] | None = None, model: str | None = None, cb_parts_scope: Mapping[str, Any] | None = None, record=None) -> dict[str, Any]:
+    if cb_parts_scope is not None:
+        return _run_cb_parts(input_row=input_row, page_bytes=evidence_page_bytes_by_ref,
+            dimension_graph=dimension_graph, dimension_scale_gate=dimension_scale_gate,
+            scope=cb_parts_scope, allowed_material_families=allowed_material_families, model=model, record=record)
     payload = input_row.get("input_payload") or {}
     batches = build_v4_1_evidence_batches(payload)
     selected_model = model or get_secret("CLAUDE_ESTIMATION_ASSEMBLY_BOM_MODEL", DEFAULT_CLAUDE_AGENT_MODEL)
@@ -210,3 +214,58 @@ def run_estimation_assembly_bom_agent(*, input_row: Mapping[str, Any], evidence_
     )
     parsed = apply_evidence_measurements(parsed, scope=composition_scope or {})
     return {"extraction": parsed, "usage_event": usage}
+
+
+def _run_cb_parts(*, input_row, page_bytes, dimension_graph, dimension_scale_gate,
+                  scope, allowed_material_families, model=None, record=None):
+    """Explicit V6.2 Calculate contract. One request, no batch/reconcile calls.
+
+    The legacy route is unchanged. Saved diagnostic scopes retain their failed
+    upstream status; a new Parts result never certifies the upstream chain.
+    """
+    from hashlib import sha256
+    from agents.estimation_understanding_agent import (
+        MODEL, CB_RULEBOOK, prepare_content, planner_front_ids, validate_assembly_plan,
+    )
+    from use_cases.estimation_cb_parts import VERSION, DEFAULT_MATERIAL, compose_cb_parts
+
+    if scope.get("input_id") != input_row.get("input_id"):
+        raise ValueError("CB Parts scope belongs to a different input")
+    if model not in (None, MODEL):
+        raise ValueError("CB Parts experiment requires the selected Haiku model")
+    if "ldsp" not in allowed_material_families:
+        raise ValueError("CB Parts requires the LDSP fallback family")
+    content, manifests = prepare_content([input_row], page_bytes)
+    known = {v["view_id"] for v in manifests[0]["known_views"]}
+    front_ids = planner_front_ids(scope["front"], known)
+    validate_assembly_plan(scope["planner"], known, front_ids)
+    content.append({"type": "text", "text": json.dumps({
+        "calculation_scope": scope, "dimension_graph": dimension_graph,
+        "dimension_scale_gate": dimension_scale_gate,
+        "default_material": DEFAULT_MATERIAL, "allowed_material_families": sorted(allowed_material_families),
+    }, ensure_ascii=False, separators=(",", ":"))})
+    request = dict(model=MODEL, max_tokens=14000, output_config={"effort": "low"}, thinking={"type": "disabled"},
+        system=CB_RULEBOOK["parts"]["path"].read_text().strip(),
+        messages=[{"role": "user", "content": content}])
+    started = datetime.now(UTC).isoformat()
+    if record:
+        record("calculation_request", request, None)
+    response = _create_message_with_hard_timeout(
+        get_anthropic_client().with_options(timeout=120, max_retries=0), timeout_seconds=120, **request)
+    if record:
+        record("calculation", request, response)
+    if getattr(response, "stop_reason", None) != "end_turn":
+        raise ValueError("CB Parts response did not finish normally")
+    parsed = _json_object(extract_text_from_claude_response(response))
+    bom = compose_cb_parts(response=parsed, input_row=input_row, dimension_graph=dimension_graph,
+        scope=scope, allowed_material_families=allowed_material_families)
+    payload = input_row["input_payload"]
+    usage = build_agent_usage_event(agent_name="estimation", operation="cb_parts_calculation",
+        company_id=str(payload.get("company_id") or ""), run_id=str(payload.get("run_id") or ""),
+        file_name=str(payload.get("document", {}).get("file_name") or ""),
+        object_id=str(payload.get("object", {}).get("object_id") or ""),
+        object_name=str(payload.get("object", {}).get("object_name") or ""), model=MODEL,
+        prompt_version=VERSION, response=response, started_at=started, finished_at=datetime.now(UTC).isoformat(),
+        request_diagnostics={"provider_calls": 1, "upstream_status": scope.get("upstream_status", {})})
+    return {"extraction": parsed, "bom": bom, "usage_event": usage,
+        "prompt_version": VERSION, "prompt_sha256": sha256(request["system"].encode()).hexdigest()}

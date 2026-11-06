@@ -20,11 +20,14 @@ FRONT_SUPPORTS_PROMPT_PATH = PROMPT_PATH.with_name("cb_front_v2.md")
 FRONT_SUPPORTS_PROMPT_VERSION = "estimation_front_count_v6_2_r05"
 PLANNER_PROMPT_PATH = PROMPT_PATH.with_name("cb_planner_v4.md")
 PLANNER_PROMPT_VERSION = "CB Planner V4"
-# One rulebook, two consumers. Existing Front technical identity stays immutable.
+# One rulebook, logical sections. Existing Front/Planner defaults stay immutable.
 CB_RULEBOOK = {
     'front': {'name': 'CB Front V2', 'version': FRONT_SUPPORTS_PROMPT_VERSION, 'path': FRONT_SUPPORTS_PROMPT_PATH,
               'previous': {'name': 'CB Front V1', 'version': FRONT_COUNT_PROMPT_VERSION, 'path': FRONT_COUNT_PROMPT_PATH}},
     'planner': {'name': PLANNER_PROMPT_VERSION, 'version': PLANNER_PROMPT_VERSION, 'path': PLANNER_PROMPT_PATH},
+    'parts': {'name': 'CB Parts V1', 'version': 'CB Parts V1',
+              'path': PROMPT_PATH.with_name('cb_parts_v1.md'),
+              'consumer': 'Calculate', 'status': 'experimental_not_accepted'},
 }
 
 ISLAND_TYPES = ['Front elevation', 'Side view', 'Rear view', 'Top view',
