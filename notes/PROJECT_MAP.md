@@ -115,6 +115,15 @@ This file explains where code belongs so the project stays understandable.
   Numeric transport improved; physical ownership/coverage not accepted.
   No worked examples, extra production stage or default promotion. Limits in
   the Cabinet Block contract and authoritative TODO, no competing backlog.
+- Owner's next experiment, CB Cycle V5, same 3.17.4.6: restores the existing
+  whole-object schema in the first Front call and preserves it through Planner
+  to Calculate. `agents/estimation_cb_cycle_v5_agent.py`,
+  `use_cases/estimation_cb_cycle_v5.py`, `cb_cycle_v5_*` prompt extensions.
+  Reuses Front V3 / Planner V7 rules and V3.3 parts, no historical prompt change.
+  Both probe CLIs support `--cycle-v5`; explicit calls only, not a production
+  document-wide Analyze implementation. Contracts/lineage tested, first Ada
+  interpretation mixed two objects and failed schema. No promotion.
+  `notes/evidence/cb-cycle-v5-2026-11-06/adda-object-001-trial.json`.
 - `use_cases/machinery.py` owns the 27-code storage catalog, the 16-capability
   Company Profile subset, outsourceable-operation boundary, company/supplier
   validation, Supabase persistence, and the bounded production-context snapshot

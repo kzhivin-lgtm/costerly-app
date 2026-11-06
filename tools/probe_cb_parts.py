@@ -79,12 +79,40 @@ def load_v4_scope(front_path):
             "planner": "not_consumed_geometry_precedes_grouping"}}
 
 
+def load_v5_scope(front_path, planner_path):
+    """Carry one unmodified V5 interpretation through Planner into Calculate."""
+    from agents.estimation_understanding_agent import prepare_content
+    from agents.estimation_cb_cycle_v5_agent import FRONT_VERSION, PLANNER_VERSION
+    from use_cases.estimation_cb_cycle_v5 import parts_scope
+    front, planner = (json.loads(path.read_text()) for path in (front_path, planner_path))
+    if any(front.get(k) != planner.get(k) for k in ('inputs', 'source_pages_base64')):
+        raise ValueError('V5 Front/Planner evidence differs')
+    parsed = []
+    records = []
+    for witness, stage, version in [(front, 'front_count', FRONT_VERSION), (planner, 'assembly_plan', PLANNER_VERSION)]:
+        r = next(r for r in reversed(witness['provider_responses']) if r['stage'] == stage)
+        if r.get('prompt_version') != version or r['response'].get('stop_reason') != 'end_turn':
+            raise ValueError('complete V5 stage response required')
+        raw = '\n'.join(b['text'] for b in r['response']['content'] if b['type'] == 'text')
+        if raw != r['response_text']:
+            raise ValueError('V5 raw response mismatch')
+        parsed.append(_json_object(raw)); records.append(r)
+    context = json.loads(records[1]['request']['messages'][0]['content'][-1]['text'])
+    if context != dict(saved_front_status=front['status'], saved_interpretation=parsed[0]):
+        raise ValueError('V5 Planner consumed a different interpretation')
+    _, manifests = prepare_content(front['inputs'], {k: base64.b64decode(v) for k, v in front['source_pages_base64'].items()})
+    scope = parts_scope(front_result=parsed[0], planner_result=parsed[1], manifests=manifests,
+        upstream_status=dict(front=front['status'], planner=planner['status'], origin='saved_v5_probes_not_integrated_Analyze'))
+    return planner, scope
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--front-witness", type=Path, required=True)
     parser.add_argument("--planner-witness", type=Path, help="Required for V1-V3.5; not consumed by V4")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--execute", action="store_true")
+    parser.add_argument('--cycle-v5', action='store_true', help='Consume linked V5 Understanding/Front/Planner; requires --parts-version V3.3')
     parser.add_argument("--omit-block-locator", help="Explicit diagnostic: omit only this block's region from the model context")
     parser.add_argument("--topology-witness", type=Path, help="V3.5 only: freeze topology from an original V3.3 provider reply")
     parser.add_argument("--parts-version", choices=("V1", "V2", "V3", "V3.1", "V3.2", "V3.3", "V3.4", "V3.5", "V4", "V4.1"), default="V3")
@@ -93,7 +121,11 @@ def main():
         parser.error("--execute required for one paid Calculate call")
     if args.output.exists():
         parser.error("refuse to overwrite witness")
-    if args.parts_version in ("V4", "V4.1"):
+    if args.cycle_v5:
+        if args.parts_version != 'V3.3' or not args.planner_witness or args.omit_block_locator:
+            parser.error('V5 requires Planner, V3.3 parts and unchanged locators')
+        prior, scope = load_v5_scope(args.front_witness, args.planner_witness)
+    elif args.parts_version in ("V4", "V4.1"):
         if args.planner_witness:
             parser.error("V4 consumes Front evidence only, omit --planner-witness")
         prior, scope = load_v4_scope(args.front_witness)

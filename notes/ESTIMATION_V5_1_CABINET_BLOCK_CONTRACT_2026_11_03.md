@@ -455,6 +455,61 @@ Stop combined-contract retries. Proposed next diagnostic isolates ownership
 against fixed sections using the new packet, no material/parts generation. That
 proposal is not an approved new production architecture or additional call.
 
+## CB Cycle V5: explicit whole-object understanding, same 3.17.4.6
+
+Owner requested restoring the foundational whole-object interpretation and
+called the next cycle V5. This is an experimental contract version inside
+Estimation V6.2, not an overwrite of historical CB Front V5/Planner V5 files.
+
+1. Understanding + Front, ONE existing first-stage Haiku call. Reuse the old
+   understanding schema (summary, construction_summary, views, components,
+   cross_view_links, uncertainties) and Front V3 rules. Physical components are
+   not workshop blocks or individual facade rectangles. Link every Front ID
+   and tabletop-support group to one component, using object-owned views.
+2. Planner, ONE explicit next call. Reuse V7 grouping rules, consume the exact
+   saved interpretation and original evidence. Map all components to resulting
+   blocks/shared parts, including fixed/open/decorative construction. Validate
+   front-to-component-to-block consistency. Preserve interpretation conflicts;
+   an unresolved component may have no blocks only with an explicit conflict.
+3. Calculate, ONE explicit call per object when structurally valid. Carry the
+   same interpretation, mappings, Front and Planner scope. Retain V3.3 parts
+   compiler/arithmetic, reject V4/V4.1 regrouping in this route. Any interpretation
+   or Front conflict blocks Calculate. Dimensions are still model estimates;
+   this version does not claim to fix span ownership or complete material demand.
+
+These are three diagnostic provider calls per object, not the original desired
+one Analyze across all document objects plus Calculate per object. No additional
+fourth understanding call. Integrating document-wide Analyze and exposing the
+description in product UI are pending, not silently replaced or accepted here.
+The saved description is available in raw/HTML diagnostic reports. Prompts are
+English, model Haiku 5.5, low effort, thinking disabled, no automatic retries.
+
+Implementation: agents/estimation_cb_cycle_v5_agent.py and
+use_cases/estimation_cb_cycle_v5.py; existing probe CLIs opt in with --cycle-v5.
+Parts also requires --parts-version V3.3. No default route/prompt mutation.
+The V5 loader checks exact shared evidence, complete original responses and
+the actual Planner input against the saved first-stage response. Original raw
+response is captured before validation. Unit tests cover preserved context,
+missing/fixed components, ownership references, conflict gating and isolation.
+Structural reference checks cannot certify that a component is physically real
+or actually belongs to the source object. No private reasoning is requested.
+
+423 relevant tests. First Ada live test uses protected saved two-object run
+run_4e47c1226af946698779203ca31ff705, object-001, four pages, four full-page images.
+No saved Estimation input existed: use the existing HSL input builder with saved
+Detection/OCR, unchanged membership and hash-verified PDF. No DB writes.
+One complete Haiku response in 10.415 s, rejected: Front incorrectly flattened
+to one group; whole-object summary combines the counter with the other L-shaped
+display. Source notes about plywood were read, but veneer was additionally
+inferred. Three fronts described as stacked, not adjacent. Planner/Calculate
+not called, no raw repair or paid retry. Failed witness and review:
+notes/evidence/cb-cycle-v5-2026-11-06/adda-object-001-trial.json.
+
+Next diagnostic is object-scope presentation: full-page context currently shows
+both objects and no enlarged island crops. Input presentation is a hypothesis,
+not a verified causal explanation. Keep original pages/legends and Detection
+ownership intact; do not treat merged understanding as acceptable scope.
+
 Owner benchmark corrected on 2026-11-06: N68 TEN door-like fronts and SIX
 drawers, superseding the earlier eight-door/four-drawer confirmation. Ten
 comprises five tall, two under sink, one downward-opening dishwasher front,

@@ -16,6 +16,16 @@ protected. Pre-existing TODO changes belong to the owner.
 
 ## Decision
 
+Latest owner-approved follow-up: CB Cycle V5 under the existing 3.17.4.6.
+Restore explicit whole-object understanding within Front's first call, preserve
+physical-component lineage through Planner and fixed-topology Calculate. This
+does not overwrite historical CB Front V5/Planner V5 or rename product V6.2.
+Contract checks pass; first Ada first-stage reply mixes objects and fails schema.
+No accepted whole-object interpretation yet. See Cabinet Block contract/TODO.
+Current diagnostic is still three calls per object through Calculate; the
+original document-wide single Analyze target remains pending, not silently
+redefined as those separate probes. No new fourth call or UI/runtime promotion.
+
 Current Parts follow-up is 3.17.4.6, CB Parts V4, not a product V4 rename.
 Owner selected physical geometry before workshop grouping, then measured-input
 preparation if needed; worked-example teaching not selected. V4's three full

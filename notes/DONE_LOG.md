@@ -1,5 +1,25 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: restored whole-object understanding as opt-in CB Cycle V5
+at owner request. Existing schema/validators reused, Understanding + Front V3
+rules in the same first call, Planner V7 rules in the next explicit call.
+Physical components link to fronts/supports and then blocks, with coverage,
+ownership-reference and visible-conflict checks. Calculate receives the same
+interpretation and fixed topology, using V3.3 arithmetic, not V4 regrouping.
+No extra understanding call. Diagnostic remains three calls per object through
+Calculate; the original one document Analyze + one object Calculate target is
+not implemented by this change. No UI integration or production acceptance.
+423 focused tests pass. Ada protected run run_4e47c1226af946698779203ca31ff705
+found in DB with two objects/four pages each. No persisted Estimation input;
+reused saved Detection/OCR with the established HSL builder and hash-checked
+source images, no membership edits/DB writes. One new Haiku first-stage call
+on object-001, 10.415 s, FAILED: summary merges the separate L display into the
+counter and Front schema is malformed. Planner/Calculate not called. No repair
+or retry. Full-page-only input is a scope-presentation hypothesis, not proven
+cause. Exact raw reply retained in notes/evidence/cb-cycle-v5-2026-11-06/adda-object-001-trial.json.
+Updated authoritative TODO/contract/map; defaults, checkpoint/main/production
+and unrelated owner TODO edits preserved. Width association remains unresolved.
+
 2026-11-06, 3.17.4.6: implemented/tested owner-selected direction 2 as CB Parts
 V4.1, measurement preparation before the existing single Calculate call.
 Existing source graph/evidence-map raster lines/scale policy reused. Bounded

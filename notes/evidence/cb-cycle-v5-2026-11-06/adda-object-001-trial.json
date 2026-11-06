@@ -1,0 +1,102 @@
+{
+  "work": "3.17.4.6",
+  "version": "CB Cycle V5",
+  "status": "failed",
+  "error": "ValueError: invalid front-count fields",
+  "accepted": false,
+  "production_promoted": false,
+  "run_id": "run_4e47c1226af946698779203ca31ff705",
+  "object_id": "object-001",
+  "source_sha256": "09dc963c8b7c9aa341085ae4dbc1bbd31be606ad9f94c95136ecdc646183d4b3",
+  "source_preflight": {
+    "object_id": "object-001",
+    "pages": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "views": [
+      {
+        "view_id": "p1-view-001",
+        "page_number": 1,
+        "bbox": {
+          "top_left_x": 204.0,
+          "top_left_y": 295.0,
+          "bottom_right_x": 1042.0,
+          "bottom_right_y": 1146.0
+        }
+      },
+      {
+        "view_id": "p2-view-001",
+        "page_number": 2,
+        "bbox": {
+          "top_left_x": 155.0,
+          "top_left_y": 227.0,
+          "bottom_right_x": 852.0,
+          "bottom_right_y": 1017.0
+        }
+      },
+      {
+        "view_id": "p3-view-001",
+        "page_number": 3,
+        "bbox": {
+          "top_left_x": 178.0,
+          "top_left_y": 412.0,
+          "bottom_right_x": 862.0,
+          "bottom_right_y": 1038.0
+        }
+      },
+      {
+        "view_id": "p4-view-001",
+        "page_number": 4,
+        "bbox": {
+          "top_left_x": 213.0,
+          "top_left_y": 222.0,
+          "bottom_right_x": 1063.0,
+          "bottom_right_y": 579.0
+        }
+      }
+    ],
+    "image_count": 4,
+    "text_chars": 12868
+  },
+  "input_id": "local-detection:run_4e47c1226af946698779203ca31ff705:object-001",
+  "image_count": 4,
+  "source_evidence_unchanged": true,
+  "private_witness": "/private/tmp/adda-saved-replay-20261106-01/object-001-cycle-v5-front.json",
+  "private_witness_sha256": "91d7f4cafb9b563b1509518cd4d764e67004a6c428240ab925e29e5ccc68a5a6",
+  "provider_calls": 1,
+  "planner_calls": 0,
+  "calculate_calls": 0,
+  "elapsed_seconds": 10.415,
+  "model": "claude-haiku-5-5",
+  "prompt_version": "CB Cycle V5: Understanding + Front",
+  "prompt_sha256": "aeb9d9d3b2ec61ea2ece375ad6ed2113e79717dfa971aea3e24a2ea21cc36c12",
+  "request_sha256": "79dcd6d8c4802d77cbdd62acf1cfe8a7e5012d1200930f227059cd38415b60ee",
+  "stop_reason": "end_turn",
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 26407,
+    "output_tokens": 2250,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+  },
+  "raw_response_text": "```json\n{\n  \"understanding\": {\n    \"input_id\": \"local-detection:run_4e47c1226af946698779203ca31ff705:object-001\",\n    \"summary\": \"A single freestanding retail display assembly of connected cabinets: a long low-profile wing on the left, a central glazed display run with an inset mirror, a right-hand corner display wing with an open shelf section, a separate tall glazed element at the far right, and a separate counter-like unit with a top shelf and a mirror panel on the left.\",\n    \"construction_summary\": \"Carcass and facades are described as birch plywood (carcass 16 mm, facade 18 mm, toned and polyurethane-finished); drawer runners and hinges are specified in the notes. Surfaces are presented as wood-grain veneered panels rather than solid timber; exact sheet grade and thicknesses beyond the notes are not further inferred.\",\n    \"views\": [\n      {\"id\": \"p1-view-001\", \"page_number\": 1, \"location\": \"general perspective view, full sheet\", \"observation\": \"Overall three-dimensional arrangement of the whole display assembly, including the left wing, central glazed run, right corner wing, tall right element, top glass display box and the separate left mirror panel with counter.\"},\n      {\"id\": \"p2-view-001\", \"page_number\": 2, \"location\": \"front elevation view, upper-right sheet area\", \"observation\": \"Front elevation showing the central glazed run with a mirror panel between two glazed wings, the right wing with lower drawer fronts, and the tall right element; the separate counter-like unit is shown at left with three drawer fronts.\"},\n      {\"id\": \"p3-view-001\", \"page_number\": 3, \"location\": \"side elevation view, central sheet area\", \"observation\": \"Side profile showing the stepped height of the carcass, the lower drawer banks and the glazed upper section; also the lower plinth and the side profile of the counter unit.\"},\n      {\"id\": \"p4-view-001\", \"page_number\": 4, \"location\": \"plan view, upper half of sheet\", \"observation\": \"Top plan showing the depth steps of the wings, the tall right element, the top display box and the separate counter unit at upper left, with the lower glazed run at mid-right.\"}\n    ],\n    \"components\": [\n      {\"id\": \"C01\", \"name\": \"left separate counter unit with three drawer fronts\", \"function\": \"free-standing counter-like unit with an open top shelf and drawer fronts below, paired with a mirror panel on its left\", \"quantity\": 1, \"operation\": \"drawer\", \"material_hypothesis\": \"birch plywood carcass with toned veneered facades (from notes); construction assumed\", \"basis\": \"source\", \"view_ids\": [\"p1-view-001\", \"p2-view-001\", \"p3-view-001\", \"p4-view-001\"]},\n      {\"id\": \"C02\", \"name\": \"central glazed display run with inset mirror\", \"function\": \"upper glazed display cabinet with sliding shelves and a mirror panel between wings\", \"quantity\": 1, \"operation\": \"fixed\", \"material_hypothesis\": \"birch plywood carcass with glass panels; construction assumed\", \"basis\": \"visual_interpretation\", \"view_ids\": [\"p1-view-001\", \"p2-view-001\", \"p3-view-001\"]},\n      {\"id\": \"C03\", \"name\": \"right corner wing with lower drawer banks and open shelf\", \"function\": \"corner display wing with glazed upper section, lower drawer fronts and an open shelf\", \"quantity\": 1, \"operation\": \"drawer\", \"material_hypothesis\": \"birch plywood carcass with veneered facades; construction assumed\", \"basis\": \"visual_interpretation\", \"view_ids\": [\"p1-view-001\", \"p2-view-001\", \"p3-view-001\", \"p4-view-001\"]},\n      {\"id\": \"C04\", \"name\": \"tall separate right glazed element\", \"function\": \"tall display column at the far right of the assembly\", \"quantity\": 1, \"operation\": \"fixed\", \"material_hypothesis\": \"birch plywood carcass with glass panels; construction assumed\", \"basis\": \"visual_interpretation\", \"view_ids\": [\"p1-view-001\", \"p3-view-001\", \"p4-view-001\"]},\n      {\"id\": \"C05\", \"name\": \"top glass display box\", \"function\": \"separate glazed box mounted above the central display area\", \"quantity\": 1, \"operation\": \"fixed\", \"material_hypothesis\": \"glass with frame; construction assumed\", \"basis\": \"visual_interpretation\", \"view_ids\": [\"p1-view-001\", \"p4-view-001\"]}\n    ],\n    \"cross_view_links\": [\n      {\"component_id\": \"C01\", \"view_ids\": [\"p1-view-001\", \"p2-view-001\"], \"correspondence\": \"left counter unit with open top shelf and three stacked drawer fronts appears in the perspective and in the front elevation\"},\n      {\"component_id\": \"C03\", \"view_ids\": [\"p2-view-001\", \"p3-view-001\"], \"correspondence\": \"right wing lower drawer banks appear as front-facing fronts in the elevation and as a stepped side profile in the side view\"}\n    ],\n    \"uncertainties\": [\n      \"Exact drawer counts in the central and right wings are estimated from grid lines; the front elevation shows some lower fronts whose separation is faint.\",\n      \"Whether the top glass box and the glazed upper sections are fixed or operable is not explicitly stated.\",\n      \"Sheet-grade and exact construction of the plywood faces are inferred from the notes, not verified.\"\n    ]\n  },\n  \"front\": {\n    \"location\": \"left counter unit lower storage\",\n    \"type\": \"drawer\",\n    \"count\": 3,\n    \"count_basis\": \"clear\",\n    \"view_ids\": [\"p2-view-001\"],\n    \"uncertainty\": \"Three stacked drawer fronts are visible in the elevation; the bottom plinth strip is treated as fixed.\",\n    \"fronts\": [\n      {\"id\": \"F01\", \"view_id\": \"p2-view-001\", \"bbox_1000\": [60, 610, 230, 690]},\n      {\"id\": \"F02\", \"view_id\": \"p2-view-001\", \"bbox_1000\": [60, 690, 230, 760]},\n      {\"id\": \"F03\", \"view_id\": \"p2-view-001\", \"bbox_1000\": [60, 760, 230, 830]}\n    ],\n    \"excluded_surfaces\": [],\n    \"tabletop_supports\": [],\n    \"totals\": {\n      \"drawers\": 3,\n      \"hinged_doors\": 0,\n      \"lift_up_fronts\": 0,\n      \"unresolved_fronts\": 0,\n      \"total_fronts\": 3\n    }\n  },\n  \"front_components\": [\n    {\"front_id\": \"F01\", \"component_id\": \"C01\"},\n    {\"front_id\": \"F02\", \"component_id\": \"C01\"},\n    {\"front_id\": \"F03\", \"component_id\": \"C01\"}\n  ],\n  \"support_components\": []\n}\n```",
+  "review": {
+    "schema": "Front is one flattened group instead of the required island_types/front_groups container. Raw reply rejected before Planner.",
+    "semantic": "Whole-object summary combines the scoped left counter with the separate right L-shaped display. Three counter fronts described as stacked rather than adjacent. Material notes read, but veneer added without supporting text.",
+    "transport": "Four full-page images containing both objects; no enlarged island crops. Object-owned bounding boxes and source text supplied unchanged. Causal contribution not tested.",
+    "next": "Verify object scope presentation on the existing packet before another prompt variant. No automatic repair, reviewer or paid retry."
+  }
+}

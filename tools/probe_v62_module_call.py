@@ -18,6 +18,7 @@ def main():
     p.add_argument('--replay', type=Path, required=True)
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--execute', action='store_true')
+    p.add_argument('--cycle-v5', action='store_true', help='Opt-in whole-object Understanding + Front, then linked Planner; no implicit extra calls')
     mode = p.add_mutually_exclusive_group()
     mode.add_argument('--classify-only', '--map-only', dest='classify_only', action='store_true', help='One isolated classification call, no module continuation')
     mode.add_argument('--count-fronts', action='store_true', help='One combined classification/front-count experiment')
@@ -31,8 +32,14 @@ def main():
         p.error('Explicit --execute required for paid calls')
     if (args.front_supports or args.front_v1) and not args.count_fronts:
         p.error('Front revision flags require --count-fronts')
+    if args.cycle_v5 and (args.front_v1 or not (args.count_fronts or args.plan_assemblies)):
+        p.error('--cycle-v5 requires --count-fronts or --plan-assemblies, not --front-v1')
     include_supports = not args.front_v1
     front_version = FRONT_SUPPORTS_PROMPT_VERSION if include_supports else FRONT_COUNT_PROMPT_VERSION
+    planner_version = PLANNER_PROMPT_VERSION
+    if args.cycle_v5:
+        from agents import estimation_cb_cycle_v5_agent as cycle
+        front_version, planner_version = cycle.FRONT_VERSION, cycle.PLANNER_VERSION
     if args.output.exists() or args.output.with_suffix('.html').exists():
         p.error('Refuse to overwrite witness')
     if args.output.with_name(args.output.stem + '-assembly_plan-raw.txt').exists():
@@ -59,16 +66,20 @@ def main():
         w['route'] = 'island_types_front_count_haiku55_diagnostic'
         w['prompt_version'] = front_version
     elif args.plan_assemblies:
-        w.update(route='cb_planner_saved_front_diagnostic', prompt_version=PLANNER_PROMPT_VERSION,
+        w.update(route='cb_planner_saved_front_diagnostic', prompt_version=planner_version,
             front_witness=str(args.front_witness), front_witness_sha256=sha256(args.front_witness.read_bytes()).hexdigest(),
             front_status=front_witness['status'], front_prompt_version=front_record.get('prompt_version'))
     def save():
         args.output.write_text(json.dumps(w, ensure_ascii=False, indent=2))
     started = time.monotonic()
     def record(stage, request, response):
+        if response is None:
+            w['provider_request'] = request
+            save()
+            return
         raw = response.model_dump(mode='json')
         text = '\n'.join(b['text'] for b in raw['content'] if b['type'] == 'text')
-        prompt_identity = ({'prompt_version': PLANNER_PROMPT_VERSION if stage == 'assembly_plan' else front_version,
+        prompt_identity = ({'prompt_version': planner_version if stage == 'assembly_plan' else front_version,
             'prompt_sha256': sha256(request['system'].encode()).hexdigest()}
             if stage in {'front_count', 'assembly_plan'} else {})
         w.update(prompt_identity)
@@ -87,6 +98,8 @@ def main():
     save()
     try:
         run = run_assembly_plan if args.plan_assemblies else run_front_count if args.count_fronts else run_island_types_only if args.classify_only else run_understanding_with_modules
+        if args.cycle_v5:
+            run = cycle.run_assembly_plan if args.plan_assemblies else cycle.run_front_count
         extra = {'front_result': front_result, 'front_status': front_witness['status']} if args.plan_assemblies else {}
         if args.count_fronts:
             extra['include_supports'] = include_supports

@@ -1000,7 +1000,38 @@ Older tags and 50 unrelated TODO lines retained. Stop further experiments until
 the owner chooses the next task; outstanding quality defects remain pending P0.
 
 Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, PENDING full-object geometry; research checkpoint preserved:
-LATEST OWNER DECISION: name the next contract CB Parts V4 (not V3.x and not
+LATEST OWNER DECISION: restore explicit whole-object understanding as the
+foundation of the next experimental cycle, V5. Implemented as CB Cycle V5,
+NOT a product-major rename and NOT replacement of historical CB Front V5 or
+CB Planner V5 prompts. Product remains Estimation V6.2, same work 3.17.4.6.
+One existing first-stage call now emits Understanding + Front (V3 rules): short
+whole-object and construction descriptions, physical components, view evidence,
+cross-view links, uncertainties, front/support-to-component mappings. Planner
+(V7 rules) consumes that SAME interpretation and maps components to blocks.
+Missing/reparented references are rejected. Interpretation conflicts stay
+visible and block Calculate; structural checks do not certify visual meaning.
+Calculate keeps frozen Front/Planner scope and the V3.3 parts compiler, with the
+same understanding attached. V4/V4.1 independent regrouping is disallowed here.
+Experimental CLI switches --cycle-v5, Parts additionally --parts-version V3.3.
+No extra understanding call: current diagnostic count remains Understanding+
+Front, Planner, Calculate, three calls per object if all stages proceed. This
+is NOT the original target of one Analyze for the document plus one Calculate
+per object. Document-wide batching/combined Analyze and live UI are pending;
+do not imply they are implemented. Material hypotheses are not a resolved
+project palette; dimension association/volatility remains unresolved.
+423 focused tests pass. One Ada first-stage call, 10.415 s, complete provider
+reply but FAILED schema and semantic review: the scoped counter is combined
+with the separate L-shaped display, and Front is a flattened group rather than
+the required container. Planner/Calculate NOT called; no repaired response,
+retry, promotion or deploy. The explicit description exposes the scope error,
+but reference validation alone cannot automatically detect semantic merging.
+Raw witness: notes/evidence/cb-cycle-v5-2026-11-06/adda-object-001-trial.json.
+NEXT, P0: verify object scope presentation (whole pages versus enlarged owned
+islands) before another model-prompt variant. Full pages contain both objects,
+no detail crops were sent; causal contribution is untested. Preserve full-page
+legend/context and unchanged Detection membership. Earlier isolated measurement
+proposal below is deferred while the owner prioritizes whole-object understanding.
+PREVIOUS OWNER DECISION: name the next contract CB Parts V4 (not V3.x and not
 an Estimation product-major rename). Try geometry before workshop grouping,
 then the measurement-preparation direction. Worked-example teaching is not
 selected. This remains the same sized material-bearing parts objective.
@@ -1057,6 +1088,18 @@ independent endpoints and copied unit conversion. It is a diagnostic proposal,
 not approval for a new production stage. Integrated Analyze/project palette,
 complete acceptable parts and repeatability remain pending. Main, production,
 ordinary selectors and protected V3.3 research checkpoint remain unchanged.
+Ada transfer check, USER REQUEST, P1, PENDING within this objective: replay
+Front/Planner on a correctly grouped multipage two-object Adda package before
+further Parts changes. Located protected run run_4e47c1226af946698779203ca31ff705;
+DB confirms two objects, four pages each, no persisted Estimation inputs.
+Prepared local inputs via the existing HSL build_estimation_input path using
+saved Detection/OCR and source-hash-verified PDF, unchanged membership, no DB
+writes. Private capsule: /private/tmp/adda-saved-replay-20261106-01.
+V5 ran one first-stage call on object-001, failed as recorded above. Each input
+has four full-page images and no detail crops; verify visual scope/transport.
+Owner approved returning to explicit whole-object understanding within the
+first existing call, not a separate extra production stage. Existing protected
+pair/defaults remain unchanged; V5 is opt-in and unaccepted.
 Earlier approved diagnostic: CB Parts V3.5 freezes bay/front membership
 from the original first V3.3 reply, withholding all its dimension estimates.
 Same complete Lev2 evidence, five images, no changed locators or manual repair.

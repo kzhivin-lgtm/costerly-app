@@ -264,6 +264,17 @@ def _run_cb_parts(*, input_row, page_bytes, dimension_graph, dimension_scale_gat
     if not (count_only or sized or bay_based or width_only or geometry_first) and "ldsp" not in allowed_material_families:
         raise ValueError("CB Parts requires the LDSP fallback family")
     content, manifests = prepare_content([input_row], page_bytes)
+    v5_context = scope.get('analysis_contract') == 'CB Cycle V5'
+    if v5_context:
+        from use_cases.estimation_cb_cycle_v5 import parts_scope
+        if version != 'CB Parts V3.3':
+            raise ValueError('V5 preserves Planner topology with the V3.3 compiler; regrouping is not enabled')
+        checked = parts_scope(front_result={k: scope[k] for k in
+            ('understanding', 'front', 'front_components', 'support_components')},
+            planner_result=dict(plan=scope['planner'], component_blocks=scope['component_blocks'], interpretation_conflicts=[]),
+            manifests=manifests, upstream_status=scope['upstream_status'])
+        if any(scope.get(k) != value for k, value in checked.items()):
+            raise ValueError('V5 Calculate context mismatch')
     known = {v["view_id"] for v in manifests[0]["known_views"]}
     front_ids = planner_front_ids(scope["front"], known)
     if not geometry_first:
@@ -300,8 +311,16 @@ def _run_cb_parts(*, input_row, page_bytes, dimension_graph, dimension_scale_gat
         context.update(dimension_graph=dimension_graph, dimension_scale_gate=dimension_scale_gate,
             default_material=DEFAULT_MATERIAL, allowed_material_families=sorted(allowed_material_families))
     content.append({"type": "text", "text": json.dumps(context, ensure_ascii=False, separators=(",", ":"))})
+    system = rule["path"].read_text().strip()
+    if v5_context:
+        system += ('\n\nCB Cycle V5: the supplied understanding and component mappings are the saved '
+            'fallible interpretation of the WHOLE object. Use them with all source evidence. '
+            'Preserve component, block and Front identities; do not restart recognition or regroup '
+            'the object. Retain fixed/decorative/support components as well as fronted carcasses. '
+            'Material hypotheses are not source proof. Keep geometry assumptions explicit. '
+            'Report conflicts in the existing assumptions, never silently replace upstream scope.')
     request = dict(model=MODEL, max_tokens=14000, output_config={"effort": "low"}, thinking={"type": "disabled"},
-        system=rule["path"].read_text().strip(),
+        system=system,
         messages=[{"role": "user", "content": content}])
     started = datetime.now(UTC).isoformat()
     if record:
