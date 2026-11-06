@@ -61,9 +61,15 @@ Control 3 explicitly notices three return-wing drawers but drops the entire
 view-004 front set due to possible overlap. Thus correct view classification
 does not ensure correct cross-view physical identity. Known side/opening
 false positives persist in the other controls; no winner or promotion.
-Next proposed diagnostic targets unsupported deduplication, with enum format
-kept separate. No new prompt implemented. Raw results and surface comparison:
+The next approved diagnostic targets unsupported deduplication, with enum
+format kept separate. Raw controls and surface comparison:
 notes/evidence/cb-front-v2-2026-11-06/lev2-three-controls.json.
+CB Front V5 is based directly on V2 and adds only a concrete physical-front
+match requirement for duplicate removal. One trial retains both wings, five
+drawers, 16 hinged, two lift-ups and one unresolved; exact format passes.
+This equals V2 control 2 totals; no demonstrated reliability improvement or
+semantic acceptance. Defaults remain V2/V4, no further call automatically.
+See notes/evidence/cb-front-v5-2026-11-06/lev2-identity-trial.json.
 
 ### Current V6.2 boundary and results, 2026-11-05
 

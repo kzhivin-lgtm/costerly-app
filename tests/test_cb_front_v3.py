@@ -22,7 +22,7 @@ def test_v3_candidate_identity_and_general_lower_row_rules():
     assert sha256(agent.FRONT_SUPPORTS_PROMPT_PATH.read_text().strip().encode()).hexdigest() == 'a929fe8ce72fd7cf75c9c100f2ce48c1e1ab2a4da8cb9ce44a9ac16545e0affd'
 
 
-@pytest.mark.parametrize('version', ['V3', 'V4'])
+@pytest.mark.parametrize('version', ['V3', 'V4', 'V5'])
 def test_candidate_process_local_probe_changes_only_system(monkeypatch, version):
     row, pages, _ = setup(monkeypatch)
     calls = []
@@ -52,6 +52,19 @@ def test_v4_candidate_locates_before_classifying_without_changing_schema():
     assert 'not represented by the available types' in prompt
     assert 'N68' not in prompt
     assert prompt.split('Using the classifications AND original images, identify and count:')[1] == previous.split('Using the classifications AND original images, identify and count:')[1]
+
+
+def test_v5_changes_only_duplicate_identity_rule_from_v2():
+    previous = agent.FRONT_SUPPORTS_PROMPT_PATH.with_name('cb_front_v2.md').read_text()
+    prompt = agent.FRONT_SUPPORTS_PROMPT_PATH.with_name('cb_front_v5.md').read_text()
+    assert sha256(prompt.strip().encode()).hexdigest() == 'aeff1956341d1c42c1f0ae88a683e8580bdfc958ce8dfb4a3175762ae7584ae1'
+    prefix, remainder = prompt.split('\nExclude a front as a repeated depiction only when', 1)
+    addition, suffix = remainder.split('Include separately hanging cabinets belonging to the object.', 1)
+    assert prefix.replace('CB Front V5', 'CB Front V2') + 'Include separately hanging cabinets belonging to the object.' + suffix == previous
+    assert 'specific counted physical front in another island' in addition
+    assert 'possible overlap are not sufficient matches' in addition
+    assert 'existing uncertainty field' in addition
+    assert 'N68' not in prompt and 'Lev 2' not in prompt
 
 
 def test_n68_recorded_v3_improvement_does_not_hide_failure():
@@ -90,3 +103,20 @@ def test_n68_v4_regression_is_preserved_not_promoted():
     assert saved['review']['accepted'] is False
     with pytest.raises(ValueError, match='invalid island classification'):
         agent.validate_front_count(parsed, {f'p7-view-{i:03d}' for i in range(1, 5)}, require_annotations=True, require_supports=True)
+
+
+def test_lev2_v5_retains_wings_without_claiming_reliability():
+    root = agent.FRONT_SUPPORTS_PROMPT_PATH.parents[2]
+    saved = json.loads((root / 'notes/evidence/cb-front-v5-2026-11-06/lev2-identity-trial.json').read_text())
+    parsed = agent._json_object(saved['response_text'])
+    assert parsed == saved['parsed_response']
+    assert saved['calls'] == 1 and saved['retries'] == 0
+    assert saved['changed_request_fields_vs_v2'] == ['system']
+    assert saved['status'] == 'front_count_requires_review'
+    assert agent.validate_front_count(parsed, {f'p1-view-{i:03d}' for i in range(1, 5)}, require_annotations=True, require_supports=True) == parsed
+    assert parsed['totals'] == dict(drawers=5, hinged_doors=16, lift_up_fronts=2, unresolved_fronts=1, total_fronts=24)
+    assert saved['front_box_counts_by_island']['p1-view-003']['drawer'] == 2
+    assert saved['front_box_counts_by_island']['p1-view-004'] == dict(hinged=6, drawer=3)
+    assert saved['review']['accepted_as_default'] is False
+    controls = json.loads((root / 'notes/evidence/cb-front-v2-2026-11-06/lev2-three-controls.json').read_text())
+    assert controls['runs'][1]['parsed_response']['totals'] == parsed['totals']

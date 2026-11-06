@@ -102,6 +102,12 @@ omits the entire perpendicular-wing front set due to possible overlap, while
 still recognizing that island as a front elevation. Exact-enum validation
 passes twice, fails once. No semantic acceptance or changed default.
 Evidence: notes/evidence/cb-front-v2-2026-11-06/lev2-three-controls.json.
+CB Front V5 adds only an explicit physical-front match requirement before
+deduplicating across views, directly on V2. One Lev2 trial retains both wings
+and returns 5 drawers, 16 hinged, 2 lift-ups, 1 unresolved, valid format.
+Known side/opening false positives remain. V2 had already produced this same
+outcome in control 2, so efficacy/reliability is unproven. Candidate only;
+defaults unchanged. Evidence: notes/evidence/cb-front-v5-2026-11-06/lev2-identity-trial.json.
 
 CB Planner V5/V6 are retained diagnostic candidates, not selected defaults.
 V5 localizes worktops on top/axonometric views. V6 also caps tall blocks at

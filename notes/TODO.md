@@ -909,12 +909,39 @@ Evidence: notes/evidence/cb-front-v2-2026-11-06/lev2-three-controls.json.
 Private raw/overlays: /private/tmp/cb-front-v2-lev2-control-20261106-0[1-3]*.
 Pending P0 now localized further: physical-front identity across views,
 fixed-side/opening discrimination, and independent exact-enum compliance.
-Next PROPOSAL: one bounded same-object correspondence rule before suppressing
-a different wing as a duplicate. Not implemented or authorized by this record.
+Next proposal was subsequently approved: one bounded same-object correspondence
+rule before suppressing a different wing as a duplicate, tested below as V5.
 Stop after the agreed three calls; default Front V2 / Planner V4 unchanged.
 Verification: 177 focused tests pass, preserving all three differing raw
 responses, exact request identity, format failures and view-004 omission.
 git diff --check passes; semantic reliability remains unaccepted.
+
+CB Front V5 identity experiment, USER APPROVED, same 3.17.4.5, 2026-11-06,
+P0, COMPLETED single trial / causal result INCONCLUSIVE / NOT PROMOTED:
+Built directly from V2, not the rejected V3/V4. Only added rule: duplicate
+suppression requires a specific counted physical-front match on another view,
+not possible overlap; ambiguous identity retains a best-supported estimate.
+Same schema, models, settings, images and text. Real request comparison confirms
+only system changed. Prompt SHA256 aeff1956341d1c42c1f0ae88a683e8580bdfc958ce8dfb4a3175762ae7584ae1.
+One call, 33.906 s, exact format passes: drawers 5, hinged 16, lift-ups 2,
+unresolved 1. Both wings retained: view 003 two drawers; view 004 three drawers,
+four base doors and two upper doors. Exact overlay inspected, no duplicated
+cross-view boxes. Targeted whole-wing omission did not recur in this trial.
+Known false lower side candidate F11 remains hinged; appliance-opening F08 is
+unresolved. Tall right side is unannotated, not explicitly excluded. Minor
+vertical box offsets remain. Full semantic acceptance is not established.
+IMPORTANT: V2 control 2 already had the same counts and retained both wings.
+One V5 response does not prove the new rule improved reliability. The model's
+statement that 3 vs 2 drawers are separate is not universal identity proof.
+Evidence: notes/evidence/cb-front-v5-2026-11-06/lev2-identity-trial.json.
+Private witness/overlay: /private/tmp/cb-front-v5-lev2-identity-20261106-01*.
+Defaults remain Front V2 / Planner V4. No retry, Planner, Detection rerun,
+schema change, DB write or deployment. V5 is retained only as a candidate.
+Next PROPOSAL: fixed-request V5 control repeats before considering promotion,
+not another stacked prompt revision. Further paid calls await approval.
+Verification: 180 focused tests pass, including exact V2-to-V5 delta,
+system-only request change, retained two-wing coverage and non-promotion.
+git diff --check passes; these checks do not establish model reliability.
 
 HSL saved-package replay, USER REQUEST, 2026-11-05, same 3.17.4.5,
 P0, COMPLETED diagnostic replay; acceptance FAILED: owner explicitly requests existing
