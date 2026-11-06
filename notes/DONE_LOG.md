@@ -1,5 +1,19 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: owner-requested simple-file transfer of unchanged CB Cycle
+V5. One Haiku first-stage call each on saved Lev1/Lev2 Detection evidence,
+8.760 / 8.327 s. Both provider replies complete, both fail Front validation.
+Lev1 states three drawers but lacks actual Front rows/boxes; Lev2 emits empty
+groups and null counts. Understanding prose alone is not accepted visual scope.
+No Planner/Calculate, prompt changes, repairs, retries or production changes.
+Exact source inputs/pages and prepared request evidence verified unchanged.
+Raw replies and hashes: notes/evidence/cb-cycle-v5-2026-11-06/simple-object-trials.json.
+This rules out an exclusively Ada-specific explanation. Next proposed diagnostic
+is a single explicit output schema; prompt composition is not yet proven causal.
+101 targeted tests pass, including preservation/rejection of both failed raw
+responses. These tests do not establish visual or full-cycle acceptance.
+Protected checkpoint, main and unrelated owner TODO changes remain untouched.
+
 2026-11-06, 3.17.4.6: restored whole-object understanding as opt-in CB Cycle V5
 at owner request. Existing schema/validators reused, Understanding + Front V3
 rules in the same first call, Planner V7 rules in the next explicit call.

@@ -505,10 +505,20 @@ inferred. Three fronts described as stacked, not adjacent. Planner/Calculate
 not called, no raw repair or paid retry. Failed witness and review:
 notes/evidence/cb-cycle-v5-2026-11-06/adda-object-001-trial.json.
 
-Next diagnostic is object-scope presentation: full-page context currently shows
-both objects and no enlarged island crops. Input presentation is a hypothesis,
-not a verified causal explanation. Keep original pages/legends and Detection
-ownership intact; do not treat merged understanding as acceptable scope.
+Owner-requested simple-file transfer, unchanged V5: Lev1 8.760 s and Lev2
+8.327 s, one first-stage call each. Both complete replies fail the Front schema.
+Lev1 states three drawers but replaces annotated rows with count categories;
+F01-F03/T01 mappings have no actual referenced rows. Lev2 leaves groups empty
+and counts null. No Planner/Calculate or repaired outputs. Source inputs/pages
+and prepared request evidence are unchanged. Raw replies/hashes:
+notes/evidence/cb-cycle-v5-2026-11-06/simple-object-trials.json.
+Failure is therefore not confined to Ada's multi-object pages. The next proposed
+diagnostic is a single explicit merged output schema instead of inherited schema
+plus wrapper placeholder. This is a prompt-composition hypothesis, not confirmed
+causality. Coarse descriptions and view assignments are not yet visually accepted.
+Ada object-scope presentation remains a separate hypothesis: full-page context
+shows both objects with no enlarged island crops. Keep original pages/legends
+and Detection ownership intact; do not accept merged understanding as correct.
 
 Owner benchmark corrected on 2026-11-06: N68 TEN door-like fronts and SIX
 drawers, superseding the earlier eight-door/four-drawer confirmation. Ten

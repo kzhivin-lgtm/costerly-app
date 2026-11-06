@@ -1,0 +1,102 @@
+{
+  "work": "3.17.4.6",
+  "experiment": "Unchanged V5 transfer to two simple saved Detection objects",
+  "trials": [
+    {
+      "file": "lev1",
+      "work": "3.17.4.6",
+      "version": "CB Cycle V5",
+      "status": "failed",
+      "error": "ValueError: invalid front-count fields",
+      "accepted": false,
+      "production_promoted": false,
+      "private_witness": "/private/tmp/lev1-cb-cycle-v5-20261106-01-front.json",
+      "private_witness_sha256": "dd1c725c0d2284764529cdf99c0e340595ace1433eae6f48dcc212afeec6707e",
+      "replay_source": "/private/tmp/cb-front-v2-lev1-01.json",
+      "source_evidence_unchanged": true,
+      "request_evidence_matches_preparation": true,
+      "inputs_sha256": "b077a03a030752522f90e98248ba3e31eebfe46d9bb9abed6689ae4cb192619b",
+      "source_pages_sha256": {
+        "storage://rfq-estimation-evidence/610/run_1cba0b2491dc413c9a3be2fdd526226b/object-001/page-1-2fea9d342ee270de687652dab19539990a5d6371f2751bc657ca89514fbfa606.webp": "2fea9d342ee270de687652dab19539990a5d6371f2751bc657ca89514fbfa606"
+      },
+      "provider_calls": 1,
+      "planner_calls": 0,
+      "calculate_calls": 0,
+      "elapsed_seconds": 8.76,
+      "model": "claude-haiku-5-5",
+      "prompt_version": "CB Cycle V5: Understanding + Front",
+      "prompt_sha256": "aeb9d9d3b2ec61ea2ece375ad6ed2113e79717dfa971aea3e24a2ea21cc36c12",
+      "request_sha256": "068cb9c8773d16bd2bd01a62ad0c1b82a72c20bb343a0553f231e7cfb0d1a672",
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 16400,
+        "output_tokens": 1905,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "raw_response_text": "```json\n{\n  \"understanding\": {\n    \"input_id\": \"db175c9d-b911-434e-a3ed-de612640f96f\",\n    \"summary\": \"A built-in banquette-style seat unit with a tall slatted backrest, a fixed base carcass with a three-drawer front bank, and an attached cantilevered or pedestal-supported tabletop extending from one side.\",\n    \"construction_summary\": \"Veneered wood-finish panels for the backrest slats and base carcass are visually indicated; the tabletop is a light-coloured laminate-like surface. Exact substrate is not determinable from drawings.\",\n    \"views\": [\n      {\"id\": \"p1-view-001\", \"page_number\": 1, \"location\": \"upper left isometric\", \"observation\": \"Overall form: slatted backrest, three-drawer base, tabletop with single leg visible.\"},\n      {\"id\": \"p1-view-002\", \"page_number\": 1, \"location\": \"upper centre plan\", \"observation\": \"Plan footprint 187 x 115 showing the base depth and table projection.\"},\n      {\"id\": \"p1-view-003\", \"page_number\": 1, \"location\": \"upper right isometric\", \"observation\": \"Opposite isometric showing the slatted back face, table and a second leg.\"},\n      {\"id\": \"p1-view-004\", \"page_number\": 1, \"location\": \"lower left front elevation\", \"observation\": \"Front face of slatted back and three drawer fronts at base, plinth below.\"},\n      {\"id\": \"p1-view-005\", \"page_number\": 1, \"location\": \"lower centre side elevation\", \"observation\": \"Side profile: backrest thickness, base height and table support height.\"},\n      {\"id\": \"p1-view-006\", \"page_number\": 1, \"location\": \"lower right rear elevation\", \"observation\": \"Rear face of backrest with two visible base posts beneath the seat/table.\"}\n    ],\n    \"components\": [\n      {\"id\": \"C01\", \"name\": \"slatted backrest\", \"function\": \"vertical back panel with slats forming the tall seatback fixed to the base\", \"quantity\": 1, \"operation\": \"fixed\", \"material_hypothesis\": \"wood-veneer finish panel, observed grain; substrate assumed\", \"basis\": \"visual_interpretation\", \"view_ids\": [\"p1-view-001\", \"p1-view-003\", \"p1-view-004\", \"p1-view-006\"]},\n      {\"id\": \"C02\", \"name\": \"base carcass with drawer bank\", \"function\": \"fixed seat base containing three drawers and a plinth\", \"quantity\": 1, \"operation\": \"fixed\", \"material_hypothesis\": \"wood-veneer finish panels; substrate assumed\", \"basis\": \"visual_interpretation\", \"view_ids\": [\"p1-view-001\", \"p1-view-004\", \"p1-view-005\"]},\n      {\"id\": \"C03\", \"name\": \"drawer fronts\", \"function\": \"three sliding drawers in the base carcass\", \"quantity\": 3, \"operation\": \"drawer\", \"material_hypothesis\": \"wood-veneer finish; substrate assumed\", \"basis\": \"visual_interpretation\", \"view_ids\": [\"p1-view-001\", \"p1-view-004\"]},\n      {\"id\": \"C04\", \"name\": \"tabletop\", \"function\": \"projecting table top attached to the side of the seat unit\", \"quantity\": 1, \"operation\": \"fixed\", \"material_hypothesis\": \"light laminate-like surface; substrate assumed\", \"basis\": \"visual_interpretation\", \"view_ids\": [\"p1-view-001\", \"p1-view-003\", \"p1-view-005\"]},\n      {\"id\": \"C05\", \"name\": \"table support\", \"function\": \"leg or pedestal supporting the tabletop\", \"quantity\": 2, \"operation\": \"fixed\", \"material_hypothesis\": \"dark metal or polymer leg; assumed\", \"basis\": \"visual_interpretation\", \"view_ids\": [\"p1-view-001\", \"p1-view-003\", \"p1-view-005\", \"p1-view-006\"]}\n    ],\n    \"cross_view_links\": [\n      {\"component_id\": \"C01\", \"view_ids\": [\"p1-view-001\", \"p1-view-003\"], \"correspondence\": \"Slatted backrest with identical slat count and top profile seen from both isometric angles.\"},\n      {\"component_id\": \"C04\", \"view_ids\": [\"p1-view-001\", \"p1-view-005\"], \"correspondence\": \"Tabletop projection and thickness matched between isometric and side elevation.\"}\n    ],\n    \"uncertainties\": [\n      \"Table support count: one leg is visible in view 001 and two posts in view 006; treated as the table support component quantity 2 but may be a single pedestal arrangement.\",\n      \"Drawer count is 3 based on the front elevation; no internal drawer detail confirms this.\"\n    ]\n  },\n  \"front\": {\n    \"drawers\": {\"count\": 3, \"count_basis\": \"clear\", \"view_ids\": [\"p1-view-004\"], \"uncertainty\": \"Three distinct drawer boundaries visible in the front elevation.\"},\n    \"hinged_doors\": {\"count\": 0, \"count_basis\": \"clear\", \"view_ids\": [\"p1-view-004\"], \"uncertainty\": \"\"},\n    \"lift_up_fronts\": {\"count\": 0, \"count_basis\": \"clear\", \"view_ids\": [\"p1-view-004\"], \"uncertainty\": \"\"},\n    \"unresolved_fronts\": {\"count\": 0, \"count_basis\": \"clear\", \"view_ids\": [\"p1-view-004\"], \"uncertainty\": \"\"},\n    \"total_fronts\": 3\n  },\n  \"front_components\": [\n    {\"front_id\": \"F01\", \"component_id\": \"C03\"},\n    {\"front_id\": \"F02\", \"component_id\": \"C03\"},\n    {\"front_id\": \"F03\", \"component_id\": \"C03\"}\n  ],\n  \"support_components\": [\n    {\"support_id\": \"T01\", \"component_id\": \"C05\"}\n  ]\n}\n```"
+    },
+    {
+      "file": "lev2",
+      "work": "3.17.4.6",
+      "version": "CB Cycle V5",
+      "status": "failed",
+      "error": "ValueError: invalid front-count fields",
+      "accepted": false,
+      "production_promoted": false,
+      "private_witness": "/private/tmp/lev2-cb-cycle-v5-20261106-01-front.json",
+      "private_witness_sha256": "b0b855b8579a6782116c52e455ae1a447cc08ef260a5a0c9291234625754ad5e",
+      "replay_source": "/private/tmp/lev2-front-v3-planner-v7-20261106-03-front.json",
+      "source_evidence_unchanged": true,
+      "request_evidence_matches_preparation": true,
+      "inputs_sha256": "3f6f5aa239c74bde70ce101054e0a56fd46d7f50b1c0ea4d7a097d9f01456528",
+      "source_pages_sha256": {
+        "local-render:099bfb240ad0bbc85740ad1a73b81c2c780a15de6c5b9697f56e145315bce3d7:p1": "099bfb240ad0bbc85740ad1a73b81c2c780a15de6c5b9697f56e145315bce3d7"
+      },
+      "provider_calls": 1,
+      "planner_calls": 0,
+      "calculate_calls": 0,
+      "elapsed_seconds": 8.327,
+      "model": "claude-haiku-5-5",
+      "prompt_version": "CB Cycle V5: Understanding + Front",
+      "prompt_sha256": "aeb9d9d3b2ec61ea2ece375ad6ed2113e79717dfa971aea3e24a2ea21cc36c12",
+      "request_sha256": "49577adddfda20862b4caf59d0edc1a53d3cd1c461cbb94c458dee5e2113fb57",
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 15884,
+        "output_tokens": 1803,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "raw_response_text": "```json\n{\n  \"understanding\": {\n    \"input_id\": \"local-detection:run_189150ebf62447fc958f7c23cc34e3bb:object-001\",\n    \"summary\": \"A single L-shaped, corner-configured kitchen run with an overhead wall cabinet bank, a tall column unit at the right end, and a detached upper cabinet pair on the left, all drawn as one kitchen object.\",\n    \"construction_summary\": \"Carcass cabinets with flat fronts and a light-coloured worktop; the drawn surfaces suggest ready-made panel construction, but no explicit material legend is present, so exact board type is not established.\",\n    \"views\": [\n      {\"id\": \"p1-view-001\", \"page_number\": 1, \"location\": \"upper left plan view\", \"observation\": \"Plan of the L-shaped run showing the corner arrangement, the sink recess and the depth dimensions of the base and wall cabinets.\"},\n      {\"id\": \"p1-view-002\", \"page_number\": 1, \"location\": \"upper right isometric view\", \"observation\": \"Overall three-dimensional arrangement: the L-shaped base run, the upper cabinets, the tall column and the separate upper pair; establishes that they form one object.\"},\n      {\"id\": \"p1-view-003\", \"page_number\": 1, \"location\": \"lower left elevation\", \"observation\": \"Elevation of the long run showing upper cabinets, the stacked drawer bank and door fronts in the base run, the tall column and the plinth height.\"},\n      {\"id\": \"p1-view-004\", \"page_number\": 1, \"location\": \"lower right elevation\", \"observation\": \"Elevation of the short return showing the detached upper pair, base doors and drawers, and the tall column at the end.\"}\n    ],\n    \"components\": [\n      {\"id\": \"C01\", \"name\": \"Base run, long leg (door and drawer fronts)\", \"function\": \"Floor-standing base cabinets forming the long leg of the L, supporting the worktop.\", \"quantity\": 1, \"operation\": \"unknown\", \"material_hypothesis\": \"Observed flat fronts; construction assumed to be panel carcass, board type not determined.\", \"basis\": \"visual_interpretation\", \"view_ids\": [\"p1-view-001\", \"p1-view-003\"]},\n      {\"id\": \"C02\", \"name\": \"Base run, short return (door and drawer fronts)\", \"function\": \"Floor-standing base cabinets on the short leg of the L.\", \"quantity\": 1, \"operation\": \"unknown\", \"material_hypothesis\": \"Observed flat fronts; construction assumed to be panel carcass.\", \"basis\": \"visual_interpretation\", \"view_ids\": [\"p1-view-001\", \"p1-view-004\"]},\n      {\"id\": \"C03\", \"name\": \"Upper wall cabinet bank above the long run\", \"function\": \"Wall-hung cabinets along the back of the long run.\", \"quantity\": 1, \"operation\": \"unknown\", \"material_hypothesis\": \"Observed flat fronts; construction assumed to be panel carcass.\", \"basis\": \"visual_interpretation\", \"view_ids\": [\"p1-view-001\", \"p1-view-003\"]},\n      {\"id\": \"C04\", \"name\": \"Tall column unit at the right end\", \"function\": \"Full-height column cabinet closing the end of the run.\", \"quantity\": 1, \"operation\": \"unknown\", \"material_hypothesis\": \"Observed flat fronts; construction assumed to be panel carcass.\", \"basis\": \"visual_interpretation\", \"view_ids\": [\"p1-view-002\", \"p1-view-004\"]},\n      {\"id\": \"C05\", \"name\": \"Detached upper cabinet pair (left)\", \"function\": \"Separately hanging two-door wall cabinet pair on the left.\", \"quantity\": 1, \"operation\": \"unknown\", \"material_hypothesis\": \"Observed flat fronts; construction assumed to be panel carcass.\", \"basis\": \"visual_interpretation\", \"view_ids\": [\"p1-view-002\", \"p1-view-004\"]},\n      {\"id\": \"C06\", \"name\": \"Worktop\", \"function\": \"Continuous L-shaped worktop with sink recess.\", \"quantity\": 1, \"operation\": \"fixed\", \"material_hypothesis\": \"Light-coloured surface; material not stated.\", \"basis\": \"visual_interpretation\", \"view_ids\": [\"p1-view-001\", \"p1-view-002\"]}\n    ],\n    \"cross_view_links\": [\n      {\"component_id\": \"C01\", \"view_ids\": [\"p1-view-001\", \"p1-view-003\"], \"correspondence\": \"Plan length of the long run and the elevation frontage of the same base run.\"},\n      {\"component_id\": \"C04\", \"view_ids\": [\"p1-view-002\", \"p1-view-004\"], \"correspondence\": \"Tall column at the end of the run seen in isometric and in the short-return elevation.\"},\n      {\"component_id\": \"C05\", \"view_ids\": [\"p1-view-002\", \"p1-view-004\"], \"correspondence\": \"Detached upper pair seen in isometric and in its elevation with 84 mm and 115 mm dimensions.\"}\n    ],\n    \"uncertainties\": [\"Operating mechanism of each front is only inferred from front shape and layout; no hardware is shown.\", \"Exact board type and construction method are not stated in the source.\"]\n  },\n  \"front\": {\n    \"groups\": [],\n    \"totals\": {\"drawers\": null, \"hinged_doors\": null, \"lift_up_fronts\": null, \"unresolved_fronts\": null, \"total_fronts\": null}\n  },\n  \"front_components\": [],\n  \"support_components\": []\n}\n```"
+    }
+  ],
+  "review": {
+    "lev1": "Three drawers stated, but no Front rows/boxes. F01-F03 and T01 are dangling mappings. Drawer fronts also duplicated as a coarse component separate from their parent carcass. Banquette function and support material are hypotheses, not accepted facts.",
+    "lev2": "Kitchen components described, but Front groups empty and all counts null. L-shaped layout and cross-view assignments not accepted by this test. Numeric unit claims in prose are not verified dimensions.",
+    "conclusion": "Both complete provider replies fail the required Front schema. This is not exclusively an Ada multi-object scope problem. Whole-object semantic acceptance and full-cycle acceptance remain pending.",
+    "next_proposal": "Test one explicit merged output schema rather than inherited top-level Front schema plus placeholder wrapper. Prompt composition is a hypothesis, not established causality. No additional provider stage proposed."
+  }
+}

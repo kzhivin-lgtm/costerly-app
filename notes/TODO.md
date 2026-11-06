@@ -1026,9 +1026,19 @@ the required container. Planner/Calculate NOT called; no repaired response,
 retry, promotion or deploy. The explicit description exposes the scope error,
 but reference validation alone cannot automatically detect semantic merging.
 Raw witness: notes/evidence/cb-cycle-v5-2026-11-06/adda-object-001-trial.json.
-NEXT, P0: verify object scope presentation (whole pages versus enlarged owned
-islands) before another model-prompt variant. Full pages contain both objects,
-no detail crops were sent; causal contribution is untested. Preserve full-page
+SIMPLE-FILE TRANSFER, owner requested, 2026-11-06: unchanged V5, one first-stage
+call each on saved Lev1 and Lev2 evidence, 8.760 / 8.327 s. Both end_turn replies
+FAILED the Front schema. Lev1 describes three drawers but supplies no Front
+rows/boxes and dangling F01-F03/T01 mappings. Lev2 returns empty groups and null
+counts. No Planner/Calculate, repair, retries or production changes. Inputs,
+pages and prepared request evidence match their replay sources exactly.
+Raw evidence: notes/evidence/cb-cycle-v5-2026-11-06/simple-object-trials.json.
+NEXT, P0, PROPOSAL: replace the competing inherited/outer response descriptions
+with one explicit merged output schema, then repeat the same simple inputs.
+Prompt composition is a hypothesis, not a proven cause; this test establishes
+that failure is not specific to Ada complexity. Whole-object semantic quality
+also remains unaccepted. Ada scope presentation (full pages contain both objects,
+no detail crops) remains a separate untested hypothesis. Preserve full-page
 legend/context and unchanged Detection membership. Earlier isolated measurement
 proposal below is deferred while the owner prioritizes whole-object understanding.
 PREVIOUS OWNER DECISION: name the next contract CB Parts V4 (not V3.x and not

@@ -170,3 +170,24 @@ def test_first_live_understanding_failure_is_preserved_not_repaired():
     assert raw['front']['count']==3 and 'front_groups' not in raw['front']
     with pytest.raises(ValueError,match='invalid front-count fields'):
         existing.validate_front_count(raw['front'],{v['view_id'] for v in r['source_preflight']['views']},require_annotations=True,require_supports=True)
+
+
+@pytest.mark.parametrize('index',[0,1])
+def test_simple_file_live_failures_preserve_missing_front_contract(index):
+    path=Path(__file__).resolve().parents[1]/'notes/evidence/cb-cycle-v5-2026-11-06/simple-object-trials.json'
+    r=json.loads(path.read_text())['trials'][index]
+    assert r['status']=='failed' and not r['accepted'] and not r['production_promoted']
+    assert r['provider_calls']==1 and r['planner_calls']==r['calculate_calls']==0
+    assert r['source_evidence_unchanged'] and r['request_evidence_matches_preparation']
+    assert r['stop_reason']=='end_turn'
+    assert r['prompt_sha256']==sha256(agent.prompt('front').encode()).hexdigest()
+    raw=existing._json_object(r['raw_response_text'])
+    if r['file']=='lev1':
+        assert raw['front']['drawers']['count']==3
+        assert len(raw['front_components'])==3
+    else:
+        assert raw['front']['groups']==[]
+        assert all(v is None for v in raw['front']['totals'].values())
+    assert 'front_groups' not in raw['front']
+    with pytest.raises(ValueError,match='invalid front-count fields'):
+        existing.validate_front_count(raw['front'],{v['id'] for v in raw['understanding']['views']},require_annotations=True,require_supports=True)
