@@ -21,6 +21,10 @@ Owner selected physical geometry before workshop grouping, then measured-input
 preparation if needed; worked-example teaching not selected. V4's three full
 saved-Front Calculate trials failed, no runtime promotion. Details and raw
 evidence are in the Cabinet Block contract and TODO rather than duplicated here.
+Owner then approved direction 2, measured input, implemented as CB Parts V4.1.
+Three further trials rejected: code-owned numeric references work, but physical
+ownership, complete topology and materials still fail. No additional model
+stage or promotion. Contract/TODO retain results and the next diagnostic proposal.
 The V3.3 research checkpoint a9b8df8 remains protected. Historic stop statements
 below describe their preservation turn, not authority to discard later records.
 

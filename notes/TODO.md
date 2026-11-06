@@ -1027,12 +1027,36 @@ Limits: current saved Analyze has no project material palette, so V4 interprets
 materials in Calculate for this diagnostic; integrated Analyze and project
 palette are pending. All geometric/material claims remain unverified, not 2VN
 certified. Finish/edge intent retained, separate consumable demand not compiled.
-NEXT, P0, owner-selected direction 2: prepare measurement evidence before the
-interpreter, reusing Dimension Graph/2VN and the prior 3.17.4.5 evidence-first
-findings. Scope the concrete independent source witness before implementing;
-do not repeat the already failed nearby-number map/reviewer without new input.
-No implementation of direction 2 in this iteration. Main, production, ordinary
-selectors and protected V3.3 research checkpoint remain unchanged.
+Direction 2 IMPLEMENTED / TESTED, CB Parts V4.1, same 3.17.4.6, NOT ACCEPTED.
+Reuse existing Dimension Graph/evidence-map raster extraction and scale policy,
+filter line candidates to two supported endpoints/one nearby numeric label,
+map coordinates to the exact Front detail image including padding/header.
+Source dimensions are references only; code copies values and units. Explicit
+estimates remain separate. Same-view interval contradictions are rejected, not
+silently repaired. No extra model call; original images/text remain unchanged.
+Important limit: raster lines and Front boxes are candidates, not ownership
+proof; source scale is a cm estimating convention, not printed-unit evidence.
+N68 extraction reports truncation; absent candidates are not proof of absence.
+Three unchanged-prompt trials, one Haiku call each, no repair/retry: Lev2 8.445 s,
+Lev1 10.168 s, N68 14.628 s. Source references valid 26/26 with code-owned values,
+but whole-object acceptance 0/3. Lev1 now has 1580 x 430 x 720 base geometry and
+three adjacent drawer bays; still replaces ribs by a panel and assigns 1150 mm
+to leg diameter, with invalid material provenance/zero support stock. Lev2
+retains only 11/24 fronts and includes F18/F19 outside its selected 1510 span;
+also extra estimate field. N68 retains 13/18 fronts, assigns plan dimension
+1820 to base height, leaves two bays ungrouped and uses an invalid material basis.
+325 relevant tests pass, not visual acceptance. Original replies, measurement
+packets, source-reference and coverage audits:
+notes/evidence/cb-parts-v4-1-2026-11-06/three-object-trials.json.
+Stop full-contract prompt retries. The new evidence shows numeric transport
+works, but the model still misassigns physical ownership and drops known parts.
+NEXT PROPOSAL, P0, NOT APPROVED: isolate source-span-to-existing-section binding
+with the new independent measurements and fixed topology, without materials or
+parts generation in that diagnostic. This differs from V3.5, which lacked the
+independent endpoints and copied unit conversion. It is a diagnostic proposal,
+not approval for a new production stage. Integrated Analyze/project palette,
+complete acceptable parts and repeatability remain pending. Main, production,
+ordinary selectors and protected V3.3 research checkpoint remain unchanged.
 Earlier approved diagnostic: CB Parts V3.5 freezes bay/front membership
 from the original first V3.3 reply, withholding all its dimension estimates.
 Same complete Lev2 evidence, five images, no changed locators or manual repair.

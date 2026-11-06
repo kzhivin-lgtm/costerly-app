@@ -247,12 +247,15 @@ def _run_cb_parts(*, input_row, page_bytes, dimension_graph, dimension_scale_gat
         rule = rule["v3_5"]
     elif version == rule["v4"]["version"]:
         rule = rule["v4"]
+    elif version == rule["v4_1"]["version"]:
+        rule = rule["v4_1"]
     elif version != rule["version"]:
         raise ValueError("unknown CB Parts version")
     count_only = version == "CB Parts V2"
     bay_based = version in ("CB Parts V3.3", "CB Parts V3.4")
     width_only = version == "CB Parts V3.5"
-    geometry_first = version == "CB Parts V4"
+    measured = version == "CB Parts V4.1"
+    geometry_first = version in ("CB Parts V4", "CB Parts V4.1")
     sized = version in ("CB Parts V3", "CB Parts V3.1", "CB Parts V3.2")
     if scope.get("input_id") != input_row.get("input_id"):
         raise ValueError("CB Parts scope belongs to a different input")
@@ -278,6 +281,10 @@ def _run_cb_parts(*, input_row, page_bytes, dimension_graph, dimension_scale_gat
         # original witness on disk only; send full evidence and Front identity.
         context = {"calculation_scope": {k: scope[k] for k in ("input_id", "front", "parts_version", "upstream_status") if k in scope},
             "allowed_material_families": sorted(allowed_material_families)}
+    if measured:
+        from use_cases.estimation_measurement_packet import build_measurement_packet
+        context["measurement_packet"] = build_measurement_packet(input_row=input_row,
+            page_bytes=page_bytes, content=content, front=scope["front"])
     # Explicit diagnostic ablation only, after validating the original plan.
     # Keep the saved scope intact and do not transmit diagnostic metadata.
     if "diagnostic_omit_block_locator" in scope:
@@ -308,9 +315,18 @@ def _run_cb_parts(*, input_row, page_bytes, dimension_graph, dimension_scale_gat
     parsed = _json_object(extract_text_from_claude_response(response))
     if geometry_first:
         from use_cases.estimation_cb_v4 import compose_cb_v4
-        result = {"bom": compose_cb_v4(parsed, scope=scope, input_row=input_row,
+        resolved, measurement_audit = parsed, None
+        if measured:
+            from use_cases.estimation_measurement_packet import resolve_measured_dimensions
+            resolved, measurement_audit = resolve_measured_dimensions(parsed,
+                packet=context["measurement_packet"], scope=scope)
+        result = {"bom": compose_cb_v4(resolved, scope=scope, input_row=input_row,
             dimension_graph=dimension_graph, allowed_material_families=allowed_material_families),
             "status": "cb_parts_v4_requires_review", "upstream_status": scope.get("upstream_status", {})}
+        if measured:
+            result["status"] = result["bom"]["status"] = "cb_parts_v4_1_requires_review"
+            result["bom"]["prompt_version"] = version
+            result["measurement_audit"] = measurement_audit
     elif width_only:
         from use_cases.estimation_cb_width_probe import resolve_frozen_widths
         result = {"width_allocation": resolve_frozen_widths(parsed, scope=scope),

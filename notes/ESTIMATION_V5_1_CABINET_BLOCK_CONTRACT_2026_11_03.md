@@ -395,6 +395,66 @@ or that removing grouping alone caused failure, since the contract also restored
 materials and changed representation. Next direction is measured input, with
 prior evidence-first failures treated as constraints, not ignored history.
 
+## CB Parts V4.1: measured input, same 3.17.4.6
+
+Owner approved architecture direction 2 after V4 failed. Opt-in only, same
+one Haiku Calculate call with unchanged complete evidence and saved Front.
+V4 remains reproducible. No model examples, new Detection work or project-wide
+material plan introduced. Defaults remain unchanged.
+
+`use_cases/estimation_measurement_packet.py` reuses `build_evidence_map` and its
+Dimension Graph/scale policy. It does not introduce another line extractor.
+Source labels are linked only to candidate lines with crossings at both ends,
+one nearby numeric label, and endpoints inside the actual enlarged image.
+Whole chain lines containing several labels are not promoted. Coordinate
+conversion uses original source frame, actual overview/detail pixel sizes,
+crop margins and generated header. Horizontal Front-centre membership is a
+same-image projection, never proof of ownership across levels or projections.
+Missing locators/candidates remain unchecked. Raster truncation stays visible.
+Max 200 numeric tokens/120000 packet JSON characters, fail rather than silently
+discard source data. N68 has 121 numbers and truncated raster extraction.
+
+The new dimension contract has two exclusive shapes:
+
+- Source: `{id,source_id,candidate_id,view_id,reason}`. Code copies source mm;
+  candidate may be null, units must have been resolved by evidence/scale policy.
+- Estimate: `{id,value_mm,reason}`, visibly assumed, no fabricated source ref.
+
+The resolver rejects extra numbers in source rows, foreign references/views,
+duplicate source allocation within a run, and contradictory same-view complete
+horizontal span membership/gaps/overlaps. Partial/different-view anchors are
+explicitly unchecked, not repaired or certified. V4 composition then expands
+the unchanged geometry/parts contract. Original extraction remains untouched;
+measurement audit preserves source refs, unit basis and ownership_verified=false.
+Copied centimetre-scale values remain policy assumptions if units were not
+printed. All final geometry remains subject to V4's unverified-source limits.
+No separate finish/edge consumables, pricing or labor is added.
+
+Verification: 325 relevant tests. Three live trials using one identical V4.1
+prompt, unchanged evidence, no retry or manual correction:
+
+- Lev2, 8.445 s: valid source IDs and the independent 840/1510 intervals, but
+  only 11/24 fronts retained. R2 includes F18/F19 outside its selected 1510
+  interval; R1 includes F11 outside its selected width. First validation failure
+  is an extra estimate_placeholder field. Independent audit reports the deeper
+  geometry contradictions without deleting that field or repairing the reply.
+- Lev1, 10.168 s: correct base 1580 x 430 x 720 and three adjacent drawer bays.
+  Still a full back panel instead of actual ribs, 1150 mm reused as leg diameter,
+  empty source material refs and zero support stock thickness. Rejected.
+- N68, 14.628 s: 13/18 fronts retained, all six drawer IDs included, but five
+  other fronts missing. Plan dimension 1820 becomes base height, B4/B5 are not
+  grouped. Source numbers are correctly copied even where the model's rationale
+  says mm or misquotes the source. Invalid material basis also rejects output.
+
+26/26 emitted source references resolve to supplied labels/values. This is
+numeric transport acceptance only, not dimensional ownership or parts acceptance.
+Whole-object result 0/3 accepted. Evidence and original replies:
+`notes/evidence/cb-parts-v4-1-2026-11-06/three-object-trials.json`.
+One call per source cannot establish stability or isolate a causal improvement.
+Stop combined-contract retries. Proposed next diagnostic isolates ownership
+against fixed sections using the new packet, no material/parts generation. That
+proposal is not an approved new production architecture or additional call.
+
 Owner benchmark corrected on 2026-11-06: N68 TEN door-like fronts and SIX
 drawers, superseding the earlier eight-door/four-drawer confirmation. Ten
 comprises five tall, two under sink, one downward-opening dishwasher front,

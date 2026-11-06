@@ -1,5 +1,23 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: implemented/tested owner-selected direction 2 as CB Parts
+V4.1, measurement preparation before the existing single Calculate call.
+Existing source graph/evidence-map raster lines/scale policy reused. Bounded
+two-endpoint/single-label candidates are mapped into the exact Front image
+frame. Source values/units are copied by code, estimates stay explicit, same-view
+span contradictions fail without repair. No source images/text removed.
+325 relevant tests pass. Three unchanged-prompt Haiku trials, 8.445/10.168/14.628 s
+(Lev2/Lev1/N68), all complete provider replies but all rejected. 26/26 source
+references valid and copied; Lev1 base 1580 x 430 x 720, three adjacent drawers.
+Whole-object failures persist: wrong span membership and 13 missing fronts on
+Lev2, wrong support size/rib construction/material claims on Lev1, wrong height,
+five missing fronts and incomplete grouping on N68. Schema-only repair would
+not meet the objective. No repair, retries, deploy, default promotion or checkpoint.
+Raw answers and independent audits: notes/evidence/cb-parts-v4-1-2026-11-06/three-object-trials.json.
+Updated authoritative TODO/contract/map; proposed narrow ownership diagnostic
+is not authorization for another production stage. Protected checkpoint/main
+and 50 unrelated owner TODO lines preserved.
+
 2026-11-06, 3.17.4.6: owner selected architecture direction 1, geometry before
 workshop grouping, named CB Parts V4; direction 2 measurement preparation next,
 worked-example teaching not selected. Implemented opt-in V4 and three full-source

@@ -34,6 +34,7 @@ CB_RULEBOOK = {
               'v3_4': {'version': 'CB Parts V3.4', 'path': PROMPT_PATH.with_name('cb_parts_v3_4.md')},
               'v3_5': {'version': 'CB Parts V3.5', 'path': PROMPT_PATH.with_name('cb_parts_v3_5.md')},
               'v4': {'version': 'CB Parts V4', 'path': PROMPT_PATH.with_name('cb_parts_v4.md')},
+              'v4_1': {'version': 'CB Parts V4.1', 'path': PROMPT_PATH.with_name('cb_parts_v4_1.md')},
               'v2': {'version': 'CB Parts V2', 'path': PROMPT_PATH.with_name('cb_parts_v2.md')},
               'previous': {'name': 'CB Parts V1', 'version': 'CB Parts V1',
                            'path': PROMPT_PATH.with_name('cb_parts_v1.md')}},

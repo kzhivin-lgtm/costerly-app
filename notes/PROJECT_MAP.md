@@ -106,8 +106,14 @@ This file explains where code belongs so the project stays understandable.
   Returns material-bearing parts/BOM, not only a width audit. One request.
   Three whole-object trials failed (Lev2/Lev1/N68), not promoted:
   `notes/evidence/cb-parts-v4-2026-11-06/three-object-trials.json`.
-  Next owner-selected direction is measured input preparation, not worked
-  examples; no implementation of that direction yet. Full contract/limits in
+  Direction 2 is now opt-in CB Parts V4.1, `agents/prompts/cb_parts_v4_1.md`
+  and `use_cases/estimation_measurement_packet.py`. Reuses evidence-map raster
+  lines, source numbers and scale policy, maps to Front image coordinates,
+  copies source dimensions by ID and checks same-view span contradictions.
+  Same one-call probe with `--parts-version V4.1`. Three trials still rejected:
+  `notes/evidence/cb-parts-v4-1-2026-11-06/three-object-trials.json`.
+  Numeric transport improved; physical ownership/coverage not accepted.
+  No worked examples, extra production stage or default promotion. Limits in
   the Cabinet Block contract and authoritative TODO, no competing backlog.
 - `use_cases/machinery.py` owns the 27-code storage catalog, the 16-capability
   Company Profile subset, outsourceable-operation boundary, company/supplier

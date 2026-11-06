@@ -87,13 +87,13 @@ def main():
     parser.add_argument("--execute", action="store_true")
     parser.add_argument("--omit-block-locator", help="Explicit diagnostic: omit only this block's region from the model context")
     parser.add_argument("--topology-witness", type=Path, help="V3.5 only: freeze topology from an original V3.3 provider reply")
-    parser.add_argument("--parts-version", choices=("V1", "V2", "V3", "V3.1", "V3.2", "V3.3", "V3.4", "V3.5", "V4"), default="V3")
+    parser.add_argument("--parts-version", choices=("V1", "V2", "V3", "V3.1", "V3.2", "V3.3", "V3.4", "V3.5", "V4", "V4.1"), default="V3")
     args = parser.parse_args()
     if not args.execute:
         parser.error("--execute required for one paid Calculate call")
     if args.output.exists():
         parser.error("refuse to overwrite witness")
-    if args.parts_version == "V4":
+    if args.parts_version in ("V4", "V4.1"):
         if args.planner_witness:
             parser.error("V4 consumes Front evidence only, omit --planner-witness")
         prior, scope = load_v4_scope(args.front_witness)
