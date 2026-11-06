@@ -22,7 +22,8 @@ def test_v3_candidate_identity_and_general_lower_row_rules():
     assert sha256(agent.FRONT_SUPPORTS_PROMPT_PATH.read_text().strip().encode()).hexdigest() == 'a929fe8ce72fd7cf75c9c100f2ce48c1e1ab2a4da8cb9ce44a9ac16545e0affd'
 
 
-def test_v3_process_local_probe_changes_only_system(monkeypatch):
+@pytest.mark.parametrize('version', ['V3', 'V4'])
+def test_candidate_process_local_probe_changes_only_system(monkeypatch, version):
     row, pages, _ = setup(monkeypatch)
     calls = []
     response = supported()
@@ -31,14 +32,26 @@ def test_v3_process_local_probe_changes_only_system(monkeypatch):
         return SimpleNamespace(stop_reason='end_turn', content=[SimpleNamespace(type='text', text=json.dumps(response))])
     monkeypatch.setattr(agent, '_create_message_with_hard_timeout', provider)
     agent.run_front_count(inputs=[row], page_bytes=pages)
-    monkeypatch.setattr(agent, 'FRONT_SUPPORTS_PROMPT_PATH', agent.FRONT_SUPPORTS_PROMPT_PATH.with_name('cb_front_v3.md'))
-    monkeypatch.setattr(agent, 'FRONT_SUPPORTS_PROMPT_VERSION', 'CB Front V3')
+    monkeypatch.setattr(agent, 'FRONT_SUPPORTS_PROMPT_PATH', agent.FRONT_SUPPORTS_PROMPT_PATH.with_name(f'cb_front_{version.lower()}.md'))
+    monkeypatch.setattr(agent, 'FRONT_SUPPORTS_PROMPT_VERSION', f'CB Front {version}')
     result = agent.run_front_count(inputs=[row], page_bytes=pages)
     assert len(calls) == 2
     old, new = [dict(c) for c in calls]
     assert old.pop('system') != new.pop('system')
     assert old == new
-    assert result['prompt_version'] == 'CB Front V3'
+    assert result['prompt_version'] == f'CB Front {version}'
+
+
+def test_v4_candidate_locates_before_classifying_without_changing_schema():
+    previous = agent.FRONT_SUPPORTS_PROMPT_PATH.with_name('cb_front_v3.md').read_text()
+    prompt = agent.FRONT_SUPPORTS_PROMPT_PATH.with_name('cb_front_v4.md').read_text()
+    assert sha256(prompt.strip().encode()).hexdigest() == '73c4a28213be22631eccf0c0253db1f71631057bdb8d3059a6a2e5047e78d4bd'
+    assert 'First locate the physical fronts without requiring a movement classification.' in prompt
+    assert 'left to right and top to bottom' in prompt
+    assert 'Keep it as unresolved' in prompt
+    assert 'not represented by the available types' in prompt
+    assert 'N68' not in prompt
+    assert prompt.split('Using the classifications AND original images, identify and count:')[1] == previous.split('Using the classifications AND original images, identify and count:')[1]
 
 
 def test_n68_recorded_v3_improvement_does_not_hide_failure():
@@ -61,3 +74,19 @@ def test_n68_recorded_v3_improvement_does_not_hide_failure():
     assert planner['status'] == 'failed' and planner['stop_reason'] == 'max_tokens'
     with pytest.raises(ValueError):
         agent._json_object(planner['response_text'])
+
+
+def test_n68_v4_regression_is_preserved_not_promoted():
+    root = agent.FRONT_SUPPORTS_PROMPT_PATH.parents[2]
+    saved = json.loads((root / 'notes/evidence/hsl07-v62-2026-11-06/n68-front-v4.json').read_text())
+    assert saved['calls'] == 1 and saved['retries'] == 0
+    assert saved['changed_request_fields_vs_v3'] == ['system']
+    assert saved['status'] == 'failed'
+    parsed = agent._json_object(saved['response_text'])
+    assert parsed == saved['parsed_response']
+    assert parsed['totals'] == dict(drawers=4, hinged_doors=3, lift_up_fronts=3, unresolved_fronts=2, total_fronts=12)
+    assert saved['review']['matched_door_like_fronts'] == 5
+    assert saved['review']['owner_benchmark'] == dict(door_like_fronts=10, drawers=6)
+    assert saved['review']['accepted'] is False
+    with pytest.raises(ValueError, match='invalid island classification'):
+        agent.validate_front_count(parsed, {f'p7-view-{i:03d}' for i in range(1, 5)}, require_annotations=True, require_supports=True)

@@ -1,0 +1,306 @@
+{
+  "work_number": "3.17.4.5",
+  "date": "2026-11-06",
+  "object_id": "object-005",
+  "sheet": "N68",
+  "run_id": "run_99b433940dcc4fd9abbe0587dc56fb12",
+  "calls": 1,
+  "retries": 0,
+  "database_writes": false,
+  "prompt_version": "CB Front V4",
+  "prompt_sha256": "73c4a28213be22631eccf0c0253db1f71631057bdb8d3059a6a2e5047e78d4bd",
+  "request_sha256": "88e2bb09caf39d34150abcd6779e60d50014e820785302a788e107139493a792",
+  "changed_request_fields_vs_v3": [
+    "system"
+  ],
+  "source_inputs_images_unchanged": true,
+  "supplied_image_sizes": [
+    [
+      1997,
+      1291
+    ],
+    [
+      843,
+      596
+    ],
+    [
+      851,
+      596
+    ],
+    [
+      629,
+      634
+    ],
+    [
+      913,
+      624
+    ]
+  ],
+  "request_settings": {
+    "model": "claude-haiku-5-5",
+    "max_tokens": 10000,
+    "output_config": {
+      "effort": "low"
+    }
+  },
+  "status": "failed",
+  "error": "ValueError: invalid island classification",
+  "elapsed_seconds": 29.632,
+  "stop_reason": "end_turn",
+  "response_text": "```json\n{\n  \"island_types\": [\n    {\"view_id\": \"p7-view-001\", \"type\": \"top_view\"},\n    {\"view_id\": \"p7-view-002\", \"type\": \"top_view\"},\n    {\"view_id\": \"p7-view-003\", \"type\": \"front_elevation\"},\n    {\"view_id\": \"p7-view-004\", \"type\": \"front_elevation\"}\n  ],\n  \"front_groups\": [\n    {\n      \"location\": \"Lower drawer bank, right end of the 201 mm run (below worktop)\",\n      \"type\": \"drawer\",\n      \"count\": 4,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p7-view-004\"],\n      \"uncertainty\": \"Two columns of stacked shallow fronts are visible, but the exact number of rows is hard to read at this scale. Four fronts are estimated, and the lowest front may be taller than the upper ones. Confirm the row count against the drawing.\",\n      \"fronts\": [\n        {\"id\": \"F01\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [537, 667, 655, 705]},\n        {\"id\": \"F02\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [655, 667, 758, 705]},\n        {\"id\": \"F03\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [537, 705, 655, 812]},\n        {\"id\": \"F04\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [655, 705, 758, 812]}\n      ]\n    },\n    {\n      \"location\": \"Tall VEN-01 cabinet column on the 313 mm run (left of integrated fridge)\",\n      \"type\": \"hinged\",\n      \"count\": 3,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p7-view-004\"],\n      \"uncertainty\": \"Three tall portrait fronts are labelled VEN-01 and are consistent with hinged doors closing storage openings. Their counterpart in view 003 is not counted again.\",\n      \"fronts\": [\n        {\"id\": \"F05\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [110, 355, 200, 812]},\n        {\"id\": \"F06\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [200, 355, 283, 812]},\n        {\"id\": \"F07\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [283, 355, 367, 812]}\n      ]\n    },\n    {\n      \"location\": \"Upper cabinet flaps over the counter run (elevation 003)\",\n      \"type\": \"lift_up\",\n      \"count\": 3,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p7-view-003\"],\n      \"uncertainty\": \"Triangular flap symbols over the worktop indicate upward-opening fronts. The two triangles in view 004 appear to be the same wall-run fronts, so they are not counted again. The exact run that each flap belongs to is not fully resolved.\",\n      \"fronts\": [\n        {\"id\": \"F08\", \"view_id\": \"p7-view-003\", \"bbox_1000\": [352, 464, 403, 520]},\n        {\"id\": \"F09\", \"view_id\": \"p7-view-003\", \"bbox_1000\": [468, 464, 524, 520]},\n        {\"id\": \"F10\", \"view_id\": \"p7-view-003\", \"bbox_1000\": [605, 464, 677, 520]}\n      ]\n    },\n    {\n      \"location\": \"Integrated refrigerator doors, middle of the 313 mm run\",\n      \"type\": \"unresolved\",\n      \"count\": 2,\n      \"count_basis\": \"clear\",\n      \"view_ids\": [\"p7-view-004\"],\n      \"uncertainty\": \"Two tall appliance fronts are shown with a short band above them. The movement is not represented by the available types. They are presumed to be integrated fridge doors, but this is not confirmed from the drawing.\",\n      \"fronts\": [\n        {\"id\": \"F11\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [367, 355, 452, 812]},\n        {\"id\": \"F12\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [452, 355, 537, 812]}\n      ]\n    }\n  ],\n  \"excluded_surfaces\": [\n    {\"id\": \"X01\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [759, 661, 852, 812], \"reason\": \"Cross-hatched fixed end panel at the right end of the base run, not an operating front\"},\n    {\"id\": \"X02\", \"view_id\": \"p7-view-003\", \"bbox_1000\": [210, 664, 347, 828], \"reason\": \"Cross-hatched fixed panel at the left end of the base run, not an operating front\"}\n  ],\n  \"tabletop_supports\": [],\n  \"totals\": {\n    \"drawers\": 4,\n    \"hinged_doors\": 3,\n    \"lift_up_fronts\": 3,\n    \"unresolved_fronts\": 2,\n    \"total_fronts\": 12\n  }\n}\n```",
+  "parsed_response": {
+    "island_types": [
+      {
+        "view_id": "p7-view-001",
+        "type": "top_view"
+      },
+      {
+        "view_id": "p7-view-002",
+        "type": "top_view"
+      },
+      {
+        "view_id": "p7-view-003",
+        "type": "front_elevation"
+      },
+      {
+        "view_id": "p7-view-004",
+        "type": "front_elevation"
+      }
+    ],
+    "front_groups": [
+      {
+        "location": "Lower drawer bank, right end of the 201 mm run (below worktop)",
+        "type": "drawer",
+        "count": 4,
+        "count_basis": "estimated",
+        "view_ids": [
+          "p7-view-004"
+        ],
+        "uncertainty": "Two columns of stacked shallow fronts are visible, but the exact number of rows is hard to read at this scale. Four fronts are estimated, and the lowest front may be taller than the upper ones. Confirm the row count against the drawing.",
+        "fronts": [
+          {
+            "id": "F01",
+            "view_id": "p7-view-004",
+            "bbox_1000": [
+              537,
+              667,
+              655,
+              705
+            ]
+          },
+          {
+            "id": "F02",
+            "view_id": "p7-view-004",
+            "bbox_1000": [
+              655,
+              667,
+              758,
+              705
+            ]
+          },
+          {
+            "id": "F03",
+            "view_id": "p7-view-004",
+            "bbox_1000": [
+              537,
+              705,
+              655,
+              812
+            ]
+          },
+          {
+            "id": "F04",
+            "view_id": "p7-view-004",
+            "bbox_1000": [
+              655,
+              705,
+              758,
+              812
+            ]
+          }
+        ]
+      },
+      {
+        "location": "Tall VEN-01 cabinet column on the 313 mm run (left of integrated fridge)",
+        "type": "hinged",
+        "count": 3,
+        "count_basis": "clear",
+        "view_ids": [
+          "p7-view-004"
+        ],
+        "uncertainty": "Three tall portrait fronts are labelled VEN-01 and are consistent with hinged doors closing storage openings. Their counterpart in view 003 is not counted again.",
+        "fronts": [
+          {
+            "id": "F05",
+            "view_id": "p7-view-004",
+            "bbox_1000": [
+              110,
+              355,
+              200,
+              812
+            ]
+          },
+          {
+            "id": "F06",
+            "view_id": "p7-view-004",
+            "bbox_1000": [
+              200,
+              355,
+              283,
+              812
+            ]
+          },
+          {
+            "id": "F07",
+            "view_id": "p7-view-004",
+            "bbox_1000": [
+              283,
+              355,
+              367,
+              812
+            ]
+          }
+        ]
+      },
+      {
+        "location": "Upper cabinet flaps over the counter run (elevation 003)",
+        "type": "lift_up",
+        "count": 3,
+        "count_basis": "estimated",
+        "view_ids": [
+          "p7-view-003"
+        ],
+        "uncertainty": "Triangular flap symbols over the worktop indicate upward-opening fronts. The two triangles in view 004 appear to be the same wall-run fronts, so they are not counted again. The exact run that each flap belongs to is not fully resolved.",
+        "fronts": [
+          {
+            "id": "F08",
+            "view_id": "p7-view-003",
+            "bbox_1000": [
+              352,
+              464,
+              403,
+              520
+            ]
+          },
+          {
+            "id": "F09",
+            "view_id": "p7-view-003",
+            "bbox_1000": [
+              468,
+              464,
+              524,
+              520
+            ]
+          },
+          {
+            "id": "F10",
+            "view_id": "p7-view-003",
+            "bbox_1000": [
+              605,
+              464,
+              677,
+              520
+            ]
+          }
+        ]
+      },
+      {
+        "location": "Integrated refrigerator doors, middle of the 313 mm run",
+        "type": "unresolved",
+        "count": 2,
+        "count_basis": "clear",
+        "view_ids": [
+          "p7-view-004"
+        ],
+        "uncertainty": "Two tall appliance fronts are shown with a short band above them. The movement is not represented by the available types. They are presumed to be integrated fridge doors, but this is not confirmed from the drawing.",
+        "fronts": [
+          {
+            "id": "F11",
+            "view_id": "p7-view-004",
+            "bbox_1000": [
+              367,
+              355,
+              452,
+              812
+            ]
+          },
+          {
+            "id": "F12",
+            "view_id": "p7-view-004",
+            "bbox_1000": [
+              452,
+              355,
+              537,
+              812
+            ]
+          }
+        ]
+      }
+    ],
+    "excluded_surfaces": [
+      {
+        "id": "X01",
+        "view_id": "p7-view-004",
+        "bbox_1000": [
+          759,
+          661,
+          852,
+          812
+        ],
+        "reason": "Cross-hatched fixed end panel at the right end of the base run, not an operating front"
+      },
+      {
+        "id": "X02",
+        "view_id": "p7-view-003",
+        "bbox_1000": [
+          210,
+          664,
+          347,
+          828
+        ],
+        "reason": "Cross-hatched fixed panel at the left end of the base run, not an operating front"
+      }
+    ],
+    "tabletop_supports": [],
+    "totals": {
+      "drawers": 4,
+      "hinged_doors": 3,
+      "lift_up_fronts": 3,
+      "unresolved_fronts": 2,
+      "total_fronts": 12
+    }
+  },
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 33065,
+    "output_tokens": 5873,
+    "output_tokens_details": {
+      "thinking_tokens": 4237
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+  },
+  "review": {
+    "accepted": false,
+    "owner_benchmark": {
+      "door_like_fronts": 10,
+      "drawers": 6
+    },
+    "matched_door_like_fronts": 5,
+    "drawer_boxes": 4,
+    "drawer_issue": "Each lower box merges the middle and bottom drawer fronts. Two physical fronts are missing from the count, despite coverage of their area.",
+    "omitted_fronts": "Both sink doors, dishwasher front, and both tall appliance-column doors are absent. Three tall storage fronts and two refrigerator fronts are retained; refrigerator fronts are unresolved.",
+    "lift_up_issue": "Three boxes surround triangular shelf marks, not established opening fronts. Do not accept as gas-lift demand.",
+    "format_issue": "Same four invalid snake_case island enums; overlay aliases labels for display only. Original response remains failed.",
+    "comparison": "Regression versus V3 (seven matched door-like fronts and six drawers). One sample does not establish a causal explanation.",
+    "decision": "V4 rejected for promotion. Defaults remain Front V2 / Planner V4; no further call or prompt revision.",
+    "next_proposed": "Inspect the exact model-facing image scale/contrast and input budget before another prompt variation. Do not assume image quality is the confirmed cause."
+  }
+}

@@ -44,6 +44,13 @@ first correct lower-row interpretation in Front, then verify downstream scope.
 The hypothesized link between worktop setback and hanging-shelf depth remains
 unverified. See the dated N68 entry in the authoritative TODO.
 
+Later single Front V4 experiment (locate before classifying) regresses to five
+of ten target door-like fronts and four drawers on identical input. Invalid
+island enums persist. Candidate rejected; defaults unchanged, no Planner run
+or retry. Exact result: notes/evidence/hsl07-v62-2026-11-06/n68-front-v4.json.
+Next proposed diagnostic is model-facing image/input inspection, not another
+unverified prompt expansion. No cause is established by this one comparison.
+
 ### Current V6.2 boundary and results, 2026-11-05
 
 Current Front extension: **CB Front V2** (technical r05, not a renumbered r04).

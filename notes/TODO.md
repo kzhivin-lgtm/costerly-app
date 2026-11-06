@@ -827,6 +827,35 @@ Verification: 170 focused tests pass, including current ten-front/six-drawer
 benchmark, unchanged defaults, exact candidate identity and rejection of both
 failed responses. These checks do not establish semantic acceptance.
 
+N68 Front V4, USER-APPROVED experiment, 2026-11-06, same 3.17.4.5,
+P0, COMPLETED experiment / REJECTED for promotion:
+Question: does locating every front before movement classification restore
+coverage in one existing call? Pass target: ten door-like fronts plus six
+drawers with correct individual boxes, no duplicates or fixed-side additions.
+V4 adds a facade sweep, location before type, and retention of uncertain or
+unsupported appliance movements as unresolved. Existing schema, lower-row
+rules, supports, images and settings unchanged; only system differs from V3.
+One Haiku 5.5 call, 29.632 s, end_turn; original status failed on the same four
+invalid island enums. Raw totals: drawers 4, hinged 3, lift_up 3, unresolved 2.
+Overlay confirms regression: five of ten target door-like fronts (3 storage,
+2 fridge); both sink doors, dishwasher and two column fronts absent. Each
+lower drawer box combines middle and bottom rows, counting four instead of
+six. Three alleged lift-ups box triangular shelf marks, not accepted fronts.
+Thus location-first wording did not meet the objective on this sample; a
+single result does not establish why. No further prompt variation/retry.
+Raw evidence: notes/evidence/hsl07-v62-2026-11-06/n68-front-v4.json.
+Prompt: agents/prompts/cb_front_v4.md, SHA256
+73c4a28213be22631eccf0c0253db1f71631057bdb8d3059a6a2e5047e78d4bd.
+Private witness/overlay: /private/tmp/hsl07-saved-replay-20261105-01/object-005-front-v4-20261106*.
+No Planner run, schema change, deployment or DB write. Default remains Front
+V2 + Planner V4, protected checkpoint 6952b4e unchanged. V3 stays historical,
+not a newly accepted default. Pending P0 coverage issue remains open.
+Next PROPOSAL: inspect exact model-facing image readability/scale and input
+budget before another prompt iteration; image quality is not a confirmed cause.
+Verification: 173 focused tests pass, including exact V4 identity, system-only
+request change, unchanged defaults and preserved rejection of the raw result.
+git diff --check passes; tests do not establish visual acceptance.
+
 HSL saved-package replay, USER REQUEST, 2026-11-05, same 3.17.4.5,
 P0, COMPLETED diagnostic replay; acceptance FAILED: owner explicitly requests existing
 Detection packages, not a locally rebuilt fixture. Latest matching Floor 07

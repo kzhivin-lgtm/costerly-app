@@ -86,6 +86,11 @@ island enums. Planner V7 consumes that raw response, then truncates at 6000
 tokens; worktop coverage has no accepted result. Selected defaults remain
 Front V2 + Planner V4. Evidence: notes/evidence/hsl07-v62-2026-11-06/n68-front-v3-planner-v7.json.
 
+CB Front V4 (location before classification, same schema) was tested once on
+unchanged N68. Rejected: five of ten target door-like fronts, four of six
+drawers, three unsupported lift-ups and invalid island enums. No Planner call
+or promotion. Evidence: notes/evidence/hsl07-v62-2026-11-06/n68-front-v4.json.
+
 CB Planner V5/V6 are retained diagnostic candidates, not selected defaults.
 V5 localizes worktops on top/axonometric views. V6 also caps tall blocks at
 two tall door leaves across without relaxing one-section-wide columns.

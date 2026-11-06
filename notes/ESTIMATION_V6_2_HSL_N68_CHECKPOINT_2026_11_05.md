@@ -18,6 +18,10 @@ Front still fails enum validation and Planner truncates. Neither is promoted.
 See TODO, n68-owner-benchmark-2026-11-06.json and the separate
 notes/evidence/hsl07-v62-2026-11-06/n68-front-v3-planner-v7.json witness.
 The earlier crossed-region/column omission claim needs identity revalidation.
+Subsequent Front V4 experiment on unchanged input regresses to five matched
+door-like fronts and four drawers, still failing island enums. Rejected for
+promotion; no Planner run or default change. Separate witness:
+notes/evidence/hsl07-v62-2026-11-06/n68-front-v4.json.
 
 ## Identity and protected state
 
