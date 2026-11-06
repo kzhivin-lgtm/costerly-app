@@ -1,5 +1,12 @@
 # Costerly AI Project Map
 
+Latest complete Estimation V6 chat handoff, 2026-11-06, work 3.17.4.6:
+`notes/ESTIMATION_V6_FULL_CHAT_HANDOFF_2026_11_06.md`.
+Includes V6.1 trials, Front/Planner/Parts versions, protected checkpoints,
+current Understanding text and the three failed first-stage Cycle V5 trials.
+Read before continuing the Understanding contract discussion. This is a
+documentation handoff, not a new product checkpoint or production promotion.
+
 This file explains where code belongs so the project stays understandable.
 
 ## Entry Point

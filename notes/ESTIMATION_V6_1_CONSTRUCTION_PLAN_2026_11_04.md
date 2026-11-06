@@ -1,5 +1,10 @@
 # Estimation V6: V6.1 experiments and V6.2 whole-object understanding
 
+Latest full-chat handoff: notes/ESTIMATION_V6_FULL_CHAT_HANDOFF_2026_11_06.md.
+It includes the subsequent simple-file V5 failures and last Understanding/order
+discussion. This file retains the historical design/experiment ledger; the
+handoff does not promote any failed candidate or replace the TODO backlog.
+
 Work: 3.17.4.5. Status: r03 provisional front-interpretation checkpoint accepted;
 overall V6.2 implementation and production acceptance remain pending.
 Current approved iteration: V6.2, 2026-11-05. The historical filename and V6.1

@@ -1,5 +1,15 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: owner-requested detailed full-chat handoff saved as
+notes/ESTIMATION_V6_FULL_CHAT_HANDOFF_2026_11_06.md. Reconciles V6.1 diagnostics,
+V6.2 interpretation/classification, all recorded Front/Planner/Parts experiment
+series, corrected benchmarks, research acceptance limits and source/recovery
+identities. Includes the exact current Understanding prompt, latest Ada/Lev1/
+Lev2 failures and the unresolved logical-order/schema discussion. Read-only
+remote verification confirms branch 89f605f, main 8eb87f1 and all four protected
+checkpoint commits before this documentation commit. No paid run, code/prompt
+change, deployment, new tag or semantic acceptance. Unrelated TODO edits kept.
+
 2026-11-06, 3.17.4.6: owner-requested simple-file transfer of unchanged CB Cycle
 V5. One Haiku first-stage call each on saved Lev1/Lev2 Detection evidence,
 8.760 / 8.327 s. Both provider replies complete, both fail Front validation.

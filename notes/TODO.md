@@ -1000,6 +1000,15 @@ Older tags and 50 unrelated TODO lines retained. Stop further experiments until
 the owner chooses the next task; outstanding quality defects remain pending P0.
 
 Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, PENDING full-object geometry; research checkpoint preserved:
+OWNER-REQUESTED FULL CHAT HANDOFF completed, 2026-11-06:
+notes/ESTIMATION_V6_FULL_CHAT_HANDOFF_2026_11_06.md preserves the full V6.1/V6.2
+experiment history, current raw Understanding prompt, benchmark corrections,
+accepted approximations, failed trials and exact checkpoint/recovery identities.
+Latest discussion names the block Understanding. Island Map -> Understanding ->
+Front -> Planner is the proposed logical Analyze order, NOT four model calls.
+Planner currently consumes Front, so moving Front after it is not implemented.
+Separating the prompt sections/one explicit response schema remains a proposal;
+no new prompt, paid replay, runtime promotion or deployment in the handoff turn.
 LATEST OWNER DECISION: restore explicit whole-object understanding as the
 foundation of the next experimental cycle, V5. Implemented as CB Cycle V5,
 NOT a product-major rename and NOT replacement of historical CB Front V5 or
