@@ -328,6 +328,73 @@ is the next proposal, not implemented or approved. It can detect contradictions,
 not prove source dimensions or correct visual geometry. Checkpoint a9b8df8 and
 production remain unchanged. Stop prompt variants pending the next decision.
 
+## CB Parts V4: geometry before workshop grouping, same 3.17.4.6
+
+Owner approved direction 1, then direction 2 (measurement preparation), and
+rejected worked-example teaching for now. Name is CB Parts V4, not V3.6 and not
+an Estimation product-major change. The end deliverable remains a coarse list
+of material-bearing sized parts, retained as entities for future labor mapping.
+
+Rationale: workshop/transport boundaries do not necessarily coincide with
+drawing dimension spans. V3 local block geometry and V3.5 frozen memberships
+did not solve dimension ownership. V4 removes the old Planner scope from the
+model context, not the original source evidence or Front identity reference.
+One shared Analyze plus Calculate/object remains the target. This opt-in replay
+uses saved Front and one Calculate call; no extra Planner/reviewer stage. Saved
+Front/Planner probes do not establish integrated Analyze acceptance.
+
+Contract order inside that call:
+1. Object material palette with stock thickness, layers, finish/edge intent,
+   evidence claim and short reason. Reuse existing family vocabulary. No prices.
+2. Independent dimensions with units and explicit source-reading/assumption
+   status. Physical straight runs/vertical columns reuse those dimensions.
+   Width_ids sum to a complete run extent; bays divide it by relative weights.
+   Vertically stacked fronts/openings divide that run's height by weights.
+3. Workshop groups select consecutive bays from one run, exactly once. Groups
+   cannot assign or recompute bay dimensions. Tall/separate runs stay distinct.
+4. Explicit worktops, decorative members and supports reference the same
+   dimensions/run axes, not independent repeated numbers. All input fronts
+   must remain covered exactly once; their upstream classification is fallible.
+
+Implementation reuses `compose_cb_bay_parts` for conventional carcass panels,
+one shared wall beside a drawer bay, and five drawer-body panels. Drawer body
+height is an explicit coarse policy: 75% of facade height, capped at 250 mm.
+Drawer depth retains existing depth-minus-100 rounded-down rule. These are
+assumptions, not newly observed source facts. `build_assembly_bom` retains
+part identity, role, quantity, material requirements and existing BOM shape.
+V4 adds palette ID, final thickness, name and dependency lineage to each part.
+Stock layers derive finished thickness and multiply net sheet area, not finished
+part count. Support rows are not sheet area. Net rectangular area is not nesting,
+waste or procurement. Edge/finish intent is stored, separate demand not compiled.
+
+This diagnostic does not claim a verified project palette in Analyze. V4 reads
+material intent in Calculate because those saved Front inputs do not include
+one. Source claims and refs are retained for review but normalized parts remain
+assumptions; V4 does not emit verified 2VN dimension ownership. Source readings
+cannot be certified by valid IDs or arithmetic alone. Existing 2VN/runtime
+behavior and material Engine are unchanged. Production/defaults not promoted.
+
+Verification: 283 relevant tests pass, including regrouping invariance, exact
+front/bay coverage, shared dimensions, stacked front/opening height allocation,
+material layers and hidden-board separation, explicit supports, no Planner
+transport, exact raw capture and no extra call. Three live Haiku 5.5 trials,
+identical V4 prompt, source evidence unchanged, no retries or hand repairs:
+- Lev2, 12.983 s: 9/24 front IDs missing (including tall column), 151 cm still
+  assigned to a whole lower run, unsupported veneered-front source claim.
+- Lev1, 8.706 s: 3/3 fronts retained but stacked vertically instead of adjacent;
+  cm-scale dimensions treated as mm, decorative enclosure duplicated, foreign
+  material refs and zero-thickness/zero-layer support material. Rejected.
+- N68, 12.203 s: 5/18 input fronts retained, kitchen dimensions treated as mm,
+  source-reading dimension without a printed label and unused material. Rejected.
+Full replies and audit:
+notes/evidence/cb-parts-v4-2026-11-06/three-object-trials.json.
+All ended normally at provider level. None yielded an accepted whole-object
+parts list. A schema repair would not resolve the substantive geometry errors.
+Stop this variant; no conclusion that the abstract architecture is impossible
+or that removing grouping alone caused failure, since the contract also restored
+materials and changed representation. Next direction is measured input, with
+prior evidence-first failures treated as constraints, not ignored history.
+
 Owner benchmark corrected on 2026-11-06: N68 TEN door-like fronts and SIX
 drawers, superseding the earlier eight-door/four-drawer confirmation. Ten
 comprises five tall, two under sink, one downward-opening dishwasher front,

@@ -63,21 +63,44 @@ def load_topology(path, *, prior, scope):
             "status": saved["status"], "geometry_accepted": False}}
 
 
+def load_v4_scope(front_path):
+    """V4 measures before workshop planning, so a saved Planner is not required."""
+    front = json.loads(front_path.read_text())
+    if len(front["inputs"]) != 1:
+        raise ValueError("exactly one object per Calculate probe")
+    record = next(r for r in reversed(front["provider_responses"]) if r["stage"] == "front_count")
+    if record["response"].get("stop_reason") != "end_turn":
+        raise ValueError("cannot use incomplete Front response")
+    text = "\n".join(b["text"] for b in record["response"]["content"] if b["type"] == "text")
+    if text != record["response_text"]:
+        raise ValueError("Front text differs from provider raw")
+    return front, {"input_id": front["inputs"][0]["input_id"], "front": _json_object(text),
+        "upstream_status": {"front": front["status"], "origin": "saved_front_probe_not_integrated_Analyze",
+            "planner": "not_consumed_geometry_precedes_grouping"}}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--front-witness", type=Path, required=True)
-    parser.add_argument("--planner-witness", type=Path, required=True)
+    parser.add_argument("--planner-witness", type=Path, help="Required for V1-V3.5; not consumed by V4")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--execute", action="store_true")
     parser.add_argument("--omit-block-locator", help="Explicit diagnostic: omit only this block's region from the model context")
     parser.add_argument("--topology-witness", type=Path, help="V3.5 only: freeze topology from an original V3.3 provider reply")
-    parser.add_argument("--parts-version", choices=("V1", "V2", "V3", "V3.1", "V3.2", "V3.3", "V3.4", "V3.5"), default="V3")
+    parser.add_argument("--parts-version", choices=("V1", "V2", "V3", "V3.1", "V3.2", "V3.3", "V3.4", "V3.5", "V4"), default="V3")
     args = parser.parse_args()
     if not args.execute:
         parser.error("--execute required for one paid Calculate call")
     if args.output.exists():
         parser.error("refuse to overwrite witness")
-    prior, scope = load_scope(args.front_witness, args.planner_witness)
+    if args.parts_version == "V4":
+        if args.planner_witness:
+            parser.error("V4 consumes Front evidence only, omit --planner-witness")
+        prior, scope = load_v4_scope(args.front_witness)
+    else:
+        if not args.planner_witness:
+            parser.error("--planner-witness required before V4")
+        prior, scope = load_scope(args.front_witness, args.planner_witness)
     if (args.parts_version == "V3.5") != bool(args.topology_witness):
         parser.error("V3.5 requires --topology-witness; other versions do not accept it")
     if args.topology_witness:
@@ -88,7 +111,7 @@ def main():
     witness = {k: prior[k] for k in ("inputs", "source_pages_base64", "evidence_origin")}
     witness.update(work="3.17.4.6", route="cb_parts_inside_calculate", status="running",
         database_writes=False, scope=scope, provider_responses=[],
-        source_hashes={str(p): sha256(p.read_bytes()).hexdigest() for p in (args.front_witness, args.planner_witness)})
+        source_hashes={str(p): sha256(p.read_bytes()).hexdigest() for p in (args.front_witness, args.planner_witness) if p is not None})
     if args.topology_witness:
         witness["source_hashes"][str(args.topology_witness)] = scope["topology_source"]["sha256"]
     def save():

@@ -1000,7 +1000,40 @@ Older tags and 50 unrelated TODO lines retained. Stop further experiments until
 the owner chooses the next task; outstanding quality defects remain pending P0.
 
 Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, PENDING full-object geometry; research checkpoint preserved:
-LATEST USER-APPROVED DIAGNOSTIC: CB Parts V3.5 freezes bay/front membership
+LATEST OWNER DECISION: name the next contract CB Parts V4 (not V3.x and not
+an Estimation product-major rename). Try geometry before workshop grouping,
+then the measurement-preparation direction. Worked-example teaching is not
+selected. This remains the same sized material-bearing parts objective.
+V4 IMPLEMENTED, EXPERIMENTAL / NOT ACCEPTED: one Calculate call from saved Front
+and unchanged complete source context; old Planner groups/boxes are not consumed.
+Model describes physical runs/columns, reusable dimensions and weighted bays,
+then assembly groups and a material palette. Code derives widths and front
+heights before grouping, reuses the V3.3 carcass compiler and existing assembly
+BOM builder. Final parts retain IDs, role, quantity, face size, thickness and
+material; stock layers multiply sheet area, not finished part count. Explicit
+worktops, frame members and supports stay separate. No full template library.
+Three unchanged-prompt Haiku trials, no retries or manual repairs: Lev2 12.983 s,
+Lev1 8.706 s, N68 12.203 s. All complete provider replies, all rejected. Lev2
+omits 9/24 input front IDs and still assigns 151 cm to a whole partial-width
+run. Lev1 turns three adjacent drawers into a vertical stack, uses mm for the
+centimetre-scale drawing and supplies foreign material refs/zero support stock.
+N68 retains only 5/18 input fronts, uses an implausible mm-scale kitchen and
+claims a drawing dimension without its label. Evidence:
+notes/evidence/cb-parts-v4-2026-11-06/three-object-trials.json.
+283 relevant tests pass; full visual/material objective 0/3 accepted. Stop
+V4 prompt variants. This combined new contract is not a single-factor proof
+that geometry-before-grouping caused these failures or can never work.
+Limits: current saved Analyze has no project material palette, so V4 interprets
+materials in Calculate for this diagnostic; integrated Analyze and project
+palette are pending. All geometric/material claims remain unverified, not 2VN
+certified. Finish/edge intent retained, separate consumable demand not compiled.
+NEXT, P0, owner-selected direction 2: prepare measurement evidence before the
+interpreter, reusing Dimension Graph/2VN and the prior 3.17.4.5 evidence-first
+findings. Scope the concrete independent source witness before implementing;
+do not repeat the already failed nearby-number map/reviewer without new input.
+No implementation of direction 2 in this iteration. Main, production, ordinary
+selectors and protected V3.3 research checkpoint remain unchanged.
+Earlier approved diagnostic: CB Parts V3.5 freezes bay/front membership
 from the original first V3.3 reply, withholding all its dimension estimates.
 Same complete Lev2 evidence, five images, no changed locators or manual repair.
 One width-association call only, not an extra stage in production. Exact evidence

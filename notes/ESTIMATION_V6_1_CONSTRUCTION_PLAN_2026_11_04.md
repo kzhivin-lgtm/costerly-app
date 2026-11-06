@@ -16,6 +16,14 @@ protected. Pre-existing TODO changes belong to the owner.
 
 ## Decision
 
+Current Parts follow-up is 3.17.4.6, CB Parts V4, not a product V4 rename.
+Owner selected physical geometry before workshop grouping, then measured-input
+preparation if needed; worked-example teaching not selected. V4's three full
+saved-Front Calculate trials failed, no runtime promotion. Details and raw
+evidence are in the Cabinet Block contract and TODO rather than duplicated here.
+The V3.3 research checkpoint a9b8df8 remains protected. Historic stop statements
+below describe their preservation turn, not authority to discard later records.
+
 Latest owner-requested research snapshot is PARTIALLY COMPROMISED Front V3 +
 Planner V7, preservation with known defects only:
 notes/ESTIMATION_V6_2_FRONT_V3_PLANNER_V7_PARTIALLY_COMPROMISED_CHECKPOINT_2026_11_06.md.

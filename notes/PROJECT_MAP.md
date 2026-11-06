@@ -98,6 +98,17 @@ This file explains where code belongs so the project stays understandable.
   failed on null fallback widths. Fixed topology alone is insufficient here.
   `notes/evidence/cb-parts-v3-5-2026-11-06/lev2-fixed-topology-trial.json`.
   Research checkpoint/defaults untouched; no new production stage or deploy.
+- Owner-selected next architecture, CB Parts V4, same 3.17.4.6:
+  `agents/prompts/cb_parts_v4.md`, `use_cases/estimation_cb_v4.py`,
+  `tests/test_cb_parts_v4.py`. `tools/probe_cb_parts.py --parts-version V4`
+  takes only `--front-witness`, no prior Planner. Physical dimensional runs
+  precede workshop groups, reuse `compose_cb_bay_parts` and `build_assembly_bom`.
+  Returns material-bearing parts/BOM, not only a width audit. One request.
+  Three whole-object trials failed (Lev2/Lev1/N68), not promoted:
+  `notes/evidence/cb-parts-v4-2026-11-06/three-object-trials.json`.
+  Next owner-selected direction is measured input preparation, not worked
+  examples; no implementation of that direction yet. Full contract/limits in
+  the Cabinet Block contract and authoritative TODO, no competing backlog.
 - `use_cases/machinery.py` owns the 27-code storage catalog, the 16-capability
   Company Profile subset, outsourceable-operation boundary, company/supplier
   validation, Supabase persistence, and the bounded production-context snapshot

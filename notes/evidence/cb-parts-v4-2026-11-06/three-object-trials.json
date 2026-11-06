@@ -1,0 +1,1069 @@
+{
+  "work": "3.17.4.6",
+  "version": "CB Parts V4",
+  "decision": "Owner selected geometry before workshop grouping, with material-bearing parts; measurement preparation is the next direction, examples not selected.",
+  "production_promoted": false,
+  "trials": [
+    {
+      "name": "lev2",
+      "status": "failed",
+      "error": "ValueError: front IDs must cover exactly the assigned block fronts",
+      "elapsed_seconds": 12.983,
+      "model": "claude-haiku-5-5",
+      "prompt_sha256": "8c859c73565dbd843eedebbc9e3af2b9b803cc8a604f90a0c668e4ee0737b50b",
+      "request_sha256": "19ca7fc425a8742fd5a8db0e4a18708a070f6d44da9a74b41e587ff52aa4c2f3",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 16052,
+        "output_tokens": 3630,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "stop_reason": "end_turn",
+      "provider_calls": 1,
+      "source_hashes": {
+        "/private/tmp/lev2-front-v3-planner-v7-20261106-03-front.json": "4bca318a8c7fc704fb289203f355da104c2e4c7796cdae95a2eecf53fdab8c9c"
+      },
+      "source_evidence_unchanged": true,
+      "image_count": 5,
+      "outgoing_context": {
+        "calculation_scope": {
+          "input_id": "local-detection:run_189150ebf62447fc958f7c23cc34e3bb:object-001",
+          "front": {
+            "island_types": [
+              {
+                "view_id": "p1-view-001",
+                "type": "top_view"
+              },
+              {
+                "view_id": "p1-view-002",
+                "type": "axonometric_view"
+              },
+              {
+                "view_id": "p1-view-003",
+                "type": "front_elevation"
+              },
+              {
+                "view_id": "p1-view-004",
+                "type": "front_elevation"
+              }
+            ],
+            "front_groups": [
+              {
+                "location": "Wing 003 upper wall units, wide horizontal fronts over the 69/180 run",
+                "type": "lift_up",
+                "count": 2,
+                "count_basis": "clear",
+                "view_ids": [
+                  "p1-view-003"
+                ],
+                "uncertainty": "",
+                "fronts": [
+                  {
+                    "id": "F01",
+                    "view_id": "p1-view-003",
+                    "bbox_1000": [
+                      204,
+                      392,
+                      401,
+                      494
+                    ]
+                  },
+                  {
+                    "id": "F02",
+                    "view_id": "p1-view-003",
+                    "bbox_1000": [
+                      404,
+                      392,
+                      600,
+                      494
+                    ]
+                  }
+                ]
+              },
+              {
+                "location": "Wing 003 tall upper units, left pantry and three upper doors over the return",
+                "type": "hinged",
+                "count": 4,
+                "count_basis": "clear",
+                "view_ids": [
+                  "p1-view-003"
+                ],
+                "uncertainty": "Portrait upper fronts closing storage openings, treated as hinged per the cabinet rules.",
+                "fronts": [
+                  {
+                    "id": "F03",
+                    "view_id": "p1-view-003",
+                    "bbox_1000": [
+                      109,
+                      200,
+                      200,
+                      494
+                    ]
+                  },
+                  {
+                    "id": "F04",
+                    "view_id": "p1-view-003",
+                    "bbox_1000": [
+                      602,
+                      200,
+                      735,
+                      406
+                    ]
+                  },
+                  {
+                    "id": "F05",
+                    "view_id": "p1-view-003",
+                    "bbox_1000": [
+                      737,
+                      200,
+                      854,
+                      406
+                    ]
+                  },
+                  {
+                    "id": "F06",
+                    "view_id": "p1-view-003",
+                    "bbox_1000": [
+                      857,
+                      200,
+                      974,
+                      406
+                    ]
+                  }
+                ]
+              },
+              {
+                "location": "Wing 003 column below upper doors, two portrait fronts above the drawers",
+                "type": "hinged",
+                "count": 2,
+                "count_basis": "clear",
+                "view_ids": [
+                  "p1-view-003"
+                ],
+                "uncertainty": "Portrait fronts; hinged assumed. Whether they open upward is not shown.",
+                "fronts": [
+                  {
+                    "id": "F07",
+                    "view_id": "p1-view-003",
+                    "bbox_1000": [
+                      606,
+                      406,
+                      732,
+                      576
+                    ]
+                  },
+                  {
+                    "id": "F08",
+                    "view_id": "p1-view-003",
+                    "bbox_1000": [
+                      606,
+                      581,
+                      732,
+                      739
+                    ]
+                  }
+                ]
+              },
+              {
+                "location": "Wing 003 shallow drawer stack at base of return column",
+                "type": "drawer",
+                "count": 2,
+                "count_basis": "clear",
+                "view_ids": [
+                  "p1-view-003"
+                ],
+                "uncertainty": "",
+                "fronts": [
+                  {
+                    "id": "F09",
+                    "view_id": "p1-view-003",
+                    "bbox_1000": [
+                      606,
+                      742,
+                      735,
+                      801
+                    ]
+                  },
+                  {
+                    "id": "F10",
+                    "view_id": "p1-view-003",
+                    "bbox_1000": [
+                      606,
+                      803,
+                      735,
+                      860
+                    ]
+                  }
+                ]
+              },
+              {
+                "location": "Wing 003 lower base run, five portrait doors",
+                "type": "hinged",
+                "count": 5,
+                "count_basis": "clear",
+                "view_ids": [
+                  "p1-view-003"
+                ],
+                "uncertainty": "",
+                "fronts": [
+                  {
+                    "id": "F11",
+                    "view_id": "p1-view-003",
+                    "bbox_1000": [
+                      104,
+                      657,
+                      185,
+                      860
+                    ]
+                  },
+                  {
+                    "id": "F12",
+                    "view_id": "p1-view-003",
+                    "bbox_1000": [
+                      187,
+                      657,
+                      280,
+                      860
+                    ]
+                  },
+                  {
+                    "id": "F13",
+                    "view_id": "p1-view-003",
+                    "bbox_1000": [
+                      284,
+                      657,
+                      379,
+                      860
+                    ]
+                  },
+                  {
+                    "id": "F14",
+                    "view_id": "p1-view-003",
+                    "bbox_1000": [
+                      381,
+                      657,
+                      476,
+                      860
+                    ]
+                  },
+                  {
+                    "id": "F15",
+                    "view_id": "p1-view-003",
+                    "bbox_1000": [
+                      479,
+                      657,
+                      574,
+                      860
+                    ]
+                  }
+                ]
+              },
+              {
+                "location": "Wing 004 tall upper units, pair of doors",
+                "type": "hinged",
+                "count": 2,
+                "count_basis": "clear",
+                "view_ids": [
+                  "p1-view-004"
+                ],
+                "uncertainty": "",
+                "fronts": [
+                  {
+                    "id": "F16",
+                    "view_id": "p1-view-004",
+                    "bbox_1000": [
+                      128,
+                      113,
+                      221,
+                      467
+                    ]
+                  },
+                  {
+                    "id": "F17",
+                    "view_id": "p1-view-004",
+                    "bbox_1000": [
+                      231,
+                      113,
+                      338,
+                      467
+                    ]
+                  }
+                ]
+              },
+              {
+                "location": "Wing 004 lower base run, doors left of the drawer bank and at the end",
+                "type": "hinged",
+                "count": 4,
+                "count_basis": "clear",
+                "view_ids": [
+                  "p1-view-004"
+                ],
+                "uncertainty": "",
+                "fronts": [
+                  {
+                    "id": "F18",
+                    "view_id": "p1-view-004",
+                    "bbox_1000": [
+                      128,
+                      663,
+                      221,
+                      903
+                    ]
+                  },
+                  {
+                    "id": "F19",
+                    "view_id": "p1-view-004",
+                    "bbox_1000": [
+                      228,
+                      663,
+                      336,
+                      903
+                    ]
+                  },
+                  {
+                    "id": "F20",
+                    "view_id": "p1-view-004",
+                    "bbox_1000": [
+                      338,
+                      663,
+                      443,
+                      903
+                    ]
+                  },
+                  {
+                    "id": "F21",
+                    "view_id": "p1-view-004",
+                    "bbox_1000": [
+                      600,
+                      663,
+                      728,
+                      903
+                    ]
+                  }
+                ]
+              },
+              {
+                "location": "Wing 004 lower drawer stack, three shallow drawers",
+                "type": "drawer",
+                "count": 3,
+                "count_basis": "clear",
+                "view_ids": [
+                  "p1-view-004"
+                ],
+                "uncertainty": "",
+                "fronts": [
+                  {
+                    "id": "F22",
+                    "view_id": "p1-view-004",
+                    "bbox_1000": [
+                      446,
+                      663,
+                      597,
+                      727
+                    ]
+                  },
+                  {
+                    "id": "F23",
+                    "view_id": "p1-view-004",
+                    "bbox_1000": [
+                      446,
+                      730,
+                      597,
+                      815
+                    ]
+                  },
+                  {
+                    "id": "F24",
+                    "view_id": "p1-view-004",
+                    "bbox_1000": [
+                      446,
+                      818,
+                      597,
+                      903
+                    ]
+                  }
+                ]
+              }
+            ],
+            "excluded_surfaces": [
+              {
+                "id": "X01",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  49,
+                  191,
+                  101,
+                  497
+                ],
+                "reason": "fixed carcass end side at the left end of the run"
+              },
+              {
+                "id": "X02",
+                "view_id": "p1-view-003",
+                "bbox_1000": [
+                  576,
+                  657,
+                  600,
+                  860
+                ],
+                "reason": "narrow fixed filler strip beside the lower run"
+              }
+            ],
+            "tabletop_supports": [
+              {
+                "id": "T01",
+                "location": "L-shaped worktop over the base cabinet runs, including the corner and sink area",
+                "leg_count": 0,
+                "count_basis": "clear",
+                "view_ids": [
+                  "p1-view-002",
+                  "p1-view-003",
+                  "p1-view-004"
+                ],
+                "support_scheme": "Observed: the worktop is carried by continuous base cabinet carcasses with no visible legs in any view. The support is the cabinet bases themselves, not an assumed attachment.",
+                "uncertainty": "",
+                "legs": []
+              }
+            ],
+            "totals": {
+              "drawers": 5,
+              "hinged_doors": 17,
+              "lift_up_fronts": 2,
+              "unresolved_fronts": 0,
+              "total_fronts": 24
+            }
+          },
+          "parts_version": "CB Parts V4",
+          "upstream_status": {
+            "front": "failed",
+            "origin": "saved_front_probe_not_integrated_Analyze",
+            "planner": "not_consumed_geometry_precedes_grouping"
+          }
+        },
+        "allowed_material_families": [
+          "glass",
+          "hdf",
+          "ldsp",
+          "mdf",
+          "metal",
+          "plywood",
+          "solid_wood",
+          "stone"
+        ]
+      },
+      "raw_response_text": "```json\n{\n  \"summary\": \"L-shaped kitchen run with a tall pantry column and wall units on wing 003, plus a separate wall-and-base wing 004 forming the return; carcass on ldsp with veneered MDF fronts and a 30 mm stone worktop.\",\n  \"materials\": [\n    {\"id\":\"M1\",\"name\":\"LDSP 17 mm white carcass\",\"family\":\"ldsp\",\"stock_thickness_mm\":17,\"layers\":1,\"finish\":\"matte white melamine\",\"edge_treatment\":\"PVC edge banding on exposed edges\",\"basis\":\"construction_assumption\",\"evidence_refs\":[],\"reason\":\"Conventional cabinet board; carcass not visibly distinguished from fronts in views.\"},\n    {\"id\":\"M2\",\"name\":\"Veneered MDF 18 mm fronts\",\"family\":\"mdf\",\"stock_thickness_mm\":18,\"layers\":1,\"finish\":\"green painted or veneered flat front\",\"edge_treatment\":\"Edge banding on all sides\",\"basis\":\"source_evidence\",\"evidence_refs\":[\"local-render:099bfb240ad0bbc85740ad1a73b81c2c780a15de6c5b9697f56e145315bce3d7:p1\"],\"reason\":\"Rendered fronts show a uniform green flat-panel finish.\"},\n    {\"id\":\"M3\",\"name\":\"Stone worktop 30 mm\",\"family\":\"stone\",\"stock_thickness_mm\":30,\"layers\":1,\"finish\":\"polished stone top\",\"edge_treatment\":\"Square edge\",\"basis\":\"construction_assumption\",\"evidence_refs\":[],\"reason\":\"Worktop thickness default for kitchen tops.\"}\n  ],\n  \"dimensions\": [\n    {\"id\":\"D01\",\"value\":416,\"unit\":\"cm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-001\",\"label\":\"416\",\"reason\":\"Overall top-view length of the upper edge of the L.\"},\n    {\"id\":\"D02\",\"value\":300,\"unit\":\"cm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-001\",\"label\":\"300\",\"reason\":\"Overall left leg length of the L in top view.\"},\n    {\"id\":\"D03\",\"value\":260,\"unit\":\"cm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-001\",\"label\":\"260\",\"reason\":\"Inner leg length of the return.\"},\n    {\"id\":\"D04\",\"value\":69,\"unit\":\"cm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-003\",\"label\":\"69\",\"reason\":\"Width of the left pantry section in wing 003 elevation.\"},\n    {\"id\":\"D05\",\"value\":180,\"unit\":\"cm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-003\",\"label\":\"180\",\"reason\":\"Width of the upper run to the right of the pantry.\"},\n    {\"id\":\"D06\",\"value\":94,\"unit\":\"cm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-003\",\"label\":\"94\",\"reason\":\"Width of the return column in wing 003.\"},\n    {\"id\":\"D07\",\"value\":184,\"unit\":\"cm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-003\",\"label\":\"184\",\"reason\":\"Height of the tall return column opening.\"},\n    {\"id\":\"D08\",\"value\":265,\"unit\":\"cm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-004\",\"label\":\"265\",\"reason\":\"Height of the tall column in wing 004.\"},\n    {\"id\":\"D09\",\"value\":84,\"unit\":\"cm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-004\",\"label\":\"84\",\"reason\":\"Width of the upper pair of doors in wing 004.\"},\n    {\"id\":\"D10\",\"value\":151,\"unit\":\"cm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-004\",\"label\":\"151\",\"reason\":\"Width of the lower run in wing 004.\"},\n    {\"id\":\"D11\",\"value\":115,\"unit\":\"cm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-004\",\"label\":\"115\",\"reason\":\"Height of the upper wall units in wing 004.\"},\n    {\"id\":\"D12\",\"value\":75,\"unit\":\"cm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-003\",\"label\":\"75\",\"reason\":\"Height of the upper wall units from the countertop in wing 003.\"},\n    {\"id\":\"D13\",\"value\":60,\"unit\":\"cm\",\"basis\":\"assumption\",\"view_id\":null,\"label\":\"\",\"reason\":\"Standard base cabinet depth with worktop overhang.\"},\n    {\"id\":\"D14\",\"value\":35,\"unit\":\"cm\",\"basis\":\"assumption\",\"view_id\":null,\"label\":\"\",\"reason\":\"Standard wall cabinet depth.\"},\n    {\"id\":\"D15\",\"value\":90,\"unit\":\"cm\",\"basis\":\"assumption\",\"view_id\":null,\"label\":\"\",\"reason\":\"Base cabinet carcass height before worktop.\"},\n    {\"id\":\"D16\",\"value\":30,\"unit\":\"cm\",\"basis\":\"assumption\",\"view_id\":null,\"label\":\"\",\"reason\":\"Stone worktop thickness.\"}\n  ],\n  \"runs\": [\n    {\"id\":\"R1\",\"name\":\"Wing 003 base run\",\"view_id\":\"p1-view-003\",\"width_ids\":[\"D04\",\"D05\"],\"height_id\":\"D15\",\"depth_id\":\"D13\",\"bays\":[\n      {\"id\":\"B1\",\"width_weight\":1,\"shelves\":2,\"opening_weight\":0,\"fronts\":[{\"id\":\"F11\",\"height_weight\":1}]},\n      {\"id\":\"B2\",\"width_weight\":1,\"shelves\":2,\"opening_weight\":0,\"fronts\":[{\"id\":\"F12\",\"height_weight\":1}]},\n      {\"id\":\"B3\",\"width_weight\":1,\"shelves\":2,\"opening_weight\":0,\"fronts\":[{\"id\":\"F13\",\"height_weight\":1}]},\n      {\"id\":\"B4\",\"width_weight\":1,\"shelves\":2,\"opening_weight\":0,\"fronts\":[{\"id\":\"F14\",\"height_weight\":1}]},\n      {\"id\":\"B5\",\"width_weight\":1,\"shelves\":2,\"opening_weight\":0,\"fronts\":[{\"id\":\"F15\",\"height_weight\":1}]}\n    ]},\n    {\"id\":\"R2\",\"name\":\"Wing 003 upper run\",\"view_id\":\"p1-view-003\",\"width_ids\":[\"D05\"],\"height_id\":\"D12\",\"depth_id\":\"D14\",\"bays\":[\n      {\"id\":\"B6\",\"width_weight\":1,\"shelves\":1,\"opening_weight\":0,\"fronts\":[{\"id\":\"F01\",\"height_weight\":1}]},\n      {\"id\":\"B7\",\"width_weight\":1,\"shelves\":1,\"opening_weight\":0,\"fronts\":[{\"id\":\"F02\",\"height_weight\":1}]}\n    ]},\n    {\"id\":\"R3\",\"name\":\"Wing 004 base run\",\"view_id\":\"p1-view-004\",\"width_ids\":[\"D10\"],\"height_id\":\"D15\",\"depth_id\":\"D13\",\"bays\":[\n      {\"id\":\"B8\",\"width_weight\":1,\"shelves\":2,\"opening_weight\":0,\"fronts\":[{\"id\":\"F18\",\"height_weight\":1}]},\n      {\"id\":\"B9\",\"width_weight\":1,\"shelves\":2,\"opening_weight\":0,\"fronts\":[{\"id\":\"F19\",\"height_weight\":1}]},\n      {\"id\":\"B10\",\"width_weight\":1,\"shelves\":2,\"opening_weight\":0,\"fronts\":[{\"id\":\"F20\",\"height_weight\":1}]},\n      {\"id\":\"B11\",\"width_weight\":1,\"shelves\":0,\"opening_weight\":0,\"fronts\":[{\"id\":\"F22\",\"height_weight\":1},{\"id\":\"F23\",\"height_weight\":1},{\"id\":\"F24\",\"height_weight\":1}]}\n    ]},\n    {\"id\":\"R4\",\"name\":\"Wing 004 upper run\",\"view_id\":\"p1-view-004\",\"width_ids\":[\"D09\"],\"height_id\":\"D11\",\"depth_id\":\"D14\",\"bays\":[\n      {\"id\":\"B12\",\"width_weight\":1,\"shelves\":1,\"opening_weight\":0,\"fronts\":[{\"id\":\"F16\",\"height_weight\":1}]},\n      {\"id\":\"B13\",\"width_weight\":1,\"shelves\":1,\"opening_weight\":0,\"fronts\":[{\"id\":\"F17\",\"height_weight\":1}]}\n    ]}\n  ],\n  \"blocks\": [\n    {\"id\":\"K1\",\"name\":\"Wing 003 base block\",\"run_id\":\"R1\",\"bay_ids\":[\"B1\",\"B2\",\"B3\",\"B4\",\"B5\"],\"body_material_id\":\"M1\",\"front_material_id\":\"M2\",\"drawer_material_id\":\"M1\",\"reason\":\"Five-door base run carrying the worktop.\"},\n    {\"id\":\"K2\",\"name\":\"Wing 003 upper block\",\"run_id\":\"R2\",\"bay_ids\":[\"B6\",\"B7\"],\"body_material_id\":\"M1\",\"front_material_id\":\"M2\",\"drawer_material_id\":\"M1\",\"reason\":\"Two lift-up wall units over the 180 cm run.\"},\n    {\"id\":\"K3\",\"name\":\"Wing 004 base block\",\"run_id\":\"R3\",\"bay_ids\":[\"B8\",\"B9\",\"B10\",\"B11\"],\"body_material_id\":\"M1\",\"front_material_id\":\"M2\",\"drawer_material_id\":\"M1\",\"reason\":\"Base run with doors and drawer bank.\"},\n    {\"id\":\"K4\",\"name\":\"Wing 004 upper block\",\"run_id\":\"R4\",\"bay_ids\":[\"B12\",\"B13\"],\"body_material_id\":\"M1\",\"front_material_id\":\"M2\",\"drawer_material_id\":\"M1\",\"reason\":\"Pair of upper doors.\"}\n  ],\n  \"explicit_assemblies\": [\n    {\"id\":\"A1\",\"name\":\"Stone worktop\",\"parts\":[\n      {\"id\":\"P1\",\"name\":\"Worktop L arm 1\",\"role\":\"worktop\",\"quantity\":1,\"length_ref\":\"D01\",\"width_ref\":\"D13\",\"material_id\":\"M3\",\"reason\":\"Main arm along the 416 cm edge.\"},\n      {\"id\":\"P2\",\"name\":\"Worktop L arm 2\",\"role\":\"worktop\",\"quantity\":1,\"length_ref\":\"D03\",\"width_ref\":\"D13\",\"material_id\":\"M3\",\"reason\":\"Return arm; corner not double counted.\"}\n    ]},\n    {\"id\":\"A2\",\"name\":\"Fixed end side panels\",\"parts\":[\n      {\"id\":\"P3\",\"name\":\"Wing 003 end side\",\"role\":\"panel\",\"quantity\":1,\"length_ref\":\"D15\",\"width_ref\":\"D13\",\"material_id\":\"M1\",\"reason\":\"Fixed carcass end side at left end of run.\"},\n      {\"id\":\"P4\",\"name\":\"Wing 004 end side\",\"role\":\"panel\",\"quantity\":1,\"length_ref\":\"D08\",\"width_ref\":\"D13\",\"material_id\":\"M1\",\"reason\":\"Tall column side panel.\"}\n    ]}\n  ],\n  \"uncertainties\": [\n    \"Depths for base and wall cabinets assumed; not dimensioned in drawing.\",\n    \"Hinge direction on portrait upper fronts not shown; treated as hinged.\",\n    \"Tall column in wing 004 height 265 cm assumed to run floor to ceiling.\",\n    \"Worktop overhang and extents estimated from top view.\"\n  ]\n}\n```",
+      "front_coverage_audit": {
+        "expected_front_count": 24,
+        "returned_front_count": 15,
+        "missing_front_ids": [
+          "F03",
+          "F04",
+          "F05",
+          "F06",
+          "F07",
+          "F08",
+          "F09",
+          "F10",
+          "F21"
+        ],
+        "duplicate_front_ids": []
+      },
+      "accepted": false
+    },
+    {
+      "name": "lev1",
+      "status": "failed",
+      "error": "ValueError: foreign material evidence",
+      "elapsed_seconds": 8.706,
+      "model": "claude-haiku-5-5",
+      "prompt_sha256": "8c859c73565dbd843eedebbc9e3af2b9b803cc8a604f90a0c668e4ee0737b50b",
+      "request_sha256": "cc2502c1ed738cac60295915657a396565ff4209235ae6c2a5f342c637251d2e",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 15375,
+        "output_tokens": 2234,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "stop_reason": "end_turn",
+      "provider_calls": 1,
+      "source_hashes": {
+        "/private/tmp/cb-front-v2-lev1-01.json": "bb8657769b0f3367125328b61a5da820570bed5a7ede4b05d1d1e65f11fc5424"
+      },
+      "source_evidence_unchanged": true,
+      "image_count": 7,
+      "outgoing_context": {
+        "calculation_scope": {
+          "input_id": "db175c9d-b911-434e-a3ed-de612640f96f",
+          "front": {
+            "island_types": [
+              {
+                "view_id": "p1-view-001",
+                "type": "axonometric_view"
+              },
+              {
+                "view_id": "p1-view-002",
+                "type": "top_view"
+              },
+              {
+                "view_id": "p1-view-003",
+                "type": "axonometric_view"
+              },
+              {
+                "view_id": "p1-view-004",
+                "type": "front_elevation"
+              },
+              {
+                "view_id": "p1-view-005",
+                "type": "side_view"
+              },
+              {
+                "view_id": "p1-view-006",
+                "type": "rear_view"
+              }
+            ],
+            "front_groups": [
+              {
+                "location": "Lower front of bench base, left-to-right row of three shallow drawers",
+                "type": "drawer",
+                "count": 3,
+                "count_basis": "clear",
+                "view_ids": [
+                  "p1-view-004",
+                  "p1-view-001"
+                ],
+                "uncertainty": "None material. Three wide, shallow fronts are outlined side by side in the front elevation and match the three drawer fronts in the axonometric view.",
+                "fronts": [
+                  {
+                    "id": "F01",
+                    "view_id": "p1-view-004",
+                    "bbox_1000": [
+                      105,
+                      769,
+                      298,
+                      831
+                    ]
+                  },
+                  {
+                    "id": "F02",
+                    "view_id": "p1-view-004",
+                    "bbox_1000": [
+                      298,
+                      769,
+                      488,
+                      831
+                    ]
+                  },
+                  {
+                    "id": "F03",
+                    "view_id": "p1-view-004",
+                    "bbox_1000": [
+                      488,
+                      769,
+                      674,
+                      831
+                    ]
+                  }
+                ]
+              }
+            ],
+            "excluded_surfaces": [
+              {
+                "id": "X01",
+                "view_id": "p1-view-004",
+                "bbox_1000": [
+                  105,
+                  203,
+                  674,
+                  763
+                ],
+                "reason": "Fixed vertical slatted backrest panels; not operating fronts"
+              }
+            ],
+            "tabletop_supports": [
+              {
+                "id": "T01",
+                "location": "Cantilevered table top at seat-side height, extending from the backrest side of the bench",
+                "leg_count": 2,
+                "count_basis": "estimated",
+                "view_ids": [
+                  "p1-view-003",
+                  "p1-view-001",
+                  "p1-view-005"
+                ],
+                "support_scheme": "Two visible legs in the rear-right axonometric support the table top. The profile view shows one leg at the table edge. The table's other edge is attached to the bench/backrest structure; this attachment is assumed from proximity and is not separately detailed in the drawing.",
+                "uncertainty": "Leg count is estimated because the side and front views overlap and the view 001 leg may duplicate one seen in view 003. The connection to the bench structure is assumed, not clearly shown.",
+                "legs": [
+                  {
+                    "id": "L01",
+                    "view_id": "p1-view-003",
+                    "bbox_1000": [
+                      516,
+                      862,
+                      556,
+                      966
+                    ]
+                  },
+                  {
+                    "id": "L02",
+                    "view_id": "p1-view-003",
+                    "bbox_1000": [
+                      767,
+                      776,
+                      804,
+                      853
+                    ]
+                  }
+                ]
+              }
+            ],
+            "totals": {
+              "drawers": 3,
+              "hinged_doors": 0,
+              "lift_up_fronts": 0,
+              "unresolved_fronts": 0,
+              "total_fronts": 3
+            }
+          },
+          "parts_version": "CB Parts V4",
+          "upstream_status": {
+            "front": "failed",
+            "origin": "saved_front_probe_not_integrated_Analyze",
+            "planner": "not_consumed_geometry_precedes_grouping"
+          }
+        },
+        "allowed_material_families": [
+          "glass",
+          "hdf",
+          "ldsp",
+          "mdf",
+          "metal",
+          "plywood",
+          "solid_wood",
+          "stone"
+        ]
+      },
+      "raw_response_text": "{\"summary\":\"Upholstery-free wall-backed booth bench with slatted backrest, three-drawer base and a cantilevered table on the right side.\",\"materials\":[{\"id\":\"M1\",\"name\":\"veneered MDF oak\",\"family\":\"mdf\",\"stock_thickness_mm\":18,\"layers\":1,\"finish\":\"oak veneer, matte lacquer\",\"edge_treatment\":\"edge banding to visible edges\",\"basis\":\"source_evidence\",\"evidence_refs\":[\"p1-view-001\"],\"reason\":\"Woodgrain appearance in axonometric views suggests veneered panel construction.\"},{\"id\":\"M2\",\"name\":\"LDSP carcass board\",\"family\":\"ldsp\",\"stock_thickness_mm\":17,\"layers\":1,\"finish\":\"melamine, colour matched to M1 where hidden\",\"edge_treatment\":\"edge banding to visible edges\",\"basis\":\"construction_assumption\",\"evidence_refs\":[],\"reason\":\"Standard cabinet board for hidden carcass and drawer parts.\"},{\"id\":\"M3\",\"name\":\"table top board\",\"family\":\"mdf\",\"stock_thickness_mm\":30,\"layers\":1,\"finish\":\"light grey/beige laminate\",\"edge_treatment\":\"edge banding\",\"basis\":\"construction_assumption\",\"evidence_refs\":[\"p1-view-003\"],\"reason\":\"Light table top visible in axonometric; thickness from 20 mm side-view profile plus assumed build-up.\"},{\"id\":\"M4\",\"name\":\"black metal table leg\",\"family\":\"metal\",\"stock_thickness_mm\":0,\"layers\":0,\"finish\":\"black powder coat\",\"edge_treatment\":\"none\",\"basis\":\"source_evidence\",\"evidence_refs\":[\"p1-view-003\"],\"reason\":\"Black cylindrical legs shown in views.\"}],\"dimensions\":[{\"id\":\"D_W_BENCH\",\"value\":160,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-004\",\"label\":\"160\",\"reason\":\"Overall front elevation width of backrest/bench.\"},{\"id\":\"D_W_BASE\",\"value\":158,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-004\",\"label\":\"158\",\"reason\":\"Bottom base width.\"},{\"id\":\"D_H_TOTAL\",\"value\":265,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-004\",\"label\":\"265\",\"reason\":\"Overall height.\"},{\"id\":\"D_H_BASE\",\"value\":43,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-005\",\"label\":\"43\",\"reason\":\"Height of base cabinet to seat level.\"},{\"id\":\"D_H_SEAT\",\"value\":75,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-005\",\"label\":\"75\",\"reason\":\"Table top height.\"},{\"id\":\"D_DEPTH\",\"value\":72,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-005\",\"label\":\"72\",\"reason\":\"Bench depth.\"},{\"id\":\"D_BACK_T\",\"value\":20,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-005\",\"label\":\"20\",\"reason\":\"Backrest thickness.\"},{\"id\":\"D_TOP_DEPTH\",\"value\":115,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-002\",\"label\":\"115\",\"reason\":\"Table depth projecting from bench.\"},{\"id\":\"D_TOP_W\",\"value\":187,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-002\",\"label\":\"187\",\"reason\":\"Table width.\"},{\"id\":\"D_TOP_H\",\"value\":160,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-002\",\"label\":\"160\",\"reason\":\"Table side dimension in top view.\"},{\"id\":\"D_SLAT_GAP\",\"value\":4,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-004\",\"label\":\"4\",\"reason\":\"Slat offset.\"},{\"id\":\"D_SLAT_90\",\"value\":90,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-006\",\"label\":\"90\",\"reason\":\"Upper slat section height.\"},{\"id\":\"D_SLAT_145\",\"value\":145,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-006\",\"label\":\"145\",\"reason\":\"Lower slat section height.\"},{\"id\":\"D_SLAT_19\",\"value\":19,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p1-view-006\",\"label\":\"19\",\"reason\":\"Slat width.\"}],\"runs\":[{\"id\":\"R1\",\"name\":\"bench backrest and base\",\"view_id\":\"p1-view-004\",\"width_ids\":[\"D_W_BENCH\"],\"height_id\":\"D_H_TOTAL\",\"depth_id\":\"D_DEPTH\",\"bays\":[{\"id\":\"B1\",\"width_weight\":1,\"shelves\":0,\"opening_weight\":0,\"fronts\":[{\"id\":\"F01\",\"height_weight\":1},{\"id\":\"F02\",\"height_weight\":1},{\"id\":\"F03\",\"height_weight\":1}]}]}],\"blocks\":[{\"id\":\"BL1\",\"name\":\"drawer base block\",\"run_id\":\"R1\",\"bay_ids\":[\"B1\"],\"body_material_id\":\"M2\",\"front_material_id\":\"M1\",\"drawer_material_id\":\"M2\",\"reason\":\"Three drawers in base.\"}],\"explicit_assemblies\":[{\"id\":\"EA1\",\"name\":\"slatted backrest\",\"parts\":[{\"id\":\"P1\",\"name\":\"backrest panel\",\"role\":\"panel\",\"quantity\":1,\"length_ref\":\"D_H_TOTAL\",\"width_ref\":\"D_W_BENCH\",\"material_id\":\"M1\",\"reason\":\"Fixed backrest panel shown in front view.\"},{\"id\":\"P2\",\"name\":\"backrest slats\",\"role\":\"panel\",\"quantity\":7,\"length_ref\":\"D_SLAT_145\",\"width_ref\":\"D_SLAT_19\",\"material_id\":\"M1\",\"reason\":\"Repeated vertical slats.\"}]},{\"id\":\"EA2\",\"name\":\"table top\",\"parts\":[{\"id\":\"P3\",\"name\":\"table top\",\"role\":\"worktop\",\"quantity\":1,\"length_ref\":\"D_TOP_W\",\"width_ref\":\"D_TOP_DEPTH\",\"material_id\":\"M3\",\"reason\":\"Cantilevered table top.\"},{\"id\":\"P4\",\"name\":\"table leg\",\"role\":\"support\",\"quantity\":2,\"length_ref\":\"D_H_SEAT\",\"width_ref\":\"D_H_SEAT\",\"material_id\":\"M4\",\"reason\":\"Two table supports; count estimated.\"}]}],\"uncertainties\":[\"Table leg count estimated; may be one leg visible in two views.\",\"Table attachment to bench assumed.\",\"Veneer material inferred from appearance.\"]}",
+      "front_coverage_audit": {
+        "expected_front_count": 3,
+        "returned_front_count": 3,
+        "missing_front_ids": [],
+        "duplicate_front_ids": []
+      },
+      "accepted": false
+    },
+    {
+      "name": "n68",
+      "status": "failed",
+      "error": "ValueError: drawing reading requires view and printed label",
+      "elapsed_seconds": 12.203,
+      "model": "claude-haiku-5-5",
+      "prompt_sha256": "8c859c73565dbd843eedebbc9e3af2b9b803cc8a604f90a0c668e4ee0737b50b",
+      "request_sha256": "4e659ae640d6cb7e2e37bda7f7832298ed743025aa5921492ab41df1dde28b87",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 33994,
+        "output_tokens": 3033,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "stop_reason": "end_turn",
+      "provider_calls": 1,
+      "source_hashes": {
+        "/private/tmp/hsl07-saved-replay-20261105-01/object-005-front-v3-20261106.json": "b736ea35d5d0d71ab1e32680cdadae54c83ae63d97053e78f3a2de996467b48d"
+      },
+      "source_evidence_unchanged": true,
+      "image_count": 5,
+      "outgoing_context": {
+        "calculation_scope": {
+          "input_id": "local-detection:run_99b433940dcc4fd9abbe0587dc56fb12:object-005",
+          "front": {
+            "island_types": [
+              {
+                "view_id": "p7-view-001",
+                "type": "top_view"
+              },
+              {
+                "view_id": "p7-view-002",
+                "type": "top_view"
+              },
+              {
+                "view_id": "p7-view-003",
+                "type": "front_elevation"
+              },
+              {
+                "view_id": "p7-view-004",
+                "type": "front_elevation"
+              }
+            ],
+            "front_groups": [
+              {
+                "location": "Wall 1 tall storage run, left end (VEN-01 units)",
+                "type": "hinged",
+                "count": 3,
+                "count_basis": "estimated",
+                "view_ids": [
+                  "p7-view-004"
+                ],
+                "uncertainty": "Three portrait fronts are split by vertical lines and closing storage openings. Opening symbols are not visible, so hinged type is inferred from the portrait shape.",
+                "fronts": [
+                  {
+                    "id": "F01",
+                    "view_id": "p7-view-004",
+                    "bbox_1000": [
+                      110,
+                      360,
+                      200,
+                      829
+                    ]
+                  },
+                  {
+                    "id": "F02",
+                    "view_id": "p7-view-004",
+                    "bbox_1000": [
+                      200,
+                      360,
+                      283,
+                      829
+                    ]
+                  },
+                  {
+                    "id": "F03",
+                    "view_id": "p7-view-004",
+                    "bbox_1000": [
+                      283,
+                      360,
+                      367,
+                      829
+                    ]
+                  }
+                ]
+              },
+              {
+                "location": "Wall 1 integrated refrigerator column",
+                "type": "hinged",
+                "count": 2,
+                "count_basis": "estimated",
+                "view_ids": [
+                  "p7-view-004"
+                ],
+                "uncertainty": "Two equal-width fronts (62 and 62) are labelled as integrated refrigerator. Opening type is not drawn, so a hinged pair is inferred from the tall storage format.",
+                "fronts": [
+                  {
+                    "id": "F04",
+                    "view_id": "p7-view-004",
+                    "bbox_1000": [
+                      367,
+                      437,
+                      452,
+                      827
+                    ]
+                  },
+                  {
+                    "id": "F05",
+                    "view_id": "p7-view-004",
+                    "bbox_1000": [
+                      452,
+                      437,
+                      538,
+                      827
+                    ]
+                  }
+                ]
+              },
+              {
+                "location": "Wall 1 base drawer bank under counter (two columns of three)",
+                "type": "drawer",
+                "count": 6,
+                "count_basis": "estimated",
+                "view_ids": [
+                  "p7-view-004"
+                ],
+                "uncertainty": "Each column shows three stacked fronts (two shallow, one taller at the base). The base is taken at the line above the 10 mm plinth. Drawer movement is inferred from the shallow, wide stacked format.",
+                "fronts": [
+                  {
+                    "id": "F06",
+                    "view_id": "p7-view-004",
+                    "bbox_1000": [
+                      538,
+                      675,
+                      647,
+                      714
+                    ]
+                  },
+                  {
+                    "id": "F07",
+                    "view_id": "p7-view-004",
+                    "bbox_1000": [
+                      538,
+                      714,
+                      647,
+                      749
+                    ]
+                  },
+                  {
+                    "id": "F08",
+                    "view_id": "p7-view-004",
+                    "bbox_1000": [
+                      538,
+                      749,
+                      647,
+                      827
+                    ]
+                  },
+                  {
+                    "id": "F09",
+                    "view_id": "p7-view-004",
+                    "bbox_1000": [
+                      647,
+                      675,
+                      759,
+                      714
+                    ]
+                  },
+                  {
+                    "id": "F10",
+                    "view_id": "p7-view-004",
+                    "bbox_1000": [
+                      647,
+                      714,
+                      759,
+                      749
+                    ]
+                  },
+                  {
+                    "id": "F11",
+                    "view_id": "p7-view-004",
+                    "bbox_1000": [
+                      647,
+                      749,
+                      759,
+                      827
+                    ]
+                  }
+                ]
+              },
+              {
+                "location": "Wall 1 upper cabinets over counter",
+                "type": "lift_up",
+                "count": 2,
+                "count_basis": "estimated",
+                "view_ids": [
+                  "p7-view-004"
+                ],
+                "uncertainty": "Two gas-strut symbols mark lift-up fronts. Plan view p7-view-002 shows paired upper panels that could instead be hinged doors. Lift-up is taken from the strut symbols.",
+                "fronts": [
+                  {
+                    "id": "F12",
+                    "view_id": "p7-view-004",
+                    "bbox_1000": [
+                      538,
+                      465,
+                      630,
+                      532
+                    ]
+                  },
+                  {
+                    "id": "F13",
+                    "view_id": "p7-view-004",
+                    "bbox_1000": [
+                      630,
+                      465,
+                      760,
+                      532
+                    ]
+                  }
+                ]
+              },
+              {
+                "location": "Wall 2 upper cabinets over counter",
+                "type": "lift_up",
+                "count": 3,
+                "count_basis": "estimated",
+                "view_ids": [
+                  "p7-view-003"
+                ],
+                "uncertainty": "Three gas-strut symbols sit over the counter. Their unit boundaries are estimated from the strut positions and the 253 mm run dimension.",
+                "fronts": [
+                  {
+                    "id": "F14",
+                    "view_id": "p7-view-003",
+                    "bbox_1000": [
+                      288,
+                      469,
+                      400,
+                      536
+                    ]
+                  },
+                  {
+                    "id": "F15",
+                    "view_id": "p7-view-003",
+                    "bbox_1000": [
+                      400,
+                      469,
+                      515,
+                      536
+                    ]
+                  },
+                  {
+                    "id": "F16",
+                    "view_id": "p7-view-003",
+                    "bbox_1000": [
+                      515,
+                      469,
+                      672,
+                      536
+                    ]
+                  }
+                ]
+              },
+              {
+                "location": "Wall 2 base cabinet doors (between blind end panel and corner)",
+                "type": "hinged",
+                "count": 2,
+                "count_basis": "estimated",
+                "view_ids": [
+                  "p7-view-003"
+                ],
+                "uncertainty": "Two tall fronts are visible beside the blind panel. The boundary at the right near the 'מדריה' symbol is unclear, so the count is estimated.",
+                "fronts": [
+                  {
+                    "id": "F17",
+                    "view_id": "p7-view-003",
+                    "bbox_1000": [
+                      400,
+                      680,
+                      496,
+                      848
+                    ]
+                  },
+                  {
+                    "id": "F18",
+                    "view_id": "p7-view-003",
+                    "bbox_1000": [
+                      496,
+                      680,
+                      584,
+                      848
+                    ]
+                  }
+                ]
+              }
+            ],
+            "excluded_surfaces": [
+              {
+                "id": "X01",
+                "view_id": "p7-view-003",
+                "bbox_1000": [
+                  208,
+                  680,
+                  344,
+                  848
+                ],
+                "reason": "blind X-marked panel at base end; fixed, not an operating front"
+              },
+              {
+                "id": "X02",
+                "view_id": "p7-view-004",
+                "bbox_1000": [
+                  758,
+                  675,
+                  852,
+                  827
+                ],
+                "reason": "blind X-marked fixed panel at base end; not an operating front"
+              }
+            ],
+            "tabletop_supports": [],
+            "totals": {
+              "drawers": 6,
+              "hinged_doors": 7,
+              "lift_up_fronts": 5,
+              "unresolved_fronts": 0,
+              "total_fronts": 18
+            }
+          },
+          "parts_version": "CB Parts V4",
+          "upstream_status": {
+            "front": "failed",
+            "origin": "saved_front_probe_not_integrated_Analyze",
+            "planner": "not_consumed_geometry_precedes_grouping"
+          }
+        },
+        "allowed_material_families": [
+          "glass",
+          "hdf",
+          "ldsp",
+          "mdf",
+          "metal",
+          "plywood",
+          "solid_wood",
+          "stone"
+        ]
+      },
+      "raw_response_text": "```json\n{\n  \"summary\": \"L-shaped kitchen: long run of wall-mounted and base cabinets along the top wall (5 bays across ~474 mm plus 90-100 mm return), tall column at the right end, and an upper cabinet band over a counter on the perpendicular wall.\",\n  \"materials\": [\n    {\"id\":\"M1\",\"name\":\"Veneered MDF carcass\",\"family\":\"mdf\",\"stock_thickness_mm\":18,\"layers\":1,\"finish\":\"veneer, matte\",\"edge_treatment\":\"edgebanding on exposed edges\",\"basis\":\"construction_assumption\",\"evidence_refs\":[],\"reason\":\"Woodgrain/veneer hatching on front elevations; no explicit thickness given, so standard veneered MDF assumed.\"},\n    {\"id\":\"M2\",\"name\":\"Stone worktop\",\"family\":\"stone\",\"stock_thickness_mm\":30,\"layers\":1,\"finish\":\"polished\",\"edge_treatment\":\"square edge\",\"basis\":\"construction_assumption\",\"evidence_refs\":[],\"reason\":\"Stippled hatching on worktop and backsplash; conventional 30 mm worktop thickness.\"},\n    {\"id\":\"M3\",\"name\":\"Back panel MDF\",\"family\":\"mdf\",\"stock_thickness_mm\":18,\"layers\":1,\"finish\":\"melamine\",\"edge_treatment\":\"none\",\"basis\":\"construction_assumption\",\"evidence_refs\":[],\"reason\":\"Standard cabinet back, hidden.\"}\n  ],\n  \"dimensions\": [\n    {\"id\":\"D01\",\"value\":474,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p7-view-002\",\"label\":\"474\",\"reason\":\"Overall wall 1 run dimension.\"},\n    {\"id\":\"D02\",\"value\":66,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p7-view-002\",\"label\":\"66\",\"reason\":\"Leftmost bay width.\"},\n    {\"id\":\"D03\",\"value\":61,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p7-view-002\",\"label\":\"61\",\"reason\":\"Second bay width.\"},\n    {\"id\":\"D04\",\"value\":61,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p7-view-002\",\"label\":\"61\",\"reason\":\"Third bay width.\"},\n    {\"id\":\"D05\",\"value\":62,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p7-view-002\",\"label\":\"62\",\"reason\":\"Fourth bay width.\"},\n    {\"id\":\"D06\",\"value\":62,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p7-view-002\",\"label\":\"62\",\"reason\":\"Fifth bay width.\"},\n    {\"id\":\"D07\",\"value\":80,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p7-view-002\",\"label\":\"80\",\"reason\":\"Drawer/ rear bay width.\"},\n    {\"id\":\"D08\",\"value\":80,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p7-view-002\",\"label\":\"80\",\"reason\":\"Drawer/ rear bay width.\"},\n    {\"id\":\"D09\",\"value\":70,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p7-view-002\",\"label\":\"70\",\"reason\":\"Tall column width.\"},\n    {\"id\":\"D10\",\"value\":246,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p7-view-002\",\"label\":\"246\",\"reason\":\"Return run depth/ side dimension of L.\"},\n    {\"id\":\"D11\",\"value\":313,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p7-view-001\",\"label\":\"313\",\"reason\":\"Wall 1 left section (plan 1).\"},\n    {\"id\":\"D12\",\"value\":161,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p7-view-001\",\"label\":\"161\",\"reason\":\"Wall 2 section run.\"},\n    {\"id\":\"D13\",\"value\":250,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p7-view-003\",\"label\":\"250\",\"reason\":\"Overall wall height from floor to ceiling/soffit.\"},\n    {\"id\":\"D14\",\"value\":317,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p7-view-003\",\"label\":\"317\",\"reason\":\"Wall 2 overall width.\"},\n    {\"id\":\"D15\",\"value\":544,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p7-view-004\",\"label\":\"544\",\"reason\":\"Wall 1 overall width.\"},\n    {\"id\":\"D16\",\"value\":240,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p7-view-004\",\"label\":\"240\",\"reason\":\"Wall 1 cabinet height from plinth to soffit line.\"},\n    {\"id\":\"D17\",\"value\":90,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p7-view-004\",\"label\":\"90\",\"reason\":\"Base cabinet height above plinth.\"},\n    {\"id\":\"D18\",\"value\":70,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p7-view-004\",\"label\":\"70\",\"reason\":\"Worktop-to-upper-cabinet gap.\"},\n    {\"id\":\"D19\",\"value\":600,\"unit\":\"mm\",\"basis\":\"assumption\",\"view_id\":null,\"label\":\"\",\"reason\":\"Typical counter-to-upper-cabinet gap; no explicit label, estimated.\"},\n    {\"id\":\"D20\",\"value\":580,\"unit\":\"mm\",\"basis\":\"assumption\",\"view_id\":null,\"label\":\"\",\"reason\":\"Typical base cabinet depth, estimated.\"},\n    {\"id\":\"D21\",\"value\":20,\"unit\":\"mm\",\"basis\":\"assumption\",\"view_id\":null,\"label\":\"\",\"reason\":\"Plinth/kick height estimated from 10 mm callout plus setback.\"},\n    {\"id\":\"D22\",\"value\":40,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p7-view-004\",\"label\":\"40\",\"reason\":\"Upper cabinet depth step near top of run.\"},\n    {\"id\":\"D23\",\"value\":100,\"unit\":\"mm\",\"basis\":\"drawing_reading\",\"view_id\":\"p7-view-003\",\"label\":\"\",\"reason\":\"Wall 2 counter splashback height (approx.).\"}\n  ],\n  \"runs\": [\n    {\"id\":\"R1\",\"name\":\"Wall 1 base and wall run\",\"view_id\":\"p7-view-002\",\"width_ids\":[\"D01\"],\"height_id\":\"D17\",\"depth_id\":\"D20\",\"bays\":[\n      {\"id\":\"B1\",\"width_weight\":66,\"shelves\":1,\"opening_weight\":0,\"fronts\":[{\"id\":\"F01\",\"height_weight\":1}]},\n      {\"id\":\"B2\",\"width_weight\":61,\"shelves\":1,\"opening_weight\":0,\"fronts\":[{\"id\":\"F02\",\"height_weight\":1}]},\n      {\"id\":\"B3\",\"width_weight\":61,\"shelves\":1,\"opening_weight\":0,\"fronts\":[{\"id\":\"F03\",\"height_weight\":1}]},\n      {\"id\":\"B4\",\"width_weight\":62,\"shelves\":0,\"opening_weight\":0,\"fronts\":[{\"id\":\"F04\",\"height_weight\":1}]},\n      {\"id\":\"B5\",\"width_weight\":62,\"shelves\":0,\"opening_weight\":0,\"fronts\":[{\"id\":\"F05\",\"height_weight\":1}]}\n    ]}\n  ],\n  \"blocks\": [\n    {\"id\":\"K1\",\"name\":\"Wall 1 storage bays\",\"run_id\":\"R1\",\"bay_ids\":[\"B1\",\"B2\",\"B3\"],\"body_material_id\":\"M1\",\"front_material_id\":\"M1\",\"drawer_material_id\":\"M1\",\"reason\":\"Hinged storage bays on the left end of the run.\"},\n    {\"id\":\"K2\",\"name\":\"Wall 1 refrigerator column\",\"run_id\":\"R1\",\"bay_ids\":[\"B4\",\"B5\"],\"body_material_id\":\"M1\",\"front_material_id\":\"M1\",\"drawer_material_id\":\"M1\",\"reason\":\"Integrated refrigerator paired door section.\"}\n  ],\n  \"explicit_assemblies\": [\n    {\"id\":\"A1\",\"name\":\"Worktop\",\"parts\":[\n      {\"id\":\"P01\",\"name\":\"Worktop Wall 1\",\"role\":\"worktop\",\"quantity\":1,\"length_ref\":\"R1.width\",\"width_ref\":\"D20\",\"material_id\":\"M2\",\"reason\":\"Main counter along wall 1 to the rear wall.\"},\n      {\"id\":\"P02\",\"name\":\"Worktop Wall 2\",\"role\":\"worktop\",\"quantity\":1,\"length_ref\":\"D12\",\"width_ref\":\"D20\",\"material_id\":\"M2\",\"reason\":\"Return counter along wall 2, not double-counting the corner.\"}\n    ]}\n  ],\n  \"uncertainties\": [\n    \"Front types partly inferred from strut symbols and portrait shape; opening direction not drawn.\",\n    \"Wall 1 upper bays and fronts counts are estimated from plan and elevation; exact bay split uncertain.\",\n    \"Dimension associations for D01 to D06 are plausible but cannot be verified without a full run-level cross-check.\",\n    \"Worktop and back panel thicknesses assumed; no explicit thickness callouts.\",\n    \"Upper cabinet depth and gap values partly estimated (D19, D20).\"\n  ]\n}\n```",
+      "front_coverage_audit": {
+        "expected_front_count": 18,
+        "returned_front_count": 5,
+        "missing_front_ids": [
+          "F06",
+          "F07",
+          "F08",
+          "F09",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18"
+        ],
+        "duplicate_front_ids": []
+      },
+      "accepted": false
+    }
+  ],
+  "findings": [
+    "All three original responses retained, no repaired replies, retries or file-specific prompt variants.",
+    "Lev2: nine of 24 front IDs omitted; 151 cm assigned to the entire right base run; veneer inference incorrectly claimed as source evidence.",
+    "Lev1: three horizontal drawer fronts placed in one vertical stack; printed 160/158/72 treated as mm; full enclosure duplicates decorative panel, support dimensions and material stock are invalid.",
+    "N68: only five of 18 input front IDs retained, overall kitchen run 474 interpreted as mm, a drawing_reading lacks a printed label, unused back material.",
+    "V4 compiler derives internally coherent geometry, grouping, material-bearing parts and layered sheet area in unit tests. This does not establish visual or material interpretation quality.",
+    "This tests a new combined geometry/grouping/material contract. It is not a single-factor proof that regrouping or any specific prompt paragraph caused the regression.",
+    "One shared Analyze plus one Calculate per object remains a target. This is one saved-Front Calculate replay per object; integrated project palette and production UI are not validated.",
+    "Existing BOM used. Edge/finish intent retained, but separate consumable demand and purchasing/nesting are not implemented. Purchased supports have piece geometry, not sheet area."
+  ]
+}

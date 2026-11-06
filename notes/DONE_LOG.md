@@ -1,5 +1,22 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: owner selected architecture direction 1, geometry before
+workshop grouping, named CB Parts V4; direction 2 measurement preparation next,
+worked-example teaching not selected. Implemented opt-in V4 and three full-source
+saved-Front Calculate replays, one Haiku request each, same prompt. Old Planner
+not sent or required. Shared dimensions/weighted physical bays precede grouping;
+existing V3.3 carcass and assembly BOM code produce material-bearing sized parts.
+Parts preserve role, IDs, material, finished thickness/stock layers and net sheet
+area; finish/edge intent retained, no separate consumable demand or labor.
+283 tests pass. Live objective FAILED 0/3: Lev2 12.983 s, nine fronts missing and
+wrong span ownership; Lev1 8.706 s, wrong units/topology and invalid materials;
+N68 12.203 s, thirteen fronts missing and wrong units. Preserve all failed raw
+answers in notes/evidence/cb-parts-v4-2026-11-06/three-object-trials.json.
+No retries, fixture-specific constants, response repair, default promotion,
+checkpoint replacement, DB write or deployment. These are implementation results,
+not acceptance. Shared Analyze/project palette integration remains pending.
+
+
 2026-11-06, 3.17.4.6: applied/tested approved CB Parts V3.5 fixed-topology
 diagnostic. Freeze only block/bay/front IDs from first raw V3.3 reply, not its
 widths/heights/assumptions. Verify exact source evidence and Front/Planner scope;
