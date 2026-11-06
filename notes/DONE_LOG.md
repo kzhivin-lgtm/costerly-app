@@ -1,5 +1,17 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: owner paused requested checkpoint for two additional
+unchanged CB Parts V3.2 runs. Completed exactly two new Haiku calls, 14.519 s
+and 15.339 s, same request object as original 15.041 s trial. All format-valid.
+Repeatability not established: B08 bay widths 500/600/760 mm, each also wrongly
+used as full block width; shared partition 1/0/1. Door=1 and drawers=3 stable.
+Trial 3 uses top stretcher instead of full top; inferred widths vary elsewhere.
+Full raw responses retained in three-run-repeatability.json alongside original.
+181 relevant tests pass, no claim of model stability. No checkpoint tag/archive,
+default promotion, main merge or deploy. Owner approval of approximate equal
+allocation remains, but new stability findings require review before checkpoint.
+
+
 2026-11-06, 3.17.4.6: applied/tested approved CB Parts V3.2. Added one generic
 bay-sum/whole-panel/shared-wall paragraph with accepted equal-subdivision
 fallback; previous prompts, schema and arithmetic unchanged. Same full Lev2

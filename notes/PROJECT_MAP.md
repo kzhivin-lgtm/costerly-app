@@ -61,6 +61,10 @@ This file explains where code belongs so the project stays understandable.
   `--parts-version V3.2`. Adds bay sum and shared mounting wall reminder.
   Lev2 15.041 s: partition PASS, block/bay sum FAIL. No default promotion.
   `notes/evidence/cb-parts-v3-2-2026-11-06/lev2-sized-parts.json`.
+  Owner-requested repeatability series (two additional identical requests):
+  `notes/evidence/cb-parts-v3-2-2026-11-06/three-run-repeatability.json`.
+  B08 widths 500/600/760 mm and partition 1/0/1, stability not established.
+  Requested checkpoint paused before creation, pending owner review.
 - `use_cases/machinery.py` owns the 27-code storage catalog, the 16-capability
   Company Profile subset, outsourceable-operation boundary, company/supplier
   validation, Supabase persistence, and the bounded production-context snapshot

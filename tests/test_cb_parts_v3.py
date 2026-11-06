@@ -143,3 +143,22 @@ def test_live_v3_2_retains_width_failure_and_returned_partition():
     assert by_name["Hinged door"]["size_mm"][0] == by_name["Drawer front"]["size_mm"][0] == 500
     assert by_name["Shared mounting partition"]["quantity"] == 1
     assert saved["targeted_checks"] == {"adjacent_bay_sum": "FAIL", "shared_mounting_partition": "PASS"}
+
+
+def test_v3_2_repeatability_records_unstable_geometry_without_repair():
+    root = Path(__file__).resolve().parents[1]
+    saved = json.loads((root / "notes/evidence/cb-parts-v3-2-2026-11-06/three-run-repeatability.json").read_text())
+    assert saved["new_calls"] == 2 and not saved["checkpoint_created"]
+    assert not saved["stability_accepted"]
+    assert len({r["request_sha256"] for r in saved["runs"]}) == 1
+    assert [r["block_width_mm"] for r in saved["runs"]] == [500, 600, 760]
+    assert [r["partition_quantity"] for r in saved["runs"]] == [1, 0, 1]
+    for run in saved["runs"]:
+        assert run["request_identical_to_first"] and run["stop_reason"] == "end_turn"
+        text = run.get("response_text") or json.loads((root / run["raw_response_file"]).read_text())["response_text"]
+        raw = json.loads(text)
+        scope = {"planner": {"blocks": [{"id": x} for x in run["input_block_ids"]], "shared_parts": []}}
+        b08 = next(b for b in compose_cb_sized_parts(raw, scope=scope)["blocks"] if b["id"] == "B08")
+        assert b08 == run["normalized_b08"]
+        assert run["adjacent_width_sum_mm"] == 2 * run["block_width_mm"]
+        assert run["drawer_front_count"] == 3 and run["door_count"] == 1

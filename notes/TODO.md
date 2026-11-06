@@ -1000,6 +1000,23 @@ Older tags and 50 unrelated TODO lines retained. Stop further experiments until
 the owner chooses the next task; outstanding quality defects remain pending P0.
 
 Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, ACTIVE, V3 geometry acceptance failed:
+LATEST OWNER REQUEST: accepted coarse equal bays and the interpretation that
+two adjacent 500 mm bays imply about 1000 mm overall, then requested a full
+checkpoint. Before preservation, owner explicitly paused it to request two
+more identical V3.2 trials. No tag/archive/checkpoint was created meanwhile.
+REPEATABILITY CHECK, two new paid calls, no prompt/input/code changes:
+trials 1/2/3 = 15.041/14.519/15.339 seconds; all request objects exactly equal.
+B08 door and drawer widths = 500/600/760 mm, overall width = 500/600/760 mm,
+partition quantities = 1/0/1. One door plus three drawer fronts retained in
+all three. Trial 3 replaces full top with narrow stretcher. Other inferred
+widths vary (B09 350/940/940); printed B06 width/height remain 840/1150.
+Stability NOT ESTABLISHED. Equal subdivision is still accepted, but full sized
+geometry is not repeatable or additively consistent. Do not reinterpret the
+owner's earlier approval as acceptance of these newly observed variations.
+Evidence: notes/evidence/cb-parts-v3-2-2026-11-06/three-run-repeatability.json.
+CHECKPOINT PENDING OWNER DIRECTION after reporting these results; no production
+promotion or new default. Preserve exact raw responses. Do not continue paid
+repetitions or blind width-comment edits without a new diagnostic question.
 LATEST V3.2 EXPERIMENT, USER APPROVED: added a generic same-run bay sum,
 whole-carcass-panel propagation, equal-subdivision fallback and one shared
 mounting partition reminder. No schema, arithmetic, evidence or upstream change.

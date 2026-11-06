@@ -185,6 +185,18 @@ diagnostic, not further blind prompt variants. The known conflicting B08 box
 is a candidate input cause, not a proven explanation. Raw response preserved at
 notes/evidence/cb-parts-v3-2-2026-11-06/lev2-sized-parts.json.
 
+Owner accepted approximate equal allocation and the interpretation of adjacent
+500 mm bays as about 1000 mm total, then requested a checkpoint. Before it was
+created, owner requested two more identical V3.2 trials to check stability.
+Across three identical requests: B08 bay widths 500/600/760 mm; whole block
+incorrectly equals one bay in all three. Shared partition 1/0/1; door count 1
+and drawer fronts 3 stable. Trial 3 uses a narrow top stretcher, not full top.
+Times: 15.041/14.519/15.339 s. Stability is not established; do not call this
+a verified complete geometry checkpoint. No tag/archive/default change created.
+Raw repeat evidence: notes/evidence/cb-parts-v3-2-2026-11-06/three-run-repeatability.json.
+The owner-approved coarse approximation is preserved, not retroactively revoked;
+acceptance of the newly observed variability awaits owner review.
+
 Owner benchmark corrected on 2026-11-06: N68 TEN door-like fronts and SIX
 drawers, superseding the earlier eight-door/four-drawer confirmation. Ten
 comprises five tall, two under sink, one downward-opening dishwasher front,
