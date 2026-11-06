@@ -227,27 +227,30 @@ def _run_cb_parts(*, input_row, page_bytes, dimension_graph, dimension_scale_gat
     from agents.estimation_understanding_agent import (
         MODEL, CB_RULEBOOK, prepare_content, planner_front_ids, validate_assembly_plan,
     )
-    from use_cases.estimation_cb_parts import DEFAULT_MATERIAL, compose_cb_parts, validate_cb_part_counts
+    from use_cases.estimation_cb_parts import DEFAULT_MATERIAL, compose_cb_parts, validate_cb_part_counts, compose_cb_sized_parts
 
     rule = CB_RULEBOOK["parts"]
     version = scope.get("parts_version", rule["version"])
     if version == rule["previous"]["version"]:
         rule = rule["previous"]
+    elif version == rule["v2"]["version"]:
+        rule = rule["v2"]
     elif version != rule["version"]:
         raise ValueError("unknown CB Parts version")
     count_only = version == "CB Parts V2"
+    sized = version == "CB Parts V3"
     if scope.get("input_id") != input_row.get("input_id"):
         raise ValueError("CB Parts scope belongs to a different input")
     if model not in (None, MODEL):
         raise ValueError("CB Parts experiment requires the selected Haiku model")
-    if not count_only and "ldsp" not in allowed_material_families:
+    if not (count_only or sized) and "ldsp" not in allowed_material_families:
         raise ValueError("CB Parts requires the LDSP fallback family")
     content, manifests = prepare_content([input_row], page_bytes)
     known = {v["view_id"] for v in manifests[0]["known_views"]}
     front_ids = planner_front_ids(scope["front"], known)
     validate_assembly_plan(scope["planner"], known, front_ids)
     context = {"calculation_scope": scope}
-    if not count_only:
+    if not (count_only or sized):
         context.update(dimension_graph=dimension_graph, dimension_scale_gate=dimension_scale_gate,
             default_material=DEFAULT_MATERIAL, allowed_material_families=sorted(allowed_material_families))
     content.append({"type": "text", "text": json.dumps(context, ensure_ascii=False, separators=(",", ":"))})
@@ -264,7 +267,10 @@ def _run_cb_parts(*, input_row, page_bytes, dimension_graph, dimension_scale_gat
     if getattr(response, "stop_reason", None) != "end_turn":
         raise ValueError("CB Parts response did not finish normally")
     parsed = _json_object(extract_text_from_claude_response(response))
-    if count_only:
+    if sized:
+        result = {"parts_sized": compose_cb_sized_parts(parsed, scope=scope),
+            "status": "cb_parts_sized_requires_review", "upstream_status": scope.get("upstream_status", {})}
+    elif count_only:
         validate_cb_part_counts(parsed, scope=scope)
         result = {"parts_count": parsed, "status": "cb_parts_count_requires_review",
             "upstream_status": scope.get("upstream_status", {})}

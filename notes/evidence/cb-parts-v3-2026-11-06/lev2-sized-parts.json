@@ -1,0 +1,2094 @@
+{
+  "work": "3.17.4.6",
+  "prompt_version": "CB Parts V3",
+  "prompt_sha256": "c152aa15b84954dba70a8be4a0e781b945b5174976fbada9b1c0a1e2ed3e883a",
+  "provider_calls": 1,
+  "model": "claude-haiku-5-5",
+  "elapsed_seconds": 16.529,
+  "stop_reason": "end_turn",
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 16739,
+    "output_tokens": 4498,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+  },
+  "upstream_status": {
+    "front": "failed",
+    "planner": "assembly_plan_requires_review",
+    "origin": "saved_separate_probes_not_integrated_Analyze"
+  },
+  "input_block_ids": [
+    "B01",
+    "B02",
+    "B03",
+    "B04",
+    "B05",
+    "B06",
+    "B07",
+    "B08",
+    "B09",
+    "S01"
+  ],
+  "same_input_and_pages_as_v2": true,
+  "same_supplied_images_as_v2": true,
+  "image_count": 5,
+  "semantic_accepted": false,
+  "review_findings": [
+    "B08 internal divider present; three drawer bodies and separate fronts present.",
+    "B08 whole width 600 mm and equal 300 mm door/drawer bays are unsupported and visually undersized.",
+    "Three identical 220 mm drawer fronts contradict different visible heights.",
+    "Carcass height 720 mm uses generic assumption without resolving contextual elevation.",
+    "B08 shelf from V2 omitted; hidden construction assumption needs owner review.",
+    "Upstream Front/Planner defects persist; no end-to-end or production acceptance."
+  ],
+  "response_text": "{\"blocks\":[{\"id\":\"B01\",\"unit\":\"cm\",\"size\":[160,72,35],\"assumptions\":\"Upper left wall run: pantry plus two lift-up fronts; width ~69+180 cm span, carcass height from 75 cm front line and upper proportions; hidden back assumed full height.\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2,\"role\":\"panel\",\"size\":[72,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass top\",\"quantity\":1,\"role\":\"panel\",\"size\":[160,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass bottom\",\"quantity\":1,\"role\":\"panel\",\"size\":[160,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Back panel\",\"quantity\":1,\"role\":\"panel\",\"size\":[160,72],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Internal vertical divider\",\"quantity\":2,\"role\":\"panel\",\"size\":[72,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Shelf\",\"quantity\":2,\"role\":\"panel\",\"size\":[53,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Lift-up front\",\"quantity\":2,\"role\":\"panel\",\"size\":[90,40],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Pantry door\",\"quantity\":1,\"role\":\"panel\",\"size\":[30,70],\"thickness_mm\":null,\"approximate\":true}]},{\"id\":\"B02\",\"unit\":\"cm\",\"size\":[60,195,60],\"assumptions\":\"Return tall column from wing 003: doors above a drawer stack; carcass height ~195 cm (full height of the column), depth 60 cm assumed.\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2,\"role\":\"panel\",\"size\":[195,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass top\",\"quantity\":1,\"role\":\"panel\",\"size\":[60,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass bottom\",\"quantity\":1,\"role\":\"panel\",\"size\":[60,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Back panel\",\"quantity\":1,\"role\":\"panel\",\"size\":[60,195],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Shelf\",\"quantity\":2,\"role\":\"panel\",\"size\":[58,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Drawer body side\",\"quantity\":4,\"role\":\"panel\",\"size\":[\"drawer_depth\",15],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Drawer body end panel\",\"quantity\":4,\"role\":\"panel\",\"size\":[58,15],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Drawer bottom\",\"quantity\":2,\"role\":\"panel\",\"size\":[\"drawer_depth\",58],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Drawer front\",\"quantity\":2,\"role\":\"panel\",\"size\":[58,20],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Door front\",\"quantity\":3,\"role\":\"panel\",\"size\":[58,85],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Shared internal partition\",\"quantity\":1,\"role\":\"panel\",\"size\":[195,60],\"thickness_mm\":null,\"approximate\":true}]},{\"id\":\"B03\",\"unit\":\"cm\",\"size\":[120,50,35],\"assumptions\":\"Two tall upper doors beside return column, above open void; height from upper front proportions.\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2,\"role\":\"panel\",\"size\":[50,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass top\",\"quantity\":1,\"role\":\"panel\",\"size\":[120,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass bottom\",\"quantity\":1,\"role\":\"panel\",\"size\":[120,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Back panel\",\"quantity\":1,\"role\":\"panel\",\"size\":[120,50],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Internal vertical divider\",\"quantity\":1,\"role\":\"panel\",\"size\":[50,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Shelf\",\"quantity\":2,\"role\":\"panel\",\"size\":[59,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Door front\",\"quantity\":2,\"role\":\"panel\",\"size\":[59,50],\"thickness_mm\":null,\"approximate\":true}]},{\"id\":\"B04\",\"unit\":\"cm\",\"size\":[69,72,60],\"assumptions\":\"Lower corner base run, three doors over ~69 cm; base carcass height ~72 cm, depth 60 cm.\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2,\"role\":\"panel\",\"size\":[72,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass top\",\"quantity\":1,\"role\":\"panel\",\"size\":[69,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass bottom\",\"quantity\":1,\"role\":\"panel\",\"size\":[69,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Back panel\",\"quantity\":1,\"role\":\"panel\",\"size\":[69,72],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Internal vertical divider\",\"quantity\":2,\"role\":\"panel\",\"size\":[72,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Shelf\",\"quantity\":2,\"role\":\"panel\",\"size\":[22,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Door front\",\"quantity\":3,\"role\":\"panel\",\"size\":[22,70],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Plinth support\",\"quantity\":1,\"role\":\"support\",\"size\":[69,10],\"thickness_mm\":null,\"approximate\":true}]},{\"id\":\"B05\",\"unit\":\"cm\",\"size\":[90,72,60],\"assumptions\":\"Lower end run continuing wing 003 base carcass, two doors; base height ~72 cm.\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":1,\"role\":\"panel\",\"size\":[72,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass top\",\"quantity\":1,\"role\":\"panel\",\"size\":[90,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass bottom\",\"quantity\":1,\"role\":\"panel\",\"size\":[90,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Back panel\",\"quantity\":1,\"role\":\"panel\",\"size\":[90,72],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Internal vertical divider\",\"quantity\":1,\"role\":\"panel\",\"size\":[72,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Shelf\",\"quantity\":2,\"role\":\"panel\",\"size\":[44,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Door front\",\"quantity\":2,\"role\":\"panel\",\"size\":[44,70],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Plinth support\",\"quantity\":1,\"role\":\"support\",\"size\":[90,10],\"thickness_mm\":null,\"approximate\":true}]},{\"id\":\"B06\",\"unit\":\"cm\",\"size\":[84,115,35],\"assumptions\":\"Wing 004 upper tall pair; height 115 cm from drawing, depth 35 cm assumed.\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2,\"role\":\"panel\",\"size\":[115,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass top\",\"quantity\":1,\"role\":\"panel\",\"size\":[84,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass bottom\",\"quantity\":1,\"role\":\"panel\",\"size\":[84,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Back panel\",\"quantity\":1,\"role\":\"panel\",\"size\":[84,115],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Internal vertical divider\",\"quantity\":1,\"role\":\"panel\",\"size\":[115,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Shelf\",\"quantity\":2,\"role\":\"panel\",\"size\":[41,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Door front\",\"quantity\":2,\"role\":\"panel\",\"size\":[41,110],\"thickness_mm\":null,\"approximate\":true}]},{\"id\":\"B07\",\"unit\":\"cm\",\"size\":[151,72,60],\"assumptions\":\"Wing 004 lower door run, three doors; span ~151 cm, base height ~72 cm, depth 60 cm.\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2,\"role\":\"panel\",\"size\":[72,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass top\",\"quantity\":1,\"role\":\"panel\",\"size\":[151,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass bottom\",\"quantity\":1,\"role\":\"panel\",\"size\":[151,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Back panel\",\"quantity\":1,\"role\":\"panel\",\"size\":[151,72],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Internal vertical divider\",\"quantity\":2,\"role\":\"panel\",\"size\":[72,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Shelf\",\"quantity\":2,\"role\":\"panel\",\"size\":[48,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Door front\",\"quantity\":3,\"role\":\"panel\",\"size\":[48,70],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Plinth support\",\"quantity\":1,\"role\":\"support\",\"size\":[151,10],\"thickness_mm\":null,\"approximate\":true}]},{\"id\":\"B08\",\"unit\":\"cm\",\"size\":[60,72,60],\"assumptions\":\"Wing 004 end drawer run: one end door and three stacked drawers; base height ~72 cm.\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2,\"role\":\"panel\",\"size\":[72,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass top\",\"quantity\":1,\"role\":\"panel\",\"size\":[60,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass bottom\",\"quantity\":1,\"role\":\"panel\",\"size\":[60,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Back panel\",\"quantity\":1,\"role\":\"panel\",\"size\":[60,72],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Shared internal partition\",\"quantity\":1,\"role\":\"panel\",\"size\":[72,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Drawer body side\",\"quantity\":6,\"role\":\"panel\",\"size\":[\"drawer_depth\",15],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Drawer body end panel\",\"quantity\":6,\"role\":\"panel\",\"size\":[30,15],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Drawer bottom\",\"quantity\":3,\"role\":\"panel\",\"size\":[\"drawer_depth\",30],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Drawer front\",\"quantity\":3,\"role\":\"panel\",\"size\":[30,22],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Door front\",\"quantity\":1,\"role\":\"panel\",\"size\":[30,70],\"thickness_mm\":null,\"approximate\":true}]},{\"id\":\"B09\",\"unit\":\"cm\",\"size\":[40,265,60],\"assumptions\":\"Tall end column at end of wing 004, height 265 cm from drawing; width ~40 cm and depth 60 cm estimated; front type unresolved.\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2,\"role\":\"panel\",\"size\":[265,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass top\",\"quantity\":1,\"role\":\"panel\",\"size\":[40,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass bottom\",\"quantity\":1,\"role\":\"panel\",\"size\":[40,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Back panel\",\"quantity\":1,\"role\":\"panel\",\"size\":[40,265],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Shelf\",\"quantity\":3,\"role\":\"panel\",\"size\":[38,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Door front\",\"quantity\":1,\"role\":\"panel\",\"size\":[38,255],\"thickness_mm\":null,\"approximate\":true}]},{\"id\":\"S01\",\"unit\":\"cm\",\"size\":[420,3,70],\"assumptions\":\"Shared L-shaped worktop over base runs B04, B05, B07, B08; top view shows 416 cm overall and ~60-70 cm depth; given as a coarse rectangular arm pair, thickness assumed 30 mm.\",\"parts\":[{\"name\":\"Worktop arm (long)\",\"quantity\":1,\"role\":\"worktop\",\"size\":[416,60],\"thickness_mm\":30,\"approximate\":true},{\"name\":\"Worktop arm (short)\",\"quantity\":1,\"role\":\"worktop\",\"size\":[60,260],\"thickness_mm\":30,\"approximate\":true}]}]}",
+  "parsed_response": {
+    "blocks": [
+      {
+        "id": "B01",
+        "unit": "cm",
+        "size": [
+          160,
+          72,
+          35
+        ],
+        "assumptions": "Upper left wall run: pantry plus two lift-up fronts; width ~69+180 cm span, carcass height from 75 cm front line and upper proportions; hidden back assumed full height.",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              72,
+              35
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              160,
+              35
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              160,
+              35
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              160,
+              72
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Internal vertical divider",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              72,
+              35
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Shelf",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              53,
+              35
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Lift-up front",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              90,
+              40
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Pantry door",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              30,
+              70
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          }
+        ]
+      },
+      {
+        "id": "B02",
+        "unit": "cm",
+        "size": [
+          60,
+          195,
+          60
+        ],
+        "assumptions": "Return tall column from wing 003: doors above a drawer stack; carcass height ~195 cm (full height of the column), depth 60 cm assumed.",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              195,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              60,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              60,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              60,
+              195
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Shelf",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              58,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Drawer body side",
+            "quantity": 4,
+            "role": "panel",
+            "size": [
+              "drawer_depth",
+              15
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Drawer body end panel",
+            "quantity": 4,
+            "role": "panel",
+            "size": [
+              58,
+              15
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Drawer bottom",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              "drawer_depth",
+              58
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Drawer front",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              58,
+              20
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Door front",
+            "quantity": 3,
+            "role": "panel",
+            "size": [
+              58,
+              85
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Shared internal partition",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              195,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          }
+        ]
+      },
+      {
+        "id": "B03",
+        "unit": "cm",
+        "size": [
+          120,
+          50,
+          35
+        ],
+        "assumptions": "Two tall upper doors beside return column, above open void; height from upper front proportions.",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              50,
+              35
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              120,
+              35
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              120,
+              35
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              120,
+              50
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Internal vertical divider",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              50,
+              35
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Shelf",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              59,
+              35
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Door front",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              59,
+              50
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          }
+        ]
+      },
+      {
+        "id": "B04",
+        "unit": "cm",
+        "size": [
+          69,
+          72,
+          60
+        ],
+        "assumptions": "Lower corner base run, three doors over ~69 cm; base carcass height ~72 cm, depth 60 cm.",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              72,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              69,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              69,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              69,
+              72
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Internal vertical divider",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              72,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Shelf",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              22,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Door front",
+            "quantity": 3,
+            "role": "panel",
+            "size": [
+              22,
+              70
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Plinth support",
+            "quantity": 1,
+            "role": "support",
+            "size": [
+              69,
+              10
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          }
+        ]
+      },
+      {
+        "id": "B05",
+        "unit": "cm",
+        "size": [
+          90,
+          72,
+          60
+        ],
+        "assumptions": "Lower end run continuing wing 003 base carcass, two doors; base height ~72 cm.",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              72,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              90,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              90,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              90,
+              72
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Internal vertical divider",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              72,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Shelf",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              44,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Door front",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              44,
+              70
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Plinth support",
+            "quantity": 1,
+            "role": "support",
+            "size": [
+              90,
+              10
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          }
+        ]
+      },
+      {
+        "id": "B06",
+        "unit": "cm",
+        "size": [
+          84,
+          115,
+          35
+        ],
+        "assumptions": "Wing 004 upper tall pair; height 115 cm from drawing, depth 35 cm assumed.",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              115,
+              35
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              84,
+              35
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              84,
+              35
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              84,
+              115
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Internal vertical divider",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              115,
+              35
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Shelf",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              41,
+              35
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Door front",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              41,
+              110
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          }
+        ]
+      },
+      {
+        "id": "B07",
+        "unit": "cm",
+        "size": [
+          151,
+          72,
+          60
+        ],
+        "assumptions": "Wing 004 lower door run, three doors; span ~151 cm, base height ~72 cm, depth 60 cm.",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              72,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              151,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              151,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              151,
+              72
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Internal vertical divider",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              72,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Shelf",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              48,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Door front",
+            "quantity": 3,
+            "role": "panel",
+            "size": [
+              48,
+              70
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Plinth support",
+            "quantity": 1,
+            "role": "support",
+            "size": [
+              151,
+              10
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          }
+        ]
+      },
+      {
+        "id": "B08",
+        "unit": "cm",
+        "size": [
+          60,
+          72,
+          60
+        ],
+        "assumptions": "Wing 004 end drawer run: one end door and three stacked drawers; base height ~72 cm.",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              72,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              60,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              60,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              60,
+              72
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Shared internal partition",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              72,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Drawer body side",
+            "quantity": 6,
+            "role": "panel",
+            "size": [
+              "drawer_depth",
+              15
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Drawer body end panel",
+            "quantity": 6,
+            "role": "panel",
+            "size": [
+              30,
+              15
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Drawer bottom",
+            "quantity": 3,
+            "role": "panel",
+            "size": [
+              "drawer_depth",
+              30
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Drawer front",
+            "quantity": 3,
+            "role": "panel",
+            "size": [
+              30,
+              22
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Door front",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              30,
+              70
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          }
+        ]
+      },
+      {
+        "id": "B09",
+        "unit": "cm",
+        "size": [
+          40,
+          265,
+          60
+        ],
+        "assumptions": "Tall end column at end of wing 004, height 265 cm from drawing; width ~40 cm and depth 60 cm estimated; front type unresolved.",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2,
+            "role": "panel",
+            "size": [
+              265,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              40,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              40,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              40,
+              265
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Shelf",
+            "quantity": 3,
+            "role": "panel",
+            "size": [
+              38,
+              60
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          },
+          {
+            "name": "Door front",
+            "quantity": 1,
+            "role": "panel",
+            "size": [
+              38,
+              255
+            ],
+            "thickness_mm": null,
+            "approximate": true
+          }
+        ]
+      },
+      {
+        "id": "S01",
+        "unit": "cm",
+        "size": [
+          420,
+          3,
+          70
+        ],
+        "assumptions": "Shared L-shaped worktop over base runs B04, B05, B07, B08; top view shows 416 cm overall and ~60-70 cm depth; given as a coarse rectangular arm pair, thickness assumed 30 mm.",
+        "parts": [
+          {
+            "name": "Worktop arm (long)",
+            "quantity": 1,
+            "role": "worktop",
+            "size": [
+              416,
+              60
+            ],
+            "thickness_mm": 30,
+            "approximate": true
+          },
+          {
+            "name": "Worktop arm (short)",
+            "quantity": 1,
+            "role": "worktop",
+            "size": [
+              60,
+              260
+            ],
+            "thickness_mm": 30,
+            "approximate": true
+          }
+        ]
+      }
+    ]
+  },
+  "normalized_parts": {
+    "blocks": [
+      {
+        "id": "B01",
+        "size_mm": [
+          1600.0,
+          720.0,
+          350.0
+        ],
+        "assumptions": "Upper left wall run: pantry plus two lift-up fronts; width ~69+180 cm span, carcass height from 75 cm front line and upper proportions; hidden back assumed full height.",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              720.0,
+              350.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              1600.0,
+              350.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              1600.0,
+              350.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              1600.0,
+              720.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Internal vertical divider",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              720.0,
+              350.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Shelf",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              530.0,
+              350.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Lift-up front",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              900.0,
+              400.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Pantry door",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              300.0,
+              700.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          }
+        ]
+      },
+      {
+        "id": "B02",
+        "size_mm": [
+          600.0,
+          1950.0,
+          600.0
+        ],
+        "assumptions": "Return tall column from wing 003: doors above a drawer stack; carcass height ~195 cm (full height of the column), depth 60 cm assumed.",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              1950.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              600.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              600.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              600.0,
+              1950.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Shelf",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              580.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Drawer body side",
+            "quantity": 4,
+            "role": "panel",
+            "size_mm": [
+              500,
+              150.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": true
+          },
+          {
+            "name": "Drawer body end panel",
+            "quantity": 4,
+            "role": "panel",
+            "size_mm": [
+              580.0,
+              150.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Drawer bottom",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              500,
+              580.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": true
+          },
+          {
+            "name": "Drawer front",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              580.0,
+              200.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Door front",
+            "quantity": 3,
+            "role": "panel",
+            "size_mm": [
+              580.0,
+              850.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Shared internal partition",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              1950.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          }
+        ]
+      },
+      {
+        "id": "B03",
+        "size_mm": [
+          1200.0,
+          500.0,
+          350.0
+        ],
+        "assumptions": "Two tall upper doors beside return column, above open void; height from upper front proportions.",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              500.0,
+              350.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              1200.0,
+              350.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              1200.0,
+              350.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              1200.0,
+              500.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Internal vertical divider",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              500.0,
+              350.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Shelf",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              590.0,
+              350.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Door front",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              590.0,
+              500.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          }
+        ]
+      },
+      {
+        "id": "B04",
+        "size_mm": [
+          690.0,
+          720.0,
+          600.0
+        ],
+        "assumptions": "Lower corner base run, three doors over ~69 cm; base carcass height ~72 cm, depth 60 cm.",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              720.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              690.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              690.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              690.0,
+              720.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Internal vertical divider",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              720.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Shelf",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              220.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Door front",
+            "quantity": 3,
+            "role": "panel",
+            "size_mm": [
+              220.0,
+              700.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Plinth support",
+            "quantity": 1,
+            "role": "support",
+            "size_mm": [
+              690.0,
+              100.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          }
+        ]
+      },
+      {
+        "id": "B05",
+        "size_mm": [
+          900.0,
+          720.0,
+          600.0
+        ],
+        "assumptions": "Lower end run continuing wing 003 base carcass, two doors; base height ~72 cm.",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              720.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              900.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              900.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              900.0,
+              720.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Internal vertical divider",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              720.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Shelf",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              440.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Door front",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              440.0,
+              700.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Plinth support",
+            "quantity": 1,
+            "role": "support",
+            "size_mm": [
+              900.0,
+              100.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          }
+        ]
+      },
+      {
+        "id": "B06",
+        "size_mm": [
+          840.0,
+          1150.0,
+          350.0
+        ],
+        "assumptions": "Wing 004 upper tall pair; height 115 cm from drawing, depth 35 cm assumed.",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              1150.0,
+              350.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              840.0,
+              350.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              840.0,
+              350.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              840.0,
+              1150.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Internal vertical divider",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              1150.0,
+              350.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Shelf",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              410.0,
+              350.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Door front",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              410.0,
+              1100.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          }
+        ]
+      },
+      {
+        "id": "B07",
+        "size_mm": [
+          1510.0,
+          720.0,
+          600.0
+        ],
+        "assumptions": "Wing 004 lower door run, three doors; span ~151 cm, base height ~72 cm, depth 60 cm.",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              720.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              1510.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              1510.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              1510.0,
+              720.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Internal vertical divider",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              720.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Shelf",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              480.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Door front",
+            "quantity": 3,
+            "role": "panel",
+            "size_mm": [
+              480.0,
+              700.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Plinth support",
+            "quantity": 1,
+            "role": "support",
+            "size_mm": [
+              1510.0,
+              100.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          }
+        ]
+      },
+      {
+        "id": "B08",
+        "size_mm": [
+          600.0,
+          720.0,
+          600.0
+        ],
+        "assumptions": "Wing 004 end drawer run: one end door and three stacked drawers; base height ~72 cm.",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              720.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              600.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              600.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              600.0,
+              720.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Shared internal partition",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              720.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Drawer body side",
+            "quantity": 6,
+            "role": "panel",
+            "size_mm": [
+              500,
+              150.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": true
+          },
+          {
+            "name": "Drawer body end panel",
+            "quantity": 6,
+            "role": "panel",
+            "size_mm": [
+              300.0,
+              150.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Drawer bottom",
+            "quantity": 3,
+            "role": "panel",
+            "size_mm": [
+              500,
+              300.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": true
+          },
+          {
+            "name": "Drawer front",
+            "quantity": 3,
+            "role": "panel",
+            "size_mm": [
+              300.0,
+              220.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Door front",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              300.0,
+              700.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          }
+        ]
+      },
+      {
+        "id": "B09",
+        "size_mm": [
+          400.0,
+          2650.0,
+          600.0
+        ],
+        "assumptions": "Tall end column at end of wing 004, height 265 cm from drawing; width ~40 cm and depth 60 cm estimated; front type unresolved.",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2,
+            "role": "panel",
+            "size_mm": [
+              2650.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              400.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              400.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              400.0,
+              2650.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Shelf",
+            "quantity": 3,
+            "role": "panel",
+            "size_mm": [
+              380.0,
+              600.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Door front",
+            "quantity": 1,
+            "role": "panel",
+            "size_mm": [
+              380.0,
+              2550.0,
+              17
+            ],
+            "approximate": true,
+            "thickness_basis": "default",
+            "drawer_depth_derived": false
+          }
+        ]
+      },
+      {
+        "id": "S01",
+        "size_mm": [
+          4200.0,
+          30.0,
+          700.0
+        ],
+        "assumptions": "Shared L-shaped worktop over base runs B04, B05, B07, B08; top view shows 416 cm overall and ~60-70 cm depth; given as a coarse rectangular arm pair, thickness assumed 30 mm.",
+        "parts": [
+          {
+            "name": "Worktop arm (long)",
+            "quantity": 1,
+            "role": "worktop",
+            "size_mm": [
+              4160.0,
+              600.0,
+              30.0
+            ],
+            "approximate": true,
+            "thickness_basis": "model_returned_unverified",
+            "drawer_depth_derived": false
+          },
+          {
+            "name": "Worktop arm (short)",
+            "quantity": 1,
+            "role": "worktop",
+            "size_mm": [
+              600.0,
+              2600.0,
+              30.0
+            ],
+            "approximate": true,
+            "thickness_basis": "model_returned_unverified",
+            "drawer_depth_derived": false
+          }
+        ]
+      }
+    ]
+  }
+}

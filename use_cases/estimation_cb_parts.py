@@ -59,6 +59,75 @@ def positive(value, field, *, integer=False):
     return int(value) if integer else float(value)
 
 
+def compose_cb_sized_parts(response, *, scope):
+    """V3 unit/default arithmetic only; never repair model geometry or counts."""
+    if not isinstance(response, dict) or set(response) != {"blocks"}:
+        raise ValueError("CB Parts V3 returns only blocks")
+    expected = {b["id"] for b in scope["planner"]["blocks"] + scope["planner"]["shared_parts"]}
+    blocks = response["blocks"]
+    if not isinstance(blocks, list) or len(blocks) != len(expected):
+        raise ValueError("CB Parts V3 requires every planned block once")
+    seen = set()
+    result = []
+    for block in blocks:
+        if not isinstance(block, dict) or set(block) != {"id", "unit", "size", "assumptions", "parts"}:
+            raise ValueError("invalid CB Parts V3 block fields")
+        bid = block["id"]
+        if not isinstance(bid, str) or bid not in expected or bid in seen:
+            raise ValueError("duplicate or foreign block")
+        seen.add(bid)
+        if not isinstance(block["unit"], str) or block["unit"] not in {"mm", "cm", "m"}:
+            raise ValueError("explicit block unit required")
+        factor = {"mm": 1, "cm": 10, "m": 1000}[block["unit"]]
+        if not isinstance(block["size"], list) or len(block["size"]) != 3:
+            raise ValueError("three block dimensions required")
+        axes = [positive(v, "block size") * factor for v in block["size"]]
+        if max(axes) > 30000:
+            raise ValueError("block exceeds coarse furniture size bound")
+        if not isinstance(block["assumptions"], str) or len(block["assumptions"]) > 1200:
+            raise ValueError("bounded assumptions required")
+        if not isinstance(block["parts"], list) or not 1 <= len(block["parts"]) <= 100:
+            raise ValueError("bounded nonempty parts required")
+        rows, keys = [], set()
+        for part in block["parts"]:
+            if not isinstance(part, dict) or set(part) != {"name", "quantity", "role", "size", "thickness_mm", "approximate"}:
+                raise ValueError("invalid sized part fields")
+            if not isinstance(part["name"], str) or not part["name"].strip() or len(part["name"]) > 160:
+                raise ValueError("short part name required")
+            if type(part["quantity"]) is not int or not 1 <= part["quantity"] <= 10000:
+                raise ValueError("positive bounded integer quantity required")
+            if part["role"] not in ("panel", "worktop", "support") or type(part["approximate"]) is not bool:
+                raise ValueError("valid role and approximation flag required")
+            if not isinstance(part["size"], list) or len(part["size"]) != 2:
+                raise ValueError("two part face dimensions required")
+            face = []
+            derived = False
+            for value in part["size"]:
+                if value == "drawer_depth":
+                    if part["role"] != "panel" or "drawer" not in part["name"].casefold():
+                        raise ValueError("drawer_depth requires a drawer panel")
+                    face.append(_slide_depth_mm(axes[2]))
+                    derived = True
+                else:
+                    face.append(round(positive(value, "part size") * factor, 3))
+            if max(face) > max(axes) * 1.2:
+                raise ValueError("part face exceeds block envelope")
+            default = part["thickness_mm"] is None
+            thickness = (30 if part["role"] == "worktop" else 17) if default else positive(part["thickness_mm"], "thickness")
+            if thickness > 500:
+                raise ValueError("thickness exceeds coarse part bound")
+            key = (part["name"].strip().casefold(), *face, thickness)
+            if key in keys:
+                raise ValueError("identical parts must be grouped")
+            keys.add(key)
+            rows.append({"name": part["name"], "quantity": part["quantity"], "role": part["role"],
+                "size_mm": [*face, thickness], "approximate": part["approximate"] or default or derived,
+                "thickness_basis": "default" if default else "model_returned_unverified",
+                "drawer_depth_derived": derived})
+        result.append({"id": bid, "size_mm": axes, "assumptions": block["assumptions"], "parts": rows})
+    return {"blocks": result}
+
+
 def face_size(expression, axes):
     """Small arithmetic grammar, never eval; return value and axis dependencies."""
     if not isinstance(expression, str) or not 0 < len(expression) <= 120:

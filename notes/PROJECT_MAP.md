@@ -40,11 +40,18 @@ This file explains where code belongs so the project stays understandable.
   V1 live acceptance FAILED (0/3): timeout/thinking exhaustion, then malformed
   and semantically wrong output with thinking disabled. See TODO and
   `notes/evidence/cb-parts-v1-2026-11-06/lev2-calculation.json` before reuse.
-- Current Parts diagnostic is **CB Parts V2**, same 3.17.4.6, owner-requested
+- Historical Parts diagnostic **CB Parts V2**, same 3.17.4.6, owner-requested
   count-only list. `agents/prompts/cb_parts_v2.md`, `validate_cb_part_counts`.
-  Probe defaults to V2; `--parts-version V1` replays the prior contract.
+  `--parts-version V2` replays it; V1 also remains available.
   Lev2 shape passes in 5.676 s, semantic defects retained, not a production BOM.
   Evidence: `notes/evidence/cb-parts-v2-2026-11-06/lev2-counts.json`.
+- Current opt-in Parts diagnostic: **CB Parts V3**, same 3.17.4.6,
+  `agents/prompts/cb_parts_v3.md`, `compose_cb_sized_parts`, probe default V3.
+  Quantities and sizes, declared unit conversion, 17/30 mm defaults, drawer
+  depth arithmetic. One call, no legacy BOM/material resolution or extra stage.
+  Lev2 16.529 s: format passes, B08 geometry fails visual review; not accepted.
+  `notes/evidence/cb-parts-v3-2026-11-06/lev2-sized-parts.json` preserves raw
+  response plus separate normalized rows. Front/Planner/production unchanged.
 - `use_cases/machinery.py` owns the 27-code storage catalog, the 16-capability
   Company Profile subset, outsourceable-operation boundary, company/supplier
   validation, Supabase persistence, and the bounded production-context snapshot

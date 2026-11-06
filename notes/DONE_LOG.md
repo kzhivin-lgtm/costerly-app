@@ -1,5 +1,17 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: implemented approved CB Parts V3 sized-list experiment
+inside one opt-in Calculate call. Retained V1/V2 replay and Front/Planner defaults.
+Code converts declared units, applies 17/30 mm fallback thickness and drawer
+depth arithmetic, preserves raw response. Same Lev2 evidence (five images),
+one Haiku call: 16.529 s, 4498 output tokens. Format/coverage PASS, geometry
+acceptance FAIL: B08 shrunk to 600 mm total, equal 300 mm bays and equal fronts;
+shared divider now present. No manual repair, runtime promotion or deployment.
+Saved public raw/conversion evidence under notes/evidence/cb-parts-v3-2026-11-06.
+174 relevant tests pass including unchanged V1/V2 and live V3 failure evidence.
+Sized-parts objective remains active; block/bay dimension interpretation needs
+isolated verification before material expansion. Original checkpoint preserved.
+
 2026-11-06, 3.17.4.6: owner clarified the final CB Parts deliverable: quantity
 AND dimensions for every major part, grouped by object/block across all objects.
 Count-only V2 is intermediate; assistant-authored B08 sizes are not model proof.

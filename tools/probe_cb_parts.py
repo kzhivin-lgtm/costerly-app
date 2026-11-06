@@ -42,7 +42,7 @@ def main():
     parser.add_argument("--planner-witness", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--execute", action="store_true")
-    parser.add_argument("--parts-version", choices=("V1", "V2"), default="V2")
+    parser.add_argument("--parts-version", choices=("V1", "V2", "V3"), default="V3")
     args = parser.parse_args()
     if not args.execute:
         parser.error("--execute required for one paid Calculate call")

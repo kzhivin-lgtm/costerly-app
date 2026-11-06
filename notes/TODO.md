@@ -999,7 +999,21 @@ No model calls, main merge, deployment or defect repair in this preservation.
 Older tags and 50 unrelated TODO lines retained. Stop further experiments until
 the owner chooses the next task; outstanding quality defects remain pending P0.
 
-Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, PENDING sized-parts revision:
+Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, ACTIVE, V3 geometry acceptance failed:
+V3 APPROVED AND TESTED: compact sized rows, one Haiku Calculate for all of Lev2,
+same five images and saved V3/V7 scope as V2. 16.529 s, 4498 output tokens,
+no thinking tokens. All nine blocks and shared top pass shape/coverage; code
+converts declared units, applies 17/30 defaults and drawer-depth arithmetic.
+B08 adds the shared divider and preserves three drawers, but assigns only
+600 mm total width, equal 300 mm bays and three equal 220 mm drawer fronts.
+These do not match visual proportions/heights; 720 mm carcass height is an
+unresolved generic assumption. V2 shelf is omitted. B09 still invents a door.
+Status: NOT ACCEPTED, no production promotion or integrated Analyze claim.
+Evidence: notes/evidence/cb-parts-v3-2026-11-06/lev2-sized-parts.json, unchanged
+raw response and separate numeric conversion. V1/V2 remain selectable.
+NEXT recommendation: isolate block/bay dimension interpretation on the same
+evidence before extending material calculations; no extra call or new prompt
+revision approved by this recommendation. Existing checkpoints remain protected.
 LATEST OWNER OUTCOME: CB Parts must itself deliver the discussed practical
 parts breakdown WITH quantities and dimensions for ALL objects, grouped by
 object/block. The assistant's manual B08 estimate illustrates the desired
@@ -1009,14 +1023,14 @@ one document-wide Analyze; aggregation across objects is deterministic.
 NEW OWNER DEFAULT: finished worktop thickness 30 mm when unspecified. Specific
 source/context thickness (for example 40 mm) takes priority. Other ordinary
 LDSP panels retain 17 mm fallback; worktop thickness does not choose its material.
-NEXT REVISION PROPOSAL (CB Parts V3, not implemented): retain compact part rows
+APPROVED V3 SCOPE (implemented in the diagnostic route): retain compact part rows
 and add size/thickness; interpret all views to infer coarse block/bay geometry,
 derive constituent panels, retain explicit estimating assumptions where sizes
 are absent. Reuse code for unit conversion/arithmetic and drawer depth. Include
 the approved divider rule and optional 600 mm clearance fallback. Do not restore
 V1's verbose combined material/evidence/formula output or add a model call.
 Acceptance must use actual unedited model output for the complete object, not
-assistant-authored dimensions. No runtime/prompt change in this record-only turn.
+assistant-authored dimensions. Current trial above fails semantic acceptance.
 OWNER REVIEW, 2026-11-06: accepts the discussed B08 coarse parts/quantities,
 subject to adding one internal divider between the drawer bay and adjacent
 door bay. This does not verify all nine blocks, B09 or stability. The manual

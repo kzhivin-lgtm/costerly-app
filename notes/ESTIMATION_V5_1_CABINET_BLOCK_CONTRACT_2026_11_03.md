@@ -135,6 +135,23 @@ lists in code. Proposed CB Parts V3 adds coarse sizes to the compact list,
 including the approved internal divider and the conditional 600 mm clearance
 assumption. No new prompt, selection change or paid run is made in this note.
 
+CB Parts V3 implemented/tested with owner approval, same 3.17.4.6:
+One opt-in Calculate call per object, full evidence, compact named part rows
+with quantity, face size, thickness and approximate flag. Per-block explicit
+unit and short assumptions; code converts mm/cm/m, applies null-thickness
+fallbacks (17 panel, 30 worktop) and computes drawer_depth using the existing
+helper. Raw response is immutable; normalized rows are separate. Model-returned
+thickness is unverified, not an automatically proven source fact. No material
+selection, stock lamination, hardware or labor in this contract. V1/V2 retained.
+Initial Lev2 trial uses exactly the V2 images and upstream plan: 16.529 s,
+4498 output tokens, all blocks covered. B08 divider fixed, but geometry NOT
+ACCEPTED: whole block 600 mm, equal 300 mm door/drawer bays, three equal 220 mm
+fronts; unsupported generic 720 mm carcass height. Do not correct these by hand
+or present them as source facts. B09 extra door persists, V2 B08 shelf omitted.
+Evidence: notes/evidence/cb-parts-v3-2026-11-06/lev2-sized-parts.json.
+This does not establish all-object orchestration, visual accuracy or production
+readiness. Protected upstream checkpoint and Front/Planner defaults unchanged.
+
 Owner benchmark corrected on 2026-11-06: N68 TEN door-like fronts and SIX
 drawers, superseding the earlier eight-door/four-drawer confirmation. Ten
 comprises five tall, two under sink, one downward-opening dishwasher front,
