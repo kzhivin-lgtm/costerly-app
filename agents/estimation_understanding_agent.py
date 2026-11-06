@@ -25,9 +25,11 @@ CB_RULEBOOK = {
     'front': {'name': 'CB Front V2', 'version': FRONT_SUPPORTS_PROMPT_VERSION, 'path': FRONT_SUPPORTS_PROMPT_PATH,
               'previous': {'name': 'CB Front V1', 'version': FRONT_COUNT_PROMPT_VERSION, 'path': FRONT_COUNT_PROMPT_PATH}},
     'planner': {'name': PLANNER_PROMPT_VERSION, 'version': PLANNER_PROMPT_VERSION, 'path': PLANNER_PROMPT_PATH},
-    'parts': {'name': 'CB Parts V1', 'version': 'CB Parts V1',
-              'path': PROMPT_PATH.with_name('cb_parts_v1.md'),
-              'consumer': 'Calculate', 'status': 'experimental_not_accepted'},
+    'parts': {'name': 'CB Parts V2', 'version': 'CB Parts V2',
+              'path': PROMPT_PATH.with_name('cb_parts_v2.md'),
+              'consumer': 'Calculate', 'status': 'experimental_not_accepted',
+              'previous': {'name': 'CB Parts V1', 'version': 'CB Parts V1',
+                           'path': PROMPT_PATH.with_name('cb_parts_v1.md')}},
 }
 
 ISLAND_TYPES = ['Front elevation', 'Side view', 'Rear view', 'Top view',

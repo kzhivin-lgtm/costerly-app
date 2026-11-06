@@ -42,12 +42,14 @@ def main():
     parser.add_argument("--planner-witness", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--execute", action="store_true")
+    parser.add_argument("--parts-version", choices=("V1", "V2"), default="V2")
     args = parser.parse_args()
     if not args.execute:
         parser.error("--execute required for one paid Calculate call")
     if args.output.exists():
         parser.error("refuse to overwrite witness")
     prior, scope = load_scope(args.front_witness, args.planner_witness)
+    scope["parts_version"] = "CB Parts " + args.parts_version
     witness = {k: prior[k] for k in ("inputs", "source_pages_base64", "evidence_origin")}
     witness.update(work="3.17.4.6", route="cb_parts_inside_calculate", status="running",
         database_writes=False, scope=scope, provider_responses=[],
@@ -79,7 +81,7 @@ def main():
             dimension_graph=graph, dimension_scale_gate=build_dimension_scale_gate(dimension_graph=graph),
             allowed_material_families=["ldsp", "mdf", "plywood", "solid_wood", "hdf", "glass", "stone", "metal"],
             cb_parts_scope=scope, record=record)
-        witness["status"] = "cb_parts_requires_review"
+        witness["status"] = witness["result"].get("status", "cb_parts_requires_review")
     except Exception as exc:
         witness.update(status="failed", error=f"{type(exc).__name__}: {exc}")
     finally:

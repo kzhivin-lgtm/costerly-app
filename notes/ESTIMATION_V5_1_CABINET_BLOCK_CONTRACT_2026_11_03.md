@@ -89,6 +89,15 @@ thinking changes output completion (16.921 s) but yields invalid JSON and
 wrong unit/front-size semantics. Do not describe synthetic contract tests as
 visual/material acceptance. Next revision remains a proposal in TODO.
 
+OWNER OVERRIDE, same 3.17.4.6: CB Parts V2 now returns ONLY block/shared ID,
+part name and quantity. Dimensions/materials/2VN/expressions/explanatory output
+are deferred, not part of this call. It stays inside Calculate, with the same
+whole-object visual evidence and fallible saved plan. Count conventional drawer
+panels without also charging a drawer-box assembly; shared partitions/tops once.
+First Lev2 run: 5.676 s, format PASS, semantics NOT ACCEPTED (no partitions,
+unverified shelves and extra B09 door). Raw answer unchanged in
+notes/evidence/cb-parts-v2-2026-11-06/lev2-counts.json. V1 retained explicitly.
+
 Owner benchmark corrected on 2026-11-06: N68 TEN door-like fronts and SIX
 drawers, superseding the earlier eight-door/four-drawer confirmation. Ten
 comprises five tall, two under sink, one downward-opening dishwasher front,

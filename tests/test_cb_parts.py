@@ -14,7 +14,7 @@ from use_cases.estimation_dimension_graph import build_dimension_graph
 
 def fixture(monkeypatch):
     row, pages, _ = setup(monkeypatch)
-    scope = dict(input_id=row["input_id"], planner=plan(), front=front(),
+    scope = dict(input_id=row["input_id"], parts_version="CB Parts V1", planner=plan(), front=front(),
         upstream_status={"front": "failed", "planner": "assembly_plan_requires_review"})
     scope["front"]["front_groups"][0]["type"] = "drawer"
     def dim(n):

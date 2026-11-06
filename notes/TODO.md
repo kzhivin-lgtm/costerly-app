@@ -999,7 +999,29 @@ No model calls, main merge, deployment or defect repair in this preservation.
 Older tags and 50 unrelated TODO lines retained. Stop further experiments until
 the owner chooses the next task; outstanding quality defects remain pending P0.
 
-Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, PENDING revision:
+Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, PENDING V2 review:
+CURRENT OWNER OVERRIDE: response is ONLY a list of major parts and quantities.
+CB Parts V2 stays inside Calculate, one call per object. No dimensions,
+materials, formulas, 2VN bindings, explanatory output or additional stage.
+Return original block/shared IDs with name/quantity rows. Whole-object images
+and saved Front/Planner remain available; numeric graph/material constraints
+are not appended for this count-only task. V1 prompt/code/raw failures remain
+available by explicit selection. Size/material work is deferred, not removed
+from the eventual estimation objective. The detailed V1 contract below is
+historical, not the current V2 output requirement.
+V2 first Lev2 trial: one Haiku 5.5 call, thinking disabled, 5.676 s, 15811
+input / 1272 output tokens. Exact same source inputs/pages/images as V1;
+numeric graph/material context removed, prompt/output simplified. Returns all
+9 blocks plus shared worktop with name/quantity rows only. Format PASS.
+Five drawer bodies produce 10 sides, 10 end panels and 5 bottoms, plus 5 fronts.
+Semantic acceptance remains OPEN: no internal partitions (including B08),
+uniform carcass expansion, unverified shelf counts, and an additional B09 Door
+despite no assigned front. Total 17 Hinged door + 1 Door exceeds even the
+upstream 17, not the owner 15/16 benchmark. No silent repair or invented success.
+Evidence: notes/evidence/cb-parts-v2-2026-11-06/lev2-counts.json.
+160 relevant tests pass; a single response is not a stability benchmark.
+V2 is the explicit Parts diagnostic selector; Front/Planner defaults and
+protected checkpoints unchanged. No production or integrated Analyze change.
 Outcome: derive component quantities and dimensions from the large assembly
 blocks, preserving the partially compromised V3/V7 checkpoint. This is the next
 functional stage, not permission to repair or promote the prior stages.

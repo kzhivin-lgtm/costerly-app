@@ -227,25 +227,32 @@ def _run_cb_parts(*, input_row, page_bytes, dimension_graph, dimension_scale_gat
     from agents.estimation_understanding_agent import (
         MODEL, CB_RULEBOOK, prepare_content, planner_front_ids, validate_assembly_plan,
     )
-    from use_cases.estimation_cb_parts import VERSION, DEFAULT_MATERIAL, compose_cb_parts
+    from use_cases.estimation_cb_parts import DEFAULT_MATERIAL, compose_cb_parts, validate_cb_part_counts
 
+    rule = CB_RULEBOOK["parts"]
+    version = scope.get("parts_version", rule["version"])
+    if version == rule["previous"]["version"]:
+        rule = rule["previous"]
+    elif version != rule["version"]:
+        raise ValueError("unknown CB Parts version")
+    count_only = version == "CB Parts V2"
     if scope.get("input_id") != input_row.get("input_id"):
         raise ValueError("CB Parts scope belongs to a different input")
     if model not in (None, MODEL):
         raise ValueError("CB Parts experiment requires the selected Haiku model")
-    if "ldsp" not in allowed_material_families:
+    if not count_only and "ldsp" not in allowed_material_families:
         raise ValueError("CB Parts requires the LDSP fallback family")
     content, manifests = prepare_content([input_row], page_bytes)
     known = {v["view_id"] for v in manifests[0]["known_views"]}
     front_ids = planner_front_ids(scope["front"], known)
     validate_assembly_plan(scope["planner"], known, front_ids)
-    content.append({"type": "text", "text": json.dumps({
-        "calculation_scope": scope, "dimension_graph": dimension_graph,
-        "dimension_scale_gate": dimension_scale_gate,
-        "default_material": DEFAULT_MATERIAL, "allowed_material_families": sorted(allowed_material_families),
-    }, ensure_ascii=False, separators=(",", ":"))})
+    context = {"calculation_scope": scope}
+    if not count_only:
+        context.update(dimension_graph=dimension_graph, dimension_scale_gate=dimension_scale_gate,
+            default_material=DEFAULT_MATERIAL, allowed_material_families=sorted(allowed_material_families))
+    content.append({"type": "text", "text": json.dumps(context, ensure_ascii=False, separators=(",", ":"))})
     request = dict(model=MODEL, max_tokens=14000, output_config={"effort": "low"}, thinking={"type": "disabled"},
-        system=CB_RULEBOOK["parts"]["path"].read_text().strip(),
+        system=rule["path"].read_text().strip(),
         messages=[{"role": "user", "content": content}])
     started = datetime.now(UTC).isoformat()
     if record:
@@ -257,15 +264,20 @@ def _run_cb_parts(*, input_row, page_bytes, dimension_graph, dimension_scale_gat
     if getattr(response, "stop_reason", None) != "end_turn":
         raise ValueError("CB Parts response did not finish normally")
     parsed = _json_object(extract_text_from_claude_response(response))
-    bom = compose_cb_parts(response=parsed, input_row=input_row, dimension_graph=dimension_graph,
-        scope=scope, allowed_material_families=allowed_material_families)
+    if count_only:
+        validate_cb_part_counts(parsed, scope=scope)
+        result = {"parts_count": parsed, "status": "cb_parts_count_requires_review",
+            "upstream_status": scope.get("upstream_status", {})}
+    else:
+        result = {"bom": compose_cb_parts(response=parsed, input_row=input_row, dimension_graph=dimension_graph,
+            scope=scope, allowed_material_families=allowed_material_families)}
     payload = input_row["input_payload"]
     usage = build_agent_usage_event(agent_name="estimation", operation="cb_parts_calculation",
         company_id=str(payload.get("company_id") or ""), run_id=str(payload.get("run_id") or ""),
         file_name=str(payload.get("document", {}).get("file_name") or ""),
         object_id=str(payload.get("object", {}).get("object_id") or ""),
         object_name=str(payload.get("object", {}).get("object_name") or ""), model=MODEL,
-        prompt_version=VERSION, response=response, started_at=started, finished_at=datetime.now(UTC).isoformat(),
+        prompt_version=version, response=response, started_at=started, finished_at=datetime.now(UTC).isoformat(),
         request_diagnostics={"provider_calls": 1, "upstream_status": scope.get("upstream_status", {})})
-    return {"extraction": parsed, "bom": bom, "usage_event": usage,
-        "prompt_version": VERSION, "prompt_sha256": sha256(request["system"].encode()).hexdigest()}
+    return {"extraction": parsed, **result, "usage_event": usage,
+        "prompt_version": version, "prompt_sha256": sha256(request["system"].encode()).hexdigest()}

@@ -1,0 +1,392 @@
+{
+  "work": "3.17.4.6",
+  "prompt_version": "CB Parts V2",
+  "status": "cb_parts_count_requires_review",
+  "semantic_accepted": false,
+  "private_witness": "/private/tmp/lev2-cb-parts-v2-20261106-01.json",
+  "elapsed_seconds": 5.676,
+  "provider_calls": 1,
+  "same_input_and_pages_as_v1": true,
+  "same_supplied_images_as_v1": true,
+  "prompt_sha256": "63e3725e94c8818b728d713c29cd8a5d15d4d52e79063407c89b26cfb2304497",
+  "request_sha256": "b81f0c06172c6e6ac39570ccd160e8089d9f4cd6cf80c75b8854508a5d3a187b",
+  "request_settings": {
+    "model": "claude-haiku-5-5",
+    "max_tokens": 14000,
+    "output_config": {
+      "effort": "low"
+    },
+    "thinking": {
+      "type": "disabled"
+    }
+  },
+  "stop_reason": "end_turn",
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 15811,
+    "output_tokens": 1272,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+  },
+  "response_text": "{\"blocks\":[{\"id\":\"B01\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2},{\"name\":\"Carcass top\",\"quantity\":1},{\"name\":\"Carcass bottom\",\"quantity\":1},{\"name\":\"Back panel\",\"quantity\":1},{\"name\":\"Shelf\",\"quantity\":2},{\"name\":\"Hinged door\",\"quantity\":1},{\"name\":\"Lift-up door\",\"quantity\":2}]},{\"id\":\"B02\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2},{\"name\":\"Carcass top\",\"quantity\":1},{\"name\":\"Carcass bottom\",\"quantity\":1},{\"name\":\"Back panel\",\"quantity\":1},{\"name\":\"Shelf\",\"quantity\":2},{\"name\":\"Hinged door\",\"quantity\":3},{\"name\":\"Drawer body side\",\"quantity\":4},{\"name\":\"Drawer body end panel\",\"quantity\":4},{\"name\":\"Drawer body bottom\",\"quantity\":2},{\"name\":\"Drawer front\",\"quantity\":2}]},{\"id\":\"B03\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2},{\"name\":\"Carcass top\",\"quantity\":1},{\"name\":\"Carcass bottom\",\"quantity\":1},{\"name\":\"Back panel\",\"quantity\":1},{\"name\":\"Shelf\",\"quantity\":1},{\"name\":\"Hinged door\",\"quantity\":2}]},{\"id\":\"B04\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2},{\"name\":\"Carcass top\",\"quantity\":1},{\"name\":\"Carcass bottom\",\"quantity\":1},{\"name\":\"Back panel\",\"quantity\":1},{\"name\":\"Shelf\",\"quantity\":1},{\"name\":\"Hinged door\",\"quantity\":3}]},{\"id\":\"B05\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2},{\"name\":\"Carcass top\",\"quantity\":1},{\"name\":\"Carcass bottom\",\"quantity\":1},{\"name\":\"Back panel\",\"quantity\":1},{\"name\":\"Shelf\",\"quantity\":1},{\"name\":\"Hinged door\",\"quantity\":2}]},{\"id\":\"B06\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2},{\"name\":\"Carcass top\",\"quantity\":1},{\"name\":\"Carcass bottom\",\"quantity\":1},{\"name\":\"Back panel\",\"quantity\":1},{\"name\":\"Shelf\",\"quantity\":1},{\"name\":\"Hinged door\",\"quantity\":2}]},{\"id\":\"B07\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2},{\"name\":\"Carcass top\",\"quantity\":1},{\"name\":\"Carcass bottom\",\"quantity\":1},{\"name\":\"Back panel\",\"quantity\":1},{\"name\":\"Shelf\",\"quantity\":1},{\"name\":\"Hinged door\",\"quantity\":3}]},{\"id\":\"B08\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2},{\"name\":\"Carcass top\",\"quantity\":1},{\"name\":\"Carcass bottom\",\"quantity\":1},{\"name\":\"Back panel\",\"quantity\":1},{\"name\":\"Shelf\",\"quantity\":1},{\"name\":\"Hinged door\",\"quantity\":1},{\"name\":\"Drawer body side\",\"quantity\":6},{\"name\":\"Drawer body end panel\",\"quantity\":6},{\"name\":\"Drawer body bottom\",\"quantity\":3},{\"name\":\"Drawer front\",\"quantity\":3}]},{\"id\":\"B09\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2},{\"name\":\"Carcass top\",\"quantity\":1},{\"name\":\"Carcass bottom\",\"quantity\":1},{\"name\":\"Back panel\",\"quantity\":1},{\"name\":\"Shelf\",\"quantity\":3},{\"name\":\"Door\",\"quantity\":1}]},{\"id\":\"S01\",\"parts\":[{\"name\":\"L-shaped worktop\",\"quantity\":1}]}]}",
+  "parsed_response": {
+    "blocks": [
+      {
+        "id": "B01",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1
+          },
+          {
+            "name": "Shelf",
+            "quantity": 2
+          },
+          {
+            "name": "Hinged door",
+            "quantity": 1
+          },
+          {
+            "name": "Lift-up door",
+            "quantity": 2
+          }
+        ]
+      },
+      {
+        "id": "B02",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1
+          },
+          {
+            "name": "Shelf",
+            "quantity": 2
+          },
+          {
+            "name": "Hinged door",
+            "quantity": 3
+          },
+          {
+            "name": "Drawer body side",
+            "quantity": 4
+          },
+          {
+            "name": "Drawer body end panel",
+            "quantity": 4
+          },
+          {
+            "name": "Drawer body bottom",
+            "quantity": 2
+          },
+          {
+            "name": "Drawer front",
+            "quantity": 2
+          }
+        ]
+      },
+      {
+        "id": "B03",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1
+          },
+          {
+            "name": "Shelf",
+            "quantity": 1
+          },
+          {
+            "name": "Hinged door",
+            "quantity": 2
+          }
+        ]
+      },
+      {
+        "id": "B04",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1
+          },
+          {
+            "name": "Shelf",
+            "quantity": 1
+          },
+          {
+            "name": "Hinged door",
+            "quantity": 3
+          }
+        ]
+      },
+      {
+        "id": "B05",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1
+          },
+          {
+            "name": "Shelf",
+            "quantity": 1
+          },
+          {
+            "name": "Hinged door",
+            "quantity": 2
+          }
+        ]
+      },
+      {
+        "id": "B06",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1
+          },
+          {
+            "name": "Shelf",
+            "quantity": 1
+          },
+          {
+            "name": "Hinged door",
+            "quantity": 2
+          }
+        ]
+      },
+      {
+        "id": "B07",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1
+          },
+          {
+            "name": "Shelf",
+            "quantity": 1
+          },
+          {
+            "name": "Hinged door",
+            "quantity": 3
+          }
+        ]
+      },
+      {
+        "id": "B08",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1
+          },
+          {
+            "name": "Shelf",
+            "quantity": 1
+          },
+          {
+            "name": "Hinged door",
+            "quantity": 1
+          },
+          {
+            "name": "Drawer body side",
+            "quantity": 6
+          },
+          {
+            "name": "Drawer body end panel",
+            "quantity": 6
+          },
+          {
+            "name": "Drawer body bottom",
+            "quantity": 3
+          },
+          {
+            "name": "Drawer front",
+            "quantity": 3
+          }
+        ]
+      },
+      {
+        "id": "B09",
+        "parts": [
+          {
+            "name": "Carcass side wall",
+            "quantity": 2
+          },
+          {
+            "name": "Carcass top",
+            "quantity": 1
+          },
+          {
+            "name": "Carcass bottom",
+            "quantity": 1
+          },
+          {
+            "name": "Back panel",
+            "quantity": 1
+          },
+          {
+            "name": "Shelf",
+            "quantity": 3
+          },
+          {
+            "name": "Door",
+            "quantity": 1
+          }
+        ]
+      },
+      {
+        "id": "S01",
+        "parts": [
+          {
+            "name": "L-shaped worktop",
+            "quantity": 1
+          }
+        ]
+      }
+    ]
+  },
+  "input_block_ids": [
+    "B01",
+    "B02",
+    "B03",
+    "B04",
+    "B05",
+    "B06",
+    "B07",
+    "B08",
+    "B09",
+    "S01"
+  ],
+  "upstream_status": {
+    "front": "failed",
+    "planner": "assembly_plan_requires_review",
+    "origin": "saved_separate_probes_not_integrated_Analyze"
+  },
+  "totals_computed_for_review_not_model_fields": {
+    "Carcass side wall": 18,
+    "Carcass top": 9,
+    "Carcass bottom": 9,
+    "Back panel": 9,
+    "Shelf": 13,
+    "Hinged door": 17,
+    "Lift-up door": 2,
+    "Drawer body side": 10,
+    "Drawer body end panel": 10,
+    "Drawer body bottom": 5,
+    "Drawer front": 5,
+    "Door": 1,
+    "L-shaped worktop": 1
+  },
+  "review": [
+    "All 9 blocks and shared worktop returned once; shape validation passes.",
+    "Five drawer bodies: 10 sides, 10 end panels, 5 bottoms, plus 5 decorative fronts.",
+    "No internal partitions returned, including B08 drawer bank plus adjacent door.",
+    "B09 has an extra Door despite no assigned front ID; 17 Hinged door plus 1 Door, two Lift-up door. Not the owner 15/16-door benchmark.",
+    "Uniform carcass expansion and shelf quantities require visual/construction review; not accepted as correct hidden structure.",
+    "Single run only; no integrated Analyze, BOM area calculation, production changes or reliability acceptance."
+  ]
+}

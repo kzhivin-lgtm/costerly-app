@@ -17,6 +17,42 @@ DEFAULT_MATERIAL = dict(id="M0", name="LDSP", family="ldsp", thickness_mm=17,
 ROLES = {"side", "partition", "horizontal", "back", "facade", "drawer_box", "worktop", "panel", "support"}
 
 
+def validate_cb_part_counts(response, *, scope):
+    """V2 validates only shape/coverage, not visual or construction correctness.
+
+    No dimensions, material defaults, 2VN, drawer expansion or repairs here.
+    The model's exact part names and quantities remain visible to the reviewer.
+    """
+    if not isinstance(response, dict) or set(response) != {"blocks"}:
+        raise ValueError("CB Parts V2 returns only blocks")
+    blocks = response["blocks"]
+    plan = scope["planner"]
+    expected = {b["id"] for b in plan["blocks"] + plan["shared_parts"]}
+    if not isinstance(blocks, list) or len(blocks) != len(expected):
+        raise ValueError("CB Parts V2 requires every planned block once")
+    seen = set()
+    for block in blocks:
+        if not isinstance(block, dict) or set(block) != {"id", "parts"}:
+            raise ValueError("CB Parts V2 block requires only id and parts")
+        bid = block["id"]
+        if not isinstance(bid, str) or bid not in expected or bid in seen:
+            raise ValueError("CB Parts V2 duplicate or foreign block")
+        seen.add(bid)
+        if not isinstance(block["parts"], list) or not 1 <= len(block["parts"]) <= 100:
+            raise ValueError("CB Parts V2 bounded nonempty parts required")
+        names = set()
+        for part in block["parts"]:
+            if not isinstance(part, dict) or set(part) != {"name", "quantity"}:
+                raise ValueError("CB Parts V2 part requires only name and quantity")
+            name = part["name"]
+            if not isinstance(name, str) or not name.strip() or len(name) > 160 or name.strip().casefold() in names:
+                raise ValueError("CB Parts V2 unique short part name required")
+            names.add(name.strip().casefold())
+            if type(part["quantity"]) is not int or part["quantity"] <= 0:
+                raise ValueError("CB Parts V2 positive integer quantity required")
+    return response
+
+
 def positive(value, field, *, integer=False):
     if type(value) not in (int, float) or not math.isfinite(value) or value <= 0 or (integer and int(value) != value):
         raise ValueError(f"{field} must be finite and positive" + (" integer" if integer else ""))

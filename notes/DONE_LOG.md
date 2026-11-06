@@ -1,5 +1,18 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: owner-requested CB Parts V2 reduces Calculate output to
+block ID -> part name + quantity only. No geometry/material fields, expressions,
+2VN invocation, material BOM or hidden postprocessing. Same source images and
+saved V3/V7 plan; one Haiku 5.5 call with thinking disabled completed in 5.676 s,
+1272 output tokens. All nine blocks/shared top pass shape/coverage validation.
+Five drawers have 10 sides, 10 ends, five bottoms and five decorative fronts.
+Not semantically accepted: no partitions, unverified shelves, extra B09 door
+(18 ordinary doors including generic Door vs upstream 17 and owner 15/16).
+160 relevant tests pass, including the live-witness regression. Raw response
+retained at notes/evidence/cb-parts-v2-2026-11-06/lev2-counts.json, no repairs.
+V1 remains explicitly selectable; Front/Planner/main/production unchanged.
+Pending owner review in TODO, no new checkpoint or integrated-cycle claim.
+
 2026-11-06, 3.17.4.6: CB Parts V1 implemented as opt-in mode INSIDE Calculate,
 not an additional model stage. Coarse groups, owner LDSP 17 mm fallback, explicit
 thickness/layers, shared partition/front coverage, deterministic drawer expansion
