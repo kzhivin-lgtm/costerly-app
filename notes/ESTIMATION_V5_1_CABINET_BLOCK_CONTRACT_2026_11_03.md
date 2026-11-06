@@ -63,6 +63,10 @@ One rulebook with two sections, not two mandatory new provider stages:
   mm units for bare drawing dimensions. Planner schema passes, semantics do not.
 
 Full research checkpoint: notes/ESTIMATION_V6_2_HSL_N68_CHECKPOINT_2026_11_05.md.
+Additional owner-requested Front V3 + Planner V7 snapshot, PARTIALLY COMPROMISED:
+notes/ESTIMATION_V6_2_FRONT_V3_PLANNER_V7_PARTIALLY_COMPROMISED_CHECKPOINT_2026_11_06.md.
+Known failures retained, defaults unchanged. B08's drawer/door grouping is
+permissible; its localization is wrong. Preservation is not semantic acceptance.
 Owner benchmark corrected on 2026-11-06: N68 TEN door-like fronts and SIX
 drawers, superseding the earlier eight-door/four-drawer confirmation. Ten
 comprises five tall, two under sink, one downward-opening dishwasher front,

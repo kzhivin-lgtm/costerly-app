@@ -26,6 +26,11 @@ This file explains where code belongs so the project stays understandable.
 - Estimation V6.2 research checkpoint/restart: `notes/ESTIMATION_V6_2_HSL_N68_CHECKPOINT_2026_11_05.md`
   (3.17.4.5). Selected Front V2 + Planner V4, retained V5/V6 experiments, exact
   HSL evidence and pending defects. Authoritative task states remain in TODO.
+- Additional owner-requested PARTIALLY COMPROMISED Front V3 + Planner V7 checkpoint:
+  `notes/ESTIMATION_V6_2_FRONT_V3_PLANNER_V7_PARTIALLY_COMPROMISED_CHECKPOINT_2026_11_06.md`
+  (same 3.17.4.5). Exact Lev2 paired-run evidence, known failures and private
+  recovery archive. Explicit research pair, not a change to V2/V4 defaults or
+  a production release. Earlier checkpoint remains protected.
 - `use_cases/machinery.py` owns the 27-code storage catalog, the 16-capability
   Company Profile subset, outsourceable-operation boundary, company/supplier
   validation, Supabase persistence, and the bounded production-context snapshot

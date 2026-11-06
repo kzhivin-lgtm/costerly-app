@@ -944,7 +944,8 @@ system-only request change, retained two-wing coverage and non-promotion.
 git diff --check passes; these checks do not establish model reliability.
 
 Lev2 Front V3 + Planner V7, USER-APPROVED three paired runs, 2026-11-06,
-same 3.17.4.5, P0, COMPLETED diagnostic / acceptance FAILED:
+same 3.17.4.5, P0, COMPLETED diagnostic / acceptance FAILED;
+OWNER-REQUESTED CHECKPOINT PRESERVATION with known defects:
 Exactly six calls: three fresh Front V3 results, each passed to its own Planner
 V7. Independent pairs ran concurrently; no retries or winner selection. Same
 saved Lev2 Detection-derived input/pages and Haiku 5.5 low settings. Front
@@ -981,6 +982,22 @@ Verification: 183 focused tests pass. Regression fixtures preserve exact
 stage failures, raw truncated responses, three identical Front totals, zero
 full-chain format passes and the B08 assigned-drawer/box mismatch. Defaults
 remain unchanged; git diff --check passes. This is not semantic acceptance.
+
+Owner now requests a separate checkpoint labelled PARTIALLY COMPROMISED
+("частично скомпрометирован") for the exact Front V3 + Planner V7 pair.
+Preservation is completed, not repair or full-cycle acceptance. In the reviewed
+Planner 3, B08 includes door F21 and drawers F22-F24: the grouping is permissible,
+but its box misses the drawers. Do not record this as an omitted drawer block.
+Restart and known-defect record:
+notes/ESTIMATION_V6_2_FRONT_V3_PLANNER_V7_PARTIALLY_COMPROMISED_CHECKPOINT_2026_11_06.md.
+Tag: estimation-v6.2-front-v3-planner-v7-partially-compromised-2026-11-06.
+Private full-input/output archive outside /tmp contains 32 byte-verified files,
+including six witnesses, overlays, unchanged baseline input and source PDF.
+All prompt hashes, archive SHA256 and recovery instructions are in the record.
+Ordinary defaults remain V2/V4; V3/V7 selection is explicit/process-local.
+No model calls, main merge, deployment or defect repair in this preservation.
+Older tags and 50 unrelated TODO lines retained. Stop further experiments until
+the owner chooses the next task; outstanding quality defects remain pending P0.
 
 HSL saved-package replay, USER REQUEST, 2026-11-05, same 3.17.4.5,
 P0, COMPLETED diagnostic replay; acceptance FAILED: owner explicitly requests existing

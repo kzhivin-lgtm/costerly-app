@@ -1,5 +1,19 @@
 # Done Log
 
+2026-11-06, 3.17.4.5: owner-requested Front V3 + Planner V7 research checkpoint,
+explicitly PARTIALLY COMPROMISED ("частично скомпрометирован"). Three Lev2 pairs
+retain 17 doors / 5 drawers / 2 lift-ups, known false fronts; Front enums pass
+1/3, Planner completes 1/3, no pair passes both stages. The complete Planner
+has 9 blocks + worktop, with box/scope defects. B08 contains the three drawers
+and adjacent door; its box, not the assignment, omits the drawer bank.
+183 focused tests pass; 32 private source/witness/overlay files byte-verified
+in an archive outside /tmp. Ordinary defaults stay V2/V4, exact V3/V7 prompts
+and process-local replay instructions preserved. No new model calls, repair,
+main merge or production deploy. Earlier checkpoints and dirty TODO retained.
+Tag: estimation-v6.2-front-v3-planner-v7-partially-compromised-2026-11-06.
+Restart: notes/ESTIMATION_V6_2_FRONT_V3_PLANNER_V7_PARTIALLY_COMPROMISED_CHECKPOINT_2026_11_06.md.
+Completion here means preservation with known defects, not production acceptance.
+
 2026-11-05, 3.17.4.5: full HSL/N68 research checkpoint preserved at owner request.
 Nine saved Detection objects / 34 islands replayed, 18 calls, 188.55 s;
 Front 0/9 and Planner 7/9 structural passes, no full-chain acceptance.

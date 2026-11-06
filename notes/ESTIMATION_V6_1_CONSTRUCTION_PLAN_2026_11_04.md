@@ -16,7 +16,14 @@ protected. Pre-existing TODO changes belong to the owner.
 
 ## Decision
 
-Current full research checkpoint and restart instructions:
+Latest owner-requested research snapshot is PARTIALLY COMPROMISED Front V3 +
+Planner V7, preservation with known defects only:
+notes/ESTIMATION_V6_2_FRONT_V3_PLANNER_V7_PARTIALLY_COMPROMISED_CHECKPOINT_2026_11_06.md.
+Exact experimental pair is preserved without changing ordinary V2/V4 selectors.
+The reviewed B08 groups three drawers with one door; its box misses the drawers,
+not its front-ID assignment. Stop experiments after preservation until directed.
+
+Previous full HSL research checkpoint and restart instructions, still protected:
 notes/ESTIMATION_V6_2_HSL_N68_CHECKPOINT_2026_11_05.md.
 Preservation completed, not full-cycle acceptance. Selected Front V2 + Planner
 V4; V5/V6 retained as tested candidates. HSL transport rotation, Front validation,
