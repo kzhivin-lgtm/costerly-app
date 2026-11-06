@@ -152,6 +152,19 @@ Evidence: notes/evidence/cb-parts-v3-2026-11-06/lev2-sized-parts.json.
 This does not establish all-object orchestration, visual accuracy or production
 readiness. Protected upstream checkpoint and Front/Planner defaults unchanged.
 
+CB Parts V3.1, same 3.17.4.6, owner-approved one-paragraph experiment:
+Use labelled span endpoints and proportional visible intervals, including
+neighbouring blocks, to estimate and sum block/bay widths; record a short
+allocation in the existing assumptions field. No fixture-specific numbers,
+new schema, extra call or correction of the saved Planner box. Explicit replay
+only; V3 remains the diagnostic default. First Lev2 trial 13.439 s: format PASS,
+geometry FAIL. Door and drawer widths each 500 mm but whole B08 also 500 mm;
+divider omitted, equal-height drawer fronts persist, allocation not supplied.
+One run does not establish causal attribution or stability. Original raw output
+preserved in notes/evidence/cb-parts-v3-1-2026-11-06/lev2-sized-parts.json.
+The width problem is unresolved. An explicit bay/sum contract is only a next
+proposal requiring approval, not implemented here. Production unchanged.
+
 Owner benchmark corrected on 2026-11-06: N68 TEN door-like fronts and SIX
 drawers, superseding the earlier eight-door/four-drawer confirmation. Ten
 comprises five tall, two under sink, one downward-opening dishwasher front,

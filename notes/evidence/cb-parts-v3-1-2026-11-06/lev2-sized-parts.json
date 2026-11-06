@@ -1,0 +1,182 @@
+{
+  "work": "3.17.4.6",
+  "prompt_version": "CB Parts V3.1",
+  "prompt_sha256": "d820f82f1fac880daafcfc96b4b49baf133538f1f106ed7d56b7008bc7355386",
+  "provider_calls": 1,
+  "model": "claude-haiku-5-5",
+  "elapsed_seconds": 13.439,
+  "stop_reason": "end_turn",
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 16942,
+    "output_tokens": 3840,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+  },
+  "upstream_status": {
+    "front": "failed",
+    "planner": "assembly_plan_requires_review",
+    "origin": "saved_separate_probes_not_integrated_Analyze"
+  },
+  "input_block_ids": [
+    "B01",
+    "B02",
+    "B03",
+    "B04",
+    "B05",
+    "B06",
+    "B07",
+    "B08",
+    "B09",
+    "S01"
+  ],
+  "same_input_and_pages_as_v3": true,
+  "request_same_except_prompt_and_version": true,
+  "semantic_accepted": false,
+  "review_findings": [
+    "B08 width 500 mm equals each of its two adjacent bays (door and drawer stack), failing additive consistency.",
+    "Three drawer facades remain identical in height.",
+    "B08 shared partition present in V3 is now omitted.",
+    "Assumptions mention 151 cm but do not supply span endpoints or interval allocation.",
+    "One trial cannot establish stability or attribute every output change causally to the prompt."
+  ],
+  "response_text": "{\"blocks\":[{\"id\":\"B01\",\"unit\":\"cm\",\"size\":[180,75,35],\"assumptions\":\"Upper run width 180 cm (from 69/180 dimension split, pantry 69 cm); depth and height from upper elevation 75 cm approximate; back assumed full height.\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2,\"role\":\"panel\",\"size\":[35,75],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass top\",\"quantity\":1,\"role\":\"panel\",\"size\":[180,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass bottom\",\"quantity\":1,\"role\":\"panel\",\"size\":[180,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Back panel\",\"quantity\":1,\"role\":\"panel\",\"size\":[180,75],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Vertical divider\",\"quantity\":2,\"role\":\"panel\",\"size\":[35,75],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Pantry door\",\"quantity\":1,\"role\":\"panel\",\"size\":[69,75],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Lift-up front\",\"quantity\":2,\"role\":\"panel\",\"size\":[90,75],\"thickness_mm\":null,\"approximate\":true}]},{\"id\":\"B02\",\"unit\":\"cm\",\"size\":[50,265,35],\"assumptions\":\"Column width estimated from front layout (door F04 with F07/F08 stack); tall column height 265 cm; drawers at base.\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2,\"role\":\"panel\",\"size\":[35,265],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass top\",\"quantity\":1,\"role\":\"panel\",\"size\":[50,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass bottom\",\"quantity\":1,\"role\":\"panel\",\"size\":[50,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Back panel\",\"quantity\":1,\"role\":\"panel\",\"size\":[50,265],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Shelf\",\"quantity\":2,\"role\":\"panel\",\"size\":[50,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Hinged door\",\"quantity\":3,\"role\":\"panel\",\"size\":[50,65],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Drawer body side\",\"quantity\":4,\"role\":\"panel\",\"size\":[\"drawer_depth\",15],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Drawer body end panel\",\"quantity\":4,\"role\":\"panel\",\"size\":[50,15],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Drawer bottom\",\"quantity\":2,\"role\":\"panel\",\"size\":[\"drawer_depth\",50],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Drawer front\",\"quantity\":2,\"role\":\"panel\",\"size\":[50,15],\"thickness_mm\":null,\"approximate\":true}]},{\"id\":\"B03\",\"unit\":\"cm\",\"size\":[50,75,35],\"assumptions\":\"Two tall upper doors, width estimated from the upper right run span; height 75 cm.\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2,\"role\":\"panel\",\"size\":[35,75],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass top\",\"quantity\":1,\"role\":\"panel\",\"size\":[50,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass bottom\",\"quantity\":1,\"role\":\"panel\",\"size\":[50,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Back panel\",\"quantity\":1,\"role\":\"panel\",\"size\":[50,75],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Shelf\",\"quantity\":1,\"role\":\"panel\",\"size\":[50,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Hinged door\",\"quantity\":2,\"role\":\"panel\",\"size\":[25,75],\"thickness_mm\":null,\"approximate\":true}]},{\"id\":\"B04\",\"unit\":\"cm\",\"size\":[60,85,60],\"assumptions\":\"Lower corner run width estimated from base span; base carcass height 85 cm assumed; worktop above.\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2,\"role\":\"panel\",\"size\":[60,85],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass top\",\"quantity\":1,\"role\":\"panel\",\"size\":[60,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass bottom\",\"quantity\":1,\"role\":\"panel\",\"size\":[60,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Back panel\",\"quantity\":1,\"role\":\"panel\",\"size\":[60,85],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Shelf\",\"quantity\":2,\"role\":\"panel\",\"size\":[60,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Hinged door\",\"quantity\":3,\"role\":\"panel\",\"size\":[30,70],\"thickness_mm\":null,\"approximate\":true}]},{\"id\":\"B05\",\"unit\":\"cm\",\"size\":[45,85,60],\"assumptions\":\"Lower end run width estimated from base span; base carcass height 85 cm.\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2,\"role\":\"panel\",\"size\":[60,85],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass top\",\"quantity\":1,\"role\":\"panel\",\"size\":[45,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass bottom\",\"quantity\":1,\"role\":\"panel\",\"size\":[45,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Back panel\",\"quantity\":1,\"role\":\"panel\",\"size\":[45,85],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Shelf\",\"quantity\":1,\"role\":\"panel\",\"size\":[45,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Hinged door\",\"quantity\":2,\"role\":\"panel\",\"size\":[22,70],\"thickness_mm\":null,\"approximate\":true}]},{\"id\":\"B06\",\"unit\":\"cm\",\"size\":[84,115,35],\"assumptions\":\"Upper tall pair width 84 cm and height 115 cm from dimensions.\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2,\"role\":\"panel\",\"size\":[35,115],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass top\",\"quantity\":1,\"role\":\"panel\",\"size\":[84,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass bottom\",\"quantity\":1,\"role\":\"panel\",\"size\":[84,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Back panel\",\"quantity\":1,\"role\":\"panel\",\"size\":[84,115],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Shelf\",\"quantity\":2,\"role\":\"panel\",\"size\":[84,35],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Hinged door\",\"quantity\":2,\"role\":\"panel\",\"size\":[42,115],\"thickness_mm\":null,\"approximate\":true}]},{\"id\":\"B07\",\"unit\":\"cm\",\"size\":[75,85,60],\"assumptions\":\"Lower door run width estimated from front layout; base height 85 cm.\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2,\"role\":\"panel\",\"size\":[60,85],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass top\",\"quantity\":1,\"role\":\"panel\",\"size\":[75,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass bottom\",\"quantity\":1,\"role\":\"panel\",\"size\":[75,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Back panel\",\"quantity\":1,\"role\":\"panel\",\"size\":[75,85],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Shelf\",\"quantity\":2,\"role\":\"panel\",\"size\":[75,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Hinged door\",\"quantity\":3,\"role\":\"panel\",\"size\":[25,70],\"thickness_mm\":null,\"approximate\":true}]},{\"id\":\"B08\",\"unit\":\"cm\",\"size\":[50,85,60],\"assumptions\":\"End door and three-drawer stack in one base carcass; drawers 151 cm span segment assumed for this block width.\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2,\"role\":\"panel\",\"size\":[60,85],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass top\",\"quantity\":1,\"role\":\"panel\",\"size\":[50,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass bottom\",\"quantity\":1,\"role\":\"panel\",\"size\":[50,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Back panel\",\"quantity\":1,\"role\":\"panel\",\"size\":[50,85],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Hinged door\",\"quantity\":1,\"role\":\"panel\",\"size\":[50,70],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Drawer body side\",\"quantity\":6,\"role\":\"panel\",\"size\":[\"drawer_depth\",12],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Drawer body end panel\",\"quantity\":6,\"role\":\"panel\",\"size\":[50,12],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Drawer bottom\",\"quantity\":3,\"role\":\"panel\",\"size\":[\"drawer_depth\",50],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Drawer front\",\"quantity\":3,\"role\":\"panel\",\"size\":[50,20],\"thickness_mm\":null,\"approximate\":true}]},{\"id\":\"B09\",\"unit\":\"cm\",\"size\":[30,265,60],\"assumptions\":\"Tall end column width estimated from elevation; no front IDs assigned, treated as fixed panel per planner uncertainty.\",\"parts\":[{\"name\":\"Carcass side wall\",\"quantity\":2,\"role\":\"panel\",\"size\":[60,265],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass top\",\"quantity\":1,\"role\":\"panel\",\"size\":[30,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Carcass bottom\",\"quantity\":1,\"role\":\"panel\",\"size\":[30,60],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Back panel\",\"quantity\":1,\"role\":\"panel\",\"size\":[30,265],\"thickness_mm\":null,\"approximate\":true},{\"name\":\"Shelf\",\"quantity\":3,\"role\":\"panel\",\"size\":[30,60],\"thickness_mm\":null,\"approximate\":true}]},{\"id\":\"S01\",\"unit\":\"cm\",\"size\":[416,4,60],\"assumptions\":\"L-shaped worktop over base runs B04, B05, B07, B08; decomposed into non-overlapping rectangular arms from top view; thickness 3 cm.\",\"parts\":[{\"name\":\"Worktop arm (long)\",\"quantity\":1,\"role\":\"worktop\",\"size\":[416,60],\"thickness_mm\":30,\"approximate\":true},{\"name\":\"Worktop arm (return)\",\"quantity\":1,\"role\":\"worktop\",\"size\":[260,60],\"thickness_mm\":30,\"approximate\":true}]}]}",
+  "normalized_b08": {
+    "id": "B08",
+    "size_mm": [
+      500.0,
+      850.0,
+      600.0
+    ],
+    "assumptions": "End door and three-drawer stack in one base carcass; drawers 151 cm span segment assumed for this block width.",
+    "parts": [
+      {
+        "name": "Carcass side wall",
+        "quantity": 2,
+        "role": "panel",
+        "size_mm": [
+          600.0,
+          850.0,
+          17
+        ],
+        "approximate": true,
+        "thickness_basis": "default",
+        "drawer_depth_derived": false
+      },
+      {
+        "name": "Carcass top",
+        "quantity": 1,
+        "role": "panel",
+        "size_mm": [
+          500.0,
+          600.0,
+          17
+        ],
+        "approximate": true,
+        "thickness_basis": "default",
+        "drawer_depth_derived": false
+      },
+      {
+        "name": "Carcass bottom",
+        "quantity": 1,
+        "role": "panel",
+        "size_mm": [
+          500.0,
+          600.0,
+          17
+        ],
+        "approximate": true,
+        "thickness_basis": "default",
+        "drawer_depth_derived": false
+      },
+      {
+        "name": "Back panel",
+        "quantity": 1,
+        "role": "panel",
+        "size_mm": [
+          500.0,
+          850.0,
+          17
+        ],
+        "approximate": true,
+        "thickness_basis": "default",
+        "drawer_depth_derived": false
+      },
+      {
+        "name": "Hinged door",
+        "quantity": 1,
+        "role": "panel",
+        "size_mm": [
+          500.0,
+          700.0,
+          17
+        ],
+        "approximate": true,
+        "thickness_basis": "default",
+        "drawer_depth_derived": false
+      },
+      {
+        "name": "Drawer body side",
+        "quantity": 6,
+        "role": "panel",
+        "size_mm": [
+          500,
+          120.0,
+          17
+        ],
+        "approximate": true,
+        "thickness_basis": "default",
+        "drawer_depth_derived": true
+      },
+      {
+        "name": "Drawer body end panel",
+        "quantity": 6,
+        "role": "panel",
+        "size_mm": [
+          500.0,
+          120.0,
+          17
+        ],
+        "approximate": true,
+        "thickness_basis": "default",
+        "drawer_depth_derived": false
+      },
+      {
+        "name": "Drawer bottom",
+        "quantity": 3,
+        "role": "panel",
+        "size_mm": [
+          500,
+          500.0,
+          17
+        ],
+        "approximate": true,
+        "thickness_basis": "default",
+        "drawer_depth_derived": true
+      },
+      {
+        "name": "Drawer front",
+        "quantity": 3,
+        "role": "panel",
+        "size_mm": [
+          500.0,
+          200.0,
+          17
+        ],
+        "approximate": true,
+        "thickness_basis": "default",
+        "drawer_depth_derived": false
+      }
+    ]
+  }
+}

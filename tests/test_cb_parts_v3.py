@@ -49,9 +49,10 @@ def test_invalid_contract_is_not_repaired(monkeypatch, change):
     with pytest.raises(ValueError): compose_cb_sized_parts(raw, scope=scope)
 
 
-def test_v3_one_call_whole_evidence_no_legacy_composition(monkeypatch):
+@pytest.mark.parametrize("version", ["CB Parts V3", "CB Parts V3.1"])
+def test_v3_one_call_whole_evidence_no_legacy_composition(monkeypatch, version):
     row, pages, scope, _ = fixture(monkeypatch)
-    scope["parts_version"] = "CB Parts V3"
+    scope["parts_version"] = version
     calls, records = [], []
     raw = answer()
     monkeypatch.setattr(agent, "get_anthropic_client", lambda: SimpleNamespace(with_options=lambda **kw: object()))
@@ -65,12 +66,24 @@ def test_v3_one_call_whole_evidence_no_legacy_composition(monkeypatch):
         dimension_graph={}, dimension_scale_gate={}, allowed_material_families=[], cb_parts_scope=scope,
         record=lambda *args: records.append(args))
     assert len(calls) == 1 and len(records) == 2
-    assert calls[0]["system"].startswith("CB Parts V3")
+    assert calls[0]["system"].splitlines()[0] == version
     assert all(ord(c) < 128 for c in calls[0]["system"])
     assert any(b["type"] == "image" for b in calls[0]["messages"][0]["content"])
     assert result["extraction"] == raw and "bom" not in result
     assert result["upstream_status"]["front"] == "failed"
     assert result["status"] == "cb_parts_sized_requires_review"
+
+
+def test_v3_1_adds_only_one_generic_width_rule():
+    prompts = Path(__file__).resolve().parents[1] / "agents/prompts"
+    original = (prompts / "cb_parts_v3.md").read_text().split("\n\n")
+    revised = (prompts / "cb_parts_v3_1.md").read_text().split("\n\n")
+    rule = revised.pop(3)
+    assert rule.startswith("Width estimation:")
+    assert "neighbouring blocks" in rule and "assumptions field" in rule
+    assert all(token not in rule for token in ("151", "B08", "Lev2", "110"))
+    revised[0] = original[0]
+    assert revised == original
 
 
 def test_live_v3_witness_retains_geometry_failures():
@@ -87,3 +100,18 @@ def test_live_v3_witness_retains_geometry_failures():
     assert next(p for p in b["parts"] if p["name"] == "Shared internal partition")["quantity"] == 1
     fronts = next(p for p in b["parts"] if p["name"] == "Drawer front")
     assert fronts["quantity"] == 3 and fronts["size"] == [30, 22]  # visible error, not repaired
+
+
+def test_live_v3_1_preserves_failed_width_allocation_and_missing_divider():
+    saved = json.loads((Path(__file__).resolve().parents[1] / "notes/evidence/cb-parts-v3-1-2026-11-06/lev2-sized-parts.json").read_text())
+    raw = json.loads(saved["response_text"])
+    scope = {"planner": {"blocks": [{"id": x} for x in saved["input_block_ids"]], "shared_parts": []}}
+    result = compose_cb_sized_parts(raw, scope=scope)
+    b08 = next(b for b in result["blocks"] if b["id"] == "B08")
+    assert b08 == saved["normalized_b08"]
+    assert saved["same_input_and_pages_as_v3"] and saved["request_same_except_prompt_and_version"]
+    assert saved["provider_calls"] == 1 and not saved["semantic_accepted"]
+    assert b08["size_mm"][0] == 500
+    assert next(p for p in b08["parts"] if p["name"] == "Hinged door")["size_mm"][0] == 500
+    assert next(p for p in b08["parts"] if p["name"] == "Drawer front")["size_mm"][0] == 500
+    assert not any("partition" in p["name"].lower() or "divider" in p["name"].lower() for p in b08["parts"])

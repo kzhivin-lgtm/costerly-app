@@ -235,10 +235,12 @@ def _run_cb_parts(*, input_row, page_bytes, dimension_graph, dimension_scale_gat
         rule = rule["previous"]
     elif version == rule["v2"]["version"]:
         rule = rule["v2"]
+    elif version == rule["v3_1"]["version"]:
+        rule = rule["v3_1"]
     elif version != rule["version"]:
         raise ValueError("unknown CB Parts version")
     count_only = version == "CB Parts V2"
-    sized = version == "CB Parts V3"
+    sized = version in ("CB Parts V3", "CB Parts V3.1")
     if scope.get("input_id") != input_row.get("input_id"):
         raise ValueError("CB Parts scope belongs to a different input")
     if model not in (None, MODEL):

@@ -1000,6 +1000,20 @@ Older tags and 50 unrelated TODO lines retained. Stop further experiments until
 the owner chooses the next task; outstanding quality defects remain pending P0.
 
 Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, ACTIVE, V3 geometry acceptance failed:
+LATEST APPROVED EXPERIMENT: CB Parts V3.1 adds exactly one generic paragraph
+about distributing a labelled span across visible intervals, including adjacent
+blocks, then summing the target block intervals. No Lev2/B08 numbers or special
+case in the instruction. Original V3 prompt/default and raw trial are retained.
+One unchanged-evidence Haiku trial: 13.439 s, 3840 output tokens, format PASS,
+targeted semantic check FAIL. B08 whole width=500 mm, door=500 mm and drawer
+bay=500 mm, so two side-by-side bays cannot fit the returned block. Shared
+partition disappears; drawer front heights remain identical. Mentions 151 cm
+without the requested interval allocation. No manual repair or default promotion.
+Evidence: notes/evidence/cb-parts-v3-1-2026-11-06/lev2-sized-parts.json.
+NEXT recommendation, NOT APPROVED: make bay widths and their block sum explicit
+within the same response, with a deterministic consistency check. This requires
+a small contract change, not another unstructured comment or additional call.
+Single-run output variation is not proof of a specific causal mechanism.
 V3 APPROVED AND TESTED: compact sized rows, one Haiku Calculate for all of Lev2,
 same five images and saved V3/V7 scope as V2. 16.529 s, 4498 output tokens,
 no thinking tokens. All nine blocks and shared top pass shape/coverage; code
@@ -1011,9 +1025,8 @@ unresolved generic assumption. V2 shelf is omitted. B09 still invents a door.
 Status: NOT ACCEPTED, no production promotion or integrated Analyze claim.
 Evidence: notes/evidence/cb-parts-v3-2026-11-06/lev2-sized-parts.json, unchanged
 raw response and separate numeric conversion. V1/V2 remain selectable.
-NEXT recommendation: isolate block/bay dimension interpretation on the same
-evidence before extending material calculations; no extra call or new prompt
-revision approved by this recommendation. Existing checkpoints remain protected.
+Prior recommendation to isolate width interpretation led to the approved V3.1
+one-comment trial above. Existing checkpoints remain protected.
 LATEST OWNER OUTCOME: CB Parts must itself deliver the discussed practical
 parts breakdown WITH quantities and dimensions for ALL objects, grouped by
 object/block. The assistant's manual B08 estimate illustrates the desired

@@ -52,6 +52,11 @@ This file explains where code belongs so the project stays understandable.
   Lev2 16.529 s: format passes, B08 geometry fails visual review; not accepted.
   `notes/evidence/cb-parts-v3-2026-11-06/lev2-sized-parts.json` preserves raw
   response plus separate normalized rows. Front/Planner/production unchanged.
+- CB Parts V3.1 explicit experiment: `agents/prompts/cb_parts_v3_1.md`,
+  `--parts-version V3.1`. V3 plus one universal width-span instruction, unchanged
+  schema/geometry code. Lev2 13.439 s, failed block-versus-bay width consistency,
+  missing divider. Not promoted over V3. Raw evidence:
+  `notes/evidence/cb-parts-v3-1-2026-11-06/lev2-sized-parts.json`.
 - `use_cases/machinery.py` owns the 27-code storage catalog, the 16-capability
   Company Profile subset, outsourceable-operation boundary, company/supplier
   validation, Supabase persistence, and the bounded production-context snapshot

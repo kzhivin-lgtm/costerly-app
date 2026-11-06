@@ -1,5 +1,17 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: owner-approved CB Parts V3.1 one-comment experiment.
+Only prompt header and one universal span-allocation paragraph differ from V3;
+same schema, code arithmetic, full evidence and upstream scope. One Haiku call,
+13.439 s, 3840 output tokens, no thinking. B08 FAIL: block 500 mm but adjacent
+door and drawer bays each 500 mm, missing shared divider, equal drawer fronts.
+151 cm mentioned without allocation. Raw response retained under
+notes/evidence/cb-parts-v3-1-2026-11-06/lev2-sized-parts.json. No manual repair.
+177 relevant tests pass, including unchanged V3 and failed V3.1 evidence.
+V3.1 selectable explicitly for replay only; V3 default, Front/Planner, main and
+production unchanged. No new checkpoint or visual/geometry acceptance claim.
+
+
 2026-11-06, 3.17.4.6: implemented approved CB Parts V3 sized-list experiment
 inside one opt-in Calculate call. Retained V1/V2 replay and Front/Planner defaults.
 Code converts declared units, applies 17/30 mm fallback thickness and drawer
