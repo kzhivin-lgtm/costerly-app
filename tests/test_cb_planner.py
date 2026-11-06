@@ -87,7 +87,11 @@ def test_v7_candidate_full_depth_and_whole_carcass_without_recounting():
     assert drawer_block['front_ids'] == ['F12', 'F13', 'F14', 'F15']
     benchmark = json.loads(evidence.with_name('n68-owner-benchmark-2026-11-06.json').read_text())
     assert benchmark['expected']['drawers'] == 6
-    assert benchmark['expected']['hinged_doors'] == 8
+    assert benchmark['expected']['door_like_fronts'] == 10
+    assert sum(benchmark['door_breakdown'].values()) == 10
+    assert benchmark['expected']['ordinary_door_fronts'] == 9
+    assert benchmark['expected']['appliance_drop_down_fronts'] == 1
+    assert benchmark['expected']['hinged_doors'] is None
     assert benchmark['expected']['lift_up_fronts'] is None
     assert benchmark['expected']['drawers'] - len(drawer_block['front_ids']) == 2
 

@@ -26,8 +26,15 @@ private archive identity and final 166-test verification are in that record.
 ### Owner follow-up, 2026-11-06
 
 CB Planner V7 candidate adds full-width/depth coverage of low-base tops to
-the wall and full-carcass localization, retaining V5/V6 rules. Not yet run;
-Front V2 / Planner V4 remain selected. Owner identifies the crossed element
+the wall and full-carcass localization, retaining V5/V6 rules. Subsequent
+approved Front V3 + Planner V7 trial: six correctly located drawer fronts,
+seven door-like fronts, Front enum failure; Planner truncates at 6000
+tokens. Worktop correction remains unverified. Two calls, no retries or silent
+repairs. Latest owner benchmark is TEN door-like rectangles (5 tall + 2 under
+sink + 1 dishwasher + 2 tall-column fronts), separately SIX drawers. V3 misses
+the dishwasher and two column fronts. A downward-opening appliance front is
+not evidence for gas lifts or ordinary cabinet hinges. Front V2 / Planner V4
+remain selected. Owner identifies the crossed element
 as an already represented section. Revalidate the previous omission claim
 before restoring any extra block. Raw V6 assigns four drawer IDs to B06.
 Owner then corrected the benchmark to SIX drawers: two lower drawers are

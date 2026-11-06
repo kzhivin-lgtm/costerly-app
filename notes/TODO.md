@@ -746,7 +746,8 @@ V1 replay, exact prompt hashes, Lev2 Front result and rejection of truncated
 Planner output. git diff --check passes. Protected r03 tag remains unchanged.
 
 N68 owner follow-up, 2026-11-06, same 3.17.4.5, P0:
-IMPLEMENTED CANDIDATE / LIVE VERIFICATION PENDING, CB Planner V7. Owner asks
+IMPLEMENTED CANDIDATE, CB Planner V7. Initially unrun; the later controlled
+N68 experiment below remains unaccepted. Owner asks
 that the worktop cover the complete low-base run, full depth to the wall;
 do not offset it by the depth of hanging shelving/cabinets. Approximate base
 heights around 900 mm / up to 1200 mm are context, not a hard threshold.
@@ -770,17 +771,61 @@ notes/evidence/hsl07-v62-2026-11-05/n68-owner-benchmark-2026-11-06.json.
 V7 asks for the complete carcass box, not just union of supplied front boxes,
 and reconciliation of repeated views/sections without duplicate assemblies.
 Whether the worktop setback was caused by hanging-shelf depth is UNKNOWN;
-the saved response gives no causal explanation. No semantic acceptance or
-promotion of V7, no new model calls. Runtime still selects Front V2 / Planner V4.
+the saved response gives no causal explanation. Initial preparation made no
+model calls. V7 remains unpromoted; runtime selects Front V2 / Planner V4.
 Prompt: agents/prompts/cb_planner_v7.md; SHA256
 d3271d697f5398e699511d8a261f3f8734bf744835b52b894188d37d819cd848.
 Priority next proposal after owner's correction: investigate/fix Front's
 omitted lower row before claiming complete N68 counts. Planner-only V7 replay
 can test top/block localization but cannot validate six-drawer recognition
-while consuming the old four-ID Front. No Front fix or new run implemented.
+while consuming the old four-ID Front. The subsequently authorized V3/V7
+experiment is recorded below, without rewriting this earlier diagnostic.
 26 Planner tests pass including the corrected benchmark fixture. These tests
 preserve the known two-drawer mismatch, not prove it fixed. Checkpoint
 6952b4e and raw V4/V5/V6 witnesses remain intact.
+
+N68 Front V3 / Planner V7, USER-APPROVED experiment, 2026-11-06,
+same 3.17.4.5, P0, COMPLETED experiment / NOT ACCEPTED:
+Front V3 adds only generic complete-stack/larger-bottom-front versus plinth
+guidance, retaining unresolved/excluded alternatives and all V2 tasks/schema.
+No N68-specific count or example is in the prompt. SHA256
+2530993b653575e5445eced53b34ed6b9393eb73c30428c2bac28d641d49429b.
+One Front call (36.453 s): six drawers, seven hinged doors, five lift-ups.
+The six drawer boxes include both taller bottom fronts, inspected on the exact
+overlay. However, the base door to the right of the central pair on p7-view-003
+(old Front F06) is omitted, rather than marked unresolved/excluded. The at-run
+review used six drawers / eight doors. Latest owner correction supersedes it:
+TEN door-like rectangular fronts (five tall, two under sink, one dishwasher,
+two in the tall appliance column), separately SIX drawers. V3 covers seven
+of ten, missing the dishwasher and two column fronts. V2 also missed the two
+column fronts. This does not make the crossed sectional region another object.
+The dishwasher opens down; ten rectangles do not imply ten ordinary hinged
+doors or gas-lift demand. Preserve raw results and the dated at-run review.
+Five inferred lift-ups remain unaccepted. Pending P0: complete front coverage;
+hardware classification for appliance fronts needs separate contract review,
+not an unapproved schema change or automatic new prompt experiment.
+Original Front status failed on snake_case island enums; only display labels
+were normalized by the existing diagnostic overlay flag. Raw response, IDs,
+coordinates and counts were not changed. Unsupported 10 mm plinth also appears
+in its uncertainty. No causal certainty is claimed from this single comparison.
+One Planner V7 call (30.261 s) consumed this unchanged failed Front explicitly
+as a fallible reference. It hits max_tokens=6000 (3884 thinking), truncating
+inside uncertainties. Partial S01 text is NOT an accepted complete plan;
+no JSON salvage, completed-plan overlay or verified worktop result. Total two
+calls, 66.714 s summed stage time, no retry/budget increase/DB writes/deployment.
+Exact N68 inputs/images unchanged; Front request changes only system versus
+V2. Planner changes system and saved Front context versus V6; settings unchanged.
+Default remains Front V2 + Planner V4. V3/V7 retained as experiments only.
+Evidence: notes/evidence/hsl07-v62-2026-11-06/n68-front-v3-planner-v7.json.
+Full witnesses and display-only Front overlay: /private/tmp/hsl07-saved-replay-20261105-01/,
+object-005-front-v3-20261106* and object-005-planner-v7-front-v3-20261106*.
+Next proposal: resolve Planner completion without adding recognition rules;
+separately retain the Front enum and three-front omission blockers. No further
+repair or model call authorized by this record. The six-page rotation issue
+is not implicated in N68's unrotated page and remains pending independently.
+Verification: 170 focused tests pass, including current ten-front/six-drawer
+benchmark, unchanged defaults, exact candidate identity and rejection of both
+failed responses. These checks do not establish semantic acceptance.
 
 HSL saved-package replay, USER REQUEST, 2026-11-05, same 3.17.4.5,
 P0, COMPLETED diagnostic replay; acceptance FAILED: owner explicitly requests existing

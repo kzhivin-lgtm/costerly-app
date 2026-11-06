@@ -1,0 +1,424 @@
+{
+  "work_number": "3.17.4.5",
+  "date": "2026-11-06",
+  "run_id": "run_99b433940dcc4fd9abbe0587dc56fb12",
+  "object_id": "object-005",
+  "sheet": "N68",
+  "calls": 2,
+  "retries": 0,
+  "database_writes": false,
+  "local_directory": "/private/tmp/hsl07-saved-replay-20261105-01",
+  "source_inputs_images_unchanged": true,
+  "front_changed_request_fields": [
+    "system"
+  ],
+  "planner_changed_request_fields": [
+    "system",
+    "saved_front_context"
+  ],
+  "stages": {
+    "front": {
+      "prompt_version": "CB Front V3",
+      "prompt_sha256": "2530993b653575e5445eced53b34ed6b9393eb73c30428c2bac28d641d49429b",
+      "request_sha256": "c78aa0e37ff29288038d73cf9f6123d687467a48a157dc9bc024b1cefdae6722",
+      "response_text": "```json\n{\n  \"island_types\": [\n    {\"view_id\": \"p7-view-001\", \"type\": \"top_view\"},\n    {\"view_id\": \"p7-view-002\", \"type\": \"top_view\"},\n    {\"view_id\": \"p7-view-003\", \"type\": \"front_elevation\"},\n    {\"view_id\": \"p7-view-004\", \"type\": \"front_elevation\"}\n  ],\n  \"front_groups\": [\n    {\n      \"location\": \"Wall 1 tall storage run, left end (VEN-01 units)\",\n      \"type\": \"hinged\",\n      \"count\": 3,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p7-view-004\"],\n      \"uncertainty\": \"Three portrait fronts are split by vertical lines and closing storage openings. Opening symbols are not visible, so hinged type is inferred from the portrait shape.\",\n      \"fronts\": [\n        {\"id\": \"F01\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [110, 360, 200, 829]},\n        {\"id\": \"F02\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [200, 360, 283, 829]},\n        {\"id\": \"F03\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [283, 360, 367, 829]}\n      ]\n    },\n    {\n      \"location\": \"Wall 1 integrated refrigerator column\",\n      \"type\": \"hinged\",\n      \"count\": 2,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p7-view-004\"],\n      \"uncertainty\": \"Two equal-width fronts (62 and 62) are labelled as integrated refrigerator. Opening type is not drawn, so a hinged pair is inferred from the tall storage format.\",\n      \"fronts\": [\n        {\"id\": \"F04\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [367, 437, 452, 827]},\n        {\"id\": \"F05\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [452, 437, 538, 827]}\n      ]\n    },\n    {\n      \"location\": \"Wall 1 base drawer bank under counter (two columns of three)\",\n      \"type\": \"drawer\",\n      \"count\": 6,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p7-view-004\"],\n      \"uncertainty\": \"Each column shows three stacked fronts (two shallow, one taller at the base). The base is taken at the line above the 10 mm plinth. Drawer movement is inferred from the shallow, wide stacked format.\",\n      \"fronts\": [\n        {\"id\": \"F06\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [538, 675, 647, 714]},\n        {\"id\": \"F07\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [538, 714, 647, 749]},\n        {\"id\": \"F08\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [538, 749, 647, 827]},\n        {\"id\": \"F09\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [647, 675, 759, 714]},\n        {\"id\": \"F10\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [647, 714, 759, 749]},\n        {\"id\": \"F11\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [647, 749, 759, 827]}\n      ]\n    },\n    {\n      \"location\": \"Wall 1 upper cabinets over counter\",\n      \"type\": \"lift_up\",\n      \"count\": 2,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p7-view-004\"],\n      \"uncertainty\": \"Two gas-strut symbols mark lift-up fronts. Plan view p7-view-002 shows paired upper panels that could instead be hinged doors. Lift-up is taken from the strut symbols.\",\n      \"fronts\": [\n        {\"id\": \"F12\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [538, 465, 630, 532]},\n        {\"id\": \"F13\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [630, 465, 760, 532]}\n      ]\n    },\n    {\n      \"location\": \"Wall 2 upper cabinets over counter\",\n      \"type\": \"lift_up\",\n      \"count\": 3,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p7-view-003\"],\n      \"uncertainty\": \"Three gas-strut symbols sit over the counter. Their unit boundaries are estimated from the strut positions and the 253 mm run dimension.\",\n      \"fronts\": [\n        {\"id\": \"F14\", \"view_id\": \"p7-view-003\", \"bbox_1000\": [288, 469, 400, 536]},\n        {\"id\": \"F15\", \"view_id\": \"p7-view-003\", \"bbox_1000\": [400, 469, 515, 536]},\n        {\"id\": \"F16\", \"view_id\": \"p7-view-003\", \"bbox_1000\": [515, 469, 672, 536]}\n      ]\n    },\n    {\n      \"location\": \"Wall 2 base cabinet doors (between blind end panel and corner)\",\n      \"type\": \"hinged\",\n      \"count\": 2,\n      \"count_basis\": \"estimated\",\n      \"view_ids\": [\"p7-view-003\"],\n      \"uncertainty\": \"Two tall fronts are visible beside the blind panel. The boundary at the right near the 'מדריה' symbol is unclear, so the count is estimated.\",\n      \"fronts\": [\n        {\"id\": \"F17\", \"view_id\": \"p7-view-003\", \"bbox_1000\": [400, 680, 496, 848]},\n        {\"id\": \"F18\", \"view_id\": \"p7-view-003\", \"bbox_1000\": [496, 680, 584, 848]}\n      ]\n    }\n  ],\n  \"excluded_surfaces\": [\n    {\"id\": \"X01\", \"view_id\": \"p7-view-003\", \"bbox_1000\": [208, 680, 344, 848], \"reason\": \"blind X-marked panel at base end; fixed, not an operating front\"},\n    {\"id\": \"X02\", \"view_id\": \"p7-view-004\", \"bbox_1000\": [758, 675, 852, 827], \"reason\": \"blind X-marked fixed panel at base end; not an operating front\"}\n  ],\n  \"tabletop_supports\": [],\n  \"totals\": {\n    \"drawers\": 6,\n    \"hinged_doors\": 7,\n    \"lift_up_fronts\": 5,\n    \"unresolved_fronts\": 0,\n    \"total_fronts\": 18\n  }\n}\n```",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 32757,
+        "output_tokens": 7161,
+        "output_tokens_details": {
+          "thinking_tokens": 5018
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "status": "failed",
+      "error": "ValueError: invalid island classification",
+      "elapsed_seconds": 36.453,
+      "stop_reason": "end_turn",
+      "model": "claude-haiku-5-5",
+      "request_settings": {
+        "model": "claude-haiku-5-5",
+        "max_tokens": 10000,
+        "output_config": {
+          "effort": "low"
+        }
+      },
+      "parsed_response": {
+        "island_types": [
+          {
+            "view_id": "p7-view-001",
+            "type": "top_view"
+          },
+          {
+            "view_id": "p7-view-002",
+            "type": "top_view"
+          },
+          {
+            "view_id": "p7-view-003",
+            "type": "front_elevation"
+          },
+          {
+            "view_id": "p7-view-004",
+            "type": "front_elevation"
+          }
+        ],
+        "front_groups": [
+          {
+            "location": "Wall 1 tall storage run, left end (VEN-01 units)",
+            "type": "hinged",
+            "count": 3,
+            "count_basis": "estimated",
+            "view_ids": [
+              "p7-view-004"
+            ],
+            "uncertainty": "Three portrait fronts are split by vertical lines and closing storage openings. Opening symbols are not visible, so hinged type is inferred from the portrait shape.",
+            "fronts": [
+              {
+                "id": "F01",
+                "view_id": "p7-view-004",
+                "bbox_1000": [
+                  110,
+                  360,
+                  200,
+                  829
+                ]
+              },
+              {
+                "id": "F02",
+                "view_id": "p7-view-004",
+                "bbox_1000": [
+                  200,
+                  360,
+                  283,
+                  829
+                ]
+              },
+              {
+                "id": "F03",
+                "view_id": "p7-view-004",
+                "bbox_1000": [
+                  283,
+                  360,
+                  367,
+                  829
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Wall 1 integrated refrigerator column",
+            "type": "hinged",
+            "count": 2,
+            "count_basis": "estimated",
+            "view_ids": [
+              "p7-view-004"
+            ],
+            "uncertainty": "Two equal-width fronts (62 and 62) are labelled as integrated refrigerator. Opening type is not drawn, so a hinged pair is inferred from the tall storage format.",
+            "fronts": [
+              {
+                "id": "F04",
+                "view_id": "p7-view-004",
+                "bbox_1000": [
+                  367,
+                  437,
+                  452,
+                  827
+                ]
+              },
+              {
+                "id": "F05",
+                "view_id": "p7-view-004",
+                "bbox_1000": [
+                  452,
+                  437,
+                  538,
+                  827
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Wall 1 base drawer bank under counter (two columns of three)",
+            "type": "drawer",
+            "count": 6,
+            "count_basis": "estimated",
+            "view_ids": [
+              "p7-view-004"
+            ],
+            "uncertainty": "Each column shows three stacked fronts (two shallow, one taller at the base). The base is taken at the line above the 10 mm plinth. Drawer movement is inferred from the shallow, wide stacked format.",
+            "fronts": [
+              {
+                "id": "F06",
+                "view_id": "p7-view-004",
+                "bbox_1000": [
+                  538,
+                  675,
+                  647,
+                  714
+                ]
+              },
+              {
+                "id": "F07",
+                "view_id": "p7-view-004",
+                "bbox_1000": [
+                  538,
+                  714,
+                  647,
+                  749
+                ]
+              },
+              {
+                "id": "F08",
+                "view_id": "p7-view-004",
+                "bbox_1000": [
+                  538,
+                  749,
+                  647,
+                  827
+                ]
+              },
+              {
+                "id": "F09",
+                "view_id": "p7-view-004",
+                "bbox_1000": [
+                  647,
+                  675,
+                  759,
+                  714
+                ]
+              },
+              {
+                "id": "F10",
+                "view_id": "p7-view-004",
+                "bbox_1000": [
+                  647,
+                  714,
+                  759,
+                  749
+                ]
+              },
+              {
+                "id": "F11",
+                "view_id": "p7-view-004",
+                "bbox_1000": [
+                  647,
+                  749,
+                  759,
+                  827
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Wall 1 upper cabinets over counter",
+            "type": "lift_up",
+            "count": 2,
+            "count_basis": "estimated",
+            "view_ids": [
+              "p7-view-004"
+            ],
+            "uncertainty": "Two gas-strut symbols mark lift-up fronts. Plan view p7-view-002 shows paired upper panels that could instead be hinged doors. Lift-up is taken from the strut symbols.",
+            "fronts": [
+              {
+                "id": "F12",
+                "view_id": "p7-view-004",
+                "bbox_1000": [
+                  538,
+                  465,
+                  630,
+                  532
+                ]
+              },
+              {
+                "id": "F13",
+                "view_id": "p7-view-004",
+                "bbox_1000": [
+                  630,
+                  465,
+                  760,
+                  532
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Wall 2 upper cabinets over counter",
+            "type": "lift_up",
+            "count": 3,
+            "count_basis": "estimated",
+            "view_ids": [
+              "p7-view-003"
+            ],
+            "uncertainty": "Three gas-strut symbols sit over the counter. Their unit boundaries are estimated from the strut positions and the 253 mm run dimension.",
+            "fronts": [
+              {
+                "id": "F14",
+                "view_id": "p7-view-003",
+                "bbox_1000": [
+                  288,
+                  469,
+                  400,
+                  536
+                ]
+              },
+              {
+                "id": "F15",
+                "view_id": "p7-view-003",
+                "bbox_1000": [
+                  400,
+                  469,
+                  515,
+                  536
+                ]
+              },
+              {
+                "id": "F16",
+                "view_id": "p7-view-003",
+                "bbox_1000": [
+                  515,
+                  469,
+                  672,
+                  536
+                ]
+              }
+            ]
+          },
+          {
+            "location": "Wall 2 base cabinet doors (between blind end panel and corner)",
+            "type": "hinged",
+            "count": 2,
+            "count_basis": "estimated",
+            "view_ids": [
+              "p7-view-003"
+            ],
+            "uncertainty": "Two tall fronts are visible beside the blind panel. The boundary at the right near the 'מדריה' symbol is unclear, so the count is estimated.",
+            "fronts": [
+              {
+                "id": "F17",
+                "view_id": "p7-view-003",
+                "bbox_1000": [
+                  400,
+                  680,
+                  496,
+                  848
+                ]
+              },
+              {
+                "id": "F18",
+                "view_id": "p7-view-003",
+                "bbox_1000": [
+                  496,
+                  680,
+                  584,
+                  848
+                ]
+              }
+            ]
+          }
+        ],
+        "excluded_surfaces": [
+          {
+            "id": "X01",
+            "view_id": "p7-view-003",
+            "bbox_1000": [
+              208,
+              680,
+              344,
+              848
+            ],
+            "reason": "blind X-marked panel at base end; fixed, not an operating front"
+          },
+          {
+            "id": "X02",
+            "view_id": "p7-view-004",
+            "bbox_1000": [
+              758,
+              675,
+              852,
+              827
+            ],
+            "reason": "blind X-marked fixed panel at base end; not an operating front"
+          }
+        ],
+        "tabletop_supports": [],
+        "totals": {
+          "drawers": 6,
+          "hinged_doors": 7,
+          "lift_up_fronts": 5,
+          "unresolved_fronts": 0,
+          "total_fronts": 18
+        }
+      }
+    },
+    "planner": {
+      "prompt_version": "CB Planner V7",
+      "prompt_sha256": "d3271d697f5398e699511d8a261f3f8734bf744835b52b894188d37d819cd848",
+      "request_sha256": "54d6f0c0599269b6a31928924cb136e18e1e894ba8f6ab0127a517a1ac61da33",
+      "response_text": "{\n  \"summary\": \"An L-shaped kitchen with a tall storage run and integrated fridge on wall 1, a base run with drawers on wall 1, upper cabinets on both walls, and a hinged base run with a corner tall column on wall 2.\",\n  \"blocks\": [\n    {\n      \"id\": \"B01\",\n      \"name\": \"Wall 1 tall storage pair (left end)\",\n      \"contains\": \"Two tall VEN-01 leaves forming one full-height storage section at the left end of wall 1.\",\n      \"reason\": \"Two tall leaves closing one section stay together, which respects the two-leaf limit for tall fronts. The full-height extent is taken from the wall 1 elevation.\",\n      \"front_ids\": [\"F01\", \"F02\"],\n      \"view_ids\": [\"p7-view-004\"],\n      \"region\": {\"view_id\": \"p7-view-004\", \"bbox_1000\": [110, 360, 283, 829]}\n    },\n    {\n      \"id\": \"B02\",\n      \"name\": \"Wall 1 tall storage single leaf\",\n      \"contains\": \"One narrow tall VEN-01 leaf next to the first pair, on the same full-height run.\",\n      \"reason\": \"A third tall leaf cannot join B01 or the fridge pair without exceeding the two-leaf tall limit. It is kept as a separate single-leaf column; whether it shares a carcass with B01 is assumed, not shown.\",\n      \"front_ids\": [\"F03\"],\n      \"view_ids\": [\"p7-view-004\"],\n      \"region\": {\"view_id\": \"p7-view-004\", \"bbox_1000\": [283, 360, 367, 829]}\n    },\n    {\n      \"id\": \"B03\",\n      \"name\": \"Wall 1 integrated fridge column\",\n      \"contains\": \"Two tall fronts labelled as an integrated refrigerator, forming one full-height column.\",\n      \"reason\": \"Two tall leaves form one section, and the refrigerator label marks a separate appliance column. Opening type is inferred, not drawn.\",\n      \"front_ids\": [\"F04\", \"F05\"],\n      \"view_ids\": [\"p7-view-004\"],\n      \"region\": {\"view_id\": \"p7-view-004\", \"bbox_1000\": [367, 437, 538, 827]}\n    },\n    {\n      \"id\": \"B04\",\n      \"name\": \"Wall 1 base drawer run with blind end bay\",\n      \"contains\": \"Base carcass under the wall 1 worktop with two drawer columns of three fronts each, plus the blind X-marked end bay.\",\n      \"reason\": \"The drawer bank and the blind end bay share one base run below the worktop. The lower part of each column is taken down to the line above the plinth. The blind end bay is fixed and is not counted as a front.\",\n      \"front_ids\": [\"F06\", \"F07\", \"F08\", \"F09\", \"F10\", \"F11\"],\n      \"view_ids\": [\"p7-view-004\"],\n      \"region\": {\"view_id\": \"p7-view-004\", \"bbox_1000\": [538, 675, 852, 827]}\n    },\n    {\n      \"id\": \"B05\",\n      \"name\": \"Wall 1 upper cabinets over counter\",\n      \"contains\": \"Two lift-up upper fronts hanging above the wall 1 counter.\",\n      \"reason\": \"Upper units hang separately from the base run and are kept as their own block. Lift-up action is taken from the strut symbols.\",\n      \"front_ids\": [\"F12\", \"F13\"],\n      \"view_ids\": [\"p7-view-004\", \"p7-view-002\"],\n      \"region\": {\"view_id\": \"p7-view-004\", \"bbox_1000\": [538, 465, 760, 532]}\n    },\n    {\n      \"id\": \"B06\",\n      \"name\": \"Wall 2 upper cabinets over counter\",\n      \"contains\": \"Three lift-up upper fronts over the wall 2 counter run.\",\n      \"reason\": \"The three upper fronts share one hanging run across the 253 mm wall 2 dimension. Unit boundaries are estimated from strut positions.\",\n      \"front_ids\": [\"F14\", \"F15\", \"F16\"],\n      \"view_ids\": [\"p7-view-003\", \"p7-view-001\"],\n      \"region\": {\"view_id\": \"p7-view-003\", \"bbox_1000\": [288, 469, 672, 536]}\n    },\n    {\n      \"id\": \"B07\",\n      \"name\": \"Wall 2 base hinged run with blind end panel\",\n      \"contains\": \"Two tall base-cabinet doors beside the X-marked blind end panel, below the wall 2 worktop.\",\n      \"reason\": \"The two doors and the blind end panel form one base carcass. The count is estimated because the boundary near the symbol is unclear.\",\n      \"front_ids\": [\"F17\", \"F18\"],\n      \"view_ids\": [\"p7-view-003\", \"p7-view-001\"],\n      \"region\": {\"view_id\": \"p7-view-003\", \"bbox_1000\": [208, 680, 584, 848]}\n    },\n    {\n      \"id\": \"B08\",\n      \"name\": \"Wall 2 corner tall column with appliances\",\n      \"contains\": \"Full-height corner column with a VEN-01 tall section, an appliance opening and a lower front area.\",\n      \"reason\": \"This column is a separate tall section at the corner. No front ID was supplied for it, so it is listed with no front_ids and its doors are unresolved. Its carcass continuity with the wall 2 base is assumed.\",\n      \"front_ids\": [],\n      \"view_ids\": [\"p7-view-003\", \"p7-view-001\"],\n      \"region\": {\"view_id\": \"p7-view-003\", \"bbox_1000\": [713, 250, 834, 849]}\n    }\n  ],\n  \"shared_parts\": [\n    {\n      \"id\": \"S01\",\n      \"name\": \"L-shaped worktop over wall 1 and wall 2 base runs\",\n      \"block_ids\": [\"B04\", \"B07\"],\n      \"view_ids\": [\"p7-view-001\"],\n      \"region\": {\"view_id\": \"p7-view-001\", \"bbox_1000\": [520, 200, 880, 800]}\n    }\n  ],\n  \"front_conflicts\": [],\n  \"uncertainties\": [\n    \"Wall 2 corner tall column (B08) has no supplied front IDs, so its door and appliance count cannot be resolved.\",\n    \"The F12 and F13 upper fronts could be hinged doors instead of lift-up, based on paired panels in the plan view.\",\n    \"Whether the single tall leaf F03 shares a carcass with the VEN-01 pair",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 33643,
+        "output_tokens": 6000,
+        "output_tokens_details": {
+          "thinking_tokens": 3884
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "status": "failed",
+      "error": "ValueError: Planner response did not finish normally",
+      "elapsed_seconds": 30.261,
+      "stop_reason": "max_tokens",
+      "model": "claude-haiku-5-5",
+      "request_settings": {
+        "model": "claude-haiku-5-5",
+        "max_tokens": 6000,
+        "output_config": {
+          "effort": "low"
+        }
+      }
+    }
+  },
+  "review": {
+    "benchmark_scope": "At-run review below retains the earlier eight-door benchmark. Later owner clarification supersedes it without changing any model response.",
+    "latest_owner_correction": {
+      "benchmark_file": "notes/evidence/hsl07-v62-2026-11-05/n68-owner-benchmark-2026-11-06.json",
+      "door_like_fronts": 10,
+      "drawers": 6,
+      "missing_from_front_v3": ["dishwasher front", "two tall appliance-column fronts"],
+      "hardware_boundary": "Ten door-like rectangles include one downward-opening dishwasher front; this is not a ten-cabinet-hinge or gas-lift benchmark."
+    },
+    "owner_benchmark": {
+      "drawers": 6,
+      "hinged_doors": 8,
+      "lift_up_fronts": null
+    },
+    "front_result": {
+      "drawers": 6,
+      "hinged_doors": 7,
+      "lift_up_fronts": 5
+    },
+    "drawers": "Six physical boxes on p7-view-004, two columns of three, include both taller bottom fronts. Exact overlay inspected. Targeted improvement on this sample only.",
+    "doors": "Regression versus owner benchmark and prior Front: the base front to the right of the central door pair in p7-view-003 (old F06) is absent, not unresolved/excluded. New IDs are run-local; new F06 is a drawer.",
+    "other_front_limits": "All four island labels are snake_case, rejected by unchanged enum validator. Five alleged lift-ups remain unaccepted. Unsupported 10 mm plinth appears in the uncertainty.",
+    "overlay": "Existing diagnostic-label-aliases option used only for displaying island enum spelling; original witness stays failed and Planner receives unchanged raw text. No coordinates/counts changed.",
+    "planner": "max_tokens=6000, including 3884 thinking tokens. Raw text contains a worktop entry but cuts off inside uncertainties; no JSON repair or complete plan/overlay acceptance. New worktop extent remains unverified.",
+    "decision": "No promotion; selected defaults remain Front V2 and Planner V4. Preserve candidates Front V3 and Planner V7. No automatic retry, output-limit increase or change to rotation transport.",
+    "next_proposed": "Resolve bounded Planner completion and Front enum/door omission separately; do not rewrite this failed run as successful or attribute every change causally to one rule."
+  }
+}

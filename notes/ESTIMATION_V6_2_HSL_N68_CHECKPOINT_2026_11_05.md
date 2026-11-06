@@ -6,11 +6,17 @@ This is a reproducible research checkpoint, NOT production or semantic acceptanc
 The existing authoritative backlog remains notes/TODO.md.
 
 Continuation, 2026-11-06: owner corrected N68 from four to SIX drawers,
-with eight hinged doors unchanged and lift-ups still unaccepted. The historical
+then from eight doors to TEN door-like rectangular fronts (5 tall + 2 under
+sink + 1 dishwasher + 2 tall-column fronts), with lift-ups still unaccepted.
+The downward-opening dishwasher front is not an ordinary cabinet-hinge or
+gas-lift demand. The historical
 counts below describe the checkpoint, not the new benchmark. Two lower drawers
 are absent already in Front; Planner box expansion alone is insufficient.
-CB Planner V7 is a new unrun coverage/localization candidate, not a promoted
-default. See TODO and n68-owner-benchmark-2026-11-06.json in the evidence folder.
+Later Front V3 + Planner V7 trial finds six drawers and seven of ten door-like
+fronts, omitting the dishwasher and two column fronts;
+Front still fails enum validation and Planner truncates. Neither is promoted.
+See TODO, n68-owner-benchmark-2026-11-06.json and the separate
+notes/evidence/hsl07-v62-2026-11-06/n68-front-v3-planner-v7.json witness.
 The earlier crossed-region/column omission claim needs identity revalidation.
 
 ## Identity and protected state

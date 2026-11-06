@@ -63,10 +63,13 @@ One rulebook with two sections, not two mandatory new provider stages:
   mm units for bare drawing dimensions. Planner schema passes, semantics do not.
 
 Full research checkpoint: notes/ESTIMATION_V6_2_HSL_N68_CHECKPOINT_2026_11_05.md.
-Owner benchmark corrected on 2026-11-06: N68 eight hinged doors and SIX
-drawers, superseding the earlier four-drawer confirmation. The five lift-up
+Owner benchmark corrected on 2026-11-06: N68 TEN door-like fronts and SIX
+drawers, superseding the earlier eight-door/four-drawer confirmation. Ten
+comprises five tall, two under sink, one downward-opening dishwasher front,
+and two in the tall appliance column. It is not a ten-cabinet-hinge benchmark;
+appliance-front hardware is not established by the rectangle count. The five lift-up
 fronts inferred from triangular marks are not accepted as gas-lift demand.
-2026-11-06: CB Planner V7 is a pending, unrun candidate. Owner specifies full
+2026-11-06: CB Planner V7 is a tested but unaccepted candidate. Owner specifies full
 base-run top coverage, full depth to the wall, not the hanging-shelf depth.
 This is an estimating default subject to explicit construction, not a universal
 furniture fact. Complete carcass localization must not be reduced to front-box
@@ -75,6 +78,13 @@ two lower drawers are omitted already in Front. Box expansion alone cannot
 correct the count. Reconcile repeated sections before declaring an assembly.
 Owner's crossed-region clarification requires revisiting the earlier column
 omission claim; it is not permission to add a duplicate block or promote V6.
+
+CB Front V3 candidate reads drawer stacks through the bottom, allowing taller
+lower fronts and requiring visible reasons for plinth exclusions. N68 replay
+finds all six drawers with boxes, but only seven of ten door-like fronts and invalid
+island enums. Planner V7 consumes that raw response, then truncates at 6000
+tokens; worktop coverage has no accepted result. Selected defaults remain
+Front V2 + Planner V4. Evidence: notes/evidence/hsl07-v62-2026-11-06/n68-front-v3-planner-v7.json.
 
 CB Planner V5/V6 are retained diagnostic candidates, not selected defaults.
 V5 localizes worktops on top/axonometric views. V6 also caps tall blocks at

@@ -6,11 +6,17 @@
   "sheet": "N68",
   "page_number": 7,
   "expected": {
-    "hinged_doors": 8,
+    "door_like_fronts": 10,
+    "ordinary_door_fronts": 9,
+    "appliance_drop_down_fronts": 1,
+    "hinged_doors": null,
     "drawers": 6,
     "lift_up_fronts": null
   },
-  "correction": "Six drawers, not the previously owner-confirmed four. Two lower drawer fronts were omitted.",
+  "correction": "Latest owner clarification: ten door-like rectangular fronts, separately six drawers. Supersedes the earlier eight-door benchmark as well as the earlier four-drawer benchmark. Recognition of a front does not establish its hardware.",
+  "door_breakdown": {"tall_run": 5, "under_sink": 2, "dishwasher": 1, "tall_appliance_column": 2},
+  "hardware_boundary": "The dishwasher front opens down, not up. Do not assign gas lifts or ordinary cabinet hinges from the rectangle count. Null hinged_doors means hardware-class count is not established, not zero.",
+  "latest_front_v3_review": {"recognized_door_like_fronts": 7, "drawers": 6, "missing": ["dishwasher front", "two tall appliance-column fronts"], "accepted": false},
   "actual_saved_front": {
     "drawers": 4,
     "ids": ["F12", "F13", "F14", "F15"],
@@ -18,6 +24,6 @@
   },
   "diagnosis": "The omission is already in Front, which describes two columns of two rows and treats lower bands as possibly a plinth or a larger front. Planner assigns those four IDs to B06. Extending B06 alone cannot repair the Front count or hardware demand.",
   "historical_responses_modified": false,
-  "new_model_run": false,
+  "new_model_run_for_benchmark_correction": false,
   "lift_up_status": "Five inferred lift-ups remain unaccepted, null is not zero."
 }
