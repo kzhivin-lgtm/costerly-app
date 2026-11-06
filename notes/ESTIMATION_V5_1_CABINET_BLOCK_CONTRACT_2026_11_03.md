@@ -109,6 +109,13 @@ Known side/opening false positives remain. V2 had already produced this same
 outcome in control 2, so efficacy/reliability is unproven. Candidate only;
 defaults unchanged. Evidence: notes/evidence/cb-front-v5-2026-11-06/lev2-identity-trial.json.
 
+Three later owner-approved Lev2 Front V3 + Planner V7 pairs retain 17 hinged,
+5 drawers and 2 lift-ups in all Front responses, but only one Front passes
+exact enums. Planner truncates twice; the third returns 9 blocks + S01 but
+has incorrect block coverage and incomplete worktop bounds. No pair passes
+both format stages, no semantic acceptance or promotion. Evidence:
+notes/evidence/lev2-v3-v7-2026-11-06/three-paired-runs.json.
+
 CB Planner V5/V6 are retained diagnostic candidates, not selected defaults.
 V5 localizes worktops on top/axonometric views. V6 also caps tall blocks at
 two tall door leaves across without relaxing one-section-wide columns.

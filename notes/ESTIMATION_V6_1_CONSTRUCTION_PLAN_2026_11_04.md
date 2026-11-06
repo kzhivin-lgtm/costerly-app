@@ -71,6 +71,14 @@ This equals V2 control 2 totals; no demonstrated reliability improvement or
 semantic acceptance. Defaults remain V2/V4, no further call automatically.
 See notes/evidence/cb-front-v5-2026-11-06/lev2-identity-trial.json.
 
+Owner then requested three paired Lev2 Front V3 + Planner V7 trials. All Fronts
+return 17 hinged / 5 drawers / 2 lift-up / 0 unresolved; known false fronts
+remain. Only run 2 passes Front enums. Planners 1/2 truncate at 6000; Planner 3
+passes syntax on failed Front 3, returns 9 blocks and separate Top-view worktop,
+but boxes miss assigned parts and the terminal worktop extent. No full-chain
+format pass or semantic acceptance. Defaults unchanged, six calls total.
+See notes/evidence/lev2-v3-v7-2026-11-06/three-paired-runs.json and TODO.
+
 ### Current V6.2 boundary and results, 2026-11-05
 
 Current Front extension: **CB Front V2** (technical r05, not a renumbered r04).

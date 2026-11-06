@@ -943,6 +943,45 @@ Verification: 180 focused tests pass, including exact V2-to-V5 delta,
 system-only request change, retained two-wing coverage and non-promotion.
 git diff --check passes; these checks do not establish model reliability.
 
+Lev2 Front V3 + Planner V7, USER-APPROVED three paired runs, 2026-11-06,
+same 3.17.4.5, P0, COMPLETED diagnostic / acceptance FAILED:
+Exactly six calls: three fresh Front V3 results, each passed to its own Planner
+V7. Independent pairs ran concurrently; no retries or winner selection. Same
+saved Lev2 Detection-derived input/pages and Haiku 5.5 low settings. Front
+requests identical across the three runs and differ from V2 only in system.
+Planner sees original evidence plus its own raw parsed Front/status. Failed
+Front enums are explicitly flagged, not normalized; this is diagnostic
+continuation, not a successful production chain. No schema/budget changes.
+All three Front outputs: 17 hinged, 5 drawers, 2 lift-up, 0 unresolved.
+Both wings retained. Side candidate and appliance opening remain counted as
+hinged, so equal counts do not establish correct semantics. Front format
+passes only run 2; runs 1 and 3 fail snake_case island enums.
+Planner 1 and 2 truncate at max_tokens=6000, with 4151 and 4975 thinking
+tokens respectively; unparseable, no salvage or accepted plan/overlay.
+Planner 3 completes (5712 output tokens) with 9 blocks + 1 separate worktop.
+Its source Front failed validation, so ZERO complete pairs pass both formats.
+Summed stage times: 61.529 / 66.051 / 61.744 seconds, not serial batch latency.
+Exact Front overlays and valid Planner overlay inspected. In Planner 3,
+B08 assigns drawer IDs but its box covers only the adjacent door; B06 covers
+only part of the hanging pair; B01's box misses its lift-up fronts. B09 treats
+the tall end side as a cabinet column while admitting the fixed-panel option.
+S01 is on Top view and separate from cabinets, but misses the terminal
+chamfered end of a base wing. Empty interior of its rectangular L-footprint
+locator is NOT itself an error; these boxes are not material geometry.
+All supplied front IDs are assigned once; this syntactic check does not prove
+physical scope or box accuracy. Full-depth worktop/whole-carcass acceptance
+therefore remains open. No claim that V3 is generally stable from three calls.
+Evidence: notes/evidence/lev2-v3-v7-2026-11-06/three-paired-runs.json.
+Private witnesses/overlays: /private/tmp/lev2-front-v3-planner-v7-20261106-0[1-3]-*.
+Defaults remain Front V2 / Planner V4. No Detection rerun, DB write, promotion,
+deployment or further calls. Next PROPOSAL: isolate Planner completion in a
+bounded output-contract experiment, separately from Front enum/recognition;
+no budget increase or schema change approved by this result.
+Verification: 183 focused tests pass. Regression fixtures preserve exact
+stage failures, raw truncated responses, three identical Front totals, zero
+full-chain format passes and the B08 assigned-drawer/box mismatch. Defaults
+remain unchanged; git diff --check passes. This is not semantic acceptance.
+
 HSL saved-package replay, USER REQUEST, 2026-11-05, same 3.17.4.5,
 P0, COMPLETED diagnostic replay; acceptance FAILED: owner explicitly requests existing
 Detection packages, not a locally rebuilt fixture. Latest matching Floor 07
