@@ -1,5 +1,20 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: completed approved B08-locator ablation and CB Parts V3.3
+bay-contract experiment. Ablation changes exactly one outgoing region, not
+the saved scope: 13.744 s, B08 still small (300+300=600), shared S01 omitted.
+V3.3 uses one Haiku call: model supplies ordered bays/front heights, deterministic
+compiler derives straight-carcass widths/panels/partitions and drawer bodies.
+Two unchanged requests took 8.190/9.282 s. B08 isolated audits have coherent
+900/800 mm widths and one divider each, but whole outputs FAIL height checks
+in B02 (both) and B06 (second). No hand repair, discarded block or success
+claim. Original full source and failed raw replies retained in
+notes/evidence/cb-parts-v3-3-2026-11-06/locator-and-bay-trials.json.
+200 relevant tests pass. Explicit-mode geometry remains model-authored.
+No runtime default change, main merge, deploy, checkpoint or DB write. Source
+dimension association and vertical consistency remain pending before acceptance.
+
+
 2026-11-06, 3.17.4.6: owner paused requested checkpoint for two additional
 unchanged CB Parts V3.2 runs. Completed exactly two new Haiku calls, 14.519 s
 and 15.339 s, same request object as original 15.041 s trial. All format-valid.

@@ -197,6 +197,49 @@ Raw repeat evidence: notes/evidence/cb-parts-v3-2-2026-11-06/three-run-repeatabi
 The owner-approved coarse approximation is preserved, not retroactively revoked;
 acceptance of the newly observed variability awaits owner review.
 
+## CB Parts V3.3 approved architecture experiment, 3.17.4.6
+
+Context: V3.1/V3.2 independently generated block and part dimensions, allowing
+adjacent 500 mm bays inside a 500 mm carcass and optional mounting partitions.
+Two comment revisions did not resolve the repeated width inconsistency. Owner
+approved testing the conflicting locator, then moving arithmetic/construction
+invariants to code without another model call or a furniture-template library.
+
+Decision: model identifies ordered side-by-side bays, their widths, stacked
+front IDs/heights, drawer body heights and shelf counts. For a straight
+rectangular carcass, `compose_cb_bay_parts` derives total width, two outer sides,
+full top/bottom/back, each front, five body panels per drawer and shared mounting
+walls. Each boundary adjacent to a drawer bay gets one wall, not two. Stacked
+drawers count once for bay width. Adjacent door bays do not automatically add
+walls. Group only identical part geometry. 17 mm ordinary/30 mm explicit-worktop
+fallbacks retained; material purchasing and lamination remain outside scope.
+Front type/membership remain the saved fallible upstream scope, not reclassified.
+
+This is explicit coarse construction, not source-proven joinery. Straight bay
+widths are not summed around corners. Nonrectangular, stepped or free parts use
+the `explicit` branch and remain model-authored/unverified. The full top/back
+assumption is visible in derivation metadata. One shelf count per bay is a
+model assumption, not a guarantee of actual shelf span/support design. Missing,
+duplicate or foreign blocks/fronts are rejected. Numeric size repairs are not
+performed. Whole-object height inconsistency fails validation; per-block audit
+reports do not convert failed objects into accepted incomplete estimates.
+
+Alternatives retained: previous prompt-only sized rows remain replayable;
+template libraries and extra vision/reviewer calls are not introduced. The
+normal V3 diagnostic default and existing Front/Planner selectors stay unchanged.
+
+Verification: one V3.2 locator-only ablation failed coverage (missing S01) and
+returned B08 bays 300+300 mm. This is not proof that the locator has no effect.
+Two identical V3.3 requests with the original locators: B08 isolated audits
+derive 900 and 800 mm, one mounting divider each, correct common-panel width.
+Whole replies fail B02 height (1600 mm stack in 1210 mm carcass; 1940 in 1840),
+second also fails B06 (1150 facade in 750 carcass). First B06 uses 720 instead
+of printed 1150, showing arithmetic validity is not evidence validity. Times
+8.190/9.282 s; 2210/2412 output tokens. Raw evidence:
+notes/evidence/cb-parts-v3-3-2026-11-06/locator-and-bay-trials.json.
+No production acceptance, automatic correction, new checkpoint or deployment.
+Next source-height/vertical-consistency work is a proposal pending direction.
+
 Owner benchmark corrected on 2026-11-06: N68 TEN door-like fronts and SIX
 drawers, superseding the earlier eight-door/four-drawer confirmation. Ten
 comprises five tall, two under sink, one downward-opening dishwasher front,

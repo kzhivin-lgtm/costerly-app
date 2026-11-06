@@ -30,6 +30,7 @@ CB_RULEBOOK = {
               'consumer': 'Calculate', 'status': 'experimental_not_accepted',
               'v3_1': {'version': 'CB Parts V3.1', 'path': PROMPT_PATH.with_name('cb_parts_v3_1.md')},
               'v3_2': {'version': 'CB Parts V3.2', 'path': PROMPT_PATH.with_name('cb_parts_v3_2.md')},
+              'v3_3': {'version': 'CB Parts V3.3', 'path': PROMPT_PATH.with_name('cb_parts_v3_3.md')},
               'v2': {'version': 'CB Parts V2', 'path': PROMPT_PATH.with_name('cb_parts_v2.md')},
               'previous': {'name': 'CB Parts V1', 'version': 'CB Parts V1',
                            'path': PROMPT_PATH.with_name('cb_parts_v1.md')}},

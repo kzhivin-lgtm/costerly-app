@@ -239,22 +239,36 @@ def _run_cb_parts(*, input_row, page_bytes, dimension_graph, dimension_scale_gat
         rule = rule["v3_1"]
     elif version == rule["v3_2"]["version"]:
         rule = rule["v3_2"]
+    elif version == rule["v3_3"]["version"]:
+        rule = rule["v3_3"]
     elif version != rule["version"]:
         raise ValueError("unknown CB Parts version")
     count_only = version == "CB Parts V2"
+    bay_based = version == "CB Parts V3.3"
     sized = version in ("CB Parts V3", "CB Parts V3.1", "CB Parts V3.2")
     if scope.get("input_id") != input_row.get("input_id"):
         raise ValueError("CB Parts scope belongs to a different input")
     if model not in (None, MODEL):
         raise ValueError("CB Parts experiment requires the selected Haiku model")
-    if not (count_only or sized) and "ldsp" not in allowed_material_families:
+    if not (count_only or sized or bay_based) and "ldsp" not in allowed_material_families:
         raise ValueError("CB Parts requires the LDSP fallback family")
     content, manifests = prepare_content([input_row], page_bytes)
     known = {v["view_id"] for v in manifests[0]["known_views"]}
     front_ids = planner_front_ids(scope["front"], known)
     validate_assembly_plan(scope["planner"], known, front_ids)
     context = {"calculation_scope": scope}
-    if not (count_only or sized):
+    # Explicit diagnostic ablation only, after validating the original plan.
+    # Keep the saved scope intact and do not transmit diagnostic metadata.
+    if "diagnostic_omit_block_locator" in scope:
+        from copy import deepcopy
+        context_scope = deepcopy(scope)
+        omit_id = context_scope.pop("diagnostic_omit_block_locator")
+        matches = [b for b in context_scope["planner"]["blocks"] if b["id"] == omit_id]
+        if len(matches) != 1:
+            raise ValueError("diagnostic locator target must identify one block")
+        matches[0].pop("region")
+        context = {"calculation_scope": context_scope}
+    if not (count_only or sized or bay_based):
         context.update(dimension_graph=dimension_graph, dimension_scale_gate=dimension_scale_gate,
             default_material=DEFAULT_MATERIAL, allowed_material_families=sorted(allowed_material_families))
     content.append({"type": "text", "text": json.dumps(context, ensure_ascii=False, separators=(",", ":"))})
@@ -271,7 +285,11 @@ def _run_cb_parts(*, input_row, page_bytes, dimension_graph, dimension_scale_gat
     if getattr(response, "stop_reason", None) != "end_turn":
         raise ValueError("CB Parts response did not finish normally")
     parsed = _json_object(extract_text_from_claude_response(response))
-    if sized:
+    if bay_based:
+        from use_cases.estimation_cb_bays import compose_cb_bay_parts
+        result = {"parts_sized": compose_cb_bay_parts(parsed, scope=scope),
+            "status": "cb_parts_bays_requires_review", "upstream_status": scope.get("upstream_status", {})}
+    elif sized:
         result = {"parts_sized": compose_cb_sized_parts(parsed, scope=scope),
             "status": "cb_parts_sized_requires_review", "upstream_status": scope.get("upstream_status", {})}
     elif count_only:

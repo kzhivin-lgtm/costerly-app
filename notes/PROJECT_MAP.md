@@ -65,6 +65,16 @@ This file explains where code belongs so the project stays understandable.
   `notes/evidence/cb-parts-v3-2-2026-11-06/three-run-repeatability.json`.
   B08 widths 500/600/760 mm and partition 1/0/1, stability not established.
   Requested checkpoint paused before creation, pending owner review.
+- CB Parts V3.3 opt-in bay contract, same 3.17.4.6:
+  `agents/prompts/cb_parts_v3_3.md`, `use_cases/estimation_cb_bays.py`,
+  `tests/test_cb_parts_v3_3.py`, `--parts-version V3.3`. Straight-carcass width
+  and common construction derive from bays; nonrectangular geometry is explicit.
+  V3.2 diagnostic `--omit-block-locator B08` removes only that outgoing region,
+  after validating the original scope; never edits saved upstream artifacts.
+  `notes/evidence/cb-parts-v3-3-2026-11-06/locator-and-bay-trials.json` preserves
+  ablation failure and two V3.3 whole-object height failures. B08 isolated
+  width/partition checks pass, model-estimated dimensions remain unverified.
+  No default promotion or checkpoint; document-wide Analyze integration pending.
 - `use_cases/machinery.py` owns the 27-code storage catalog, the 16-capability
   Company Profile subset, outsourceable-operation boundary, company/supplier
   validation, Supabase persistence, and the bounded production-context snapshot

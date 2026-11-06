@@ -1000,7 +1000,34 @@ Older tags and 50 unrelated TODO lines retained. Stop further experiments until
 the owner chooses the next task; outstanding quality defects remain pending P0.
 
 Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, ACTIVE, V3 geometry acceptance failed:
-LATEST OWNER REQUEST: accepted coarse equal bays and the interpretation that
+LATEST APPROVED WORK: locator ablation then CB Parts V3.3 bay contract. The
+owner approved moving straight-carcass width/common panels and mounting walls
+to deterministic code, retaining one Calculate per object and coarse part list.
+1. V3.2 without ONLY B08 region: 13.744 s, B08 300+300=600 mm, S01 omitted,
+   whole reply fails coverage. Request equality verified apart from that region.
+   Removal alone did not produce acceptable output; causal contribution remains
+   inconclusive, not proved absent. Historical input/response left untouched.
+2. V3.3 two identical requests with original complete evidence/locators:
+   8.190/9.282 s, 2210/2412 output tokens. Model gives side-by-side bays and
+   stacked front membership; code derives common panels, fronts, five drawer
+   body panels, shelves and exactly one shared wall at drawer-bay boundaries.
+   B08 isolated audit: 450+450=900 and 400+400=800 mm, one wall both times,
+   one door/three drawers, full-width top/bottom/back now coherent by construction.
+   Both WHOLE OBJECT replies still FAIL: B02 front heights exceed carcass
+   height (1600>1210 and 1940>1840 mm); second B06 also 1150>750 mm.
+   First B06 height 720 contradicts printed 1150 despite passing shape checks.
+   Width estimates remain variable. Do not present isolated B08 audit as a
+   successful complete object, stable geometry or automatic source validation.
+Evidence: notes/evidence/cb-parts-v3-3-2026-11-06/locator-and-bay-trials.json.
+200 relevant tests pass. V3.3 remains explicitly selected experimental route;
+no default promotion, checkpoint, deployment, DB writes or extra Analyze stage.
+Architecture decision recorded in CB contract. Geometry for nonrectangular or
+stepped blocks remains explicit model-authored, outside straight-bay guarantees.
+NEXT recommendation, not executed: isolate source height association and
+vertical extent consistency before accepting a full-object parts result.
+No more unchanged paid retries or blind prompt edits for the repeated height
+failure. Do not silently stretch, scale or replace raw model dimensions.
+PRIOR OWNER REQUEST: accepted coarse equal bays and the interpretation that
 two adjacent 500 mm bays imply about 1000 mm overall, then requested a full
 checkpoint. Before preservation, owner explicitly paused it to request two
 more identical V3.2 trials. No tag/archive/checkpoint was created meanwhile.
@@ -1026,7 +1053,7 @@ shared mounting wall returned. Equal division itself is acceptable to the owner.
 Raw witness: notes/evidence/cb-parts-v3-2-2026-11-06/lev2-sized-parts.json.
 Not accepted/promoted. Two consecutive width-comment revisions failed to fix
 the same mismatch: STOP this prompt-only approach pending new evidence.
-NEXT diagnostic recommendation, not executed: same V3.2 request without only
+Historical diagnostic recommendation (executed above): same V3.2 request without only
 the conflicting B08 locator, retaining its front IDs, composition and all
 images. Test whether that locator contributes to the one-bay interpretation;
 do not infer causality from these trials. No new prompt or data-schema change

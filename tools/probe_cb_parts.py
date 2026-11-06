@@ -42,7 +42,8 @@ def main():
     parser.add_argument("--planner-witness", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--execute", action="store_true")
-    parser.add_argument("--parts-version", choices=("V1", "V2", "V3", "V3.1", "V3.2"), default="V3")
+    parser.add_argument("--omit-block-locator", help="Explicit diagnostic: omit only this block's region from the model context")
+    parser.add_argument("--parts-version", choices=("V1", "V2", "V3", "V3.1", "V3.2", "V3.3"), default="V3")
     args = parser.parse_args()
     if not args.execute:
         parser.error("--execute required for one paid Calculate call")
@@ -50,6 +51,8 @@ def main():
         parser.error("refuse to overwrite witness")
     prior, scope = load_scope(args.front_witness, args.planner_witness)
     scope["parts_version"] = "CB Parts " + args.parts_version
+    if args.omit_block_locator:
+        scope["diagnostic_omit_block_locator"] = args.omit_block_locator
     witness = {k: prior[k] for k in ("inputs", "source_pages_base64", "evidence_origin")}
     witness.update(work="3.17.4.6", route="cb_parts_inside_calculate", status="running",
         database_writes=False, scope=scope, provider_responses=[],
