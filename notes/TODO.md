@@ -1000,6 +1000,20 @@ Older tags and 50 unrelated TODO lines retained. Stop further experiments until
 the owner chooses the next task; outstanding quality defects remain pending P0.
 
 Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, ACTIVE, V3 geometry acceptance failed:
+LATEST V3.2 EXPERIMENT, USER APPROVED: added a generic same-run bay sum,
+whole-carcass-panel propagation, equal-subdivision fallback and one shared
+mounting partition reminder. No schema, arithmetic, evidence or upstream change.
+One Haiku call, 15.041 s, 4185 output tokens. Format PASS; targeted bay sum FAIL:
+B08 width=500 mm, adjacent door=500 and drawer bay=500. Partition PASS: one
+shared mounting wall returned. Equal division itself is acceptable to the owner.
+Raw witness: notes/evidence/cb-parts-v3-2-2026-11-06/lev2-sized-parts.json.
+Not accepted/promoted. Two consecutive width-comment revisions failed to fix
+the same mismatch: STOP this prompt-only approach pending new evidence.
+NEXT diagnostic recommendation, not executed: same V3.2 request without only
+the conflicting B08 locator, retaining its front IDs, composition and all
+images. Test whether that locator contributes to the one-bay interpretation;
+do not infer causality from these trials. No new prompt or data-schema change
+authorized by this recommendation. Existing V3 default/checkpoints retained.
 OWNER CLARIFICATION after V3.1: equal subdivision is acceptable at this stage
 when the source does not clearly establish interval sizes. Do not reject an
 estimate solely for equal bays or require precise visual ratios. This is an
@@ -1009,7 +1023,7 @@ two assumed 500 mm bays require about 1000 mm overall, not 500 mm. The known
 dimension span still constrains the total of all included intervals. Missing
 drawer mounting partition remains unresolved. No additional prompt/run made
 for this clarification; do not manually overwrite the saved model response.
-LATEST APPROVED EXPERIMENT: CB Parts V3.1 adds exactly one generic paragraph
+PRIOR APPROVED EXPERIMENT: CB Parts V3.1 adds exactly one generic paragraph
 about distributing a labelled span across visible intervals, including adjacent
 blocks, then summing the target block intervals. No Lev2/B08 numbers or special
 case in the instruction. Original V3 prompt/default and raw trial are retained.

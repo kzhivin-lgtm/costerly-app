@@ -57,6 +57,10 @@ This file explains where code belongs so the project stays understandable.
   schema/geometry code. Lev2 13.439 s, failed block-versus-bay width consistency,
   missing divider. Not promoted over V3. Raw evidence:
   `notes/evidence/cb-parts-v3-1-2026-11-06/lev2-sized-parts.json`.
+- CB Parts V3.2 explicit experiment: `agents/prompts/cb_parts_v3_2.md`,
+  `--parts-version V3.2`. Adds bay sum and shared mounting wall reminder.
+  Lev2 15.041 s: partition PASS, block/bay sum FAIL. No default promotion.
+  `notes/evidence/cb-parts-v3-2-2026-11-06/lev2-sized-parts.json`.
 - `use_cases/machinery.py` owns the 27-code storage catalog, the 16-capability
   Company Profile subset, outsourceable-operation boundary, company/supplier
   validation, Supabase persistence, and the bounded production-context snapshot

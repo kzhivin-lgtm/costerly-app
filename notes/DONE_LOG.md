@@ -1,5 +1,17 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: applied/tested approved CB Parts V3.2. Added one generic
+bay-sum/whole-panel/shared-wall paragraph with accepted equal-subdivision
+fallback; previous prompts, schema and arithmetic unchanged. Same full Lev2
+evidence/scope, one Haiku call, 15.041 s, 4185 output tokens. Partition restored
+once; width consistency still FAIL (B08=500, adjacent bays=500+500). Preserved
+raw response at notes/evidence/cb-parts-v3-2-2026-11-06/lev2-sized-parts.json.
+180 relevant tests pass, not proof of semantic accuracy. V3.2 not promoted;
+V3 default, Front/Planner, main and production unchanged. After two unsuccessful
+width-comment revisions, stop that approach. Suggested next diagnostic isolates
+the known conflicting B08 locator, not implemented or claimed causal here.
+
+
 2026-11-06, 3.17.4.6: owner accepts equal subdivision where interval sizes are
 unclear. Updated acceptance criteria in existing TODO/CB contract: equal bays
 are an acceptable estimate, not an error by themselves; known span totals and

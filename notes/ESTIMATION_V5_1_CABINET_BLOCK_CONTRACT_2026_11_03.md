@@ -173,6 +173,18 @@ verify the particular 500 mm values or accept a 500 mm block containing two
 side-by-side 500 mm bays. Existing raw evidence remains unmodified. The omitted
 mounting partition is a separate unresolved defect, not an approximation choice.
 
+CB Parts V3.2, same 3.17.4.6: approved generic reminder that same-run adjacent
+bay widths sum to whole carcass width, stacked drawers count as one bay,
+whole-width panels follow that sum, and one shared mounting wall is listed at
+the drawer/adjacent-bay boundary. Equal subdivision allowed if ratios unclear.
+Existing schema/arithmetic unchanged, no additional model stage. One full Lev2
+trial: 15.041 s, format PASS, partition restored once, sum FAIL (500 mm block
+with 500 mm door plus 500 mm adjacent drawer bay). Requested sum not explained.
+Not accepted or promoted. Two unsuccessful width-comment trials require a new
+diagnostic, not further blind prompt variants. The known conflicting B08 box
+is a candidate input cause, not a proven explanation. Raw response preserved at
+notes/evidence/cb-parts-v3-2-2026-11-06/lev2-sized-parts.json.
+
 Owner benchmark corrected on 2026-11-06: N68 TEN door-like fronts and SIX
 drawers, superseding the earlier eight-door/four-drawer confirmation. Ten
 comprises five tall, two under sink, one downward-opening dishwasher front,
