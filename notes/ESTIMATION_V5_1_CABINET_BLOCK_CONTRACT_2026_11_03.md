@@ -98,6 +98,28 @@ First Lev2 run: 5.676 s, format PASS, semantics NOT ACCEPTED (no partitions,
 unverified shelves and extra B09 door). Raw answer unchanged in
 notes/evidence/cb-parts-v2-2026-11-06/lev2-counts.json. V1 retained explicitly.
 
+Owner review after V2, 2026-11-06, same 3.17.4.6:
+- The discussed B08 coarse quantities are acceptable with one missing shared
+  internal vertical divider added between its drawer bay and adjacent door bay.
+  Conventional side-mounted drawer runners need mounting walls on BOTH sides
+  of their bay. At an internal bay boundary, use/count one shared wall, not two.
+  Existing outer sides and previously counted partitions are not additional
+  walls. A vertical drawer stack shares its side supports; no divider per drawer.
+  A single drawer bay enclosed by two outer sides needs no extra divider solely
+  because it contains drawers. Explicit alternative construction takes priority.
+- Future geometry fallback: about 600 mm between the TOP of the worktop and
+  UNDERSIDE of wall cabinets, when source dimensions are absent and context
+  supports it. This is an owner-approved estimating assumption, not source proof,
+  a mandatory installation standard or a rule for every furniture type.
+- Lev2 contextual derivation: assuming aligned tops, 2650 - 1150 - 600 = 900 mm
+  is the estimated WORKTOP TOP elevation. Do not automatically make carcass
+  panels 900 mm high and then add the plinth/worktop on top of that again.
+  The clearance/alignment assumptions must remain visible in future calculations.
+- Previous B08 1100/800/etc. dimensions were an assistant estimate, NOT a model
+  response. V2 remains quantity-only. No dimension-model acceptance is implied.
+These decisions are recorded for the next numbered prompt update. V2 raw
+output, selectors and protected checkpoints remain unchanged in this iteration.
+
 Owner benchmark corrected on 2026-11-06: N68 TEN door-like fronts and SIX
 drawers, superseding the earlier eight-door/four-drawer confirmation. Ten
 comprises five tall, two under sink, one downward-opening dishwasher front,

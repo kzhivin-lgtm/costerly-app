@@ -999,7 +999,28 @@ No model calls, main merge, deployment or defect repair in this preservation.
 Older tags and 50 unrelated TODO lines retained. Stop further experiments until
 the owner chooses the next task; outstanding quality defects remain pending P0.
 
-Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, PENDING V2 review:
+Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, PENDING drawer-divider update:
+OWNER REVIEW, 2026-11-06: accepts the discussed B08 coarse parts/quantities,
+subject to adding one internal divider between the drawer bay and adjacent
+door bay. This does not verify all nine blocks, B09 or stability. The manual
+B08 dimensions (1100 width, 800 height etc.) came from the assistant, NOT the
+CB Parts V2 model. Do not cite this review as a successful model dimension run.
+APPROVED RULE TO APPLY in the next numbered Parts prompt: a conventional
+side-mounted drawer bay needs mounting walls on both sides. Within one carcass,
+add/count ONE shared vertical divider at each boundary between a drawer bay
+and an adjacent bay. Existing carcass sides or an already counted divider
+provide that support and must not be duplicated. Vertically stacked drawers
+share the same mounting walls; do not add a divider per drawer or treat a
+single drawer bay with both outer sides as needing another internal wall.
+Save alternate explicitly specified construction as an exception.
+APPROVED FUTURE DIMENSION ASSUMPTION: clearance from worktop top surface to
+underside of wall cabinets is usually about 600 mm. Use only when unspecified
+and visually compatible, not as a printed dimension or universal requirement.
+Owner infers about 900 mm worktop elevation on Lev2. With tops aligned, the
+source 2650 overall height minus 1150 hanging-unit height minus assumed 600
+clearance gives 900. This is the worktop TOP elevation, not automatically the
+carcass panel height; plinth/support and top thickness are separate when present.
+No prompt selector change or new model run in this record-only iteration.
 CURRENT OWNER OVERRIDE: response is ONLY a list of major parts and quantities.
 CB Parts V2 stays inside Calculate, one call per object. No dimensions,
 materials, formulas, 2VN bindings, explanatory output or additional stage.
@@ -1014,7 +1035,8 @@ input / 1272 output tokens. Exact same source inputs/pages/images as V1;
 numeric graph/material context removed, prompt/output simplified. Returns all
 9 blocks plus shared worktop with name/quantity rows only. Format PASS.
 Five drawer bodies produce 10 sides, 10 end panels and 5 bottoms, plus 5 fronts.
-Semantic acceptance remains OPEN: no internal partitions (including B08),
+Remaining semantic work: no internal partitions (including B08, correction
+now explicitly approved by the owner),
 uniform carcass expansion, unverified shelf counts, and an additional B09 Door
 despite no assigned front. Total 17 Hinged door + 1 Door exceeds even the
 upstream 17, not the owner 15/16 benchmark. No silent repair or invented success.

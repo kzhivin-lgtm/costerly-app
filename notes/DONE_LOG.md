@@ -1,5 +1,16 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: recorded owner acceptance of the discussed B08 coarse
+parts quantities with a missing drawer-bay divider correction. Added the
+approved shared mounting-wall rule and future approximate 600 mm worktop-to-wall-
+cabinet clearance to the authoritative Cabinet Block contract and TODO.
+Clarified provenance: 1100/800/etc. dimensions were the assistant's manual
+estimate, not CB Parts V2 output. The user's approximately 900 mm inference is
+worktop top elevation under aligned-top/600-clearance assumptions, not a proven
+900 mm carcass. Record-only iteration: no prompt change, paid call, model-size
+verification, runtime promotion or production deployment. Divider prompt update
+and verification remain pending under the same task, prior raw evidence retained.
+
 2026-11-06, 3.17.4.6: owner-requested CB Parts V2 reduces Calculate output to
 block ID -> part name + quantity only. No geometry/material fields, expressions,
 2VN invocation, material BOM or hidden postprocessing. Same source images and
