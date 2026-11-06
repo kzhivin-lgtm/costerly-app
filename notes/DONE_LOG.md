@@ -1,5 +1,20 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: applied/tested approved CB Parts V3.5 fixed-topology
+diagnostic. Freeze only block/bay/front IDs from first raw V3.3 reply, not its
+widths/heights/assumptions. Verify exact source evidence and Front/Planner scope;
+preserve failed upstream/source status. Reuse the V3.4 allocator, no new parts
+compiler or inserted production stage. One Haiku call, unchanged five images,
+5.256 s, 1181 output tokens. Association still wrong: 151 cm distributed over
+five bays rather than the source span's three; F18/F19 also contradict the
+returned span start. B08 arithmetic would be 604 mm. Eight null fallback widths
+cause validation failure. No accepted parts, repair, repeat or default promotion.
+Raw evidence: notes/evidence/cb-parts-v3-5-2026-11-06/lev2-fixed-topology-trial.json.
+248 relevant tests pass, not semantic acceptance. Protected checkpoint a9b8df8,
+main and production unchanged. Next same-view endpoint/membership consistency
+check is a proposal only, no new authority inferred from this diagnostic.
+
+
 2026-11-06, 3.17.4.6: implemented/tested approved CB Parts V3.4 span allocation
 experiment after the protected V3.3 checkpoint. One Haiku call, same images and
 scope, 9.270 s, 2415 output tokens. Model associates printed dimensions with

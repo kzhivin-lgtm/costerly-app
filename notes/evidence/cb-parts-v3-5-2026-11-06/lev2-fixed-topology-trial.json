@@ -1,0 +1,1156 @@
+{
+  "work": "3.17.4.6",
+  "version": "CB Parts V3.5",
+  "experiment": "Fixed source V3.3 topology, dimension association only; not an added production call.",
+  "status": "failed",
+  "error": "ValueError: fallback width must be finite and positive",
+  "elapsed_seconds": 5.256,
+  "provider_calls": 1,
+  "model": "claude-haiku-5-5",
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 17149,
+    "output_tokens": 1181,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+  },
+  "prompt_sha256": "d7955d2f9594a7a4ae4ed8a4a536eb58b7c3cfbb3fdb5f13e9f84b1ecfcf4f52",
+  "request_sha256": "d6f5398b4aa45ef0569d1a6609e80ad6f9991b14da1505a396fd06e512e00802",
+  "source_hashes": {
+    "/private/tmp/lev2-front-v3-planner-v7-20261106-03-front.json": "4bca318a8c7fc704fb289203f355da104c2e4c7796cdae95a2eecf53fdab8c9c",
+    "/private/tmp/lev2-front-v3-planner-v7-20261106-03-planner.json": "fc09075f468ef7960d47f8f4f3ef1f513bfcd1eb64d64ffa13758cb0b452be63",
+    "/private/tmp/lev2-cb-parts-v3-3-20261106-01.json": "fbd7b960381a3571cd85827f77ca098b64be09ee0e172cfafd8b1b01d804b6be"
+  },
+  "evidence_origin": "persisted_detection_local_fixture_not_persisted_input",
+  "source_content_identical_to_v3_4": true,
+  "image_count": 5,
+  "raw_response_text": "{\"width_spans\":[{\"id\":\"D1\",\"view_id\":\"p1-view-003\",\"value\":69,\"unit\":\"cm\",\"source_label\":\"69\",\"endpoints_1000\":[104,300,604,300],\"members\":[{\"block_id\":\"B01\",\"bay_id\":\"bay_a\",\"weight\":1,\"label\":\"Left pantry column\"}]},{\"id\":\"D2\",\"view_id\":\"p1-view-003\",\"value\":180,\"unit\":\"cm\",\"source_label\":\"180\",\"endpoints_1000\":[604,300,980,300],\"members\":[{\"block_id\":\"B01\",\"bay_id\":\"bay_b\",\"weight\":1,\"label\":\"Upper lift-up left\"},{\"block_id\":\"B01\",\"bay_id\":\"bay_c\",\"weight\":1,\"label\":\"Upper lift-up right\"}]},{\"id\":\"D3\",\"view_id\":\"p1-view-004\",\"value\":84,\"unit\":\"cm\",\"source_label\":\"84\",\"endpoints_1000\":[128,870,338,870],\"members\":[{\"block_id\":\"B06\",\"bay_id\":\"bay_a\",\"weight\":1,\"label\":\"Upper tall left door\"},{\"block_id\":\"B06\",\"bay_id\":\"bay_b\",\"weight\":1,\"label\":\"Upper tall right door\"}]},{\"id\":\"D4\",\"view_id\":\"p1-view-004\",\"value\":151,\"unit\":\"cm\",\"source_label\":\"151\",\"endpoints_1000\":[338,870,728,870],\"members\":[{\"block_id\":\"B07\",\"bay_id\":\"bay_a\",\"weight\":1,\"label\":\"Base door left\"},{\"block_id\":\"B07\",\"bay_id\":\"bay_b\",\"weight\":1,\"label\":\"Base door middle\"},{\"block_id\":\"B07\",\"bay_id\":\"bay_c\",\"weight\":1,\"label\":\"Base door right\"},{\"block_id\":\"B08\",\"bay_id\":\"bay_a\",\"weight\":1,\"label\":\"End base door\"},{\"block_id\":\"B08\",\"bay_id\":\"bay_b\",\"weight\":1,\"label\":\"Drawer stack\"}]}],\"unanchored_widths\":[{\"block_id\":\"B02\",\"bay_id\":\"bay_a\",\"width\":null,\"unit\":\"cm\",\"reason\":\"Column width is not stated by a complete dimension span; no reliable horizontal dimension isolates this column.\"},{\"block_id\":\"B03\",\"bay_id\":\"bay_a\",\"width\":null,\"unit\":\"cm\",\"reason\":\"Upper right pair is not isolated by any dimension span; the 180 run is shared with the lift-up fronts.\"},{\"block_id\":\"B03\",\"bay_id\":\"bay_b\",\"width\":null,\"unit\":\"cm\",\"reason\":\"Upper right pair is not isolated by any dimension span; the 180 run is shared with the lift-up fronts.\"},{\"block_id\":\"B04\",\"bay_id\":\"bay_a\",\"width\":null,\"unit\":\"cm\",\"reason\":\"Lower corner run width is not established by any complete dimension span in the supplied views.\"},{\"block_id\":\"B04\",\"bay_id\":\"bay_b\",\"width\":null,\"unit\":\"cm\",\"reason\":\"Lower corner run width is not established by any complete dimension span in the supplied views.\"},{\"block_id\":\"B04\",\"bay_id\":\"bay_c\",\"width\":null,\"unit\":\"cm\",\"reason\":\"Lower corner run width is not established by any complete dimension span in the supplied views.\"},{\"block_id\":\"B05\",\"bay_id\":\"bay_a\",\"width\":null,\"unit\":\"cm\",\"reason\":\"Lower end run width is not established by any complete dimension span in the supplied views.\"},{\"block_id\":\"B05\",\"bay_id\":\"bay_b\",\"width\":null,\"unit\":\"cm\",\"reason\":\"Lower end run width is not established by any complete dimension span in the supplied views.\"}]}",
+  "validation_scope": {
+    "input_id": "local-detection:run_189150ebf62447fc958f7c23cc34e3bb:object-001",
+    "front": {
+      "island_types": [
+        {
+          "view_id": "p1-view-001",
+          "type": "top_view"
+        },
+        {
+          "view_id": "p1-view-002",
+          "type": "axonometric_view"
+        },
+        {
+          "view_id": "p1-view-003",
+          "type": "front_elevation"
+        },
+        {
+          "view_id": "p1-view-004",
+          "type": "front_elevation"
+        }
+      ],
+      "front_groups": [
+        {
+          "location": "Wing 003 upper wall units, wide horizontal fronts over the 69/180 run",
+          "type": "lift_up",
+          "count": 2,
+          "count_basis": "clear",
+          "view_ids": [
+            "p1-view-003"
+          ],
+          "uncertainty": "",
+          "fronts": [
+            {
+              "id": "F01",
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                204,
+                392,
+                401,
+                494
+              ]
+            },
+            {
+              "id": "F02",
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                404,
+                392,
+                600,
+                494
+              ]
+            }
+          ]
+        },
+        {
+          "location": "Wing 003 tall upper units, left pantry and three upper doors over the return",
+          "type": "hinged",
+          "count": 4,
+          "count_basis": "clear",
+          "view_ids": [
+            "p1-view-003"
+          ],
+          "uncertainty": "Portrait upper fronts closing storage openings, treated as hinged per the cabinet rules.",
+          "fronts": [
+            {
+              "id": "F03",
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                109,
+                200,
+                200,
+                494
+              ]
+            },
+            {
+              "id": "F04",
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                602,
+                200,
+                735,
+                406
+              ]
+            },
+            {
+              "id": "F05",
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                737,
+                200,
+                854,
+                406
+              ]
+            },
+            {
+              "id": "F06",
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                857,
+                200,
+                974,
+                406
+              ]
+            }
+          ]
+        },
+        {
+          "location": "Wing 003 column below upper doors, two portrait fronts above the drawers",
+          "type": "hinged",
+          "count": 2,
+          "count_basis": "clear",
+          "view_ids": [
+            "p1-view-003"
+          ],
+          "uncertainty": "Portrait fronts; hinged assumed. Whether they open upward is not shown.",
+          "fronts": [
+            {
+              "id": "F07",
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                606,
+                406,
+                732,
+                576
+              ]
+            },
+            {
+              "id": "F08",
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                606,
+                581,
+                732,
+                739
+              ]
+            }
+          ]
+        },
+        {
+          "location": "Wing 003 shallow drawer stack at base of return column",
+          "type": "drawer",
+          "count": 2,
+          "count_basis": "clear",
+          "view_ids": [
+            "p1-view-003"
+          ],
+          "uncertainty": "",
+          "fronts": [
+            {
+              "id": "F09",
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                606,
+                742,
+                735,
+                801
+              ]
+            },
+            {
+              "id": "F10",
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                606,
+                803,
+                735,
+                860
+              ]
+            }
+          ]
+        },
+        {
+          "location": "Wing 003 lower base run, five portrait doors",
+          "type": "hinged",
+          "count": 5,
+          "count_basis": "clear",
+          "view_ids": [
+            "p1-view-003"
+          ],
+          "uncertainty": "",
+          "fronts": [
+            {
+              "id": "F11",
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                104,
+                657,
+                185,
+                860
+              ]
+            },
+            {
+              "id": "F12",
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                187,
+                657,
+                280,
+                860
+              ]
+            },
+            {
+              "id": "F13",
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                284,
+                657,
+                379,
+                860
+              ]
+            },
+            {
+              "id": "F14",
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                381,
+                657,
+                476,
+                860
+              ]
+            },
+            {
+              "id": "F15",
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                479,
+                657,
+                574,
+                860
+              ]
+            }
+          ]
+        },
+        {
+          "location": "Wing 004 tall upper units, pair of doors",
+          "type": "hinged",
+          "count": 2,
+          "count_basis": "clear",
+          "view_ids": [
+            "p1-view-004"
+          ],
+          "uncertainty": "",
+          "fronts": [
+            {
+              "id": "F16",
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                128,
+                113,
+                221,
+                467
+              ]
+            },
+            {
+              "id": "F17",
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                231,
+                113,
+                338,
+                467
+              ]
+            }
+          ]
+        },
+        {
+          "location": "Wing 004 lower base run, doors left of the drawer bank and at the end",
+          "type": "hinged",
+          "count": 4,
+          "count_basis": "clear",
+          "view_ids": [
+            "p1-view-004"
+          ],
+          "uncertainty": "",
+          "fronts": [
+            {
+              "id": "F18",
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                128,
+                663,
+                221,
+                903
+              ]
+            },
+            {
+              "id": "F19",
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                228,
+                663,
+                336,
+                903
+              ]
+            },
+            {
+              "id": "F20",
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                338,
+                663,
+                443,
+                903
+              ]
+            },
+            {
+              "id": "F21",
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                600,
+                663,
+                728,
+                903
+              ]
+            }
+          ]
+        },
+        {
+          "location": "Wing 004 lower drawer stack, three shallow drawers",
+          "type": "drawer",
+          "count": 3,
+          "count_basis": "clear",
+          "view_ids": [
+            "p1-view-004"
+          ],
+          "uncertainty": "",
+          "fronts": [
+            {
+              "id": "F22",
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                446,
+                663,
+                597,
+                727
+              ]
+            },
+            {
+              "id": "F23",
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                446,
+                730,
+                597,
+                815
+              ]
+            },
+            {
+              "id": "F24",
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                446,
+                818,
+                597,
+                903
+              ]
+            }
+          ]
+        }
+      ],
+      "excluded_surfaces": [
+        {
+          "id": "X01",
+          "view_id": "p1-view-003",
+          "bbox_1000": [
+            49,
+            191,
+            101,
+            497
+          ],
+          "reason": "fixed carcass end side at the left end of the run"
+        },
+        {
+          "id": "X02",
+          "view_id": "p1-view-003",
+          "bbox_1000": [
+            576,
+            657,
+            600,
+            860
+          ],
+          "reason": "narrow fixed filler strip beside the lower run"
+        }
+      ],
+      "tabletop_supports": [
+        {
+          "id": "T01",
+          "location": "L-shaped worktop over the base cabinet runs, including the corner and sink area",
+          "leg_count": 0,
+          "count_basis": "clear",
+          "view_ids": [
+            "p1-view-002",
+            "p1-view-003",
+            "p1-view-004"
+          ],
+          "support_scheme": "Observed: the worktop is carried by continuous base cabinet carcasses with no visible legs in any view. The support is the cabinet bases themselves, not an assumed attachment.",
+          "uncertainty": "",
+          "legs": []
+        }
+      ],
+      "totals": {
+        "drawers": 5,
+        "hinged_doors": 17,
+        "lift_up_fronts": 2,
+        "unresolved_fronts": 0,
+        "total_fronts": 24
+      }
+    },
+    "planner": {
+      "summary": "L-shaped fitted kitchen with two base wings, upper wall units, a tall column at the end of wing 004, and an L-shaped worktop.",
+      "blocks": [
+        {
+          "id": "B01",
+          "name": "Wing 003 upper left run",
+          "contains": "Left tall pantry door and the two lift-up fronts over the 180 run, hanging on the wing 003 upper wall.",
+          "reason": "Three side-by-side front positions (pantry, two lift-ups) on one upper carcass run. The pantry is one tall leaf, so the two-tall-leaf rule is met. Continuity of the upper run is assumed from the continuous front alignment.",
+          "front_ids": [
+            "F03",
+            "F01",
+            "F02"
+          ],
+          "view_ids": [
+            "p1-view-003"
+          ],
+          "region": {
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              100,
+              130,
+              600,
+              360
+            ]
+          }
+        },
+        {
+          "id": "B02",
+          "name": "Wing 003 return tall column",
+          "contains": "Upper door F04, the stacked middle doors F07 and F08, and the drawer stack F09 and F10 below, all in the single column section.",
+          "reason": "One section wide, kept as one full-height column. Assumed to share one carcass, since the stacked fronts align in one column. Its lower drawers are kept with the column rather than split off.",
+          "front_ids": [
+            "F04",
+            "F07",
+            "F08",
+            "F09",
+            "F10"
+          ],
+          "view_ids": [
+            "p1-view-003"
+          ],
+          "region": {
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              600,
+              135,
+              740,
+              870
+            ]
+          }
+        },
+        {
+          "id": "B03",
+          "name": "Wing 003 upper right pair",
+          "contains": "Two tall upper doors beside the return column, above the open void.",
+          "reason": "Two tall leaves side by side, which is the maximum allowed for tall leaves. Kept separate from the column because it is a distinct section.",
+          "front_ids": [
+            "F05",
+            "F06"
+          ],
+          "view_ids": [
+            "p1-view-003"
+          ],
+          "region": {
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              735,
+              135,
+              980,
+              410
+            ]
+          }
+        },
+        {
+          "id": "B04",
+          "name": "Wing 003 lower corner run",
+          "contains": "Lower base doors F11, F12 and F13 on the carcass, starting at the left end of the wing.",
+          "reason": "Three front positions on one base carcass, meeting the horizontal allowance. The fixed left end side X01 is not included.",
+          "front_ids": [
+            "F11",
+            "F12",
+            "F13"
+          ],
+          "view_ids": [
+            "p1-view-003"
+          ],
+          "region": {
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              100,
+              455,
+              385,
+              870
+            ]
+          }
+        },
+        {
+          "id": "B05",
+          "name": "Wing 003 lower end run",
+          "contains": "Lower base doors F14 and F15 continuing the wing 003 base carcass.",
+          "reason": "Split from B04 to keep no more than three front positions in one block. Assumed to be the same continuous carcass.",
+          "front_ids": [
+            "F14",
+            "F15"
+          ],
+          "view_ids": [
+            "p1-view-003"
+          ],
+          "region": {
+            "view_id": "p1-view-003",
+            "bbox_1000": [
+              378,
+              455,
+              580,
+              870
+            ]
+          }
+        },
+        {
+          "id": "B06",
+          "name": "Wing 004 upper tall pair",
+          "contains": "Two tall hanging doors forming the separate wing 004 upper unit.",
+          "reason": "Two tall leaves in one section-width unit. Shown as separately hanging, so kept apart from the base run.",
+          "front_ids": [
+            "F16",
+            "F17"
+          ],
+          "view_ids": [
+            "p1-view-004"
+          ],
+          "region": {
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              90,
+              60,
+              260,
+              285
+            ]
+          }
+        },
+        {
+          "id": "B07",
+          "name": "Wing 004 lower door run",
+          "contains": "Three base doors F18, F19 and F20 on the wing 004 base carcass.",
+          "reason": "Three front positions on one base carcass, within the allowance. Split from the end door and drawers to keep the front-count limit.",
+          "front_ids": [
+            "F18",
+            "F19",
+            "F20"
+          ],
+          "view_ids": [
+            "p1-view-004"
+          ],
+          "region": {
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              120,
+              650,
+              450,
+              910
+            ]
+          }
+        },
+        {
+          "id": "B08",
+          "name": "Wing 004 end drawer run",
+          "contains": "End base door F21 and the stacked drawers F22, F23 and F24.",
+          "reason": "Two front positions: the end door and the drawer stack, which counts as one position. Assumed to be the same base carcass as B07.",
+          "front_ids": [
+            "F21",
+            "F22",
+            "F23",
+            "F24"
+          ],
+          "view_ids": [
+            "p1-view-004"
+          ],
+          "region": {
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              595,
+              650,
+              735,
+              910
+            ]
+          }
+        },
+        {
+          "id": "B09",
+          "name": "Wing 004 tall end column",
+          "contains": "The tall 265 mm column at the end of wing 004, with its door handle lines and no assigned front IDs.",
+          "reason": "Kept as a separate full-height column at the end of the wing. Its front type is not established by the supplied fronts, so no front IDs are assigned.",
+          "front_ids": [],
+          "view_ids": [
+            "p1-view-004"
+          ],
+          "region": {
+            "view_id": "p1-view-004",
+            "bbox_1000": [
+              720,
+              105,
+              895,
+              945
+            ]
+          }
+        }
+      ],
+      "shared_parts": [
+        {
+          "id": "S01",
+          "name": "L-shaped worktop",
+          "block_ids": [
+            "B04",
+            "B05",
+            "B07",
+            "B08"
+          ],
+          "view_ids": [
+            "p1-view-001",
+            "p1-view-002"
+          ],
+          "region": {
+            "view_id": "p1-view-001",
+            "bbox_1000": [
+              120,
+              140,
+              980,
+              810
+            ]
+          }
+        }
+      ],
+      "front_conflicts": [],
+      "uncertainties": [
+        "Worktop footprint is taken from the top view and assumed to cover the full L base runs; the exact extent over the tall column and end unit is not fully verified.",
+        "The tall end column B09 has no supplied front IDs; its front type and whether it is a cabinet or fixed panel is unresolved.",
+        "Hinged versus lift-up direction for the portrait fronts F04 to F08 is not shown and is assumed.",
+        "Continuity of the wing 003 column and the wing 004 tall column with their base runs is assumed from alignment, not explicit construction."
+      ]
+    },
+    "upstream_status": {
+      "front": "failed",
+      "planner": "assembly_plan_requires_review",
+      "origin": "saved_separate_probes_not_integrated_Analyze"
+    },
+    "frozen_topology": {
+      "blocks": [
+        {
+          "id": "B01",
+          "kind": "carcass",
+          "bays": [
+            {
+              "id": "bay_a",
+              "front_ids": [
+                "F03"
+              ]
+            },
+            {
+              "id": "bay_b",
+              "front_ids": [
+                "F01"
+              ]
+            },
+            {
+              "id": "bay_c",
+              "front_ids": [
+                "F02"
+              ]
+            }
+          ],
+          "front_ids": []
+        },
+        {
+          "id": "B02",
+          "kind": "carcass",
+          "bays": [
+            {
+              "id": "bay_a",
+              "front_ids": [
+                "F04",
+                "F07",
+                "F08",
+                "F09",
+                "F10"
+              ]
+            }
+          ],
+          "front_ids": []
+        },
+        {
+          "id": "B03",
+          "kind": "carcass",
+          "bays": [
+            {
+              "id": "bay_a",
+              "front_ids": [
+                "F05"
+              ]
+            },
+            {
+              "id": "bay_b",
+              "front_ids": [
+                "F06"
+              ]
+            }
+          ],
+          "front_ids": []
+        },
+        {
+          "id": "B04",
+          "kind": "carcass",
+          "bays": [
+            {
+              "id": "bay_a",
+              "front_ids": [
+                "F11"
+              ]
+            },
+            {
+              "id": "bay_b",
+              "front_ids": [
+                "F12"
+              ]
+            },
+            {
+              "id": "bay_c",
+              "front_ids": [
+                "F13"
+              ]
+            }
+          ],
+          "front_ids": []
+        },
+        {
+          "id": "B05",
+          "kind": "carcass",
+          "bays": [
+            {
+              "id": "bay_a",
+              "front_ids": [
+                "F14"
+              ]
+            },
+            {
+              "id": "bay_b",
+              "front_ids": [
+                "F15"
+              ]
+            }
+          ],
+          "front_ids": []
+        },
+        {
+          "id": "B06",
+          "kind": "carcass",
+          "bays": [
+            {
+              "id": "bay_a",
+              "front_ids": [
+                "F16"
+              ]
+            },
+            {
+              "id": "bay_b",
+              "front_ids": [
+                "F17"
+              ]
+            }
+          ],
+          "front_ids": []
+        },
+        {
+          "id": "B07",
+          "kind": "carcass",
+          "bays": [
+            {
+              "id": "bay_a",
+              "front_ids": [
+                "F18"
+              ]
+            },
+            {
+              "id": "bay_b",
+              "front_ids": [
+                "F19"
+              ]
+            },
+            {
+              "id": "bay_c",
+              "front_ids": [
+                "F20"
+              ]
+            }
+          ],
+          "front_ids": []
+        },
+        {
+          "id": "B08",
+          "kind": "carcass",
+          "bays": [
+            {
+              "id": "bay_a",
+              "front_ids": [
+                "F21"
+              ]
+            },
+            {
+              "id": "bay_b",
+              "front_ids": [
+                "F22",
+                "F23",
+                "F24"
+              ]
+            }
+          ],
+          "front_ids": []
+        },
+        {
+          "id": "B09",
+          "kind": "explicit",
+          "bays": [],
+          "front_ids": []
+        },
+        {
+          "id": "S01",
+          "kind": "explicit",
+          "bays": [],
+          "front_ids": []
+        }
+      ]
+    },
+    "topology_source": {
+      "sha256": "fbd7b960381a3571cd85827f77ca098b64be09ee0e172cfafd8b1b01d804b6be",
+      "version": "CB Parts V3.3",
+      "status": "failed",
+      "geometry_accepted": false
+    },
+    "parts_version": "CB Parts V3.5"
+  },
+  "unvalidated_span_arithmetic_and_locator_comparison": [
+    {
+      "span_id": "D1",
+      "printed_value": 69,
+      "unit": "cm",
+      "span_mm": 690,
+      "members": [
+        {
+          "block_id": "B01",
+          "bay_id": "bay_a",
+          "weight": 1,
+          "label": "Left pantry column",
+          "arithmetic_width_mm_not_accepted": 690.0,
+          "same_view_front_locators": [
+            {
+              "id": "F03",
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                109,
+                200,
+                200,
+                494
+              ]
+            }
+          ],
+          "fronts_entirely_outside_declared_span_x": []
+        }
+      ]
+    },
+    {
+      "span_id": "D2",
+      "printed_value": 180,
+      "unit": "cm",
+      "span_mm": 1800,
+      "members": [
+        {
+          "block_id": "B01",
+          "bay_id": "bay_b",
+          "weight": 1,
+          "label": "Upper lift-up left",
+          "arithmetic_width_mm_not_accepted": 900.0,
+          "same_view_front_locators": [
+            {
+              "id": "F01",
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                204,
+                392,
+                401,
+                494
+              ]
+            }
+          ],
+          "fronts_entirely_outside_declared_span_x": [
+            "F01"
+          ]
+        },
+        {
+          "block_id": "B01",
+          "bay_id": "bay_c",
+          "weight": 1,
+          "label": "Upper lift-up right",
+          "arithmetic_width_mm_not_accepted": 900.0,
+          "same_view_front_locators": [
+            {
+              "id": "F02",
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                404,
+                392,
+                600,
+                494
+              ]
+            }
+          ],
+          "fronts_entirely_outside_declared_span_x": [
+            "F02"
+          ]
+        }
+      ]
+    },
+    {
+      "span_id": "D3",
+      "printed_value": 84,
+      "unit": "cm",
+      "span_mm": 840,
+      "members": [
+        {
+          "block_id": "B06",
+          "bay_id": "bay_a",
+          "weight": 1,
+          "label": "Upper tall left door",
+          "arithmetic_width_mm_not_accepted": 420.0,
+          "same_view_front_locators": [
+            {
+              "id": "F16",
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                128,
+                113,
+                221,
+                467
+              ]
+            }
+          ],
+          "fronts_entirely_outside_declared_span_x": []
+        },
+        {
+          "block_id": "B06",
+          "bay_id": "bay_b",
+          "weight": 1,
+          "label": "Upper tall right door",
+          "arithmetic_width_mm_not_accepted": 420.0,
+          "same_view_front_locators": [
+            {
+              "id": "F17",
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                231,
+                113,
+                338,
+                467
+              ]
+            }
+          ],
+          "fronts_entirely_outside_declared_span_x": []
+        }
+      ]
+    },
+    {
+      "span_id": "D4",
+      "printed_value": 151,
+      "unit": "cm",
+      "span_mm": 1510,
+      "members": [
+        {
+          "block_id": "B07",
+          "bay_id": "bay_a",
+          "weight": 1,
+          "label": "Base door left",
+          "arithmetic_width_mm_not_accepted": 302.0,
+          "same_view_front_locators": [
+            {
+              "id": "F18",
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                128,
+                663,
+                221,
+                903
+              ]
+            }
+          ],
+          "fronts_entirely_outside_declared_span_x": [
+            "F18"
+          ]
+        },
+        {
+          "block_id": "B07",
+          "bay_id": "bay_b",
+          "weight": 1,
+          "label": "Base door middle",
+          "arithmetic_width_mm_not_accepted": 302.0,
+          "same_view_front_locators": [
+            {
+              "id": "F19",
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                228,
+                663,
+                336,
+                903
+              ]
+            }
+          ],
+          "fronts_entirely_outside_declared_span_x": [
+            "F19"
+          ]
+        },
+        {
+          "block_id": "B07",
+          "bay_id": "bay_c",
+          "weight": 1,
+          "label": "Base door right",
+          "arithmetic_width_mm_not_accepted": 302.0,
+          "same_view_front_locators": [
+            {
+              "id": "F20",
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                338,
+                663,
+                443,
+                903
+              ]
+            }
+          ],
+          "fronts_entirely_outside_declared_span_x": []
+        },
+        {
+          "block_id": "B08",
+          "bay_id": "bay_a",
+          "weight": 1,
+          "label": "End base door",
+          "arithmetic_width_mm_not_accepted": 302.0,
+          "same_view_front_locators": [
+            {
+              "id": "F21",
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                600,
+                663,
+                728,
+                903
+              ]
+            }
+          ],
+          "fronts_entirely_outside_declared_span_x": []
+        },
+        {
+          "block_id": "B08",
+          "bay_id": "bay_b",
+          "weight": 1,
+          "label": "Drawer stack",
+          "arithmetic_width_mm_not_accepted": 302.0,
+          "same_view_front_locators": [
+            {
+              "id": "F22",
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                446,
+                663,
+                597,
+                727
+              ]
+            },
+            {
+              "id": "F23",
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                446,
+                730,
+                597,
+                815
+              ]
+            },
+            {
+              "id": "F24",
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                446,
+                818,
+                597,
+                903
+              ]
+            }
+          ],
+          "fronts_entirely_outside_declared_span_x": []
+        }
+      ]
+    }
+  ],
+  "semantic_accepted": false,
+  "full_parts_calculated": false,
+  "findings": [
+    "D4 assigns 151 cm to all three B07 bays plus both B08 bays, yielding 302 mm each and 604 mm for B08.",
+    "F18/F19 locators are completely left of the returned D4 left endpoint; the source elevation also places these fronts outside the 151 cm dimension.",
+    "D4 lists the end door before the drawer stack, opposite their drawing order.",
+    "Eight unanchored widths are null, not the positive estimates required by the diagnostic contract. Whole reply fails validation. No repair.",
+    "Fixing bay membership alone does not solve dimension-to-interval association in this trial. Single trial, not a frequency estimate."
+  ],
+  "next_proposal_not_implemented": "Check same-view dimension endpoint/front interval consistency before allocation. Reject contradictions, do not silently correct membership. Needs owner approval."
+}

@@ -36,6 +36,33 @@ def load_scope(front_path, planner_path):
     return planner, scope
 
 
+def load_topology(path, *, prior, scope):
+    from use_cases.estimation_cb_width_probe import freeze_cb_topology
+    data = path.read_bytes()
+    saved = json.loads(data)
+    if any(saved.get(k) != prior.get(k) for k in ("inputs", "source_pages_base64", "evidence_origin")):
+        raise ValueError("topology witness uses different evidence")
+    original = saved["scope"]
+    if original.get("parts_version") != "CB Parts V3.3" or "diagnostic_omit_block_locator" in original:
+        raise ValueError("original unmodified V3.3 witness required")
+    if any(original.get(k) != scope.get(k) for k in ("input_id", "front", "planner", "upstream_status")):
+        raise ValueError("topology witness uses different Front/Planner scope")
+    records = [r for r in saved["provider_responses"] if r["stage"] == "calculation"]
+    if len(records) != 1 or records[0]["response"].get("stop_reason") != "end_turn":
+        raise ValueError("one complete original calculation response required")
+    record = records[0]
+    supplied = json.loads(record["request"]["messages"][0]["content"][-1]["text"])
+    if supplied != {"calculation_scope": original}:
+        raise ValueError("topology request differs from its saved scope")
+    raw_text = "\n".join(b["text"] for b in record["response"]["content"] if b["type"] == "text")
+    if raw_text != record["response_text"]:
+        raise ValueError("topology response text differs from provider raw")
+    topology = freeze_cb_topology(_json_object(raw_text), scope=scope)
+    return {"frozen_topology": topology,
+        "topology_source": {"sha256": sha256(data).hexdigest(), "version": "CB Parts V3.3",
+            "status": saved["status"], "geometry_accepted": False}}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--front-witness", type=Path, required=True)
@@ -43,13 +70,18 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--execute", action="store_true")
     parser.add_argument("--omit-block-locator", help="Explicit diagnostic: omit only this block's region from the model context")
-    parser.add_argument("--parts-version", choices=("V1", "V2", "V3", "V3.1", "V3.2", "V3.3", "V3.4"), default="V3")
+    parser.add_argument("--topology-witness", type=Path, help="V3.5 only: freeze topology from an original V3.3 provider reply")
+    parser.add_argument("--parts-version", choices=("V1", "V2", "V3", "V3.1", "V3.2", "V3.3", "V3.4", "V3.5"), default="V3")
     args = parser.parse_args()
     if not args.execute:
         parser.error("--execute required for one paid Calculate call")
     if args.output.exists():
         parser.error("refuse to overwrite witness")
     prior, scope = load_scope(args.front_witness, args.planner_witness)
+    if (args.parts_version == "V3.5") != bool(args.topology_witness):
+        parser.error("V3.5 requires --topology-witness; other versions do not accept it")
+    if args.topology_witness:
+        scope.update(load_topology(args.topology_witness, prior=prior, scope=scope))
     scope["parts_version"] = "CB Parts " + args.parts_version
     if args.omit_block_locator:
         scope["diagnostic_omit_block_locator"] = args.omit_block_locator
@@ -57,6 +89,8 @@ def main():
     witness.update(work="3.17.4.6", route="cb_parts_inside_calculate", status="running",
         database_writes=False, scope=scope, provider_responses=[],
         source_hashes={str(p): sha256(p.read_bytes()).hexdigest() for p in (args.front_witness, args.planner_witness)})
+    if args.topology_witness:
+        witness["source_hashes"][str(args.topology_witness)] = scope["topology_source"]["sha256"]
     def save():
         args.output.write_text(json.dumps(witness, ensure_ascii=False, indent=2))
     started = time.monotonic()

@@ -294,6 +294,40 @@ Protected checkpoint a9b8df8, prior prompts and defaults unchanged. Further
 isolation of span membership on fixed topology is only a proposal, not an
 approved architecture change or silently inserted extra production stage.
 
+## CB Parts V3.5 fixed-topology diagnostic, same 3.17.4.6
+
+Owner subsequently approved isolating span association from construction
+generation. This supersedes the pending diagnostic proposal above, NOT the
+production architecture. Explicit V3.5 opt-in with a saved V3.3 topology witness;
+one isolated call, no added automatic Analyze/Calculate stage or default change.
+
+Loader checks exact evidence, original Front/Planner scope and provider reply.
+Freeze only block kind/ID and bay/front membership. No widths, heights, depths,
+shelf counts, panel sizes or previous dimensional assumptions are transmitted
+from that reply. Original images, OCR and Front/Planner context stay intact.
+Frozen topology retains source failure/provenance, not certified ground truth.
+Model may only return width_spans and positive unanchored_widths with reasons.
+It cannot return modified topology or parts. Every carcass bay must be allocated
+once. The existing V3.4 allocator conserves totals and rejects overlaps/missing
+widths; explicit geometry remains outside this diagnostic. Output status is
+cb_width_diagnostic_requires_review, never a complete parts result.
+
+One unchanged-evidence Lev2 trial took 5.256 s (1181 output tokens). The model
+assigned 151 cm to all three B07 bays plus both B08 bays, equal weights, giving
+302 mm each and B08=604 mm arithmetically. F18/F19 lie entirely left of the
+declared span start in the same island; source inspection confirms their
+exclusion from that dimension. Door/drawer interval order is also reversed.
+Eight unanchored widths are null, so validation rejects the whole answer.
+Raw output and unvalidated arithmetic remain separate, no repair or repeat.
+Evidence: notes/evidence/cb-parts-v3-5-2026-11-06/lev2-fixed-topology-trial.json.
+
+Conclusion bounded to this trial: topology regeneration is not the sole cause;
+span-to-bay association fails even with frozen membership. 248 regression tests
+pass, semantic goal unmet. A same-view endpoint/front-interval consistency check
+is the next proposal, not implemented or approved. It can detect contradictions,
+not prove source dimensions or correct visual geometry. Checkpoint a9b8df8 and
+production remain unchanged. Stop prompt variants pending the next decision.
+
 Owner benchmark corrected on 2026-11-06: N68 TEN door-like fronts and SIX
 drawers, superseding the earlier eight-door/four-drawer confirmation. Ten
 comprises five tall, two under sink, one downward-opening dishwasher front,

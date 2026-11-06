@@ -89,6 +89,15 @@ This file explains where code belongs so the project stays understandable.
   model-associated endpoints/weights before the V3.3 compiler. One Lev2 trial
   failed topology/height despite conserved totals; no default/checkpoint change.
   `notes/evidence/cb-parts-v3-4-2026-11-06/lev2-span-trial.json`.
+- Subsequently approved fixed-topology diagnostic: CB Parts V3.5,
+  `agents/prompts/cb_parts_v3_5.md`, `use_cases/estimation_cb_width_probe.py`,
+  `tests/test_cb_parts_v3_5.py`. Probe uses `--parts-version V3.5` plus
+  `--topology-witness` pointing to the original V3.3 replay. Checks source
+  identity, freezes only bay/front IDs, reuses span allocator, emits widths
+  for review, never a Parts BOM. One Lev2 trial still misassigned 151 cm and
+  failed on null fallback widths. Fixed topology alone is insufficient here.
+  `notes/evidence/cb-parts-v3-5-2026-11-06/lev2-fixed-topology-trial.json`.
+  Research checkpoint/defaults untouched; no new production stage or deploy.
 - `use_cases/machinery.py` owns the 27-code storage catalog, the 16-capability
   Company Profile subset, outsourceable-operation boundary, company/supplier
   validation, Supabase persistence, and the bounded production-context snapshot

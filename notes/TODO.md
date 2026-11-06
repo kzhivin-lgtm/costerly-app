@@ -1000,7 +1000,24 @@ Older tags and 50 unrelated TODO lines retained. Stop further experiments until
 the owner chooses the next task; outstanding quality defects remain pending P0.
 
 Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, PENDING full-object geometry; research checkpoint preserved:
-LATEST USER-APPROVED EXPERIMENT after checkpoint: CB Parts V3.4 associates
+LATEST USER-APPROVED DIAGNOSTIC: CB Parts V3.5 freezes bay/front membership
+from the original first V3.3 reply, withholding all its dimension estimates.
+Same complete Lev2 evidence, five images, no changed locators or manual repair.
+One width-association call only, not an extra stage in production. Exact evidence
+and Front/Planner identity checked before freezing; failed upstream status kept.
+One trial 5.256 s, 1181 output tokens. Association FAIL: 151 cm assigned to all
+five B07/B08 bays, although F18/F19 are left of its declared start; equal weights
+would yield 302 mm each and B08=604 mm. Fixing topology alone did not solve the
+association error. Also eight fallback widths null; whole response rejected.
+Raw reply and diagnostic arithmetic (not accepted parts):
+notes/evidence/cb-parts-v3-5-2026-11-06/lev2-fixed-topology-trial.json.
+248 relevant tests pass. Semantic objective NOT ACHIEVED, no blind retry or
+prompt variant. Prior checkpoint/defaults/main/production unchanged; diagnostic
+is opt-in only. Next proposal, NOT APPROVED: deterministic same-view consistency
+check between declared span endpoints and referenced front intervals, reject
+contradictions without silently changing memberships. This detects the observed
+contradiction; it does not prove source OCR, visual locators or unseen geometry.
+Earlier approved experiment: CB Parts V3.4 associates
 labelled horizontal spans with endpoints and cross-block bay intervals. Model
 returns relative weights; code conserves each total, converts units and passes
 derived bay widths to the unchanged V3.3 parts compiler. Unanchored numeric
@@ -1015,9 +1032,9 @@ giving B08 only 456.5 mm. Side-by-side topology regressed; B06 pair also collaps
 Whole reply fails B01 heights. Do not present the allocation audit as accepted
 parts. Evidence: notes/evidence/cb-parts-v3-4-2026-11-06/lev2-span-trial.json.
 221 relevant tests pass; semantic objective NOT ACHIEVED. V3.3 checkpoint/tag
-and ordinary defaults unchanged. No new checkpoint or deploy. Next proposal,
-not approved: isolate dimension-line membership on a fixed bay topology before
-asking the model to regenerate parts/topology together with span association.
+and ordinary defaults unchanged. No new checkpoint or deploy. Subsequent owner
+approval authorized the fixed-topology V3.5 diagnostic recorded above, not a new
+production stage or promotion of the failed V3.4 output.
 Prior owner preservation decision: run two more unchanged V3.3 calls, then create the full
 checkpoint immediately. Preservation accepted with known limitations; it is
 not production or complete-object geometry acceptance. Do not resume experiments
