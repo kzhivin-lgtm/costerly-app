@@ -457,6 +457,14 @@ proposal is not an approved new production architecture or additional call.
 
 ## CB Cycle V5: explicit whole-object understanding, same 3.17.4.6
 
+Latest opt-in diagnostic, Understanding V2, 2026-11-06: V1 plus a focus paragraph
+excluding non-thickness sizes and explicitly describing supports/visible legs.
+--understanding-v2, same evidence/settings, no inherited Front or continuation.
+One Lev1/Lev2 call each, 6.044/6.263 s. Lev1 leg count improves in this sample;
+thickness attribution and material/unsupported-feature defects persist.
+Neither result accepted. No contract promotion or new production stage.
+Raw evidence: notes/evidence/understanding-v2-2026-11-06/simple-object-trials.json.
+
 Subsequent owner-approved isolation, 2026-11-06: Understanding V1 is a separate
 plain-text prompt, agents/prompts/understanding_v1.md, not an overwrite of this
 mixed cycle. --understanding-v1 runs only that prompt on unchanged evidence.

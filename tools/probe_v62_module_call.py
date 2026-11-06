@@ -21,6 +21,7 @@ def main():
     p.add_argument('--cycle-v5', action='store_true', help='Opt-in whole-object Understanding + Front, then linked Planner; no implicit extra calls')
     mode = p.add_mutually_exclusive_group()
     mode.add_argument('--understanding-v1', action='store_true', help='One standalone exact Understanding V1 prose call, no Front/Planner/Calculate')
+    mode.add_argument('--understanding-v2', action='store_true', help='One standalone Understanding V2 focus experiment, no Front/Planner/Calculate')
     mode.add_argument('--classify-only', '--map-only', dest='classify_only', action='store_true', help='One isolated classification call, no module continuation')
     mode.add_argument('--count-fronts', action='store_true', help='One combined classification/front-count experiment')
     mode.add_argument('--plan-assemblies', action='store_true', help='One Planner call using an existing Front witness')
@@ -29,6 +30,7 @@ def main():
     front_revision.add_argument('--front-supports', action='store_true', help='Explicit CB Front V2 (default); requires --count-fronts')
     front_revision.add_argument('--front-v1', action='store_true', help='Replay protected CB Front V1; requires --count-fronts')
     args = p.parse_args()
+    standalone_understanding = args.understanding_v1 or args.understanding_v2
     if not args.execute:
         p.error('Explicit --execute required for paid calls')
     if (args.front_supports or args.front_v1) and not args.count_fronts:
@@ -38,9 +40,9 @@ def main():
     include_supports = not args.front_v1
     front_version = FRONT_SUPPORTS_PROMPT_VERSION if include_supports else FRONT_COUNT_PROMPT_VERSION
     planner_version = PLANNER_PROMPT_VERSION
-    if args.understanding_v1:
+    if standalone_understanding:
         from agents import estimation_cb_cycle_v5_agent as cycle
-        front_version = cycle.UNDERSTANDING_VERSION
+        front_version = cycle.UNDERSTANDING_V2_VERSION if args.understanding_v2 else cycle.UNDERSTANDING_VERSION
     if args.cycle_v5:
         from agents import estimation_cb_cycle_v5_agent as cycle
         front_version, planner_version = cycle.FRONT_VERSION, cycle.PLANNER_VERSION
@@ -66,8 +68,9 @@ def main():
     w = {k: prior[k] for k in ('inputs', 'source_pages_base64', 'evidence_origin')}
     w.update(version='v6.2', route='island_types_cabinet_module_haiku55_diagnostic', database_writes=False,
         status='running', replay_source=str(args.replay), provider_responses=[])
-    if args.understanding_v1:
-        w.update(route='standalone_understanding_v1_diagnostic', prompt_version=front_version)
+    if standalone_understanding:
+        revision = 2 if args.understanding_v2 else 1
+        w.update(route=f'standalone_understanding_v{revision}_diagnostic', prompt_version=front_version)
     elif args.classify_only:
         w['route'] = 'island_types_only_diagnostic'
     elif args.count_fronts:
@@ -89,7 +92,7 @@ def main():
         text = '\n'.join(b['text'] for b in raw['content'] if b['type'] == 'text')
         prompt_identity = ({'prompt_version': planner_version if stage == 'assembly_plan' else front_version,
             'prompt_sha256': sha256(request['system'].encode()).hexdigest()}
-            if stage in {'front_count', 'assembly_plan'} or (args.understanding_v1 and stage == 'understanding') else {})
+            if stage in {'front_count', 'assembly_plan'} or (standalone_understanding and stage == 'understanding') else {})
         w.update(prompt_identity)
         w['provider_responses'].append({'stage': stage, 'request': request,
             **prompt_identity,
@@ -108,8 +111,8 @@ def main():
         run = run_assembly_plan if args.plan_assemblies else run_front_count if args.count_fronts else run_island_types_only if args.classify_only else run_understanding_with_modules
         if args.cycle_v5:
             run = cycle.run_assembly_plan if args.plan_assemblies else cycle.run_front_count
-        if args.understanding_v1:
-            run = cycle.run_understanding_v1
+        if standalone_understanding:
+            run = cycle.run_understanding_v2 if args.understanding_v2 else cycle.run_understanding_v1
         extra = {'front_result': front_result, 'front_status': front_witness['status']} if args.plan_assemblies else {}
         if args.count_fronts:
             extra['include_supports'] = include_supports
@@ -117,7 +120,7 @@ def main():
             page_bytes={k: base64.b64decode(v) for k, v in w['source_pages_base64'].items()}, record=record, **extra)
         w['status'] = ('assembly_plan_requires_review' if args.plan_assemblies else 'front_count_requires_review' if args.count_fronts else
             'island_types_require_review' if args.classify_only else 'understanding_requires_review_not_estimate')
-        if args.understanding_v1:
+        if standalone_understanding:
             w['status'] = 'understanding_text_requires_review_not_estimate'
     except Exception as exc:
         w['status'] = 'failed'

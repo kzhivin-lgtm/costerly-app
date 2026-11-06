@@ -1,5 +1,19 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: owner-approved Understanding V2 focus-only experiment.
+V1 remains immutable; V2 adds one paragraph excluding non-thickness sizes and
+focusing construction/materials/supports with visible leg count. Same packets,
+images, messages and provider settings; only system changed. One Haiku 5.5 call
+per file: Lev1 6.044 s, Lev2 6.263 s. Lev1 now reports two legs and no padding,
+but title still says Upholstered-style and source 20 becomes 20 mm thickness.
+Lev2 retains unsupported features and material alternatives. Both descriptions
+exceed two sentences. No semantic acceptance, stability claim or promotion.
+Raw answers and comparison: notes/evidence/understanding-v2-2026-11-06/simple-object-trials.json.
+No Front/Planner/Calculate, automatic retry, DB writes, main merge or deploy.
+Next diagnostic in TODO is a proposal, not another authorized experiment.
+184 focused regression tests pass, including both versioned routes, immutable
+V1 prompt, exact evidence/settings, raw failure retention and CLI isolation.
+
 2026-11-06, 3.17.4.6: tested exact owner-approved standalone Understanding V1
 text on Lev1 and Lev2. Versioned prompt understanding_v1.md; existing module
 probe adds explicit --understanding-v1, no extra automatic stage or defaults.

@@ -14,6 +14,13 @@ for review without the old Front schema or downstream calls. Lev1/Lev2 complete
 but semantically unaccepted: notes/evidence/understanding-v1-2026-11-06/simple-object-trials.json.
 No default/product route change. Current task and next proposal remain in TODO.
 
+Latest standalone trial: Understanding V2, agents/prompts/understanding_v2.md,
+--understanding-v2 via the same helper, one added focus paragraph, V1 preserved.
+Same saved Lev1/Lev2 evidence, one call each. Two legs corrected in this Lev1
+sample, but source thickness/material/unsupported-feature errors remain.
+Not semantically accepted or integrated. Raw comparison:
+notes/evidence/understanding-v2-2026-11-06/simple-object-trials.json.
+
 This file explains where code belongs so the project stays understandable.
 
 ## Entry Point

@@ -8,21 +8,23 @@ from use_cases.estimation_cb_cycle_v5 import validate_front, validate_plan, VERS
 FRONT_VERSION = VERSION + ': Understanding + Front'
 PLANNER_VERSION = VERSION + ': Planner'
 UNDERSTANDING_VERSION = 'Understanding V1'
+UNDERSTANDING_V2_VERSION = 'Understanding V2'
 
 
 def prompt(stage):
     folder = existing.PROMPT_PATH.parent
-    if stage == 'understanding':
-        return (folder / 'understanding_v1.md').read_text().strip()
+    if stage in {'understanding', 'understanding_v2'}:
+        filename = 'understanding_v1.md' if stage == 'understanding' else 'understanding_v2.md'
+        return (folder / filename).read_text().strip()
     inherited = 'cb_front_v3.md' if stage == 'front' else 'cb_planner_v7.md'
     extension = 'cb_cycle_v5_understanding.md' if stage == 'front' else 'cb_cycle_v5_planner.md'
     # The versioned extension is last, explicitly defining the outer contract.
     return (folder / inherited).read_text().strip() + '\n\n' + (folder / extension).read_text().strip()
 
 
-def _call(stage, content, record, *, parse_json=True):
+def _call(stage, content, record, *, parse_json=True, prompt_stage=None):
     request = dict(model=existing.MODEL, max_tokens=14000, output_config={'effort': 'low'},
-        thinking={'type': 'disabled'}, system=prompt(stage), messages=[{'role': 'user', 'content': content}])
+        thinking={'type': 'disabled'}, system=prompt(prompt_stage or stage), messages=[{'role': 'user', 'content': content}])
     if record:
         record(stage + '_request', request, None)
     response = existing._create_message_with_hard_timeout(
@@ -41,15 +43,26 @@ def _call(stage, content, record, *, parse_json=True):
 
 def run_understanding_v1(*, inputs, page_bytes, record=None):
     """Owner-approved exact prose prompt; no Front contract or continuation."""
+    return _run_understanding(inputs=inputs, page_bytes=page_bytes, record=record, revision=1)
+
+
+def run_understanding_v2(*, inputs, page_bytes, record=None):
+    """Focus-only prompt experiment; retain V1 evidence and provider settings."""
+    return _run_understanding(inputs=inputs, page_bytes=page_bytes, record=record, revision=2)
+
+
+def _run_understanding(*, inputs, page_bytes, record, revision):
+    version = UNDERSTANDING_VERSION if revision == 1 else UNDERSTANDING_V2_VERSION
     if len(inputs) != 1:
-        raise ValueError('Understanding V1 diagnostic requires exactly one object')
+        raise ValueError(f'{version} diagnostic requires exactly one object')
     content, manifests = existing.prepare_content(inputs, page_bytes)
     if not manifests[0]['known_views']:
-        raise ValueError('Understanding V1 requires saved object islands')
-    text, digest = _call('understanding', content, record, parse_json=False)
-    return dict(version=UNDERSTANDING_VERSION,
+        raise ValueError(f'{version} requires saved object islands')
+    text, digest = _call('understanding', content, record, parse_json=False,
+        prompt_stage='understanding' if revision == 1 else 'understanding_v2')
+    return dict(version=version,
         status='understanding_text_requires_review_not_estimate',
-        prompt_version=UNDERSTANDING_VERSION, prompt_sha256=digest,
+        prompt_version=version, prompt_sha256=digest,
         input_id=inputs[0]['input_id'], response_text=text)
 
 

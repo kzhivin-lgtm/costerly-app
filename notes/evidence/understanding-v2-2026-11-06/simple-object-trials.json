@@ -1,0 +1,164 @@
+{
+  "work": "3.17.4.6",
+  "prompt_version": "Understanding V2",
+  "purpose": "Owner-approved focus-only experiment against Understanding V1; no new production stage",
+  "accepted": false,
+  "production_promoted": false,
+  "experiment": {
+    "question": "Does focusing on construction/materials/supports and removing non-thickness sizes improve whole-object understanding?",
+    "change": "V1 unchanged except version heading and seven-line focus paragraph; source thickness and defaults remain required.",
+    "criteria": [
+      "Physically consistent construction and support description without invented upholstery or features",
+      "One plausible material assignment per role, with source-supported or labelled assumed/default thickness",
+      "One or two description sentences; no non-thickness component or overall dimensions"
+    ],
+    "outcome": "inconclusive overall: two legs corrected on Lev1 in this sample, but thickness/source attribution and material selection still fail; no stability or causal improvement established",
+    "calls_per_file": 1
+  },
+  "trials": [
+    {
+      "file": "lev1",
+      "prompt_version": "Understanding V2",
+      "status": "understanding_text_requires_review_not_estimate",
+      "semantic_status": "not_accepted",
+      "error": null,
+      "provider_calls": 1,
+      "front_calls": 0,
+      "planner_calls": 0,
+      "calculate_calls": 0,
+      "elapsed_seconds": 6.044,
+      "baseline_elapsed_seconds": 5.291,
+      "changed_request_fields_vs_v1": [
+        "system"
+      ],
+      "source_evidence_unchanged": true,
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "type": "disabled"
+      },
+      "effort": {
+        "effort": "low"
+      },
+      "max_tokens": 14000,
+      "prompt_sha256": "2e2098af42f87dc20a360d177bf0a805ab56d205573267a3a7f9ed1e7711ab25",
+      "request_sha256": "8b54bff3e4a39a26665307b3652c48648004a7497ed238f04e44e40f2e2601cd",
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 12924,
+        "output_tokens": 753,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "raw_response_text": "**name:** Upholstered-style fluted banquette bench with integrated back panel and fixed table\n\n**description:** The item is a built-in corner-style banquette seat: a low plinth base carrying a seat deck with three drawer fronts on the front face, a tall slatted back panel (vertical fluted fins with rectangular cut-outs) running along the full width of the unit, and a separate fixed table top on two cylindrical legs projecting from the side opposite the back panel. The back is a solid panel structure with vertical slats and horizontal cross-members, rising from the seat deck to the top of the back. The table is a freestanding fixed element attached to the bench's side, forming a seating-and-table arrangement.\n\n**materials:**\n- Plinth, carcass, seat deck, drawer boxes and back-panel structure: wood-grain veneered board (veneered MDF or veneered chipboard), 17 mm, inferred from wood-grain texture on the rendered views.\n- Back slats/fins and drawer fronts: same veneer finish, thickness as above, inferred.\n- Plinth base (recessed kick/plinth strip): dark finish, thickness not specified, default 17 mm, default.\n- Table top: pale/light-coloured surface (laminate or solid surface), 20 mm thickness, specified by the side elevation dimension \"20\" on the back-panel depth and the table top detail; the table top thickness is best read as a light laminate board, inferred.\n- Table legs: black cylindrical legs, material not specified, inferred as steel tube or solid rod, default.\n- Upholstery: none shown; the seat is a wooden deck, not padded.\n\n**assumptions:**\n- The seat deck and back are one integrated wooden structure; no upholstery is shown, so the seat is treated as a flat veneered deck.\n- The table is fixed to the bench's side (cantilevered or leg-supported), with two legs visible in the elevations.\n- The back-panel thickness is 20 mm as dimensioned in the plan and side views; the finished veneered board is assumed to be 17 mm LDSP-equivalent veneered MDF with a 20 mm overall assembly, inferred.\n- Material codes and finishes are inferred from the rendered wood grain and colour; no explicit material legend was supplied on this page.",
+      "private_witness": "/private/tmp/lev1-understanding-v2-20261106-01.json",
+      "private_witness_sha256": "560c89fc4b67f58a03097009d50cbecadbd82564ef64780a39e44e30607b3497",
+      "replay_source": "/private/tmp/lev1-understanding-v1-20261106-01.json",
+      "source_pages_sha256": {
+        "storage://rfq-estimation-evidence/610/run_1cba0b2491dc413c9a3be2fdd526226b/object-001/page-1-2fea9d342ee270de687652dab19539990a5d6371f2751bc657ca89514fbfa606.webp": "2fea9d342ee270de687652dab19539990a5d6371f2751bc657ca89514fbfa606"
+      }
+    },
+    {
+      "file": "lev2",
+      "prompt_version": "Understanding V2",
+      "status": "understanding_text_requires_review_not_estimate",
+      "semantic_status": "not_accepted",
+      "error": null,
+      "provider_calls": 1,
+      "front_calls": 0,
+      "planner_calls": 0,
+      "calculate_calls": 0,
+      "elapsed_seconds": 6.263,
+      "baseline_elapsed_seconds": 5.164,
+      "changed_request_fields_vs_v1": [
+        "system"
+      ],
+      "source_evidence_unchanged": true,
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "type": "disabled"
+      },
+      "effort": {
+        "effort": "low"
+      },
+      "max_tokens": 14000,
+      "prompt_sha256": "2e2098af42f87dc20a360d177bf0a805ab56d205573267a3a7f9ed1e7711ab25",
+      "request_sha256": "2225830a4585c79fe94b834da9e8cd77854ab96f13f9365681c15063f42555e4",
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 12408,
+        "output_tokens": 722,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "raw_response_text": "**name:** L-shaped kitchen run with a wall-mounted corner unit, fridge tower and return\n\n**description:** This is an L-shaped kitchen comprising a main base run with a corner section, a linear base run with a built-in sink and a worktop, a tall fridge/pantry tower at the end of the return, and wall units above the main run. Two separate wall-mounted units hang on the wall: a tall corner-adjacent unit with a glazed-looking front and an upper cabinet above the main run. The base run is topped with a worktop incorporating an inset sink and a corner section with a chamfered profile, while the end runs into a tall column unit that is partly open at its lower section. The item is installed between walls and attaches to the wall structure through wall-mounted units and the tall tower.\n\n**materials:**\n- Carcasses (base, wall and tall units): LDSP, 17 mm, inferred from ordinary panelled kitchen construction and no other specification.\n- Doors and drawer fronts: finished panel, likely laminated or lacquered MDF/LDSP, 18 mm, inferred from the flat recessed-handle style visible in the elevations.\n- Worktop: solid-surface or laminated board, 30 mm, default for a finished worktop; a wood-look area on the corner suggests a laminate or timber-effect finish, inferred.\n- Visible shelf/back panels and interior fittings: LDSP, 17 mm, default.\n- Sink insert: stainless steel or composite, inferred from the inset rectangle on the worktop.\n\n**assumptions:**\n- The lower run is supported by the floor via a plinth and the cabinet carcasses; the wall units are fixed to the wall rails, and the tall column is floor-standing and fixed to the wall.\n- The chamfered corner on the worktop is a 45° cut on the corner section, based on the plan.\n- The wood-grain-looking corner panel is a ready-made veneered or laminate board rather than solid timber.\n- Default panel thickness of 17 mm applies to carcasses; default worktop thickness of 30 mm applies.\n- The drawer and door fronts are flat, not profiled, and fit within the standard carcass sizes shown.",
+      "private_witness": "/private/tmp/lev2-understanding-v2-20261106-01.json",
+      "private_witness_sha256": "320f509e2b295ba20ec921f27eb58fc5d7f922c9fd5a63659bc504e6750f22ae",
+      "replay_source": "/private/tmp/lev2-understanding-v1-20261106-01.json",
+      "source_pages_sha256": {
+        "local-render:099bfb240ad0bbc85740ad1a73b81c2c780a15de6c5b9697f56e145315bce3d7:p1": "099bfb240ad0bbc85740ad1a73b81c2c780a15de6c5b9697f56e145315bce3d7"
+      }
+    }
+  ],
+  "review": {
+    "lev1": {
+      "positive": [
+        "Two cylindrical legs instead of V1's one",
+        "Explicitly states no upholstery and wooden deck",
+        "Three drawer fronts and decorative rib structure retained",
+        "Non-thickness dimensions omitted"
+      ],
+      "failures": [
+        "Title still says Upholstered-style despite body denying upholstery",
+        "20 source dimension again misattributed to 20 mm tabletop/back thickness; 4 cm rib thickness not captured",
+        "Veneered MDF or chipboard and laminate or solid-surface choices remain unresolved",
+        "Freestanding fixed table attached to bench is internally ambiguous",
+        "Three description sentences, exceeding one or two"
+      ],
+      "semantic_status": "not_accepted"
+    },
+    "lev2": {
+      "positive": [
+        "Kitchen, base/wall/tall units, worktop and sink recognized",
+        "Floor-supported carcasses and wall-mounted units distinguished",
+        "17 mm carcass and 30 mm top assumptions retained",
+        "Non-thickness dimensions omitted"
+      ],
+      "failures": [
+        "Glazed-looking front and installation between walls are not established by supplied drawing",
+        "Fridge/pantry tower and lower open section not reliably tied to the actual appliance/opening structure",
+        "Front and worktop assignments still list alternatives rather than one estimating choice",
+        "18 mm fronts inferred from handle style without thickness evidence; source/default basis remains weak",
+        "Four description sentences; exceeds one or two"
+      ],
+      "semantic_status": "not_accepted"
+    },
+    "visual_review_sources": [
+      "/private/tmp/lev1-audit/page-1.png",
+      "/private/tmp/estimation-v6-lev2-review.ZzeP0A/lev2.png"
+    ],
+    "conclusion": "Readable output, isolated leg-count improvement in one sample, but no accepted whole-object interpretation. Omitted dimensions do not prove corrected scale interpretation. Both calls slower than V1 here; one sample does not establish latency regression.",
+    "next_proposal": "Stop broad prompt polishing. Next owner-approved diagnostic should inspect the exact saved image payload (full page and crops) for the recurring Lev1 thickness error, then test source-value/element/unit attribution in isolation. This is a proposal, not another production call or an implemented V3."
+  }
+}

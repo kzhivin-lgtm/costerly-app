@@ -1000,7 +1000,25 @@ Older tags and 50 unrelated TODO lines retained. Stop further experiments until
 the owner chooses the next task; outstanding quality defects remain pending P0.
 
 Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, PENDING full-object geometry; research checkpoint preserved:
-LATEST APPROVED EXPERIMENT, Understanding V1, 2026-11-06:
+LATEST APPROVED EXPERIMENT, Understanding V2, 2026-11-06:
+Owner approved the bounded focus-only change: no non-thickness sizes in the
+answer, focus on construction/materials/supports and visible leg count.
+understanding_v2.md preserves V1 except the heading and one added paragraph.
+--understanding-v2 is opt-in; V1 and all established routes remain available.
+One Haiku 5.5 call per saved V1 packet: Lev1 6.044 s, Lev2 6.263 s. Only system
+differs; exact inputs/pages/messages/settings preserved. No downstream calls.
+Lev1 now has two legs and explicitly no upholstery, but its title still says
+Upholstered-style; 20 is again wrongly assigned as 20 mm top/back thickness,
+and the 4 cm rib evidence is missed. Lev2 still invents/overstates features
+(glazed-looking front, between-wall installation) and leaves material options.
+Both exceed the two-sentence description limit. Neither is semantically
+accepted; one run each cannot prove improvement or stability. No promotion.
+Evidence: notes/evidence/understanding-v2-2026-11-06/simple-object-trials.json.
+NEXT, P0, PROPOSAL, not authorized execution: stop broad prompt polishing;
+inspect exact saved image payload for recurring Lev1 thickness failure, then
+isolate source-value/element/unit attribution in a bounded diagnostic.
+This does not add a production call or implement Understanding V3.
+PREVIOUS APPROVED EXPERIMENT, Understanding V1, 2026-11-06:
 Owner reviewed the mixed V5 prompt and approved running the replacement text
 shown in chat. Saved verbatim in agents/prompts/understanding_v1.md, separate
 version lineage, not a rewrite of the failed CB Cycle V5 prompt. Existing probe
@@ -1016,9 +1034,8 @@ the main kitchen elements and 17/30 mm defaults, but exceeds two sentences,
 misstates chamfer/layout and leaves some material choices unresolved.
 Both readable, neither semantically accepted; no automatic retry or promotion.
 Evidence: notes/evidence/understanding-v1-2026-11-06/simple-object-trials.json.
-NEXT, P0, PROPOSAL: owner review of these exact answers before Understanding V2.
-Removing unnecessary overall numerical geometry is a bounded next candidate,
-not a demonstrated fix for wrong support counts or physical interpretation.
+The proposed focused Understanding V2 was approved and tested above; removing
+numerical geometry did not resolve the source-thickness interpretation failure.
 The earlier merged-schema proposal below is paused by this standalone trial;
 document-wide Analyze/Front/Planner integration and final Parts remain pending.
 OWNER-REQUESTED FULL CHAT HANDOFF completed, 2026-11-06:
