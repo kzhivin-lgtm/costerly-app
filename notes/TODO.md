@@ -999,8 +999,24 @@ No model calls, main merge, deployment or defect repair in this preservation.
 Older tags and 50 unrelated TODO lines retained. Stop further experiments until
 the owner chooses the next task; outstanding quality defects remain pending P0.
 
-Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, ACTIVE, V3 geometry acceptance failed:
-LATEST APPROVED WORK: locator ablation then CB Parts V3.3 bay contract. The
+Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, PENDING full-object geometry; research checkpoint preserved:
+LATEST OWNER DECISION: run two more unchanged V3.3 calls, then create the full
+checkpoint immediately. Preservation accepted with known limitations; it is
+not production or complete-object geometry acceptance. Do not resume experiments
+merely because pending defects remain. No deploy has occurred for this work.
+COMPLETED PRESERVATION: estimation-v6.2-cb-parts-v3.3-research-checkpoint-2026-11-06.
+Restart: notes/ESTIMATION_V6_2_CB_PARTS_V3_3_CHECKPOINT_2026_11_06.md.
+All four requests identical. New runs 9.473/9.674 s; B08 door+drawer widths
+350+270=620 and 500+500=1000 mm, one derived partition each. Earlier runs
+450+450=900 and 400+400=800. B08 arithmetic/partition 4/4; dimension stability
+not established. Whole-object validation 0/4 (height conflicts; run 3 also
+omits B09 and has a drawer-body/facade conflict). Raw evidence:
+notes/evidence/cb-parts-v3-3-2026-11-06/four-run-checkpoint.json.
+201 relevant tests pass. Private recovery archive: 22 files, byte-verified,
+hash/path in checkpoint document. Fifty unrelated TODO additions preserved
+outside the commit and privately backed up. Main, selectors and production
+unchanged. STOP at checkpoint; future height/coverage work needs owner direction.
+Prior approved work: locator ablation then CB Parts V3.3 bay contract. The
 owner approved moving straight-carcass width/common panels and mounting walls
 to deterministic code, retaining one Calculate per object and coarse part list.
 1. V3.2 without ONLY B08 region: 13.744 s, B08 300+300=600 mm, S01 omitted,

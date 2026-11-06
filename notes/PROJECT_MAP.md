@@ -75,6 +75,14 @@ This file explains where code belongs so the project stays understandable.
   ablation failure and two V3.3 whole-object height failures. B08 isolated
   width/partition checks pass, model-estimated dimensions remain unverified.
   No default promotion or checkpoint; document-wide Analyze integration pending.
+- Latest owner-requested Parts research checkpoint/restart, same 3.17.4.6:
+  `notes/ESTIMATION_V6_2_CB_PARTS_V3_3_CHECKPOINT_2026_11_06.md`, immutable tag
+  `estimation-v6.2-cb-parts-v3.3-research-checkpoint-2026-11-06`.
+  Supersedes the earlier pending-preservation status, not its raw findings.
+  Four identical requests: B08 derived widths 900/800/620/1000 mm, one divider
+  each; complete objects 0/4 pass. Exact replies, per-block audits, 22-file
+  private archive/manifest and safe restart are documented. No default promotion
+  or deploy. Preserve as research with known limits, stop further experiments.
 - `use_cases/machinery.py` owns the 27-code storage catalog, the 16-capability
   Company Profile subset, outsourceable-operation boundary, company/supplier
   validation, Supabase persistence, and the bounded production-context snapshot

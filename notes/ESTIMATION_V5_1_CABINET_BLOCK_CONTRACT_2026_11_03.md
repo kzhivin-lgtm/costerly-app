@@ -240,6 +240,26 @@ notes/evidence/cb-parts-v3-3-2026-11-06/locator-and-bay-trials.json.
 No production acceptance, automatic correction, new checkpoint or deployment.
 Next source-height/vertical-consistency work is a proposal pending direction.
 
+## V3.3 preservation decision after four trials
+
+Owner explicitly requested two additional unchanged trials and immediate full
+checkpoint. These yielded B08 bays 350/270 mm and 500/500 mm. Code computes
+620/1000 mm and one partition respectively. Across four identical requests,
+B08 arithmetic and divider are coherent 4/4; model-estimated widths vary and
+full-object validation passes 0/4. Third trial omits B09 and has a drawer-body
+height conflict in B02; fourth repeats B02 stacked-height conflict. These facts
+do not revoke the accepted equal-subdivision approximation, but prevent a claim
+of verified complete geometry or production readiness. No repair/promotion.
+
+Preservation is accepted as a research checkpoint with known limitations:
+estimation-v6.2-cb-parts-v3.3-research-checkpoint-2026-11-06.
+Full record: notes/ESTIMATION_V6_2_CB_PARTS_V3_3_CHECKPOINT_2026_11_06.md.
+It contains exact prompt/request hashes, four-run evidence, private recovery
+archive manifest/hash, current selectors and safe continuation. New evidence:
+notes/evidence/cb-parts-v3-3-2026-11-06/four-run-checkpoint.json.
+Stop at preservation; further dimension/source association work is pending,
+not automatically authorized. No deployment has been made for this iteration.
+
 Owner benchmark corrected on 2026-11-06: N68 TEN door-like fronts and SIX
 drawers, superseding the earlier eight-door/four-drawer confirmation. Ten
 comprises five tall, two under sink, one downward-opening dishwasher front,

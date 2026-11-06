@@ -157,3 +157,27 @@ def test_live_trials_keep_failed_objects_separate_from_b08_audits():
         assert by_name["Shared mounting partition"]["quantity"] == 1
         assert by_name["Hinged door"]["size_mm"][0] + by_name["Drawer front"]["size_mm"][0] == width
         assert by_name["Drawer front"]["quantity"] == by_name["Drawer bottom"]["quantity"] == 3
+
+
+def test_four_run_checkpoint_preserves_raw_failures_and_bay_sums():
+    from hashlib import sha256
+    from agents.estimation_v4_1_material_facts_agent import _json_object
+    root = Path(__file__).resolve().parents[1]
+    saved = json.loads((root / "notes/evidence/cb-parts-v3-3-2026-11-06/four-run-checkpoint.json").read_text())
+    assert saved["new_calls"] == 2 and saved["full_object_passes"] == 0
+    assert len({r["request_sha256"] for r in saved["runs"]}) == 1
+    prompt_hash = sha256((root / "agents/prompts/cb_parts_v3_3.md").read_text().strip().encode()).hexdigest()
+    assert {r["prompt_sha256"] for r in saved["runs"]} == {prompt_hash}
+    scope = saved["validation_scope"]
+    for run, width in zip(saved["runs"], (900, 800, 620, 1000)):
+        raw = _json_object(run["raw_response_text"])
+        assert run["request_identical_to_first"] and run["status"] == "failed"
+        with pytest.raises(ValueError): compose_cb_bay_parts(raw, scope=scope)
+        b08 = next(b for b in raw["blocks"] if b["id"] == "B08")
+        sc = {**scope, "planner": {"blocks": [b for b in scope["planner"]["blocks"] if b["id"] == "B08"], "shared_parts": []}}
+        compiled = compose_cb_bay_parts({"blocks": [b08]}, scope=sc)["blocks"][0]
+        assert compiled == next(b for b in run["block_audit_not_runtime_result"] if b["id"] == "B08")["compiled_parts"]
+        assert compiled["size_mm"][0] == width
+        assert sum(b["width_mm"] for b in compiled["derivation"]["bays"]) == width
+        assert sum(p["quantity"] for p in compiled["parts"] if p["name"] == "Shared mounting partition") == 1
+    assert saved["runs"][2]["missing_block_ids"] == ["B09"]

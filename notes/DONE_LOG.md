@@ -1,5 +1,20 @@
 # Done Log
 
+2026-11-06, 3.17.4.6: owner requested two more V3.3 runs then immediate full
+checkpoint, explicitly without deployment. Completed exactly two calls with
+unchanged requests, 9.473/9.674 s. B08 widths 350+270=620 and 500+500=1000 mm,
+one computed divider in each. Across four trials, arithmetic/divider 4/4 but
+complete-object validation 0/4 (height/coverage failures), geometry not stable.
+Preserved raw replies plus isolated audits, no repair or promotion. Research
+checkpoint: estimation-v6.2-cb-parts-v3.3-research-checkpoint-2026-11-06;
+restart record: notes/ESTIMATION_V6_2_CB_PARTS_V3_3_CHECKPOINT_2026_11_06.md.
+201 relevant tests pass. Private archive outside /tmp: 22 files, 5320768 bytes,
+all byte-verified, SHA256 10199a8f0690986f0018b1790878fc6ee6cc8fafb608dc562bc92b2a95b73c80.
+Unrelated 50 TODO additions privately preserved and left unstaged. No source
+runtime change, main merge, DB write, Detection rerun or deployment in this
+preservation turn. Work stops at this owner-requested research checkpoint.
+
+
 2026-11-06, 3.17.4.6: completed approved B08-locator ablation and CB Parts V3.3
 bay-contract experiment. Ablation changes exactly one outgoing region, not
 the saved scope: 13.744 s, B08 still small (300+300=600), shared S01 omitted.
