@@ -1,0 +1,43 @@
+{
+  "work": "3.17.4.6",
+  "date": "2026-11-07",
+  "trial": "V7.2-medium-front-pixels",
+  "baseline": "/private/tmp/lev2-v7-2-disabled-medium-20261107-01.json",
+  "witness": "/private/tmp/lev2-v7-2-medium-front-pixels-20261107-01.json",
+  "request_sha256": "8d5cf572f014b5002318412392e6c86dafeb2063d35dd31c08f998b31d26eca1",
+  "prompt_sha256": "f41f93ba6ab43beab926d6cd0e12e9aaead4ec29b5c236709c18798989df08db",
+  "provider_calls": 1,
+  "elapsed_seconds": 17.305,
+  "thinking_tokens": 0,
+  "output_tokens": 4643,
+  "stop_reason": "end_turn",
+  "change": "Only Front wire bbox_px on exact labelled crops, deterministically converted to bbox_1000; messages and all other request settings identical",
+  "all_pixel_boxes_in_bounds": true,
+  "canonical_validation_error": "front totals do not match group counts",
+  "independent_planner_reference_validation": "pass",
+  "baseline_declared_and_group_counts": {"hinged": 12, "drawer": 6, "lift_up": 3},
+  "after_declared_counts": {"hinged": 14, "drawer": 5, "lift_up": 0},
+  "after_group_counts": {"hinged": 13, "drawer": 5, "lift_up": 0},
+  "v4_comparison": {
+    "reference": "front-coordinate-audit.json, lev2_view_004_reference_px",
+    "method": "Maximum-cardinality one-to-one match by IoU >= 0.5, then maximum summed IoU; types checked separately",
+    "before_annotated": 9,
+    "before_matched": 0,
+    "after_annotated": 7,
+    "after_matched": 7,
+    "after_correct_type_matches": 7,
+    "after_per_surface": [
+      {"surface": "drawer 1 (top)", "id": "F06", "type": "drawer", "iou": 0.848},
+      {"surface": "drawer 2", "id": "F07", "type": "drawer", "iou": 0.869},
+      {"surface": "drawer 3 (bottom)", "id": "F08", "type": "drawer", "iou": 0.805},
+      {"surface": "lower door 1 (leftmost)", "id": "F17", "type": "hinged", "iou": 0.958},
+      {"surface": "lower door 2", "id": "F18", "type": "hinged", "iou": 0.987},
+      {"surface": "lower door 3 (left of drawer bank)", "id": null, "iou": 0},
+      {"surface": "lower door 4 (right of drawer bank)", "id": null, "iou": 0},
+      {"surface": "hanging door 1 (left)", "id": "F15", "type": "hinged", "iou": 0.973},
+      {"surface": "hanging door 2 (right)", "id": "F16", "type": "hinged", "iou": 0.987}
+    ],
+    "overlay": "lev2-front-pixels-v4-comparison.png in the thread visualization directory"
+  },
+  "outcome": "Coordinate conversion validates and localizes seven returned V4 surfaces; coverage fails for two lower doors and whole Front validation fails. No promotion or retry."
+}

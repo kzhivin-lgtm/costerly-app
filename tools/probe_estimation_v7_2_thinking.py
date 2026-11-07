@@ -11,6 +11,7 @@ import tomllib
 from agents import estimation_analyze_v7_2_agent as agent
 from agents import estimation_analyze_v7_3_agent as economical
 from tools.probe_estimation_analyze_v7 import render_report
+from tools.render_estimation_front_overlay import decode_evidence_images
 from use_cases.estimation_detection_context_v7 import digest
 
 FRONT_SOFT_STEERING = """REASONING SCOPE FOR THIS REQUEST
@@ -25,6 +26,117 @@ brevity. The response schema, material defaults and interpretation rules above
 are unchanged. Return only the requested JSON, not your reasoning."""
 
 PROMPT_V2_PATH = Path(__file__).resolve().parents[1] / "agents/prompts/estimation_v7_2_reasoning_prompt_v2.md"
+FRONT_LOCATE_FIRST = "V7.2-medium-front-locate-first"
+FRONT_PIXELS = "V7.2-medium-front-pixels"
+FRONT_POLICY_MARKER = "EXISTING CB FRONT POLICY (FRONT SECTION ONLY)\n"
+PLANNER_POLICY_MARKER = "\n\nEXISTING CB PLANNER POLICY (PLANNER SECTION ONLY)\n"
+NORMALIZED_COORDINATES = (
+    "Coordinates are [left, top, right, bottom], normalized to 0..1000 relative to\n"
+    "the ENTIRE enlarged island image as supplied, INCLUDING its generated header.\n"
+    "The top-left corner of that image is [0,0], the bottom-right is [1000,1000]."
+)
+PIXEL_COORDINATES = (
+    "Return bbox_px = [left, top, right, bottom] in native pixels of the ENTIRE\n"
+    "enlarged island image as supplied, INCLUDING its generated header. Do not\n"
+    "normalize or rescale. The top-left is [0,0], the bottom-right [width,height].\n"
+    "Exact labelled island sizes in pixels (width x height): "
+)
+
+
+def original_medium_request(baseline):
+    request = deepcopy(baseline["provider_request"])
+    if (baseline.get("version") != agent.VERSION
+            or (baseline.get("provider_response") or {}).get("stop_reason") != "end_turn"
+            or request.get("thinking") != {"type": "disabled"}
+            or request.get("output_config") != {"effort": "medium"}
+            or request.get("max_tokens") != 14000 or request.get("system") != agent.prompt()):
+        raise ValueError("requires a completed original V7.2 disabled/medium control")
+    return request
+
+
+def front_crop_sizes(request):
+    _, details = decode_evidence_images(request)
+    if not details:
+        raise ValueError("Front pixels require the original labelled island images")
+    return {view_id: image.size for view_id, (image, _) in details.items()}
+
+
+def front_pixels_request(baseline):
+    """Change the Front wire-coordinate convention only; keep messages unchanged."""
+    request = original_medium_request(baseline)
+    sizes = front_crop_sizes(request)
+    before, front_and_after = request["system"].split(FRONT_POLICY_MARKER)
+    front, after = front_and_after.split(PLANNER_POLICY_MARKER)
+    if front.count(NORMALIZED_COORDINATES) != 1:
+        raise ValueError("unexpected V7.2 Front coordinate instruction")
+    size_text = "; ".join(f"{view}={width}x{height}" for view, (width, height) in sizes.items())
+    front = front.replace(NORMALIZED_COORDINATES, PIXEL_COORDINATES + size_text + ".")
+    front = front.replace("image-local bbox_1000 convention", "image-local bbox_px convention")
+    before = before.replace("Keep Front/Planner local bbox_1000", "Keep Planner local bbox_1000")
+    planner, template = after.split("\n    \"front\": {")
+    front_template, remaining = template.split("\n    \"planner\": {")
+    if front_template.count('"bbox_1000"') != 3:
+        raise ValueError("unexpected V7.2 Front template")
+    after = (planner + '\n    "front": {' + front_template.replace('"bbox_1000"', '"bbox_px"')
+             + '\n    "planner": {' + remaining)
+    request["system"] = before + FRONT_POLICY_MARKER + front + PLANNER_POLICY_MARKER + after
+    return request
+
+
+def normalize_front_pixel_annotation(annotation, sizes):
+    """Convert one box without guessing units, clipping or changing its view."""
+    view_id = annotation.get("view_id")
+    size = sizes.get(view_id) if isinstance(view_id, str) else None
+    box = annotation.get("bbox_px")
+    if (not size or "bbox_1000" in annotation or not isinstance(box, list) or len(box) != 4
+            or any(type(v) not in (int, float) or not 0 <= v <= size[i % 2] for i, v in enumerate(box))
+            or box[0] >= box[2] or box[1] >= box[3]):
+        raise ValueError(f"invalid Front bbox_px for {annotation.get('id')} on {view_id}")
+    return {**{k: v for k, v in annotation.items() if k != "bbox_px"},
+            "bbox_1000": [v * 1000 / size[i % 2] for i, v in enumerate(box)]}
+
+
+def normalize_front_pixel_boxes(raw, sizes):
+    converted = deepcopy(raw)
+    for obj in converted["objects"]:
+        front = obj["front"]
+        for group in front["front_groups"]:
+            group["fronts"] = [normalize_front_pixel_annotation(a, sizes) for a in group["fronts"]]
+        front["excluded_surfaces"] = [normalize_front_pixel_annotation(a, sizes) for a in front["excluded_surfaces"]]
+        for support in front["tabletop_supports"]:
+            support["legs"] = [normalize_front_pixel_annotation(a, sizes) for a in support["legs"]]
+    return converted
+
+
+def front_locate_first_request(baseline):
+    """Replay original V7.2 medium, changing only CB Front tasks 2 and 3."""
+    request = original_medium_request(baseline)
+    before, front_and_after = request["system"].split(FRONT_POLICY_MARKER)
+    front, after = front_and_after.split(PLANNER_POLICY_MARKER)
+    count, locate_and_supports = front.split("\n\nTASK 3: LOCATE WHAT YOU COUNTED\n\n")
+    locate, supports = locate_and_supports.split("\n\nTASK 4:")
+    old_intro = ("For EACH individual counted physical front, return one bounding box on ONE\n"
+                 "supplied enlarged island image, choosing the clearest view.")
+    if locate.count(old_intro) != 1:
+        raise ValueError("unexpected V7.2 Front localization instruction")
+    locate = locate.replace(old_intro,
+        "Before assigning opening types or counts, find the distinct candidate\n"
+        "surfaces by their visible boundaries. Mark one bounding box per surface\n"
+        "on the clearest supplied enlarged island image. Keep the marked box for\n"
+        "each surface you subsequently classify as an operating front.")
+    old_count_intro = ("TASK 2: COUNT PHYSICAL OPERATING FRONTS\n\n"
+                       "Using the classifications AND original images, identify and count:")
+    if not count.startswith(old_count_intro):
+        raise ValueError("unexpected V7.2 Front counting instruction")
+    count = ("TASK 3: CLASSIFY AND COUNT THE LOCATED FRONTS\n\n"
+             "Use the marked surfaces, island classifications and original images.\n"
+             "Determine which surfaces are operating fronts and their opening types,\n"
+             "then derive counts from those individual fronts. Do not place boxes\n"
+             "to satisfy a previously chosen count. Apply these categories:") + count[len(old_count_intro):]
+    request["system"] = (before + FRONT_POLICY_MARKER
+        + "TASK 2: LOCATE DISTINCT FRONT SURFACES FIRST\n\n" + locate
+        + "\n\n" + count + "\n\nTASK 4:" + supports + PLANNER_POLICY_MARKER + after)
+    return request
 
 
 def disabled_effort_request(baseline, effort):
@@ -127,6 +239,8 @@ def incremental_request(baseline, revision):
 def interpret(raw, witness, revision):
     if revision in {"V7.3.2", "V7.3.3"}:
         return economical.validate_result(raw, detection_context=witness["detection_context"], inputs=witness["inputs"])
+    if revision == FRONT_PIXELS:
+        raw = normalize_front_pixel_boxes(raw, witness["front_crop_sizes_px"])
     return agent.validate_result(raw, detection_context=witness["detection_context"], inputs=witness["inputs"])
 
 
@@ -135,7 +249,7 @@ def main():
     parser.add_argument("--baseline", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--execute", action="store_true")
-    parser.add_argument("--revision", choices=["V7.2-thinking", "V7.2-front-soft", "V7.2-prompt-v2", "V7.2-cap5000", "V7.2-disabled-medium", "V7.2-disabled-high", "V7.3.1", "V7.3.2", "V7.3.3"], default="V7.2-thinking")
+    parser.add_argument("--revision", choices=["V7.2-thinking", "V7.2-front-soft", "V7.2-prompt-v2", "V7.2-cap5000", "V7.2-disabled-medium", "V7.2-disabled-high", FRONT_LOCATE_FIRST, FRONT_PIXELS, "V7.3.1", "V7.3.2", "V7.3.3"], default="V7.2-thinking")
     args = parser.parse_args()
     if any(p.exists() for p in (args.output, args.output.with_suffix(".raw.txt"), args.output.with_suffix(".html"))):
         parser.error("refuse to overwrite experiment")
@@ -150,6 +264,10 @@ def main():
         request = prompt_v2_request(baseline)
     elif args.revision in {"V7.2-disabled-medium", "V7.2-disabled-high"}:
         request = disabled_effort_request(baseline, args.revision.rsplit("-", 1)[1])
+    elif args.revision == FRONT_LOCATE_FIRST:
+        request = front_locate_first_request(baseline)
+    elif args.revision == FRONT_PIXELS:
+        request = front_pixels_request(baseline)
     else:
         request = incremental_request(baseline, args.revision)
     if args.revision == "V7.3.1" and args.execute:
@@ -169,6 +287,20 @@ def main():
             comparison_criteria=["verify measured thinking tokens are zero and no thinking content blocks",
                 "compare complete Analyze quality, latency and output tokens with saved disabled/low control",
                 "do not treat fewer fronts or missing blocks as resource efficiency"])
+    elif args.revision == FRONT_LOCATE_FIRST:
+        witness.update(experiment=FRONT_LOCATE_FIRST, changed_request_fields=["system"],
+            changed_prompt_scope="CB Front tasks 2 and 3 only; locate then classify and count",
+            thinking_control="unchanged explicit disabled",
+            comparison_criteria=["compare physical coverage and box placement on exact request images",
+                "compare quantities and opening types to the same saved medium control",
+                "preserve original response schema and support rules; distinguish structural and visual correctness"])
+    elif args.revision == FRONT_PIXELS:
+        witness.update(experiment=FRONT_PIXELS, changed_request_fields=["system"],
+            changed_prompt_scope="only Front coordinates: native crop pixels on the wire",
+            front_crop_sizes_px=front_crop_sizes(request), thinking_control="unchanged explicit disabled",
+            comparison_criteria=["compare all nine Lev2 V4 faces to measured outline references, one-to-one",
+                "track localization, omission and type separately",
+                "validate pixel bounds and convert to canonical bbox_1000 without clipping or guessing"])
     elif args.revision == "V7.2-prompt-v2":
         witness.update(experiment="V7.2 reasoning prompt V2, owner-approved wording",
             changed_request_fields=["system"], steering_instruction=PROMPT_V2_PATH.read_text().strip(),

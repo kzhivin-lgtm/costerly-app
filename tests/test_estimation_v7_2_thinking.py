@@ -3,6 +3,11 @@ import json
 import pytest
 from tools.probe_estimation_v7_2_thinking import replay_request, incremental_request, front_soft_request, hard_cap_request, prompt_v2_request, disabled_effort_request, PROMPT_V2_PATH, FRONT_SOFT_STEERING
 from agents import estimation_analyze_v7_2_agent as original_agent
+from tools.probe_estimation_v7_2_thinking import (
+    FRONT_POLICY_MARKER, NORMALIZED_COORDINATES, PIXEL_COORDINATES, PLANNER_POLICY_MARKER,
+    front_locate_first_request, front_pixels_request,
+    normalize_front_pixel_annotation, normalize_front_pixel_boxes,
+)
 
 
 def test_replay_changes_only_thinking_without_mutating_baseline():
@@ -170,3 +175,78 @@ def test_disabled_effort_rejects_nonoriginal_source_or_unsupported_level(problem
     if problem == "v73": saved["version"] = "Estimation V7.3"
     if problem == "max": effort = "max"
     with pytest.raises(ValueError): disabled_effort_request(saved, effort)
+
+
+def test_front_locate_first_changes_only_front_order_on_medium_control():
+    saved = baseline()
+    saved["provider_request"].update(thinking={"type": "disabled"}, output_config={"effort": "medium"})
+    before = deepcopy(saved)
+    request = front_locate_first_request(saved)
+    assert saved == before
+    old_prompt = before["provider_request"]["system"]
+    prompt = request.pop("system")
+    assert {**request, "system": old_prompt} == before["provider_request"]
+    assert prompt.split(FRONT_POLICY_MARKER)[0] == old_prompt.split(FRONT_POLICY_MARKER)[0]
+    assert prompt.split("\n\nTASK 4:")[1] == old_prompt.split("\n\nTASK 4:")[1]
+    front = prompt.split(FRONT_POLICY_MARKER)[1].split(PLANNER_POLICY_MARKER)[0]
+    assert front.startswith("TASK 2: LOCATE DISTINCT FRONT SURFACES FIRST\n")
+    assert front.index("Mark one bounding box") < front.index("TASK 3: CLASSIFY AND COUNT")
+    assert "TASK 3: LOCATE WHAT YOU COUNTED" not in front
+
+
+@pytest.mark.parametrize("problem", ["low", "high", "adaptive", "truncated", "changed_prompt"])
+def test_front_locate_first_rejects_other_controls(problem):
+    saved = baseline()
+    request = saved["provider_request"]
+    request.update(thinking={"type": "disabled"}, output_config={"effort": "medium"})
+    if problem in {"low", "high"}: request["output_config"]["effort"] = problem
+    if problem == "adaptive": request["thinking"] = {"type": "adaptive"}
+    if problem == "truncated": saved["provider_response"]["stop_reason"] = "max_tokens"
+    if problem == "changed_prompt": request["system"] += "\nExtra instruction."
+    with pytest.raises(ValueError, match="disabled/medium"): front_locate_first_request(saved)
+
+
+def test_front_pixels_request_changes_only_front_coordinate_contract(monkeypatch):
+    saved = baseline()
+    saved["provider_request"].update(thinking={"type": "disabled"}, output_config={"effort": "medium"})
+    before = deepcopy(saved)
+    monkeypatch.setattr("tools.probe_estimation_v7_2_thinking.front_crop_sizes", lambda _: {"view-004": (750, 592)})
+    request = front_pixels_request(saved)
+    prompt = request.pop("system")
+    assert saved == before
+    assert "TASK 2: COUNT PHYSICAL OPERATING FRONTS" in prompt
+    assert "TASK 3: LOCATE WHAT YOU COUNTED" in prompt
+    assert prompt.count('"bbox_px"') == 3
+    assert prompt.count(PIXEL_COORDINATES + "view-004=750x592.") == 1
+    restored = (prompt.replace(PIXEL_COORDINATES + "view-004=750x592.", NORMALIZED_COORDINATES)
+        .replace("image-local bbox_px convention", "image-local bbox_1000 convention")
+        .replace('"bbox_px"', '"bbox_1000"')
+        .replace("Keep Planner local bbox_1000", "Keep Front/Planner local bbox_1000"))
+    assert {**request, "system": restored} == before["provider_request"]
+
+
+def test_front_pixels_conversion_is_local_and_round_trips():
+    sizes = {"view-004": (750, 592)}
+    def box(key):
+        return dict(id=key, view_id="view-004", bbox_px=[332, 398, 446, 436])
+    obj = dict(front=dict(front_groups=[dict(fronts=[box("F01")])],
+        excluded_surfaces=[box("X01")], tabletop_supports=[dict(legs=[box("L01")])]),
+        planner=dict(blocks=[dict(region=dict(bbox_1000=[0, 0, 1000, 1000]))]))
+    raw = {"objects": [obj]}
+    before = deepcopy(raw)
+    converted = normalize_front_pixel_boxes(raw, sizes)["objects"][0]
+    assert raw == before and converted["planner"] == obj["planner"]
+    for a in (converted["front"]["front_groups"][0]["fronts"][0],
+              converted["front"]["excluded_surfaces"][0], converted["front"]["tabletop_supports"][0]["legs"][0]):
+        assert "bbox_px" not in a
+        assert [v * sizes["view-004"][i % 2] / 1000 for i, v in enumerate(a["bbox_1000"])] == pytest.approx([332, 398, 446, 436])
+
+
+@pytest.mark.parametrize("extra", [dict(bbox_px=[0, 0, 751, 592]), dict(bbox_px=[0, 0, 750, 593]),
+    dict(bbox_px=[0, 0, 750, 0]), dict(bbox_px=[0, 0, 750, float("nan")]),
+    dict(bbox_px=[False, 0, 750, 592]), dict(view_id="foreign"), dict(bbox_1000=[0, 0, 1000, 1000])])
+def test_front_pixels_rejects_bad_bounds_or_ambiguous_units(extra):
+    annotation = dict(id="F01", view_id="view-004", bbox_px=[0, 0, 750, 592])
+    annotation.update(extra)
+    with pytest.raises(ValueError, match="invalid Front bbox_px"):
+        normalize_front_pixel_annotation(annotation, {"view-004": (750, 592)})

@@ -1,5 +1,16 @@
 # Done Log
 
+2026-11-07, 3.17.4.6: owner selected the original V7.2 disabled/medium plus
+Front `bbox_px` as an experimental research checkpoint, not a production
+promotion. Tagged `estimation-v7.2-medium-front-pixels-experimental-2026-11-07`.
+Only Front coordinates change on the wire; validation and deterministic
+conversion restore canonical bbox_1000. Generic completeness rule is not in
+this checkpoint. Initial Lev2 pilot localized 7/9 V4 faces but omitted two
+lower doors and failed full validation on model totals. 65 focused tests and
+replay request checks pass. Exact replay capsules and hashes are in the
+active TODO entry; diagnostic evidence is under
+notes/evidence/estimation-v7-2-retrospective-2026-11-07/.
+
 2026-11-07, 3.17.4.6: completed owner-approved disabled-thinking effort sweep,
 medium then high, two saved files each. Only output_config.effort changed from
 original V7.2 disabled/low requests, no prompt/schema/input/model/cap changes.

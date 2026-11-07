@@ -1011,8 +1011,109 @@ LATEST OWNER REVIEW / HISTORICAL REUSE AUDIT, 2026-11-07:
 LATEST OWNER-APPROVED IMPLEMENTATION/TRIAL, V7.3, 2026-11-07, 3.17.4.6:
 COMPLETED local experiment; NOT ACCEPTED as replacement, P0 remains PENDING.
 OWNER REVIEW / INCREMENTAL DIRECTION, same work, 2026-11-07:
+LATEST OWNER WORKING BASE / FRONT REVIEW, 2026-11-07:
+ACTIVE, P0, same 3.17.4.6. Owner selects ORIGINAL V7.2 with explicit
+thinking=disabled and output_config.effort=medium as the working research base,
+and requests a complete explanation/inspection of CB Front before tuning.
+This accepts the research configuration, not physical output or production
+promotion. Ordinary run_analyze still defaults to low; medium remains the
+saved replay configuration. No new provider calls or prompt/schema/runtime
+changes in this inspection. Front tasks 2-4 from cb_front_v3.md run within the
+same shared Analyze, not a separate stage/API call. Exact saved medium Lev2
+boxes rendered on the exact request crops without corrections:
+/private/tmp/lev2-v7-2-disabled-medium-front-review-20261107-01-overlay-details.png
+(page and coordinate JSON share the prefix). VERIFIED: multiple boxes miss
+drawn fronts; F14-F16 lie above the actual lower drawer bank. Front structural
+validation passes but does not test physical box placement or complete visual
+coverage. Keep counting/type errors distinct from localization errors; their
+common cause is UNKNOWN.
+
+OWNER-APPROVED FRONT-ONLY TRIAL, 2026-11-07, same work 3.17.4.6, P0:
+COMPLETED diagnostic, NOT ADOPTED. Replay revision V7.2-medium-front-locate-first. For both
+saved original disabled/medium requests, verified the sole difference is CB
+Front tasks 2 and 3: locate and mark surfaces, then classify and count. Task 4,
+other Analyze sections, schema, evidence and request settings stay identical.
+56 focused tests pass. Owner explicitly authorized sending the two saved
+image/OCR/Detection payloads to Anthropic; one call per document, both
+end_turn, zero thinking tokens, no retries, Calculation, DB or production change.
+Lev1: 3 drawers/2 legs preserved; new V4 drawer boxes lie entirely below
+their surfaces. The existing thickness mismatch remains; independent Front
+validation passes and independent Planner reference validation regresses.
+Lev2: doors/drawers/lifts 12/6/3 to 7/3/2 vs owner 15/5/2; both structural
+checks pass. Lift count improves, but its boxes remain above the intended
+fronts; V4 drawer boxes still miss the row. V4 lower door group and V3 drawer
+group disappeared. Blocks 6 to 4. No gain in visual coverage in this trial;
+effect not established across repeated runs. Keep original 7.2 medium as
+working control; do not promote this Front prompt. P0 remains ACTIVE.
+New private capsules: /private/tmp/{lev1,lev2}-v7-2-medium-front-locate-first-20261107-01.json.
+Uncorrected comparison overlays: lev1-front-comparison.png and
+lev2-front-comparison.png in the thread visualization directory.
+
+OWNER FOLLOW-UP, P0 ACTIVE, same work 3.17.4.6: diagnose Front coordinate
+grounding vs physical recognition and compare saved intermediate versions.
+Offline evidence: notes/evidence/estimation-v7-2-retrospective-2026-11-07/front-coordinate-audit.json.
+Verified Lev2 V4 original medium: all nine boxes nearly match their faces if
+read as native crop pixels, not as the declared 0..1000. Locate-first still
+has this mismatch for V4 drawers and V3 lifts, and genuinely omits V4 lower
+doors. Do not bulk-convert: other F boxes exceed native image bounds. Lev1
+already receives the three-drawer count from Detection; new boxes miss under
+either interpretation. Saved standalone Front V2/V3 show materially better
+V4 drawer placement in multiple runs, but also miss/shift fronts in others.
+Cause of the change across configurations remains UNKNOWN.
+
+OWNER-APPROVED FRONT PIXEL TRIAL, same work 3.17.4.6, P0:
+COMPLETED diagnostic; NOT ADOPTED. One Lev2 call from original 7.2 medium,
+not locate-first. The sole request change is the Front coordinate convention:
+exact crop sizes, bbox_px for Front only; deterministic bounds check and
+conversion to canonical bbox_1000. All images, messages, provider settings,
+non-coordinate instructions and Planner coordinates are unchanged. No retry,
+Calculation, database write or production change. 65 focused tests pass.
+V4 on the same measured reference: before 0/9 and after 7/9 localized with
+one-to-one IoU >= 0.5. All seven match type (3 drawers, 2 lower doors, 2
+hanging doors), IoU 0.805..0.987. Lower doors 3 and 4 are unannotated. All
+18 Front and two exclusion pixel boxes convert in bounds; model declares
+14 hinged vs 13 in groups, so unchanged full validator rejects. V3 loses
+lift-up classification. Geometry signal improved for the returned V4 boxes;
+coverage and full Front acceptance remain open. Keep original medium control.
+Evidence: notes/evidence/estimation-v7-2-retrospective-2026-11-07/front-pixel-trial.json.
+OWNER FOLLOW-UP, offline V4 lower-door diagnosis (no rerun or coordinate
+change): original Front counted the entire V4 base door bank F10-F13 even
+though Island Map mentioned two doors. Pixel trial Island Map mentions two
+left doors, three drawers, and a right door; it does not identify door 3
+before the drawers. In the raw Front, only F17/F18 (the two lower doors
+directly under the hanging pair) survive in the group 'Base run left of
+corner (doors)'; the drawers remain a separate group. Door 3 and the right
+door have no F/X/unresolved entry or documented cross-view correspondence.
+The right door is therefore acknowledged in Island Map but omitted by Front.
+Planner B02 reflects the two-door result, not a downstream deletion.
+LIKELY visible failure is incomplete horizontal coverage of the lower run,
+not coordinate conversion; internal cause (including implicit deduplication)
+is UNKNOWN. Owner clarification: any next completeness check must be generic
+across object forms and layouts; no Lev2-specific, kitchen-row or expected-count
+instructions. Proposed (not implemented): review all relevant visible regions
+for candidate operating surfaces, including outside already-found groups;
+reconcile candidates mentioned elsewhere in Analyze against the source.
+Count distinct physical fronts, exclude only with evidence, and deduplicate
+only a positively matched depiction. Lev2 V4 remains a benchmark, not prompt
+input. Original 7.2 medium and coordinate experiment unchanged.
+
+OWNER-SELECTED RESEARCH CHECKPOINT, P0 ACTIVE, 3.17.4.6, 2026-11-07:
+Freeze original 7.2 disabled/medium plus Front pixel coordinates as
+`estimation-v7.2-medium-front-pixels-experimental-2026-11-07`. This selects
+the research configuration only, not physical coverage, whole Analyze
+acceptance, or a runtime default. Keep the locate-first trial as history.
+Generic completeness rule remains proposed, not included in this checkpoint.
+Replay revision V7.2-medium-front-pixels on the two original private
+`/private/tmp/lev{1,2}-v7-2-disabled-medium-20261107-01.json` capsules.
+Verified replay request SHA-256: Lev1
+`cada76a8a875e1bd62d6ab766ce34eb52e0ea5d2c7d99b23214ac0cd77dfbb1e`; Lev2
+`8d5cf572f014b5002318412392e6c86dafeb2063d35dd31c08f998b31d26eca1`.
+Owner requests one new call each after checkpoint; compare actual coverage,
+opening types, original-coordinate overlays and independent/full validation.
+No retries, repairs, Calculation, deployment or push authorized by this note.
+
 LATEST OWNER RETROSPECTIVE / STABILIZATION REVIEW, 2026-11-07:
-ACTIVE, P0, same 3.17.4.6. Owner asks to analyze all work since V7.2 and
+COMPLETED read-only review, same 3.17.4.6. Owner asked to analyze all work since V7.2 and
 recommend a way out of resource/quality instability. Read-only investigation,
 no new model calls, prompt/schema/runtime changes or deployment authorized.
 Audited original private capsules: 20 paid calls in 10 configurations, one
