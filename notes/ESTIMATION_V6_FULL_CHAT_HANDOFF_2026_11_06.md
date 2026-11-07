@@ -1,8 +1,8 @@
 # Estimation V6 полный конспект разработки и экспериментов
 
-Актуальная точка продолжения, 2026-11-07: **раздел 36**, экспериментальный
-чекпойнт Estimation 7.2 medium без Thinking, строгий Island Map и Front
-с ориентирами. Разделы 1–35 сохраняют историю V6, а не текущую точку запуска.
+Current continuation point, 2026-11-08: **section 38**, the owner-selected
+Estimation 7.4 Front Evidence research checkpoint. Sections 36–37 preserve
+the Analyze and Offline Vector baselines. Sections 1–35 are V6 history.
 
 Обновлено после Understanding V1 и V2, 2026-11-06, работа 3.17.4.6.
 Последний испытанный промпт: **Understanding V2**, отдельная диагностика внутри
@@ -1240,3 +1240,52 @@ Lev2 V02) векторный метод дал ноль кандидатов. Н
 Восстановление архива дало 9 байт-в-байт совпадающих файлов, 0 вызовов модели.
 Приватные PDF и изображения хранятся локально. Манифест в Git:
 `notes/evidence/estimation-v7-2-retrospective-2026-11-07/offline-vector-checkpoint.json`.
+
+## 38 Estimation 7.4 Front Evidence checkpoint
+
+Work **3.17.4.6**, 2026-11-08. Tag `estimation-v7.4-front-evidence-experimental-2026-11-08`.
+Branch `codex/estimation-v7-4-front-evidence`. Exact code `aca01f6`.
+The owner selected this partial result for continuation. The protected
+Offline Vector baseline is `067bf63`, the opening-marks replay is `27f3c49`,
+and the separate 7.3 experiment is `907f7be`.
+
+**Two diagnostic paths.** For Adda V01, the model reads each annotation and
+each isolated per-leaf stroke pair. Code attaches typed leaders to their
+unique native tip intersections, deduplicates contours and surfaces
+conflicts. Text printed inside mirror panels still uses a model-selected
+contour. For Lev1 and Lev2, which lack these native leader and swing cues,
+a companion route supplies every clean Island and its neutral contour map.
+The model returns roles and localized appearances. The validator preserves
+same-view contours and withholds an unreliable cross-view physical total.
+The saved prompts and API bodies are in the private witnesses. Both probes
+use Haiku 5.5, medium effort, Thinking disabled and zero retries.
+
+| Trial | Exact observations | Remaining misses |
+|---|---|---|
+| Adda V01, one combined call | 8/8 hinged leaves, 6/6 drawers, 8/8 pull-outs, 1/1 fixed open shelf | Mirror C16 matched, C19 missed, C14 extra |
+| Lev1, all 6 Islands | 3/3 V4 drawer contours, 1/1 support appearance on V5 | Drawer contours grouped into one record; 0/2 supports on V6 |
+| Lev2, all 4 Islands | 9/11 on V3, 5/8 on V4; V4 side panel excluded | V3 lift pair and 3 V4 lower doors missed; 2 plinth contours called supports; same-view grouping |
+
+The unrestricted Adda model-only control assigned 14 unrelated contours
+to pull-out shelves. The two intermediate typed trials succeeded on
+different evidence channels. Their offline composition matched all 25
+reference contours, including both mirrors. Keep that composition separate
+from the single-request result. No roles were corrected manually.
+
+**Resume here.** Diagnose the same-view grouping failure before changing
+physical totals. First ask for one independent record per physical face in
+each Island, then evaluate cross-view identity separately. Reuse the frozen
+Lev1/Lev2 requests and compare exact contours, especially Lev1 V4 and V6,
+the Lev2 V3 lift pair and the three missed Lev2 V4 lower doors. Count and
+classification are separate measures. The Adda mirror attribution, full
+Adda, broader repeatability and integration into Analyze and Calculation
+remain open.
+
+**Replay.** The private archive and its manifest are under
+`backups/estimation-v7.4-front-evidence-experimental-2026-11-08/`. The archive contains all six raw
+provider witnesses, neutral geometry, clean Lev crops, four overlays,
+benchmarks, and the offline verifier. Restore the V7.2 Offline Vector
+archive alongside it to regenerate the Adda crop inputs. The verifier
+recreated five typed requests and checked all six request hashes and saved
+bindings. Twenty-nine focused tests passed. Zero new provider calls were
+needed. Tracked manifest: `notes/evidence/estimation-v7-4-front-evidence-2026-11-07/front-evidence-checkpoint.json`.

@@ -1,6 +1,6 @@
 # Costerly AI Project Map
 
-Current Estimation research checkpoint, 3.17.4.6, 2026-11-07:
+Protected Offline Vector geometry baseline, 3.17.4.6, 2026-11-07:
 `estimation-v7.2-medium-offline-vector-experimental-2026-11-07`.
 Owner-accepted Offline Vector geometry benchmark on 18 Islands across Lev1,
 Lev2 and both Adda objects. Native PDF paths supply contour candidates,
@@ -10,7 +10,10 @@ offline replay and nine evidence files. See section 37 of
 ESTIMATION_V6_FULL_CHAT_HANDOFF_2026_11_06.md and the manifest:
 notes/evidence/estimation-v7-2-retrospective-2026-11-07/offline-vector-checkpoint.json.
 
-Experimental V7.4 Front evidence probe, same 3.17.4.6:
+Current Estimation Front research checkpoint, 3.17.4.6, 2026-11-08:
+`estimation-v7.4-front-evidence-experimental-2026-11-08`. Owner selected this partial
+benchmark as a continuation point. See handoff section 38 and:
+notes/evidence/estimation-v7-4-front-evidence-2026-11-07/front-evidence-checkpoint.json.
 `codex/estimation-v7-4-front-evidence`; runner
 `python -m tools.probe_estimation_v7_4_front_evidence`, offline preparation by
 default. Source-label semantics and native tip binding are separate from

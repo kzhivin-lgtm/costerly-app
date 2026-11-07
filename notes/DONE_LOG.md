@@ -1,5 +1,14 @@
 # Done Log
 
+2026-11-08, 3.17.4.6. Owner selected experimental Estimation 7.4 Front
+Evidence as a research checkpoint at `estimation-v7.4-front-evidence-experimental-2026-11-08`.
+Adda V01 matched 8/8 hinged leaves, 6/6 drawers and 8/8 pull-outs in a single
+request. One mirror was assigned to its neighboring contour. Lev1 and Lev2
+remain partial, with same-view grouping defects. Restored 29 private archive
+files byte-for-byte, verified six historical request hashes, regenerated five
+typed requests, and passed 29 focused tests. Zero new provider calls.
+Manifest: notes/evidence/estimation-v7-4-front-evidence-2026-11-07/front-evidence-checkpoint.json.
+
 2026-11-07, 3.17.4.6: owner accepted the offline geometry benchmark and
 requested a full checkpoint, `estimation-v7.2-medium-offline-vector-experimental-2026-11-07`.
 Four objects, 18 Islands, zero model calls. Archive restore checked all

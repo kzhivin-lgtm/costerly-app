@@ -1392,9 +1392,8 @@ label and chose the adjacent C14 instead of C19. No manual role corrections.
 Runtime 3.268 s, 7,632 input and 594 output tokens, zero Thinking tokens.
 Evidence: notes/evidence/estimation-v7-4-front-evidence-2026-11-07/adda-v01-single-run.json.
 The narrow Front classification repair passed V01. Full-view acceptance is
-partial and V7.4 remains untagged. Next: validate binding of direct labels
-from a text location to the enclosing contour, then verify Adda V02/full
-Adda, Lev1 and Lev2, including views without native leader or stroke evidence.
+partial. Direct text-to-contour ownership and Adda V02/full Adda model
+validation remain pending.
 
 2026-11-08, owner-requested Lev1/Lev2 transfer trial, COMPLETED (partial).
 These views have no native leader groups or per-leaf swing pairs. The
@@ -1408,9 +1407,14 @@ contours mislabeled support legs. Model grouped distinct same-view faces
 in both files. Offline validation now preserves appearances but suppresses
 the physical total when the grouping contract is violated.
 Evidence: notes/evidence/estimation-v7-4-front-evidence-2026-11-07/lev-visual-front-runs.json.
-Next diagnostic for unmarked views: separate per-view face records from
-cross-view identity links, and compare coverage before deduplication.
-The accepted V7.2 vector geometry remains the checkpoint.
+OWNER-SELECTED V7.4 RESEARCH CHECKPOINT, COMPLETED, 2026-11-08:
+`estimation-v7.4-front-evidence-experimental-2026-11-08` freezes both probe routes, the raw
+witnesses and partial benchmark. notes/evidence/estimation-v7-4-front-evidence-2026-11-07/front-evidence-checkpoint.json.
+P0 ACTIVE continuation under the same work number: diagnose same-view
+grouping first. Evaluate individual per-view records before permitting
+cross-view identity links. Compare exact IDs on the same frozen crops and
+measure omissions independently of aggregation. The protected V7.2 geometry
+checkpoint remains the source baseline.
 
 After V01, check source-label reading and constrained tip binding on Adda
 V02. Preserve the separate swing-mark evidence. Then verify dimension ownership

@@ -1,0 +1,88 @@
+{
+  "version": "Estimation 7.4 Front Evidence",
+  "work": "3.17.4.6",
+  "date": "2026-11-08",
+  "status": "owner-selected experimental checkpoint; partial semantic benchmark",
+  "tag": "estimation-v7.4-front-evidence-experimental-2026-11-08",
+  "branch": "codex/estimation-v7-4-front-evidence",
+  "code_commit": "aca01f65b7c0f7123af9f6b5d89b70905acd82ee",
+  "baselines": {
+    "v7.2_offline_vector": "067bf63ea0dbabb947fedd492a8fa9054588b70c",
+    "v7.2_opening_marks": "27f3c49",
+    "v7.3_knowledge_base": "907f7be613d034833a77d25105b63647b5eb122f"
+  },
+  "production_promoted": false,
+  "provider_calls_at_checkpoint": 0,
+  "historical_witnesses": 6,
+  "scope": {
+    "adda": [
+      "view-001"
+    ],
+    "lev1": 6,
+    "lev2": 4
+  },
+  "benchmark_reports": [
+    "notes/evidence/estimation-v7-4-front-evidence-2026-11-07/adda-v01-local-replay.json",
+    "notes/evidence/estimation-v7-4-front-evidence-2026-11-07/adda-v01-single-run.json",
+    "notes/evidence/estimation-v7-4-front-evidence-2026-11-07/lev-visual-front-runs.json"
+  ],
+  "verification": {
+    "focused_tests_passed": 29,
+    "request_hashes_verified": 6,
+    "typed_requests_regenerated": 5,
+    "archive_files_restored_byte_identical": 29,
+    "interpreter": "3.13.15",
+    "pillow": "12.2.0",
+    "pymupdf": "1.28.2",
+    "offline_replay_command": "PYTHONPATH=\"$PWD\" python <v74-extracted>/checkpoint-package/verify.py --vector-checkpoint <v72-extracted>/checkpoint-package"
+  },
+  "continuation": {
+    "primary": "Measure per-view face detection separately from cross-view identity links. Reuse the exact frozen inputs.",
+    "acceptance": "One physical face per record per view; separate distinct same-view faces. Then evaluate cross-view links and same-view completeness independently.",
+    "open": [
+      "Adda V01 direct mirror label ownership",
+      "Adda V02/full Adda model benchmark",
+      "Lev1/Lev2 missed fronts and support geometry",
+      "Analyze/Planner/Calculation integration"
+    ]
+  },
+  "private_archive": {
+    "path": "/Users/qb/Documents/ChatGPT/Costerly/backups/estimation-v7.4-front-evidence-experimental-2026-11-08/private-replay-evidence.tar.gz",
+    "sha256": "60fe58facb6aba3d62157230d438930ee1623a3f7f153014fda209433faa3981",
+    "file_sha256": {
+      "README.md": "f5382cf22348158b050d6736b95dc40a066050249ff9d7229eb78a6e243015bc",
+      "geometry/adda-v01-full-review.json": "1b730a1a63ba12c76977678290a61c27ae418e3d97677595ca196dd1c01fe05a",
+      "geometry/all-island-mark-sweep.json": "92eb30cc7a4fbfefe384076672c6bb0c156f634490c278fc0a206e072b87d835",
+      "geometry/estimation-offline-all-islands-evidence.json": "0bde484833090c6fd5ce79ba540bae11d0a879c55c134005c27358bdd63e8426",
+      "geometry/full/lev1-01.png": "cec88368da29122c4b480acdfa9cb033cf657b790f38424fbffb36d7b3a23e01",
+      "geometry/full/lev1-02.png": "f9ca6eaa8d2f143fdc01ff1eff5891b06064cf8b6ad92607e48991a7881c01fb",
+      "geometry/full/lev1-03.png": "9d1af5a26dc5eb415753436deab84225b8a6d0c707d87297664f3418dd6b4053",
+      "geometry/full/lev1-04.png": "096041b7e529667c1f67ebd5602b46c0d6116fe9de2bbbb3930279319bb66a51",
+      "geometry/full/lev1-05.png": "a5457dfbab2a2a19105cdef2bd7897c5487f7889c928dee36880f35fa1e6726b",
+      "geometry/full/lev1-06.png": "71f68856917bfc22831f286224d9c5991726da3737fdd33034a7b34fc2011a36",
+      "geometry/full/lev2-01.png": "43cdd3e31c392dc51218bfbea4037393f1ca26ed05ff8eefe55e99980df5cff4",
+      "geometry/full/lev2-02.png": "44f5384a0335d97a835368c3d3f481786b1c9feec51ab836e0d31c04f54f4673",
+      "geometry/full/lev2-03.png": "54f855b1b54d926ee11459c01a7cd2400f0ee9466ac1b14738eedeab6e65ff04",
+      "geometry/full/lev2-04.png": "c12c0a38adf5eefbc0ae89b7b67cc3dd05514dfb5052d5175f0496a5b0f2c796",
+      "geometry/neutral-geometry.json": "437b34f3456bb56029c2bc1e3f4cfddd18df019c4f7a4540cfd42c22ac07566a",
+      "overlays/adda-combined.png": "80a77a7681f5cecff8ab76e483ea6add6a125866b7a129f43086e0da17fb5570",
+      "overlays/adda-offline-composition.png": "b55eb1906fc47a380ad517bb883a49361e8c2e23157f770bac3b6e24c51a4a41",
+      "overlays/lev1-overlay.png": "861988325ad2ac87099255d287772b229c0a05d77ac90f06431941ebea6778b5",
+      "overlays/lev2-overlay.png": "e1293e0c9374e8a337a9c4f07843aa90ce87b66fca538a9c15891985a4f0ebf7",
+      "reports/adda-v01-local-replay.json": "46c65cb2694ab4d6bd7b91d459a0ed8492068545a6bd2648443f1c867be318c0",
+      "reports/adda-v01-single-run.json": "c9148e50ff9f22d758d466d0f39f305094bd987e7554983f732360c69725e102",
+      "reports/lev-visual-front-runs.json": "0d8423a8b6d3733dfe6dd7747b67a1a370f52d773d5e20bcc1cd82ca443ad34f",
+      "verify.py": "5dc41400e4d0bbd0144fa98980badbb85524fe0e1e0f7286aeec3248be2b2466",
+      "witnesses/adda-caption-evidence.json": "5b6d057682909f797857fd0679c46f643dbdef405415cff64999fe02ce5a760d",
+      "witnesses/adda-combined.json": "1ad6ee70447b7d04529ec58a95a96194e282de58b3a4fdf51a210c888d3ae749",
+      "witnesses/adda-model-only.json": "39f68ffe9fed47e548c5a9cc9ef640997a9f214b342b50d3d485e2408d78d14a",
+      "witnesses/adda-stroke-evidence.json": "a040cd273d674e6adf3e5789784da78f3aef58626d53fb5c696fc70e3c8a1a12",
+      "witnesses/lev1.json": "3b26cd263e6608690b43f9280c1bf7dce72c28ab2826b4bc9fda27ce72cbd2d5",
+      "witnesses/lev2.json": "15ab4db24ceb2e41e00052b816423b489d653bea34fe6998505a9d11386f80ef"
+    },
+    "required_vector_archive": {
+      "path": "/Users/qb/Documents/ChatGPT/Costerly/backups/estimation-v7.2-medium-offline-vector-experimental-2026-11-07/private-replay-evidence.tar.gz",
+      "sha256": "ad33ebfad93578560550d63c1e21a68102ee1c890608ad1fb67dada849d08234"
+    }
+  }
+}
