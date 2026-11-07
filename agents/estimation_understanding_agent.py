@@ -173,7 +173,8 @@ def cabinet_module_policy():
     return prompt[start:end], prompt[:start] + prompt[end:]
 
 
-def validate_front_count(parsed, known, *, require_annotations=False, require_supports=False):
+def validate_front_count(parsed, known, *, require_annotations=False, require_supports=False,
+                         allow_unlocalized_fronts=False):
     """Check references and arithmetic, not visual accuracy. Never repair counts."""
     fields = {'island_types', 'front_groups', 'totals'}
     if require_annotations:
@@ -230,8 +231,11 @@ def validate_front_count(parsed, known, *, require_annotations=False, require_su
         raise ValueError('front totals do not match group counts')
     if require_annotations:
         seen = set()
-        def annotation(item, *, excluded=False):
+        def annotation(item, *, excluded=False, is_front=False):
             keys = {'id', 'view_id', 'bbox_1000'} | ({'reason'} if excluded else set())
+            diagnostic_front = is_front and allow_unlocalized_fronts
+            if diagnostic_front:
+                keys.add('landmark')
             if not isinstance(item, dict) or set(item) != keys:
                 raise ValueError('invalid front annotation fields')
             aid = item['id']
@@ -241,6 +245,12 @@ def validate_front_count(parsed, known, *, require_annotations=False, require_su
             if not isinstance(item['view_id'], str) or item['view_id'] not in known:
                 raise ValueError('annotation references foreign island')
             box = item['bbox_1000']
+            if diagnostic_front:
+                landmark = item['landmark']
+                if not isinstance(landmark, str) or not landmark.strip() or len(landmark) > 600:
+                    raise ValueError('individual front landmark required')
+                if box is None:
+                    return
             if (not isinstance(box, list) or len(box) != 4 or
                     any(type(v) not in (int, float) or not math.isfinite(v) or not 0 <= v <= 1000 for v in box) or
                     box[0] >= box[2] or box[1] >= box[3]):
@@ -254,7 +264,7 @@ def validate_front_count(parsed, known, *, require_annotations=False, require_su
             if group['count'] is not None and len(fronts) != group['count']:
                 raise ValueError('front box count differs from group count')
             for item in fronts:
-                annotation(item)
+                annotation(item, is_front=True)
                 if item['view_id'] not in group['view_ids']:
                     raise ValueError('front annotation outside group view references')
         excluded = parsed['excluded_surfaces']

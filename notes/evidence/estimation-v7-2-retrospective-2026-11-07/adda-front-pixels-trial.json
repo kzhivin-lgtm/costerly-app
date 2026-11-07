@@ -50,5 +50,82 @@
       "visual_review": "V2 is pictorial/axonometric, not an elevation. The drawer note points to three distinct shallow fronts, not proof of two drawer rows per bay. Glazing callouts in this crop point to a visible fragment of the neighboring object; the counter's claimed glazed upper vitrine is unsupported."
     }
   ],
-  "outcome": "Both frozen memberships retained. Useful Understanding/Blocks outline, no accepted Front counts and no F overlays. No retry or promotion."
+  "outcome": "Both frozen memberships retained. Useful Understanding/Blocks outline, no accepted Front counts and no F overlays. No retry or promotion.",
+  "owner_review_benchmarks": {
+    "object-002": {"drawers": 6, "pull_out_shelves": 8, "hinged_doors": 8, "mirrors": 2, "other": "glazed vitrines; fixed open shelf is not counted"},
+    "object-001": {"drawers": 3, "mirrors": 1},
+    "basis": "Owner review after the trial, not a provider result or a complete per-surface overlay benchmark. Do not put these counts into the prompt."
+  },
+  "exact_repeat": {
+    "witness": "/private/tmp/adda-v7-2-medium-front-pixels-20261107-02.json",
+    "request_equals_initial": true,
+    "provider_calls": 1,
+    "elapsed_seconds": 17.671,
+    "output_tokens": 4725,
+    "thinking_tokens": 0,
+    "stop_reason": "end_turn",
+    "object_002": {"estimated_drawers": 4, "front_boxes": 0, "excluded_boxes": 0},
+    "object_001": {"estimated_drawers": 6, "front_boxes": 0, "excluded_boxes": 1},
+    "full_and_independent_front_validation": "front box count differs from group count for both objects",
+    "conclusion": "Absence of F boxes recurred on an exact request. Cause not established; object-scope comparison not run."
+  },
+  "single_object_output_diagnostic": {
+    "witness": "/private/tmp/adda-v7-2-medium-front-pixels-object001-20261107-01.json",
+    "request_sha256": "ba6ea0ad3d5b40ca2a20b768b3690eb43064e077f1205540e3bfa65ff60efc30",
+    "control_request_sha256": "44bb95cf51eeb4f7e6aacb0fc93bfa0e2223f9266bab94dbae4e7463ce85a9b3",
+    "sole_difference": "System instruction requests object-001 result only; object-002 stays context. All 12 images, OCR, Detection, provider settings and Front rules unchanged.",
+    "provider_calls": 1,
+    "elapsed_seconds": 10.439,
+    "output_tokens": 2342,
+    "thinking_tokens": 0,
+    "stop_reason": "end_turn",
+    "returned_object_ids": ["object-001"],
+    "estimated_drawers": 3,
+    "front_boxes": 0,
+    "excluded_boxes": 1,
+    "count_basis_in_raw_response": "assumed from the three-bay layout; stacked drawer count per bay not fully resolved",
+    "validation_error": "front box count differs from group count",
+    "conclusion": "Requesting two result objects is not necessary for the F-box omission. Narrowing output scope alone did not remedy it. Three is a matching estimate, not per-surface grounding. No conclusion about input length, drawing interpretation, or production splitting."
+  },
+  "v02_drawer_callout_diagnostic": {
+    "witness": "/private/tmp/adda-v02-drawer-callout-20261107-01.json",
+    "request_sha256": "5ee7f5979310464f9b118dcca6036a8b92d1cea0e7bf31bf4ef4a2d833ce869a",
+    "image_size_px": [777, 803],
+    "scope": "One exact V02 crop, standalone prompt to trace the printed drawer callout, no expected count. Same model/medium/thinking settings, no Analyze prompt or runtime changes.",
+    "provider_calls": 1,
+    "elapsed_seconds": 2.444,
+    "output_tokens": 315,
+    "stop_reason": "end_turn",
+    "reference_tips_approx_px": [[295, 532], [426, 559], [592, 568]],
+    "reference_tight_axis_aligned_boxes_approx_px": [[217, 524, 375, 560], [375, 536, 535, 572], [535, 548, 695, 584]],
+    "returned": [
+      {"tip_px": [293, 532], "box_px": [376, 521, 540, 575], "own_tip_inside_box": false, "intended_face_iou": 0, "actual_overlap": "middle face IoU 0.644"},
+      {"tip_px": [425, 560], "box_px": [391, 541, 552, 610], "own_tip_inside_box": true, "intended_face_iou": 0.360, "actual_overlap": "extends below the drawer face"},
+      {"tip_px": [591, 570], "box_px": [537, 546, 695, 585], "own_tip_inside_box": true, "intended_face_iou": 0.912}
+    ],
+    "overlay": "adda-v02-callout-review.png in the thread visualization directory",
+    "conclusion": "All three tips correspond closely to the source leaders, but only one of three own-tip-to-face boxes is a good match. The first box is assigned to its neighboring face; second reaches below the row. Supports a concrete tip-to-surface association/localization error in the isolated task, not a proven cause of the empty F lists in shared Analyze."
+  },
+  "numeric_box_rule_diagnostic": {
+    "witness": "/private/tmp/adda-v7-2-medium-front-pixels-numeric-boxes-20261107-01.json",
+    "request_sha256": "49d450c075a39c7871b97f54f0562025ed36f5bba8688b791795055737f885a5",
+    "control_request_sha256": "44bb95cf51eeb4f7e6aacb0fc93bfa0e2223f9266bab94dbae4e7463ce85a9b3",
+    "sole_change": "For a known group count ... -> For any numeric group count, including estimated, ...",
+    "provider_calls": 1,
+    "elapsed_seconds": 17.253,
+    "output_tokens": 4670,
+    "thinking_tokens": 0,
+    "stop_reason": "end_turn",
+    "full_validation": "pass, visual acceptance not established",
+    "object_001": {"estimated_drawers": 3, "front_boxes": 3, "v02_good_boxes": 0, "best_iou_by_box": [0.074, 0.068, 0.098]},
+    "object_002": {"estimated_drawers": 3, "front_boxes": 3, "visual_gap": "F06 spans two lower panel outlines on V04; count below owner reference and no door or pull-out shelf recognition."},
+    "overlay_files": ["adda-numeric-boxes-view-002.png", "adda-numeric-boxes-view-004.png"],
+    "conclusion": "One-sentence clarification is associated with F box emission and structural pass (previous full requests 0 and 0 per object), not accurate per-surface localization. One trial, no causal or stability claim beyond the observed comparison. Not adopted."
+  },
+  "front_box_diagnosis": {
+    "raw": "Object-001 and object-002 each returned one estimated drawer group, counts 6 and 4 respectively, both with fronts: []. Each returned one X exclusion with bbox_px. end_turn at 4083 of 14000 output tokens.",
+    "verified": "F boxes are missing in the original response, before conversion or rendering. Numeric estimated counts are not exempt from the existing one-box-per-front check. Object-001 Planner explicitly notes that the F IDs were not individually located.",
+    "historical_control": "Earlier CB Cycle V5 object-001 response on the same four page images, without the current crops, did emit F01-F03. It described them as vertically stacked despite the V2 arrows across a horizontal row, and failed its schema. It is evidence of possible box emission, not accepted localization or a causal comparison.",
+    "unknown": "Why the combined generation omitted every F box is not established. No evidence of token truncation, pixel conversion loss, or rendering loss."
+  }
 }

@@ -1,0 +1,73 @@
+{
+  "work": "3.17.4.6",
+  "date": "2026-11-07",
+  "scope": "One Lev1 and one two-object Adda call on the same landmark/nullable bbox variant as Lev2. Exact system equivalent except crop-size list; same medium, disabled Thinking, strict Island Map, saved inputs. No retries or default changes.",
+  "lev1": {
+    "witness": "/private/tmp/lev1-v7-2-medium-front-pixels-numeric-boxes-strict-islands-front-landmarks-20261107-01.json",
+    "request_sha256": "03a0574bf020841dd993a6d60099dd86a00a4005334dc64e5ee530a6c460c50e",
+    "elapsed_seconds": 11.709,
+    "output_tokens": 3099,
+    "named": 3,
+    "boxed": 3,
+    "unlocalized": 0,
+    "v4_drawer_iou": [0.928, 0.938, 0.926],
+    "leg_count": 1,
+    "independent_front_validation": "pass",
+    "independent_planner_validation": "invalid Planner references",
+    "full_validation_error": "thickness differs from normalized Detection value"
+  },
+  "adda": {
+    "witness": "/private/tmp/adda-v7-2-medium-front-pixels-numeric-boxes-strict-islands-front-landmarks-20261107-01.json",
+    "request_sha256": "5ba58271db25b5f51f41cfe46dfc2a18a06dfd7286615e397ea06fa90c06083d",
+    "elapsed_seconds": 14.961,
+    "output_tokens": 3761,
+    "both_frozen_memberships_preserved": true,
+    "object_001": {"named": 3, "boxed": 0, "unlocalized": 3, "landmarks": "V3 left, center and right lower drawer", "count_basis": "clear"},
+    "object_002": {"named": 4, "boxed": 0, "unlocalized": 4, "landmarks": "V4 two candidate lower drawers per bay; distinct physical attribution unverified", "count_basis": "estimated"},
+    "independent_front_and_planner_validation": "pass for both in diagnostic mode",
+    "full_validation_error": "foreign Understanding source refs"
+  },
+  "conclusion": "Adda now exposes seven named-but-unboxed model entries in the same response. This separates reporting a candidate from locating its boundaries, not proof of all seven physical identities. Lev1 keeps precise geometry for all three drawers. No production adoption.",
+  "lev_numeric_landmark_exact_repeats": {
+    "scope": "Owner retains clarified numeric-count wording. One exact request repeat per Lev document; no new prompt change, no retries, Thinking disabled.",
+    "lev1": {
+      "witness": "/private/tmp/lev1-v7-2-medium-front-pixels-numeric-boxes-strict-islands-front-landmarks-20261107-02.json",
+      "request_sha256": "03a0574bf020841dd993a6d60099dd86a00a4005334dc64e5ee530a6c460c50e",
+      "elapsed_seconds": 12.416,
+      "named": 3,
+      "boxed": 3,
+      "null_boxes": 0,
+      "v4_iou": [0.871, 0.880, 0.869],
+      "leg_count": 1,
+      "independent_front": "pass",
+      "full_validation_error": "thickness differs from normalized Detection value"
+    },
+    "lev2": {
+      "witness": "/private/tmp/lev2-v7-2-medium-front-pixels-numeric-boxes-strict-islands-front-landmarks-20261107-02.json",
+      "request_sha256": "600b7af413cd286b163d8e07388140f8c3a6a1ee3ba46a5389d29f6da6cda63f",
+      "elapsed_seconds": 16.046,
+      "named": 12,
+      "boxed": 12,
+      "null_boxes": 0,
+      "counts": {"hinged": 9, "drawer": 3, "lift_up": 0},
+      "v4_correct": "5/8, three lower doors absent",
+      "v3_upper_right": "2 of 3 correctly localized and typed; both true lift fronts absent",
+      "false_fixed_side": false,
+      "full_validation": "pass, visual acceptance not established"
+    }
+  },
+  "adda_legacy_wording_repeat": {
+    "witness": "/private/tmp/adda-v7-2-medium-front-pixels-numeric-boxes-strict-islands-front-landmarks-legacy-count-20261107-01.json",
+    "request_sha256": "c1b1bfa467ed0c4d9aca8ec893eeafc1ca1074092953273e07fe701442415551",
+    "control_request_sha256": "5ba58271db25b5f51f41cfe46dfc2a18a06dfd7286615e397ea06fa90c06083d",
+    "sole_change": "Use For a known group count in the entry-count sentence; landmark, nullable bbox, validator, both inputs and all settings unchanged.",
+    "provider_calls": 1,
+    "elapsed_seconds": 15.762,
+    "output_tokens": 4158,
+    "thinking_tokens": 0,
+    "object_001": "3 named and boxed, type unresolved; no good match to the three callout-indicated drawer faces on V2",
+    "object_002": "3 estimated named and boxed drawers on V4, versus 4 named and unboxed in control; completeness/type not established",
+    "validation": "pass, visual acceptance not established",
+    "conclusion": "Boxes reappear but do not establish physical grounding. Single variant sample; no new checkpoint, promotion, or retry."
+  }
+}

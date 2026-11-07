@@ -1,6 +1,17 @@
 # Costerly AI Project Map
 
-Latest experiment, original V7.2 thinking disabled, effort medium/high, 2026-11-07:
+Current Estimation research checkpoint, 3.17.4.6, 2026-11-07:
+`estimation-v7.2-medium-front-landmarks-experimental-2026-11-07`.
+V7.2 medium/Thinking disabled; strict Island Map; Front individual landmarks
+and nullable crop-pixel boxes; numeric count includes estimated entries.
+Runner: `python -m tools.probe_estimation_v7_2_front_landmarks`. Offline unless
+`--execute` is specified. Existing runtime/defaults unchanged. Exact replay
+inputs, request hashes, tests, benchmark status and historical comparisons:
+notes/evidence/estimation-v7-2-retrospective-2026-11-07/front-landmarks-checkpoint.json.
+Read section 36 of ESTIMATION_V6_FULL_CHAT_HANDOFF_2026_11_06.md before the
+historical V6 sections for the current restart point.
+
+Earlier experiment, original V7.2 thinking disabled, effort medium/high, 2026-11-07:
 tools/probe_estimation_v7_2_thinking.py --revision V7.2-disabled-medium /
 V7.2-disabled-high changes ONLY effort on original disabled/low controls.
 Four complete replies, zero thinking tokens/no thinking blocks. Lev1 improves

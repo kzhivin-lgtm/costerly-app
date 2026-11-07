@@ -1,0 +1,28 @@
+{
+  "work": "3.17.4.6",
+  "date": "2026-11-07",
+  "scope": "One call each Lev1 (LF1) and Lev2 (LF2), checkpoint pixel requests with only the same Adda sentence clarification: any numeric group count including estimated requires one box per front. No retries or runtime/default changes.",
+  "lev1": {
+    "witness": "/private/tmp/lev1-v7-2-medium-front-pixels-numeric-boxes-20261107-01.json",
+    "request_sha256": "c526c58e0cbc3b59a2bbb3253eab58b3d3e9aad81bdc284e29d982a3fe136609",
+    "drawers": 3,
+    "leg_count": 2,
+    "v4_drawer_iou": [0.937, 0.937, 0.914],
+    "front_validation": "pass",
+    "planner_validation": "invalid Planner references",
+    "full_validation": "thickness differs from normalized Detection value",
+    "overlay": "lev1-front-numeric-boxes-overlay-page.png"
+  },
+  "lev2": {
+    "witness": "/private/tmp/lev2-v7-2-medium-front-pixels-numeric-boxes-20261107-01.json",
+    "request_sha256": "e8c689ed48797421bad48ebe0ac6bb2ac2c0e4b5031f38b6bcff85a2a3daa72b",
+    "counts": {"hinged": 9, "drawer": 6, "lift_up": 0},
+    "v4_correct": 6,
+    "v4_owner_corrected_reference_count": 8,
+    "v4_gap": "Both hanging doors unannotated; F15 exactly matches fixed side wrongly counted as hinged.",
+    "v3_gap": "Both true lift-ups unannotated.",
+    "full_validation": "pass, visual acceptance not established",
+    "overlay": "lev2-front-numeric-boxes-overlay-page.png"
+  },
+  "conclusion": "Both still emit individual boxes. No consistent evidence of better physical completeness or grounds to promote the clarification on these controls."
+}

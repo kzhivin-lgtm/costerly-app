@@ -1,5 +1,15 @@
 # Done Log
 
+2026-11-07, 3.17.4.6: owner requested and selected the experimental
+`estimation-v7.2-medium-front-landmarks-experimental-2026-11-07` checkpoint.
+Strict Island Map, V7.2 medium/disabled, per-front landmark and nullable
+pixel box, numeric count-to-entry wording retained. Runnable local replay
+and validation archived; 89 focused tests and five byte-identical request
+checks, zero new provider calls. Lev1 3/3 drawer boxes; Lev2 coverage still
+incomplete; Adda seven named/zero boxed. Not production or semantic acceptance.
+Prior pixel tag unchanged; no main, deployment or push. Manifest:
+notes/evidence/estimation-v7-2-retrospective-2026-11-07/front-landmarks-checkpoint.json.
+
 2026-11-07, 3.17.4.6: one approved Adda run on protected Detection, both
 four-View objects retained, using the V7.2 medium Front pixel checkpoint.
 16.241 s, 4083 output, zero thinking. Model declares 4 and 6 drawers but

@@ -48,7 +48,7 @@ def prepare_content(*, inputs, page_bytes, detection_context):
     return content
 
 
-def validate_result(result, *, detection_context, inputs):
+def validate_result(result, *, detection_context, inputs, island_observation_required=True):
     expected = {o["object_id"]: o for o in detection_context["objects"]}
     rows = {r["input_payload"]["object"]["object_id"]: r for r in inputs}
     codes = {t["code"] for t in json.loads(CATALOG_PATH.read_text())}
@@ -70,8 +70,11 @@ def validate_result(result, *, detection_context, inputs):
                           for kind in ("ocr_blocks", "ocr_literal_items")
                           for x in rows[oid]["input_payload"].get(container, {}).get(kind, []) if x.get("block_ref"))
         mapped = set()
+        island_fields = {"island_id", "projection", "content_role"}
+        if island_observation_required:
+            island_fields.add("observation")
         for island in obj["islands"]:
-            if set(island) != {"island_id", "projection", "content_role", "observation"}:
+            if set(island) != island_fields:
                 raise ValueError("invalid Island Map fields")
             iid = island["island_id"]
             if iid not in owned or iid in mapped:
@@ -79,7 +82,8 @@ def validate_result(result, *, detection_context, inputs):
             mapped.add(iid)
             if island["projection"] not in existing.ISLAND_TYPES or island["content_role"] not in CONTENT_ROLES:
                 raise ValueError("invalid Island Map classification")
-            _text(island["observation"])
+            if island_observation_required:
+                _text(island["observation"])
         if mapped != owned:
             raise ValueError("omitted island")
         u = obj["understanding"]

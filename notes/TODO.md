@@ -1151,6 +1151,174 @@ fragment), and its second drawer row is unsubstantiated. V8 plan 2000 length
 misreported as height. No physical
 acceptance or further authorized call. Evidence:
 notes/evidence/estimation-v7-2-retrospective-2026-11-07/adda-front-pixels-trial.json.
+OWNER ADDA REVIEW / FRONT FOLLOW-UP, same work 3.17.4.6, P0 PENDING:
+Owner reference, not prompt input: V1/V4/V6/V8 object has 6 drawers, 8
+specified pull-out shelves, 8 doors, 2 mirrors, glazed vitrines and a fixed
+open shelf (do not count as operable). V2/V3/V5/V7 object: 3 drawers, mirror.
+User requests general recognition of X opening symbols as door evidence,
+interpreted in drawing context; do not hardcode Adda or treat every diagonal
+cross as a door. Explicitly indicated pull-out shelf is a distinct moving
+element in Front, one slide set per shelf; do not infer it from generic shelf
+geometry, conflate it with a drawer or count a fixed open shelf. Representation
+and downstream hardware contract pending; not shipped.
+Offline Front-box diagnosis: raw Adda response already has fronts=[] for
+both nonzero estimated groups, while it emits one pixel X box per object.
+Finished end_turn at 4083/14000 output, not a conversion or rendering loss.
+Earlier CB Cycle V5 counter-only response emitted three F boxes on the same
+page images, with different input format and an incorrect stacked topology;
+neither proof of correct old localization nor isolated cause. Further offline
+comparison: exact pixel system prompt matches Lev1 and four Lev2 samples
+except crop-size list; provider settings identical. Lev2 repeat-02 includes
+5 F boxes for 5 estimated fronts, so estimated status alone does not explain
+empty lists. Adda differs in source/complexity and shared response for 2
+objects (12 images/44122 input vs 5-7 images/25246-26600 input for Lev).
+OWNER PRIORITY: isolate cause before any semantic or schema change. Proposed
+diagnostic step 1 completed with owner authorization: exactly one repeat of
+the same Adda request, 17.671 s / 4725 output / zero thinking, end_turn.
+Both original memberships retained; object-002 again estimates 4 drawers
+with no F boxes, object-001 again estimates 6 with no F boxes. Raw omission
+reproduced, both independently fail the existing count/box check. No runtime,
+prompt or schema changes. Step 2 COMPLETED: one authorized call requested
+only object-001, retaining all 12 images, OCR, both objects' Detection
+context and the original Front rules/settings. Verified sole request change
+is output scope; the response contains only object-001. End_turn, 10.439 s,
+2342 output, zero thinking. Estimate changed 6 to 3, explicitly inferred
+from three bays; F boxes stay zero and the same validation error remains.
+One-result scope alone is insufficient; two requested results are not a
+necessary condition. Do not infer input-load cause or split Analyze from
+this. 67 focused tests passed for opt-in probe only; no runtime changes.
+V02 callout diagnostic COMPLETED, one authorized call on the exact single
+V02 crop, no count hint, same model/medium/thinking settings; main prompts
+unchanged. Three arrow tips within about 2.3 px of visually read references.
+Only 1/3 corresponding face boxes good: first box is on the adjacent middle
+drawer (its own tip outside), second extends below the drawer, third matches
+the right drawer (IoU 0.912). This isolates a visible tip-to-face association
+and boundary error, not proof of why the shared Analyze omitted all F boxes.
+Exact raw and overlay references are in adda-front-pixels-trial.json.
+NUMERIC COUNT RULE DIAGNOSTIC, owner-approved, COMPLETED: one full Adda
+7.2 medium + pixels request differing in one sentence only, explicitly
+including estimated numeric counts in one-box-per-front requirement.
+Both objects returned 3 estimated drawers and 3 F boxes (prior 0 F);
+full structural validation passes. V02 has 0/3 localized to its indicated
+faces (best IoU per box 0.068..0.098), V04 F06 spans two panel outlines.
+Supports prompt wording affecting emission, not correct recognition or
+stable cause. No prompt/runtime adoption, retry or further call. Evidence
+and overlays in adda-front-pixels-trial.json. Probe ran from archived
+ac3d953 code; active temporary checkout lacks Git metadata/dependencies.
+OWNER-REQUESTED LEV CONTROLS, COMPLETED: same one-sentence variant, one
+Lev1 and one Lev2 call on unchanged pixel-checkpoint inputs/settings. Lev1
+3/3 drawer boxes (IoU 0.914..0.937), two legs, independent Front passes;
+thickness mismatch and independent Planner reference error remain. Lev2
+structural pass but V4 6/8 using owner-corrected reference: two hanging
+doors missing and F15 wrongly counts the fixed side. True V3 lifts absent.
+No retry, promotion or main prompt change. Evidence:
+notes/evidence/estimation-v7-2-retrospective-2026-11-07/lev-numeric-boxes-trial.json.
+OWNER FOLLOW-UP: LF2 missed-front diagnosis, offline. New response's Island
+Map V3 calls the three upper surfaces doors, but Front X01 covers the same
+band as fixed 'in this estimate context'. Prior pixel runs localized those
+surfaces (wrongly typed as lift-ups). V4 upper pair is explicitly named as
+two doors in Island Map, and Planner keeps its cabinet, but Front emits
+neither F nor X for the pair. Real V3 lift pair also absent; checkpoint-02
+located both. No coordinate/box loss after generation. LIKELY failure is
+inconsistent physical-role/coverage decisions across the shared response,
+with Front counting only lower groups. Cause of variability not established;
+one new sample versus varying exact repeats cannot establish no regression
+from the numeric count sentence. Proposed next isolated, universal check:
+before finalizing Front, reconcile source-supported operating candidates
+across relevant Islands (including beyond found groups); do not silently
+drop a candidate or exclude a whole band without surface-specific evidence.
+Unresolved movement on an identified operating face remains unresolved,
+not fixed. No counts, kitchen topology or LF2 identifiers in production
+instruction; no coordinate, schema or hardware changes in this diagnosis.
+OWNER ISLAND MAP CONTRACT: strict categorization only, no generated
+`islands[].observation`; Description remains in Understanding. Detection
+accepted_observations are input evidence and unchanged. One authorized
+Lev2 trial on prior 7.2 medium + pixels + numeric-boxes, removing only the
+observation instruction/key, strict validator in isolated probe. Four
+categories returned unchanged, no comment; full structural validation passes.
+Understanding includes the separate hanging cabinet, still mislabels bare
+readings as mm. Front 7 hinged/3 drawers/0 lifts; V4 5/8 (two hanging doors
+returned, three lower doors omitted, fixed side not counted). V3 lifts and
+drawer bank absent. One run does not establish impact on recognition.
+No retry, default promotion or checkpoint move. Evidence:
+notes/evidence/estimation-v7-2-retrospective-2026-11-07/lev2-strict-islands-trial.json.
+LF2 HISTORICAL COVERAGE COMPARISON, offline: latest broader pixel witness
+checkpoint-02 localizes corrected V4 8/8, real V3 lift pair and upper-right
+trio, but mislabels trio as lifts and fails totals. Earlier standalone Front
+V3 run-02 types those measured surfaces correctly, but F21 counts fixed
+V4 side as door. Current strict-islands misses V4 three lower doors and
+V3 upper groups. Same input/settings vs pixel witness; only numeric count
+sentence and Island Map observation differ. No accepted all-front LF2
+baseline or causal attribution. Use these as visual references, not an
+automatic rollback. No new call or code change.
+Exact request diff verified: checkpoint-02 -> numeric variant changes only
+"known group count" to "any numeric group count, including estimated";
+numeric -> strict Islands removes only the observation instruction/key.
+Front template is identical in all three pixel requests. Separate Front V3
+Tasks 2-4 recognition rules are the same apart from pixel encoding and this
+count sentence; standalone Task 1 island_types moved to Island Map, Task 5
+totals/null prose not carried into the combined template. Old task scope,
+evidence context and thinking/effort differ, so no cause inferred. Proposed
+single-factor diagnostic COMPLETED after owner authorization: one Lev2 call
+restored only the old count wording, with strict Islands, pixels, medium
+and thinking disabled. Structural pass; V3 gets 2 drawers and all 5 target
+upper surfaces, but the real lift pair is typed hinged. V4 drops all 8.
+Coverage shifts, not a recovery. Not adopted, no retry or schema change.
+Evidence appended to lev2-strict-islands-trial.json.
+OWNER-REQUESTED LANDMARK CONTROLS, COMPLETED: one Lev1 and one full Adda
+call with the same strict Islands + landmark/nullable bbox Front as Lev2.
+Lev1 3 named/3 boxed (V4 IoU 0.926..0.938), one leg instead of two, legacy
+thickness and Planner reference errors. Adda object-001 3 named (left/centre/
+right V3), object-002 4 estimated entries across V4 bays; all seven bbox_px
+null. This is direct named-but-unmarked output, not proof of their physical
+identities. Both Adda diagnostic Front/Planner checks pass independently;
+full validation fails foreign Understanding source refs. No retries,
+prompt changes or promotion. Evidence:
+notes/evidence/estimation-v7-2-retrospective-2026-11-07/front-landmarks-lev1-adda-trials.json.
+OWNER-REQUESTED ADDA LEGACY WORDING COMPARISON: one call, only known count
+qualifier restored; same per-front records, landmarks, nullable bbox and
+checks. Straight counter 3 named/3 boxed unresolved, all miss indicated drawer
+faces; L display 3 estimated named/3 boxed vs control 4/0, not accepted.
+Full structural pass, no new checkpoint or repeat. Evidence in same JSON.
+OWNER RETAINS CLARIFIED NUMERIC WORDING for the diagnostic variant. Two
+requested exact repeats completed, one each Lev1/Lev2, no prompt change.
+Lev1 3 named/3 boxed, one leg and existing thickness failure. Lev2 12
+named/12 boxed, no null; V4 again 5/8 with three lower doors missing, fixed
+side no longer counted; V3 two upper doors return, real lift pair absent.
+Lev2 format passes, not physical acceptance. No retry or checkpoint move.
+Exact witness paths in front-landmarks-lev1-adda-trials.json.
+OWNER-SELECTED FULL RESEARCH CHECKPOINT, P0 ACTIVE, same work 3.17.4.6:
+`estimation-v7.2-medium-front-landmarks-experimental-2026-11-07` on
+`codex/estimation-v7-2-front-landmarks`; prior pixel tag 453cff5 unchanged.
+Selected: strict Island Map, medium/Thinking disabled, bbox_px -> bbox_1000
+when non-null, per-front landmark, and explicit numeric count-to-entry rule.
+This is a reproducible diagnostic starting point, not accepted geometry,
+production defaults or permission for more runs. 89 focused tests and five
+exact saved request comparisons; no new provider calls for checkpoint.
+Open P0: Lev2 complete coverage/types and Adda locating named faces; legacy
+wording comparison on Lev1/Lev2 with this exact schema remains PENDING, not
+approved. Pending separately: X evidence and explicitly indicated pull-out
+shelves/slide sets. No mandatory Island report or Thinking. Manifest:
+notes/evidence/estimation-v7-2-retrospective-2026-11-07/front-landmarks-checkpoint.json.
+OWNER REFINEMENT: do not require a status report for every Island. The next
+diagnostic question is recognition of a distinct physical face versus its
+annotation in the same response. The 8/8 V4 and V3 lift-pair evidence belongs
+to a prior invocation that DID emit boxes, not an earlier phase of the
+current invocation. Current Front has no per-face record independent of its
+box, so absence alone does not separate not recognized from not marked.
+Proposed (not run): one Front-local candidate list (stable ID, source Island,
+short physical landmark/type), plus bbox or explicit unlocalized outcome per
+ID. Compare against source; no mandatory per-Island ledger, Thinking or
+additional provider stage. Prepared per-view ledger probe was not sent.
+OWNER-APPROVED FRONT LANDMARK DIAGNOSTIC, COMPLETED: one L2 with the strict
+Islands numeric-count control, Thinking disabled. Only individual landmark
+and nullable bbox_px contract changed. 13 F named, all 13 boxed, zero null.
+Three actual lower V4 doors have no F record. V3 real lift pair covered by
+fixed exclusion X02; distinct classification failure, not lost coordinates.
+V4 5/8 correct plus fixed side F09 falsely counted; full fails 9 declared
+hinged vs 10 grouped. No observed named-but-unmarked front in this sample.
+66 focused tests plus local nullable-box checks; no retries or promotion.
+Evidence appended to lev2-strict-islands-trial.json.
 
 LATEST OWNER RETROSPECTIVE / STABILIZATION REVIEW, 2026-11-07:
 COMPLETED read-only review, same 3.17.4.6. Owner asked to analyze all work since V7.2 and

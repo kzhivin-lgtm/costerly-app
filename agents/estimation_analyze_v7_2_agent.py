@@ -24,13 +24,17 @@ def prompt():
         "SINGLE AUTHORITATIVE RESPONSE TEMPLATE\n" + template])
 
 
-def validate_result(result, *, detection_context, inputs):
+def validate_result(result, *, detection_context, inputs, island_observation_required=True,
+                    allow_unlocalized_fronts=False):
     if detection_context.get("contract_version") != "estimation_detection_context_v7_2":
         raise ValueError("V7.2 requires normalized Detection measurements")
     if not isinstance(result, dict) or set(result) != {"objects"} or not isinstance(result["objects"], list):
         raise ValueError("V7.2 objects required")
     context = {o["object_id"]: o for o in detection_context["objects"]}
     projected = deepcopy(result)
+    island_fields = {"island_id", "projection", "elevation_index", "content_role"}
+    if island_observation_required:
+        island_fields.add("observation")
     for obj, basic in zip(result["objects"], projected["objects"]):
         if not isinstance(obj, dict) or set(obj) != {"object_id", "islands", "understanding", "front", "planner"}:
             raise ValueError("invalid V7.2 object fields")
@@ -41,7 +45,7 @@ def validate_result(result, *, detection_context, inputs):
             raise ValueError("V7.2 islands required")
         fronts = []
         for island, basic_island in zip(obj["islands"], basic["islands"]):
-            if not isinstance(island, dict) or set(island) != {"island_id", "projection", "elevation_index", "content_role", "observation"}:
+            if not isinstance(island, dict) or set(island) != island_fields:
                 raise ValueError("invalid V7.2 island fields")
             index = island["elevation_index"]
             if island["projection"] == "Front elevation":
@@ -79,12 +83,14 @@ def validate_result(result, *, detection_context, inputs):
         if not isinstance(f, dict) or set(f) != {"front_groups", "excluded_surfaces", "tabletop_supports", "totals"}:
             raise ValueError("invalid V7.2 Front fields")
         front_contract = {**f, "island_types": [dict(view_id=i["island_id"], type=i["projection"]) for i in obj["islands"]]}
-        existing.validate_front_count(front_contract, known, require_annotations=True, require_supports=True)
+        existing.validate_front_count(front_contract, known, require_annotations=True, require_supports=True,
+                                      allow_unlocalized_fronts=allow_unlocalized_fronts)
         front_ids = existing.planner_front_ids(f, known)
         existing.validate_assembly_plan(obj["planner"], known, front_ids)
         basic.pop("front")
         basic.pop("planner")
-    previous.validate_result(projected, detection_context=detection_context, inputs=inputs)
+    previous.validate_result(projected, detection_context=detection_context, inputs=inputs,
+                             island_observation_required=island_observation_required)
     return result
 
 

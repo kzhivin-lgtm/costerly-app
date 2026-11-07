@@ -114,12 +114,19 @@ def normalize_front_pixel_annotation(annotation, sizes):
             "bbox_1000": [v * 1000 / size[i % 2] for i, v in enumerate(box)]}
 
 
-def normalize_front_pixel_boxes(raw, sizes):
+def normalize_front_pixel_boxes(raw, sizes, *, allow_unlocalized_fronts=False):
     converted = deepcopy(raw)
+    def front_annotation(a):
+        if allow_unlocalized_fronts and 'bbox_px' in a and a['bbox_px'] is None:
+            if not isinstance(a.get('view_id'), str) or a['view_id'] not in sizes or 'bbox_1000' in a:
+                raise ValueError('unlocalized front needs an owned view and no alternate coordinates')
+            return {**{k: v for k, v in a.items() if k != 'bbox_px'}, 'bbox_1000': None}
+        return normalize_front_pixel_annotation(a, sizes)
+
     for obj in converted["objects"]:
         front = obj["front"]
         for group in front["front_groups"]:
-            group["fronts"] = [normalize_front_pixel_annotation(a, sizes) for a in group["fronts"]]
+            group["fronts"] = [front_annotation(a) for a in group["fronts"]]
         front["excluded_surfaces"] = [normalize_front_pixel_annotation(a, sizes) for a in front["excluded_surfaces"]]
         for support in front["tabletop_supports"]:
             support["legs"] = [normalize_front_pixel_annotation(a, sizes) for a in support["legs"]]

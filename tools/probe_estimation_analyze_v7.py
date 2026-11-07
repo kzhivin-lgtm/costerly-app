@@ -31,10 +31,14 @@ def render_report(witness):
         parts.append(f"<p>{escape(witness['error'])}</p>")
     for obj in (result or {}).get("objects", []):
         u = obj["understanding"]
-        parts.append(f"<h2>{escape(obj['object_id'])}: {escape(u['name'])}</h2><table><tr><th>Island</th><th>Projection</th><th>Content role</th><th>Observation</th></tr>")
+        observation_column = "" if witness.get("strict_island_map") else "<th>Observation</th>"
+        parts.append(f"<h2>{escape(obj['object_id'])}: {escape(u['name'])}</h2><table><tr><th>Island</th><th>Projection</th><th>Content role</th>{observation_column}</tr>")
         for i in obj["islands"]:
             projection = i["projection"] + (f" {i['elevation_index']}" if i.get("elevation_index") else "")
-            parts.append("<tr>" + "".join(f"<td>{escape(value)}</td>" for value in (i["island_id"], projection, i["content_role"], i["observation"])) + "</tr>")
+            cells = [i["island_id"], projection, i["content_role"]]
+            if observation_column:
+                cells.append(i["observation"])
+            parts.append("<tr>" + "".join(f"<td>{escape(value)}</td>" for value in cells) + "</tr>")
         parts.append("</table>")
         for row in witness.get("island_normalization", []):
             if row["object_id"] != obj["object_id"]:

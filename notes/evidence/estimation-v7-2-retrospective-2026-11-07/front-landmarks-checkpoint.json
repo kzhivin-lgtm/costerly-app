@@ -1,0 +1,77 @@
+{
+  "work": "3.17.4.6",
+  "date": "2026-11-07",
+  "status": "owner-selected experimental checkpoint; no physical or production acceptance",
+  "tag": "estimation-v7.2-medium-front-landmarks-experimental-2026-11-07",
+  "branch": "codex/estimation-v7-2-front-landmarks",
+  "parent_commit": "ac3d953373c8828924f107ea145bd6b971761497",
+  "previous_pixel_checkpoint": "453cff584fc977d8eee9d818690c57e42b2c1b9b",
+  "settings": {
+    "model": "claude-haiku-5-5",
+    "thinking": {"type": "disabled"},
+    "output_config": {"effort": "medium"},
+    "max_tokens": 14000,
+    "provider_retries": 0
+  },
+  "contract": {
+    "analyze": "One document-level response, frozen Detection membership and evidence retained.",
+    "island_map": ["island_id", "projection", "elevation_index", "content_role"],
+    "detection_accepted_observations": "Retained as input; no generated Island Map observation.",
+    "understanding": ["name", "type_code", "proposed_type", "description", "characteristics", "materials", "assumptions", "conflicts"],
+    "front_record": ["id", "view_id", "landmark", "bbox_px"],
+    "box_policy": "Exact crop-local pixels; bbox_px may be null for a named but unlocalized individual front. No guessed boxes. Non-null values convert deterministically to bbox_1000; null stays null.",
+    "numeric_rule": "For any numeric group count, including estimated, the number of individual front entries must equal count.",
+    "planner": "Blocks, existing F-ID references. No Calculation or parts."
+  },
+  "runner": "tools.probe_estimation_v7_2_front_landmarks; default is offline; --compare verifies full saved request; --execute is an explicit one-call mode",
+  "verification": {
+    "focused_tests_passed": 89,
+    "exact_saved_provider_requests_verified": 5,
+    "new_provider_calls_for_checkpoint": 0,
+    "validation_distinction": "Reference, arithmetic and shape checks are not a proof of visual completeness."
+  },
+  "saved_runs": {
+    "lev1": {
+      "baseline": "/private/tmp/lev1-v7-2-medium-front-pixels-checkpoint-20261107-01.json",
+      "witnesses": [
+        "/private/tmp/lev1-v7-2-medium-front-pixels-numeric-boxes-strict-islands-front-landmarks-20261107-01.json",
+        "/private/tmp/lev1-v7-2-medium-front-pixels-numeric-boxes-strict-islands-front-landmarks-20261107-02.json"
+      ],
+      "request_sha256": "03a0574bf020841dd993a6d60099dd86a00a4005334dc64e5ee530a6c460c50e",
+      "result": "3/3 named and correctly boxed in both; one leg instead of two; known thickness failure, Planner reference failure."
+    },
+    "lev2": {
+      "baseline": "/private/tmp/lev2-v7-2-medium-front-pixels-checkpoint-20261107-01.json",
+      "witnesses": [
+        "/private/tmp/lev2-v7-2-medium-front-pixels-numeric-boxes-strict-islands-front-landmarks-20261107-01.json",
+        "/private/tmp/lev2-v7-2-medium-front-pixels-numeric-boxes-strict-islands-front-landmarks-20261107-02.json"
+      ],
+      "request_sha256": "600b7af413cd286b163d8e07388140f8c3a6a1ee3ba46a5389d29f6da6cda63f",
+      "result": "13/13 then 12/12 named/boxed, no null; V4 5/8 in both, three lower doors missing. V3 true lift pair absent; second pass recovers two upper-right doors and stops counting the fixed V4 side. First fails totals, second passes structure, neither physical acceptance."
+    },
+    "adda": {
+      "baseline": "/private/tmp/adda-v7-2-medium-front-pixels-20261107-01.json",
+      "witnesses": ["/private/tmp/adda-v7-2-medium-front-pixels-numeric-boxes-strict-islands-front-landmarks-20261107-01.json"],
+      "request_sha256": "5ba58271db25b5f51f41cfe46dfc2a18a06dfd7286615e397ea06fa90c06083d",
+      "detection_run": "run_4e47c1226af946698779203ca31ff705",
+      "detection_event_id": "b5d218b9-ccee-4c58-8c62-d144be246381",
+      "ocr_event_id": "b0a83581-b684-4b00-bef1-cf5bad36a407",
+      "membership": {"object-002": ["view-001", "view-004", "view-006", "view-008"], "object-001": ["view-002", "view-003", "view-005", "view-007"]},
+      "result": "Straight counter three named; corner display four estimated. All seven unlocalized. Diagnostic Front/Planner checks pass independently; full response fails Understanding source refs."
+    }
+  },
+  "evidence": [
+    "front-landmarks-lev1-adda-trials.json",
+    "lev2-strict-islands-trial.json",
+    "adda-front-pixels-trial.json",
+    "front-coordinate-audit.json",
+    "front-pixels-lev2-repeatability.json"
+  ],
+  "open": [
+    "Full physical coverage and stable types on Lev2; Adda bounds remain unresolved.",
+    "Exact legacy-wording controls for Lev1/Lev2 with the same landmarks schema not run. No proven numeric-wording benefit or regression on these documents.",
+    "X as door evidence and explicitly specified pull-out shelf/slide-set representation pending, not part of checkpoint.",
+    "No mandatory per-Island ledger, extra provider stage, Thinking, production default change, deployment or push."
+  ],
+  "privacy": "Private input and response capsules remain local at the recorded paths; no drawing/OCR payload committed."
+}
