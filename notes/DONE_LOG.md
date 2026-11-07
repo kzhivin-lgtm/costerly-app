@@ -1,5 +1,12 @@
 # Done Log
 
+2026-11-07, 3.17.4.6: owner-requested two additional exact Lev2 pixel replays
+on checkpoint `453cff5`. V4 8/9 and 9/9; first misses the end door. V3 actual
+lift pair 2/2 then 0/2, with three false lifts both times. First response
+fails totals check, second passes structure but not physical review. Four
+exact requests now give V4 7/9, 9/9, 8/9, 9/9; no changes or promotion.
+notes/evidence/estimation-v7-2-retrospective-2026-11-07/front-pixels-lev2-repeatability.json.
+
 2026-11-07, 3.17.4.6: completed the owner-requested Lev1/Lev2 pair after
 checkpoint `453cff5`. No prompt or setting changes after tagging. Lev1 V4
 3/3 localized, 12.842 s/3355 output; one leg instead of two, known thickness

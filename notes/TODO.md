@@ -1119,6 +1119,16 @@ declared 9 hinged vs 11 grouped, and lift-up faces still misidentified on
 V3. Both runs end_turn, zero thinking, independent Planner refs pass. Keep
 the tagged experimental configuration; full physical acceptance stays open.
 Evidence: notes/evidence/estimation-v7-2-retrospective-2026-11-07/front-pixels-checkpoint-trials.json.
+OWNER-REQUESTED LEV2 EXACT REPEATS, 3.17.4.6, COMPLETED diagnostic: two more
+calls, both verified identical to the previous pixel requests; no changes,
+retry or repair. V4 scores across four: 7/9, 9/9, 8/9, 9/9, all matched types
+correct. Latest 02 misses the lower door right of the drawers; its V3 real
+lift pair is matched but three upper doors are also called lifts. Model totals
+9 hinged vs 11 grouped; full validation fails. Latest 03 passes structure and
+V4, but omits the actual V3 lift pair and still calls three doors lift-ups.
+One of four full structural passes, no whole-object physical acceptance.
+Keep experimental tag unchanged. Evidence:
+notes/evidence/estimation-v7-2-retrospective-2026-11-07/front-pixels-lev2-repeatability.json.
 
 LATEST OWNER RETROSPECTIVE / STABILIZATION REVIEW, 2026-11-07:
 COMPLETED read-only review, same 3.17.4.6. Owner asked to analyze all work since V7.2 and

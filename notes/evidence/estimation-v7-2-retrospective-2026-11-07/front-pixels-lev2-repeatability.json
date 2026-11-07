@@ -1,0 +1,49 @@
+{
+  "work": "3.17.4.6",
+  "date": "2026-11-07",
+  "checkpoint": "453cff584fc977d8eee9d818690c57e42b2c1b9b",
+  "request_sha256_all_four": "8d5cf572f014b5002318412392e6c86dafeb2063d35dd31c08f998b31d26eca1",
+  "new_provider_calls": 2,
+  "scope": "Exact requests verified, no prompt/model/input/default changes, retries, Calculation, or DB writes. Both new end_turn, zero thinking tokens.",
+  "match_method": "One-to-one IoU >= 0.5 to measured V4 nine-face and V3 horizontal lift-pair references; physical type compared separately. No box or total repair.",
+  "historical": [
+    {"run": "pixel pilot", "v4_correct": 7, "v3_true_lift_pair_correct": 0, "full_validation": "totals mismatch"},
+    {"run": "checkpoint-01", "v4_correct": 9, "v3_true_lift_pair_correct": 0, "full_validation": "out-of-bounds X02 on V3"}
+  ],
+  "new": [
+    {
+      "run": "checkpoint-02",
+      "witness": "/private/tmp/lev2-v7-2-medium-front-pixels-checkpoint-20261107-02.json",
+      "elapsed_seconds": 18.34,
+      "output_tokens": 5027,
+      "v4_correct": 8,
+      "v4_iou_range": [0.960, 0.993],
+      "v4_missing": "lower door 4, to the right of the drawer bank",
+      "v3_true_lift_pair_correct": 2,
+      "v3_lift_pair_matches": {"F15": 1, "F16": 0.994},
+      "other_false_lift_up_labels": ["F20", "F21", "F22"],
+      "grouped_counts": {"hinged": 11, "drawers": 6, "lift_up": 5},
+      "declared_counts": {"hinged": 9, "drawers": 6, "lift_up": 5},
+      "blocks": 3,
+      "all_front_boxes_in_bounds": true,
+      "independent_planner_refs": "pass",
+      "full_validation": "front totals do not match group counts"
+    },
+    {
+      "run": "checkpoint-03",
+      "witness": "/private/tmp/lev2-v7-2-medium-front-pixels-checkpoint-20261107-03.json",
+      "elapsed_seconds": 17.433,
+      "output_tokens": 4721,
+      "v4_correct": 9,
+      "v4_iou_range": [0.944, 1],
+      "v3_true_lift_pair_correct": 0,
+      "other_false_lift_up_labels": ["F17", "F18", "F19"],
+      "grouped_and_declared_counts": {"hinged": 11, "drawers": 5, "lift_up": 3},
+      "blocks": 4,
+      "all_front_boxes_in_bounds": true,
+      "independent_planner_refs": "pass",
+      "full_validation": "pass, not semantically accepted"
+    }
+  ],
+  "outcome": "V4 matched 7/9, 9/9, 8/9, 9/9 on four exact requests. Rightmost lower door absent in two. Actual V3 lift pair is located and typed correctly in one request, which also adds three false lifts. One full structural pass, zero semantically accepted runs. Experimental checkpoint unchanged."
+}
