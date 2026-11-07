@@ -1,0 +1,133 @@
+{
+  "work": "3.17.4.6",
+  "status": "completed live diagnostic; physical coverage not accepted",
+  "variant_commit": "136040a",
+  "protected_checkpoint": "067bf63",
+  "provider_calls": 3,
+  "calculate_calls": 0,
+  "database_writes": false,
+  "model": "claude-haiku-5-5",
+  "effort": "medium",
+  "thinking": "disabled",
+  "change": "Only per-leaf swing, single-contour full-X, and label-leader tip rules added.",
+  "reference_limit": "The three-file set does not establish a source-confirmed full-X cut negative. One replay per document.",
+  "control_total": {
+    "seconds": 46.056,
+    "input_total": 96106,
+    "output": 11354,
+    "usd": 0.0152876,
+    "usd_uncached_equivalent": 0.0152876
+  },
+  "opening_marks_total": {
+    "seconds": 44.009,
+    "input_total": 96697,
+    "output": 11458,
+    "usd": 0.0153987,
+    "usd_uncached_equivalent": 0.0153987
+  },
+  "detail_review": "/private/tmp/estimation-v72-opening-marks-live.zntgvmkW/comparison.json",
+  "detail_review_sha256": "6595b9886605161f97bd7010c5931e8499f49b5e81d863461f3e279df1b79e93",
+  "documents": {
+    "lev1": {
+      "finding": "Three drawers match V04 at IoU 0.917 to 0.938, one support out of two. Material thickness 20 mm cites view-005-D001 (normalized 200 mm).",
+      "private_witness": "/private/tmp/estimation-v72-opening-marks-live.zntgvmkW/lev1.json",
+      "private_witness_sha256": "5d50807745623b3709acecde7d05a259b697808792406870724e6f18caae1c09",
+      "overlay": "/Users/qb/.codex/visualizations/2026/11/06/01a1b2b5-0979-7c50-b3fb-f86d8e481902/lev1-v72-opening-marks-review.png",
+      "control": {
+        "seconds": 11.709,
+        "fresh_input": 26646,
+        "written": 0,
+        "read": 0,
+        "input_total": 26646,
+        "output": 3099,
+        "usd": 0.0042141,
+        "usd_uncached_equivalent": 0.0042141,
+        "status": "failed",
+        "error": "ValueError: thickness differs from normalized Detection value",
+        "request_sha256": "03a0574bf020841dd993a6d60099dd86a00a4005334dc64e5ee530a6c460c50e"
+      },
+      "opening_marks": {
+        "seconds": 11.529,
+        "fresh_input": 26843,
+        "written": 0,
+        "read": 0,
+        "input_total": 26843,
+        "output": 2918,
+        "usd": 0.0041433,
+        "usd_uncached_equivalent": 0.0041433,
+        "status": "failed",
+        "error": "ValueError: thickness differs from normalized Detection value",
+        "request_sha256": "a878fb05446e5b5ce1b37236089d94c80a4f94895ee204342ce7dc6628feeaf9"
+      }
+    },
+    "lev2": {
+      "finding": "21 named entries with null boxes. V04 lower run described as three drawers plus three hinged leaves; upper grouping and type not established. Totals 19 disagree with 21 grouped entries. Invalid fixed-exclusion bbox stops validation.",
+      "private_witness": "/private/tmp/estimation-v72-opening-marks-live.zntgvmkW/lev2.json",
+      "private_witness_sha256": "da450818b1666d02a9debbb8826a041e75b4a2ac7ff93f4d4e2ffead19daad03",
+      "overlay": "/Users/qb/.codex/visualizations/2026/11/06/01a1b2b5-0979-7c50-b3fb-f86d8e481902/lev2-v72-opening-marks-review.png",
+      "control": {
+        "seconds": 19.386,
+        "fresh_input": 25292,
+        "written": 0,
+        "read": 0,
+        "input_total": 25292,
+        "output": 4494,
+        "usd": 0.0047762,
+        "usd_uncached_equivalent": 0.0047762,
+        "status": "failed",
+        "error": "ValueError: front totals do not match group counts",
+        "request_sha256": "600b7af413cd286b163d8e07388140f8c3a6a1ee3ba46a5389d29f6da6cda63f"
+      },
+      "opening_marks": {
+        "seconds": 18.328,
+        "fresh_input": 25489,
+        "written": 0,
+        "read": 0,
+        "input_total": 25489,
+        "output": 4888,
+        "usd": 0.0049929,
+        "usd_uncached_equivalent": 0.0049929,
+        "status": "failed",
+        "error": "ValueError: invalid Front bbox_px for X01 on view-004",
+        "request_sha256": "5a76c248de73cfd0b51c0b8e3fee001ac5f419d99c5a6b4912426babede73749"
+      }
+    },
+    "adda": {
+      "finding": "No individual Front entries for either object. Straight and corner counts estimate 6 and 8 drawers against 3 and 6 references. No hinged doors or separately recorded pull-out shelves.",
+      "private_witness": "/private/tmp/estimation-v72-opening-marks-live.zntgvmkW/adda.json",
+      "private_witness_sha256": "0878090f1bc5195cf22416be7ac85c3724c0bfdc061f4e5396771e172f3f041a",
+      "overlay": "/Users/qb/.codex/visualizations/2026/11/06/01a1b2b5-0979-7c50-b3fb-f86d8e481902/adda-v72-opening-marks-review.png",
+      "control": {
+        "seconds": 14.961,
+        "fresh_input": 44168,
+        "written": 0,
+        "read": 0,
+        "input_total": 44168,
+        "output": 3761,
+        "usd": 0.0062973,
+        "usd_uncached_equivalent": 0.0062973,
+        "status": "failed",
+        "error": "ValueError: foreign Understanding source refs",
+        "request_sha256": "5ba58271db25b5f51f41cfe46dfc2a18a06dfd7286615e397ea06fa90c06083d"
+      },
+      "opening_marks": {
+        "seconds": 14.152,
+        "fresh_input": 44365,
+        "written": 0,
+        "read": 0,
+        "input_total": 44365,
+        "output": 3652,
+        "usd": 0.0062625,
+        "usd_uncached_equivalent": 0.0062625,
+        "status": "failed",
+        "error": "ValueError: front box count differs from group count",
+        "request_sha256": "de3547ead1edc831f281a36e91029fcf55e9c2333ec3cd8823b05aa9e253a36e"
+      }
+    }
+  },
+  "followups": [
+    "Adda page 1 saved OCR has no drawer, pull-out shelf or mirror callout labels. Recover the short labels locally before binding arrows to contours.",
+    "Lev1 has 14 normalized readings and Lev2 has 15. Reuse the measurement packet and 2VN bindings to test role assignment. Adda has no saved normalized inventory for either object.",
+    "For section/detail correspondence, use a source drawing with an explicit parent marker and verify the two views contribute one physical block."
+  ]
+}

@@ -1337,10 +1337,17 @@ Continue from protected V7.2 Offline Vector `067bf63` on
 `codex/estimation-v7-2-opening-marks`. The optional `--opening-marks`
 replay adds only per-leaf swing marks, a full-X cut or continuation cue,
 and text leader tip binding to the Front prompt. Five baseline request
-comparisons and 37 focused tests passed. PENDING physical validation.
-Potential next evidence work: bind label leaders to detected contours,
-classify dimension endpoints by physical role, and link section/detail
-markers to parent views. Raster recovery and Blocks/Parts remain pending.
+comparisons and 37 focused tests passed. Owner-approved three-file replay
+COMPLETED: Lev1 retains 3/3 drawer boxes and misses the second support;
+Lev2 names 21 fronts with zero boxes; Adda emits no individual front records.
+Full-object acceptance remains PENDING. Evidence:
+notes/evidence/estimation-v7-2-retrospective-2026-11-07/opening-marks-trials.json.
+Next isolated tests, in order: (1) recover Adda V01/V02 short callout labels
+locally, then attach each to the contour at its arrow tip. Saved OCR lacks
+those labels. (2) Verify dimension ownership on Lev1 using existing 2VN
+bindings, including source mark 20 normalized to 200 mm. (3) Link an
+explicit section/detail marker to its parent and verify one physical block
+across both views. Raster recovery and Blocks/Parts remain pending.
 
 OWNER REFINEMENT: do not require a status report for every Island. The next
 diagnostic question is recognition of a distinct physical face versus its
