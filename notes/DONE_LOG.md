@@ -1,5 +1,13 @@
 # Done Log
 
+2026-11-07, 3.17.4.6: one approved Adda run on protected Detection, both
+four-View objects retained, using the V7.2 medium Front pixel checkpoint.
+16.241 s, 4083 output, zero thinking. Model declares 4 and 6 drawers but
+returns no individual Front boxes for either. Useful construction outline,
+visual attribution/projection errors remain. No retry or promotion. Also
+recorded owner's correction that rightmost lower Lev2 V4 face is fixed.
+notes/evidence/estimation-v7-2-retrospective-2026-11-07/adda-front-pixels-trial.json.
+
 2026-11-07, 3.17.4.6: owner-requested two additional exact Lev2 pixel replays
 on checkpoint `453cff5`. V4 8/9 and 9/9; first misses the end door. V3 actual
 lift pair 2/2 then 0/2, with three false lifts both times. First response

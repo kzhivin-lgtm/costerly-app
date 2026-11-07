@@ -1,5 +1,6 @@
 """Saved Analyze controls: thinking replay, incremental changes and budget probes."""
 import argparse
+import base64
 from copy import deepcopy
 from hashlib import sha256
 import json
@@ -61,9 +62,26 @@ def front_crop_sizes(request):
     return {view_id: image.size for view_id, (image, _) in details.items()}
 
 
+def prepared_medium_request(witness):
+    """Assemble the same V7.2 medium settings from a verified local preflight."""
+    if (witness.get("version") != agent.VERSION
+            or witness.get("status") != "prepared_no_provider_calls"
+            or witness.get("provider_calls") != 0 or "provider_response" in witness
+            or witness.get("detection_context", {}).get("contract_version") != "estimation_detection_context_v7_2"):
+        raise ValueError("requires a local V7.2 preflight with saved normalized Detection evidence")
+    pages = {ref: base64.b64decode(data, validate=True) for ref, data in witness["source_pages_base64"].items()}
+    content = agent.previous.prepare_content(inputs=witness["inputs"], page_bytes=pages,
+        detection_context=witness["detection_context"])
+    if sum(b["type"] == "image" for b in content) != witness["preflight"]["image_count"]:
+        raise ValueError("prepared V7.2 image count differs from preflight")
+    return dict(model=agent.existing.MODEL, max_tokens=14000, output_config={"effort": "medium"},
+        thinking={"type": "disabled"}, system=agent.prompt(), messages=[dict(role="user", content=content)])
+
+
 def front_pixels_request(baseline):
     """Change the Front wire-coordinate convention only; keep messages unchanged."""
-    request = original_medium_request(baseline)
+    request = (prepared_medium_request(baseline) if baseline.get("status") == "prepared_no_provider_calls"
+               else original_medium_request(baseline))
     sizes = front_crop_sizes(request)
     before, front_and_after = request["system"].split(FRONT_POLICY_MARKER)
     front, after = front_and_after.split(PLANNER_POLICY_MARKER)

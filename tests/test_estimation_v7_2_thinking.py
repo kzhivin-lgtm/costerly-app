@@ -6,7 +6,7 @@ from agents import estimation_analyze_v7_2_agent as original_agent
 from tools.probe_estimation_v7_2_thinking import (
     FRONT_POLICY_MARKER, NORMALIZED_COORDINATES, PIXEL_COORDINATES, PLANNER_POLICY_MARKER,
     front_locate_first_request, front_pixels_request,
-    normalize_front_pixel_annotation, normalize_front_pixel_boxes,
+    normalize_front_pixel_annotation, normalize_front_pixel_boxes, prepared_medium_request,
 )
 
 
@@ -223,6 +223,28 @@ def test_front_pixels_request_changes_only_front_coordinate_contract(monkeypatch
         .replace('"bbox_px"', '"bbox_1000"')
         .replace("Keep Planner local bbox_1000", "Keep Front/Planner local bbox_1000"))
     assert {**request, "system": restored} == before["provider_request"]
+
+
+def test_front_pixels_can_start_from_local_preflight_without_prior_call(monkeypatch):
+    ctx = {"contract_version": "estimation_detection_context_v7_2"}
+    witness = dict(version=original_agent.VERSION, status="prepared_no_provider_calls", provider_calls=0,
+        detection_context=ctx, inputs=["saved-input"], source_pages_base64={"ref": "cGl4ZWxz"},
+        preflight={"image_count": 1})
+    content = [dict(type="image", source="saved-image")]
+    def prepare_content(**kwargs):
+        assert kwargs == dict(inputs=witness["inputs"], page_bytes={"ref": b"pixels"}, detection_context=ctx)
+        return content
+    monkeypatch.setattr(original_agent.previous, "prepare_content", prepare_content)
+    monkeypatch.setattr("tools.probe_estimation_v7_2_thinking.front_crop_sizes", lambda _: {"view-004": (750, 592)})
+    reference = prepared_medium_request(witness)
+    request = front_pixels_request(witness)
+    assert request["thinking"] == {"type": "disabled"} and request["output_config"] == {"effort": "medium"}
+    assert {**request, "system": reference["system"]} == reference
+    assert reference["messages"] == [dict(role="user", content=content)]
+    assert witness["provider_calls"] == 0 and "provider_response" not in witness
+    witness["preflight"]["image_count"] = 2
+    with pytest.raises(ValueError, match="image count differs"):
+        front_pixels_request(witness)
 
 
 def test_front_pixels_conversion_is_local_and_round_trips():

@@ -1129,6 +1129,28 @@ V4, but omits the actual V3 lift pair and still calls three doors lift-ups.
 One of four full structural passes, no whole-object physical acceptance.
 Keep experimental tag unchanged. Evidence:
 notes/evidence/estimation-v7-2-retrospective-2026-11-07/front-pixels-lev2-repeatability.json.
+OWNER OVERLAY CORRECTION: rightmost lower V4 panel immediately right of the
+drawers is a fixed side wall, not an operating door. Supersedes the old
+nine-face interpretation and prior 'missing end door' finding. Revised V4
+operating-front coverage in the four exact requests: 7/8, 8/8, 8/8, 8/8.
+Checkpoint-01 and repeat-03 counted the fixed side as hinged; repeat-02
+did not miss a door there. Retain original raw responses and measurements;
+the total Lev2 hinged benchmark is not independently reconciled here.
+OWNER-REQUESTED ADDA BENCHMARK, P0 ACTIVE, 3.17.4.6: one completed authorized
+call on the exact saved protected Adda run `run_4e47c1226af946698779203ca31ff705`
+using 7.2 medium + Front pixels. Object-002 V1/V4/V6/V8 and object-001
+V2/V3/V5/V7 both retained. Four pages and eight crops; no Detection rerun,
+Calculation, DB write or deployment. Probe now accepts a checked local
+preflight without requiring a prior paid baseline; old requests unchanged.
+66 focused tests pass. Front 4 and 6 estimated drawers respectively, but
+zero F boxes for either, so both independently fail box-count validation.
+Useful Block outline: two for L-shaped display, one for straight counter.
+Source review: V2 is axonometric; the straight counter's glazed vitrine
+claim is unsupported (the visible glazing label points to a neighboring
+fragment), and its second drawer row is unsubstantiated. V8 plan 2000 length
+misreported as height. No physical
+acceptance or further authorized call. Evidence:
+notes/evidence/estimation-v7-2-retrospective-2026-11-07/adda-front-pixels-trial.json.
 
 LATEST OWNER RETROSPECTIVE / STABILIZATION REVIEW, 2026-11-07:
 COMPLETED read-only review, same 3.17.4.6. Owner asked to analyze all work since V7.2 and

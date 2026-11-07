@@ -45,5 +45,13 @@
       "full_validation": "pass, not semantically accepted"
     }
   ],
-  "outcome": "V4 matched 7/9, 9/9, 8/9, 9/9 on four exact requests. Rightmost lower door absent in two. Actual V3 lift pair is located and typed correctly in one request, which also adds three false lifts. One full structural pass, zero semantically accepted runs. Experimental checkpoint unchanged."
+  "outcome": "Under the original nine-position reference, V4 matched 7/9, 9/9, 8/9, 9/9. That reference counted a fixed side as a door; use the corrected physical assessment below. Actual V3 lift pair is located and typed correctly in one request, which also adds three false lifts. One full structural pass, zero whole-object semantic acceptances. Experimental checkpoint unchanged.",
+  "owner_correction_after_overlay": {
+    "surface": "V4 rightmost lower panel immediately right of the drawer bank, original lower door 4 reference",
+    "correct_type": "fixed side wall, not an operating front",
+    "v4_operating_front_reference_count": 8,
+    "v4_correct_operating_fronts_in_run_order": [7, 8, 8, 8],
+    "fixed_side_incorrectly_counted_as_hinged_in_run_order": [false, true, false, true],
+    "note": "Not counting the fixed side is not a missing door. The historical nine-position matching metrics were retained for traceability. The full-object hinged target is not independently reconciled by this correction."
+  }
 }
