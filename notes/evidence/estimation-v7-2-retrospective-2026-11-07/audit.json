@@ -1,0 +1,602 @@
+{
+  "work_number": "3.17.4.6",
+  "scope": "all paid Analyze trials from original V7.2 through disabled medium/high; excludes earlier V7 and display-only V7.3.1",
+  "provider_calls": 20,
+  "configurations": 10,
+  "documents": 2,
+  "exact_request_replicates": 0,
+  "unchanged_input_images_and_detection_context_per_document": true,
+  "input_tokens": 511306,
+  "output_tokens": 146576,
+  "thinking_tokens": 77711,
+  "truncated": 5,
+  "new_provider_calls_in_retrospective": 0,
+  "new_production_writes": false,
+  "trials": [
+    {
+      "variant": "7.2 disabled low",
+      "document": "lev1",
+      "capsule_path": "/private/tmp/lev1-analyze-v7-2-20261107-01.json",
+      "request_sha256": "6234f609620d05ac5df6e89513e90bc1fa97cb97bee8fcf68a3fb163d09c6676",
+      "prompt_sha256": "53b65a011c7e06e915a64b5258032e4cedade6143b2ea0b95876adc1724d446e",
+      "seconds": 10.873,
+      "input_tokens": 26542,
+      "output_tokens": 2604,
+      "thinking_tokens": 0,
+      "max_tokens": 14000,
+      "effort": "low",
+      "thinking_setting": {
+        "type": "disabled"
+      },
+      "stop_reason": "end_turn",
+      "technical_error": "ValueError: thickness differs from normalized Detection value",
+      "group_sums": {
+        "drawers": 3,
+        "hinged_doors": 0,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 3
+      },
+      "reported_totals": {
+        "drawers": 3,
+        "hinged_doors": 0,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 3
+      },
+      "legs": [
+        1
+      ],
+      "blocks": 1,
+      "shared": 1
+    },
+    {
+      "variant": "7.2 disabled low",
+      "document": "lev2",
+      "capsule_path": "/private/tmp/lev2-analyze-v7-2-20261107-01.json",
+      "request_sha256": "06cc59568ef1ee5b8aba992927ea216c38cd51583ea67724f1f86d1fbaabc09e",
+      "prompt_sha256": "53b65a011c7e06e915a64b5258032e4cedade6143b2ea0b95876adc1724d446e",
+      "seconds": 17.176,
+      "input_tokens": 25204,
+      "output_tokens": 4742,
+      "thinking_tokens": 0,
+      "max_tokens": 14000,
+      "effort": "low",
+      "thinking_setting": {
+        "type": "disabled"
+      },
+      "stop_reason": "end_turn",
+      "technical_error": "ValueError: front totals do not match group counts",
+      "group_sums": {
+        "drawers": 6,
+        "hinged_doors": 16,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 22
+      },
+      "reported_totals": {
+        "drawers": 6,
+        "hinged_doors": 14,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 20
+      },
+      "legs": [],
+      "blocks": 5,
+      "shared": 1
+    },
+    {
+      "variant": "7.2 adaptive low",
+      "document": "lev1",
+      "capsule_path": "/private/tmp/lev1-analyze-v7-2-thinking-20261107-01.json",
+      "request_sha256": "ba840742a91c269dae1ab89853b87c3067aaf1821fb2813e7ce2af081d7d77b9",
+      "prompt_sha256": "53b65a011c7e06e915a64b5258032e4cedade6143b2ea0b95876adc1724d446e",
+      "seconds": 32.04,
+      "input_tokens": 26543,
+      "output_tokens": 6858,
+      "thinking_tokens": 3488,
+      "max_tokens": 14000,
+      "effort": "low",
+      "thinking_setting": "omitted/adaptive",
+      "stop_reason": "end_turn",
+      "technical_error": "ValueError: foreign Understanding source refs",
+      "group_sums": {
+        "drawers": 3,
+        "hinged_doors": 0,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 3
+      },
+      "reported_totals": {
+        "drawers": 3,
+        "hinged_doors": 0,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 3
+      },
+      "legs": [
+        2
+      ],
+      "blocks": 2,
+      "shared": 0
+    },
+    {
+      "variant": "7.2 adaptive low",
+      "document": "lev2",
+      "capsule_path": "/private/tmp/lev2-analyze-v7-2-thinking-20261107-01.json",
+      "request_sha256": "5d9e6da339e7161c436bed6e6e1b274e906ddc5246ebdac6fb038146e1d36c4e",
+      "prompt_sha256": "53b65a011c7e06e915a64b5258032e4cedade6143b2ea0b95876adc1724d446e",
+      "seconds": 64.602,
+      "input_tokens": 25205,
+      "output_tokens": 13953,
+      "thinking_tokens": 8352,
+      "max_tokens": 14000,
+      "effort": "low",
+      "thinking_setting": "omitted/adaptive",
+      "stop_reason": "end_turn",
+      "technical_error": null,
+      "group_sums": {
+        "drawers": 5,
+        "hinged_doors": 17,
+        "lift_up_fronts": 2,
+        "unresolved_fronts": 0,
+        "total_fronts": 24
+      },
+      "reported_totals": {
+        "drawers": 5,
+        "hinged_doors": 17,
+        "lift_up_fronts": 2,
+        "unresolved_fronts": 0,
+        "total_fronts": 24
+      },
+      "legs": [
+        0
+      ],
+      "blocks": 8,
+      "shared": 1
+    },
+    {
+      "variant": "7.3 bundled disabled low",
+      "document": "lev1",
+      "capsule_path": "/private/tmp/lev1-analyze-v7-3-20261107-01.json",
+      "request_sha256": "1df7effd0e0372518ab5b14eee21ac84cbc32fe7a9c867b2728f1cc3c1c24244",
+      "prompt_sha256": "233d9000d88c43fca50c7282676f95fa7512134364c7b2db0c7484df1a98d7a0",
+      "seconds": 7.773,
+      "input_tokens": 23025,
+      "output_tokens": 1797,
+      "thinking_tokens": 0,
+      "max_tokens": 14000,
+      "effort": "low",
+      "thinking_setting": {
+        "type": "disabled"
+      },
+      "stop_reason": "end_turn",
+      "technical_error": "ValueError: thickness differs from normalized Detection value",
+      "group_sums": {
+        "drawers": 3,
+        "hinged_doors": 0,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 3
+      },
+      "reported_totals": null,
+      "legs": [
+        1
+      ],
+      "blocks": 1,
+      "shared": 1
+    },
+    {
+      "variant": "7.3 bundled disabled low",
+      "document": "lev2",
+      "capsule_path": "/private/tmp/lev2-analyze-v7-3-20261107-01.json",
+      "request_sha256": "405407c3c561d19dfba41e391a021a28562bae27ffc740ac7efaa570de87a62a",
+      "prompt_sha256": "233d9000d88c43fca50c7282676f95fa7512134364c7b2db0c7484df1a98d7a0",
+      "seconds": 9.454,
+      "input_tokens": 21687,
+      "output_tokens": 2456,
+      "thinking_tokens": 0,
+      "max_tokens": 14000,
+      "effort": "low",
+      "thinking_setting": {
+        "type": "disabled"
+      },
+      "stop_reason": "end_turn",
+      "technical_error": null,
+      "group_sums": {
+        "drawers": 3,
+        "hinged_doors": 7,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 10
+      },
+      "reported_totals": null,
+      "legs": [],
+      "blocks": 3,
+      "shared": 1
+    },
+    {
+      "variant": "7.3.2 adaptive low",
+      "document": "lev1",
+      "capsule_path": "/private/tmp/lev1-analyze-v7-3-2-20261107-01.json",
+      "request_sha256": "9fd0c1b924190faade85ace3073b85588fea3163318bdd5dd8873a7128f364b5",
+      "prompt_sha256": "bd0f827e07ea78557b24d2f7337415aed853bfa3cf68a86c5041793a6e872815",
+      "seconds": 49.187,
+      "input_tokens": 26547,
+      "output_tokens": 10740,
+      "thinking_tokens": 6675,
+      "max_tokens": 14000,
+      "effort": "low",
+      "thinking_setting": "omitted/adaptive",
+      "stop_reason": "end_turn",
+      "technical_error": null,
+      "group_sums": {
+        "drawers": 3,
+        "hinged_doors": 0,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 3
+      },
+      "reported_totals": null,
+      "legs": [
+        2
+      ],
+      "blocks": 3,
+      "shared": 0
+    },
+    {
+      "variant": "7.3.2 adaptive low",
+      "document": "lev2",
+      "capsule_path": "/private/tmp/lev2-analyze-v7-3-2-20261107-01.json",
+      "request_sha256": "e84eead662acc3f01d327db0845471e6ffea2f00158d0ce9d30b92573cd138b8",
+      "prompt_sha256": "bd0f827e07ea78557b24d2f7337415aed853bfa3cf68a86c5041793a6e872815",
+      "seconds": 58.209,
+      "input_tokens": 25209,
+      "output_tokens": 12909,
+      "thinking_tokens": 7372,
+      "max_tokens": 14000,
+      "effort": "low",
+      "thinking_setting": "omitted/adaptive",
+      "stop_reason": "end_turn",
+      "technical_error": null,
+      "group_sums": {
+        "drawers": 5,
+        "hinged_doors": 15,
+        "lift_up_fronts": 2,
+        "unresolved_fronts": 2,
+        "total_fronts": 24
+      },
+      "reported_totals": null,
+      "legs": [
+        0
+      ],
+      "blocks": 10,
+      "shared": 1
+    },
+    {
+      "variant": "7.3.3 adaptive low",
+      "document": "lev1",
+      "capsule_path": "/private/tmp/lev1-analyze-v7-3-3-20261107-01.json",
+      "request_sha256": "0bafde26ad58b8eebdeed35ffefc99f60e7f27bcf0f1797ad5c50467bc875464",
+      "prompt_sha256": "1cb972e09d0a570a618901dcf60a7ac301ede4b4786c7453b66493631f65fde4",
+      "seconds": 35.907,
+      "input_tokens": 26610,
+      "output_tokens": 7720,
+      "thinking_tokens": 4267,
+      "max_tokens": 14000,
+      "effort": "low",
+      "thinking_setting": "omitted/adaptive",
+      "stop_reason": "end_turn",
+      "technical_error": null,
+      "group_sums": {
+        "drawers": 3,
+        "hinged_doors": 0,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 3
+      },
+      "reported_totals": null,
+      "legs": [
+        2
+      ],
+      "blocks": 3,
+      "shared": 0
+    },
+    {
+      "variant": "7.3.3 adaptive low",
+      "document": "lev2",
+      "capsule_path": "/private/tmp/lev2-analyze-v7-3-3-20261107-01.json",
+      "request_sha256": "ce461dd2449c7f35100c342940be29d8741b5e53ddef135fce2cacf862182925",
+      "prompt_sha256": "1cb972e09d0a570a618901dcf60a7ac301ede4b4786c7453b66493631f65fde4",
+      "seconds": 68.87,
+      "input_tokens": 25272,
+      "output_tokens": 14000,
+      "thinking_tokens": 11476,
+      "max_tokens": 14000,
+      "effort": "low",
+      "thinking_setting": "omitted/adaptive",
+      "stop_reason": "max_tokens",
+      "technical_error": "ValueError: incomplete provider response"
+    },
+    {
+      "variant": "7.2 soft front 1",
+      "document": "lev1",
+      "capsule_path": "/private/tmp/lev1-v7-2-front-soft-20261107-01.json",
+      "request_sha256": "0fe4b815bbf5473fe6b19bd9a38ffaeed82ad70c3283cabf34f5dc1990507c4d",
+      "prompt_sha256": "14a213424c7235bc40f1d912e9a9d35573c402975938fd62855bec9d32164be1",
+      "seconds": 32.934,
+      "input_tokens": 26780,
+      "output_tokens": 7176,
+      "thinking_tokens": 3776,
+      "max_tokens": 14000,
+      "effort": "low",
+      "thinking_setting": "omitted/adaptive",
+      "stop_reason": "end_turn",
+      "technical_error": null,
+      "group_sums": {
+        "drawers": 3,
+        "hinged_doors": 0,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 3
+      },
+      "reported_totals": {
+        "drawers": 3,
+        "hinged_doors": 0,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 3
+      },
+      "legs": [
+        2
+      ],
+      "blocks": 3,
+      "shared": 0
+    },
+    {
+      "variant": "7.2 soft front 1",
+      "document": "lev2",
+      "capsule_path": "/private/tmp/lev2-v7-2-front-soft-20261107-01.json",
+      "request_sha256": "8d9e85b84e6e8fb27a444e8be6265d24fd2021be1f76fffe40f9827d98090bc7",
+      "prompt_sha256": "14a213424c7235bc40f1d912e9a9d35573c402975938fd62855bec9d32164be1",
+      "seconds": 64.443,
+      "input_tokens": 25442,
+      "output_tokens": 14000,
+      "thinking_tokens": 10361,
+      "max_tokens": 14000,
+      "effort": "low",
+      "thinking_setting": "omitted/adaptive",
+      "stop_reason": "max_tokens",
+      "technical_error": "ValueError: incomplete provider response"
+    },
+    {
+      "variant": "7.2 cap5000",
+      "document": "lev1",
+      "capsule_path": "/private/tmp/lev1-v7-2-cap5000-20261107-01.json",
+      "request_sha256": "2a514193655ffb11172cf2dc48b7401e526b0496112013a06acf00a971e5fe75",
+      "prompt_sha256": "53b65a011c7e06e915a64b5258032e4cedade6143b2ea0b95876adc1724d446e",
+      "seconds": 25.147,
+      "input_tokens": 26543,
+      "output_tokens": 5000,
+      "thinking_tokens": 3210,
+      "max_tokens": 5000,
+      "effort": "low",
+      "thinking_setting": "omitted/adaptive",
+      "stop_reason": "max_tokens",
+      "technical_error": "ValueError: incomplete provider response"
+    },
+    {
+      "variant": "7.2 cap5000",
+      "document": "lev2",
+      "capsule_path": "/private/tmp/lev2-v7-2-cap5000-20261107-01.json",
+      "request_sha256": "302bc16736c7c0cea9389e650ffe8c37319284f80533e33738270d2ae88ed7d4",
+      "prompt_sha256": "53b65a011c7e06e915a64b5258032e4cedade6143b2ea0b95876adc1724d446e",
+      "seconds": 27.74,
+      "input_tokens": 25205,
+      "output_tokens": 5000,
+      "thinking_tokens": 5000,
+      "max_tokens": 5000,
+      "effort": "low",
+      "thinking_setting": "omitted/adaptive",
+      "stop_reason": "max_tokens",
+      "technical_error": "ValueError: incomplete provider response"
+    },
+    {
+      "variant": "7.2 reasoning prompt2",
+      "document": "lev1",
+      "capsule_path": "/private/tmp/lev1-v7-2-reasoning-prompt-v2-20261107-01.json",
+      "request_sha256": "3c3da3e0c94ceec5d06b4013f6b3bc5bbb8d442388e8de534947dc41e0a9993a",
+      "prompt_sha256": "6383db9f219c710bb59c8145f91430815c92948dd6e467af6fced6326a170157",
+      "seconds": 35.582,
+      "input_tokens": 26669,
+      "output_tokens": 7734,
+      "thinking_tokens": 4119,
+      "max_tokens": 14000,
+      "effort": "low",
+      "thinking_setting": "omitted/adaptive",
+      "stop_reason": "end_turn",
+      "technical_error": null,
+      "group_sums": {
+        "drawers": 3,
+        "hinged_doors": 0,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 3
+      },
+      "reported_totals": {
+        "drawers": 3,
+        "hinged_doors": 0,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 3
+      },
+      "legs": [
+        2
+      ],
+      "blocks": 3,
+      "shared": 0
+    },
+    {
+      "variant": "7.2 reasoning prompt2",
+      "document": "lev2",
+      "capsule_path": "/private/tmp/lev2-v7-2-reasoning-prompt-v2-20261107-01.json",
+      "request_sha256": "82f4234044d305289e0d323e000b72e2bc0d167d9b5f3dfec1486df4e0b539b5",
+      "prompt_sha256": "6383db9f219c710bb59c8145f91430815c92948dd6e467af6fced6326a170157",
+      "seconds": 65.417,
+      "input_tokens": 25331,
+      "output_tokens": 14000,
+      "thinking_tokens": 9615,
+      "max_tokens": 14000,
+      "effort": "low",
+      "thinking_setting": "omitted/adaptive",
+      "stop_reason": "max_tokens",
+      "technical_error": "ValueError: incomplete provider response"
+    },
+    {
+      "variant": "7.2 disabled medium",
+      "document": "lev1",
+      "capsule_path": "/private/tmp/lev1-v7-2-disabled-medium-20261107-01.json",
+      "request_sha256": "e1861f4045f8515c1b18fa983ed5dc3a59de72698f23df7784154cb4dfc6a3ce",
+      "prompt_sha256": "53b65a011c7e06e915a64b5258032e4cedade6143b2ea0b95876adc1724d446e",
+      "seconds": 14.857,
+      "input_tokens": 26542,
+      "output_tokens": 3447,
+      "thinking_tokens": 0,
+      "max_tokens": 14000,
+      "effort": "medium",
+      "thinking_setting": {
+        "type": "disabled"
+      },
+      "stop_reason": "end_turn",
+      "technical_error": "ValueError: thickness differs from normalized Detection value",
+      "group_sums": {
+        "drawers": 3,
+        "hinged_doors": 0,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 3
+      },
+      "reported_totals": {
+        "drawers": 3,
+        "hinged_doors": 0,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 3
+      },
+      "legs": [
+        2
+      ],
+      "blocks": 2,
+      "shared": 0
+    },
+    {
+      "variant": "7.2 disabled medium",
+      "document": "lev2",
+      "capsule_path": "/private/tmp/lev2-v7-2-disabled-medium-20261107-01.json",
+      "request_sha256": "0be523fda6e8661678d2955c28b1d74204db212e89acf94dbfc70081252fd291",
+      "prompt_sha256": "53b65a011c7e06e915a64b5258032e4cedade6143b2ea0b95876adc1724d446e",
+      "seconds": 18.197,
+      "input_tokens": 25204,
+      "output_tokens": 4895,
+      "thinking_tokens": 0,
+      "max_tokens": 14000,
+      "effort": "medium",
+      "thinking_setting": {
+        "type": "disabled"
+      },
+      "stop_reason": "end_turn",
+      "technical_error": null,
+      "group_sums": {
+        "drawers": 6,
+        "hinged_doors": 12,
+        "lift_up_fronts": 3,
+        "unresolved_fronts": 0,
+        "total_fronts": 21
+      },
+      "reported_totals": {
+        "drawers": 6,
+        "hinged_doors": 12,
+        "lift_up_fronts": 3,
+        "unresolved_fronts": 0,
+        "total_fronts": 21
+      },
+      "legs": [
+        0
+      ],
+      "blocks": 6,
+      "shared": 1
+    },
+    {
+      "variant": "7.2 disabled high",
+      "document": "lev1",
+      "capsule_path": "/private/tmp/lev1-v7-2-disabled-high-20261107-01.json",
+      "request_sha256": "9f7a0d3799879b8d1a2397c63df7446e1bfc9154e609cd9151100154b540b059",
+      "prompt_sha256": "53b65a011c7e06e915a64b5258032e4cedade6143b2ea0b95876adc1724d446e",
+      "seconds": 12.854,
+      "input_tokens": 26542,
+      "output_tokens": 3099,
+      "thinking_tokens": 0,
+      "max_tokens": 14000,
+      "effort": "high",
+      "thinking_setting": {
+        "type": "disabled"
+      },
+      "stop_reason": "end_turn",
+      "technical_error": "ValueError: thickness differs from normalized Detection value",
+      "group_sums": {
+        "drawers": 3,
+        "hinged_doors": 0,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 3
+      },
+      "reported_totals": {
+        "drawers": 3,
+        "hinged_doors": 0,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 3
+      },
+      "legs": [
+        2
+      ],
+      "blocks": 2,
+      "shared": 0
+    },
+    {
+      "variant": "7.2 disabled high",
+      "document": "lev2",
+      "capsule_path": "/private/tmp/lev2-v7-2-disabled-high-20261107-01.json",
+      "request_sha256": "34011c505a78f111f00103d4355f28e5d7f3f72c7196b6edf37d817b7d757531",
+      "prompt_sha256": "53b65a011c7e06e915a64b5258032e4cedade6143b2ea0b95876adc1724d446e",
+      "seconds": 18.149,
+      "input_tokens": 25204,
+      "output_tokens": 4446,
+      "thinking_tokens": 0,
+      "max_tokens": 14000,
+      "effort": "high",
+      "thinking_setting": {
+        "type": "disabled"
+      },
+      "stop_reason": "end_turn",
+      "technical_error": null,
+      "group_sums": {
+        "drawers": 3,
+        "hinged_doors": 15,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 18
+      },
+      "reported_totals": {
+        "drawers": 3,
+        "hinged_doors": 15,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 18
+      },
+      "legs": [],
+      "blocks": 4,
+      "shared": 1
+    }
+  ]
+}

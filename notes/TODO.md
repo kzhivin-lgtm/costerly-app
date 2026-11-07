@@ -1011,6 +1011,54 @@ LATEST OWNER REVIEW / HISTORICAL REUSE AUDIT, 2026-11-07:
 LATEST OWNER-APPROVED IMPLEMENTATION/TRIAL, V7.3, 2026-11-07, 3.17.4.6:
 COMPLETED local experiment; NOT ACCEPTED as replacement, P0 remains PENDING.
 OWNER REVIEW / INCREMENTAL DIRECTION, same work, 2026-11-07:
+LATEST OWNER RETROSPECTIVE / STABILIZATION REVIEW, 2026-11-07:
+ACTIVE, P0, same 3.17.4.6. Owner asks to analyze all work since V7.2 and
+recommend a way out of resource/quality instability. Read-only investigation,
+no new model calls, prompt/schema/runtime changes or deployment authorized.
+Audited original private capsules: 20 paid calls in 10 configurations, one
+sample per document/configuration, ZERO exact-request replications. V7.3.1
+reused outputs and adds no calls. All 20 use identical source inputs/pixels/
+Detection context per file. Total 511306 input /146576 output tokens, of which
+77711 thinking. Five responses truncated; counting them as cheap successful
+Analyses would be wrong. Full machine-readable audit:
+notes/evidence/estimation-v7-2-retrospective-2026-11-07/audit.json.
+Verified limits of conclusions: no accepted full physical result or stability
+estimate; observed setting differences do not establish deterministic causal
+effects. 'Full thinking' was adaptive at effort=low, not max. Bundled V7.3
+changed multiple policies; schema pass/fail alone is not visual acceptance.
+Prompt hints did not demonstrate saving; shared cap reduces output but can
+consume all allowance on thinking. Disabled medium/high give complete cheap
+responses and improve Lev1 supports, but neither resolves Lev2 topology.
+Repeat defects span settings: source-reading vs physical-role attribution,
+door/side/filler identity, repeated wing depictions, tall-column/fridge-opening
+ownership, then downstream Blocks grouping. Matching 15-door or 8-block totals
+alone does not establish correct physical membership. Existing historical
+overlay reviewed for source context, not adopted as ground truth:
+/private/tmp/lev2-front-v3-planner-v7-20261106-03-front-overlay-page.png.
+INPUT OBSERVATION VERIFIED: Detection narrative already calls Lev1 mark 20
+'panel thickness', claims five slat columns and Lev2 chamfer 'at the junction';
+normalized inventory separately contains 20->200 mm and 4->40 mm. These
+interpretations can conflict with source/owner benchmark. Hypothesis: prior
+narrative anchors later estimates. Causation has NOT been isolated; do not
+silently edit Detection membership/normalization or declare this the sole cause.
+NEXT PROPOSED RESEARCH DIRECTION, PENDING owner approval:
+1. Freeze disabled/medium ORIGINAL V7.2 as an economic research control, not a
+   production promotion or proven best setting (particularly not for Lev2).
+2. Evaluate per-physical-front membership and type with existing source boxes,
+   not totals alone; retain fixed-side/exclusion and repeated-view identities.
+   Keep numerical reading/unit/physical thickness ownership as a separate issue.
+3. First bounded experiment: two additional identical Lev2 disabled/medium
+   trials give three samples including the saved one. No changes between them.
+   This measures repeatability, not a production three-call/voting pipeline.
+4. If the same wrong faces recur, isolate one interpretation/evidence-authority
+   issue; if faces vary, diagnose visibility/correspondence and coverage before
+   another policy rewrite. Any authority-packet ablation must retain correct
+   frozen membership, correspondences and normalized values; seek approval.
+5. Only after physical improvement is repeatable, reassess budget and broader
+   examples. No new model/extra-stage architecture/schema or speculative paid
+   sweep approved by this retrospective. Model/one-call capability ceiling is
+   still unknown, not established impossible or guaranteed fixable by prompts.
+
 LATEST OWNER-APPROVED EFFORT SWEEP WITH THINKING OFF, 2026-11-07:
 COMPLETED four-call experiment, same 3.17.4.6, P0 acceptance remains PENDING.
 Owner explicitly authorizes effort medium then high with thinking=disabled;
