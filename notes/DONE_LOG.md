@@ -1,5 +1,20 @@
 # Done Log
 
+2026-11-07, 3.17.4.6: completed owner-approved disabled-thinking effort sweep,
+medium then high, two saved files each. Only output_config.effort changed from
+original V7.2 disabled/low requests, no prompt/schema/input/model/cap changes.
+All four end_turn with zero thinking tokens/no thinking content blocks.
+Medium: Lev1 14.857 s/3447 output, 3 drawers/2 legs/2 blocks; Lev2 18.197 s/
+4895 output, 12 doors/6 drawers/3 lifts/6 blocks. High: Lev1 12.854 s/3099
+output, 3 drawers/2 legs/2 blocks but prose says one leg/no leg boxes; Lev2
+18.149 s/4446 output, 15 doors/3 drawers/0 lifts/4 blocks. Same Lev1 thickness
+provenance error persists. Independent Front/Planner structure passes all;
+both Lev2 full structure passes do not establish correct physical membership.
+No global winner/quality checkpoint, no claim of monotonic effort benefit.
+119 focused tests and exact-request checks pass. No retry/repair, DB writes,
+Calculation, production default change or deployment. Evidence:
+notes/evidence/estimation-v7-2-disabled-effort-2026-11-07/simple-object-trials.json.
+
 2026-11-07, 3.17.4.6: implemented owner-approved reasoning prompt V2 on the
 original V7.2 Thinking request. Only five agreed guidance sentences appended;
 all output fields/boxes/material policy/source/provider settings unchanged,

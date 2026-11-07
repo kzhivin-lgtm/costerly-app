@@ -1,6 +1,14 @@
 # Costerly AI Project Map
 
-Latest experiment, original V7.2 reasoning prompt V2, 2026-11-07:
+Latest experiment, original V7.2 thinking disabled, effort medium/high, 2026-11-07:
+tools/probe_estimation_v7_2_thinking.py --revision V7.2-disabled-medium /
+V7.2-disabled-high changes ONLY effort on original disabled/low controls.
+Four complete replies, zero thinking tokens/no thinking blocks. Lev1 improves
+leg count/block representation; Lev2 Front/Blocks remain wrong at both levels.
+No global winner or runtime default promotion. Raw/usage/reference checks:
+notes/evidence/estimation-v7-2-disabled-effort-2026-11-07/simple-object-trials.json.
+
+Earlier experiment, original V7.2 reasoning prompt V2, 2026-11-07:
 tools/probe_estimation_v7_2_thinking.py --revision V7.2-prompt-v2 appends only
 agents/prompts/estimation_v7_2_reasoning_prompt_v2.md (five owner-agreed guidance
 sentences). Original schema/boxes/materials/model/effort/max_tokens unchanged.

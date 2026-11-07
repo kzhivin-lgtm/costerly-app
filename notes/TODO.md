@@ -1011,6 +1011,49 @@ LATEST OWNER REVIEW / HISTORICAL REUSE AUDIT, 2026-11-07:
 LATEST OWNER-APPROVED IMPLEMENTATION/TRIAL, V7.3, 2026-11-07, 3.17.4.6:
 COMPLETED local experiment; NOT ACCEPTED as replacement, P0 remains PENDING.
 OWNER REVIEW / INCREMENTAL DIRECTION, same work, 2026-11-07:
+LATEST OWNER-APPROVED EFFORT SWEEP WITH THINKING OFF, 2026-11-07:
+COMPLETED four-call experiment, same 3.17.4.6, P0 acceptance remains PENDING.
+Owner explicitly authorizes effort medium then high with thinking=disabled;
+this overrides the preceding prompt-only/no-effort-change restriction for this
+experiment. Original V7.2 prompt/schema/source/model/max_tokens=14000 retained.
+Existing tool adds --revision V7.2-disabled-medium / V7.2-disabled-high. Both
+derive directly from the original disabled/low saved control, not from a
+modified prompt or the medium output. ONLY output_config.effort differs.
+Medium Lev1: end_turn, 14.857 s, 26542 input /3447 output, thinking=0.
+Three drawers, two legs (two annotated boxes), two blocks (panel/base, table
+with legs). Full structural check hits existing 20 vs normalized 200-mm
+thickness mismatch; independent Front/Planner checks pass. V6 Rear remains.
+Medium Lev2: end_turn, 18.197 s, 25204 input /4895 output, thinking=0.
+Full structural pass; 12 hinged/6 drawers/3 lifts, 6 blocks plus shared top.
+Not benchmark 15/5/2 and 8 cabinets. Explicit erroneous 265-mm source-height
+prose and excessive block grouping remain. No quality acceptance from schema.
+High Lev1: end_turn, 12.854 s, 26542 input /3099 output, thinking=0.
+Three drawers/two estimated legs/two blocks. However Description says one leg,
+Front says two and supplies no leg boxes, unlike medium. Existing source
+thickness mismatch remains; independent Front/Planner checks pass. V6 Rear.
+High Lev2: end_turn, 18.149 s, 25204 input /4446 output, thinking=0.
+Full structural pass; 15 hinged/3 drawers/0 lifts, 4 blocks plus shared top.
+Door total 15 is NOT correct membership: two drawers and both lifts omitted,
+separate hanging scope merged, tower fronts unresolved/excluded. Do not call
+this benchmark success because one aggregate number coincides.
+Low controls: Lev1 10.873 s/2604 output, 3 drawers/1 leg, one block plus invalid
+single-owner shared top. Lev2 17.176 s/4742 output: group sums 16 doors/6
+drawers/0 lifts (raw totals incorrectly 14 doors/20 total), 5 blocks plus top.
+All four new responses end_turn, no thinking blocks and measured zero thinking
+tokens. Effort affects the answer even with thinking disabled; no monotonic
+quality/latency claim from one sample per file. Useful Lev1 signal: medium
+keeps richer supports/annotation at materially less latency than adaptive
+thinking control. Neither medium nor high solves Lev2 Front/Blocks.
+NEXT RECOMMENDATION, not automatic implementation: do not globally promote
+high; use disabled/medium as a Lev1 review candidate, inspect concrete Lev2
+Front membership errors rather than increasing effort further.
+119 focused tests pass, exact-request/source checks and diff check pass.
+Four authorized calls only; no retry/repair/Calculation/DB write/default change,
+model switch, main integration, push or deployment. Raw and independent checks:
+notes/evidence/estimation-v7-2-disabled-effort-2026-11-07/simple-object-trials.json.
+Private full capsules/reports:
+/private/tmp/lev[1,2]-v7-2-disabled-[medium,high]-20261107-01.*.
+
 LATEST OWNER-APPROVED DIRECTION / REASONING PROMPT V2, 2026-11-07:
 ACTIVE, P0, same 3.17.4.6. Owner explicitly chooses PROMPT-ONLY regulation
 of thinking on original V7.2. Do not change schema, boxes, materials, Islands,

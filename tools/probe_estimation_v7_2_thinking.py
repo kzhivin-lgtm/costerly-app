@@ -27,6 +27,21 @@ are unchanged. Return only the requested JSON, not your reasoning."""
 PROMPT_V2_PATH = Path(__file__).resolve().parents[1] / "agents/prompts/estimation_v7_2_reasoning_prompt_v2.md"
 
 
+def disabled_effort_request(baseline, effort):
+    if effort not in {"medium", "high"}:
+        raise ValueError("this experiment supports only medium or high")
+    if (baseline.get("version") != agent.VERSION
+            or (baseline.get("provider_response") or {}).get("stop_reason") != "end_turn"):
+        raise ValueError("requires the original completed V7.2 disabled-thinking control")
+    request = deepcopy(baseline["provider_request"])
+    if (request.get("thinking") != {"type": "disabled"}
+            or request.get("output_config") != {"effort": "low"}
+            or request.get("max_tokens") != 14000 or request.get("system") != agent.prompt()):
+        raise ValueError("requires the original V7.2 disabled/low prompt and settings")
+    request["output_config"]["effort"] = effort
+    return request
+
+
 def prompt_v2_request(baseline):
     if (baseline.get("version") != agent.VERSION
             or (baseline.get("provider_response") or {}).get("stop_reason") != "end_turn"):
@@ -120,7 +135,7 @@ def main():
     parser.add_argument("--baseline", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--execute", action="store_true")
-    parser.add_argument("--revision", choices=["V7.2-thinking", "V7.2-front-soft", "V7.2-prompt-v2", "V7.2-cap5000", "V7.3.1", "V7.3.2", "V7.3.3"], default="V7.2-thinking")
+    parser.add_argument("--revision", choices=["V7.2-thinking", "V7.2-front-soft", "V7.2-prompt-v2", "V7.2-cap5000", "V7.2-disabled-medium", "V7.2-disabled-high", "V7.3.1", "V7.3.2", "V7.3.3"], default="V7.2-thinking")
     args = parser.parse_args()
     if any(p.exists() for p in (args.output, args.output.with_suffix(".raw.txt"), args.output.with_suffix(".html"))):
         parser.error("refuse to overwrite experiment")
@@ -133,6 +148,8 @@ def main():
         request = hard_cap_request(baseline)
     elif args.revision == "V7.2-prompt-v2":
         request = prompt_v2_request(baseline)
+    elif args.revision in {"V7.2-disabled-medium", "V7.2-disabled-high"}:
+        request = disabled_effort_request(baseline, args.revision.rsplit("-", 1)[1])
     else:
         request = incremental_request(baseline, args.revision)
     if args.revision == "V7.3.1" and args.execute:
@@ -146,7 +163,13 @@ def main():
         changed_request_fields=["thinking (explicit disabled removed)"],
         provider_request=request, request_sha256=digest(request),
         prompt_sha256=sha256(request["system"].encode()).hexdigest())
-    if args.revision == "V7.2-prompt-v2":
+    if args.revision in {"V7.2-disabled-medium", "V7.2-disabled-high"}:
+        witness.update(experiment="V7.2 disabled thinking, effort " + request["output_config"]["effort"],
+            changed_request_fields=["output_config.effort"], thinking_control="explicitly disabled, not adaptive",
+            comparison_criteria=["verify measured thinking tokens are zero and no thinking content blocks",
+                "compare complete Analyze quality, latency and output tokens with saved disabled/low control",
+                "do not treat fewer fronts or missing blocks as resource efficiency"])
+    elif args.revision == "V7.2-prompt-v2":
         witness.update(experiment="V7.2 reasoning prompt V2, owner-approved wording",
             changed_request_fields=["system"], steering_instruction=PROMPT_V2_PATH.read_text().strip(),
             reasoning_control="prompt-only soft guidance; no separate thinking budget or scope enforcement",

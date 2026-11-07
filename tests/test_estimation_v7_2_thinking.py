@@ -1,7 +1,7 @@
 from copy import deepcopy
 import json
 import pytest
-from tools.probe_estimation_v7_2_thinking import replay_request, incremental_request, front_soft_request, hard_cap_request, prompt_v2_request, PROMPT_V2_PATH, FRONT_SOFT_STEERING
+from tools.probe_estimation_v7_2_thinking import replay_request, incremental_request, front_soft_request, hard_cap_request, prompt_v2_request, disabled_effort_request, PROMPT_V2_PATH, FRONT_SOFT_STEERING
 from agents import estimation_analyze_v7_2_agent as original_agent
 
 
@@ -144,3 +144,29 @@ def test_prompt_v2_rejects_accumulated_changes(problem):
     if problem == "disabled": saved["provider_request"]["thinking"] = dict(type="disabled")
     if problem == "incomplete": saved["provider_response"]["stop_reason"] = "max_tokens"
     with pytest.raises(ValueError): prompt_v2_request(saved)
+
+
+@pytest.mark.parametrize("effort", ["medium", "high"])
+def test_disabled_effort_changes_only_effort_on_original_low(effort):
+    saved = baseline()
+    saved["provider_request"]["thinking"] = dict(type="disabled")
+    before = deepcopy(saved)
+    request = disabled_effort_request(saved, effort)
+    assert request["thinking"] == dict(type="disabled")
+    assert request["output_config"] == dict(effort=effort)
+    request["output_config"]["effort"] = "low"
+    assert request == before["provider_request"] and saved == before
+
+
+@pytest.mark.parametrize("problem", ["adaptive", "medium_source", "changed_prompt", "cap", "incomplete", "v73", "max"])
+def test_disabled_effort_rejects_nonoriginal_source_or_unsupported_level(problem):
+    saved = baseline(); saved["provider_request"]["thinking"] = dict(type="disabled")
+    effort = "medium"
+    if problem == "adaptive": del saved["provider_request"]["thinking"]
+    if problem == "medium_source": saved["provider_request"]["output_config"]["effort"] = "medium"
+    if problem == "changed_prompt": saved["provider_request"]["system"] += "\nThink briefly."
+    if problem == "cap": saved["provider_request"]["max_tokens"] = 5000
+    if problem == "incomplete": saved["provider_response"]["stop_reason"] = "max_tokens"
+    if problem == "v73": saved["version"] = "Estimation V7.3"
+    if problem == "max": effort = "max"
+    with pytest.raises(ValueError): disabled_effort_request(saved, effort)
