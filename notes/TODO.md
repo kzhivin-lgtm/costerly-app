@@ -1108,9 +1108,17 @@ Replay revision V7.2-medium-front-pixels on the two original private
 Verified replay request SHA-256: Lev1
 `cada76a8a875e1bd62d6ab766ce34eb52e0ea5d2c7d99b23214ac0cd77dfbb1e`; Lev2
 `8d5cf572f014b5002318412392e6c86dafeb2063d35dd31c08f998b31d26eca1`.
-Owner requests one new call each after checkpoint; compare actual coverage,
-opening types, original-coordinate overlays and independent/full validation.
-No retries, repairs, Calculation, deployment or push authorized by this note.
+Owner-requested pair after checkpoint `453cff5` COMPLETED, one call per
+document, no retries, repairs, Calculation, deployment or push. Lev1 V4
+3/3 drawer boxes matched (IoU 0.950..0.962), but one leg instead of two and
+the existing normalized thickness mismatch. Lev2 exact replay of the pixel
+pilot: V4 9/9 matched with correct type (IoU 0.947..1), versus pilot 7/9.
+No coverage rule was added; the improvement across identical requests is
+observed variation. Full Lev2 validation fails on out-of-crop X02 on V3;
+declared 9 hinged vs 11 grouped, and lift-up faces still misidentified on
+V3. Both runs end_turn, zero thinking, independent Planner refs pass. Keep
+the tagged experimental configuration; full physical acceptance stays open.
+Evidence: notes/evidence/estimation-v7-2-retrospective-2026-11-07/front-pixels-checkpoint-trials.json.
 
 LATEST OWNER RETROSPECTIVE / STABILIZATION REVIEW, 2026-11-07:
 COMPLETED read-only review, same 3.17.4.6. Owner asked to analyze all work since V7.2 and

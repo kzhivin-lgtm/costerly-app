@@ -1,5 +1,14 @@
 # Done Log
 
+2026-11-07, 3.17.4.6: completed the owner-requested Lev1/Lev2 pair after
+checkpoint `453cff5`. No prompt or setting changes after tagging. Lev1 V4
+3/3 localized, 12.842 s/3355 output; one leg instead of two, known thickness
+failure. Lev2 V4 9/9 localized, 16.060 s/4342 output; same exact request as
+the earlier 7/9 pilot. Invalid V3 exclusion box, inconsistent totals and
+lift-up attribution remain. Both completed at zero thinking; neither full
+Analyze accepted. Exact counts, overlaps and raw capsule paths:
+notes/evidence/estimation-v7-2-retrospective-2026-11-07/front-pixels-checkpoint-trials.json.
+
 2026-11-07, 3.17.4.6: owner selected the original V7.2 disabled/medium plus
 Front `bbox_px` as an experimental research checkpoint, not a production
 promotion. Tagged `estimation-v7.2-medium-front-pixels-experimental-2026-11-07`.
