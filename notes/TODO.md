@@ -1007,6 +1007,110 @@ OWNER REVIEW / NEXT V7 ITERATION REQUEST, 2026-11-07:
 OWNER-APPROVED AUTHORITY BOUNDARY / PARTS DISCUSSION, 2026-11-07:
 LATEST OWNER-APPROVED IMPLEMENTATION / EXPERIMENT, ESTIMATION V7.2,
 2026-11-07, same 3.17.4.6, P0, FULL-OUTPUT ACCEPTANCE FAILED:
+LATEST OWNER REVIEW / HISTORICAL REUSE AUDIT, 2026-11-07:
+LATEST OWNER-APPROVED IMPLEMENTATION/TRIAL, V7.3, 2026-11-07, 3.17.4.6:
+COMPLETED local experiment; REJECTED semantic acceptance, P0 remains PENDING.
+Owner approved unified concise Analyze, code-derived totals and normalization,
+material defaults and explicit Front/Blocks boundaries, followed by Lev1/Lev2
+without thinking. agents/estimation_analyze_v7_3_agent.py and its single prompt
+are opt-in through existing probe --revision V7.3. Old versions/defaults stay.
+Prompt 11657 characters versus V7.2 22369. Only system differs from the V7.2
+disabled-thinking requests: identical messages/pixels, Detection context,
+model/settings/max_tokens=14000, timeout=120, SDK retries=0. This is a bundled
+prompt experiment, not isolation of each individual policy improvement.
+Raw front omits totals; code derives them without changing groups/boxes and
+validates the enriched copy with existing gates. Raw response stays immutable.
+Code normalization display copies original_text/unit_basis/value_mm and saved
+unit provenance, including image-only islands; no new unit heuristic.
+Lev1: end_turn, 7.773 s, 23025 input /1797 output, zero thinking. Full rejection:
+20-mm specified thickness references Detection 200 mm. Three drawers, one leg
+despite seeing a second; V6 remains Rear; five-to-seven ribs; unresolved
+material alternatives. Independent Front format passes; Planner fails shared
+element with only B01. One block plus full-image shared-top box, not accepted.
+Lev2: end_turn, 9.454 s, 21687 input /2456 output, zero thinking. Full STRUCTURAL
+pass, semantic failure: 7 hinged, 3 drawers, 0 lifts versus 15/5/2. Three blocks
+plus top, extensive omitted scope, V4 Side not Front 2. Worktop wrongly shared
+with tall B03; its bbox covers whole image. Raw prose still gives source 265
+without normalized unit; Characteristics omit material assignments/finishes.
+Kitchen artificial-stone default 30 mm is correctly returned in materials.
+Reduced prompt/latency/output did not preserve thinking-control Front quality.
+Keep V7.3 rejected and isolated; do not use it as next quality checkpoint.
+The V7.2 thinking control remains a fallible comparison, NOT accepted fallback.
+Production checkpoint V5.8.2 and protected research checkpoints unchanged.
+86 focused tests pass; diff check passes. No DB writes, extra calls, retries,
+Calculation, main integration or deploy. Raw evidence and exact comparisons:
+notes/evidence/estimation-v7-3-2026-11-07/simple-object-trials.json.
+Private files: /private/tmp/lev[1,2]-analyze-v7-3-20261107-01.{json,raw.txt,html}.
+NEXT RECOMMENDATION, not authorized: isolate Front reasoning/resource control
+against saved V7.2 thinking evidence after checking supported model settings;
+do not try another broad prompt rewrite or add automatic paid retries.
+
+OWNER-APPROVED CONTROLLED THINKING REPLAY, 2026-11-07, same 3.17.4.6:
+COMPLETED experiment, P0 quality/acceptance remains PENDING. Exactly two
+authorized provider calls, no retries: tools/probe_estimation_v7_2_thinking.py
+replays each saved request with only thinking={type:disabled} removed, matching
+historical provider-default configuration. Verified identical system/messages,
+inputs, pixels, Detection context and all other request fields. Actual thinking
+blocks present in both responses. Production agent/defaults remain unchanged.
+Lev1: end_turn, 32.040 s vs 10.873; 26543 input /6858 output, 3488 thinking.
+Front now 3 drawers/two legs; V6 Front elevation 2; Planner two valid blocks,
+no invalid shared top. Independent Front/Planner contracts pass. Full output
+fails foreign Understanding source refs (island IDs used as source refs).
+Still seven slats instead of owner's six; 20-mm inference ignores normalized
+200 mm, falsely treats cm-to-mm conversion itself as a source conflict.
+Lev2: end_turn, 64.602 s vs 17.176; 25205 input /13953 output, 8352 thinking.
+Full structural validation passes, but semantic acceptance FAILS: 17 hinged
+instead of 15, correct 5 drawers (2+3) and 2 lifts. Eight blocks plus worktop
+does NOT match owner's eight-block topology: upper lift/corner merged, false
+left tall unit, fixed tall side instead of doors, missing fridge-opening scope.
+Raw prose still uses unnormalized source numbers; laminate worktop remains
+because changing this default was intentionally excluded from this experiment.
+No causal stability claim from one sample per object; thinking helped selected
+outputs at roughly 3x/3.8x latency and 2.6x/2.9x total output tokens. No
+automatic rerun or V7.3 implementation. Next: owner reviews these outputs,
+then choose V7.3 policy/configuration. 75 focused tests and diff check pass.
+Tracked raw replies, usage, exact-request checks and independent validators:
+notes/evidence/estimation-v7-2-thinking-2026-11-07/simple-object-trials.json.
+Private full capsules: /private/tmp/lev[1,2]-analyze-v7-2-thinking-20261107-01.*.
+
+Owner requests analysis and a reuse recommendation before another change/run.
+Name comparison in actual capsules: first V7 "Slat back booth seat" (4 words),
+V7.2 "Slatted Bench Seat" (3). Owner accepts the latter Description generally;
+the phrase about protruding from the seat side is unclear, physical leg count
+must remain two. Combined Lev1 veneered structure/base is an acceptable block.
+Stable kitchen-top, material default and detailed Lev2 benchmark decisions
+recorded in existing ESTIMATION_V5_1_CABINET_BLOCK_CONTRACT_2026_11_03.md,
+section Current owner clarifications: 15 hinged, 5 drawers (3+2), 2 lift-up,
+preferred 8 cabinet blocks + one shared worktop. No benchmark counts in prompt.
+Add code-rendered normalization provenance to Islands, using saved Detection
+values, not another model unit decision. Source example 265 -> 2650 mm.
+[verified] V7.2 already loads policy sections from CB Front V3 / Planner V7;
+no missing-file explanation for the regression. Front V3 differs from V2 only
+by heading and a lower-drawer reading paragraph. Planner V7 already includes
+V4 rules plus worktop localization/extent and tall-leaf limits from V5/V6.
+[verified] Better historical control: Front V2 (036afd8), Lev1 two distinct
+legs and 3 drawers (enum fail), Lev2 15 hinged +2 unresolved /5 drawers/2 lift-up
+(format pass). Later exact-request repeats vary: 18 hinged, and a control drops
+one wing. Do not call this stable perfect recognition.
+[verified] Planner V3 (695e376) gives 9 cabinet blocks +top but duplicate F24
+assignment; V4 (e8bcf5c) gives 10 +top and better full-height column grouping,
+yet false tower/incomplete scope; V7 reviewed snapshot gives 9 +top with bad
+boxes and two of three planners truncated. Old good grouping is useful partial
+evidence, not a ready fully accepted model to restore wholesale.
+NEW MATERIAL CONFIGURATION DIFFERENCE, verified from actual saved requests:
+historical Front V2 request did not disable thinking; response used 3448
+thinking tokens. Front V3 control used 4297; Planner V4 used 3615; Planner V7
+completed control used 3783. V7.2 explicitly thinking=disabled, zero thinking.
+Thus policy text reuse did NOT reproduce historical request conditions.
+Combined tasks/context also differ. Causal contribution not isolated.
+RECOMMENDATION, not yet implemented: use Front V2 and Planner V4 as historical
+controls; retain justified V3 lower-drawer and V5-V7 top/column rules, without
+whole-response prompt stacking. First isolate the thinking setting on the
+unchanged V7.2 request before attributing the regression to those rule versions.
+Then revise only the demonstrated gap; maintain one Analyze/document and one
+Calculate/object. New material default/provenance display are accepted scope,
+but no automatic provider call authorized in this analysis-only turn.
+
 Owner approved full first-call output now: Islands, Description,
 Characteristics, CB Front and CB Planner Blocks, then one saved Lev1 and
 one saved Lev2 trial. This supersedes the earlier Island-Map-only scope.

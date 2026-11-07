@@ -4,6 +4,57 @@ Status: implemented locally, pending production witness
 
 Work number: `3.17.4.4`
 
+## Current owner clarifications, 2026-11-07, Estimation V7.2 review
+
+Continuation work is 3.17.4.6. These decisions update the contract; runtime
+changes and a new model trial have not been made in this review iteration.
+
+- Kitchen base cabinets at the lower working level are covered by a worktop
+  over the complete base footprint. High cabinets and wall-hung cabinets are
+  excluded from that footprint; the worktop stops before a full-height unit.
+  A sink opening does not remove coverage of the rest of its cabinet.
+  This refines the existing CB Planner V7 worktop-extent rule, not a new tool.
+- For an unspecified KITCHEN worktop, choose artificial stone as the material
+  estimating default and 30 mm as finished thickness. This supersedes laminate
+  chipboard as that kitchen fallback. Source-specified material takes priority.
+  Artificial stone does not assert quartz, brand or a particular catalog item.
+  Ordinary unspecified panel material remains LDSP 17 mm. This does not force
+  artificial stone for every table or every non-kitchen top.
+- A 40-mm finished veneered element may be estimated as two 20-mm stock layers
+  when explicitly chosen as a construction assumption. Finished thickness and
+  purchased stock/layers remain separate. The bare source mark 20 (normalized
+  by Detection to 200 mm in Lev1) is not evidence of 20-mm stock thickness.
+- Show measurement normalization in the Islands display from saved Detection
+  data: original notation/unit, target mm, whether conversion was required,
+  and declared/inferred unit basis. Example 265 cm -> 2650 mm; a source mm
+  value is retained unchanged. Image-only islands may have no dimensions.
+  Do this deterministically; do not ask the model to infer/convert units again.
+- Location names must be anchored to island and physical location (for example
+  base cabinets on V3, left section), not unexplained long arm / return wing.
+  Corresponding appearances remain one physical part/front across islands.
+
+Current owner Lev2 benchmark, replacing the older optional-16-door ambiguity
+for the reviewed interpretation: FIVE drawers (3 + 2), FIFTEEN hinged leaves,
+TWO lift-up fronts. Hinged breakdown: 4 base before the turn + 4 base after it
++ 2 separate hanging cabinet + 1 upper corner cabinet + 2 tall-column leaves
++ 2 rightmost leaves = 15. Lift-up fronts are separate from gas-strut quantities.
+This is evaluation data only; do not put example counts/IDs into generic prompts.
+
+Preferred Lev2 assembly decomposition (owner reference, not a universal block
+count): (1-2) two blocks in the first lower run, (3) turn/sink base block,
+(4) tall vertical cabinet, (5) right-hand refrigerator-opening structure,
+(6) horizontal lift-up wall cabinet, (7) corner wall cabinet with shelves and
+one door, (8) separately hanging cabinet. The shared worktop is represented
+once in addition to these cabinet blocks, not forced into an eighth/ninth
+cabinet or duplicated over every supporting block.
+
+Lev1: owner accepts one combined veneered-panel/base assembly plus a separate
+tabletop/support assembly. Two support legs remain required by visual evidence.
+17-mm light top was called tolerable in the owner review despite appearing
+thicker; this does not change the general 30-mm finished-worktop default.
+The returned one-block + single-owner shared element still needs representation
+repair: single-owner top belongs in blocks, not multi-block shared_parts.
+
 V6 continuation (3.17.4.5), 2026-11-05: see
 `notes/ESTIMATION_V6_2_FRONT_COUNT_CHECKPOINT_2026_11_05.md`.
 Front-count r03 is an accepted provisional interpretation experiment, not a

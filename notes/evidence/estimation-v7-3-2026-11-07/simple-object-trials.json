@@ -1,0 +1,1292 @@
+{
+  "work_number": "3.17.4.6",
+  "version": "Estimation V7.3",
+  "provider_calls": 2,
+  "database_writes": false,
+  "deployment": false,
+  "acceptance": "rejected: faster but visual completeness regressed; no automatic retry",
+  "trials": [
+    {
+      "document": "lev1",
+      "capsule_path": "/private/tmp/lev1-analyze-v7-3-20261107-01.json",
+      "input_files": [
+        {
+          "path": "/private/tmp/lev1-understanding-v2-20261106-01.json",
+          "sha256": "560c89fc4b67f58a03097009d50cbecadbd82564ef64780a39e44e30607b3497"
+        }
+      ],
+      "prompt_sha256": "233d9000d88c43fca50c7282676f95fa7512134364c7b2db0c7484df1a98d7a0",
+      "source_messages_settings_identical_to_v7_2": true,
+      "only_request_difference_from_disabled_baseline": "system",
+      "baseline_v7_2": {
+        "elapsed_seconds": 10.873,
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 26542,
+          "output_tokens": 2604,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        }
+      },
+      "thinking_control": {
+        "elapsed_seconds": 32.04,
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 26543,
+          "output_tokens": 6858,
+          "output_tokens_details": {
+            "thinking_tokens": 3488
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        }
+      },
+      "elapsed_seconds": 7.773,
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 23025,
+        "output_tokens": 1797,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "stop_reason": "end_turn",
+      "status": "failed",
+      "error": "ValueError: thickness differs from normalized Detection value",
+      "independent_contract_checks": {
+        "front": "pass",
+        "planner": "ValueError: invalid Planner references"
+      },
+      "derived_totals": {
+        "drawers": 3,
+        "hinged_doors": 0,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 3
+      },
+      "island_normalization": [
+        {
+          "object_id": "object-001",
+          "island_id": "view-001",
+          "readings": [],
+          "unit_context": {
+            "declared": {
+              "unit": "unknown",
+              "status": "no_explicit_document_unit",
+              "evidence_pages": []
+            },
+            "effective_unit": "cm",
+            "reason": "nonstandard_100_to_600_value",
+            "source": "saved_detection_audit"
+          }
+        },
+        {
+          "object_id": "object-001",
+          "island_id": "view-002",
+          "readings": [
+            {
+              "occurrence_id": "view-002-D001",
+              "original_text": "187",
+              "source_unit": "cm",
+              "value_mm": "1870",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0013"
+              ]
+            },
+            {
+              "occurrence_id": "view-002-D002",
+              "original_text": "160",
+              "source_unit": "cm",
+              "value_mm": "1600",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0014"
+              ]
+            },
+            {
+              "occurrence_id": "view-002-D003",
+              "original_text": "115",
+              "source_unit": "cm",
+              "value_mm": "1150",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0015"
+              ]
+            }
+          ],
+          "unit_context": {
+            "declared": {
+              "unit": "unknown",
+              "status": "no_explicit_document_unit",
+              "evidence_pages": []
+            },
+            "effective_unit": "cm",
+            "reason": "nonstandard_100_to_600_value",
+            "source": "saved_detection_audit"
+          }
+        },
+        {
+          "object_id": "object-001",
+          "island_id": "view-003",
+          "readings": [],
+          "unit_context": {
+            "declared": {
+              "unit": "unknown",
+              "status": "no_explicit_document_unit",
+              "evidence_pages": []
+            },
+            "effective_unit": "cm",
+            "reason": "nonstandard_100_to_600_value",
+            "source": "saved_detection_audit"
+          }
+        },
+        {
+          "object_id": "object-001",
+          "island_id": "view-004",
+          "readings": [
+            {
+              "occurrence_id": "view-004-D001",
+              "original_text": "4",
+              "source_unit": "cm",
+              "value_mm": "40",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0009"
+              ]
+            },
+            {
+              "occurrence_id": "view-004-D002",
+              "original_text": "158",
+              "source_unit": "cm",
+              "value_mm": "1580",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0010"
+              ]
+            },
+            {
+              "occurrence_id": "view-004-D003",
+              "original_text": "160",
+              "source_unit": "cm",
+              "value_mm": "1600",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0011"
+              ]
+            },
+            {
+              "occurrence_id": "view-004-D004",
+              "original_text": "265",
+              "source_unit": "cm",
+              "value_mm": "2650",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0012"
+              ]
+            }
+          ],
+          "unit_context": {
+            "declared": {
+              "unit": "unknown",
+              "status": "no_explicit_document_unit",
+              "evidence_pages": []
+            },
+            "effective_unit": "cm",
+            "reason": "nonstandard_100_to_600_value",
+            "source": "saved_detection_audit"
+          }
+        },
+        {
+          "object_id": "object-001",
+          "island_id": "view-005",
+          "readings": [
+            {
+              "occurrence_id": "view-005-D001",
+              "original_text": "20",
+              "source_unit": "cm",
+              "value_mm": "200",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0002"
+              ]
+            },
+            {
+              "occurrence_id": "view-005-D002",
+              "original_text": "43",
+              "source_unit": "cm",
+              "value_mm": "430",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0003"
+              ]
+            },
+            {
+              "occurrence_id": "view-005-D003",
+              "original_text": "75",
+              "source_unit": "cm",
+              "value_mm": "750",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0004"
+              ]
+            },
+            {
+              "occurrence_id": "view-005-D004",
+              "original_text": "72",
+              "source_unit": "cm",
+              "value_mm": "720",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0005"
+              ]
+            }
+          ],
+          "unit_context": {
+            "declared": {
+              "unit": "unknown",
+              "status": "no_explicit_document_unit",
+              "evidence_pages": []
+            },
+            "effective_unit": "cm",
+            "reason": "nonstandard_100_to_600_value",
+            "source": "saved_detection_audit"
+          }
+        },
+        {
+          "object_id": "object-001",
+          "island_id": "view-006",
+          "readings": [
+            {
+              "occurrence_id": "view-006-D001",
+              "original_text": "19",
+              "source_unit": "cm",
+              "value_mm": "190",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0006"
+              ]
+            },
+            {
+              "occurrence_id": "view-006-D002",
+              "original_text": "90",
+              "source_unit": "cm",
+              "value_mm": "900",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0007"
+              ]
+            },
+            {
+              "occurrence_id": "view-006-D003",
+              "original_text": "145",
+              "source_unit": "cm",
+              "value_mm": "1450",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0008"
+              ]
+            }
+          ],
+          "unit_context": {
+            "declared": {
+              "unit": "unknown",
+              "status": "no_explicit_document_unit",
+              "evidence_pages": []
+            },
+            "effective_unit": "cm",
+            "reason": "nonstandard_100_to_600_value",
+            "source": "saved_detection_audit"
+          }
+        }
+      ],
+      "semantic_status": "rejected",
+      "raw_response_text": "{\"objects\":[{\"object_id\":\"object-001\",\"islands\":[{\"island_id\":\"view-001\",\"projection\":\"Axonometric view\",\"elevation_index\":null,\"content_role\":\"technical_drawing\",\"observation\":\"Isometric of slat-panel bench with drawer base and cantilevered table leg\"},{\"island_id\":\"view-002\",\"projection\":\"Top view\",\"elevation_index\":null,\"content_role\":\"technical_drawing\",\"observation\":\"Plan footprint: 187 overall width, 160 depth, 115 panel depth zone\"},{\"island_id\":\"view-003\",\"projection\":\"Axonometric view\",\"elevation_index\":null,\"content_role\":\"technical_drawing\",\"observation\":\"Opposite isometric showing slat panel face, drawer base and table shelf with two legs\"},{\"island_id\":\"view-004\",\"projection\":\"Front elevation\",\"elevation_index\":1,\"content_role\":\"technical_drawing\",\"observation\":\"Front: five slat columns above three-drawer base, 160 wide, 265 high, 158 base width\"},{\"island_id\":\"view-005\",\"projection\":\"Side view\",\"elevation_index\":null,\"content_role\":\"technical_drawing\",\"observation\":\"Side profile: 20 panel thickness, 43 seat height, 72 base depth, 75 table height\"},{\"island_id\":\"view-006\",\"projection\":\"Rear view\",\"elevation_index\":null,\"content_role\":\"technical_drawing\",\"observation\":\"Back/panel face: five columns, 19 offset, 90 upper and 145 lower zones\"}],\"understanding\":{\"name\":\"Slat panel bench\",\"type_code\":\"bench\",\"proposed_type\":null,\"description\":\"A built-in bench with a tall slatted back panel rising from a three-drawer base, with an attached cantilevered table shelf supported by legs on one side.\",\"characteristics\":[{\"statement\":\"Five-to-seven vertical slat columns with rectangular cut-outs in the back panel\",\"basis\":\"inferred\",\"island_ids\":[\"view-001\",\"view-004\",\"view-006\"],\"source_refs\":[]},{\"statement\":\"Three drawers in the lower base beneath the seat\",\"basis\":\"inferred\",\"island_ids\":[\"view-004\"],\"source_refs\":[]},{\"statement\":\"Plinth/toe-kick block beneath the base\",\"basis\":\"inferred\",\"island_ids\":[\"view-005\",\"view-006\"],\"source_refs\":[]},{\"statement\":\"Attached table shelf with supporting legs at the front\",\"basis\":\"inferred\",\"island_ids\":[\"view-003\",\"view-005\"],\"source_refs\":[]}],\"materials\":[{\"part\":\"Slat back panel and base carcass\",\"material\":\"Veneered MDF / solid timber-look panel\",\"finish\":\"Wood veneer, natural oak-like tone\",\"material_kind\":\"sheet\",\"thickness_mm\":20,\"thickness_measurement_id\":\"view-005-D001\",\"basis\":\"specified\",\"island_ids\":[\"view-005\"],\"source_refs\":[\"ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0002\"],\"reason\":\"Panel thickness 20 dimensioned in side view\"},{\"part\":\"Table shelf top\",\"material\":\"Laminate or similar\",\"finish\":\"Light grey/beige\",\"material_kind\":\"sheet\",\"thickness_mm\":30,\"thickness_measurement_id\":null,\"basis\":\"default\",\"island_ids\":[\"view-003\"],\"source_refs\":[],\"reason\":\"Estimating default for finished top\"}],\"assumptions\":[\"Drawer base and back panel share veneered wood finish\",\"Table shelf supported by legs as shown\"],\"conflicts\":[]},\"front\":{\"front_groups\":[{\"location\":\"Base, front face\",\"type\":\"drawer\",\"count\":3,\"count_basis\":\"clear\",\"view_ids\":[\"view-004\"],\"uncertainty\":\"\",\"fronts\":[{\"id\":\"F01\",\"view_id\":\"view-004\",\"bbox_1000\":[50,870,310,960]},{\"id\":\"F02\",\"view_id\":\"view-004\",\"bbox_1000\":[320,870,580,960]},{\"id\":\"F03\",\"view_id\":\"view-004\",\"bbox_1000\":[600,870,860,960]}]}],\"excluded_surfaces\":[],\"tabletop_supports\":[{\"id\":\"T01\",\"location\":\"Table shelf\",\"leg_count\":1,\"count_basis\":\"clear\",\"view_ids\":[\"view-005\",\"view-006\"],\"support_scheme\":\"Single visible leg in side elevation, second leg visible in front elevation\",\"uncertainty\":\"Leg count across views may be two\",\"legs\":[{\"id\":\"L01\",\"view_id\":\"view-005\",\"bbox_1000\":[900,820,950,960]}]}]},\"planner\":{\"summary\":\"Single bench assembly with slat back, drawer base and cantilevered table shelf.\",\"blocks\":[{\"id\":\"B01\",\"name\":\"Slat back bench unit\",\"contains\":\"Slat back panel, three-drawer base, plinth\",\"reason\":\"Single carcass with continuous side profile\",\"front_ids\":[\"F01\",\"F02\",\"F03\"],\"view_ids\":[\"view-001\",\"view-004\",\"view-005\"],\"region\":{\"view_id\":\"view-004\",\"bbox_1000\":[0,0,1000,1000]}}],\"shared_parts\":[{\"id\":\"S01\",\"name\":\"Table shelf and legs\",\"block_ids\":[\"B01\"],\"view_ids\":[\"view-003\",\"view-005\"],\"region\":{\"view_id\":\"view-003\",\"bbox_1000\":[0,0,1000,1000]}}],\"front_conflicts\":[],\"uncertainties\":[\"Leg count for table shelf may be two\"]}}]}",
+      "parsed_response": {
+        "objects": [
+          {
+            "object_id": "object-001",
+            "islands": [
+              {
+                "island_id": "view-001",
+                "projection": "Axonometric view",
+                "elevation_index": null,
+                "content_role": "technical_drawing",
+                "observation": "Isometric of slat-panel bench with drawer base and cantilevered table leg"
+              },
+              {
+                "island_id": "view-002",
+                "projection": "Top view",
+                "elevation_index": null,
+                "content_role": "technical_drawing",
+                "observation": "Plan footprint: 187 overall width, 160 depth, 115 panel depth zone"
+              },
+              {
+                "island_id": "view-003",
+                "projection": "Axonometric view",
+                "elevation_index": null,
+                "content_role": "technical_drawing",
+                "observation": "Opposite isometric showing slat panel face, drawer base and table shelf with two legs"
+              },
+              {
+                "island_id": "view-004",
+                "projection": "Front elevation",
+                "elevation_index": 1,
+                "content_role": "technical_drawing",
+                "observation": "Front: five slat columns above three-drawer base, 160 wide, 265 high, 158 base width"
+              },
+              {
+                "island_id": "view-005",
+                "projection": "Side view",
+                "elevation_index": null,
+                "content_role": "technical_drawing",
+                "observation": "Side profile: 20 panel thickness, 43 seat height, 72 base depth, 75 table height"
+              },
+              {
+                "island_id": "view-006",
+                "projection": "Rear view",
+                "elevation_index": null,
+                "content_role": "technical_drawing",
+                "observation": "Back/panel face: five columns, 19 offset, 90 upper and 145 lower zones"
+              }
+            ],
+            "understanding": {
+              "name": "Slat panel bench",
+              "type_code": "bench",
+              "proposed_type": null,
+              "description": "A built-in bench with a tall slatted back panel rising from a three-drawer base, with an attached cantilevered table shelf supported by legs on one side.",
+              "characteristics": [
+                {
+                  "statement": "Five-to-seven vertical slat columns with rectangular cut-outs in the back panel",
+                  "basis": "inferred",
+                  "island_ids": [
+                    "view-001",
+                    "view-004",
+                    "view-006"
+                  ],
+                  "source_refs": []
+                },
+                {
+                  "statement": "Three drawers in the lower base beneath the seat",
+                  "basis": "inferred",
+                  "island_ids": [
+                    "view-004"
+                  ],
+                  "source_refs": []
+                },
+                {
+                  "statement": "Plinth/toe-kick block beneath the base",
+                  "basis": "inferred",
+                  "island_ids": [
+                    "view-005",
+                    "view-006"
+                  ],
+                  "source_refs": []
+                },
+                {
+                  "statement": "Attached table shelf with supporting legs at the front",
+                  "basis": "inferred",
+                  "island_ids": [
+                    "view-003",
+                    "view-005"
+                  ],
+                  "source_refs": []
+                }
+              ],
+              "materials": [
+                {
+                  "part": "Slat back panel and base carcass",
+                  "material": "Veneered MDF / solid timber-look panel",
+                  "finish": "Wood veneer, natural oak-like tone",
+                  "material_kind": "sheet",
+                  "thickness_mm": 20,
+                  "thickness_measurement_id": "view-005-D001",
+                  "basis": "specified",
+                  "island_ids": [
+                    "view-005"
+                  ],
+                  "source_refs": [
+                    "ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0002"
+                  ],
+                  "reason": "Panel thickness 20 dimensioned in side view"
+                },
+                {
+                  "part": "Table shelf top",
+                  "material": "Laminate or similar",
+                  "finish": "Light grey/beige",
+                  "material_kind": "sheet",
+                  "thickness_mm": 30,
+                  "thickness_measurement_id": null,
+                  "basis": "default",
+                  "island_ids": [
+                    "view-003"
+                  ],
+                  "source_refs": [],
+                  "reason": "Estimating default for finished top"
+                }
+              ],
+              "assumptions": [
+                "Drawer base and back panel share veneered wood finish",
+                "Table shelf supported by legs as shown"
+              ],
+              "conflicts": []
+            },
+            "front": {
+              "front_groups": [
+                {
+                  "location": "Base, front face",
+                  "type": "drawer",
+                  "count": 3,
+                  "count_basis": "clear",
+                  "view_ids": [
+                    "view-004"
+                  ],
+                  "uncertainty": "",
+                  "fronts": [
+                    {
+                      "id": "F01",
+                      "view_id": "view-004",
+                      "bbox_1000": [
+                        50,
+                        870,
+                        310,
+                        960
+                      ]
+                    },
+                    {
+                      "id": "F02",
+                      "view_id": "view-004",
+                      "bbox_1000": [
+                        320,
+                        870,
+                        580,
+                        960
+                      ]
+                    },
+                    {
+                      "id": "F03",
+                      "view_id": "view-004",
+                      "bbox_1000": [
+                        600,
+                        870,
+                        860,
+                        960
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "excluded_surfaces": [],
+              "tabletop_supports": [
+                {
+                  "id": "T01",
+                  "location": "Table shelf",
+                  "leg_count": 1,
+                  "count_basis": "clear",
+                  "view_ids": [
+                    "view-005",
+                    "view-006"
+                  ],
+                  "support_scheme": "Single visible leg in side elevation, second leg visible in front elevation",
+                  "uncertainty": "Leg count across views may be two",
+                  "legs": [
+                    {
+                      "id": "L01",
+                      "view_id": "view-005",
+                      "bbox_1000": [
+                        900,
+                        820,
+                        950,
+                        960
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "planner": {
+              "summary": "Single bench assembly with slat back, drawer base and cantilevered table shelf.",
+              "blocks": [
+                {
+                  "id": "B01",
+                  "name": "Slat back bench unit",
+                  "contains": "Slat back panel, three-drawer base, plinth",
+                  "reason": "Single carcass with continuous side profile",
+                  "front_ids": [
+                    "F01",
+                    "F02",
+                    "F03"
+                  ],
+                  "view_ids": [
+                    "view-001",
+                    "view-004",
+                    "view-005"
+                  ],
+                  "region": {
+                    "view_id": "view-004",
+                    "bbox_1000": [
+                      0,
+                      0,
+                      1000,
+                      1000
+                    ]
+                  }
+                }
+              ],
+              "shared_parts": [
+                {
+                  "id": "S01",
+                  "name": "Table shelf and legs",
+                  "block_ids": [
+                    "B01"
+                  ],
+                  "view_ids": [
+                    "view-003",
+                    "view-005"
+                  ],
+                  "region": {
+                    "view_id": "view-003",
+                    "bbox_1000": [
+                      0,
+                      0,
+                      1000,
+                      1000
+                    ]
+                  }
+                }
+              ],
+              "front_conflicts": [],
+              "uncertainties": [
+                "Leg count for table shelf may be two"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "document": "lev2",
+      "capsule_path": "/private/tmp/lev2-analyze-v7-3-20261107-01.json",
+      "input_files": [
+        {
+          "path": "/private/tmp/estimation-v6-2-lev2-detection-01.json",
+          "sha256": "2902918b479b41b9c77f0dda1c52f0327856abec4dbb4d4dff99562035ae7759"
+        }
+      ],
+      "prompt_sha256": "233d9000d88c43fca50c7282676f95fa7512134364c7b2db0c7484df1a98d7a0",
+      "source_messages_settings_identical_to_v7_2": true,
+      "only_request_difference_from_disabled_baseline": "system",
+      "baseline_v7_2": {
+        "elapsed_seconds": 17.176,
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 25204,
+          "output_tokens": 4742,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        }
+      },
+      "thinking_control": {
+        "elapsed_seconds": 64.602,
+        "usage": {
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "inference_geo": "global",
+          "input_tokens": 25205,
+          "output_tokens": 13953,
+          "output_tokens_details": {
+            "thinking_tokens": 8352
+          },
+          "server_tool_use": null,
+          "service_tier": "standard",
+          "speed": "standard"
+        }
+      },
+      "elapsed_seconds": 9.454,
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 21687,
+        "output_tokens": 2456,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "stop_reason": "end_turn",
+      "status": "analyze_requires_semantic_review",
+      "error": null,
+      "independent_contract_checks": {
+        "front": "pass",
+        "planner": "pass"
+      },
+      "derived_totals": {
+        "drawers": 3,
+        "hinged_doors": 7,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 10
+      },
+      "island_normalization": [
+        {
+          "object_id": "object-001",
+          "island_id": "view-001",
+          "readings": [
+            {
+              "occurrence_id": "view-001-D001",
+              "original_text": "416",
+              "source_unit": "cm",
+              "value_mm": "4160",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0011"
+              ]
+            },
+            {
+              "occurrence_id": "view-001-D002",
+              "original_text": "300",
+              "source_unit": "cm",
+              "value_mm": "3000",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0012"
+              ]
+            },
+            {
+              "occurrence_id": "view-001-D003",
+              "original_text": "260",
+              "source_unit": "cm",
+              "value_mm": "2600",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0013"
+              ]
+            },
+            {
+              "occurrence_id": "view-001-D004",
+              "original_text": "65",
+              "source_unit": "cm",
+              "value_mm": "650",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0014"
+              ]
+            },
+            {
+              "occurrence_id": "view-001-D005",
+              "original_text": "25",
+              "source_unit": "cm",
+              "value_mm": "250",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0015"
+              ]
+            },
+            {
+              "occurrence_id": "view-001-D006",
+              "original_text": "42",
+              "source_unit": "cm",
+              "value_mm": "420",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0017"
+              ]
+            }
+          ],
+          "unit_context": {
+            "declared": {
+              "unit": "unknown",
+              "status": "no_explicit_document_unit",
+              "evidence_pages": []
+            },
+            "effective_unit": "cm",
+            "reason": "nonstandard_100_to_600_value",
+            "source": "saved_detection_audit"
+          }
+        },
+        {
+          "object_id": "object-001",
+          "island_id": "view-002",
+          "readings": [],
+          "unit_context": {
+            "declared": {
+              "unit": "unknown",
+              "status": "no_explicit_document_unit",
+              "evidence_pages": []
+            },
+            "effective_unit": "cm",
+            "reason": "nonstandard_100_to_600_value",
+            "source": "saved_detection_audit"
+          }
+        },
+        {
+          "object_id": "object-001",
+          "island_id": "view-003",
+          "readings": [
+            {
+              "occurrence_id": "view-003-D001",
+              "original_text": "180",
+              "source_unit": "cm",
+              "value_mm": "1800",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0002"
+              ]
+            },
+            {
+              "occurrence_id": "view-003-D002",
+              "original_text": "69",
+              "source_unit": "cm",
+              "value_mm": "690",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0003"
+              ]
+            },
+            {
+              "occurrence_id": "view-003-D003",
+              "original_text": "94",
+              "source_unit": "cm",
+              "value_mm": "940",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0004"
+              ]
+            },
+            {
+              "occurrence_id": "view-003-D004",
+              "original_text": "75",
+              "source_unit": "cm",
+              "value_mm": "750",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0005"
+              ]
+            },
+            {
+              "occurrence_id": "view-003-D005",
+              "original_text": "184",
+              "source_unit": "cm",
+              "value_mm": "1840",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0006"
+              ]
+            }
+          ],
+          "unit_context": {
+            "declared": {
+              "unit": "unknown",
+              "status": "no_explicit_document_unit",
+              "evidence_pages": []
+            },
+            "effective_unit": "cm",
+            "reason": "nonstandard_100_to_600_value",
+            "source": "saved_detection_audit"
+          }
+        },
+        {
+          "object_id": "object-001",
+          "island_id": "view-004",
+          "readings": [
+            {
+              "occurrence_id": "view-004-D001",
+              "original_text": "84",
+              "source_unit": "cm",
+              "value_mm": "840",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0007"
+              ]
+            },
+            {
+              "occurrence_id": "view-004-D002",
+              "original_text": "151",
+              "source_unit": "cm",
+              "value_mm": "1510",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0008"
+              ]
+            },
+            {
+              "occurrence_id": "view-004-D003",
+              "original_text": "265",
+              "source_unit": "cm",
+              "value_mm": "2650",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0009"
+              ]
+            },
+            {
+              "occurrence_id": "view-004-D004",
+              "original_text": "115",
+              "source_unit": "cm",
+              "value_mm": "1150",
+              "target_unit": "mm",
+              "conversion_required": true,
+              "source_refs": [
+                "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0010"
+              ]
+            }
+          ],
+          "unit_context": {
+            "declared": {
+              "unit": "unknown",
+              "status": "no_explicit_document_unit",
+              "evidence_pages": []
+            },
+            "effective_unit": "cm",
+            "reason": "nonstandard_100_to_600_value",
+            "source": "saved_detection_audit"
+          }
+        }
+      ],
+      "semantic_status": "rejected",
+      "raw_response_text": "```json\n{\"objects\": [{\"object_id\": \"object-001\", \"islands\": [{\"island_id\": \"view-001\", \"projection\": \"Top view\", \"elevation_index\": null, \"content_role\": \"technical_drawing\", \"observation\": \"L-shaped plan of cabinet run with 45° corner cut and tower at right end\"}, {\"island_id\": \"view-002\", \"projection\": \"Axonometric view\", \"elevation_index\": null, \"content_role\": \"render\", \"observation\": \"Isometric render showing L-run, corner tower, upper cabinets and sink cutout\"}, {\"island_id\": \"view-003\", \"projection\": \"Front elevation\", \"elevation_index\": 1, \"content_role\": \"technical_drawing\", \"observation\": \"Main elevation of base run with upper cabinets and tall tower column\"}, {\"island_id\": \"view-004\", \"projection\": \"Side view\", \"elevation_index\": null, \"content_role\": \"technical_drawing\", \"observation\": \"Return elevation showing 265 tower, 115 upper cabinet and base run\"}], \"understanding\": {\"name\": \"L-shaped kitchen\", \"type_code\": \"kitchen\", \"proposed_type\": null, \"description\": \"L-shaped kitchen run with a long base arm, a perpendicular return ending in a full-height tower, a 45° corner cut, and upper cabinets over the long arm and near the tower.\", \"characteristics\": [{\"statement\": \"Long base arm with mixed hinged doors and a bank of three drawers at its right end\", \"basis\": \"inferred\", \"island_ids\": [\"view-003\", \"view-004\"], \"source_refs\": [\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0002\", \"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0008\"]}, {\"statement\": \"Full-height tower column at the right end of the return, 265 high\", \"basis\": \"specified\", \"island_ids\": [\"view-004\"], \"source_refs\": [\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0009\"]}, {\"statement\": \"Upper wall cabinets over the long arm are 75 high; a separate 115 high upper cabinet sits beside the tower\", \"basis\": \"specified\", \"island_ids\": [\"view-003\", \"view-004\"], \"source_refs\": [\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0005\", \"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0010\"]}, {\"statement\": \"Corner cut at 45° junction between the two arms in plan\", \"basis\": \"specified\", \"island_ids\": [\"view-001\"], \"source_refs\": [\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0016\"]}], \"materials\": [{\"part\": \"carcass and door sheet panels\", \"material\": \"LDSP\", \"finish\": \"unspecified colour\", \"material_kind\": \"sheet\", \"thickness_mm\": 17, \"thickness_measurement_id\": null, \"basis\": \"default\", \"island_ids\": [\"view-003\"], \"source_refs\": [], \"reason\": \"Ordinary sheet panel default\"}, {\"part\": \"worktop\", \"material\": \"artificial stone\", \"finish\": \"unspecified\", \"material_kind\": \"stone\", \"thickness_mm\": 30, \"thickness_measurement_id\": null, \"basis\": \"default\", \"island_ids\": [\"view-002\"], \"source_refs\": [], \"reason\": \"Unspecified kitchen worktop default\"}], \"assumptions\": [\"Base run height and worktop position follow the elevation with standard base construction\", \"Upper and tower units are separate carcasses\"], \"conflicts\": []}, \"front\": {\"front_groups\": [{\"location\": \"upper cabinet over long arm, left\", \"type\": \"hinged\", \"count\": 2, \"count_basis\": \"clear\", \"view_ids\": [\"view-003\"], \"uncertainty\": \"\", \"fronts\": [{\"id\": \"F01\", \"view_id\": \"view-003\", \"bbox_1000\": [150, 150, 300, 500]}, {\"id\": \"F02\", \"view_id\": \"view-003\", \"bbox_1000\": [300, 150, 500, 500]}]}, {\"location\": \"base run, left section doors\", \"type\": \"hinged\", \"count\": 5, \"count_basis\": \"clear\", \"view_ids\": [\"view-003\"], \"uncertainty\": \"\", \"fronts\": [{\"id\": \"F03\", \"view_id\": \"view-003\", \"bbox_1000\": [100, 480, 210, 980]}, {\"id\": \"F04\", \"view_id\": \"view-003\", \"bbox_1000\": [215, 480, 340, 980]}, {\"id\": \"F05\", \"view_id\": \"view-003\", \"bbox_1000\": [345, 480, 470, 980]}, {\"id\": \"F06\", \"view_id\": \"view-003\", \"bbox_1000\": [475, 480, 600, 980]}, {\"id\": \"F07\", \"view_id\": \"view-003\", \"bbox_1000\": [605, 480, 730, 980]}]}, {\"location\": \"base run, right drawer bank\", \"type\": \"drawer\", \"count\": 3, \"count_basis\": \"clear\", \"view_ids\": [\"view-004\"], \"uncertainty\": \"\", \"fronts\": [{\"id\": \"F08\", \"view_id\": \"view-004\", \"bbox_1000\": [580, 620, 830, 720]}, {\"id\": \"F09\", \"view_id\": \"view-004\", \"bbox_1000\": [580, 730, 830, 830]}, {\"id\": \"F10\", \"view_id\": \"view-004\", \"bbox_1000\": [580, 840, 830, 960]}]}], \"excluded_surfaces\": [], \"tabletop_supports\": []}, \"planner\": {\"summary\": \"Base run split into corner and long-arm blocks, tower and upper cabinets as separate assemblies, worktop shared.\", \"blocks\": [{\"id\": \"B01\", \"name\": \"Long base arm\", \"contains\": \"Base doors and drawer bank along the long arm\", \"reason\": \"Continuous base carcass along the long arm\", \"front_ids\": [\"F03\", \"F04\", \"F05\", \"F06\", \"F07\", \"F08\", \"F09\", \"F10\"], \"view_ids\": [\"view-003\", \"view-004\"], \"region\": {\"view_id\": \"view-003\", \"bbox_1000\": [100, 480, 830, 980]}}, {\"id\": \"B02\", \"name\": \"Upper cabinets over long arm\", \"contains\": \"Two 75 high upper cabinets\", \"reason\": \"Separate wall units above base run\", \"front_ids\": [\"F01\", \"F02\"], \"view_ids\": [\"view-003\"], \"region\": {\"view_id\": \"view-003\", \"bbox_1000\": [150, 150, 500, 500]}}, {\"id\": \"B03\", \"name\": \"Tower column\", \"contains\": \"265 high full-height tower\", \"reason\": \"Full-height column at return end\", \"front_ids\": [], \"view_ids\": [\"view-004\"], \"region\": {\"view_id\": \"view-004\", \"bbox_1000\": [580, 0, 1000, 1000]}}], \"shared_parts\": [{\"id\": \"S01\", \"name\": \"Worktop over L-run\", \"block_ids\": [\"B01\", \"B03\"], \"view_ids\": [\"view-002\"], \"region\": {\"view_id\": \"view-002\", \"bbox_1000\": [0, 0, 1000, 1000]}}], \"front_conflicts\": [], \"uncertainties\": [\"Fronts on the 45° corner section are not resolved in the elevations\"]}}]}\n```",
+      "parsed_response": {
+        "objects": [
+          {
+            "object_id": "object-001",
+            "islands": [
+              {
+                "island_id": "view-001",
+                "projection": "Top view",
+                "elevation_index": null,
+                "content_role": "technical_drawing",
+                "observation": "L-shaped plan of cabinet run with 45° corner cut and tower at right end"
+              },
+              {
+                "island_id": "view-002",
+                "projection": "Axonometric view",
+                "elevation_index": null,
+                "content_role": "render",
+                "observation": "Isometric render showing L-run, corner tower, upper cabinets and sink cutout"
+              },
+              {
+                "island_id": "view-003",
+                "projection": "Front elevation",
+                "elevation_index": 1,
+                "content_role": "technical_drawing",
+                "observation": "Main elevation of base run with upper cabinets and tall tower column"
+              },
+              {
+                "island_id": "view-004",
+                "projection": "Side view",
+                "elevation_index": null,
+                "content_role": "technical_drawing",
+                "observation": "Return elevation showing 265 tower, 115 upper cabinet and base run"
+              }
+            ],
+            "understanding": {
+              "name": "L-shaped kitchen",
+              "type_code": "kitchen",
+              "proposed_type": null,
+              "description": "L-shaped kitchen run with a long base arm, a perpendicular return ending in a full-height tower, a 45° corner cut, and upper cabinets over the long arm and near the tower.",
+              "characteristics": [
+                {
+                  "statement": "Long base arm with mixed hinged doors and a bank of three drawers at its right end",
+                  "basis": "inferred",
+                  "island_ids": [
+                    "view-003",
+                    "view-004"
+                  ],
+                  "source_refs": [
+                    "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0002",
+                    "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0008"
+                  ]
+                },
+                {
+                  "statement": "Full-height tower column at the right end of the return, 265 high",
+                  "basis": "specified",
+                  "island_ids": [
+                    "view-004"
+                  ],
+                  "source_refs": [
+                    "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0009"
+                  ]
+                },
+                {
+                  "statement": "Upper wall cabinets over the long arm are 75 high; a separate 115 high upper cabinet sits beside the tower",
+                  "basis": "specified",
+                  "island_ids": [
+                    "view-003",
+                    "view-004"
+                  ],
+                  "source_refs": [
+                    "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0005",
+                    "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0010"
+                  ]
+                },
+                {
+                  "statement": "Corner cut at 45° junction between the two arms in plan",
+                  "basis": "specified",
+                  "island_ids": [
+                    "view-001"
+                  ],
+                  "source_refs": [
+                    "ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0016"
+                  ]
+                }
+              ],
+              "materials": [
+                {
+                  "part": "carcass and door sheet panels",
+                  "material": "LDSP",
+                  "finish": "unspecified colour",
+                  "material_kind": "sheet",
+                  "thickness_mm": 17,
+                  "thickness_measurement_id": null,
+                  "basis": "default",
+                  "island_ids": [
+                    "view-003"
+                  ],
+                  "source_refs": [],
+                  "reason": "Ordinary sheet panel default"
+                },
+                {
+                  "part": "worktop",
+                  "material": "artificial stone",
+                  "finish": "unspecified",
+                  "material_kind": "stone",
+                  "thickness_mm": 30,
+                  "thickness_measurement_id": null,
+                  "basis": "default",
+                  "island_ids": [
+                    "view-002"
+                  ],
+                  "source_refs": [],
+                  "reason": "Unspecified kitchen worktop default"
+                }
+              ],
+              "assumptions": [
+                "Base run height and worktop position follow the elevation with standard base construction",
+                "Upper and tower units are separate carcasses"
+              ],
+              "conflicts": []
+            },
+            "front": {
+              "front_groups": [
+                {
+                  "location": "upper cabinet over long arm, left",
+                  "type": "hinged",
+                  "count": 2,
+                  "count_basis": "clear",
+                  "view_ids": [
+                    "view-003"
+                  ],
+                  "uncertainty": "",
+                  "fronts": [
+                    {
+                      "id": "F01",
+                      "view_id": "view-003",
+                      "bbox_1000": [
+                        150,
+                        150,
+                        300,
+                        500
+                      ]
+                    },
+                    {
+                      "id": "F02",
+                      "view_id": "view-003",
+                      "bbox_1000": [
+                        300,
+                        150,
+                        500,
+                        500
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "location": "base run, left section doors",
+                  "type": "hinged",
+                  "count": 5,
+                  "count_basis": "clear",
+                  "view_ids": [
+                    "view-003"
+                  ],
+                  "uncertainty": "",
+                  "fronts": [
+                    {
+                      "id": "F03",
+                      "view_id": "view-003",
+                      "bbox_1000": [
+                        100,
+                        480,
+                        210,
+                        980
+                      ]
+                    },
+                    {
+                      "id": "F04",
+                      "view_id": "view-003",
+                      "bbox_1000": [
+                        215,
+                        480,
+                        340,
+                        980
+                      ]
+                    },
+                    {
+                      "id": "F05",
+                      "view_id": "view-003",
+                      "bbox_1000": [
+                        345,
+                        480,
+                        470,
+                        980
+                      ]
+                    },
+                    {
+                      "id": "F06",
+                      "view_id": "view-003",
+                      "bbox_1000": [
+                        475,
+                        480,
+                        600,
+                        980
+                      ]
+                    },
+                    {
+                      "id": "F07",
+                      "view_id": "view-003",
+                      "bbox_1000": [
+                        605,
+                        480,
+                        730,
+                        980
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "location": "base run, right drawer bank",
+                  "type": "drawer",
+                  "count": 3,
+                  "count_basis": "clear",
+                  "view_ids": [
+                    "view-004"
+                  ],
+                  "uncertainty": "",
+                  "fronts": [
+                    {
+                      "id": "F08",
+                      "view_id": "view-004",
+                      "bbox_1000": [
+                        580,
+                        620,
+                        830,
+                        720
+                      ]
+                    },
+                    {
+                      "id": "F09",
+                      "view_id": "view-004",
+                      "bbox_1000": [
+                        580,
+                        730,
+                        830,
+                        830
+                      ]
+                    },
+                    {
+                      "id": "F10",
+                      "view_id": "view-004",
+                      "bbox_1000": [
+                        580,
+                        840,
+                        830,
+                        960
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "excluded_surfaces": [],
+              "tabletop_supports": []
+            },
+            "planner": {
+              "summary": "Base run split into corner and long-arm blocks, tower and upper cabinets as separate assemblies, worktop shared.",
+              "blocks": [
+                {
+                  "id": "B01",
+                  "name": "Long base arm",
+                  "contains": "Base doors and drawer bank along the long arm",
+                  "reason": "Continuous base carcass along the long arm",
+                  "front_ids": [
+                    "F03",
+                    "F04",
+                    "F05",
+                    "F06",
+                    "F07",
+                    "F08",
+                    "F09",
+                    "F10"
+                  ],
+                  "view_ids": [
+                    "view-003",
+                    "view-004"
+                  ],
+                  "region": {
+                    "view_id": "view-003",
+                    "bbox_1000": [
+                      100,
+                      480,
+                      830,
+                      980
+                    ]
+                  }
+                },
+                {
+                  "id": "B02",
+                  "name": "Upper cabinets over long arm",
+                  "contains": "Two 75 high upper cabinets",
+                  "reason": "Separate wall units above base run",
+                  "front_ids": [
+                    "F01",
+                    "F02"
+                  ],
+                  "view_ids": [
+                    "view-003"
+                  ],
+                  "region": {
+                    "view_id": "view-003",
+                    "bbox_1000": [
+                      150,
+                      150,
+                      500,
+                      500
+                    ]
+                  }
+                },
+                {
+                  "id": "B03",
+                  "name": "Tower column",
+                  "contains": "265 high full-height tower",
+                  "reason": "Full-height column at return end",
+                  "front_ids": [],
+                  "view_ids": [
+                    "view-004"
+                  ],
+                  "region": {
+                    "view_id": "view-004",
+                    "bbox_1000": [
+                      580,
+                      0,
+                      1000,
+                      1000
+                    ]
+                  }
+                }
+              ],
+              "shared_parts": [
+                {
+                  "id": "S01",
+                  "name": "Worktop over L-run",
+                  "block_ids": [
+                    "B01",
+                    "B03"
+                  ],
+                  "view_ids": [
+                    "view-002"
+                  ],
+                  "region": {
+                    "view_id": "view-002",
+                    "bbox_1000": [
+                      0,
+                      0,
+                      1000,
+                      1000
+                    ]
+                  }
+                }
+              ],
+              "front_conflicts": [],
+              "uncertainties": [
+                "Fronts on the 45° corner section are not resolved in the elevations"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

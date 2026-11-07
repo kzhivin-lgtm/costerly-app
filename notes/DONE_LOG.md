@@ -1,5 +1,29 @@
 # Done Log
 
+2026-11-07, 3.17.4.6: implemented and tested approved opt-in Analyze V7.3.
+One unified prompt (11657 vs 22369 chars), deterministic Front totals and
+Detection normalization display, artificial-stone kitchen fallback and clarified
+physical Front/Blocks rules. Two authorized calls without thinking: Lev1
+7.773 s, 23025/1797 tokens, thickness mismatch and invalid shared element;
+Lev2 9.454 s, 21687/2456 tokens, structural pass but only 7 doors/3 drawers/0
+lifts, omitting scope. Both semantically REJECTED. Input/messages/settings
+unchanged from disabled-thinking V7.2; only system differs. 86 focused tests
+pass, diff check passes. No retries, DB writes, Calculation, production
+configuration changes, deployment or accepted new checkpoint. Evidence:
+notes/evidence/estimation-v7-3-2026-11-07/simple-object-trials.json.
+
+2026-11-07, 3.17.4.6: completed two owner-approved V7.2 thinking-control
+replays, not V7.3 or product acceptance. Only explicit thinking disable was
+removed from saved requests, all other request fields and source bytes verified
+identical. Both end_turn and actually used thinking. Lev1 32.040 s /3488
+thinking tokens, full output fails source refs; independent Front/Planner pass,
+two legs and two blocks recovered. Lev2 64.602 s /8352 thinking tokens, full
+structural pass but wrong 17 doors versus 15, correct 5 drawers and 2 lifts;
+eight blocks do not match owner's topology. Both semantically unaccepted.
+75 focused tests pass. No production code/configuration change, DB write,
+retry, deploy or V7.3 implementation. Evidence in
+notes/evidence/estimation-v7-2-thinking-2026-11-07/simple-object-trials.json.
+
 2026-11-07, 3.17.4.6: completed owner-approved local Estimation V7.2 experiment,
 not product acceptance. One shared Analyze request per saved Lev1/Lev2 includes
 Islands, Description/Characteristics, Front and Planner Blocks. Reused original

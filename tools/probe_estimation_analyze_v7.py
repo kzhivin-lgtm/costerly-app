@@ -35,7 +35,13 @@ def render_report(witness):
         for i in obj["islands"]:
             projection = i["projection"] + (f" {i['elevation_index']}" if i.get("elevation_index") else "")
             parts.append("<tr>" + "".join(f"<td>{escape(value)}</td>" for value in (i["island_id"], projection, i["content_role"], i["observation"])) + "</tr>")
-        parts.append(f"</table><p>{escape(u['description'])}</p><ul>")
+        parts.append("</table>")
+        for row in witness.get("island_normalization", []):
+            if row["object_id"] != obj["object_id"]:
+                continue
+            values = "; ".join(f"{m['original_text']} ({m['source_unit']}) → {m['value_mm']} mm; conversion={m['conversion_required']}" for m in row["readings"])
+            parts.append(f"<p>{escape(row['island_id'])}: {escape(values or 'No dimension readings')}. <small>{escape(json.dumps(row['unit_context'], ensure_ascii=False))}</small></p>")
+        parts.append(f"<p>{escape(u['description'])}</p><ul>")
         for item in u["characteristics"]:
             parts.append(f"<li>{escape(item['statement'])} <small>({escape(item['basis'])}; {escape(', '.join(item['island_ids']))})</small></li>")
         parts.append("</ul><h3>Materials</h3><ul>")
@@ -65,7 +71,7 @@ def main():
     parser.add_argument("--event-id", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--execute", action="store_true")
-    parser.add_argument("--revision", choices=["V7", "V7.2"], default="V7")
+    parser.add_argument("--revision", choices=["V7", "V7.2", "V7.3"], default="V7")
     args = parser.parse_args()
     paths = [args.output, args.output.with_suffix(".html"), args.output.with_suffix(".raw.txt")]
     if any(p.exists() for p in paths):
@@ -99,10 +105,13 @@ def main():
         parser.error("OCR event belongs to another run")
     ocr_package = ocr_events[0]["raw_usage"].get("ocr_result") if ocr_events else None
     context = build_context(inputs=inputs, event=event, ocr_package=ocr_package,
-                            include_measurements=args.revision == "V7.2")
+                            include_measurements=args.revision in {"V7.2", "V7.3"})
     runner, version = run_analyze, VERSION
     if args.revision == "V7.2":
         from agents import estimation_analyze_v7_2_agent as current
+        runner, version = current.run_analyze, current.VERSION
+    elif args.revision == "V7.3":
+        from agents import estimation_analyze_v7_3_agent as current
         runner, version = current.run_analyze, current.VERSION
     content = prepare_content(inputs=inputs, page_bytes=page_bytes, detection_context=context)
     witness = dict(version=version, database_writes=False, status="prepared_no_provider_calls",
@@ -112,6 +121,9 @@ def main():
         inputs=inputs, source_pages_base64={k: base64.b64encode(v).decode() for k,v in page_bytes.items()},
         detection_context=context, preflight=dict(image_count=sum(b["type"] == "image" for b in content),
         object_count=len(inputs), island_count=sum(len(o["islands"]) for o in context["objects"])))
+    if args.revision == "V7.3":
+        witness["island_normalization"] = current.island_normalization(context)
+        witness["derived_fields"] = ["result.objects[].front.totals", "island_normalization"]
     def save():
         args.output.write_text(json.dumps(witness, ensure_ascii=False, indent=2))
     save()
@@ -136,7 +148,7 @@ def main():
         save()
     try:
         witness["result"] = runner(inputs=inputs, page_bytes=page_bytes, detection_context=context, record=record)
-        if args.revision == "V7.2":
+        if args.revision in {"V7.2", "V7.3"}:
             witness["hardware_preview"] = current.hardware_preview(witness["result"])
         witness["status"] = "analyze_requires_semantic_review"
     except Exception as exc:

@@ -1,6 +1,17 @@
 # Costerly AI Project Map
 
-Latest experiment, Estimation V7.2, 2026-11-07, work 3.17.4.6:
+Latest experiment, Estimation V7.3, 2026-11-07, work 3.17.4.6, REJECTED:
+agents/estimation_analyze_v7_3_agent.py and prompts/estimation_analyze_v7_3.md
+unify Analyze instructions, derive Front totals in code and render saved
+Detection normalization. Existing tools/probe_estimation_analyze_v7.py accepts
+--revision V7.3 (opt-in only). Two no-thinking trials are faster but omit scope;
+Lev1 full fail, Lev2 structural pass is NOT semantic acceptance. Raw evidence:
+notes/evidence/estimation-v7-3-2026-11-07/simple-object-trials.json.
+Prior V7.2 thinking-only replay tool: tools/probe_estimation_v7_2_thinking.py;
+raw comparison: notes/evidence/estimation-v7-2-thinking-2026-11-07/.
+Neither variant is an accepted quality checkpoint or production default.
+
+Earlier experiment, Estimation V7.2, 2026-11-07, work 3.17.4.6:
 agents/estimation_analyze_v7_2_agent.py combines Island Map / Understanding /
 CB Front / CB Planner in one document call, using saved Detection normalized
 measurements. CLI --revision V7.2. Two saved Lev1/Lev2 trials completed and
