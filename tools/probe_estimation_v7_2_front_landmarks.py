@@ -35,7 +35,19 @@ EDITS = (
 )
 
 
-def landmark_request(saved):
+
+OPENING_MARKS_ANCHOR = "- Shape is a contextual clue, not sufficient evidence by itself."
+OPENING_MARKS_RULES = """- Read an opening mark on each leaf: two diagonal strokes from the corners of
+  one edge to the midpoint of the opposite side edge support a hinged door.
+  Marks on two adjoining leaves can form a visual X. Count the leaves separately.
+- A full corner-to-corner X inside one contour can indicate a cut or a cabinet
+  continuing around a corner. Check the plan or section. Exclude the marked
+  region from operating-front counts when that reading is supported.
+- Follow a text leader to its tip to identify the labelled surface. Use the
+  label as evidence for that surface's role."""
+
+
+def landmark_request(saved, *, opening_marks=False):
     request = saved['provider_request']
     if (saved['version'] != analyze.VERSION or saved.get('stop_reason') != 'end_turn'
             or saved['request_sha256'] != digest(request)
@@ -48,6 +60,11 @@ def landmark_request(saved):
         if prompt.count(before) != 1:
             raise ValueError('unexpected original pixel control prompt')
         prompt = prompt.replace(before, after, 1)
+    if opening_marks:
+        if prompt.count(OPENING_MARKS_ANCHOR) != 1:
+            raise ValueError('unexpected Front opening-mark anchor')
+        prompt = prompt.replace(OPENING_MARKS_ANCHOR,
+            f'{OPENING_MARKS_ANCHOR}\n{OPENING_MARKS_RULES}', 1)
     return {**request, 'system': prompt}
 
 
@@ -62,10 +79,11 @@ def main():
     parser.add_argument('--baseline', type=Path, required=True)
     parser.add_argument('--compare', type=Path, help='verify byte-identical saved provider request, locally')
     parser.add_argument('--output', type=Path)
+    parser.add_argument('--opening-marks', action='store_true', help='Add Front-only opening and section mark rules')
     parser.add_argument('--execute', action='store_true', help='one provider call, no retries')
     args = parser.parse_args()
     saved = json.loads(args.baseline.read_text())
-    request = landmark_request(saved)
+    request = landmark_request(saved, opening_marks=args.opening_marks)
     if args.compare:
         expected = json.loads(args.compare.read_text())
         if request != expected['provider_request'] or digest(request) != expected['request_sha256']:
@@ -75,6 +93,8 @@ def main():
         calculate_calls=0, database_writes=False, provider_request=request, request_sha256=digest(request),
         control_path=str(args.baseline), control_request_sha256=saved['request_sha256'],
         front_crop_sizes_px=front_crop_sizes(request))
+    if args.opening_marks:
+        witness['opening_marks'] = True
     if not args.execute:
         print(json.dumps({k: witness[k] for k in ('status', 'provider_calls', 'preflight', 'request_sha256')}))
         return

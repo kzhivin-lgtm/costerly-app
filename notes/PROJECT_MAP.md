@@ -10,6 +10,12 @@ offline replay and nine evidence files. See section 37 of
 ESTIMATION_V6_FULL_CHAT_HANDOFF_2026_11_06.md and the manifest:
 notes/evidence/estimation-v7-2-retrospective-2026-11-07/offline-vector-checkpoint.json.
 
+Active V7.2 opening-mark variant, same 3.17.4.6:
+`codex/estimation-v7-2-opening-marks` derives from the protected Offline Vector
+checkpoint. Use `python -m tools.probe_estimation_v7_2_front_landmarks
+--baseline <saved pixel control> --opening-marks` to prepare the Front-only
+request locally. The original replay is the default. Physical validation pending.
+
 Analyze baseline underneath Offline Vector, 3.17.4.6, 2026-11-07:
 `estimation-v7.2-medium-front-landmarks-experimental-2026-11-07`.
 V7.2 medium/Thinking disabled; strict Island Map; Front individual landmarks

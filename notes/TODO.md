@@ -1330,10 +1330,17 @@ OWNER-ACCEPTED OFFLINE GEOMETRY CHECKPOINT, COMPLETED, 3.17.4.6:
 `estimation-v7.2-medium-offline-vector-experimental-2026-11-07`.
 Private local archive and validated replay, with 9 byte-identical files:
 notes/evidence/estimation-v7-2-retrospective-2026-11-07/offline-vector-checkpoint.json.
-P0 ACTIVE for the existing Front acceptance objective. Proposed next
-diagnostic is to pass extracted candidate IDs and source cues to Front
-and score role, false positives and cross-view identity. Front integration,
-raster recovery and Blocks/Parts acceptance remain pending.
+P0 ACTIVE for the existing Front acceptance objective. Owner stopped the
+V7.3 cache and contour-label path after the three-file diagnostic. Retain
+it on `codex/estimation-v7-3-knowledge-base` at `907f7be`.
+Continue from protected V7.2 Offline Vector `067bf63` on
+`codex/estimation-v7-2-opening-marks`. The optional `--opening-marks`
+replay adds only per-leaf swing marks, a full-X cut or continuation cue,
+and text leader tip binding to the Front prompt. Five baseline request
+comparisons and 37 focused tests passed. PENDING physical validation.
+Potential next evidence work: bind label leaders to detected contours,
+classify dimension endpoints by physical role, and link section/detail
+markers to parent views. Raster recovery and Blocks/Parts remain pending.
 
 OWNER REFINEMENT: do not require a status report for every Island. The next
 diagnostic question is recognition of a distinct physical face versus its
