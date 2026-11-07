@@ -1383,12 +1383,18 @@ or counts. This establishes the binding behavior, with the two inputs picked
 retrospectively. It does not establish repeatability or a single-pass result.
 Evidence: notes/evidence/estimation-v7-4-front-evidence-2026-11-07/adda-v01-local-replay.json.
 Private witnesses: /private/tmp/estimation-v74-adda-v01.EeGLMa5H/.
-Combined caption and isolated stroke tiles request prepared locally. No
-provider call was made after automatic approval review rejected transfer of
-the private drawing and new derived images. Next: explicitly authorize and
-test the combined Adda V01 payload against the same exact IDs. Broader
-acceptance still requires Adda V02/full Adda, Lev1 and Lev2, including views
-without native leader or stroke evidence. Keep V7.4 untagged until acceptance.
+2026-11-08: One explicitly authorized combined Adda V01 request completed
+with caption crops and isolated stroke tiles. Exact IDs for 8 hinged leaves,
+6 drawers, 8 pull-outs and 1 fixed open shelf, with no extra contours in those
+classes. Two glass zones, two LED callouts and the window closure were read
+as annotations. Mirror count was 2, but only C16 matched. The model read the
+label and chose the adjacent C14 instead of C19. No manual role corrections.
+Runtime 3.268 s, 7,632 input and 594 output tokens, zero Thinking tokens.
+Evidence: notes/evidence/estimation-v7-4-front-evidence-2026-11-07/adda-v01-single-run.json.
+The narrow Front classification repair passed V01. Full-view acceptance is
+partial and V7.4 remains untagged. Next: validate binding of direct labels
+from a text location to the enclosing contour, then verify Adda V02/full
+Adda, Lev1 and Lev2, including views without native leader or stroke evidence.
 
 After V01, check source-label reading and constrained tip binding on Adda
 V02. Preserve the separate swing-mark evidence. Then verify dimension ownership

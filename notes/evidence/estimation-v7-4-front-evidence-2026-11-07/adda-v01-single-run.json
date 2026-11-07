@@ -1,0 +1,95 @@
+{
+  "work": "3.17.4.6",
+  "date": "2026-11-08",
+  "document": "Adda",
+  "view_id": "view-001",
+  "candidate_commit": "ba31a22",
+  "status": "front_types_exact; full_view_partial_due_to_mirror_localization",
+  "provider_calls": 1,
+  "provider_response_id": "msg_011CgpKXBAPR3uzJ9vShWiHA",
+  "model": "claude-haiku-5-5",
+  "request_sha256": "958777fcb68f91bc035c9815f5b398eb21be91153f3018c1a4729822b7e4beb2",
+  "source_request_sha256": "d01d56e9ca5e5ea632a6fc7035363f356882b633094ff20847ebcaa9dcf02de8",
+  "witness_sha256": "1ad6ee70447b7d04529ec58a95a96194e282de58b3a4fdf51a210c888d3ae749",
+  "reference_sha256": "1b730a1a63ba12c76977678290a61c27ae418e3d97677595ca196dd1c01fe05a",
+  "elapsed_seconds": 3.268,
+  "usage": {
+    "input_tokens": 7632,
+    "output_tokens": 594
+  },
+  "thinking_tokens": 0,
+  "matches_by_role": {
+    "hinged_door": {
+      "matched": [
+        "C41",
+        "C45",
+        "C49",
+        "C52",
+        "C76",
+        "C79",
+        "C82",
+        "C84"
+      ],
+      "missed": [],
+      "extra": []
+    },
+    "drawer": {
+      "matched": [
+        "C64",
+        "C65",
+        "C67",
+        "C71",
+        "C77",
+        "C81"
+      ],
+      "missed": [],
+      "extra": []
+    },
+    "pull_out_shelf": {
+      "matched": [
+        "C34",
+        "C37",
+        "C46",
+        "C57",
+        "C58",
+        "C60",
+        "C69",
+        "C75"
+      ],
+      "missed": [],
+      "extra": []
+    },
+    "fixed_open_shelf": {
+      "matched": [
+        "C32"
+      ],
+      "missed": [],
+      "extra": []
+    },
+    "mirror": {
+      "matched": [
+        "C16"
+      ],
+      "missed": [
+        "C19"
+      ],
+      "extra": [
+        "C14"
+      ]
+    }
+  },
+  "annotations_by_role": {
+    "glazed_zone": [
+      "A01",
+      "A06"
+    ],
+    "lighting": [
+      "A04",
+      "A09"
+    ],
+    "cover": [
+      "A05"
+    ]
+  },
+  "binding_issues": []
+}
