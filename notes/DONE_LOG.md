@@ -1,5 +1,21 @@
 # Done Log
 
+2026-11-07, 3.17.4.6: completed approved incremental Analyze experiments.
+7.3.1 adds normalization display to saved V7.2 Thinking replies, no calls.
+7.3.2 changes only Front totals ownership: two complete replies, Lev1 49.187 s,
+3 drawers/2 legs; Lev2 58.209 s, 15 doors/5 drawers/2 lifts plus 2 unresolved.
+7.3.3 changes only kitchen default material: Lev1 complete 35.907 s with
+non-kitchen laminate top preserved; Lev2 hits 14000 output tokens (11476
+thinking), response cuts off inside Front at 68.870 s. Partial stone material
+is visible, no complete Planner. All raw data preserved without repair/retry.
+Exact source/settings/version-chain transformations verified, 93 focused tests
+pass. No blanket quality acceptance or measured resource-gain claim. Official
+Anthropic docs confirm Haiku 5.5 has adaptive thinking, no manual budget_tokens;
+our controls already use lowest effort=low. Further limited-thinking experiment
+needs revised owner choice, not an invented hard cap. Four new calls total,
+no DB writes, deployment or production changes. Evidence:
+notes/evidence/estimation-v7-3-incremental-2026-11-07/simple-object-trials.json.
+
 2026-11-07, 3.17.4.6: implemented and tested approved opt-in Analyze V7.3.
 One unified prompt (11657 vs 22369 chars), deterministic Front totals and
 Detection normalization display, artificial-stone kitchen fallback and clarified

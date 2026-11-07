@@ -1009,7 +1009,75 @@ LATEST OWNER-APPROVED IMPLEMENTATION / EXPERIMENT, ESTIMATION V7.2,
 2026-11-07, same 3.17.4.6, P0, FULL-OUTPUT ACCEPTANCE FAILED:
 LATEST OWNER REVIEW / HISTORICAL REUSE AUDIT, 2026-11-07:
 LATEST OWNER-APPROVED IMPLEMENTATION/TRIAL, V7.3, 2026-11-07, 3.17.4.6:
-COMPLETED local experiment; REJECTED semantic acceptance, P0 remains PENDING.
+COMPLETED local experiment; NOT ACCEPTED as replacement, P0 remains PENDING.
+OWNER REVIEW / INCREMENTAL DIRECTION, same work, 2026-11-07:
+OWNER-APPROVED INCREMENTAL EXECUTION, 2026-11-07, 3.17.4.6, P0:
+COMPLETED 7.3.1/2/3 experiments; quality/resource assessment remains ACTIVE.
+Owner approved these three stages, then gradual thinking resource experiments.
+tools/probe_estimation_v7_2_thinking.py adds explicit --revision selectors,
+transforming immutable saved requests, not rebuilding from changed prompt files.
+7.3.1: code-only normalization display on saved V7.2 Thinking output; zero
+provider calls, exact request/raw reuse. 14 Lev1 /15 Lev2 source measurements.
+Inherited output/usage/timing clearly distinguished from new provider work.
+7.3.2: ONLY remove Front totals template field and add matching instruction;
+code derives totals on a copy, existing validators remain. Two calls, end_turn.
+Lev1 49.187 s, 26547 input /10740 output, 6675 thinking: 3 drawers, 2 legs,
+Front 1/2, 3 assembly blocks; normalized 200 mm wrongly assigned panel thickness.
+Lev2 58.209 s, 25209 input /12909 output, 7372 thinking: 15 hinged, 5 drawers,
+2 lifts AND 2 unresolved fronts, 10 blocks plus shared top. Not an exact match
+to benchmark despite matching the three main numeric totals. Group membership,
+false left tall cabinet and tower/fridge interpretation still need review.
+7.3.3: ONLY add unspecified kitchen artificial-stone fallback to 7.3.2 prompt.
+Lev1 end_turn, 35.907 s, 26610 input /7720 output, 4267 thinking: 3 drawers,
+2 legs, Front 1/2, same three-block scheme. Non-kitchen top remains laminate
+30 mm. Seven ribs and guessed 20-mm thickness/source-conversion conflict remain.
+Lev2 max_tokens, 68.870 s, 25272 input /14000 output, 11476 thinking. Text ends
+inside Front; no completed Front totals or Planner. Stone default appears in
+partial material text, not a completed response. No JSON repair or paid retry.
+Verified unchanged inputs/pixels/Detection/messages/settings at every step;
+only the intended system transformation differs for 7.3.2/3. Resource reduction
+is NOT established by one sample per file; thinking variation is substantial.
+93 focused tests pass; diff check passes. Four new calls total, no Calculation,
+DB writes, runtime default changes, main integration, push or deployment.
+Raw/usage/version-chain hashes and summaries:
+notes/evidence/estimation-v7-3-incremental-2026-11-07/simple-object-trials.json.
+Private capsules/reports: /private/tmp/lev[1,2]-analyze-v7-3-[1,2,3]-20261107-01.*.
+IMPORTANT VERIFIED MODEL CONSTRAINT, official docs checked 2026-11-07:
+Haiku 5.5 uses adaptive thinking; manual thinking.enabled/budget_tokens returns
+400. All saved thinking controls ALREADY use output_config.effort=low, the
+lowest supported effort level, not full/max thinking. effort is soft guidance;
+max_tokens=14000 caps thinking AND final JSON, not thinking separately.
+Sources: https://platform.claude.com/docs/en/models/haiku-5-5/migration-guide
+and https://platform.claude.com/docs/en/build-with-claude/effort
+and https://platform.claude.com/docs/en/build-with-claude/thinking-steering-and-cost.
+Task budgets beta supports Haiku 5.5 but is advisory, minimum total 20000;
+not a dedicated small thinking cap. Source:
+https://platform.claude.com/docs/en/build-with-claude/task-budgets.
+NEXT DECISION: manual small thinking caps are unavailable on this model.
+Recommend a separate original-V7.2 control with brief economical-thinking
+guidance at existing low effort; this is soft steering, not guaranteed N tokens.
+Alternative total-output cap risks truncating JSON as already observed.
+Do not silently substitute either for an exact thinking-token budget. No such
+additional calls made; obtain owner direction on this changed assumption.
+
+Do not collapse results into a binary contract verdict. Report useful findings,
+omissions, reference/arithmetic validity and resource use separately. A validator
+error is a technical defect, not proof that all interpretation is worthless;
+a structural pass is not proof of visual completeness. V7.3 remains useful
+experimental evidence with a faster response, correct stone fallback and
+deterministic normalization/totals, alongside substantial scope omissions.
+Owner requests incremental adoption of V7.3 changes onto V7.2 instead of
+another bundled rewrite. No new paid calls authorized in this planning turn.
+EARLIER PROPOSAL, now approved for stages 7.3.1/2/3 above: use saved V7.2 with thinking as quality
+control; keep provider settings/pixels/Detection unchanged while introducing
+one change per experiment. First code-only normalization display (no call),
+then code-owned Front totals with only matching schema/instruction changes,
+then kitchen-material default, then one redundant prompt section at a time.
+Evaluate quality/resources after each step; retain or roll back attributable
+changes only. Test thinking reduction separately after the prompt changes,
+not simultaneously. New runs must be explicitly approved; no stability claim
+from one output per file. Preserve both old baseline variants and V7.3 raw data.
+
 Owner approved unified concise Analyze, code-derived totals and normalization,
 material defaults and explicit Front/Blocks boundaries, followed by Lev1/Lev2
 without thinking. agents/estimation_analyze_v7_3_agent.py and its single prompt

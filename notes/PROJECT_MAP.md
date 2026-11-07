@@ -1,6 +1,16 @@
 # Costerly AI Project Map
 
-Latest experiment, Estimation V7.3, 2026-11-07, work 3.17.4.6, REJECTED:
+Latest experiments, V7.3.1/2/3, 2026-11-07, work 3.17.4.6:
+tools/probe_estimation_v7_2_thinking.py --revision V7.3.1 / V7.3.2 / V7.3.3
+transforms saved preceding requests, retaining provider-default thinking at
+effort=low. Stage 1 display only, no call; stage 2 code totals only; stage 3
+kitchen material fallback only. Four new calls, mixed interpretation evidence,
+last Lev2 truncated inside Front. Not a new accepted quality checkpoint.
+Evidence: notes/evidence/estimation-v7-3-incremental-2026-11-07/simple-object-trials.json.
+Manual thinking-token caps are unsupported on Haiku 5.5; see current TODO
+for verified provider constraints and next decision. Defaults remain unchanged.
+
+Earlier experiment, Estimation V7.3, 2026-11-07, work 3.17.4.6, not accepted as replacement:
 agents/estimation_analyze_v7_3_agent.py and prompts/estimation_analyze_v7_3.md
 unify Analyze instructions, derive Front totals in code and render saved
 Detection normalization. Existing tools/probe_estimation_analyze_v7.py accepts

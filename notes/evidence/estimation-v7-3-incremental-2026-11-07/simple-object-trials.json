@@ -1,0 +1,325 @@
+{
+  "work_number": "3.17.4.6",
+  "experiment": "incremental V7.3.1/2/3 on V7.2 Thinking",
+  "new_provider_calls": 4,
+  "database_writes": false,
+  "deployment": false,
+  "quality_status": "mixed evidence; no new accepted checkpoint",
+  "trials": [
+    {
+      "version": "Estimation V7.3.1",
+      "baseline_path": "/private/tmp/lev1-analyze-v7-2-thinking-20261107-01.json",
+      "baseline_sha256": "d1cb981c10f46aa87a99f2793dddf598d8913cf10cc8d532e3e9b648154fafd6",
+      "provider_calls": 0,
+      "request_sha256": "ba840742a91c269dae1ab89853b87c3067aaf1821fb2813e7ce2af081d7d77b9",
+      "prompt_sha256": "53b65a011c7e06e915a64b5258032e4cedade6143b2ea0b95876adc1724d446e",
+      "elapsed_seconds": 0,
+      "inherited_provider_elapsed_seconds": 32.04,
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 26543,
+        "output_tokens": 6858,
+        "output_tokens_details": {
+          "thinking_tokens": 3488
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "stop_reason": "end_turn",
+      "status": "reused_response_display_only",
+      "error": "ValueError: foreign Understanding source refs",
+      "validation_status": "failed",
+      "document": "lev1",
+      "capsule_path": "/private/tmp/lev1-analyze-v7-3-1-20261107-01.json",
+      "request_transformation_verified": true,
+      "unchanged_source_messages_and_settings": true,
+      "usage_inherited": true,
+      "normalized_reading_count": 14,
+      "derived_totals": {
+        "drawers": 3,
+        "hinged_doors": 0,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 3
+      },
+      "leg_counts": [
+        2
+      ],
+      "block_names": [
+        "Seat base with slat back",
+        "Table top with legs"
+      ]
+    },
+    {
+      "version": "Estimation V7.3.1",
+      "baseline_path": "/private/tmp/lev2-analyze-v7-2-thinking-20261107-01.json",
+      "baseline_sha256": "cf94d656daf5cc2fa4865892354a1d46721f355554936848d9ac2cbce4cabfb7",
+      "provider_calls": 0,
+      "request_sha256": "5d9e6da339e7161c436bed6e6e1b274e906ddc5246ebdac6fb038146e1d36c4e",
+      "prompt_sha256": "53b65a011c7e06e915a64b5258032e4cedade6143b2ea0b95876adc1724d446e",
+      "elapsed_seconds": 0,
+      "inherited_provider_elapsed_seconds": 64.602,
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 25205,
+        "output_tokens": 13953,
+        "output_tokens_details": {
+          "thinking_tokens": 8352
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "stop_reason": "end_turn",
+      "status": "reused_response_display_only",
+      "error": null,
+      "validation_status": "pass",
+      "document": "lev2",
+      "capsule_path": "/private/tmp/lev2-analyze-v7-3-1-20261107-01.json",
+      "request_transformation_verified": true,
+      "unchanged_source_messages_and_settings": true,
+      "usage_inherited": true,
+      "normalized_reading_count": 15,
+      "derived_totals": {
+        "drawers": 5,
+        "hinged_doors": 17,
+        "lift_up_fronts": 2,
+        "unresolved_fronts": 0,
+        "total_fronts": 24
+      },
+      "leg_counts": [
+        0
+      ],
+      "block_names": [
+        "Top arm right column",
+        "Top arm upper wall run",
+        "Top arm left end unit",
+        "Top arm base run",
+        "Hanging upper pair",
+        "Second wing base doors",
+        "Second wing drawer and door unit",
+        "Tall tower column"
+      ]
+    },
+    {
+      "version": "Estimation V7.3.2",
+      "baseline_path": "/private/tmp/lev1-analyze-v7-3-1-20261107-01.json",
+      "baseline_sha256": "72f000020524721456d91a5d43d25a7d597062604533529e5d224f1533014514",
+      "provider_calls": 1,
+      "request_sha256": "9fd0c1b924190faade85ace3073b85588fea3163318bdd5dd8873a7128f364b5",
+      "prompt_sha256": "bd0f827e07ea78557b24d2f7337415aed853bfa3cf68a86c5041793a6e872815",
+      "elapsed_seconds": 49.187,
+      "inherited_provider_elapsed_seconds": null,
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 26547,
+        "output_tokens": 10740,
+        "output_tokens_details": {
+          "thinking_tokens": 6675
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "stop_reason": "end_turn",
+      "status": "analyze_requires_semantic_review",
+      "error": null,
+      "validation_status": null,
+      "document": "lev1",
+      "capsule_path": "/private/tmp/lev1-analyze-v7-3-2-20261107-01.json",
+      "request_transformation_verified": true,
+      "unchanged_source_messages_and_settings": true,
+      "usage_inherited": false,
+      "normalized_reading_count": 14,
+      "raw_response_text": "```json\n{\n  \"objects\": [\n    {\n      \"object_id\": \"object-001\",\n      \"islands\": [\n        {\n          \"island_id\": \"view-001\",\n          \"projection\": \"Axonometric view\",\n          \"elevation_index\": null,\n          \"content_role\": \"render\",\n          \"observation\": \"Front-left isometric of a tall vertical-slat backrest over a three-drawer base, with a cantilevered table top extending right and one leg visible under it.\"\n        },\n        {\n          \"island_id\": \"view-002\",\n          \"projection\": \"Top view\",\n          \"elevation_index\": null,\n          \"content_role\": \"technical_drawing\",\n          \"observation\": \"Plan footprint of two joined rectangles: a narrower backrest zone and a wider seat/table zone, overall 187 by 160 with a 115 back-zone depth.\"\n        },\n        {\n          \"island_id\": \"view-003\",\n          \"projection\": \"Axonometric view\",\n          \"elevation_index\": null,\n          \"content_role\": \"render\",\n          \"observation\": \"Rear-right isometric showing the slatted backrest face, the drawer base on the left, and the table top with two visible legs extending to the right.\"\n        },\n        {\n          \"island_id\": \"view-004\",\n          \"projection\": \"Front elevation\",\n          \"elevation_index\": 1,\n          \"content_role\": \"technical_drawing\",\n          \"observation\": \"Slatted panel face with seven vertical columns and two horizontal rows of rectangular insets above a base band with three side-by-side drawer fronts and a plinth below.\"\n        },\n        {\n          \"island_id\": \"view-005\",\n          \"projection\": \"Side view\",\n          \"elevation_index\": null,\n          \"content_role\": \"technical_drawing\",\n          \"observation\": \"Profile showing the vertical backrest panel, the base block with plinth, and the table top with one leg at the right; a thin panel dimension of 20 is labelled at the top of the backrest.\"\n        },\n        {\n          \"island_id\": \"view-006\",\n          \"projection\": \"Front elevation\",\n          \"elevation_index\": 2,\n          \"content_role\": \"technical_drawing\",\n          \"observation\": \"Opposite elevation of the slatted backrest with rectangular insets, and two vertical legs visible below the table-top band; the lower zone is open between the legs.\"\n        }\n      ],\n      \"understanding\": {\n        \"name\": \"Bench with table\",\n        \"type_code\": \"bench\",\n        \"proposed_type\": null,\n        \"description\": \"A fixed seating bench with a tall vertical-slat backrest above a three-drawer base. A cantilevered table top extends from one side of the bench and is carried on two floor legs.\",\n        \"characteristics\": [\n          {\n            \"statement\": \"Tall backrest of seven vertical slat columns with rectangular insets in two rows, forming a fixed upright at the back of the seat.\",\n            \"basis\": \"specified\",\n            \"island_ids\": [\"view-004\", \"view-001\", \"view-006\"],\n            \"source_refs\": [\"ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0011\", \"ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0012\"]\n          },\n          {\n            \"statement\": \"Base is a carcass with three side-by-side drawer fronts and a dark plinth below; the seat top sits on the carcass.\",\n            \"basis\": \"specified\",\n            \"island_ids\": [\"view-004\", \"view-005\"],\n            \"source_refs\": [\"ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0005\"]\n          },\n          {\n            \"statement\": \"Three drawer fronts across the base width, each a single horizontal front; no door leaves are shown.\",\n            \"basis\": \"specified\",\n            \"island_ids\": [\"view-004\", \"view-001\"],\n            \"source_refs\": []\n          },\n          {\n            \"statement\": \"Cantilevered table top on the right side is attached to the backrest/base structure at its inner edge (assumed attachment) and carried by two free-standing floor legs.\",\n            \"basis\": \"inferred\",\n            \"island_ids\": [\"view-003\", \"view-006\", \"view-005\"],\n            \"source_refs\": []\n          },\n          {\n            \"statement\": \"Backrest slat panels assigned as oak-look veneered board, matt natural oak tone (inferred finish), 200 mm finished thickness from the saved dimension 20.\",\n            \"basis\": \"inferred\",\n            \"island_ids\": [\"view-005\", \"view-004\"],\n            \"source_refs\": [\"view-005-D001\"]\n          },\n          {\n            \"statement\": \"Base carcass and drawer fronts assigned as oak-look veneered board, matt natural oak tone (inferred finish), 17 mm default thickness.\",\n            \"basis\": \"default\",\n            \"island_ids\": [\"view-004\", \"view-001\"],\n            \"source_refs\": []\n          },\n          {\n            \"statement\": \"Table top assigned as beige-grey laminate board, matt finish (inferred), 30 mm default finished thickness.\",\n            \"basis\": \"default\",\n            \"island_ids\": [\"view-003\", \"view-005\"],\n            \"source_refs\": []\n          },\n          {\n            \"statement\": \"Table legs are black tubular metal with black finish; tube wall thickness not established.\",\n            \"basis\": \"inferred\",\n            \"island_ids\": [\"view-003\", \"view-006\"],\n            \"source_refs\": []\n          }\n        ],\n        \"materials\": [\n          {\n            \"part\": \"Backrest slat panels\",\n            \"material\": \"Oak-look veneered board\",\n            \"finish\": \"Matt natural oak tone, coating inferred\",\n            \"material_kind\": \"sheet\",\n            \"thickness_mm\": 200,\n            \"thickness_measurement_id\": \"view-005-D001\",\n            \"basis\": \"specified\",\n            \"island_ids\": [\"view-005\", \"view-004\"],\n            \"source_refs\": [\"view-005-D001\"],\n            \"reason\": \"Panel thickness dimension 20 in side view, normalized to 200 mm by Detection; magnitude flagged in conflicts.\"\n          },\n          {\n            \"part\": \"Base carcass, plinth and drawer fronts\",\n            \"material\": \"Oak-look veneered board\",\n            \"finish\": \"Matt natural oak tone, coating inferred; plinth dark\",\n            \"material_kind\": \"sheet\",\n            \"thickness_mm\": 17,\n            \"thickness_measurement_id\": null,\n            \"basis\": \"default\",\n            \"island_ids\": [\"view-004\", \"view-001\", \"view-005\"],\n            \"source_refs\": [],\n            \"reason\": \"Default ordinary panel thickness of 17 mm; no owned dimension gives the base panel thickness.\"\n          },\n          {\n            \"part\": \"Table top\",\n            \"material\": \"Laminate-faced board\",\n            \"finish\": \"Matt beige-grey laminate, inferred\",\n            \"material_kind\": \"sheet\",\n            \"thickness_mm\": 30,\n            \"thickness_measurement_id\": null,\n            \"basis\": \"default\",\n            \"island_ids\": [\"view-003\", \"view-005\"],\n            \"source_refs\": [],\n            \"reason\": \"Default finished worktop thickness of 30 mm; the side-view edge is thin but not dimensioned.\"\n          },\n          {\n            \"part\": \"Table legs\",\n            \"material\": \"Steel tube\",\n            \"finish\": \"Black powder-coat, inferred\",\n            \"material_kind\": \"metal_profile\",\n            \"thickness_mm\": null,\n            \"thickness_measurement_id\": null,\n            \"basis\": \"inferred\",\n            \"island_ids\": [\"view-003\", \"view-006\"],\n            \"source_refs\": [],\n            \"reason\": \"Tube stock and wall thickness are not established by the drawing.\"\n          }\n        ],\n        \"assumptions\": [\n          \"Seating bench treated as one fixed assembly with the table top attached on one side.\",\n          \"Table top attachment to the structure is an assumed connection, not shown fixing hardware.\",\n          \"Ordinary panels default to 17 mm; table top defaults to 30 mm.\"\n        ],\n        \"conflicts\": [\n          \"Saved dimension view-005-D001 reads 20 in the side view and is normalized to 200 mm as the backrest thickness; the magnitude is implausibly large for a slat panel and needs verification of the unit scale.\"\n        ]\n      },\n      \"front\": {\n        \"front_groups\": [\n          {\n            \"location\": \"Base carcass front, three drawers side by side\",\n            \"type\": \"drawer\",\n            \"count\": 3,\n            \"count_basis\": \"clear\",\n            \"view_ids\": [\"view-004\"],\n            \"uncertainty\": \"\",\n            \"fronts\": [\n              {\"id\": \"F01\", \"view_id\": \"view-004\", \"bbox_1000\": [107, 769, 300, 828]},\n              {\"id\": \"F02\", \"view_id\": \"view-004\", \"bbox_1000\": [298, 769, 481, 828]},\n              {\"id\": \"F03\", \"view_id\": \"view-004\", \"bbox_1000\": [488, 769, 672, 828]}\n            ]\n          }\n        ],\n        \"excluded_surfaces\": [\n          {\"id\": \"X01\", \"view_id\": \"view-004\", \"bbox_1000\": [116, 852, 674, 878], \"reason\": \"Fixed plinth below the carcass, not an operating front\"}\n        ],\n        \"tabletop_supports\": [\n          {\n            \"id\": \"T01\",\n            \"location\": \"Cantilevered table top on the right side of the bench\",\n            \"leg_count\": 2,\n            \"count_basis\": \"clear\",\n            \"view_ids\": [\"view-006\", \"view-003\", \"view-005\", \"view-001\"],\n            \"support_scheme\": \"Two observed free-standing floor legs under the table top; the inner edge is an assumed attachment to the bench structure, not a shown fixing.\",\n            \"uncertainty\": \"Side view shows one leg overlapping the other; the second is confirmed in the rear elevation and isometric.\",\n            \"legs\": [\n              {\"id\": \"L01\", \"view_id\": \"view-006\", \"bbox_1000\": [314, 731, 347, 933]},\n              {\"id\": \"L02\", \"view_id\": \"view-006\", \"bbox_1000\": [659, 731, 692, 933]}\n            ]\n          }\n        ]\n      },\n      \"planner\": {\n        \"summary\": \"Three assembly blocks: a drawer-base seat, a fixed slatted backrest, and a separate table top with its legs.\",\n        \"blocks\": [\n          {\n            \"id\": \"B01\",\n            \"name\": \"Drawer base seat\",\n            \"contains\": \"Base carcass with three drawer fronts, dark plinth and seat top surface\",\n            \"reason\": \"One carcass with three front positions across its width, within the allowance; the plinth is included as the base boundary.\",\n            \"front_ids\": [\"F01\", \"F02\", \"F03\"],\n            \"view_ids\": [\"view-004\", \"view-005\", \"view-001\"],\n            \"region\": {\"view_id\": \"view-004\", \"bbox_1000\": [100, 765, 680, 880]}\n          },\n          {\n            \"id\": \"B02\",\n            \"name\": \"Slatted backrest\",\n            \"contains\": \"Tall vertical slat panel with rectangular insets rising from the base\",\n            \"reason\": \"Fixed decorative upright above the seat; no operable fronts, kept as a separate assembly from the drawer carcass.\",\n            \"front_ids\": [],\n            \"view_ids\": [\"view-004\", \"view-005\", \"view-006\", \"view-003\"],\n            \"region\": {\"view_id\": \"view-004\", \"bbox_1000\": [100, 200, 680, 775]}\n          },\n          {\n            \"id\": \"B03\",\n            \"name\": \"Side table top with legs\",\n            \"contains\": \"Cantilevered table top and its two floor legs\",\n            \"reason\": \"Separate table-style element attached at one side; not a worktop over base units, so listed as its own block.\",\n            \"front_ids\": [],\n            \"view_ids\": [\"view-003\", \"view-006\", \"view-005\"],\n            \"region\": {\"view_id\": \"view-003\", \"bbox_1000\": [255, 550, 935, 875]}\n          }\n        ],\n        \"shared_parts\": [],\n        \"front_conflicts\": [],\n        \"uncertainties\": [\n          \"Table top footprint is located from the axonometric view; no top view isolates it.\",\n          \"Attachment of the table top to the backrest/base is assumed from the side profile.\",\n          \"Backrest thickness of 200 mm from saved dimension 20 is flagged for scale verification.\"\n        ]\n      }\n    }\n  ]\n}\n```",
+      "derived_totals": {
+        "drawers": 3,
+        "hinged_doors": 0,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 3
+      },
+      "leg_counts": [
+        2
+      ],
+      "block_names": [
+        "Drawer base seat",
+        "Slatted backrest",
+        "Side table top with legs"
+      ]
+    },
+    {
+      "version": "Estimation V7.3.2",
+      "baseline_path": "/private/tmp/lev2-analyze-v7-3-1-20261107-01.json",
+      "baseline_sha256": "9032e1473116384f23d94e2e00b2c72fe36287565ae87a215fc969111a1f9101",
+      "provider_calls": 1,
+      "request_sha256": "e84eead662acc3f01d327db0845471e6ffea2f00158d0ce9d30b92573cd138b8",
+      "prompt_sha256": "bd0f827e07ea78557b24d2f7337415aed853bfa3cf68a86c5041793a6e872815",
+      "elapsed_seconds": 58.209,
+      "inherited_provider_elapsed_seconds": null,
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 25209,
+        "output_tokens": 12909,
+        "output_tokens_details": {
+          "thinking_tokens": 7372
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "stop_reason": "end_turn",
+      "status": "analyze_requires_semantic_review",
+      "error": null,
+      "validation_status": null,
+      "document": "lev2",
+      "capsule_path": "/private/tmp/lev2-analyze-v7-3-2-20261107-01.json",
+      "request_transformation_verified": true,
+      "unchanged_source_messages_and_settings": true,
+      "usage_inherited": false,
+      "normalized_reading_count": 15,
+      "raw_response_text": "```json\n{\n  \"objects\": [{\n    \"object_id\": \"object-001\",\n    \"islands\": [\n      {\"island_id\": \"view-001\", \"projection\": \"Top view\", \"elevation_index\": null, \"content_role\": \"technical_drawing\", \"observation\": \"Plan of an L-shaped cabinet run: 416 long arm, 300 return, 45° corner cut at the return end, a step at the right end of the long arm, and a sink cutout line on the worktop plan.\"},\n      {\"island_id\": \"view-002\", \"projection\": \"Axonometric view\", \"elevation_index\": null, \"content_role\": \"render\", \"observation\": \"Isometric render of an L-shaped base run with a beige worktop, sink cutout, mitered corner, green-grey doors and drawers, a separate tall column at the right end, a separate two-door wall unit at the left, and a hanging upper run at the back.\"},\n      {\"island_id\": \"view-003\", \"projection\": \"Front elevation\", \"elevation_index\": 1, \"content_role\": \"technical_drawing\", \"observation\": \"Elevation of the long wing: left 69 hanging unit with a door, 180 upper units with two horizontal fronts at 75 height, three upper doors above the base corner, five base doors, a narrow filler, a corner column of fronts, two lower drawers, and a fixed end panel.\"},\n      {\"island_id\": \"view-004\", \"projection\": \"Front elevation\", \"elevation_index\": 2, \"content_role\": \"technical_drawing\", \"observation\": \"Elevation of the return wing: a 84-wide upper unit with two tall door leaves, a 151 gap, a 265 tall tower at the right, and a base run with four door fronts and a stack of three drawers.\"}\n    ],\n    \"understanding\": {\n      \"name\": \"L-shaped kitchen\",\n      \"type_code\": \"kitchen\",\n      \"proposed_type\": null,\n      \"description\": \"A freestanding L-shaped kitchen run with a continuous worktop over the base carcasses, a mitered corner, and a tall column at the end of the return. Upper units sit in separate hanging groups above the long wing and at the left end, with a separate two-door wall unit on the return wing.\",\n      \"characteristics\": [\n        {\"statement\": \"Base carcasses under a continuous worktop along the long wing and return, with a mitered corner section.\", \"basis\": \"specified\", \"island_ids\": [\"view-001\", \"view-002\", \"view-003\"], \"source_refs\": [\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0011\"]},\n        {\"statement\": \"Five hinged base doors on the long wing and four hinged base doors plus three stacked drawers on the return wing.\", \"basis\": \"specified\", \"island_ids\": [\"view-003\", \"view-004\"], \"source_refs\": []},\n        {\"statement\": \"Upper units are separate hanging groups; the left unit and the return wall unit are not continuous with the base run.\", \"basis\": \"inferred\", \"island_ids\": [\"view-002\", \"view-003\", \"view-004\"], \"source_refs\": []},\n        {\"statement\": \"Tall column at the right end of the return is a separate tower unit, not a worktop-supporting element.\", \"basis\": \"specified\", \"island_ids\": [\"view-002\", \"view-004\"], \"source_refs\": [\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0009\"]},\n        {\"statement\": \"Carcasses and door/drawer fronts: LDSP sheet, green-grey matte finish (colour inferred from render), 17 mm default.\", \"basis\": \"default\", \"island_ids\": [\"view-002\", \"view-003\", \"view-004\"], \"source_refs\": []},\n        {\"statement\": \"Worktop: LDSP sheet with beige-grey laminate finish (inferred from render), 30 mm finished default.\", \"basis\": \"default\", \"island_ids\": [\"view-002\"], \"source_refs\": []}\n      ],\n      \"materials\": [\n        {\"part\": \"Base and wall carcasses, doors and drawer fronts\", \"material\": \"LDSP (laminated chipboard)\", \"finish\": \"Green-grey matte laminate (colour inferred from render)\", \"material_kind\": \"sheet\", \"thickness_mm\": 17, \"thickness_measurement_id\": null, \"basis\": \"default\", \"island_ids\": [\"view-002\", \"view-003\", \"view-004\"], \"source_refs\": [], \"reason\": \"Estimating default for ordinary panels; no explicit thickness dimension for panels in the drawings.\"},\n        {\"part\": \"Worktop over base run\", \"material\": \"LDSP (laminated chipboard) worktop\", \"finish\": \"Beige-grey laminate (inferred from render)\", \"material_kind\": \"sheet\", \"thickness_mm\": 30, \"thickness_measurement_id\": null, \"basis\": \"default\", \"island_ids\": [\"view-002\"], \"source_refs\": [], \"reason\": \"Finished worktop default of 30 mm; no measured worktop thickness.\"}\n      ],\n      \"assumptions\": [\"Base run has no legs; carcasses support the worktop.\", \"Upper groups are hanging units attached to the wall.\"],\n      \"conflicts\": [\"Corner drawers in view-003 and return-wing drawers in view-004 may be different depictions of the same junction; both counted only in separate groups pending confirmation.\"]\n    },\n    \"front\": {\n      \"front_groups\": [\n        {\"location\": \"Left hanging unit, long wing end\", \"type\": \"hinged\", \"count\": 1, \"count_basis\": \"clear\", \"view_ids\": [\"view-003\"], \"uncertainty\": \"\", \"fronts\": [{\"id\": \"F01\", \"view_id\": \"view-003\", \"bbox_1000\": [108, 199, 200, 490]}]},\n        {\"location\": \"Long-wing base run, five door positions\", \"type\": \"hinged\", \"count\": 5, \"count_basis\": \"clear\", \"view_ids\": [\"view-003\"], \"uncertainty\": \"\", \"fronts\": [\n          {\"id\": \"F02\", \"view_id\": \"view-003\", \"bbox_1000\": [102, 653, 185, 854]},\n          {\"id\": \"F03\", \"view_id\": \"view-003\", \"bbox_1000\": [186, 653, 280, 854]},\n          {\"id\": \"F04\", \"view_id\": \"view-003\", \"bbox_1000\": [282, 653, 379, 854]},\n          {\"id\": \"F05\", \"view_id\": \"view-003\", \"bbox_1000\": [380, 653, 476, 854]},\n          {\"id\": \"F06\", \"view_id\": \"view-003\", \"bbox_1000\": [478, 653, 574, 854]}\n        ]},\n        {\"location\": \"Middle upper wall units over long wing\", \"type\": \"lift_up\", \"count\": 2, \"count_basis\": \"estimated\", \"view_ids\": [\"view-003\"], \"uncertainty\": \"Wide horizontal fronts; movement inferred from shape.\", \"fronts\": [\n          {\"id\": \"F07\", \"view_id\": \"view-003\", \"bbox_1000\": [204, 389, 401, 490]},\n          {\"id\": \"F08\", \"view_id\": \"view-003\", \"bbox_1000\": [404, 389, 601, 490]}\n        ]},\n        {\"location\": \"Upper right wall units above corner\", \"type\": \"hinged\", \"count\": 3, \"count_basis\": \"estimated\", \"view_ids\": [\"view-003\"], \"uncertainty\": \"Portrait-ish upper fronts; hinged assumed from proportion.\", \"fronts\": [\n          {\"id\": \"F09\", \"view_id\": \"view-003\", \"bbox_1000\": [603, 199, 735, 403]},\n          {\"id\": \"F10\", \"view_id\": \"view-003\", \"bbox_1000\": [737, 199, 855, 403]},\n          {\"id\": \"F11\", \"view_id\": \"view-003\", \"bbox_1000\": [857, 199, 975, 403]}\n        ]},\n        {\"location\": \"Corner column fronts below upper right units\", \"type\": \"unresolved\", \"count\": 2, \"count_basis\": \"estimated\", \"view_ids\": [\"view-003\"], \"uncertainty\": \"Tall fronts above drawers; movement type not clear from elevation.\", \"fronts\": [\n          {\"id\": \"F12\", \"view_id\": \"view-003\", \"bbox_1000\": [603, 403, 735, 572]},\n          {\"id\": \"F13\", \"view_id\": \"view-003\", \"bbox_1000\": [606, 576, 732, 733]}\n        ]},\n        {\"location\": \"Corner base drawers\", \"type\": \"drawer\", \"count\": 2, \"count_basis\": \"clear\", \"view_ids\": [\"view-003\"], \"uncertainty\": \"May coincide with return-wing drawers; kept separate pending confirmation.\", \"fronts\": [\n          {\"id\": \"F14\", \"view_id\": \"view-003\", \"bbox_1000\": [604, 736, 735, 794]},\n          {\"id\": \"F15\", \"view_id\": \"view-003\", \"bbox_1000\": [604, 797, 735, 854]}\n        ]},\n        {\"location\": \"Return wing upper unit\", \"type\": \"hinged\", \"count\": 2, \"count_basis\": \"clear\", \"view_ids\": [\"view-004\"], \"uncertainty\": \"\", \"fronts\": [\n          {\"id\": \"F16\", \"view_id\": \"view-004\", \"bbox_1000\": [113, 97, 202, 389]},\n          {\"id\": \"F17\", \"view_id\": \"view-004\", \"bbox_1000\": [204, 97, 299, 389]}\n        ]},\n        {\"location\": \"Return wing base doors\", \"type\": \"hinged\", \"count\": 4, \"count_basis\": \"clear\", \"view_ids\": [\"view-004\"], \"uncertainty\": \"\", \"fronts\": [\n          {\"id\": \"F18\", \"view_id\": \"view-004\", \"bbox_1000\": [112, 553, 194, 753]},\n          {\"id\": \"F19\", \"view_id\": \"view-004\", \"bbox_1000\": [200, 553, 294, 753]},\n          {\"id\": \"F20\", \"view_id\": \"view-004\", \"bbox_1000\": [296, 553, 388, 753]},\n          {\"id\": \"F21\", \"view_id\": \"view-004\", \"bbox_1000\": [526, 553, 639, 753]}\n        ]},\n        {\"location\": \"Return wing base drawer stack\", \"type\": \"drawer\", \"count\": 3, \"count_basis\": \"clear\", \"view_ids\": [\"view-004\"], \"uncertainty\": \"\", \"fronts\": [\n          {\"id\": \"F22\", \"view_id\": \"view-004\", \"bbox_1000\": [391, 553, 524, 607]},\n          {\"id\": \"F23\", \"view_id\": \"view-004\", \"bbox_1000\": [391, 608, 524, 679]},\n          {\"id\": \"F24\", \"view_id\": \"view-004\", \"bbox_1000\": [391, 682, 524, 753]}\n        ]}\n      ],\n      \"excluded_surfaces\": [\n        {\"id\": \"X01\", \"view_id\": \"view-003\", \"bbox_1000\": [49, 190, 100, 493], \"reason\": \"Fixed end side of the left unit.\"},\n        {\"id\": \"X02\", \"view_id\": \"view-003\", \"bbox_1000\": [577, 653, 600, 854], \"reason\": \"Narrow filler between base run and corner.\"},\n        {\"id\": \"X03\", \"view_id\": \"view-003\", \"bbox_1000\": [944, 403, 975, 886], \"reason\": \"Fixed end panel of the tall return column.\"},\n        {\"id\": \"X04\", \"view_id\": \"view-004\", \"bbox_1000\": [737, 91, 896, 940], \"reason\": \"Tall tower side panel; front of the tower not resolved.\"}\n      ],\n      \"tabletop_supports\": [\n        {\"id\": \"T01\", \"location\": \"L-shaped worktop over base run\", \"leg_count\": 0, \"count_basis\": \"clear\", \"view_ids\": [\"view-002\", \"view-003\", \"view-004\"], \"support_scheme\": \"Worktop rests on the base carcasses with no visible legs; the return end is supported by the tower and the corner carcass.\", \"uncertainty\": \"\", \"legs\": []}\n      ]\n    },\n    \"planner\": {\n      \"summary\": \"Separate base blocks along the L-run with separate hanging units, a corner block, a tall tower and a shared worktop.\",\n      \"blocks\": [\n        {\"id\": \"B01\", \"name\": \"Long-wing base left\", \"contains\": \"Three base door fronts and carcass with plinth\", \"reason\": \"Three door positions in one cabinet run section.\", \"front_ids\": [\"F02\", \"F03\", \"F04\"], \"view_ids\": [\"view-003\"], \"region\": {\"view_id\": \"view-003\", \"bbox_1000\": [40, 460, 380, 890]}},\n        {\"id\": \"B02\", \"name\": \"Long-wing base right\", \"contains\": \"Two base door fronts and carcass up to the corner\", \"reason\": \"Remaining two door positions, split from B01 to respect the three-position limit.\", \"front_ids\": [\"F05\", \"F06\"], \"view_ids\": [\"view-003\"], \"region\": {\"view_id\": \"view-003\", \"bbox_1000\": [378, 460, 580, 890]}},\n        {\"id\": \"B03\", \"name\": \"Corner base column\", \"contains\": \"Corner column fronts and corner drawers\", \"reason\": \"One stacked column at the junction; fronts F12–F15 are one horizontal position. Corner carcass continuity assumed.\", \"front_ids\": [\"F12\", \"F13\", \"F14\", \"F15\"], \"view_ids\": [\"view-003\"], \"region\": {\"view_id\": \"view-003\", \"bbox_1000\": [595, 395, 745, 895]}},\n        {\"id\": \"B04\", \"name\": \"Left hanging unit\", \"contains\": \"Single hanging unit door and carcass\", \"reason\": \"Separate upper unit at the left end, not continuous with base run.\", \"front_ids\": [\"F01\"], \"view_ids\": [\"view-003\"], \"region\": {\"view_id\": \"view-003\", \"bbox_1000\": [40, 190, 200, 500]}},\n        {\"id\": \"B05\", \"name\": \"Middle upper wall units\", \"contains\": \"Two horizontal upper fronts and carcass\", \"reason\": \"Upper units over the long wing between the left unit and corner.\", \"front_ids\": [\"F07\", \"F08\"], \"view_ids\": [\"view-003\"], \"region\": {\"view_id\": \"view-003\", \"bbox_1000\": [200, 380, 605, 500]}},\n        {\"id\": \"B06\", \"name\": \"Upper corner wall units\", \"contains\": \"Three upper door fronts and carcass\", \"reason\": \"Three side-by-side upper positions, within the limit.\", \"front_ids\": [\"F09\", \"F10\", \"F11\"], \"view_ids\": [\"view-003\"], \"region\": {\"view_id\": \"view-003\", \"bbox_1000\": [600, 190, 980, 410]}},\n        {\"id\": \"B07\", \"name\": \"Return upper wall unit\", \"contains\": \"Two tall door leaves and carcass\", \"reason\": \"Separate hanging unit on the return wing.\", \"front_ids\": [\"F16\", \"F17\"], \"view_ids\": [\"view-004\"], \"region\": {\"view_id\": \"view-004\", \"bbox_1000\": [110, 90, 305, 395]}},\n        {\"id\": \"B08\", \"name\": \"Return base left\", \"contains\": \"Three base door fronts and carcass\", \"reason\": \"Three door positions on the return wing.\", \"front_ids\": [\"F18\", \"F19\", \"F20\"], \"view_ids\": [\"view-004\"], \"region\": {\"view_id\": \"view-004\", \"bbox_1000\": [105, 545, 395, 760]}},\n        {\"id\": \"B09\", \"name\": \"Return base right\", \"contains\": \"One door and three stacked drawers\", \"reason\": \"Two horizontal positions; the drawer stack is one position.\", \"front_ids\": [\"F21\", \"F22\", \"F23\", \"F24\"], \"view_ids\": [\"view-004\"], \"region\": {\"view_id\": \"view-004\", \"bbox_1000\": [385, 545, 648, 760]}},\n        {\"id\": \"B10\", \"name\": \"Tall tower unit\", \"contains\": \"Tall column at the return end; front type unresolved\", \"reason\": \"Full-height tower separated from base carcass; its fronts are not counted in this pass.\", \"front_ids\": [], \"view_ids\": [\"view-004\", \"view-002\"], \"region\": {\"view_id\": \"view-004\", \"bbox_1000\": [730, 100, 895, 940]}}\n      ],\n      \"shared_parts\": [\n        {\"id\": \"S01\", \"name\": \"L-shaped worktop\", \"block_ids\": [\"B01\", \"B02\", \"B03\", \"B08\", \"B09\"], \"view_ids\": [\"view-002\"], \"region\": {\"view_id\": \"view-002\", \"bbox_1000\": [80, 400, 760, 700]}}\n      ],\n      \"front_conflicts\": [],\n      \"uncertainties\": [\"Full worktop footprint estimated from the render; sink cutout ignored.\", \"Tower front type is not resolved; no front IDs assigned to B10.\", \"Corner drawers may duplicate return drawers if the views show the same junction.\"]\n    }\n  }]\n}\n```",
+      "derived_totals": {
+        "drawers": 5,
+        "hinged_doors": 15,
+        "lift_up_fronts": 2,
+        "unresolved_fronts": 2,
+        "total_fronts": 24
+      },
+      "leg_counts": [
+        0
+      ],
+      "block_names": [
+        "Long-wing base left",
+        "Long-wing base right",
+        "Corner base column",
+        "Left hanging unit",
+        "Middle upper wall units",
+        "Upper corner wall units",
+        "Return upper wall unit",
+        "Return base left",
+        "Return base right",
+        "Tall tower unit"
+      ]
+    },
+    {
+      "version": "Estimation V7.3.3",
+      "baseline_path": "/private/tmp/lev1-analyze-v7-3-2-20261107-01.json",
+      "baseline_sha256": "81fa9b11ea6696e9a0b4c33a3469e4bb74e080537a7123e21ddb1cffd283a481",
+      "provider_calls": 1,
+      "request_sha256": "0bafde26ad58b8eebdeed35ffefc99f60e7f27bcf0f1797ad5c50467bc875464",
+      "prompt_sha256": "1cb972e09d0a570a618901dcf60a7ac301ede4b4786c7453b66493631f65fde4",
+      "elapsed_seconds": 35.907,
+      "inherited_provider_elapsed_seconds": null,
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 26610,
+        "output_tokens": 7720,
+        "output_tokens_details": {
+          "thinking_tokens": 4267
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "stop_reason": "end_turn",
+      "status": "analyze_requires_semantic_review",
+      "error": null,
+      "validation_status": null,
+      "document": "lev1",
+      "capsule_path": "/private/tmp/lev1-analyze-v7-3-3-20261107-01.json",
+      "request_transformation_verified": true,
+      "unchanged_source_messages_and_settings": true,
+      "usage_inherited": false,
+      "normalized_reading_count": 14,
+      "raw_response_text": "```json\n{\n  \"objects\": [{\n    \"object_id\": \"object-001\",\n    \"islands\": [\n      {\"island_id\": \"view-001\", \"projection\": \"Axonometric view\", \"elevation_index\": null, \"content_role\": \"technical_drawing\", \"observation\": \"Isometric of a tall vertical-slat back panel over a three-drawer base, with a table top extending to one side on a single visible leg.\"},\n      {\"island_id\": \"view-002\", \"projection\": \"Top view\", \"elevation_index\": null, \"content_role\": \"technical_drawing\", \"observation\": \"Plan footprint: a narrow left zone (115) for the slat panel and a wider right zone (187 total) for the seat/table run, overall height 160.\"},\n      {\"island_id\": \"view-003\", \"projection\": \"Axonometric view\", \"elevation_index\": null, \"content_role\": \"technical_drawing\", \"observation\": \"Opposite-side isometric showing the slat face, the drawer base at left, and a table top on two visible legs.\"},\n      {\"island_id\": \"view-004\", \"projection\": \"Front elevation\", \"elevation_index\": 1, \"content_role\": \"technical_drawing\", \"observation\": \"Slat face with seven full-height slat columns with recessed panels, 160 wide, 265 high, above a three-drawer base and a thin plinth strip.\"},\n      {\"island_id\": \"view-005\", \"projection\": \"Side view\", \"elevation_index\": null, \"content_role\": \"technical_drawing\", \"observation\": \"Profile showing the 20 panel thickness, a 72 base depth, the table top at 75 height on a single leg in profile, and a plinth below the base.\"},\n      {\"island_id\": \"view-006\", \"projection\": \"Front elevation\", \"elevation_index\": 2, \"content_role\": \"technical_drawing\", \"observation\": \"Opposite face of the slat panel with a table top beneath it supported by two vertical legs near the outer edges, and a plinth at the base.\"}\n    ],\n    \"understanding\": {\n      \"name\": \"Slatted Bench Unit\",\n      \"type_code\": \"bench\",\n      \"proposed_type\": null,\n      \"description\": \"A fixed slat-back bench unit with a three-drawer base carcass and a table top projecting from one side on two legs. The tall slatted back panel rises from the base as the main vertical element.\",\n      \"characteristics\": [\n        {\"statement\": \"Three side-by-side drawers form the lower base, stacked in one horizontal position with a thin plinth below.\", \"basis\": \"specified\", \"island_ids\": [\"view-004\", \"view-001\"], \"source_refs\": [\"ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0011\"]},\n        {\"statement\": \"Tall back panel of seven vertical slat columns with recessed rectangular inserts, fixed and not operable.\", \"basis\": \"specified\", \"island_ids\": [\"view-004\", \"view-006\"], \"source_refs\": []},\n        {\"statement\": \"Slat panel sheet: veneered wood-look board, natural oak-like finish (inferred), 20 mm thickness from the side-view panel dimension (conflict noted).\", \"basis\": \"inferred\", \"island_ids\": [\"view-005\", \"view-004\"], \"source_refs\": [\"ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0002\"]},\n        {\"statement\": \"Table top is a separate light beige laminate-finished top cantilevered from the panel side, supported by two legs.\", \"basis\": \"inferred\", \"island_ids\": [\"view-003\", \"view-006\", \"view-005\"], \"source_refs\": [\"ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0004\"]},\n        {\"statement\": \"Drawer carcass and drawer fronts: LDSP 17 mm default with veneer-look oak finish (inferred).\", \"basis\": \"default\", \"island_ids\": [\"view-004\"], \"source_refs\": []}\n      ],\n      \"materials\": [\n        {\"part\": \"Slat back panel\", \"material\": \"Veneered MDF-free wood-look board (LDSP-type)\", \"finish\": \"Oak-look veneer, natural wood tone (inferred)\", \"material_kind\": \"sheet\", \"thickness_mm\": 20, \"thickness_measurement_id\": null, \"basis\": \"inferred\", \"island_ids\": [\"view-005\", \"view-004\"], \"source_refs\": [\"ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0002\"], \"reason\": \"Side-view 20 dimensions the panel's own thickness; the normalized value_mm (200) conflicts with that reading, so 20 mm is used as an estimating assumption without citing the occurrence.\"},\n        {\"part\": \"Drawer base carcass and drawer fronts\", \"material\": \"Laminated particle board (LDSP)\", \"finish\": \"Oak-look veneer, natural wood tone (inferred)\", \"material_kind\": \"sheet\", \"thickness_mm\": 17, \"thickness_measurement_id\": null, \"basis\": \"default\", \"island_ids\": [\"view-004\", \"view-005\"], \"source_refs\": [], \"reason\": \"Default ordinary panel thickness for a drawer carcass and fronts.\"},\n        {\"part\": \"Table top\", \"material\": \"Laminated particle board (LDSP)\", \"finish\": \"Light beige laminate (inferred)\", \"material_kind\": \"sheet\", \"thickness_mm\": 30, \"thickness_measurement_id\": null, \"basis\": \"default\", \"island_ids\": [\"view-005\", \"view-003\"], \"source_refs\": [], \"reason\": \"Default finished top thickness of 30 mm, since the side view shows a thin top plate.\"},\n        {\"part\": \"Table legs\", \"material\": \"Round metal tube\", \"finish\": \"Black powder coat (inferred)\", \"material_kind\": \"metal_profile\", \"thickness_mm\": null, \"thickness_measurement_id\": null, \"basis\": \"inferred\", \"island_ids\": [\"view-006\", \"view-003\"], \"source_refs\": [], \"reason\": \"Tube stock and wall thickness are not established.\"}\n      ],\n      \"assumptions\": [\"Panel thickness estimated at 20 mm from the physical side-view dimension.\", \"Table top is attached to the panel side and supported by the two legs; no concealed hardware is assumed.\"],\n      \"conflicts\": [\"view-005-D001 normalized value_mm 200 conflicts with the physical 20 mm panel thickness shown in the side view; the normalized value is kept unchanged and not cited as the thickness.\"]\n    },\n    \"front\": {\n      \"front_groups\": [\n        {\"location\": \"Lower base, three side-by-side drawers below the slat panel\", \"type\": \"drawer\", \"count\": 3, \"count_basis\": \"clear\", \"view_ids\": [\"view-004\"], \"uncertainty\": \"\", \"fronts\": [\n          {\"id\": \"F01\", \"view_id\": \"view-004\", \"bbox_1000\": [108, 770, 301, 830]},\n          {\"id\": \"F02\", \"view_id\": \"view-004\", \"bbox_1000\": [301, 770, 487, 830]},\n          {\"id\": \"F03\", \"view_id\": \"view-004\", \"bbox_1000\": [494, 770, 680, 830]}\n        ]}\n      ],\n      \"excluded_surfaces\": [\n        {\"id\": \"X01\", \"view_id\": \"view-004\", \"bbox_1000\": [99, 203, 691, 766], \"reason\": \"Fixed vertical slat back panel, not an operating front\"},\n        {\"id\": \"X02\", \"view_id\": \"view-004\", \"bbox_1000\": [118, 839, 675, 863], \"reason\": \"Thin plinth strip below the drawer base, fixed\"}\n      ],\n      \"tabletop_supports\": [\n        {\"id\": \"T01\", \"location\": \"Table top projecting from the side of the slat panel and base\", \"leg_count\": 2, \"count_basis\": \"clear\", \"view_ids\": [\"view-006\", \"view-003\", \"view-005\"], \"support_scheme\": \"Two observed legs carry the table top at its outer edge. The top is attached to the panel/base side (observed in the isometric views); the attachment is not otherwise detailed.\", \"uncertainty\": \"Side view shows one leg in profile, which is consistent with two legs seen front-on in view-006 and view-003.\", \"legs\": [\n          {\"id\": \"L01\", \"view_id\": \"view-006\", \"bbox_1000\": [314, 731, 347, 933]},\n          {\"id\": \"L02\", \"view_id\": \"view-006\", \"bbox_1000\": [658, 731, 691, 933]}\n        ]}\n      ]\n    },\n    \"planner\": {\n      \"summary\": \"Three workshop blocks: a three-drawer base carcass, a fixed slat back panel, and a separate table top on legs.\",\n      \"blocks\": [\n        {\"id\": \"B01\", \"name\": \"Drawer base carcass\", \"contains\": \"Base carcass with three side-by-side drawers and the plinth below\", \"reason\": \"Single base carcass across one width, with three drawers stacked in one horizontal position. The plinth is included as a fixed base part.\", \"front_ids\": [\"F01\", \"F02\", \"F03\"], \"view_ids\": [\"view-004\", \"view-005\"], \"region\": {\"view_id\": \"view-004\", \"bbox_1000\": [99, 766, 690, 863]}},\n        {\"id\": \"B02\", \"name\": \"Slat back panel\", \"contains\": \"Full-height fixed slat panel rising from the base\", \"reason\": \"Fixed vertical element with no operating fronts, grouped as a separate upright assembly above the base.\", \"front_ids\": [], \"view_ids\": [\"view-004\", \"view-006\", \"view-005\"], \"region\": {\"view_id\": \"view-004\", \"bbox_1000\": [99, 203, 691, 766]}},\n        {\"id\": \"B03\", \"name\": \"Table top with legs\", \"contains\": \"Projecting table top and its two legs\", \"reason\": \"Worktop-type top listed as its own block; it projects from the panel/base side and is carried by two legs.\", \"front_ids\": [], \"view_ids\": [\"view-003\", \"view-006\"], \"region\": {\"view_id\": \"view-003\", \"bbox_1000\": [263, 552, 939, 862]}}\n      ],\n      \"shared_parts\": [],\n      \"front_conflicts\": [],\n      \"uncertainties\": [\"Full table top footprint is located from the isometric view only; the hidden underside is not visible.\", \"Bounding boxes are approximate for visual review because the enlarged image dimensions are estimated from the supplied views.\"]\n    }\n  }]\n}\n```",
+      "derived_totals": {
+        "drawers": 3,
+        "hinged_doors": 0,
+        "lift_up_fronts": 0,
+        "unresolved_fronts": 0,
+        "total_fronts": 3
+      },
+      "leg_counts": [
+        2
+      ],
+      "block_names": [
+        "Drawer base carcass",
+        "Slat back panel",
+        "Table top with legs"
+      ]
+    },
+    {
+      "version": "Estimation V7.3.3",
+      "baseline_path": "/private/tmp/lev2-analyze-v7-3-2-20261107-01.json",
+      "baseline_sha256": "cfd6b6f0cfad01b6ecf63575d56d0e7faae6aeff7e308e86602863a7bc445de7",
+      "provider_calls": 1,
+      "request_sha256": "ce461dd2449c7f35100c342940be29d8741b5e53ddef135fce2cacf862182925",
+      "prompt_sha256": "1cb972e09d0a570a618901dcf60a7ac301ede4b4786c7453b66493631f65fde4",
+      "elapsed_seconds": 68.87,
+      "inherited_provider_elapsed_seconds": null,
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 25272,
+        "output_tokens": 14000,
+        "output_tokens_details": {
+          "thinking_tokens": 11476
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "stop_reason": "max_tokens",
+      "status": "failed",
+      "error": "ValueError: incomplete provider response",
+      "validation_status": null,
+      "document": "lev2",
+      "capsule_path": "/private/tmp/lev2-analyze-v7-3-3-20261107-01.json",
+      "request_transformation_verified": true,
+      "unchanged_source_messages_and_settings": true,
+      "usage_inherited": false,
+      "normalized_reading_count": 15,
+      "raw_response_text": "```json\n{\n  \"objects\": [{\n    \"object_id\": \"object-001\",\n    \"islands\": [\n      {\"island_id\": \"view-001\", \"projection\": \"Top view\", \"elevation_index\": null, \"content_role\": \"technical_drawing\", \"observation\": \"L-shaped plan: 416 long top arm, 300 left leg, 260 inner return, 45° chamfer at the lower-left corner, 25 depth at the end, 42 and 65 offsets at the upper-left.\"},\n      {\"island_id\": \"view-002\", \"projection\": \"Axonometric view\", \"elevation_index\": null, \"content_role\": \"render\", \"observation\": \"L-shaped base run with beige worktop and chamfered end, sink cutout, tall tower at right end, return wall run with upper units, and a separate small upper cabinet at left.\"},\n      {\"island_id\": \"view-003\", \"projection\": \"Front elevation\", \"elevation_index\": 1, \"content_role\": \"technical_drawing\", \"observation\": \"Front wing: left tall cabinet and 69 end, 180 run with upper horizontal fronts at 75 band, five tall base doors, right column with upper fronts, stacked fronts and two drawers, 184 height dimension, 94 return.\"},\n      {\"island_id\": \"view-004\", \"projection\": \"Front elevation\", \"elevation_index\": 2, \"content_role\": \"technical_drawing\", \"observation\": \"Return wing: two tall upper doors (115 high, 84 wide), base run with three doors, a three-drawer stack, a door at the end, and a 265 tall tower unit at the right.\"}\n    ],\n    \"understanding\": {\n      \"name\": \"L-shaped kitchen\",\n      \"type_code\": \"kitchen\",\n      \"proposed_type\": null,\n      \"description\": \"An L-shaped kitchen run with a base cabinet wing and a perpendicular return, a continuous worktop over the base units, and a tall tower at the end of the return. Upper units sit above the front wing and the return, with a separate upper cabinet pair on the return.\",\n      \"characteristics\": [\n        {\"statement\": \"Base carcasses with a plinth; hinged tall and base doors across the front wing and return.\", \"basis\": \"specified\", \"island_ids\": [\"view-003\", \"view-004\"], \"source_refs\": []},\n        {\"statement\": \"Upper front wing units use horizontal lift-up fronts, with two lift-up fronts on the left and three on the right.\", \"basis\": \"inferred\", \"island_ids\": [\"view-003\"], \"source_refs\": []},\n        {\"statement\": \"Right-side column has two stacked doors above two drawers, and the return base has a three-drawer stack.\", \"basis\": \"specified\", \"island_ids\": [\"view-003\", \"view-004\"], \"source_refs\": []},\n        {\"statement\": \"Tall tower unit at the right end of the return, standing 265 high and stopping above the floor level of the base run.\", \"basis\": \"specified\", \"island_ids\": [\"view-004\", \"view-002\"], \"source_refs\": []},\n        {\"statement\": \"Corner chamfer at the lower-left plan end is a 45° end cut, not a corner joining wings.\", \"basis\": \"specified\", \"island_ids\": [\"view-001\"], \"source_refs\": []},\n        {\"statement\": \"Worktop: artificial stone, beige matte colour inferred, 30 mm finished thickness by default; it covers the base runs and stops before the tall units.\", \"basis\": \"default\", \"island_ids\": [\"view-002\"], \"source_refs\": []},\n        {\"statement\": \"Carcasses and fronts: LDSP 17 mm, sage-green matte finish inferred from render colour, default thickness.\", \"basis\": \"default\", \"island_ids\": [\"view-002\", \"view-003\"], \"source_refs\": []}\n      ],\n      \"materials\": [\n        {\"part\": \"Base and wall carcasses\", \"material\": \"LDSP (laminated chipboard)\", \"finish\": \"Matte white-grey melamine, colour inferred\", \"material_kind\": \"sheet\", \"thickness_mm\": 17, \"thickness_measurement_id\": null, \"basis\": \"default\", \"island_ids\": [\"view-002\", \"view-003\"], \"source_refs\": [], \"reason\": \"Ordinary panel default; no thickness dimension for carcass panels.\"},\n        {\"part\": \"Doors and drawer fronts\", \"material\": \"LDSP (laminated chipboard)\", \"finish\": \"Matte sage-green melamine, colour inferred from render\", \"material_kind\": \"sheet\", \"thickness_mm\": 17, \"thickness_measurement_id\": null, \"basis\": \"default\", \"island_ids\": [\"view-002\", \"view-003\", \"view-004\"], \"source_refs\": [], \"reason\": \"Default front panel assumption; render colour used only as inferred finish.\"},\n        {\"part\": \"Worktop\", \"material\": \"Artificial stone\", \"finish\": \"Matte beige, colour inferred\", \"material_kind\": \"stone\", \"thickness_mm\": 30, \"thickness_measurement_id\": null, \"basis\": \"default\", \"island_ids\": [\"view-002\"], \"source_refs\": [], \"reason\": \"Unspecified kitchen worktop default: artificial stone, 30 mm finished.\"}\n      ],\n      \"assumptions\": [\n        \"Tower front subdivision is not clearly shown, so the tower is treated as a fixed carcass face.\",\n        \"Right column drawers in view-003 are assumed to be a separate drawer stack from the return drawer stack in view-004.\"\n      ],\n      \"conflicts\": [\n        \"Saved value_mm for printed dimensions (e.g. 416 → 4160) is 10× the printed number; values are kept unchanged as normalized by Detection.\",\n        \"Plan leg 260 and elevation tower 265 are close but not identical; treated as neighbouring dimensions, not one panel.\"\n      ]\n    },\n    \"front\": {\n      \"front_groups\": [\n        {\"location\": \"Left tall cabinet door, front wing\", \"type\": \"hinged\", \"count\": 1, \"count_basis\": \"clear\", \"view_ids\": [\"view-003\"], \"uncertainty\": \"\", \"fronts\": [{\"id\": \"F01\", \"view_id\": \"view-003\", \"bbox_1000\": [109,200,200,494]}]},\n        {\"location\": \"Front wing base run doors\", \"type\": \"hinged\", \"count\": 5, \"count_basis\": \"clear\", \"view_ids\": [\"view-003\"], \"uncertainty\": \"\", \"fronts\": [\n          {\"id\": \"F02\", \"view_id\": \"view-003\", \"bbox_1000\": [103,657,185,860]},\n          {\"id\": \"F03\", \"view_id\": \"view-003\", \"bbox_1000\": [186,657,280,860]},\n          {\"id\": \"F04\", \"view_id\": \"view-003\", \"bbox_1000\": [282,657,379,860]},\n          {\"id\": \"F05\", \"view_id\": \"view-003\", \"bbox_1000\": [380,657,476,860]},\n          {\"id\": \"F06\", \"view_id\": \"view-003\", \"bbox_1000\": [478,657,574,860]}]},\n        {\"location\": \"Right column upper doors above drawers\", \"type\": \"hinged\", \"count\": 2, \"count_basis\": \"estimated\", \"view_ids\": [\"view-003\"], \"uncertainty\": \"Portrait leaves in a stacked column; the upper boundary against the wall unit is not fully explicit.\", \"fronts\": [\n          {\"id\": \"F07\", \"view_id\": \"view-003\", \"bbox_1000\": [602,406,735,578]},\n          {\"id\": \"F08\", \"view_id\": \"view-003\", \"bbox_1000\": [606,580,732,739]}]},\n        {\"location\": \"Return upper wall doors\", \"type\": \"hinged\", \"count\": 2, \"count_basis\": \"clear\", \"view_ids\": [\"view-004\"], \"uncertainty\": \"\", \"fronts\": [\n          {\"id\": \"F09\", \"view",
+      "derived_totals": null,
+      "block_names": null,
+      "partial_material_observation": "artificial stone appears in incomplete raw text; not a completed result"
+    }
+  ]
+}
