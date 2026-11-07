@@ -1342,12 +1342,60 @@ COMPLETED: Lev1 retains 3/3 drawer boxes and misses the second support;
 Lev2 names 21 fronts with zero boxes; Adda emits no individual front records.
 Full-object acceptance remains PENDING. Evidence:
 notes/evidence/estimation-v7-2-retrospective-2026-11-07/opening-marks-trials.json.
-Next isolated tests, in order: (1) recover Adda V01/V02 short callout labels
-locally, then attach each to the contour at its arrow tip. Saved OCR lacks
-those labels. (2) Verify dimension ownership on Lev1 using existing 2VN
-bindings, including source mark 20 normalized to 200 mm. (3) Link an
-explicit section/detail marker to its parent and verify one physical block
-across both views. Raster recovery and Blocks/Parts remain pending.
+Owner returned to the deterministic Offline Vector replay. Restored all
+18 Islands from the protected archive and reproduced nine files plus the
+original Adda V01 swing-mark JSON and overlay byte-for-byte. The exact mark
+rule detects eight Adda V01 leaves and no marks on the other 17 views.
+COMPLETED full local V01 review: 8 hinged leaves by native swing marks,
+6 drawers, 8 pull-out shelf positions and 1 fixed open shelf via native
+leaders with visually read labels, plus 2 mirrors. Two glazed zones, two
+LED 3000 callouts and one window closure are visible. The latter's outline
+has a 1.69 px endpoint gap and was recovered separately. Pane counts,
+internal fixed shelves and physical LED strip counts remain unresolved.
+Saved OCR lacks the callout text; local Vision did not return results.
+Zero Anthropic calls in that offline replay. Visual evidence in the thread
+visualization folder under `offline-marks-replay/`.
+Owner requested model-only interpretation on V01. COMPLETED one Haiku 5.5
+medium/no-Thinking call on the source crop and neutral C/A IDs. No human
+role labels or expected counts in the request. The model read all ten leader
+groups, including two LED 3000 callouts, in 8.114 s. Raw role-to-contour
+selection matched 0/8 hinged leaves, 0/6 drawers, 7/8 pull-out shelf positions
+with 14 extras, and 1/1 fixed open shelf. All eight hinged leaves were called
+drawers. Model-chosen leader IDs with native tip binding recovered 6 drawers,
+8 pull-out shelves and 1 open shelf offline without manual role labels.
+Raw model output and separate comparison in `adda-v01-model-inventory/` in
+the thread visualization folder. Private provider witness:
+`/private/tmp/adda-v01-model-inventory.YKkuoCFk/model-result.json`.
+OWNER-REQUESTED V7.4 FRONT REPAIR, P0 ACTIVE, 3.17.4.6:
+Keep V7.2 Offline Vector and V7.3 on their existing refs. The model-only
+failure was expansion from correctly read leader groups to unrelated contours.
+The opt-in V7.4 probe separates leader semantics, per-leaf stroke semantics
+and labels inside contours. Code binds each typed leader by native tip to a
+unique contour, deduplicates and surfaces conflicting evidence.
+Two completed Haiku 5.5 medium/no-Thinking Adda V01 trials: the first matched
+8 hinged leaves, 6 drawers and 4 of 8 pull-outs. It misread A03 as a mirror
+label. Adding localized source-caption crops matched all 8 pull-outs and 6
+drawers, but the model called all 8 swing marks cut/fixed. Offline composition
+of the two untouched model responses by evidence channel matched the exact
+reference IDs: 8 hinged leaves, 6 drawers, 8 pull-outs, 1 fixed open shelf and
+2 mirrors, with zero extras or binding conflicts. No manually supplied roles
+or counts. This establishes the binding behavior, with the two inputs picked
+retrospectively. It does not establish repeatability or a single-pass result.
+Evidence: notes/evidence/estimation-v7-4-front-evidence-2026-11-07/adda-v01-local-replay.json.
+Private witnesses: /private/tmp/estimation-v74-adda-v01.EeGLMa5H/.
+Combined caption and isolated stroke tiles request prepared locally. No
+provider call was made after automatic approval review rejected transfer of
+the private drawing and new derived images. Next: explicitly authorize and
+test the combined Adda V01 payload against the same exact IDs. Broader
+acceptance still requires Adda V02/full Adda, Lev1 and Lev2, including views
+without native leader or stroke evidence. Keep V7.4 untagged until acceptance.
+
+After V01, check source-label reading and constrained tip binding on Adda
+V02. Preserve the separate swing-mark evidence. Then verify dimension ownership
+on Lev1 using existing 2VN bindings, including mark 20 normalized to
+200 mm. Link an explicit section/detail marker to its parent and
+verify one physical block across views. Raster recovery and Blocks/Parts
+remain pending.
 
 OWNER REFINEMENT: do not require a status report for every Island. The next
 diagnostic question is recognition of a distinct physical face versus its

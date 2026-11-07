@@ -1,0 +1,222 @@
+{
+  "work": "3.17.4.6",
+  "document": "Adda",
+  "view_id": "view-001",
+  "reference_sha256": "1b730a1a63ba12c76977678290a61c27ae418e3d97677595ca196dd1c01fe05a",
+  "source_request_sha256": "d01d56e9ca5e5ea632a6fc7035363f356882b633094ff20847ebcaa9dcf02de8",
+  "geometry_audit_sha256": "0bde484833090c6fd5ce79ba540bae11d0a879c55c134005c27358bdd63e8426",
+  "status": "offline_composition_matched; single_request_and_full_benchmark_pending",
+  "prior_unconstrained_shelf_selections": {
+    "matched": 7,
+    "extra": 14,
+    "missed": 1
+  },
+  "trials": {
+    "native_pairs_and_full_view": {
+      "request_sha256": "a113192ffc587ee65588da31ec962c1f9a569871aaf67fd27f776a70c495964e",
+      "response_id": "msg_011CgpJc8d7fcMQ69a7Vbns6",
+      "elapsed_seconds": 6.338,
+      "input_tokens": 5559,
+      "output_tokens": 589,
+      "matches_by_role": {
+        "hinged_door": {
+          "matches": [
+            "C41",
+            "C45",
+            "C49",
+            "C52",
+            "C76",
+            "C79",
+            "C82",
+            "C84"
+          ],
+          "misses": [],
+          "extras": []
+        },
+        "drawer": {
+          "matches": [
+            "C64",
+            "C65",
+            "C67",
+            "C71",
+            "C77",
+            "C81"
+          ],
+          "misses": [],
+          "extras": []
+        },
+        "pull_out_shelf": {
+          "matches": [
+            "C46",
+            "C57",
+            "C69",
+            "C75"
+          ],
+          "misses": [
+            "C34",
+            "C37",
+            "C58",
+            "C60"
+          ],
+          "extras": []
+        },
+        "fixed_open_shelf": {
+          "matches": [
+            "C32"
+          ],
+          "misses": [],
+          "extras": []
+        },
+        "mirror": {
+          "matches": [
+            "C16",
+            "C19"
+          ],
+          "misses": [],
+          "extras": []
+        }
+      }
+    },
+    "plus_caption_crops": {
+      "request_sha256": "b3fb9ac009cdc11aa8bf7e71d75dfba2b1f0983fcc5ad67b41c2c483c858a496",
+      "response_id": "msg_011CgpJkcRfpAN92X1K4QbVf",
+      "elapsed_seconds": 3.477,
+      "input_tokens": 7186,
+      "output_tokens": 646,
+      "matches_by_role": {
+        "hinged_door": {
+          "matches": [],
+          "misses": [
+            "C41",
+            "C45",
+            "C49",
+            "C52",
+            "C76",
+            "C79",
+            "C82",
+            "C84"
+          ],
+          "extras": []
+        },
+        "drawer": {
+          "matches": [
+            "C64",
+            "C65",
+            "C67",
+            "C71",
+            "C77",
+            "C81"
+          ],
+          "misses": [],
+          "extras": []
+        },
+        "pull_out_shelf": {
+          "matches": [
+            "C34",
+            "C37",
+            "C46",
+            "C57",
+            "C58",
+            "C60",
+            "C69",
+            "C75"
+          ],
+          "misses": [],
+          "extras": []
+        },
+        "fixed_open_shelf": {
+          "matches": [
+            "C32"
+          ],
+          "misses": [],
+          "extras": []
+        },
+        "mirror": {
+          "matches": [
+            "C16",
+            "C19"
+          ],
+          "misses": [],
+          "extras": []
+        }
+      }
+    }
+  },
+  "offline_replay": {
+    "provider_calls": 0,
+    "role_sources": {
+      "leader_readings": "plus_caption_crops",
+      "stroke_readings": "native_pairs_and_full_view",
+      "direct_labels": "plus_caption_crops"
+    },
+    "counts": {
+      "mirror": 2,
+      "fixed_open_shelf": 1,
+      "pull_out_shelf": 8,
+      "hinged_door": 8,
+      "drawer": 6
+    },
+    "matches_by_role": {
+      "hinged_door": {
+        "matches": [
+          "C41",
+          "C45",
+          "C49",
+          "C52",
+          "C76",
+          "C79",
+          "C82",
+          "C84"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "drawer": {
+        "matches": [
+          "C64",
+          "C65",
+          "C67",
+          "C71",
+          "C77",
+          "C81"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "pull_out_shelf": {
+        "matches": [
+          "C34",
+          "C37",
+          "C46",
+          "C57",
+          "C58",
+          "C60",
+          "C69",
+          "C75"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "fixed_open_shelf": {
+        "matches": [
+          "C32"
+        ],
+        "misses": [],
+        "extras": []
+      },
+      "mirror": {
+        "matches": [
+          "C16",
+          "C19"
+        ],
+        "misses": [],
+        "extras": []
+      }
+    },
+    "binding_issues": []
+  },
+  "combined_live_probe": {
+    "provider_calls": 0,
+    "status": "blocked_by_automatic_approval_review"
+  }
+}

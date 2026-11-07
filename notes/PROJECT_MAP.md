@@ -10,6 +10,14 @@ offline replay and nine evidence files. See section 37 of
 ESTIMATION_V6_FULL_CHAT_HANDOFF_2026_11_06.md and the manifest:
 notes/evidence/estimation-v7-2-retrospective-2026-11-07/offline-vector-checkpoint.json.
 
+Experimental V7.4 Front evidence probe, same 3.17.4.6:
+`codex/estimation-v7-4-front-evidence`; runner
+`python -m tools.probe_estimation_v7_4_front_evidence`, offline preparation by
+default. Source-label semantics and native tip binding are separate from
+swing-mark semantics. Adda V01 exact offline replay is recorded in
+notes/evidence/estimation-v7-4-front-evidence-2026-11-07/adda-v01-local-replay.json.
+Live combined request and full three-file acceptance are pending.
+
 Active V7.2 opening-mark variant, same 3.17.4.6:
 `codex/estimation-v7-2-opening-marks` derives from the protected Offline Vector
 checkpoint. Use `python -m tools.probe_estimation_v7_2_front_landmarks
