@@ -1,5 +1,14 @@
 # Done Log
 
+2026-11-07, 3.17.4.6: owner accepted the offline geometry benchmark and
+requested a full checkpoint, `estimation-v7.2-medium-offline-vector-experimental-2026-11-07`.
+Four objects, 18 Islands, zero model calls. Archive restore checked all
+source and evidence hashes and reproduced nine files byte-for-byte.
+The review preserves three raster views with zero vector candidates and
+merged faces on Adda V06/V07. Automatic Front roles, cross-view matching,
+Blocks and Parts remain open. Manifest:
+notes/evidence/estimation-v7-2-retrospective-2026-11-07/offline-vector-checkpoint.json.
+
 2026-11-07, 3.17.4.6: owner requested and selected the experimental
 `estimation-v7.2-medium-front-landmarks-experimental-2026-11-07` checkpoint.
 Strict Island Map, V7.2 medium/disabled, per-front landmark and nullable

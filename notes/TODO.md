@@ -1300,6 +1300,41 @@ wording comparison on Lev1/Lev2 with this exact schema remains PENDING, not
 approved. Pending separately: X evidence and explicitly indicated pull-out
 shelves/slide sets. No mandatory Island report or Thinking. Manifest:
 notes/evidence/estimation-v7-2-retrospective-2026-11-07/front-landmarks-checkpoint.json.
+
+COMPLETED owner-requested offline vector diagnostic, same 3.17.4.6.
+Source PDF paths produce closed contours for 8/8 Lev2 V4 reference fronts,
+including all three lower doors missed in the landmark repeats. The fixed
+side also closes; role classification and cross-view deduplication remain
+open. Adda V02 has three native leaders with one root and three separate
+drawer faces. Each tip maps to its own face after 0.75 px endpoint snapping
+in the 1100 px crop; at 0.25 px the left tip has no matching closed face.
+“Ящики” was verified visually and is absent from the saved OCR. Results
+are scoped to these vector PDF views, with zero provider calls and no runtime
+change. Overlays and coordinate audit in the thread visualization directory:
+`lev2-v4-offline-vector-overlay.png`, `adda-v02-offline-vector-overlay.png`,
+`estimation-offline-vector-fronts-evidence.json`.
+Owner-requested expansion COMPLETED offline across all 18 Islands (Lev1 6,
+Lev2 4, Adda 4+4, frozen Detection memberships). Lev1 V04 localizes three
+drawers, V06 two supports. Lev2 V04 repeats 8/8; V03 localizes the two lifts,
+three upper-right leaves, four lower reference doors and two drawers,
+with additional surface roles still open. Adda V02 localizes three drawers
+and the mirror; V01 maps six drawer and eight pull-out shelf arrows to
+distinct candidates and four X groups to eight leaf candidates, with two
+visually identified mirrors. Labels were read visually. Lev1 V01/V03
+and Lev2 V02 are raster; the current vector method gives no faces there.
+Adda V06/V07 retain merged contours. No model call, runtime change,
+automatic semantic acceptance, or validated Blocks/Parts output.
+Four object overlays and `estimation-offline-all-islands-evidence.json`
+in the thread visualization directory.
+OWNER-ACCEPTED OFFLINE GEOMETRY CHECKPOINT, COMPLETED, 3.17.4.6:
+`estimation-v7.2-medium-offline-vector-experimental-2026-11-07`.
+Private local archive and validated replay, with 9 byte-identical files:
+notes/evidence/estimation-v7-2-retrospective-2026-11-07/offline-vector-checkpoint.json.
+P0 ACTIVE for the existing Front acceptance objective. Proposed next
+diagnostic is to pass extracted candidate IDs and source cues to Front
+and score role, false positives and cross-view identity. Front integration,
+raster recovery and Blocks/Parts acceptance remain pending.
+
 OWNER REFINEMENT: do not require a status report for every Island. The next
 diagnostic question is recognition of a distinct physical face versus its
 annotation in the same response. The 8/8 V4 and V3 lift-pair evidence belongs

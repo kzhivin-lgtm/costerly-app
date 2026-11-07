@@ -1,0 +1,133 @@
+{
+  "work": "3.17.4.6",
+  "date": "2026-11-07",
+  "version": "Estimation 7.2 medium + Offline Vector",
+  "status": "owner-accepted offline geometry benchmark",
+  "tag": "estimation-v7.2-medium-offline-vector-experimental-2026-11-07",
+  "branch": "codex/estimation-v7-2-front-landmarks",
+  "baseline_commit": "8aa765bb73cc9ee329f2e31f3eb37e356fbd8e82",
+  "baseline_tag": "estimation-v7.2-medium-front-landmarks-experimental-2026-11-07",
+  "provider_calls": 0,
+  "production_promoted": false,
+  "benchmark": {
+    "islands": 18,
+    "objects": 4,
+    "lev1": "Three drawer faces on V04, two supports on V06.",
+    "lev2": "All eight V04 reference faces; V03 two lifts, three upper-right doors, four lower reference doors and two drawers. Additional role ambiguity remains.",
+    "adda_corner": "V01 six drawer leaders and eight pull-out shelf leaders match distinct faces; four Xs map to eight leaves; two mirrors identified visually.",
+    "adda_straight": "V02 three drawer leaders match distinct faces, plus one mirror; V03 repeats the three drawers."
+  },
+  "limits": [
+    "Role and printed-label review is human. Vector candidates include fixed sides and repeated projections.",
+    "Lev1 V01/V03 and Lev2 V02 raster axonometrics yield zero vector faces.",
+    "Adda V06/V07 retain merged faces. Adda V02 left drawer requires endpoint snapping in this crop.",
+    "Automatic semantic classification, cross-view correspondence, Blocks and Parts are outside this benchmark."
+  ],
+  "documents": {
+    "lev1": {
+      "source_sha256": "56bfa63e0236c85a161a2fa95a8996b03003df8f2f01d54ac4236acb5a7287b8",
+      "detection_run_id": "run_1cba0b2491dc413c9a3be2fdd526226b",
+      "islands": {
+        "object-001": [
+          "view-001",
+          "view-002",
+          "view-003",
+          "view-004",
+          "view-005",
+          "view-006"
+        ]
+      },
+      "view_geometry_candidate_counts": {
+        "view-001": 0,
+        "view-002": 3,
+        "view-003": 0,
+        "view-004": 35,
+        "view-005": 6,
+        "view-006": 31
+      }
+    },
+    "lev2": {
+      "source_sha256": "b69e132814531862c1abbf2ea3910e0221ab013dd2d0fb184400149d6ec02b1d",
+      "detection_run_id": "run_189150ebf62447fc958f7c23cc34e3bb",
+      "islands": {
+        "object-001": [
+          "view-001",
+          "view-002",
+          "view-003",
+          "view-004"
+        ]
+      },
+      "view_geometry_candidate_counts": {
+        "view-001": 14,
+        "view-002": 0,
+        "view-003": 31,
+        "view-004": 24
+      }
+    },
+    "adda": {
+      "source_sha256": "09dc963c8b7c9aa341085ae4dbc1bbd31be606ad9f94c95136ecdc646183d4b3",
+      "detection_run_id": "run_4e47c1226af946698779203ca31ff705",
+      "islands": {
+        "object-001": [
+          "view-002",
+          "view-003",
+          "view-005",
+          "view-007"
+        ],
+        "object-002": [
+          "view-001",
+          "view-004",
+          "view-006",
+          "view-008"
+        ]
+      },
+      "view_geometry_candidate_counts": {
+        "view-002": 26,
+        "view-003": 13,
+        "view-005": 4,
+        "view-007": 10,
+        "view-001": 89,
+        "view-004": 61,
+        "view-006": 23,
+        "view-008": 6
+      }
+    }
+  },
+  "replay": {
+    "command": "python replay.py --output ./replay-output",
+    "interpreter": "CPython 3.13.15",
+    "pymupdf": "1.28.2",
+    "pillow": "12.2.0",
+    "fonts": "macOS Arial and Arial Bold",
+    "expected_byte_identical_artifacts": 9,
+    "snap_tolerance_px": 0.75,
+    "min_polygon_area_px2": 500,
+    "nominal_crop_width_px": 1100
+  },
+  "private_archive": {
+    "path": "/Users/qb/Documents/ChatGPT/Costerly/backups/estimation-v7.2-medium-offline-vector-experimental-2026-11-07/private-replay-evidence.tar.gz",
+    "sha256": "ad33ebfad93578560550d63c1e21a68102ee1c890608ad1fb67dada849d08234",
+    "file_sha256": {
+      "README.md": "a6d2b88747bd42946c23ad95b696c5c27cc9baf59e441237eb2c0ecdcac0a35b",
+      "check.py": "2c021350c02d5a27cdf340ad3eceffcb126dde01dc72ce77539ae729a259c04c",
+      "evidence/adda-corner-offline-all-islands.png": "476480d3fcbb56023b8cbbe460bedc6e3d40b143cc7760e190ba9a1c7717471d",
+      "evidence/adda-straight-offline-all-islands.png": "ee2703d5f3375c6d32d0c8c7f4ef7fd789ae050e364af9cd27422c369ed11ce5",
+      "evidence/adda-v01-offline-detail.png": "94fab25aeb238aff0a57f1ca7ec7cc528ce198d792300502bf882d2cb6d5fd2b",
+      "evidence/adda-v02-offline-vector-overlay.png": "42a3f6ad5b1a3f64f2225007161a8eeb23b9e190eceab08ad0babf9fec2af836",
+      "evidence/estimation-offline-all-islands-evidence.json": "0bde484833090c6fd5ce79ba540bae11d0a879c55c134005c27358bdd63e8426",
+      "evidence/estimation-offline-vector-fronts-evidence.json": "3f87e7cd4f610537f7378fea4852e7b26062c859f3f808ffdca2a0f268a5af1e",
+      "evidence/lev1-offline-all-islands.png": "113415536e0511aa595eed1c3de647c224d64459c52b63543e1010fbcacec81d",
+      "evidence/lev2-offline-all-islands.png": "5f430c1fb2b6caa8a73012cabc018c1f4f7dede382d0c3a9ce235bde4ea7b84a",
+      "evidence/lev2-v4-offline-vector-overlay.png": "c50108807cc7c1603c23a9553a0a690900d681b82a8c2c3285597d8f738d92cc",
+      "full.py": "6d199eb0e0f4c87f524e2ed4d7cae7b1866bc696d00ca11bfb34752063fc07f5",
+      "full_overlay.py": "9ab62ac7cb2fc1218a275fa5d1dbf0e53558566ebb8b0fb990b78b81ec760592",
+      "full_review.py": "7bc8c6b6735a9d4be0ec7e28f3ee60bc4a18a6345898ff2b03feadae28a51a91",
+      "islands.json": "9a20454a8a41ce52172467e438481bc6453944fcc65e6541f6e6412a3c6c9b59",
+      "render.py": "3b43c5fd3ccd0d43ba375fd543dd295ff02da2b13dfc4541ff5d8cfcfd0e910f",
+      "replay.py": "e495dbe0d3c30b5146ab0187404f86cf68d9e47d82f2d67483e0b199efb39cf5",
+      "sources/Adda.pdf": "09dc963c8b7c9aa341085ae4dbc1bbd31be606ad9f94c95136ecdc646183d4b3",
+      "sources/Lev 2.pdf": "b69e132814531862c1abbf2ea3910e0221ab013dd2d0fb184400149d6ec02b1d",
+      "sources/Lev_1.pdf": "56bfa63e0236c85a161a2fa95a8996b03003df8f2f01d54ac4236acb5a7287b8"
+    }
+  }
+}

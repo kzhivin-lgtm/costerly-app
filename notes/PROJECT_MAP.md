@@ -1,6 +1,16 @@
 # Costerly AI Project Map
 
 Current Estimation research checkpoint, 3.17.4.6, 2026-11-07:
+`estimation-v7.2-medium-offline-vector-experimental-2026-11-07`.
+Owner-accepted Offline Vector geometry benchmark on 18 Islands across Lev1,
+Lev2 and both Adda objects. Native PDF paths supply contour candidates,
+callout tips and X evidence. Roles in the overlay are reference review.
+Local private archive contains source PDFs, frozen Island metadata, exact
+offline replay and nine evidence files. See section 37 of
+ESTIMATION_V6_FULL_CHAT_HANDOFF_2026_11_06.md and the manifest:
+notes/evidence/estimation-v7-2-retrospective-2026-11-07/offline-vector-checkpoint.json.
+
+Analyze baseline underneath Offline Vector, 3.17.4.6, 2026-11-07:
 `estimation-v7.2-medium-front-landmarks-experimental-2026-11-07`.
 V7.2 medium/Thinking disabled; strict Island Map; Front individual landmarks
 and nullable crop-pixel boxes; numeric count includes estimated entries.
@@ -8,8 +18,8 @@ Runner: `python -m tools.probe_estimation_v7_2_front_landmarks`. Offline unless
 `--execute` is specified. Existing runtime/defaults unchanged. Exact replay
 inputs, request hashes, tests, benchmark status and historical comparisons:
 notes/evidence/estimation-v7-2-retrospective-2026-11-07/front-landmarks-checkpoint.json.
-Read section 36 of ESTIMATION_V6_FULL_CHAT_HANDOFF_2026_11_06.md before the
-historical V6 sections for the current restart point.
+Read section 36 of ESTIMATION_V6_FULL_CHAT_HANDOFF_2026_11_06.md for the
+Analyze baseline contract.
 
 Earlier experiment, original V7.2 thinking disabled, effort medium/high, 2026-11-07:
 tools/probe_estimation_v7_2_thinking.py --revision V7.2-disabled-medium /
