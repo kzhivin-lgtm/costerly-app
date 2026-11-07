@@ -1396,6 +1396,22 @@ partial and V7.4 remains untagged. Next: validate binding of direct labels
 from a text location to the enclosing contour, then verify Adda V02/full
 Adda, Lev1 and Lev2, including views without native leader or stroke evidence.
 
+2026-11-08, owner-requested Lev1/Lev2 transfer trial, COMPLETED (partial).
+These views have no native leader groups or per-leaf swing pairs. The
+visual-only companion probe sent all frozen clean Islands and neutral
+contour maps once per file, medium/no Thinking, no reference labels.
+Lev1 V4: 3/3 drawer contours, grouped into one physical record. V5: 1/1
+support appearance; V6: 0/2 support contours. Lev2 V3: 9/11 typed contours;
+both lift-ups omitted. V4: 5/8, with both upper doors and all three drawers
+localized; three lower doors omitted, fixed side excluded, two plinth
+contours mislabeled support legs. Model grouped distinct same-view faces
+in both files. Offline validation now preserves appearances but suppresses
+the physical total when the grouping contract is violated.
+Evidence: notes/evidence/estimation-v7-4-front-evidence-2026-11-07/lev-visual-front-runs.json.
+Next diagnostic for unmarked views: separate per-view face records from
+cross-view identity links, and compare coverage before deduplication.
+The accepted V7.2 vector geometry remains the checkpoint.
+
 After V01, check source-label reading and constrained tip binding on Adda
 V02. Preserve the separate swing-mark evidence. Then verify dimension ownership
 on Lev1 using existing 2VN bindings, including mark 20 normalized to

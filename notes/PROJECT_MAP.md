@@ -20,6 +20,10 @@ One live combined request matched all Adda V01 doors, drawers and shelves,
 with one mirror localized to its neighbor. Full-view and full three-file
 acceptance remain pending. Live comparison:
 notes/evidence/estimation-v7-4-front-evidence-2026-11-07/adda-v01-single-run.json.
+Companion `python -m tools.probe_estimation_v7_4_visual_front` tests unmarked
+views using neutral contours and clean crops. Lev1/Lev2 diagnostics are
+partial and cross-view physical totals were withheld. Evidence:
+notes/evidence/estimation-v7-4-front-evidence-2026-11-07/lev-visual-front-runs.json.
 
 Active V7.2 opening-mark variant, same 3.17.4.6:
 `codex/estimation-v7-2-opening-marks` derives from the protected Offline Vector

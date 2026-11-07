@@ -251,6 +251,14 @@ def prepare(source, packet, marks, *, document, view_id, checkpoint=None, stroke
 
 
 def execute(request, output, *, packet, strokes, source_hash):
+    def bind(readings):
+        return bind_front_roles(
+            readings, leaders=packet["leaders"], contours=packet["contours"], stroke_ids=strokes)
+
+    execute_request(request, output, bind=bind, source_hash=source_hash)
+
+
+def execute_request(request, output, *, bind, source_hash):
     from agents.estimation_understanding_agent import (
         _create_message_with_hard_timeout, _json_object, get_anthropic_client,
     )
@@ -275,8 +283,7 @@ def execute(request, output, *, packet, strokes, source_hash):
             raise ValueError("incomplete response")
         readings = _json_object(body)
         witness["model_readings"] = readings
-        witness["bound_fronts"] = bind_front_roles(
-            readings, leaders=packet["leaders"], contours=packet["contours"], stroke_ids=strokes)
+        witness["bound_fronts"] = bind(readings)
         witness["status"] = "semantic_review_required"
     except Exception as exc:
         witness.update(status="failed", error=f"{type(exc).__name__}: {exc}")

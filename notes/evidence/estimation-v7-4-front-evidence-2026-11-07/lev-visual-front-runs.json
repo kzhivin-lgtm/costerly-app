@@ -1,0 +1,261 @@
+{
+  "work": "3.17.4.6",
+  "date": "2026-11-08",
+  "base_commit": "8298c74",
+  "scope": "visual Front on all frozen Islands, one call per file",
+  "documents": {
+    "lev1": {
+      "provider_calls": 1,
+      "views": 6,
+      "request_sha256": "f1c06ce23a0d6778daffb288ef6231b3bd7147935efcdc47f41caa4473ef9a10",
+      "witness_sha256": "3b26cd263e6608690b43f9280c1bf7dce72c28ab2826b4bc9fda27ce72cbd2d5",
+      "provider_response_id": "msg_011CgpLrRYjQ92HkctuGsU4u",
+      "geometry_audit_sha256": "0bde484833090c6fd5ce79ba540bae11d0a879c55c134005c27358bdd63e8426",
+      "elapsed_seconds": 3.871,
+      "usage": {
+        "input_tokens": 20308,
+        "output_tokens": 452
+      },
+      "physical_counts": null,
+      "same_view_grouping_issues": [
+        {
+          "item": 1,
+          "view_id": "view-004",
+          "candidate_id": "C10",
+          "reason": "multiple faces from one view grouped into one item"
+        },
+        {
+          "item": 1,
+          "view_id": "view-004",
+          "candidate_id": "C11",
+          "reason": "multiple faces from one view grouped into one item"
+        },
+        {
+          "item": 1,
+          "view_id": "view-004",
+          "candidate_id": "C13",
+          "reason": "multiple faces from one view grouped into one item"
+        },
+        {
+          "item": 1,
+          "view_id": "view-004",
+          "candidate_id": "C14",
+          "reason": "multiple faces from one view grouped into one item"
+        },
+        {
+          "item": 1,
+          "view_id": "view-004",
+          "candidate_id": "C15",
+          "reason": "multiple faces from one view grouped into one item"
+        },
+        {
+          "item": 2,
+          "view_id": "view-004",
+          "candidate_id": "C33",
+          "reason": "multiple faces from one view grouped into one item"
+        },
+        {
+          "item": 2,
+          "view_id": "view-004",
+          "candidate_id": "C34",
+          "reason": "multiple faces from one view grouped into one item"
+        }
+      ],
+      "view_checks": {
+        "view-004": {
+          "expected": {
+            "C32": "drawer",
+            "C33": "drawer",
+            "C34": "drawer"
+          },
+          "matched": [
+            "C32",
+            "C33",
+            "C34"
+          ],
+          "missed": [],
+          "known_wrong": {},
+          "other_predictions": {
+            "C09": "unresolved_front",
+            "C10": "unresolved_front",
+            "C11": "unresolved_front",
+            "C13": "unresolved_front",
+            "C14": "unresolved_front",
+            "C15": "unresolved_front"
+          }
+        },
+        "view-005": {
+          "expected": {
+            "C04": "support_leg"
+          },
+          "matched": [
+            "C04"
+          ],
+          "missed": [],
+          "known_wrong": {},
+          "other_predictions": {}
+        },
+        "view-006": {
+          "expected": {
+            "C26": "support_leg",
+            "C28": "support_leg"
+          },
+          "matched": [],
+          "missed": [
+            "C26",
+            "C28"
+          ],
+          "known_wrong": {},
+          "other_predictions": {}
+        }
+      }
+    },
+    "lev2": {
+      "provider_calls": 1,
+      "views": 4,
+      "request_sha256": "09e97f411ddfe92e0375c991fcd00127a0d02e09d074196d503700933a3489fd",
+      "witness_sha256": "15ab4db24ceb2e41e00052b816423b489d653bea34fe6998505a9d11386f80ef",
+      "provider_response_id": "msg_011CgpLrgtDULsxDJyHzXRmf",
+      "geometry_audit_sha256": "0bde484833090c6fd5ce79ba540bae11d0a879c55c134005c27358bdd63e8426",
+      "elapsed_seconds": 4.363,
+      "usage": {
+        "input_tokens": 9389,
+        "output_tokens": 905
+      },
+      "physical_counts": null,
+      "same_view_grouping_issues": [
+        {
+          "item": 2,
+          "view_id": "view-004",
+          "candidate_id": "C06",
+          "reason": "multiple faces from one view grouped into one item"
+        },
+        {
+          "item": 3,
+          "view_id": "view-004",
+          "candidate_id": "C21",
+          "reason": "multiple faces from one view grouped into one item"
+        },
+        {
+          "item": 3,
+          "view_id": "view-004",
+          "candidate_id": "C22",
+          "reason": "multiple faces from one view grouped into one item"
+        },
+        {
+          "item": 3,
+          "view_id": "view-003",
+          "candidate_id": "C28",
+          "reason": "multiple faces from one view grouped into one item"
+        },
+        {
+          "item": 4,
+          "view_id": "view-003",
+          "candidate_id": "C22",
+          "reason": "multiple faces from one view grouped into one item"
+        },
+        {
+          "item": 4,
+          "view_id": "view-003",
+          "candidate_id": "C23",
+          "reason": "multiple faces from one view grouped into one item"
+        },
+        {
+          "item": 4,
+          "view_id": "view-003",
+          "candidate_id": "C24",
+          "reason": "multiple faces from one view grouped into one item"
+        },
+        {
+          "item": 4,
+          "view_id": "view-003",
+          "candidate_id": "C25",
+          "reason": "multiple faces from one view grouped into one item"
+        },
+        {
+          "item": 5,
+          "view_id": "view-003",
+          "candidate_id": "C07",
+          "reason": "multiple faces from one view grouped into one item"
+        },
+        {
+          "item": 5,
+          "view_id": "view-003",
+          "candidate_id": "C08",
+          "reason": "multiple faces from one view grouped into one item"
+        },
+        {
+          "item": 6,
+          "view_id": "view-004",
+          "candidate_id": "C24",
+          "reason": "multiple faces from one view grouped into one item"
+        }
+      ],
+      "view_checks": {
+        "view-003": {
+          "expected": {
+            "C09": "lift_up",
+            "C10": "lift_up",
+            "C06": "hinged_door",
+            "C07": "hinged_door",
+            "C08": "hinged_door",
+            "C22": "hinged_door",
+            "C23": "hinged_door",
+            "C24": "hinged_door",
+            "C25": "hinged_door",
+            "C27": "drawer",
+            "C28": "drawer"
+          },
+          "matched": [
+            "C06",
+            "C07",
+            "C08",
+            "C22",
+            "C23",
+            "C24",
+            "C25",
+            "C27",
+            "C28"
+          ],
+          "missed": [
+            "C09",
+            "C10"
+          ],
+          "known_wrong": {},
+          "other_predictions": {
+            "C20": "hinged_door"
+          }
+        },
+        "view-004": {
+          "expected": {
+            "C05": "hinged_door",
+            "C06": "hinged_door",
+            "C15": "hinged_door",
+            "C17": "hinged_door",
+            "C18": "hinged_door",
+            "C19": "drawer",
+            "C21": "drawer",
+            "C22": "drawer"
+          },
+          "matched": [
+            "C05",
+            "C06",
+            "C19",
+            "C21",
+            "C22"
+          ],
+          "missed": [
+            "C15",
+            "C17",
+            "C18"
+          ],
+          "known_wrong": {
+            "C23": "support_leg",
+            "C24": "support_leg"
+          },
+          "other_predictions": {}
+        }
+      }
+    }
+  }
+}
