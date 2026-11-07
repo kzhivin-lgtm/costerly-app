@@ -1,0 +1,136 @@
+{
+  "work": "3.17.4.6",
+  "version": "Estimation V7 Analyze V1",
+  "date": "2026-11-07",
+  "accepted": false,
+  "production_promoted": false,
+  "database_writes": false,
+  "purpose": "Owner-approved first V7 Island Map and Understanding tests on saved Lev1 and Lev2, one Haiku 5.5 call per file",
+  "trials": [
+    {
+      "file": "lev1",
+      "private_witness": "/private/tmp/lev1-analyze-v7-v1-20261107-01.json",
+      "private_witness_sha256": "e5b56d124b9c0995ec2a1d22cfe9856bc7646fa15848d5b3ba4f8b5c1d2f78c9",
+      "source_audit_sha256": "93071e75f936f62cb5117c27c2b574690ddfc8a4ae38e598b635d9d20c9e61ed",
+      "detection_event_id": "50354659-58dd-4f57-8efe-f61c38d3e395",
+      "source_run_id": "run_1cba0b2491dc413c9a3be2fdd526226b",
+      "prompt_sha256": "130f027bf93cde9577a17d2c4007406592f9a2098090dd6cc936f328e8043098",
+      "request_sha256": "725fa986d100f863ee1f063b6d2a58844276edfa92ddd83fbabd8614e1c4c649",
+      "provider_calls": 1,
+      "front_calls": 0,
+      "planner_calls": 0,
+      "calculate_calls": 0,
+      "status": "failed",
+      "error": "ValueError: item name exceeds three words",
+      "semantic_status": "not_accepted",
+      "elapsed_seconds": 8.347,
+      "preflight": {
+        "image_count": 7,
+        "object_count": 1,
+        "island_count": 6
+      },
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 17480,
+        "output_tokens": 1769,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "stop_reason": "end_turn",
+      "source_pages_sha256": {
+        "storage://rfq-estimation-evidence/610/run_1cba0b2491dc413c9a3be2fdd526226b/object-001/page-1-2fea9d342ee270de687652dab19539990a5d6371f2751bc657ca89514fbfa606.webp": "2fea9d342ee270de687652dab19539990a5d6371f2751bc657ca89514fbfa606"
+      },
+      "raw_response_text": "```json\n{\"objects\":[{\n  \"object_id\":\"object-001\",\n  \"islands\":[\n    {\"island_id\":\"view-001\",\"projection\":\"Axonometric view\",\"content_role\":\"technical_drawing\",\"observation\":\"Isometric of a tall vertical-slat back panel above a three-drawer base, with an attached cantilevered table top supported by a single leg at right.\"},\n    {\"island_id\":\"view-002\",\"projection\":\"Top view\",\"content_role\":\"technical_drawing\",\"observation\":\"Plan outline showing a narrow left zone (depth 115) and wider right zone (total 187), height 160; footprint of panel plus table shelf.\"},\n    {\"island_id\":\"view-003\",\"projection\":\"Axonometric view\",\"content_role\":\"technical_drawing\",\"observation\":\"Opposite isometric showing the slat panel face with rectangular inset panels, drawer base at left, and table shelf with two legs at right.\"},\n    {\"island_id\":\"view-004\",\"projection\":\"Front elevation\",\"content_role\":\"technical_drawing\",\"observation\":\"Front elevation of five vertical slat columns in two rows above a three-drawer base; width 160, height 265, 4 mm offset noted.\"},\n    {\"island_id\":\"view-005\",\"projection\":\"Side view\",\"content_role\":\"technical_drawing\",\"observation\":\"Side elevation of the stepped profile: panel thickness 20, base 43 high, plinth 72 deep, table shelf at 75 high with leg.\"},\n    {\"island_id\":\"view-006\",\"projection\":\"Rear view\",\"content_role\":\"technical_drawing\",\"observation\":\"Elevation of the slat panel face with five columns and rectangular insets; upper zone 90, lower zone 145, 19 offset, plinth and two legs below.\"}\n  ],\n  \"understanding\":{\n    \"name\":\"Slat back booth seat\",\n    \"type_code\":\"bench\",\n    \"proposed_type\":null,\n    \"description\":\"A fixed built-in bench unit with a tall vertical-slat back panel rising from a three-drawer base, with an attached cantilevered table top supported on a single leg. The slats carry rectangular cut-outs in two rows and the assembly reads as a booth-style seat with integrated table.\",\n    \"characteristics\":[\n      {\"statement\":\"Tall back panel formed of seven vertical slats with rectangular cut-outs in two horizontal rows\",\"basis\":\"specified\",\"island_ids\":[\"view-001\",\"view-003\",\"view-004\",\"view-006\"],\"source_refs\":[\"SF00011\",\"SF00012\",\"SF00007\",\"SF00008\"]},\n      {\"statement\":\"Lower base carries three drawer fronts beneath the slat panel\",\"basis\":\"specified\",\"island_ids\":[\"view-004\",\"view-001\"],\"source_refs\":[\"SF00011\"]},\n      {\"statement\":\"Attached cantilevered table top extends to the right with a single supporting leg\",\"basis\":\"specified\",\"island_ids\":[\"view-001\",\"view-005\"],\"source_refs\":[\"SF00004\",\"SF00003\"]},\n      {\"statement\":\"Stepped side profile with plinth/toe-kick block at the base\",\"basis\":\"specified\",\"island_ids\":[\"view-005\",\"view-006\"],\"source_refs\":[\"SF00005\",\"SF00006\"]},\n      {\"statement\":\"Overall footprint is an L-shape of panel depth 115 plus shelf to total 187, height 160\",\"basis\":\"specified\",\"island_ids\":[\"view-002\"],\"source_refs\":[\"SF00013\",\"SF00015\",\"SF00014\"]}\n    ],\n    \"materials\":[\n      {\"part\":\"Back slat panel and drawer base carcass\",\"material\":\"Veneered board (wood-grain finish)\",\"finish\":\"Wood grain, colour unknown\",\"thickness_mm\":20,\"basis\":\"inferred\",\"island_ids\":[\"view-005\",\"view-004\"],\"source_refs\":[\"SF00002\"],\"reason\":\"Panel thickness 20 read from side elevation; wood grain appearance does not prove solid wood, so veneered board assumed.\"},\n      {\"part\":\"Table top\",\"material\":\"LDSP\",\"finish\":\"Light beige/grey surface, colour unknown\",\"thickness_mm\":null,\"basis\":\"default\",\"island_ids\":[\"view-001\",\"view-003\"],\"source_refs\":[],\"reason\":\"Shelf thickness not clearly dimensioned; finished worktop default of 30 mm may apply but unverified.\"},\n      {\"part\":\"Table leg\",\"material\":\"Metal tube\",\"finish\":\"Black, colour unknown\",\"thickness_mm\":null,\"basis\":\"inferred\",\"island_ids\":[\"view-001\",\"view-003\"],\"source_refs\":[\"SF00004\"],\"reason\":\"Black cylindrical leg shown in isometrics; metal assumed from appearance.\"},\n      {\"part\":\"Plinth/toe-kick\",\"material\":\"LDSP\",\"finish\":\"Dark finish, colour unknown\",\"thickness_mm\":null,\"basis\":\"default\",\"island_ids\":[\"view-005\",\"view-006\"],\"source_refs\":[\"SF00005\"],\"reason\":\"Ordinary unspecified panel defaults to LDSP; thickness not dimensioned.\"}\n    ],\n    \"assumptions\":[\"Assembly treated as a single object; repeated elevations are different depictions of one element.\",\"Dimension 20 interpreted as panel depth at the top of the back; 43 and 75 as heights from the reference line.\"],\n    \"conflicts\":[\"Rear elevation labelled 145 and 90 sum to 235 rather than the 265 overall height; the discrepancy is not resolved from source.\"]\n  }\n}]}\n```"
+    },
+    {
+      "file": "lev2",
+      "private_witness": "/private/tmp/lev2-analyze-v7-v1-20261107-01.json",
+      "private_witness_sha256": "ba9bb3168f144e2b04ee9b25b11351162e649a8a49f47826dfaff86abfb040fc",
+      "source_audit_sha256": "523d08ecfec4c074aa5e06dfa3a9be33fa74de02d2be06e5ead3e60daef252ae",
+      "detection_event_id": "8fd1c7f0-2f36-42bd-b7ae-537460324445",
+      "source_run_id": "run_189150ebf62447fc958f7c23cc34e3bb",
+      "prompt_sha256": "130f027bf93cde9577a17d2c4007406592f9a2098090dd6cc936f328e8043098",
+      "request_sha256": "522509c4d3a84fd4e0ece05f487477ffa48be11de70ac72e97416f48c108c5d0",
+      "provider_calls": 1,
+      "front_calls": 0,
+      "planner_calls": 0,
+      "calculate_calls": 0,
+      "status": "analyze_requires_semantic_review",
+      "error": null,
+      "semantic_status": "not_accepted",
+      "elapsed_seconds": 7.945,
+      "preflight": {
+        "image_count": 5,
+        "object_count": 1,
+        "island_count": 4
+      },
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 15859,
+        "output_tokens": 1704,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "stop_reason": "end_turn",
+      "source_pages_sha256": {
+        "local-render:099bfb240ad0bbc85740ad1a73b81c2c780a15de6c5b9697f56e145315bce3d7:p1": "099bfb240ad0bbc85740ad1a73b81c2c780a15de6c5b9697f56e145315bce3d7"
+      },
+      "raw_response_text": "{\"objects\":[{\"object_id\":\"object-001\",\"islands\":[{\"island_id\":\"view-001\",\"projection\":\"Top view\",\"content_role\":\"technical_drawing\",\"observation\":\"Plan of an L-shaped cabinet run: 416 long horizontal arm, 300 deep return on the left, 260 inner dimension, 45° corner cut at the junction, a sink cutout on the upper run, and a tall tower/column at the far right end.\"},{\"island_id\":\"view-002\",\"projection\":\"Axonometric view\",\"content_role\":\"render\",\"observation\":\"Isometric render of the same L-shaped kitchen assembly with a worktop, perpendicular return with mitred corner, tall tower at the right end, upper cabinets, a hob/sink cutout and a corner cabinet with a wood-look worktop end.\"},{\"island_id\":\"view-003\",\"projection\":\"Front elevation\",\"content_role\":\"technical_drawing\",\"observation\":\"Front elevation of the lower base run with 69 and 180 horizontal segments, upper wall cabinets (75 high band), a tall upper tower block over the right section, and a 184 high tall unit with 94 return and drawer stack.\"},{\"island_id\":\"view-004\",\"projection\":\"Side view\",\"content_role\":\"technical_drawing\",\"observation\":\"Elevation of the return arm showing a 115 high upper cabinet (84 wide) above a base run with 151 distance, a three-drawer stack, and a 265 high tall tower unit at the right.\"}],\"understanding\":{\"name\":\"L-shaped kitchen\",\"type_code\":\"kitchen\",\"proposed_type\":null,\"description\":\"A built-in L-shaped kitchen assembly with a long base run, a perpendicular return joined by a 45° mitred corner, a tall tower unit at the right terminus, and upper wall cabinets over the run. Worktop surface spans the full L-plan with an inset sink/hob cutout.\",\"characteristics\":[{\"statement\":\"L-shaped plan: 416 mm long arm and 300 mm return with 45° corner cut\",\"basis\":\"specified\",\"island_ids\":[\"view-001\"],\"source_refs\":[\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0011\",\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0012\",\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0016\"]},{\"statement\":\"Tall tower unit at the right end of the run, 265 high, with 94 return below upper tower block\",\"basis\":\"specified\",\"island_ids\":[\"view-003\",\"view-004\"],\"source_refs\":[\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0009\",\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0004\"]},{\"statement\":\"Upper wall cabinets: 115 high, 84 wide unit beside the return; 75 high upper band on the main run\",\"basis\":\"specified\",\"island_ids\":[\"view-003\",\"view-004\"],\"source_refs\":[\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0010\",\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0007\",\"ocr:29b1d88e-3848-4046-b4b5-662a03fc6869:p1:b0005\"]},{\"statement\":\"Base run with door fronts and a three-drawer stack in the return section\",\"basis\":\"inferred\",\"island_ids\":[\"view-003\",\"view-004\"],\"source_refs\":[]}],\"materials\":[{\"part\":\"Door and drawer fronts\",\"material\":\"LDSP (melamine-faced chipboard)\",\"finish\":\"unknown\",\"thickness_mm\":18,\"basis\":\"default\",\"island_ids\":[\"view-003\",\"view-004\"],\"source_refs\":[],\"reason\":\"Standard kitchen front default; no material callout on drawings. Thickness 18 mm assumed for fronts.\"},{\"part\":\"Carcass panels\",\"material\":\"LDSP (melamine-faced chipboard)\",\"finish\":\"unknown\",\"thickness_mm\":17,\"basis\":\"default\",\"island_ids\":[\"view-001\",\"view-003\",\"view-004\"],\"source_refs\":[],\"reason\":\"Unspecified ordinary carcass panels default to LDSP 17 mm.\"},{\"part\":\"Worktop\",\"material\":\"Laminate/stone-look worktop\",\"finish\":\"unknown\",\"thickness_mm\":30,\"basis\":\"default\",\"island_ids\":[\"view-002\"],\"source_refs\":[],\"reason\":\"Finished worktop default 30 mm; no specified material on drawings.\"}],\"assumptions\":[\"Dimension values (416, 300, 260, 180, 69, 184, 265, 151, 115, 84, 94, 75) read as millimetres from plan/elevation dimension lines.\",\"Wall-fixed upper cabinets over the run and the tower are assumed to be built-in.\",\"Worktop surface assumed continuous over the full L-plan.\"],\"conflicts\":[\"The 25 dimension near the corner and the 42/65 notes are not explicitly tied to a specific panel thickness; left unresolved.\"]}}]}"
+    }
+  ],
+  "review": {
+    "lev1": {
+      "positive": [
+        "All six island projection labels match the prior semantic classification",
+        "Three drawer fronts and decorative panel remain present"
+      ],
+      "failures": [
+        "Name has four words, failing the explicit name contract",
+        "Description/characteristics repeat one leg despite two visible across islands",
+        "20 interpreted as 20 mm board thickness; 4 interpreted as 4 mm offset",
+        "Characteristic source_refs use SF aliases rather than canonical OCR refs",
+        "Seven slats in characteristics conflicts with five in island observations",
+        "Forbidden non-thickness overall sizes emitted",
+        "Numeric source-reference validity and physical ownership are not established by alias availability",
+        "Default panel/worktop thicknesses remain null or ambiguous"
+      ]
+    },
+    "lev2": {
+      "positive": [
+        "All four islands covered; technical drawings and render distinguished",
+        "Known kitchen type and 17/30 mm defaults present",
+        "Canonical OCR refs resolve, and structured contract passes"
+      ],
+      "failures": [
+        "416 and 300 incorrectly called millimetres",
+        "45-degree cut assigned to corner junction instead of terminal end",
+        "Detached hanging unit not explicitly retained as separate",
+        "Invented 18 mm default for fronts instead of approved 17 mm",
+        "Worktop material remains laminate/stone alternative",
+        "Description and characteristics still repeat numerical component dimensions outside scope"
+      ]
+    },
+    "conclusion": "Neither result accepted. Identical prompt and settings across the two files; no repeats or automatic repair. This is not a controlled comparison to V1/V2 because the representation, context and output contract changed.",
+    "next_proposal": "Review raw outputs with owner; isolate inherited Detection observations versus independent image interpretation before another paid prompt revision."
+  }
+}

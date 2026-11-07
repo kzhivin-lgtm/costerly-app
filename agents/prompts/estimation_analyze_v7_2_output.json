@@ -1,0 +1,25 @@
+{
+  "objects": [{
+    "object_id": "supplied object ID",
+    "islands": [{"island_id": "Detection ID", "projection": "Front elevation", "elevation_index": 1, "content_role": "technical_drawing", "observation": "Visible evidence"}],
+    "understanding": {
+      "name": "Short item name", "type_code": "catalog code or null", "proposed_type": null,
+      "description": "One or two sentences",
+      "characteristics": [{"statement": "Critical feature or material/finish/thickness assignment", "basis": "specified | inferred | default", "island_ids": ["Detection ID"], "source_refs": []}],
+      "materials": [{"part": "physical role", "material": "one chosen material", "finish": "coating and colour", "material_kind": "sheet | glass | stone | metal_profile | other", "thickness_mm": 17, "thickness_measurement_id": null, "basis": "specified | inferred | default", "island_ids": ["Detection ID"], "source_refs": [], "reason": "Source support or estimating assumption"}],
+      "assumptions": [], "conflicts": []
+    },
+    "front": {
+      "front_groups": [{"location": "physical location", "type": "drawer | hinged | lift_up | unresolved", "count": 1, "count_basis": "clear | estimated | undetermined", "view_ids": ["Detection ID"], "uncertainty": "", "fronts": [{"id": "F01", "view_id": "Detection ID", "bbox_1000": [100,200,200,400]}]}],
+      "excluded_surfaces": [{"id": "X01", "view_id": "Detection ID", "bbox_1000": [200,200,220,400], "reason": "Fixed surface"}],
+      "tabletop_supports": [{"id": "T01", "location": "physical location", "leg_count": 1, "count_basis": "clear | estimated | undetermined", "view_ids": ["Detection ID"], "support_scheme": "Observed support and any assumed attachment", "uncertainty": "", "legs": [{"id": "L01", "view_id": "Detection ID", "bbox_1000": [100,200,120,400]}]}],
+      "totals": {"drawers": 0, "hinged_doors": 0, "lift_up_fronts": 0, "unresolved_fronts": 0, "total_fronts": 0}
+    },
+    "planner": {
+      "summary": "One sentence",
+      "blocks": [{"id": "B01", "name": "Physical name", "contains": "Included elements", "reason": "Grouping reason and any assumed boundary", "front_ids": [], "view_ids": ["Detection ID"], "region": {"view_id": "Detection ID", "bbox_1000": [0,0,1000,1000]}}],
+      "shared_parts": [{"id": "S01", "name": "Shared element", "block_ids": ["B01","B02"], "view_ids": ["Detection ID"], "region": {"view_id": "Detection ID", "bbox_1000": [0,0,1000,1000]}}],
+      "front_conflicts": [], "uncertainties": []
+    }
+  }]
+}

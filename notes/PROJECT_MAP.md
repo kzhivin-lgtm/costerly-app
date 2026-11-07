@@ -1,5 +1,32 @@
 # Costerly AI Project Map
 
+Latest experiment, Estimation V7.2, 2026-11-07, work 3.17.4.6:
+agents/estimation_analyze_v7_2_agent.py combines Island Map / Understanding /
+CB Front / CB Planner in one document call, using saved Detection normalized
+measurements. CLI --revision V7.2. Two saved Lev1/Lev2 trials completed and
+both rejected. Raw/usage and independent section checks:
+notes/evidence/estimation-v7-2-2026-11-07/simple-object-trials.json.
+No quality checkpoint, runtime promotion or deploy. Earlier V7 scope/results
+below are preserved history; current decisions and failures are in TODO.
+
+Current owner direction, 2026-11-07: Estimation V7, focus on Analyze and
+Understanding. Requirements and the inspected Detection relationship-handoff
+gap are recorded in the existing 3.17.4.6 TODO entry. V6 research below remains
+historical evidence; V7 runtime is not implemented. Stable logical names:
+Island Map, Understanding, CB Front, CB Planner; Calculation contains CB Parts.
+V7 opt-in implementation: agents/estimation_analyze_v7_agent.py and
+agents/prompts/estimation_analyze_v7.md. Saved Detection proof exporter:
+use_cases/estimation_detection_context_v7.py. Local prepare/explicit trial:
+tools/probe_estimation_analyze_v7.py. Output currently Island Map (projection
+and content role) + Understanding. Front/Planner/Parts remain subsequent work.
+Ada preparation verified both protected groups and 12 request images. Owner
+then approved provider transfer and selected Lev1/Lev2 first: one V7 call each,
+both semantically unaccepted. Evidence and raw replies:
+notes/evidence/estimation-v7-analyze-v1-2026-11-07/simple-object-trials.json.
+Island Map result key is islands; Understanding retains name, description and
+characteristics. Ada has not been called. Current results and next decision
+are in the existing 3.17.4.6 TODO entry.
+
 Latest complete Estimation V6 chat handoff, 2026-11-06, work 3.17.4.6:
 `notes/ESTIMATION_V6_FULL_CHAT_HANDOFF_2026_11_06.md`.
 Includes V6.1 trials, Front/Planner/Parts versions, protected checkpoints,

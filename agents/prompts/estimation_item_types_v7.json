@@ -1,0 +1,19 @@
+[
+  {"code":"kitchen","name":"Kitchen"},
+  {"code":"wardrobe","name":"Wardrobe"},
+  {"code":"cabinet","name":"Cabinet"},
+  {"code":"shelving","name":"Shelving system"},
+  {"code":"display_counter","name":"Display counter"},
+  {"code":"bar_counter","name":"Bar counter"},
+  {"code":"reception_counter","name":"Reception counter"},
+  {"code":"table","name":"Table"},
+  {"code":"bench","name":"Bench"},
+  {"code":"sofa","name":"Sofa"},
+  {"code":"decorative_panel","name":"Decorative panel"},
+  {"code":"partition","name":"Partition"},
+  {"code":"metal_frame","name":"Metal frame"},
+  {"code":"railing","name":"Railing"},
+  {"code":"staircase","name":"Staircase"},
+  {"code":"bracket","name":"Bracket"},
+  {"code":"lighting_fixture","name":"Lighting fixture"}
+]

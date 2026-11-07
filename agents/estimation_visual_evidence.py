@@ -13,7 +13,7 @@ from use_cases.estimation_dimension_graph import source_coordinate_frame as _sou
 
 def page_content(*, page_bytes: bytes, storage_ref: str, page_number: int,
                  payloads: Sequence[Mapping[str, Any]], views: Sequence[Mapping[str, Any]] | None = None,
-                 detail_budget: int = 6) -> tuple[list[dict[str, Any]], int]:
+                 detail_budget: int = 6, include_single_detail: bool = False) -> tuple[list[dict[str, Any]], int]:
     """Full page plus bounded view details, mapped from documented render scale.
 
     One synchronous preparation per existing provider request. No network,
@@ -40,9 +40,12 @@ def page_content(*, page_bytes: bytes, storage_ref: str, page_number: int,
         for view in candidates:
             if view.get("page_number") != page_number:
                 continue
+            if view.get("object_id", (payload.get("object") or {}).get("object_id")) != (payload.get("object") or {}).get("object_id"):
+                continue
             box = view.get("bbox") or {}
+            view_frame = view.get("coordinate_frame_pixels", frame)
             try:
-                coords = [float(box[key]) / frame[index % 2] for index, key in enumerate(
+                coords = [float(box[key]) / float(view_frame[index % 2]) for index, key in enumerate(
                     ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y"))]
             except (KeyError, TypeError, ValueError):
                 continue
@@ -53,13 +56,13 @@ def page_content(*, page_bytes: bytes, storage_ref: str, page_number: int,
                 continue
             seen.add(signature)
             regions.append({"view_id": view["view_id"], "object_id": (payload.get("object") or {}).get("object_id"),
-                            "bbox_normalized": coords, "coordinate_frame_pixels": list(frame)})
+                            "bbox_normalized": coords, "coordinate_frame_pixels": list(view_frame)})
     metadata = {"page_number": page_number, "source_evidence_ref": storage_ref,
                 "displayed_image_pixels": list(source.size), "view_regions": regions,
                 "coordinate_note": "OCR and view bboxes use coordinate_frame_pixels, not displayed_image_pixels. Normalized boxes locate the same source regions."}
     content.insert(0, {"type": "text", "text": json.dumps(metadata, separators=(",", ":"))})
     used = 0
-    if len(regions) > 1:
+    if len(regions) > 1 or (include_single_detail and regions):
         for region in regions[:max(0, detail_budget)]:
             x1, y1, x2, y2 = region["bbox_normalized"]
             # Small context margin retains nearby dimension endpoints.

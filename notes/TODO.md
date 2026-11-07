@@ -1000,6 +1000,284 @@ Older tags and 50 unrelated TODO lines retained. Stop further experiments until
 the owner chooses the next task; outstanding quality defects remain pending P0.
 
 Block-to-parts tool, USER REQUEST, 2026-11-06, 3.17.4.6, P0, PENDING full-object geometry; research checkpoint preserved:
+ACTIVE, P0, OWNER DIRECTION, 2026-11-07: Estimation V7 Analyze structure.
+IMPLEMENTATION ITERATION, 2026-11-07, same work 3.17.4.6:
+LATEST OWNER STEERING / TWO SIMPLE-FILE TRIALS, 2026-11-07:
+OWNER REVIEW / NEXT V7 ITERATION REQUEST, 2026-11-07:
+OWNER-APPROVED AUTHORITY BOUNDARY / PARTS DISCUSSION, 2026-11-07:
+LATEST OWNER-APPROVED IMPLEMENTATION / EXPERIMENT, ESTIMATION V7.2,
+2026-11-07, same 3.17.4.6, P0, FULL-OUTPUT ACCEPTANCE FAILED:
+Owner approved full first-call output now: Islands, Description,
+Characteristics, CB Front and CB Planner Blocks, then one saved Lev1 and
+one saved Lev2 trial. This supersedes the earlier Island-Map-only scope.
+Terminology: CB Planner -> Blocks in Analyze; Calculation/CB Parts -> Parts.
+Decision: reuse saved Detection normalized measurements and unit provenance;
+do not implement 80-percent/200 heuristic. Reuse established membership and
+correspondences; resolve only concrete conflicts, no new pairwise proof.
+Implementation: opt-in agents/estimation_analyze_v7_2_agent.py and
+estimation_analyze_v7_2.md / estimation_analyze_v7_2_output.json. Reuses existing
+CB Front V3 and CB Planner V7 policy sections with ONE explicit outer response
+template; validators are existing validate_front_count/validate_assembly_plan.
+V7.2 reuses prior input preparation/pixels; new numbered front elevations,
+mandatory sheet thickness/kind, optional source thickness measurement ID,
+strict equality against Detection value_mm. Source export opt-in adds
+dimension_inventory, unit_context/provenance and dimensional correspondences.
+Existing V7 and earlier selectors/prompts remain available and unchanged.
+CLI: tools/probe_estimation_analyze_v7.py --revision V7.2 --execute.
+Exactly one Haiku 5.5 call per file, low/thinking-disabled, max_tokens=14000,
+timeout=120, SDK retries=0. Front and Planner are sections, not extra calls;
+Calculation/Parts not invoked, no DB writes, no new Detection or render.
+Both end_turn, same prompt SHA256:
+53b65a011c7e06e915a64b5258032e4cedade6143b2ea0b95876adc1724d446e.
+Lev1: 10.873 s, 26542 input / 2604 output tokens. Full validation fails:
+20 mm source thickness cites view-005-D001 which is 200 mm in Detection.
+Independent Front contract passes (3 drawers, 0 hinged, 0 lift-up); one leg
+still chosen despite explicitly seeing two. V6 remains Rear view, five slats,
+material alternatives and 17-mm worktop remain. Planner contract fails:
+shared S01 references only B01; actual list one block + one shared element,
+despite summary claiming three blocks. No automatic repair/normalization.
+Lev2: 17.176 s, 25204 input / 4742 output tokens. Full/Front validation fails:
+groups sum to 16 hinged +6 drawers =22; raw totals say 14 +6 =20. Lift-up=0.
+Owner benchmark 15/16 hinged, 5 drawers, 2 lift-up not met. Planner references
+pass independently: 5 blocks + shared worktop, all 22 F IDs assigned once.
+This does not establish grouping quality: base runs overgrouped; worktop box
+is the full axonometric island; tall fronts excluded rather than resolved.
+Numbered front views and worktop-stop description improved in this sample;
+refrigerator opening/material finish differentiation remain incomplete.
+Both outputs semantically not accepted; no reruns, retry or promotion.
+Tracked raw/usage/independent section checks:
+notes/evidence/estimation-v7-2-2026-11-07/simple-object-trials.json.
+Private capsules/raw/HTML: /private/tmp/lev[1,2]-analyze-v7-2-20261107-01.*.
+Inputs, source pages and every actual image block match V7 byte-for-byte.
+Local focused suite 73 passed; git diff --check passed. This verifies contracts,
+reference protection and raw preservation, not visual acceptance. Keep old
+research checkpoints protected; V7.2 is an opt-in rejected experiment, not a
+replacement checkpoint or deployment. Next: owner review of the displayed
+outputs; no speculative paid follow-up authorized by these failures.
+
+Analyze accepts Detection membership and reuses established island relations;
+it does not redo membership/pairwise proofs or emit a second merge rationale.
+Resolve only concrete conflicts encountered while interpreting the item.
+Owner asks what Calculation/CB Parts should receive once assembly blocks exist.
+[verified] build_detection_v5_dimension_fingerprints stores per-island numeric
+occurrences with original_text, value_mm, unit_basis, occurrence_id, source
+fact refs, local bbox and ambiguity slot. compile_detection_v5_dimension_graph
+matches occurrences within 2 percent, scores size/precision/rarity/repetition
+and produces supporting relations; it does not assign block/part W/D/H.
+[verified] Saved Lev1 and Lev2 audits ALREADY infer effective unit cm, reason
+nonstandard_100_to_600_value. Explicit document-unit profile remains unknown.
+Lev1 inventory includes 4 -> 40 mm, 20 -> 200 mm, 72 -> 720 mm;
+Lev2 includes 416 -> 4160 mm, 300 -> 3000 mm, 151 -> 1510 mm.
+The current V7 exporter passes hypotheses/observations/OCR maps but omits
+dimension_inventory and effective unit profile/reason. This is a confirmed
+handoff omission; not proof that delivering it alone fixes physical ownership.
+The proposed 80-percent/below-200 unit heuristic is not implemented and must
+not become a competing scale authority before reconciling this existing policy.
+AGENT RECOMMENDATION for V7.1, not yet implemented: reuse the same source
+measurement inventory/scale provenance in Analyze and Calculation; normalized
+values should be copied/resolved by code instead of re-converted by the model.
+Parts receives per-object frozen assembly blocks/front topology/material
+assignments, linked source islands/images/OCR and indexed measurements, plus
+only relevant cross-island correspondence/measurement refs and conflicts.
+Full Detection comparison scores, rejected alternatives and membership-proof
+prose stay in the audit, not repeated as a Calculation task. Block ids and
+scalar dimensions alone are insufficient to recover internal geometry.
+Dimension correspondence is supporting evidence, not guaranteed same-part
+identity. Analyze need not bind every internal panel dimension; Calculation
+assigns relevant source measurements to parts within fixed block scope.
+Current source inspected: ordinary Calculation already receives scope/images/
+OCR/Estimation Dimension Graph; experimental Parts V3.3 reuses saved Front/
+Planner and source images, V4.1 additionally uses measurement packet. None is
+implemented V7.1. Preserve one shared Analyze then one Calculation per object;
+no extra per-block model call proposed. No prompt/model/runtime change here.
+
+Owner accepts Lev1 projection classification broadly, but requests neutral
+numbered front elevations when front/back or wings are not meaningfully
+distinguishable: Lev1 V4/V6 and Lev2 V3/V4. Keep genuine profile projections
+distinct; representation changes must not alter Detection membership/IDs.
+Lev1 supports: two physical legs, visible jointly in V3 and V6. Owner counts
+six internal ribs excluding side walls; previous five/seven model counts are
+not accepted. Required Characteristics for every sheet-material role: chosen
+material, finish/coating/colour and thickness, including distinct finishes
+within one object. Use explicit source or labelled estimation/default; no
+unresolved material alternatives or unmarked assumed species (oak was example).
+Owner requests trial scale heuristic with tunable thresholds: if >80 percent
+of known dimension values are <200, assume centimetres. Exact input population,
+handling of explicit units/thicknesses/details/mixed-scale drawings and safe
+precedence remain to be specified; furniture plausibility is not universal
+proof of units. No numeric implementation has been made in this review turn.
+Lev2: worktop ends before the full-height cabinet; 45-degree cut is at one
+terminal end, not the wing junction. Identify the refrigerator opening and
+include material assignments in visible Characteristics. Next version requested
+within Estimation V7 (V7.1 candidate label); no new work/block number assigned.
+IMMEDIATE REQUEST: first show exact Detection relationship grounds received by
+both trials, before another implementation/model run. Inspected actual request
+capsules: Lev1 has five observations (three matching_topology, two
+unique_geometry) covering six islands; Lev2 has two matching_topology facts
+covering three technical islands plus one validated render-to-plan attachment.
+Payload also includes the original accepted hypothesis_reason, source aliases,
+exact OCR mappings and images. No material specification is established by
+these relationship observations. Detection already mentions one visible leg
+in V1 and two in V3, five slat columns, 20 as panel depth/thickness, and Lev2
+45-degree junction: these are prior model claims, not guaranteed source facts.
+Detection observations do not append mm to the bare 20/416/300 readings;
+the erroneous explicit mm conversion appears in Analyze's returned result.
+Show these raw grounds with provenance and distinguish them from later
+Analyze claims. No new model calls or prompt changes in this review turn.
+
+Owner explicitly approved sending saved images/OCR/Detection context through
+the configured paid API, then selected Lev1 and Lev2 before complex Ada.
+Prior automatic approval blocker is resolved for these two calls; Ada was
+not executed. Stable output terminology: Island Map produces Islands
+(objects[].islands); Description is description, Characteristics is
+characteristics, short item name is name. Existing technical IDs retained.
+Extended saved-context export to exact SF-to-OCR block_ref mapping using the
+original OCR event and validated presentation-render attachment decisions.
+Read-only snapshot fetched existing Detection/OCR events, no Detection rerun:
+/private/tmp/lev1-lev2-detection-context-v7-20261107-01.json.
+Lev1 event 50354659-58dd-4f57-8efe-f61c38d3e395, six islands, seven images;
+Lev2 event 8fd1c7f0-2f36-42bd-b7ae-537460324445, four islands, five images.
+Exactly two Haiku 5.5 calls, low effort, thinking disabled, zero SDK retries,
+one per file. Both end_turn. Same system prompt SHA256:
+130f027bf93cde9577a17d2c4007406592f9a2098090dd6cc936f328e8043098.
+Lev1: 8.347 s, 17480 input / 1769 output tokens. Contract FAIL: four-word
+name. Raw also contains unconverted SF refs, one leg despite a second leg in
+its own island observations, 20 mm thickness, 4 mm offset, conflicting slat
+counts, non-thickness dimensions and unresolved/null material defaults.
+Lev2: 7.945 s, 15859 input / 1704 output tokens. Structured contract PASS;
+semantic NOT ACCEPTED: 416/300 called mm, corner-cut ownership wrong,
+detached hanging unit not explicit, invented 18-mm facade default and
+laminate/stone material alternatives. Non-thickness numerical output persists.
+Neither semantic result accepted. No automatic retry, prompt repair or
+downstream calls. Responses preserved before validation; failed-contract HTML
+can display original parsed content with an explicit FORMAT FAILURE warning.
+Final focused verification: 61 tests passed; git diff --check passed.
+Tracked raw/usage/hash/review evidence:
+notes/evidence/estimation-v7-analyze-v1-2026-11-07/simple-object-trials.json.
+Private capsules/raw/HTML: /private/tmp/lev[1,2]-analyze-v7-v1-20261107-01.*.
+These private capsules have not been included in a requested backup archive.
+Not a controlled V1/V2 comparison: enrichment, global island labels and output
+contract changed together. Repetition of Detection mistakes suggests an
+influence hypothesis, not established causality. Next proposal: owner review
+of the exact outputs, then isolate inherited observation influence before
+another paid prompt revision. No deploy/main integration, full Analyze,
+Front/Planner/Components/Parts acceptance claimed.
+
+Owner approved local V7 Island Map + Understanding implementation and one
+test on the saved Ada two-object Detection witness. Front/Planner/Parts are
+subsequent sections; Components remains a separate design/validation topic.
+Output clarification: table of island/projection/content-role, short item
+name, critical bullet points, later Front counts and assembly-block list.
+Existing names retained: CB Planner creates blocks inside Analyze; CB Parts
+decomposes them inside Calculation. Lift-front count and gas-lift kit count
+remain distinct (deterministic hardware policy).
+Implemented opt-in agents/estimation_analyze_v7_agent.py with one shared
+document call, prompt estimation_analyze_v7.md, seeded extensible 17-code item
+type catalog, strict object/island/source-ref validation and raw-before-parse.
+use_cases/estimation_detection_context_v7.py exports accepted normalized
+hypotheses/observations and raw-ID aliases from saved event audit; currently
+supports hypothesis-review route explicitly, not every Detection route.
+tools/probe_estimation_analyze_v7.py prepares locally by default; --execute
+enables one Haiku 5.5 low/thinking-disabled call with max_retries=0, 120 s
+timeout, 12000 output ceiling. Saves private capsule/raw/HTML; no DB write.
+Source witness verified: run_4e47c1226af946698779203ca31ff705,
+event b5d218b9-ccee-4c58-8c62-d144be246381; object-001 V2/V3/V5/V7,
+object-002 V1/V4/V6/V8. Six accepted observations, two accepted hypotheses.
+Local preflight /private/tmp/adda-analyze-v7-v1-preflight-20261107-02.json:
+two objects, eight islands, four unchanged source pages + eight labelled crops.
+Initial preflight exposed portrait page-profile frame vs rotated Ada pixels.
+V7 now uses the saved Detection mistral_page_dimensions frame 2339x1654
+explicitly, through optional visual-helper args; original inputs untouched.
+All eight actual request crops visually inspected. No inferred rotation or
+replacement PDF render. Full-page context and nearby other-object fragments
+remain visible; locked membership and labelled source IDs define scope.
+Verification: 58 focused tests passed (V7, existing visual evidence,
+Understanding V1/V2, module-understanding routes); git diff --check passed.
+Tests cover exact/ambiguous ID mapping, run isolation, raw capture before
+rejection, one call/no retries, foreign refs and explicit Detection frame.
+EXECUTION BLOCKER: automatic approval review rejected the API command before
+process launch, requiring explicit approval to send images/OCR/Detection
+context to the configured provider using credentials and incurring API cost.
+No live model call or model response occurred. Do not bypass this rejection.
+Await that approval for exactly one document-level Haiku 5.5 trial on both
+objects. Semantic quality remains unknown. No deploy or main integration.
+
+Owner explicitly names the next product iteration Estimation V7 and focuses
+current work on Analyze / Understanding. Existing work reference 3.17.4.6 is
+retained for continuity; no new hierarchical major/block number assigned.
+Use stable names: Analyze is the first document-level call containing Island
+Map, Understanding, CB Front and CB Planner; Calculation is the second,
+per-object call containing CB Parts. These are logical sections, not separate
+mandatory provider calls. Components are physical elements in Understanding;
+Planner groups them into practical assembly blocks. Preserve that distinction.
+Understanding requirements: concise item type/name (1-3 words), followed by
+the critical whole-object characteristics, layout, separate assemblies,
+supports/openings and major material/finish/thickness assignments, especially
+fronts and visible sides. Interpret all owned islands jointly with OCR,
+legends and cross-island observations. Distinguish specified/inferred/default.
+Owner requests an extensible item-type catalog: prefer an existing code; on
+no suitable match preserve a proposed type for review rather than force a
+wrong category. Search found no such catalog in the inspected Estimation path.
+No automatic catalog expansion or proposed-type promotion has been approved.
+Island Map terminology is established; technical fields remain island_types,
+view_id and known_views. Existing enum has nine projection types and excludes
+render/context/detail roles. Proposal: distinguish projection from content
+role, since a rendered image or component detail can also be axonometric.
+Do not silently expand enums or rename persisted identifiers.
+[verified, source inspection] Detection records positive_relation_edges,
+accepted_merge_edges, reference_links, rejected_relation_candidates and
+semantic_ledger_audit in diagnostics, persisted before File Review. Its schema
+has dimension_equality/dimension_transform plus explicit_document_relation,
+matching_topology/unique_geometry/direct_shared_structure; the additional
+visual_dimension_similarity is route-specific. Do not require all criteria
+to be present on every accepted edge.
+[verified, source inspection] build_estimation_input does not carry this
+relationship audit; _page_refs retains page/label/regions only, _page_manifest
+projects object fields, and prepare_content forwards images/manifests/OCR.
+Dimension Graph creates local pN-view-NNN IDs from regions. P0 dependency:
+design and implement a bounded Detection-to-Analyze relationship handoff with
+source event/version, original island IDs and explicit local-ID mapping,
+accepted evidence observations/reference links and relevant conflicts.
+Owner requests this contract gap be addressed if confirmed. Start from the
+persisted Detection audit; no Detection grouping/model change is implied.
+Current iteration is inspection and contract discussion. Runtime, catalog,
+prompt, DB and production changes are pending a concrete reviewed contract.
+Agent correction: the preceding chat's proposal to move every dimension
+binding into Analyze was not an owner-approved requirement. Keep the exact
+Analyze/Calculation geometry boundary open while structuring Understanding.
+FOLLOW-UP, USER REQUEST, 2026-11-07: prepare V7 using successful saved
+Detection runs, without deployment. Components needs separate design and
+validation; prior useful kitchen Planner grouping is not general acceptance.
+CURRENT QUESTION: how Detection should supply relationship justifications.
+[verified] Existing tools/probe_v62_lev2_detection.py already constructs
+upstream_grouping_context with detection_event_id, exact view_id_mapping,
+source_fact_mapping, object_hypotheses and presentation_render_decisions,
+then explicitly appends it to the diagnostic request. Private witness:
+/private/tmp/estimation-v6-2-lev2-detection-01.json, run_189150ebf62447fc958f7c23cc34e3bb,
+event 8fd1c7f0-2f36-42bd-b7ae-537460324445: four mapped islands, 18 mapped OCR
+facts, two matching_topology observations and one attached render decision.
+Correction: relationship transport is absent from the common handoff and
+latest standalone route, not from every historical Estimation diagnostic.
+[verified] Ada saved snapshot /private/tmp/adda-saved-replay-20261106-01/
+saved-detection-snapshot.json retains event b5d218b9-ccee-4c58-8c62-d144be246381
+and review/proposal/registry/semantic audit; accepted_merge_edges is empty.
+An edges-only exporter would therefore lose successful hypothesis-based proof.
+AGENT RECOMMENDATION, contract pending review: extend the existing upstream
+grouping context into a versioned object-scoped handoff derived from final
+Registry membership plus its route-specific validated proof/audit. Retain
+original observations and IDs, explicit local-ID/OCR mapping, event/run/version
+and content hash, render attachments and reference links. Keep accepted,
+rejected/unknown and model-authored observations distinguishable; no inference
+of source truth from merge acceptance. Store full audit privately; provide
+bounded relevant observations to Analyze without another model summary call.
+Validate exact mapping, same-run/object scope and all referenced witnesses;
+missing/ambiguous mapping is explicit, never nearest-box guessed or silently
+dropped. Do not require graph connectivity of accepted_merge_edges when the
+route establishes membership with validated hypotheses or render attachments.
+Next implementation: local export/validation on saved Lev2 and two-object Ada,
+then attach to the experimental V7 Analyze input. No new Detection/model call,
+DB mutation or deployment is required for this validation stage.
+
 OWNER-REQUESTED HANDOFF UPDATE completed, 2026-11-06:
 Existing ESTIMATION_V6_FULL_CHAT_HANDOFF_2026_11_06.md reconciled through V1/V2,
 including sections 34-35, raw-evidence paths, exact V2 prompt, commits, measured

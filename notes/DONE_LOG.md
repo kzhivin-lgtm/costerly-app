@@ -1,5 +1,17 @@
 # Done Log
 
+2026-11-07, 3.17.4.6: completed owner-approved local Estimation V7.2 experiment,
+not product acceptance. One shared Analyze request per saved Lev1/Lev2 includes
+Islands, Description/Characteristics, Front and Planner Blocks. Reused original
+Detection membership proof and normalized dimension inventory; 80/200 policy
+not implemented. Reused existing Front/Planner policies and validators with one
+outer schema. Two calls completed end_turn, 10.873/17.176 s; both full outputs
+rejected (Lev1 source thickness mismatch, Lev2 Front totals mismatch).
+Independent section checks and all raw replies are preserved in
+notes/evidence/estimation-v7-2-2026-11-07/simple-object-trials.json. 73 focused
+tests and diff check passed. No extra model stages, DB write, main integration,
+deployment or quality checkpoint. Existing unrelated TODO changes preserved.
+
 2026-11-06, 3.17.4.6: owner-requested full-chat handoff update through standalone
 Understanding V1/V2. Updated the existing authoritative handoff, not a second
 summary. Reconciled current state, version map, commits, code/evidence map,
