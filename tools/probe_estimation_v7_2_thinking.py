@@ -1,4 +1,4 @@
-"""Saved V7.2 thinking replay and isolated, sequential V7.3.1/2/3 experiments."""
+"""Saved Analyze controls: thinking replay, incremental changes and budget probes."""
 import argparse
 from copy import deepcopy
 from hashlib import sha256
@@ -33,6 +33,18 @@ def front_soft_request(baseline):
     if "thinking" in request or request.get("output_config") != {"effort": "low"}:
         raise ValueError("requires unchanged provider-default thinking at low effort")
     request["system"] += "\n\n" + FRONT_SOFT_STEERING
+    return request
+
+
+def hard_cap_request(baseline):
+    if (baseline.get("version") != agent.VERSION
+            or (baseline.get("provider_response") or {}).get("stop_reason") != "end_turn"):
+        raise ValueError("requires the original completed V7.2 Thinking control")
+    request = deepcopy(baseline["provider_request"])
+    if ("thinking" in request or request.get("output_config") != {"effort": "low"}
+            or request.get("max_tokens") != 14000 or request.get("system") != agent.prompt()):
+        raise ValueError("requires the unmodified V7.2 prompt and settings")
+    request["max_tokens"] = 5000
     return request
 
 
@@ -94,7 +106,7 @@ def main():
     parser.add_argument("--baseline", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--execute", action="store_true")
-    parser.add_argument("--revision", choices=["V7.2-thinking", "V7.2-front-soft", "V7.3.1", "V7.3.2", "V7.3.3"], default="V7.2-thinking")
+    parser.add_argument("--revision", choices=["V7.2-thinking", "V7.2-front-soft", "V7.2-cap5000", "V7.3.1", "V7.3.2", "V7.3.3"], default="V7.2-thinking")
     args = parser.parse_args()
     if any(p.exists() for p in (args.output, args.output.with_suffix(".raw.txt"), args.output.with_suffix(".html"))):
         parser.error("refuse to overwrite experiment")
@@ -103,6 +115,8 @@ def main():
         request = replay_request(baseline)
     elif args.revision == "V7.2-front-soft":
         request = front_soft_request(baseline)
+    elif args.revision == "V7.2-cap5000":
+        request = hard_cap_request(baseline)
     else:
         request = incremental_request(baseline, args.revision)
     if args.revision == "V7.3.1" and args.execute:
@@ -116,7 +130,14 @@ def main():
         changed_request_fields=["thinking (explicit disabled removed)"],
         provider_request=request, request_sha256=digest(request),
         prompt_sha256=sha256(request["system"].encode()).hexdigest())
-    if args.revision == "V7.2-front-soft":
+    if args.revision == "V7.2-cap5000":
+        witness.update(experiment="V7.2 hard total-output cap 5000, trial 01",
+            changed_request_fields=["max_tokens"], hard_total_output_cap=5000,
+            reasoning_control="enforced combined thinking plus answer cap, not a dedicated thinking budget",
+            comparison_criteria=["actual total output <=5000",
+                "measure latency against saved V7.2 control; faster latency is not guaranteed by the cap",
+                "inspect completeness, Front and Blocks; preserve partial responses without repair/retry"])
+    elif args.revision == "V7.2-front-soft":
         witness.update(experiment="V7.2 Front-only brief thinking, soft steering trial 01",
             changed_request_fields=["system"], reasoning_control="prompt guidance, not a hard or section-isolated API budget",
             steering_instruction=FRONT_SOFT_STEERING,

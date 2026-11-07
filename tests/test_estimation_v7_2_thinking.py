@@ -1,7 +1,7 @@
 from copy import deepcopy
 import json
 import pytest
-from tools.probe_estimation_v7_2_thinking import replay_request, incremental_request, front_soft_request, FRONT_SOFT_STEERING
+from tools.probe_estimation_v7_2_thinking import replay_request, incremental_request, front_soft_request, hard_cap_request, FRONT_SOFT_STEERING
 from agents import estimation_analyze_v7_2_agent as original_agent
 
 
@@ -97,3 +97,23 @@ def test_front_soft_rejects_a_changed_or_incomplete_control(problem):
     if problem == "disabled": saved["provider_request"]["thinking"] = dict(type="disabled")
     if problem == "different_effort": saved["provider_request"]["output_config"]["effort"] = "medium"
     with pytest.raises(ValueError): front_soft_request(saved)
+
+
+def test_hard_cap_changes_only_max_tokens_and_preserves_original():
+    saved = baseline(); before = deepcopy(saved)
+    request = hard_cap_request(saved)
+    assert request["max_tokens"] == 5000
+    assert saved == before
+    request["max_tokens"] = 14000
+    assert request == before["provider_request"]
+
+
+@pytest.mark.parametrize("problem", ["changed_prompt", "wrong_cap", "disabled", "truncated", "other_version"])
+def test_hard_cap_cannot_inherit_soft_or_v73_changes(problem):
+    saved = baseline()
+    if problem == "changed_prompt": saved["provider_request"]["system"] += "\nThink briefly."
+    if problem == "wrong_cap": saved["provider_request"]["max_tokens"] = 6000
+    if problem == "disabled": saved["provider_request"]["thinking"] = dict(type="disabled")
+    if problem == "truncated": saved["provider_response"]["stop_reason"] = "max_tokens"
+    if problem == "other_version": saved["version"] = "Estimation V7.3"
+    with pytest.raises(ValueError): hard_cap_request(saved)

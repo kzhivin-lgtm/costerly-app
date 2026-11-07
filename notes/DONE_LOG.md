@@ -1,5 +1,16 @@
 # Done Log
 
+2026-11-07, 3.17.4.6: tested genuinely enforced smaller output budget on the
+original V7.2 Thinking requests. ONLY max_tokens changed 14000 -> 5000, no
+soft hint or V7.3 prompt/schema changes. Lev1 25.147 s /5000 output (3210
+thinking), truncates inside materials before Front/Planner. Lev2 27.740 s /
+5000 output, all 5000 thinking, no answer text. Both faster and fewer output
+tokens than saved controls, but no complete usable Analyze. Shared cap does
+not reserve answer space; no success claim for intermediate thinking.
+104 focused tests and exact-request checks pass. Two calls, no repair/retry,
+DB writes, model/default changes, production deployment or main integration.
+Evidence: notes/evidence/estimation-v7-2-cap5000-2026-11-07/simple-object-trials.json.
+
 2026-11-07, 3.17.4.6: first original-V7.2 reasoning-reduction pair, not another
 V7.3 optimization. Appended only qualitative brief-Front-only reasoning guidance
 to saved V7.2 Thinking requests. Old template/material policy and all source/

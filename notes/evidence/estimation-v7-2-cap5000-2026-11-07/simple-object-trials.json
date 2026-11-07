@@ -1,0 +1,119 @@
+{
+  "work_number": "3.17.4.6",
+  "experiment": "original V7.2 Thinking, enforced total-output cap 5000",
+  "provider_calls": 2,
+  "database_writes": false,
+  "deployment": false,
+  "question": "Does a smaller enforced output budget reduce resource use while leaving a usable Analyze?",
+  "outcome": "Both faster and fewer output tokens, but neither completed Analyze; shared cap does not reserve answer tokens",
+  "trials": [
+    {
+      "document": "lev1",
+      "capsule_path": "/private/tmp/lev1-v7-2-cap5000-20261107-01.json",
+      "baseline_path": "/private/tmp/lev1-analyze-v7-2-thinking-20261107-01.json",
+      "baseline_sha256": "d1cb981c10f46aa87a99f2793dddf598d8913cf10cc8d532e3e9b648154fafd6",
+      "request_sha256": "2a514193655ffb11172cf2dc48b7401e526b0496112013a06acf00a971e5fe75",
+      "prompt_sha256": "53b65a011c7e06e915a64b5258032e4cedade6143b2ea0b95876adc1724d446e",
+      "only_request_difference": "max_tokens: 14000 -> 5000",
+      "unchanged_inputs_pixels_messages_prompt_and_other_settings": true,
+      "baseline_elapsed_seconds": 32.04,
+      "baseline_usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 26543,
+        "output_tokens": 6858,
+        "output_tokens_details": {
+          "thinking_tokens": 3488
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "elapsed_seconds": 25.147,
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 26543,
+        "output_tokens": 5000,
+        "output_tokens_details": {
+          "thinking_tokens": 3210
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "stop_reason": "max_tokens",
+      "status": "failed",
+      "error": "ValueError: incomplete provider response",
+      "raw_response_text": "```json\n{\n  \"objects\": [{\n    \"object_id\": \"object-001\",\n    \"islands\": [\n      {\"island_id\": \"view-001\", \"projection\": \"Axonometric view\", \"elevation_index\": null, \"content_role\": \"render\", \"observation\": \"Shaded 3D view: tall slat-back panel rises above a three-drawer base; a cantilevered table top extends to the right on a single visible leg.\"},\n      {\"island_id\": \"view-002\", \"projection\": \"Top view\", \"elevation_index\": null, \"content_role\": \"technical_drawing\", \"observation\": \"Plan shows a narrow zone (115) for the slat panel depth and a wider zone (187 total) for the seat and table, overall depth 160.\"},\n      {\"island_id\": \"view-003\", \"projection\": \"Axonometric view\", \"elevation_index\": null, \"content_role\": \"render\", \"observation\": \"Rear-side 3D view: slat panel back with seven vertical slats and recessed insets, seat base on the left, large beige table top with two legs visible.\"},\n      {\"island_id\": \"view-004\", \"projection\": \"Front elevation\", \"elevation_index\": 1, \"content_role\": \"technical_drawing\", \"observation\": \"Front of the slat panel: seven vertical slat columns with horizontal divisions, overall 160 wide by 265 high, and a base with three side-by-side drawer fronts over a plinth.\"},\n      {\"island_id\": \"view-005\", \"projection\": \"Side view\", \"elevation_index\": null, \"content_role\": \"technical_drawing\", \"observation\": \"Side profile: tall panel with depth 20, base height 43 to the seat line, base depth 72, table top at 75 height on a single leg in profile.\"},\n      {\"island_id\": \"view-006\", \"projection\": \"Front elevation\", \"elevation_index\": 2, \"content_role\": \"technical_drawing\", \"observation\": \"Opposite face of the slat panel with seven columns and insets (90 upper and 145 lower zones, offset 19); two vertical table legs are visible below the seat line.\"}\n    ],\n    \"understanding\": {\n      \"name\": \"Slat-back bench table\",\n      \"type_code\": \"bench\",\n      \"proposed_type\": null,\n      \"description\": \"A fixed bench-style unit with a tall vertical slat back on a three-drawer seat base, with a cantilevered table top projecting from one side on two legs. The slat back forms a full-height fixed panel rising above the base.\",\n      \"characteristics\": [\n        {\"statement\": \"Seat base is a carcass with three side-by-side drawer fronts stacked in one row, above a recessed plinth.\", \"basis\": \"specified\", \"island_ids\": [\"view-004\", \"view-006\"], \"source_refs\": [\"ocr:0835ea9b-b62b-4c1a-898b-e7cd73b35bdc:p1:b0011\"]},\n        {\"statement\": \"Tall back is a fixed slat panel with seven vertical slat columns and rectangular recessed insets; it is not an operable front.\", \"basis\": \"specified\", \"island_ids\": [\"view-004\", \"view-006\", \"view-003\"], \"source_refs\": [\"view-004-D003\"]},\n        {\"statement\": \"Slat back and drawer base use an oak-look wood-grain veneered sheet, inferred from the wood-grain rendering.\", \"basis\": \"inferred\", \"island_ids\": [\"view-001\", \"view-003\"], \"source_refs\": []},\n        {\"statement\": \"Table top is a separate beige laminate-finished panel, cantilevered to the right of the base and supported by two legs.\", \"basis\": \"inferred\", \"island_ids\": [\"view-003\", \"view-006\"], \"source_refs\": []},\n        {\"statement\": \"Table legs are dark metal or coated round sections supporting the table top.\", \"basis\": \"inferred\", \"island_ids\": [\"view-003\", \"view-006\"], \"source_refs\": []},\n        {\"statement\": \"Main sheet thicknesses: slat panel 20 mm (estimated from drawn panel depth), drawer base and slat assembly 17 mm default, table top 30 mm default.\", \"basis\": \"default\", \"island_ids\": [\"view-005\", \"view-002\"], \"source_refs\": [\"view-005-D001\"]}\n      ],\n      \"materials\": [\n        {\"part\": \"Slat back panels\", \"material\": \"Oak-look veneered MDF panel\", \"finish\": \"Oak-look wood grain veneer, natural satin (inferred)\", \"material_kind\": \"sheet\", \"thickness_mm\": 20, \"thickness_measurement_id\": null, \"basis\": \"inferred\", \"island_ids\": [\"view-005\", \"view-004\", \"view-006\"], \"source_refs\": [\"view-005-D001\"], \"reason\": \"Panel depth 20 mm is read from the side view, but the normalized value 200 mm is not used; 20 mm is an estimating assumption.\"},\n        {\"part\": \"Seat base carcass and drawer fronts\", \"material\": \"Oak-look veneered LDSP\", \"finish\": \"Oak-look wood grain veneer, matt clear coat (inferred)\", \"material_kind\": \"sheet\", \"thickness_mm\": 17, \"thickness_measurement_id\": null, \"basis\": \"default\", \"island_ids\": [\"view-004\", \"view-005\"], \"source_refs\": [], \"reason\": \"Ordinary carcass panel default of 17 mm; no drawn thickness dimension for the base.\"},\n        {\"part\": \"Plinth\", \"material\": \"Dark coated board\", \"finish\": \"Dark matt colour (inferred)\", \"material_kind\": \"sheet\", \"thickness_mm\": 17, \"th",
+      "complete_analyze": false,
+      "front_result_available": false,
+      "planner_result_available": false,
+      "partial_observation": "Islands/Understanding text only; ends inside materials before Front"
+    },
+    {
+      "document": "lev2",
+      "capsule_path": "/private/tmp/lev2-v7-2-cap5000-20261107-01.json",
+      "baseline_path": "/private/tmp/lev2-analyze-v7-2-thinking-20261107-01.json",
+      "baseline_sha256": "cf94d656daf5cc2fa4865892354a1d46721f355554936848d9ac2cbce4cabfb7",
+      "request_sha256": "302bc16736c7c0cea9389e650ffe8c37319284f80533e33738270d2ae88ed7d4",
+      "prompt_sha256": "53b65a011c7e06e915a64b5258032e4cedade6143b2ea0b95876adc1724d446e",
+      "only_request_difference": "max_tokens: 14000 -> 5000",
+      "unchanged_inputs_pixels_messages_prompt_and_other_settings": true,
+      "baseline_elapsed_seconds": 64.602,
+      "baseline_usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 25205,
+        "output_tokens": 13953,
+        "output_tokens_details": {
+          "thinking_tokens": 8352
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "elapsed_seconds": 27.74,
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": "global",
+        "input_tokens": 25205,
+        "output_tokens": 5000,
+        "output_tokens_details": {
+          "thinking_tokens": 5000
+        },
+        "server_tool_use": null,
+        "service_tier": "standard",
+        "speed": "standard"
+      },
+      "stop_reason": "max_tokens",
+      "status": "failed",
+      "error": "ValueError: incomplete provider response",
+      "raw_response_text": "",
+      "complete_analyze": false,
+      "front_result_available": false,
+      "planner_result_available": false,
+      "partial_observation": "No answer text; all 5000 generated tokens spent on thinking"
+    }
+  ]
+}

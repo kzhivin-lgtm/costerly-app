@@ -1,6 +1,15 @@
 # Costerly AI Project Map
 
-Latest experiment, original V7.2 Front-soft reasoning trial 01, 2026-11-07:
+Latest experiment, original V7.2 enforced total-output cap 5000, 2026-11-07:
+tools/probe_estimation_v7_2_thinking.py --revision V7.2-cap5000 changes ONLY
+max_tokens 14000 -> 5000 on the original completed V7.2 Thinking control.
+Both files faster/fewer output tokens, but Lev1 truncates before Front and
+Lev2 spends every generated token on thinking with no answer text. This is
+not a dedicated thinking budget or a usable intermediate Analyze. Evidence:
+notes/evidence/estimation-v7-2-cap5000-2026-11-07/simple-object-trials.json.
+Defaults/models/architecture unchanged; next mechanism choice needs approval.
+
+Earlier experiment, original V7.2 Front-soft reasoning trial 01, 2026-11-07:
 tools/probe_estimation_v7_2_thinking.py --revision V7.2-front-soft appends only
 brief Front-only reasoning guidance to the original saved V7.2 Thinking request.
 No V7.3 schema/material/prompt optimizations. Soft prompt steering, not enforced

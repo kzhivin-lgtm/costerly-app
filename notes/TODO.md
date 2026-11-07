@@ -1011,6 +1011,38 @@ LATEST OWNER REVIEW / HISTORICAL REUSE AUDIT, 2026-11-07:
 LATEST OWNER-APPROVED IMPLEMENTATION/TRIAL, V7.3, 2026-11-07, 3.17.4.6:
 COMPLETED local experiment; NOT ACCEPTED as replacement, P0 remains PENDING.
 OWNER REVIEW / INCREMENTAL DIRECTION, same work, 2026-11-07:
+LATEST OWNER REQUEST / ENFORCED RESOURCE CUT, 2026-11-07, 3.17.4.6:
+ACTIVE, P0, usable intermediate-thinking objective remains unresolved. Owner
+rejects another wider soft-steering result and requests a genuinely smaller,
+faster output. Announced and executed one isolated hard-total-budget pair:
+original V7.2 Thinking, max_tokens 14000 -> 5000 ONLY, no Front-soft hint,
+no V7.3 changes. Existing tool --revision V7.2-cap5000. Guards require original
+prompt/low effort/completed control; exact request/pixels/messages checks pass.
+Lev1: 25.147 s vs 32.040; output 5000 vs 6858, thinking 3210 vs 3488.
+Actual latency -21.5%, output -27.1%. Text contains Islands/Understanding but
+ends inside material assignment, BEFORE Front and Planner. stop=max_tokens.
+Lev2: 27.740 s vs 64.602; output 5000 vs 13953, thinking 5000 vs 8352.
+Actual latency -57.1%, output -64.2%. ALL generated tokens spent on thinking;
+no answer text at all. stop=max_tokens. No completed Front/Blocks to evaluate.
+Result: enforced cut demonstrably reduces both measured time and output here,
+but does not provide a usable intermediate Analyze or reserve final-answer
+space. This is a TOTAL output cap, not a separate thinking-only cap; do not
+describe this as successful selective Front reasoning. No repair/retry.
+Two calls only, 104 focused tests pass, diff check passes. Source prompt,
+default provider route, V7.3 frozen research, main and production unchanged.
+Evidence: notes/evidence/estimation-v7-2-cap5000-2026-11-07/simple-object-trials.json.
+Private files: /private/tmp/lev[1,2]-v7-2-cap5000-20261107-01.*.
+NEXT DECISION: do not stack more shared-output caps or qualitative hints.
+To test a dedicated reasoning allowance, changing to a model with a separate
+manual thinking budget is a proposal requiring owner approval, not authorized
+by this cap experiment. Official legacy extended-thinking docs describe a
+minimum 1024 budget_tokens, separate from max_tokens, but call it a TARGET,
+not a strict cap; do not promise exact hidden-token enforcement or equal quality.
+https://platform.claude.com/docs/en/build-with-claude/extended-thinking
+Haiku 4.5 is one documented manual-thinking model; no call/config/model change
+has been made. An extra Front model call is another architecture change and
+also needs approval. Current one-Analyze/model constraints remain in force.
+
 LATEST OWNER DIRECTION / V7.2 FRONT REASONING CONTROL, 2026-11-07:
 ACTIVE, P0, same 3.17.4.6. Owner freezes V7.3 prompt-optimization research
 separately and returns to ORIGINAL V7.2 for gradual thinking reduction. The
