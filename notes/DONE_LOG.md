@@ -1,5 +1,17 @@
 # Done Log
 
+2026-11-07, 3.17.4.6: first original-V7.2 reasoning-reduction pair, not another
+V7.3 optimization. Appended only qualitative brief-Front-only reasoning guidance
+to saved V7.2 Thinking requests. Old template/material policy and all source/
+provider settings unchanged; V7.3 research preserved separately. Lev1 complete
+32.934 s, 3776 thinking vs control 3488; three drawers/two legs retained, other
+known issues persist. Lev2 64.443 s, 10361 thinking vs 8352, hits 14000 total
+output and truncates in Planner. Partial Front still 17 doors/5 drawers/2 lifts.
+No resource gain observed in this pair; actual scope enforcement unknown.
+98 focused tests and exact-request checks pass, no retry, DB write, Calculation,
+default change or deploy. Raw/metrics in
+notes/evidence/estimation-v7-2-front-soft-2026-11-07/simple-object-trials.json.
+
 2026-11-07, 3.17.4.6: completed approved incremental Analyze experiments.
 7.3.1 adds normalization display to saved V7.2 Thinking replies, no calls.
 7.3.2 changes only Front totals ownership: two complete replies, Lev1 49.187 s,

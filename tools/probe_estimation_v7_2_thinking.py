@@ -13,6 +13,28 @@ from agents import estimation_analyze_v7_3_agent as economical
 from tools.probe_estimation_analyze_v7 import render_report
 from use_cases.estimation_detection_context_v7 import digest
 
+FRONT_SOFT_STEERING = """REASONING SCOPE FOR THIS REQUEST
+Use brief internal reasoning only for ambiguous CB Front decisions: physical
+front boundaries, movement type, repeated depictions and distinct tabletop
+legs. For Island Map, Understanding and Planner, answer directly from the
+supplied evidence and established rules without extended deliberation. Do not
+repeat Detection membership proofs or unit inference. Keep the Front check
+brief and targeted; do not explore alternative designs. Still complete EVERY
+requested section and all its annotations; do not trade completeness for
+brevity. The response schema, material defaults and interpretation rules above
+are unchanged. Return only the requested JSON, not your reasoning."""
+
+
+def front_soft_request(baseline):
+    if (baseline.get("version") != agent.VERSION
+            or (baseline.get("provider_response") or {}).get("stop_reason") != "end_turn"):
+        raise ValueError("requires the original completed V7.2 Thinking control")
+    request = deepcopy(baseline["provider_request"])
+    if "thinking" in request or request.get("output_config") != {"effort": "low"}:
+        raise ValueError("requires unchanged provider-default thinking at low effort")
+    request["system"] += "\n\n" + FRONT_SOFT_STEERING
+    return request
+
 
 def replay_request(baseline):
     request = deepcopy(baseline["provider_request"])
@@ -72,12 +94,17 @@ def main():
     parser.add_argument("--baseline", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--execute", action="store_true")
-    parser.add_argument("--revision", choices=["V7.2-thinking", "V7.3.1", "V7.3.2", "V7.3.3"], default="V7.2-thinking")
+    parser.add_argument("--revision", choices=["V7.2-thinking", "V7.2-front-soft", "V7.3.1", "V7.3.2", "V7.3.3"], default="V7.2-thinking")
     args = parser.parse_args()
     if any(p.exists() for p in (args.output, args.output.with_suffix(".raw.txt"), args.output.with_suffix(".html"))):
         parser.error("refuse to overwrite experiment")
     baseline = json.loads(args.baseline.read_text())
-    request = replay_request(baseline) if args.revision == "V7.2-thinking" else incremental_request(baseline, args.revision)
+    if args.revision == "V7.2-thinking":
+        request = replay_request(baseline)
+    elif args.revision == "V7.2-front-soft":
+        request = front_soft_request(baseline)
+    else:
+        request = incremental_request(baseline, args.revision)
     if args.revision == "V7.3.1" and args.execute:
         parser.error("V7.3.1 is display-only; no provider call is needed or permitted")
     witness = {k: deepcopy(baseline[k]) for k in (
@@ -89,7 +116,16 @@ def main():
         changed_request_fields=["thinking (explicit disabled removed)"],
         provider_request=request, request_sha256=digest(request),
         prompt_sha256=sha256(request["system"].encode()).hexdigest())
-    if args.revision != "V7.2-thinking":
+    if args.revision == "V7.2-front-soft":
+        witness.update(experiment="V7.2 Front-only brief thinking, soft steering trial 01",
+            changed_request_fields=["system"], reasoning_control="prompt guidance, not a hard or section-isolated API budget",
+            steering_instruction=FRONT_SOFT_STEERING,
+            comparison_criteria=["complete all sections without truncation",
+                "reduce measured thinking tokens and latency against saved V7.2 control",
+                "preserve physical coverage and compare Front/Blocks with owner benchmarks; do not reward omissions"],
+            owner_benchmarks=dict(Lev1=dict(drawers=3, legs=2),
+                Lev2=dict(hinged_doors=15, drawers=5, lift_up_fronts=2, cabinet_blocks=8)))
+    elif args.revision != "V7.2-thinking":
         witness.update(version="Estimation " + args.revision, experiment="Incremental " + args.revision,
             changed_request_fields=[] if args.revision == "V7.3.1" else ["system"],
             island_normalization=economical.island_normalization(witness["detection_context"]),

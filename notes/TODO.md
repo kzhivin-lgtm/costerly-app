@@ -1011,6 +1011,43 @@ LATEST OWNER REVIEW / HISTORICAL REUSE AUDIT, 2026-11-07:
 LATEST OWNER-APPROVED IMPLEMENTATION/TRIAL, V7.3, 2026-11-07, 3.17.4.6:
 COMPLETED local experiment; NOT ACCEPTED as replacement, P0 remains PENDING.
 OWNER REVIEW / INCREMENTAL DIRECTION, same work, 2026-11-07:
+LATEST OWNER DIRECTION / V7.2 FRONT REASONING CONTROL, 2026-11-07:
+ACTIVE, P0, same 3.17.4.6. Owner freezes V7.3 prompt-optimization research
+separately and returns to ORIGINAL V7.2 for gradual thinking reduction. The
+earlier V7.3.1/2/3 sequence changed normalization/totals/material, NOT reasoning
+allowance; it does not answer this objective. Preserve its raw history.
+Completed first paired test, V7.2-front-soft trial 01: original saved V7.2
+Thinking request plus ONE appended instruction for brief reasoning only on
+Front ambiguities (front boundaries/movement/duplicates/legs); other sections
+should answer directly without extended deliberation but retain full coverage.
+This is prompt steering, NOT enforced per-section isolation or a token cap.
+Input/pixels/OCR/Detection/messages/provider settings unchanged. Original
+response template INCLUDING model totals and old material defaults retained;
+no V7.3 improvements carried into this request. V7.3 files unchanged at 82e4f51.
+Lev1: end_turn, full structural pass, 32.934 s vs control 32.040; 26780 input,
+7176 output, 3776 thinking vs 3488. Three drawers/two legs and Front 1/2 remain.
+Three blocks (base/back panel/top with legs) versus control two, a grouping
+alternative requiring review. Seven ribs and 20-mm panel/normalization conflict
+remain, material alternatives remain. Passing references does not fix these.
+Lev2: max_tokens, 64.443 s vs 64.602; 25442 input /14000 output, 10361 thinking
+vs 8352. Visible raw Front totals 17 doors/5 drawers/2 lifts, no unresolved;
+these are partial-text observations, not a completed parsed Analyze result.
+JSON ends in Planner summary. No reliable full Blocks result, no repair/retry.
+Interpretation: resource-saving effect NOT OBSERVED in this pair; quality partly
+retained, overall completion lost for Lev2. No proof of a universal effect or
+that all internal reasoning was actually confined to Front. Do not call model
+adherence or unsupported per-section budget verified. Controls already use low
+effort; 'maximum/full thinking' is an informal comparator, not an API maximum.
+Two paid calls only. 98 focused tests pass, exact request delta checked, diff
+check passes. No Calculation/DB writes/default changes/deployment. Evidence:
+notes/evidence/estimation-v7-2-front-soft-2026-11-07/simple-object-trials.json.
+Private capsules: /private/tmp/lev[1,2]-v7-2-front-soft-20261107-01.*.
+NEXT PROPOSAL, PENDING owner review: contrast the qualitative hint with an
+explicit small advisory reasoning target (e.g. 1000 tokens) on the SAME V7.2
+control, acknowledging it is still soft guidance, not a guaranteed budget.
+Do not rewrite other prompts, silently lower total-output cap, change model or
+split Analyze into more calls. Those alternatives require separate approval.
+
 OWNER-APPROVED INCREMENTAL EXECUTION, 2026-11-07, 3.17.4.6, P0:
 COMPLETED 7.3.1/2/3 experiments; quality/resource assessment remains ACTIVE.
 Owner approved these three stages, then gradual thinking resource experiments.

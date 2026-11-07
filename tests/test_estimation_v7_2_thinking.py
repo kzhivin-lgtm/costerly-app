@@ -1,7 +1,7 @@
 from copy import deepcopy
 import json
 import pytest
-from tools.probe_estimation_v7_2_thinking import replay_request, incremental_request
+from tools.probe_estimation_v7_2_thinking import replay_request, incremental_request, front_soft_request, FRONT_SOFT_STEERING
 from agents import estimation_analyze_v7_2_agent as original_agent
 
 
@@ -77,3 +77,23 @@ def test_increment_does_not_continue_from_truncated_response():
     saved["provider_response"]["stop_reason"] = "max_tokens"
     with pytest.raises(ValueError, match="completed"):
         incremental_request(saved, "V7.3.3")
+
+
+def test_front_soft_only_appends_reasoning_guidance_to_original_control():
+    saved = baseline(); before = deepcopy(saved)
+    request = front_soft_request(saved)
+    assert saved == before
+    assert request["system"] == before["provider_request"]["system"] + "\n\n" + FRONT_SOFT_STEERING
+    request["system"] = before["provider_request"]["system"]
+    assert request == before["provider_request"]
+    assert '"totals"' in request["system"] and "artificial stone" not in request["system"]
+
+
+@pytest.mark.parametrize("problem", ["wrong_version", "truncated", "disabled", "different_effort"])
+def test_front_soft_rejects_a_changed_or_incomplete_control(problem):
+    saved = baseline()
+    if problem == "wrong_version": saved["version"] = "Estimation V7.3.2"
+    if problem == "truncated": saved["provider_response"]["stop_reason"] = "max_tokens"
+    if problem == "disabled": saved["provider_request"]["thinking"] = dict(type="disabled")
+    if problem == "different_effort": saved["provider_request"]["output_config"]["effort"] = "medium"
+    with pytest.raises(ValueError): front_soft_request(saved)

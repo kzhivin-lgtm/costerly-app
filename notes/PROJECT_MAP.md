@@ -1,6 +1,15 @@
 # Costerly AI Project Map
 
-Latest experiments, V7.3.1/2/3, 2026-11-07, work 3.17.4.6:
+Latest experiment, original V7.2 Front-soft reasoning trial 01, 2026-11-07:
+tools/probe_estimation_v7_2_thinking.py --revision V7.2-front-soft appends only
+brief Front-only reasoning guidance to the original saved V7.2 Thinking request.
+No V7.3 schema/material/prompt optimizations. Soft prompt steering, not enforced
+section budget. Two trials show no resource saving; Lev1 fronts/legs retained,
+Lev2 truncates in Planner. Evidence:
+notes/evidence/estimation-v7-2-front-soft-2026-11-07/simple-object-trials.json.
+V7.3 optimization research is frozen separately at owner direction, not erased.
+
+Earlier experiments, V7.3.1/2/3, 2026-11-07, work 3.17.4.6:
 tools/probe_estimation_v7_2_thinking.py --revision V7.3.1 / V7.3.2 / V7.3.3
 transforms saved preceding requests, retaining provider-default thinking at
 effort=low. Stage 1 display only, no call; stage 2 code totals only; stage 3
