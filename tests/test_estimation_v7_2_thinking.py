@@ -1,7 +1,7 @@
 from copy import deepcopy
 import json
 import pytest
-from tools.probe_estimation_v7_2_thinking import replay_request, incremental_request, front_soft_request, hard_cap_request, FRONT_SOFT_STEERING
+from tools.probe_estimation_v7_2_thinking import replay_request, incremental_request, front_soft_request, hard_cap_request, prompt_v2_request, PROMPT_V2_PATH, FRONT_SOFT_STEERING
 from agents import estimation_analyze_v7_2_agent as original_agent
 
 
@@ -117,3 +117,30 @@ def test_hard_cap_cannot_inherit_soft_or_v73_changes(problem):
     if problem == "truncated": saved["provider_response"]["stop_reason"] = "max_tokens"
     if problem == "other_version": saved["version"] = "Estimation V7.3"
     with pytest.raises(ValueError): hard_cap_request(saved)
+
+
+def test_prompt_v2_matches_approved_wording_and_changes_only_guidance():
+    saved = baseline(); before = deepcopy(saved)
+    guidance = PROMPT_V2_PATH.read_text().strip()
+    assert guidance == ("REASONING GUIDANCE\n"
+        "Do not perform a separate extended analysis for each section.\n"
+        "Use Detection's established island correspondences and normalized measurements directly.\n"
+        "Use brief internal reasoning only for ambiguous operating fronts and tabletop supports.\n"
+        "Do not explore alternative constructions or repeat a complete analysis.\n"
+        "Return the same complete JSON without additional reasoning text.")
+    request = prompt_v2_request(saved)
+    assert request["system"] == before["provider_request"]["system"] + "\n\n" + guidance
+    request["system"] = before["provider_request"]["system"]
+    assert request == before["provider_request"] and saved == before
+    assert request["max_tokens"] == 14000 and '"totals"' in request["system"]
+
+
+@pytest.mark.parametrize("problem", ["soft", "cap", "v73", "disabled", "incomplete"])
+def test_prompt_v2_rejects_accumulated_changes(problem):
+    saved = baseline()
+    if problem == "soft": saved["provider_request"] = front_soft_request(saved)
+    if problem == "cap": saved["provider_request"]["max_tokens"] = 5000
+    if problem == "v73": saved["version"] = "Estimation V7.3.3"
+    if problem == "disabled": saved["provider_request"]["thinking"] = dict(type="disabled")
+    if problem == "incomplete": saved["provider_response"]["stop_reason"] = "max_tokens"
+    with pytest.raises(ValueError): prompt_v2_request(saved)

@@ -1,6 +1,16 @@
 # Costerly AI Project Map
 
-Latest experiment, original V7.2 enforced total-output cap 5000, 2026-11-07:
+Latest experiment, original V7.2 reasoning prompt V2, 2026-11-07:
+tools/probe_estimation_v7_2_thinking.py --revision V7.2-prompt-v2 appends only
+agents/prompts/estimation_v7_2_reasoning_prompt_v2.md (five owner-agreed guidance
+sentences). Original schema/boxes/materials/model/effort/max_tokens unchanged.
+No resource saving observed against original controls: Lev1 complete with
+core fronts/legs retained, Lev2 truncated in Planner with differing Front.
+Evidence: notes/evidence/estimation-v7-2-reasoning-prompt-v2-2026-11-07/simple-object-trials.json.
+Owner direction: regulate thinking through prompt only; do not substitute
+compact output, model changes or caps. V7.3 research stays frozen separately.
+
+Earlier experiment, original V7.2 enforced total-output cap 5000, 2026-11-07:
 tools/probe_estimation_v7_2_thinking.py --revision V7.2-cap5000 changes ONLY
 max_tokens 14000 -> 5000 on the original completed V7.2 Thinking control.
 Both files faster/fewer output tokens, but Lev1 truncates before Front and

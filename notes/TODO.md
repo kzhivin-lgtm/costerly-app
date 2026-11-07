@@ -1011,6 +1011,44 @@ LATEST OWNER REVIEW / HISTORICAL REUSE AUDIT, 2026-11-07:
 LATEST OWNER-APPROVED IMPLEMENTATION/TRIAL, V7.3, 2026-11-07, 3.17.4.6:
 COMPLETED local experiment; NOT ACCEPTED as replacement, P0 remains PENDING.
 OWNER REVIEW / INCREMENTAL DIRECTION, same work, 2026-11-07:
+LATEST OWNER-APPROVED DIRECTION / REASONING PROMPT V2, 2026-11-07:
+ACTIVE, P0, same 3.17.4.6. Owner explicitly chooses PROMPT-ONLY regulation
+of thinking on original V7.2. Do not change schema, boxes, materials, Islands,
+Understanding, Front/Blocks requirements, model, effort or total-output cap.
+Earlier compact-output, model-switch and additional-call architecture proposals
+are NOT approved. V7.3 optimization research stays frozen separately.
+Implemented explicit --revision V7.2-prompt-v2 on the existing saved-request
+probe. Guidance file: agents/prompts/estimation_v7_2_reasoning_prompt_v2.md.
+It is the agreed five-sentence instruction: no separate extended analysis per
+section, direct reuse of Detection correspondence/normalized readings, brief
+reasoning only for ambiguous fronts/supports, no alternative construction
+search/repeated full analysis, same complete JSON without reasoning prose.
+Original V7.2 Thinking prompt preserved in full; only this paragraph appended.
+Exact request checks verify unchanged messages/pixels/OCR/Detection/schema and
+provider settings, including effort=low, max_tokens=14000, no retries.
+Two calls completed. Lev1 end_turn/full structural pass: 35.582 s vs 32.040,
+26669 input /7734 output, 4119 thinking vs 3488. Three drawers/two legs and
+Front 1/2 retained; three assembly blocks instead of control two. Seven ribs
+and unsupported 20-mm interpretation remain. Structural pass is not acceptance.
+Lev2 max_tokens: 65.417 s vs 64.602, 25331 input /14000 output, 9615 thinking
+vs 8352. Lower thinking than first soft prompt (10361), but above original
+control and still incomplete. Visible complete Front subobject says 13 hinged,
+2 drawers, 2 lifts, 3 unresolved versus owner 15/5/2; Planner cuts off after
+three blocks. Complete Front subobject decoded as partial evidence only, with
+no document repair or claim of a completed Analyze.
+Resource saving against original control NOT OBSERVED in this pair; repeated
+samples would be needed to separate wording effects from output variability.
+Two qualitative prompt variants now tested without the intended saving; stop
+this automatic reword-and-rerun approach, not another cosmetic third trial.
+NEXT PROPOSAL, PENDING owner decision: a controlled reproducibility check of
+unchanged V7.2 versus this fixed prompt, before attributing variable thinking
+length to the wording. No such repeat calls authorized/executed here.
+110 focused tests pass, raw replies and exact deltas preserved. No automatic
+repair/retry, model/cap/schema changes, DB writes, Calculation, push or deploy.
+Evidence: notes/evidence/estimation-v7-2-reasoning-prompt-v2-2026-11-07/simple-object-trials.json.
+Private capsules/reports:
+/private/tmp/lev[1,2]-v7-2-reasoning-prompt-v2-20261107-01.*.
+
 LATEST OWNER REQUEST / ENFORCED RESOURCE CUT, 2026-11-07, 3.17.4.6:
 ACTIVE, P0, usable intermediate-thinking objective remains unresolved. Owner
 rejects another wider soft-steering result and requests a genuinely smaller,

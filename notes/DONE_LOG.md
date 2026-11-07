@@ -1,5 +1,18 @@
 # Done Log
 
+2026-11-07, 3.17.4.6: implemented owner-approved reasoning prompt V2 on the
+original V7.2 Thinking request. Only five agreed guidance sentences appended;
+all output fields/boxes/material policy/source/provider settings unchanged,
+including max_tokens=14000. Lev1 complete 35.582 s /4119 thinking (control
+32.040/3488), three drawers/two legs retained, known interpretation issues
+persist. Lev2 65.417 s /9615 thinking (control 64.602/8352), hits max_tokens
+inside Planner. Partial Front 13 doors/2 drawers/2 lifts/3 unresolved, not a
+completed Analyze. No saving demonstrated against original controls; less
+thinking than first soft prompt on Lev2 does not establish an accepted result.
+110 focused tests and exact-request checks pass. Two calls, no retries, schema/
+model/cap changes, DB writes, Calculation or deployment. Raw evidence:
+notes/evidence/estimation-v7-2-reasoning-prompt-v2-2026-11-07/simple-object-trials.json.
+
 2026-11-07, 3.17.4.6: tested genuinely enforced smaller output budget on the
 original V7.2 Thinking requests. ONLY max_tokens changed 14000 -> 5000, no
 soft hint or V7.3 prompt/schema changes. Lev1 25.147 s /5000 output (3210
