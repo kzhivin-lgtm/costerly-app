@@ -1502,6 +1502,19 @@ P0 ACTIVE, owner-authorized V8 policy trial: kitchen-only automatic worktop
 separation; for a bench, retain the tabletop with its drawer carcass.
 A tall column spans one front module in width; check near-square
 width/depth in plan when supported. Compare Lev1, Lev2 and both Adda objects.
+2026-11-08, V8 trial COMPLETED; policy acceptance pending. Four complete
+requests, no retry, medium/no Thinking. Lev1/Lev2 requests differ from V7
+only in system. Lev1 2 Blocks, valid schema, but joins slats to the base
+and still separates the attached tabletop. Lev2 6 Blocks + S01, valid
+schema, but the tall column still spans several fronts, the lower runs
+remain overgrouped and the worktop locator is off the surface. Both Adda
+objects still emit a separate top; object 001 fails a one-owner shared
+reference and object 002 duplicates F06/F07. Adda uses four frozen crops
+per object and a fallible saved Front; it has no paired standalone V7
+control in this trial. The observed outcomes do not establish compliance
+with the new rules. Keep V8 opt-in and use V7 as the frozen comparison.
+Evidence: notes/evidence/estimation-cb-planner-v8-all-2026-11-08/standalone-trials.json.
+Private witnesses: /private/tmp/cb-planner-v8-all.QSWyaVtq/.
 Checkpoint manifest: notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/planner-v7-checkpoint.json.
 P0 PENDING after Blocks acceptance: use Calculation / CB Parts to break
 accepted Blocks into Parts. Verify block coverage, shared components and

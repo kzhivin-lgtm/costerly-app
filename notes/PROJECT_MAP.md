@@ -4,6 +4,11 @@ CB Planner V7 Lev baseline, same work 3.17.4.6, 2026-11-08:
 `estimation-cb-planner-v7-lev-controls-experimental-2026-11-08` preserves both raw standalone plans, diagnostics and revised
 owner references. Both plans were structurally rejected. See handoff
 section 41 and notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/planner-v7-checkpoint.json.
+Experimental V8 policy in `agents/prompts/cb_planner_v8.md` scopes automatic
+worktop separation to kitchens and specifies one-front-wide tall columns.
+Four standalone trials are recorded; the new rules did not pass physical
+review. Evidence:
+notes/evidence/estimation-cb-planner-v8-all-2026-11-08/standalone-trials.json.
 
 Current Estimation Front research checkpoint, 3.17.4.6, 2026-11-08:
 `estimation-v7.5-per-island-front-experimental-2026-11-08` on

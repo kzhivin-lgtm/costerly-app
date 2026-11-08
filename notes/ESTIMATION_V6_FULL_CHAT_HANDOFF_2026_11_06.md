@@ -1415,3 +1415,13 @@ a one-front-module-wide column with near-square plan-section evidence.
 Keep benchmark-specific counts out of the prompt. Test Lev1, Lev2 and
 both Adda objects. Frozen V7 archive and revised reference:
 `notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/planner-v7-checkpoint.json`.
+
+**V8 trial result.** Four standalone calls completed. Lev1 and Lev2 changed
+only the system prompt relative to their V7 controls. Both passed structure,
+but Lev1 still separated the tabletop and merged the slats into the base;
+Lev2 still merged the tall column with adjacent sections. Both Adda objects
+received separate top entries and failed structural validation. Adda used
+four frozen crops per object and historical Front; there is no paired
+standalone Adda V7 control for this comparison. V8 remains experimental.
+Raw results and locators:
+`notes/evidence/estimation-cb-planner-v8-all-2026-11-08/standalone-trials.json`.
