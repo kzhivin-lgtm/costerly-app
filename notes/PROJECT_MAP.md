@@ -18,6 +18,9 @@ Use a saved V9 witness plus the frozen Offline Vector archive. Three
 trials bind native outlines but leave physical ownership and legacy
 structure unresolved. Evidence:
 notes/evidence/estimation-cb-planner-v9-vector-2026-11-08/standalone-trials.json.
+Opt-in `--locked-plan` localizes the saved V9 Blocks and shared elements.
+It accepts only geometry locators for existing IDs. Offline replay passed;
+live localization remains pending.
 
 Current Estimation Front research checkpoint, 3.17.4.6, 2026-11-08:
 `estimation-v7.5-per-island-front-experimental-2026-11-08` on

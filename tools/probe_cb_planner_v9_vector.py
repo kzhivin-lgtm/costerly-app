@@ -35,6 +35,19 @@ subset, or unavailable with an empty contour_ids list when no contour
 supports the locator. Contour IDs are local to region.view_id. Keep
 bbox_1000 in the original labelled detail image's coordinate frame.
 """
+LOCATOR_POLICY = """Locate the visible geometry of a saved assembly plan. The supplied
+Blocks, shared elements, Front assignments and membership are fixed. Return
+exactly one locator for each saved ID. Use the clean crops and native PDF
+contour maps together. Select a view that actually shows the element. For a
+worktop, prefer the plan when it shows the true extent. Exclude neighboring
+units, unrelated marks and spaces. C IDs belong to one view only.
+
+Use complete when the selected contours cover the visible element in that
+view. Use partial for a visible subset. Use unavailable with no contour IDs
+when the visible element cannot be reliably located. Return JSON only:
+{"locators":[{"id":"B01","view_id":"source view ID",
+"geometry_scope":"complete | partial | unavailable","contour_ids":[]}]}
+"""
 
 
 def source_map(image, candidates):
@@ -78,7 +91,7 @@ def source_map(image, candidates):
     return data.getvalue(), indexed
 
 
-def prepare_request(witness, archive, *, document):
+def prepare_request(witness, archive, *, document, locked_plan=False):
     original = witness["provider_request"]
     if digest(original) != witness["request_sha256"] or original["system"] != POLICY.read_text().strip():
         raise ValueError("expected an exact saved Planner V9 request")
@@ -110,48 +123,84 @@ def prepare_request(witness, archive, *, document):
                 {"type": "text", "text": f"Native contour map for {ident}. C IDs belong only to this Island."},
                 image_block(pixels),
             ])
+    if locked_plan:
+        plan = witness["model_readings"]
+        saved = {key: [{k: v for k, v in row.items() if k != "region"} for row in plan[key]]
+                 for key in ("blocks", "shared_parts")}
+        content.append({"type": "text", "text": json.dumps({"locked_plan": saved}, ensure_ascii=False)})
+        system = LOCATOR_POLICY
     request = {**original, "system": system, "messages": [{**message, "content": content}]}
     return request, geometry, sha256(audit).hexdigest()
 
 
-def bind_plan(plan, *, geometry, front_ids):
-    original = deepcopy(plan)
+def bind_regions(regions, geometry):
     bindings = {}
     issues = []
     owners = {}
-    for row in original["blocks"] + original["shared_parts"]:
-        region = row["region"]
-        scope = region.pop("geometry_scope", None)
-        ids = region.pop("contour_ids", None)
-        available = geometry.get(region["view_id"], {}).get("contours", {})
-        if (scope not in ("complete", "partial", "unavailable") or not isinstance(ids, list)
+    for region in regions:
+        ident, view = region["id"], region["view_id"]
+        scope, ids = region["geometry_scope"], region["contour_ids"]
+        available = geometry.get(view, {}).get("contours", {})
+        if (view not in geometry or scope not in ("complete", "partial", "unavailable")
+                or not isinstance(ids, list)
                 or any(not isinstance(ident, str) or ident not in available for ident in ids)
                 or len(set(ids)) != len(ids) or bool(ids) != (scope != "unavailable")):
-            issues.append({"id": row["id"], "reason": "invalid or unavailable source contour selection"})
+            issues.append({"id": ident, "reason": "invalid or unavailable source contour selection"})
             continue
         if ids:
-            bindings[row["id"]] = {"view_id": region["view_id"], "scope": scope, "contour_ids": ids,
-                                    "polygons": [available[ident] for ident in ids]}
-            for ident in ids:
-                key = (region["view_id"], ident)
+            bindings[ident] = {"view_id": view, "scope": scope, "contour_ids": ids,
+                               "polygons": [available[contour] for contour in ids]}
+            for contour in ids:
+                key = (view, contour)
                 if key in owners:
-                    issues.append({"id": row["id"], "other_id": owners[key], "contour_id": ident,
+                    issues.append({"id": ident, "other_id": owners[key], "contour_id": contour,
                                    "reason": "source contour assigned to multiple regions"})
                 else:
-                    owners[key] = row["id"]
-    error = None
+                    owners[key] = ident
+    return {"bindings": bindings, "geometry_issues": issues}
+
+
+def structure_error(plan, geometry, front_ids):
     try:
-        validate_assembly_plan(original, set(geometry), front_ids)
+        validate_assembly_plan(plan, set(geometry), front_ids)
     except ValueError as exc:
-        error = str(exc)
-    return {"bindings": bindings, "geometry_issues": issues, "planner_structure_error": error}
+        return str(exc)
+    return None
+
+
+def bind_plan(plan, *, geometry, front_ids):
+    original = deepcopy(plan)
+    regions = []
+    for row in original["blocks"] + original["shared_parts"]:
+        region = row["region"]
+        regions.append({"id": row["id"], "view_id": region["view_id"],
+                        "geometry_scope": region.pop("geometry_scope", None),
+                        "contour_ids": region.pop("contour_ids", None)})
+    return {**bind_regions(regions, geometry),
+            "planner_structure_error": structure_error(original, geometry, front_ids)}
+
+
+def bind_locked_locators(readings, *, plan, geometry, front_ids):
+    expected = [row["id"] for row in plan["blocks"] + plan["shared_parts"]]
+    fields = {"id", "view_id", "geometry_scope", "contour_ids"}
+    if set(readings) != {"locators"} or not isinstance(readings["locators"], list):
+        raise ValueError("expected only geometry locators for the locked plan")
+    locators = readings["locators"]
+    if any(not isinstance(row, dict) or set(row) != fields
+           or not isinstance(row["id"], str) or not isinstance(row["view_id"], str) for row in locators):
+        raise ValueError("invalid locked locator fields")
+    if sorted(row["id"] for row in locators) != sorted(expected):
+        raise ValueError("locators must cover exactly the saved assembly IDs once")
+    return {**bind_regions(locators, geometry),
+            "planner_structure_error": structure_error(plan, geometry, front_ids)}
 
 
 def render_overlay(request, plan, binding_result, geometry, output):
     _, details = decode_evidence_images(request)
     bindings = binding_result["bindings"]
     rows = plan["blocks"] + plan["shared_parts"]
-    views = sorted({row["region"]["view_id"] for row in rows} & details.keys())
+    views = sorted(({row["region"]["view_id"] for row in rows}
+                    | {b["view_id"] for b in bindings.values()}) & details.keys())
     palette = list(COLORS)
     row_colors = {row["id"]: palette[index % len(palette)] for index, row in enumerate(rows)}
     tile_width, tile_height, gap, header = 670, 520, 16, 94
@@ -176,16 +225,15 @@ def render_overlay(request, plan, binding_result, geometry, output):
         invalid_boxes = []
         for row in rows:
             region, ident = row["region"], row["id"]
-            if region["view_id"] != view_id:
-                continue
-            box = region["bbox_1000"]
-            if (isinstance(box, list) and len(box) == 4 and all(type(v) in (float, int) for v in box)
-                    and 0 <= box[0] < box[2] <= 1000 and 0 <= box[1] < box[3] <= 1000):
-                approximate.append({"id": ident, "type": row_colors[ident],
-                                    "pixels": box_to_pixels(box, supplied.size)})
-            else:
-                invalid_boxes.append(ident)
-            if ident in bindings:
+            if region["view_id"] == view_id:
+                box = region["bbox_1000"]
+                if (isinstance(box, list) and len(box) == 4 and all(type(v) in (float, int) for v in box)
+                        and 0 <= box[0] < box[2] <= 1000 and 0 <= box[1] < box[3] <= 1000):
+                    approximate.append({"id": ident, "type": row_colors[ident],
+                                        "pixels": box_to_pixels(box, supplied.size)})
+                else:
+                    invalid_boxes.append(ident)
+            if ident in bindings and bindings[ident]["view_id"] == view_id:
                 b = bindings[ident]
                 color = COLORS[row_colors[ident]]
                 for polygon in b["polygons"]:
@@ -213,6 +261,7 @@ def main():
     parser.add_argument("--baseline", required=True, type=Path)
     parser.add_argument("--archive", required=True, type=Path)
     parser.add_argument("--document", choices=("lev2", "adda"), required=True)
+    parser.add_argument("--locked-plan", action="store_true", help="Localize existing Blocks without regrouping")
     parser.add_argument("--output", type=Path)
     action = parser.add_mutually_exclusive_group()
     action.add_argument("--execute", action="store_true")
@@ -220,25 +269,34 @@ def main():
     args = parser.parse_args()
     source = args.baseline.read_bytes()
     witness = json.loads(source)
-    request, geometry, audit_hash = prepare_request(witness, args.archive, document=args.document)
+    request, geometry, audit_hash = prepare_request(
+        witness, args.archive, document=args.document, locked_plan=args.locked_plan)
     context = json.loads(witness["provider_request"]["messages"][0]["content"][-1]["text"])
     ids = planner_front_ids(context["fallible_front_reference"], set(geometry))
+    if args.locked_plan:
+        plan = witness["model_readings"]
+
+        def bind(readings):
+            return bind_locked_locators(readings, plan=plan, geometry=geometry, front_ids=ids)
+    else:
+        def bind(readings):
+            return bind_plan(readings, geometry=geometry, front_ids=ids)
     print(json.dumps({"request_sha256": digest(request), "geometry_sha256": audit_hash,
                       "contours_by_view": {key: len(value["contours"]) for key, value in geometry.items()}}),
           flush=True)
     if args.execute:
         if args.output is None or args.output.exists():
             parser.error("--execute requires a new --output path")
-        execute_request(request, args.output, bind=lambda plan: bind_plan(plan, geometry=geometry, front_ids=ids),
-                        source_hash=sha256(source).hexdigest())
+        execute_request(request, args.output, bind=bind, source_hash=sha256(source).hexdigest())
     elif args.render is not None:
         if args.output is None or args.output.exists():
             parser.error("--render requires a new --output path")
         saved = json.loads(args.render.read_bytes())
         if saved["provider_request"] != request or saved["request_sha256"] != digest(request):
             raise ValueError("overlay witness does not use this exact request")
-        plan = saved["model_readings"]
-        bound = bind_plan(plan, geometry=geometry, front_ids=ids)
+        readings = saved["model_readings"]
+        plan = witness["model_readings"] if args.locked_plan else readings
+        bound = bind(readings)
         render_overlay(request, plan, bound, geometry, args.output)
 
 

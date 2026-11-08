@@ -1570,6 +1570,24 @@ locator overlays separately. Next isolate source ownership and scope;
 avoid demanding a legacy box when a reliable native contour is present.
 Evidence: notes/evidence/estimation-cb-planner-v9-vector-2026-11-08/standalone-trials.json.
 Private witnesses: /private/tmp/cb-planner-v9-vector.lFI6zoWF/.
+P0 ACTIVE, owner flagged the block regrouping regression. The vector
+trial reran assembly grouping as well as geometry; Lev2 changed from
+8 Blocks + 2 shared entries to 4 + 1. On corner Adda it changed 4 + 1
+to 5 + 1. The experiment does not isolate overlay accuracy. Preserve
+plain V9 as the grouping control and the joint vector witness as a
+separate diagnostic.
+Prepared opt-in `--locked-plan` on the V9 vector probe. The saved plan
+supplies immutable IDs, names, membership and assignments. Response
+contains only a view and native contours per existing ID. Coverage is
+checked once per ID; missing, extra and repeated IDs are rejected.
+Raw boxes and source bindings render separately, even on different
+views. Local preflight reproduced all three joint requests and bindings,
+and verified locked requests on the exact same images and contour maps.
+Saved control counts remain Lev2 8 + 2, Adda 001 3 + 1, Adda 002 4 + 1.
+37 focused tests passed, zero new provider calls. Next controlled
+localization trial: Lev2 only, assess worktop and other boundaries
+against source while keeping the saved grouping exactly. The original
+F10/F21 duplicate assignment remains a separate grouping defect.
 Checkpoint manifest: notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/planner-v7-checkpoint.json.
 P0 PENDING after Blocks acceptance: use Calculation / CB Parts to break
 accepted Blocks into Parts. Verify block coverage, shared components and
