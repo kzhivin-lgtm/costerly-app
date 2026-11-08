@@ -1,0 +1,435 @@
+{
+  "work": "3.17.4.6",
+  "date": "2026-11-08",
+  "scope": "standalone exact CB Planner V7 policy",
+  "transport": "Haiku 5.5, medium, Thinking disabled, max_tokens=6000, one call per file",
+  "provider_calls": 2,
+  "documents": {
+    "lev1": {
+      "request_sha256": "abd761794d95dacef12024ca1ec493aaa8fed518f208897eb5b9b0719877f406",
+      "source_sha256": "a609cf78eb3865c477045e93eee7869fd5c86b0633d704730f73bafd02dfb998",
+      "prompt_sha256": "d3271d697f5398e699511d8a261f3f8734bf744835b52b894188d37d819cd848",
+      "control_path": "/private/tmp/cb-planner-v4-lev1-front-v2-01.json",
+      "front_witness": "/private/tmp/cb-front-v2-lev1-01.json",
+      "front_status": "failed",
+      "view_ids": [
+        "p1-view-001",
+        "p1-view-002",
+        "p1-view-003",
+        "p1-view-004",
+        "p1-view-005",
+        "p1-view-006"
+      ],
+      "front_reference_count": 3,
+      "image_count": 7,
+      "witness_sha256": "c2491048c38499dfd9f321acb7bca111c4715f0ee7fea73aac74cebaf93dc261",
+      "response_id": "msg_011CgqLr1U8fjxULszbJUTfD",
+      "status": "failed",
+      "error": "ValueError: invalid Planner references",
+      "elapsed_seconds": 5.284,
+      "usage": {
+        "input_tokens": 14932,
+        "output_tokens": 984
+      },
+      "validation_findings": {
+        "omitted_front_ids": [],
+        "unknown_front_ids": [],
+        "multiple_front_placements": {},
+        "shared_parts_with_fewer_than_two_blocks": [
+          "S01"
+        ]
+      },
+      "plan": {
+        "summary": "A built-in banquette-style bench with a tall slatted backrest on a drawer base, plus a cantilevered table top on one side.",
+        "blocks": [
+          {
+            "id": "B01",
+            "name": "Bench base carcass with three drawers",
+            "contains": "Lower bench carcass from beneath the seat to the plinth, with the three shallow drawer fronts in one horizontal row.",
+            "reason": "The three drawer fronts sit side by side in one horizontal row on a single carcass, within the three-position allowance. The base is a continuous low carcass below the seat, so drawers and carcass form one assembly.",
+            "front_ids": [
+              "F01",
+              "F02",
+              "F03"
+            ],
+            "view_ids": [
+              "p1-view-004",
+              "p1-view-001",
+              "p1-view-005"
+            ],
+            "region": {
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                100,
+                760,
+                680,
+                900
+              ]
+            }
+          },
+          {
+            "id": "B02",
+            "name": "Slatted backrest column",
+            "contains": "Tall vertical slatted backrest panel rising above the seat, fixed to the rear of the bench base.",
+            "reason": "The backrest is a single full-height column one section wide, formed by the slatted panel. It is a fixed surface and carries no operating fronts, so it is kept as its own block rather than merged with the base drawers.",
+            "front_ids": [],
+            "view_ids": [
+              "p1-view-004",
+              "p1-view-001",
+              "p1-view-003",
+              "p1-view-006"
+            ],
+            "region": {
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                100,
+                200,
+                680,
+                765
+              ]
+            }
+          },
+          {
+            "id": "B03",
+            "name": "Bench seat top",
+            "contains": "Seat-level top surface of the bench base, extending along the bench.",
+            "reason": "The seat top is a separate horizontal surface that covers the base carcass. It is listed as its own part so it is not confused with the drawer-base block.",
+            "front_ids": [],
+            "view_ids": [
+              "p1-view-001",
+              "p1-view-003"
+            ],
+            "region": {
+              "view_id": "p1-view-001",
+              "bbox_1000": [
+                40,
+                380,
+                560,
+                650
+              ]
+            }
+          }
+        ],
+        "shared_parts": [
+          {
+            "id": "S01",
+            "name": "Cantilevered table top with two legs",
+            "block_ids": [
+              "B01"
+            ],
+            "view_ids": [
+              "p1-view-003",
+              "p1-view-001",
+              "p1-view-005"
+            ],
+            "region": {
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                120,
+                320,
+                920,
+                980
+              ]
+            }
+          }
+        ],
+        "front_conflicts": [],
+        "uncertainties": [
+          "The table top's attachment to the bench structure is assumed from proximity and is not separately detailed in the drawing.",
+          "The table leg count is estimated; the leg in view 001 may duplicate one visible in view 003."
+        ]
+      },
+      "overlays": {
+        "page": "/Users/qb/.codex/visualizations/2026/11/06/01a1b2b5-0979-7c50-b3fb-f86d8e481902/cb-planner-v7-lev/lev1-overlay-page.png",
+        "details": "/Users/qb/.codex/visualizations/2026/11/06/01a1b2b5-0979-7c50-b3fb-f86d8e481902/cb-planner-v7-lev/lev1-overlay-details.png",
+        "coordinates": "/Users/qb/.codex/visualizations/2026/11/06/01a1b2b5-0979-7c50-b3fb-f86d8e481902/cb-planner-v7-lev/lev1-overlay-coordinates.json",
+        "warnings": [],
+        "display_only_label_normalizations": []
+      },
+      "owner_reference_review": {
+        "preferred_assemblies": [
+          "lower carcass with drawers",
+          "decorative vertical assembly",
+          "worktop with both legs"
+        ],
+        "clear_matches": [
+          "B01",
+          "B02"
+        ],
+        "observations": [
+          "B03 creates a separate seat-top block and its locator falls on the backrest.",
+          "S01 recognizes the separate worktop with two legs but lists it as shared by just B01.",
+          "S01 locator includes a substantial portion of the slatted back and bench base.",
+          "The input Front V2 had the three drawers and both supports but failed the Island enum check."
+        ]
+      }
+    },
+    "lev2": {
+      "request_sha256": "e227dfdd1baaa009e780165fa9f4323343d132cf56aff1fcc09e8849e1bfae42",
+      "source_sha256": "86284d61ee721c8d238056962f95f8344ef40d09eeec7d91dae324a29cedfd28",
+      "prompt_sha256": "d3271d697f5398e699511d8a261f3f8734bf744835b52b894188d37d819cd848",
+      "control_path": "/private/tmp/lev2-front-v3-planner-v7-20261106-02-planner.json",
+      "front_witness": "/private/tmp/lev2-front-v3-planner-v7-20261106-02-front.json",
+      "front_status": "front_count_requires_review",
+      "view_ids": [
+        "p1-view-001",
+        "p1-view-002",
+        "p1-view-003",
+        "p1-view-004"
+      ],
+      "front_reference_count": 24,
+      "image_count": 5,
+      "witness_sha256": "be46ae21423c5af3e1a250505c67cfe6a44a2152207b6af5ce79613559f0b8bf",
+      "response_id": "msg_011CgqLrRFNJ6htEuu5wdf9f",
+      "status": "failed",
+      "error": "ValueError: front assigned twice",
+      "elapsed_seconds": 7.514,
+      "usage": {
+        "input_tokens": 16084,
+        "output_tokens": 1674
+      },
+      "validation_findings": {
+        "omitted_front_ids": [],
+        "unknown_front_ids": [],
+        "multiple_front_placements": {
+          "F10": 2
+        },
+        "shared_parts_with_fewer_than_two_blocks": []
+      },
+      "plan": {
+        "summary": "An L-shaped kitchen run with a tall return unit, an upper wall cabinet bank, a second wing, and a worktop over the base carcasses.",
+        "blocks": [
+          {
+            "id": "B01",
+            "name": "Left tall return cabinet",
+            "contains": "Tall return unit with one hinged door and fixed side panel at the left end of the main elevation.",
+            "reason": "Its single tall front and fixed side form a narrow full-height column, kept together as one section.",
+            "front_ids": [
+              "F11"
+            ],
+            "view_ids": [
+              "p1-view-001",
+              "p1-view-003"
+            ],
+            "region": {
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                100,
+                190,
+                205,
+                495
+              ]
+            }
+          },
+          {
+            "id": "B02",
+            "name": "Main run upper wall cabinets (left)",
+            "contains": "Two wide lift-up fronts in the upper wall unit above the main run.",
+            "reason": "Two side-by-side horizontal fronts share one upper carcass; the boundary with the tall column is taken from the front layout.",
+            "front_ids": [
+              "F14",
+              "F15"
+            ],
+            "view_ids": [
+              "p1-view-003"
+            ],
+            "region": {
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                200,
+                385,
+                610,
+                495
+              ]
+            }
+          },
+          {
+            "id": "B03",
+            "name": "Main run base doors",
+            "contains": "Five hinged base doors closing the main lower run.",
+            "reason": "A continuous base carcass with five side-by-side doors; within the three-position allowance as a single horizontal run.",
+            "front_ids": [
+              "F01",
+              "F02",
+              "F03",
+              "F04",
+              "F05"
+            ],
+            "view_ids": [
+              "p1-view-003"
+            ],
+            "region": {
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                100,
+                648,
+                585,
+                860
+              ]
+            }
+          },
+          {
+            "id": "B04",
+            "name": "Main run right column and drawers",
+            "contains": "Full-height right column of three upper fronts, a lower square front, and a two-drawer stack at the base.",
+            "reason": "Tall right column kept as one section, carrying the vertical stack of fronts and drawers; the lower square front is estimated as hinged.",
+            "front_ids": [
+              "F06",
+              "F07",
+              "F08",
+              "F09",
+              "F10",
+              "F12",
+              "F13"
+            ],
+            "view_ids": [
+              "p1-view-003"
+            ],
+            "region": {
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                600,
+                195,
+                985,
+                860
+              ]
+            }
+          },
+          {
+            "id": "B05",
+            "name": "Second wing upper hanging cabinet",
+            "contains": "Hanging cabinet with two portrait doors in the second wing.",
+            "reason": "Two leaves in one hanging unit form one section; the corner overlap with the main run is unresolved.",
+            "front_ids": [
+              "F16",
+              "F17"
+            ],
+            "view_ids": [
+              "p1-view-004"
+            ],
+            "region": {
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                125,
+                112,
+                345,
+                475
+              ]
+            }
+          },
+          {
+            "id": "B06",
+            "name": "Second wing base run",
+            "contains": "Four hinged base doors and a three-drawer stack in the second wing base carcass.",
+            "reason": "One continuous base run in the second wing; front layout limited to a single horizontal arrangement of doors and drawers.",
+            "front_ids": [
+              "F18",
+              "F19",
+              "F20",
+              "F21",
+              "F22",
+              "F23",
+              "F24"
+            ],
+            "view_ids": [
+              "p1-view-004"
+            ],
+            "region": {
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                125,
+                655,
+                602,
+                910
+              ]
+            }
+          },
+          {
+            "id": "B07",
+            "name": "Second wing tall end panel",
+            "contains": "Fixed tall end panel at the right of the second wing; no operable front.",
+            "reason": "A fixed panel forming a narrow column, kept separate from the base run.",
+            "front_ids": [],
+            "view_ids": [
+              "p1-view-004"
+            ],
+            "region": {
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                836,
+                105,
+                895,
+                945
+              ]
+            }
+          }
+        ],
+        "shared_parts": [
+          {
+            "id": "S01",
+            "name": "L-shaped worktop",
+            "block_ids": [
+              "B03",
+              "B04",
+              "B06"
+            ],
+            "view_ids": [
+              "p1-view-002"
+            ],
+            "region": {
+              "view_id": "p1-view-002",
+              "bbox_1000": [
+                40,
+                190,
+                560,
+                460
+              ]
+            }
+          }
+        ],
+        "front_conflicts": [
+          {
+            "front_id": "F10",
+            "reason": "Lower square front above the drawers could be an estimated drawer rather than a hinged door."
+          }
+        ],
+        "uncertainties": [
+          "Corner overlap between the main run and the second wing cannot be fully resolved from the elevations.",
+          "Worktop footprint is inferred from the axonometric view and base run layout; underside support is not explicitly shown."
+        ]
+      },
+      "overlays": {
+        "page": "/Users/qb/.codex/visualizations/2026/11/06/01a1b2b5-0979-7c50-b3fb-f86d8e481902/cb-planner-v7-lev/lev2-overlay-page.png",
+        "details": "/Users/qb/.codex/visualizations/2026/11/06/01a1b2b5-0979-7c50-b3fb-f86d8e481902/cb-planner-v7-lev/lev2-overlay-details.png",
+        "coordinates": "/Users/qb/.codex/visualizations/2026/11/06/01a1b2b5-0979-7c50-b3fb-f86d8e481902/cb-planner-v7-lev/lev2-overlay-coordinates.json",
+        "warnings": [],
+        "display_only_label_normalizations": []
+      },
+      "owner_reference_review": {
+        "preferred_assemblies": [
+          "separately hanging cabinet",
+          "chamfered-end base group",
+          "drawer/corner base group",
+          "remaining lower run",
+          "upper corner door/open-shelf unit",
+          "combined two-lift-up unit",
+          "tall unit with drawers/appliance opening/two doors",
+          "remaining upper two-door/end structure"
+        ],
+        "clear_matches": [
+          "B02",
+          "B05"
+        ],
+        "observations": [
+          "B03 and B06 are two broad base runs instead of the three preferred base assemblies.",
+          "B03 claims five side-by-side doors fit the general three-position allowance.",
+          "B06 locator stops at the drawer stack and leaves the C20 cabinet-door zone outside on V04.",
+          "B01 describes the upper-left region as a tall return; it does not cover the open-shelf part of the corner assembly.",
+          "B04 spans multiple upper positions and the appliance opening and is labeled as a single section.",
+          "B07 isolates only the tall end panel.",
+          "S01 is on the axonometric image and sits mostly above the physical worktop."
+        ]
+      }
+    }
+  }
+}

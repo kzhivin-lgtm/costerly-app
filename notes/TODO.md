@@ -1472,6 +1472,23 @@ complete assembly coverage, practical boundaries, traceable Island
 references, and unique ownership of repeated/shared elements. Treat Front
 as supporting evidence. Preserve its uncertainty and verify assembly
 boundaries from the drawings. Review an overlay for each object.
+2026-11-08, owner-requested standalone CB Planner V7 control, COMPLETED
+diagnostic, both plans rejected by structure checks. Two completed calls,
+exact V7 prompt, 6,000 output cap, Haiku 5.5 medium / Thinking disabled.
+Original saved Planner inputs, images and Front context were reused.
+Lev1 uses Front V2 with a known Island enum error; Lev2 uses Front V3
+with its prior semantic limitations. V7.5 per-Island rows were not treated
+as physical Front IDs. Lev1 produced 3 Blocks + S01. B01/B02 match the
+bench base and slatted assembly. B03 adds a separate seat-top block;
+S01 identifies the worktop and both legs but cites only B01 in shared_parts.
+Lev2 produced 7 Blocks + S01. The lift pair and separate hanging unit
+are clear. B03/B06 overgroup the base runs, B06 misses C20 in its locator,
+B04 spans multiple sections, and S01 is off the worktop. F10 appears
+both in B04 and in front_conflicts. Overlays show the raw valid locators
+without repairing either response. Compare against the recorded preferred
+assemblies before modifying the policy.
+Evidence: notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/two-standalone-runs.json.
+Private witnesses: /private/tmp/cb-planner-v7-lev-controls.72KghXQK/.
 P0 PENDING after Blocks acceptance: use Calculation / CB Parts to break
 accepted Blocks into Parts. Verify block coverage, shared components and
 quantity/dimension provenance, then run the first complete cycle.
