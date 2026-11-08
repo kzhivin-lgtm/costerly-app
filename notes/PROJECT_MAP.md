@@ -1,5 +1,13 @@
 # Costerly AI Project Map
 
+Current Estimation Front research checkpoint, 3.17.4.6, 2026-11-08:
+`estimation-v7.5-per-island-front-experimental-2026-11-08` on
+`codex/estimation-v7-5-front-identity`. Lev2 V04 owner-corrected reference
+includes door C20, yielding 9/9. Lev1 contour ownership and Adda results
+are partial. The next active objective is CB Planner → Blocks, followed
+by Calculation / CB Parts → Parts. See handoff section 40 and:
+notes/evidence/estimation-v7-5-front-identity-2026-11-08/per-island-front-checkpoint.json.
+
 Protected Offline Vector geometry baseline, 3.17.4.6, 2026-11-07:
 `estimation-v7.2-medium-offline-vector-experimental-2026-11-07`.
 Owner-accepted Offline Vector geometry benchmark on 18 Islands across Lev1,
@@ -10,7 +18,7 @@ offline replay and nine evidence files. See section 37 of
 ESTIMATION_V6_FULL_CHAT_HANDOFF_2026_11_06.md and the manifest:
 notes/evidence/estimation-v7-2-retrospective-2026-11-07/offline-vector-checkpoint.json.
 
-Current Estimation Front research checkpoint, 3.17.4.6, 2026-11-08:
+Protected Estimation V7.4 typed Front evidence control, 3.17.4.6, 2026-11-08:
 `estimation-v7.4-front-evidence-experimental-2026-11-08`. Owner selected this partial
 benchmark as a continuation point. See handoff section 38 and:
 notes/evidence/estimation-v7-4-front-evidence-2026-11-07/front-evidence-checkpoint.json.

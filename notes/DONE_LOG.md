@@ -1,5 +1,14 @@
 # Done Log
 
+2026-11-08, 3.17.4.6. Owner selected Estimation 7.5 per-Island Front
+as an experimental checkpoint at `estimation-v7.5-per-island-front-experimental-2026-11-08`.
+Owner corrected Lev2 V04 C20 to a door. All 9 reference V04 contours and
+all 11 V03 contours matched, with false positives remaining. Lev1 and Adda
+remain partial. Four exact requests and bindings replayed across 18 Islands,
+33 archive files restored byte-for-byte, 31 focused tests passed, zero new
+provider calls. Next: CB Planner Blocks before Calculation / CB Parts.
+Manifest: notes/evidence/estimation-v7-5-front-identity-2026-11-08/per-island-front-checkpoint.json.
+
 2026-11-08, 3.17.4.6. Owner selected experimental Estimation 7.4 Front
 Evidence as a research checkpoint at `estimation-v7.4-front-evidence-experimental-2026-11-08`.
 Adda V01 matched 8/8 hinged leaves, 6/6 drawers and 8/8 pull-outs in a single

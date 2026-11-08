@@ -1410,7 +1410,7 @@ Evidence: notes/evidence/estimation-v7-4-front-evidence-2026-11-07/lev-visual-fr
 OWNER-SELECTED V7.4 RESEARCH CHECKPOINT, COMPLETED, 2026-11-08:
 `estimation-v7.4-front-evidence-experimental-2026-11-08` freezes both probe routes, the raw
 witnesses and partial benchmark. notes/evidence/estimation-v7-4-front-evidence-2026-11-07/front-evidence-checkpoint.json.
-P0 ACTIVE, V7.5, same work 3.17.4.6. Diagnose same-view grouping first.
+V7.5 FRONT RESEARCH, COMPLETED at the owner-selected experimental checkpoint, same work 3.17.4.6.
 Verified in the raw model responses before binding: Lev1 V4 C32/C33/C34 are
 three drawer contours in one drawer item. Lev2 V4 C05/C06 share one hinged
 item, and V3 C27/C28 plus V4 C19/C21/C22 share one drawer item. Each file's
@@ -1432,10 +1432,9 @@ the first and middle drawers, including the separately selected C33.
 C31 nearly coincides with the right drawer C34 (bbox IoU 0.928).
 Both V6 support contours C26/C28 matched. Binding issues were empty;
 the binder checks contour identity, not nested geometric overlap.
-One run does not establish repeatability. Next: distinguish composite
-outlines from individual face contours and evaluate ownership separately
-from row separation. Lev2 remains pending. The protected V7.2 geometry
-and V7.4 experimental tag remain the baselines.
+One run does not establish repeatability. Composite outlines and exact
+face ownership are remaining Front follow-ups. The protected V7.2
+geometry and V7.4 typed-evidence checkpoints remain available.
 Evidence: notes/evidence/estimation-v7-5-front-identity-2026-11-08/lev1-per-island.json.
 Private witness: /private/tmp/estimation-v75-lev1.NxQR6LSM/result.json.
 
@@ -1443,9 +1442,11 @@ Private witness: /private/tmp/estimation-v75-lev1.NxQR6LSM/result.json.
 COMPLETED, partial benchmark. The unchanged per-Island prompt used one
 request for all four Lev2 Islands and one per frozen Adda object
 (001: V02/V03/V05/V07; 002: V01/V04/V06/V08). All three responses completed
-with individual rows and no binding issues. Lev2 matched all 11 reviewed
-V3 contours and all 8 reviewed V4 contours. V4 also labeled the fixed side
-as a hinged door and two plinth sections as legs. Adda 001 matched all
+with individual rows and no binding issues. Lev2 matched 11/11 reviewed
+V03 contours and 9/9 on V04 after owner review. C20 is the door of the
+angled cabinet, and the side panel is a separate narrow strip. This
+supersedes the earlier fixed-side label and eight-front reference. V04
+still mislabeled two plinth sections as legs. Adda 001 matched all
 three drawers and the mirror on V02, with four extra drawer contours.
 V03 matched the same three drawers in another projection. Adda 002 V01
 matched only 1/25 exact role and contour pairs (mirror C16); C52 was
@@ -1457,6 +1458,24 @@ Keep the typed V7.4 evidence control for Adda V01. The V7.5 run tests flat
 per-Island rows without typed leader/caption and isolated swing evidence.
 That comparison does not isolate a schema-only effect for Adda.
 
+OWNER-SELECTED V7.5 FRONT RESEARCH CHECKPOINT, COMPLETED, 2026-11-08:
+`estimation-v7.5-per-island-front-experimental-2026-11-08`.
+Replayed the four exact saved requests and bindings across 18 Islands.
+The owner accepts this as the continuation point. Front identity across
+views, composite outlines and typed Adda evidence coverage remain pending.
+Manifest: notes/evidence/estimation-v7-5-front-identity-2026-11-08/per-island-front-checkpoint.json.
+
+P0 ACTIVE, owner-selected next objective, same work 3.17.4.6: establish
+the CB Planner baseline for Blocks in Analyze. Start from existing
+CB Planner V7 and the recorded Lev1/Lev2 owner references above. Verify
+complete assembly coverage, practical boundaries, traceable Island
+references, and unique ownership of repeated/shared elements. Treat Front
+as supporting evidence. Preserve its uncertainty and verify assembly
+boundaries from the drawings. Review an overlay for each object.
+P0 PENDING after Blocks acceptance: use Calculation / CB Parts to break
+accepted Blocks into Parts. Verify block coverage, shared components and
+quantity/dimension provenance, then run the first complete cycle.
+
 COMPLETED, 2026-11-08, same work 3.17.4.6: Lev1 support attribution
 diagnosed offline. V7.2 Front explicitly chose the one visible support on
 V05 and assigned both V06 posts to the bench. V03 and V06 establish two
@@ -1466,6 +1485,14 @@ format and material assumption are recorded in handoff section 39.
 Future acceptance: reconcile support ownership and physical count across
 projections and repeat the resolved count consistently in Analyze. No
 new run or prompt/schema change in this review.
+DEFERRED support-count proposal: use the maximum verified
+per-Island visible count for the same tabletop as a lower bound on physical
+support count. Resolve ownership and separate distinct supports within each
+Island first. Promote the bound to the object count only with sufficient
+coverage or corroboration. Keep unverified higher counts as conflicts. Reuse
+one structured result in Analyze text and Calculation. Scope the first
+diagnostic to tabletop supports and verify Lev1 plus a higher false-count
+case. No implementation approved in this design discussion.
 
 P2 DEFERRED by owner until the first standard Detection → Analyze →
 Calculation cycle is complete and stable. Optimize context, cost and

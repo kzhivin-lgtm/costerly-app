@@ -1,9 +1,9 @@
 # Estimation V6 полный конспект разработки и экспериментов
 
-Current continuation point, 2026-11-08: **section 38**, the owner-selected
-Estimation 7.4 Front Evidence research checkpoint. Section 39 records the
-accepted full-answer presentation format and the Lev1 support diagnosis.
-Sections 36–37 preserve the Analyze and Offline Vector baselines.
+Current continuation point, 2026-11-08: **section 40**, the owner-selected
+Estimation 7.5 per-Island Front checkpoint and transition to Blocks.
+Section 39 records the full-answer format and Lev1 support diagnosis.
+Sections 36–38 preserve the Analyze, Offline Vector and typed Front baselines.
 Sections 1–35 are V6 history.
 
 Обновлено после Understanding V1 и V2, 2026-11-06, работа 3.17.4.6.
@@ -1341,3 +1341,51 @@ projections and require one resolved count wherever Analyze states it.
 A single visible silhouette in one projection is evidence of visibility.
 Two distinct, corroborated support locations determine the physical count.
 This review used saved responses and made zero provider calls.
+
+## 40 Estimation 7.5 per-Island Front checkpoint
+
+Work **3.17.4.6**, 2026-11-08. Tag
+`estimation-v7.5-per-island-front-experimental-2026-11-08`, branch
+`codex/estimation-v7-5-front-identity`. Exact request code `70bfbcd`.
+Owner selected the partial Front benchmark as the continuation point for
+Blocks. V7.5 emits one record per face per Island, with no cross-view total.
+Four saved calls used Haiku 5.5, medium effort, Thinking disabled and no
+retries. The requests cover Lev1 and Lev2 plus both frozen Adda objects.
+
+**Owner correction.** On Lev2 V04, C20 is the broad angled cabinet door.
+The side panel is a separate narrow strip. This supersedes the older V04
+fixed-side classification and eight-front reference in the historical
+records. The raw model reply already classified C20 as `hinged_door`.
+Corrected V04 reference: six hinged doors and three drawers. C23 and C24
+are plinth contours mislabeled as support legs.
+
+| Witness | Verified outcome | Remaining defects |
+|---|---|---|
+| Lev1, 6 Islands | Three distinct V04 drawer rows; both V06 supports C26/C28 | Exact drawer IDs 1/3; C30 covers two neighboring drawers; C31 is close to C34 |
+| Lev2, 4 Islands | V03 11/11 including both lift-ups; corrected V04 9/9 | False positives include V04 plinth contours classified as supports |
+| Adda 001, V02/03/05/07 | All three drawers and mirror on V02; the same three drawers in V03 | Four additional drawer contours on V02 |
+| Adda 002, V01/04/06/08 | V01 1/25 exact role-and-contour pairs; V04 mirror matches | V01 loses coverage of doors, drawers and pull-outs; retain V7.4 typed-evidence control |
+
+The Adda comparison changes the evidence package as well as the response
+format. V7.4's V01 typed leader and isolated stroke control matched all
+8 leaves, 6 drawers and 8 pull-outs in one request. Preserve it for a
+future evidence-backed Front test.
+
+**Continuation.** First evaluate CB Planner in Analyze on the frozen
+Islands, using the existing CB Planner V7 policy and prior owner references.
+Blocks represent physical assemblies, with full coverage, stable IDs,
+source Island references and clear ownership of shared elements. A face
+count alone does not define block boundaries. Reconcile repeated views
+before duplicating an assembly. Review Blocks on an overlay. Once the
+Blocks benchmark is accepted, run Calculation / CB Parts to break Blocks
+into Parts, preserving shared panels and dimension and quantity provenance.
+Full Front identity, the stable end-to-end cycle and context/cost
+optimization remain separate work.
+
+**Replay.** Private archive and manifest:
+`backups/estimation-v7.5-per-island-front-experimental-2026-11-08/`.
+The archive contains the four exact witnesses, all 18 crops, frozen
+geometry, overlays and reports. Offline restore verified 33 files,
+rebuilt four exact requests and replayed the saved bindings. Thirty-one
+focused tests passed. No new model call was made for this checkpoint.
+Tracked manifest: `notes/evidence/estimation-v7-5-front-identity-2026-11-08/per-island-front-checkpoint.json`.

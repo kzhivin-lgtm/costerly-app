@@ -90,7 +90,8 @@
             "C18": "hinged_door",
             "C19": "drawer",
             "C21": "drawer",
-            "C22": "drawer"
+            "C22": "drawer",
+            "C20": "hinged_door"
           },
           "exact_matches": [
             "C05",
@@ -99,16 +100,13 @@
             "C17",
             "C18",
             "C19",
+            "C20",
             "C21",
             "C22"
           ],
           "missing_typed": [],
           "wrong_type": {},
           "known_wrong": {
-            "C20": {
-              "returned_role": "hinged_door",
-              "reason": "fixed side panel"
-            },
             "C23": {
               "returned_role": "support_leg",
               "reason": "plinth"
@@ -355,5 +353,18 @@
       "binding_issues": [],
       "per_island_records": 24
     }
-  }
+  },
+  "reference_corrections": [
+    {
+      "document": "lev2",
+      "view_id": "view-004",
+      "candidate_id": "C20",
+      "owner_confirmed_role": "hinged_door",
+      "superseded_reference_role": "fixed_side",
+      "basis": "The broad angled cabinet face is a door; the side panel is a separate narrow strip.",
+      "new_reference_total": 9,
+      "old_reference_total": 8,
+      "model_response_changed": false
+    }
+  ]
 }
