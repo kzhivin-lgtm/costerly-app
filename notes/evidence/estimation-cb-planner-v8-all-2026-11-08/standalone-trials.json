@@ -674,5 +674,68 @@
     "lev1_lev2": "Only system changed relative to frozen V7 standalone requests.",
     "adda": "Two object-scoped diagnostics with four saved labeled crops each and historical fallible Front. No paired standalone V7 control.",
     "result": "Structural pass on Lev1/Lev2; neither requested policy outcome established."
+  },
+  "owner_reference_revision": {
+    "basis": "Owner review of the V8 overlays. Saved model plans remain byte-for-byte unchanged.",
+    "lev1": {
+      "required": [
+        "Keep the attached tabletop and its two legs with the drawer-base assembly."
+      ],
+      "flexible": [
+        "The slatted backrest can be part of the drawer-base assembly or a separate assembly."
+      ],
+      "v8_review": "The backrest merger is acceptable. Separating the tabletop with legs still differs from the reference."
+    },
+    "lev2": {
+      "target_blocks": 9,
+      "worktop_accounting": "One shared kitchen worktop, accounted separately from the cabinet block count.",
+      "max_front_positions_across_width": 3,
+      "blocks": [
+        "Separate hanging upper cabinet",
+        "First base assembly before the turn",
+        "Second base assembly before the turn",
+        "First base assembly after the turn",
+        "Second base assembly after the turn",
+        "Tall one-front-wide column",
+        "Right-hand remainder with two tall boxes and narrow terminal section",
+        "Upper corner cabinet with open shelving",
+        "Combined unit for the two horizontal upper cabinets"
+      ],
+      "v8_review": "Six cabinet blocks are rejected by the owner. B01 groups five fronts, B06 describes four door positions plus a drawer stack, and B02 includes adjacent sections."
+    },
+    "adda-object-001": {
+      "target_blocks": 2,
+      "blocks": [
+        "Continuous lower cabinet",
+        "Separate upright mirror assembly"
+      ]
+    },
+    "adda-object-002": {
+      "proposed_blocks": 7,
+      "blocks": [
+        "First half of the narrow lower section",
+        "Second half of the narrow lower section",
+        "Wider upper section with two drawers and four pull-out shelves",
+        "Separate mirror assembly",
+        "Narrower upper section with two drawers and four pull-out shelves",
+        "Upper return assembly with four doors and two drawers",
+        "Lower return assembly with four doors"
+      ],
+      "verified_v01_rows": [
+        [
+          "C41",
+          "C45",
+          "C49",
+          "C52"
+        ],
+        [
+          "C76",
+          "C79",
+          "C82",
+          "C84"
+        ]
+      ],
+      "pending": "Scope of the three-position width limit for the two four-door return assemblies."
+    }
   }
 }

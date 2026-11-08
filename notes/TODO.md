@@ -1515,6 +1515,17 @@ control in this trial. The observed outcomes do not establish compliance
 with the new rules. Keep V8 opt-in and use V7 as the frozen comparison.
 Evidence: notes/evidence/estimation-cb-planner-v8-all-2026-11-08/standalone-trials.json.
 Private witnesses: /private/tmp/cb-planner-v8-all.QSWyaVtq/.
+Owner V8 review, 2026-11-08, same 3.17.4.6. Lev1 backrest grouping is
+flexible: integral or separate. Keep the attached tabletop and its legs
+with the drawer-base assembly. Lev2 six blocks are rejected. Current
+target is nine cabinet blocks, with two base assemblies before and two
+after the turn, and the shared kitchen worktop accounted separately.
+Max three front positions across a Lev2 cabinet section. Adda 001:
+continuous lower cabinet and separate mirror upright. Adda 002 proposed
+seven-block reference is recorded in the existing V8 benchmark. Its
+upper and lower return assemblies each have four side-by-side doors on
+V01. Confirm whether that is a scoped exception before changing the
+general width policy. No new model call.
 Checkpoint manifest: notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/planner-v7-checkpoint.json.
 P0 PENDING after Blocks acceptance: use Calculation / CB Parts to break
 accepted Blocks into Parts. Verify block coverage, shared components and

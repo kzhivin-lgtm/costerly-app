@@ -1425,3 +1425,14 @@ four frozen crops per object and historical Front; there is no paired
 standalone Adda V7 control for this comparison. V8 remains experimental.
 Raw results and locators:
 `notes/evidence/estimation-cb-planner-v8-all-2026-11-08/standalone-trials.json`.
+
+**Owner review of V8.** Lev1 may keep the slatted backrest integral with
+the base or separate it. The attached tabletop and both legs belong with
+the drawer-base assembly. Lev2 targets nine cabinet blocks and one shared
+worktop, with two lower blocks on each side of the turn and up to three
+front positions across each cabinet section. The six-block result is
+rejected. For straight Adda, the owner specified one continuous lower
+block and a separate mirror upright. For corner Adda the proposed seven
+assemblies include two four-door return blocks. Their scope relative to
+the three-position limit is pending clarification. The detailed references
+are in the V8 benchmark under `owner_reference_revision`.
