@@ -1790,6 +1790,16 @@ OWNER-SELECTED EXPERIMENTAL CHECKPOINT, CB Planner V11 offline:
 Archive restoration verified 40 private files and reproduced four
 reports and three document overlays byte-for-byte, with zero calls.
 Manifest: notes/evidence/estimation-cb-planner-v11-offline-2026-11-08/checkpoint.json.
+P0 ACTIVE follow-up under 3.17.4.6, owner requirement: assign every
+verified physical structural element to a Block or an explicitly shared
+assembly. Prefer supported attachment, continuity and ownership across
+views; use proximity to choose among otherwise plausible owners. An
+independently built element may be its own Block. Keep an explicit review
+item when evidence cannot resolve the owner. Acceptance requires no
+physical element silently omitted or double assigned. Start with Lev2
+V03 C12 -> B06 as the preferred check and audit the two Adda objects.
+The exact Adda V11 candidate inventory and omissions are recorded in
+Estimation handoff section 42. No grouping code change in this follow-up.
 Evidence: notes/evidence/estimation-cb-planning-sequence-2026-11-08/lev2-adda-trials.json.
 Private witnesses: /private/tmp/cb-planning-live.Iy63QMA6/.
 Checkpoint manifest: notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/planner-v7-checkpoint.json.
