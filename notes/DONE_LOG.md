@@ -1,5 +1,13 @@
 # Done Log
 
+2026-11-08, 3.17.4.6. Owner selected CB Planner V11 offline as an
+experimental checkpoint, `estimation-cb-planner-v11-offline-experimental-2026-11-08`.
+Candidate counts were Lev1 2, Lev2 9, Adda straight 1 and Adda corner 7.
+All four reports and all three document overlays replayed byte-for-byte
+from 40 restored private files, with zero provider calls. Physical
+ownership and Adda coverage remain partial.
+Manifest: notes/evidence/estimation-cb-planner-v11-offline-2026-11-08/checkpoint.json.
+
 2026-11-08, 3.17.4.6. Owner selected the two standalone CB Planner V7
 controls as an experimental checkpoint, `estimation-cb-planner-v7-lev-controls-experimental-2026-11-08`.
 Lev1 returned 3 Blocks + 1 shared element and failed the shared ownership

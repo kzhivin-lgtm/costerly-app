@@ -23,7 +23,27 @@ CB Planner V9 saves Blocks, then Block Locator selects native contours
 for the exact saved IDs. Lev2 and both Adda objects ran end to end, with
 separate grouping, locator-coverage and ownership findings:
 notes/evidence/estimation-cb-planning-sequence-2026-11-08/lev2-adda-trials.json.
-`--locked-plan` still supports an isolated second-stage replay.
+`--reuse-planner` uses the exact plain V9 result from `--baseline` and
+prepares only Block Locator. Both modes draw the exterior of each Block
+from its source polygons. The vector probe's `--locked-plan` remains
+available for independent locator diagnostics.
+CB Planner V10 candidate: `agents/prompts/cb_planner_v10.md` orders
+physical boundaries, continuous columns and then the remaining cabinet
+positions. First standalone Lev2 trial recorded in TODO, pending acceptance.
+Offline Block boundary pilot: `python -m tools.probe_cb_block_boundaries`.
+Uses saved Front V7.5 and Offline Vector contours with Detection topology
+evidence. `--saved-island-map` selects orthographic elevations from the
+saved Analyze response. Lev2 face grouping verified; Lev1 and both Adda
+transfer replays remain partial for physical assembly coverage.
+The opt-in `--structural-contours` mode recovered the Lev1 common drawer
+frame and one backrest on two projections from native contour evidence.
+`--planner-v11 --saved-island-map` composes offline assembly candidates
+from both paths and attaches supported extensions where frozen evidence
+matches. Lev1, Lev2 and both Adda objects have deterministic batch replays.
+Owner-selected V11 offline checkpoint:
+`estimation-cb-planner-v11-offline-experimental-2026-11-08`.
+See notes/evidence/estimation-cb-planner-v11-offline-2026-11-08/checkpoint.json
+and Estimation handoff section 42 for the replay and coverage limits.
 
 Current Estimation Front research checkpoint, 3.17.4.6, 2026-11-08:
 `estimation-v7.5-per-island-front-experimental-2026-11-08` on

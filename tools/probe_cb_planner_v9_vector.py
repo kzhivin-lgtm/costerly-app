@@ -5,14 +5,15 @@ from copy import deepcopy
 from hashlib import sha256
 from io import BytesIO
 import json
+from math import ceil, floor
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 from agents.estimation_understanding_agent import planner_front_ids, validate_assembly_plan
 from tools.probe_estimation_v7_4_front_evidence import execute_request
 from tools.probe_estimation_v7_4_visual_front import image_block
-from tools.render_estimation_front_overlay import COLORS, box_to_pixels, decode_evidence_images, draw_annotations
+from tools.render_estimation_front_overlay import decode_evidence_images
 from use_cases.estimation_detection_context_v7 import digest
 
 
@@ -195,74 +196,82 @@ def bind_locked_locators(readings, *, plan, geometry, front_ids):
             "planner_structure_error": structure_error(plan, geometry, front_ids)}
 
 
-def render_overlay(request, plan, binding_result, geometry, output, *, review_note=None):
-    _, details = decode_evidence_images(request)
+def block_outline(polygons):
+    # Padding keeps a connected background even when a polygon meets the crop edge.
+    xs, ys = zip(*(point for polygon in polygons for point in polygon))
+    padding = 6
+    left, top = floor(min(xs)) - padding, floor(min(ys)) - padding
+    width = ceil(max(xs)) - left + padding + 1
+    height = ceil(max(ys)) - top + padding + 1
+    mask = Image.new("L", (width, height))
+    draw = ImageDraw.Draw(mask)
+    for polygon in polygons:
+        draw.polygon([(x - left, y - top) for x, y in polygon], fill=255)
+    # Close narrow drafting seams up to four crop pixels. Larger gaps stay open.
+    mask = mask.filter(ImageFilter.MaxFilter(5)).filter(ImageFilter.MinFilter(5))
+    ImageDraw.floodfill(mask, (0, 0), 128)
+    exterior = mask.point([255 if value == 128 else 0 for value in range(256)])
+    outline = ImageChops.subtract(exterior.filter(ImageFilter.MaxFilter(9)), exterior)
+    return outline, (left, top)
+
+
+def render_overlay(plan, binding_result, geometry, output, *, review_note=None):
     bindings = binding_result["bindings"]
-    rows = plan["blocks"] + plan["shared_parts"]
-    views = sorted(({row["region"]["view_id"] for row in rows}
-                    | {b["view_id"] for b in bindings.values()}) & details.keys())
-    palette = list(COLORS)
-    row_colors = {row["id"]: palette[index % len(palette)] for index, row in enumerate(rows)}
-    conflicts = {(bindings[issue["id"]]["view_id"], issue["contour_id"])
-                 for issue in binding_result["geometry_issues"]
-                 if "contour_id" in issue and issue["id"] in bindings}
-    tile_width, tile_height, gap = 670, 520, 16
-    header = 118 if review_note or conflicts else 94
-    sheet = Image.new("RGB", (2 * tile_width + 3 * gap, header + len(views) * (tile_height + 42)),
-                      "#eef4f8")
+    blocks = {row["id"]: row for row in plan["blocks"]}
+    palette = ("#2257a6", "#8c2da7", "#c3411c", "#007c6a", "#a35b00",
+               "#007ca0", "#563c95", "#2e782a", "#b62469")
+    block_colors = {ident: palette[index % len(palette)] for index, ident in enumerate(blocks)}
+    views = sorted({binding["view_id"] if (binding := bindings.get(ident)) else row["region"]["view_id"]
+                    for ident, row in blocks.items()} & geometry.keys())
+    conflicts = {ident for issue in binding_result["geometry_issues"] if "other_id" in issue
+                 for ident in (issue["id"], issue["other_id"]) if ident in blocks}
+    missing = sorted(blocks.keys() - bindings.keys())
+    notes = [review_note] if review_note else []
+    if conflicts:
+        notes.append("Conflicting contour ownership (*): " + ", ".join(sorted(conflicts)))
+    if missing:
+        notes.append("No source outline: " + ", ".join(missing))
+    tile_width, tile_height, gap = 800, 650, 16
+    columns = min(2, max(1, len(views)))
+    tile_rows = (len(views) + columns - 1) // columns
+    header = 66 + 22 * len(notes)
+    sheet = Image.new("RGB", (columns * (tile_width + gap) + gap,
+                              header + tile_rows * (tile_height + 42)), "#eef4f8")
     draw = ImageDraw.Draw(sheet)
     ink = "#183048"
     title = ImageFont.load_default(size=24)
     label = ImageFont.load_default(size=16)
-    draw.text((gap, 9), "Planner V9 | Source contours and model locators", font=title, fill=ink)
-    draw.text((gap, 46), "Left: native PDF contours selected by the model. Right: raw approximate boxes.",
-              font=label, fill=ink)
-    draw.text((gap, 68), "Partial means a visible subset. An exact source outline does not verify block membership.",
-              font=label, fill=ink)
-    if review_note or conflicts:
-        note = review_note or ""
-        if conflicts:
-            note += " Red outlines are assigned to multiple regions."
-        draw.text((gap, 92), note.strip(), font=label, fill="#a12d46")
+    draw.text((gap, 9), "Planner V9 | Block outlines", font=title, fill=ink)
+    draw.text((gap, 42), "One color per Block ID. Exterior of saved source geometry only.", font=label, fill=ink)
+    for index, note in enumerate(notes):
+        draw.text((gap, 64 + index * 22), note, font=label, fill="#a12d46")
     for index, view_id in enumerate(views):
-        top = header + index * (tile_height + 42)
-        supplied, _ = details[view_id]
+        top = header + index // columns * (tile_height + 42)
+        left = gap + index % columns * (tile_width + gap)
         with Image.open(geometry[view_id]["source_crop"]) as crop:
             native = crop.convert("RGB")
         native_draw = ImageDraw.Draw(native)
-        approximate = []
-        invalid_boxes = []
-        for row in rows:
-            region, ident = row["region"], row["id"]
-            if region["view_id"] == view_id:
-                box = region["bbox_1000"]
-                if (isinstance(box, list) and len(box) == 4 and all(type(v) in (float, int) for v in box)
-                        and 0 <= box[0] < box[2] <= 1000 and 0 <= box[1] < box[3] <= 1000):
-                    approximate.append({"id": ident, "type": row_colors[ident],
-                                        "pixels": box_to_pixels(box, supplied.size)})
-                else:
-                    invalid_boxes.append(ident)
-            if ident in bindings and bindings[ident]["view_id"] == view_id:
-                b = bindings[ident]
-                color = COLORS[row_colors[ident]]
-                for contour, polygon in zip(b["contour_ids"], b["polygons"], strict=True):
-                    points = [tuple(point) for point in polygon]
-                    line_color = "#d62839" if (view_id, contour) in conflicts else color
-                    native_draw.line(points + points[:1], fill=line_color, width=4)
-                x, y = b["polygons"][0][0]
-                caption = ident + (" partial" if b["scope"] == "partial" else "")
-                x = max(2, min(x + 3, native.width - native_draw.textlength(caption, font=label) - 3))
-                y = max(2, min(y + 3, native.height - 22))
-                native_draw.text((x, y), caption, fill=color, font=label, stroke_width=2, stroke_fill="white")
-        overlay = draw_annotations(supplied, approximate)
-        approx_caption = "Approximate"
-        if invalid_boxes:
-            approx_caption += " | invalid: " + ", ".join(invalid_boxes)
-        for column, (caption, tile) in enumerate((("Native", native), (approx_caption, overlay))):
-            left = gap + column * (tile_width + gap)
-            draw.text((left, top), f"{view_id} | {caption}", font=label, fill=ink)
-            tile.thumbnail((tile_width, tile_height), Image.Resampling.LANCZOS)
-            sheet.paste(tile, (left + (tile_width - tile.width) // 2, top + 28))
+        captions = []
+        for ident in blocks:
+            binding = bindings.get(ident)
+            if not binding or binding["view_id"] != view_id:
+                continue
+            outline, position = block_outline(binding["polygons"])
+            color = block_colors[ident]
+            native.paste(color, position, outline)
+            x, y = min((point for polygon in binding["polygons"] for point in polygon),
+                       key=lambda point: (point[1], point[0]))
+            caption = ident + ("*" if ident in conflicts else "")
+            if binding["scope"] == "partial":
+                caption += " partial"
+            x = max(2, min(x + 5, native.width - native_draw.textlength(caption, font=label) - 3))
+            y = max(2, min(y + 5, native.height - 22))
+            captions.append(((x, y), caption, color))
+        for position, caption, color in captions:
+            native_draw.text(position, caption, fill=color, font=label, stroke_width=2, stroke_fill="white")
+        draw.text((left, top), view_id, font=label, fill=ink)
+        native.thumbnail((tile_width, tile_height), Image.Resampling.LANCZOS)
+        sheet.paste(native, (left + (tile_width - native.width) // 2, top + 28))
     sheet.save(output, optimize=True)
 
 
@@ -307,7 +316,7 @@ def main():
         readings = saved["model_readings"]
         plan = witness["model_readings"] if args.locked_plan else readings
         bound = bind(readings)
-        render_overlay(request, plan, bound, geometry, args.output)
+        render_overlay(plan, bound, geometry, args.output)
 
 
 if __name__ == "__main__":

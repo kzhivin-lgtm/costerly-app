@@ -51,33 +51,44 @@ def diagnostic_geometry(locator, plan, geometry):
     return bind_regions(retained, geometry)
 
 
-def run_sequence(baseline, archive, document, output_dir, *, execute=False):
+def run_sequence(baseline, archive, document, output_dir, *, execute=False, reuse_planner=False):
     source = baseline.read_bytes()
     seed = json.loads(source)
     planner_request = seed["provider_request"]
-    _, geometry, audit_hash = prepare_request(seed, archive, document=document)
+    saved_plan = usable_plan(seed) if reuse_planner else None
+    prepared_request, geometry, audit_hash = prepare_request(
+        seed, archive, document=document, locked_plan=reuse_planner)
     context = json.loads(planner_request["messages"][0]["content"][-1]["text"])
     front_ids = planner_front_ids(context["fallible_front_reference"], set(geometry))
-    print(json.dumps({"planner_request_sha256": digest(planner_request),
-                      "geometry_sha256": audit_hash, "islands": sorted(geometry),
-                      "stages": ["CB Planner", "Block Locator"], "execute": execute}), flush=True)
+    stages = ["Block Locator"] if reuse_planner else ["CB Planner", "Block Locator"]
+    preflight = {"planner_request_sha256": digest(planner_request), "geometry_sha256": audit_hash,
+                 "islands": sorted(geometry), "stages": stages, "execute": execute}
+    if reuse_planner:
+        preflight["locked_plan_sha256"] = digest(saved_plan)
+        preflight["block_ids"] = [row["id"] for row in saved_plan["blocks"]]
+        preflight["locator_request_sha256"] = digest(prepared_request)
+    print(json.dumps(preflight), flush=True)
     if not execute:
         return
 
     output_dir.mkdir(mode=0o700)
     planner_path = output_dir / "planner.json"
     locator_path = output_dir / "locator.json"
-    source_hash = sha256(source).hexdigest()
-    print("CB Planner", flush=True)
-    execute_request(planner_request, planner_path, source_hash=source_hash,
-                    bind=lambda plan: validate_assembly_plan(plan, set(geometry), front_ids))
-    planner = load_witness(planner_path, planner_request, source_hash)
-    plan = usable_plan(planner)
+    if reuse_planner:
+        planner_path.write_bytes(source)
+        planner, plan, locator_request = seed, saved_plan, prepared_request
+    else:
+        source_hash = sha256(source).hexdigest()
+        print("CB Planner", flush=True)
+        execute_request(planner_request, planner_path, source_hash=source_hash,
+                        bind=lambda plan: validate_assembly_plan(plan, set(geometry), front_ids))
+        planner = load_witness(planner_path, planner_request, source_hash)
+        plan = usable_plan(planner)
+        locator_request, locator_geometry, locator_audit_hash = prepare_request(
+            planner, archive, document=document, locked_plan=True)
+        if locator_geometry != geometry or locator_audit_hash != audit_hash:
+            raise ValueError("source geometry changed between stages")
     plan_hash = digest(plan)
-    locator_request, locator_geometry, _ = prepare_request(
-        planner, archive, document=document, locked_plan=True)
-    if locator_geometry != geometry:
-        raise ValueError("source geometry changed between stages")
     planner_witness_hash = sha256(planner_path.read_bytes()).hexdigest()
     print("Block Locator", flush=True)
     execute_request(locator_request, locator_path, source_hash=planner_witness_hash,
@@ -88,10 +99,10 @@ def run_sequence(baseline, archive, document, output_dir, *, execute=False):
     accepted = locator.get("bound_fronts")
     result = accepted or diagnostic_geometry(locator, plan, geometry)
     overlay = output_dir / "overlay.png"
-    render_overlay(locator_request, plan, result, geometry, overlay,
+    render_overlay(plan, result, geometry, overlay,
                    review_note=None if accepted else "Rejected locator response. Preview shows only its valid saved IDs.")
     summary = {
-        "work": "3.17.4.6", "stages": ["CB Planner", "Block Locator"], "provider_calls": 2,
+        "work": "3.17.4.6", "stages": stages, "provider_calls": len(stages), "planner_reused": reuse_planner,
         "locked_plan_sha256": plan_hash, "planner_witness_sha256": planner_witness_hash,
         "planner_request_sha256": planner["request_sha256"], "locator_request_sha256": locator["request_sha256"],
         "geometry_sha256": audit_hash, "block_ids": [row["id"] for row in plan["blocks"]],
@@ -113,9 +124,12 @@ def main():
     parser.add_argument("--archive", type=Path, required=True)
     parser.add_argument("--document", choices=("lev2", "adda"), required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--reuse-planner", action="store_true",
+                        help="Freeze the exact CB Planner V9 response from --baseline and run only Block Locator")
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args()
-    run_sequence(args.baseline, args.archive, args.document, args.output_dir, execute=args.execute)
+    run_sequence(args.baseline, args.archive, args.document, args.output_dir,
+                 execute=args.execute, reuse_planner=args.reuse_planner)
 
 
 if __name__ == "__main__":

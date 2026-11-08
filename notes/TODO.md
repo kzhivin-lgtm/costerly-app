@@ -1610,6 +1610,186 @@ Corner Adda 4 Blocks + S01; Planner and locator ID coverage pass, but
 conflicts; rejected responses show only their individually valid
 saved IDs as a diagnostic. Keep all results experimental. Next review
 locator ID coverage and contour ownership separately before Parts.
+Owner requires Block overlays to show only the exterior of each Block.
+The renderer uses a color per Block ID for the exterior of its saved
+source polygons and flags conflicting IDs. Offline Lev2 replay confirmed the same nine
+saved Blocks and five ownership conflicts between B01 and B02. B08's
+saved outline remains split around B09. Geometry acceptance is pending.
+The sequential Lev2 Planner request is identical to the plain V9 control,
+but the rerun changed eight Blocks to nine before Locator ran. The V03
+column and lower drawers were together in plain V9 B02 and split across
+sequential B04/B03. B09 is the V04 three-drawer stack, already separate
+in plain V9 B08. Owner confirmed that drawers inside a continuous column
+stay in its Block. Keep the plain V9 witness fixed for the next geometry
+comparison and review its grouping separately before acceptance.
+The sequence now accepts `--reuse-planner`. Preflight verified all eight
+plain V9 Lev2 Block IDs are locked for Locator. A fresh run still uses
+the original V9 request before Locator. The saved control's grouping
+findings still apply. The controlled Locator run is pending.
+Owner-requested fresh stock V9 Lev2 run, 2026-11-08, 3.17.4.6.
+Both provider responses completed. The unchanged V9 request returned six
+Blocks plus S01. B02 includes the column, two drawers and neighboring upper
+cabinets. B06 groups the entire V04 base row including its three drawers.
+F10, F16 and F18 are assigned and listed as conflicts, failing the Planner
+contract. Verified that Locator used the fresh plan without regrouping.
+It bound all six Block IDs, shared V03 C01 between B01 and B03, and returned
+no valid binding for S01. Outer-only overlay reviewed. Grouping and
+geometry acceptance remain pending.
+Private witnesses: /private/tmp/cb-planning-lev2-stock-v9-exterior-live-20261108/.
+Owner-requested stock V9 repeatability check, 2026-11-08. Compare the
+15:12 Planner response with two new Planner-only responses. Full request
+equality and completed responses verified. Cabinet counts were 6/5/5;
+shared elements 1/1/2. Both repeats returned the same five Front ID
+groups. In both, V03 F12/F13 moved from the tall group into the left base
+run, and F14/F15 joined the remaining tall/upper group. Three Front ID
+groups were identical in all three responses. All three failed structural
+validation: duplicate block/conflict assignment in the first two, and a
+single owner for shared S02 in the third (also duplicate block/conflict
+assignments). Zero new Locator calls. Saved repeats:
+/private/tmp/cb-planner-v9-lev2-volatility-20261108/.
+Planner boundary diagnosis: V9 allows assumed continuity and documented
+exceptions; the saved repeats treat row alignment as carcass continuity
+and the same B02 both calls the wall unit separate and assigns it to the
+column. The validator checks structure and references, not physical
+grouping. PROPOSED prompt-only control: order boundary decisions before
+grouping; require independent construction evidence for merging across
+suspected cabinet boundaries or exceeding the normal width policy; keep
+a continuous column and its internal drawers together and adjacent wall
+units separate. Keep assumed assembly splits explicit. Compare repeated
+Lev2 results by front membership, column isolation, and supported width
+exceptions, not by target Block count. Block Locator is outside this trial.
+Owner-authorized CB Planner V10 prompt-only Lev2 trial, 2026-11-08.
+V10 orders physical boundaries, isolated tall columns, then remaining
+cabinet positions. One completed Planner call; only system differed from
+the stock V9 request. V10 returned 7 Blocks and S01. V03 lower doors split
+3+2 with the drawers in the second Block; lift-up F14/F15 stayed separate.
+The V03 tall group still includes F06–F08 and omits F12/F13, and all four
+V04 lower doors plus three drawers remain in B07. F10 and F18 appear in
+Blocks and front_conflicts, failing structural validation. No Locator call.
+Boundary acceptance and repeatability remain pending. Witness:
+/private/tmp/cb-planner-v10-lev2-20261108/planner.json.
+Two owner-requested Planner-only V10 repeats used the exact same request.
+Raw Blocks 7/7/8, Blocks with Front IDs 7/6/8, shared parts 1/1/2.
+V03 lift-up F14/F15 stayed separate 3/3 and the lower doors split 3+2
+in 2/3. All three kept F06–F10 together and F12/F13 in the base run.
+V04 base doors and drawers were separate only in the third response.
+All three failed structure checks: duplicate block/conflict assignment
+in the first two, and a single owner for shared S02 in the third (also
+duplicate block/conflict assignments). No Locator calls. Repeats:
+/private/tmp/cb-planner-v10-lev2-volatility-20261108/.
+Planner boundary research, 2026-11-08, proposed alternatives under 3.17.4.6.
+All three V10 requests reused a Front V3 location label grouping F06–F10
+as upper-right column fronts. On Lev2 V03, F06/F09/F10 and F12/F13 align
+within one horizontal span; F07/F08 sit beside it. The label is a plausible
+source of anchoring, pending a single-variable replay with neutral wording.
+Alternatives: (1) neutral Front evidence in the same Planner call; (2) offline
+partition using native PDF geometry and cross-view construction evidence;
+(3) an independent visual check restricted to ambiguous joints. Keep
+confirmed joints separate from proposed assembly splits and assess
+membership stability against the benchmark. Block Locator is out of scope.
+Primary references: FloorPlanCAD and CADTransformer for primitive-level
+instances; Liu et al. Raster-To-Vector for constrained assembly; AWI 100
+casework drawing requirements for plan, elevation and section evidence.
+Owner-requested Lev2 V10 control without the above-2 m through-3 m
+four-position exception. The up-to-2 m allowance remained. One completed
+Planner call on the same inputs; only the specified prompt clause was
+removed. Result: 5 Blocks + 2 shared elements, with the same Front ID
+groups as both five-Block stock V9 repeats. V03 base drawers join the
+five doors, the lift-ups join the right upper group, and V04 base doors
+and drawers stay together. F10 appears in a Block and front_conflicts.
+This trial does not support an improvement from removing the clause.
+The exact variant is saved in the witness. Overlay uses raw approximate
+Planner regions; no Block Locator call.
+Witness: /private/tmp/cb-planner-v10-lev2-no-long-four-20261108/planner.json.
+Owner-authorized V10 neutral Front location trial on Lev2. The original
+V10 system, including both length thresholds, was reused. Restoring the
+eight location labels reproduces the full baseline request exactly.
+One completed Planner response, 5 Blocks + S01, no Locator call.
+F06–F10 remained together and absorbed F14/F15 in B02. F12/F13 moved
+into B03 with F11 from the opposite side of V03. V04 kept all base
+doors and drawers together. F10 and F21 are assigned and listed as
+conflicts. Changing labels alone did not recover the column boundary;
+group membership and group uncertainty text were still present.
+Raw Planner region overlay reviewed. Witness:
+/private/tmp/cb-planner-v10-lev2-neutral-front-20261108/planner.json.
+Historical Lev2 boundary control rechecked against the current benchmark.
+The 2026-11-05 CB Planner V4 witness gives the closest checked cabinet
+grouping: V03 lower 3+2, one narrow full-height column with its two
+drawers, adjacent upper pair and lift-ups separate, V04 lower 3+drawer/end
+section. Its extra tall tower, missing open shelf detail and worktop
+assignment remain known defects. The V4 and current V10 requests have
+byte-identical visual inputs and the same output schema. Policy, saved
+Front group content and effort/thinking settings differ. V4 used Front
+V1/r03 and recorded 3,615 thinking tokens; V10 used Front V3 and disabled
+thinking. Historical V3 -> V4 changed only system and provides a
+documented positive column-boundary example, not a repeatability result.
+V4 evidence: notes/evidence/cb-planner-v4-2026-11-05/lev2-evidence.json.
+Owner-authorized strategy 2 offline Lev2 pilot, 2026-11-08, 3.17.4.6.
+Replayed saved V7.5 Front bindings against native contours and checked
+Island frames against frozen Detection. The deterministic probe grouped
+24 distinct face appearances into nine candidates (six V03, three V04).
+V03 C06/C11/C13/C27/C28 form one narrow stack; adjacent C07/C08 stay
+separate. Detection relates V03 to plan V01, where C10 matches the stack
+span. This is projection evidence, not proof of hidden joinery. V03 and
+V04 base splits are assumed 3+2 positions; no verified dimension was
+bound to a candidate four-position frontage. Shared worktop and fixed
+structure ownership remain open. Two replays gave byte-identical reports
+and overlays; zero model calls. Probe: tools/probe_cb_block_boundaries.py.
+Private report: /private/tmp/cb-offline-block-boundaries-lev2-verified-20261108/boundaries.json.
+Owner-requested transfer replay on Lev1 and both Adda objects. Used the
+same grouping rules, exact frozen V7.5 Front bindings, and saved Island
+Map projections, with no manual role or membership corrections. Only
+orthographic elevations were grouped. Plan correspondence is automatic
+when a unique matching Detection pair is available. Lev2 replay preserved
+all nine memberships. Lev1: five candidates, including three separate
+drawer fronts, and no full bench assembly. Adda object-001: three
+candidates, including the three-bay base band and no mirror assembly.
+Adda object-002: seven candidates, two on V04 and five on V06, with
+overlapping upper contours and no axonometric grouping. Transfer does not
+meet full assembly coverage. No model calls. Reports and raw overlays:
+/private/tmp/cb-offline-transfer-{lev1,adda-object-001,adda-object-002}-20261108/.
+Lev1 offline root-cause trace, no manual role or grouping changes.
+V04 saved Front binds composite C30 as one drawer even though it spans
+individual C32 and C33. C30 and C33 overlap by 224.4 crop pixels; C31
+matches both resulting runs, so the unique-neighbor rule starts a third.
+The outer base contour C29 is available in Offline Vector but has no
+eligible Front role. The backrest frame C01 is also present on V04 and
+V06, with seven repeated x spans in each, and has no Front role.
+Unresolved C35 (plinth) and V06 C27 (open space) separately enter the
+front-only probe. The repair needs source contour hierarchy and coverage
+of structural elements, not looser adjacency. Zero new model calls.
+Owner-authorized Lev1 structural replay. The opt-in structural probe
+replaced overlapping drawer contours with nested, non-overlapping
+rectangular leaves. It found C32/C33/C34 within one shared case on V04,
+with side and bottom edges from C29 and the top edge from C28. It matched
+the seven-bay framed backrest on V04 and V06 as a second candidate.
+Two replays were byte-identical. Renumbering contours preserved both
+candidates; removing a structural witness removed its candidate. Zero
+new calls. Attached tabletop and legs are outside this bounded result.
+Report: /private/tmp/cb-offline-lev1-structure-20261108/boundaries.json.
+Owner-requested CB Planner V11 offline batch on Lev1, Lev2 and both Adda
+objects, 2026-11-08. V11 combines structural candidates and remaining
+elevation groups, and leaves unresolved-only observations unassigned.
+Lev1 B01 includes the three-drawer case, a supported tabletop on V05,
+and two distinct supports on the linked V06; B02 is the matched backrest.
+Lev2 retains nine candidates and the V01 C10 corroboration; worktop and
+end structure ownership are still open. Adda produces one and seven
+candidates; mirror ownership, axial grouping, and overlapping corner
+candidates are unresolved. All four repeated reports and overlays were
+byte-identical with no new calls or manual assembly edits. Three document
+overlays exported. Reports: /private/tmp/cb-planner-v11-offline-verified-20261108/.
+Owner review of the Lev2 V11 overlay: the cabinet grouping is close to
+the intended construction. Prefer assigning the narrow right end upright
+to B06. The current B06 contains V03 C07/C08; native C12 remains outside
+the assigned group. Record this as a preferred ownership check for the
+next iteration, with cross-view identity to be verified before binding.
+V11 currently consumes persisted Detection, Island Map, Offline Vector
+and Front V7.5 witnesses. New-file pipeline verification remains pending.
+OWNER-SELECTED EXPERIMENTAL CHECKPOINT, CB Planner V11 offline:
+`estimation-cb-planner-v11-offline-experimental-2026-11-08`.
+Archive restoration verified 40 private files and reproduced four
+reports and three document overlays byte-for-byte, with zero calls.
+Manifest: notes/evidence/estimation-cb-planner-v11-offline-2026-11-08/checkpoint.json.
 Evidence: notes/evidence/estimation-cb-planning-sequence-2026-11-08/lev2-adda-trials.json.
 Private witnesses: /private/tmp/cb-planning-live.Iy63QMA6/.
 Checkpoint manifest: notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/planner-v7-checkpoint.json.
