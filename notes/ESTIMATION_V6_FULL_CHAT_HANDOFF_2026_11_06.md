@@ -1,8 +1,10 @@
 # Estimation V6 полный конспект разработки и экспериментов
 
 Current continuation point, 2026-11-08: **section 38**, the owner-selected
-Estimation 7.4 Front Evidence research checkpoint. Sections 36–37 preserve
-the Analyze and Offline Vector baselines. Sections 1–35 are V6 history.
+Estimation 7.4 Front Evidence research checkpoint. Section 39 records the
+accepted full-answer presentation format and the Lev1 support diagnosis.
+Sections 36–37 preserve the Analyze and Offline Vector baselines.
+Sections 1–35 are V6 history.
 
 Обновлено после Understanding V1 и V2, 2026-11-06, работа 3.17.4.6.
 Последний испытанный промпт: **Understanding V2**, отдельная диагностика внутри
@@ -1289,3 +1291,53 @@ archive alongside it to regenerate the Adda crop inputs. The verifier
 recreated five typed requests and checked all six request hashes and saved
 bindings. Twenty-nine focused tests passed. Zero new provider calls were
 needed. Tracked manifest: `notes/evidence/estimation-v7-4-front-evidence-2026-11-07/front-evidence-checkpoint.json`.
+
+## 39 Full-answer format and Lev1 support attribution
+
+Work **3.17.4.6**, 2026-11-08. Owner-approved presentation for a request
+to show the full answer:
+
+1. **Island Map** table with Island ID, projection and content role.
+   Include the index for multiple front elevations.
+2. **Name** and object type, then **Description** and bullet-point
+   **Characteristics**. Show materials, finishes, thicknesses and their
+   evidence basis where present. Preserve disagreements between fields.
+3. **Front** with a short result by Island, overlay on the original crops,
+   and a link to the complete raw model response. Include Planner in the
+   raw Analyze response when the run supplied it.
+
+Label the source revision and scope at each section when combining a full
+Analyze witness and a newer Front-only witness. Draw the returned geometry
+as recorded and identify any reference-only marks. This is a review format.
+
+**Lev1 diagnosis.** The 7.2 Medium + Opening Marks witness
+`/private/tmp/estimation-v72-opening-marks-live.zntgvmkW/lev1.json`
+(request SHA-256 `a878fb05446e5b5ce1b37236089d94c80a4f94895ee204342ce7dc6628feeaf9`)
+has one support in Description, one visible on V05 and two visible on V06
+in Characteristics, and `T01.leg_count=1` in Front. Front explicitly
+attributes the two posts in V06 to the bench and takes the count from V05.
+V03 shows both under the tabletop and V06 shows their two distinct
+locations. V05 exposes one silhouette in profile. The Front decision
+mistakes that visible count for the assembly count. The shared count in
+Description is consistent with this explanation. Generation order is unknown.
+
+Saved Detection observations mention one visible leg in the V01/V05
+relationship and two legs in the V03/V06 relationship. An earlier V7.2
+medium run with the same observations counted two legs. Detection evidence
+alone therefore does not explain the selection of one. Independent Front
+validation passes after normal pixel conversion because its checks cover
+the recorded count, boxes and references. The V7.5 per-Island run marks
+both V06 posts exactly as C26 and C28.
+
+**Thickness provenance.** The owner accepts two 20 mm veneered MDF plies
+as one plausible fabrication assumption for a finished 40 mm part.
+The 7.2 run claimed a specified 20 mm thickness using `view-005-D001`,
+whose normalized value is 200 mm. The drawing does not establish an
+individual ply thickness. Keep stock thickness, finished assembly thickness
+and dimensional evidence separate.
+
+If this issue is reopened, check physical support ownership across
+projections and require one resolved count wherever Analyze states it.
+A single visible silhouette in one projection is evidence of visibility.
+Two distinct, corroborated support locations determine the physical count.
+This review used saved responses and made zero provider calls.

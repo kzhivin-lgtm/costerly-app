@@ -1439,6 +1439,16 @@ and V7.4 experimental tag remain the baselines.
 Evidence: notes/evidence/estimation-v7-5-front-identity-2026-11-08/lev1-per-island.json.
 Private witness: /private/tmp/estimation-v75-lev1.NxQR6LSM/result.json.
 
+COMPLETED, 2026-11-08, same work 3.17.4.6: Lev1 support attribution
+diagnosed offline. V7.2 Front explicitly chose the one visible support on
+V05 and assigned both V06 posts to the bench. V03 and V06 establish two
+tabletop supports; V7.5 marked both. Independent Front validation passes
+on its own count and box consistency. Owner-approved full-answer review
+format and material assumption are recorded in handoff section 39.
+Future acceptance: reconcile support ownership and physical count across
+projections and repeat the resolved count consistently in Analyze. No
+new run or prompt/schema change in this review.
+
 P2 DEFERRED by owner until the first standard Detection → Analyze →
 Calculation cycle is complete and stable. Optimize context, cost and
 reuse using measurements from that accepted baseline.
