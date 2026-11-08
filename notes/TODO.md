@@ -1849,13 +1849,16 @@ OWNER-SELECTED EXPERIMENTAL CHECKPOINT, Adda ownership and explicit pairs:
 Both object reports and the combined overlay replayed byte-for-byte from
 21 restored private files. Zero new provider calls.
 Manifest: notes/evidence/estimation-cb-planner-adda-ownership-pairs-2026-11-08/checkpoint.json.
-Owner clarified the scope: this is an Estimation Analyze checkpoint,
+Owner clarified the scope: this is the CB Planner V12 checkpoint in Estimation Analyze,
 with Adda as the benchmark for the ownership and paired-leaf rules.
 Canonical Analyze tag:
-`estimation-analyze-v7-planner-v11-ownership-pairs-experimental-2026-11-08`.
-The Adda replay adapter remains specific to its archived evidence.
-Wiring these rules into the shared Analyze entry point and verifying a
-fresh document remain pending. Existing immutable evidence tag retained.
+`estimation-analyze-cb-planner-v12-experimental-2026-11-08`.
+The checkpoint freezes the exact current code and replay. The Adda
+adapter is a test harness; production tools and cycle logic must take
+generic evidence, with no file names, contour IDs or benchmark counts
+embedded as special cases. Shared Analyze wiring and a fresh-document
+verification remain pending. Next Planner implementation change is V13.
+Existing immutable evidence and provisional tags retained.
 Evidence: notes/evidence/estimation-cb-planning-sequence-2026-11-08/lev2-adda-trials.json.
 Private witnesses: /private/tmp/cb-planning-live.Iy63QMA6/.
 Checkpoint manifest: notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/planner-v7-checkpoint.json.

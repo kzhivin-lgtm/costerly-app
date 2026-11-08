@@ -45,7 +45,7 @@ Owner-selected V11 offline checkpoint:
 See notes/evidence/estimation-cb-planner-v11-offline-2026-11-08/checkpoint.json
 and Estimation handoff section 42 for the replay and coverage limits.
 Current experimental Estimation Analyze checkpoint:
-`estimation-analyze-v7-planner-v11-ownership-pairs-experimental-2026-11-08`.
+`estimation-analyze-cb-planner-v12-experimental-2026-11-08`.
 Block ownership and paired-leaf counting are general requirements. Adda is
 the latest evidence replay via `python -m tools.probe_cb_adda_ownership`.
 The replay adapter is Adda-specific. See Estimation handoff section 43 and

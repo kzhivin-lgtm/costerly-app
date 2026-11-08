@@ -1,6 +1,6 @@
 # Estimation V6 полный конспект разработки и экспериментов
 
-Current continuation point, 2026-11-08: **section 43**, Estimation Analyze
+Current continuation point, 2026-11-08: **section 43**, Estimation Analyze / CB Planner V12
 with structural ownership and paired leaves. Section 42 preserves the
 CB Planner V11 offline baseline.
 Section 41 preserves the CB Planner V7 baseline and V8/V9 trials.
@@ -1503,15 +1503,17 @@ Owner follow-up: assign remaining physical elements to the most
 plausible assembly, prioritizing actual connections and using proximity
 as a secondary cue. See the active ownership item in TODO.
 
-## 43 Estimation Analyze ownership and paired leaves checkpoint
+## 43 Estimation Analyze / CB Planner V12 checkpoint
 
 Owner-selected experimental Analyze tag
-`estimation-analyze-v7-planner-v11-ownership-pairs-experimental-2026-11-08`, work 3.17.4.6.
-The Analyze checkpoint captures the V11 baseline and the general rules:
+`estimation-analyze-cb-planner-v12-experimental-2026-11-08`, work 3.17.4.6.
+V12 freezes the V11 baseline and the ownership and paired-leaf result:
 assign physical elements to an assembly and count explicitly paired
 leaves as one Planner position while preserving both Front identities.
-Adda is the witness for these changes. The current Adda adapter uses
-frozen inputs and has not been wired into the shared Analyze entry point.
+Adda is a benchmark witness. File-specific fixtures belong in replay
+tests. The shared Analyze path must accept generic evidence. That wiring
+and a new-document verification remain pending. The next Planner change
+is V13; a one-block Calculation probe does not renumber Planner.
 Its original immutable replay tag is
 `estimation-cb-planner-v11-adda-ownership-pairs-experimental-2026-11-08`.
 The replay uses saved V7.5 straight Front,
