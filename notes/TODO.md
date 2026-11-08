@@ -1531,6 +1531,19 @@ V08 dimensions the Adda return at 2,000 mm length and 458 mm depth.
 V9 applies this in the opt-in Planner prompt; live validation is pending.
 Verify the 2,000/3,000 mm boundaries and a continuing run, and preserve
 one-front-wide columns. No new model call.
+2026-11-08, owner-authorized V9 trial COMPLETED (partial). One call on
+Lev2 and each Adda object, same V8 settings, images and saved Front; only
+system differs. Lev1 excluded. Lev2 8 Blocks + 2 shared entries versus
+6 + 1 in V8. Column B02 is narrower and the adjoining upper group is now
+B03. B01 still contains five front positions, B07 gives no qualifying
+length for four, and F10/F21 are duplicated in front_conflicts. V04 C20
+remains outside the lower block locators. Straight Adda remains 3 + 1 and
+fails the one-owner shared part. Corner Adda passes structure with 4 + 1,
+but V08 B04 merges the return rather than separating the two four-door
+assemblies. Its older Front supplied drawers only, so this run does not
+validate the two-meter exception on the intended Adda faces.
+Evidence: notes/evidence/estimation-cb-planner-v9-lev2-adda-2026-11-08/standalone-trials.json.
+Private witnesses: /private/tmp/cb-planner-v9-lev2-adda.FuBJPf3w/.
 Checkpoint manifest: notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/planner-v7-checkpoint.json.
 P0 PENDING after Blocks acceptance: use Calculation / CB Parts to break
 accepted Blocks into Parts. Verify block coverage, shared components and

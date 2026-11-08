@@ -1440,4 +1440,14 @@ the entire run between physical boundaries. Adda V08 dimensions that
 return at 2,000 mm long and 458 mm deep, so it qualifies under the first
 allowance. V9 records the rule in `agents/prompts/cb_planner_v9.md`.
 The detailed references are in the V8 benchmark under
-`owner_reference_revision`. V9 has not been run.
+`owner_reference_revision`.
+
+**V9 trial.** Three calls on Lev2 and both Adda objects, with the exact V8
+inputs and settings. Lev1 excluded. Lev2 moved from six to eight blocks
+and narrowed the column, but still grouped five fronts and duplicated
+F10/F21. Straight Adda remained at three blocks plus one shared element
+and failed structure. Corner Adda passed structure with four blocks plus
+one shared element, but merged the return and did not exercise the
+four-door exception. The saved Front for that test contained only
+tentative drawers. Raw plans and overlays:
+`notes/evidence/estimation-cb-planner-v9-lev2-adda-2026-11-08/standalone-trials.json`.

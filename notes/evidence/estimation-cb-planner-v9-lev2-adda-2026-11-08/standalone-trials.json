@@ -1,0 +1,645 @@
+{
+  "work": "3.17.4.6",
+  "date": "2026-11-08",
+  "policy": "CB Planner V9",
+  "control": "f256002",
+  "provider_calls": 3,
+  "documents": {
+    "lev2": {
+      "request_sha256": "93197ef3119c24b73d652ced7d13223b4179f48faaeee6bf0035cfaf43006238",
+      "source_witness_sha256": "c6b96fb1930a6ba8596e1a0a67dfdffba1736adc19dc66b3c809d77d7ce80951",
+      "witness_sha256": "632d0d6ec1c1b5c36ac3fe5265a59d45a3ecf8c30597433cd55a28f7f5804f8f",
+      "response_id": "msg_011CgqPzjSpRpa59hrAHDm1z",
+      "prompt_sha256": "36e004352cecf74aaf867f162581239aa545b93f0fc5bff447760b8ec879078f",
+      "view_ids": [
+        "p1-view-001",
+        "p1-view-002",
+        "p1-view-003",
+        "p1-view-004"
+      ],
+      "saved_front_status": "front_count_requires_review",
+      "saved_front_ids": 24,
+      "structure_valid": false,
+      "error": "ValueError: front assigned twice",
+      "elapsed_seconds": 10.418,
+      "usage": {
+        "input_tokens": 16238,
+        "output_tokens": 2362
+      },
+      "issues": {
+        "duplicated_front_ids": {
+          "F10": 2,
+          "F21": 2
+        },
+        "omitted_front_ids": [],
+        "foreign_front_ids": [],
+        "shared_parts_with_fewer_than_two_blocks": []
+      },
+      "totals": {
+        "blocks": 8,
+        "shared_parts": 2
+      },
+      "plan": {
+        "summary": "L-shaped kitchen run with a tall return unit, upper wall cabinets, base cabinets with drawers, and a second wing carrying a hanging unit and tall end panel.",
+        "blocks": [
+          {
+            "id": "B01",
+            "name": "Main run left base cabinets (five doors)",
+            "contains": "Five hinged base doors F01–F05 closing the lower carcass of the main run, excluding the fixed corner side and narrow filler strip.",
+            "reason": "Continuous base run of five side-by-side doors on one carcass in the front elevation; a five-position run is a continuous base carcass, so grouping by the general allowance of three is exceeded and this block is kept as one run because it is a single continuous base carcass unit (assumption: one carcass across the run, as shown by continuous base plinth and top).",
+            "front_ids": [
+              "F01",
+              "F02",
+              "F03",
+              "F04",
+              "F05"
+            ],
+            "view_ids": [
+              "p1-view-003",
+              "p1-view-001"
+            ],
+            "region": {
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                100,
+                640,
+                585,
+                862
+              ]
+            }
+          },
+          {
+            "id": "B02",
+            "name": "Main run right tall column and drawer stack",
+            "contains": "Three upper fronts F06–F08 are not included here; this block holds the right-side column of fronts F09–F10 and the two drawers F12–F13 below the worktop.",
+            "reason": "A narrow tall column one front wide on the right end of the main run, with stacked fronts and drawers sharing one carcass; kept separate from the base doors by the fixed filler strip X02.",
+            "front_ids": [
+              "F09",
+              "F10",
+              "F12",
+              "F13"
+            ],
+            "view_ids": [
+              "p1-view-003",
+              "p1-view-001"
+            ],
+            "region": {
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                600,
+                395,
+                745,
+                862
+              ]
+            }
+          },
+          {
+            "id": "B03",
+            "name": "Main run upper right cabinets",
+            "contains": "Three upper fronts F06–F08 over the right column, one carcass spanning the upper right section of the main run.",
+            "reason": "Three side-by-side upper fronts in one upper unit, within the three-position allowance; the upper horizontal run is kept separate from the lower right column by the open space above the drawers.",
+            "front_ids": [
+              "F06",
+              "F07",
+              "F08"
+            ],
+            "view_ids": [
+              "p1-view-003",
+              "p1-view-002"
+            ],
+            "region": {
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                600,
+                190,
+                985,
+                410
+              ]
+            }
+          },
+          {
+            "id": "B04",
+            "name": "Main run wall cabinets (lift-up pair)",
+            "contains": "Two lift-up fronts F14–F15 in the wall unit over the base run.",
+            "reason": "Two side-by-side lift-up fronts in one wall cabinet carcass; grouped as one unit across the middle section.",
+            "front_ids": [
+              "F14",
+              "F15"
+            ],
+            "view_ids": [
+              "p1-view-003",
+              "p1-view-002"
+            ],
+            "region": {
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                200,
+                385,
+                610,
+                495
+              ]
+            }
+          },
+          {
+            "id": "B05",
+            "name": "Left return tall unit",
+            "contains": "Single tall hinged door F11 on the left tall return unit beside its fixed side panel X01.",
+            "reason": "Single front on a tall return carcass, separated from the main run by the wall cabinet opening and the fixed side panel.",
+            "front_ids": [
+              "F11"
+            ],
+            "view_ids": [
+              "p1-view-003",
+              "p1-view-002"
+            ],
+            "region": {
+              "view_id": "p1-view-003",
+              "bbox_1000": [
+                40,
+                190,
+                205,
+                495
+              ]
+            }
+          },
+          {
+            "id": "B06",
+            "name": "Second wing hanging cabinet",
+            "contains": "Two hinged hanging doors F16–F17 in the upper wing unit.",
+            "reason": "Two side-by-side leaves on one hanging carcass; the corner overlap with the main run is not fully resolved.",
+            "front_ids": [
+              "F16",
+              "F17"
+            ],
+            "view_ids": [
+              "p1-view-004",
+              "p1-view-002"
+            ],
+            "region": {
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                125,
+                110,
+                345,
+                475
+              ]
+            }
+          },
+          {
+            "id": "B07",
+            "name": "Second wing base cabinets (four doors)",
+            "contains": "Four hinged base doors F18–F21 on the lower second wing carcass.",
+            "reason": "Four side-by-side doors on one continuous base carcass in the second wing elevation; kept together as one run, with the leftmost door possibly shared with the corner unit.",
+            "front_ids": [
+              "F18",
+              "F19",
+              "F20",
+              "F21"
+            ],
+            "view_ids": [
+              "p1-view-004",
+              "p1-view-001"
+            ],
+            "region": {
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                125,
+                655,
+                450,
+                910
+              ]
+            }
+          },
+          {
+            "id": "B08",
+            "name": "Second wing drawer stack",
+            "contains": "Three stacked drawer fronts F22–F24 on the base of the second wing.",
+            "reason": "Three vertically stacked drawers occupy one horizontal position on one carcass.",
+            "front_ids": [
+              "F22",
+              "F23",
+              "F24"
+            ],
+            "view_ids": [
+              "p1-view-004",
+              "p1-view-001"
+            ],
+            "region": {
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                443,
+                655,
+                602,
+                910
+              ]
+            }
+          }
+        ],
+        "shared_parts": [
+          {
+            "id": "S01",
+            "name": "Continuous L-shaped worktop",
+            "block_ids": [
+              "B01",
+              "B02",
+              "B03",
+              "B07",
+              "B08"
+            ],
+            "view_ids": [
+              "p1-view-002",
+              "p1-view-001"
+            ],
+            "region": {
+              "view_id": "p1-view-002",
+              "bbox_1000": [
+                40,
+                190,
+                760,
+                590
+              ]
+            }
+          },
+          {
+            "id": "S02",
+            "name": "Fixed tall end panel of second wing",
+            "block_ids": [
+              "B07",
+              "B08"
+            ],
+            "view_ids": [
+              "p1-view-004"
+            ],
+            "region": {
+              "view_id": "p1-view-004",
+              "bbox_1000": [
+                838,
+                105,
+                892,
+                945
+              ]
+            }
+          }
+        ],
+        "front_conflicts": [
+          {
+            "front_id": "F10",
+            "reason": "Lower square front above the drawer stack may be an estimated drawer rather than a hinged door."
+          },
+          {
+            "front_id": "F21",
+            "reason": "Rightmost base door of the second wing may be a corner unit shared with the main run."
+          }
+        ],
+        "uncertainties": [
+          "Corner overlap between the main run and second wing cannot be fully resolved from the elevations.",
+          "Worktop extent is inferred from the axonometric view; underside support is assumed from continuous base carcasses without separate legs.",
+          "Whether the base run is one carcass or several is assumed from continuous base plinth and top."
+        ]
+      },
+      "overlay": {
+        "page": "/Users/qb/.codex/visualizations/2026/11/06/01a1b2b5-0979-7c50-b3fb-f86d8e481902/cb-planner-v9-lev2-adda/lev2-overlay-page.png",
+        "details": "/Users/qb/.codex/visualizations/2026/11/06/01a1b2b5-0979-7c50-b3fb-f86d8e481902/cb-planner-v9-lev2-adda/lev2-overlay-details.png",
+        "coordinates": "/Users/qb/.codex/visualizations/2026/11/06/01a1b2b5-0979-7c50-b3fb-f86d8e481902/cb-planner-v9-lev2-adda/lev2-overlay-coordinates.json",
+        "warnings": [],
+        "display_only_label_normalizations": []
+      },
+      "unrendered_locators": [],
+      "v8_control": {
+        "request_sha256": "c8fe56c775692c0ed342db9e3f05635629dd36ef9b10966dd2255c570c5c7d8d",
+        "blocks": 6,
+        "shared_parts": 1,
+        "status": "semantic_review_required"
+      },
+      "observations": [
+        "V8 six blocks to V9 eight, against the owner target of nine cabinet blocks.",
+        "B02 is now narrow and B03 holds the neighboring upper group separately. This does not establish full-height assembly coverage.",
+        "B01 expressly groups five side-by-side positions. B07 groups four without citing either qualifying length condition.",
+        "B08 separates the drawer stack from B07. B07/B08 locators still leave the C20 zone outside.",
+        "F10 and F21 are both assigned and flagged as conflicts. S01 locator remains above much of the worktop."
+      ]
+    },
+    "adda-object-001": {
+      "request_sha256": "9bdfd339e8701d5f073433718330aeb279346cbcaf562de5bd9a204af5f50aa6",
+      "source_witness_sha256": "7dbc5659a4faf377fd1db62a97edec2c3962cfb5a48a7ecdeeba47c536bc5b09",
+      "witness_sha256": "df7b5e294d662652b9905f00a7f6bdee27e7a6e321e69821bd59a13843812dca",
+      "response_id": "msg_011CgqQ1VTjA1wKWp9n8tMJo",
+      "prompt_sha256": "36e004352cecf74aaf867f162581239aa545b93f0fc5bff447760b8ec879078f",
+      "view_ids": [
+        "view-002",
+        "view-003",
+        "view-005",
+        "view-007"
+      ],
+      "saved_front_status": "failed",
+      "saved_front_ids": 3,
+      "structure_valid": false,
+      "error": "ValueError: invalid Planner references",
+      "elapsed_seconds": 5.928,
+      "usage": {
+        "input_tokens": 6122,
+        "output_tokens": 1116
+      },
+      "issues": {
+        "duplicated_front_ids": {},
+        "omitted_front_ids": [],
+        "foreign_front_ids": [],
+        "shared_parts_with_fewer_than_two_blocks": [
+          "S01"
+        ]
+      },
+      "totals": {
+        "blocks": 3,
+        "shared_parts": 1
+      },
+      "plan": {
+        "summary": "A built-in hallway/entry vanity unit: a three-bay base cabinet with a drawer-front run, an open shelf and worktop-like top, a tall wall-backed mirror panel and birch plywood side panel, plus a separate glass display cabinet at the upper right.",
+        "blocks": [
+          {
+            "id": "B01",
+            "name": "Base vanity cabinet with three drawer fronts",
+            "contains": "Base carcass beneath the top, three drawer fronts in one horizontal run (1026 mm each, 3096 mm total), and the lower plinth.",
+            "reason": "Three side-by-side front positions within one continuous base run, fitting the default three-position allowance; the 3096 mm frontage exceeds 2000 mm so four positions are not allowed. The shared carcass is supported by the three drawer fronts shown in the front elevation and the plan dimensions.",
+            "front_ids": [
+              "F01",
+              "F02",
+              "F03"
+            ],
+            "view_ids": [
+              "view-002",
+              "view-003",
+              "view-007"
+            ],
+            "region": {
+              "view_id": "view-003",
+              "bbox_1000": [
+                40,
+                420,
+                640,
+                620
+              ]
+            }
+          },
+          {
+            "id": "B02",
+            "name": "Tall wall-backed mirror panel",
+            "contains": "Tall vertical panel with mirror surface and its supporting frame/back, standing against the wall at the left end of the vanity.",
+            "reason": "A narrow tall element separate from the base cabinet; it does not share the drawer carcass. Its boundary is inferred from the elevation (approximately 2200 mm total height from the side section), so the separation is an assumption based on visible separate construction.",
+            "front_ids": [],
+            "view_ids": [
+              "view-002",
+              "view-005"
+            ],
+            "region": {
+              "view_id": "view-002",
+              "bbox_1000": [
+                120,
+                280,
+                210,
+                680
+              ]
+            }
+          },
+          {
+            "id": "B03",
+            "name": "Glass display cabinet",
+            "contains": "Upper-right glass display cabinet with glass shelving and its carcass.",
+            "reason": "Visually separate upright cabinet with its own carcass and glazed fronts; it is not part of the base run.",
+            "front_ids": [],
+            "view_ids": [
+              "view-002"
+            ],
+            "region": {
+              "view_id": "view-002",
+              "bbox_1000": [
+                680,
+                60,
+                1000,
+                680
+              ]
+            }
+          }
+        ],
+        "shared_parts": [
+          {
+            "id": "S01",
+            "name": "Worktop/open top shelf spanning the base run",
+            "block_ids": [
+              "B01"
+            ],
+            "view_ids": [
+              "view-002",
+              "view-007"
+            ],
+            "region": {
+              "view_id": "view-002",
+              "bbox_1000": [
+                215,
+                500,
+                745,
+                590
+              ]
+            }
+          }
+        ],
+        "front_conflicts": [],
+        "uncertainties": [
+          "The saved front-classification step failed; the three drawer fronts come from the fallible reference and were not independently re-verified in pixel coordinates.",
+          "The lower sections below the drawers are shown as recessed/plinth-like in the elevation; their exact front type is not clear, so they are kept within the base block without added fronts.",
+          "Whether the mirror panel and the base carcass are one continuous carcass is not explicit; it is treated as separate based on the visible gap and separate construction in the views."
+        ]
+      },
+      "overlay": {
+        "details": "/Users/qb/.codex/visualizations/2026/11/06/01a1b2b5-0979-7c50-b3fb-f86d8e481902/cb-planner-v9-lev2-adda/adda-object-001-overlay.png"
+      },
+      "unrendered_locators": [],
+      "v8_control": {
+        "request_sha256": "5e30c501deca80f1d39746c5cd33051a8e6fc57c4d8de0630605bf109b8790fc",
+        "blocks": 3,
+        "shared_parts": 1,
+        "status": "failed"
+      },
+      "observations": [
+        "Three blocks plus S01 again, against the owner target of the continuous lower assembly and separate mirror.",
+        "B01 recognizes the three-position lower run. The partial cabinet on the crop edge is an extra block.",
+        "S01 duplicates the separate-top issue and cites just B01, so structure fails."
+      ]
+    },
+    "adda-object-002": {
+      "request_sha256": "f016b99e43420d348b2170e9d9938b289640d1ddfbfaa92d361b1d478faf0f90",
+      "source_witness_sha256": "c2eaef1cb3a21728bd4e343565f14594eff8201b6ed3fbf9304472890a79d879",
+      "witness_sha256": "8997bb2ee1b0eb44dad7a846523613c17aad75275569485a8cb1d7dc5a6b3d1c",
+      "response_id": "msg_011CgqQ1wCnGZj22hhfhj4d7",
+      "prompt_sha256": "36e004352cecf74aaf867f162581239aa545b93f0fc5bff447760b8ec879078f",
+      "view_ids": [
+        "view-001",
+        "view-004",
+        "view-006",
+        "view-008"
+      ],
+      "saved_front_status": "failed",
+      "saved_front_ids": 4,
+      "structure_valid": true,
+      "error": null,
+      "elapsed_seconds": 5.366,
+      "usage": {
+        "input_tokens": 7329,
+        "output_tokens": 1039
+      },
+      "issues": {
+        "duplicated_front_ids": {},
+        "omitted_front_ids": [],
+        "foreign_front_ids": [],
+        "shared_parts_with_fewer_than_two_blocks": []
+      },
+      "totals": {
+        "blocks": 4,
+        "shared_parts": 1
+      },
+      "plan": {
+        "summary": "A corner display cabinet assembly with a glass-fronted upper display section, a middle mirror panel, a right-hand open shelving run, and a base with drawer fronts.",
+        "blocks": [
+          {
+            "id": "B01",
+            "name": "Left display run with drawer base",
+            "contains": "Left glass display cabinet with lift-up shelving and the base drawer bank below it.",
+            "reason": "The left wing (view-004 left bay, 1830 mm frontage split into 270/1830 bays with shelving) reads as one continuous cabinet carcass with the base drawers. The base drawer bank F04-F05 belongs to this block. Assumed grouping: the drawers at the left bay share the carcass.",
+            "front_ids": [
+              "F04",
+              "F05"
+            ],
+            "view_ids": [
+              "view-001",
+              "view-004",
+              "view-006"
+            ],
+            "region": {
+              "view_id": "view-004",
+              "bbox_1000": [
+                0,
+                0,
+                500,
+                1000
+              ]
+            }
+          },
+          {
+            "id": "B02",
+            "name": "Mirror central panel block",
+            "contains": "Central mirror panel with LED strip between the two display runs, plus its base.",
+            "reason": "The central mirror panel is a fixed surface between the two runs, not a cabinet column; it is kept separate from both wings.",
+            "front_ids": [],
+            "view_ids": [
+              "view-001",
+              "view-004"
+            ],
+            "region": {
+              "view_id": "view-004",
+              "bbox_1000": [
+                500,
+                0,
+                740,
+                1000
+              ]
+            }
+          },
+          {
+            "id": "B03",
+            "name": "Right display run with drawer base",
+            "contains": "Right glass display cabinet with LED-lit shelving and the base drawer bank below.",
+            "reason": "The right wing (1188 mm frontage in view-004) forms one carcass with drawers F06-F07 below. Assumed grouping for the right run.",
+            "front_ids": [
+              "F06",
+              "F07"
+            ],
+            "view_ids": [
+              "view-001",
+              "view-004"
+            ],
+            "region": {
+              "view_id": "view-004",
+              "bbox_1000": [
+                740,
+                0,
+                920,
+                1000
+              ]
+            }
+          },
+          {
+            "id": "B04",
+            "name": "Open shelving corner unit",
+            "contains": "Right open shelving unit at the far end of the corner.",
+            "reason": "The open shelf section at the far right has no front IDs and is treated as a separate open carcass.",
+            "front_ids": [],
+            "view_ids": [
+              "view-001",
+              "view-008"
+            ],
+            "region": {
+              "view_id": "view-008",
+              "bbox_1000": [
+                800,
+                270,
+                1000,
+                920
+              ]
+            }
+          }
+        ],
+        "shared_parts": [
+          {
+            "id": "S01",
+            "name": "Continuous worktop/top across the corner",
+            "block_ids": [
+              "B01",
+              "B02",
+              "B03"
+            ],
+            "view_ids": [
+              "view-008"
+            ],
+            "region": {
+              "view_id": "view-008",
+              "bbox_1000": [
+                90,
+                90,
+                880,
+                200
+              ]
+            }
+          }
+        ],
+        "front_conflicts": [],
+        "uncertainties": [
+          "Drawer count and the F04-F07 split are estimated from the front elevation; the source front reference failed to save fronts, so front IDs are not verified.",
+          "Exact boundary between the left and right display runs and the central mirror panel depends on dimensioned elevation alignment not fully visible.",
+          "The open shelving unit may be part of the right run; grouping is an estimate."
+        ]
+      },
+      "overlay": {
+        "details": "/Users/qb/.codex/visualizations/2026/11/06/01a1b2b5-0979-7c50-b3fb-f86d8e481902/cb-planner-v9-lev2-adda/adda-object-002-overlay.png"
+      },
+      "unrendered_locators": [],
+      "v8_control": {
+        "request_sha256": "a7a89b75a48322895887cc00d0e9153107a7d5944b97abcf4de22c9bc1ad8e17",
+        "blocks": 5,
+        "shared_parts": 1,
+        "status": "failed"
+      },
+      "observations": [
+        "V8 five blocks to V9 four, against seven proposed by the owner.",
+        "The separate mirror is present. B04 identifies the 2 m return as one open-shelf assembly.",
+        "The upper and lower four-door return assemblies are absent as separate blocks. A separate S01 top remains.",
+        "All supplied Front IDs are assigned once. The saved Front supplied four tentative drawers, not the verified V01 doors or pull-out shelves."
+      ]
+    }
+  },
+  "method": {
+    "v8_delta": [
+      "system"
+    ],
+    "lev1": "excluded at owner direction",
+    "acceptance": "Width policy not established. All three replies complete; only corner Adda passes structure."
+  }
+}
