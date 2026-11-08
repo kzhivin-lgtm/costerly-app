@@ -1,0 +1,79 @@
+{
+  "work": "3.17.4.6",
+  "date": "2026-11-08",
+  "document": "Lev1",
+  "code_commit": "70bfbcd",
+  "model": "claude-haiku-5-5",
+  "thinking_tokens": 0,
+  "provider_calls": 1,
+  "status": "separate_rows_pass; exact_contour_ids_partial",
+  "request_sha256": "808987f8cd205b77dccfb75bd636cb2851df2ae7efd7a45afdf5094b6fc74c90",
+  "baseline_request_sha256": "f1c06ce23a0d6778daffb288ef6231b3bd7147935efcdc47f41caa4473ef9a10",
+  "response_id": "msg_011CgqA1JtbTmyjNc9o9mwLo",
+  "witness_sha256": "348f908de6c7d0a658444229ddeb9a1270116725dbdf48ce6de21a87e21524c5",
+  "elapsed_seconds": 5.203,
+  "usage": {
+    "input_tokens": 20334,
+    "output_tokens": 739
+  },
+  "request_diff": [
+    "system"
+  ],
+  "v4": {
+    "reference_ids": [
+      "C32",
+      "C33",
+      "C34"
+    ],
+    "v7_4_raw_groups": [
+      [
+        "C32",
+        "C33",
+        "C34"
+      ]
+    ],
+    "v7_5_independent_drawer_rows": 3,
+    "v7_5_ids": [
+      "C30",
+      "C33",
+      "C31"
+    ],
+    "exact_matches": [
+      "C33"
+    ],
+    "missed_reference_ids": [
+      "C32",
+      "C34"
+    ],
+    "alternate_ids": [
+      "C30",
+      "C31"
+    ],
+    "bbox_iou": {
+      "C30": {
+        "C32": 0.479,
+        "C33": 0.456,
+        "C34": 0.0
+      },
+      "C31": {
+        "C32": 0.0,
+        "C33": 0.0,
+        "C34": 0.928
+      },
+      "C33": {
+        "C32": 0.0,
+        "C33": 1.0,
+        "C34": 0.0
+      }
+    },
+    "observations": [
+      "C30 spans both C32 and C33, so C33 is double-covered.",
+      "C31 is the nearly coincident outer boundary of right drawer C34."
+    ]
+  },
+  "v6_matched_support_ids": [
+    "C26",
+    "C28"
+  ],
+  "binding_issues": []
+}

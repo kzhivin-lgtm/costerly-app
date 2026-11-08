@@ -1423,10 +1423,21 @@ V7.5 opt-in `--per-island` now prepares one flat record per face per Island.
 It derives no document total or cross-view identity. Preflight on both
 frozen files verified that only the output instructions and shape in
 the system block differ. Old hashes reproduce exactly, and offline
-flattening preserves all 10 Lev1 and 18 Lev2 raw appearances. No new
-provider call. Next evidence: test whether Lev1 returns distinct V4 rows
-C32/C33/C34, then check Lev2 coverage/types on the same frozen references.
-The protected V7.2 geometry and V7.4 experimental tag remain the baselines.
+flattening preserves all 10 Lev1 and 18 Lev2 raw appearances.
+2026-11-08, owner-authorized Lev1 control, COMPLETED (partial). Exactly
+one request, system block only changed relative to V7.4. The model returned
+three separate V4 drawer rows (C30/C33/C31), versus one row with C32/C33/C34
+in V7.4. Row separation passed, exact ownership matched 1/3. C30 encloses
+the first and middle drawers, including the separately selected C33.
+C31 nearly coincides with the right drawer C34 (bbox IoU 0.928).
+Both V6 support contours C26/C28 matched. Binding issues were empty;
+the binder checks contour identity, not nested geometric overlap.
+One run does not establish repeatability. Next: distinguish composite
+outlines from individual face contours and evaluate ownership separately
+from row separation. Lev2 remains pending. The protected V7.2 geometry
+and V7.4 experimental tag remain the baselines.
+Evidence: notes/evidence/estimation-v7-5-front-identity-2026-11-08/lev1-per-island.json.
+Private witness: /private/tmp/estimation-v75-lev1.NxQR6LSM/result.json.
 
 P2 DEFERRED by owner until the first standard Detection → Analyze →
 Calculation cycle is complete and stable. Optimize context, cost and
