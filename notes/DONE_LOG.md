@@ -1,5 +1,12 @@
 # Done Log
 
+2026-11-08, 3.17.4.6. Offline Analyze V12 to Calculation preflight
+completed on one benchmark Block. The existing CB Parts V3.4 builder
+accepted the source-linked dimensions and four separate leaf identities.
+The local compiler produced nine approximate panel quantities and
+conserved the 2000 mm width. No provider calls. The runtime handoff and
+complete Parts verification remain open. See Estimation handoff section 44.
+
 2026-11-08, 3.17.4.6. Owner selected the Estimation Analyze cycle with
 CB Planner V12, structural ownership and explicit paired leaves as the
 experimental continuation checkpoint. Adda is the replay witness for

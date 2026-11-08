@@ -50,6 +50,8 @@ Block ownership and paired-leaf counting are general requirements. Adda is
 the latest evidence replay via `python -m tools.probe_cb_adda_ownership`.
 The replay adapter is Adda-specific. See Estimation handoff section 43 and
 `notes/evidence/estimation-cb-planner-adda-ownership-pairs-2026-11-08/checkpoint.json`.
+The one-block Calculation preflight, its local replay and open
+requirements are recorded in Estimation handoff section 44.
 
 Current Estimation Front research checkpoint, 3.17.4.6, 2026-11-08:
 `estimation-v7.5-per-island-front-experimental-2026-11-08` on

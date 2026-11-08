@@ -1529,3 +1529,30 @@ requires structured Block dimensions and traceable view evidence.
 The private archive restored 21 files and replayed both objects and
 the combined overlay byte-for-byte with zero new provider calls.
 Manifest: `notes/evidence/estimation-cb-planner-adda-ownership-pairs-2026-11-08/checkpoint.json`.
+
+## 44 Analyze to Calculation one-block preflight
+
+Work 3.17.4.6. Verified offline against the frozen Analyze V12 replay.
+Adda corner B02 is a fixture for the lower return cabinet. Preserve the
+Planner block ID, its two paired positions and all four hinged leaves.
+V01 opening marks establish the Front roles. The matching lower face
+band in V06 supplies elevation evidence. Detection's topology evidence
+links V01 to V08 and V04 to V06 at object level. The B02 association
+across views was reviewed for the fixture and is not a general matcher.
+
+- Width 2000 mm from both V06 and V08. V08 overall depth is 458 mm.
+- V06 printed installed height is 515 mm above the floor. Native band
+  edges give an estimated carcass height of 414 mm using the same view's
+  scale. The implied support/plinth zone is approximately 101 mm.
+- The existing CB Parts V3.4 request builder validated one block and
+  carried the structured dimensions and source endpoint references into
+  Calculation with four images. Captured before any provider call.
+- The existing compiler, fed a local draft fixture, conserved the
+  2000 mm span and returned nine coarse panels: four leaves, two sides,
+  top, bottom and back. Its 17 mm thickness is a default. Overall depth
+  proxies carcass depth. Interior partitions, shelf layout, supports,
+  joinery, exact panel sizes and hardware are still open.
+
+Private replay: `/Users/qb/Documents/ChatGPT/Costerly/backups/estimation-analyze-v12-calculation-preflight-2026-11-08`.
+The Calculate preflight is distinct from Analyze V12 and did not change
+the Planner version or the frozen checkpoint. No provider calls.

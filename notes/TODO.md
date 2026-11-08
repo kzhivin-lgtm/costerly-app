@@ -1862,9 +1862,14 @@ Existing immutable evidence and provisional tags retained.
 Evidence: notes/evidence/estimation-cb-planning-sequence-2026-11-08/lev2-adda-trials.json.
 Private witnesses: /private/tmp/cb-planning-live.Iy63QMA6/.
 Checkpoint manifest: notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/planner-v7-checkpoint.json.
-P0 PENDING after Blocks acceptance: use Calculation / CB Parts to break
-accepted Blocks into Parts. Verify block coverage, shared components and
-quantity/dimension provenance, then run the first complete cycle.
+P0 ACTIVE, same work 3.17.4.6: carry structured Block dimensions into
+Calculation / CB Parts. One-block offline preflight completed. Existing
+V3.4 accepted the V12-derived fixture scope and the compiler retained
+four leaves and the measured 2000 mm width. See handoff section 44.
+Pending: generalize view-to-block matching, propagate source/estimated/
+unknown dimension status and footprint where needed, verify partition,
+shared-component and Parts coverage, then run the first complete cycle.
+Keep file-specific test selectors out of Analyze and Calculation runtime.
 Owner clarified the overlay decision: the current Adda PNG is a review
 artifact rendered after the ownership JSON. Keep the current display.
 If Calculation uses Block geometry, provide structured width, depth,
