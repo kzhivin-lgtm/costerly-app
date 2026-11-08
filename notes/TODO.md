@@ -1544,6 +1544,16 @@ assemblies. Its older Front supplied drawers only, so this run does not
 validate the two-meter exception on the intended Adda faces.
 Evidence: notes/evidence/estimation-cb-planner-v9-lev2-adda-2026-11-08/standalone-trials.json.
 Private witnesses: /private/tmp/cb-planner-v9-lev2-adda.FuBJPf3w/.
+2026-11-08, verified overlay diagnosis. Planner uses a model-authored
+axis-aligned bbox_1000. Lev2 V9 S01 already misses the worktop on the
+exact V02 input crop, before page placement. Offline Vector Front draws
+native PDF polygons associated with source contour IDs. Lev2 V01 has
+14 vector candidates; raster V02 has none. AGENT PROPOSAL: reuse native
+PDF geometry for Blocks. First check whether the Lev2 worktop footprint
+can be bound to the plan boundary on V01 offline. Separate source
+geometry from assembly membership and allow approximate locators when
+no reliable contour is available. No implementation or provider call
+in this diagnosis.
 Checkpoint manifest: notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/planner-v7-checkpoint.json.
 P0 PENDING after Blocks acceptance: use Calculation / CB Parts to break
 accepted Blocks into Parts. Verify block coverage, shared components and
