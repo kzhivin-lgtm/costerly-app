@@ -1,0 +1,56 @@
+{
+  "work": "3.17.4.6",
+  "checkpoint": "estimation-block-geometry-handoff-experimental-2026-11-08",
+  "analyze_baseline": "c5867527b895196b9acec007e8273c7eb666cf6a",
+  "stage": "Analyze to Calculation block geometry handoff",
+  "status": "owner reviewed experimental geometry; Parts rejected",
+  "witness": {
+    "document": "Adda",
+    "object_id": "object-002",
+    "request_sha256": "3f4c61ea23e1b68ad6c3235d10ef06dd85e9a752af66f42c6d6a5f6fcb2444cf",
+    "response_id": "msg_011CgqpUACeDWd7a3w2JJXEP",
+    "provider_calls": 1,
+    "blocks": [
+      "B01",
+      "B02",
+      "B03",
+      "B04",
+      "B05",
+      "B06",
+      "B07"
+    ],
+    "independent": [
+      "S01"
+    ],
+    "shared": [
+      "S02"
+    ],
+    "parts_compiler_error": {
+      "message": "span must reference an existing carcass bay",
+      "type": "ValueError"
+    }
+  },
+  "owner_review": {
+    "B01_height_mm": 1480,
+    "B02_installed_height_mm": 515,
+    "B02_body_height_estimate_mm": 414,
+    "B02_depth_mm": null,
+    "B02_depth_observation": "appears shallower than the adjacent 458 mm return",
+    "shared_plinth_is_furniture_block": false
+  },
+  "private_archive": {
+    "path": "/Users/qb/Documents/ChatGPT/Costerly/backups/estimation-analyze-v12-adda-corner-calculation-2026-11-08/private-replay-evidence.tar.gz",
+    "sha256": "d86704edea1a64e2c754fd75d047df8ffeda227c47d9838c97b1515351c627ca",
+    "restored_sha256": {
+      "REVIEW.md": "8f4f7b916b4fd2c3f25fb07b4559215017c77342c57593458cf4fd47dd9c7361",
+      "adda-api-cost-ledger.csv": "359d1af254081ff9bd6ce3c0a9b7c1ef7ad6b64d86bcc71776989a6987e47f8f",
+      "attempt.json": "a3c1c14effb2081461dd7679594d44e0ca3cd3162e5bd756753d2dec34713bf0",
+      "error.json": "cf886eb98a5c1732e641dfcff40a606d1c98fd27c8c85657b4ae813c7f10aeb9",
+      "preflight.json": "65d8e1ae9875fdbc9be4130a9381350ac8f5bd962b2fee166818dbeebf824421",
+      "provider-response.json": "db08fad2e5cbea861dfaecd8eeb8dd20b30f8e61b2cbc5ff73a084eae38e065e",
+      "request.json": "3bb3f9dd1b7e235b503c17746ff8207d62f9943322ca72cb8403d0f986c14e05",
+      "run.py": "13d4ad51ed43ddc1fc845e21ae3fb4bb7cf80784eae39d2dcbed4a50efda4ada"
+    }
+  },
+  "checkpoint_provider_calls": 0
+}

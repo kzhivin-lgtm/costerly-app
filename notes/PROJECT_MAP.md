@@ -52,6 +52,9 @@ The replay adapter is Adda-specific. See Estimation handoff section 43 and
 `notes/evidence/estimation-cb-planner-adda-ownership-pairs-2026-11-08/checkpoint.json`.
 The one-block Calculation preflight, its local replay and open
 requirements are recorded in Estimation handoff section 44.
+Block geometry handoff checkpoint:
+`estimation-block-geometry-handoff-experimental-2026-11-08`.
+The Adda control and acceptance boundary are in handoff sections 45–46.
 
 Current Estimation Front research checkpoint, 3.17.4.6, 2026-11-08:
 `estimation-v7.5-per-island-front-experimental-2026-11-08` on

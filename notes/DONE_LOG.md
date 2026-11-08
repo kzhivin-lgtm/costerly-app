@@ -1,5 +1,16 @@
 # Done Log
 
+2026-11-08, 3.17.4.6. Selected Adda geometry handoff checkpoint
+`estimation-block-geometry-handoff-experimental-2026-11-08`.
+Restored eight private files and verified the request hash offline.
+Analyze V12 is preserved. Parts rejection remains documented.
+Manifest: notes/evidence/estimation-block-geometry-handoff-2026-11-08/checkpoint.json.
+
+2026-11-08, 3.17.4.6. Ran the complete Adda corner CB Parts V3.4 control
+against frozen Analyze V12 with one provider call. All block, shared and
+independent IDs returned. The compiler rejected invalid span membership.
+No accepted Parts output. See Estimation handoff section 45 and TODO.
+
 2026-11-08, 3.17.4.6. Offline Analyze V12 to Calculation preflight
 completed on one benchmark Block. The existing CB Parts V3.4 builder
 accepted the source-linked dimensions and four separate leaf identities.

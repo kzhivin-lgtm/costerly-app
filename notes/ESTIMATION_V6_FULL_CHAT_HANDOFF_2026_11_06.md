@@ -1556,3 +1556,92 @@ across views was reviewed for the fixture and is not a general matcher.
 Private replay: `/Users/qb/Documents/ChatGPT/Costerly/backups/estimation-analyze-v12-calculation-preflight-2026-11-08`.
 The Calculate preflight is distinct from Analyze V12 and did not change
 the Planner version or the frozen checkpoint. No provider calls.
+
+## 45 Complete corner-object CB Parts V3.4 control
+
+Work 3.17.4.6. Exactly one live CB Parts request on Adda corner consumed
+Analyze V12 c586752 and four source images. The experimental adapter
+preserved B01–B07, independent cover S01 and one shared rail S02/C87
+linked to B06 and B07. The geometry packet preserved source dimension,
+derived and unknown values. In particular the two lower frame depths
+were unknown and their split was provisional. No Analyze request.
+
+The model returned all nine IDs and counted the rail once. The compiler
+rejected the answer because W01/W02 pointed to explicit rows as carcass
+bays. W01 also incorrectly extended the 1830 span into the mirror bay.
+Independent raw review found impossible side-by-side stacks in B01/B02,
+one omitted mirror, and incomplete construction on both display bays.
+Both display bays did retain two drawer fronts and four pull-outs each.
+No second provider request and no patched response or composed Parts.
+
+Provider response `msg_011CgqpUACeDWd7a3w2JJXEP`, 31,226 input tokens,
+2,931 output tokens, zero thinking tokens. Private exact request, raw
+reply, compiler error and dimensions/parts review:
+`/Users/qb/Documents/ChatGPT/Costerly/backups/estimation-analyze-v12-adda-corner-calculation-2026-11-08`.
+
+### Owner review and API budget
+
+The owner accepted the geometry as a useful basis for this fixture.
+B01 height is exactly 1480 mm from the printed V06 levels 1995 and
+515. For B02, 515 mm is the outer installed height. The 414 mm value
+was supplied by the earlier offline preflight as a projected panel/body
+height after excluding approximately 101 mm of support/plinth zone.
+It must not replace the 515 mm envelope. The owner saw a smaller depth
+for B02 in the isometric view. Keep it unknown until independently
+measured, with 458 mm as the adjacent return reference only. The owner
+accepted B03/B04 width 1188/1830, depth about 458 and height 1480. Each
+display has two drawers and four pull-outs with glass boxes. B05's
+950 and 155 are accepted estimates from V04 and V08 respectively.
+S01 is independent. C87/S02 is a shared plinth component and must
+not appear as a separate furniture Block. The saved request and
+response remain exact historical evidence.
+
+API budget priced from 28 distinct retained Haiku 5.5 responses using
+Anthropic standard global rates. Eight whole-file Analyze requests
+cost $0.05083514. Nine one-object or one-view diagnostics cost
+$0.01733930. Ten paid Planner/Locator experiments cost $0.01348810.
+One Calculation cost $0.00458810 (31,226 input, 2,931 output,
+no cache or Thinking). Total retained Estimation spend $0.08625064.
+Two paid responses used 7,107 cache reads each. V12 deterministic
+replay and all preflights added $0.00 in provider charges.
+
+The matched upstream Detection run `run_4e47c1226af946698779203ca31ff705`
+was previously logged at $0.071588 for Detection and $0.098950 for
+known OCR + Detection + Naming combined. Total including that upstream
+run and the retained Estimation experiments is $0.18520064. A second
+historical Adda upstream control is recorded separately at $0.099715.
+For one fresh Estimation cycle, measured V7.2 file Analyze plus two
+Calculation calls each budgeted at the measured corner-call cost
+gives $0.01543870–$0.01595090. Straight-item Calculation was not run.
+This is a scenario, not a measured full V12 run or provider invoice.
+
+Private ledger: `/Users/qb/Documents/ChatGPT/Costerly/backups/estimation-analyze-v12-adda-corner-calculation-2026-11-08/adda-api-cost-ledger.csv`.
+Rates: https://platform.claude.com/docs/en/models/haiku-5-5/overview
+
+#### Prompt-cache budget sensitivity
+
+Historical Analyze V7.3 Adda requests actually read 7,107 tokens from a
+cached static system prefix. Pricing that same prefix as a hit saves
+$0.00063963 versus uncached input. With recorded outputs held fixed, the
+two requests drop from $0.00679350 and $0.00628970 to $0.00615387 and
+$0.00565007, respectively. A 5-minute cache write adds $0.000177675 to
+the uncached price and is recovered on the first hit. At the previous
+budget scenario for one Analyze and two Calculations, an Analyze-only
+hit would put Estimation at approximately $0.0148–$0.0153 per Adda file.
+This is a pricing sensitivity, not a measurement of a stable V12 cache.
+The CB Parts request had no cache breakpoint. Preserve cache work as
+deferred. Owner identified Lev1 and Lev2 as the next geometry controls
+after the checkpoint. No new calls or checkpoint in this cost review.
+
+## 46 Block geometry handoff checkpoint
+
+Work 3.17.4.6. Tag `estimation-block-geometry-handoff-experimental-2026-11-08`.
+The owner reviewed the Adda corner geometry and accepted it as a useful
+estimating basis with the B01/B02 corrections in section 45. The
+checkpoint preserves the exact submitted packet, raw provider response
+and compiler failure. Eight private files restored byte-for-byte and
+the request hash matched. Zero calls to create the checkpoint.
+Analyze V12 and the original request are unchanged. This is a geometry
+handoff checkpoint, not a new Planner version or a Parts acceptance.
+Next owner-selected control is Lev1. Lev2 is deferred at the owner's request.
+Manifest: `notes/evidence/estimation-block-geometry-handoff-2026-11-08/checkpoint.json`.

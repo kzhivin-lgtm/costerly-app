@@ -1870,6 +1870,35 @@ Pending: generalize view-to-block matching, propagate source/estimated/
 unknown dimension status and footprint where needed, verify partition,
 shared-component and Parts coverage, then run the first complete cycle.
 Keep file-specific test selectors out of Analyze and Calculation runtime.
+Architecture proposal under review: keep Block Locator responsible for
+linking saved Block IDs to source projections. Resolve each Block's outer
+geometry after localization and before Parts decomposition, reusing
+normalized dimensions and source evidence. Hand off one packet per object
+with stable Block and Front IDs, shared elements, source-linked W/D/H,
+relevant projections, and explicit geometry gaps. CB Parts (Block to Parts)
+consumes the object packet in one Calculation call, preserving Block
+membership. Resolve ambiguous geometry within that call only when the
+source supports it. Retain unresolved values and provenance. Test every
+Block of one object before widening the benchmark.
+
+One-call Adda corner benchmark completed as a diagnostic, 3.17.4.6.
+All seven Blocks and the independent and shared elements reached CB Parts
+V3.4. The model returned all IDs and one shared rail, but the compiler
+rejected invalid span targets. The reply also stacks adjacent leaves,
+drops one assigned mirror and omits carcass/drawer bodies from both
+display bays. Open: separate source span bindings from decomposition,
+preserve side-by-side Front geometry and verify complete role coverage.
+See handoff section 45. Analyze V12 remains frozen.
+Owner review: preserve installed envelope versus body/panel height.
+B02 uses the 515 mm printed installed height, with body height and
+reduced unmeasured depth tracked separately. For each display, retain
+two drawers and four glazed pull-outs. Keep the shared plinth as a
+component, with no separate furniture Block. Audit span conservation:
+side-by-side drawer fronts cannot exceed their available width.
+Geometry handoff checkpoint: `estimation-block-geometry-handoff-experimental-2026-11-08`.
+The Adda witness is geometry evidence only; Parts remain unaccepted.
+P0 ACTIVE: validate the same handoff on Lev1, with source links, installed
+versus body dimensions and explicit unknowns. Lev2 is DEFERRED by owner.
 Owner clarified the overlay decision: the current Adda PNG is a review
 artifact rendered after the ownership JSON. Keep the current display.
 If Calculation uses Block geometry, provide structured width, depth,
@@ -1906,6 +1935,11 @@ reuse using measurements from that accepted baseline.
   with identical prompts and inputs, tracking cache writes, hits, cost and
   latency. V7.3 recorded 7,107 cached input tokens on Lev2 and Adda;
   quality and caching effects were not isolated in that comparison.
+  On Adda, the observed 7,107-token static prefix saves $0.00063963
+  per cache hit at Haiku 5.5 standard rates, about 9–10% of those Analyze
+  calls relative to identical token counts at uncached prices. A 5-minute
+  write costs $0.000177675 more than an uncached request for that prefix.
+  The latest CB Parts request has no cache breakpoint or measured hit.
 - Consider semantic retrieval when the reference corpus outgrows explicit
   section selection. Evaluate source relevance and coverage against direct
   lookup before adding an embedding index.
