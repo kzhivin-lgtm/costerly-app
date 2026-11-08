@@ -1588,6 +1588,14 @@ Saved control counts remain Lev2 8 + 2, Adda 001 3 + 1, Adda 002 4 + 1.
 localization trial: Lev2 only, assess worktop and other boundaries
 against source while keeping the saved grouping exactly. The original
 F10/F21 duplicate assignment remains a separate grouping defect.
+Owner asks to avoid a second Analyze model call. PROPOSAL: keep the
+existing model call responsible for assembly membership. Bind only
+unambiguous source anchors after it, using existing Front contour IDs or
+source references. Keep partial/unresolved geometry explicit. Test on
+one saved Lev2 block offline. If accepted, pass ownership and source
+dimension references to Calculation where they support Parts; a displayed
+polygon alone adds no dimensional evidence. The model-only locator is an
+experimental control and has not been executed. No new call approved here.
 Checkpoint manifest: notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/planner-v7-checkpoint.json.
 P0 PENDING after Blocks acceptance: use Calculation / CB Parts to break
 accepted Blocks into Parts. Verify block coverage, shared components and
