@@ -1,6 +1,7 @@
 # Estimation V6 полный конспект разработки и экспериментов
 
-Current continuation point, 2026-11-08: **section 42**, CB Planner V11 offline.
+Current continuation point, 2026-11-08: **section 43**, Adda ownership and
+paired leaves. Section 42 preserves CB Planner V11 offline.
 Section 41 preserves the CB Planner V7 baseline and V8/V9 trials.
 Section 40 preserves Front 7.5.
 Section 39 records the full-answer format and Lev1 support diagnosis.
@@ -1500,3 +1501,21 @@ that matched the reference eight doors, six drawers and eight pull-outs.
 Owner follow-up: assign remaining physical elements to the most
 plausible assembly, prioritizing actual connections and using proximity
 as a secondary cue. See the active ownership item in TODO.
+
+## 43 Adda ownership and paired leaves checkpoint
+
+Owner-selected experimental tag
+`estimation-cb-planner-v11-adda-ownership-pairs-experimental-2026-11-08`, work 3.17.4.6.
+This offline probe preserves V11 and uses saved V7.5 straight Front,
+typed V7.4 corner V01 evidence, native contour marks and Detection links.
+Straight: base with three drawers and side support, plus a separate mirror
+upright. Corner: seven furniture candidates, four explicit pairs retaining
+eight leaves, six drawers, eight pull-outs, two mirrors and one fixed
+open shelf. The window closure is independent of the cabinets.
+
+The long lower run uses an assumed split. Corner V04/V06/V08 remain
+context-only in the overlay. The current PNG is for review. Calculation
+requires structured Block dimensions and traceable view evidence.
+The private archive restored 21 files and replayed both objects and
+the combined overlay byte-for-byte with zero new provider calls.
+Manifest: `notes/evidence/estimation-cb-planner-adda-ownership-pairs-2026-11-08/checkpoint.json`.

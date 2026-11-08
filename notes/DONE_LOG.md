@@ -1,5 +1,13 @@
 # Done Log
 
+2026-11-08, 3.17.4.6. Owner selected the Adda ownership and paired-leaf
+replay as an experimental checkpoint after V11. Straight Adda has two
+Blocks. Corner Adda has seven furniture candidates and an independent
+window closure. Four pairs preserve eight leaves. Both object results
+and the combined overlay replayed byte-for-byte from 21 restored files
+with zero provider calls. Full multi-view dimensions remain open.
+Manifest: notes/evidence/estimation-cb-planner-adda-ownership-pairs-2026-11-08/checkpoint.json.
+
 2026-11-08, 3.17.4.6. Owner selected CB Planner V11 offline as an
 experimental checkpoint, `estimation-cb-planner-v11-offline-experimental-2026-11-08`.
 Candidate counts were Lev1 2, Lev2 9, Adda straight 1 and Adda corner 7.

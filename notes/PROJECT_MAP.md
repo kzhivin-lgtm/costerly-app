@@ -44,6 +44,11 @@ Owner-selected V11 offline checkpoint:
 `estimation-cb-planner-v11-offline-experimental-2026-11-08`.
 See notes/evidence/estimation-cb-planner-v11-offline-2026-11-08/checkpoint.json
 and Estimation handoff section 42 for the replay and coverage limits.
+Adda ownership and explicit paired-leaf checkpoint:
+`estimation-cb-planner-v11-adda-ownership-pairs-experimental-2026-11-08`.
+Use `python -m tools.probe_cb_adda_ownership` with frozen V11, Front and
+Detection evidence. See Estimation handoff section 43 and
+`notes/evidence/estimation-cb-planner-adda-ownership-pairs-2026-11-08/checkpoint.json`.
 
 Current Estimation Front research checkpoint, 3.17.4.6, 2026-11-08:
 `estimation-v7.5-per-island-front-experimental-2026-11-08` on

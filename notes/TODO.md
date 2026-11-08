@@ -1800,12 +1800,67 @@ physical element silently omitted or double assigned. Start with Lev2
 V03 C12 -> B06 as the preferred check and audit the two Adda objects.
 The exact Adda V11 candidate inventory and omissions are recorded in
 Estimation handoff section 42. No grouping code change in this follow-up.
+Owner clarified the straight Adda benchmark: three physical drawers in
+one lower Block, plus a separate mirror upright. V7.5 additionally
+labeled the three tall faces under the drawers as hinged; this does not
+establish three physical doors. V02 mirror C06 was detected and remains
+unassigned because V11 groups orthographic Front roles only.
+Corner Adda diagnosis: V06 C06 is a wide contour around an opening
+whose box contains C08; both enter as hinged observations and V11 has
+no containment check for fallback elevation groups. The lower V06
+C19–C22 formed one run before the hard-coded three-position split.
+Saved Detection mentions a 2,000 mm return in topology observations;
+the V06/V08 measurement inventories contain no normalized occurrences
+and the probe does not bind frontage dimensions to groups. Proposed next
+offline run should evaluate structural ownership independently of the
+containment and dimension-boundary defects.
+Owner-qualified proposal for Planner width counting: two adjacent leaves
+count as one position only when the drawing explicitly shows both opening
+directions and that they close the same opening into one cabinet volume.
+Evidence may be visible swing marks on that view or an unambiguously
+corresponding view. Keep separate positions if either fact is unclear.
+Preserve both Front IDs and the measured span for Parts and hardware.
+Door width alone does not exclude a leaf. The current offline corpus
+has verified swing marks only on corner Adda V01. First verify the pair
+evidence there and its correspondence to V06 before applying the count;
+V11 labels the V06 lower observations as drawers. Proposal pending.
+Owner-authorized full Adda offline replay with ownership and paired leaves,
+2026-11-08. The separate probe uses V11, frozen Detection, V7.5 for straight
+Adda and the archived V7.4 typed V01 evidence for corner Adda. It confirms
+four pairs with two swing marks, a shared seam and shared source border.
+Both return rows occupy two Planner positions while preserving eight
+physical leaf IDs. Removing the marks restored a 3+1 split per row.
+Straight: two Blocks, three drawers in the base, mirror upright separate;
+the linked side panel and support attach to the base. Corner: seven
+furniture candidates, with six drawers, eight pull-outs, eight doors,
+two mirrors and one fixed open shelf accounted for. Two glazing and two
+lighting callouts have owners. The saved window closure is a separate
+site element. Lower C87 is shared by B06/B07; their 3+2 split is assumed.
+The second mirror was rebound C14 -> C19 using the saved LED leader tips
+and shelf contact, without using the expected target ID in the rule.
+No unmatched typed elements in this replay; other V01 native contours
+are not a verified inventory. Corner V04/V06/V08 remain context-only;
+cross-view identity and generalization are pending. Repeat report and
+overlay byte-identical, zero calls, V11 tag preserved.
+Probe: tools/probe_cb_adda_ownership.py.
+Report: /private/tmp/cb-adda-ownership-pairs-verified-20261108/ownership.json.
+OWNER-SELECTED EXPERIMENTAL CHECKPOINT, Adda ownership and explicit pairs:
+`estimation-cb-planner-v11-adda-ownership-pairs-experimental-2026-11-08`.
+Both object reports and the combined overlay replayed byte-for-byte from
+21 restored private files. Zero new provider calls.
+Manifest: notes/evidence/estimation-cb-planner-adda-ownership-pairs-2026-11-08/checkpoint.json.
 Evidence: notes/evidence/estimation-cb-planning-sequence-2026-11-08/lev2-adda-trials.json.
 Private witnesses: /private/tmp/cb-planning-live.Iy63QMA6/.
 Checkpoint manifest: notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/planner-v7-checkpoint.json.
 P0 PENDING after Blocks acceptance: use Calculation / CB Parts to break
 accepted Blocks into Parts. Verify block coverage, shared components and
 quantity/dimension provenance, then run the first complete cycle.
+Owner clarified the overlay decision: the current Adda PNG is a review
+artifact rendered after the ownership JSON. Keep the current display.
+If Calculation uses Block geometry, provide structured width, depth,
+height and source-linked outlines for the relevant projections. Use a
+footprint where turns or chamfers affect Parts. Keep unsupported
+dimensions explicit. Do not derive dimensions from the displayed hull.
 
 COMPLETED, 2026-11-08, same work 3.17.4.6: Lev1 support attribution
 diagnosed offline. V7.2 Front explicitly chose the one visible support on

@@ -1,0 +1,68 @@
+{
+  "work": "3.17.4.6",
+  "date": "2026-11-08",
+  "tag": "estimation-cb-planner-v11-adda-ownership-pairs-experimental-2026-11-08",
+  "version": "Adda ownership and explicit paired leaves",
+  "status": "owner-selected experimental checkpoint, Adda-specific offline replay",
+  "baselines": {
+    "v11": "75bfff5",
+    "front_v7_5": "23417e0",
+    "typed_front_v7_4": "c6af42d"
+  },
+  "probe": {
+    "path": "tools/probe_cb_adda_ownership.py",
+    "sha256": "abbc908e174bb6c29dbfb0c9ea16b2475b0f8794bf58d135fe2fc1b7c99e9bf6"
+  },
+  "result": {
+    "straight_blocks": 2,
+    "corner_furniture_candidates": 7,
+    "independent_window_closures": 1,
+    "paired_openings": 4,
+    "corner_counts": {
+      "hinged_leaves": 8,
+      "drawers": 6,
+      "pull_out_shelves": 8,
+      "mirrors": 2,
+      "fixed_open_shelves": 1
+    }
+  },
+  "verification": {
+    "files_restored_byte_identical": 21,
+    "object_results_replayed": 2,
+    "overlays_replayed": 1,
+    "new_provider_calls": 0,
+    "interpreter": "3.13.15",
+    "pillow": "12.2.0"
+  },
+  "limitations": [
+    "Corner Blocks are assigned on V01. V04/V06/V08 remain context-only.",
+    "B06/B07 split is assumed. The probe does not provide multi-view Block dimensions or a Parts result."
+  ],
+  "private_archive": {
+    "path": "/Users/qb/Documents/ChatGPT/Costerly/backups/estimation-cb-planner-v11-adda-ownership-pairs-experimental-2026-11-08/private-replay-evidence.tar.gz",
+    "sha256": "1a3301b5960c5d2ca4cc08dad288e914151117724371426938e50e00ba5b58d8",
+    "file_sha256": {
+      "README.md": "30fb5ea38be40de39c584b6800e3c6336fae6a3cc15c3b4cfaed4cc974b877a0",
+      "baseline/adda-object-001/boundaries.json": "f43f6a9ba8bec5bb080b82eff74f8e525fac8bd168ff8d02e9866fee5526466d",
+      "detection/adda.json": "ba9aeea428fb49955136f1b409ddaa3ab1ea20f5bcb5cfb5b532663327d8e908",
+      "front/geometry/estimation-offline-all-islands-evidence.json": "0bde484833090c6fd5ce79ba540bae11d0a879c55c134005c27358bdd63e8426",
+      "front/geometry/full/adda-01.png": "88a94e064c62f457dfc9859a2257e56fa9f6b6618acf64daa74625f32634b797",
+      "front/geometry/full/adda-02.png": "b494372b457469e20620fb247910e88f8154472c65e492c2cf698e68bb59c051",
+      "front/geometry/full/adda-03.png": "1e33c23abc644f115ce02bdf1ab0ed68b308539c0e5365266d43352c7fd9c901",
+      "front/geometry/full/adda-04.png": "13a9b7d860587a993a2786c5908b173049e75f8bcbd49b3095e702b2b6b34f0f",
+      "front/geometry/full/adda-05.png": "e1cf6e8bd0a37e97f6e02926c3391e2a93a03997b03db67fba063b6de64e7b0a",
+      "front/geometry/full/adda-06.png": "ff6523b07fc83c531fdbf54a58e939315fe69b9551060685a873f7c8c3159ce6",
+      "front/geometry/full/adda-07.png": "884b3c403c0946351e9266014b72b154ace6cd835ce6e2a68047e5c0218aaf42",
+      "front/geometry/full/adda-08.png": "55d2312873b8487b3d04cefff1af1540330acc5de38a3b155de13a9276a5fb64",
+      "front/witnesses/adda-object-001.json": "b8153df04f4d366e47c92c729b1411b143b35fed0cbbbfa36b8218ef2830d601",
+      "result/overlay.png": "a707848aab84698e51fd6cec008fd881fd33e2afb7aed0b59ce645cbac0876f2",
+      "result/ownership.json": "15b3d739cea913909c0d40aa1498ed7093f69e34076f61bc0a842f97c04dcb4d",
+      "typed/geometry/adda-v01-full-review.json": "1b730a1a63ba12c76977678290a61c27ae418e3d97677595ca196dd1c01fe05a",
+      "typed/geometry/all-island-mark-sweep.json": "92eb30cc7a4fbfefe384076672c6bb0c156f634490c278fc0a206e072b87d835",
+      "typed/geometry/neutral-geometry.json": "437b34f3456bb56029c2bc1e3f4cfddd18df019c4f7a4540cfd42c22ac07566a",
+      "typed/reports/adda-v01-single-run.json": "c9148e50ff9f22d758d466d0f39f305094bd987e7554983f732360c69725e102",
+      "typed/witnesses/adda-combined.json": "1ad6ee70447b7d04529ec58a95a96194e282de58b3a4fdf51a210c888d3ae749",
+      "verify.py": "f4034d4a50ce7694fcd7e9c193ce03101f128b076ecc627d11d46648691dc637"
+    }
+  }
+}
