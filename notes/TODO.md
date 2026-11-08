@@ -1489,6 +1489,20 @@ without repairing either response. Compare against the recorded preferred
 assemblies before modifying the policy.
 Evidence: notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/two-standalone-runs.json.
 Private witnesses: /private/tmp/cb-planner-v7-lev-controls.72KghXQK/.
+COMPLETED owner-selected V7 experimental checkpoint, `estimation-cb-planner-v7-lev-controls-experimental-2026-11-08`.
+The original inputs, replies, failed validations and overlays are preserved.
+Revised owner benchmark supersedes the older three-assembly Lev1 and older
+Lev2 examples above. Lev1: drawer carcass with its seat, tabletop and two
+legs, plus the separate vertical slatted assembly. Lev2: separate upper
+hanging cabinet; two lower blocks before the corner; one or two after;
+one tall column; right-hand remainder (two tall boxes plus narrow end)
+as one block; upper corner assembly; two horizontal upper cabinets as
+one block. These are construction references, not prompt count targets.
+P0 ACTIVE, owner-authorized V8 policy trial: kitchen-only automatic worktop
+separation; for a bench, retain the tabletop with its drawer carcass.
+A tall column spans one front module in width; check near-square
+width/depth in plan when supported. Compare Lev1, Lev2 and both Adda objects.
+Checkpoint manifest: notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/planner-v7-checkpoint.json.
 P0 PENDING after Blocks acceptance: use Calculation / CB Parts to break
 accepted Blocks into Parts. Verify block coverage, shared components and
 quantity/dimension provenance, then run the first complete cycle.

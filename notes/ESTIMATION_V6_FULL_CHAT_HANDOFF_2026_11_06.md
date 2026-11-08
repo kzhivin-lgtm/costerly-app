@@ -1,7 +1,7 @@
 # Estimation V6 полный конспект разработки и экспериментов
 
-Current continuation point, 2026-11-08: **section 40**, the owner-selected
-Estimation 7.5 per-Island Front checkpoint and transition to Blocks.
+Current continuation point, 2026-11-08: **section 41**, the CB Planner V7
+baseline and owner-approved V8 policy trial. Section 40 preserves Front 7.5.
 Section 39 records the full-answer format and Lev1 support diagnosis.
 Sections 36–38 preserve the Analyze, Offline Vector and typed Front baselines.
 Sections 1–35 are V6 history.
@@ -1389,3 +1389,29 @@ geometry, overlays and reports. Offline restore verified 33 files,
 rebuilt four exact requests and replayed the saved bindings. Thirty-one
 focused tests passed. No new model call was made for this checkpoint.
 Tracked manifest: `notes/evidence/estimation-v7-5-front-identity-2026-11-08/per-island-front-checkpoint.json`.
+
+## 41 CB Planner V7 Lev baseline and revised owner references
+
+Work **3.17.4.6**, 2026-11-08. Tag `estimation-cb-planner-v7-lev-controls-experimental-2026-11-08`.
+The exact V7 standalone prompt returned 3 Blocks + S01 on Lev1 and
+7 Blocks + S01 on Lev2. Both responses ended normally. Lev1 S01 referred
+to just one block and failed the shared-part rule. Lev2 F10 appeared both
+in B04 and in front_conflicts. The raw overlays also show seat/worktop
+and cabinet localization defects. Both requests used saved historical
+Front evidence, Haiku 5.5 medium, Thinking disabled and a 6,000-token cap.
+Full comparison: `notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/two-standalone-runs.json`.
+
+The owner revised the benchmark after reviewing those results:
+
+- **Lev1 bench:** one base assembly with the drawers, seat, attached
+  tabletop and both legs; one separate vertical slatted assembly.
+- **Lev2 kitchen:** separate hanging cabinet; two base blocks before the
+  turn and one or two after it; one tall column; one remaining right-hand
+  block with the two tall boxes and narrow end section; one upper corner
+  assembly; one assembly for the two horizontal upper cabinets.
+
+Next trial: make automatic worktop separation kitchen-only, and specify
+a one-front-module-wide column with near-square plan-section evidence.
+Keep benchmark-specific counts out of the prompt. Test Lev1, Lev2 and
+both Adda objects. Frozen V7 archive and revised reference:
+`notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/planner-v7-checkpoint.json`.

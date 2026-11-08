@@ -1,0 +1,55 @@
+{
+  "work": "3.17.4.6",
+  "version": "CB Planner V7",
+  "date": "2026-11-08",
+  "status": "owner-selected experimental checkpoint; both standalone controls structurally rejected",
+  "tag": "estimation-cb-planner-v7-lev-controls-experimental-2026-11-08",
+  "source_commit": "5422720",
+  "front_checkpoint": "23417e0",
+  "original_policy_sha256": "d3271d697f5398e699511d8a261f3f8734bf744835b52b894188d37d819cd848",
+  "baseline_report": "notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/two-standalone-runs.json",
+  "verification": {
+    "historical_witnesses": 2,
+    "files_restored_byte_identical": 12,
+    "focused_tests_passed": 31,
+    "provider_calls_at_checkpoint": 0
+  },
+  "owner_revised_reference": {
+    "lev1": [
+      "drawer/bench carcass with its seat and attached tabletop and both legs",
+      "vertical slatted assembly"
+    ],
+    "lev2": [
+      "separate upper hanging cabinet",
+      "two lower blocks before the corner",
+      "one or two lower blocks after the corner",
+      "one tall column",
+      "right-hand remainder with two tall boxes and the narrow terminal section as one block",
+      "upper corner assembly including the open-shelf area",
+      "two horizontal upper cabinets as one block"
+    ],
+    "basis": "Preferred construction references, not required numerical output targets."
+  },
+  "owner_approved_changes": [
+    "Separate worktops automatically for kitchens only. On Lev1 bench, keep its tabletop with the drawer carcass.",
+    "Tall column is one front module wide. Seek a roughly square plan section from width and depth when both are visible."
+  ],
+  "private_archive": {
+    "path": "/Users/qb/Documents/ChatGPT/Costerly/backups/estimation-cb-planner-v7-lev-controls-experimental-2026-11-08/private-replay-evidence.tar.gz",
+    "sha256": "fcb4cb195ad91cb17a6bc8fe00ebf5221ac1fa06b112c6fea43d42cf9b1198ef",
+    "file_sha256": {
+      "README.md": "f0c4053fd5cd5bd0241adc33e391343764442581585949762dce1a342e06e558",
+      "comparison.json": "195b906401f92c911a0dfcce00a39b64a7127b1bee15574bdf9e8fe890f2b6f6",
+      "overlays/lev1-overlay-coordinates.json": "b5a6c0fd2c3250a2435e167fb11c8e0fb1f4cb74da22b61ecd9082b64f8fd144",
+      "overlays/lev1-overlay-details.png": "fe7e61d13dc9389bd43df574ba4106dd3fcd9c243816160089447a7714d1aa2c",
+      "overlays/lev1-overlay-page.png": "b0023e784368225fe6a2af89eea6ed4ab1bd1221e214a6fd303bb732154002ed",
+      "overlays/lev2-overlay-coordinates.json": "0b9ed4361834c54da7cbf59aa940c67c365977353a586914d158d486df775b69",
+      "overlays/lev2-overlay-details.png": "6fc6379c1f1105c02497e3b30ba109c5e4adef361fc573bdea2a9a3158a37700",
+      "overlays/lev2-overlay-page.png": "13ab5ed997ada6c5e4b3adee86d2f22858c261afcb90c29b921a7ff02cc282d0",
+      "policy.md": "8c2e2d8fc29277d3ff1cd0b22aca2efcde4ac64aa394d8e5a4b9336d1e4dcf52",
+      "verify.py": "219794c8f8e517a97b4b1a7172132f61931813cbc8aa6dcec10614fc3cd7d2fe",
+      "witnesses/lev1.json": "c2491048c38499dfd9f321acb7bca111c4715f0ee7fea73aac74cebaf93dc261",
+      "witnesses/lev2.json": "be46ae21423c5af3e1a250505c67cfe6a44a2152207b6af5ce79613559f0b8bf"
+    }
+  }
+}

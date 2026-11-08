@@ -1,5 +1,10 @@
 # Costerly AI Project Map
 
+CB Planner V7 Lev baseline, same work 3.17.4.6, 2026-11-08:
+`estimation-cb-planner-v7-lev-controls-experimental-2026-11-08` preserves both raw standalone plans, diagnostics and revised
+owner references. Both plans were structurally rejected. See handoff
+section 41 and notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/planner-v7-checkpoint.json.
+
 Current Estimation Front research checkpoint, 3.17.4.6, 2026-11-08:
 `estimation-v7.5-per-island-front-experimental-2026-11-08` on
 `codex/estimation-v7-5-front-identity`. Lev2 V04 owner-corrected reference

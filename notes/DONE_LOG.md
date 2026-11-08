@@ -1,5 +1,13 @@
 # Done Log
 
+2026-11-08, 3.17.4.6. Owner selected the two standalone CB Planner V7
+controls as an experimental checkpoint, `estimation-cb-planner-v7-lev-controls-experimental-2026-11-08`.
+Lev1 returned 3 Blocks + 1 shared element and failed the shared ownership
+check. Lev2 returned 7 Blocks + 1 shared worktop and assigned F10 twice.
+The revised owner references supersede the previous comparison targets.
+Two request/response witnesses and all 12 archived files replayed
+offline. 31 focused tests passed. Manifest: notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/planner-v7-checkpoint.json.
+
 2026-11-08, 3.17.4.6. Owner selected Estimation 7.5 per-Island Front
 as an experimental checkpoint at `estimation-v7.5-per-island-front-experimental-2026-11-08`.
 Owner corrected Lev2 V04 C20 to a door. All 9 reference V04 contours and
