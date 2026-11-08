@@ -689,7 +689,6 @@
     "lev2": {
       "target_blocks": 9,
       "worktop_accounting": "One shared kitchen worktop, accounted separately from the cabinet block count.",
-      "max_front_positions_across_width": 3,
       "blocks": [
         "Separate hanging upper cabinet",
         "First base assembly before the turn",
@@ -701,7 +700,8 @@
         "Upper corner cabinet with open shelving",
         "Combined unit for the two horizontal upper cabinets"
       ],
-      "v8_review": "Six cabinet blocks are rejected by the owner. B01 groups five fronts, B06 describes four door positions plus a drawer stack, and B02 includes adjacent sections."
+      "v8_review": "Six cabinet blocks are rejected by the owner. B01 groups five fronts, B06 describes four door positions plus a drawer stack, and B02 includes adjacent sections.",
+      "default_max_front_positions_across_width": 3
     },
     "adda-object-001": {
       "target_blocks": 2,
@@ -735,7 +735,23 @@
           "C84"
         ]
       ],
-      "pending": "Scope of the three-position width limit for the two four-door return assemblies."
+      "width_review": {
+        "view": "view-008",
+        "marked_length_mm": 2000,
+        "marked_depth_mm": 458,
+        "basis": "Dimension line along the right return from the turn to the end.",
+        "eligible_rule": "Four front positions allowed at up to 2,000 mm."
+      }
+    },
+    "owner_width_policy": {
+      "default_max_front_positions": 3,
+      "max_positions_in_exception": 4,
+      "four_positions_up_to_mm": 2000,
+      "whole_run_exception": {
+        "above_mm": 2000,
+        "up_to_mm": 3000,
+        "condition": "Four positions span the full continuous run between real boundaries."
+      }
     }
   }
 }

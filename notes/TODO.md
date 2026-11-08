@@ -1520,12 +1520,17 @@ flexible: integral or separate. Keep the attached tabletop and its legs
 with the drawer-base assembly. Lev2 six blocks are rejected. Current
 target is nine cabinet blocks, with two base assemblies before and two
 after the turn, and the shared kitchen worktop accounted separately.
-Max three front positions across a Lev2 cabinet section. Adda 001:
-continuous lower cabinet and separate mirror upright. Adda 002 proposed
-seven-block reference is recorded in the existing V8 benchmark. Its
-upper and lower return assemblies each have four side-by-side doors on
-V01. Confirm whether that is a scoped exception before changing the
-general width policy. No new model call.
+Adda 001: continuous lower cabinet and separate mirror upright.
+Adda 002 proposed seven-block reference is recorded in the existing V8
+benchmark. Its upper and lower return assemblies each have four doors on
+V01. Owner resolved the width rule generally: default maximum three
+side-by-side front positions; four are allowed at up to 2,000 mm; above
+2,000 through 3,000 mm, four are allowed only if they occupy the entire
+continuous run between physical boundaries such as a turn and an end.
+V08 dimensions the Adda return at 2,000 mm length and 458 mm depth.
+V9 applies this in the opt-in Planner prompt; live validation is pending.
+Verify the 2,000/3,000 mm boundaries and a continuing run, and preserve
+one-front-wide columns. No new model call.
 Checkpoint manifest: notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/planner-v7-checkpoint.json.
 P0 PENDING after Blocks acceptance: use Calculation / CB Parts to break
 accepted Blocks into Parts. Verify block coverage, shared components and

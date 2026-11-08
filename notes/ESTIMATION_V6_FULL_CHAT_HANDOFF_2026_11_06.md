@@ -1433,6 +1433,11 @@ worktop, with two lower blocks on each side of the turn and up to three
 front positions across each cabinet section. The six-block result is
 rejected. For straight Adda, the owner specified one continuous lower
 block and a separate mirror upright. For corner Adda the proposed seven
-assemblies include two four-door return blocks. Their scope relative to
-the three-position limit is pending clarification. The detailed references
-are in the V8 benchmark under `owner_reference_revision`.
+assemblies include two four-door return blocks. The owner resolved the
+width rule for all objects: three side-by-side positions by default;
+four up to 2,000 mm; above 2,000 through 3,000 mm only if all four occupy
+the entire run between physical boundaries. Adda V08 dimensions that
+return at 2,000 mm long and 458 mm deep, so it qualifies under the first
+allowance. V9 records the rule in `agents/prompts/cb_planner_v9.md`.
+The detailed references are in the V8 benchmark under
+`owner_reference_revision`. V9 has not been run.
