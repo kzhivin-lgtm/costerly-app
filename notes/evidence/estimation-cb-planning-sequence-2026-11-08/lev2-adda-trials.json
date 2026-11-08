@@ -1,0 +1,367 @@
+{
+  "work": "3.17.4.6",
+  "date": "2026-11-08",
+  "sequence": [
+    "CB Planner",
+    "Block Locator"
+  ],
+  "provider_calls": 6,
+  "documents": {
+    "lev2": {
+      "work": "3.17.4.6",
+      "stages": [
+        "CB Planner",
+        "Block Locator"
+      ],
+      "provider_calls": 2,
+      "locked_plan_sha256": "143c1301bd891c4fccb2c710fcaf2131713e31ca2cbeaf5f01920566fafe7649",
+      "planner_witness_sha256": "0998cd4967a78c7229c2ddf2f076637ddc404ff15c8ad35f71b6dcc5ae83fb8b",
+      "planner_request_sha256": "93197ef3119c24b73d652ced7d13223b4179f48faaeee6bf0035cfaf43006238",
+      "locator_request_sha256": "5c2ab4216f5bffa8e929a6ca8b2e24ef1d5711d28dcf9c5fbe92928a52f1b76d",
+      "geometry_sha256": "0bde484833090c6fd5ce79ba540bae11d0a879c55c134005c27358bdd63e8426",
+      "block_ids": [
+        "B01",
+        "B02",
+        "B03",
+        "B04",
+        "B05",
+        "B06",
+        "B07",
+        "B08",
+        "B09"
+      ],
+      "shared_ids": [
+        "S01"
+      ],
+      "planner_status": "failed",
+      "planner_error": "ValueError: front assigned twice",
+      "locator_status": "failed",
+      "locator_error": "ValueError: locators must cover exactly the saved assembly IDs once",
+      "geometry_issues": [
+        {
+          "id": "B02",
+          "other_id": "B01",
+          "contour_id": "C23",
+          "reason": "source contour assigned to multiple regions"
+        },
+        {
+          "id": "B02",
+          "other_id": "B01",
+          "contour_id": "C24",
+          "reason": "source contour assigned to multiple regions"
+        },
+        {
+          "id": "B02",
+          "other_id": "B01",
+          "contour_id": "C25",
+          "reason": "source contour assigned to multiple regions"
+        },
+        {
+          "id": "B02",
+          "other_id": "B01",
+          "contour_id": "C26",
+          "reason": "source contour assigned to multiple regions"
+        },
+        {
+          "id": "B02",
+          "other_id": "B01",
+          "contour_id": "C31",
+          "reason": "source contour assigned to multiple regions"
+        }
+      ],
+      "localized_ids": [],
+      "overlay": "/Users/qb/.codex/visualizations/2026/11/06/01a1b2b5-0979-7c50-b3fb-f86d8e481902/cb-planning-sequence/lev2-overlay.png",
+      "missing_ids": [
+        "S01"
+      ],
+      "unexpected_ids": [],
+      "diagnostic_localized_ids": [
+        "B01",
+        "B02",
+        "B03",
+        "B04",
+        "B05",
+        "B06",
+        "B07",
+        "B08",
+        "B09"
+      ],
+      "stages_usage": {
+        "planner": {
+          "elapsed_seconds": 9.775,
+          "input_tokens": 16238,
+          "output_tokens": 2195
+        },
+        "locator": {
+          "elapsed_seconds": 2.642,
+          "input_tokens": 19222,
+          "output_tokens": 487
+        }
+      },
+      "blocks": [
+        {
+          "id": "B01",
+          "name": "Corner base cabinet block (main run left end)"
+        },
+        {
+          "id": "B02",
+          "name": "Base cabinet block (main run middle)"
+        },
+        {
+          "id": "B03",
+          "name": "Drawer bank block (main run right end)"
+        },
+        {
+          "id": "B04",
+          "name": "Upper wall cabinet block (main run right)"
+        },
+        {
+          "id": "B05",
+          "name": "Upper wall cabinet block (main run middle)"
+        },
+        {
+          "id": "B06",
+          "name": "Tall return storage unit (left)"
+        },
+        {
+          "id": "B07",
+          "name": "Second wing hanging cabinet block"
+        },
+        {
+          "id": "B08",
+          "name": "Second wing base cabinet block"
+        },
+        {
+          "id": "B09",
+          "name": "Second wing drawer block"
+        }
+      ],
+      "shared_parts": [
+        {
+          "id": "S01",
+          "name": "L-shaped worktop"
+        }
+      ],
+      "locator_witness_sha256": "4a7696451b39b42f60e9fa456d240809c4c6cf77bddd38f83dbb4be657d8420e"
+    },
+    "adda-object-001": {
+      "work": "3.17.4.6",
+      "stages": [
+        "CB Planner",
+        "Block Locator"
+      ],
+      "provider_calls": 2,
+      "locked_plan_sha256": "d0df5c511482f3de882075a82f2e99f5f8de198964c3075b5a4247accdc4846b",
+      "planner_witness_sha256": "8b296dbbdec02954dcd68117554fada4b3b43f516837725c0c0dfa36d94821cc",
+      "planner_request_sha256": "9bdfd339e8701d5f073433718330aeb279346cbcaf562de5bd9a204af5f50aa6",
+      "locator_request_sha256": "9ce689349fc925f3d4c67afb1efe1a9cc7f0603002810841a535722c43dc2cab",
+      "geometry_sha256": "0bde484833090c6fd5ce79ba540bae11d0a879c55c134005c27358bdd63e8426",
+      "block_ids": [
+        "B01",
+        "B02",
+        "B03"
+      ],
+      "shared_ids": [],
+      "planner_status": "semantic_review_required",
+      "planner_error": null,
+      "locator_status": "failed",
+      "locator_error": "ValueError: locators must cover exactly the saved assembly IDs once",
+      "geometry_issues": [],
+      "localized_ids": [],
+      "overlay": "/Users/qb/.codex/visualizations/2026/11/06/01a1b2b5-0979-7c50-b3fb-f86d8e481902/cb-planning-sequence/adda-object-001-overlay.png",
+      "missing_ids": [],
+      "unexpected_ids": [
+        "F01",
+        "F02",
+        "F03"
+      ],
+      "diagnostic_localized_ids": [
+        "B01",
+        "B02",
+        "B03"
+      ],
+      "stages_usage": {
+        "planner": {
+          "elapsed_seconds": 4.639,
+          "input_tokens": 6122,
+          "output_tokens": 850
+        },
+        "locator": {
+          "elapsed_seconds": 2.101,
+          "input_tokens": 10044,
+          "output_tokens": 289
+        }
+      },
+      "blocks": [
+        {
+          "id": "B01",
+          "name": "Base drawer run with open top shelf"
+        },
+        {
+          "id": "B02",
+          "name": "Tall mirror panel"
+        },
+        {
+          "id": "B03",
+          "name": "Glass display cabinet"
+        }
+      ],
+      "shared_parts": [],
+      "locator_witness_sha256": "58665d5e3b74b20a6b7caef6a33025705bec7ef1e4cf2a291525ebec732c6d9d"
+    },
+    "adda-object-002": {
+      "work": "3.17.4.6",
+      "stages": [
+        "CB Planner",
+        "Block Locator"
+      ],
+      "provider_calls": 2,
+      "locked_plan_sha256": "b3fc56437a71d03bd868818354790883a7becd7852f590820e208b00100dca33",
+      "planner_witness_sha256": "e93c96c24720f761c25a64034c551d2698a8a3139d089fa24de72b8037a6759e",
+      "planner_request_sha256": "f016b99e43420d348b2170e9d9938b289640d1ddfbfaa92d361b1d478faf0f90",
+      "locator_request_sha256": "837977315b91c4f6d3b1d3c0c116faafecbd518e49e6a09e83f3fe5ed822b333",
+      "geometry_sha256": "0bde484833090c6fd5ce79ba540bae11d0a879c55c134005c27358bdd63e8426",
+      "block_ids": [
+        "B01",
+        "B02",
+        "B03",
+        "B04"
+      ],
+      "shared_ids": [
+        "S01"
+      ],
+      "planner_status": "semantic_review_required",
+      "planner_error": null,
+      "locator_status": "semantic_review_required",
+      "locator_error": null,
+      "geometry_issues": [
+        {
+          "id": "B03",
+          "other_id": "B02",
+          "contour_id": "C14",
+          "reason": "source contour assigned to multiple regions"
+        },
+        {
+          "id": "B03",
+          "other_id": "B02",
+          "contour_id": "C32",
+          "reason": "source contour assigned to multiple regions"
+        },
+        {
+          "id": "B03",
+          "other_id": "B02",
+          "contour_id": "C35",
+          "reason": "source contour assigned to multiple regions"
+        },
+        {
+          "id": "B03",
+          "other_id": "B02",
+          "contour_id": "C20",
+          "reason": "source contour assigned to multiple regions"
+        },
+        {
+          "id": "B03",
+          "other_id": "B02",
+          "contour_id": "C41",
+          "reason": "source contour assigned to multiple regions"
+        },
+        {
+          "id": "B03",
+          "other_id": "B02",
+          "contour_id": "C45",
+          "reason": "source contour assigned to multiple regions"
+        },
+        {
+          "id": "B03",
+          "other_id": "B02",
+          "contour_id": "C49",
+          "reason": "source contour assigned to multiple regions"
+        },
+        {
+          "id": "B03",
+          "other_id": "B02",
+          "contour_id": "C52",
+          "reason": "source contour assigned to multiple regions"
+        },
+        {
+          "id": "B03",
+          "other_id": "B02",
+          "contour_id": "C65",
+          "reason": "source contour assigned to multiple regions"
+        },
+        {
+          "id": "B03",
+          "other_id": "B02",
+          "contour_id": "C71",
+          "reason": "source contour assigned to multiple regions"
+        },
+        {
+          "id": "B03",
+          "other_id": "B02",
+          "contour_id": "C82",
+          "reason": "source contour assigned to multiple regions"
+        },
+        {
+          "id": "B03",
+          "other_id": "B02",
+          "contour_id": "C84",
+          "reason": "source contour assigned to multiple regions"
+        },
+        {
+          "id": "B03",
+          "other_id": "B02",
+          "contour_id": "C85",
+          "reason": "source contour assigned to multiple regions"
+        }
+      ],
+      "localized_ids": [
+        "B01",
+        "B02",
+        "B03",
+        "B04",
+        "S01"
+      ],
+      "overlay": "/Users/qb/.codex/visualizations/2026/11/06/01a1b2b5-0979-7c50-b3fb-f86d8e481902/cb-planning-sequence/adda-object-002-overlay.png",
+      "missing_ids": [],
+      "unexpected_ids": [],
+      "diagnostic_localized_ids": [],
+      "stages_usage": {
+        "planner": {
+          "elapsed_seconds": 7.546,
+          "input_tokens": 7329,
+          "output_tokens": 1436
+        },
+        "locator": {
+          "elapsed_seconds": 3.925,
+          "input_tokens": 9696,
+          "output_tokens": 447
+        }
+      },
+      "blocks": [
+        {
+          "id": "B01",
+          "name": "Left display run with glass shelving and drawer base"
+        },
+        {
+          "id": "B02",
+          "name": "Right display bay with glass shelving and drawer base"
+        },
+        {
+          "id": "B03",
+          "name": "Corner return wing with open shelving"
+        },
+        {
+          "id": "B04",
+          "name": "Freestanding tall glass column"
+        }
+      ],
+      "shared_parts": [
+        {
+          "id": "S01",
+          "name": "Continuous worktop-style base top over the front run"
+        }
+      ],
+      "locator_witness_sha256": "be3e57cc70da2c37e7bc483a78151e0c3b44429a4e0549bc87ea12f06aa98b41"
+    }
+  }
+}

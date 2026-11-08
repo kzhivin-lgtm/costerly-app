@@ -195,7 +195,7 @@ def bind_locked_locators(readings, *, plan, geometry, front_ids):
             "planner_structure_error": structure_error(plan, geometry, front_ids)}
 
 
-def render_overlay(request, plan, binding_result, geometry, output):
+def render_overlay(request, plan, binding_result, geometry, output, *, review_note=None):
     _, details = decode_evidence_images(request)
     bindings = binding_result["bindings"]
     rows = plan["blocks"] + plan["shared_parts"]
@@ -203,7 +203,11 @@ def render_overlay(request, plan, binding_result, geometry, output):
                     | {b["view_id"] for b in bindings.values()}) & details.keys())
     palette = list(COLORS)
     row_colors = {row["id"]: palette[index % len(palette)] for index, row in enumerate(rows)}
-    tile_width, tile_height, gap, header = 670, 520, 16, 94
+    conflicts = {(bindings[issue["id"]]["view_id"], issue["contour_id"])
+                 for issue in binding_result["geometry_issues"]
+                 if "contour_id" in issue and issue["id"] in bindings}
+    tile_width, tile_height, gap = 670, 520, 16
+    header = 118 if review_note or conflicts else 94
     sheet = Image.new("RGB", (2 * tile_width + 3 * gap, header + len(views) * (tile_height + 42)),
                       "#eef4f8")
     draw = ImageDraw.Draw(sheet)
@@ -215,6 +219,11 @@ def render_overlay(request, plan, binding_result, geometry, output):
               font=label, fill=ink)
     draw.text((gap, 68), "Partial means a visible subset. An exact source outline does not verify block membership.",
               font=label, fill=ink)
+    if review_note or conflicts:
+        note = review_note or ""
+        if conflicts:
+            note += " Red outlines are assigned to multiple regions."
+        draw.text((gap, 92), note.strip(), font=label, fill="#a12d46")
     for index, view_id in enumerate(views):
         top = header + index * (tile_height + 42)
         supplied, _ = details[view_id]
@@ -236,9 +245,10 @@ def render_overlay(request, plan, binding_result, geometry, output):
             if ident in bindings and bindings[ident]["view_id"] == view_id:
                 b = bindings[ident]
                 color = COLORS[row_colors[ident]]
-                for polygon in b["polygons"]:
+                for contour, polygon in zip(b["contour_ids"], b["polygons"], strict=True):
                     points = [tuple(point) for point in polygon]
-                    native_draw.line(points + points[:1], fill=color, width=4)
+                    line_color = "#d62839" if (view_id, contour) in conflicts else color
+                    native_draw.line(points + points[:1], fill=line_color, width=4)
                 x, y = b["polygons"][0][0]
                 caption = ident + (" partial" if b["scope"] == "partial" else "")
                 x = max(2, min(x + 3, native.width - native_draw.textlength(caption, font=label) - 3))

@@ -1596,6 +1596,22 @@ one saved Lev2 block offline. If accepted, pass ownership and source
 dimension references to Calculation where they support Parts; a displayed
 polygon alone adds no dimensional evidence. The model-only locator is an
 experimental control and has not been executed. No new call approved here.
+Owner later approved the sequential CB Planning trial, CB Planner V9
+then Block Locator within experimental Analyze. Run only geometry after
+saving the new first-stage plan. Lev2 and both Adda objects ran once
+each, six completed calls total. The second-stage inputs were checked
+against their exact first-stage plans, and no Blocks/shared membership
+changed across stages. Lev2 9 Blocks + S01; Planner repeats F10, Locator
+omits S01 and has five duplicate contour assignments in its preview.
+Straight Adda 3 Blocks, Planner passes structure but retains the crop-edge
+cabinet; Locator returns the three expected IDs and three extra F IDs.
+Corner Adda 4 Blocks + S01; Planner and locator ID coverage pass, but
+13 contours are assigned to two blocks. Red overlay lines show those
+conflicts; rejected responses show only their individually valid
+saved IDs as a diagnostic. Keep all results experimental. Next review
+locator ID coverage and contour ownership separately before Parts.
+Evidence: notes/evidence/estimation-cb-planning-sequence-2026-11-08/lev2-adda-trials.json.
+Private witnesses: /private/tmp/cb-planning-live.Iy63QMA6/.
 Checkpoint manifest: notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/planner-v7-checkpoint.json.
 P0 PENDING after Blocks acceptance: use Calculation / CB Parts to break
 accepted Blocks into Parts. Verify block coverage, shared components and
