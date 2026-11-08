@@ -1,0 +1,359 @@
+{
+  "work": "3.17.4.6",
+  "date": "2026-11-08",
+  "revision": "V7.5 per-Island Front",
+  "code_commit": "70bfbcd",
+  "provider_calls": 3,
+  "documents": {
+    "lev2": {
+      "views": [
+        "view-001",
+        "view-002",
+        "view-003",
+        "view-004"
+      ],
+      "request_sha256": "9f1b6457be1f244fa0f31fd65ea2087bbb894e2fcfc5d4eee94e80c5bc6b2335",
+      "response_id": "msg_011CgqE5aYWj591LehzdmGov",
+      "witness_sha256": "80b2e0012a3e48b1ac9111a66416eb82ea58bd9f4d6506ece35861f8b2ae9d5f",
+      "source_audit_sha256": "0bde484833090c6fd5ce79ba540bae11d0a879c55c134005c27358bdd63e8426",
+      "elapsed_seconds": 8.314,
+      "input_tokens": 9415,
+      "output_tokens": 2167,
+      "thinking_tokens": 0,
+      "view_checks": {
+        "view-001": {
+          "expected": {},
+          "exact_matches": [],
+          "missing_typed": [],
+          "wrong_type": {},
+          "known_wrong": {},
+          "rows_by_role": {
+            "fixed_open_shelf": 1,
+            "unresolved_front": 2
+          }
+        },
+        "view-002": {
+          "expected": {},
+          "exact_matches": [],
+          "missing_typed": [],
+          "wrong_type": {},
+          "known_wrong": {},
+          "rows_by_role": {
+            "hinged_door": 2,
+            "drawer": 2
+          }
+        },
+        "view-003": {
+          "expected": {
+            "C09": "lift_up",
+            "C10": "lift_up",
+            "C06": "hinged_door",
+            "C07": "hinged_door",
+            "C08": "hinged_door",
+            "C22": "hinged_door",
+            "C23": "hinged_door",
+            "C24": "hinged_door",
+            "C25": "hinged_door",
+            "C27": "drawer",
+            "C28": "drawer"
+          },
+          "exact_matches": [
+            "C06",
+            "C07",
+            "C08",
+            "C09",
+            "C10",
+            "C22",
+            "C23",
+            "C24",
+            "C25",
+            "C27",
+            "C28"
+          ],
+          "missing_typed": [],
+          "wrong_type": {},
+          "known_wrong": {},
+          "rows_by_role": {
+            "hinged_door": 9,
+            "lift_up": 2,
+            "unresolved_front": 2,
+            "drawer": 2,
+            "support_leg": 2
+          }
+        },
+        "view-004": {
+          "expected": {
+            "C05": "hinged_door",
+            "C06": "hinged_door",
+            "C15": "hinged_door",
+            "C17": "hinged_door",
+            "C18": "hinged_door",
+            "C19": "drawer",
+            "C21": "drawer",
+            "C22": "drawer"
+          },
+          "exact_matches": [
+            "C05",
+            "C06",
+            "C15",
+            "C17",
+            "C18",
+            "C19",
+            "C21",
+            "C22"
+          ],
+          "missing_typed": [],
+          "wrong_type": {},
+          "known_wrong": {
+            "C20": {
+              "returned_role": "hinged_door",
+              "reason": "fixed side panel"
+            },
+            "C23": {
+              "returned_role": "support_leg",
+              "reason": "plinth"
+            },
+            "C24": {
+              "returned_role": "support_leg",
+              "reason": "plinth"
+            }
+          },
+          "rows_by_role": {
+            "hinged_door": 6,
+            "drawer": 3,
+            "support_leg": 2
+          }
+        }
+      },
+      "binding_issues": [],
+      "per_island_records": 35
+    },
+    "adda-object-001": {
+      "views": [
+        "view-002",
+        "view-003",
+        "view-005",
+        "view-007"
+      ],
+      "request_sha256": "89c03b4af8255a27d9f6a3c0a08d5cdacb1197f5c786d480644b14825811470a",
+      "response_id": "msg_011CgqE6CUkEKKdtp6B4Xgj7",
+      "witness_sha256": "b8153df04f4d366e47c92c729b1411b143b35fed0cbbbfa36b8218ef2830d601",
+      "source_audit_sha256": "0bde484833090c6fd5ce79ba540bae11d0a879c55c134005c27358bdd63e8426",
+      "elapsed_seconds": 7.389,
+      "input_tokens": 11799,
+      "output_tokens": 1552,
+      "thinking_tokens": 0,
+      "view_checks": {
+        "view-002": {
+          "expected": {
+            "C13": "drawer",
+            "C16": "drawer",
+            "C19": "drawer",
+            "C06": "mirror"
+          },
+          "exact_matches": [
+            "C06",
+            "C13",
+            "C16",
+            "C19"
+          ],
+          "missing_typed": [],
+          "wrong_type": {},
+          "known_wrong": {
+            "C11": {
+              "returned_role": "drawer",
+              "reason": "extra drawer contour"
+            },
+            "C14": {
+              "returned_role": "drawer",
+              "reason": "extra drawer contour"
+            },
+            "C17": {
+              "returned_role": "drawer",
+              "reason": "extra drawer contour"
+            },
+            "C20": {
+              "returned_role": "drawer",
+              "reason": "extra drawer contour"
+            }
+          },
+          "rows_by_role": {
+            "drawer": 7,
+            "hinged_door": 2,
+            "unresolved_front": 3,
+            "mirror": 1,
+            "support_leg": 1
+          }
+        },
+        "view-003": {
+          "expected": {
+            "C06": "drawer",
+            "C07": "drawer",
+            "C08": "drawer"
+          },
+          "exact_matches": [
+            "C06",
+            "C07",
+            "C08"
+          ],
+          "missing_typed": [],
+          "wrong_type": {},
+          "known_wrong": {},
+          "rows_by_role": {
+            "hinged_door": 3,
+            "drawer": 3,
+            "unresolved_front": 1
+          }
+        },
+        "view-005": {
+          "expected": {},
+          "exact_matches": [],
+          "missing_typed": [],
+          "wrong_type": {},
+          "known_wrong": {},
+          "rows_by_role": {
+            "unresolved_front": 1,
+            "support_leg": 1
+          }
+        },
+        "view-007": {
+          "expected": {},
+          "exact_matches": [],
+          "missing_typed": [],
+          "wrong_type": {},
+          "known_wrong": {},
+          "rows_by_role": {
+            "unresolved_front": 2
+          }
+        }
+      },
+      "binding_issues": [],
+      "per_island_records": 25
+    },
+    "adda-object-002": {
+      "views": [
+        "view-001",
+        "view-004",
+        "view-006",
+        "view-008"
+      ],
+      "request_sha256": "511b053520f90769a722fe62003f4c4e902f72d1e506fbcb7e7f66aa45d0b499",
+      "response_id": "msg_011CgqE6mXqwJEPb5xuSZ8qK",
+      "witness_sha256": "ac808f7fc9426c7706f6cd9e1fc2bdc34cf24a013f1e6355bfe43d6ec2bb0a88",
+      "source_audit_sha256": "0bde484833090c6fd5ce79ba540bae11d0a879c55c134005c27358bdd63e8426",
+      "elapsed_seconds": 6.046,
+      "input_tokens": 7876,
+      "output_tokens": 1475,
+      "thinking_tokens": 0,
+      "view_checks": {
+        "view-001": {
+          "expected": {
+            "C41": "hinged_door",
+            "C45": "hinged_door",
+            "C49": "hinged_door",
+            "C52": "hinged_door",
+            "C76": "hinged_door",
+            "C79": "hinged_door",
+            "C82": "hinged_door",
+            "C84": "hinged_door",
+            "C81": "drawer",
+            "C77": "drawer",
+            "C67": "drawer",
+            "C64": "drawer",
+            "C65": "drawer",
+            "C71": "drawer",
+            "C75": "pull_out_shelf",
+            "C57": "pull_out_shelf",
+            "C69": "pull_out_shelf",
+            "C46": "pull_out_shelf",
+            "C37": "pull_out_shelf",
+            "C60": "pull_out_shelf",
+            "C58": "pull_out_shelf",
+            "C34": "pull_out_shelf",
+            "C32": "fixed_open_shelf",
+            "C16": "mirror",
+            "C19": "mirror"
+          },
+          "exact_matches": [
+            "C16"
+          ],
+          "missing_typed": [
+            "C19",
+            "C32",
+            "C34",
+            "C37",
+            "C41",
+            "C45",
+            "C46",
+            "C49",
+            "C52",
+            "C57",
+            "C58",
+            "C60",
+            "C64",
+            "C65",
+            "C67",
+            "C69",
+            "C71",
+            "C75",
+            "C76",
+            "C77",
+            "C79",
+            "C81",
+            "C82",
+            "C84"
+          ],
+          "wrong_type": {
+            "C52": "fixed_open_shelf"
+          },
+          "known_wrong": {},
+          "rows_by_role": {
+            "fixed_open_shelf": 2,
+            "mirror": 1,
+            "pull_out_shelf": 1,
+            "drawer": 4,
+            "support_leg": 1
+          }
+        },
+        "view-004": {
+          "expected": {
+            "C14": "mirror"
+          },
+          "exact_matches": [
+            "C14"
+          ],
+          "missing_typed": [],
+          "wrong_type": {},
+          "known_wrong": {},
+          "rows_by_role": {
+            "mirror": 1,
+            "drawer": 4
+          }
+        },
+        "view-006": {
+          "expected": {},
+          "exact_matches": [],
+          "missing_typed": [],
+          "wrong_type": {},
+          "known_wrong": {},
+          "rows_by_role": {
+            "drawer": 6,
+            "hinged_door": 2
+          }
+        },
+        "view-008": {
+          "expected": {},
+          "exact_matches": [],
+          "missing_typed": [],
+          "wrong_type": {},
+          "known_wrong": {},
+          "rows_by_role": {
+            "fixed_open_shelf": 2
+          }
+        }
+      },
+      "binding_issues": [],
+      "per_island_records": 24
+    }
+  }
+}

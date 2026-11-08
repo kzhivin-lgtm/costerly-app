@@ -1439,6 +1439,24 @@ and V7.4 experimental tag remain the baselines.
 Evidence: notes/evidence/estimation-v7-5-front-identity-2026-11-08/lev1-per-island.json.
 Private witness: /private/tmp/estimation-v75-lev1.NxQR6LSM/result.json.
 
+2026-11-08, owner-requested V7.5 Front run on Lev2 and full Adda,
+COMPLETED, partial benchmark. The unchanged per-Island prompt used one
+request for all four Lev2 Islands and one per frozen Adda object
+(001: V02/V03/V05/V07; 002: V01/V04/V06/V08). All three responses completed
+with individual rows and no binding issues. Lev2 matched all 11 reviewed
+V3 contours and all 8 reviewed V4 contours. V4 also labeled the fixed side
+as a hinged door and two plinth sections as legs. Adda 001 matched all
+three drawers and the mirror on V02, with four extra drawer contours.
+V03 matched the same three drawers in another projection. Adda 002 V01
+matched only 1/25 exact role and contour pairs (mirror C16); C52 was
+labeled as a fixed shelf instead of a hinged leaf. Adda 002 V04 matched
+mirror C14. No cross-view physical totals were generated.
+Evidence: notes/evidence/estimation-v7-5-front-identity-2026-11-08/lev2-adda-per-island.json.
+Private witnesses: /private/tmp/estimation-v75-full-bench.ooddu9PG/.
+Keep the typed V7.4 evidence control for Adda V01. The V7.5 run tests flat
+per-Island rows without typed leader/caption and isolated swing evidence.
+That comparison does not isolate a schema-only effect for Adda.
+
 COMPLETED, 2026-11-08, same work 3.17.4.6: Lev1 support attribution
 diagnosed offline. V7.2 Front explicitly chose the one visible support on
 V05 and assigned both V06 posts to the bench. V03 and V06 establish two
