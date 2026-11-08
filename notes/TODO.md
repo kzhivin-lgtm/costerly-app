@@ -1410,11 +1410,42 @@ Evidence: notes/evidence/estimation-v7-4-front-evidence-2026-11-07/lev-visual-fr
 OWNER-SELECTED V7.4 RESEARCH CHECKPOINT, COMPLETED, 2026-11-08:
 `estimation-v7.4-front-evidence-experimental-2026-11-08` freezes both probe routes, the raw
 witnesses and partial benchmark. notes/evidence/estimation-v7-4-front-evidence-2026-11-07/front-evidence-checkpoint.json.
-P0 ACTIVE continuation under the same work number: diagnose same-view
-grouping first. Evaluate individual per-view records before permitting
-cross-view identity links. Compare exact IDs on the same frozen crops and
-measure omissions independently of aggregation. The protected V7.2 geometry
-checkpoint remains the source baseline.
+P0 ACTIVE, V7.5, same work 3.17.4.6. Diagnose same-view grouping first.
+Verified in the raw model responses before binding: Lev1 V4 C32/C33/C34 are
+three drawer contours in one drawer item. Lev2 V4 C05/C06 share one hinged
+item, and V3 C27/C28 plus V4 C19/C21/C22 share one drawer item. Each file's
+frozen Detection membership contains one object. These are Front record
+groupings. Separate recognition misses remain, including the V3 lift pair
+and three V4 lower doors. In V7.4, an item combines physical identity and
+an array of appearances. Likely the model used that array for a bank of
+adjacent faces. The schema hypothesis requires a controlled live check.
+V7.5 opt-in `--per-island` now prepares one flat record per face per Island.
+It derives no document total or cross-view identity. Preflight on both
+frozen files verified that only the output instructions and shape in
+the system block differ. Old hashes reproduce exactly, and offline
+flattening preserves all 10 Lev1 and 18 Lev2 raw appearances. No new
+provider call. Next evidence: test whether Lev1 returns distinct V4 rows
+C32/C33/C34, then check Lev2 coverage/types on the same frozen references.
+The protected V7.2 geometry and V7.4 experimental tag remain the baselines.
+
+P2 DEFERRED by owner until the first standard Detection → Analyze →
+Calculation cycle is complete and stable. Optimize context, cost and
+reuse using measurements from that accepted baseline.
+- Version and persist accepted stage outputs and source links so a
+  Calculation-only revision can reuse an unchanged Analyze result. Include
+  evidence identity and stage version in reuse decisions.
+- Keep a compact, versioned Markdown rules source. Select relevant sections
+  by stage and object type. Benchmark provider prompt caching separately
+  with identical prompts and inputs, tracking cache writes, hits, cost and
+  latency. V7.3 recorded 7,107 cached input tokens on Lev2 and Adda;
+  quality and caching effects were not isolated in that comparison.
+- Consider semantic retrieval when the reference corpus outgrows explicit
+  section selection. Evaluate source relevance and coverage against direct
+  lookup before adding an embedding index.
+- Extend existing typed relationships from Islands to Front and Parts for
+  source traceability. Revisit a dedicated graph store only if concrete
+  queries exceed the existing structures. No infrastructure work before
+  the stable cycle.
 
 After V01, check source-label reading and constrained tip binding on Adda
 V02. Preserve the separate swing-mark evidence. Then verify dimension ownership

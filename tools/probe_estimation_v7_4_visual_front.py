@@ -16,7 +16,7 @@ from use_cases.estimation_detection_context_v7 import digest
 
 ROLES = {"hinged_door", "lift_up", "drawer", "pull_out_shelf", "fixed_open_shelf",
          "mirror", "support_leg", "unresolved_front"}
-SYSTEM = """Identify physical furniture fronts and tabletop support legs on the supplied
+VISUAL_INSTRUCTIONS = """Identify physical furniture fronts and tabletop support legs on the supplied
 views of one object. Read all views together. Use the clean crops for visual
 evidence and the matching cyan contour maps for geometry. Many contours are
 fixed panels, infill, rims or details. A C ID alone does not identify a front.
@@ -26,7 +26,9 @@ faces. Use outlines, gaps, handles, drawing marks and construction context
 to separate hinged leaves, lift-up leaves, drawers, pull-out shelves and
 fixed open shelves. Require evidence of movement to call a shelf a pull-out.
 Exclude fixed side panels from door counts. Use unresolved_front when a
-distinct face is visible but its opening type cannot be established.
+distinct face is visible but its opening type cannot be established."""
+
+SYSTEM = VISUAL_INSTRUCTIONS + """
 
 Return one item per physical element. Use multiple appearances within an
 item only when the same element is identifiable in more than one view.
@@ -40,6 +42,24 @@ Return JSON only. Allowed roles: hinged_door, lift_up, drawer, pull_out_shelf,
 fixed_open_shelf, mirror, support_leg, unresolved_front.
 {"items":[{"role":"drawer","evidence":"short visible cue",
 "appearances":[{"view_id":"view-xxx","candidate_id":"Cxx","bbox_px":null}]}]}
+"""
+
+PER_ISLAND_SYSTEM = VISUAL_INSTRUCTIONS + """
+
+Record each visible face or support leg as one independent row in its own
+view. Adjacent faces and stacked faces each have their own row. If the same
+element appears in several views, give it a separate row in each view.
+Keep each row scoped to one view_id and one visible face. Cross-view
+correspondence and object totals are outside this task.
+
+Use the exact C ID if its outline matches the face. Otherwise set
+candidate_id to null and give a tight pixel box in the stated crop, or
+bbox_px null if the face cannot be localized. C IDs are local to each view.
+
+Return JSON only. Allowed roles: hinged_door, lift_up, drawer, pull_out_shelf,
+fixed_open_shelf, mirror, support_leg, unresolved_front.
+{"faces":[{"view_id":"view-xxx","candidate_id":"Cxx","bbox_px":null,
+"role":"drawer","evidence":"short visible cue"}]}
 """
 
 
@@ -81,7 +101,7 @@ def contour_map(image, candidates):
     return buffer.getvalue(), visible
 
 
-def prepare(archive, document):
+def prepare(archive, document, *, per_island=False):
     audit = (archive / "estimation-offline-all-islands-evidence.json").read_bytes()
     views = json.loads(audit)["documents"][document]
     frames, content = {}, []
@@ -101,7 +121,8 @@ def prepare(archive, document):
             content.extend([{"type": "text", "text": f"{ident}: same crop with neutral contour IDs."},
                             image_block(overlay)])
     request = {"model": "claude-haiku-5-5", "max_tokens": 14000, "thinking": {"type": "disabled"},
-               "output_config": {"effort": "medium"}, "system": SYSTEM,
+               "output_config": {"effort": "medium"},
+               "system": PER_ISLAND_SYSTEM if per_island else SYSTEM,
                "messages": [{"role": "user", "content": content}]}
     return request, frames, sha256(audit).hexdigest()
 
@@ -144,18 +165,36 @@ def bind_visual_roles(readings, frames):
     return {"items": items, "counts": counts, "issues": issues}
 
 
+def bind_island_faces(readings, frames):
+    fields = {"view_id", "candidate_id", "bbox_px", "role", "evidence"}
+    if set(readings) != {"faces"} or any(set(row) != fields for row in readings["faces"]):
+        raise ValueError("expected independent Island face records")
+    items = [
+        {"role": row["role"], "evidence": row["evidence"],
+         "appearances": [{key: row[key] for key in ("view_id", "candidate_id", "bbox_px")}]}
+        for row in readings["faces"]
+    ]
+    bound = bind_visual_roles({"items": items}, frames)
+    return {"faces": [
+        {"role": item["role"], "evidence": item["evidence"], **item["appearances"][0]}
+        for item in bound["items"]
+    ], "issues": bound["issues"]}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archive", type=Path, required=True)
     parser.add_argument("--document", choices=("lev1", "lev2"), required=True)
+    parser.add_argument("--per-island", action="store_true", help="Use the V7.5 face-per-Island probe")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args()
-    request, frames, source_hash = prepare(args.archive, args.document)
+    request, frames, source_hash = prepare(args.archive, args.document, per_island=args.per_island)
     if args.execute:
         if args.output is None or args.output.exists():
             parser.error("--execute requires a new --output path")
-        execute_request(request, args.output, bind=lambda rows: bind_visual_roles(rows, frames),
+        bind = bind_island_faces if args.per_island else bind_visual_roles
+        execute_request(request, args.output, bind=lambda rows: bind(rows, frames),
                         source_hash=source_hash)
     else:
         print(json.dumps({"provider_calls": 0, "request_sha256": digest(request),
