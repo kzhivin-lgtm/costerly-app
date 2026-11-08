@@ -1,12 +1,15 @@
 # Done Log
 
-2026-11-08, 3.17.4.6. Owner selected the Adda ownership and paired-leaf
-replay as an experimental checkpoint after V11. Straight Adda has two
+2026-11-08, 3.17.4.6. Owner selected the Estimation Analyze cycle with
+CB Planner V11, structural ownership and explicit paired leaves as the
+experimental continuation checkpoint. Adda is the replay witness for
+the two new rules. Straight Adda has two
 Blocks. Corner Adda has seven furniture candidates and an independent
 window closure. Four pairs preserve eight leaves. Both object results
 and the combined overlay replayed byte-for-byte from 21 restored files
 with zero provider calls. Full multi-view dimensions remain open.
 Manifest: notes/evidence/estimation-cb-planner-adda-ownership-pairs-2026-11-08/checkpoint.json.
+Analyze checkpoint: `estimation-analyze-v7-planner-v11-ownership-pairs-experimental-2026-11-08`.
 
 2026-11-08, 3.17.4.6. Owner selected CB Planner V11 offline as an
 experimental checkpoint, `estimation-cb-planner-v11-offline-experimental-2026-11-08`.

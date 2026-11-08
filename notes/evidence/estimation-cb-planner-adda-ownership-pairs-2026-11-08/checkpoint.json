@@ -2,8 +2,10 @@
   "work": "3.17.4.6",
   "date": "2026-11-08",
   "tag": "estimation-cb-planner-v11-adda-ownership-pairs-experimental-2026-11-08",
+  "analyze_checkpoint_tag": "estimation-analyze-v7-planner-v11-ownership-pairs-experimental-2026-11-08",
   "version": "Adda ownership and explicit paired leaves",
   "status": "owner-selected experimental checkpoint, Adda-specific offline replay",
+  "scope": "Estimation Analyze experimental cycle; this archive is its Adda evidence witness",
   "baselines": {
     "v11": "75bfff5",
     "front_v7_5": "23417e0",

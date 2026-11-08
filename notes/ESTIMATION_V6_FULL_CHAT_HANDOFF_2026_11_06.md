@@ -1,7 +1,8 @@
 # Estimation V6 полный конспект разработки и экспериментов
 
-Current continuation point, 2026-11-08: **section 43**, Adda ownership and
-paired leaves. Section 42 preserves CB Planner V11 offline.
+Current continuation point, 2026-11-08: **section 43**, Estimation Analyze
+with structural ownership and paired leaves. Section 42 preserves the
+CB Planner V11 offline baseline.
 Section 41 preserves the CB Planner V7 baseline and V8/V9 trials.
 Section 40 preserves Front 7.5.
 Section 39 records the full-answer format and Lev1 support diagnosis.
@@ -1502,11 +1503,18 @@ Owner follow-up: assign remaining physical elements to the most
 plausible assembly, prioritizing actual connections and using proximity
 as a secondary cue. See the active ownership item in TODO.
 
-## 43 Adda ownership and paired leaves checkpoint
+## 43 Estimation Analyze ownership and paired leaves checkpoint
 
-Owner-selected experimental tag
-`estimation-cb-planner-v11-adda-ownership-pairs-experimental-2026-11-08`, work 3.17.4.6.
-This offline probe preserves V11 and uses saved V7.5 straight Front,
+Owner-selected experimental Analyze tag
+`estimation-analyze-v7-planner-v11-ownership-pairs-experimental-2026-11-08`, work 3.17.4.6.
+The Analyze checkpoint captures the V11 baseline and the general rules:
+assign physical elements to an assembly and count explicitly paired
+leaves as one Planner position while preserving both Front identities.
+Adda is the witness for these changes. The current Adda adapter uses
+frozen inputs and has not been wired into the shared Analyze entry point.
+Its original immutable replay tag is
+`estimation-cb-planner-v11-adda-ownership-pairs-experimental-2026-11-08`.
+The replay uses saved V7.5 straight Front,
 typed V7.4 corner V01 evidence, native contour marks and Detection links.
 Straight: base with three drawers and side support, plus a separate mirror
 upright. Corner: seven furniture candidates, four explicit pairs retaining
