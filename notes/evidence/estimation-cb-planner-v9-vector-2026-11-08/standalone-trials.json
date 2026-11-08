@@ -1,0 +1,293 @@
+{
+  "work": "3.17.4.6",
+  "date": "2026-11-08",
+  "revision": "Planner V9 vector locator diagnostic",
+  "control": "914093e",
+  "provider_calls": 3,
+  "documents": {
+    "lev2": {
+      "request_sha256": "234c840e1a52fc4eb58ccb87cb2119fba0974c77929879543af0dda2481d007e",
+      "baseline_request_sha256": "93197ef3119c24b73d652ced7d13223b4179f48faaeee6bf0035cfaf43006238",
+      "geometry_audit_sha256": "0bde484833090c6fd5ce79ba540bae11d0a879c55c134005c27358bdd63e8426",
+      "witness_sha256": "c2e4b977be1d0673774361b912d23b3e8629b760ad809d50492090ee89c47c52",
+      "response_id": "msg_011CgqQr8u5HXh2vaJczhksJ",
+      "elapsed_seconds": 7.798,
+      "usage": {
+        "input_tokens": 20361,
+        "output_tokens": 1694
+      },
+      "blocks": 4,
+      "shared_parts": 1,
+      "bindings": {
+        "B01": {
+          "view_id": "p1-view-003",
+          "scope": "partial",
+          "contour_ids": [
+            "C17",
+            "C20",
+            "C22",
+            "C23",
+            "C24",
+            "C25",
+            "C26",
+            "C27",
+            "C28",
+            "C31"
+          ]
+        },
+        "B02": {
+          "view_id": "p1-view-003",
+          "scope": "partial",
+          "contour_ids": [
+            "C01",
+            "C02",
+            "C03",
+            "C05",
+            "C06",
+            "C07",
+            "C08",
+            "C09",
+            "C10",
+            "C11",
+            "C12",
+            "C13"
+          ]
+        },
+        "B03": {
+          "view_id": "p1-view-004",
+          "scope": "partial",
+          "contour_ids": [
+            "C14",
+            "C15",
+            "C17",
+            "C18",
+            "C19",
+            "C20",
+            "C21",
+            "C22",
+            "C23",
+            "C24"
+          ]
+        },
+        "B04": {
+          "view_id": "p1-view-004",
+          "scope": "complete",
+          "contour_ids": [
+            "C05",
+            "C06",
+            "C01"
+          ]
+        },
+        "S01": {
+          "view_id": "p1-view-001",
+          "scope": "complete",
+          "contour_ids": [
+            "C01",
+            "C02",
+            "C03",
+            "C04",
+            "C08",
+            "C13",
+            "C14"
+          ]
+        }
+      },
+      "geometry_issues": [],
+      "structure_error": "invalid Planner box",
+      "observations": [
+        "S01 selects plan V01 with native contours including the turn and chamfer. It also includes C03 from the tall-group footprint; the selected worktop extent is not correct.",
+        "B04 hanging cabinet aligns to native V04 contours. B03 includes C20 in its visible lower-run geometry.",
+        "The grouping drops from eight blocks to four. B02 merges multiple upper groups and the tall return.",
+        "S01 raw approximate box uses x=1100, beyond the original 0–1000 contract; the independently bound polygons remain visible."
+      ],
+      "overlay": "/Users/qb/.codex/visualizations/2026/11/06/01a1b2b5-0979-7c50-b3fb-f86d8e481902/cb-planner-v9-vector/lev2-overlay.png"
+    },
+    "adda-object-001": {
+      "request_sha256": "21b575cc4d8f8f68bc51b02de738914b7e2143f8e971795d0da3a59aaf8a4f19",
+      "baseline_request_sha256": "9bdfd339e8701d5f073433718330aeb279346cbcaf562de5bd9a204af5f50aa6",
+      "geometry_audit_sha256": "0bde484833090c6fd5ce79ba540bae11d0a879c55c134005c27358bdd63e8426",
+      "witness_sha256": "d608d0b15809121b6a6210e6dffc37cb6782cf2a1d57ca676be057f15c39a7aa",
+      "response_id": "msg_011CgqQro8ELE2161saAMqhp",
+      "elapsed_seconds": 6.215,
+      "usage": {
+        "input_tokens": 12102,
+        "output_tokens": 1274
+      },
+      "blocks": 3,
+      "shared_parts": 1,
+      "bindings": {
+        "B01": {
+          "view_id": "view-003",
+          "scope": "partial",
+          "contour_ids": [
+            "C03",
+            "C04",
+            "C05",
+            "C06",
+            "C07",
+            "C08",
+            "C10",
+            "C11",
+            "C12",
+            "C13"
+          ]
+        },
+        "B02": {
+          "view_id": "view-007",
+          "scope": "partial",
+          "contour_ids": [
+            "C06",
+            "C07"
+          ]
+        },
+        "B03": {
+          "view_id": "view-002",
+          "scope": "partial",
+          "contour_ids": [
+            "C01",
+            "C02",
+            "C03"
+          ]
+        },
+        "S01": {
+          "view_id": "view-007",
+          "scope": "partial",
+          "contour_ids": [
+            "C06",
+            "C07"
+          ]
+        }
+      },
+      "geometry_issues": [
+        {
+          "id": "S01",
+          "other_id": "B02",
+          "contour_id": "C06",
+          "reason": "source contour assigned to multiple regions"
+        },
+        {
+          "id": "S01",
+          "other_id": "B02",
+          "contour_id": "C07",
+          "reason": "source contour assigned to multiple regions"
+        }
+      ],
+      "structure_error": "invalid Planner references",
+      "observations": [
+        "B01 uses native contours over the lower run. B03 still takes a fragment of another cabinet from the crop edge.",
+        "B02 and S01 select the same two plan contours C06/C07. Mirror ownership is not verified.",
+        "The separate S01 cites just B01 and fails the existing shared ownership check."
+      ],
+      "overlay": "/Users/qb/.codex/visualizations/2026/11/06/01a1b2b5-0979-7c50-b3fb-f86d8e481902/cb-planner-v9-vector/adda-object-001-overlay.png"
+    },
+    "adda-object-002": {
+      "request_sha256": "b93732aebc8e5759c1377e98133ef0876bb6b76a700845cfbc66aff01990968a",
+      "baseline_request_sha256": "f016b99e43420d348b2170e9d9938b289640d1ddfbfaa92d361b1d478faf0f90",
+      "geometry_audit_sha256": "0bde484833090c6fd5ce79ba540bae11d0a879c55c134005c27358bdd63e8426",
+      "witness_sha256": "d8df57801a53ea594b8caa108f408839dc497012a71faceac9b2ed43fe267ca4",
+      "response_id": "msg_011CgqQsNMyQzXUPcj1VQMFY",
+      "elapsed_seconds": 8.499,
+      "usage": {
+        "input_tokens": 11349,
+        "output_tokens": 1704
+      },
+      "blocks": 5,
+      "shared_parts": 1,
+      "bindings": {
+        "B01": {
+          "view_id": "view-001",
+          "scope": "partial",
+          "contour_ids": [
+            "C13",
+            "C18",
+            "C27",
+            "C28",
+            "C33",
+            "C36",
+            "C43",
+            "C48",
+            "C57",
+            "C68"
+          ]
+        },
+        "B02": {
+          "view_id": "view-001",
+          "scope": "partial",
+          "contour_ids": [
+            "C16",
+            "C10",
+            "C08",
+            "C12",
+            "C31",
+            "C34",
+            "C37",
+            "C40",
+            "C44",
+            "C47",
+            "C53",
+            "C60"
+          ]
+        },
+        "B03": {
+          "view_id": "view-001",
+          "scope": "partial",
+          "contour_ids": [
+            "C07",
+            "C09",
+            "C14",
+            "C19",
+            "C26",
+            "C32",
+            "C35",
+            "C41",
+            "C45",
+            "C49",
+            "C52",
+            "C71"
+          ]
+        },
+        "B04": {
+          "view_id": "view-001",
+          "scope": "partial",
+          "contour_ids": [
+            "C78",
+            "C74",
+            "C80",
+            "C83",
+            "C86",
+            "C87",
+            "C84",
+            "C85",
+            "C82",
+            "C88"
+          ]
+        },
+        "B05": {
+          "view_id": "view-008",
+          "scope": "partial",
+          "contour_ids": [
+            "C06"
+          ]
+        },
+        "S01": {
+          "view_id": "view-008",
+          "scope": "partial",
+          "contour_ids": [
+            "C02",
+            "C03",
+            "C04",
+            "C05"
+          ]
+        }
+      },
+      "geometry_issues": [],
+      "structure_error": "invalid Planner box",
+      "observations": [
+        "The native contours on V01 preserve the oblique geometry.",
+        "The model grouped the lower base across the corner and did not isolate the two four-door return assemblies.",
+        "B03/B04 approximate boxes exceed 1000; the native selections remain visible."
+      ],
+      "overlay": "/Users/qb/.codex/visualizations/2026/11/06/01a1b2b5-0979-7c50-b3fb-f86d8e481902/cb-planner-v9-vector/adda-object-002-overlay.png"
+    }
+  }
+}

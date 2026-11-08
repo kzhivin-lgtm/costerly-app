@@ -13,6 +13,11 @@ V9 candidate: `agents/prompts/cb_planner_v9.md` adds the owner's bounded
 four-position rule. Lev2/straight Adda/corner Adda trial completed; width
 policy acceptance pending. Evidence:
 notes/evidence/estimation-cb-planner-v9-lev2-adda-2026-11-08/standalone-trials.json.
+V9 vector-locator diagnostic: `python -m tools.probe_cb_planner_v9_vector`.
+Use a saved V9 witness plus the frozen Offline Vector archive. Three
+trials bind native outlines but leave physical ownership and legacy
+structure unresolved. Evidence:
+notes/evidence/estimation-cb-planner-v9-vector-2026-11-08/standalone-trials.json.
 
 Current Estimation Front research checkpoint, 3.17.4.6, 2026-11-08:
 `estimation-v7.5-per-island-front-experimental-2026-11-08` on

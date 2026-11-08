@@ -1554,6 +1554,22 @@ can be bound to the plan boundary on V01 offline. Separate source
 geometry from assembly membership and allow approximate locators when
 no reliable contour is available. No implementation or provider call
 in this diagnosis.
+OWNER-AUTHORIZED V9 vector locator trial, COMPLETED (partial).
+Reuse Offline Vector contour IDs and exact source vertices. The request
+adds neutral contour maps and geometry_scope/contour_ids while preserving
+all original messages and V9 grouping rules. Three complete model calls
+on Lev2 and both Adda objects, no repeats. All 15 output regions received
+source bindings. On Lev2, S01 moved to plan V01 and includes the native
+turn/chamfer, but also includes C03 of the tall group. B04 aligns with
+the hanging cabinet. Lev2 grouping regressed to four blocks. Adda 001
+has two contours assigned to both mirror and top. Adda 002 preserves
+oblique geometry but merges the return assemblies. Legacy structure
+failed for all three: invalid fallback boxes on Lev2 and Adda 002 and
+a single-owner shared part on Adda 001. Preserve vector and approximate
+locator overlays separately. Next isolate source ownership and scope;
+avoid demanding a legacy box when a reliable native contour is present.
+Evidence: notes/evidence/estimation-cb-planner-v9-vector-2026-11-08/standalone-trials.json.
+Private witnesses: /private/tmp/cb-planner-v9-vector.lFI6zoWF/.
 Checkpoint manifest: notes/evidence/estimation-cb-planner-v7-lev-2026-11-08/planner-v7-checkpoint.json.
 P0 PENDING after Blocks acceptance: use Calculation / CB Parts to break
 accepted Blocks into Parts. Verify block coverage, shared components and
