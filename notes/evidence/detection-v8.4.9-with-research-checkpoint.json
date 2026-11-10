@@ -1,0 +1,18 @@
+{
+  "tag": "detection-v8.4.9-with-research-checkpoint-2026-11-10",
+  "runtime_commit": "3f3f15773e040979a407904bfbaceaa50f9fb9fb",
+  "previous_tag": "detection-v8.4.9-post-cleanup-checkpoint-2026-11-10",
+  "pre_experiment_documentation": "b310037",
+  "private_archive": "/Users/qb/Documents/ChatGPT/Costerly/backups/detection-v8.4.9-with-research-checkpoint-2026-11-10/private-research-replay.tar.gz",
+  "archive_sha256": "1b0d3fbbe87117180c19bcef6da8ab6942575353e6ab57997b692ea13d3f33e7",
+  "files_verified": 41,
+  "nested_runtime_files_verified": 60,
+  "reference_pack_sha256": "b9dbd77976f88cedf9d6e13ff4b205461291627ac3c29296f0acd316d7497050",
+  "fixed_hsl_review_request_sha256": "4aaa0bc8ed5e9287a9223638968077a7fa70fb15c039d2a1b47b95b601612738",
+  "hsl_accepted_reference": {
+    "run_id": "run_2dceafe62d3440668ca56b6b74101cc8",
+    "snapshot_sha256": "e5389a3f1011f5b79a47e0000d6e064ca83ee1c06a14907d78ddae5008693ae9"
+  },
+  "restore": "Extract privately, verify SHA256SUMS, then follow README.md. The nested runtime replay and the region-role-membership reference pack are independent checks.",
+  "scope": "Local rollback and reproducible research only. HSL 07 reproduces the existing Review regression and remains open for product acceptance."
+}

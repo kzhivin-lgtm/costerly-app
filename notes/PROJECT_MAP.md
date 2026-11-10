@@ -46,6 +46,9 @@ This file explains where code belongs so the project stays understandable.
   `detection-v8.4.9-post-cleanup-checkpoint-2026-11-10`. Its exact replay
   inputs and restore instructions are indexed by
   `notes/evidence/detection-v8.4.9-post-cleanup-checkpoint.json`.
+- The protected research checkpoint adds the reproducible five-drawing
+  test scenario and HSL Review controls. Restore from
+  `notes/evidence/detection-v8.4.9-with-research-checkpoint.json`.
 - `db/` contains Supabase client and repositories.
 - `db/sql/2026_09_24_machinery_foundation.sql` is the additive Machinery schema
   and catalog seed. It does not modify the prototype `company_machines` table.

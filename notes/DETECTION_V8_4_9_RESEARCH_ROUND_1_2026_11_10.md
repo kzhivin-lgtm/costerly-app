@@ -20,6 +20,9 @@ and replay inputs remain in the existing private checkpoint archive.
 All 20 bundled file hashes passed. A second run reproduced the numeric
 labels and their boxes, partitions and reference pack exactly, excluding
 CPU timing. The HSL P04 tile arm took 10.23 and 10.70 seconds.
+The pre-experiment archive freezes this bundle together with the runtime
+replay and accepted historical HSL snapshot. Restore record
+`notes/evidence/detection-v8.4.9-with-research-checkpoint.json`.
 
 ## eDOCr2 and location-first OCR
 

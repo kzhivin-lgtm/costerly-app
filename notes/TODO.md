@@ -275,6 +275,16 @@ to Haiku 4.5. The HSL grouping regression remains open on the local
 Haiku 5.5 checkpoint. Both latter file runs predate the render wording
 clarification. No deployment.
 
+ACTIVE, P0, Haiku 5.5 ordinary Membership acceptance:
+Owner approved bounded experiments and necessary provider calls, while
+deferring a switch back to Haiku 4.5. Start after the protected V8.4.9
+research checkpoint in `notes/evidence/detection-v8.4.9-with-research-checkpoint.json`.
+First use fixed HSL 07 OCR, Discovery, and View evidence. Restore N57
+membership and compare exact page groups against the accepted HSL
+reference. Then validate the five-file scenarios, call budget, time and
+cost. Preserve exhaustive same-sheet comparison, Ada Sonnet, Page 23,
+Q and routing. Deployment is outside this local iteration.
+
 PENDING PRODUCTION VERIFICATION, P0, local V8.4.9 coordinate OCR checkpoint:
 Run the numeric reader alongside standard OCR, retain one page-pixel bbox per
 recognized standalone label, and bind the readings to locked Views for a

@@ -1,5 +1,12 @@
 # Done Log
 
+Detection V8.4.9 with research checkpoint. Preserved the runtime rollback,
+the five-drawing test scenario and the fixed HSL Review comparison before
+the Haiku 5.5 experiments. Restored 41 archive entries and 60 nested replay
+files and regenerated the reference pack byte for byte. Local tag
+`detection-v8.4.9-with-research-checkpoint-2026-11-10`. Manifest
+`notes/evidence/detection-v8.4.9-with-research-checkpoint.json`.
+
 Detection V8.4.9 local post-cleanup checkpoint `3f3f157`: retired seven
 historical entry points. Restored replay matched requests and results for
 Adda, Lev 1, Lev 2, Page 23, HSL 07, and the visual fallback. 406 tests

@@ -16,6 +16,12 @@ comparison, five-file region/role/membership fixture, and graph prototype in
 `notes/DETECTION_V8_4_9_RESEARCH_ROUND_1_2026_11_10.md`. The HSL 07 P04
 dimension chain is a separate, visually checked role error.
 
+The protected pre-experiment checkpoint includes the research scripts,
+five-file annotation fixture, exact HSL Review inputs and replies, and
+the accepted HSL V6.25 snapshot. The restored fixture reproduces exactly.
+Tag `detection-v8.4.9-with-research-checkpoint-2026-11-10`. Restore record
+`notes/evidence/detection-v8.4.9-with-research-checkpoint.json`.
+
 ## HSL Floor 06 detail reference for deferred attachment work
 
 The owner's annotated screenshot identifies the small circular Detail D
