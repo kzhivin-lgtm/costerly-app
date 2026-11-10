@@ -2741,6 +2741,9 @@ def validate_detection_v5_final_result(
 
 
 _V5_COMMON_DIMENSIONS_MM = frozenset({300, 400, 450, 500, 600, 800, 900, 1000, 1200})
+_V5_SHORT_FINGERPRINT_MAX_POSITIONS = 4
+# Keep a coverage bonus below the dimension-only batch confirmation gate.
+_V5_SHORT_FINGERPRINT_SUPPORT_CEILING = 35.0
 
 
 def compile_detection_v5_dimension_graph(
@@ -2768,6 +2771,13 @@ def compile_detection_v5_dimension_graph(
     for values in occurrences.values():
         for value in {Decimal(str(item["value_mm"])) for item in values}:
             frequency[value] = frequency.get(value, 0) + 1
+    position_counts = {
+        group_id: len({
+            str(item.get("ambiguity_key") or item["occurrence_id"])
+            for item in values if Decimal(str(item["value_mm"])) > 0
+        })
+        for group_id, values in occurrences.items()
+    }
 
     def size_points(value: Decimal) -> float:
         if value < 100: return 2
@@ -2786,7 +2796,9 @@ def compile_detection_v5_dimension_graph(
         count = max(frequency.get(left, 1), frequency.get(right, 1))
         return 1.75 if count <= 2 else 1.25 if count <= 5 else 0.8
 
-    def score_pair(left_id: str, right_id: str) -> tuple[float, list[dict[str, Any]], list[dict[str, Any]]]:
+    def score_pair(
+        left_id: str, right_id: str,
+    ) -> tuple[float, list[dict[str, Any]], list[dict[str, Any]], dict[str, Any] | None]:
         raw_matches: list[tuple[dict[str, Any], dict[str, Any]]] = []
         for left in occurrences.get(left_id, []):
             for right in occurrences.get(right_id, []):
@@ -2818,6 +2830,8 @@ def compile_detection_v5_dimension_graph(
             key = (Decimal(str(pair[0]["value_mm"])), Decimal(str(pair[1]["value_mm"])))
             by_value.setdefault(key, []).append(pair)
         score = 0.0
+        exact_points = 0.0
+        exact_positions = 0
         facts: list[dict[str, Any]] = []
         feature_rows: list[dict[str, Any]] = []
         for (left_value, right_value), value_matches in sorted(by_value.items()):
@@ -2826,12 +2840,34 @@ def compile_detection_v5_dimension_graph(
             common_factor = 0.8 if int(min(left_value, right_value)) in _V5_COMMON_DIMENSIONS_MM else 1.0
             points = size_points(min(left_value, right_value)) * precision(left_value, right_value) * rarity(left_value, right_value) * common_factor * occurrence_factor
             score += points
+            if left_value == right_value:
+                exact_points += points
+                exact_positions += count
             fact_ids = sorted({fact_id for pair in value_matches for item in pair for fact_id in item["source_fact_ids"]})
             observation = f"{left_value} mm matches {right_value} mm; {count} paired occurrence(s); {points:.2f} points."
             facts.append({"evidence_type": "dimension_equality", "evidence_pages": [], "observation": observation, "source_fact_ids": fact_ids})
             feature_rows.append({"left_mm": str(left_value), "right_mm": str(right_value), "matched_occurrences": count, "points": round(points, 3)})
-        score = round(min(100.0, score), 3)
-        return score, facts, feature_rows
+        shorter_count = min(position_counts.get(left_id, 0), position_counts.get(right_id, 0))
+        coverage_bonus = None
+        if (
+            allowed_pairs is not None
+            and page(left_id) == page(right_id) > 0
+            and 2 <= shorter_count <= _V5_SHORT_FINGERPRINT_MAX_POSITIONS
+            and exact_positions
+            and score < _V5_SHORT_FINGERPRINT_SUPPORT_CEILING
+        ):
+            coverage = exact_positions / shorter_count
+            points_added = min(
+                exact_points * 2 * coverage, _V5_SHORT_FINGERPRINT_SUPPORT_CEILING - score,
+            )
+            coverage_bonus = {
+                "shorter_position_count": shorter_count,
+                "exact_matched_positions": exact_positions,
+                "base_score": round(score, 3),
+                "added_points": round(points_added, 3),
+            }
+            score += points_added
+        return round(min(100.0, score), 3), facts, feature_rows, coverage_bonus
 
     def page(group_id: str) -> int:
         return int(groups_by_id[group_id].get("page_number") or 0)
@@ -2874,7 +2910,7 @@ def compile_detection_v5_dimension_graph(
         return group_id
 
     def record_pair(left_id: str, right_id: str, *, cycle: str) -> float:
-        score, facts, feature_rows = score_pair(left_id, right_id)
+        score, facts, feature_rows, coverage_bonus = score_pair(left_id, right_id)
         candidate = {
             "group_id_a": left_id, "group_id_b": right_id,
             "page_a": page(left_id), "page_b": page(right_id),
@@ -2882,6 +2918,8 @@ def compile_detection_v5_dimension_graph(
             "cycle": cycle, "dimension_similarity_score": score,
             "features": feature_rows,
         }
+        if coverage_bonus:
+            candidate["short_fingerprint_bonus"] = coverage_bonus
         candidates.append(candidate)
         if score >= threshold:
             edges.append({

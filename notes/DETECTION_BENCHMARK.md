@@ -1,5 +1,14 @@
 # Detection Agent benchmark
 
+## V8.4.12 short Fingerprint release
+
+The release compiler promoted five saved Floor 06 pairs to dimension
+support, including P06.V1/V2 (12.8 to 25.6) and P06.V2/V3 (16 to 32).
+It added no supporting pair on the saved Floor 07 input. Cross-sheet
+scores and the pair roster matched the baseline. This was a compiler
+replay on saved evidence. Source and rollback are recorded in
+`notes/DETECTION_V8_4_12_PRODUCTION_CHECKPOINT_2026_11_10.md`.
+
 The V8.4.9 production-path release replay and private full checkpoint are
 indexed by `notes/DETECTION_V8_4_9_PRODUCTION_CHECKPOINT_2026_11_10.md`.
 

@@ -1,5 +1,13 @@
 # TODO
 
+## Production Detection V8.4.12
+
+ACTIVE, verify HSL 06 and 07 on fresh Upload after deploying the short
+Fingerprint rule. The frozen P06 replay now gives the 60 and 110 matches
+supporting edges. Continue testing evidence ownership and whether
+complementary matches to an existing object justify attachment. See
+`notes/DETECTION_V8_4_12_PRODUCTION_CHECKPOINT_2026_11_10.md`.
+
 ## Production Detection V8.4.11 recovery
 
 ACTIVE, P0, verify the owner's Upload and Processing experience on HSL 06/07.

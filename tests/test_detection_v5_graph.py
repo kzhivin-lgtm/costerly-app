@@ -174,6 +174,60 @@ def test_v5_repeated_typical_dimension_is_counted_one_to_one():
     assert "2 paired occurrence(s)" in edges[0]["evidence_facts"][0]["observation"]
 
 
+def test_short_fingerprint_promotes_same_page_exact_match_to_support_only():
+    views = [dict(view, page_number=1) for view in VIEWS]
+    inventory = _fingerprints(
+        [_occurrence("a1", 600, "SF1"), _occurrence("a2", 1100, "SF2")],
+        [_occurrence("b1", 600, "SF3"), _occurrence("b2", 1660, "SF4")],
+    )
+    for i in range(4):
+        group_id = f"control-{i}"
+        views.append({"group_id": group_id, "page_number": i + 3})
+        inventory.append({
+            "group_id": group_id,
+            "occurrences": [_occurrence(group_id, 600, f"SF{i + 5}")],
+        })
+    pair = ("view-001", "view-002")
+
+    edges, audit = compile_detection_v5_dimension_graph(
+        inventory, visual_groups=views, allowed_pairs={pair},
+    )
+    assert len(edges) == 1
+    assert edges[0]["dimension_similarity_score"] == 25.6
+    assert audit["dimension_similarity_candidates"][0]["short_fingerprint_bonus"] == {
+        "shorter_position_count": 2, "exact_matched_positions": 1,
+        "base_score": 12.8, "added_points": 12.8,
+    }
+    # Even an existing identity edge at one endpoint must not turn this
+    # single shared dimension into a batch merge.
+    existing = [{
+        "group_id_a": "control-0", "group_id_b": "view-001",
+        "evidence_type": "explicit_document_relation", "strength": "direct",
+        "observation": "Explicit author reference", "source_fact_ids": ["SF1"],
+    }]
+    graph, _ = compile_detection_v5_merge_edges(edges, existing, visual_groups=views)
+    assert [e["relationship"] for e in graph if (e["group_id_a"], e["group_id_b"]) == pair] == [
+        "supporting_relation",
+    ]
+
+    cross_page_views = [views[0], dict(views[1], page_number=2), *views[2:]]
+    cross_edges, _ = compile_detection_v5_dimension_graph(
+        inventory, visual_groups=cross_page_views, allowed_pairs={pair},
+    )
+    assert cross_edges == []
+
+    for row, start in zip(inventory[:2], (2500, 6000), strict=True):
+        row["occurrences"].extend(
+            _occurrence(f"{row['group_id']}-{i}", start + i * 140, f"extra-{start}-{i}")
+            for i in range(13)
+        )
+    dense_edges, dense_audit = compile_detection_v5_dimension_graph(
+        inventory, visual_groups=views, allowed_pairs={pair},
+    )
+    assert dense_edges == []
+    assert dense_audit["dimension_similarity_candidates"][0]["dimension_similarity_score"] == 12.8
+
+
 def test_v5_dimension_queue_scores_every_same_page_pair_before_cross_page():
     views = [
         {"group_id": "view-001", "evidence_class": "object_evidence", "page_number": 1},

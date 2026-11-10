@@ -1,5 +1,11 @@
 # Done Log
 
+Detection V8.4.12 isolated release checkpoint. The release compiler
+emits both previously below-threshold P06 supporting links from the
+unchanged HSL evidence. Code, rollback and replay are indexed by
+`notes/DETECTION_V8_4_12_PRODUCTION_CHECKPOINT_2026_11_10.md`.
+Fresh HSL object grouping remains open.
+
 Detection V8.4.9 production release `614f369`. Railway reported success
 for the exact commit. The public wrapper and live Core login DOM both
 reported `detection-v8.4.9-haiku55-coordinate-ocr` and Core health was OK.
