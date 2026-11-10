@@ -199,6 +199,32 @@ def partition(usage):
                   for group in usage["proof_graph_components"])
 
 
+def dimensional_review_context(usage, canonical_ids, views, queue, page, marked):
+    """Supply same-run OCR corroboration without proposing identity."""
+    raw_ids = {canonical: raw for raw, canonical in canonical_ids.items() if raw in views}
+    ranked = defaultdict(list)
+    for row in usage["dimension_graph_audit"]["dimension_similarity_candidates"]:
+        if row["page_a"] != page or row["page_b"] != page:
+            continue
+        left, right = (raw_ids.get(canonical) for canonical in edge_endpoints(row))
+        pair = frozenset((left, right))
+        if pair not in queue or not pair.intersection(marked):
+            continue
+        features = sorted(row["features"], key=lambda feature: -feature["points"])
+        if not features:
+            continue
+        spans = ", ".join(
+            feature["left_mm"] if feature["left_mm"] == feature["right_mm"]
+            else f"{feature['left_mm']} vs {feature['right_mm']}"
+            for feature in features[:4]
+        )
+        item = (float(row["dimension_similarity_score"]), left, right, spans)
+        for view_id in pair.intersection(marked):
+            ranked[view_id].append(item)
+    selected = {item for candidates in ranked.values() for item in sorted(candidates, reverse=True)[:2]}
+    return "\n".join(f"{left} and {right}: {spans} mm" for _, left, right, spans in sorted(selected, reverse=True))
+
+
 def edge_endpoints(edge):
     return edge["group_id_a"], edge["group_id_b"]
 
@@ -371,7 +397,8 @@ def run(pdf, output):
             write_json(output / "combined-membership.json", payload)
             final = recompile(payload)
 
-    components = [row["visual_group_ids"] for row in audit(final)["proof_graph_components"]]
+    intermediate_usage = audit(final)
+    components = [row["visual_group_ids"] for row in intermediate_usage["proof_graph_components"]]
     singleton_ids = {row[0] for row in components if len(row) == 1}
     unresolved = defaultdict(set)
     for view_id, (page, role) in views.items():
@@ -386,6 +413,13 @@ def run(pdf, output):
         prepared["messages"][0]["content"][-1]["text"] += (
             "\nViews marked for another look: " + ", ".join(sorted(marked))
         )
+        dimension_context = dimensional_review_context(intermediate_usage, canonical_ids, views, queue, page, marked)
+        if dimension_context:
+            prepared["messages"][0]["content"][-1]["text"] += (
+                "\nSame-page OCR dimension comparisons, normalized to millimeters. "
+                "Check which feature the dimension spans in each crop. Matching numbers alone do not establish identity.\n"
+                + dimension_context
+            )
         client = adapter.get_anthropic_client()
         response, _, metadata = send(client, prepared, "local_membership_recovery", f"local-{page:02}")
         metadata["pages"] = [page]
