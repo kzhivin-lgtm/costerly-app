@@ -11,21 +11,15 @@ reproduced the saved 30-object output. That count is a replay witness.
 Visual fallback without native anchors also matched. Manifest:
 `notes/evidence/detection-v8.4.9-post-cleanup-checkpoint.json`.
 
-### HSL 07 witness for the pending attachment review
+## HSL Floor 06 detail reference for deferred attachment work
 
-The owner described a sparse detail at the lower left of the third sheet.
-In frozen run `run_49a6d5bd14fa4e0e971a763af919470c`, PDF P03 (N56)
-has no lower-left drawing. P03.V1, P03.V2 and P03.V3 already form one
-component through ordinary dimension and visual proof.
-
-PDF P04 (N57, third sheet after the cover) has a lower-left cabinet
-elevation, P04.V4 (`view-007`), which is a singleton in the
-full-document proof graph. The adjacent narrow P04.V5 (`view-008`)
-contains the elevation's horizontal dimension chains. The saved graph
-has seven singleton Views on P04 and no proven target package on that
-sheet. P04 is a possible match for the owner's description. Confirm the
-intended View and product boundary before assigning a positive label.
-Keep the cross-sheet ownership and independent small item negative controls.
+The owner's annotated screenshot identifies the small circular Detail D
+at the lower left of P03, drawing N26, sheet 607. Red Detail D callouts
+on the larger drawings point to the corresponding locations on this
+sheet. The isolated crop shows a dimensioned profile with little
+standalone product context. This is a visual reference case for explicit
+detail linking. Whether Detection detects the detail separately or links
+it correctly has not been checked for this witness.
 
 ## V8.4.5 large batched assembly-set checkpoint, 2026-11-01
 
