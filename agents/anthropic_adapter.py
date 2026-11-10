@@ -19,7 +19,7 @@ from itertools import combinations
 from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, NamedTuple
 
 import anthropic
 
@@ -3386,8 +3386,10 @@ def run_detection_v75_conflict_resolver(
     coordinate_frames: dict[int, dict[str, Any]],
     model: str,
     retry_invalid_targets: bool = True,
+    stream_message: Callable[..., Any] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Resolve a bounded conflict batch without exposing its provenance."""
+    send = stream_message or create_claude_message_streamed
     if not targets:
         return [], {"attempted": False, "target_count": 0, "batches": []}
     prompt = """
@@ -3499,7 +3501,7 @@ Return only schema JSON.
                 content = _v75_conflict_resolver_content_blocks(
                     crops=crops, contexts=contexts, coordinate_frames=coordinate_frames,
                 )
-                response, request_diagnostics = create_claude_message_streamed(
+                response, request_diagnostics = send(
                     get_anthropic_client(),
                     model=model,
                     max_tokens=DETECTION_V75_CONFLICT_RESOLVER_MAX_TOKENS,
@@ -9641,8 +9643,38 @@ def _compile_detection_v516_v561_consensus(
     }, audit
 
 
-def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None, mistral_anchor_admission: bool = False, document_category: str | None = None, stage_callback: Callable[..., None] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
+class DetectionRegistryHooks(NamedTuple):
+    stream_message: Callable[..., Any]
+    normalize_visual_map: Callable[..., Any]
+    compile_semantic_facts: Callable[..., Any]
+    compile_merge_edges: Callable[..., Any]
+    count_input_tokens: Callable[..., int | None]
+
+
+def run_anthropic_detection_visual_registry_agent(
+    *,
+    file_name: str,
+    company_id: str,
+    file_bytes: bytes,
+    page_images: list[bytes],
+    regions: list[dict[str, Any]],
+    ocr_package: dict[str, Any] | None,
+    model: str | None,
+    mistral_anchor_admission: bool = False,
+    document_category: str | None = None,
+    stage_callback: Callable[..., None] | None = None,
+    review_hooks: DetectionRegistryHooks | None = None,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     """Run Island discovery, then the route-scoped bounded membership review."""
+    stream_message, normalize_visual_map, compile_semantic_facts, compile_merge_edges, count_input_tokens = (
+        review_hooks or DetectionRegistryHooks(
+            create_claude_message_streamed,
+            normalize_detection_visual_map_group_ids,
+            compile_detection_v5_semantic_facts,
+            compile_detection_v5_merge_edges,
+            _v641_count_input_tokens,
+        )
+    )
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
     # Direct test callers retain the V6.11 contract until they specify a
     # category. Product callers always specify one after V6.12 classification.
@@ -9956,7 +9988,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 regions=[],
             )
             batch_messages = [{"role": "user", "content": batch_content}]
-            exact_input_tokens = _v641_count_input_tokens(
+            exact_input_tokens = count_input_tokens(
                 client=client,
                 model=discovery_model,
                 system=proposal_system,
@@ -9974,7 +10006,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             batch_initial_max_tokens = select_detection_v645_discovery_output_max_tokens(
                 len(batch_candidates),
             )
-            batch_response, batch_diagnostics = create_claude_message_streamed(
+            batch_response, batch_diagnostics = stream_message(
                 client,
                 model=discovery_model,
                 max_tokens=batch_initial_max_tokens,
@@ -10004,7 +10036,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                     max_tokens=batch_initial_max_tokens,
                 ):
                     batch_retry_reason = "initial_response_hit_budget_inside_json_string"
-                    batch_response, batch_diagnostics = create_claude_message_streamed(
+                    batch_response, batch_diagnostics = stream_message(
                         client,
                         model=discovery_model,
                         max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
@@ -10085,7 +10117,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                     regions=[],
                 )
                 geometry_retry_messages = [{"role": "user", "content": geometry_retry_content}]
-                geometry_retry_exact_input_tokens = _v641_count_input_tokens(
+                geometry_retry_exact_input_tokens = count_input_tokens(
                     client=client,
                     model=discovery_model,
                     system=proposal_system,
@@ -10100,7 +10132,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                     raise RuntimeError(
                         "V6.44 geometry-correction batch exceeds its safe input budget."
                     )
-                batch_response, batch_diagnostics = create_claude_message_streamed(
+                batch_response, batch_diagnostics = stream_message(
                     client,
                     model=discovery_model,
                     max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
@@ -10213,7 +10245,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     else:
         if stage_callback:
             stage_callback("Discovery started")
-        proposal_response, proposal_diagnostics = create_claude_message_streamed(
+        proposal_response, proposal_diagnostics = stream_message(
             get_anthropic_client(), model=discovery_model,
             max_tokens=proposal_output_max_tokens,
             temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
@@ -10250,7 +10282,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             proposal_retry_reason = "initial_response_hit_budget_inside_json_string"
             if stage_callback:
                 stage_callback("Discovery retry 1")
-            proposal_response, proposal_diagnostics = create_claude_message_streamed(
+            proposal_response, proposal_diagnostics = stream_message(
                 get_anthropic_client(), model=discovery_model,
                 max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
                 temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
@@ -10556,6 +10588,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 targets=v75_conflict_targets,
                 coordinate_frames=review_coordinate_frames,
                 model=discovery_model,
+                **({"stream_message": stream_message} if review_hooks else {}),
             )
             proposal_discovery_payload, applied_audit = apply_detection_conflict_admissions(
                 payload=proposal_discovery_payload,
@@ -10845,7 +10878,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 else membership_review_schema,
             )
         )}}
-        v641_review_exact_input_tokens = _v641_count_input_tokens(
+        v641_review_exact_input_tokens = count_input_tokens(
             client=get_anthropic_client(),
             model=review_model,
             system=review_system,
@@ -10895,7 +10928,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 review_response, review_diagnostics = grouping_future.result()
                 same_sheet_review = pairs_future.result()
     else:
-        review_response, review_diagnostics = create_claude_message_streamed(get_anthropic_client(), **review_call)
+        review_response, review_diagnostics = stream_message(get_anthropic_client(), **review_call)
     review_attempts = [
         (review_response, review_diagnostics, review_initial_max_tokens),
     ]
@@ -10916,7 +10949,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             review_retry_reason = "initial_response_hit_budget_inside_json_string"
             if stage_callback:
                 stage_callback("Membership review retry 1")
-            review_response, review_diagnostics = create_claude_message_streamed(
+            review_response, review_diagnostics = stream_message(
                 get_anthropic_client(),
                 model=review_model,
                 max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
@@ -11164,7 +11197,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                     page_context_images=review_page_context_images,
                 )
                 v69_reconciliation_response, v69_reconciliation_diagnostics = (
-                    create_claude_message_streamed(
+                    stream_message(
                         get_anthropic_client(), model=review_model,
                         max_tokens=DETECTION_V5_MEMBERSHIP_MAX_TOKENS,
                         temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
@@ -11445,7 +11478,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
-            normalize_detection_visual_map_group_ids(
+            normalize_visual_map(
                 _visual_map_from_registry_groups(raw_groups)
             ), require_evidence_class=False,
         )
@@ -11715,7 +11748,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 for pair in sorted(candidate_q_final_pairs)
             ],
         })
-        accepted_semantic_facts, semantic_ledger_audit = compile_detection_v5_semantic_facts(
+        accepted_semantic_facts, semantic_ledger_audit = compile_semantic_facts(
             semantic_facts, visual_groups=semantic_validation_groups,
             source_facts=semantic_source_facts,
             require_pair_endpoint_visual_sources=(
@@ -11793,7 +11826,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         semantic_ledger_audit["object_hypotheses"] = object_hypothesis_audit
         v637_accepted_components: list[list[str]] = []
         if v637_ada_covered_pair_local_membership_active:
-            supporting_relation_edges, v5_merge_audit = compile_detection_v5_merge_edges(
+            supporting_relation_edges, v5_merge_audit = compile_merge_edges(
                 dimension_relation_edges, accepted_semantic_facts,
                 visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
                 allow_runtime_merges=False, allow_batch_confirmation=False,
@@ -11816,7 +11849,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 membership_audit["star_hypothesis_components"]
             )
         else:
-            positive_relation_edges, v5_merge_audit = compile_detection_v5_merge_edges(
+            positive_relation_edges, v5_merge_audit = compile_merge_edges(
                 [
                     edge for edge in dimension_relation_edges
                     if not {

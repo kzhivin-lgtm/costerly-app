@@ -13,6 +13,22 @@ technical pairs scoring at least 85 from 3 to 49 and left all 52 groups
 unchanged. The unit heuristic reacted to OCR noise and a sheet number.
 The missing typed Membership evidence is a separate demonstrated limit.
 
+### Haiku 5.5 ordinary Membership recovery
+
+The ordinary Upload path now uses the grouping logic from the accepted
+`3a003a4` experiment. The product entry point reproduced all 10 accepted
+groups and 33 Views from the fixed Floor 07 inputs. Membership and both
+follow-up requests matched the archived requests byte for byte. The
+Discovery comparison differed only in the company ID supplied by the
+test. Adda, Lev 1, Lev 2, and both Page 23 branches matched the checkpoint.
+
+Fresh regular runs completed with 11 groups on Floor 07
+(`run_2ec20e59f8f74243b434d2ddff8a9d3c`) and 39 groups on Floor 06
+(`run_d68bf1d980e046ddaab935e31d3df017`). Floor 07 had one additional
+singleton on P04 compared with the accepted partition. Floor 06 technical
+grouping remains open. Replay state and token counts are local to each
+request. Supplementary reviews use fixed Views and same-sheet pairs.
+
 ## V8.4.9 local post-cleanup checkpoint, 2026-11-10
 
 Fixed-input restored replay verified identical provider requests, View

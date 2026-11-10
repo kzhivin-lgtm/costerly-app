@@ -20,6 +20,11 @@ from 3 to 49 and preserved the partition. Treat unit inference as a separate
 evidence defect. Test pair-local review of omitted same-page links with the
 fixed Views and Q, checking both correct joins and independent objects.
 
+The accepted Floor 07 recovery is wired into regular Upload. The frozen
+inputs reproduce 10 groups and all 33 Views. Fresh pre-release runs
+returned 11 groups on Floor 07 and 39 on Floor 06. Track the additional
+P04 singleton and owner verification after deployment.
+
 PENDING, P1, isolate cold-start screen latency with a matched browser build.
 The incident used an older wrapper and showed fallback reveal before initial
 Core login readiness. Compare fresh traces with the verified release before

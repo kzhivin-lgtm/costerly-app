@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from datetime import UTC, datetime
+from functools import partial
 from uuid import uuid4
 
 from agents.anthropic_adapter import (
@@ -20,6 +21,7 @@ from agents.anthropic_adapter import (
     run_anthropic_detection_visual_registry_agent,
 )
 from agents.detection_source_capability import assess_detection_source_capability
+from config import CLAUDE_HAIKU_MODEL
 from agents.detection_document_classifier import (
     DEFAULT_CLAUDE_DETECTION_BOUNDARY_MODEL,
     DEFAULT_CLAUDE_DETECTION_MODEL,
@@ -1082,7 +1084,8 @@ def run_detection_agent(
             # Island boundary is known. Review still receives its separately
             # generated post-Discovery View crops.
             regions = []
-            _visual_map, registry, visual_registry_usage = run_anthropic_detection_visual_registry_agent(
+            run_registry = partial(
+                run_anthropic_detection_visual_registry_agent,
                 file_name=file_name, company_id=company_id, file_bytes=file_bytes,
                 page_images=registry_images, regions=regions,
                 ocr_package=ocr_package, model=route["registry_model"],
@@ -1095,8 +1098,17 @@ def run_detection_agent(
                 # ordinary route. The deterministic pre-model category has
                 # already made that routing decision.
                 document_category=str(route.get("category") or ""),
-                stage_callback=stage_callback,
             )
+            if (route.get("category") == "ordinary_object_set" and route["registry_model"] == CLAUDE_HAIKU_MODEL
+                    and ocr_package and file_name.lower().endswith(".pdf")):
+                from agents.detection_ordinary_membership import run_ordinary_haiku_membership
+
+                _visual_map, registry, visual_registry_usage = run_ordinary_haiku_membership(
+                    run_registry, file_bytes=file_bytes, ocr_package=ocr_package, stage_callback=stage_callback,
+                )
+            else:
+                _visual_map, registry, visual_registry_usage = run_registry(stage_callback=stage_callback)
+
     except DetectionVisualRegistryValidationError as exc:
         if stage_callback:
             stage_callback("Detection Registry failed")

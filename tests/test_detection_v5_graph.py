@@ -69,6 +69,32 @@ def test_v5_rare_exact_large_dimension_is_very_strong_but_not_a_merge_alone():
     assert merged[0]["relationship"] == "supporting_relation"
 
 
+def test_v5_dimension_anchor_requires_a_preverified_pair_on_the_same_page():
+    pair = ("view-001", "view-002")
+    edge = {
+        "group_id_a": pair[0], "group_id_b": pair[1],
+        "dimension_similarity_score": 100.0,
+        "evidence_facts": [{"evidence_type": "dimension_equality", "source_fact_ids": ["SF1", "SF2"]}],
+    }
+    views = [dict(view, page_number=1) for view in VIEWS]
+    default, _ = compile_detection_v5_merge_edges([edge], [], visual_groups=views)
+    verified, audit = compile_detection_v5_merge_edges(
+        [edge], [], visual_groups=views, dimension_anchor_pairs={pair},
+    )
+    cross_page, _ = compile_detection_v5_merge_edges(
+        [edge], [], visual_groups=[views[0], dict(views[1], page_number=2)], dimension_anchor_pairs={pair},
+    )
+    blocked, _ = compile_detection_v5_merge_edges(
+        [edge], [], visual_groups=views, dimension_anchor_pairs={pair}, merge_blocked_pairs={pair: "conflict"},
+    )
+
+    assert default[0]["relationship"] == "supporting_relation"
+    assert verified[0]["relationship"] == "same_object_view"
+    assert audit["edges"][0]["dimension_anchor"] is True
+    assert cross_page[0]["relationship"] == "supporting_relation"
+    assert blocked[0]["relationship"] == "supporting_relation"
+
+
 def test_v5_repeated_typical_dimension_is_counted_one_to_one():
     edges, _ = compile_detection_v5_dimension_graph(
         _fingerprints(

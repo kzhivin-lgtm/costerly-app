@@ -2524,6 +2524,7 @@ def compile_detection_v5_merge_edges(
     allow_runtime_merges: bool = True,
     merge_blocked_pairs: dict[tuple[str, str], str] | None = None,
     allow_batch_confirmation: bool = True,
+    dimension_anchor_pairs: set[tuple[str, str]] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Merge from a minimal semantic proof forest plus deterministic Dimensions."""
     by_pair: dict[tuple[str, str], dict[str, Any]] = {}
@@ -2599,8 +2600,18 @@ def compile_detection_v5_merge_edges(
             "direct_shared_structure", "visual_dimension_similarity",
         }))
         semantic_proof = len(kinds) >= 2 and identity_fact
+        dimension_anchor = False
+        if dimension_anchor_pairs and pair in dimension_anchor_pairs:
+            left_page = int(groups_by_id.get(pair[0], {}).get("page_number") or 0)
+            right_page = int(groups_by_id.get(pair[1], {}).get("page_number") or 0)
+            dimension_anchor = (
+                0 < left_page == right_page
+                and row["dimension_score"] >= 100.0
+                and bool(row["dimension_facts"])
+            )
         merge = allow_runtime_merges and pair not in blocked_pairs and (
             direct_label
+            or dimension_anchor
             or semantic_proof
             or (row["dimension_score"] >= 85 and bool(kinds))
             or (edge_score >= 100 and identity_fact)
@@ -2625,7 +2636,10 @@ def compile_detection_v5_merge_edges(
             "same_page": int(groups_by_id.get(pair[0], {}).get("page_number") or 0) == int(groups_by_id.get(pair[1], {}).get("page_number") or 0),
             "relationship": "same_object_view" if merge else SUPPORTING_RELATIONSHIP,
             "evidence_facts": facts,
-            "commercial_inseparability": "V5 deterministic merge policy",
+            "commercial_inseparability": (
+                "V5 independently verified dimension anchor" if merge and dimension_anchor
+                else "V5 deterministic merge policy"
+            ),
             "dimension_similarity_score": row["dimension_score"],
             "edge_score": edge_score,
         })
@@ -2633,6 +2647,7 @@ def compile_detection_v5_merge_edges(
             "group_id_a": pair[0], "group_id_b": pair[1],
             "dimension_similarity_score": row["dimension_score"],
             "edge_score": edge_score, "merge": merge,
+            **({"dimension_anchor": True} if merge and dimension_anchor else {}),
             **({"merge_blocked": blocked_pairs[pair]} if pair in blocked_pairs else {}),
         })
         if merge:
