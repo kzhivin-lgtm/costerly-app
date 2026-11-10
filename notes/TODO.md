@@ -285,8 +285,9 @@ reference. Then validate the five-file scenarios, call budget, time and
 cost. Preserve exhaustive same-sheet comparison, Ada Sonnet, Page 23,
 Q and routing. Deployment is outside this local iteration.
 The 2026-11-10 round restored exact frozen groups in supplemental offline
-replay. New OCR and Discovery still miss acceptance. The best replay of
-that live input yields ten objects because P11 lacks a proven third link.
+replay. The owner accepts the ten-object replay on the fresh HSL 07 input, with
+one unjoined View on P11. Verify the same logic in an autonomous repeat
+with fresh OCR and new provider replies.
 An independent Conflict Resolver role control removed an extra whole-floor
 plan but has open recall checks. The rejected runtime prompt was removed.
 Keep the prompt universal and benchmark-specific details in fixtures only.

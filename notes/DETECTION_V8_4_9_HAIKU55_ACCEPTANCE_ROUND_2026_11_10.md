@@ -1,9 +1,10 @@
 # Haiku 5.5 ordinary Detection acceptance round, 2026-11-10
 
-[verified] The pre-experiment V8.4.9 checkpoint is reproducible. This
-round improves the saved HSL result in a replay, but the fresh
-Detection result still misses the nine-object acceptance criterion.
-The product runtime is restored to the tagged checkpoint.
+[verified] The pre-experiment V8.4.9 checkpoint is reproducible. The owner accepts the replay result of ten objects on 33 Views, including
+one separate View on P11. The product runtime is at the tagged checkpoint.
+The result was assembled from actual provider replies in offline replay.
+Autonomous repetition with entirely new replies is the next verification.
+The benchmark source hash confirms that the prior run used Floor 07.
 
 ## Checkpoint and controls
 

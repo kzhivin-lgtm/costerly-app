@@ -2,7 +2,8 @@
 
 ## V8.4.9 Haiku 5.5 acceptance experiments, 2026-11-10
 
-Fixed HSL Review with Haiku 5.5 is not accepted. Three identical
+The owner accepts the ten-object HSL 07 replay with one separate View
+on P11. An autonomous repeat is pending. Three identical
 single-call trials gave 9, 12 and 15 objects on the 32 frozen Views.
 Supplemental offline replay gives nine in all three cases, using the
 same saved extra replies. Fresh OCR and Discovery with that offline

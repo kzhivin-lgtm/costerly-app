@@ -51,6 +51,8 @@ This file explains where code belongs so the project stays understandable.
   `notes/evidence/detection-v8.4.9-with-research-checkpoint.json`.
   Ordinary Haiku 5.5 follow-up trials and private replay evidence are
   indexed by `notes/DETECTION_V8_4_9_HAIKU55_ACCEPTANCE_ROUND_2026_11_10.md`.
+  The owner-accepted replay has its own manifest in
+  `notes/evidence/detection-v8.4.9-haiku55-owner-accepted-replay.json`.
 - `db/` contains Supabase client and repositories.
 - `db/sql/2026_09_24_machinery_foundation.sql` is the additive Machinery schema
   and catalog seed. It does not modify the prototype `company_machines` table.

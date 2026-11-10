@@ -1,5 +1,9 @@
 # Done Log
 
+Owner accepted the HSL Floor 07 Haiku 5.5 replay with ten objects and
+one separate View on P11. The autonomous repeat remains a separate check.
+Local tag `detection-v8.4.9-haiku55-hsl-replay-accepted-2026-11-10`.
+
 Detection V8.4.9 Haiku 5.5 experiment round recorded. An offline
 supplement restores the nine frozen HSL groups. New OCR and Discovery
 leave one unproved P11 link after removing a whole-floor plan admission.
