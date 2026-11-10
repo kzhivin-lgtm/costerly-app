@@ -24,7 +24,7 @@ _MODELS = {
 }
 _ENGINE_NAME = "rapidocr_ppocrv6_tiny"
 _MAX_SIDE = 2200
-_MAX_WAIT_SECONDS = 3.0
+_MAX_WAIT_SECONDS = 12.0
 _BBOX_KEYS = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
 _NUMBER = re.compile(r"\d{1,5}(?:[.,]\d{1,3})?(?:\s*(?:mm|cm|m|мм|см|м))?", re.I)
 _POOL = ThreadPoolExecutor(max_workers=2, thread_name_prefix="detection-coordinate-ocr")

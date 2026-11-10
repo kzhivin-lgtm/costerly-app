@@ -278,10 +278,13 @@ work 3.17.4.6. Accept the reader only with bounded waiting and protected
 Adda/Lev/Page 23 routes and View ownership. The local Adda run recovered
 25/27 control values with boxes and retained the exact two groups. Lev 1,
 Lev 2 and Page 23 kept their scenarios. HSL 07 returned partial coordinate
-coverage within the three-second tail. Improve HSL P08 and the other late
-pages within the same limit before treating coverage as complete. Using
-new readings as Membership inputs stays deferred until measured in
-isolation. Record: `notes/DETECTION_V8_4_9_HAIKU_COORDINATE_OCR_2026_11_10.md`.
+coverage within the original three-second wait. The owner approved a longer
+wait, now capped at 12 seconds. A fresh HSL run and a replay of the fast
+provider deadline both completed 11/11 pages including P08. The fast replay
+finished in 6.240 seconds of local collection, versus 8/11 pages after
+three seconds in the same run. Live production timing and broader coverage
+remain open. Using new readings as Membership inputs stays deferred until
+measured in isolation. Record: `notes/DETECTION_V8_4_9_HAIKU_COORDINATE_OCR_2026_11_10.md`.
 
 BENCHMARK, P0, Hasolelim Floor 06 manual Object Evidence island inventory:
 

@@ -21,7 +21,9 @@ rendered pages sent to Mistral, concurrently with the provider request.
 The reader rotates a page once and maps each tight label box back to OCR
 page pixels. It preserves page, original text, bbox, confidence, and source
 in `evidence.numeric_labels`. No extra provider OCR request is made.
-Two local page workers and a three-second tail wait bound the resource cost.
+Two local page workers run alongside Mistral. The original three-second tail
+wait was raised to 12 seconds after the owner approved a longer wait for
+incomplete pages. Detection continues as soon as the local work finishes.
 Partial output explicitly records missing pages and reasons. The image build
 verifies two pinned ONNX model hashes. The local reader can be disabled with
 `DETECTION_COORDINATE_OCR_ENABLED=0`.
@@ -37,8 +39,8 @@ returned six groups on Adda. Both experiments were rejected.
 
 ## Local benchmark
 
-Fresh Mistral plus coordinate OCR, followed by live Detection on the saved
-packages. Tests exercised the normal OCR entry. Page 23 and HSL used Haiku.
+Fresh Mistral plus coordinate OCR with the original three-second limit,
+followed by live Detection on the saved packages. Tests exercised the normal OCR entry. Page 23 and HSL used Haiku.
 Each Ada-family test used Haiku Discovery and two Sonnet calls.
 
 | File | OCR total / local wait | Completed pages | Bboxes / assigned to Views | Result and run |
@@ -63,6 +65,21 @@ Processing completion-marker failure. The lockfile validated offline.
 Production image startup and timing remain unmeasured. HSL coverage and
 quantity of final packages are open acceptance criteria. Membership use of
 the new fingerprint requires a separate controlled test.
+
+## Twelve-second wait verification
+
+A fresh HSL 07 run completed 11/11 pages with 237 numeric labels. Local
+collection took 0.005 s because the reader finished during the provider
+pass. The fresh Adda run completed 4/4 pages with 33 labels and waited
+0.813 s for the local reader. The Mistral request counts were 11 and 4.
+
+A separate HSL replay reused the saved Mistral responses, set the standard
+OCR deadline to the previous fast run's 16.775 s, and measured both wait
+thresholds in the same run. Eight of eleven local reads had finished after
+three seconds. All eleven completed after 6.240 s of local collection,
+including P08. Total replay OCR time was 23.028 s. Artifacts are under
+`/private/tmp/detection-coordinate-wait.dcEfpx`. Focused OCR tests passed
+27/27. These checks cover OCR and timing on the local host.
 
 The local raw OCR packages are under `/private/tmp/detection-v849-coordinates.NboV4g/single-pass`.
 
