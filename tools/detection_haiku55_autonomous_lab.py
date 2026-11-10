@@ -204,21 +204,12 @@ def candidate_hypotheses(payload, pages, views, queue):
     return hypotheses
 
 
-def improve_local_crops(request, pdf_bytes, ocr, usage, page_number):
-    """Render the same fixed crop boxes at a higher local review resolution."""
+def render_fixed_pdf_crops(pdf_bytes, ocr, page_number, boxes):
     frame = next(page["dimensions"] for page in ocr["pages"] if page["page_number"] == page_number)
-    audit_by_id = {
-        row["group_id"]: row["source_bbox"] for row in usage["v5_9_review_crop_audit"]
-        if row.get("page_number") == page_number and row.get("source_bbox")
-    }
-    blocks = request["messages"][0]["content"]
+    crops = {}
     with pymupdf.open(stream=pdf_bytes, filetype="pdf") as document:
         page = document[page_number - 1]
-        for label, image in zip(blocks[:-1:2], blocks[1:-1:2], strict=True):
-            match = VIEW_IMAGE_LABEL.fullmatch(label["text"])
-            if not match or match[1] not in audit_by_id:
-                continue
-            box = audit_by_id[match[1]]
+        for group_id, box in boxes.items():
             clip = pymupdf.Rect(
                 box["top_left_x"] / frame["width"] * page.rect.width,
                 box["top_left_y"] / frame["height"] * page.rect.height,
@@ -231,7 +222,23 @@ def improve_local_crops(request, pdf_bytes, ocr, usage, page_number):
                 continue
             scale = 1440 / max(clip.width, clip.height)
             pixmap = page.get_pixmap(matrix=pymupdf.Matrix(scale, scale), clip=clip, alpha=False)
-            image["source"]["data"] = standard_b64encode(pixmap.tobytes("jpeg", jpg_quality=87)).decode("ascii")
+            crops[group_id] = pixmap.tobytes("jpeg", jpg_quality=87)
+    return crops
+
+
+def improve_local_crops(request, pdf_bytes, ocr, usage, page_number):
+    """Render the same fixed crop boxes at a higher local review resolution."""
+    blocks = request["messages"][0]["content"]
+    images = {
+        match[1]: image for label, image in zip(blocks[:-1:2], blocks[1:-1:2], strict=True)
+        if (match := VIEW_IMAGE_LABEL.fullmatch(label["text"]))
+    }
+    boxes = {
+        row["group_id"]: row["source_bbox"] for row in usage["v5_9_review_crop_audit"]
+        if row.get("page_number") == page_number and row.get("source_bbox") and row["group_id"] in images
+    }
+    for group_id, jpeg in render_fixed_pdf_crops(pdf_bytes, ocr, page_number, boxes).items():
+        images[group_id]["source"]["data"] = standard_b64encode(jpeg).decode("ascii")
 
 
 def audit(result):
@@ -398,6 +405,16 @@ def run(pdf, output):
                     page_images=page_images, visual_groups=suspects, coordinate_frames=coordinate_frames,
                 )
                 candidates = render_role_candidate_crops(suspects, crops)
+                candidate_ids = {crop["group_id"] for crop in candidates}
+                boxes_by_page = defaultdict(dict)
+                for group in suspects:
+                    if group["group_id"] in candidate_ids:
+                        boxes_by_page[group["page_number"]][group["group_id"]] = group["bbox"]
+                for page, boxes in boxes_by_page.items():
+                    original_crops = render_fixed_pdf_crops(pdf_bytes, ocr, page, boxes)
+                    for crop in candidates:
+                        if crop["group_id"] in original_crops:
+                            crop["bytes"] = original_crops[crop["group_id"]]
 
                 def send_role(focused):
                     review, _, details = send(

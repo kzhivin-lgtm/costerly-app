@@ -45,6 +45,8 @@ TECHNICAL_ROLES = ("line_drawing_plan", "line_drawing_elevation", "line_drawing_
 ROLE_REVIEW_RULE = (
     "Review only the visual representation of each fixed crop. A photographic image, shaded presentation "
     "render, or sheet of rendered thumbnails is presentation_render when it depicts fabricated parts. "
+    "A frontal or orthographic render can show filled material textures, depth from shading, and a rendered "
+    "background. Judge the actual visual medium even when the image has a flat viewpoint. "
     "When the crop visibly consists of a technical drawing, identify it using the matching drawing role. "
     "Use retain_original for mixed or unclear crops. Preserve all crop boundaries. Give one decision "
     "per supplied ID, with a short nonempty witness describing the visible visual style. Return JSON only."
