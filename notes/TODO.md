@@ -239,7 +239,7 @@ Lev-2-shaped plan plus two separately proved elevations becomes one component;
 a non-star chain cannot become one object; the protected V8.4.5 batched
 assembly scope route and V8.4.6 candidate exception contract remain intact.
 
-IMPLEMENTED AND LOCAL-VERIFIED, P0, V8.4.8, Ada Membership only:
+OWNER-ACCEPTED LOCAL CHECKPOINT, P0, V8.4.8, Ada Membership only:
 Base is GitHub main `8eb87f1`. Send one exhaustive same-sheet pair audit
 and one independent document Membership request in parallel on the
 existing Ada Sonnet path. Retain Haiku Discovery, the shared-plan star
@@ -248,8 +248,27 @@ Adda passed twice with the exact two groups, Lev 2 passed twice with
 one kitchen and all four Views including its render, and Lev 1 passed
 with all six Views in one object. Page 23 matched the latest base;
 HSL's saved Discovery response failed the same validation on both
-versions before Membership. Protected-main release is pending. Record:
+versions before Membership. Owner accepted the Ada result and asked to retain a
+local-only checkpoint. Annotated tag
+`detection-v8.4.8-ada-parallel-membership-checkpoint-2026-11-10` resolves to
+`6c552b35dd8c58b15307635f7efbf2dd7c9f29a9`. Record:
 `notes/DETECTION_V8_4_8_PARALLEL_MEMBERSHIP_CHECKPOINT_2026_11_10.md`.
+
+ACTIVE, P0, Haiku 5.5 migration on top of V8.4.8:
+The shared Anthropic adapter migrates existing Haiku calls to
+`claude-haiku-5-5`, including legacy configured Haiku IDs. Use low effort and
+preserve JSON schemas, Sonnet model routing and split Ada Membership. On frozen
+OCR, live Haiku gave the exact two Adda groups (`run_4799caa13b164a1fbd372867f4481484`),
+one Lev 1 object with six Views (`run_6926ce99b59040c7b8adc97a4f18fd93`), and
+one Lev 2 kitchen with all four Views and a positive render attachment
+(`run_71a5e6e5ce8f42e6b5c7ada7ea0e38d3`). The original Haiku 5.5 render
+label was too narrow. The revised discovery instructions name solid shaded
+CAD render explicitly. An accepted Mistral anchor retains its provider bbox
+when the model emits contradictory proposed geometry it would discard anyway.
+Page 23 returned three objects on Haiku 5.5 (`run_4c76765cdf3848adad1219c522be661c`).
+HSL 07 reached completion with 34 objects (`run_e508dea053ae472d9038a0b8047c8ed9`);
+object boundaries still require validation. Both latter runs predate the
+render wording clarification. No deployment.
 
 BENCHMARK, P0, Hasolelim Floor 06 manual Object Evidence island inventory:
 

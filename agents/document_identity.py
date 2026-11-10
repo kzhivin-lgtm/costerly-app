@@ -646,7 +646,7 @@ def run_document_identity_call(*, page_images: list[bytes]) -> dict[str, Any]:
     )
     usage = getattr(response, "usage", None)
     return {
-        "model": model,
+        "model": str(getattr(response, "model", None) or model),
         "duration_seconds": round(time.perf_counter() - started, 3),
         "input_tokens": int(getattr(usage, "input_tokens", 0) or 0),
         "output_tokens": int(getattr(usage, "output_tokens", 0) or 0),

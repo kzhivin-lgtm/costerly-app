@@ -655,7 +655,7 @@ def run_naming_lab_call(
     usage = getattr(response, "usage", None)
     return {
         "lab_version": NAMING_LAB_VERSION,
-        "model": model,
+        "model": str(getattr(response, "model", None) or model),
         "duration_seconds": duration_seconds,
         "input_tokens": int(getattr(usage, "input_tokens", 0) or 0),
         "output_tokens": int(getattr(usage, "output_tokens", 0) or 0),

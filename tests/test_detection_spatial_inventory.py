@@ -728,7 +728,7 @@ def test_v67_accept_uses_mistral_graphic_anchor_over_model_bbox():
     }
     payload, audit = apply_detection_v67_mistral_anchor_admission(
         payload=_v67_anchor_payload(
-            bbox=model_bbox, core_bbox=model_bbox,
+            bbox=model_bbox, core_bbox={**model_bbox, "bottom_right_x": 381},
             decision={
                 "candidate_region_id": "CR-P001-001", "decision": "accept",
                 "group_id": "VG-P001-001", "reason": "The Mistral region exactly encloses the single elevation.",

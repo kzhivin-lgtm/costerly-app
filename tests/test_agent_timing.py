@@ -1689,9 +1689,9 @@ def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
     assert usage["raw_usage"]["v5_9_proposal"]["model"] == DETECTION_V634_ADA_DISCOVERY_MODEL
     assert usage["raw_usage"]["v5_9_review"]["model"] == "claude-sonnet-4-6"
     assert (usage["input_tokens"], usage["output_tokens"]) == (200, 40)
-    assert usage["input_cost_usd"] == "0.000400"
-    assert usage["output_cost_usd"] == "0.000400"
-    assert usage["total_cost_usd"] == "0.000800"
+    assert usage["input_cost_usd"] == "0.000310"
+    assert usage["output_cost_usd"] == "0.000310"
+    assert usage["total_cost_usd"] == "0.000620"
 
     invalid_proposal = copy.deepcopy(proposal)
     invalid_proposal.pop("candidate_region_decisions")

@@ -68,3 +68,10 @@ The overlap regression exercises actual concurrent scheduling, complete
 pair coverage, rejection of an omitted pair and preservation of the
 shared-plan star. Production publication requires the protected-main
 release step.
+
+## Owner acceptance
+
+On 2026-11-10 the owner accepted the Adda repair and requested a local
+checkpoint. Annotated tag
+`detection-v8.4.8-ada-parallel-membership-checkpoint-2026-11-10` resolves to
+`6c552b35dd8c58b15307635f7efbf2dd7c9f29a9`. The application was not deployed.

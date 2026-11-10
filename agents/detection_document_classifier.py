@@ -14,7 +14,10 @@ from collections import defaultdict
 from typing import Any
 
 
-DEFAULT_CLAUDE_DETECTION_MODEL = "claude-haiku-4-5-20251001"
+from config import CLAUDE_HAIKU_MODEL
+
+
+DEFAULT_CLAUDE_DETECTION_MODEL = CLAUDE_HAIKU_MODEL
 DEFAULT_CLAUDE_DETECTION_BOUNDARY_MODEL = "claude-sonnet-4-6"
 
 MIN_LARGE_DRAWING_SHARE = 0.08

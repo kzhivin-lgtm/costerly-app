@@ -701,7 +701,7 @@ def test_v627_scope_scout_routes_single_assembly_candidate_to_haiku_registry():
             },
         )
 
-    assert registry_call["model"] == "claude-haiku-4-5-20251001"
+    assert registry_call["model"] == "claude-haiku-5-5"
     assert registry_call["mistral_anchor_admission"] is False
     route = result["_agent_usage_events"][1]["raw_usage"]["detection_v6_12_document_category"]
     assert route["category"] == "assembly_set"

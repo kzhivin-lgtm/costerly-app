@@ -6,9 +6,13 @@ from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
 
 
+CLAUDE_HAIKU_MODEL = "claude-haiku-5-5"
+
+
 # USD per 1M tokens. Keep this small catalog versioned in code so usage
 # events keep cost data even when no pricing override is configured.
 DEFAULT_CLAUDE_MODEL_PRICING: dict[str, dict[str, str]] = {
+    CLAUDE_HAIKU_MODEL: {"input": "0.10", "output": "0.50"},
     "claude-haiku-4-5-20251001": {"input": "1", "output": "5"},
     "claude-haiku-4-5": {"input": "1", "output": "5"},
     "claude-sonnet-4-6": {"input": "3", "output": "15"},
@@ -45,7 +49,7 @@ def get_optional_secret(name: str, default: str | None = None) -> str | None:
     return default
 
 
-def get_model_token_pricing(model: str) -> dict[str, Decimal] | None:
+def get_model_token_pricing(model: str, *, prompt_tokens: int = 0) -> dict[str, Decimal] | None:
     """Return USD-per-million-token pricing for a model when configured.
 
     Pricing changes over time, so we keep it in config/secrets instead of
@@ -63,6 +67,8 @@ def get_model_token_pricing(model: str) -> dict[str, Decimal] | None:
             pricing = DEFAULT_CLAUDE_MODEL_PRICING
 
     model_pricing = pricing.get(model) or pricing.get("default")
+    if model == CLAUDE_HAIKU_MODEL and prompt_tokens > 100_000:
+        model_pricing = pricing.get(f"{model}-long-context") or {"input": "0.50", "output": "2.50"}
     if not model_pricing:
         return None
 
@@ -77,9 +83,13 @@ def calculate_llm_cost_usd(
     model: str,
     input_tokens: int,
     output_tokens: int,
+    cache_creation_input_tokens: int = 0,
+    cache_read_input_tokens: int = 0,
+    cache_creation_1h_input_tokens: int = 0,
 ) -> dict[str, str | None]:
     """Calculate token costs from real usage and configured model pricing."""
-    pricing = get_model_token_pricing(model)
+    prompt_tokens = input_tokens + cache_creation_input_tokens + cache_read_input_tokens
+    pricing = get_model_token_pricing(model, prompt_tokens=prompt_tokens)
     if not pricing:
         return {
             "input_cost_usd": None,
@@ -88,7 +98,15 @@ def calculate_llm_cost_usd(
         }
 
     million = Decimal("1000000")
-    input_cost = Decimal(input_tokens) / million * pricing["input"]
+    billable_input_tokens = Decimal(input_tokens)
+    if model == CLAUDE_HAIKU_MODEL:
+        cache_creation_5m = cache_creation_input_tokens - cache_creation_1h_input_tokens
+        billable_input_tokens += (
+            Decimal(cache_creation_5m) * Decimal("1.25")
+            + Decimal(cache_creation_1h_input_tokens) * Decimal("2")
+            + Decimal(cache_read_input_tokens) * Decimal("0.10")
+        )
+    input_cost = billable_input_tokens / million * pricing["input"]
     output_cost = Decimal(output_tokens) / million * pricing["output"]
     total_cost = input_cost + output_cost
 

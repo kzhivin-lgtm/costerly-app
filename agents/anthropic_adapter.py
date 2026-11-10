@@ -25,7 +25,7 @@ import anthropic
 
 from agents.multilingual_evidence import multilingual_fallback_signal
 
-from config import agent_cost_category, calculate_llm_cost_usd
+from config import CLAUDE_HAIKU_MODEL, agent_cost_category, calculate_llm_cost_usd
 from agents.prompt_loader import (
     load_detection_agent_prompt,
     load_detection_agent_without_naming_prompt,
@@ -116,8 +116,8 @@ from agents.schemas.detection_schema import (
 )
 
 
-DEFAULT_CLAUDE_DETECTION_MODEL = "claude-haiku-4-5-20251001"
-DEFAULT_CLAUDE_AGENT_MODEL = "claude-haiku-4-5-20251001"
+DEFAULT_CLAUDE_DETECTION_MODEL = CLAUDE_HAIKU_MODEL
+DEFAULT_CLAUDE_AGENT_MODEL = CLAUDE_HAIKU_MODEL
 DEFAULT_CLAUDE_FALLBACK_MODEL = "claude-sonnet-4-6"
 DETECTION_PROMPT_VERSION = "detection_v4_object_evidence_handoff_v6"
 DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
@@ -215,7 +215,7 @@ DETECTION_V848_GLOBAL_PAIR_PROOF_PROMPT = (
     "Check the plan and render for matching distinctive corner geometry and placement of terminal modules."
 )
 DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS = 180
-DETECTION_V634_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
+DETECTION_V634_ADA_DISCOVERY_MODEL = CLAUDE_HAIKU_MODEL
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
 DETECTION_V75_CONFLICT_RESOLVER_PROMPT_VERSION = (
     "detection_v7_5_independent_visual_conflict_resolver"
@@ -1272,10 +1272,26 @@ def get_anthropic_client() -> anthropic.Anthropic:
     return anthropic.Anthropic(api_key=api_key, timeout=90.0)
 
 
+def _claude_runtime_model(model: str | None) -> str | None:
+    if model and model.startswith(("claude-haiku-4-5", "claude-3-5-haiku", "claude-3-haiku")):
+        return CLAUDE_HAIKU_MODEL
+    return model
+
+
+def _prepare_claude_request(kwargs: dict[str, Any]) -> dict[str, Any]:
+    if _claude_runtime_model(kwargs.get("model")) == CLAUDE_HAIKU_MODEL:
+        kwargs["model"] = CLAUDE_HAIKU_MODEL
+        # Haiku 5.5 rejects sampling controls and defaults to adaptive thinking.
+        for parameter in ("temperature", "top_p", "top_k"):
+            kwargs.pop(parameter, None)
+        kwargs["output_config"] = {"effort": "low", **(kwargs.get("output_config") or {})}
+    return kwargs
+
+
 def create_claude_message(client: anthropic.Anthropic, **kwargs: Any) -> Any:
     """Call Claude and turn SDK transport errors into actionable app errors."""
     try:
-        return client.messages.create(**kwargs)
+        return client.messages.create(**_prepare_claude_request(kwargs))
     except anthropic.APITimeoutError as exc:
         raise RuntimeError(
             "Claude request timed out before receiving a response. Try again with the same file."
@@ -1313,7 +1329,7 @@ def create_claude_message_streamed(
     try:
         if cancel_requested is not None and cancel_requested():
             raise RuntimeError("Claude stream was cancelled.")
-        with client.messages.stream(**kwargs) as stream:
+        with client.messages.stream(**_prepare_claude_request(kwargs)) as stream:
             request_id = stream.request_id
             for event in stream:
                 if cancel_requested is not None and cancel_requested():
@@ -2824,7 +2840,7 @@ def _v641_count_input_tokens(
     """Ask the provider for an exact input count without producing a response."""
     try:
         result = client.messages.count_tokens(
-            model=model,
+            model=_claude_runtime_model(model),
             system=system,
             messages=messages,
             output_config=output_config,
@@ -4944,11 +4960,19 @@ def summarize_detection_provider_call(
     input_tokens = int(getattr(usage, "input_tokens", 0) or 0)
     output_tokens = int(getattr(usage, "output_tokens", 0) or 0)
     response_model = str(getattr(response, "model", "") or "")
-    effective_model = requested_model or response_model or DEFAULT_CLAUDE_DETECTION_MODEL
+    effective_model = (
+        response_model if response_model == CLAUDE_HAIKU_MODEL
+        else requested_model or response_model or DEFAULT_CLAUDE_DETECTION_MODEL
+    )
     costs = calculate_llm_cost_usd(
         model=effective_model,
         input_tokens=input_tokens,
         output_tokens=output_tokens,
+        cache_creation_input_tokens=int(getattr(usage, "cache_creation_input_tokens", 0) or 0),
+        cache_read_input_tokens=int(getattr(usage, "cache_read_input_tokens", 0) or 0),
+        cache_creation_1h_input_tokens=int(
+            getattr(getattr(usage, "cache_creation", None), "ephemeral_1h_input_tokens", 0) or 0
+        ),
     )
     started = str(diagnostics.get("request_started_at") or "")
     finished = str(diagnostics.get("request_finished_at") or "")
@@ -7299,12 +7323,6 @@ def apply_detection_v67_mistral_anchor_admission(
             raise ValueError("Mistral anchor decision crosses pages")
         claimed_group_ids.add(group_id)
         proposed_bbox = _detection_bbox(group.get("bbox"))
-        proposed_core_bbox = _detection_bbox(group.get("core_bbox"))
-        if proposed_bbox is None or proposed_core_bbox is None or not _detection_bbox_contains(
-            proposed_bbox, proposed_core_bbox,
-        ):
-            raise ValueError("Mistral anchor proposed geometry is invalid")
-
         if decision_kind == "accept":
             # A cited fact may explain why the model accepts an anchor. It is
             # evidence only: the canonical geometry remains the Mistral box.
@@ -7317,6 +7335,12 @@ def apply_detection_v67_mistral_anchor_admission(
                 "proposed_bbox": proposed_bbox,
             })
             continue
+
+        proposed_core_bbox = _detection_bbox(group.get("core_bbox"))
+        if proposed_bbox is None or proposed_core_bbox is None or not _detection_bbox_contains(
+            proposed_bbox, proposed_core_bbox,
+        ):
+            raise ValueError("Mistral anchor proposed geometry is invalid")
 
         cited_facts = [facts_by_id[str(fact_id)] for fact_id in decision["source_fact_ids"]]
         same_page_cited_bboxes = [
@@ -14589,10 +14613,17 @@ def build_agent_usage_event(
         getattr(usage, "cache_creation_input_tokens", 0) or 0
     )
     cache_read_input_tokens = int(getattr(usage, "cache_read_input_tokens", 0) or 0)
+    if getattr(response, "model", None) == CLAUDE_HAIKU_MODEL:
+        model = CLAUDE_HAIKU_MODEL
     costs = calculate_llm_cost_usd(
         model=model,
         input_tokens=input_tokens,
         output_tokens=output_tokens,
+        cache_creation_input_tokens=cache_creation_input_tokens,
+        cache_read_input_tokens=cache_read_input_tokens,
+        cache_creation_1h_input_tokens=int(
+            getattr(getattr(usage, "cache_creation", None), "ephemeral_1h_input_tokens", 0) or 0
+        ),
     )
     started = datetime.fromisoformat(started_at)
     finished = datetime.fromisoformat(finished_at)

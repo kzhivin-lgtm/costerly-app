@@ -44,8 +44,10 @@ returning that page's Island ID list, including an empty list when appropriate.
 Use `floor_plan` for a whole architectural room-and-circulation layout, and
 classify it as Document Context, not Object Evidence.
 
-Use the exact `representation_kind` `presentation_render` for a photographic
-render or photo that presents a fabricated object. Do not use it for a
-line-drawn or dimensioned technical perspective. A presentation render remains
-Object Evidence when it depicts fabrication, but it is not itself a commercial
-object or a quantity decision.
+Use the exact `representation_kind` `presentation_render` for a photograph or a
+finished-looking 3D depiction with solid shaded surfaces and visible finishes.
+This includes a coloured isometric CAD render with solid faces, even when it
+does not look like a photograph. Do not use it for a line drawing, a wireframe,
+or a perspective whose primary purpose is to communicate dimensions or
+construction callouts. A presentation render that depicts fabrication is Object
+Evidence. Membership determines whether it belongs to a technical View.
