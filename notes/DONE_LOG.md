@@ -1,5 +1,12 @@
 # Done Log
 
+Detection V8.4.9 production release `614f369`. Railway reported success
+for the exact commit. The public wrapper and live Core login DOM both
+reported `detection-v8.4.9-haiku55-coordinate-ocr` and Core health was OK.
+The restored full experimental archive and rollback are indexed in
+`notes/DETECTION_V8_4_9_PRODUCTION_CHECKPOINT_2026_11_10.md`. The owner
+will perform fresh HSL 06 and 07 Upload checks.
+
 Detection V8.4.9 local post-cleanup checkpoint `3f3f157`: retired seven
 historical entry points. Restored replay matched requests and results for
 Adda, Lev 1, Lev 2, Page 23, HSL 07, and the visual fallback. 406 tests
