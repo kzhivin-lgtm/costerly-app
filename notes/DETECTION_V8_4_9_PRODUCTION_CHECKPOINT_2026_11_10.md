@@ -25,3 +25,12 @@ Restored all 425 entries by checksum and cloned the experimental
 `detection-v8.4.9-full-lab-2026-11-10` tag at `b5b7712` from the bundle.
 The two original HSL PDFs, fresh provider replies, audit scripts, and
 protected replay packs stay in the private archive.
+
+## Deployment names
+
+Use `<model and version> · Detection <current version> · <latest change>`
+in the visible deployment title and the corresponding release commit title.
+Name the model used by the affected route. Carry the same three fields in
+the machine-readable build marker.
+
+Example: `Haiku 5.5 · Detection V8.4.9 · Processing timer recovery`
