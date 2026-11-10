@@ -1,5 +1,10 @@
 # Done Log
 
+Autonomous Floor 07 experiment completed at the frozen Haiku 5.5 lab tag.
+It returned 13 groups and reproduced the accepted P11 split. The P05
+endpoint format mismatch and separate P04 witness are recorded in
+`notes/evidence/detection-v8.4.9-haiku55-autonomous-floor-07.json`.
+
 Owner accepted the HSL Floor 07 Haiku 5.5 replay with ten objects and
 one separate View on P11. The autonomous repeat remains a separate check.
 Local tag `detection-v8.4.9-haiku55-hsl-replay-accepted-2026-11-10`.

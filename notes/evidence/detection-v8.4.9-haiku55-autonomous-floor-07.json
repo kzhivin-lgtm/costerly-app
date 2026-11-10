@@ -1,0 +1,318 @@
+{
+  "status": "autonomous_run_complete_partial_match",
+  "runner_tag": "detection-v8.4.9-haiku55-autonomous-lab-2026-11-10",
+  "runner_commit": "a9c19d83591b11717f420dca36adbb0e74a3ecfd",
+  "owner_accepted_replay_commit": "9b91e9e14cd567bb9aea64a7841784f7f8718f53",
+  "artifacts": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-07-first",
+  "sha256sums_sha256": "fd94f2af28b91cbb71b2ce9ea5856c7947759b97e6ae47f3537a1406b110c2b3",
+  "run": {
+    "source_file": "Hasolelim_Carpentry_Plan_Floor_07.pdf",
+    "source_sha256": "45e51f24b04c75b8b0223ef0e60724faaed65f3c34105b1e32c04b16ec005c69",
+    "route": "ordinary_object_set",
+    "run_id": "run_d156e69b412a4690b88540fdf06baf8c",
+    "ocr_seconds": 22.737,
+    "total_seconds": 109.667,
+    "calls": [
+      {
+        "stage": "discovery",
+        "model": "claude-haiku-5-5",
+        "message_id": "msg_011CguPtd6BaGFuoDpKPXYtk",
+        "stop_reason": "end_turn",
+        "input_tokens": 129536,
+        "output_tokens": 9103,
+        "seconds": 29.462,
+        "request_sha256": "ebcfebdf5503ed369b1fb57d1e643e50ae57a0de8a20fec4ca280bb44eb4452d"
+      },
+      {
+        "stage": "role",
+        "model": "claude-haiku-5-5",
+        "message_id": "msg_011CguPvfDEPPGySk9K1Rnr7",
+        "stop_reason": "end_turn",
+        "input_tokens": 4510,
+        "output_tokens": 633,
+        "seconds": 4.166,
+        "request_sha256": "c877d403bd836d0c8c3d7e54e592cab43900504efd7d3ef5fcc817fc19a79927"
+      },
+      {
+        "stage": "membership",
+        "model": "claude-haiku-5-5",
+        "message_id": "msg_011CguPwBWdiyg4LVFniJVVT",
+        "stop_reason": "end_turn",
+        "input_tokens": 28816,
+        "output_tokens": 5509,
+        "seconds": 28.562,
+        "request_sha256": "c367e7107b38bd236f2dcaaba702a48d294f901211706ce91d62f976b74bc6e2"
+      },
+      {
+        "stage": "same_page_supplement",
+        "model": "claude-haiku-5-5",
+        "message_id": "msg_011CguPyGZHoZBcXeC1Q72X6",
+        "stop_reason": "end_turn",
+        "input_tokens": 10780,
+        "output_tokens": 3665,
+        "seconds": 19.097,
+        "request_sha256": "df37db29962a2937c194b0d781fecb24004fe127365fdc597f19bbe901d3cde3",
+        "pages": [
+          3,
+          4,
+          5
+        ]
+      }
+    ],
+    "primary_groups": [
+      [
+        "P03.V1",
+        "P03.V2",
+        "P03.V3"
+      ],
+      [
+        "P04.V1",
+        "P04.V2",
+        "P04.V3",
+        "P04.V4",
+        "P04.V6"
+      ],
+      [
+        "P04.V5"
+      ],
+      [
+        "P05.V1"
+      ],
+      [
+        "P05.V2"
+      ],
+      [
+        "P05.V3"
+      ],
+      [
+        "P06.V1",
+        "P06.V2",
+        "P06.V3"
+      ],
+      [
+        "P07.V1",
+        "P07.V2",
+        "P07.V3",
+        "P07.V4"
+      ],
+      [
+        "P08.V1",
+        "P08.V2",
+        "P08.V3",
+        "P08.V4"
+      ],
+      [
+        "P09.V1",
+        "P09.V2",
+        "P09.V3"
+      ],
+      [
+        "P10.V1",
+        "P10.V2",
+        "P10.V3"
+      ],
+      [
+        "P11.V1"
+      ],
+      [
+        "P11.V2",
+        "P11.V3"
+      ]
+    ],
+    "revisited_pages": [
+      5
+    ],
+    "supplement_hypothesis_count": 0,
+    "final_groups": [
+      [
+        "P03.V1",
+        "P03.V2",
+        "P03.V3"
+      ],
+      [
+        "P04.V1",
+        "P04.V2",
+        "P04.V3",
+        "P04.V4",
+        "P04.V6"
+      ],
+      [
+        "P04.V5"
+      ],
+      [
+        "P05.V1"
+      ],
+      [
+        "P05.V2"
+      ],
+      [
+        "P05.V3"
+      ],
+      [
+        "P06.V1",
+        "P06.V2",
+        "P06.V3"
+      ],
+      [
+        "P07.V1",
+        "P07.V2",
+        "P07.V3",
+        "P07.V4"
+      ],
+      [
+        "P08.V1",
+        "P08.V2",
+        "P08.V3",
+        "P08.V4"
+      ],
+      [
+        "P09.V1",
+        "P09.V2",
+        "P09.V3"
+      ],
+      [
+        "P10.V1",
+        "P10.V2",
+        "P10.V3"
+      ],
+      [
+        "P11.V1"
+      ],
+      [
+        "P11.V2",
+        "P11.V3"
+      ]
+    ],
+    "retained_view_count": 32,
+    "required_same_page_pairs": 45
+  },
+  "comparison": {
+    "geometry_match_count": 32,
+    "geometry_match_iou_min": 0.911864406779661,
+    "missing_views": [
+      "P04.V5"
+    ],
+    "additional_views": [],
+    "missing_expected_pairs": [
+      [
+        "P04.V1",
+        "P04.V5"
+      ],
+      [
+        "P04.V1",
+        "P04.V6"
+      ],
+      [
+        "P04.V2",
+        "P04.V5"
+      ],
+      [
+        "P04.V2",
+        "P04.V6"
+      ],
+      [
+        "P04.V3",
+        "P04.V5"
+      ],
+      [
+        "P04.V3",
+        "P04.V6"
+      ],
+      [
+        "P04.V4",
+        "P04.V5"
+      ],
+      [
+        "P04.V4",
+        "P04.V6"
+      ],
+      [
+        "P04.V5",
+        "P04.V6"
+      ],
+      [
+        "P04.V5",
+        "P04.V7"
+      ],
+      [
+        "P04.V6",
+        "P04.V7"
+      ],
+      [
+        "P05.V1",
+        "P05.V2"
+      ],
+      [
+        "P05.V1",
+        "P05.V3"
+      ],
+      [
+        "P05.V2",
+        "P05.V3"
+      ]
+    ],
+    "unexpected_pairs": [],
+    "same_partition_as_owner_accepted_replay": false,
+    "meets_owner_approved_scope": false,
+    "groups_by_reference": [
+      [
+        "P03.V1",
+        "P03.V2",
+        "P03.V3"
+      ],
+      [
+        "P04.V1",
+        "P04.V2",
+        "P04.V3",
+        "P04.V4",
+        "P04.V7"
+      ],
+      [
+        "P04.V6"
+      ],
+      [
+        "P05.V1"
+      ],
+      [
+        "P05.V2"
+      ],
+      [
+        "P05.V3"
+      ],
+      [
+        "P06.V1",
+        "P06.V2",
+        "P06.V3"
+      ],
+      [
+        "P07.V1",
+        "P07.V2",
+        "P07.V3",
+        "P07.V4"
+      ],
+      [
+        "P08.V1",
+        "P08.V2",
+        "P08.V3",
+        "P08.V4"
+      ],
+      [
+        "P09.V1",
+        "P09.V2",
+        "P09.V3"
+      ],
+      [
+        "P10.V1",
+        "P10.V2",
+        "P10.V3"
+      ],
+      [
+        "P11.V1"
+      ],
+      [
+        "P11.V2",
+        "P11.V3"
+      ]
+    ]
+  }
+}

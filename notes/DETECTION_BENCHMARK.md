@@ -3,14 +3,15 @@
 ## V8.4.9 Haiku 5.5 acceptance experiments, 2026-11-10
 
 The owner accepts the ten-object HSL 07 replay with one separate View
-on P11. An autonomous repeat is pending. Three identical
+on P11. The autonomous repeat returned 13 groups, with the same P11
+partition and remaining gaps on P04 and P05. Three identical
 single-call trials gave 9, 12 and 15 objects on the 32 frozen Views.
 Supplemental offline replay gives nine in all three cases, using the
 same saved extra replies. Fresh OCR and Discovery with that offline
 supplement and a separate role response give 10 objects on 33 Views.
 P11 still misses one connection. Adda, Lev 1, Lev 2 and both Page 23
-routes reproduce their protected checkpoint results. The live candidate
-was removed. See
+routes reproduce their protected checkpoint results. The original single-request candidate was removed. Autonomous evidence is
+in `notes/evidence/detection-v8.4.9-haiku55-autonomous-floor-07.json`. See
 `notes/DETECTION_V8_4_9_HAIKU55_ACCEPTANCE_ROUND_2026_11_10.md`.
 
 ## V8.4.9 local post-cleanup checkpoint, 2026-11-10

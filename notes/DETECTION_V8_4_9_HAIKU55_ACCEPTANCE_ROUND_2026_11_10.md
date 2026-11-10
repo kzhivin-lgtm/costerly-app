@@ -98,3 +98,35 @@ combines the two sets of evidence without consulting the benchmark or
 loading past replies. Compilation may reuse the current invocation's
 Discovery responses in memory with a request hash check. The lab does
 not alter the product runtime, the other routes, or merge thresholds.
+
+## Autonomous Floor 07 result
+
+The frozen lab at `a9c19d8` processed the desktop Floor 07 source in
+`run_d156e69b412a4690b88540fdf06baf8c`. The hash matched the earlier
+Floor 07 fixture. The Floor 06 file has a different hash. All OCR and
+four Haiku 5.5 responses were new. Elapsed time was 109.667 seconds,
+including 22.737 seconds of OCR and 19.097 seconds of supplemental
+review. The full elapsed time includes the lab's own local work.
+
+The lab produced 13 groups on 32 Views. After aligning View rectangles
+to the owner-accepted replay, the seven pages outside P04 and P05 have
+the same partition, including the separate P11 View. No unexpected
+pair merged and P02 remained context. On P04 five of six retained
+fabrication Views formed N57 and one stayed separate. The annotation
+strip was correctly classified as context and absent from the inventory
+of fabricated Views.
+
+The primary output had no merge on P05, so the lab selected the batch
+containing it. Haiku reported two positive pairs for P05, each with
+both exact View IDs prefixed by `registry_view:`. That prefix denotes
+a source citation. The lab expected bare endpoints in the pair field,
+so it skipped both rows before invoking the semantic validator.
+A read-only comparison confirmed the two bare IDs are in the existing
+Q list. It did not alter the recorded run or validate the proposed facts
+as final merges. The next narrow experiment is to accept only exact
+known endpoint aliases in the parser and then run the unchanged
+semantic and graph gates. P04's remaining standalone fabrication View
+is separate from this parser issue.
+
+Full outcome and raw provider evidence are indexed by
+`notes/evidence/detection-v8.4.9-haiku55-autonomous-floor-07.json`.

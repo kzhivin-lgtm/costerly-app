@@ -286,8 +286,10 @@ cost. Preserve exhaustive same-sheet comparison, Ada Sonnet, Page 23,
 Q and routing. Deployment is outside this local iteration.
 The 2026-11-10 round restored exact frozen groups in supplemental offline
 replay. The owner accepts the ten-object replay on the fresh HSL 07 input, with
-one unjoined View on P11. Verify the same logic in an autonomous repeat
-with fresh OCR and new provider replies.
+one unjoined View on P11. The autonomous run retained that P11 partition
+and yielded 13 groups with gaps on P04 and P05. First check exact endpoint
+alias normalization against Q for the two discarded P05 proposals. Check
+P04 separately and preserve context treatment for the dimension strip.
 An independent Conflict Resolver role control removed an extra whole-floor
 plan but has open recall checks. The rejected runtime prompt was removed.
 Keep the prompt universal and benchmark-specific details in fixtures only.
