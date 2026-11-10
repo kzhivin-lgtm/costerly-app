@@ -297,6 +297,13 @@ candidate drawing and the supported part of a wider render before
 considering another recovery path. End-to-end Floor 06 quality remains
 open under ordinary reproducibility.
 
+The owner requested a production upload check for HSL 06 and 07.
+GitHub main `8eb87f1` and the public wrapper still identify V8.4.7.
+The latest tested runner is CLI-only and overrides adapter functions
+within its process. Production test delivery is pending an agreed
+release scope. Proposed scope: explicit staff-only selection and an
+isolated process per test run, with the selected variant in run audit.
+
 DEFERRED, P2, shared render or View evidence:
 The owner raised the possibility that one drawing View or render can
 illustrate two distinct objects. Evaluate the existing Registry shared
