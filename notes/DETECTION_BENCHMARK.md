@@ -1,5 +1,8 @@
 # Detection Agent benchmark
 
+The V8.4.9 production-path release replay and private full checkpoint are
+indexed by `notes/DETECTION_V8_4_9_PRODUCTION_CHECKPOINT_2026_11_10.md`.
+
 ## V8.4.9 local post-cleanup checkpoint, 2026-11-10
 
 Fixed-input restored replay verified identical provider requests, View
