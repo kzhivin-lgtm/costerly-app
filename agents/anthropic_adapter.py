@@ -216,7 +216,6 @@ DETECTION_V5_PROPOSAL_MAX_TOKENS = 8_192
 # at the normal budget while still inside a JSON string.  It keeps the same
 # discovery contract and is intentionally not a general validation retry.
 DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS = 12_288
-DETECTION_V8411_ORDINARY_DISCOVERY_RETRY_MAX_TOKENS = 16_384
 DETECTION_V8411_DISCOVERY_RECOVERY_PAGES_PER_CALL = 4
 # V6.41 is a transport guard, not a new semantic route.  It applies only
 # after ordinary routing has selected the established Registry contract.
@@ -9900,10 +9899,9 @@ def run_anthropic_detection_visual_registry_agent(
         and not mistral_anchor_admission_active
         and _claude_runtime_model(discovery_model) == CLAUDE_HAIKU_MODEL
     )
-    discovery_retry_limit = (
-        DETECTION_V8411_ORDINARY_DISCOVERY_RETRY_MAX_TOKENS
-        if ordinary_haiku_discovery else DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS
-    )
+    # Keep the established first-pass batch behavior. Single-pass Discovery and
+    # explicit recovery reserve the output budget for the JSON inventory.
+    discovery_options = {"thinking": {"type": "disabled"}} if ordinary_haiku_discovery else {}
     prompt_version = (
         DETECTION_V67_MISTRAL_ANCHOR_ADMISSION_PROMPT_VERSION
         if mistral_anchor_admission_active
@@ -10209,10 +10207,6 @@ def run_anthropic_detection_visual_registry_agent(
             batch_initial_max_tokens = select_detection_v645_discovery_output_max_tokens(
                 len(batch_candidates),
             )
-            if ordinary_haiku_discovery and len(batch_candidates) >= 24:
-                batch_initial_max_tokens = max(
-                    batch_initial_max_tokens, DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
-                )
             batch_response, batch_diagnostics = stream_message(
                 client,
                 model=discovery_model,
@@ -10246,16 +10240,17 @@ def run_anthropic_detection_visual_registry_agent(
                     batch_response, batch_diagnostics = stream_message(
                         client,
                         model=discovery_model,
-                        max_tokens=discovery_retry_limit,
+                        max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
                         temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
                         system=proposal_system,
                         messages=batch_messages,
                         output_config=batch_output_config,
+                        **discovery_options,
                     )
                     batch_attempts.append({
                         "response": batch_response,
                         "diagnostics": batch_diagnostics,
-                        "max_tokens": discovery_retry_limit,
+                        "max_tokens": DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
                         "exact_input_tokens": exact_input_tokens,
                         "context_characters": len(batch_user_text),
                         "retry_kind": "truncated_json",
@@ -10459,6 +10454,7 @@ def run_anthropic_detection_visual_registry_agent(
             system=proposal_system,
             messages=proposal_messages,
             output_config=proposal_output_config,
+            **discovery_options,
         )
         proposal_raw_text = extract_text_from_claude_response(proposal_response)
     proposal_attempt_summaries = (
@@ -10477,7 +10473,7 @@ def run_anthropic_detection_visual_registry_agent(
     except json.JSONDecodeError as initial_error:
         proposal_json_error: json.JSONDecodeError | None = initial_error
         if (
-            proposal_output_max_tokens < discovery_retry_limit
+            proposal_output_max_tokens < DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS
             and _is_retryable_visual_registry_json_truncation(
                 proposal_raw_text,
                 proposal_response,
@@ -10489,7 +10485,7 @@ def run_anthropic_detection_visual_registry_agent(
                 stage_callback("Discovery retry 1")
             proposal_response, proposal_diagnostics = stream_message(
                 get_anthropic_client(), model=discovery_model,
-                max_tokens=discovery_retry_limit,
+                max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
                 temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
                 system=build_detection_system_content(
                     prompt=proposal_prompt_with_anchor_contract,
@@ -10498,12 +10494,13 @@ def run_anthropic_detection_visual_registry_agent(
                 output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
                     proposal_schema,
                 )}},
+                **discovery_options,
             )
             proposal_raw_text = extract_text_from_claude_response(proposal_response)
             proposal_attempt_summaries.append(summarize_proposal_attempt(
                 proposal_response,
                 proposal_diagnostics,
-                max_tokens=discovery_retry_limit,
+                max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
             ))
             try:
                 proposal_raw_payload = json.loads(proposal_raw_text)
@@ -10791,12 +10788,13 @@ def run_anthropic_detection_visual_registry_agent(
                 stage_callback("Discovery coverage recovery")
             try:
                 response, recovery_diagnostics = stream_message(
-                    get_anthropic_client(), model=discovery_model, max_tokens=discovery_retry_limit,
+                    get_anthropic_client(), model=discovery_model, max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
                     temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
                     system=proposal_system, messages=[{"role": "user", "content": content}],
                     output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
                         recovery_schema,
                     )}},
+                    **discovery_options,
                 )
                 recovery_audit["provider"] = summarize_detection_provider_call(
                     response=response, diagnostics=recovery_diagnostics, requested_model=discovery_model,

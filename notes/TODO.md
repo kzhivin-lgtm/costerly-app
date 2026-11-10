@@ -1,6 +1,6 @@
 # TODO
 
-## Production Detection V8.4.9 recovery
+## Production Detection V8.4.11 recovery
 
 ACTIVE, P0, verify the owner's Upload and Processing experience on HSL 06/07.
 Production HSL 06 sent eleven known-render `no_match` rows with blank witnesses.
@@ -71,7 +71,10 @@ the accepted 10-group fixed-input partition. Fresh full cycles returned
 11, 13, and 11 groups. In the final run, P05 grouped correctly and
 Conflict Resolver admitted a fragment of the P07 title block as a
 standalone technical View. This is a role admission witness, separate
-from dimension-based Membership.
+from dimension-based Membership. V8.4.11 completed a fresh upload with
+34 Views and 13 objects. Recheck the P05 and P11 split and the independent
+P07 title-block admission against the accepted 10-object partition.
+Keep these separate from the now-verified Discovery JSON repair.
 
 VERIFIED, P0, restore Discovery coverage on Floor 06 Upload.
 Fresh production run `run_6f5b804b71a945b0936ef731a11bb959` completed
@@ -84,7 +87,22 @@ P03 despite receiving 11 Candidate Regions on that sheet. A separate
 full run recovered technical views on every sheet. On a later verification
 attempt, Mistral timed out on both HSL files and the source-degraded
 inventory returned incomplete JSON. Preserve the normal OCR route and
-diagnose fallback output budgets separately.
+diagnose fallback output budgets separately. V8.4.11 adds a bounded
+review of ordinary Discovery pages with missing technical coverage. It
+selects the saved P05–P07 incident before Membership and preserves the
+original output limits. Track any remaining fresh-run page omissions
+separately from provider OCR timeouts. Fresh V8.4.11 verification kept
+6, 3, and 7 Views on Floor 06 P05–P07. Membership split P07 into seven
+objects in that run; a separate run with saved OCR kept P07 together.
+Keep the remaining grouping work under the ordinary Membership item.
+
+VERIFIED IN LIVE DISCOVERY, P0, remove the Haiku 5.5 adaptive-thinking
+budget regression from ordinary Discovery. At an unchanged 12,288-token
+ceiling, a controlled Floor 07 request reproduced the invalid JSON with
+thinking and produced complete JSON at 8,304 output tokens without it.
+The first pass of multi-batch Discovery and other stages retain their
+prior settings. See the V8.4.11
+entry in `notes/DETECTION_BENCHMARK.md`.
 
 PENDING LIVE VERIFY, P1, make deferred Naming robust to truncated model JSON.
 The model output budget now scales with the locked object count. Only

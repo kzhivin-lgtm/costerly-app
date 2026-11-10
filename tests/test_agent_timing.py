@@ -1090,7 +1090,7 @@ def test_locked_evidence_handoff_uses_temperature_zero_and_records_it():
 
 @pytest.mark.parametrize(("model", "category", "initial_budget", "retry_budget"), [
     ("model", None, 8192, DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS),
-    ("claude-haiku-5-5", "ordinary_object_set", 12288, 16384),
+    ("claude-haiku-5-5", "ordinary_object_set", 8192, 12288),
 ])
 def test_integrated_visual_registry_retries_only_a_proven_truncated_proposal(
     model, category, initial_budget, retry_budget,
@@ -1111,8 +1111,12 @@ def test_integrated_visual_registry_retries_only_a_proven_truncated_proposal(
             model="claude-haiku-4-5-20251001",
         )
 
-    def fake_create(*_args, max_tokens, **_kwargs):
+    def fake_create(*_args, max_tokens, **kwargs):
         requested_budgets.append(max_tokens)
+        if category and len(requested_budgets) <= 2:
+            assert kwargs["thinking"] == {"type": "disabled"}
+        else:
+            assert "thinking" not in kwargs
         output_tokens = initial_budget if len(requested_budgets) == 1 else 20
         return response_with_output_tokens(output_tokens), {
             "request_started_at": "2026-10-16T00:00:00+00:00",
@@ -1309,6 +1313,9 @@ def test_ordinary_discovery_recovers_empty_and_render_only_pages_before_membersh
         )
 
     assert stream.call_count == 3
+    assert [call.kwargs.get("thinking") for call in stream.call_args_list] == [
+        {"type": "disabled"}, {"type": "disabled"}, None,
+    ]
     recovery = usage["raw_usage"]["v8_4_11_discovery_coverage_recovery"]
     assert [row["recovered_pages"] for row in recovery] == [[2, 3]]
     assert usage["input_tokens"] == 300

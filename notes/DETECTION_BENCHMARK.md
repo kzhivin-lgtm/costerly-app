@@ -32,35 +32,50 @@ groups. Fresh production Floor 06 Upload run
 Using centimeters with the same Views, Q, and model evidence produced 22
 groups, a diagnostic result whose object boundaries require verification.
 
-### V8.4.11 Discovery coverage and output recovery
+### V8.4.11 Discovery coverage and complete JSON
 
 The Floor 06 production incident retained only a presentation render on P05
 and returned empty coverage for P06 and P07 after a truncated Discovery
-batch was retried. The new ordinary Haiku route independently reinspects
-pages with missing technical coverage and conflicting source candidates
-before Membership. Context already covering the source candidates stays
-excluded. Recovery uses a bounded set of full pages, and replaces a page
-only when the validated response adds technical views. The saved incident
-selects P03 through P07. The Floor 07 incident filled the 12,288-token
-response and stopped inside `classification_reason`. Ordinary Discovery can
-now make one bounded retry at 16,384 tokens after proven truncation.
+batch was retried. Ordinary Haiku independently reinspects pages with
+missing technical coverage and conflicting source candidates before
+Membership. Context already covering the source candidates stays excluded.
+Recovery uses bounded groups of full pages and replaces a page only when
+the validated response adds technical views. The saved incident selects
+P03 through P07.
 
-Fresh OCR, Detection, registry persistence in the isolated upload harness,
-and deferred Naming completed for both files. Neither needed a Discovery
-retry or coverage recovery on these fresh inputs. The failure conditions
-and recovery path were exercised separately in regression tests.
+The Floor 07 incident filled the 12,288-token response and stopped inside
+`classification_reason`. Its input was smaller than earlier complete runs.
+In a controlled live comparison at the same 12,288-token ceiling, adaptive
+thinking used the entire output budget and left invalid JSON after 61.160 s.
+With thinking disabled, the same request returned valid JSON for all 11 pages
+with 8,304 output tokens after 41.206 s. Single-pass ordinary Haiku
+Discovery and targeted recovery explicitly disable adaptive thinking.
+The first pass of multi-batch Discovery keeps its existing settings. The
+original initial and retry budgets remain in place. Other stages and
+routes retain their configuration.
 
-| File | Fresh run | Views | Objects | Server cycle | Naming |
-|---|---|---:|---:|---:|---:|
-| Floor 06 | `run_7b9f8f6fead14c7cadc5a731edc5ed88` | 63 | 15 | 168.205 s | 48.542 s |
-| Floor 07 | `run_fc164cdd778742a2a318682a3fe95ffa` | 34 | 11 | 104.770 s | 39.856 s |
+With fresh OCR and a full upload cycle in an isolated persistence harness,
+Floor 07 `run_5b7e5316ad9d403a8e09f545571b90d2` completed Discovery on the
+first call with 8,124 output tokens. It retained 34 Views in 13 objects,
+compared with 33 Views and 10 objects in the accepted lab benchmark.
+P05 and P11 each split one additional component; Conflict Resolver admitted
+an extra P07 title-block fragment. The cycle took 141.840 s before deferred
+Naming, compared with 149.512 s in the lab. All 13 names persisted in the
+isolated harness. The accepted 10-object partition still reproduces on
+archived inputs and replies; fresh grouping remains a separate open issue.
 
-Floor 06 retained 6, 3 and 7 Views on P05, P06 and P07, respectively, and one
-object on each. P10 accounted for both extra objects against the 13-object
-benchmark (120.312 s server cycle). The prior 14-object incident took
-286.475 s. Floor 07 retained the benchmark partition on replay. The fresh
-run had one extra object, a P07 title-block fragment admitted by Conflict
-Resolver. The 10-object live benchmark lab took 149.512 s before Naming.
+Floor 06 `run_2c6161f20d9141dbb014af8000dce746` used fresh OCR and retained
+all 13 technical sheets. P05, P06, and P07 retained 6, 3, and 7 Views and
+published 1, 1, and 7 objects, respectively. The full upload cycle returned
+62 Views and 23 objects, compared with 36 Views and 13 objects in the
+production benchmark. It took 160.415 s before deferred Naming, compared
+with 120.312 s. OCR was 23.582 s versus 12.953 s, and Detection was 136.552 s
+versus 102.733 s. All 23 names persisted in the isolated harness. An
+independent run on saved OCR retained all 13 technical sheets in 20 objects,
+including a single P07 group. Neither fresh run of the release candidate
+needed the new coverage recovery call. Regression tests exercise it on
+render-only and empty technical sheets. Coverage is verified; grouping
+quality on P07 and other split sheets remains open.
 
 ### V8.4.10 same-sheet view evidence
 
