@@ -14,6 +14,13 @@ partition under the final rule. The final-policy replay of the fresh
 Floor 06 input had 17 objects, including one each on P06, P10, and P13.
 P03, P04, and P07 remain split on that input.
 
+On November 11 the owner's production Floor 06 Upload
+`run_dce43f565ef64a47b1965bd71f97a101` published 13 objects with 30
+technical Views. Four separately detected presentation Views were
+excluded after `no_match`. The cycle took 105.173 seconds through save.
+P03–P08 each arrived as one Discovery View. Keep the object-count
+witness and the unresolved View coverage check separate.
+
 ## V8.4.12 short Fingerprint release
 
 The release compiler promoted five saved Floor 06 pairs to dimension

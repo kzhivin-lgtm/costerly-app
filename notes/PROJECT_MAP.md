@@ -56,6 +56,8 @@ This file explains where code belongs so the project stays understandable.
   and lets same-sheet measurement sequences and complementary short
   Fingerprints prove membership. See
   `notes/DETECTION_V8_4_13_DIMENSION_MEMBERSHIP_2026_11_10.md`.
+  The same record indexes the November 11 full production checkpoint
+  with the 13-object Floor 06 Upload and the render exclusion audit.
 - `db/` contains Supabase client and repositories.
 - `db/sql/2026_09_24_machinery_foundation.sql` is the additive Machinery schema
   and catalog seed. It does not modify the prototype `company_machines` table.

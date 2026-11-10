@@ -7,6 +7,12 @@ Fresh Floor 07 completed with nine objects and kept its partition under
 the final rule. Floor 06 whole-document grouping is still open. See
 `notes/DETECTION_V8_4_13_DIMENSION_MEMBERSHIP_2026_11_10.md`.
 
+November 11 production witness for V8.4.13. The owner's Floor 06 Upload
+persisted 13 objects and 13 names. The full checkpoint preserves the
+release and rollback refs, input PDFs, production evidence, and
+restorable checks. Individual View coverage and repeatability remain
+open in the Detection backlog.
+
 Detection V8.4.12 isolated release checkpoint. The release compiler
 emits both previously below-threshold P06 supporting links from the
 unchanged HSL evidence. Code, rollback and replay are indexed by

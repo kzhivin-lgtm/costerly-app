@@ -4,8 +4,10 @@
 
 ACTIVE, P0. Recover outer dimension labels and evidence-backed joins on the
 same sheet. The final-policy replay passed P06, P10, and P13 on Floor 06
-and preserved the 10-group Floor 07 control. Verify independent Upload
-stability and investigate residual splits on Floor 06 P03, P04, and P07.
+and preserved the 10-group Floor 07 control. Production Floor 06 run
+`run_dce43f565ef64a47b1965bd71f97a101` published the owner-reported 13
+objects. Keep the exact witness. Verify repeat Upload stability,
+individual View coverage on P03–P08, and positive render attachment.
 Track evidence and any incorrect merges in
 `notes/DETECTION_V8_4_13_DIMENSION_MEMBERSHIP_2026_11_10.md`.
 

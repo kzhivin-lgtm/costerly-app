@@ -57,3 +57,33 @@ reproduce on the production baseline.
 
 Release tag: `detection-v8.4.13-dimension-membership-production-2026-11-10`.
 Rollback reference: `detection-v8.4.12-short-fingerprint-production-2026-11-10`.
+
+## Production checkpoint, November 11, 2026
+
+The owner reported 13 objects from Floor 06. Production run
+`run_dce43f565ef64a47b1965bd71f97a101` verifies 13 persisted objects and
+13 completed names, with one object on each physical sheet P03–P15.
+OCR, Detection, Document Identity, File Review, Naming, and preview
+generation completed. The cycle took 105.173 seconds through save,
+including 34.7 seconds of OCR and 59.217 seconds of Detection.
+
+Discovery retained 34 Views. Thirty technical Views entered the
+published objects. The three standalone renders on P09 and the photo on
+P13 each received `no_match` and were excluded from package membership.
+A presentation image can enter a package through a proven relationship
+to a technical View. A component made entirely of presentation images
+is excluded from publication. This run verifies the exclusion path.
+
+Floor 06 P03–P08 each arrived at Membership as one technical View.
+They account for the entire 59-to-34 View inventory difference from
+the earlier production witness. P09–P15 retained the same per-page View
+counts. The archived 18-object replay separately verifies the P06
+short-View join. The fresh 13-object run verifies the published count.
+Per-island Discovery completeness and positive render attachment remain
+separate checks.
+
+The private full checkpoint is stored in
+`backups/detection-v8.4.13-floor06-13-production-checkpoint-2026-11-11/`.
+It contains the source PDFs, persisted production evidence, frozen
+regressions, replay scripts, test output, deployment receipt, and a Git
+bundle with the exact release, rollback, and checkpoint documentation.
