@@ -48,7 +48,10 @@ Deferred Naming completed both prior locked production sets in a read-only
 check. Floor 06 used 3,324 output tokens for 32 names. Floor 07 used its
 bounded retry after reaching 3,072 tokens, then returned all 12 names.
 The verified inputs were reconstructed from saved production records and
-source imagery. No names were written during this check.
+source imagery. No names were written during this check. Production run
+`run_b00f70fe709d4ed884bf5a15ff3abbbc` used centimeters and two Discovery
+batches, retained 62 Views on all 13 technical sheets, and produced 23 groups
+with 11 singletons. Naming validated and wrote all 23 names in one call.
 
 ### Haiku 5.5 ordinary Membership recovery
 

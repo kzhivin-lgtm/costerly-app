@@ -35,6 +35,13 @@ retained 58 Views across all 13 technical sheets in 22 groups and kept all
 seven P07 Views together. A preceding attempt with the same OCR lost P05
 and P06 in Discovery and reported a replay error. Verify fresh Upload and
 review the remaining Floor 06 partitions against the source drawings.
+Production run `run_b00f70fe709d4ed884bf5a15ff3abbbc` retained 62 Views
+on all 13 technical sheets, with 23 groups and 11 singletons. The effective
+unit was centimeters. P04.V3/P04.V4 and P06.V1/P06.V2 still split at a
+Fingerprint score of 100. Compare each pair's source drawings and evidence
+path before changing merge admission. P04's accepted multi-View hypothesis
+bound its semantic facts to the hypothesis root. P06 had no accepted
+semantic fact for the split pair.
 
 The accepted Floor 07 recovery is wired into regular Upload. The frozen
 inputs reproduce 10 groups and all 33 Views. Fresh pre-release runs
@@ -56,7 +63,9 @@ a provider-confirmed output limit on an incomplete response allows one
 retry. The provider stop reason and per-attempt usage are recorded.
 Read-only verification rebuilt both prior HSL Naming inputs. Floor 06
 returned 32 of 32 names at its initial budget. Floor 07 returned 12 of 12
-names after one bounded retry. Production name writes remain to be verified.
+names after one bounded retry. The subsequent production Floor 06 run
+validated and wrote all 23 names on its first call. Fresh production
+Floor 07 Naming remains to be verified.
 
 PENDING, P1, isolate cold-start screen latency with a matched browser build.
 The incident used an older wrapper and showed fallback reveal before initial

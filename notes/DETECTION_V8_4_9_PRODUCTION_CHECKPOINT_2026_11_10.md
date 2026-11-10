@@ -30,8 +30,10 @@ protected replay packs stay in the private archive.
 
 Use `<model and version> · Detection <current version> · <latest change>`
 in the visible deployment title and the corresponding release commit title.
-Name the model used by the affected route. Carry the same three fields in
-the machine-readable build marker.
+Name the model used by the affected route. Increment the Detection patch
+number for every new production release, including hotfixes. Use the same
+version in the deployment title, release commit, Core build marker, and
+Cloudflare wrapper. The next production release after V8.4.9 is V8.4.10.
 Write deployment titles, commit messages, code comments, and project
 records in English.
 
