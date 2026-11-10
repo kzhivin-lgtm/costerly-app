@@ -10,7 +10,10 @@ from agents.schemas.detection_registry_schema import (
     compile_detection_v5_semantic_facts,
     validate_detection_v5_final_result,
 )
-from agents.anthropic_adapter import infer_detection_v5_bare_dimension_unit
+from agents.anthropic_adapter import (
+    build_detection_v5_dimension_fingerprints,
+    infer_detection_v5_bare_dimension_unit,
+)
 
 
 VIEWS = [
@@ -721,6 +724,34 @@ def test_v5_infers_centimetres_from_nonstandard_bare_object_dimension():
         {"source_facts": [{"text": "331"}, {"text": "60"}]},
     ], document_unit="unknown")
     assert (unit, reason) == ("cm", "nonstandard_100_to_600_value")
+
+
+def test_v5_impossible_numeric_reading_cannot_determine_the_document_unit():
+    box = {"top_left_x": 0, "top_left_y": 0, "bottom_right_x": 100, "bottom_right_y": 50}
+    packages = [{
+        "visual_group_id": "view-001",
+        "bbox": box,
+        "source_facts": [
+            {"text": "275", "fact_id": "SF001", "bbox": box},
+            {"text": "999999999999", "fact_id": "SF002", "bbox": box},
+        ],
+    }]
+    assert infer_detection_v5_bare_dimension_unit(packages, document_unit="unknown") == (
+        "cm", "nonstandard_100_to_600_value",
+    )
+    fingerprint, = build_detection_v5_dimension_fingerprints(packages, document_unit="cm")
+    assert [row["value_mm"] for row in fingerprint["occurrences"]] == ["2750"]
+    assert fingerprint["excluded"] == [{"fact_id": "SF002", "reason": "implausible_object_span"}]
+
+
+def test_v5_keeps_plausible_large_millimeter_readings_and_explicit_units():
+    packages = [{"source_facts": [{"text": "275"}, {"text": "1250"}]}]
+    assert infer_detection_v5_bare_dimension_unit(packages, document_unit="unknown") == (
+        "mm", "bare_value_over_600",
+    )
+    assert infer_detection_v5_bare_dimension_unit(packages, document_unit="cm") == (
+        "cm", "explicit_document_unit",
+    )
 
 
 def test_v5_leaves_common_only_bare_values_unresolved():

@@ -1,7 +1,11 @@
+import json
+from types import SimpleNamespace
+
 import pytest
 
 from agents.naming_lab import (
     NAMING_LAB_VERSION,
+    NamingResponseError,
     _bind_visual_cues_to_source_crops,
     apply_name_mapping,
     assign_ocr_drawing_indices,
@@ -13,6 +17,7 @@ from agents.naming_lab import (
     extract_object_index,
     load_naming_prompt,
     relevant_ocr_snippets,
+    run_naming_lab_call,
     validate_locked_name_mapping,
 )
 from agents.ocr_adapter import build_page_title_fields
@@ -20,6 +25,45 @@ from agents.ocr_adapter import build_page_title_fields
 
 def test_uses_semantic_category_naming_version():
     assert NAMING_LAB_VERSION == "naming_lab_v17_bound_visual_cue_evidence"
+
+
+def test_naming_retries_a_truncated_response_with_the_same_locked_ids(monkeypatch):
+    locked_objects = [{"object_id": f"object-{index:03d}"} for index in range(1, 33)]
+    names = [{"object_id": item["object_id"], "name_en": "Cabinet"} for item in locked_objects]
+    budgets = []
+
+    def reply(_client, *, max_tokens, **request):
+        budgets.append(max_tokens)
+        truncated = len(budgets) == 1
+        text = '{"names":[{"object_id":"' if truncated else json.dumps({"names": names})
+        return SimpleNamespace(
+            model=request["model"],
+            stop_reason="max_tokens" if truncated else "end_turn",
+            usage=SimpleNamespace(input_tokens=500, output_tokens=max_tokens if truncated else 3100),
+            content=[SimpleNamespace(type="text", text=text)],
+        )
+
+    monkeypatch.setattr("agents.naming_lab.get_anthropic_client", lambda: object())
+    monkeypatch.setattr("agents.naming_lab.get_secret", lambda _name, default: default)
+    monkeypatch.setattr("agents.naming_lab.create_claude_message", reply)
+    result = run_naming_lab_call(locked_objects)
+    assert 2048 < budgets[0] < budgets[1] <= 12288
+    assert result["names"] == names
+    assert result["validation"]["accepted"]
+    assert result["input_tokens"] == 1000
+    assert [attempt["stop_reason"] for attempt in result["provider_attempts"]] == ["max_tokens", "end_turn"]
+
+
+def test_naming_does_not_retry_incomplete_json_without_budget_exhaustion(monkeypatch):
+    def reply(_client, **_request):
+        return SimpleNamespace(stop_reason="end_turn", content=[SimpleNamespace(type="text", text="{")])
+
+    monkeypatch.setattr("agents.naming_lab.get_anthropic_client", lambda: object())
+    monkeypatch.setattr("agents.naming_lab.get_secret", lambda _name, default: default)
+    monkeypatch.setattr("agents.naming_lab.create_claude_message", reply)
+    with pytest.raises(NamingResponseError) as raised:
+        run_naming_lab_call([{"object_id": "object-001"}])
+    assert [attempt["stop_reason"] for attempt in raised.value.attempts] == ["end_turn"]
 
 
 def test_naming_schema_requires_short_decision_basis():

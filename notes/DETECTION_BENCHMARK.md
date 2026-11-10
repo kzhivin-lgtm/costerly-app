@@ -25,7 +25,30 @@ Views across all 13 technical sheets (P03–P15) in 25 groups. The first check
 encountered a response without text. The repeat completed the three batches.
 Floor 07 measured 129,536 tokens in its archived request and stayed
 single-pass. Its fixed-input replay retained 33 Views in the accepted 10
-groups. Fresh OCR and the production Upload flow remain to be verified.
+groups. Fresh production Floor 06 Upload run
+`run_6f5b804b71a945b0936ef731a11bb959` used two Discovery batches and retained
+62 Views across all 13 technical sheets. It returned 32 groups, including
+19 singletons. The fixed-input merge replay reproduced those exact groups.
+Using centimeters with the same Views, Q, and model evidence produced 22
+groups, a diagnostic result whose object boundaries require verification.
+
+### Haiku 5.5 dimension units and deferred Naming
+
+The object-scale unit policy excludes renders from bare unit inference and
+ignores implausible object spans. On fixed Floor 06 production evidence it
+inferred centimeters, raised strong technical pairs from 3 to 45, and
+produced 22 groups. Source inspection confirmed the seven joined P07 Views
+describe the same assembly. With fresh model replies and the saved production
+OCR, run `run_7e10798785754017bc8e00e829ddd554` retained 58 Views in 22 groups
+on all 13 technical sheets and kept all seven P07 Views together. A separate
+attempt retained 35 Views, missed two technical sheets, and reported a
+recompile error. The accepted Floor 07 fixed-input partition stayed at 10.
+
+Deferred Naming completed both prior locked production sets in a read-only
+check. Floor 06 used 3,324 output tokens for 32 names. Floor 07 used its
+bounded retry after reaching 3,072 tokens, then returned all 12 names.
+The verified inputs were reconstructed from saved production records and
+source imagery. No names were written during this check.
 
 ### Haiku 5.5 ordinary Membership recovery
 

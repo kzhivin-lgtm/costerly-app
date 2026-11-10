@@ -20,6 +20,16 @@ from agents.anthropic_adapter import (
 
 NAMING_LAB_VERSION = "naming_lab_v17_bound_visual_cue_evidence"
 NAMING_PROMPT_PATH = Path(__file__).parent / "prompts" / "naming_agent_prompt.md"
+_NAMING_MIN_OUTPUT_TOKENS = 2_048
+_NAMING_MAX_OUTPUT_TOKENS = 12_288
+_NAMING_OUTPUT_TOKENS_PER_OBJECT = 256
+
+
+class NamingResponseError(RuntimeError):
+    def __init__(self, error: Exception, *, model: str, attempts: list[dict[str, Any]]):
+        super().__init__(str(error))
+        self.model = model
+        self.attempts = attempts
 
 NAMING_RESULT_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -634,31 +644,56 @@ def run_naming_lab_call(
             },
             {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": base64.b64encode(page_bytes).decode("ascii")}},
         ])
-    response = create_claude_message(
-        client,
-        model=model,
-        max_tokens=2048,
-        temperature=0,
-        system=load_naming_prompt(),
-        messages=[{"role": "user", "content": content}],
-        output_config={
+    max_tokens = min(
+        _NAMING_MAX_OUTPUT_TOKENS,
+        max(_NAMING_MIN_OUTPUT_TOKENS, len(locked_objects) * _NAMING_OUTPUT_TOKENS_PER_OBJECT),
+    )
+    request = {
+        "model": model,
+        "temperature": 0,
+        "system": load_naming_prompt(),
+        "messages": [{"role": "user", "content": content}],
+        "output_config": {
             "format": {
                 "type": "json_schema",
                 "schema": strip_schema_for_claude(NAMING_RESULT_SCHEMA),
             }
         },
-    )
+    }
+    attempts: list[dict[str, Any]] = []
+
+    def send(output_budget: int):
+        response = create_claude_message(client, max_tokens=output_budget, **request)
+        usage = getattr(response, "usage", None)
+        attempts.append({
+            "stop_reason": getattr(response, "stop_reason", None),
+            "max_tokens": output_budget,
+            "input_tokens": int(getattr(usage, "input_tokens", 0) or 0),
+            "output_tokens": int(getattr(usage, "output_tokens", 0) or 0),
+        })
+        return response
+
+    response = send(max_tokens)
+    try:
+        result = json.loads(extract_text_from_claude_response(response))
+    except (json.JSONDecodeError, RuntimeError) as initial_error:
+        if attempts[-1]["stop_reason"] != "max_tokens" or max_tokens >= _NAMING_MAX_OUTPUT_TOKENS:
+            raise NamingResponseError(initial_error, model=model, attempts=attempts) from initial_error
+        try:
+            response = send(min(_NAMING_MAX_OUTPUT_TOKENS, max_tokens * 2))
+            result = json.loads(extract_text_from_claude_response(response))
+        except (json.JSONDecodeError, RuntimeError) as retry_error:
+            raise NamingResponseError(retry_error, model=model, attempts=attempts) from retry_error
     duration_seconds = round(time.perf_counter() - started, 3)
-    result = json.loads(extract_text_from_claude_response(response))
     result = _bind_visual_cues_to_source_crops(result, object_source_crops_by_id)
     validation = validate_locked_name_mapping(locked_objects, result)
-    usage = getattr(response, "usage", None)
     return {
         "lab_version": NAMING_LAB_VERSION,
         "model": str(getattr(response, "model", None) or model),
         "duration_seconds": duration_seconds,
-        "input_tokens": int(getattr(usage, "input_tokens", 0) or 0),
-        "output_tokens": int(getattr(usage, "output_tokens", 0) or 0),
+        "input_tokens": sum(attempt["input_tokens"] for attempt in attempts),
+        "output_tokens": sum(attempt["output_tokens"] for attempt in attempts),
+        "provider_attempts": attempts,
         "validation": validation,
         "names": result["names"],
         "naming_decision_audit": build_naming_decision_audit(locked_objects, result),

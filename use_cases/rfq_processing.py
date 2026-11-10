@@ -36,6 +36,7 @@ from agents.detection_page_images import (
 )
 from agents.naming_lab import (
     NAMING_LAB_VERSION,
+    NamingResponseError,
     apply_name_mapping,
     assign_ocr_drawing_indices,
     build_locked_naming_input,
@@ -419,6 +420,7 @@ def _run_deferred_naming(
             raw_usage={
                 "input_tokens": naming_result["input_tokens"],
                 "output_tokens": naming_result["output_tokens"],
+                "provider_attempts": naming_result.get("provider_attempts", []),
                 "names": names,
                 "validation": naming_result["validation"],
                 "naming_decision_audit": naming_result.get("naming_decision_audit", []),
@@ -438,13 +440,14 @@ def _run_deferred_naming(
         naming_seconds = round(time.perf_counter() - started, 3)
         error = str(exc)
         print(f"[Naming Agent] Deferred naming failed for run {run_id}: {error}")
+        attempts = exc.attempts if isinstance(exc, NamingResponseError) else []
         failure_event = _runtime_event(
             agent_name="naming",
             operation="locked_object_naming_deferred",
             company_id=company_id,
             run_id=run_id,
             file_name=file_name,
-            model="unknown",
+            model=exc.model if isinstance(exc, NamingResponseError) else "unknown",
             prompt_version=NAMING_LAB_VERSION,
             started_at=started_at,
             finished_at=finished_at,
@@ -452,6 +455,9 @@ def _run_deferred_naming(
             raw_usage={
                 "deferred": True,
                 "error": error,
+                "provider_attempts": attempts,
+                "input_tokens": sum(attempt["input_tokens"] for attempt in attempts),
+                "output_tokens": sum(attempt["output_tokens"] for attempt in attempts),
                 "persistence_audit": persistence_audit,
             },
             status="failed",

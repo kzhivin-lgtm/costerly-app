@@ -8119,6 +8119,8 @@ _V5_DIMENSION_TEXT_RE = re.compile(
 )
 
 _V5_COMMON_BARE_MM_VALUES = frozenset({300, 400, 450, 500, 600})
+# A fabricated-object span cannot be over 100 m, even in the smallest unit.
+_V5_MAX_OBJECT_DIMENSION_MM = Decimal("100000")
 
 
 def infer_detection_v5_bare_dimension_unit(
@@ -8126,10 +8128,10 @@ def infer_detection_v5_bare_dimension_unit(
 ) -> tuple[str, str]:
     """Infer only the safe document basis needed for bare V5 dimensions.
 
-    An explicit document marker always wins. A bare value above 600 cannot be
-    centimetres in the furniture-document envelope. Otherwise, a non-standard
-    100..600 value, such as 211 or 331, establishes centimetres for this file.
-    Common-only values remain unresolved rather than being silently inflated.
+    An explicit document marker always wins. Infer the bare scale only from
+    plausible object spans. Above 600 favors millimeters in the furniture
+    envelope. A nonstandard integer from 100 to 600 favors centimeters.
+    Common-only values leave the unit unresolved.
     """
     if document_unit in {"mm", "cm", "m"}:
         return document_unit, "explicit_document_unit"
@@ -8138,7 +8140,9 @@ def infer_detection_v5_bare_dimension_unit(
         for fact in package.get("source_facts") or []:
             match = _V5_DIMENSION_TEXT_RE.match(str(fact.get("text") or "").strip())
             if match and not match.group(2):
-                bare_values.append(Decimal(match.group(1).replace(",", ".")))
+                value = Decimal(match.group(1).replace(",", "."))
+                if value <= _V5_MAX_OBJECT_DIMENSION_MM:
+                    bare_values.append(value)
     if any(value > 600 for value in bare_values):
         return "mm", "bare_value_over_600"
     if any(
@@ -8180,6 +8184,9 @@ def build_detection_v5_dimension_fingerprints(
                 value_mm = raw_value * conversion[document_unit]
             else:
                 excluded.append({"fact_id": str(fact.get("fact_id") or ""), "reason": "unresolved_unit"})
+                continue
+            if value_mm > _V5_MAX_OBJECT_DIMENSION_MM:
+                excluded.append({"fact_id": str(fact.get("fact_id") or ""), "reason": "implausible_object_span"})
                 continue
             fact_bbox = fact.get("bbox") or {}
             if not all(isinstance(fact_bbox.get(key), (int, float)) for key in bbox_keys):
@@ -11762,7 +11769,10 @@ def run_anthropic_detection_visual_registry_agent(
                             })
         semantic_facts.extend(v714_conflict_semantic_facts)
         effective_dimension_unit, dimension_unit_reason = infer_detection_v5_bare_dimension_unit(
-            view_evidence_packages,
+            [
+                package for package in view_evidence_packages
+                if package["visual_group_id"] not in presentation_render_group_ids
+            ],
             document_unit=str(document_dimension_unit_profile.get("unit") or "unknown"),
         )
         payload["dimension_inventory"] = build_detection_v5_dimension_fingerprints(

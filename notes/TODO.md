@@ -20,6 +20,22 @@ from 3 to 49 and preserved the partition. Treat unit inference as a separate
 evidence defect. Test pair-local review of omitted same-page links with the
 fixed Views and Q, checking both correct joins and independent objects.
 
+Fresh production Floor 06 run `run_6f5b804b71a945b0936ef731a11bb959` retained
+62 Views in 32 groups, including 19 singletons. There were no accepted
+render attachments. The unit heuristic inferred millimeters from an invalid
+13-digit reading and a numeric label assigned to a render. The fixed-input
+compiler replay reproduced the exact production partition. Varying only
+millimeters to centimeters changed the number of strong technical pairs
+from 3 to 45 and the partition from 32 to 22 groups. The new unit policy
+inferred centimeters from the fixed production Views and reproduced the
+22-group result, including all seven Views of the P07 assembly. The
+accepted 10-group Floor 07 replay remained exact. With the saved production
+OCR and fresh model calls, Floor 06 run `run_7e10798785754017bc8e00e829ddd554`
+retained 58 Views across all 13 technical sheets in 22 groups and kept all
+seven P07 Views together. A preceding attempt with the same OCR lost P05
+and P06 in Discovery and reported a replay error. Verify fresh Upload and
+review the remaining Floor 06 partitions against the source drawings.
+
 The accepted Floor 07 recovery is wired into regular Upload. The frozen
 inputs reproduce 10 groups and all 33 Views. Fresh pre-release runs
 returned 11 groups on Floor 07 and 39 on Floor 06. Track the additional
@@ -29,20 +45,18 @@ Production Floor 07 run `run_2964d6fe13874ede95d64d1c809a9726` retained
 33 Views in 12 groups. P04 grouped correctly. The three P05 Views
 remained separate and P11 retained the two-group split.
 
-PENDING LIVE VERIFY, P0, preserve Discovery coverage on Floor 06 Upload.
-A fresh Detection call with the saved production OCR restored coverage of
-all 13 technical sheets through three Discovery batches. It retained 56
-Views in 25 groups. Verify the same coverage on a fresh production Upload.
-Floor 07 stayed single-pass and reproduced the 10-group fixed-input result.
-The first Floor 06 check stopped on an empty model response. Its provider
-stop reason was unavailable. The observed repeat completed all three batches.
+VERIFIED, P0, restore Discovery coverage on Floor 06 Upload.
+Fresh production run `run_6f5b804b71a945b0936ef731a11bb959` completed
+Discovery in two batches and retained 62 Views across all 13 technical
+sheets. Keep grouping under the separate Membership item above.
 
-PENDING, P1, make deferred Naming robust to incomplete model JSON.
-The production Floor 07 run failed parsing before any names were written.
-Floor 06 successfully named its seven objects. Naming uses a fixed
-2,048-token output budget and the current failure event lacks provider
-stop reason and token usage. Capture those fields and test recovery
-while preserving the locked object IDs and user-edited names.
+PENDING LIVE VERIFY, P1, make deferred Naming robust to truncated model JSON.
+The model output budget now scales with the locked object count. Only
+a provider-confirmed output limit on an incomplete response allows one
+retry. The provider stop reason and per-attempt usage are recorded.
+Read-only verification rebuilt both prior HSL Naming inputs. Floor 06
+returned 32 of 32 names at its initial budget. Floor 07 returned 12 of 12
+names after one bounded retry. Production name writes remain to be verified.
 
 PENDING, P1, isolate cold-start screen latency with a matched browser build.
 The incident used an older wrapper and showed fallback reveal before initial
