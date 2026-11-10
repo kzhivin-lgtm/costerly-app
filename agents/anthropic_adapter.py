@@ -3949,6 +3949,7 @@ def normalize_detection_v711_presentation_render_decisions(
     *,
     visual_groups: list[dict[str, Any]],
     group_id_mapping: dict[str, str],
+    allow_omitted_renders: bool = False,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Turn mandatory render decisions into the only render merge edges.
 
@@ -4027,8 +4028,18 @@ def normalize_detection_v711_presentation_render_decisions(
             "evidence_type": evidence_type,
             "visual_witness": witness,
         }
-    if set(by_render) != render_ids:
+    omitted_renders = render_ids - by_render.keys()
+    if omitted_renders and not allow_omitted_renders:
         raise ValueError("V7.11 presentation render decisions must cover every render")
+    for render_id in omitted_renders:
+        by_render[render_id] = {
+            "render_group_id": render_id,
+            "disposition": "unresolved",
+            "technical_group_id": "",
+            "evidence_type": "none",
+            "visual_witness": "",
+            "decision_source": "missing_model_decision",
+        }
 
     facts: list[dict[str, Any]] = []
     audit: list[dict[str, Any]] = []
@@ -8123,21 +8134,61 @@ _V5_COMMON_BARE_MM_VALUES = frozenset({300, 400, 450, 500, 600})
 _V5_MAX_OBJECT_DIMENSION_MM = Decimal("100000")
 
 
+def _grounded_same_page_hypothesis_facts(
+    hypotheses: list[dict[str, Any]],
+    dimension_candidates: list[dict[str, Any]],
+    *,
+    group_id_mapping: dict[str, str],
+    render_group_ids: set[str],
+    source_fact_owners: dict[str, str],
+) -> list[dict[str, Any]]:
+    """Keep cited pair evidence when neither View is the hypothesis root."""
+    facts: list[dict[str, Any]] = []
+    strong_same_page_pairs = {
+        (row["group_id_a"], row["group_id_b"])
+        for row in dimension_candidates
+        if row["same_page"] and row["dimension_similarity_score"] >= 100
+    }
+    for hypothesis in hypotheses:
+        members = set(hypothesis["group_ids"]) - render_group_ids
+        for evidence in hypothesis["evidence"]:
+            if evidence["evidence_type"] not in {"matching_topology", "unique_geometry"}:
+                continue
+            cited = _normalize_source_degraded_registry_view_ids(
+                evidence["source_fact_ids"], group_id_mapping=group_id_mapping,
+            )
+            views = members.intersection(
+                source.removeprefix("registry_view:") if source.startswith("registry_view:")
+                else source_fact_owners.get(source)
+                for source in cited
+            )
+            for pair in combinations(sorted(views), 2):
+                if pair in strong_same_page_pairs:
+                    facts.append({
+                        "group_id_a": pair[0], "group_id_b": pair[1], **evidence,
+                    })
+    return facts
+
+
 def infer_detection_v5_bare_dimension_unit(
     view_evidence_packages: list[dict[str, Any]], *, document_unit: str,
 ) -> tuple[str, str]:
     """Infer only the safe document basis needed for bare V5 dimensions.
 
     An explicit document marker always wins. Infer the bare scale only from
-    plausible object spans. Above 600 favors millimeters in the furniture
-    envelope. A nonstandard integer from 100 to 600 favors centimeters.
-    Common-only values leave the unit unresolved.
+    plausible object spans. Dimension halo readings still enter the
+    fingerprint, but they cannot set the document scale. Above 600 favors
+    millimeters in the furniture envelope. A nonstandard integer from 100
+    to 600 favors centimeters. Common-only values leave the unit unresolved.
     """
     if document_unit in {"mm", "cm", "m"}:
         return document_unit, "explicit_document_unit"
     bare_values: list[Decimal] = []
     for package in view_evidence_packages:
+        halo_fact_ids = set(package.get("dimension_envelope_source_fact_ids") or [])
         for fact in package.get("source_facts") or []:
+            if fact.get("fact_id") in halo_fact_ids:
+                continue
             match = _V5_DIMENSION_TEXT_RE.match(str(fact.get("text") or "").strip())
             if match and not match.group(2):
                 value = Decimal(match.group(1).replace(",", "."))
@@ -11569,6 +11620,7 @@ def run_anthropic_detection_visual_registry_agent(
             review_presentation_render_decisions,
             visual_groups=raw_groups,
             group_id_mapping=group_id_mapping,
+            allow_omitted_renders=document_category == "ordinary_object_set",
         ) if not v69_criteria_reconciliation_active else ([], [])
         if presentation_render_facts and not v635_ada_pair_local_membership_active:
             semantic_source_facts.extend(normalized_registry_visual_sources)
@@ -11809,6 +11861,18 @@ def run_anthropic_detection_visual_registry_agent(
                 for pair in sorted(candidate_q_final_pairs)
             ],
         })
+        if document_category == "ordinary_object_set":
+            semantic_facts.extend(_grounded_same_page_hypothesis_facts(
+                accepted_hypotheses,
+                dimension_graph_audit["dimension_similarity_candidates"],
+                group_id_mapping=group_id_mapping,
+                render_group_ids=presentation_render_group_ids,
+                source_fact_owners={
+                    fact_id: package["visual_group_id"]
+                    for package in view_evidence_packages
+                    for fact_id in package["source_fact_ids"]
+                },
+            ))
         accepted_semantic_facts, semantic_ledger_audit = compile_semantic_facts(
             semantic_facts, visual_groups=semantic_validation_groups,
             source_facts=semantic_source_facts,

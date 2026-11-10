@@ -32,6 +32,47 @@ groups. Fresh production Floor 06 Upload run
 Using centimeters with the same Views, Q, and model evidence produced 22
 groups, a diagnostic result whose object boundaries require verification.
 
+### V8.4.10 same-sheet view evidence
+
+The Floor 06 production witness `run_b00f70fe709d4ed884bf5a15ff3abbbc`
+contained two exact-score pairs that failed merge admission. P04.V3/V4
+had a validated hypothesis citing both elevations and the common plan.
+The compiler had projected its evidence only onto pairs involving the
+hypothesis root. The repaired projection resolves both explicit View
+citations and the owner of each cited OCR fact. In
+`run_209af599b54444a39f7fef71658df622`, the same elevations were cited via
+owned OCR facts, and the saved input now admits their link. P06.V1/V2
+had an exact 4,970 mm total and three aligned
+1,660 mm readings in both Views. The old ordered-span check discarded
+consecutive equal values. The saved inputs admit both links under the
+new rules. Negative controls cover uncited Views, renders, cross-sheet
+pairs, mismatched geometry and repeated labels with reused source facts.
+
+During full upload checks, a native PDF sheet identifier reached P03
+through a dimension halo and changed the effective unit to millimeters.
+The new inference policy reads units from the established evidence inside
+the View envelope before halo expansion. Halo readings remain available
+for Fingerprint. The accepted Floor 07 fixed-input partition stayed at
+10 groups throughout.
+
+The ordinary route now records an omitted render decision as an
+unresolved abstention. Confirmed attachments still require a valid
+positive model decision. A render-only component is excluded from the
+published object list. The failure payload from the full Floor 06 check
+omitted one known render; the replay produced one abstention and no edge.
+
+Final V8.4.10 verification used the OCR captured during earlier fresh
+uploads after Mistral timed out on the final fresh attempts. Live
+Detection and Naming finished on both PDFs. Floor 06
+`run_6bf38c6017d046ffa0c2906bbe1ddf97` retained 63 Views across all 13
+technical sheets in 20 groups, joined the P04 elevations and all three
+P06 Views, and saved all 20 names in the isolated verification store.
+Floor 07 `run_adef5436b50646a38682dd0f75c40a1d` retained 33 Views in
+11 groups and saved all 11 names. One P05 View remained separate.
+On Floor 06 P04, Discovery mislabeled a render as technical and a plan
+as a render. The render appeared as a singleton because the exclusion
+policy sees the assigned role. Track the role defect independently.
+
 ### Haiku 5.5 dimension units and deferred Naming
 
 The object-scale unit policy excludes renders from bare unit inference and

@@ -10,7 +10,9 @@ from agents.schemas.detection_registry_schema import (
     compile_detection_v5_semantic_facts,
     validate_detection_v5_final_result,
 )
+from agents.detection_dimension_anchors import dimension_anchors
 from agents.anthropic_adapter import (
+    _grounded_same_page_hypothesis_facts,
     build_detection_v5_dimension_fingerprints,
     infer_detection_v5_bare_dimension_unit,
 )
@@ -96,6 +98,68 @@ def test_v5_dimension_anchor_requires_a_preverified_pair_on_the_same_page():
     assert audit["edges"][0]["dimension_anchor"] is True
     assert cross_page[0]["relationship"] == "supporting_relation"
     assert blocked[0]["relationship"] == "supporting_relation"
+
+
+def test_v5_dimension_anchor_recognizes_repeated_sections_with_an_independent_total():
+    def chain(prefix, total_centre=0.5):
+        rows = [
+            _occurrence(f"{prefix}-{index}", value, f"{prefix}-source-{index}")
+            for index, value in enumerate([1840, 1840, 1840, 5510])
+        ]
+        for row, x, y in zip(rows, [0.25, 0.5, 0.75, total_centre], [0.8, 0.8, 0.8, 0.2], strict=True):
+            row["normalized_bbox"] = {
+                "top_left_x": x - 0.01, "bottom_right_x": x + 0.01,
+                "top_left_y": y - 0.01, "bottom_right_y": y + 0.01,
+            }
+        return rows
+
+    left, right = chain("left"), chain("right")
+    inventory = _fingerprints(left, right)
+    inventory.append({"group_id": "other", "occurrences": chain("other")[:3]})
+    candidate = {
+        "group_id_a": "view-001", "group_id_b": "view-002", "same_page": True,
+        "dimension_similarity_score": 100, "features": [{"left_mm": "5510", "right_mm": "5510"}],
+    }
+    audit = {"dimension_inventory": inventory, "dimension_graph_audit": {"dimension_similarity_candidates": [candidate]}}
+    eligible = {"view-001", "view-002"}
+    proof, = dimension_anchors(audit, eligible)
+    assert proof["corroborating_repeated_chains"] == [{"total_mm": "5510", "span_mm": "1840", "count": 3}]
+    inventory[1]["occurrences"] = chain("right", total_centre=0.8)
+    assert dimension_anchors(audit, eligible) == []
+    inventory[1]["occurrences"] = chain("right")[:-2] + chain("right")[-1:]
+    assert dimension_anchors(audit, eligible) == []
+    inventory[1]["occurrences"] = left
+    assert dimension_anchors(audit, eligible) == []
+
+
+def test_v5_strong_cited_pair_in_a_hypothesis_keeps_its_witness():
+    evidence = {
+        "evidence_type": "unique_geometry", "strength": "standard",
+        "observation": "Both elevations correspond to the legs of the corner on the plan.",
+        "source_fact_ids": ["registry_view:raw-1", "registry_view:raw-2", "registry_view:raw-3"],
+    }
+    hypothesis = {"group_ids": ["plan", "left", "right", "render"], "evidence": [evidence]}
+    candidate = {"group_id_a": "left", "group_id_b": "right", "same_page": True, "dimension_similarity_score": 100}
+    mapping = {"raw-1": "plan", "raw-2": "left", "raw-3": "right"}
+    options = {
+        "group_id_mapping": mapping, "render_group_ids": {"render"},
+        "source_fact_owners": {"SF1": "left", "SF2": "right", "SF3": "plan"},
+    }
+    assert _grounded_same_page_hypothesis_facts([hypothesis], [candidate], **options) == [
+        {"group_id_a": "left", "group_id_b": "right", **evidence},
+    ]
+    assert _grounded_same_page_hypothesis_facts([hypothesis], [{**candidate, "same_page": False}], **options) == []
+    assert _grounded_same_page_hypothesis_facts(
+        [hypothesis], [{**candidate, "group_id_b": "render"}], **options,
+    ) == []
+    evidence["source_fact_ids"].pop()
+    assert _grounded_same_page_hypothesis_facts([hypothesis], [candidate], **options) == []
+    evidence["source_fact_ids"] = ["SF1", "SF2"]
+    assert _grounded_same_page_hypothesis_facts([hypothesis], [candidate], **options) == [
+        {"group_id_a": "left", "group_id_b": "right", **evidence},
+    ]
+    evidence["source_fact_ids"] = ["SF1", "SF3"]
+    assert _grounded_same_page_hypothesis_facts([hypothesis], [candidate], **options) == []
 
 
 def test_v5_repeated_typical_dimension_is_counted_one_to_one():
@@ -742,6 +806,23 @@ def test_v5_impossible_numeric_reading_cannot_determine_the_document_unit():
     fingerprint, = build_detection_v5_dimension_fingerprints(packages, document_unit="cm")
     assert [row["value_mm"] for row in fingerprint["occurrences"]] == ["2750"]
     assert fingerprint["excluded"] == [{"fact_id": "SF002", "reason": "implausible_object_span"}]
+
+
+def test_v5_dimension_halo_reading_cannot_change_the_document_unit():
+    box = {"top_left_x": 0, "top_left_y": 0, "bottom_right_x": 100, "bottom_right_y": 50}
+    package = {
+        "visual_group_id": "view-001", "bbox": box,
+        "dimension_envelope_source_fact_ids": ["halo"],
+        "source_facts": [
+            {"text": "275", "fact_id": "inside", "bbox": box},
+            {"text": "709", "fact_id": "halo", "bbox": box},
+        ],
+    }
+    assert infer_detection_v5_bare_dimension_unit([package], document_unit="unknown") == (
+        "cm", "nonstandard_100_to_600_value",
+    )
+    fingerprint, = build_detection_v5_dimension_fingerprints([package], document_unit="cm")
+    assert [row["value_mm"] for row in fingerprint["occurrences"]] == ["2750", "7090"]
 
 
 def test_v5_keeps_plausible_large_millimeter_readings_and_explicit_units():

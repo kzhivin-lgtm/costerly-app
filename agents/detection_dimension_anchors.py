@@ -2,7 +2,7 @@
 
 from collections import Counter
 from decimal import Decimal
-from itertools import pairwise, product
+from itertools import groupby, pairwise, product
 
 from agents.schemas.detection_registry_schema import _V5_COMMON_DIMENSIONS_MM
 
@@ -20,9 +20,7 @@ def positioned_occurrences(inventory):
     ]
 
 
-def neighbor_spans(occurrences, exclude_values):
-    """Find consecutive informative labels aligned along one measurement line."""
-    pairs = {}
+def _measurement_lines(occurrences, exclude_values):
     for axis, perpendicular in (("x", "y"), ("y", "x")):
         items = []
         for value, bbox, sources in occurrences:
@@ -39,12 +37,56 @@ def neighbor_spans(occurrences, exclude_values):
             else:
                 lines[-1].append(item)
         for line in lines:
-            for left, right in pairwise(sorted(line, key=lambda row: row[1])):
-                a, b = left[3], right[3]
-                if a == b or {a, b} <= _V5_COMMON_DIMENSIONS_MM or left[4] & right[4]:
-                    continue
-                pairs.setdefault((a, b), []).append(left[4] | right[4])
+            yield axis, sorted(line, key=lambda row: row[1])
+
+
+def neighbor_spans(occurrences, exclude_values):
+    """Find consecutive informative labels aligned along one measurement line."""
+    pairs = {}
+    for _, line in _measurement_lines(occurrences, exclude_values):
+        for left, right in pairwise(line):
+            a, b = left[3], right[3]
+            if a == b or {a, b} <= _V5_COMMON_DIMENSIONS_MM or left[4] & right[4]:
+                continue
+            pairs.setdefault((a, b), []).append(left[4] | right[4])
     return pairs
+
+
+def _repeated_span_chains(occurrences, rare_totals):
+    """Find evenly spaced repeated spans corroborated by a separately printed total."""
+    chains = set()
+    for axis, line in _measurement_lines(occurrences, rare_totals):
+        for value, run in groupby(line, key=lambda row: row[3]):
+            labels = list(run)
+            if len(labels) < 3 or value in _V5_COMMON_DIMENSIONS_MM:
+                continue
+            sources = [label[4] for label in labels]
+            all_sources = frozenset().union(*sources)
+            if len(all_sources) != sum(map(len, sources)):
+                continue
+            positions = [label[1] for label in labels]
+            gaps = [right - left for left, right in pairwise(positions)]
+            gap = min(gaps)
+            if gap <= 0 or max(gaps) > 1.25 * gap:
+                continue
+            midpoint = (positions[0] + positions[-1]) / 2
+            for total, bbox, total_sources in occurrences:
+                if total not in rare_totals or total_sources & all_sources:
+                    continue
+                if abs(total - value * len(labels)) > total * Decimal("0.005"):
+                    continue
+                centre = (bbox[f"top_left_{axis}"] + bbox[f"bottom_right_{axis}"]) / 2
+                if abs(centre - midpoint) <= 0.25 * gap:
+                    chains.add((axis, total, value, len(labels), all_sources | total_sources))
+    return chains
+
+
+def _matching_repeated_chains(left, right, rare_totals):
+    return sorted({
+        (a[1], a[2], a[3])
+        for a, b in product(_repeated_span_chains(left, rare_totals), _repeated_span_chains(right, rare_totals))
+        if a[:4] == b[:4] and not (a[4] & b[4])
+    })
 
 
 def dimension_anchors(usage, eligible_ids):
@@ -93,11 +135,16 @@ def dimension_anchors(usage, eligible_ids):
             for i, first in enumerate(confirmed_rare) for second in confirmed_rare[i+1:]
             for (left_a, right_a), (left_b, right_b) in product(rare_sources[first], rare_sources[second])
         )
-        if corroborating or independent_extents:
+        repeated_chains = _matching_repeated_chains(occurrences[a], occurrences[b], set(confirmed_rare))
+        if corroborating or independent_extents or repeated_chains:
             proofs.append({
                 "group_id_a": a, "group_id_b": b,
                 "relationship": "same_object_view",
                 "rare_exact_extents_mm": [str(value) for value in confirmed_rare],
                 "corroborating_ordered_spans_mm": [[str(value) for value in pair] for pair in corroborating],
+                "corroborating_repeated_chains": [
+                    {"total_mm": str(total), "span_mm": str(span), "count": count}
+                    for total, span, count in repeated_chains
+                ],
             })
     return proofs

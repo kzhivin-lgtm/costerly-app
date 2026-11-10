@@ -11,6 +11,17 @@ worker start 36 seconds after selection. The Upload hotfix keeps the pending
 shell through the observed delay and resumes the same timer on late
 confirmation. The owner's live timer and Floor 07 checks remain open.
 
+A presentation render is supporting evidence for a technical object. The
+owner confirmed that a render with no proven technical owner must remain
+outside File Review object counts. Keep render role classification and
+render attachment accuracy distinct from that publication rule.
+V8.4.10 audits omitted ordinary-route render decisions as unresolved
+without aborting technical grouping. An omitted row supplies no
+attachment evidence. Floor 06 P04 in
+`run_6bf38c6017d046ffa0c2906bbe1ddf97` mislabeled the render as technical
+and the plan as a render. Verify role correction with the actual image
+and plan and protect the verified P04 elevation link.
+
 ACTIVE, P0, recover evidence-backed ordinary Membership on HSL Floor 06.
 Production run `run_24f9ed47537c41758129081ddda9e60a` had 62 Views,
 155 required same-sheet comparisons, two supplied and accepted hypotheses,
@@ -38,10 +49,15 @@ review the remaining Floor 06 partitions against the source drawings.
 Production run `run_b00f70fe709d4ed884bf5a15ff3abbbc` retained 62 Views
 on all 13 technical sheets, with 23 groups and 11 singletons. The effective
 unit was centimeters. P04.V3/P04.V4 and P06.V1/P06.V2 still split at a
-Fingerprint score of 100. Compare each pair's source drawings and evidence
-path before changing merge admission. P04's accepted multi-View hypothesis
-bound its semantic facts to the hypothesis root. P06 had no accepted
-semantic fact for the split pair.
+Fingerprint score of 100. V8.4.10 preserves directly cited same-sheet
+pair evidence from an accepted hypothesis, including pairs that omit the
+hypothesis root. It also accepts an exact rare total corroborated by an
+independently sourced, aligned repeated dimension chain in both Views.
+The exact saved split pairs now pass the compiler. Two fresh cycles
+joined both target pairs. One exposed a sheet identifier admitted by a
+dimension halo, which flipped bare-unit inference back to millimeters.
+V8.4.10 retains halo readings in Fingerprint but excludes them from
+document unit inference. Continue checking remaining group boundaries.
 
 The accepted Floor 07 recovery is wired into regular Upload. The frozen
 inputs reproduce 10 groups and all 33 Views. Fresh pre-release runs
@@ -50,12 +66,25 @@ P04 singleton and owner verification after deployment.
 
 Production Floor 07 run `run_2964d6fe13874ede95d64d1c809a9726` retained
 33 Views in 12 groups. P04 grouped correctly. The three P05 Views
-remained separate and P11 retained the two-group split.
+remained separate and P11 retained the two-group split. V8.4.10 retained
+the accepted 10-group fixed-input partition. Fresh full cycles returned
+11, 13, and 11 groups. In the final run, P05 grouped correctly and
+Conflict Resolver admitted a fragment of the P07 title block as a
+standalone technical View. This is a role admission witness, separate
+from dimension-based Membership.
 
 VERIFIED, P0, restore Discovery coverage on Floor 06 Upload.
 Fresh production run `run_6f5b804b71a945b0936ef731a11bb959` completed
 Discovery in two batches and retained 62 Views across all 13 technical
 sheets. Keep grouping under the separate Membership item above.
+
+ACTIVE, P0, investigate intermittent HSL source coverage.
+A V8.4.10 verification run kept only a presentation render from Floor 06
+P03 despite receiving 11 Candidate Regions on that sheet. A separate
+full run recovered technical views on every sheet. On a later verification
+attempt, Mistral timed out on both HSL files and the source-degraded
+inventory returned incomplete JSON. Preserve the normal OCR route and
+diagnose fallback output budgets separately.
 
 PENDING LIVE VERIFY, P1, make deferred Naming robust to truncated model JSON.
 The model output budget now scales with the locked object count. Only

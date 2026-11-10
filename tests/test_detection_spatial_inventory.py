@@ -546,6 +546,26 @@ def test_v711_render_decision_requires_every_render_and_a_technical_target():
         )
 
 
+def test_v711_ordinary_route_audits_omitted_renders_without_creating_edges():
+    groups = [
+        {"group_id": group_id, "evidence_class": "object_evidence", "representation_kind": kind}
+        for group_id, kind in (("omitted", "presentation_render"), ("render", "presentation_render"), ("elevation", "elevation"))
+    ]
+    attachment = {
+        "render_group_id": "render", "disposition": "attach", "technical_group_id": "elevation",
+        "evidence_type": "matching_topology", "visual_witness": "The same two-tier bay has a diagonal gusset.",
+    }
+    facts, audit = normalize_detection_v711_presentation_render_decisions(
+        [attachment], visual_groups=groups, group_id_mapping={"omitted": "view-001"},
+        allow_omitted_renders=True,
+    )
+    assert [(fact["group_id_a"], fact["group_id_b"]) for fact in facts] == [("render", "elevation")]
+    assert audit == [{
+        "render_group_id": "view-001", "disposition": "unresolved", "technical_group_id": "",
+        "evidence_type": "none", "visual_witness": "", "decision_source": "missing_model_decision",
+    }, attachment]
+
+
 def test_v711_render_decision_ignores_only_safe_known_non_render_no_match():
     facts, audit = normalize_detection_v711_presentation_render_decisions(
         [
