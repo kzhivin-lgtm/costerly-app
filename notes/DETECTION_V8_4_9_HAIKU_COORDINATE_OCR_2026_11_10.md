@@ -111,8 +111,8 @@ completion-marker test failed before and after cleanup. This is a local
 checkpoint of the measured behavior. HSL package boundaries remain
 outside the acceptance claim.
 
-Next scope is dominant-page attachment safety. The owner identified the
-sparse detail in the lower-left of HSL Floor 07 P03 as a positive case
-to inspect in whole-sheet context. The target object still needs to be
-bound to an exact saved View and source witness. The checkpoint makes
-no change to attachment behavior.
+Follow-up: dominant-page attachment is deferred. The owner identified
+Detail D on HSL Floor 06 P03, drawing N26. The historical audit separates
+that detail from the render that was actually auto-attached. See
+`notes/DETECTION_BENCHMARK.md` for the witness runs and `notes/TODO.md`
+for the current queue.

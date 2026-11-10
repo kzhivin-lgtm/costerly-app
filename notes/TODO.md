@@ -254,7 +254,7 @@ local-only checkpoint. Annotated tag
 `6c552b35dd8c58b15307635f7efbf2dd7c9f29a9`. Record:
 `notes/DETECTION_V8_4_8_PARALLEL_MEMBERSHIP_CHECKPOINT_2026_11_10.md`.
 
-ACTIVE, P0, Haiku 5.5 migration on top of V8.4.8:
+PENDING PRODUCTION VERIFICATION, P0, local Haiku 5.5 checkpoint on V8.4.8:
 The shared Anthropic adapter migrates existing Haiku calls to
 `claude-haiku-5-5`, including legacy configured Haiku IDs. Use low effort and
 preserve JSON schemas, Sonnet model routing and split Ada Membership. On frozen
@@ -270,7 +270,7 @@ HSL 07 reached completion with 34 objects (`run_e508dea053ae472d9038a0b8047c8ed9
 object boundaries still require validation. Both latter runs predate the
 render wording clarification. No deployment.
 
-ACTIVE, P0, V8.4.9 candidate, tight numeric OCR across Detection routes:
+PENDING PRODUCTION VERIFICATION, P0, local V8.4.9 coordinate OCR checkpoint:
 Run the numeric reader alongside standard OCR, retain one page-pixel bbox per
 recognized standalone label, and bind the readings to locked Views for a
 separate Dimensional Fingerprint audit. The upstream Estimation dependency is
@@ -321,6 +321,19 @@ rows from the model input and retain cross-sheet visual or documentary
 signals even when the dimension score is zero. Adda's dry formatting
 check reduced 28 rows to 4 and 2,095 characters to 535 in the Q block.
 Check tokens, wall time and exact View membership before promotion.
+
+DEFERRED PROPOSAL, P2, Detection routing audit:
+Record PDF transport, source capability, document scenario, model and
+batching as separate decisions before considering a V9 routing change.
+Preserve the distinct Page 23, Ada and ordinary scenario contracts.
+
+DEFERRED RESEARCH, P2, Detection OCR and grouping:
+If coordinate OCR still misses useful small or rotated dimensions, compare
+oriented detail crops following the eDOCr2 approach on labelled cases.
+Evaluate Higher-Order Multicut offline only once concrete grouping failures
+warrant a graph experiment. Use the DocLayNet and PubTables examples as
+references for separating annotations for regions, roles and grouping.
+Keep a new, whole drawing outside the tuning set for later validation.
 
 COMPLETED LOCALLY, P1, Detection historical adapter cleanup:
 Baseline `5b1954f`. Commit `f875111` removed five uncalled historical
