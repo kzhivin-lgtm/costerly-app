@@ -2,7 +2,7 @@ import json
 from types import SimpleNamespace
 
 from agents.anthropic_adapter import DETECTION_V711_PRESENTATION_RENDER_DECISIONS_SCHEMA
-from tools.detection_haiku55_autonomous_lab import technical_pages
+from tools.detection_haiku55_autonomous_lab import technical_pages, technical_partition
 from tools.detection_render_review import review_render_roles, review_render_rows
 
 
@@ -101,3 +101,13 @@ def test_render_attachment_does_not_count_as_a_technical_merge():
     )
     assert resolved == {2}
     assert unresolved == {"elevation"}
+
+
+def test_technical_partition_uses_request_ids_and_ignores_render_membership():
+    usage = {"proof_graph_components": [
+        {"visual_group_ids": ["view-02", "view-04"]},
+        {"visual_group_ids": ["view-01", "view-03"]},
+        {"visual_group_ids": ["view-05"]},
+    ]}
+    raw_ids = {"view-01": "plan", "view-02": "elevation", "view-03": "section"}
+    assert technical_partition(usage, raw_ids) == [["elevation"], ["plan", "section"]]

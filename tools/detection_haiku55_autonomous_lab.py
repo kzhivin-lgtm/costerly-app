@@ -244,6 +244,14 @@ def partition(usage):
                   for group in usage["proof_graph_components"])
 
 
+def technical_partition(usage, raw_ids):
+    components = [
+        sorted(raw_ids[key] for key in row["visual_group_ids"] if key in raw_ids)
+        for row in usage["proof_graph_components"]
+    ]
+    return sorted(component for component in components if component)
+
+
 def dimensional_review_context(usage, canonical_ids, views, queue, page, marked):
     """Supply same-run OCR corroboration without proposing identity."""
     raw_ids = {canonical: raw for raw, canonical in canonical_ids.items() if raw in views}
@@ -619,13 +627,6 @@ def run(pdf, output):
             if group in canonical_ids and role != RENDER_KIND
         }
 
-        def technical_partition(result):
-            return sorted(
-                sorted(technical_raw_ids[key] for key in row["visual_group_ids"] if key in technical_raw_ids)
-                for row in audit(result)["proof_graph_components"]
-                if technical_raw_ids.keys().intersection(row["visual_group_ids"])
-            )
-
         def send_render(focused, page):
             review_client = adapter.get_anthropic_client()
             review, _, details = send(
@@ -633,7 +634,7 @@ def run(pdf, output):
             )
             return review, details
 
-        technical_components = technical_partition(final)
+        technical_components = technical_partition(audit(final), technical_raw_ids)
         print("Technical grouping complete. Reviewing presentation renders against their possible owners.", flush=True)
         rows, render_calls, render_review_audit = review_render_rows(
             request, views, primary_render_rows, send_render,
@@ -646,7 +647,7 @@ def run(pdf, output):
         if rows != payload["presentation_render_decisions"]:
             payload["presentation_render_decisions"] = rows
             reviewed = recompile(payload, final_overrides)
-            if technical_partition(reviewed) != technical_components:
+            if technical_partition(audit(reviewed), technical_raw_ids) != technical_components:
                 raise ValueError("Render review changed the technical object partition.")
             final = reviewed
 
