@@ -13,7 +13,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_LINK_MODE=copy \
     VIRTUAL_ENV=/app/.venv \
     PATH="/app/.venv/bin:$PATH" \
-    DETECTION_VISUAL_EMBEDDING_MODEL_DIR=/opt/costerly-models/dinov2-small
+    DETECTION_VISUAL_EMBEDDING_MODEL_DIR=/opt/costerly-models/dinov2-small \
+    DETECTION_COORDINATE_OCR_MODEL_DIR=/opt/costerly-models/detection-ocr
 
 # This layer changes only when locked runtime dependencies change. It is kept
 # before all application files so source-only deploys reuse it.
@@ -26,6 +27,10 @@ RUN uv sync --locked --no-dev --no-install-project
 COPY agents/detection_visual_embedding.py /model-build/agents/detection_visual_embedding.py
 COPY tools/prefetch_detection_visual_embedding.py /model-build/tools/prefetch_detection_visual_embedding.py
 RUN PYTHONPATH=/model-build /app/.venv/bin/python /model-build/tools/prefetch_detection_visual_embedding.py \
+    && rm -rf /model-build
+
+COPY agents/detection_coordinate_ocr.py /model-build/detection_coordinate_ocr.py
+RUN /app/.venv/bin/python /model-build/detection_coordinate_ocr.py "$DETECTION_COORDINATE_OCR_MODEL_DIR" \
     && rm -rf /model-build
 
 # Application changes happen after the model asset layer.

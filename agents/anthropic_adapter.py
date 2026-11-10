@@ -11699,7 +11699,6 @@ def run_anthropic_detection_v5_source_degraded_v561_consensus_experiment(
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None, mistral_anchor_admission: bool = False, document_category: str | None = None, stage_callback: Callable[..., None] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Run Island discovery, then the route-scoped bounded membership review."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
-    proposal_prompt = load_detection_v5_proposal_prompt()
     # Direct test callers retain the V6.11 contract until they specify a
     # category. Product callers always specify one after V6.12 classification.
     document_scope_enabled = (
@@ -11707,8 +11706,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         if document_category is not None
         else True
     )
-    if document_scope_enabled:
-        proposal_prompt += DETECTION_V611_ASSEMBLY_SCOPE_PROMPT
     review_prompt = load_detection_v5_review_prompt()
     document_dimension_unit_profile = (
         extract_detection_document_dimension_unit_profile(ocr_package)
@@ -11774,7 +11771,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     mistral_anchor_text = format_detection_v67_mistral_graphic_anchors(
         candidate_regions,
     ) if mistral_anchor_admission_active else ""
-    proposal_prompt_with_anchor_contract = proposal_prompt
+    proposal_prompt_with_anchor_contract = load_detection_v5_proposal_prompt(
+        ada_shaded_render_rule=v634_ada_haiku_discovery_sonnet_review_active,
+    )
+    if document_scope_enabled:
+        proposal_prompt_with_anchor_contract += DETECTION_V611_ASSEMBLY_SCOPE_PROMPT
     if mistral_anchor_text:
         proposal_prompt_with_anchor_contract += (
             "\n\nV6.7 MISTRAL ANCHOR ADMISSION:\n"

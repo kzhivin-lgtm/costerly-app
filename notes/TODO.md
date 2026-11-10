@@ -270,6 +270,19 @@ HSL 07 reached completion with 34 objects (`run_e508dea053ae472d9038a0b8047c8ed9
 object boundaries still require validation. Both latter runs predate the
 render wording clarification. No deployment.
 
+ACTIVE, P0, V8.4.9 candidate, tight numeric OCR across Detection routes:
+Run the numeric reader alongside standard OCR, retain one page-pixel bbox per
+recognized standalone label, and bind the readings to locked Views for a
+separate Dimensional Fingerprint audit. The upstream Estimation dependency is
+work 3.17.4.6. Accept the reader only with bounded waiting and protected
+Adda/Lev/Page 23 routes and View ownership. The local Adda run recovered
+25/27 control values with boxes and retained the exact two groups. Lev 1,
+Lev 2 and Page 23 kept their scenarios. HSL 07 returned partial coordinate
+coverage within the three-second tail. Improve HSL P08 and the other late
+pages within the same limit before treating coverage as complete. Using
+new readings as Membership inputs stays deferred until measured in
+isolation. Record: `notes/DETECTION_V8_4_9_HAIKU_COORDINATE_OCR_2026_11_10.md`.
+
 BENCHMARK, P0, Hasolelim Floor 06 manual Object Evidence island inventory:
 
 This is the owner-provided visual inventory, separate from final package count

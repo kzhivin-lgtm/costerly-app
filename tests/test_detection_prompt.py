@@ -100,6 +100,8 @@ def test_v5_10_11_separates_full_page_discovery_from_membership_review():
         "detection_v6_57_compact_discovery_deterministic_output_budget"
     )
     assert "presentation_render" in proposal_prompt
+    assert "solid shaded surfaces" not in proposal_prompt
+    assert "solid shaded surfaces" in load_detection_v5_proposal_prompt(ada_shaded_render_rule=True)
     assert "render-only hypothesis" in review_prompt
 
 

@@ -1,5 +1,12 @@
 # Done Log
 
+Detection V8.4.8 local checkpoint `6c552b3`: the owner accepted the Adda
+repair. Two independent Sonnet requests on the Ada route preserve exhaustive
+same-sheet checks and separate Membership. Adda returned the exact two
+groups, and Lev 2 retained one kitchen with its render. Local tag:
+`detection-v8.4.8-ada-parallel-membership-checkpoint-2026-11-10`.
+Evidence: `notes/DETECTION_V8_4_8_PARALLEL_MEMBERSHIP_CHECKPOINT_2026_11_10.md`.
+
 Estimation V4.10 material-progress repair `d0f1ac2`: separates confirmed
 geometry, project Material Plan and terminal result states. An infrastructure
 failure after BOM facts now becomes a visible terminal technical failure,

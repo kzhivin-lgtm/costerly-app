@@ -102,11 +102,26 @@ def load_detection_v5_membership_prompt() -> str:
     return prompt
 
 
-def load_detection_v5_proposal_prompt() -> str:
+def load_detection_v5_proposal_prompt(*, ada_shaded_render_rule: bool = False) -> str:
     prompt = DETECTION_V5_PROPOSAL_PROMPT_PATH.read_text(encoding="utf-8").strip()
     if not prompt:
         raise ValueError("Detection V5 proposal prompt is empty")
-    return prompt
+    render_rule = (
+        """Use the exact `representation_kind` `presentation_render` for a photograph or a
+finished-looking 3D depiction with solid shaded surfaces and visible finishes.
+This includes a coloured isometric CAD render with solid faces, even when it
+does not look like a photograph. Do not use it for a line drawing, a wireframe,
+or a perspective whose primary purpose is to communicate dimensions or
+construction callouts. A presentation render that depicts fabrication is Object
+Evidence. Membership determines whether it belongs to a technical View."""
+        if ada_shaded_render_rule else
+        """Use the exact `representation_kind` `presentation_render` for a photographic
+render or photo that presents a fabricated object. Do not use it for a
+line-drawn or dimensioned technical perspective. A presentation render remains
+Object Evidence when it depicts fabrication, but it is not itself a commercial
+object or a quantity decision."""
+    )
+    return prompt.replace("{{PRESENTATION_RENDER_RULE}}", render_rule)
 
 
 def load_detection_v5_review_prompt() -> str:

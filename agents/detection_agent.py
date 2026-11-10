@@ -9,6 +9,9 @@ from agents.anthropic_adapter import (
     DetectionVisualRegistryValidationError,
     _source_dimensions_by_page,
     build_detection_page_evidence_inventory,
+    build_detection_v5_dimension_fingerprints,
+    build_detection_view_evidence_packages,
+    infer_detection_v5_bare_dimension_unit,
     build_detection_v5_membership_view_crops,
     build_detection_v5_review_coordinate_frames,
     build_detection_v5_review_page_context_images,
@@ -389,6 +392,67 @@ def _registry_group_bbox(group: dict | None) -> dict[str, float] | None:
     ):
         return None
     return normalized
+
+
+def _audit_coordinate_fingerprints(
+    *,
+    ocr_package: dict,
+    visual_map: dict | None,
+    page_images: list[bytes],
+    use_review_frame: bool,
+    existing_unit: str,
+) -> dict:
+    """Attribute numeric readings to locked Views without changing their ownership."""
+    labels = (ocr_package.get("evidence") or {}).get("numeric_labels") or []
+    facts = [
+        {**label, "fact_id": f"COCR{index:05d}", "kind": "literal:numeric_label", "bbox": bbox}
+        for index, label in enumerate(labels, start=1)
+        if isinstance(label, dict)
+        and isinstance(label.get("page_number"), int)
+        and (bbox := _registry_group_bbox(label)) is not None
+    ]
+    if use_review_frame:
+        frames, _ = build_detection_v5_review_coordinate_frames(
+            ocr_package=ocr_package, page_images=page_images,
+        )
+        facts = [
+            {
+                **fact,
+                "bbox": {
+                    key: round(value * frame["scale_x" if key.endswith("_x") else "scale_y"])
+                    for key, value in fact["bbox"].items()
+                },
+            }
+            for fact in facts
+            if (frame := frames.get(fact["page_number"])) is not None
+        ]
+    groups = _registry_owned_visual_groups(visual_map)
+    boxes = {
+        group_id: bbox for group_id, group in groups.items()
+        if (bbox := _registry_group_bbox(group)) is not None
+    }
+    packages = build_detection_view_evidence_packages(
+        visual_groups=[
+            {**groups[group_id], "evidence_class": "object_evidence"} for group_id in boxes
+        ],
+        group_bboxes=boxes,
+        source_facts=facts,
+    )
+    unit, unit_reason = infer_detection_v5_bare_dimension_unit(
+        packages, document_unit=existing_unit,
+    )
+    return {
+        "status": "audit_only",
+        "unit": unit,
+        "unit_basis": "existing_registry_unit" if existing_unit == unit and unit != "unknown" else unit_reason,
+        "view_fingerprints": build_detection_v5_dimension_fingerprints(packages, document_unit=unit),
+        "view_readings": {
+            package["visual_group_id"]: package["source_facts"] for package in packages
+            if package["source_facts"]
+        },
+        "unassigned_count": len(facts) - sum(len(package["source_facts"]) for package in packages),
+        "bbox_frame": "review_page_pixels" if use_review_frame else "ocr_page_pixels",
+    }
 
 
 def _select_presentation_view(
@@ -1110,6 +1174,16 @@ def run_detection_agent(
     if isinstance(visual_registry_usage, dict):
         raw_usage = dict(visual_registry_usage.get("raw_usage") or {})
         raw_usage["v8_4_1_presentation_evidence"] = presentation_evidence_audit
+        if ocr_package and (ocr_package.get("evidence") or {}).get("numeric_labels"):
+            raw_usage["coordinate_dimension_audit"] = _audit_coordinate_fingerprints(
+                ocr_package=ocr_package, visual_map=presentation_visual_map,
+                page_images=registry_images,
+                use_review_frame=bool(presentation_evidence_audit.get("applied")),
+                existing_unit=str(
+                    (raw_usage.get("dimension_graph_audit") or {}).get("effective_document_dimension_unit")
+                    or "unknown"
+                ),
+            )
         raw_usage["v6_19_naming_annotated_pages"] = naming_overlay_audit
         raw_usage["v6_21_naming_source_crops"] = naming_crop_audit
         visual_registry_usage["raw_usage"] = raw_usage

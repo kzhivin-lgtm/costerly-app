@@ -12,8 +12,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable
 
+from agents.detection_coordinate_ocr import CoordinateOCR
 from agents.ocr_adapter import (
-    OCR_CONTRACT_VERSION,
     build_page_title_fields,
     build_ocr_evidence,
     run_mistral_ocr,
@@ -35,6 +35,7 @@ from agents.pdf_page_inspection import (
 DEFAULT_RENDER_DPI = 200
 DEFAULT_RENDER_WORKERS = 4
 DEFAULT_PAGE_WORKERS = 4
+DETECTION_OCR_CONTRACT_VERSION = "ocr_v9_numeric_label_coordinates"
 
 
 def extract_native_pdf_text_blocks(
@@ -461,12 +462,28 @@ def run_mistral_document_evidence_ocr(
     ),
 ) -> dict[str, Any]:
     """Render and OCR PDF pages concurrently with an overlapping pipeline."""
+    coordinate_ocr = CoordinateOCR()
     if Path(file_name).suffix.lower() != ".pdf":
-        return page_ocr(
-            file_name=file_name,
-            file_bytes=file_bytes,
-            profile=OCR_PROFILE_EVIDENCE,
-        )
+        started = time.perf_counter()
+        coordinate_ocr.submit(1, file_bytes)
+        try:
+            package = page_ocr(
+                file_name=file_name,
+                file_bytes=file_bytes,
+                profile=OCR_PROFILE_EVIDENCE,
+            )
+            labels, audit = coordinate_ocr.collect(package.get("pages") or [])
+        except Exception:
+            coordinate_ocr.cancel()
+            raise
+        return {
+            **package,
+            "contract_version": DETECTION_OCR_CONTRACT_VERSION,
+            "evidence": {**(package.get("evidence") or {}), "numeric_labels": labels},
+            "coordinate_ocr": audit,
+            "processing_seconds": round(time.perf_counter() - started, 3),
+            "finished_at": datetime.now(UTC).isoformat(),
+        }
 
     started = time.perf_counter()
     started_at = datetime.now(UTC).isoformat()
@@ -575,51 +592,58 @@ def run_mistral_document_evidence_ocr(
     rendered_page_sizes: dict[int, int] = {}
     warmup_wait_seconds = 0.0
     provider_started: float | None = None
-    if use_pipeline:
-        stream = (page_streamer or iter_rendered_pdf_pages)(
-            file_bytes,
-            dpi=dpi,
-            render_workers=render_workers,
-        )
-        recognized = []
-        with ThreadPoolExecutor(max_workers=max(1, page_workers)) as executor:
-            ocr_futures = []
-            for page_index, page_bytes in stream:
-                if provider_started is None:
-                    warmup_wait_started = time.perf_counter()
-                    wait_for_mistral_http_warmup()
-                    warmup_wait_seconds = time.perf_counter() - warmup_wait_started
-                    provider_started = time.perf_counter()
-                rendered_page_sizes[page_index] = len(page_bytes)
-                rendered_page_measurements[page_index + 1] = (
-                    measure_rendered_page_visual_coverage(page_bytes)
-                )
-                ocr_futures.append(executor.submit(recognize, (page_index, page_bytes)))
+    try:
+        if use_pipeline:
+            stream = (page_streamer or iter_rendered_pdf_pages)(
+                file_bytes,
+                dpi=dpi,
+                render_workers=render_workers,
+            )
+            recognized = []
+            with ThreadPoolExecutor(max_workers=max(1, page_workers)) as executor:
+                ocr_futures = []
+                for page_index, page_bytes in stream:
+                    coordinate_ocr.submit(page_index + 1, page_bytes)
+                    if provider_started is None:
+                        warmup_wait_started = time.perf_counter()
+                        wait_for_mistral_http_warmup()
+                        warmup_wait_seconds = time.perf_counter() - warmup_wait_started
+                        provider_started = time.perf_counter()
+                    rendered_page_sizes[page_index] = len(page_bytes)
+                    rendered_page_measurements[page_index + 1] = (
+                        measure_rendered_page_visual_coverage(page_bytes)
+                    )
+                    ocr_futures.append(executor.submit(recognize, (page_index, page_bytes)))
+                render_seconds = time.perf_counter() - render_started
+                start_native_extraction_after_render()
+                for future in as_completed(ocr_futures):
+                    recognized.append(future.result())
+            if not rendered_page_sizes:
+                raise RuntimeError("PDF contains no renderable pages")
+        else:
+            rendered_pages = renderer(file_bytes, dpi=dpi)
+            for page_number, page_bytes in enumerate(rendered_pages, start=1):
+                coordinate_ocr.submit(page_number, page_bytes)
             render_seconds = time.perf_counter() - render_started
+            warmup_wait_started = time.perf_counter()
+            wait_for_mistral_http_warmup()
+            warmup_wait_seconds = time.perf_counter() - warmup_wait_started
+            provider_started = time.perf_counter()
+            worker_count = max(1, min(page_workers, len(rendered_pages)))
             start_native_extraction_after_render()
-            for future in as_completed(ocr_futures):
-                recognized.append(future.result())
-        if not rendered_page_sizes:
-            raise RuntimeError("PDF contains no renderable pages")
-    else:
-        rendered_pages = renderer(file_bytes, dpi=dpi)
-        render_seconds = time.perf_counter() - render_started
-        warmup_wait_started = time.perf_counter()
-        wait_for_mistral_http_warmup()
-        warmup_wait_seconds = time.perf_counter() - warmup_wait_started
-        provider_started = time.perf_counter()
-        worker_count = max(1, min(page_workers, len(rendered_pages)))
-        start_native_extraction_after_render()
-        with ThreadPoolExecutor(max_workers=worker_count) as executor:
-            recognized = list(executor.map(recognize, enumerate(rendered_pages)))
-        rendered_page_sizes = {
-            page_index: len(page_bytes)
-            for page_index, page_bytes in enumerate(rendered_pages)
-        }
-        rendered_page_measurements = {
-            page_index + 1: measure_rendered_page_visual_coverage(page_bytes)
-            for page_index, page_bytes in enumerate(rendered_pages)
-        }
+            with ThreadPoolExecutor(max_workers=worker_count) as executor:
+                recognized = list(executor.map(recognize, enumerate(rendered_pages)))
+            rendered_page_sizes = {
+                page_index: len(page_bytes)
+                for page_index, page_bytes in enumerate(rendered_pages)
+            }
+            rendered_page_measurements = {
+                page_index + 1: measure_rendered_page_visual_coverage(page_bytes)
+                for page_index, page_bytes in enumerate(rendered_pages)
+            }
+    except Exception:
+        coordinate_ocr.cancel()
+        raise
     provider_wall_seconds = (
         time.perf_counter() - provider_started if provider_started is not None else 0.0
     )
@@ -715,10 +739,12 @@ def run_mistral_document_evidence_ocr(
         )
         page_profiles.append(profile_with_render)
 
+    labels, coordinate_audit = coordinate_ocr.collect(pages)
     finished_at = datetime.now(UTC).isoformat()
     total_seconds = time.perf_counter() - started
     result = {
-        "contract_version": OCR_CONTRACT_VERSION,
+        "contract_version": DETECTION_OCR_CONTRACT_VERSION,
+        "coordinate_ocr": coordinate_audit,
         "provider": "mistral",
         "model": model,
         "profile": OCR_PROFILE_EVIDENCE,
@@ -801,6 +827,7 @@ def run_mistral_document_evidence_ocr(
         vector_line_segments=native_inspection.get("vector_line_segments") or [],
         page_profiles=page_profiles,
     )
+    result["evidence"]["numeric_labels"] = labels
     result["page_title_fields"] = build_page_title_fields(
         pages, result["evidence"],
     )
