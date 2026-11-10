@@ -509,6 +509,31 @@ def test_v711_render_decision_creates_one_cross_page_visual_fact():
     }]
 
 
+@pytest.mark.parametrize("disposition", ["no_match", "unresolved", "attach"])
+def test_v711_blank_render_witness_cannot_create_an_attachment(disposition):
+    row = {
+        "render_group_id": "render", "disposition": disposition,
+        "technical_group_id": "", "evidence_type": "none", "visual_witness": " ",
+    }
+    groups = [
+        {"group_id": "render", "evidence_class": "object_evidence", "representation_kind": "presentation_render"},
+        {"group_id": "technical", "evidence_class": "object_evidence", "representation_kind": "elevation"},
+    ]
+    if disposition == "attach":
+        row.update(technical_group_id="technical", evidence_type="matching_topology")
+        with pytest.raises(ValueError, match="decision is invalid"):
+            normalize_detection_v711_presentation_render_decisions(
+                [row], visual_groups=groups, group_id_mapping={},
+            )
+        return
+
+    facts, audit = normalize_detection_v711_presentation_render_decisions(
+        [row], visual_groups=groups, group_id_mapping={},
+    )
+    assert facts == []
+    assert audit == [{**row, "visual_witness": ""}]
+
+
 def test_v711_render_decision_requires_every_render_and_a_technical_target():
     with pytest.raises(ValueError, match="cover every render"):
         normalize_detection_v711_presentation_render_decisions(

@@ -3990,9 +3990,11 @@ def normalize_detection_v711_presentation_render_decisions(
                 })
                 continue
             raise ValueError("V7.11 presentation render decision is invalid")
-        if render_id in by_render or not witness:
+        if render_id in by_render:
             raise ValueError("V7.11 presentation render decision is invalid")
         if disposition == "attach":
+            if not witness:
+                raise ValueError("V7.11 presentation render decision is invalid")
             technical_group = object_groups.get(technical_id)
             if (
                 technical_group is None
@@ -4001,6 +4003,7 @@ def normalize_detection_v711_presentation_render_decisions(
             ):
                 raise ValueError("V7.11 presentation render attachment is invalid")
         elif disposition in {"no_match", "unresolved"}:
+            # An abstention carries no proof and contributes no graph edge.
             if technical_id or evidence_type != "none":
                 raise ValueError("V7.11 non-attachment decision is invalid")
         else:
