@@ -7,8 +7,10 @@ pack separates location, role, and group membership for subsequent tests.
 
 Base is the local V8.4.9 tag
 `detection-v8.4.9-post-cleanup-checkpoint-2026-11-10`, runtime `3f3f157`.
-This round uses saved inputs and local engines with zero provider calls.
-Q, routing and automatic singleton attachment are deferred in the TODO.
+The initial research round uses saved inputs and local engines. The later
+Haiku comparison makes provider calls on a frozen Review request.
+Q, routing, automatic singleton attachment and a switch back to
+Haiku 4.5 are deferred in the TODO.
 
 Private reproducibility bundle:
 `/Users/qb/Documents/ChatGPT/Costerly/output/detection-research-2026-11-10`.

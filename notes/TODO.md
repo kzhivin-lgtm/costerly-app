@@ -270,9 +270,10 @@ HSL 07 reached completion with 34 objects (`run_e508dea053ae472d9038a0b8047c8ed9
 its ordinary Review quality is an open acceptance blocker. The controlled
 HSL N57 replay restores the group with Haiku 4.5 and misses it with 5.5 low
 and medium. The high trials use the entire 6,144 and 12,288-token budgets
-without a JSON reply. Candidate next check is a narrowly scoped ordinary
-Review model comparison before production publication. Both latter file
-runs predate the render wording clarification. No deployment.
+without a JSON reply. The owner deferred switching ordinary Review back
+to Haiku 4.5. The HSL grouping regression remains open on the local
+Haiku 5.5 checkpoint. Both latter file runs predate the render wording
+clarification. No deployment.
 
 PENDING PRODUCTION VERIFICATION, P0, local V8.4.9 coordinate OCR checkpoint:
 Run the numeric reader alongside standard OCR, retain one page-pixel bbox per
