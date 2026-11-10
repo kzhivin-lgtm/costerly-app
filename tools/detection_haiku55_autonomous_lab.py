@@ -22,7 +22,9 @@ from agents.detection_source_capability import assess_detection_source_capabilit
 from agents.ocr_rendering import run_mistral_document_evidence_ocr
 from config import CLAUDE_HAIKU_MODEL
 from tools.detection_dimension_anchors import dimension_anchors
-from tools.detection_render_review import RENDER_KIND, render_role_candidates, review_render_roles, review_render_rows
+from tools.detection_render_review import (
+    RENDER_KIND, provisional_render_rows, render_role_candidates, review_render_roles, review_render_rows,
+)
 
 BATCH_SIZE = 3
 ROLE_RULE = (
@@ -336,6 +338,7 @@ def run(pdf, output):
     records, calls = [], []
     render_review_audit = {}
     render_role_audit = []
+    primary_render_rows = []
     coordinate_frames = None
     canonical_ids = {}
 
@@ -407,21 +410,12 @@ def run(pdf, output):
                 original_text = next(block for block in response.content if block.type == "text")
                 payload = json.loads(adapter.extract_text_from_claude_response(response))
 
-                def send_render(focused, page):
-                    review_client = adapter.get_anthropic_client()
-                    review, _, details = send(
-                        review_client, focused, "presentation_render_review", f"render-{page:02}",
-                    )
-                    return review, details
-
-                rows, render_calls, sources = review_render_rows(
-                    prepared, views, payload.get("presentation_render_decisions"), send_render,
-                    ABSENT_PROOF.search, BATCH_SIZE,
+                raw_rows = payload.get("presentation_render_decisions")
+                if isinstance(raw_rows, list):
+                    primary_render_rows.extend(raw_rows)
+                payload["presentation_render_decisions"] = provisional_render_rows(
+                    views, raw_rows, ABSENT_PROOF.search,
                 )
-                calls.extend(render_calls)
-                render_review_audit.update(sources)
-                write_json(output / "presentation-render-review.json", {"decisions": rows, "decision_source": sources})
-                payload["presentation_render_decisions"] = rows
                 response = response.model_copy(update={"content": [
                     original_text.model_copy(update={"text": json.dumps(payload, ensure_ascii=False)})
                 ]})
@@ -485,6 +479,7 @@ def run(pdf, output):
         return original_merge(dimension_edges, semantics, **kwargs, dimension_anchor_pairs=anchor_pairs)
 
     dimension_override = {"compile_detection_v5_merge_edges": merge_with_dimensions}
+    final_overrides = dimension_override
     if anchor_pairs:
         candidate = recompile(payload, dimension_override)
         old_groups = {
@@ -612,10 +607,48 @@ def run(pdf, output):
                 ledger["local_membership_recovery"] = accepted_recovery
                 return [edge for edge in base if edge_endpoints(edge) not in recovered_pairs] + accepted_recovery, ledger
 
-            final = recompile(payload, {
+            final_overrides = {
                 "compile_detection_v5_semantic_facts": validate_local,
                 "compile_detection_v5_merge_edges": merge_local,
-            })
+            }
+            final = recompile(payload, final_overrides)
+
+    if any(role == RENDER_KIND for _, role in views.values()):
+        technical_raw_ids = {
+            canonical_ids[group]: group for group, (_, role) in views.items()
+            if group in canonical_ids and role != RENDER_KIND
+        }
+
+        def technical_partition(result):
+            return sorted(
+                sorted(technical_raw_ids[key] for key in row["visual_group_ids"] if key in technical_raw_ids)
+                for row in audit(result)["proof_graph_components"]
+                if technical_raw_ids.keys().intersection(row["visual_group_ids"])
+            )
+
+        def send_render(focused, page):
+            review_client = adapter.get_anthropic_client()
+            review, _, details = send(
+                review_client, focused, "presentation_render_review", f"render-{page:02}",
+            )
+            return review, details
+
+        technical_components = technical_partition(final)
+        print("Technical grouping complete. Reviewing presentation renders against their possible owners.", flush=True)
+        rows, render_calls, render_review_audit = review_render_rows(
+            request, views, primary_render_rows, send_render,
+            ABSENT_PROOF.search, BATCH_SIZE, technical_components,
+        )
+        calls.extend(render_calls)
+        write_json(output / "presentation-render-review.json", {
+            "decisions": rows, "decision_source": render_review_audit, "technical_components": technical_components,
+        })
+        if rows != payload["presentation_render_decisions"]:
+            payload["presentation_render_decisions"] = rows
+            reviewed = recompile(payload, final_overrides)
+            if technical_partition(reviewed) != technical_components:
+                raise ValueError("Render review changed the technical object partition.")
+            final = reviewed
 
     final_usage = audit(final)
     final_groups = partition(final_usage)

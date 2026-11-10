@@ -22,10 +22,13 @@ RENDER_RULE = (
     "drawing such as a line-drawn plan, section, elevation or technical perspective. A photograph, "
     "rendered detail or a set of rendered thumbnails cannot be the technical target even when labelled as a detail. "
     "A render can show only part of an object. Allow for different viewpoint, lighting and occlusion. "
-    "Use attach only when one technical View visibly shows the same distinctive configuration of actual "
+    "Use attach only when a technical View visibly shows the same distinctive configuration of actual "
     "parts, for example a particular sequence of divisions, an asymmetric return or a distinctive opening "
     "in the same location. Briefly describe that common feature in visual_witness. A similar room, material, "
-    "finish or generic furniture category cannot prove identity. If two different fabricated items remain "
+    "finish or generic furniture category cannot prove identity. The technical groups listed below "
+    "were formed independently of render evidence. Matching multiple Views in the same technical group "
+    "is consistent with one item: choose its clearest technical witness. Do not use group size, or group "
+    "membership alone, as evidence. If two different fabricated items remain "
     "plausible or a part cannot be resolved, choose unresolved. Choose no_match when the available views "
     "provide no supported local match and describe the concrete discrepancy or missing comparable feature. "
     "Use exactly one row per listed render. Every disposition requires a short, nonempty visual_witness. "
@@ -144,7 +147,7 @@ def validated_render_rows(rows, views, render_ids, reject_absent_proof):
     return result
 
 
-def render_request(request, views, page, targets):
+def render_request(request, views, page, targets, technical_components):
     """Use existing immutable crop blocks. A target cannot be selected off-sheet."""
     blocks = request["messages"][0]["content"]
     images = []
@@ -164,9 +167,14 @@ def render_request(request, views, page, targets):
         line.split("|SRC=",1)[0] for line in blocks[-1]["text"].splitlines()
         if (match := VIEW_ROW.match(line)) and match[1] in visible_ids
     ]
+    visible_technical = visible_ids - targets
+    groups = sorted(sorted(visible_technical.intersection(component)) for component in technical_components)
+    confirmed = [" + ".join(group) for group in groups if len(group) > 1]
     handoff = (
         "Required presentation render IDs: " + ", ".join(sorted(visible_targets))
         + "\nFixed view descriptions for orientation:\n" + "\n".join(descriptions)
+        + "\nPreviously grouped technical Views visible on this sheet:\n"
+        + ("\n".join(confirmed) or "No multi-view group confirmed.")
     )
     narrowed = {key: value for key, value in request.items() if key not in CALLBACK_KEYS}
     narrowed["system"] = [{"type": "text", "text": RENDER_RULE}]
@@ -184,7 +192,24 @@ def render_request(request, views, page, targets):
     return narrowed, visible_targets, visible_ids
 
 
-def review_render_rows(request, views, primary_rows, send, reject_absent_proof, workers):
+def unresolved_render(render):
+    return {
+        "render_group_id": render,
+        "disposition": "unresolved",
+        "technical_group_id": "",
+        "evidence_type": "none",
+        "visual_witness": "No valid provider decision with a visible witness was returned.",
+    }
+
+
+def provisional_render_rows(views, primary_rows, reject_absent_proof):
+    """Keep valid primary rows and give missing rows a fail-closed disposition."""
+    all_ids = {key for key, (_, kind) in views.items() if kind == RENDER_KIND}
+    accepted = validated_render_rows(primary_rows, views, all_ids, reject_absent_proof)
+    return [accepted[key] if key in accepted else unresolved_render(key) for key in sorted(all_ids)]
+
+
+def review_render_rows(request, views, primary_rows, send, reject_absent_proof, workers, technical_components):
     """Keep grounded primary positives and review other renders once locally."""
     all_ids = {key for key, (_, kind) in views.items() if kind == RENDER_KIND}
     accepted = validated_render_rows(primary_rows, views, all_ids, reject_absent_proof)
@@ -195,7 +220,7 @@ def review_render_rows(request, views, primary_rows, send, reject_absent_proof, 
 
     def review(item):
         page, targets = item
-        narrowed, visible_targets, visible_ids = render_request(request, views, page, targets)
+        narrowed, visible_targets, visible_ids = render_request(request, views, page, targets, technical_components)
         if narrowed is None:
             return {}, None
         response, metadata = send(narrowed, page)
@@ -225,18 +250,11 @@ def review_render_rows(request, views, primary_rows, send, reject_absent_proof, 
             if metadata is not None:
                 calls.append(metadata)
             for render, row in rows.items():
-                if row["disposition"] == "attach" or render not in accepted:
-                    accepted[render] = row
-                    resolution[render] = "focused_same_page"
+                accepted[render] = row
+                resolution[render] = "focused_same_page"
     for render in sorted(all_ids):
         if render not in accepted:
-            accepted[render] = {
-                "render_group_id": render,
-                "disposition": "unresolved",
-                "technical_group_id": "",
-                "evidence_type": "none",
-                "visual_witness": "Render review did not return a valid decision with a visible witness.",
-            }
+            accepted[render] = unresolved_render(render)
             resolution[render] = "runtime_unresolved"
         else:
             resolution.setdefault(render, "primary")

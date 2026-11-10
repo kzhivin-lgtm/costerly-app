@@ -27,11 +27,12 @@ def test_blank_render_witness_is_reviewed_without_allowing_render_to_render_edge
         "render": (6, "presentation_render"),
         "other-render": (6, "presentation_render"),
         "technical": (6, "elevation"),
+        "technical-sibling": (6, "section"),
         "off-sheet": (7, "section"),
         "missing-crop": (7, "presentation_render"),
     }
     blocks = []
-    for group in ("render", "other-render", "technical", "off-sheet"):
+    for group in ("render", "other-render", "technical", "technical-sibling", "off-sheet"):
         blocks.extend([
             {"type": "text", "text": f"Object View {group}, PDF page {views[group][0]}"},
             {"type": "image", "source": {}},
@@ -52,6 +53,7 @@ def test_blank_render_witness_is_reviewed_without_allowing_render_to_render_edge
     def send(focused, page):
         inspected.append(page)
         assert "off-sheet" not in str(focused["messages"])
+        assert "technical + technical-sibling" in focused["messages"][0]["content"][-1]["text"]
         return provider_response({"presentation_render_decisions": [
             render_decision("render", "technical", "Both show an offset opening beside two stacked shelves."),
             render_decision("other-render", "render", "The two images have matching colors."),
@@ -59,7 +61,7 @@ def test_blank_render_witness_is_reviewed_without_allowing_render_to_render_edge
 
     rows, calls, sources = review_render_rows(
         request, views, [render_decision("render"), render_decision("other-render")],
-        send, lambda _: False, workers=1,
+        send, lambda _: False, workers=1, technical_components=[["technical", "technical-sibling", "off-sheet"]],
     )
     assert inspected == [6]
     assert len(calls) == 1
