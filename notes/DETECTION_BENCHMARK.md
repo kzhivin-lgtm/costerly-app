@@ -1,5 +1,14 @@
 # Detection Agent benchmark
 
+## V8.4.9 autonomous Haiku 5.5 HSL 07 checkpoint, 2026-11-10
+
+A fresh local run produced the exact ten-group, 33-View HSL 07 partition.
+It established the first links on P04 and P07 from independently
+corroborated Fingerprint evidence. P11 retained the acceptable separate
+View. An independent repeat stopped at invalid Discovery geometry before
+grouping. Protected scenarios reproduced exactly on saved responses.
+Evidence: `notes/evidence/detection-v8.4.9-haiku55-autonomous-accepted-floor-07.json`.
+
 ## V8.4.9 Haiku 5.5 acceptance experiments, 2026-11-10
 
 The owner accepts the ten-object HSL 07 replay with one separate View

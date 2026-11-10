@@ -1,5 +1,11 @@
 # Done Log
 
+Fresh autonomous HSL 07 lab checkpoint. Ten groups with all 33 Views
+match the owner-approved partition. Fingerprint supplied the first
+confirmed same-sheet links on P04 and P07. Exact protected replay passed.
+The separate repeat with invalid Discovery geometry is documented.
+Manifest: `notes/evidence/detection-v8.4.9-haiku55-autonomous-accepted-floor-07.json`.
+
 Autonomous Floor 07 experiment completed at the frozen Haiku 5.5 lab tag.
 It returned 13 groups and reproduced the accepted P11 split. The P05
 endpoint format mismatch and separate P04 witness are recorded in

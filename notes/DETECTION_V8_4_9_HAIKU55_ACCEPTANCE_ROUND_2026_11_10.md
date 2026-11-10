@@ -130,3 +130,48 @@ is separate from this parser issue.
 
 Full outcome and raw provider evidence are indexed by
 `notes/evidence/detection-v8.4.9-haiku55-autonomous-floor-07.json`.
+
+## Autonomous Floor 07 checkpoint with ten groups
+
+[verified] Run `run_08dab9c475cb4e77b07d617c09e561a3` uses entirely new OCR
+and Haiku 5.5 responses. It matches all 33 View boxes and all co-membership
+pairs in the owner-approved ten-group replay. P11 retains the acceptable
+separate location View. No document-specific prompts, expected groups or
+case rules enter the runner. The successful run takes 149.512 seconds,
+including 84.201 seconds of OCR. A concurrent independent repeat stopped
+before grouping on invalid Discovery core/envelope geometry. It did not
+produce a partition and is preserved as a separate diagnostic.
+
+On the earlier 18-group live run, the existing fingerprint already scored
+P04 V2/V3 and all P06 pairs at 100. The compiler requires a semantic
+fact for the first edge even at full score. A dimension-only supporting
+edge can previously help only after an accepted merge anchors a component.
+The raw score is a capped sum and also gave 100 to a dimension strip
+versus an elevation. The lab therefore asks the same-page fingerprint
+for a rarer exact extent in two Views plus independently sourced ordered
+neighboring dimensions, or two independently sourced rare exact extents.
+Only the proved pairs are allowed as first merges. Cross-sheet links,
+blocked pairs, common sizes and shared OCR sources cannot open this path.
+In the successful fresh run this directly seeded P04 V2/V3 and two P07
+pairs. A compiler-only check on the earlier recorded input independently
+seeds P06 V1/V3 and recovers all three P06 Views.
+
+The full successful P04 component still uses the pre-existing dominant-page
+rule for V6. Its dimension strip V5 is retained as evidence in the same
+component and never becomes a standalone object in the successful run.
+Neither is evidence of a general fix for thin-region roles or singleton
+attachment. A prior 9-group live candidate was rejected because a local
+row describing absent matching geometry was treated as positive proof.
+The corrected runner requires a positive fact and source IDs of both
+inspected Views, and provides clearer crops of the same fixed boxes.
+
+The first alias-only run stopped on an existing conflict review branch,
+and the full rerun after preserving that branch gave 18 groups with P05
+recovered. A local-proof candidate gave 17. An extra general Discovery
+instruction was reverted after losing whole sheets. All attempts remain
+in the private artifact directory. The opt-in proof is local to the lab.
+The usual Ada, Lev and Page 23 requests and outputs exactly match the
+checkpoint on fixed-response replay. Focused regression suite: 46 passed.
+
+Evidence and comparison:
+`notes/evidence/detection-v8.4.9-haiku55-autonomous-accepted-floor-07.json`.

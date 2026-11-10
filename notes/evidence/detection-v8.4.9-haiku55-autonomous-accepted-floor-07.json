@@ -1,0 +1,338 @@
+{
+  "status": "fresh_autonomous_hsl_floor_07_matches_owner_partition",
+  "runtime_experiment_commit": "84078d6",
+  "test_commit": "7dd27d9",
+  "runner": "tools/detection_haiku55_autonomous_lab.py",
+  "artifacts": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-07-positive-proof",
+  "sha256sums_sha256": "ca656968285f30cd5cc328c9d87ac1cabf7ae48fda6ec2734b5af7090a10e068",
+  "run": {
+    "source_file": "Hasolelim_Carpentry_Plan_Floor_07.pdf",
+    "source_sha256": "45e51f24b04c75b8b0223ef0e60724faaed65f3c34105b1e32c04b16ec005c69",
+    "route": "ordinary_object_set",
+    "run_id": "run_08dab9c475cb4e77b07d617c09e561a3",
+    "ocr_seconds": 84.201,
+    "total_seconds": 149.512,
+    "calls": [
+      {
+        "stage": "discovery",
+        "model": "claude-haiku-5-5",
+        "message_id": "msg_011CguRn7VmBrkzS4RdY1FXm",
+        "stop_reason": "end_turn",
+        "input_tokens": 129536,
+        "output_tokens": 9383,
+        "seconds": 28.87,
+        "request_sha256": "ebcfebdf5503ed369b1fb57d1e643e50ae57a0de8a20fec4ca280bb44eb4452d"
+      },
+      {
+        "stage": "role",
+        "model": "claude-haiku-5-5",
+        "message_id": "msg_011CguRpCJYB4fjDXTS13gyu",
+        "stop_reason": "end_turn",
+        "input_tokens": 4206,
+        "output_tokens": 568,
+        "seconds": 3.344,
+        "request_sha256": "8e91d99fd75b87ce59e54e95168c0771c83ce40a85c62212ba3543d7b839452b"
+      },
+      {
+        "stage": "membership",
+        "model": "claude-haiku-5-5",
+        "message_id": "msg_011CguRpbVZmWX5guBbu9Mww",
+        "stop_reason": "end_turn",
+        "input_tokens": 29172,
+        "output_tokens": 1780,
+        "seconds": 9.337,
+        "request_sha256": "3b3cf9c47e7d9c0f894acab46414927cd53b1d550de8ed2608dbf303755392fc"
+      },
+      {
+        "stage": "same_page_supplement",
+        "model": "claude-haiku-5-5",
+        "message_id": "msg_011CguRqXppXv2bMMvGfsYJM",
+        "stop_reason": "end_turn",
+        "input_tokens": 9459,
+        "output_tokens": 2283,
+        "seconds": 11.033,
+        "request_sha256": "96cb7909f23099d614daaa74c3c5da4a1736e882262cc8301fda63120ad0ca61",
+        "pages": [
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "stage": "local_membership_recovery",
+        "model": "claude-haiku-5-5",
+        "message_id": "msg_011CguRrWxX4Dwva994aLThG",
+        "stop_reason": "end_turn",
+        "input_tokens": 7258,
+        "output_tokens": 43,
+        "seconds": 1.666,
+        "request_sha256": "9a2c23f0357d1f52fd0de0b9d131cc00df82c77e63b98e3802ee27cdf6b3775c",
+        "pages": [
+          11
+        ]
+      }
+    ],
+    "primary_groups": [
+      [
+        "P03.V1",
+        "P03.V2",
+        "P03.V3"
+      ],
+      [
+        "P04.V1"
+      ],
+      [
+        "P04.V2"
+      ],
+      [
+        "P04.V3"
+      ],
+      [
+        "P04.V4"
+      ],
+      [
+        "P04.V5"
+      ],
+      [
+        "P04.V6"
+      ],
+      [
+        "P04.V7"
+      ],
+      [
+        "P05.V1",
+        "P05.V2",
+        "P05.V3"
+      ],
+      [
+        "P06.V1",
+        "P06.V2",
+        "P06.V3"
+      ],
+      [
+        "P07.V1"
+      ],
+      [
+        "P07.V2"
+      ],
+      [
+        "P07.V3"
+      ],
+      [
+        "P07.V4"
+      ],
+      [
+        "P08.V1",
+        "P08.V2",
+        "P08.V3",
+        "P08.V4"
+      ],
+      [
+        "P09.V1",
+        "P09.V2",
+        "P09.V3"
+      ],
+      [
+        "P10.V1",
+        "P10.V2",
+        "P10.V3"
+      ],
+      [
+        "P11.V1"
+      ],
+      [
+        "P11.V2"
+      ],
+      [
+        "P11.V3"
+      ]
+    ],
+    "revisited_pages": [
+      11
+    ],
+    "supplement_hypothesis_count": 1,
+    "final_groups": [
+      [
+        "P03.V1",
+        "P03.V2",
+        "P03.V3"
+      ],
+      [
+        "P04.V1",
+        "P04.V2",
+        "P04.V3",
+        "P04.V4",
+        "P04.V5",
+        "P04.V6",
+        "P04.V7"
+      ],
+      [
+        "P05.V1",
+        "P05.V2",
+        "P05.V3"
+      ],
+      [
+        "P06.V1",
+        "P06.V2",
+        "P06.V3"
+      ],
+      [
+        "P07.V1",
+        "P07.V2",
+        "P07.V3",
+        "P07.V4"
+      ],
+      [
+        "P08.V1",
+        "P08.V2",
+        "P08.V3",
+        "P08.V4"
+      ],
+      [
+        "P09.V1",
+        "P09.V2",
+        "P09.V3"
+      ],
+      [
+        "P10.V1",
+        "P10.V2",
+        "P10.V3"
+      ],
+      [
+        "P11.V1"
+      ],
+      [
+        "P11.V2",
+        "P11.V3"
+      ]
+    ],
+    "local_review_pages": [
+      11
+    ],
+    "local_proven_edges": [],
+    "dimension_anchor_pairs": [
+      [
+        "view-005",
+        "view-006"
+      ],
+      [
+        "view-017",
+        "view-020"
+      ],
+      [
+        "view-018",
+        "view-019"
+      ]
+    ],
+    "retained_view_count": 33,
+    "required_same_page_pairs": 51
+  },
+  "comparison": {
+    "geometry_match_count": 33,
+    "geometry_match_iou_min": 1.0,
+    "missing_views": [],
+    "additional_views": [],
+    "missing_expected_pairs": [],
+    "unexpected_pairs": [],
+    "same_partition_as_owner_accepted_replay": true,
+    "annotation_retained_as_view": true,
+    "annotation_has_acceptable_disposition": true,
+    "location_inset_kept_as_context": false,
+    "object_count": 10,
+    "meets_owner_approved_scope": true,
+    "groups_by_reference": [
+      [
+        "P03.V1",
+        "P03.V2",
+        "P03.V3"
+      ],
+      [
+        "P04.V1",
+        "P04.V2",
+        "P04.V3",
+        "P04.V4",
+        "P04.V5",
+        "P04.V6",
+        "P04.V7"
+      ],
+      [
+        "P05.V1",
+        "P05.V2",
+        "P05.V3"
+      ],
+      [
+        "P06.V1",
+        "P06.V2",
+        "P06.V3"
+      ],
+      [
+        "P07.V1",
+        "P07.V2",
+        "P07.V3",
+        "P07.V4"
+      ],
+      [
+        "P08.V1",
+        "P08.V2",
+        "P08.V3",
+        "P08.V4"
+      ],
+      [
+        "P09.V1",
+        "P09.V2",
+        "P09.V3"
+      ],
+      [
+        "P10.V1",
+        "P10.V2",
+        "P10.V3"
+      ],
+      [
+        "P11.V1"
+      ],
+      [
+        "P11.V2",
+        "P11.V3"
+      ]
+    ]
+  },
+  "applied_dimension_only_first_links": [
+    [
+      "P04.V2",
+      "P04.V3"
+    ],
+    [
+      "P07.V2",
+      "P07.V3"
+    ],
+    [
+      "P07.V1",
+      "P07.V4"
+    ]
+  ],
+  "existing_dominant_page_attachment": [
+    [
+      4,
+      [
+        "P04.V6"
+      ]
+    ]
+  ],
+  "dimension_chain_retained_as_non_standalone_view": "P04.V5",
+  "protected_offline_replays": [
+    "Adda",
+    "Lev 1",
+    "Lev 2",
+    "Page 23 native",
+    "Page 23 fallback"
+  ],
+  "focused_tests_passed": 46,
+  "independent_repeat": {
+    "status": "invalid_discovery_geometry",
+    "artifacts": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-07-positive-proof-repeat",
+    "sha256sums_sha256": "447dae26876bd363f00bb9697826e9ad6f2db803574c21f1c4cc4b73639f70bd",
+    "error": "P3-G1 core_bbox exceeds bbox on the left",
+    "no_partition_produced": true
+  },
+  "product_status": "dimension anchor opt-in, local lab only"
+}

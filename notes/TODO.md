@@ -275,26 +275,21 @@ to Haiku 4.5. The HSL grouping regression remains open on the local
 Haiku 5.5 checkpoint. Both latter file runs predate the render wording
 clarification. No deployment.
 
-ACTIVE, P0, Haiku 5.5 ordinary Membership acceptance:
-Owner approved bounded experiments and necessary provider calls, while
-deferring a switch back to Haiku 4.5. Start after the protected V8.4.9
-research checkpoint in `notes/evidence/detection-v8.4.9-with-research-checkpoint.json`.
-First use fixed HSL 07 OCR, Discovery, and View evidence. Restore N57
-membership and compare exact page groups against the accepted HSL
-reference. Then validate the five-file scenarios, call budget, time and
-cost. Preserve exhaustive same-sheet comparison, Ada Sonnet, Page 23,
-Q and routing. Deployment is outside this local iteration.
-The 2026-11-10 round restored exact frozen groups in supplemental offline
-replay. The owner accepts the ten-object replay on the fresh HSL 07 input, with
-one unjoined View on P11. The autonomous run retained that P11 partition
-and yielded 13 groups with gaps on P04 and P05. First check exact endpoint
-alias normalization against Q for the two discarded P05 proposals. Check
-P04 separately and preserve context treatment for the dimension strip.
-An independent Conflict Resolver role control removed an extra whole-floor
-plan but has open recall checks. The rejected runtime prompt was removed.
-Keep the prompt universal and benchmark-specific details in fixtures only.
-Next evidence and call-budget decision are recorded in
-`notes/DETECTION_V8_4_9_HAIKU55_ACCEPTANCE_ROUND_2026_11_10.md`.
+COMPLETED for HSL 07 local acceptance, P0, Haiku 5.5 ordinary Membership:
+The fresh autonomous run returned ten groups with all 33 Views and the
+owner-approved partition. A rare exact same-sheet dimension proof can
+open the first link in the lab. No benchmark-specific inputs or rules.
+Ada, Lev 1, Lev 2 and both Page 23 paths match the saved checkpoint.
+Evidence: `notes/evidence/detection-v8.4.9-haiku55-autonomous-accepted-floor-07.json`.
+
+PENDING, P1, broader ordinary Haiku 5.5 reproducibility:
+An independent HSL repeat stopped before grouping because Discovery
+returned a core box outside its evidence envelope. Keep the exact
+validation boundary. Confirm additional ordinary documents and call/time
+budgets before enabling any experimental behavior in product runtime.
+The P04 result still uses the existing singleton rule on one View and
+retains a dimension strip as a View in the correct component. Q redesign,
+routing, singleton rule changes, and a Haiku 4.5 switch remain deferred.
 
 PENDING PRODUCTION VERIFICATION, P0, local V8.4.9 coordinate OCR checkpoint:
 Run the numeric reader alongside standard OCR, retain one page-pixel bbox per
