@@ -286,11 +286,43 @@ three seconds in the same run. Live production timing and broader coverage
 remain open. The isolated Fingerprint replay found three Adda cross-sheet
 support pairs, with two physically comparable dimension witnesses. Lev 1
 and Lev 2 received redundant source confirmation. The unguarded HSL
-replay changed the inferred unit and expanded Q. Using new readings as
-Membership inputs remains deferred. Next test under a frozen unit and a
-validated dimension-role contract on labelled cross-sheet pairs.
+replay changed the inferred unit and expanded Q. On 2026-11-10 the owner
+deferred further coordinate-Fingerprint work. Keep the current local
+numeric OCR and post-Membership audit as the checkpoint. Resume any
+cross-sheet experiment only when prioritized, with a frozen unit and
+a validated dimension-role contract on labelled pairs.
 Records: `notes/DETECTION_V8_4_9_HAIKU_COORDINATE_OCR_2026_11_10.md` and
 `notes/DETECTION_V8_4_9_FINGERPRINT_BENCHMARK_2026_11_10.md`.
+
+PENDING PROPOSAL, P0, Detection dominant-page attachment safety:
+Review the existing automatic same-sheet orphan attachment. In a local
+counterexample, a View already linked to a second sheet counted as a
+same-sheet singleton and joined the dominant group, merging two packages.
+No such attachment fired in the saved V8.4.9 control runs inspected.
+Find real positive witnesses before changing the fallback. Add negative
+controls for an already-owned View and an independent small View on a
+dense sheet. Keep a genuinely unassigned, sparse View eligible when
+there is supporting context and no conflicting evidence.
+
+PENDING PROPOSAL, P1, Detection Q prompt versus pair audit:
+Ada V8.4.8 already separates its exhaustive Sonnet same-sheet audit from
+Sonnet grouping. Haiku Discovery still sees Q including zero-score
+cross-sheet candidates. Keep the full audit and exhaustive same-sheet
+comparisons. In an isolated experiment, withhold unsupported cross-sheet
+rows from the model input and retain cross-sheet visual or documentary
+signals even when the dimension score is zero. Adda's dry formatting
+check reduced 28 rows to 4 and 2,095 characters to 535 in the Q block.
+Check tokens, wall time and exact View membership before promotion.
+
+PENDING PROPOSAL, P1, Detection historical adapter cleanup:
+The current tree contains five legacy source-degraded entry points with
+no Python callers found and two earlier Visual Map/Registry entry
+points referenced only by tests. Check consumers and retain the Git
+rollback checkpoint before isolating the old experiments. Protect the
+active V5.32.1/V5.37 path and shared helpers. Verify routes and exact
+grouping on Adda, Lev 1, Lev 2, Page 23 and HSL 07. Report View recall,
+View roles, and object grouping separately. Reserve an unseen drawing
+before claiming broader quality.
 
 BENCHMARK, P0, Hasolelim Floor 06 manual Object Evidence island inventory:
 
