@@ -978,6 +978,26 @@ def test_dimension_halo_does_not_capture_small_revision_numbers():
     }
 
 
+def test_extended_dimension_halo_adds_vertical_room_without_claiming_side_metadata():
+    bbox = {"top_left_x": 100, "top_left_y": 100, "bottom_right_x": 500, "bottom_right_y": 500}
+    options = {
+        "visual_groups": [{"group_id": "view-001", "page_number": 1}],
+        "group_bboxes": {"view-001": bbox},
+        "source_facts": [
+            {"fact_id": fact_id, "page_number": 1, "text": value, "bbox": {
+                "top_left_x": x, "top_left_y": y, "bottom_right_x": x + 10, "bottom_right_y": y + 10,
+            }}
+            for fact_id, value, x, y in [("dimension", "60", 200, 580), ("sheet-number", "607", 10, 320)]
+        ],
+    }
+    baseline, = build_detection_view_evidence_packages(**options)
+    expanded, = build_detection_view_evidence_packages(**options, dimension_halo_vertical_min_px=96)
+    assert baseline["source_fact_ids"] == []
+    assert expanded["source_fact_ids"] == ["dimension"]
+    assert expanded["bbox"]["bottom_right_y"] == 610
+    assert expanded["core_bbox"] == bbox
+
+
 def test_dimension_halo_leaves_numeric_fact_unowned_when_two_islands_overlap():
     packages = build_detection_view_evidence_packages(
         visual_groups=[

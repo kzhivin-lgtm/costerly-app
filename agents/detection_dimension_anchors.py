@@ -6,8 +6,8 @@ from itertools import groupby, pairwise, product
 
 from agents.schemas.detection_registry_schema import _V5_COMMON_DIMENSIONS_MM
 
-# Reuse the Fingerprint's scoring bands for small and large spans. For an
-# automatic anchor, the large span must be exact and occur in only two Views.
+# Reuse the Fingerprint's scoring bands for small and large spans. A common
+# large span needs a separately printed and matching measurement sequence.
 SMALL_SPAN_MM = 100
 LARGE_SPAN_MM = 1200
 
@@ -90,7 +90,7 @@ def _matching_repeated_chains(left, right, rare_totals):
 
 
 def dimension_anchors(usage, eligible_ids):
-    """Find actual Q pairs with a rare exact extent and independent corroboration."""
+    """Find 100-point same-sheet pairs with independent dimensional structure."""
     occurrences = {
         row["group_id"]: positioned_occurrences(row) for row in usage["dimension_inventory"]
     }
@@ -100,47 +100,55 @@ def dimension_anchors(usage, eligible_ids):
         a, b = row["group_id_a"], row["group_id_b"]
         if not row["same_page"] or row["dimension_similarity_score"] < 100 or not {a, b} <= eligible_ids:
             continue
-        rare_values = {
+        exact_extents = {
             Decimal(feature["left_mm"])
             for feature in row["features"]
             if feature["left_mm"] == feature["right_mm"]
             and Decimal(feature["left_mm"]) >= LARGE_SPAN_MM
-            and frequency[Decimal(feature["left_mm"])] == 2
         }
-        if not rare_values:
+        if not exact_extents:
             continue
-        rare_sources = {
+        extent_sources = {
             value: [(left_sources, right_sources)
                     for left_sources, right_sources in product(
                         (sources for v, _, sources in occurrences[a] if v == value),
                         (sources for v, _, sources in occurrences[b] if v == value),
                     ) if not left_sources & right_sources]
-            for value in rare_values
+            for value in exact_extents
         }
-        confirmed_rare = sorted(value for value, sources in rare_sources.items() if sources)
-        left_chains = neighbor_spans(occurrences[a], rare_values)
-        right_chains = neighbor_spans(occurrences[b], rare_values)
-        corroborating = [
-            chain for chain in sorted(left_chains.keys() & right_chains.keys())
-            if any(
-                not (left_chain & right_chain or left_chain & left_extent or right_chain & right_extent
-                     or left_chain & right_extent or right_chain & left_extent)
-                for value in confirmed_rare
-                for left_extent, right_extent in rare_sources[value]
-                for left_chain, right_chain in product(left_chains[chain], right_chains[chain])
-            )
-        ]
+        rare_extents = {value for value in exact_extents if frequency[value] == 2}
+        confirmed_extents = sorted(value for value, sources in extent_sources.items() if sources)
+        confirmed_rare = [value for value in confirmed_extents if value in rare_extents]
+        left_chains = neighbor_spans(occurrences[a], rare_extents)
+        right_chains = neighbor_spans(occurrences[b], rare_extents)
+        corroboration = {
+            chain: {
+                value for value in confirmed_extents if any(
+                    not (left_chain & right_chain or left_chain & left_extent or right_chain & right_extent
+                         or left_chain & right_extent or right_chain & left_extent)
+                    for left_extent, right_extent in extent_sources[value]
+                    for left_chain, right_chain in product(left_chains[chain], right_chains[chain])
+                )
+            }
+            for chain in left_chains.keys() & right_chains.keys()
+        }
+        corroborating = sorted(chain for chain, extents in corroboration.items() if extents)
         independent_extents = any(
             not ((left_a | right_a) & (left_b | right_b))
             for i, first in enumerate(confirmed_rare) for second in confirmed_rare[i+1:]
-            for (left_a, right_a), (left_b, right_b) in product(rare_sources[first], rare_sources[second])
+            for (left_a, right_a), (left_b, right_b) in product(extent_sources[first], extent_sources[second])
         )
         repeated_chains = _matching_repeated_chains(occurrences[a], occurrences[b], set(confirmed_rare))
         if corroborating or independent_extents or repeated_chains:
             proofs.append({
                 "group_id_a": a, "group_id_b": b,
                 "relationship": "same_object_view",
+                "requires_common_extent": not (
+                    independent_extents or repeated_chains
+                    or any(extents & rare_extents for extents in corroboration.values())
+                ),
                 "rare_exact_extents_mm": [str(value) for value in confirmed_rare],
+                "exact_extents_mm": [str(value) for value in confirmed_extents],
                 "corroborating_ordered_spans_mm": [[str(value) for value in pair] for pair in corroborating],
                 "corroborating_repeated_chains": [
                     {"total_mm": str(total), "span_mm": str(span), "count": count}

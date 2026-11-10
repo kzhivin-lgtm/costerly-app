@@ -11,6 +11,7 @@ from agents.schemas.detection_registry_schema import (
     validate_detection_v5_final_result,
 )
 from agents.detection_dimension_anchors import dimension_anchors
+from agents import detection_ordinary_membership
 from agents.anthropic_adapter import (
     _grounded_same_page_hypothesis_facts,
     build_detection_v5_dimension_fingerprints,
@@ -130,6 +131,91 @@ def test_v5_dimension_anchor_recognizes_repeated_sections_with_an_independent_to
     assert dimension_anchors(audit, eligible) == []
     inventory[1]["occurrences"] = left
     assert dimension_anchors(audit, eligible) == []
+
+
+def test_common_large_extent_needs_a_matching_independent_dimension_sequence():
+    def view(group, spans):
+        occurrences = []
+        for index, (value, x, y) in enumerate(spans):
+            source = f"{group}-{index}"
+            occurrence = _occurrence(source, value, source)
+            occurrence["normalized_bbox"] = {
+                "top_left_x": x - 0.01, "bottom_right_x": x + 0.01,
+                "top_left_y": y - 0.01, "bottom_right_y": y + 0.01,
+            }
+            occurrences.append(occurrence)
+        return {"group_id": group, "occurrences": occurrences}
+
+    sequence = [(430, 0.2, 0.8), (860, 0.5, 0.8), (2700, 0.3, 0.2)]
+    inventory = [view("a", sequence), view("b", sequence), view("c", sequence[-1:])]
+    candidate = {
+        "group_id_a": "a", "group_id_b": "b", "same_page": True,
+        "dimension_similarity_score": 100, "features": [{"left_mm": "2700", "right_mm": "2700"}],
+    }
+    usage = {"dimension_inventory": inventory, "dimension_graph_audit": {"dimension_similarity_candidates": [candidate]}}
+    proof, = dimension_anchors(usage, {"a", "b"})
+    assert proof["rare_exact_extents_mm"] == []
+    assert proof["requires_common_extent"]
+    assert proof["corroborating_ordered_spans_mm"] == [["430", "860"]]
+
+    inventory[1] = view("b", [sequence[0], (860, 0.5, 0.5), sequence[2]])
+    assert dimension_anchors(usage, {"a", "b"}) == []
+
+
+def test_common_extent_bridge_cannot_cancel_existing_rare_anchors(monkeypatch):
+    def proof(left, right, common=False):
+        return {
+            "group_id_a": left, "group_id_b": right, "relationship": "same_object_view",
+            "requires_common_extent": common,
+        }
+
+    existing = [proof("a", "b"), proof("c", "d")]
+    bridge = proof("b", "c", common=True)
+    independent = proof("e", "f", common=True)
+    monkeypatch.setattr(
+        detection_ordinary_membership, "dimension_anchors", lambda *_: [*existing, bridge, independent],
+    )
+    group_ids = list("abcdef")
+    rare, common = detection_ordinary_membership.dimension_recovery_edges(
+        {}, set(group_ids), [[group] for group in group_ids],
+    )
+    assert rare == existing
+    assert common == [independent]
+
+
+def test_short_view_requires_a_unique_confirmed_group_with_complementary_dimensions():
+    views = [{"group_id": group, "page_number": 1} for group in ("a", "b", "c", "d", "short")]
+    inventory = [
+        {"group_id": group, "occurrences": [
+            _occurrence(f"{group}-{i}", value, f"{group}-source-{i}")
+            for i, value in enumerate(values)
+        ]}
+        for group, values in {
+            "a": [600, 1750, 2000], "b": [1100, 1750, 2000],
+            "c": [600, 1500, 2150], "d": [1100, 1500, 2150],
+            "short": [600, 1100],
+        }.items()
+    ]
+    edges, _ = compile_detection_v5_dimension_graph(inventory, visual_groups=views, allowed_pairs=set())
+    def direct(left, right):
+        return {
+            "group_id_a": left, "group_id_b": right, "evidence_type": "explicit_document_relation",
+            "strength": "direct", "observation": "Authored view reference", "source_fact_ids": ["reference"],
+        }
+
+    opts = {"visual_groups": views, "allow_short_fingerprint_attachment": True, "allow_batch_confirmation": False}
+    _, accepted = compile_detection_v5_merge_edges(edges, [direct("a", "b")], **opts)
+    attachments = [r["short_fingerprint_attachment"] for r in accepted["edges"] if "short_fingerprint_attachment" in r]
+    assert len(attachments) == 1
+    assert attachments[0]["distinct_exact_values_mm"] == ["600", "1100"]
+    assert attachments[0]["supporting_pairs"] == [["a", "short"], ["b", "short"]]
+
+    _, ambiguous = compile_detection_v5_merge_edges(edges, [direct("a", "b"), direct("c", "d")], **opts)
+    assert not any("short_fingerprint_attachment" in row for row in ambiguous["edges"])
+    _, blocked = compile_detection_v5_merge_edges(
+        edges, [direct("a", "b")], merge_blocked_pairs={("b", "short"): "contradiction"}, **opts,
+    )
+    assert not any("short_fingerprint_attachment" in row for row in blocked["edges"])
 
 
 def test_v5_strong_cited_pair_in_a_hypothesis_keeps_its_witness():

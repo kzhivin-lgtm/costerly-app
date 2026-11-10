@@ -1,5 +1,19 @@
 # Detection Agent benchmark
 
+## V8.4.13 dimension membership
+
+The Floor 06 production evidence replay for
+`run_5a209f39b1784b889e2b4f2b97ae3e59` yielded 13 groups from 18.
+P06, P10 and P13 each yielded one technical object, and the lower 60 label
+joined P10.V3's evidence. The accepted 10-group Floor 07 frozen partition
+remained exact. These are evidence and compiler results. See
+`notes/DETECTION_V8_4_13_DIMENSION_MEMBERSHIP_2026_11_10.md` for acceptance.
+
+Fresh Floor 07 completed with nine objects and retained the exact
+partition under the final rule. The final-policy replay of the fresh
+Floor 06 input had 17 objects, including one each on P06, P10, and P13.
+P03, P04, and P07 remain split on that input.
+
 ## V8.4.12 short Fingerprint release
 
 The release compiler promoted five saved Floor 06 pairs to dimension

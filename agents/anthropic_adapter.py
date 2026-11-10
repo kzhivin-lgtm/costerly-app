@@ -7440,6 +7440,7 @@ _DIMENSION_HALO_TEXT_RE = re.compile(
 )
 _DIMENSION_HALO_MIN_VALUE = Decimal("20")
 _DIMENSION_HALO_MIN_PX = 80
+_ORDINARY_DIMENSION_HALO_VERTICAL_MIN_PX = 96
 _DIMENSION_HALO_MAX_PX = 180
 _DIMENSION_HALO_SHORT_SIDE_RATIO = 0.12
 _QUANTITY_CAPTION_HALO_MIN_PX = 80
@@ -7449,7 +7450,7 @@ _DIMENSION_ENVELOPE_BAND_PADDING_PX = 20
 
 
 def _detection_v5_dimension_halo(
-    bbox: dict[str, Any],
+    bbox: dict[str, Any], *, vertical_min_px: int = _DIMENSION_HALO_MIN_PX,
 ) -> dict[str, float] | None:
     """Return the bounded whitespace that may hold an outer dimension."""
     keys = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
@@ -7466,11 +7467,12 @@ def _detection_v5_dimension_halo(
             round(min(width, height) * _DIMENSION_HALO_SHORT_SIDE_RATIO),
         ),
     )
+    vertical_margin = max(margin, vertical_min_px)
     return {
         "top_left_x": bbox["top_left_x"] - margin,
-        "top_left_y": bbox["top_left_y"] - margin,
+        "top_left_y": bbox["top_left_y"] - vertical_margin,
         "bottom_right_x": bbox["bottom_right_x"] + margin,
-        "bottom_right_y": bbox["bottom_right_y"] + margin,
+        "bottom_right_y": bbox["bottom_right_y"] + vertical_margin,
     }
 
 
@@ -7510,6 +7512,7 @@ def build_detection_view_evidence_packages(
     group_bboxes: dict[str, dict[str, int]],
     source_facts: list[dict[str, Any]],
     group_core_bboxes: dict[str, dict[str, int]] | None = None,
+    dimension_halo_vertical_min_px: int = _DIMENSION_HALO_MIN_PX,
 ) -> list[dict[str, Any]]:
     """Build complete per-Island evidence packages by deterministic geometry.
 
@@ -7615,7 +7618,8 @@ def build_detection_view_evidence_packages(
                 group for group in page_groups
                 if (
                     (halo := _detection_v5_dimension_halo(
-                        group_bboxes.get(str(group.get("group_id") or ""), {})
+                        group_bboxes.get(str(group.get("group_id") or ""), {}),
+                        vertical_min_px=dimension_halo_vertical_min_px,
                     ))
                     is not None and contains(halo, point)
                 )
@@ -11862,6 +11866,10 @@ def run_anthropic_detection_visual_registry_agent(
         view_evidence_packages = build_detection_view_evidence_packages(
             visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
             group_core_bboxes=group_core_bboxes, source_facts=source_facts,
+            dimension_halo_vertical_min_px=(
+                _ORDINARY_DIMENSION_HALO_VERTICAL_MIN_PX
+                if document_category == "ordinary_object_set" else _DIMENSION_HALO_MIN_PX
+            ),
         )
         # V7.6 makes a uniquely owned dimension band part of the public Island
         # evidence bbox.  Keep the physical core unchanged, and apply this
@@ -12171,6 +12179,7 @@ def run_anthropic_detection_visual_registry_agent(
                 ],
                 accepted_semantic_facts,
                 visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
+                allow_short_fingerprint_attachment=document_category == "ordinary_object_set",
             )
             positive_relation_edges.extend(presentation_render_edges)
         accepted_merge_edges = [

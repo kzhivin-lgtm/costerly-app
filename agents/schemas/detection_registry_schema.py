@@ -2525,6 +2525,7 @@ def compile_detection_v5_merge_edges(
     merge_blocked_pairs: dict[tuple[str, str], str] | None = None,
     allow_batch_confirmation: bool = True,
     dimension_anchor_pairs: set[tuple[str, str]] | None = None,
+    allow_short_fingerprint_attachment: bool = False,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Merge from a minimal semantic proof forest plus deterministic Dimensions."""
     by_pair: dict[tuple[str, str], dict[str, Any]] = {}
@@ -2692,6 +2693,26 @@ def compile_detection_v5_merge_edges(
             })
             changed = True
 
+    if allow_runtime_merges and allow_short_fingerprint_attachment:
+        component_members: dict[str, set[str]] = {}
+        for group_id in group_ids:
+            component_members.setdefault(root(group_id), set()).add(group_id)
+        edges_by_pair = {(edge["group_id_a"], edge["group_id_b"]): edge for edge in edges}
+        attachments = _short_fingerprint_attachments(
+            dimension_edges, edges_by_pair, component_members, blocked_pairs,
+        )
+        for edge, witness in attachments:
+            edge["relationship"] = "same_object_view"
+            edge["commercial_inseparability"] = "V5 complementary short Fingerprint"
+            audit.append({
+                "group_id_a": edge["group_id_a"],
+                "group_id_b": edge["group_id_b"],
+                "dimension_similarity_score": edge["dimension_similarity_score"],
+                "edge_score": edge["edge_score"],
+                "merge": True,
+                "short_fingerprint_attachment": witness,
+            })
+
     return edges, {
         "compiler_version": (
             "v5_5_global_semantic_proof_forest"
@@ -2700,6 +2721,53 @@ def compile_detection_v5_merge_edges(
         "candidate_order": [{"group_id_a": pair[0], "group_id_b": pair[1]} for pair in sorted(candidate_pairs, key=candidate_key)],
         "edges": audit,
     }
+
+
+def _short_fingerprint_attachments(
+    dimension_edges: list[dict[str, Any]],
+    edges_by_pair: dict[tuple[str, str], dict[str, Any]],
+    components: dict[str, set[str]],
+    blocked_pairs: dict[tuple[str, str], str],
+) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    """Attach a short singleton using independently supported same-sheet dimensions."""
+    roots = {group: anchor for anchor, members in components.items() for group in members}
+    candidates: dict[str, dict[str, list[tuple[tuple[str, str], dict[str, Any]]]]] = {}
+    for edge in dimension_edges:
+        pair = (edge["group_id_a"], edge["group_id_b"])
+        if not edge["same_page"] or pair not in edges_by_pair:
+            continue
+        for view, peer in (pair, pair[::-1]):
+            match = edge.get("short_dimension_matches", {}).get(view)
+            if not match or len(components[roots[view]]) != 1 or len(components[roots[peer]]) < 2:
+                continue
+            candidates.setdefault(view, {}).setdefault(roots[peer], []).append((pair, match))
+    accepted = []
+    for view, targets in sorted(candidates.items()):
+        qualified = []
+        for anchor, supports in targets.items():
+            if len(supports) < 2 or any(
+                tuple(sorted((view, member))) in blocked_pairs for member in components[anchor]
+            ):
+                continue
+            exact = {Decimal(value) for _, match in supports for value in match["exact_values_mm"]}
+            positions = supports[0][1]["positions"]
+            # Repeated or ambiguous values may contribute to pair scoring, but
+            # never count twice as independent dimensions for this attachment.
+            if len(exact) < 2 or 4 * len(exact) < 3 * positions:
+                continue
+            best_pair = min(
+                (pair for pair, _ in supports),
+                key=lambda pair: (-edges_by_pair[pair]["dimension_similarity_score"], pair),
+            )
+            qualified.append((edges_by_pair[best_pair], {
+                "view_id": view,
+                "short_position_count": positions,
+                "distinct_exact_values_mm": [str(value) for value in sorted(exact)],
+                "supporting_pairs": [list(pair) for pair, _ in sorted(supports)],
+            }))
+        if len(qualified) == 1:
+            accepted.extend(qualified)
+    return accepted
 
 
 def validate_detection_v5_final_result(
@@ -2771,13 +2839,19 @@ def compile_detection_v5_dimension_graph(
     for values in occurrences.values():
         for value in {Decimal(str(item["value_mm"])) for item in values}:
             frequency[value] = frequency.get(value, 0) + 1
-    position_counts = {
-        group_id: len({
-            str(item.get("ambiguity_key") or item["occurrence_id"])
-            for item in values if Decimal(str(item["value_mm"])) > 0
-        })
-        for group_id, values in occurrences.items()
-    }
+    position_counts = {}
+    short_stable_values = {}
+    for group_id, values in occurrences.items():
+        positions = {}
+        for item in values:
+            value = Decimal(str(item["value_mm"]))
+            if value > 0:
+                positions.setdefault(str(item.get("ambiguity_key") or item["occurrence_id"]), set()).add(value)
+        position_counts[group_id] = len(positions)
+        if 2 <= len(positions) <= _V5_SHORT_FINGERPRINT_MAX_POSITIONS:
+            short_stable_values[group_id] = {
+                next(iter(values)) for values in positions.values() if len(values) == 1
+            }
 
     def size_points(value: Decimal) -> float:
         if value < 100: return 2
@@ -2922,14 +2996,29 @@ def compile_detection_v5_dimension_graph(
             candidate["short_fingerprint_bonus"] = coverage_bonus
         candidates.append(candidate)
         if score >= threshold:
-            edges.append({
+            edge = {
                 "group_id_a": left_id, "group_id_b": right_id,
                 "page_a": page(left_id), "page_b": page(right_id),
                 "same_page": page(left_id) == page(right_id), "cycle": cycle,
                 "relationship": SUPPORTING_RELATIONSHIP, "evidence_facts": facts,
                 "commercial_inseparability": "V5 dimension support",
                 "dimension_similarity_score": score,
-            })
+            }
+            if allowed_pairs is not None and candidate["same_page"]:
+                for group_id in (left_id, right_id):
+                    if group_id not in short_stable_values:
+                        continue
+                    exact_values_mm = {
+                        Decimal(row["left_mm"]) for row in feature_rows
+                        if Decimal(row["left_mm"]) == Decimal(row["right_mm"])
+                        and Decimal(row["left_mm"]) >= 100
+                    } & short_stable_values[group_id]
+                    if exact_values_mm:
+                        edge.setdefault("short_dimension_matches", {})[group_id] = {
+                            "positions": position_counts[group_id],
+                            "exact_values_mm": [str(value) for value in sorted(exact_values_mm)],
+                        }
+            edges.append(edge)
         return score
 
     # Final, classified Islands are authoritative for same-page comparison.

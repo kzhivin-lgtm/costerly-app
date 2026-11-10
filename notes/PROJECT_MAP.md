@@ -52,6 +52,10 @@ This file explains where code belongs so the project stays understandable.
   scoring in `agents/schemas/detection_registry_schema.py`. The release
   and rollback are indexed by
   `notes/DETECTION_V8_4_12_PRODUCTION_CHECKPOINT_2026_11_10.md`.
+- V8.4.13 expands ordinary Detection's vertical dimension evidence band
+  and lets same-sheet measurement sequences and complementary short
+  Fingerprints prove membership. See
+  `notes/DETECTION_V8_4_13_DIMENSION_MEMBERSHIP_2026_11_10.md`.
 - `db/` contains Supabase client and repositories.
 - `db/sql/2026_09_24_machinery_foundation.sql` is the additive Machinery schema
   and catalog seed. It does not modify the prototype `company_machines` table.

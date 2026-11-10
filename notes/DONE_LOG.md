@@ -1,5 +1,12 @@
 # Done Log
 
+Detection V8.4.13 dimension membership checkpoint. Recovered the outer
+dimension on P10 and verified one object on each of Floor 06 P06, P10,
+and P13 on both the production evidence and the fresh-input replay.
+Fresh Floor 07 completed with nine objects and kept its partition under
+the final rule. Floor 06 whole-document grouping is still open. See
+`notes/DETECTION_V8_4_13_DIMENSION_MEMBERSHIP_2026_11_10.md`.
+
 Detection V8.4.12 isolated release checkpoint. The release compiler
 emits both previously below-threshold P06 supporting links from the
 unchanged HSL evidence. Code, rollback and replay are indexed by

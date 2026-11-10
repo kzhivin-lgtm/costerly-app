@@ -1,12 +1,13 @@
 # TODO
 
-## Production Detection V8.4.12
+## Ordinary Detection dimension membership, V8.4.13
 
-ACTIVE, verify HSL 06 and 07 on fresh Upload after deploying the short
-Fingerprint rule. The frozen P06 replay now gives the 60 and 110 matches
-supporting edges. Continue testing evidence ownership and whether
-complementary matches to an existing object justify attachment. See
-`notes/DETECTION_V8_4_12_PRODUCTION_CHECKPOINT_2026_11_10.md`.
+ACTIVE, P0. Recover outer dimension labels and evidence-backed joins on the
+same sheet. The final-policy replay passed P06, P10, and P13 on Floor 06
+and preserved the 10-group Floor 07 control. Verify independent Upload
+stability and investigate residual splits on Floor 06 P03, P04, and P07.
+Track evidence and any incorrect merges in
+`notes/DETECTION_V8_4_13_DIMENSION_MEMBERSHIP_2026_11_10.md`.
 
 ## Production Detection V8.4.11 recovery
 

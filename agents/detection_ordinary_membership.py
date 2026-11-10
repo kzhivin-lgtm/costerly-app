@@ -283,6 +283,22 @@ def unambiguous_recovery_edges(edges, components):
     return accepted
 
 
+def dimension_recovery_edges(usage, eligible_ids, components):
+    """Keep established rare proofs independent of weaker common-extent candidates."""
+    proofs = dimension_anchors(usage, eligible_ids)
+    rare = unambiguous_recovery_edges(
+        [proof for proof in proofs if not proof["requires_common_extent"]], components,
+    )
+    rare_views = {view for proof in rare for view in edge_endpoints(proof)}
+    reserved = {view for component in components if rare_views.intersection(component) for view in component}
+    common = unambiguous_recovery_edges(
+        [proof for proof in proofs if proof["requires_common_extent"]
+         and not reserved.intersection(edge_endpoints(proof))],
+        components,
+    )
+    return rare, common
+
+
 class RegistryReplayError(RuntimeError):
     """A derived compile requested evidence outside the current RFQ."""
 
@@ -433,8 +449,9 @@ def run_ordinary_haiku_membership(run_registry, *, file_bytes, ocr_package, stag
         canonical_ids[group] for group, (_, role) in views.items()
         if group in canonical_ids and role != "presentation_render"
     } & {group for component in prior_components for group in component}
-    anchor_proofs = unambiguous_recovery_edges(dimension_anchors(audit(primary), eligible_ids), prior_components)
-    anchor_pairs = {edge_endpoints(proof) for proof in anchor_proofs}
+    rare_anchors, common_anchors = dimension_recovery_edges(audit(primary), eligible_ids, prior_components)
+    rare_anchor_pairs = {edge_endpoints(proof) for proof in rare_anchors}
+    anchor_pairs = rare_anchor_pairs | {edge_endpoints(proof) for proof in common_anchors}
 
     def merge_with_dimensions(dimension_edges, semantics, **kwargs):
         return original_merge(dimension_edges, semantics, **kwargs, dimension_anchor_pairs=anchor_pairs)
@@ -444,16 +461,22 @@ def run_ordinary_haiku_membership(run_registry, *, file_bytes, ocr_package, stag
     unresolved = defaultdict(set)
     try:
         if anchor_pairs:
-            candidate = recompile(payload, compile_merge=merge_with_dimensions)
             old_groups = {
                 group: i for i, component in enumerate(prior_components)
                 if len(component) > 1 for group in component
             }
-            new_components = [row["visual_group_ids"] for row in audit(candidate)["proof_graph_components"]]
-            if any(len({old_groups[g] for g in component if g in old_groups}) > 1 for component in new_components):
-                anchor_pairs.clear()
-            else:
-                final = candidate
+            attempts = [anchor_pairs]
+            if common_anchors and rare_anchor_pairs:
+                attempts.append(rare_anchor_pairs)
+            for selected_pairs in attempts:
+                anchor_pairs = selected_pairs
+                candidate = recompile(payload, compile_merge=merge_with_dimensions)
+                new_components = [row["visual_group_ids"] for row in audit(candidate)["proof_graph_components"]]
+                if all(len({old_groups[g] for g in component if g in old_groups}) <= 1 for component in new_components):
+                    final = candidate
+                    break
+            if final is primary:
+                anchor_pairs = set()
 
         pages_with_merge = {int(view.split(".")[0][1:]) for group in partition(audit(final))
                             if len(group) > 1 for view in group}
