@@ -1,6 +1,7 @@
 """Run the ordinary Haiku 5.5 experiment with fresh providers and no fixtures."""
 
 from argparse import ArgumentParser
+from base64 import standard_b64encode
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack
@@ -9,6 +10,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import pymupdf
 from time import perf_counter
 from unittest.mock import patch
 
@@ -57,8 +59,18 @@ LOCAL_RULE = (
     "for different projection directions. Look for the same distinctive feature sequence, a matching "
     "cut or return, or a measured outline that corresponds to the same physical part. A standalone View "
     "can depict an independent object. Keep it separate when the visual link is uncertain. Return only "
-    "positively evidenced pairs involving at least one marked View."
+    "positively evidenced pairs involving at least one marked View. Cite the two registry_view source "
+    "IDs for the inspected crops. Compare matching object-specific features and their position in each crop. "
+    "An author section mark can corroborate a match if it points to that same drawn feature. "
+    "Do not describe unavailable evidence in topology or geometry. Leave that field empty."
 )
+ABSENT_PROOF = re.compile(
+    r"\b(?:no|without)\s+(?:visible\s+)?(?:matching|shared|common|corresponding)\b"
+    r"|\b(?:no|insufficient)\s+(?:positive\s+)?evidence\b"
+    r"|\b(?:cannot|can't|does not|do not)\s+(?:visually\s+)?(?:establish|confirm|prove|verify)\b",
+    re.IGNORECASE,
+)
+VIEW_IMAGE_LABEL = re.compile(r"^Object View (.+), PDF page (\d+)$")
 IMAGE_PAGE = re.compile(r"PDF page (\d+)\b")
 VIEW_ROW = re.compile(r"^([^|]+)\|P(\d+)\|K=([^|]+)\|")
 CONTEXT_ROW = re.compile(r"^P(\d+)\|")
@@ -173,7 +185,7 @@ def candidate_hypotheses(payload, pages, views, queue):
             {"evidence_type": kind, "strength": "standard", "observation": row[key],
              "source_fact_ids": row["source_fact_ids"]}
             for key, kind in (("topology", "matching_topology"), ("geometry", "unique_geometry"))
-            if row[key].strip()
+            if row[key].strip() and not ABSENT_PROOF.search(row[key])
         ]
         if evidence:
             hypotheses.append({
@@ -181,6 +193,36 @@ def candidate_hypotheses(payload, pages, views, queue):
                 "evidence": evidence,
             })
     return hypotheses
+
+
+def improve_local_crops(request, pdf_bytes, ocr, usage, page_number):
+    """Render the same fixed crop boxes at a higher local review resolution."""
+    frame = next(page["dimensions"] for page in ocr["pages"] if page["page_number"] == page_number)
+    audit_by_id = {
+        row["group_id"]: row["source_bbox"] for row in usage["v5_9_review_crop_audit"]
+        if row.get("page_number") == page_number and row.get("source_bbox")
+    }
+    blocks = request["messages"][0]["content"]
+    with pymupdf.open(stream=pdf_bytes, filetype="pdf") as document:
+        page = document[page_number - 1]
+        for label, image in zip(blocks[:-1:2], blocks[1:-1:2], strict=True):
+            match = VIEW_IMAGE_LABEL.fullmatch(label["text"])
+            if not match or match[1] not in audit_by_id:
+                continue
+            box = audit_by_id[match[1]]
+            clip = pymupdf.Rect(
+                box["top_left_x"] / frame["width"] * page.rect.width,
+                box["top_left_y"] / frame["height"] * page.rect.height,
+                box["bottom_right_x"] / frame["width"] * page.rect.width,
+                box["bottom_right_y"] / frame["height"] * page.rect.height,
+            )
+            margin_x, margin_y = clip.width * 0.04, clip.height * 0.04
+            clip = (clip + (-margin_x, -margin_y, margin_x, margin_y)) & page.rect
+            if clip.is_empty:
+                continue
+            scale = 1440 / max(clip.width, clip.height)
+            pixmap = page.get_pixmap(matrix=pymupdf.Matrix(scale, scale), clip=clip, alpha=False)
+            image["source"]["data"] = standard_b64encode(pixmap.tobytes("jpeg", jpg_quality=87)).decode("ascii")
 
 
 def audit(result):
@@ -423,6 +465,7 @@ def run(pdf, output):
     def local_review(item):
         page, marked = item
         prepared = batch_request(request, {page}, views)
+        improve_local_crops(prepared, pdf_bytes, ocr, intermediate_usage, page)
         prepared["system"][0]["text"] += LOCAL_RULE
         prepared["messages"][0]["content"][-1]["text"] += (
             "\nViews marked for another look: " + ", ".join(sorted(marked))
@@ -441,7 +484,11 @@ def run(pdf, output):
             return [], metadata
         data = json.loads(adapter.extract_text_from_claude_response(response))
         hypotheses = candidate_hypotheses(data, {page}, views, queue)
-        return [h for h in hypotheses if marked.intersection(h["group_ids"])], metadata
+        return [
+            h for h in hypotheses
+            if marked.intersection(h["group_ids"])
+            and {f"registry_view:{group}" for group in h["group_ids"]} <= set(h["evidence"][0]["source_fact_ids"])
+        ], metadata
 
     if unresolved:
         print(f"Running local proof review on {len(unresolved)} sheets with unresolved Views.", flush=True)
