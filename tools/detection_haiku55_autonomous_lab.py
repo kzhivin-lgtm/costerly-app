@@ -84,7 +84,17 @@ def primary_request(request):
     prepared["messages"][0]["content"] = [
         block for pair in image_pairs for block in pair
     ] + [{"type": "text", "text": inventory}]
-    prepared["system"] = [{"type": "text", "text": PRIMARY_RULE}]
+    prompt = PRIMARY_RULE
+    schema = prepared["output_config"]["format"]["schema"]
+    if "conflict_pair_decisions" in schema["properties"]:
+        marker = "V7.14 TARGETED CONFLICT-ADMISSION MEMBERSHIP MATRIX:"
+        existing = "\n".join(block["text"] for block in request["system"])
+        _, separator, remaining = existing.partition(marker)
+        if not separator:
+            raise ValueError("Conflict decision schema is missing its required matrix.")
+        matrix, _, _ = remaining.partition("V7.11 PRESENTATION RENDER DECISIONS:")
+        prompt += "\n\n" + marker + matrix.rstrip()
+    prepared["system"] = [{"type": "text", "text": prompt}]
     return prepared
 
 
@@ -216,9 +226,6 @@ def run(pdf, output):
                     ROLE_RULE + "For each supplied target crop, decide only", 1,
                 )
         if model == CLAUDE_HAIKU_MODEL and stage == "membership":
-            schema = request["output_config"]["format"]["schema"]
-            if "conflict_pair_decisions" in schema["properties"]:
-                raise ValueError("Targeted conflict membership is outside this lab.")
             prepared = primary_request(request)
         response, diagnostics, metadata = send(client, prepared, stage, f"primary-{len(records)+1:02}")
         records.append((request_hash(request), stage, prepared, response, diagnostics))
