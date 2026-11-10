@@ -2353,6 +2353,16 @@ def should_use_detection_v641_budgeted_discovery(
     )
 
 
+def select_detection_v641_discovery_overflow_target(
+    *, full_page_estimate: int, complete_estimate: int, exact_input_tokens: int | None,
+) -> int | None:
+    """Scale the existing batch target when the assembled request exceeds the normal budget."""
+    input_tokens = exact_input_tokens if exact_input_tokens is not None else complete_estimate
+    if input_tokens <= DETECTION_V641_DISCOVERY_NORMAL_ESTIMATE_TOKENS:
+        return None
+    return max(1, DETECTION_V641_DISCOVERY_BATCH_ESTIMATE_TOKENS * full_page_estimate // input_tokens)
+
+
 def should_use_detection_v845_global_batched_assembly_scope(
     *,
     document_category: str | None,
@@ -9836,9 +9846,10 @@ def run_anthropic_detection_visual_registry_agent(
     proposal_user_text += "\n\n" + fusion_candidate_region_text
     if mistral_anchor_text:
         proposal_user_text += "\n\n" + mistral_anchor_text
-    proposal_user_text += "\n\n" + format_detection_candidate_pair_queue(
+    proposal_candidate_queue_text = format_detection_candidate_pair_queue(
         candidate_pair_queue, candidate_dimension_baskets,
     )
+    proposal_user_text += "\n\n" + proposal_candidate_queue_text
     proposal_user_text += "\n\n" + format_detection_document_dimension_unit_profile(
         document_dimension_unit_profile,
     )
@@ -9882,6 +9893,47 @@ def run_anthropic_detection_visual_registry_agent(
         mistral_anchor_admission_active=mistral_anchor_admission_active,
         full_estimated_input_tokens=v641_full_estimate,
     )
+    proposal_system = build_detection_system_content(prompt=proposal_prompt_with_anchor_contract)
+    proposal_messages = [{"role": "user", "content": proposal_content}]
+    proposal_output_config = {"format": {"type": "json_schema", "schema": strip_schema_for_claude(
+        proposal_schema,
+    )}}
+    v641_complete_estimate = v641_full_estimate + math.ceil(
+        (len(fusion_candidate_region_text) + len(proposal_candidate_queue_text)) / 2,
+    )
+    v641_single_pass_exact_input_tokens = None
+    v641_batch_target = DETECTION_V641_DISCOVERY_BATCH_ESTIMATE_TOKENS
+    v641_batch_reason = "page_estimate" if v641_budgeted_discovery_active else "single_pass"
+    if (
+        not v641_budgeted_discovery_active
+        and document_category == "ordinary_object_set"
+        and not mistral_anchor_admission_active
+        and _claude_runtime_model(discovery_model) == CLAUDE_HAIKU_MODEL
+        and len(page_images) > 1
+        and v641_complete_estimate >= DETECTION_V641_DISCOVERY_BATCH_ESTIMATE_TOKENS
+    ):
+        v641_single_pass_exact_input_tokens = count_input_tokens(
+            client=get_anthropic_client(),
+            model=discovery_model,
+            system=proposal_system,
+            messages=proposal_messages,
+            output_config=proposal_output_config,
+        )
+        overflow_target = select_detection_v641_discovery_overflow_target(
+            full_page_estimate=v641_full_estimate,
+            complete_estimate=v641_complete_estimate,
+            exact_input_tokens=v641_single_pass_exact_input_tokens,
+        )
+        if overflow_target is not None:
+            v641_budgeted_discovery_active = True
+            v641_batch_target = overflow_target
+            v641_batch_reason = (
+                "exact_input_budget" if v641_single_pass_exact_input_tokens is not None
+                else "complete_estimate_fallback"
+            )
+            v641_batches, _ = build_detection_v641_full_page_discovery_batches(
+                page_images=page_images, source_facts=source_facts, target_tokens=v641_batch_target,
+            )
     planned_discovery_batches = (
         v641_batches
         if v641_budgeted_discovery_active
@@ -9920,9 +9972,6 @@ def run_anthropic_detection_visual_registry_agent(
         all_exceptions: list[dict[str, Any]] = []
         all_coverage: list[dict[str, Any]] = []
         client = get_anthropic_client()
-        proposal_system = build_detection_system_content(
-            prompt=proposal_prompt_with_anchor_contract,
-        )
         proposal_response: Any | None = None
         proposal_diagnostics: dict[str, Any] | None = None
         for batch_number, batch in enumerate(v641_batches, start=1):
@@ -10249,11 +10298,9 @@ def run_anthropic_detection_visual_registry_agent(
             get_anthropic_client(), model=discovery_model,
             max_tokens=proposal_output_max_tokens,
             temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
-            system=build_detection_system_content(prompt=proposal_prompt_with_anchor_contract),
-            messages=[{"role": "user", "content": proposal_content}],
-            output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
-                proposal_schema,
-            )}},
+            system=proposal_system,
+            messages=proposal_messages,
+            output_config=proposal_output_config,
         )
         proposal_raw_text = extract_text_from_claude_response(proposal_response)
     proposal_attempt_summaries = (
@@ -11391,6 +11438,10 @@ def run_anthropic_detection_visual_registry_agent(
             "version": DETECTION_V641_DISCOVERY_BATCH_PROMPT_VERSION,
             "active": v641_budgeted_discovery_active,
             "full_request_estimated_input_tokens": v641_full_estimate,
+            "complete_request_estimated_input_tokens": v641_complete_estimate,
+            "single_pass_exact_input_tokens": v641_single_pass_exact_input_tokens,
+            "batch_selection_reason": v641_batch_reason,
+            "effective_batch_target_tokens": v641_batch_target,
             "normal_single_pass_estimate_limit": DETECTION_V641_DISCOVERY_NORMAL_ESTIMATE_TOKENS,
             "batch_estimate_target": DETECTION_V641_DISCOVERY_BATCH_ESTIMATE_TOKENS,
             "max_exact_input_tokens": DETECTION_V641_DISCOVERY_MAX_EXACT_INPUT_TOKENS,

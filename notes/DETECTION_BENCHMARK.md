@@ -13,6 +13,20 @@ technical pairs scoring at least 85 from 3 to 49 and left all 52 groups
 unchanged. The unit heuristic reacted to OCR noise and a sheet number.
 The missing typed Membership evidence is a separate demonstrated limit.
 
+### Haiku 5.5 Discovery batch admission
+
+Floor 06 production run `run_e8b4f48d106942d3bde4e66e7387ccff` retained
+12 Views in 7 groups after a single Discovery request used 182,933 input
+tokens against a 101,703 estimate. Discovery marked P04 through P15 empty.
+With the same PDF and saved production OCR, fresh Detection run
+`run_b9053221388d49f0abb667aca901bc71` measured 182,933 tokens before sending
+Discovery and planned batches for P01–P07, P08–P14, and P15. It retained 56
+Views across all 13 technical sheets (P03–P15) in 25 groups. The first check
+encountered a response without text. The repeat completed the three batches.
+Floor 07 measured 129,536 tokens in its archived request and stayed
+single-pass. Its fixed-input replay retained 33 Views in the accepted 10
+groups. Fresh OCR and the production Upload flow remain to be verified.
+
 ### Haiku 5.5 ordinary Membership recovery
 
 The ordinary Upload path now uses the grouping logic from the accepted

@@ -13,6 +13,7 @@ from agents.anthropic_adapter import (
     build_detection_v641_full_page_discovery_batches,
     build_detection_registry_content_blocks,
     run_detection_v845_global_batched_assembly_scope,
+    select_detection_v641_discovery_overflow_target,
     select_detection_v641_review_page_context_images,
     should_use_detection_v845_global_batched_assembly_scope,
     should_use_detection_v641_budgeted_discovery,
@@ -152,6 +153,26 @@ def test_v641_covers_both_existing_ordinary_registry_categories() -> None:
         mistral_anchor_admission_active=True,
         full_estimated_input_tokens=300_000,
     )
+
+
+def test_v641_assembled_request_budget_overrides_an_underestimated_page_plan():
+    assert select_detection_v641_discovery_overflow_target(
+        full_page_estimate=101_703,
+        complete_estimate=145_000,
+        exact_input_tokens=182_933,
+    ) == 58_375
+
+    assert select_detection_v641_discovery_overflow_target(
+        full_page_estimate=123_971,
+        complete_estimate=158_000,
+        exact_input_tokens=125_071,
+    ) is None
+
+    assert select_detection_v641_discovery_overflow_target(
+        full_page_estimate=101_703,
+        complete_estimate=165_000,
+        exact_input_tokens=None,
+    ) == 64_720
 
 
 def test_v845_scope_runs_only_for_a_batched_non_anchor_assembly_set() -> None:

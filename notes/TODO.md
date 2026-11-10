@@ -29,14 +29,13 @@ Production Floor 07 run `run_2964d6fe13874ede95d64d1c809a9726` retained
 33 Views in 12 groups. P04 grouped correctly. The three P05 Views
 remained separate and P11 retained the two-group split.
 
-ACTIVE, P0, preserve Discovery coverage when the input estimate is low.
-Floor 06 production run `run_e8b4f48d106942d3bde4e66e7387ccff` returned
-7 objects from 12 Views. Discovery marked P04 through P15 empty and
-Conflict Resolver recovered three P15 Views. The single request consumed
-182,933 input tokens against a 101,703 estimate. The byte-identical
-previous Floor 06 PDF entered the two-batch path and retained 62 Views.
-Verify the Discovery admission boundary against both HSL floors before
-evaluating Membership quality from the new count.
+PENDING LIVE VERIFY, P0, preserve Discovery coverage on Floor 06 Upload.
+A fresh Detection call with the saved production OCR restored coverage of
+all 13 technical sheets through three Discovery batches. It retained 56
+Views in 25 groups. Verify the same coverage on a fresh production Upload.
+Floor 07 stayed single-pass and reproduced the 10-group fixed-input result.
+The first Floor 06 check stopped on an empty model response. Its provider
+stop reason was unavailable. The observed repeat completed all three batches.
 
 PENDING, P1, make deferred Naming robust to incomplete model JSON.
 The production Floor 07 run failed parsing before any names were written.
