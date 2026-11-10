@@ -32,5 +32,7 @@ Use `<model and version> · Detection <current version> · <latest change>`
 in the visible deployment title and the corresponding release commit title.
 Name the model used by the affected route. Carry the same three fields in
 the machine-readable build marker.
+Write deployment titles, commit messages, code comments, and project
+records in English.
 
 Example: `Haiku 5.5 · Detection V8.4.9 · Processing timer recovery`

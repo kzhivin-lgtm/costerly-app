@@ -3,6 +3,16 @@
 The V8.4.9 production-path release replay and private full checkpoint are
 indexed by `notes/DETECTION_V8_4_9_PRODUCTION_CHECKPOINT_2026_11_10.md`.
 
+### Production HSL Floor 06 witness
+
+Run `run_24f9ed47537c41758129081ddda9e60a` completed with 62 Views and
+52 objects, including 50 singleton objects. Haiku supplied two hypotheses
+and both passed validation. The current production graph reproduced exactly
+with frozen inputs. Recalculating only the unit as centimeters increased the
+technical pairs scoring at least 85 from 3 to 49 and left all 52 groups
+unchanged. The unit heuristic reacted to OCR noise and a sheet number.
+The missing typed Membership evidence is a separate demonstrated limit.
+
 ## V8.4.9 local post-cleanup checkpoint, 2026-11-10
 
 Fixed-input restored replay verified identical provider requests, View

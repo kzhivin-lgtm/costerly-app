@@ -5,11 +5,20 @@
 ACTIVE, P0, verify the owner's Upload and Processing experience on HSL 06/07.
 Production HSL 06 sent eleven known-render `no_match` rows with blank witnesses.
 They are now audited abstentions. Positive attachment still requires evidence.
-Fresh local regular Detection completed with 52 groups; grouping quality remains
-open. The same incident trace shows browser timeout at about 18 seconds and
-Processing worker start 36 seconds after selection. The Upload hotfix keeps the
-pending shell through the observed delay and resumes the same timer on late
-confirmation. Wait for owner verification of Upload, Processing and File Review.
+The owner confirmed a completed production Floor 06 run with 52 objects.
+The incident trace shows browser timeout at about 18 seconds and Processing
+worker start 36 seconds after selection. The Upload hotfix keeps the pending
+shell through the observed delay and resumes the same timer on late
+confirmation. The owner's live timer and Floor 07 checks remain open.
+
+ACTIVE, P0, recover evidence-backed ordinary Membership on HSL Floor 06.
+Production run `run_24f9ed47537c41758129081ddda9e60a` had 62 Views,
+155 required same-sheet comparisons, two supplied and accepted hypotheses,
+and 50 singleton groups. A fixed-input replay reproduced all 52 groups.
+Changing only the unit to centimeters raised strong technical comparisons
+from 3 to 49 and preserved the partition. Treat unit inference as a separate
+evidence defect. Test pair-local review of omitted same-page links with the
+fixed Views and Q, checking both correct joins and independent objects.
 
 PENDING, P1, isolate cold-start screen latency with a matched browser build.
 The incident used an older wrapper and showed fallback reveal before initial
