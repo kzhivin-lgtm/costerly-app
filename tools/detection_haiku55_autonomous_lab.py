@@ -22,6 +22,7 @@ from agents.detection_source_capability import assess_detection_source_capabilit
 from agents.ocr_rendering import run_mistral_document_evidence_ocr
 from config import CLAUDE_HAIKU_MODEL
 from tools.detection_dimension_anchors import dimension_anchors
+from tools.detection_render_review import RENDER_KIND, review_render_rows
 
 BATCH_SIZE = 3
 ROLE_RULE = (
@@ -107,6 +108,8 @@ def primary_request(request):
         block for pair in image_pairs for block in pair
     ] + [{"type": "text", "text": inventory}]
     prompt = PRIMARY_RULE
+    if any((match := VIEW_ROW.match(line)) and match[3] == RENDER_KIND for line in inventory.splitlines()):
+        prompt += " Every render decision requires a short, nonempty visual_witness, including no_match and unresolved."
     schema = prepared["output_config"]["format"]["schema"]
     if "conflict_pair_decisions" in schema["properties"]:
         marker = "V7.14 TARGETED CONFLICT-ADMISSION MEMBERSHIP MATRIX:"
@@ -313,6 +316,7 @@ def run(pdf, output):
     original_semantics = adapter.compile_detection_v5_semantic_facts
     original_merge = adapter.compile_detection_v5_merge_edges
     records, calls = [], []
+    render_review_audit = {}
     canonical_ids = {}
 
     def capture_ids(visual_map):
@@ -346,8 +350,32 @@ def run(pdf, output):
         if model == CLAUDE_HAIKU_MODEL and stage == "membership":
             prepared = primary_request(request)
         response, diagnostics, metadata = send(client, prepared, stage, f"primary-{len(records)+1:02}")
-        records.append((request_hash(request), stage, prepared, response, diagnostics))
         calls.append(metadata)
+        if model == CLAUDE_HAIKU_MODEL and stage == "membership" and response.stop_reason == "end_turn":
+            views, _ = inventory_of(prepared)
+            if any(role == RENDER_KIND for _, role in views.values()):
+                original_text = next(block for block in response.content if block.type == "text")
+                payload = json.loads(adapter.extract_text_from_claude_response(response))
+
+                def send_render(focused, page):
+                    review_client = adapter.get_anthropic_client()
+                    review, _, details = send(
+                        review_client, focused, "presentation_render_review", f"render-{page:02}",
+                    )
+                    return review, details
+
+                rows, render_calls, sources = review_render_rows(
+                    prepared, views, payload.get("presentation_render_decisions"), send_render,
+                    ABSENT_PROOF.search, BATCH_SIZE,
+                )
+                calls.extend(render_calls)
+                render_review_audit.update(sources)
+                write_json(output / "presentation-render-review.json", {"decisions": rows, "decision_source": sources})
+                payload["presentation_render_decisions"] = rows
+                response = response.model_copy(update={"content": [
+                    original_text.model_copy(update={"text": json.dumps(payload, ensure_ascii=False)})
+                ]})
+        records.append((request_hash(request), stage, prepared, response, diagnostics))
         return response, diagnostics
 
     print("Fresh OCR complete. Running Discovery and complete Membership.", flush=True)
@@ -540,6 +568,7 @@ def run(pdf, output):
         "supplement_hypothesis_count": replacement_count, "final_groups": final_groups,
         "local_review_pages": sorted(unresolved), "local_proven_edges": [edge_endpoints(edge) for edge in accepted_recovery],
         "dimension_anchor_pairs": sorted(anchor_pairs),
+        "presentation_render_review": render_review_audit,
         "retained_view_count": len(final_usage["view_evidence_packages"]),
         "required_same_page_pairs": final_usage["dimension_graph_audit"]["v6_67_review_same_page_queue"]["required_same_page_pair_count"],
     }

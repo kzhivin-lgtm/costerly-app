@@ -282,6 +282,21 @@ open the first link in the lab. No benchmark-specific inputs or rules.
 Ada, Lev 1, Lev 2 and both Page 23 paths match the saved checkpoint.
 Evidence: `notes/evidence/detection-v8.4.9-haiku55-autonomous-accepted-floor-07.json`.
 
+ACTIVE, P0, finish autonomous ordinary render membership:
+On two fresh Floor 06 attempts the V7.11 gate rejected all-blank render
+witnesses. Keep the existing positive geometry/topology requirements and
+object boundaries. Verify a complete fresh run with real attachments,
+including the documented Floor 06 P03 render family, and preserve the
+no-render Floor 07 path and existing Ada and Page 23 controls. This is
+local experimentation on checkpoint `3a003a4`.
+
+DEFERRED, P2, shared render or View evidence:
+The owner raised the possibility that one drawing View or render can
+illustrate two distinct objects. Explore explicitly audited, non-merging
+references after single-owner render review is stable. Existing View
+ownership, membership edges and object quantities retain their semantics
+until a separate contract is agreed.
+
 PENDING, P1, broader ordinary Haiku 5.5 reproducibility:
 An independent HSL repeat stopped before grouping because Discovery
 returned a core box outside its evidence envelope. Keep the exact
