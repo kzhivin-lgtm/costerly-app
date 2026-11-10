@@ -1,5 +1,21 @@
 # TODO
 
+## Production Detection V8.4.9 recovery
+
+ACTIVE, P0, verify the owner's Upload and Processing experience on HSL 06/07.
+Production HSL 06 sent eleven known-render `no_match` rows with blank witnesses.
+They are now audited abstentions. Positive attachment still requires evidence.
+Fresh local regular Detection completed with 52 groups; grouping quality remains
+open. The same incident trace shows browser timeout at about 18 seconds and
+Processing worker start 36 seconds after selection. The Upload hotfix keeps the
+pending shell through the observed delay and resumes the same timer on late
+confirmation. Wait for owner verification of Upload, Processing and File Review.
+
+PENDING, P1, isolate cold-start screen latency with a matched browser build.
+The incident used an older wrapper and showed fallback reveal before initial
+Core login readiness. Compare fresh traces with the verified release before
+changing cross-screen timing or recovery.
+
 PENDING LIVE VERIFY, V6.57, P0, ordinary Discovery output envelope:
 
 The 2026-10-27 HSL failure reached the existing 8,192-token Discovery ceiling

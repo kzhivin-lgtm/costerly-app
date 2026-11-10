@@ -2430,7 +2430,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
         (() => {
             const parentWindow = window.parent;
             const parentDoc = parentWindow.document;
-            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_22";
+            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_23";
             const oldMarker = parentDoc.getElementById(markerId);
 
             if (oldMarker) {
@@ -2445,7 +2445,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
             const legacyMarker = parentDoc.getElementById(
                 "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_19"
             );
-            const migrationKey = "costerly-upload-runtime-v1122-migrated";
+            const migrationKey = "costerly-upload-runtime-v1123-migrated";
             const legacyInstalled = Boolean(
                 parentWindow.__costerlyUploadInteractionGuardsV1119Installed ||
                 parentWindow.__costerlyUploadInteractionGuardsV1120Installed ||
@@ -2463,7 +2463,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
             }
 
             const previousRuntime = parentWindow.__costerlyUploadInteractionRuntime;
-            if (previousRuntime && previousRuntime.version === "v1122") {
+            if (previousRuntime && previousRuntime.version === "v1123") {
                 return;
             }
             if (previousRuntime && typeof previousRuntime.dispose === "function") {
@@ -2483,11 +2483,11 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const REAL_PROCESSING_MARKER_ID = 'costerly-processing-screen-active';
                 const FILE_REVIEW_MARKER_ID = 'costerly-file-review-screen-active';
                 const SHELL_ACTIVE_CLASS = 'costerly-upload-processing-shell-active';
-                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1122';
-                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1122';
-                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1122Installed';
+                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1123';
+                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1123';
+                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1123Installed';
                 const RUNTIME_KEY = '__costerlyUploadInteractionRuntime';
-                const RUNTIME_VERSION = 'v1122';
+                const RUNTIME_VERSION = 'v1123';
                 const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAtV5';
                 const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimerV5';
                 const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSecondsV5';
@@ -2498,6 +2498,12 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const PROCESSING_COMPLETE_EXPECTED_RUN_ID_KEY = '__costerlyProcessingToReviewRunIdV5';
                 const RFQ_UPLOAD_CYCLE_ID_KEY = '__costerlyRfqUploadCycleIdV5';
                 const UPLOAD_CALLBACK_GRACE_MS = 18000;
+                const UNCONFIRMED_UPLOAD_DEADLINE_MS = 45000;
+                const NATIVE_UPLOAD_DEADLINE_MS = 120000;
+                const NATIVE_UPLOAD_FILE_SELECTOR =
+                    DROPZONE_SELECTOR + ' [data-testid="stFileChip"]';
+                let uploadSelectedAt = 0;
+                let nativeUploadObserved = false;
                 let disposed = false;
                 let clearDragTimer = null;
                 let watcher = null;
@@ -2986,12 +2992,12 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     window[ELAPSED_STARTED_AT_KEY] = null;
                 }
 
-                function startElapsed() {
+                function startElapsed(startedAt = Date.now()) {
                     if (!window[ELAPSED_STARTED_AT_KEY]) {
-                        window[ELAPSED_STARTED_AT_KEY] = Date.now();
+                        window[ELAPSED_STARTED_AT_KEY] = startedAt;
                     }
                     updateElapsed();
-                    if (!window[ELAPSED_TIMER_KEY]) {
+                    if (window[ELAPSED_STARTED_AT_KEY] && !window[ELAPSED_TIMER_KEY]) {
                         window[ELAPSED_TIMER_KEY] = window.setInterval(updateElapsed, 200);
                     }
                 }
@@ -3013,11 +3019,26 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     }
                 }
 
-                function releaseUnconfirmedUpload() {
+                function releaseUnconfirmedUpload(allowNativeGrace = true) {
+                    window.clearTimeout(uploadCallbackTimer);
                     uploadCallbackTimer = null;
                     if (disposed || realProcessingIsActive() || !uploadScreenIsActive()) return;
                     const shell = document.getElementById(SHELL_ID);
                     if (!shell) return;
+                    const nativeFile = document.querySelector(
+                        NATIVE_UPLOAD_FILE_SELECTOR + ':not([aria-invalid="true"])'
+                    );
+                    const nativeError = document.querySelector(
+                        NATIVE_UPLOAD_FILE_SELECTOR + '[aria-invalid="true"]'
+                    );
+                    const deadline = nativeFile
+                        ? NATIVE_UPLOAD_DEADLINE_MS : UNCONFIRMED_UPLOAD_DEADLINE_MS;
+                    const remaining = deadline - (Date.now() - uploadSelectedAt);
+                    if (allowNativeGrace && !nativeError && remaining > 0) {
+                        shell.dataset.slow = 'true';
+                        uploadCallbackTimer = window.setTimeout(releaseUnconfirmedUpload, remaining);
+                        return;
+                    }
 
                     // Do not leave a simulated Processing state over an
                     // upload that never reached Streamlit. The native uploader
@@ -3051,6 +3072,19 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         window.clearTimeout(uploadCallbackTimer);
                         uploadCallbackTimer = null;
                     }
+                    const stage = activeProcessingStage();
+                    if (!window[ELAPSED_STARTED_AT_KEY] &&
+                        stage && stage.dataset.processingComplete !== 'true' &&
+                        stage.dataset.processingFailed !== 'true') {
+                        const serverStartedAt = Number(stage.dataset.processingRunToken);
+                        const now = Date.now();
+                        startElapsed(uploadSelectedAt || (
+                            serverStartedAt > 0 ? Math.min(serverStartedAt, now) : now
+                        ));
+                    }
+                    if (window[PROCESSING_TRANSITION_ID_KEY]) return;
+                    const shell = document.getElementById(SHELL_ID);
+                    if (shell) delete shell.dataset.slow;
                     const transitionId = startTransition(
                         'upload_to_processing',
                         'upload',
@@ -3073,7 +3107,9 @@ def install_upload_interaction_guards(shell_html: str) -> None:
 
                     window.clearInterval(window[ELAPSED_TIMER_KEY]);
                     window[ELAPSED_TIMER_KEY] = null;
-                    window[ELAPSED_STARTED_AT_KEY] = Date.now();
+                    uploadSelectedAt = Date.now();
+                    nativeUploadObserved = false;
+                    window[ELAPSED_STARTED_AT_KEY] = uploadSelectedAt;
                     window[LAST_ELAPSED_SECONDS_KEY] = null;
                     window[PROCESSING_TRANSITION_ID_KEY] = null;
                     window[PROCESSING_COMPLETE_TRANSITION_ID_KEY] = null;
@@ -3311,6 +3347,19 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         clearDragover();
                     }
                     const shellIsActive = Boolean(document.getElementById(SHELL_ID));
+                    if (shellIsActive && uploadCallbackTimer && uploadScreenIsActive() && !realProcessingIsActive()) {
+                        const nativeFile = document.querySelector(
+                            NATIVE_UPLOAD_FILE_SELECTOR + ':not([aria-invalid="true"])'
+                        );
+                        if (nativeFile) {
+                            nativeUploadObserved = true;
+                        } else if (nativeUploadObserved && document.querySelector(
+                            NATIVE_UPLOAD_FILE_SELECTOR + '[aria-invalid="true"]'
+                        )) {
+                            releaseUnconfirmedUpload(false);
+                            return;
+                        }
+                    }
                     if (
                         window[ELAPSED_STARTED_AT_KEY] &&
                         (realProcessingIsActive() || shellIsActive || fileReviewIsActive())

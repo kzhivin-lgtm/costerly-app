@@ -51,7 +51,9 @@ def render_upload_screen(company_id: str, *, trace=None) -> None:
         key=f"rfq_upload_input_{upload_widget_generation}",
         label_visibility="collapsed",
     )
-    install_upload_interaction_guards(processing_stage_html(elapsed_seconds=0))
+    install_upload_interaction_guards(
+        processing_stage_html(elapsed_seconds=0, include_slow_message=True)
+    )
 
     if uploaded_file is not None:
         file_bytes = uploaded_file.getvalue()

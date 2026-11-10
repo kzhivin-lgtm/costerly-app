@@ -16,6 +16,7 @@ from agents.detection_page_images import (
     should_use_detection_page_images,
 )
 from pathlib import Path
+import re
 from use_cases import rfq_processing
 
 
@@ -159,9 +160,10 @@ def test_first_file_review_reuses_normalized_detection_payload():
 
 def test_processing_uses_only_bounded_browser_handshake_after_complete_marker():
     source = Path("screens/processing.py").read_text()
-    complete_tail = source.split(
-        'render_stage(1.0, complete=True, processing_phase="complete")', 1
-    )[1]
+    complete_tail = source.split('processing_phase="complete"', 1)[1]
+    sleeps = re.findall(r"time\.sleep\(([^)]+)\)", complete_tail)
 
-    assert "time.sleep(0.25)" not in complete_tail
-    assert "time.sleep(0.12)" in complete_tail
+    assert len(sleeps) == 1
+    assert 0 < float(sleeps[0]) <= 0.25
+    assert 'st.session_state.screen = "file_review"' in complete_tail
+    assert complete_tail.rstrip().endswith("st.rerun()")

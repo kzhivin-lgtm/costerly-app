@@ -66,7 +66,7 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
     def render_stage(
         progress_value: float,
         *,
-        elapsed_seconds: float = 0,
+        elapsed_seconds: float | None = None,
         complete: bool = False,
         processing_phase: str = "ocr",
         expected_file_review_seconds_value: float | None = None,
@@ -81,7 +81,10 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
             processing_stage_html(
                 marker_id=PROCESSING_MARKER_ID,
                 progress_value=progress_value,
-                elapsed_seconds=elapsed_seconds,
+                elapsed_seconds=(
+                    time.perf_counter() - screen_started
+                    if elapsed_seconds is None else elapsed_seconds
+                ),
                 complete=complete,
                 processing_phase=processing_phase,
                 expected_file_review_seconds=expected_file_review_seconds_value,

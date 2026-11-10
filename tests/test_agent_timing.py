@@ -629,6 +629,8 @@ def test_processing_stage_starts_empty_until_elapsed_work_is_observed():
     markup = processing_stage_html(elapsed_seconds=0)
 
     assert 'style="width:0.0%;"' in markup
+    slow_upload_markup = processing_stage_html(elapsed_seconds=0, include_slow_message=True)
+    assert "Upload is taking longer than expected." in slow_upload_markup
 
 
 def test_processing_stage_exposes_real_phase_and_completion():
@@ -854,8 +856,8 @@ def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signal
     assert "function visibleProgressNode(stage)" in source
     assert "writeProgress(percent)" in source
     assert "syncForecastFromStage(stage)" in source
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_22" in source
-    assert "costerly-upload-runtime-v1122-migrated" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_23" in source
+    assert "costerly-upload-runtime-v1123-migrated" in source
     assert "parentWindow.location.reload();" in source
     assert "function finalizationState(stage)" in source
     assert "function advanceFinalization(state)" in source
@@ -892,7 +894,7 @@ def test_processing_cycle_persists_ocr_page_count_for_future_forecasts():
 def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():
     source = getsource(install_upload_interaction_guards)
 
-    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_22" in source
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_23" in source
     assert "function uploadScreenIsActive()" in source
     assert "document.querySelector('.upload-screen-active')" in source
     assert "if (!uploadScreenIsActive()) return;" in source
@@ -901,7 +903,7 @@ def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():
     assert "costerly:upload-callback-timeout" in source
     assert "pointer-events: none" in source
     assert "UPLOAD_CALLBACK_GRACE_MS = 18000" in source
-    assert "function releaseUnconfirmedUpload()" in source
+    assert "function releaseUnconfirmedUpload(allowNativeGrace = true)" in source
     assert "function reportProcessingVisible()" in source
     show_shell = source.split("function showShell(source)", 1)[1].split(
         "function dropHasFiles", 1
