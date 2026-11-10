@@ -339,7 +339,10 @@ accepted groups but did not recover two failed Adda partitions. Record:
 PENDING PROPOSAL, P1, Detection dimension-only region ownership:
 The accepted HSL 07 V6.25 run kept the P04 strip in the N57 package.
 The Haiku 5.5 witness preceding coordinate OCR and the frozen V8.4.9 run
-both publish the same strip as its own object. Test a bounded Discovery
+both publish the same strip as its own object. The fixed-input Review
+A/B in the research record reproduces the whole N57 split under the
+Haiku 5.5 profile. Treat recovery of ordinary Review grouping as the
+upstream priority if this regression is pursued. Separately test a bounded Discovery
 role correction before Membership on saved inputs. Require visible
 dimension-only content, no object geometry, and a uniquely supported
 parent View. Keep the numeric evidence on that View and protect

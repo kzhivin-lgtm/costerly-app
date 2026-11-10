@@ -97,8 +97,30 @@ one N57 object. The separate-object outcome already occurs in the saved
 Haiku 5.5 run `run_e508dea053ae472d9038a0b8047c8ed9`, before the new
 coordinate OCR audit. In that run and the final V8.4.9 run, all seven
 P04 Views are singleton components. This establishes the output regression
-between these witnesses. It does not isolate the first affected version
-or the cause of the broader page split.
+between these witnesses.
+
+[verified] A follow-up reviewed 29 saved Haiku 4.5 runs of HSL 07 from
+October 24 through November 1. The strip was a separate View in 26 and
+was never a singleton package in the inspected history. On the current
+runtime, replayed Discovery and captured the exact HSL Review request.
+The two provider calls shared the OCR, Views, crops, prompt and schema.
+They differed only in the active model profile. Haiku 4.5 used the
+historical sampling settings, Haiku 5.5 used the migration's low effort
+and omitted sampling controls. Replayed both replies through the same
+compiler.
+
+| Review provider | N57 result | Whole document |
+| --- | --- | ---: |
+| Haiku 4.5, `msg_011CguJ8X7Ccpa3YupDNXx8E` | Two N57 hypotheses, six accepted edges, one object with all seven Views | 9 objects |
+| Haiku 5.5, `msg_011CguJ8c2sm1BTu5obmSLZQ` | Zero N57 hypotheses or accepted edges, seven standalone objects | 30 objects |
+
+The Haiku 5.5 Review profile introduced by `89f87b7` is sufficient to
+reproduce this regression on the fixed input. The earlier erroneous
+admission of the strip as a View was masked by the stronger grouping.
+There was one paired live trial, so this isolates the failing stage and
+profile on this witness. The saved provider messages carry actual
+model identities. The compiler replay keeps the request-side model label.
+Evidence: private research bundle, `hsl-n57-review-ab/`.
 
 These rectangles are frozen regression references, not an independently
 redrawn, exhaustive region inventory. HSL's full grouping remains
