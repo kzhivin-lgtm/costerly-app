@@ -216,6 +216,8 @@ DETECTION_V5_PROPOSAL_MAX_TOKENS = 8_192
 # at the normal budget while still inside a JSON string.  It keeps the same
 # discovery contract and is intentionally not a general validation retry.
 DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS = 12_288
+DETECTION_V8411_ORDINARY_DISCOVERY_RETRY_MAX_TOKENS = 16_384
+DETECTION_V8411_DISCOVERY_RECOVERY_PAGES_PER_CALL = 4
 # V6.41 is a transport guard, not a new semantic route.  It applies only
 # after ordinary routing has selected the established Registry contract.
 # The estimate uses the provider's documented image heuristic, then adds a
@@ -6411,6 +6413,91 @@ def validate_detection_v5_discovery_page_coverage(
     return sorted(audit, key=lambda item: item["page_number"])
 
 
+def _v8411_discovery_technical_counts(payload: dict[str, Any]) -> Counter[int]:
+    classes = {row["group_id"]: row["evidence_class"] for row in payload["classifications"]}
+    return Counter(
+        group["page_number"] for group in payload["visual_groups"]
+        if group.get("evidence_class", classes.get(group["group_id"])) == "object_evidence"
+        and str(group["representation_kind"]).strip().lower() != "presentation_render"
+    )
+
+
+def _v8411_discovery_recovery_pages(
+    payload: dict[str, Any],
+    *,
+    candidate_regions: list[dict[str, Any]],
+    truncated_pages: set[int],
+) -> list[int]:
+    """Find pages where Discovery's recall is contradicted by source geometry."""
+    technical_counts = _v8411_discovery_technical_counts(payload)
+    graphic_candidates = [
+        candidate for candidate in candidate_regions
+        if candidate.get("basis") == "mistral_graphic_region"
+        or candidate.get("role") == "coverage_only"
+    ]
+    candidate_counts = Counter(candidate["page_number"] for candidate in graphic_candidates)
+    classes = {row["group_id"]: row["evidence_class"] for row in payload["classifications"]}
+    context_boxes: dict[int, list[dict[str, int]]] = {}
+    render_pages: set[int] = set()
+    for group in payload["visual_groups"]:
+        page_number = group["page_number"]
+        if group.get("evidence_class", classes.get(group["group_id"])) == "document_context":
+            context_boxes.setdefault(page_number, []).append(group["bbox"])
+        elif str(group["representation_kind"]).strip().lower() == "presentation_render":
+            render_pages.add(page_number)
+    unexplained = Counter(
+        candidate["page_number"] for candidate in graphic_candidates
+        if not any(
+            _bbox_overlaps(candidate["bbox"], box)
+            for box in context_boxes.get(candidate["page_number"], [])
+        )
+    )
+    return [
+        page for page, count in sorted(candidate_counts.items())
+        if (
+            not technical_counts[page] and unexplained[page]
+            and (count > 1 or page not in render_pages)
+        ) or (
+            page in truncated_pages and technical_counts[page]
+            and unexplained[page] >= 2 * (technical_counts[page] + 1)
+        )
+    ]
+
+
+def _v8411_replace_discovery_pages(
+    payload: dict[str, Any], replacement: dict[str, Any], *,
+    pages: set[int], candidate_regions: list[dict[str, Any]],
+) -> None:
+    """Replace only recovered pages, including their coverage and exception rows."""
+    if not pages:
+        return
+    old_group_ids = {
+        group["group_id"] for group in payload["visual_groups"] if group["page_number"] in pages
+    }
+    new_group_ids = {
+        group["group_id"] for group in replacement["visual_groups"] if group["page_number"] in pages
+    }
+    if any(
+        group["group_id"] in new_group_ids for group in payload["visual_groups"]
+        if group["page_number"] not in pages
+    ):
+        raise ValueError("Discovery recovery Island IDs collide with retained Islands")
+    candidate_ids = {
+        candidate["candidate_region_id"] for candidate in candidate_regions
+        if candidate["page_number"] in pages
+    }
+    for key, field, old_ids, new_ids in (
+        ("visual_groups", "page_number", pages, pages),
+        ("classifications", "group_id", old_group_ids, new_group_ids),
+        ("candidate_region_exceptions", "candidate_region_id", candidate_ids, candidate_ids),
+        ("page_coverage", "page_number", pages, pages),
+    ):
+        payload[key] = [row for row in payload[key] if row[field] not in old_ids]
+        payload[key].extend(row for row in replacement[key] if row[field] in new_ids)
+    payload["visual_groups"].sort(key=lambda group: group["page_number"])
+    payload["page_coverage"].sort(key=lambda row: row["page_number"])
+
+
 def _normalize_registry_group_bboxes(
     groups: object,
     *,
@@ -9808,6 +9895,15 @@ def run_anthropic_detection_visual_registry_agent(
         else selected_model
     )
     review_model = selected_model
+    ordinary_haiku_discovery = (
+        document_category == "ordinary_object_set"
+        and not mistral_anchor_admission_active
+        and _claude_runtime_model(discovery_model) == CLAUDE_HAIKU_MODEL
+    )
+    discovery_retry_limit = (
+        DETECTION_V8411_ORDINARY_DISCOVERY_RETRY_MAX_TOKENS
+        if ordinary_haiku_discovery else DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS
+    )
     prompt_version = (
         DETECTION_V67_MISTRAL_ANCHOR_ADMISSION_PROMPT_VERSION
         if mistral_anchor_admission_active
@@ -10113,6 +10209,10 @@ def run_anthropic_detection_visual_registry_agent(
             batch_initial_max_tokens = select_detection_v645_discovery_output_max_tokens(
                 len(batch_candidates),
             )
+            if ordinary_haiku_discovery and len(batch_candidates) >= 24:
+                batch_initial_max_tokens = max(
+                    batch_initial_max_tokens, DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+                )
             batch_response, batch_diagnostics = stream_message(
                 client,
                 model=discovery_model,
@@ -10146,7 +10246,7 @@ def run_anthropic_detection_visual_registry_agent(
                     batch_response, batch_diagnostics = stream_message(
                         client,
                         model=discovery_model,
-                        max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+                        max_tokens=discovery_retry_limit,
                         temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
                         system=proposal_system,
                         messages=batch_messages,
@@ -10155,7 +10255,7 @@ def run_anthropic_detection_visual_registry_agent(
                     batch_attempts.append({
                         "response": batch_response,
                         "diagnostics": batch_diagnostics,
-                        "max_tokens": DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+                        "max_tokens": discovery_retry_limit,
                         "exact_input_tokens": exact_input_tokens,
                         "context_characters": len(batch_user_text),
                         "retry_kind": "truncated_json",
@@ -10377,7 +10477,7 @@ def run_anthropic_detection_visual_registry_agent(
     except json.JSONDecodeError as initial_error:
         proposal_json_error: json.JSONDecodeError | None = initial_error
         if (
-            proposal_output_max_tokens < DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS
+            proposal_output_max_tokens < discovery_retry_limit
             and _is_retryable_visual_registry_json_truncation(
                 proposal_raw_text,
                 proposal_response,
@@ -10389,7 +10489,7 @@ def run_anthropic_detection_visual_registry_agent(
                 stage_callback("Discovery retry 1")
             proposal_response, proposal_diagnostics = stream_message(
                 get_anthropic_client(), model=discovery_model,
-                max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+                max_tokens=discovery_retry_limit,
                 temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
                 system=build_detection_system_content(
                     prompt=proposal_prompt_with_anchor_contract,
@@ -10403,7 +10503,7 @@ def run_anthropic_detection_visual_registry_agent(
             proposal_attempt_summaries.append(summarize_proposal_attempt(
                 proposal_response,
                 proposal_diagnostics,
-                max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+                max_tokens=discovery_retry_limit,
             ))
             try:
                 proposal_raw_payload = json.loads(proposal_raw_text)
@@ -10646,6 +10746,94 @@ def run_anthropic_detection_visual_registry_agent(
             f"Detection proposal response failed validation: {exc}",
             usage_event=failure_usage,
         ) from exc
+    discovery_recovery_audit: list[dict[str, Any]] = []
+    if ordinary_haiku_discovery and "page_coverage" in proposal_raw_payload:
+        truncated_pages = {
+            page for attempt in v641_proposal_attempt_summaries
+            if attempt["retry_kind"] == "truncated_json"
+            for page in attempt["page_numbers"]
+        }
+        if proposal_retry_reason:
+            truncated_pages.update(range(1, len(page_images) + 1))
+        classified_proposal, _ = _validate_and_apply_visual_registry_classifications(
+            proposal_raw_payload, page_frames=review_coordinate_frames,
+        )
+        recovery_pages = _v8411_discovery_recovery_pages(
+            classified_proposal, candidate_regions=candidate_regions,
+            truncated_pages=truncated_pages,
+        )
+        page_limit = DETECTION_V8411_DISCOVERY_RECOVERY_PAGES_PER_CALL
+        for offset in range(0, len(recovery_pages), page_limit):
+            pages = recovery_pages[offset:offset + page_limit]
+            page_set = set(pages)
+            images = [page_images[page - 1] for page in pages]
+            local_candidates = [row for row in candidate_regions if row["page_number"] in page_set]
+            local_facts = [row for row in source_facts if row.get("page_number") in page_set]
+            local_frames = {page: review_coordinate_frames[page] for page in pages if page in review_coordinate_frames}
+            recovery_text = "\n\n".join((
+                format_detection_page_evidence_inventory(local_facts),
+                format_detection_fusion_candidate_regions(local_candidates),
+                format_detection_v5_coordinate_frame_context(local_frames),
+                "Inspect each supplied page independently. Separate technical plans, elevations, "
+                "sections and details from rendered images, even when they depict the same item. "
+                "Use brief factual labels and give each distinct depiction its own box.",
+            ))
+            recovery_schema = bind_detection_candidate_region_exception_ids(
+                proposal_schema, candidate_regions=local_candidates,
+            )
+            content = build_detection_registry_content_blocks(
+                file_name=file_name, file_bytes=file_bytes, user_text=recovery_text,
+                page_images=images, page_image_numbers=pages, regions=[],
+            )
+            recovery_audit: dict[str, Any] = {"pages": pages, "recovered_pages": []}
+            discovery_recovery_audit.append(recovery_audit)
+            if stage_callback:
+                stage_callback("Discovery coverage recovery")
+            try:
+                response, recovery_diagnostics = stream_message(
+                    get_anthropic_client(), model=discovery_model, max_tokens=discovery_retry_limit,
+                    temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+                    system=proposal_system, messages=[{"role": "user", "content": content}],
+                    output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
+                        recovery_schema,
+                    )}},
+                )
+                recovery_audit["provider"] = summarize_detection_provider_call(
+                    response=response, diagnostics=recovery_diagnostics, requested_model=discovery_model,
+                    prompt_characters=len(proposal_prompt_with_anchor_contract),
+                    context_characters=len(recovery_text), image_count=len(images),
+                    image_bytes=sum(len(image) for image in images),
+                )
+                replacement = json.loads(extract_text_from_claude_response(response))
+                if not isinstance(replacement, dict) or set(replacement) != discovery_fields:
+                    raise ValueError("Discovery coverage recovery response is invalid")
+                _v641_validate_batch_page_coverage(replacement, expected_pages=pages)
+                _v644_validate_batch_core_geometry(replacement)
+                validate_detection_candidate_region_exceptions(
+                    candidate_regions=local_candidates,
+                    candidate_region_exceptions=replacement["candidate_region_exceptions"],
+                )
+                classified_replacement, _ = _validate_and_apply_visual_registry_classifications(
+                    replacement, page_frames=local_frames,
+                )
+                before = _v8411_discovery_technical_counts(classified_proposal)
+                after = _v8411_discovery_technical_counts(classified_replacement)
+                improved_pages = {page for page in pages if after[page] > before[page]}
+                replacement = _v641_reindex_batch_discovery_payload(
+                    replacement, batch_number=len(v641_batches) + offset // page_limit + 1,
+                )
+                _v8411_replace_discovery_pages(
+                    proposal_raw_payload, replacement, pages=improved_pages,
+                    candidate_regions=local_candidates,
+                )
+                recovery_audit["recovered_pages"] = sorted(improved_pages)
+            except (ValueError, RuntimeError) as exc:
+                recovery_audit["error"] = f"{type(exc).__name__}: {exc}"
+        if discovery_recovery_audit:
+            proposal_page_coverage = validate_detection_v5_discovery_page_coverage(
+                proposal_raw_payload["page_coverage"], visual_groups=proposal_raw_payload["visual_groups"],
+                page_count=len(page_images),
+            )
     proposal_model_payload = copy.deepcopy(proposal_raw_payload)
     proposal_boundary_payload = copy.deepcopy(proposal_raw_payload)
     proposal_scope_payload: dict[str, Any] | None = None
@@ -11439,6 +11627,7 @@ def run_anthropic_detection_visual_registry_agent(
         # Keep the historical key as the accepted proposal attempt, while the
         # V6.13 audit preserves every charged retry attempt separately.
         "v5_9_proposal": proposal_attempt_summaries[-1],
+        "v8_4_11_discovery_coverage_recovery": discovery_recovery_audit,
         "v6_13_proposal_truncation_retry": {
             "attempted": proposal_retry_reason is not None,
             "reason": proposal_retry_reason,
@@ -12383,6 +12572,7 @@ def run_anthropic_detection_visual_registry_agent(
     provider_call_usages = [
         *diagnostics["v6_13_proposal_truncation_retry"]["attempts"],
         *diagnostics["v6_41_review_truncation_retry"]["attempts"],
+        *(entry["provider"] for entry in discovery_recovery_audit if "provider" in entry),
     ]
     if same_sheet_review is not None:
         provider_call_usages.append(same_sheet_review["provider"])

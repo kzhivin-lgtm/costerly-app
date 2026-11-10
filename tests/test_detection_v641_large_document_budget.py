@@ -10,6 +10,8 @@ from agents.anthropic_adapter import (
     _v644_validate_batch_core_geometry,
     _v641_reindex_batch_discovery_payload,
     _v641_validate_batch_page_coverage,
+    _v8411_discovery_recovery_pages,
+    _v8411_replace_discovery_pages,
     build_detection_v641_full_page_discovery_batches,
     build_detection_registry_content_blocks,
     run_detection_v845_global_batched_assembly_scope,
@@ -297,3 +299,52 @@ def test_v641_review_keeps_all_view_crops_before_page_contexts() -> None:
     assert contexts == []
     assert audit["contexts_suppressed"] is True
     assert audit["view_crop_count"] == 92
+
+
+def test_discovery_coverage_recovers_graphic_pages_without_technical_islands():
+    bbox = {"top_left_x": 5, "top_left_y": 5, "bottom_right_x": 30, "bottom_right_y": 30}
+    groups = [
+        {"group_id": "overview", "page_number": 1, "representation_kind": "floor_plan", "bbox": bbox},
+        {"group_id": "render", "page_number": 2, "representation_kind": "presentation_render", "bbox": bbox},
+        {"group_id": "technical", "page_number": 4, "representation_kind": "elevation", "bbox": bbox},
+    ]
+    payload = {
+        "visual_groups": groups,
+        "classifications": [
+            {"group_id": "overview", "evidence_class": "document_context"},
+            {"group_id": "render", "evidence_class": "object_evidence"},
+            {"group_id": "technical", "evidence_class": "object_evidence"},
+        ],
+        "candidate_region_exceptions": [
+            {"candidate_region_id": "C3-0", "reason": "Previous interpretation"},
+            {"candidate_region_id": "C4-0", "reason": "Keep this exception"},
+        ],
+        "page_coverage": [
+            {"page_number": page, "visual_group_ids": [
+                row["group_id"] for row in groups if row["page_number"] == page
+            ]} for page in range(1, 5)
+        ],
+    }
+    candidates = [
+        {"candidate_region_id": f"C{page}-{index}", "page_number": page,
+         "basis": "mistral_graphic_region", "bbox": bbox}
+        for page, count in enumerate([1, 2, 1, 1], start=1)
+        for index in range(count)
+    ]
+    assert _v8411_discovery_recovery_pages(
+        payload, candidate_regions=candidates, truncated_pages={2, 3},
+    ) == [2, 3]
+    recovered = {
+        "visual_groups": [{"group_id": "new", "page_number": 3}],
+        "classifications": [{"group_id": "new", "evidence_class": "object_evidence"}],
+        "candidate_region_exceptions": [],
+        "page_coverage": [{"page_number": 3, "visual_group_ids": ["new"]}],
+    }
+    _v8411_replace_discovery_pages(payload, recovered, pages={3}, candidate_regions=candidates)
+    _v641_validate_batch_page_coverage(payload, expected_pages=[1, 2, 3, 4])
+    assert [group["group_id"] for group in payload["visual_groups"]] == [
+        "overview", "render", "new", "technical",
+    ]
+    assert payload["candidate_region_exceptions"] == [
+        {"candidate_region_id": "C4-0", "reason": "Keep this exception"},
+    ]

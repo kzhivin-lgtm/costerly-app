@@ -827,7 +827,6 @@ def test_ordinary_discovery_uses_the_same_planned_output_capacity_as_batches():
 
     assert "proposal_output_max_tokens = select_detection_v645_discovery_output_max_tokens(" in source
     assert "max_tokens=proposal_output_max_tokens" in source
-    assert "proposal_output_max_tokens < DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS" in source
 
 
 def test_processing_progress_uses_file_specific_stage_plan_and_real_stage_signals():
@@ -1089,13 +1088,21 @@ def test_locked_evidence_handoff_uses_temperature_zero_and_records_it():
     assert raw_usage["request_fingerprint"]
 
 
-def test_integrated_visual_registry_retries_only_a_proven_truncated_proposal():
+@pytest.mark.parametrize(("model", "category", "initial_budget", "retry_budget"), [
+    ("model", None, 8192, DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS),
+    ("claude-haiku-5-5", "ordinary_object_set", 12288, 16384),
+])
+def test_integrated_visual_registry_retries_only_a_proven_truncated_proposal(
+    model, category, initial_budget, retry_budget,
+):
     proposal = _visual_registry_payload({
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "elevation",
         }],
     })
+    if category:
+        proposal.pop("document_scope")
     requested_budgets = []
 
     def response_with_output_tokens(output_tokens):
@@ -1106,7 +1113,7 @@ def test_integrated_visual_registry_retries_only_a_proven_truncated_proposal():
 
     def fake_create(*_args, max_tokens, **_kwargs):
         requested_budgets.append(max_tokens)
-        output_tokens = 8192 if len(requested_budgets) == 1 else 20
+        output_tokens = initial_budget if len(requested_budgets) == 1 else 20
         return response_with_output_tokens(output_tokens), {
             "request_started_at": "2026-10-16T00:00:00+00:00",
             "request_finished_at": "2026-10-16T00:00:01+00:00",
@@ -1114,6 +1121,7 @@ def test_integrated_visual_registry_retries_only_a_proven_truncated_proposal():
 
     with (
         patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.select_detection_v645_discovery_output_max_tokens", return_value=initial_budget),
         patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
         patch(
             "agents.anthropic_adapter.extract_text_from_claude_response",
@@ -1126,19 +1134,20 @@ def test_integrated_visual_registry_retries_only_a_proven_truncated_proposal():
     ):
         _, _, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"page"], regions=[], ocr_package=None, model="model",
+            page_images=[b"page"], regions=[], ocr_package=None, model=model,
+            document_category=category,
         )
 
     assert requested_budgets == [
-        8192,
-        DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+        initial_budget,
+        retry_budget,
         6144,
     ]
     retry = usage["raw_usage"]["v6_13_proposal_truncation_retry"]
     assert retry["attempted"] is True
     assert retry["reason"] == "initial_response_hit_budget_inside_json_string"
     assert len(retry["attempts"]) == 2
-    assert usage["output_tokens"] == 8232
+    assert usage["output_tokens"] == initial_budget + 40
 
 
 def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call():
@@ -1247,6 +1256,63 @@ def test_integrated_visual_registry_omits_scope_from_ordinary_contract():
         DETECTION_V713_MEMBERSHIP_REVIEW_MAX_STREAM_SECONDS
     )
     assert usage["raw_usage"]["v6_11_document_scope"] is None
+
+
+def test_ordinary_discovery_recovers_empty_and_render_only_pages_before_membership():
+    def group(group_id, page, x, kind):
+        bbox = {"top_left_x": x, "top_left_y": 10, "bottom_right_x": x + 10, "bottom_right_y": 20}
+        return {
+            "group_id": group_id, "page_number": page, "location_hint": "middle",
+            "visual_description": "one depiction", "representation_kind": kind,
+            "bbox": bbox, "core_bbox": bbox,
+        }
+
+    def discovery(groups, pages):
+        payload = _visual_registry_payload({"visual_groups": groups})
+        for field in ("object_hypotheses", "semantic_facts", "document_scope"):
+            payload.pop(field)
+        payload["page_coverage"] = [
+            {"page_number": page, "visual_group_ids": [
+                item["group_id"] for item in groups if item["page_number"] == page
+            ]}
+            for page in pages
+        ]
+        return payload
+
+    overview = group("cover", 1, 10, "title_block")
+    render = group("render", 2, 30, "presentation_render")
+    recovered = [group("elevation", 2, 30, "elevation"),
+                 group("detail", 2, 60, "section"), group("plan", 3, 90, "plan")]
+    candidates = [
+        {"candidate_region_id": f"CR-{i}", "page_number": item["page_number"],
+         "bbox": item["bbox"], "basis": "mistral_graphic_region", "source_fact_ids": []}
+        for i, item in enumerate([overview, *recovered], start=1)
+    ]
+    diagnostics = {"request_started_at": "2026-10-16T00:00:00+00:00",
+                   "request_finished_at": "2026-10-16T00:00:01+00:00"}
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.build_detection_fusion_candidate_regions", return_value=candidates),
+        patch("agents.anthropic_adapter.build_detection_conflict_targets", return_value=[]),
+        patch("agents.anthropic_adapter.create_claude_message_streamed",
+              return_value=(_Response(), diagnostics)) as stream,
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=[
+            json.dumps(discovery([overview, render], [1, 2, 3])),
+            json.dumps(discovery(recovered, [2, 3])),
+            json.dumps({"object_hypotheses": [], "presentation_render_decisions": []}),
+        ]),
+    ):
+        _, registry, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"one", b"two", b"three"], regions=[], ocr_package=None,
+            model="claude-haiku-5-5", document_category="ordinary_object_set",
+        )
+
+    assert stream.call_count == 3
+    recovery = usage["raw_usage"]["v8_4_11_discovery_coverage_recovery"]
+    assert [row["recovered_pages"] for row in recovery] == [[2, 3]]
+    assert usage["input_tokens"] == 300
+    assert sorted(obj["identity_pages"] for obj in registry["objects"]) == [[2], [2], [3]]
 
 
 def test_presentation_render_without_technical_match_never_creates_registry_object():

@@ -32,6 +32,36 @@ groups. Fresh production Floor 06 Upload run
 Using centimeters with the same Views, Q, and model evidence produced 22
 groups, a diagnostic result whose object boundaries require verification.
 
+### V8.4.11 Discovery coverage and output recovery
+
+The Floor 06 production incident retained only a presentation render on P05
+and returned empty coverage for P06 and P07 after a truncated Discovery
+batch was retried. The new ordinary Haiku route independently reinspects
+pages with missing technical coverage and conflicting source candidates
+before Membership. Context already covering the source candidates stays
+excluded. Recovery uses a bounded set of full pages, and replaces a page
+only when the validated response adds technical views. The saved incident
+selects P03 through P07. The Floor 07 incident filled the 12,288-token
+response and stopped inside `classification_reason`. Ordinary Discovery can
+now make one bounded retry at 16,384 tokens after proven truncation.
+
+Fresh OCR, Detection, registry persistence in the isolated upload harness,
+and deferred Naming completed for both files. Neither needed a Discovery
+retry or coverage recovery on these fresh inputs. The failure conditions
+and recovery path were exercised separately in regression tests.
+
+| File | Fresh run | Views | Objects | Server cycle | Naming |
+|---|---|---:|---:|---:|---:|
+| Floor 06 | `run_7b9f8f6fead14c7cadc5a731edc5ed88` | 63 | 15 | 168.205 s | 48.542 s |
+| Floor 07 | `run_fc164cdd778742a2a318682a3fe95ffa` | 34 | 11 | 104.770 s | 39.856 s |
+
+Floor 06 retained 6, 3 and 7 Views on P05, P06 and P07, respectively, and one
+object on each. P10 accounted for both extra objects against the 13-object
+benchmark (120.312 s server cycle). The prior 14-object incident took
+286.475 s. Floor 07 retained the benchmark partition on replay. The fresh
+run had one extra object, a P07 title-block fragment admitted by Conflict
+Resolver. The 10-object live benchmark lab took 149.512 s before Naming.
+
 ### V8.4.10 same-sheet view evidence
 
 The Floor 06 production witness `run_b00f70fe709d4ed884bf5a15ff3abbbc`
