@@ -143,7 +143,8 @@ def batch_request(request, pages, views):
 def candidate_hypotheses(payload, pages, views, queue):
     hypotheses = []
     for row in payload["same_page_witnesses"]:
-        pair = row["view_ids"]
+        pair = [group if group in views else group.removeprefix("registry_view:")
+                for group in row["view_ids"]]
         if len(pair) != 2 or frozenset(pair) not in queue:
             continue
         if any(views[group][0] not in pages or views[group][1] == "presentation_render" for group in pair):
