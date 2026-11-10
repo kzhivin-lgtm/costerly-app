@@ -1,9 +1,12 @@
+from io import BytesIO
 import json
 from types import SimpleNamespace
 
+from PIL import Image, ImageDraw
+
 from agents.anthropic_adapter import DETECTION_V711_PRESENTATION_RENDER_DECISIONS_SCHEMA
 from tools.detection_haiku55_autonomous_lab import technical_pages, technical_partition
-from tools.detection_render_review import review_render_roles, review_render_rows
+from tools.detection_render_review import render_role_candidate_crops, review_render_roles, review_render_rows
 
 
 def provider_response(payload):
@@ -92,6 +95,22 @@ def test_render_role_review_changes_only_a_confirmed_fixed_role():
     assert changed == {"thumb": "Shaded rendered views."}
     assert thumbnail == {"group_id": "thumb", "representation_kind": "presentation_render", "bbox": {"left": 10}}
     assert drawing["representation_kind"] == "technical_detail"
+
+
+def test_shaded_crop_is_reviewed_even_if_description_says_elevation():
+    drawing = Image.new("L", (192, 192), 255)
+    ImageDraw.Draw(drawing).rectangle((10, 10, 182, 182), outline=0)
+    shaded = Image.new("L", (192, 192), 110)
+    groups = [
+        {"group_id": group, "representation_kind": "elevation"}
+        for group in ("drawing", "shaded")
+    ]
+    crops = []
+    for group, image in (("drawing", drawing), ("shaded", shaded)):
+        buffer = BytesIO()
+        image.save(buffer, format="JPEG")
+        crops.append({"group_id": group, "bytes": buffer.getvalue()})
+    assert render_role_candidate_crops(groups, crops) == [crops[1]]
 
 
 def test_render_attachment_does_not_count_as_a_technical_merge():

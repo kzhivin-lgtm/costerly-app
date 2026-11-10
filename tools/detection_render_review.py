@@ -4,8 +4,11 @@ from base64 import standard_b64encode
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
+from io import BytesIO
 import json
 import re
+
+from PIL import Image
 
 from agents import anthropic_adapter as adapter
 
@@ -53,11 +56,32 @@ def render_role_candidates(payload):
         if row["evidence_class"] == "object_evidence"
     }
     return [
-        {**group, "evidence_class": "object_evidence"}
+        {**group, "evidence_class": "object_evidence", "bbox": group.get("core_bbox") or group["bbox"]}
         for group in payload.get("visual_groups", [])
         if group["group_id"] in object_ids and group["representation_kind"] != RENDER_KIND
-        and ROLE_CUE.search(" ".join(group.get(key, "") for key in ("representation_kind", "visual_description", "location_hint")).replace("_"," "))
     ]
+
+
+def render_role_candidate_crops(groups, crops):
+    """Send description cues and dense visual regions for role confirmation."""
+    described = {
+        group["group_id"] for group in groups
+        if ROLE_CUE.search(" ".join(group.get(key, "") for key in (
+            "representation_kind", "visual_description", "location_hint",
+        )).replace("_", " "))
+    }
+    selected = []
+    for crop in crops:
+        if crop["group_id"] in described:
+            selected.append(crop)
+            continue
+        with Image.open(BytesIO(crop["bytes"])) as image:
+            sample = image.convert("L")
+            sample.thumbnail((96, 96), Image.Resampling.BOX)
+        # Downsample fine ink lines. Dense shaded regions only trigger visual review.
+        if 3 * sum(sample.histogram()[:210]) >= sample.width * sample.height:
+            selected.append(crop)
+    return selected
 
 
 def review_render_roles(payload, request, crops, send):

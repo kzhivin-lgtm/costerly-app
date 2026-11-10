@@ -23,7 +23,8 @@ from agents.ocr_rendering import run_mistral_document_evidence_ocr
 from config import CLAUDE_HAIKU_MODEL
 from tools.detection_dimension_anchors import dimension_anchors
 from tools.detection_render_review import (
-    RENDER_KIND, provisional_render_rows, render_role_candidates, review_render_roles, review_render_rows,
+    RENDER_KIND, provisional_render_rows, render_role_candidate_crops, render_role_candidates,
+    review_render_roles, review_render_rows,
 )
 
 BATCH_SIZE = 3
@@ -396,6 +397,7 @@ def run(pdf, output):
                 crops, _ = adapter.build_detection_v5_membership_view_crops(
                     page_images=page_images, visual_groups=suspects, coordinate_frames=coordinate_frames,
                 )
+                candidates = render_role_candidate_crops(suspects, crops)
 
                 def send_role(focused):
                     review, _, details = send(
@@ -403,7 +405,7 @@ def run(pdf, output):
                     )
                     return review, details
 
-                role_call, corrections = review_render_roles(discovered, prepared, crops, send_role)
+                role_call, corrections = review_render_roles(discovered, prepared, candidates, send_role)
                 if role_call is not None:
                     calls.append(role_call)
                 if corrections:
