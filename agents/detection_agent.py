@@ -33,7 +33,10 @@ from agents.detection_page_images import (
     render_detection_pdf_pages,
 )
 from agents.prompt_loader import load_detection_visual_registry_prompt
-from agents.schemas.detection_schema import validate_detection_result
+from agents.schemas.detection_schema import (
+    DETECTION_COVERAGE_WARNING_PREFIX,
+    validate_detection_result,
+)
 
 # Preserve the established import surface while V6.12 replaces the old binary
 # router with scenario categorization. The configured secret names remain V4.
@@ -1169,6 +1172,14 @@ def run_detection_agent(
         # a safe default of one into a red QTY label.
         review_required_object_ids=quantity_review_required_object_ids,
     )
+    unresolved_pages = (raw_registry_usage.get("discovery_coverage_gaps") or {}).get("unresolved_pages")
+    if unresolved_pages:
+        pages = ", ".join(str(page) for page in unresolved_pages)
+        label = "page" if len(unresolved_pages) == 1 else "pages"
+        result["rfq_run"]["file_quality_notes"] = (
+            f"{DETECTION_COVERAGE_WARNING_PREFIX}{label} {pages}. "
+            "Check the original PDF for any additional objects on those pages"
+        )
     result = _normalize_evidence_source_labels(result, ocr_package)
     validated = validate_detection_result(result)
     naming_annotated_pages, naming_overlay_audit = _build_v619_naming_annotated_pages(

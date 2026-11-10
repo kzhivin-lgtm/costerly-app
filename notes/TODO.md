@@ -11,6 +11,15 @@ individual View coverage on P03–P08, and positive render attachment.
 Track evidence and any incorrect merges in
 `notes/DETECTION_V8_4_13_DIMENSION_MEMBERSHIP_2026_11_10.md`.
 
+VERIFIED IN V8.4.14. V8.4.13 production Floor 07 trace
+`bfdcfcb6-c2e4-4be0-ad1b-fa0865a84b83` stopped at the initial Discovery
+coverage check. Ordinary Haiku Discovery now restores coverage from
+returned Views and retries missing pages with no returned Views at the
+existing token ceiling. If recovery omits a page again or times out,
+Membership continues with available Views. The ledger preserves the
+expected, returned, confirmed, and unresolved pages. File Review
+displays the unresolved pages from the saved run.
+
 ## Production Detection V8.4.11 recovery
 
 ACTIVE, P0, verify the owner's Upload and Processing experience on HSL 06/07.

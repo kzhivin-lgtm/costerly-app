@@ -1148,6 +1148,10 @@ def render_file_review_screen(
         )
     install_workflow_header_alignment_guard()
 
+    coverage_warning = data["run"].get("detection_coverage_warning")
+    if coverage_warning:
+        st.warning(coverage_warning, icon="⚠️")
+
     _render_file_review_dynamic_content(
         run_id,
         refresh_deferred_work=prepared_data is None,

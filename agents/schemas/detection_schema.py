@@ -4,6 +4,7 @@ from typing import Any
 
 
 STATUS_VALUES = {"intake_parsed", "intake_failed", "unreadable"}
+DETECTION_COVERAGE_WARNING_PREFIX = "Detection could not review "
 REQUIRED_RUN_FIELDS = {
     "run_id", "company_id", "project_name", "file_name", "source_type",
     "design_partner", "client", "author", "document_date", "pages_detected",

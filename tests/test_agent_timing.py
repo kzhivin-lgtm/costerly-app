@@ -1322,6 +1322,95 @@ def test_ordinary_discovery_recovers_empty_and_render_only_pages_before_membersh
     assert sorted(obj["identity_pages"] for obj in registry["objects"]) == [[2], [2], [3]]
 
 
+@pytest.mark.parametrize(("recovery_outcome", "batched"), [
+    ("recovered", False), ("omitted", False), ("timeout", False), ("recovered", True),
+])
+def test_ordinary_discovery_continues_after_omitted_pages(recovery_outcome, batched):
+    def discovery(*, view_pages, covered_pages):
+        groups = [
+            {
+                "group_id": f"view-{page}", "page_number": page,
+                "location_hint": "centre", "visual_description": "independent elevation",
+                "representation_kind": "elevation",
+            }
+            for page in view_pages
+        ]
+        payload = _visual_registry_payload({"visual_groups": groups})
+        for field in ("object_hypotheses", "semantic_facts", "document_scope"):
+            payload.pop(field)
+        payload["page_coverage"] = [
+            {
+                "page_number": page,
+                "visual_group_ids": [f"view-{page}"] if page in view_pages else [],
+            }
+            for page in covered_pages
+        ]
+        return json.dumps(payload)
+
+    diagnostics = {
+        "request_started_at": "2026-10-16T00:00:00+00:00",
+        "request_finished_at": "2026-10-16T00:00:01+00:00",
+    }
+    recover_last_page = recovery_outcome == "recovered"
+    recovery = discovery(view_pages=[11], covered_pages=[11]) if recover_last_page else discovery(
+        view_pages=[], covered_pages=[],
+    )
+    discovery_replies = [
+        discovery(view_pages=[3], covered_pages=range(1, 7)),
+        discovery(view_pages=[10], covered_pages=range(7, 10)),
+    ] if batched else [discovery(view_pages=[3, 10], covered_pages=range(1, 10))]
+    retry_index = len(discovery_replies)
+    replies = [
+        *discovery_replies,
+        recovery,
+        json.dumps({"object_hypotheses": [], "presentation_render_decisions": []}),
+    ]
+    responses = [(_Response(), diagnostics)] * len(replies)
+    if recovery_outcome == "timeout":
+        responses[retry_index] = anthropic.APITimeoutError(
+            request=httpx.Request("POST", "https://api.anthropic.com"),
+        )
+        del replies[retry_index]
+    batches = [
+        {"page_numbers": list(range(1, 7)), "estimated_tokens": 100_000},
+        {"page_numbers": list(range(7, 12)), "estimated_tokens": 100_000},
+    ]
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.build_detection_v641_full_page_discovery_batches",
+              return_value=(batches, 200_000) if batched else ([], 10_000)),
+        patch("agents.anthropic_adapter._v641_count_input_tokens", return_value=100_000),
+        patch("agents.anthropic_adapter.build_detection_fusion_candidate_regions", return_value=[]),
+        patch("agents.anthropic_adapter.build_detection_conflict_targets", return_value=[]),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=responses) as stream,
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=replies),
+    ):
+        _, registry, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"] * 11, regions=[], ocr_package=None,
+            model="claude-haiku-5-5", document_category="ordinary_object_set",
+        )
+
+    assert stream.call_count == retry_index + 2
+    retry_content = stream.call_args_list[retry_index].kwargs["messages"][0]["content"]
+    assert sum(block["type"] == "image" for block in retry_content) == 1
+    assert any("page 11" in block.get("text", "").lower() for block in retry_content)
+    assert sorted(obj["identity_pages"] for obj in registry["objects"]) == (
+        [[3], [10], [11]] if recover_last_page else [[3], [10]]
+    )
+    gaps = usage["raw_usage"]["discovery_coverage_gaps"]
+    assert gaps == {
+        "expected_pages": list(range(1, 12)),
+        "returned_pages": list(range(1, 10)),
+        "omitted_pages": [10, 11],
+        "restored_from_returned_views": [10],
+        "confirmed_pages": list(range(1, 12 if recover_last_page else 11)),
+        "unresolved_pages": [] if recover_last_page else [11],
+    }
+    if recovery_outcome == "timeout":
+        assert usage["raw_usage"]["v8_4_11_discovery_coverage_recovery"][0]["error"].startswith("APITimeoutError")
+
+
 def test_presentation_render_without_technical_match_never_creates_registry_object():
     proposal = _visual_registry_payload({
         "visual_groups": [{

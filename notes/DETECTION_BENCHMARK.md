@@ -1,5 +1,16 @@
 # Detection Agent benchmark
 
+## V8.4.14 Discovery coverage recovery
+
+The production Floor 07 coverage omission was reproduced with an
+11-page Discovery fixture in single-call and batched processing.
+Membership completed when the missing page was recovered, omitted
+again, or timed out. Already returned Views stayed in the result.
+The archived 9-object Floor 07 partition replayed exactly. A fresh
+Floor 07 check, `run_c8418bcf0fc144a585b5e004bd854d82`, completed OCR,
+Discovery, Membership, and Naming with 10 objects. The extra group
+was on P11. Evidence is in `output/detection-v8414-2026-11-11/`.
+
 ## V8.4.13 dimension membership
 
 The Floor 06 production evidence replay for

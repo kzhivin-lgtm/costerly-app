@@ -1,5 +1,12 @@
 # Done Log
 
+Detection V8.4.14 continues ordinary Haiku runs after omitted Discovery
+page coverage. It restores the ledger for pages with returned Views,
+retries pages with no returned Views, and saves available objects
+with a File Review warning for unresolved pages. The Floor 07
+regressions and fresh check are recorded in the Detection benchmark.
+The V8.4.13 production tag is the rollback reference.
+
 Detection V8.4.13 dimension membership checkpoint. Recovered the outer
 dimension on P10 and verified one object on each of Floor 06 P06, P10,
 and P13 on both the production evidence and the fresh-input replay.

@@ -21,6 +21,7 @@ from agents.anthropic_adapter import (
     get_secret,
 )
 from agents.detection_agent import run_detection_agent
+from agents.schemas.detection_schema import DETECTION_COVERAGE_WARNING_PREFIX
 from agents.document_identity import (
     DOCUMENT_IDENTITY_VERSION,
     document_identity_multilingual_signal,
@@ -1530,11 +1531,16 @@ def _normalize_run(run: dict[str, Any]) -> dict[str, Any]:
     partner = run.get("design_partner")
     if partner is None or partner == "":
         partner = run.get("client_or_design_partner")
+    notes = run.get("file_quality_notes")
     return {
         "project_name": run.get("project_name"),
         "partner": partner,
         "client": run.get("client"),
         "file_quality": run.get("file_quality_label"),
+        "detection_coverage_warning": (
+            notes if isinstance(notes, str) and notes.startswith(DETECTION_COVERAGE_WARNING_PREFIX)
+            else None
+        ),
         "file_name": run.get("file_name"),
         "pages_detected": run.get("pages_detected"),
         "source_type": run.get("source_type"),

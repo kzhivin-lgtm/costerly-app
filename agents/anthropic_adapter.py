@@ -6366,6 +6366,19 @@ def validate_detection_v5_discovery_page_coverage(
     page_count: int,
 ) -> list[dict[str, Any]]:
     """Require an explicit Island-discovery decision for every supplied page."""
+    return _validate_discovery_page_coverage(
+        coverage, visual_groups=visual_groups, expected_pages=set(range(1, page_count + 1)),
+    )
+
+
+def _validate_discovery_page_coverage(
+    coverage: object,
+    *,
+    visual_groups: object,
+    expected_pages: set[int],
+    allow_omitted_pages: bool = False,
+) -> list[dict[str, Any]]:
+    """Validate all supplied claims, optionally deferring absent page rows."""
     if not isinstance(coverage, list) or not isinstance(visual_groups, list):
         raise ValueError("proposal page coverage is invalid")
     groups_by_id: dict[str, dict[str, Any]] = {}
@@ -6375,9 +6388,10 @@ def validate_detection_v5_discovery_page_coverage(
         group_id = str(group.get("group_id") or "")
         if not group_id or group_id in groups_by_id:
             raise ValueError("proposal visual group IDs are invalid")
+        if not isinstance(group.get("page_number"), int) or group["page_number"] not in expected_pages:
+            raise ValueError("proposal visual group has an invalid page")
         groups_by_id[group_id] = group
 
-    expected_pages = set(range(1, page_count + 1))
     coverage_by_page: dict[int, dict[str, Any]] = {}
     covered_ids: set[str] = set()
     audit: list[dict[str, Any]] = []
@@ -6405,11 +6419,30 @@ def validate_detection_v5_discovery_page_coverage(
             "page_number": page_number,
             "visual_group_ids": normalized_ids,
         })
-    if set(coverage_by_page) != expected_pages:
+    if not allow_omitted_pages and set(coverage_by_page) != expected_pages:
         raise ValueError("proposal page coverage omits a supplied page")
-    if covered_ids != set(groups_by_id):
+    if covered_ids != {
+        group_id for group_id, group in groups_by_id.items()
+        if group["page_number"] in coverage_by_page
+    }:
         raise ValueError("proposal page coverage omits or invents an island")
     return sorted(audit, key=lambda item: item["page_number"])
+
+
+def _restore_coverage_for_returned_views(
+    payload: dict[str, Any], *, omitted_pages: set[int],
+) -> list[int]:
+    """Restore missing bookkeeping where Discovery actually returned Views."""
+    views_by_page: dict[int, list[str]] = {}
+    for group in payload["visual_groups"]:
+        page = group["page_number"]
+        if page in omitted_pages:
+            views_by_page.setdefault(page, []).append(group["group_id"])
+    payload["page_coverage"].extend(
+        {"page_number": page, "visual_group_ids": views_by_page[page]}
+        for page in sorted(views_by_page)
+    )
+    return sorted(views_by_page)
 
 
 def _v8411_discovery_technical_counts(payload: dict[str, Any]) -> Counter[int]:
@@ -10278,9 +10311,13 @@ def run_anthropic_detection_visual_registry_agent(
                     raise RuntimeError(
                         f"V6.41 Discovery batch {batch_number} did not meet the ordinary Discovery contract"
                     )
-                _v641_validate_batch_page_coverage(
-                    candidate, expected_pages=page_numbers,
-                )
+                if ordinary_haiku_discovery:
+                    _validate_discovery_page_coverage(
+                        candidate["page_coverage"], visual_groups=candidate["visual_groups"],
+                        expected_pages=set(page_numbers), allow_omitted_pages=True,
+                    )
+                else:
+                    _v641_validate_batch_page_coverage(candidate, expected_pages=page_numbers)
                 return candidate
 
             expected_fields = {
@@ -10664,11 +10701,30 @@ def run_anthropic_detection_visual_registry_agent(
             "Detection proposal response failed the V5.10.1 discovery contract",
             usage_event=failure_usage,
         )
+    expected_discovery_pages = set(range(1, len(page_images) + 1))
+    discovery_coverage_gap_audit: dict[str, Any] = {}
+    omitted_discovery_pages: set[int] = set()
     if set(proposal_raw_payload) in (discovery_fields, anchor_discovery_fields):
-        proposal_page_coverage = validate_detection_v5_discovery_page_coverage(
+        proposal_page_coverage = _validate_discovery_page_coverage(
             proposal_raw_payload["page_coverage"],
-            visual_groups=proposal_raw_payload["visual_groups"], page_count=len(page_images),
+            visual_groups=proposal_raw_payload["visual_groups"],
+            expected_pages=expected_discovery_pages,
+            allow_omitted_pages=ordinary_haiku_discovery,
         )
+        if ordinary_haiku_discovery:
+            returned_pages = {row["page_number"] for row in proposal_page_coverage}
+            omitted_discovery_pages = expected_discovery_pages - returned_pages
+            if omitted_discovery_pages:
+                rebuilt_pages = _restore_coverage_for_returned_views(
+                    proposal_raw_payload, omitted_pages=omitted_discovery_pages,
+                )
+                discovery_coverage_gap_audit = {
+                    "expected_pages": sorted(expected_discovery_pages),
+                    "returned_pages": sorted(returned_pages),
+                    "omitted_pages": sorted(omitted_discovery_pages),
+                    "restored_from_returned_views": rebuilt_pages,
+                }
+                omitted_discovery_pages.difference_update(rebuilt_pages)
     else:
         proposal_page_coverage = [{
             "status": "legacy_response_without_page_coverage",
@@ -10759,10 +10815,11 @@ def run_anthropic_detection_visual_registry_agent(
         classified_proposal, _ = _validate_and_apply_visual_registry_classifications(
             proposal_raw_payload, page_frames=review_coordinate_frames,
         )
-        recovery_pages = _v8411_discovery_recovery_pages(
+        recall_recovery_pages = _v8411_discovery_recovery_pages(
             classified_proposal, candidate_regions=candidate_regions,
             truncated_pages=truncated_pages,
         )
+        recovery_pages = sorted(omitted_discovery_pages | set(recall_recovery_pages))
         page_limit = DETECTION_V8411_DISCOVERY_RECOVERY_PAGES_PER_CALL
         for offset in range(0, len(recovery_pages), page_limit):
             pages = recovery_pages[offset:offset + page_limit]
@@ -10809,7 +10866,19 @@ def run_anthropic_detection_visual_registry_agent(
                 replacement = json.loads(extract_text_from_claude_response(response))
                 if not isinstance(replacement, dict) or set(replacement) != discovery_fields:
                     raise ValueError("Discovery coverage recovery response is invalid")
-                _v641_validate_batch_page_coverage(replacement, expected_pages=pages)
+                if page_set & omitted_discovery_pages:
+                    returned_coverage = _validate_discovery_page_coverage(
+                        replacement["page_coverage"], visual_groups=replacement["visual_groups"],
+                        expected_pages=page_set, allow_omitted_pages=True,
+                    )
+                    returned_pages = {row["page_number"] for row in returned_coverage}
+                    returned_pages.update(_restore_coverage_for_returned_views(
+                        replacement, omitted_pages=page_set - returned_pages,
+                    ))
+                    recovery_audit["unconfirmed_pages"] = sorted(page_set - returned_pages)
+                else:
+                    _v641_validate_batch_page_coverage(replacement, expected_pages=pages)
+                    returned_pages = page_set
                 _v644_validate_batch_core_geometry(replacement)
                 validate_detection_candidate_region_exceptions(
                     candidate_regions=local_candidates,
@@ -10820,7 +10889,10 @@ def run_anthropic_detection_visual_registry_agent(
                 )
                 before = _v8411_discovery_technical_counts(classified_proposal)
                 after = _v8411_discovery_technical_counts(classified_replacement)
-                improved_pages = {page for page in pages if after[page] > before[page]}
+                improved_pages = {
+                    page for page in returned_pages
+                    if page in omitted_discovery_pages or after[page] > before[page]
+                }
                 replacement = _v641_reindex_batch_discovery_payload(
                     replacement, batch_number=len(v641_batches) + offset // page_limit + 1,
                 )
@@ -10829,13 +10901,19 @@ def run_anthropic_detection_visual_registry_agent(
                     candidate_regions=local_candidates,
                 )
                 recovery_audit["recovered_pages"] = sorted(improved_pages)
-            except (ValueError, RuntimeError) as exc:
+            except (ValueError, RuntimeError, TimeoutError, anthropic.APIError) as exc:
                 recovery_audit["error"] = f"{type(exc).__name__}: {exc}"
-        if discovery_recovery_audit:
-            proposal_page_coverage = validate_detection_v5_discovery_page_coverage(
+        if discovery_recovery_audit or discovery_coverage_gap_audit:
+            proposal_page_coverage = _validate_discovery_page_coverage(
                 proposal_raw_payload["page_coverage"], visual_groups=proposal_raw_payload["visual_groups"],
-                page_count=len(page_images),
+                expected_pages=expected_discovery_pages, allow_omitted_pages=True,
             )
+        if discovery_coverage_gap_audit:
+            confirmed_pages = {row["page_number"] for row in proposal_page_coverage}
+            discovery_coverage_gap_audit.update({
+                "confirmed_pages": sorted(confirmed_pages),
+                "unresolved_pages": sorted(expected_discovery_pages - confirmed_pages),
+            })
     proposal_model_payload = copy.deepcopy(proposal_raw_payload)
     proposal_boundary_payload = copy.deepcopy(proposal_raw_payload)
     proposal_scope_payload: dict[str, Any] | None = None
@@ -11630,6 +11708,7 @@ def run_anthropic_detection_visual_registry_agent(
         # V6.13 audit preserves every charged retry attempt separately.
         "v5_9_proposal": proposal_attempt_summaries[-1],
         "v8_4_11_discovery_coverage_recovery": discovery_recovery_audit,
+        "discovery_coverage_gaps": discovery_coverage_gap_audit,
         "v6_13_proposal_truncation_retry": {
             "attempted": proposal_retry_reason is not None,
             "reason": proposal_retry_reason,

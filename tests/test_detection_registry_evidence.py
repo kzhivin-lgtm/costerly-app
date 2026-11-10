@@ -25,6 +25,7 @@ from agents.anthropic_adapter import (
 )
 from agents.schemas.detection_schema import validate_detection_result
 from use_cases.rfq_processing import (
+    _normalize_run,
     _persist_detection_audit_before_file_review,
     process_uploaded_rfq,
 )
@@ -609,7 +610,8 @@ def test_v619_naming_uses_one_annotated_page_per_registry_island_page():
     assert first_page_labels == {"object-001", "object-002"}
 
 
-def test_v49_routes_default_registry_to_haiku_without_evidence_handoff():
+@pytest.mark.parametrize("unresolved_pages", [[], [2]])
+def test_v49_routes_default_registry_to_haiku_without_evidence_handoff(unresolved_pages):
     registry = {"objects": [{
         "object_id": "object-001", "transport_label": "Object 1",
         "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
@@ -620,7 +622,10 @@ def test_v49_routes_default_registry_to_haiku_without_evidence_handoff():
 
     def capture_registry(**kwargs):
         registry_call.update(kwargs)
-        return {"visual_groups": []}, registry, {"event": "visual_registry"}
+        return {"visual_groups": []}, registry, {
+            "event": "visual_registry",
+            "raw_usage": {"discovery_coverage_gaps": {"unresolved_pages": unresolved_pages}},
+        }
 
     with (
         patch("agents.detection_agent.get_secret", side_effect=lambda _name, default: default),
@@ -631,7 +636,7 @@ def test_v49_routes_default_registry_to_haiku_without_evidence_handoff():
         ),
     ):
         result = run_detection_agent(
-            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf", page_images=[b"page"],
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf", page_images=[b"page", b"page"],
             ocr_package={"evidence": {"text_blocks": [
                 {"page_number": 1, "text": "Cabinet", "bbox": {"top_left_x": 10, "top_left_y": 10, "bottom_right_x": 80, "bottom_right_y": 30}},
                 {"page_number": 1, "text": "Detail", "bbox": {"top_left_x": 400, "top_left_y": 400, "bottom_right_x": 480, "bottom_right_y": 420}},
@@ -643,6 +648,12 @@ def test_v49_routes_default_registry_to_haiku_without_evidence_handoff():
     assert registry_call["mistral_anchor_admission"] is False
     regions_builder.assert_not_called()
     assert len(result["_agent_usage_events"]) == 1
+    assert len(result["detected_objects"]) == 1
+    warning = _normalize_run(result["rfq_run"])["detection_coverage_warning"]
+    if unresolved_pages:
+        assert warning and "page 2" in warning
+    else:
+        assert warning is None
 
 
 def test_v627_scope_scout_routes_single_assembly_candidate_to_haiku_registry():
