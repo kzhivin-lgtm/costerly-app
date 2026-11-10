@@ -1,5 +1,6 @@
 """Bounded render evidence review for the autonomous ordinary Detection lab."""
 
+from base64 import standard_b64encode
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
@@ -17,6 +18,9 @@ CALLBACK_KEYS = {"max_stream_seconds", "on_stream_phase", "cancel_requested"}
 RENDER_RULE = (
     "Review only the listed presentation renders and the fixed technical Views on their sheet. "
     "For each listed render, examine the render crop and compare it with all the supplied technical crops. "
+    "First check the actual pixels of the proposed technical target. It must visibly be a fabrication "
+    "drawing such as a line-drawn plan, section, elevation or technical perspective. A photograph, "
+    "rendered detail or a set of rendered thumbnails cannot be the technical target even when labelled as a detail. "
     "A render can show only part of an object. Allow for different viewpoint, lighting and occlusion. "
     "Use attach only when one technical View visibly shows the same distinctive configuration of actual "
     "parts, for example a particular sequence of divisions, an asymmetric return or a distinctive opening "
@@ -28,6 +32,81 @@ RENDER_RULE = (
     "For attach, use matching_topology or unique_geometry and the bare ID of one displayed technical crop. "
     "For no_match and unresolved, use an empty technical_group_id and evidence_type none. Return JSON only."
 )
+
+
+ROLE_CUE = re.compile(r"\b(?:render(?:ed|ing)?s?|photos?|photographs?|thumbnails?|perspectives?|visuali[sz]ations?)\b", re.IGNORECASE)
+ROLE_REVIEW_RULE = (
+    "Review only the visual representation of each fixed crop. A photographic image, shaded presentation "
+    "render, or sheet of rendered thumbnails is presentation_render when it depicts fabricated parts. "
+    "A line drawing, dimensioned technical detail or technical isometric view keeps its original role. "
+    "For mixed or unclear crops keep the original role. Preserve all crop boundaries. Give one decision "
+    "per supplied ID, with a short nonempty witness describing the visible visual style. Return JSON only."
+)
+
+
+def render_role_candidates(payload):
+    object_ids = {
+        row["group_id"] for row in payload.get("classifications", [])
+        if row["evidence_class"] == "object_evidence"
+    }
+    return [
+        {**group, "evidence_class": "object_evidence"}
+        for group in payload.get("visual_groups", [])
+        if group["group_id"] in object_ids and group["representation_kind"] != RENDER_KIND
+        and ROLE_CUE.search(" ".join(group.get(key, "") for key in ("representation_kind", "visual_description", "location_hint")).replace("_"," "))
+    ]
+
+
+def review_render_roles(payload, request, crops, send):
+    """Correct positively confirmed photographic roles without changing boxes."""
+    if not crops:
+        return None, {}
+    blocks = []
+    for crop in crops:
+        blocks.extend((
+            {"type": "text", "text": "Fixed View " + crop["group_id"]},
+            {"type": "image", "source": {
+                "type": "base64", "media_type": "image/jpeg",
+                "data": standard_b64encode(crop["bytes"]).decode("ascii"),
+            }},
+        ))
+    row = {
+        "type": "object", "additionalProperties": False,
+        "required": ["group_id", "role", "visual_witness"],
+        "properties": {
+            "group_id": {"type": "string"},
+            "role": {"type": "string", "enum": [RENDER_KIND, "retain_original"]},
+            "visual_witness": {"type": "string"},
+        },
+    }
+    focused = {
+        "model": request["model"], "max_tokens": min(request["max_tokens"], 2048),
+        "system": [{"type": "text", "text": ROLE_REVIEW_RULE}],
+        "messages": [{"role": "user", "content": blocks}],
+        "output_config": {"format": {"type": "json_schema", "schema": {
+            "type": "object", "additionalProperties": False, "required": ["decisions"],
+            "properties": {"decisions": {"type": "array", "items": row}},
+        }}},
+    }
+    response, metadata = send(focused)
+    if response.stop_reason != "end_turn":
+        return metadata, {}
+    try:
+        decisions = json.loads(adapter.extract_text_from_claude_response(response))["decisions"]
+    except (ValueError, KeyError):
+        return metadata, {}
+    counts = Counter(decision["group_id"] for decision in decisions)
+    shown = {crop["group_id"] for crop in crops}
+    corrected = {
+        decision["group_id"]: decision["visual_witness"]
+        for decision in decisions
+        if decision["group_id"] in shown and counts[decision["group_id"]] == 1
+        and decision["role"] == RENDER_KIND and decision["visual_witness"].strip()
+    }
+    for group in payload["visual_groups"]:
+        if group["group_id"] in corrected:
+            group["representation_kind"] = RENDER_KIND
+    return metadata, corrected
 
 
 def validated_render_rows(rows, views, render_ids, reject_absent_proof):

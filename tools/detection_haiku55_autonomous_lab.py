@@ -22,7 +22,7 @@ from agents.detection_source_capability import assess_detection_source_capabilit
 from agents.ocr_rendering import run_mistral_document_evidence_ocr
 from config import CLAUDE_HAIKU_MODEL
 from tools.detection_dimension_anchors import dimension_anchors
-from tools.detection_render_review import RENDER_KIND, review_render_rows
+from tools.detection_render_review import RENDER_KIND, render_role_candidates, review_render_roles, review_render_rows
 
 BATCH_SIZE = 3
 ROLE_RULE = (
@@ -109,7 +109,10 @@ def primary_request(request):
     ] + [{"type": "text", "text": inventory}]
     prompt = PRIMARY_RULE
     if any((match := VIEW_ROW.match(line)) and match[3] == RENDER_KIND for line in inventory.splitlines()):
-        prompt += " Every render decision requires a short, nonempty visual_witness, including no_match and unresolved."
+        prompt += (
+            " Every render decision requires a short, nonempty visual_witness, including no_match and unresolved. "
+            " A technical target must visibly be a fabrication drawing. A photographic detail or render cannot be the target."
+        )
     schema = prepared["output_config"]["format"]["schema"]
     if "conflict_pair_decisions" in schema["properties"]:
         marker = "V7.14 TARGETED CONFLICT-ADMISSION MEMBERSHIP MATRIX:"
@@ -269,10 +272,25 @@ def edge_endpoints(edge):
     return edge["group_id_a"], edge["group_id_b"]
 
 
-def unambiguous_recovery_edges(edges, components):
+def technical_pages(components, technical_view_pages):
+    """Count only technical co-memberships on each page."""
+    proven = set()
+    lonely = set()
+    for component in components:
+        pages = Counter(technical_view_pages[key] for key in component if key in technical_view_pages)
+        proven.update(page for page, count in pages.items() if count > 1)
+        lonely.update(key for key in component
+                      if key in technical_view_pages and pages[technical_view_pages[key]] == 1)
+    return proven, lonely
+
+
+def unambiguous_recovery_edges(edges, components, technical_ids=None):
     """Allow direct additions around one anchor while preserving existing groups."""
     roots = {member: members[0] for members in components for member in members}
-    protected = {members[0] for members in components if len(members) > 1}
+    protected = {
+        members[0] for members in components
+        if sum(technical_ids is None or member in technical_ids for member in members) > 1
+    }
     projected = []
     originals = []
     for edge in edges:
@@ -317,6 +335,8 @@ def run(pdf, output):
     original_merge = adapter.compile_detection_v5_merge_edges
     records, calls = [], []
     render_review_audit = {}
+    render_role_audit = []
+    coordinate_frames = None
     canonical_ids = {}
 
     def capture_ids(visual_map):
@@ -337,6 +357,7 @@ def run(pdf, output):
         return response, diagnostics, metadata
 
     def observe(client, **request):
+        nonlocal coordinate_frames
         stage = kind_of(request)
         prepared = request
         model = adapter._claude_runtime_model(request.get("model"))
@@ -351,6 +372,35 @@ def run(pdf, output):
             prepared = primary_request(request)
         response, diagnostics, metadata = send(client, prepared, stage, f"primary-{len(records)+1:02}")
         calls.append(metadata)
+        props = prepared.get("output_config", {}).get("format", {}).get("schema", {}).get("properties", {})
+        if (model == CLAUDE_HAIKU_MODEL and stage == "discovery" and response.stop_reason == "end_turn"
+                and {"visual_groups", "classifications"} <= set(props)):
+            discovered = json.loads(adapter.extract_text_from_claude_response(response))
+            suspects = render_role_candidates(discovered)
+            if suspects:
+                if coordinate_frames is None:
+                    coordinate_frames, _ = adapter.build_detection_v5_review_coordinate_frames(
+                        ocr_package=ocr, page_images=page_images,
+                    )
+                crops, _ = adapter.build_detection_v5_membership_view_crops(
+                    page_images=page_images, visual_groups=suspects, coordinate_frames=coordinate_frames,
+                )
+
+                def send_role(focused):
+                    review, _, details = send(
+                        client, focused, "presentation_role_review", f"render-roles-{len(records)+1:02}",
+                    )
+                    return review, details
+
+                role_call, corrections = review_render_roles(discovered, prepared, crops, send_role)
+                if role_call is not None:
+                    calls.append(role_call)
+                if corrections:
+                    render_role_audit.append({"primary_message_id": response.id, "corrections": corrections})
+                    old_text = next(block for block in response.content if block.type == "text")
+                    response = response.model_copy(update={"content": [
+                        old_text.model_copy(update={"text": json.dumps(discovered, ensure_ascii=False)})
+                    ]})
         if model == CLAUDE_HAIKU_MODEL and stage == "membership" and response.stop_reason == "end_turn":
             views, _ = inventory_of(prepared)
             if any(role == RENDER_KIND for _, role in views.values()):
@@ -421,11 +471,14 @@ def run(pdf, output):
 
     final = primary
     prior_components = [row["visual_group_ids"] for row in usage["proof_graph_components"]]
-    eligible_ids = {
-        canonical_ids[group] for group, (_, role) in views.items()
-        if group in canonical_ids and role != "presentation_render"
-    } & {group for component in prior_components for group in component}
-    anchor_proofs = unambiguous_recovery_edges(dimension_anchors(usage, eligible_ids), prior_components)
+    technical_view_pages = {
+        canonical_ids[group]: page for group, (page, role) in views.items()
+        if group in canonical_ids and role != RENDER_KIND
+    }
+    eligible_ids = set(technical_view_pages) & {group for component in prior_components for group in component}
+    anchor_proofs = unambiguous_recovery_edges(
+        dimension_anchors(usage, eligible_ids), prior_components, technical_view_pages,
+    )
     anchor_pairs = {edge_endpoints(proof) for proof in anchor_proofs}
 
     def merge_with_dimensions(dimension_edges, semantics, **kwargs):
@@ -434,7 +487,11 @@ def run(pdf, output):
     dimension_override = {"compile_detection_v5_merge_edges": merge_with_dimensions}
     if anchor_pairs:
         candidate = recompile(payload, dimension_override)
-        old_groups = {group: i for i, component in enumerate(prior_components) if len(component) > 1 for group in component}
+        old_groups = {
+            group: i for i, component in enumerate(prior_components)
+            if sum(group in technical_view_pages for group in component) > 1
+            for group in component
+        }
         new_components = [row["visual_group_ids"] for row in audit(candidate)["proof_graph_components"]]
         if any(len({old_groups[group] for group in component if group in old_groups}) > 1
                for component in new_components):
@@ -444,9 +501,11 @@ def run(pdf, output):
     write_json(output / "dimension-anchors.json", [
         proof for proof in anchor_proofs if edge_endpoints(proof) in anchor_pairs
     ])
-    pages_with_merge = {int(view.split(".")[0][1:]) for group in partition(audit(final))
-                        if len(group) > 1 for view in group}
-    counts = Counter(page for page, role in views.values() if role != "presentation_render")
+    pages_with_merge, _ = technical_pages(
+        [row["visual_group_ids"] for row in audit(final)["proof_graph_components"]],
+        technical_view_pages,
+    )
+    counts = Counter(technical_view_pages.values())
     missing = {page for page, count in counts.items() if count > 1} - pages_with_merge
     pages = sorted(counts)
     batches = [set(pages[offset:offset+BATCH_SIZE]) for offset in range(0, len(pages), BATCH_SIZE)]
@@ -483,7 +542,7 @@ def run(pdf, output):
 
     intermediate_usage = audit(final)
     components = [row["visual_group_ids"] for row in intermediate_usage["proof_graph_components"]]
-    singleton_ids = {row[0] for row in components if len(row) == 1}
+    _, singleton_ids = technical_pages(components, technical_view_pages)
     unresolved = defaultdict(set)
     for view_id, (page, role) in views.items():
         if counts[page] > 1 and role != "presentation_render" and canonical_ids.get(view_id) in singleton_ids:
@@ -547,7 +606,7 @@ def run(pdf, output):
                 local_graph, _ = original_merge(local_dimensions, validated, **local_options)
                 accepted_recovery[:] = unambiguous_recovery_edges(
                     [edge for edge in local_graph if edge["relationship"] == "same_object_view"],
-                    components,
+                    components, technical_view_pages,
                 )
                 recovered_pairs = {edge_endpoints(edge) for edge in accepted_recovery}
                 ledger["local_membership_recovery"] = accepted_recovery
@@ -569,6 +628,7 @@ def run(pdf, output):
         "local_review_pages": sorted(unresolved), "local_proven_edges": [edge_endpoints(edge) for edge in accepted_recovery],
         "dimension_anchor_pairs": sorted(anchor_pairs),
         "presentation_render_review": render_review_audit,
+        "presentation_role_review": render_role_audit,
         "retained_view_count": len(final_usage["view_evidence_packages"]),
         "required_same_page_pairs": final_usage["dimension_graph_audit"]["v6_67_review_same_page_queue"]["required_same_page_pair_count"],
     }
