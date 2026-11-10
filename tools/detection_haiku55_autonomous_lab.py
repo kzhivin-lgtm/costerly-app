@@ -19,6 +19,7 @@ from agents.detection_page_images import render_detection_pdf_pages
 from agents.detection_source_capability import assess_detection_source_capability
 from agents.ocr_rendering import run_mistral_document_evidence_ocr
 from config import CLAUDE_HAIKU_MODEL
+from tools.detection_dimension_anchors import dimension_anchors
 
 BATCH_SIZE = 3
 ROLE_RULE = (
@@ -29,12 +30,6 @@ ROLE_RULE = (
     "A real cabinet plan, small technical section, or detail showing physical parts can be object evidence even "
     "when small or dimensioned. A crop's boundary by itself cannot create a new depiction. "
     "Keep each visual_witness to one sentence of at most 150 characters.\n\n"
-)
-DISCOVERY_ROLE_RULE = (
-    "When classifying fixed drawing regions, require a visible depiction of a physical fabricated part for "
-    "object_evidence. A row of dimension text, arrows, ticks, or leaders without a drawn part outline "
-    "is document_context, even next to an elevation. Keep dimension evidence with its relevant drawing. "
-    "A thin profile is object_evidence when its physical outline is visible.\n\n"
 )
 PRIMARY_RULE = """You review the membership of fixed Views in technical fabrication drawings. Find which Views show the same physical fabricated object.
 Work through every page from start to finish. Compare every pair in the required same-page queue using identifier, topology, geometry, dimensions, and construction. Then check supported cross-page relations. Use the full page to locate every View and its individual crop to verify the fact. Return a complete set of supported multi-View object_hypotheses across the whole document. Continue after finding the first match.
@@ -308,11 +303,6 @@ def run(pdf, output):
                 )
         if model == CLAUDE_HAIKU_MODEL and stage == "membership":
             prepared = primary_request(request)
-        if model == CLAUDE_HAIKU_MODEL and stage == "discovery":
-            props = request["output_config"]["format"]["schema"]["properties"]
-            if {"visual_groups", "classifications"} <= set(props):
-                prepared = deepcopy(request)
-                prepared["system"][-1]["text"] = DISCOVERY_ROLE_RULE + prepared["system"][-1]["text"]
         response, diagnostics, metadata = send(client, prepared, stage, f"primary-{len(records)+1:02}")
         records.append((request_hash(request), stage, prepared, response, diagnostics))
         calls.append(metadata)
@@ -333,26 +323,6 @@ def run(pdf, output):
     original_request_hash, _, request, membership, _ = grouping[0]
     views, queue = inventory_of(request)
     primary_partition = partition(usage)
-    pages_with_merge = {int(view.split(".")[0][1:]) for group in primary_partition
-                        if len(group) > 1 for view in group}
-    counts = Counter(page for page, role in views.values() if role != "presentation_render")
-    missing = {page for page, count in counts.items() if count > 1} - pages_with_merge
-    pages = sorted(counts)
-    batches = [set(pages[offset:offset+BATCH_SIZE]) for offset in range(0, len(pages), BATCH_SIZE)]
-    active = [batch for batch in batches if batch & missing]
-    print(f"Primary returned {len(primary_partition)} groups. Revisiting {len(missing)} pages in {len(active)} batches.", flush=True)
-
-    def supplement(index_batch):
-        index, batch = index_batch
-        prepared = batch_request(request, batch, views)
-        client = adapter.get_anthropic_client()
-        response, _, metadata = send(client, prepared, "same_page_supplement", f"supplement-{index:02}")
-        metadata["pages"] = sorted(batch)
-        if response.stop_reason != "end_turn":
-            return [], metadata
-        payload = json.loads(adapter.extract_text_from_claude_response(response))
-        return candidate_hypotheses(payload, batch & missing, views, queue), metadata
-
     original_text = next(block for block in membership.content if block.type == "text")
     payload = json.loads(original_text.text)
 
@@ -380,6 +350,50 @@ def run(pdf, output):
         return result
 
     final = primary
+    prior_components = [row["visual_group_ids"] for row in usage["proof_graph_components"]]
+    eligible_ids = {
+        canonical_ids[group] for group, (_, role) in views.items()
+        if group in canonical_ids and role != "presentation_render"
+    } & {group for component in prior_components for group in component}
+    anchor_proofs = unambiguous_recovery_edges(dimension_anchors(usage, eligible_ids), prior_components)
+    anchor_pairs = {edge_endpoints(proof) for proof in anchor_proofs}
+
+    def merge_with_dimensions(dimension_edges, semantics, **kwargs):
+        return original_merge(dimension_edges, semantics, **kwargs, dimension_anchor_pairs=anchor_pairs)
+
+    dimension_override = {"compile_detection_v5_merge_edges": merge_with_dimensions}
+    if anchor_pairs:
+        candidate = recompile(payload, dimension_override)
+        old_groups = {group: i for i, component in enumerate(prior_components) if len(component) > 1 for group in component}
+        new_components = [row["visual_group_ids"] for row in audit(candidate)["proof_graph_components"]]
+        if any(len({old_groups[group] for group in component if group in old_groups}) > 1
+               for component in new_components):
+            anchor_pairs.clear()
+        else:
+            final = candidate
+    write_json(output / "dimension-anchors.json", [
+        proof for proof in anchor_proofs if edge_endpoints(proof) in anchor_pairs
+    ])
+    pages_with_merge = {int(view.split(".")[0][1:]) for group in partition(audit(final))
+                        if len(group) > 1 for view in group}
+    counts = Counter(page for page, role in views.values() if role != "presentation_render")
+    missing = {page for page, count in counts.items() if count > 1} - pages_with_merge
+    pages = sorted(counts)
+    batches = [set(pages[offset:offset+BATCH_SIZE]) for offset in range(0, len(pages), BATCH_SIZE)]
+    active = [batch for batch in batches if batch & missing]
+    print(f"Primary and dimension proof returned {len(partition(audit(final)))} groups. Revisiting {len(missing)} pages in {len(active)} batches.", flush=True)
+
+    def supplement(index_batch):
+        index, batch = index_batch
+        prepared = batch_request(request, batch, views)
+        client = adapter.get_anthropic_client()
+        response, _, metadata = send(client, prepared, "same_page_supplement", f"supplement-{index:02}")
+        metadata["pages"] = sorted(batch)
+        if response.stop_reason != "end_turn":
+            return [], metadata
+        payload = json.loads(adapter.extract_text_from_claude_response(response))
+        return candidate_hypotheses(payload, batch & missing, views, queue), metadata
+
     replacement_count = 0
     if active:
         with ThreadPoolExecutor(max_workers=BATCH_SIZE) as pool:
@@ -395,7 +409,7 @@ def run(pdf, output):
                            for page in covered_pages)
             ] + sorted(additional, key=lambda hypothesis: -len(hypothesis["evidence"]))
             write_json(output / "combined-membership.json", payload)
-            final = recompile(payload)
+            final = recompile(payload, dimension_override)
 
     intermediate_usage = audit(final)
     components = [row["visual_group_ids"] for row in intermediate_usage["proof_graph_components"]]
@@ -451,7 +465,7 @@ def run(pdf, output):
                 return base, ledger
 
             def merge_local(dimension_edges, semantics, **kwargs):
-                base, ledger = original_merge(dimension_edges, semantics, **kwargs)
+                base, ledger = merge_with_dimensions(dimension_edges, semantics, **kwargs)
                 pairs = {edge_endpoints(fact) for fact in validated}
                 local_dimensions = [edge for edge in dimension_edges if edge_endpoints(edge) in pairs]
                 local_options = {**kwargs, "allow_batch_confirmation": False}
@@ -478,6 +492,7 @@ def run(pdf, output):
         "calls": calls, "primary_groups": primary_partition, "revisited_pages": sorted(missing),
         "supplement_hypothesis_count": replacement_count, "final_groups": final_groups,
         "local_review_pages": sorted(unresolved), "local_proven_edges": [edge_endpoints(edge) for edge in accepted_recovery],
+        "dimension_anchor_pairs": sorted(anchor_pairs),
         "retained_view_count": len(final_usage["view_evidence_packages"]),
         "required_same_page_pairs": final_usage["dimension_graph_audit"]["v6_67_review_same_page_queue"]["required_same_page_pair_count"],
     }
