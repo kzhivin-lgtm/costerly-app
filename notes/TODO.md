@@ -283,8 +283,14 @@ wait, now capped at 12 seconds. A fresh HSL run and a replay of the fast
 provider deadline both completed 11/11 pages including P08. The fast replay
 finished in 6.240 seconds of local collection, versus 8/11 pages after
 three seconds in the same run. Live production timing and broader coverage
-remain open. Using new readings as Membership inputs stays deferred until
-measured in isolation. Record: `notes/DETECTION_V8_4_9_HAIKU_COORDINATE_OCR_2026_11_10.md`.
+remain open. The isolated Fingerprint replay found three Adda cross-sheet
+support pairs, with two physically comparable dimension witnesses. Lev 1
+and Lev 2 received redundant source confirmation. The unguarded HSL
+replay changed the inferred unit and expanded Q. Using new readings as
+Membership inputs remains deferred. Next test under a frozen unit and a
+validated dimension-role contract on labelled cross-sheet pairs.
+Records: `notes/DETECTION_V8_4_9_HAIKU_COORDINATE_OCR_2026_11_10.md` and
+`notes/DETECTION_V8_4_9_FINGERPRINT_BENCHMARK_2026_11_10.md`.
 
 BENCHMARK, P0, Hasolelim Floor 06 manual Object Evidence island inventory:
 
