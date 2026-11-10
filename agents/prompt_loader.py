@@ -14,24 +14,6 @@ DETECTION_V5_DISCOVERY_PROMPT_PATH = PROMPTS_DIR / "detection_v5_discovery_promp
 DETECTION_V5_MEMBERSHIP_PROMPT_PATH = PROMPTS_DIR / "detection_v5_membership_prompt.md"
 DETECTION_V5_PROPOSAL_PROMPT_PATH = PROMPTS_DIR / "detection_v5_proposal_prompt.md"
 DETECTION_V5_REVIEW_PROMPT_PATH = PROMPTS_DIR / "detection_v5_review_prompt.md"
-DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_PROMPT_PATH = (
-    PROMPTS_DIR / "detection_v5_source_degraded_discovery_prompt.md"
-)
-DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_PROMPT_PATH = (
-    PROMPTS_DIR / "detection_v5_source_degraded_membership_prompt.md"
-)
-DETECTION_V5_SOURCE_DEGRADED_FULL_PAGE_REGISTRY_PROMPT_PATH = (
-    PROMPTS_DIR / "detection_v5_source_degraded_full_page_registry_prompt.md"
-)
-DETECTION_V5_SOURCE_DEGRADED_ONE_SHOT_REGISTRY_PROMPT_PATH = (
-    PROMPTS_DIR / "detection_v5_source_degraded_one_shot_registry_prompt.md"
-)
-DETECTION_V5_SOURCE_DEGRADED_DIRECT_INVENTORY_PROMPT_PATH = (
-    PROMPTS_DIR / "detection_v5_source_degraded_direct_inventory_prompt.md"
-)
-DETECTION_V5_SOURCE_DEGRADED_DIRECT_AUDIT_PROMPT_PATH = (
-    PROMPTS_DIR / "detection_v5_source_degraded_direct_audit_prompt.md"
-)
 DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_INVENTORY_PROMPT_PATH = (
     PROMPTS_DIR / "detection_v5_source_degraded_pairwise_inventory_prompt.md"
 )
@@ -46,9 +28,6 @@ DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_STRUCTURAL_AUDIT_PROMPT_PATH = (
 )
 DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_STRUCTURAL_ADMISSION_AUDIT_PROMPT_PATH = (
     PROMPTS_DIR / "detection_v5_source_degraded_pairwise_structural_admission_audit_prompt.md"
-)
-DETECTION_V5_SOURCE_DEGRADED_V561_CONSENSUS_PROMPT_PATH = (
-    PROMPTS_DIR / "detection_v5_source_degraded_v561_consensus_prompt.md"
 )
 PRICE_SOURCE_PROMPT_PATH = PROMPTS_DIR / "price_source_agent_prompt.md"
 
@@ -138,60 +117,6 @@ def load_detection_v848_technical_membership_prompt() -> str:
     return prompt
 
 
-def load_detection_v5_source_degraded_discovery_prompt() -> str:
-    prompt = DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_PROMPT_PATH.read_text(
-        encoding="utf-8"
-    ).strip()
-    if not prompt:
-        raise ValueError("Detection V5 source-degraded Discovery prompt is empty")
-    return prompt
-
-
-def load_detection_v5_source_degraded_membership_prompt() -> str:
-    prompt = DETECTION_V5_SOURCE_DEGRADED_MEMBERSHIP_PROMPT_PATH.read_text(
-        encoding="utf-8"
-    ).strip()
-    if not prompt:
-        raise ValueError("Detection V5 source-degraded Membership prompt is empty")
-    return prompt
-
-
-def load_detection_v5_source_degraded_full_page_registry_prompt() -> str:
-    prompt = DETECTION_V5_SOURCE_DEGRADED_FULL_PAGE_REGISTRY_PROMPT_PATH.read_text(
-        encoding="utf-8"
-    ).strip()
-    if not prompt:
-        raise ValueError("Detection V5 source-degraded full-page Registry prompt is empty")
-    return prompt
-
-
-def load_detection_v5_source_degraded_one_shot_registry_prompt() -> str:
-    prompt = DETECTION_V5_SOURCE_DEGRADED_ONE_SHOT_REGISTRY_PROMPT_PATH.read_text(
-        encoding="utf-8"
-    ).strip()
-    if not prompt:
-        raise ValueError("Detection V5 source-degraded one-shot Registry prompt is empty")
-    return prompt
-
-
-def load_detection_v5_source_degraded_direct_inventory_prompt() -> str:
-    prompt = DETECTION_V5_SOURCE_DEGRADED_DIRECT_INVENTORY_PROMPT_PATH.read_text(
-        encoding="utf-8"
-    ).strip()
-    if not prompt:
-        raise ValueError("Detection V5 source-degraded direct Inventory prompt is empty")
-    return prompt
-
-
-def load_detection_v5_source_degraded_direct_audit_prompt() -> str:
-    prompt = DETECTION_V5_SOURCE_DEGRADED_DIRECT_AUDIT_PROMPT_PATH.read_text(
-        encoding="utf-8"
-    ).strip()
-    if not prompt:
-        raise ValueError("Detection V5 source-degraded direct Audit prompt is empty")
-    return prompt
-
-
 def load_detection_v5_source_degraded_pairwise_inventory_prompt() -> str:
     prompt = DETECTION_V5_SOURCE_DEGRADED_PAIRWISE_INVENTORY_PROMPT_PATH.read_text(
         encoding="utf-8"
@@ -240,15 +165,6 @@ def load_detection_v5_source_degraded_pairwise_structural_admission_audit_prompt
     )
     if not prompt:
         raise ValueError("Detection V5 source-degraded structural admission prompt is empty")
-    return prompt
-
-
-def load_detection_v5_source_degraded_v561_consensus_prompt() -> str:
-    prompt = DETECTION_V5_SOURCE_DEGRADED_V561_CONSENSUS_PROMPT_PATH.read_text(
-        encoding="utf-8"
-    ).strip()
-    if not prompt:
-        raise ValueError("Detection V5.16 source-degraded V5.6.1 prompt is empty")
     return prompt
 
 
