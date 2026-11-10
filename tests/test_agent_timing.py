@@ -47,8 +47,6 @@ from agents.anthropic_adapter import (
     normalize_detection_v69_reconciliation_decisions,
     normalize_detection_v611_document_scope_group_ids,
     run_anthropic_detection_agent,
-    run_anthropic_detection_registry_agent,
-    run_anthropic_detection_visual_map_agent,
     run_anthropic_detection_visual_registry_agent,
     select_detection_v645_discovery_output_max_tokens,
     select_detection_v645_membership_output_max_tokens,
@@ -1087,47 +1085,6 @@ def test_locked_evidence_handoff_uses_temperature_zero_and_records_it():
     raw_usage = result["_agent_usage"]["raw_usage"]
     assert raw_usage["temperature"] == 0.0
     assert raw_usage["request_fingerprint"]
-
-
-def test_registry_retries_truncated_structured_json_with_larger_budget():
-    visual_map = {
-        "visual_groups": [{
-            "group_id": "view-001", "page_number": 1, "location_hint": "left",
-            "visual_description": "one cabinet", "representation_kind": "perspective",
-        }],
-    }
-    registry = {
-        "objects": [{
-            "object_id": "object-001", "transport_label": "Object 1",
-            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-            "estimation_evidence_pages": [1],
-            "visual_group_ids": ["view-001"], "visual_identity": "one cabinet",
-            "boundary_basis": "one complete product",
-        }],
-    }
-    requested_budgets = []
-
-    def fake_create(*_args, max_tokens, **_kwargs):
-        requested_budgets.append(max_tokens)
-        return _Response(), {
-            "request_started_at": "2026-10-16T00:00:00+00:00",
-            "request_finished_at": "2026-10-16T00:00:01+00:00",
-        }
-
-    with (
-        patch("agents.anthropic_adapter.get_secret", return_value="model"),
-        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
-        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=["{", json.dumps(registry)]),
-    ):
-        result, usage = run_anthropic_detection_registry_agent(
-            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"page"], visual_map=visual_map, ocr_package=None, model="model",
-        )
-
-    assert result == registry
-    assert requested_budgets == [5000, 8192]
-    assert usage["raw_usage"]["retry_after_truncated_json"] is True
 
 
 def test_integrated_visual_registry_retries_only_a_proven_truncated_proposal():
@@ -2892,38 +2849,6 @@ def test_integrated_visual_registry_allows_one_physical_page_for_multiple_compon
         "object-001", "object-002",
     ]
     assert usage["raw_usage"]["registry_decision_audit"] == _visual_registry_payload(payload)
-
-
-def test_visual_map_retries_truncated_structured_json_with_larger_budget():
-    visual_map = {
-        "visual_groups": [{
-            "group_id": "view-001", "page_number": 1, "location_hint": "left",
-            "visual_description": "one cabinet", "representation_kind": "perspective",
-        }],
-    }
-    requested_budgets = []
-
-    def fake_create(*_args, max_tokens, **_kwargs):
-        requested_budgets.append(max_tokens)
-        return _Response(), {
-            "request_started_at": "2026-10-16T00:00:00+00:00",
-            "request_finished_at": "2026-10-16T00:00:01+00:00",
-        }
-
-    with (
-        patch("agents.anthropic_adapter.get_secret", return_value="model"),
-        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
-        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=["{", json.dumps(visual_map)]),
-    ):
-        result, usage = run_anthropic_detection_visual_map_agent(
-            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"page"], regions=[], ocr_package=None, model="model",
-        )
-
-    assert result == visual_map
-    assert requested_budgets == [5000, 8192]
-    assert usage["raw_usage"]["retry_after_truncated_json"] is True
 
 
 def test_file_review_run_keeps_partner_and_client_roles_separate():

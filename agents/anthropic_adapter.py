@@ -29,8 +29,6 @@ from config import CLAUDE_HAIKU_MODEL, agent_cost_category, calculate_llm_cost_u
 from agents.prompt_loader import (
     load_detection_agent_prompt,
     load_detection_agent_without_naming_prompt,
-    load_detection_registry_prompt,
-    load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
     load_detection_v5_discovery_prompt,
     load_detection_v5_membership_prompt,
@@ -73,7 +71,6 @@ from agents.schemas.detection_registry_schema import (
     DETECTION_DIMENSION_CANDIDATE_DECISIONS_JSON_SCHEMA,
     DETECTION_DIMENSION_INVENTORY_JSON_SCHEMA,
     DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
-    DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
     derive_detection_package_decision_audit,
     derive_detection_dimension_package_candidates,
@@ -112,8 +109,6 @@ DEFAULT_CLAUDE_AGENT_MODEL = CLAUDE_HAIKU_MODEL
 DEFAULT_CLAUDE_FALLBACK_MODEL = "claude-sonnet-4-6"
 DETECTION_PROMPT_VERSION = "detection_v4_object_evidence_handoff_v6"
 DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
-DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
-DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
     "detection_v6_57_compact_discovery_deterministic_output_budget"
 )
@@ -4906,50 +4901,6 @@ def append_detection_focus_regions(blocks: list[dict[str, Any]], regions: list[d
         blocks.append({"type":"image", "source":{"type":"base64","media_type":"image/jpeg","data":base64.standard_b64encode(region["bytes"]).decode("ascii")}})
     blocks.append({"type":"text", "text":user_text})
     return blocks
-
-def run_anthropic_detection_visual_map_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
-    selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
-    prompt = load_detection_visual_map_prompt()
-    user_text = build_detection_user_text(file_name=file_name, company_id=company_id, ocr_package=ocr_package)
-    schema = strip_schema_for_claude(DETECTION_VISUAL_MAP_JSON_SCHEMA)
-    content = build_detection_registry_content_blocks(
-        file_name=file_name, file_bytes=file_bytes, user_text=user_text,
-        page_images=page_images, regions=regions,
-    )
-
-    def request_visual_map(max_tokens: int) -> tuple[Any, dict[str, Any]]:
-        return create_claude_message_streamed(
-            get_anthropic_client(), model=selected_model, max_tokens=max_tokens,
-            system=build_detection_system_content(prompt=prompt),
-            messages=[{"role": "user", "content": content}],
-            output_config={"format": {"type": "json_schema", "schema": schema}},
-        )
-
-    response, diagnostics = request_visual_map(5000)
-    try:
-        payload = json.loads(extract_text_from_claude_response(response))
-    except json.JSONDecodeError:
-        # A truncated structured response is transport failure, not a visual
-        # interpretation. Retry once with the provider's full response budget.
-        response, diagnostics = request_visual_map(8192)
-        diagnostics["retry_after_truncated_json"] = True
-        try:
-            payload = json.loads(extract_text_from_claude_response(response))
-        except json.JSONDecodeError as exc:
-            raise RuntimeError(
-                "Detection visual-map response remained invalid JSON after retry: "
-                f"{exc}"
-            ) from exc
-    try:
-        visual_map = validate_detection_visual_map(
-            normalize_detection_visual_map_group_ids(payload)
-        )
-    except ValueError as exc:
-        raise RuntimeError(f"Detection visual-map response failed validation: {exc}") from exc
-    diagnostics.update({"visual_group_count": len(visual_map["visual_groups"]), "region_count": len(regions), "page_count": len(page_images), "attempt_label": "visual_map_regions"})
-    usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_map",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=DETECTION_VISUAL_MAP_PROMPT_VERSION,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
-    return visual_map, usage
-
 
 def _apply_page_coverage_to_registry(
     objects: list[dict[str, Any]], page_coverage: object, *, page_count: int,
@@ -12324,70 +12275,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         ),
     })
     return visual_map, registry, usage
-
-
-def run_anthropic_detection_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], visual_map: dict[str, Any], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
-    selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
-    prompt = load_detection_registry_prompt()
-    user_text = build_detection_user_text(file_name=file_name, company_id=company_id, ocr_package=ocr_package)
-    user_text += "\n\nVISUAL REPRESENTATION MAP (navigation only, not object decisions):\n"
-    user_text += json.dumps(visual_map, ensure_ascii=False)
-    schema = strip_schema_for_claude(DETECTION_REGISTRY_JSON_SCHEMA)
-    content = build_detection_registry_content_blocks(
-        file_name=file_name,
-        file_bytes=file_bytes,
-        user_text=user_text,
-        page_images=page_images,
-        regions=[],
-    )
-
-    def request_registry(max_tokens: int) -> tuple[Any, dict[str, Any]]:
-        return create_claude_message_streamed(
-            get_anthropic_client(),
-            model=selected_model,
-            max_tokens=max_tokens,
-            system=build_detection_system_content(prompt=prompt),
-            messages=[{"role": "user", "content": content}],
-            output_config={"format": {"type": "json_schema", "schema": schema}},
-        )
-
-    response, diagnostics = request_registry(5000)
-    try:
-        payload = json.loads(extract_text_from_claude_response(response))
-    except json.JSONDecodeError as initial_error:
-        # A truncated structured response is transport failure, not a commercial
-        # object decision. Retry once with the provider's full response budget.
-        response, diagnostics = request_registry(8192)
-        diagnostics["retry_after_truncated_json"] = True
-        try:
-            payload = json.loads(extract_text_from_claude_response(response))
-        except json.JSONDecodeError as retry_error:
-            raise RuntimeError(
-                "Detection registry response remained invalid JSON after retry: "
-                f"{retry_error}"
-            ) from retry_error
-    try:
-        registry = validate_detection_registry(
-            payload,
-            visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
-        )
-    except ValueError as exc:
-        raise RuntimeError(f"Detection registry response failed validation: {exc}") from exc
-    assigned_visual_group_ids = {
-        group_id
-        for item in registry["objects"]
-        for group_id in item["visual_group_ids"]
-    }
-    visual_group_ids = {group["group_id"] for group in visual_map["visual_groups"]}
-    diagnostics.update({
-        "registry_object_count": len(registry["objects"]),
-        "visual_group_count": len(visual_map["visual_groups"]),
-        "unassigned_visual_group_count": len(visual_group_ids - assigned_visual_group_ids),
-        "page_count": len(page_images),
-        "attempt_label": "registry_from_visual_map",
-    })
-    usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=DETECTION_REGISTRY_PROMPT_VERSION,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
-    return registry, usage
 
 
 def _utc_now_iso() -> str:

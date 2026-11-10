@@ -17,8 +17,6 @@ from agents.anthropic_adapter import (
 from agents.prompt_loader import (
     load_detection_agent_prompt,
     load_detection_agent_without_naming_prompt,
-    load_detection_registry_prompt,
-    load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
     load_detection_v5_discovery_prompt,
     load_detection_v5_membership_prompt,
@@ -58,27 +56,6 @@ def test_no_naming_ab_prompt_delegates_user_facing_name_once():
     assert DETECTION_NO_NAMING_PROMPT_VERSION == DETECTION_PROMPT_VERSION
     assert "Naming later assigns the final short product name" in prompt
     assert "`object_name` only as source-label transport" in prompt
-
-
-def test_detection_registry_groups_visual_map_without_treating_it_as_object_set():
-    prompt = load_detection_registry_prompt()
-
-    assert "visual map was prepared from full pages and enlarged regions" in prompt
-    assert "not an object set" in prompt
-    assert "Decide commercial objects only from the full pages" in prompt
-    assert "attach relevant `visual_group_ids`" in prompt
-    assert "not a reason to add, split or fail an object" in prompt
-    assert "vertical shelving unit, a track-supported door system, and a long storage console" in prompt
-    assert "Different complete envelopes, functions, silhouettes, or construction systems" in prompt
-
-
-def test_detection_visual_map_never_decides_objects_or_quantity():
-    prompt = load_detection_visual_map_prompt()
-
-    assert "not a commercial-object registry" in prompt
-    assert "Do not decide whether any depiction is an independent product" in prompt
-    assert "Do not infer quantity" in prompt
-    assert "cannot create, split, merge, name, count" in prompt
 
 
 def test_v5_10_11_separates_full_page_discovery_from_membership_review():

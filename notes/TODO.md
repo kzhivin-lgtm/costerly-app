@@ -314,28 +314,30 @@ signals even when the dimension score is zero. Adda's dry formatting
 check reduced 28 rows to 4 and 2,095 characters to 535 in the Q block.
 Check tokens, wall time and exact View membership before promotion.
 
-PENDING PROPOSAL, P1, Detection historical adapter cleanup:
-The owner selected cleanup as the next scope to discuss. Treat Page 23,
-Ada and ordinary as separate product scenarios. The live structural
-admission entry point serves both Page 23 native anchors (V5.37) and
-the visual fallback without anchors (V5.32.1). Preserve both as well as
-the ordinary and Ada Registry contracts. The five uncalled historical
-roots are visual experiment, full-page Registry, one-shot Registry,
-direct-inventory audit, and V5.6.1 consensus, about 1,709 adapter lines
-in their entry points. Shared code such as visual inventory preparation,
-geometry validation and ID normalization remains live.
+COMPLETED LOCALLY, P1, Detection historical adapter cleanup:
+Baseline `5b1954f`. Commit `f875111` removed five uncalled historical
+entry points and their unused helpers, schemas and prompts. The second
+commit retired the old test-only Visual Map and Registry entry points
+and four tests of their former transport and prompt contracts. Current
+Registry retry tests remain. The two steps removed 2,811 lines net.
+The live V5.37 Page 23 branch, V5.32.1 visual fallback, Ada and ordinary
+Registry remain reachable through the same entry points.
 
-Proposed sequence: start from `d52abf6` and remove the five uncalled
-roots, then remove only their exclusive helpers, schemas and prompts
-after checking references. Retire the two test-only Visual Map/Registry
-entry points separately. Their old truncation tests overlap the active
-Registry's bounded retry tests. Keep the rollback in Git. Baseline
-classifier, source capability, Registry, agent timing and graph tests:
-223 passed. On the saved Adda, Lev 1, Lev 2, Page 23 and HSL 07 inputs,
-verify routes, call plans, View bboxes, quantities and exact grouping
-against the current checkpoint. Also exercise the visual fallback without
-native anchors. Track View recall, roles and grouping separately. Reserve
-an unseen drawing for any later general quality claim.
+Five fixed-input Detection replays ran before cleanup and after each step.
+Adda, Lev 1, Lev 2, Page 23 and HSL 07 produced identical request digests,
+View geometry, membership, quantities and output digests. The separate
+synthetic fallback without native graphic anchors matched before and after,
+with two Haiku calls and two objects. These replays used saved or fixture
+model replies. Local verification artifacts are in
+`/private/tmp/detection-cleanup-check.VdZr26`. The five-file comparison
+summary SHA-256 is
+`7d7b6ac5e89c4dd00819c80c8d2deb05a03505df0250b7c51c536177aa830e7d`.
+
+Stage 1 passed all 223 focused tests. The final wider suite passed 406
+tests, versus 410 before removing the four obsolete tests. Both suites
+reproduced the same pre-existing Processing completion-marker failure.
+The cleanup is local. The dominant-page attachment review remains a
+separate backlog item.
 
 BENCHMARK, P0, Hasolelim Floor 06 manual Object Evidence island inventory:
 
