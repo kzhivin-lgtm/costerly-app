@@ -25,6 +25,26 @@ inputs reproduce 10 groups and all 33 Views. Fresh pre-release runs
 returned 11 groups on Floor 07 and 39 on Floor 06. Track the additional
 P04 singleton and owner verification after deployment.
 
+Production Floor 07 run `run_2964d6fe13874ede95d64d1c809a9726` retained
+33 Views in 12 groups. P04 grouped correctly. The three P05 Views
+remained separate and P11 retained the two-group split.
+
+ACTIVE, P0, preserve Discovery coverage when the input estimate is low.
+Floor 06 production run `run_e8b4f48d106942d3bde4e66e7387ccff` returned
+7 objects from 12 Views. Discovery marked P04 through P15 empty and
+Conflict Resolver recovered three P15 Views. The single request consumed
+182,933 input tokens against a 101,703 estimate. The byte-identical
+previous Floor 06 PDF entered the two-batch path and retained 62 Views.
+Verify the Discovery admission boundary against both HSL floors before
+evaluating Membership quality from the new count.
+
+PENDING, P1, make deferred Naming robust to incomplete model JSON.
+The production Floor 07 run failed parsing before any names were written.
+Floor 06 successfully named its seven objects. Naming uses a fixed
+2,048-token output budget and the current failure event lacks provider
+stop reason and token usage. Capture those fields and test recovery
+while preserving the locked object IDs and user-edited names.
+
 PENDING, P1, isolate cold-start screen latency with a matched browser build.
 The incident used an older wrapper and showed fallback reveal before initial
 Core login readiness. Compare fresh traces with the verified release before
