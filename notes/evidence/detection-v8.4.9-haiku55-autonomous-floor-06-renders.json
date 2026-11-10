@@ -1,0 +1,365 @@
+{
+  "date": "2026-11-10",
+  "status": "local_render_witness_floor_quality_open",
+  "protected_checkpoint": "3a003a4c6b6c4d549b67ad3643932e57ae74e0d1",
+  "evaluated_code": "48d4131173565d130b0829bae9c2458ca8af2c8c",
+  "source": {
+    "file": "Hasolelim_Carpentry_Plan_Floor_06.pdf",
+    "sha256": "ae45b21324421ce4667ba5fe0995b6fb5b74b5aaea7ac32114fa5f10f68f4606"
+  },
+  "manual_annotations_used": false,
+  "older_provider_responses_used": false,
+  "product_runtime_changed": false,
+  "historical_render_contract": {
+    "version": "V7.11",
+    "commit": "0f4ecb6c3475914f93c45b801437c463f46e2fe9"
+  },
+  "previous_attempts": {
+    "checkpoint_failures": {
+      "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-independent-status.json",
+      "sha256": "29697c35c2a3509382928e34c915b38eb5c32f23773efc34d57016f85849b085"
+    },
+    "initial_render_recovery_wrong_p03_target": {
+      "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-render-review/render-audit.json",
+      "sha256": "92ec87853951cfd774b6c110d5d63c11c293af7c33d546bfe9b5879cfbb134af"
+    },
+    "three_of_four_p03_renders_attached": {
+      "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-render-role-verified/render-audit.json",
+      "sha256": "92516b714957a31aeef4af45fe913be2d15eb74ba1ec148ad7501c990c984e68"
+    },
+    "failed_technical_partition_projection": {
+      "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-render-after-technical.log",
+      "sha256": "821e17effc7278dc70b7aa846e4d4193687311640792219a2cb33213d3b8df65"
+    },
+    "projection_fix_run_with_large_render_mislabelled": {
+      "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-render-independent-final/render-audit.json",
+      "sha256": "5810316b1021d0b60eaccdc00695f002945bb0209d8317ee2fa8fc0c8f5eab26"
+    },
+    "p03_attachments_with_p07_plan_mislabelled": {
+      "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-render-pixel-review/render-audit.json",
+      "sha256": "a9ed092a34b652373d640bd9c39b0ea424037adf4f2914ba863f13bd75b15334"
+    }
+  },
+  "verification": {
+    "fresh_run": {
+      "run_id": "run_2da386f586b04ef28ce99d7fbdadd342",
+      "pages": 15,
+      "route": "ordinary_object_set",
+      "objects": 28,
+      "retained_views": 41,
+      "render_dispositions": {
+        "attach": 5,
+        "unresolved": 2
+      },
+      "render_only_groups": 0,
+      "total_seconds": 226.989
+    },
+    "discovery_second_batch": {
+      "request_sha256": "c3cac1ec49e8333b7ededfb79ac299c3182b9229ffdfa9f92e25e9169f573912",
+      "empty_despite_prior_views": [
+        11,
+        12,
+        13,
+        14,
+        15
+      ]
+    },
+    "p03": {
+      "groups": [
+        {
+          "group": 1,
+          "views": [
+            "P03.V1",
+            "P03.V2",
+            "P03.V9"
+          ]
+        },
+        {
+          "group": 2,
+          "views": [
+            "P03.V3"
+          ]
+        },
+        {
+          "group": 3,
+          "views": [
+            "P03.V4"
+          ]
+        },
+        {
+          "group": 4,
+          "views": [
+            "P03.V5"
+          ]
+        },
+        {
+          "group": 5,
+          "views": [
+            "P03.V6"
+          ]
+        },
+        {
+          "group": 6,
+          "views": [
+            "P03.V7"
+          ]
+        },
+        {
+          "group": 7,
+          "views": [
+            "P03.V8"
+          ]
+        }
+      ],
+      "decisions": [
+        {
+          "render": "P03.V1",
+          "disposition": "attach",
+          "target": "P03.V9",
+          "object_group": 1,
+          "evidence_type": "matching_topology",
+          "witness": "The render shows repeated dark rectangular openings alternating with diagonal triangular brackets along horizontal wood rails, the same sequence of divisions and bracket placement visible in the shelf elevation of v641-b01-011."
+        },
+        {
+          "render": "P03.V2",
+          "disposition": "attach",
+          "target": "P03.V9",
+          "object_group": 1,
+          "evidence_type": "matching_topology",
+          "witness": "The shelving above the bar in the render has two wood rails with alternating dark panels and triangular brackets in the same repeated arrangement as the wall shelf elevation in v641-b01-011."
+        }
+      ]
+    },
+    "technical_partition_preserved_during_render_review": true,
+    "presentation_calls": [
+      {
+        "stage": "presentation_role_review",
+        "message_id": "msg_011CguUhJjQBV29WsKrB7m8Y",
+        "seconds": 2.149,
+        "request_sha256": "ef02e1f3959ec8c1e3fd73ee208e6e67b7ecf574ace476fccbf56b597e6a5933"
+      },
+      {
+        "stage": "presentation_render_review",
+        "message_id": "msg_011CguUrWhEYYSnvgJoZmA7y",
+        "seconds": 6.609,
+        "request_sha256": "f7442fbd49c83cac05794e4fcec4675ea26a89a0f3eb72440efa6b0366b523f1"
+      },
+      {
+        "stage": "presentation_render_review",
+        "message_id": "msg_011CguUrWtdsgWDJcbznMKVH",
+        "seconds": 7.944,
+        "request_sha256": "dd404b3024c7d2ca81df7a5f2058f961cb52a428e4cde912762239b83310da68"
+      },
+      {
+        "stage": "presentation_render_review",
+        "message_id": "msg_011CguUrXPARdBxZrzE4uEZx",
+        "seconds": 6.944,
+        "request_sha256": "0161e10d7f55b6c4083795357ffe188471482553d1a469d4bb0de1b55ef57725"
+      },
+      {
+        "stage": "presentation_render_review",
+        "message_id": "msg_011CguUryFAerhRD4fhPcby2",
+        "seconds": 10.453,
+        "request_sha256": "dca5bb901dce49f909c2c0857e6533422e13fb55e4706d09bca38e6b6318c2ef"
+      }
+    ],
+    "offline_controls": [
+      "Adda",
+      "Lev 1",
+      "Lev 2",
+      "Page 23 native",
+      "Page 23 visual fallback"
+    ],
+    "archived_floor_07_views_role_review": {
+      "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-07-bidirectional-render-role-control.json",
+      "sha256": "e71c9f0a22a10d684760b30eacbc16b09fc614f6fe417f1e6b27610aab003a1d"
+    },
+    "mislabelled_large_render_role_control": {
+      "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-render-mislabeled-role-control.json",
+      "sha256": "57b4d3bbd289af602a2c23aca568d0cb45197c20aed1ed2a4c2eacbbee352604"
+    },
+    "mislabelled_technical_plan_role_control": {
+      "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-technical-plan-role-control.json",
+      "sha256": "e3b4ce8e2802249f61fdb05020c1ddc8ac75eb10f82d9db27cdb7240bd46bf7f"
+    },
+    "separate_floor_06_dimension_unit_diagnostic": {
+      "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-render-pixel-review/dimension-unit-diagnostic.json",
+      "sha256": "6e2150b90e1e2c1f9cba84bc9151d70cc63953f93e86cebde17309ffedd94c7b"
+    },
+    "detection_ocr_tests": {
+      "passed": 240,
+      "known_processing_test_failures": 1
+    },
+    "unchanged_code_repeat": {
+      "log": {
+        "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-render-role-both-directions-repeat.log",
+        "sha256": "cd656e1d2b04c871c6352630244b4f8c8fc9a676166fd10371abfd9ca7210fd9"
+      },
+      "render_audit": {
+        "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-render-role-both-directions-repeat/render-audit.json",
+        "sha256": "4d27cc960ceb7a421ded7dfd16e9bac81b178fe28370ca38ca21cf9febc79347"
+      },
+      "run_id": "run_9c65b206c324472bb528a042f90ecf67",
+      "objects": 42,
+      "retained_views": 64,
+      "render_dispositions": {
+        "unresolved": 4,
+        "attach": 3,
+        "no_match": 3
+      },
+      "render_only_groups": 0,
+      "total_seconds": 211.377,
+      "checksum_index": {
+        "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-render-role-both-directions-repeat/SHA256SUMS",
+        "sha256": "e86e6e3e8cbc54fc13b4cf2115365e9e39788a66f7104a2981afaadc1ec78746"
+      },
+      "discovery_second_batch_request_sha256": "c3cac1ec49e8333b7ededfb79ac299c3182b9229ffdfa9f92e25e9169f573912",
+      "discovery_second_batch_pages_with_views": [
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "p03": [
+        {
+          "render": "P03.V1",
+          "disposition": "unresolved",
+          "target": null,
+          "object_group": null,
+          "evidence_type": "none",
+          "witness": "Render shows a band of dark blocks between light panels, but no technical View shows a comparable sequence of divisions with confidence; several shelving elevations are plausible."
+        },
+        {
+          "render": "P03.V2",
+          "disposition": "attach",
+          "target": "P03.V11",
+          "object_group": 1,
+          "evidence_type": "matching_topology",
+          "witness": "Render shows angled wood shelf supports with triangular diagonal braces beneath a shelf, matching the triangular bracket pattern on the shelving elevation of v641-b01-013."
+        },
+        {
+          "render": "P03.V3",
+          "disposition": "attach",
+          "target": "P03.V11",
+          "object_group": 1,
+          "evidence_type": "matching_topology",
+          "witness": "Render shows stacked horizontal wood shelves with dark blocks and diagonal triangular braces between them, matching the three-shelf arrangement with triangular supports in v641-b01-013."
+        },
+        {
+          "render": "P03.V4",
+          "disposition": "unresolved",
+          "target": null,
+          "object_group": null,
+          "evidence_type": "none",
+          "witness": "Dining room perspective shows only a small part of the shelving wall at distance; the visible shelf arrangement cannot be reliably tied to one technical View."
+        }
+      ]
+    },
+    "higher_resolution_fixed_crops": {
+      "code": "65a106bc40c33bf5affa2117495ec1d4895bf1aa",
+      "log": {
+        "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-render-hires.log",
+        "sha256": "3274fd629ba0ec4e4ff9c7294f151047351207c030b2eb2a2f56f8ebd83de709"
+      },
+      "run_id": "run_1d164a52487848808799089da6d8cb36",
+      "objects": 35,
+      "retained_views": 63,
+      "render_dispositions": {
+        "no_match": 3,
+        "attach": 4
+      },
+      "render_only_groups": 0,
+      "total_seconds": 204.06,
+      "render_audit": {
+        "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-render-hires/render-audit.json",
+        "sha256": "31c450d4aef096afde2b477938b956734c10b2744fcfe868370b287b0a05bdaf"
+      },
+      "checksum_index": {
+        "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-render-hires/SHA256SUMS",
+        "sha256": "7033c427ec3aa4c1622f848339cfbbe693fb7ac3e7a1c54fff71bfe51a94da3a"
+      },
+      "p03": [
+        {
+          "render": "P03.V4",
+          "disposition": "no_match",
+          "target": null,
+          "object_group": null,
+          "evidence_type": "none",
+          "witness": "Render shows a dining room perspective, not a matching fabrication view with the same shelf layout."
+        }
+      ]
+    },
+    "higher_resolution_for_role_and_ownership": {
+      "code": "82993eac893e2b863172b6468bee1dfafdbbd8ee",
+      "log": {
+        "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-render-hires-both.log",
+        "sha256": "b6df85ceb5f474f92c2d072d0a6d794912f9bf3e9a9504347507289b2c10b65b"
+      },
+      "fixed_role_control": {
+        "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-hires-role-control.json",
+        "sha256": "c0d222cec592de5a84ce224f405581c5847dc49245af022a7b9367c2f91f008e"
+      },
+      "four_crop_high_resolution_control": {
+        "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-four-fixed-hires-render-control.json",
+        "sha256": "1eb24155917ae60c8f81243e8b124b0be94c2371ab9db8d52b3701477c9e688b"
+      },
+      "rejected_scene_wording_control": {
+        "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-four-fixed-hires-render-scene-control.json",
+        "sha256": "a5d8ddea753f5df4239e907162f542d1b7f1fe8cee5358eac5421bb3f77c366c"
+      },
+      "rejected_scene_wording_commit": "a6aa8ea405ee0f7c963c1cd2d8af6d1c9eb93a49",
+      "run_id": "run_07907e85cefb4f68b72733f878e909a6",
+      "objects": 39,
+      "retained_views": 61,
+      "render_dispositions": {
+        "attach": 5,
+        "no_match": 2,
+        "unresolved": 1
+      },
+      "render_only_groups": 0,
+      "total_seconds": 188.249,
+      "render_audit": {
+        "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-render-hires-both/render-audit.json",
+        "sha256": "83d2defe18bb1fb73aea222a21f8e6580c491883e88c2f212cad1cbf36d1059a"
+      },
+      "checksum_index": {
+        "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-render-hires-both/SHA256SUMS",
+        "sha256": "e14058f3a7f4f2b26a91053504b0eb30e2d70495114ee714cf07bb8479ba8dfc"
+      },
+      "p03": [
+        {
+          "render": "P03.V1",
+          "disposition": "attach",
+          "target": "P03.V9",
+          "object_group": 1,
+          "evidence_type": "unique_geometry",
+          "witness": "Render shows three stacked horizontal shelf boards with dark vertical blocks alternating with triangular gusset supports in a repeated sequence; technical elevation v641-b01-011 shows the same three-tier shelving with alternating dark vertical blocks and triangular diagonal supports in the same arrangement."
+        },
+        {
+          "render": "P03.V2",
+          "disposition": "no_match",
+          "target": null,
+          "object_group": null,
+          "evidence_type": "none",
+          "witness": "Render is a perspective of a dining room with round tables and cantilever chairs; the supplied technical views are fabrication elevations and sections of cabinetry and counters with no visible tables or chairs, and the shelf visible behind the bar cannot be isolated as a distinctive match to a single technical view with confidence."
+        }
+      ]
+    }
+  },
+  "private_artifacts": {
+    "checksum_index": {
+      "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-render-role-both-directions/SHA256SUMS",
+      "sha256": "888fbf08ad2d00211e0c26e9ac80e01ade5d07fe1aa42724b542c96c4e51832c"
+    },
+    "render_audit": {
+      "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-render-role-both-directions/render-audit.json",
+      "sha256": "6aff1423c85eb552467e0ceb3197220392f98dce4a2e317df60e059ed71aa162"
+    },
+    "run_log": {
+      "path": "/Users/qb/Documents/ChatGPT/Costerly/output/detection-haiku55-autonomous-2026-11-10/floor-06-render-role-both-directions.log",
+      "sha256": "23981dd13ab3f430f4c46eb40929f75272aacdf201558c34ce4756b6be6ff10c"
+    }
+  }
+}

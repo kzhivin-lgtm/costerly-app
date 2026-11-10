@@ -283,19 +283,27 @@ Ada, Lev 1, Lev 2 and both Page 23 paths match the saved checkpoint.
 Evidence: `notes/evidence/detection-v8.4.9-haiku55-autonomous-accepted-floor-07.json`.
 
 ACTIVE, P0, finish autonomous ordinary render membership:
-On two fresh Floor 06 attempts the V7.11 gate rejected all-blank render
-witnesses. Keep the existing positive geometry/topology requirements and
-object boundaries. Verify a complete fresh run with real attachments,
-including the documented Floor 06 P03 render family, and preserve the
-no-render Floor 07 path and existing Ada and Page 23 controls. This is
-local experimentation on checkpoint `3a003a4`.
+Two fresh Floor 06 runs attached the P03 interior and all three thumbnails
+to the same technical elevation, with no render-only object. A fresh run
+with the two-way role check also retained the P07 plan. Fixed-crop
+controls confirm both role directions and preserve the three checked
+technical roles on Floor 07. Ada and Page 23 product replays are unchanged.
+Evidence: `notes/evidence/detection-v8.4.9-haiku55-autonomous-floor-06-renders.json`.
+The latest complete run confirms five attachments and no render-only
+group. The large P03 render can still be missed on a full-page scene,
+and the four-separate-crops variant remains inconsistent. Keep the
+positive visual witness requirement. Check pair-local comparison of a
+candidate drawing and the supported part of a wider render before
+considering another recovery path. End-to-end Floor 06 quality remains
+open under ordinary reproducibility.
 
 DEFERRED, P2, shared render or View evidence:
 The owner raised the possibility that one drawing View or render can
-illustrate two distinct objects. Explore explicitly audited, non-merging
-references after single-owner render review is stable. Existing View
-ownership, membership edges and object quantities retain their semantics
-until a separate contract is agreed.
+illustrate two distinct objects. Evaluate the existing Registry shared
+reference contract, which requires links to two completed commercial
+packages and disallows merge edges from shared evidence. Confirm its
+behavior in object packaging and quantities before enabling shared
+ownership. Deferred until single-owner render review is stable.
 
 PENDING, P1, broader ordinary Haiku 5.5 reproducibility:
 An independent HSL repeat stopped before grouping because Discovery
@@ -305,6 +313,21 @@ budgets before enabling any experimental behavior in product runtime.
 The P04 result still uses the existing singleton rule on one View and
 retains a dimension strip as a View in the correct component. Q redesign,
 routing, singleton rule changes, and a Haiku 4.5 switch remain deferred.
+
+Floor 06 dimension-unit evidence is a separate follow-up. The bare-unit
+inference accepted sheet number `607` and OCR text `1111111111111` from
+View evidence, selected `mm` for the document, and read the exact-match
+P03 dimensions `504` and `575` as millimeters. Verify the physical unit
+and admit only dimension evidence to the unit decision. Preserve true
+long spans and benchmark both HSL floors and an actual millimeter drawing.
+Removing all values above 600 in a diagnostic changed the inferred unit
+to `cm`; it did not verify a new technical partition.
+
+Floor 06 Discovery coverage also varies before render review. With the
+same second-batch request, one response returned technical groups on P10
+through P15, and another declared empty coverage on P11 through P15.
+Distinguish legitimate empty sheets from missing Discovery evidence using
+independent page facts before accepting Floor 06 end to end.
 
 PENDING PRODUCTION VERIFICATION, P0, local V8.4.9 coordinate OCR checkpoint:
 Run the numeric reader alongside standard OCR, retain one page-pixel bbox per

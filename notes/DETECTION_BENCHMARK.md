@@ -86,6 +86,47 @@ the detail as attached.
   `run_7b1296e591dc4cf78cf00286caa5bd47`,
   `run_c214295ecccc498bb2d0dbfc18645325`.
 
+## HSL Floor 06 autonomous render review, 2026-11-10
+
+V7.11 `0f4ecb6` provided a dedicated decision list inside Membership.
+Two fresh ordinary Haiku 5.5 attempts on `3a003a4` stopped because all
+render witnesses were blank. The local lab now confirms suspicious crop
+roles and reviews unresolved render attachments against the compiled
+technical components. It requires concrete shared visual geometry.
+
+Run `run_e1f8b4ad645f451ea4827d1d4c8b848e` attached the P03 interior
+and three thumbnails to the same technical elevation. It returned 39
+technical groups and still mislabeled a P07 line drawing as a render.
+With the two-way role check, run `run_2da386f586b04ef28ce99d7fbdadd342`
+reproduced the P03 links, retained the P07 plan, and attached five
+render islands with two unresolved and no render-only group. Its 28
+groups cannot establish complete floor quality. Discovery declared five
+late sheets empty despite the identical second-batch request returning
+views on those sheets in the previous run. The render pass did not
+change the compiled technical partition.
+
+The unchanged-code repeat `run_9c65b206c324472bb528a042f90ecf67`
+returned views on all six sheets in that batch. It exposed a separate
+render witness limit when Discovery split P03 into four image crops.
+Two attached, and two remained unresolved. The original review crop
+widths were 205 pixels for the unresolved thumbnail and 568 for the
+interior. The higher-resolution variant reuses the existing local PDF
+crop renderer with the same fixed View boxes.
+
+With high-resolution role and ownership reviews, fresh run
+`run_07907e85cefb4f68b72733f878e909a6` returned 61 Views in 39 groups.
+Five render islands attached and zero render-only objects were emitted.
+The three P03 thumbnails attached as a single island; the wider interior
+remained unmatched. The same high-resolution role check correctly
+classified the three separately cropped thumbnails in a fixed-crop
+control. Neither increased resolution alone nor the tested broader-scene
+wording stabilized ownership on the four-crop control. The wording
+experiment was reverted. Full technical grouping and stable render
+attachment remain separate acceptance requirements.
+
+Manifest and full private audit index:
+`notes/evidence/detection-v8.4.9-haiku55-autonomous-floor-06-renders.json`.
+
 ## V8.4.5 large batched assembly-set checkpoint, 2026-11-01
 
 Status: owner-verified positive boundary witness for the narrow

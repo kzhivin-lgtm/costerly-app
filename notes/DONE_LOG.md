@@ -1,5 +1,14 @@
 # Done Log
 
+Local ordinary Haiku 5.5 render experiment. On fresh HSL 06 runs, the
+large P03 render and all three thumbnails joined the same technical
+elevation by visible topology. The two-way role review recovered actual
+render crops and protected a P07 technical plan. Render edges preserve
+the technical partition. Large-scene ownership varies across fresh
+responses. Floor 06 technical grouping and Discovery coverage remain
+open. No production deployment.
+Manifest: `notes/evidence/detection-v8.4.9-haiku55-autonomous-floor-06-renders.json`.
+
 Fresh autonomous HSL 07 lab checkpoint. Ten groups with all 33 Views
 match the owner-approved partition. Fingerprint supplied the first
 confirmed same-sheet links on P04 and P07. Exact protected replay passed.

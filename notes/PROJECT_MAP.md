@@ -56,6 +56,9 @@ This file explains where code belongs so the project stays understandable.
   The independently generated ten-group HSL 07 lab outcome and verified
   dimension anchor pairs are indexed by
   `notes/evidence/detection-v8.4.9-haiku55-autonomous-accepted-floor-07.json`.
+  Ordinary render-role and ownership experiments on HSL 06 are indexed by
+  `notes/evidence/detection-v8.4.9-haiku55-autonomous-floor-06-renders.json`.
+  Technical grouping and Discovery coverage still require their own checks.
 - `db/` contains Supabase client and repositories.
 - `db/sql/2026_09_24_machinery_foundation.sql` is the additive Machinery schema
   and catalog seed. It does not modify the prototype `company_machines` table.
