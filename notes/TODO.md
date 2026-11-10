@@ -315,14 +315,27 @@ check reduced 28 rows to 4 and 2,095 characters to 535 in the Q block.
 Check tokens, wall time and exact View membership before promotion.
 
 PENDING PROPOSAL, P1, Detection historical adapter cleanup:
-The current tree contains five legacy source-degraded entry points with
-no Python callers found and two earlier Visual Map/Registry entry
-points referenced only by tests. Check consumers and retain the Git
-rollback checkpoint before isolating the old experiments. Protect the
-active V5.32.1/V5.37 path and shared helpers. Verify routes and exact
-grouping on Adda, Lev 1, Lev 2, Page 23 and HSL 07. Report View recall,
-View roles, and object grouping separately. Reserve an unseen drawing
-before claiming broader quality.
+The owner selected cleanup as the next scope to discuss. Treat Page 23,
+Ada and ordinary as separate product scenarios. The live structural
+admission entry point serves both Page 23 native anchors (V5.37) and
+the visual fallback without anchors (V5.32.1). Preserve both as well as
+the ordinary and Ada Registry contracts. The five uncalled historical
+roots are visual experiment, full-page Registry, one-shot Registry,
+direct-inventory audit, and V5.6.1 consensus, about 1,709 adapter lines
+in their entry points. Shared code such as visual inventory preparation,
+geometry validation and ID normalization remains live.
+
+Proposed sequence: start from `d52abf6` and remove the five uncalled
+roots, then remove only their exclusive helpers, schemas and prompts
+after checking references. Retire the two test-only Visual Map/Registry
+entry points separately. Their old truncation tests overlap the active
+Registry's bounded retry tests. Keep the rollback in Git. Baseline
+classifier, source capability, Registry, agent timing and graph tests:
+223 passed. On the saved Adda, Lev 1, Lev 2, Page 23 and HSL 07 inputs,
+verify routes, call plans, View bboxes, quantities and exact grouping
+against the current checkpoint. Also exercise the visual fallback without
+native anchors. Track View recall, roles and grouping separately. Reserve
+an unseen drawing for any later general quality claim.
 
 BENCHMARK, P0, Hasolelim Floor 06 manual Object Evidence island inventory:
 
