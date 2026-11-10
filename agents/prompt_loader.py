@@ -116,6 +116,13 @@ def load_detection_v5_review_prompt() -> str:
     return prompt
 
 
+def load_detection_v848_technical_membership_prompt() -> str:
+    prompt = (PROMPTS_DIR / "detection_v848_technical_membership_prompt.md").read_text(encoding="utf-8")
+    if not prompt.strip():
+        raise ValueError("Detection V8.4.8 technical Membership prompt is empty")
+    return prompt
+
+
 def load_detection_v5_source_degraded_discovery_prompt() -> str:
     prompt = DETECTION_V5_SOURCE_DEGRADED_DISCOVERY_PROMPT_PATH.read_text(
         encoding="utf-8"

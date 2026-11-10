@@ -1,14 +1,17 @@
 import copy
 from inspect import getsource
+from io import BytesIO
 import json
 from pathlib import Path
+from threading import Barrier
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import anthropic
 import httpx
 import pandas as pd
 import pytest
+from PIL import Image
 
 from agents.anthropic_adapter import (
     _discard_non_object_visual_registry_groups,
@@ -24,6 +27,7 @@ from agents.anthropic_adapter import (
     DETECTION_V843_ASSEMBLY_SCOPE_COMPACTION_PROMPT_VERSION,
     DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION,
     DETECTION_V847_STAR_HYPOTHESIS_COMPONENTS_VERSION,
+    DETECTION_V848_PARALLEL_MEMBERSHIP_VERSION,
     DETECTION_V713_MEMBERSHIP_REVIEW_MAX_STREAM_SECONDS,
     apply_benchmark_run_suffix,
     build_agent_usage_event,
@@ -1720,7 +1724,8 @@ def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
     )
 
 
-def test_v847_ada_coalesces_a_proved_plan_star_into_one_commercial_object():
+@pytest.mark.parametrize("missing_pair", [False, True])
+def test_v848_ada_compares_every_same_sheet_pair_independently_of_grouping(missing_pair):
     proposal = _visual_registry_payload({
         "visual_groups": [
             {
@@ -1811,28 +1816,64 @@ def test_v847_ada_coalesces_a_proved_plan_star_into_one_commercial_object():
          "top_left_y": 600, "bottom_right_x": 1400, "bottom_right_y": 1000},
     ]}]}
 
-    def fake_create(*_args, **_kwargs):
-        return _Response(), {
+    image = BytesIO()
+    Image.new("RGB", (1600, 1200), "white").save(image, format="PNG")
+    concurrent_calls = Barrier(2, timeout=5)
+    calls = {}
+
+    def fake_create(*_args, **kwargs):
+        properties = kwargs["output_config"]["format"]["schema"]["properties"]
+        content = kwargs["messages"][0]["content"][-1]["text"]
+        if "candidate_region_decisions" in properties:
+            payload = proposal
+        else:
+            concurrent_calls.wait()
+            if "object_hypotheses" in properties:
+                calls["grouping"] = content
+                payload = review
+            else:
+                assert list(properties) == ["Q001", "Q002", "Q003"]
+                calls["pairs"] = content
+                payload = {key: {"decision": "same", "observation": "The cabinet plan and profiles align."}
+                           for key in properties if not (missing_pair and key == "Q003")}
+        response = _Response()
+        response.payload = payload
+        return response, {
             "request_started_at": "2026-11-05T00:00:00+00:00",
             "request_finished_at": "2026-11-05T00:00:01+00:00",
         }
 
-    with (
-        patch("agents.anthropic_adapter.get_secret", return_value="model"),
-        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
-        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
-        patch(
-            "agents.anthropic_adapter.extract_text_from_claude_response",
-            side_effect=[json.dumps(proposal), json.dumps(review)],
-        ),
-    ):
-        _, registry, usage = run_anthropic_detection_visual_registry_agent(
+    def run():
+        return run_anthropic_detection_visual_registry_agent(
             file_name="lev-2.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"page"], regions=[], ocr_package=ocr_package,
+            page_images=[image.getvalue()], regions=[], ocr_package=ocr_package,
             model="claude-sonnet-4-6", mistral_anchor_admission=True,
             document_category="ada_sparse_multi_object",
         )
 
+    with (
+        patch("agents.anthropic_adapter.get_secret", return_value="model"),
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=MagicMock()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create) as create_message,
+        patch(
+            "agents.anthropic_adapter.extract_text_from_claude_response",
+            side_effect=lambda response: json.dumps(response.payload),
+        ),
+    ):
+        if missing_pair:
+            with pytest.raises(DetectionVisualRegistryValidationError, match="required View pair") as raised:
+                run()
+            assert raised.value.usage_event["raw_usage"]["v8_4_8_same_sheet_review"]["status"] == "invalid"
+            assert create_message.call_count == 3
+            return
+        _, registry, usage = run()
+
+    assert create_message.call_count == 3
+    assert calls["pairs"].count("\nQ") == 3
+    assert "REQUIRED SAME-PAGE MEMBERSHIP QUEUE" not in calls["grouping"]
+    assert usage["prompt_version"] == DETECTION_V848_PARALLEL_MEMBERSHIP_VERSION
+    assert len(usage["raw_usage"]["v8_4_8_same_sheet_review"]["decisions"]) == 3
+    assert (usage["input_tokens"], usage["output_tokens"]) == (300, 60)
     assert [item["visual_group_ids"] for item in registry["objects"]] == [[
         "view-001", "view-002", "view-003",
     ]]

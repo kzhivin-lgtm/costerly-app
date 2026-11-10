@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import copy
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
 import html
 import hashlib
@@ -35,6 +36,7 @@ from agents.prompt_loader import (
     load_detection_v5_membership_prompt,
     load_detection_v5_proposal_prompt,
     load_detection_v5_review_prompt,
+    load_detection_v848_technical_membership_prompt,
     load_detection_v5_source_degraded_discovery_prompt,
     load_detection_v5_source_degraded_direct_audit_prompt,
     load_detection_v5_source_degraded_direct_inventory_prompt,
@@ -195,6 +197,22 @@ DETECTION_V847_STAR_HYPOTHESIS_COMPONENTS_VERSION = (
     # It is limited to the V6.37 Ada Membership route and never treats a
     # shared View as merge evidence by itself.
     "detection_v8_4_7_star_hypothesis_components"
+)
+DETECTION_V848_PARALLEL_MEMBERSHIP_VERSION = "detection_v8_4_8_parallel_membership"
+DETECTION_V848_SAME_SHEET_REVIEW_PROMPT = (
+    "Compare every listed pair. Use only the physical outline, major junctions, and connected "
+    "module arrangement of the two named bodies. A colored overlay or neighboring strokes "
+    "cannot show a physical connection. For same, identify a concrete corresponding part "
+    "or alternative projection. Use uncertain when there is insufficient evidence. "
+    "Inspect identifier, topology, geometry, dimensions, and construction for every pair. "
+    "Different projections may show the same object. Compare the pair even when it lacks text or dimensions."
+)
+DETECTION_V848_GLOBAL_PAIR_PROOF_PROMPT = (
+    "\n\nFor the global decision, find a common plan or section that supports each technical projection. "
+    "In every visual evidence row, the first two source_fact_ids must be the registry_view IDs of the exact pair "
+    "of technical Views, even if a printed number is mentioned. Cite visual geometry from both Views. "
+    "Do not include render Views in object_hypotheses. Decide render attachment separately from technical membership. "
+    "Check the plan and render for matching distinctive corner geometry and placement of terminal modules."
 )
 DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS = 180
 DETECTION_V634_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
@@ -4020,6 +4038,7 @@ def format_detection_v5_review_handoff(
     source_facts: list[dict[str, Any]],
     draft_hypotheses: object,
     required_same_page_pairs: list[tuple[str, str]],
+    include_same_page_queue: bool = True,
 ) -> str:
     """Give Review locked Views, drafts and its mandatory same-page queue."""
     lines = [format_detection_v5_membership_handoff(
@@ -4031,18 +4050,37 @@ def format_detection_v5_review_handoff(
             group_ids = hypothesis.get("group_ids") if isinstance(hypothesis, dict) else None
             if isinstance(group_ids, list) and len(group_ids) >= 2:
                 proposal_lines.append(f"H{index:03d}|{'|'.join(str(group_id) for group_id in group_ids)}")
-    pair_lines = [
-        f"Q{index:03d}|A={left}|B={right}"
-        for index, (left, right) in enumerate(required_same_page_pairs, start=1)
-    ]
     lines.extend([
         "UNTRUSTED DRAFT MULTI-VIEW PROPOSALS (review, do not copy blindly):",
         *(proposal_lines or ["none"]),
-        "REQUIRED SAME-PAGE MEMBERSHIP QUEUE (evaluate every Q line before deciding membership):",
-        "Queue membership requires comparison only. It is never positive merge evidence.",
-        *(pair_lines or ["none"]),
     ])
+    if include_same_page_queue:
+        lines.extend([
+            "REQUIRED SAME-PAGE MEMBERSHIP QUEUE (evaluate every Q line before deciding membership):",
+            "Queue membership requires comparison only. It is never positive merge evidence.",
+            *[f"Q{index:03d}|A={left}|B={right}"
+              for index, (left, right) in enumerate(required_same_page_pairs, start=1)],
+        ])
+        if not required_same_page_pairs:
+            lines.append("none")
     return "\n".join(lines)
+
+
+def restore_detection_membership_view_ids(payload: Any, aliases: dict[str, str]) -> Any:
+    """Restore fixed Discovery IDs in the JSON returned to the compiler."""
+    names = {alias: view_id for view_id, alias in aliases.items()}
+    names.update({f"registry_view:{alias}": f"registry_view:{view_id}" for view_id, alias in aliases.items()})
+
+    def restore(value: Any) -> Any:
+        if isinstance(value, str):
+            return names.get(value, value)
+        if isinstance(value, list):
+            return [restore(item) for item in value]
+        if isinstance(value, dict):
+            return {key: restore(item) for key, item in value.items()}
+        return value
+
+    return restore(payload)
 
 
 def normalize_detection_v711_presentation_render_decisions(
@@ -4935,6 +4973,67 @@ def summarize_detection_provider_call(
         "image_count": image_count,
         "image_bytes": image_bytes,
     }
+
+def run_detection_same_sheet_review(
+    client: Any,
+    *,
+    model: str,
+    required_pairs: list[tuple[str, str]],
+    aliases: dict[str, str],
+    review_content: list[dict[str, Any]],
+    image_count: int,
+    image_bytes: int,
+) -> dict[str, Any]:
+    pairs = {f"Q{index:03d}": pair for index, pair in enumerate(required_pairs, start=1)}
+    handoff = "Required pair list:\n" + "\n".join(
+        f"{key} {aliases.get(left, left)} {aliases.get(right, right)}"
+        for key, (left, right) in pairs.items()
+    )
+    row = {
+        "type": "object", "required": ["decision", "observation"], "additionalProperties": False,
+        "properties": {
+            "decision": {"type": "string", "enum": ["same", "different", "uncertain"]},
+            "observation": {"type": "string"},
+        },
+    }
+    response, diagnostics = create_claude_message_streamed(
+        client, model=model, temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+        max_tokens=max(2000, min(16384, 150 * len(pairs) + 600)),
+        max_stream_seconds=DETECTION_V713_MEMBERSHIP_REVIEW_MAX_STREAM_SECONDS,
+        system=DETECTION_V848_SAME_SHEET_REVIEW_PROMPT,
+        messages=[{"role": "user", "content": [*review_content[:-1], {"type": "text", "text": handoff}]}],
+        output_config={"format": {"type": "json_schema", "schema": {
+            "type": "object", "properties": dict.fromkeys(pairs, row),
+            "required": list(pairs), "additionalProperties": False,
+        }}},
+    )
+    audit = {
+        "status": "invalid", "required_pair_count": len(pairs), "decisions": [],
+        "request_finished_at": diagnostics["request_finished_at"],
+        "provider": summarize_detection_provider_call(
+            response=response, diagnostics=diagnostics, requested_model=model,
+            prompt_characters=len(DETECTION_V848_SAME_SHEET_REVIEW_PROMPT), context_characters=len(handoff),
+            image_count=image_count, image_bytes=image_bytes,
+        ),
+    }
+    try:
+        payload = json.loads(extract_text_from_claude_response(response))
+    except json.JSONDecodeError:
+        return audit
+    if not isinstance(payload, dict) or payload.keys() != pairs.keys():
+        return audit
+    for result in payload.values():
+        if (not isinstance(result, dict) or result.keys() != {"decision", "observation"}
+                or result["decision"] not in ("same", "different", "uncertain")
+                or not isinstance(result["observation"], str) or not result["observation"].strip()):
+            return audit
+    audit["decisions"] = [
+        {"group_id_a": left, "group_id_b": right, **payload[key]}
+        for key, (left, right) in pairs.items()
+    ]
+    audit["status"] = "complete"
+    return audit
+
 
 def append_detection_focus_regions(blocks: list[dict[str, Any]], regions: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
     if not regions:
@@ -12592,10 +12691,33 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             # Membership, classifications, and boundaries.
             proposal_scope_payload = global_scope_payload
             document_scope = global_scope
+    review_groups = proposal_for_review["visual_groups"]
+    required_same_page_pairs, review_same_page_queue_audit = (
+        finalize_detection_same_page_membership_queue(visual_groups=review_groups)
+    )
+    split_membership = bool(v637_ada_covered_pair_local_membership_active and required_same_page_pairs)
+    object_views = [row for row in review_groups if row.get("evidence_class") == "object_evidence"]
+    technical_membership = (
+        split_membership and not v714_conflict_membership_active
+        and len({row["page_number"] for row in object_views}) > 1
+        and all(row.get("representation_kind") != "presentation_render" for row in object_views)
+    )
+    review_aliases: dict[str, str] = {}
+    if split_membership:
+        prompt_version = DETECTION_V848_PARALLEL_MEMBERSHIP_VERSION
+    if technical_membership:
+        # Keep the tested compact image labels in the provider request only.
+        # Registry and every downstream consumer retain the Discovery IDs.
+        per_page: Counter[int] = Counter()
+        for row in sorted(object_views, key=lambda row: row["group_id"]):
+            page = row["page_number"]
+            per_page[page] += 1
+            review_aliases[row["group_id"]] = f"IG-P{page}-{per_page[page]:03d}"
     review_page_context_images, review_page_context_audit = (
         build_detection_v5_review_page_context_images(
             page_images=page_images, visual_groups=proposal_for_review["visual_groups"],
             coordinate_frames=review_coordinate_frames,
+            overlay_labels_by_group_id=review_aliases or None,
         )
     )
     v641_review_context_audit: dict[str, Any] | None = None
@@ -12608,14 +12730,16 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             view_crops=membership_crops,
             page_context_images=review_page_context_images,
         )
-    required_same_page_pairs, review_same_page_queue_audit = (
-        finalize_detection_same_page_membership_queue(
-            visual_groups=proposal_for_review["visual_groups"],
-        )
-    )
+    if review_aliases:
+        review_groups = [dict(row, group_id=review_aliases.get(row["group_id"], row["group_id"])) for row in review_groups]
+    review_source_facts = [
+        dict(row, visual_group_id=review_aliases[row["visual_group_id"]])
+        if row.get("visual_group_id") in review_aliases else row for row in source_facts
+    ] if review_aliases else source_facts
     review_handoff = format_detection_v5_review_handoff(
-        visual_groups=proposal_for_review["visual_groups"], source_facts=source_facts,
+        visual_groups=review_groups, source_facts=review_source_facts,
         draft_hypotheses=[], required_same_page_pairs=required_same_page_pairs,
+        include_same_page_queue=not split_membership,
     )
     review_prompt_with_membership_contract = review_prompt
     if v637_ada_covered_pair_local_membership_active:
@@ -12650,7 +12774,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "different_objects or insufficient_evidence, evidence must be an empty "
             "array because that field is positive merge evidence only.\n"
         )
-    if required_same_page_pairs:
+    if required_same_page_pairs and not split_membership:
         review_prompt_with_membership_contract += (
             "\n\nV6.67 SAME-PAGE FULL-CRITERIA CONTRACT:\n"
             "Evaluate every Q line in the REQUIRED SAME-PAGE MEMBERSHIP QUEUE before "
@@ -12708,8 +12832,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "membership authority. Colour, finish, room context, proximity, "
             "material and approximate proportions are never proof.\n"
         )
+    if technical_membership:
+        review_prompt_with_membership_contract = load_detection_v848_technical_membership_prompt()
+    elif split_membership:
+        review_prompt_with_membership_contract += DETECTION_V848_GLOBAL_PAIR_PROOF_PROMPT
+    review_crops = [dict(row, group_id=review_aliases[row["group_id"]]) for row in membership_crops] if review_aliases else membership_crops
     review_content = build_detection_v5_membership_content_blocks(
-        user_text=review_handoff, view_crops=membership_crops,
+        user_text=review_handoff, view_crops=review_crops,
         page_context_images=effective_review_page_context_images,
     )
     review_initial_max_tokens = (
@@ -12718,6 +12847,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         else DETECTION_V5_MEMBERSHIP_MAX_TOKENS
     )
     membership_review_schema = copy.deepcopy(DETECTION_V5_MEMBERSHIP_JSON_SCHEMA)
+    if technical_membership:
+        membership_review_schema["required"].remove("presentation_render_decisions")
+        del membership_review_schema["properties"]["presentation_render_decisions"]
     if v714_conflict_membership_active:
         membership_review_schema["required"].append("conflict_pair_decisions")
         membership_review_schema["properties"]["conflict_pair_decisions"] = (
@@ -12758,8 +12890,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 "V6.41 Membership Review exceeds its safe input budget. "
                 "Discovery completed, but this file needs bounded Review batching."
             )
-    review_response, review_diagnostics = create_claude_message_streamed(
-        get_anthropic_client(), model=review_model,
+    review_call = dict(
+        model=review_model,
         max_tokens=review_initial_max_tokens,
         max_stream_seconds=DETECTION_V713_MEMBERSHIP_REVIEW_MAX_STREAM_SECONDS,
         temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
@@ -12771,6 +12903,29 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             else membership_review_schema,
         )}},
     )
+    same_sheet_review: dict[str, Any] | None = None
+    if split_membership:
+        visible_ids = {row["group_id"] for row in membership_crops}
+        visible_ids.update(
+            row["group_id"] for page in review_page_context_audit for row in page.get("overlays", [])
+        )
+        if not {view for pair in required_same_page_pairs for view in pair} <= visible_ids:
+            raise RuntimeError("Detection same-sheet review is missing an image for a required View")
+        with get_anthropic_client().with_options(max_retries=0) as client:
+            with ThreadPoolExecutor(max_workers=2) as workers:
+                pairs_future = workers.submit(
+                    run_detection_same_sheet_review, client,
+                    model=review_model, required_pairs=required_same_page_pairs,
+                    aliases=review_aliases, review_content=review_content,
+                    image_count=len(effective_review_page_context_images) + len(review_crops),
+                    image_bytes=(sum(len(page["bytes"]) for page in effective_review_page_context_images)
+                                 + sum(len(crop["bytes"]) for crop in review_crops)),
+                )
+                grouping_future = workers.submit(create_claude_message_streamed, client, **review_call)
+                review_response, review_diagnostics = grouping_future.result()
+                same_sheet_review = pairs_future.result()
+    else:
+        review_response, review_diagnostics = create_claude_message_streamed(get_anthropic_client(), **review_call)
     review_attempts = [
         (review_response, review_diagnostics, review_initial_max_tokens),
     ]
@@ -12874,8 +13029,16 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             review_attempts, start=1,
         )
     ]
+    valid_technical_payload = not technical_membership or (
+        isinstance(review_raw_payload, dict) and set(review_raw_payload) == {"object_hypotheses"}
+    )
+    if technical_membership and valid_technical_payload:
+        # Discovery fixed this inventory before either Sonnet call. There is
+        # no render decision to ask for when every retained View is technical.
+        review_raw_payload["presentation_render_decisions"] = []
     review_contract_valid = (
-        isinstance(review_raw_payload, dict)
+        valid_technical_payload
+        and isinstance(review_raw_payload, dict)
         and isinstance(
             review_raw_payload.get(
                 "pairwise_decisions"
@@ -12905,16 +13068,22 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             )
         )
     )
-    if not review_contract_valid:
+    invalid_pair_review = same_sheet_review is not None and same_sheet_review["status"] != "complete"
+    if not review_contract_valid or invalid_pair_review:
         failure_diagnostics = dict(review_diagnostics)
         failure_diagnostics.update({
-            "validation_error": "membership review payload does not match its route contract",
+            "validation_error": (
+                "same-sheet review did not return every required View pair" if invalid_pair_review
+                else "membership review payload does not match its route contract"
+            ),
             "validation_stage": "membership_review_contract",
             "attempt_label": "membership_review_contract_failed",
             "response_character_count": len(review_raw_text),
             "response_text_sha256": _sha256_text(review_raw_text),
             "v6_10_combined_evidence_review_active": v69_criteria_reconciliation_active,
         })
+        if same_sheet_review is not None:
+            failure_diagnostics["v8_4_8_same_sheet_review"] = same_sheet_review
         failure_usage = build_agent_usage_event(
             agent_name="detection", operation="rfq_detection_visual_registry",
             company_id=company_id, run_id=None, file_name=file_name,
@@ -12927,9 +13096,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         failure_usage["status"] = "failed"
         failure_usage["error_message"] = failure_diagnostics["validation_error"]
         raise DetectionVisualRegistryValidationError(
-            "Detection review response failed the membership review contract",
+            "Detection same-sheet review did not return every required View pair" if invalid_pair_review
+            else "Detection review response failed the membership review contract",
             usage_event=failure_usage,
         )
+    if review_aliases:
+        review_raw_payload = restore_detection_membership_view_ids(review_raw_payload, review_aliases)
     review_presentation_render_decisions = (
         [] if v69_criteria_reconciliation_active
         else review_raw_payload["presentation_render_decisions"]
@@ -13223,6 +13395,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "membership_review_exact_input_tokens": v641_review_exact_input_tokens,
         },
     })
+    if same_sheet_review is not None:
+        diagnostics["v8_4_8_same_sheet_review"] = same_sheet_review
+        diagnostics["v8_4_8_review_aliases"] = review_aliases
+        diagnostics["request_finished_at"] = max(
+            diagnostics["request_finished_at"], same_sheet_review["request_finished_at"],
+        )
     # Preserve the composed decision before runtime normalizes IDs and derives
     # deterministic graph and Evidence pages.
     registry_decision_audit = copy.deepcopy(payload)
@@ -14078,6 +14256,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         *diagnostics["v6_13_proposal_truncation_retry"]["attempts"],
         *diagnostics["v6_41_review_truncation_retry"]["attempts"],
     ]
+    if same_sheet_review is not None:
+        provider_call_usages.append(same_sheet_review["provider"])
     provider_call_usages.extend(
         batch["provider"]
         for batch in v75_conflict_resolver_audit.get("batches", [])

@@ -239,6 +239,18 @@ Lev-2-shaped plan plus two separately proved elevations becomes one component;
 a non-star chain cannot become one object; the protected V8.4.5 batched
 assembly scope route and V8.4.6 candidate exception contract remain intact.
 
+IMPLEMENTED AND LOCAL-VERIFIED, P0, V8.4.8, Ada Membership only:
+Base is GitHub main `8eb87f1`. Send one exhaustive same-sheet pair audit
+and one independent document Membership request in parallel on the
+existing Ada Sonnet path. Retain Haiku Discovery, the shared-plan star
+compiler and render attachment. Ordinary and Page 23 stay on Haiku.
+Adda passed twice with the exact two groups, Lev 2 passed twice with
+one kitchen and all four Views including its render, and Lev 1 passed
+with all six Views in one object. Page 23 matched the latest base;
+HSL's saved Discovery response failed the same validation on both
+versions before Membership. Protected-main release is pending. Record:
+`notes/DETECTION_V8_4_8_PARALLEL_MEMBERSHIP_CHECKPOINT_2026_11_10.md`.
+
 BENCHMARK, P0, Hasolelim Floor 06 manual Object Evidence island inventory:
 
 This is the owner-provided visual inventory, separate from final package count
