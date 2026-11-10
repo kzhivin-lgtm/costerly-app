@@ -24,8 +24,7 @@ Historical Registry audit, 2026-10-28 through 2026-11-01. The exact
 detail bbox `(598, 2673, 967, 3037)` appears in 41 saved runs with
 P03 View and graph evidence. It was standalone in 22 and part of a
 larger component in 19. None of the 41 page attachment audits lists
-the detail as attached. The rule attached another island, `view-054`,
-in five runs.
+the detail as attached.
 
 - V7.6 run `run_ec18c3c633764827a4f6e71b53378dca` records the detail
   as standalone P03.V7, the third proof component. Two other groups on
@@ -36,9 +35,22 @@ in five runs.
   11 sheet Views in one component, with the detail labeled P03.V4 and
   linked through `matching_topology` and `unique_geometry`. These
   recorded facts do not identify the Detail D callout.
-- Run `run_78740659d7ff45d99011db97cc2cb8f6` joins the detail P03.V4
-  via normal evidence links and separately adds P03.V9 (`view-054`)
-  through `deterministic_page_context`.
+- In all five fallback runs, P03.V9 (`view-054`, bbox
+  `(525, 58, 1445, 542)`) is the uppermost of the three small renders
+  immediately left of the large interior render. The fallback connects
+  P03.V9 to that large render, P03.V1, which is already in the main N26
+  group with seven other P03 Views. In two of the five final graphs,
+  P03.V10 and P03.V11 also link to P03.V9.
+- Visual check of the N26 sheet supports the specific P03.V9-to-P03.V1
+  assignment. The two renders and the technical elevation show the same
+  two-row shelf with repeating triangular dividers above the counter.
+  The audit edge itself is `deterministic_page_context` with no source
+  facts. This validates this assignment, not every member of the group
+  or the general fallback. Witness runs: `run_8e782cff8a2a45f08fa981ffc54c367f`,
+  `run_78740659d7ff45d99011db97cc2cb8f6`,
+  `run_b0dc4e89b77e4e8babdb1a205e4fa84f`,
+  `run_7b1296e591dc4cf78cf00286caa5bd47`,
+  `run_c214295ecccc498bb2d0dbfc18645325`.
 
 ## V8.4.5 large batched assembly-set checkpoint, 2026-11-01
 
