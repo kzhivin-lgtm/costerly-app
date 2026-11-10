@@ -1,5 +1,12 @@
 # Done Log
 
+Detection V8.4.9 Haiku 5.5 experiment round recorded. An offline
+supplement restores the nine frozen HSL groups. New OCR and Discovery
+leave one unproved P11 link after removing a whole-floor plan admission.
+The runtime returns to the protected tag. Acceptance remains active in
+TODO. Evidence:
+`notes/DETECTION_V8_4_9_HAIKU55_ACCEPTANCE_ROUND_2026_11_10.md`.
+
 Detection V8.4.9 with research checkpoint. Preserved the runtime rollback,
 the five-drawing test scenario and the fixed HSL Review comparison before
 the Haiku 5.5 experiments. Restored 41 archive entries and 60 nested replay

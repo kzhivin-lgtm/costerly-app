@@ -284,6 +284,14 @@ membership and compare exact page groups against the accepted HSL
 reference. Then validate the five-file scenarios, call budget, time and
 cost. Preserve exhaustive same-sheet comparison, Ada Sonnet, Page 23,
 Q and routing. Deployment is outside this local iteration.
+The 2026-11-10 round restored exact frozen groups in supplemental offline
+replay. New OCR and Discovery still miss acceptance. The best replay of
+that live input yields ten objects because P11 lacks a proven third link.
+An independent Conflict Resolver role control removed an extra whole-floor
+plan but has open recall checks. The rejected runtime prompt was removed.
+Keep the prompt universal and benchmark-specific details in fixtures only.
+Next evidence and call-budget decision are recorded in
+`notes/DETECTION_V8_4_9_HAIKU55_ACCEPTANCE_ROUND_2026_11_10.md`.
 
 PENDING PRODUCTION VERIFICATION, P0, local V8.4.9 coordinate OCR checkpoint:
 Run the numeric reader alongside standard OCR, retain one page-pixel bbox per
