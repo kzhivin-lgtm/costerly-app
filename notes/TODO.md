@@ -305,7 +305,9 @@ dense sheet. Keep a genuinely unassigned, sparse View eligible when
 there is supporting context and no conflicting evidence. The owner marked
 HSL Floor 06 P03 (N26, sheet 607), circular Detail D at the lower left.
 Use it as a visual reference case for explicit callout linking when
-attachment work resumes. Its Detection outcome is unverified.
+attachment work resumes. Historical Registry audit found both standalone
+and grouped outcomes for Detail D, with no fallback attachment of this
+detail in the 41 inspected runs.
 See `notes/DETECTION_BENCHMARK.md`.
 The source checkpoint is
 `detection-v8.4.9-post-cleanup-checkpoint-2026-11-10`.

@@ -18,8 +18,27 @@ at the lower left of P03, drawing N26, sheet 607. Red Detail D callouts
 on the larger drawings point to the corresponding locations on this
 sheet. The isolated crop shows a dimensioned profile with little
 standalone product context. This is a visual reference case for explicit
-detail linking. Whether Detection detects the detail separately or links
-it correctly has not been checked for this witness.
+detail linking.
+
+Historical Registry audit, 2026-10-28 through 2026-11-01. The exact
+detail bbox `(598, 2673, 967, 3037)` appears in 41 saved runs with
+P03 View and graph evidence. It was standalone in 22 and part of a
+larger component in 19. None of the 41 page attachment audits lists
+the detail as attached. The rule attached another island, `view-054`,
+in five runs.
+
+- V7.6 run `run_ec18c3c633764827a4f6e71b53378dca` records the detail
+  as standalone P03.V7, the third proof component. Two other groups on
+  the sheet contain six and four Views, so the attachment rule abstained.
+- Run `run_08488f8b91144efb9a7dc215a3d88d24` joins P03.V7 to a
+  seven-View technical component through `matching_topology` links.
+  Accepted V7.14 run `run_2360208579e34618aec4b60fc322ff2c` places all
+  11 sheet Views in one component, with the detail labeled P03.V4 and
+  linked through `matching_topology` and `unique_geometry`. These
+  recorded facts do not identify the Detail D callout.
+- Run `run_78740659d7ff45d99011db97cc2cb8f6` joins the detail P03.V4
+  via normal evidence links and separately adds P03.V9 (`view-054`)
+  through `deterministic_page_context`.
 
 ## V8.4.5 large batched assembly-set checkpoint, 2026-11-01
 
