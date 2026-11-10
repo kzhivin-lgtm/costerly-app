@@ -66,6 +66,28 @@ Production image startup and timing remain unmeasured. HSL coverage and
 quantity of final packages are open acceptance criteria. Membership use of
 the new fingerprint requires a separate controlled test.
 
+### Observed Haiku 5.5 failure modes
+
+- HSL 07 ordinary Review is the open quality regression. In the fixed-input
+  A/B, the 4.5 reply contains 11 hypotheses and compiles to nine objects.
+  The 5.5 low reply supplies one P03 hypothesis, zero N57 hypotheses and
+  ends normally at 371 output tokens out of 6,144. The JSON contract
+  permits the omission. Views without accepted links become standalone
+  packages. See the HSL Review A/B in the research record.
+- The first Lev 2 Discovery run `run_8462de26a36641c5aa1fc836b5f76158`
+  labelled the shaded image `shaded_isometric` and bypassed the dedicated
+  render check. Sonnet still produced one kitchen. The Ada-scoped wording
+  restored `presentation_render` and an accepted render edge on
+  `run_71a5e6e5ce8f42e6b5c7ada7ea0e38d3`.
+- In an Adda Discovery trial, two proposed core rectangles extended outside
+  their proposed enclosing rectangles. This rejected the reply even though
+  Mistral already supplied authoritative rectangles. The anchored path
+  now uses the Mistral geometry and the final Adda controls passed.
+- An interim HSL run with the broader render wording supplied a
+  `no_match` entry for a non-render conflict admission and failed
+  validation. The wording was scoped to Ada before the final HSL run.
+  The ordinary Review omission reproduced under the original wording.
+
 ## Twelve-second wait verification
 
 A fresh HSL 07 run completed 11/11 pages with 237 numeric labels. Local

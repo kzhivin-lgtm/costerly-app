@@ -267,8 +267,12 @@ CAD render explicitly. An accepted Mistral anchor retains its provider bbox
 when the model emits contradictory proposed geometry it would discard anyway.
 Page 23 returned three objects on Haiku 5.5 (`run_4c76765cdf3848adad1219c522be661c`).
 HSL 07 reached completion with 34 objects (`run_e508dea053ae472d9038a0b8047c8ed9`);
-object boundaries still require validation. Both latter runs predate the
-render wording clarification. No deployment.
+its ordinary Review quality is an open acceptance blocker. The controlled
+HSL N57 replay restores the group with Haiku 4.5 and misses it with 5.5 low
+and medium. The high trials use the entire 6,144 and 12,288-token budgets
+without a JSON reply. Candidate next check is a narrowly scoped ordinary
+Review model comparison before production publication. Both latter file
+runs predate the render wording clarification. No deployment.
 
 PENDING PRODUCTION VERIFICATION, P0, local V8.4.9 coordinate OCR checkpoint:
 Run the numeric reader alongside standard OCR, retain one page-pixel bbox per

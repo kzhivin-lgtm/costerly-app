@@ -122,6 +122,19 @@ profile on this witness. The saved provider messages carry actual
 model identities. The compiler replay keeps the request-side model label.
 Evidence: private research bundle, `hsl-n57-review-ab/`.
 
+[verified] On the same frozen request, Haiku 5.5 medium still returned a
+single P03 hypothesis and compiled to seven singleton N57 objects
+(`msg_011CguJNWRRLD9a14BfhUkCK`, 422 output tokens, 5.064 s). The
+ordinary contract requests complete review, but its response only records
+positive hypotheses, so a normal end turn with omissions is valid JSON.
+High at the existing 6,144-token ceiling produced only a thinking block
+and ended at `max_tokens` (`msg_011CguJUAtan655YaCcJ5uhq`, 34.990 s).
+High at 12,288 did the same
+(`msg_011CguJU6VfdXLczdg4rjTq8`, 63.405 s). The second high test varied
+only the token ceiling relative to the first. The available effort
+profiles do not restore the frozen HSL result. These are individual trials
+on one fixed input. Private evidence: `hsl-n57-review-ab/effort-sweep/`.
+
 These rectangles are frozen regression references, not an independently
 redrawn, exhaustive region inventory. HSL's full grouping remains
 unlabelled. A separate unseen drawing is required before using this
