@@ -79,22 +79,25 @@ def test_blank_render_witness_is_reviewed_without_allowing_render_to_render_edge
 def test_render_role_review_changes_only_a_confirmed_fixed_role():
     thumbnail = {"group_id": "thumb", "representation_kind": "technical_detail", "bbox": {"left": 10}}
     drawing = {"group_id": "drawing", "representation_kind": "technical_detail", "bbox": {"left": 25}}
-    payload = {"visual_groups": [thumbnail, drawing]}
+    mistaken = {"group_id": "mislabelled", "representation_kind": "presentation_render", "bbox": {"left": 40}}
+    payload = {"visual_groups": [thumbnail, drawing, mistaken]}
 
     def send(_request):
         return provider_response({"decisions": [
             {"group_id": "thumb", "role": "presentation_render", "visual_witness": "Shaded rendered views."},
-            {"group_id": "drawing", "role": "retain_original", "visual_witness": "Dimensioned line drawing."},
+            {"group_id": "drawing", "role": "line_drawing_plan", "visual_witness": "Dimensioned line drawing."},
+            {"group_id": "mislabelled", "role": "line_drawing_plan", "visual_witness": "Section markers and dimensions."},
             {"group_id": "unknown", "role": "presentation_render", "visual_witness": "Image."},
         ]}), {}
 
     _, changed = review_render_roles(
         payload, {"model": "claude-haiku-5-5", "max_tokens": 2048},
-        [{"group_id": group, "bytes": b"crop"} for group in ("thumb", "drawing")], send,
+        [{"group_id": group, "bytes": b"crop"} for group in ("thumb", "drawing", "mislabelled")], send,
     )
-    assert changed == {"thumb": "Shaded rendered views."}
+    assert changed == {"thumb": "Shaded rendered views.", "mislabelled": "Section markers and dimensions."}
     assert thumbnail == {"group_id": "thumb", "representation_kind": "presentation_render", "bbox": {"left": 10}}
     assert drawing["representation_kind"] == "technical_detail"
+    assert mistaken == {"group_id": "mislabelled", "representation_kind": "line_drawing_plan", "bbox": {"left": 40}}
 
 
 def test_shaded_crop_is_reviewed_even_if_description_says_elevation():
@@ -102,15 +105,17 @@ def test_shaded_crop_is_reviewed_even_if_description_says_elevation():
     ImageDraw.Draw(drawing).rectangle((10, 10, 182, 182), outline=0)
     shaded = Image.new("L", (192, 192), 110)
     groups = [
-        {"group_id": group, "representation_kind": "elevation"}
-        for group in ("drawing", "shaded")
+        {"group_id": "drawing", "representation_kind": "elevation"},
+        {"group_id": "shaded", "representation_kind": "elevation"},
+        {"group_id": "mistaken", "representation_kind": "presentation_render"},
+        {"group_id": "render", "representation_kind": "presentation_render"},
     ]
     crops = []
-    for group, image in (("drawing", drawing), ("shaded", shaded)):
+    for group, image in (("drawing", drawing), ("shaded", shaded), ("mistaken", drawing), ("render", shaded)):
         buffer = BytesIO()
         image.save(buffer, format="JPEG")
         crops.append({"group_id": group, "bytes": buffer.getvalue()})
-    assert render_role_candidate_crops(groups, crops) == [crops[1]]
+    assert render_role_candidate_crops(groups, crops) == [crops[1], crops[2]]
 
 
 def test_render_attachment_does_not_count_as_a_technical_merge():

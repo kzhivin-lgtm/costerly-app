@@ -41,11 +41,12 @@ RENDER_RULE = (
 
 
 ROLE_CUE = re.compile(r"\b(?:render(?:ed|ing)?s?|photos?|photographs?|thumbnails?|perspectives?|visuali[sz]ations?)\b", re.IGNORECASE)
+TECHNICAL_ROLES = ("line_drawing_plan", "line_drawing_elevation", "line_drawing_section", "technical_detail", "technical_isometric")
 ROLE_REVIEW_RULE = (
     "Review only the visual representation of each fixed crop. A photographic image, shaded presentation "
     "render, or sheet of rendered thumbnails is presentation_render when it depicts fabricated parts. "
-    "A line drawing, dimensioned technical detail or technical isometric view keeps its original role. "
-    "For mixed or unclear crops keep the original role. Preserve all crop boundaries. Give one decision "
+    "When the crop visibly consists of a technical drawing, identify it using the matching drawing role. "
+    "Use retain_original for mixed or unclear crops. Preserve all crop boundaries. Give one decision "
     "per supplied ID, with a short nonempty witness describing the visible visual style. Return JSON only."
 )
 
@@ -58,34 +59,38 @@ def render_role_candidates(payload):
     return [
         {**group, "evidence_class": "object_evidence", "bbox": group.get("core_bbox") or group["bbox"]}
         for group in payload.get("visual_groups", [])
-        if group["group_id"] in object_ids and group["representation_kind"] != RENDER_KIND
+        if group["group_id"] in object_ids
     ]
 
 
 def render_role_candidate_crops(groups, crops):
-    """Send description cues and dense visual regions for role confirmation."""
+    """Send possible role mismatches for visual confirmation."""
+    presented = {group["group_id"] for group in groups if group["representation_kind"] == RENDER_KIND}
     described = {
         group["group_id"] for group in groups
         if ROLE_CUE.search(" ".join(group.get(key, "") for key in (
             "representation_kind", "visual_description", "location_hint",
         )).replace("_", " "))
     }
+    described -= presented
     selected = []
     for crop in crops:
-        if crop["group_id"] in described:
+        group_id = crop["group_id"]
+        if group_id in described:
             selected.append(crop)
             continue
         with Image.open(BytesIO(crop["bytes"])) as image:
             sample = image.convert("L")
             sample.thumbnail((96, 96), Image.Resampling.BOX)
-        # Downsample fine ink lines. Dense shaded regions only trigger visual review.
-        if 3 * sum(sample.histogram()[:210]) >= sample.width * sample.height:
+        # Downsample fine ink lines. Shading is a trigger for review, never a role.
+        shaded = 3 * sum(sample.histogram()[:210]) >= sample.width * sample.height
+        if shaded != (group_id in presented):
             selected.append(crop)
     return selected
 
 
 def review_render_roles(payload, request, crops, send):
-    """Correct positively confirmed photographic roles without changing boxes."""
+    """Correct a confirmed render/drawing confusion without changing boxes."""
     if not crops:
         return None, {}
     blocks = []
@@ -102,7 +107,7 @@ def review_render_roles(payload, request, crops, send):
         "required": ["group_id", "role", "visual_witness"],
         "properties": {
             "group_id": {"type": "string"},
-            "role": {"type": "string", "enum": [RENDER_KIND, "retain_original"]},
+            "role": {"type": "string", "enum": [RENDER_KIND, *TECHNICAL_ROLES, "retain_original"]},
             "visual_witness": {"type": "string"},
         },
     }
@@ -124,15 +129,18 @@ def review_render_roles(payload, request, crops, send):
         return metadata, {}
     counts = Counter(decision["group_id"] for decision in decisions)
     shown = {crop["group_id"] for crop in crops}
-    corrected = {
-        decision["group_id"]: decision["visual_witness"]
+    confirmed = {
+        decision["group_id"]: decision
         for decision in decisions
         if decision["group_id"] in shown and counts[decision["group_id"]] == 1
-        and decision["role"] == RENDER_KIND and decision["visual_witness"].strip()
+        and decision["role"] in (RENDER_KIND, *TECHNICAL_ROLES) and decision["visual_witness"].strip()
     }
+    corrected = {}
     for group in payload["visual_groups"]:
-        if group["group_id"] in corrected:
-            group["representation_kind"] = RENDER_KIND
+        decision = confirmed.get(group["group_id"])
+        if decision and (decision["role"] == RENDER_KIND) != (group["representation_kind"] == RENDER_KIND):
+            group["representation_kind"] = decision["role"]
+            corrected[group["group_id"]] = decision["visual_witness"]
     return metadata, corrected
 
 
