@@ -302,10 +302,13 @@ No such attachment fired in the saved V8.4.9 control runs inspected.
 Find real positive witnesses before changing the fallback. Add negative
 controls for an already-owned View and an independent small View on a
 dense sheet. Keep a genuinely unassigned, sparse View eligible when
-there is supporting context and no conflicting evidence. Owner witness:
-HSL Floor 07 P03 lower-left detail has little standalone context. Review
-its whole-sheet context and the existing full-document proof components
-before deciding how the fallback applies. The source checkpoint is
+there is supporting context and no conflicting evidence. In HSL Floor 07,
+PDF P03 (N56) has three already-linked Views and no lower-left drawing.
+PDF P04 (N57, third sheet after the cover) is a possible owner witness:
+its lower-left cabinet elevation P04.V4 is a document-wide singleton in
+the frozen graph. Confirm the intended View and its target package before
+using it as a positive attachment case. See `notes/DETECTION_BENCHMARK.md`.
+The source checkpoint is
 `detection-v8.4.9-post-cleanup-checkpoint-2026-11-10`.
 
 PENDING PROPOSAL, P1, Detection Q prompt versus pair audit:

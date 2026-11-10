@@ -11,11 +11,21 @@ reproduced the saved 30-object output. That count is a replay witness.
 Visual fallback without native anchors also matched. Manifest:
 `notes/evidence/detection-v8.4.9-post-cleanup-checkpoint.json`.
 
-For the separate attachment work, the owner identified the sparse detail
-at the lower left of HSL 07 P03. This is a whole-sheet context witness.
-Its precise identity and assignment still require inspection. Pair this
-with negative controls for an already-owned cross-sheet View and a real
-independent small item on a dense sheet.
+### HSL 07 witness for the pending attachment review
+
+The owner described a sparse detail at the lower left of the third sheet.
+In frozen run `run_49a6d5bd14fa4e0e971a763af919470c`, PDF P03 (N56)
+has no lower-left drawing. P03.V1, P03.V2 and P03.V3 already form one
+component through ordinary dimension and visual proof.
+
+PDF P04 (N57, third sheet after the cover) has a lower-left cabinet
+elevation, P04.V4 (`view-007`), which is a singleton in the
+full-document proof graph. The adjacent narrow P04.V5 (`view-008`)
+contains the elevation's horizontal dimension chains. The saved graph
+has seven singleton Views on P04 and no proven target package on that
+sheet. P04 is a possible match for the owner's description. Confirm the
+intended View and product boundary before assigning a positive label.
+Keep the cross-sheet ownership and independent small item negative controls.
 
 ## V8.4.5 large batched assembly-set checkpoint, 2026-11-01
 
