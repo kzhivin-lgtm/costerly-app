@@ -312,7 +312,7 @@ See `notes/DETECTION_BENCHMARK.md`.
 The source checkpoint is
 `detection-v8.4.9-post-cleanup-checkpoint-2026-11-10`.
 
-PENDING PROPOSAL, P1, Detection Q prompt versus pair audit:
+DEFERRED PROPOSAL, P1, Detection Q prompt versus pair audit:
 Ada V8.4.8 already separates its exhaustive Sonnet same-sheet audit from
 Sonnet grouping. Haiku Discovery still sees Q including zero-score
 cross-sheet candidates. Keep the full audit and exhaustive same-sheet
@@ -321,19 +321,27 @@ rows from the model input and retain cross-sheet visual or documentary
 signals even when the dimension score is zero. Adda's dry formatting
 check reduced 28 rows to 4 and 2,095 characters to 535 in the Q block.
 Check tokens, wall time and exact View membership before promotion.
+Owner deferred this with routing on 2026-11-10 to prioritize research.
 
 DEFERRED PROPOSAL, P2, Detection routing audit:
 Record PDF transport, source capability, document scenario, model and
 batching as separate decisions before considering a V9 routing change.
 Preserve the distinct Page 23, Ada and ordinary scenario contracts.
 
-DEFERRED RESEARCH, P2, Detection OCR and grouping:
-If coordinate OCR still misses useful small or rotated dimensions, compare
-oriented detail crops following the eDOCr2 approach on labelled cases.
-Evaluate Higher-Order Multicut offline only once concrete grouping failures
-warrant a graph experiment. Use the DocLayNet and PubTables examples as
-references for separating annotations for regions, roles and grouping.
-Keep a new, whole drawing outside the tuning set for later validation.
+COMPLETED LOCALLY, P1, Detection OCR and grouping research round 1:
+The current recognizer reads both prelocated Adda misses. The eDOCr2
+recognizer and automated tile probes did not improve Adda. The five-file
+region, role and grouping fixture exposes the HSL 07 P04 dimension strip
+classified as a separate detail. The offline group-cost prototype preserved
+accepted groups but did not recover two failed Adda partitions. Record:
+`notes/DETECTION_V8_4_9_RESEARCH_ROUND_1_2026_11_10.md`.
+
+PENDING RESEARCH, P2, Detection reference validation:
+When prioritized, independently annotate one unseen drawing end to end.
+Test automatic localization of the two Adda misses only with a bounded
+mechanism, then verify false readings and latency. Keep the graph prototype
+offline until a labelled real group-level conflict gives it an independent
+signal. Keep HSL's full grouping out of scored controls until labelled.
 
 COMPLETED LOCALLY, P1, Detection historical adapter cleanup:
 Baseline `5b1954f`. Commit `f875111` removed five uncalled historical

@@ -11,6 +11,11 @@ reproduced the saved 30-object output. That count is a replay witness.
 Visual fallback without native anchors also matched. Manifest:
 `notes/evidence/detection-v8.4.9-post-cleanup-checkpoint.json`.
 
+The offline research round on the frozen inputs records the OCR crop
+comparison, five-file region/role/membership fixture, and graph prototype in
+`notes/DETECTION_V8_4_9_RESEARCH_ROUND_1_2026_11_10.md`. The HSL 07 P04
+dimension chain is a separate, visually checked role error.
+
 ## HSL Floor 06 detail reference for deferred attachment work
 
 The owner's annotated screenshot identifies the small circular Detail D
