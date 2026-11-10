@@ -628,15 +628,18 @@ def run(pdf, output):
             canonical_ids[group]: group for group, (_, role) in views.items()
             if group in canonical_ids and role != RENDER_KIND
         }
+        render_usage = audit(final)
 
         def send_render(focused, page):
+            focused = deepcopy(focused)
+            improve_local_crops(focused, pdf_bytes, ocr, render_usage, page)
             review_client = adapter.get_anthropic_client()
             review, _, details = send(
                 review_client, focused, "presentation_render_review", f"render-{page:02}",
             )
             return review, details
 
-        technical_components = technical_partition(audit(final), technical_raw_ids)
+        technical_components = technical_partition(render_usage, technical_raw_ids)
         print("Technical grouping complete. Reviewing presentation renders against their possible owners.", flush=True)
         rows, render_calls, render_review_audit = review_render_rows(
             request, views, primary_render_rows, send_render,
