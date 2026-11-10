@@ -86,3 +86,15 @@ All 181 files verified from `SHA256SUMS`, whose SHA-256 is
 `735f8828a81fea1410fd15c3902da34b4f496981184ca31a35c4dc11b2256400`.
 Focused candidate tests reported 259 passed and the existing Processing
 completion-marker failure. The current code is identical to the checkpoint.
+
+## Autonomous check harness
+
+`tools/detection_haiku55_autonomous_lab.py` runs the accepted experimental
+sequence through the existing OCR, Discovery and graph compiler on an
+ordinary PDF. It uses entirely new replies. In one invocation, it runs
+the primary review and then only the three-page batches that contain a
+sheet with multiple technical Views and no accepted merge. The compiler
+combines the two sets of evidence without consulting the benchmark or
+loading past replies. Compilation may reuse the current invocation's
+Discovery responses in memory with a request hash check. The lab does
+not alter the product runtime, the other routes, or merge thresholds.
