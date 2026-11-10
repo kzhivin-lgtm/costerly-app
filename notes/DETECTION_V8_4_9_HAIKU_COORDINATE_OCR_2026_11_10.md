@@ -90,3 +90,29 @@ The local raw OCR packages are under `/private/tmp/detection-v849-coordinates.Nb
 | `lev1-ocr.json` | `e538eee74f1d229ecc1cbaca2a1279794517e301f7062206eca35ef9e2c05a46` |
 | `lev2-ocr.json` | `0ac436dad81f7ace91630a02a0bed55d144643014181054218dd7888fdbcc25f` |
 | `page23-ocr.json` | `7a0c4a9b6e59f284889d7b85a1a90cc3f4cbc73fa64441730e353e23afc1b543` |
+
+## Local checkpoint after historical adapter cleanup
+
+The runtime anchor is `3f3f15773e040979a407904bfbaceaa50f9fb9fb`. Local annotated tag
+`detection-v8.4.9-post-cleanup-checkpoint-2026-11-10` records this runtime and the checkpoint documentation.
+Cleanup commits `f875111` and `3f3f157` removed the seven retired
+entry points and their exclusive dependencies.
+
+The private replay archive is `/Users/qb/Documents/ChatGPT/Costerly/backups/detection-v8.4.9-post-cleanup-checkpoint-2026-11-10/private-replay-evidence.tar.gz`.
+All 60 file hashes verified after extraction.
+Restored source replayed the five fixed drawings and the visual fallback.
+The results matched the saved verification digests byte for byte with
+zero provider calls. The archive contains the original drawings, stored
+OCR and model responses, replay code, runtime tree and prior coordinate
+experiments. Manifest: `notes/evidence/detection-v8.4.9-post-cleanup-checkpoint.json`.
+
+The broader Detection/OCR suite passed 406 tests. The Processing
+completion-marker test failed before and after cleanup. This is a local
+checkpoint of the measured behavior. HSL package boundaries remain
+outside the acceptance claim.
+
+Next scope is dominant-page attachment safety. The owner identified the
+sparse detail in the lower-left of HSL Floor 07 P03 as a positive case
+to inspect in whole-sheet context. The target object still needs to be
+bound to an exact saved View and source witness. The checkpoint makes
+no change to attachment behavior.

@@ -1,0 +1,187 @@
+{
+  "checkpoint": "detection-v8.4.9-post-cleanup-checkpoint-2026-11-10",
+  "scope": "local checkpoint, no production publication",
+  "runtime_commit": "3f3f15773e040979a407904bfbaceaa50f9fb9fb",
+  "cleanup_commits": [
+    "f875111",
+    "3f3f157"
+  ],
+  "pre_cleanup_commit": "5b1954f",
+  "private_archive": "/Users/qb/Documents/ChatGPT/Costerly/backups/detection-v8.4.9-post-cleanup-checkpoint-2026-11-10/private-replay-evidence.tar.gz",
+  "private_archive_sha256": "c6ef6260ff819fa501f1fdd1e69948db2607d8df5c640974c56165b6b3799e56",
+  "archived_file_checksums_verified": 60,
+  "runtime_source_archive_sha256": "302a932cfc822285872db23f17e8d74b50e648161424b6e65a818f7a2e4cbc6d",
+  "fixed_input_replay_sha256": "7d7b6ac5e89c4dd00819c80c8d2deb05a03505df0250b7c51c536177aa830e7d",
+  "fallback_replay_sha256": "b8cd6574e939766f324a7e7a0c61f7c305fa219cc9e9dbef9a6f488393c4611c",
+  "fixture_runs": {
+    "adda": {
+      "run_id": "run_b9a002a9ef2341208efeb6e1a7837edf",
+      "category": "ada_sparse_multi_object",
+      "object_count": 2,
+      "groups": [
+        [
+          "view-001",
+          "view-004",
+          "view-006",
+          "view-008"
+        ],
+        [
+          "view-002",
+          "view-003",
+          "view-005",
+          "view-007"
+        ]
+      ]
+    },
+    "hsl07-ordinary-prompt": {
+      "run_id": "run_49a6d5bd14fa4e0e971a763af919470c",
+      "category": "ordinary_object_set",
+      "object_count": 30,
+      "groups": [
+        [
+          "view-001",
+          "view-002",
+          "view-003"
+        ],
+        [
+          "view-004"
+        ],
+        [
+          "view-005"
+        ],
+        [
+          "view-006"
+        ],
+        [
+          "view-007"
+        ],
+        [
+          "view-008"
+        ],
+        [
+          "view-009"
+        ],
+        [
+          "view-010"
+        ],
+        [
+          "view-011"
+        ],
+        [
+          "view-012"
+        ],
+        [
+          "view-013"
+        ],
+        [
+          "view-014"
+        ],
+        [
+          "view-015"
+        ],
+        [
+          "view-016"
+        ],
+        [
+          "view-017"
+        ],
+        [
+          "view-018"
+        ],
+        [
+          "view-019"
+        ],
+        [
+          "view-020"
+        ],
+        [
+          "view-021"
+        ],
+        [
+          "view-022"
+        ],
+        [
+          "view-023"
+        ],
+        [
+          "view-024"
+        ],
+        [
+          "view-025"
+        ],
+        [
+          "view-026"
+        ],
+        [
+          "view-027"
+        ],
+        [
+          "view-028"
+        ],
+        [
+          "view-029"
+        ],
+        [
+          "view-030"
+        ],
+        [
+          "view-031"
+        ],
+        [
+          "view-032"
+        ]
+      ]
+    },
+    "lev1": {
+      "run_id": "run_87a093dde8184a3ab4c054f77911c60b",
+      "category": "ada_sparse_multi_object",
+      "object_count": 1,
+      "groups": [
+        [
+          "view-001",
+          "view-002",
+          "view-003",
+          "view-004",
+          "view-005",
+          "view-006"
+        ]
+      ]
+    },
+    "lev2": {
+      "run_id": "run_fbc2e7606823415abfac8be7a2e217dd",
+      "category": "ada_sparse_multi_object",
+      "object_count": 1,
+      "groups": [
+        [
+          "view-001",
+          "view-002",
+          "view-003",
+          "view-004"
+        ]
+      ]
+    },
+    "page23": {
+      "run_id": "run_135f679368c64c3eb970cdd046335dc3",
+      "category": "page23_native_graphic_pack",
+      "object_count": 3,
+      "groups": []
+    }
+  },
+  "restored_replays": {
+    "fixed_pdfs": 5,
+    "visual_fallback": 1,
+    "matched_expected_digests": true,
+    "provider_calls": 0
+  },
+  "tests": {
+    "passed": 406,
+    "preexisting_failure": "test_processing_uses_only_bounded_browser_handshake_after_complete_marker"
+  },
+  "next_owner_witness": {
+    "document": "HSL Floor 07",
+    "page": 3,
+    "position": "bottom-left",
+    "owner_observation": "Sparse detail difficult to assign from its isolated crop. Use as context-dependent attachment case.",
+    "status": "owner witness, attachment target pending inspection"
+  }
+}

@@ -1,5 +1,22 @@
 # Detection Agent benchmark
 
+## V8.4.9 local post-cleanup checkpoint, 2026-11-10
+
+Fixed-input restored replay verified identical provider requests, View
+geometry, membership and quantities before and after cleanup. Adda kept
+two exact four-View groups. Lev 1 kept six Views in one object. Lev 2
+kept four Views including its render in one kitchen. Page 23 used native
+PDF anchors and returned three packages. HSL 07 ordinary Registry
+reproduced the saved 30-object output. That count is a replay witness.
+Visual fallback without native anchors also matched. Manifest:
+`notes/evidence/detection-v8.4.9-post-cleanup-checkpoint.json`.
+
+For the separate attachment work, the owner identified the sparse detail
+at the lower left of HSL 07 P03. This is a whole-sheet context witness.
+Its precise identity and assignment still require inspection. Pair this
+with negative controls for an already-owned cross-sheet View and a real
+independent small item on a dense sheet.
+
 ## V8.4.5 large batched assembly-set checkpoint, 2026-11-01
 
 Status: owner-verified positive boundary witness for the narrow

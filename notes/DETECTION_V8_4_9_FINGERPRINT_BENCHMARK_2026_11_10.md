@@ -159,3 +159,6 @@ known unit and admit a cross-sheet numeric witness only when its printed
 line and dimension role agree across the two projections. Same-sheet
 comparisons stay exhaustive. Benchmark that rule on additional labelled
 cross-sheet pairs before considering any production effect.
+
+The experiment results and source crops were also retained in the private
+V8.4.9 post-cleanup checkpoint. Restore manifest: `notes/evidence/detection-v8.4.9-post-cleanup-checkpoint.json`.

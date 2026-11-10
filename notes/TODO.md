@@ -302,7 +302,11 @@ No such attachment fired in the saved V8.4.9 control runs inspected.
 Find real positive witnesses before changing the fallback. Add negative
 controls for an already-owned View and an independent small View on a
 dense sheet. Keep a genuinely unassigned, sparse View eligible when
-there is supporting context and no conflicting evidence.
+there is supporting context and no conflicting evidence. Owner witness:
+HSL Floor 07 P03 lower-left detail has little standalone context. Review
+its whole-sheet context and the existing full-document proof components
+before deciding how the fallback applies. The source checkpoint is
+`detection-v8.4.9-post-cleanup-checkpoint-2026-11-10`.
 
 PENDING PROPOSAL, P1, Detection Q prompt versus pair audit:
 Ada V8.4.8 already separates its exhaustive Sonnet same-sheet audit from
@@ -336,8 +340,10 @@ summary SHA-256 is
 Stage 1 passed all 223 focused tests. The final wider suite passed 406
 tests, versus 410 before removing the four obsolete tests. Both suites
 reproduced the same pre-existing Processing completion-marker failure.
-The cleanup is local. The dominant-page attachment review remains a
-separate backlog item.
+The cleanup is protected locally by `detection-v8.4.9-post-cleanup-checkpoint-2026-11-10`. The private archive was
+restored and both replay digests matched. Manifest:
+`notes/evidence/detection-v8.4.9-post-cleanup-checkpoint.json`. Dominant-page attachment remains a separate backlog
+item.
 
 BENCHMARK, P0, Hasolelim Floor 06 manual Object Evidence island inventory:
 

@@ -37,6 +37,15 @@ This file explains where code belongs so the project stays understandable.
 ## External Integrations
 
 - `agents/` contains LLM detection orchestration, prompt loading, and detection schema validation.
+- `agents/detection_agent.py` selects the Page 23, Ada, and ordinary
+  Detection paths and owns the Registry handoff. The visual fallback shares
+  structural admission with the native-graphic Page 23 path.
+  `agents/ocr_rendering.py` runs Mistral and local coordinate OCR.
+  Coordinate readings are bound after Membership in an audit.
+- The V8.4.9 local post-cleanup checkpoint is
+  `detection-v8.4.9-post-cleanup-checkpoint-2026-11-10`. Its exact replay
+  inputs and restore instructions are indexed by
+  `notes/evidence/detection-v8.4.9-post-cleanup-checkpoint.json`.
 - `db/` contains Supabase client and repositories.
 - `db/sql/2026_09_24_machinery_foundation.sql` is the additive Machinery schema
   and catalog seed. It does not modify the prototype `company_machines` table.

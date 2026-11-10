@@ -1,5 +1,11 @@
 # Done Log
 
+Detection V8.4.9 local post-cleanup checkpoint `3f3f157`: retired seven
+historical entry points. Restored replay matched requests and results for
+Adda, Lev 1, Lev 2, Page 23, HSL 07, and the visual fallback. 406 tests
+passed, with one pre-existing Processing failure. Tag `detection-v8.4.9-post-cleanup-checkpoint-2026-11-10`.
+Evidence and restore manifest: `notes/evidence/detection-v8.4.9-post-cleanup-checkpoint.json`.
+
 Detection V8.4.8 local checkpoint `6c552b3`: the owner accepted the Adda
 repair. Two independent Sonnet requests on the Ada route preserve exhaustive
 same-sheet checks and separate Membership. Adda returned the exact two
