@@ -90,6 +90,16 @@ technical detail and made it its own singleton package. The visual
 evidence owner is the view directly above it. That is a role and ownership
 witness, not acceptance of the other N57 groups.
 
+[verified] The exact HSL source is shared by the accepted V6.25 run
+`run_2dceafe62d3440668ca56b6b74101cc8` and the V8.4.9 replay.
+V6.25 retained the same strip as a View, but linked it to P04.V4 within
+one N57 object. The separate-object outcome already occurs in the saved
+Haiku 5.5 run `run_e508dea053ae472d9038a0b8047c8ed9`, before the new
+coordinate OCR audit. In that run and the final V8.4.9 run, all seven
+P04 Views are singleton components. This establishes the output regression
+between these witnesses. It does not isolate the first affected version
+or the cause of the broader page split.
+
 These rectangles are frozen regression references, not an independently
 redrawn, exhaustive region inventory. HSL's full grouping remains
 unlabelled. A separate unseen drawing is required before using this

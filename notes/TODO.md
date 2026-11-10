@@ -336,6 +336,16 @@ classified as a separate detail. The offline group-cost prototype preserved
 accepted groups but did not recover two failed Adda partitions. Record:
 `notes/DETECTION_V8_4_9_RESEARCH_ROUND_1_2026_11_10.md`.
 
+PENDING PROPOSAL, P1, Detection dimension-only region ownership:
+The accepted HSL 07 V6.25 run kept the P04 strip in the N57 package.
+The Haiku 5.5 witness preceding coordinate OCR and the frozen V8.4.9 run
+both publish the same strip as its own object. Test a bounded Discovery
+role correction before Membership on saved inputs. Require visible
+dimension-only content, no object geometry, and a uniquely supported
+parent View. Keep the numeric evidence on that View and protect
+genuine sparse technical details. Investigate the broader N57 split
+separately from the strip's role.
+
 PENDING RESEARCH, P2, Detection reference validation:
 When prioritized, independently annotate one unseen drawing end to end.
 Test automatic localization of the two Adda misses only with a bounded
