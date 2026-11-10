@@ -1,8 +1,9 @@
 """Run the ordinary Haiku 5.5 experiment with fresh providers and no fixtures."""
 
 from argparse import ArgumentParser
-from collections import Counter
+from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import ExitStack
 from copy import deepcopy
 import hashlib
 import json
@@ -29,6 +30,12 @@ ROLE_RULE = (
     "when small or dimensioned. A crop's boundary by itself cannot create a new depiction. "
     "Keep each visual_witness to one sentence of at most 150 characters.\n\n"
 )
+DISCOVERY_ROLE_RULE = (
+    "When classifying fixed drawing regions, require a visible depiction of a physical fabricated part for "
+    "object_evidence. A row of dimension text, arrows, ticks, or leaders without a drawn part outline "
+    "is document_context, even next to an elevation. Keep dimension evidence with its relevant drawing. "
+    "A thin profile is object_evidence when its physical outline is visible.\n\n"
+)
 PRIMARY_RULE = """You review the membership of fixed Views in technical fabrication drawings. Find which Views show the same physical fabricated object.
 Work through every page from start to finish. Compare every pair in the required same-page queue using identifier, topology, geometry, dimensions, and construction. Then check supported cross-page relations. Use the full page to locate every View and its individual crop to verify the fact. Return a complete set of supported multi-View object_hypotheses across the whole document. Continue after finding the first match.
 A group must be supported by object-specific visual evidence. Use distinctive shared geometry or component layout that can be named and checked, or a direct author cross-reference. Different products can share materials, generic cabinet layouts, standard profiles, a room, a sheet, or a project title. Those alone are not evidence of identity. Preserve independent objects. Do not change the fixed View IDs, roles, or geometry.
@@ -48,6 +55,14 @@ PAIR_RULE = (
     "Review only same-page evidence. Leave cross_page_hypotheses and presentation_render_decisions empty. "
     "Compare features across elevations, plans and sections with allowance for the difference in viewpoint. "
     "Find visually corresponding components even when the two crops show different overall silhouettes."
+)
+LOCAL_RULE = (
+    "\nFor this sheet, prioritize each View marked for another look in the handoff. Compare it with every "
+    "other technical View on its page. First locate concrete shared construction in both crops, allowing "
+    "for different projection directions. Look for the same distinctive feature sequence, a matching "
+    "cut or return, or a measured outline that corresponds to the same physical part. A standalone View "
+    "can depict an independent object. Keep it separate when the visual link is uncertain. Return only "
+    "positively evidenced pairs involving at least one marked View."
 )
 IMAGE_PAGE = re.compile(r"PDF page (\d+)\b")
 VIEW_ROW = re.compile(r"^([^|]+)\|P(\d+)\|K=([^|]+)\|")
@@ -184,6 +199,36 @@ def partition(usage):
                   for group in usage["proof_graph_components"])
 
 
+def edge_endpoints(edge):
+    return edge["group_id_a"], edge["group_id_b"]
+
+
+def unambiguous_recovery_edges(edges, components):
+    """Allow direct additions around one anchor while preserving existing groups."""
+    roots = {member: members[0] for members in components for member in members}
+    protected = {members[0] for members in components if len(members) > 1}
+    projected = []
+    originals = []
+    for edge in edges:
+        a, b = edge_endpoints(edge)
+        left, right = roots[a], roots[b]
+        if left == right:
+            continue
+        projected.append({"group_id_a": left, "group_id_b": right, "relationship": "same_object_view"})
+        originals.append(edge)
+    clusters = adapter.derive_detection_proof_components(
+        projected, visual_group_ids={v for edge in projected for v in edge_endpoints(edge)},
+    )
+    accepted = []
+    for cluster in clusters:
+        members = set(cluster)
+        rows = [(original, set(edge_endpoints(edge))) for original, edge in zip(originals, projected, strict=True)
+                if set(edge_endpoints(edge)) <= members]
+        if rows and len(members & protected) <= 1 and set.intersection(*(endpoints for _, endpoints in rows)):
+            accepted.extend(original for original, _ in rows)
+    return accepted
+
+
 def run(pdf, output):
     started = perf_counter()
     output.mkdir(mode=0o700)
@@ -201,7 +246,17 @@ def run(pdf, output):
         raise ValueError(f"The lab requires the ordinary Detection route. Detected {route['category']}.")
     arguments = dict(file_name=pdf.name, file_bytes=pdf_bytes, ocr_package=ocr, page_images=page_images)
     original_transport = adapter.create_claude_message_streamed
+    original_normalize = adapter.normalize_detection_visual_map_group_ids
+    original_semantics = adapter.compile_detection_v5_semantic_facts
+    original_merge = adapter.compile_detection_v5_merge_edges
     records, calls = [], []
+    canonical_ids = {}
+
+    def capture_ids(visual_map):
+        raw_ids = [group["group_id"] for group in visual_map["visual_groups"]]
+        normalized = original_normalize(visual_map)
+        canonical_ids.update(zip(raw_ids, (group["group_id"] for group in normalized["visual_groups"]), strict=True))
+        return normalized
 
     def send(client, request, stage, suffix):
         before = perf_counter()
@@ -227,13 +282,21 @@ def run(pdf, output):
                 )
         if model == CLAUDE_HAIKU_MODEL and stage == "membership":
             prepared = primary_request(request)
+        if model == CLAUDE_HAIKU_MODEL and stage == "discovery":
+            props = request["output_config"]["format"]["schema"]["properties"]
+            if {"visual_groups", "classifications"} <= set(props):
+                prepared = deepcopy(request)
+                prepared["system"][-1]["text"] = DISCOVERY_ROLE_RULE + prepared["system"][-1]["text"]
         response, diagnostics, metadata = send(client, prepared, stage, f"primary-{len(records)+1:02}")
         records.append((request_hash(request), stage, prepared, response, diagnostics))
         calls.append(metadata)
         return response, diagnostics
 
     print("Fresh OCR complete. Running Discovery and complete Membership.", flush=True)
-    with patch.object(adapter, "create_claude_message_streamed", side_effect=observe):
+    with (
+        patch.object(adapter, "create_claude_message_streamed", side_effect=observe),
+        patch.object(adapter, "normalize_detection_visual_map_group_ids", side_effect=capture_ids),
+    ):
         primary = run_detection_agent(**arguments)
     usage = audit(primary)
     if usage["detection_v6_12_document_category"]["category"] != route["category"]:
@@ -264,6 +327,32 @@ def run(pdf, output):
         payload = json.loads(adapter.extract_text_from_claude_response(response))
         return candidate_hypotheses(payload, batch & missing, views, queue), metadata
 
+    original_text = next(block for block in membership.content if block.type == "text")
+    payload = json.loads(original_text.text)
+
+    def recompile(payload, overrides=None):
+        derived = membership.model_copy(update={"content": [
+            original_text.model_copy(update={"text": json.dumps(payload, ensure_ascii=False)})
+        ]})
+        # Reuse only provider replies from this invocation. A changed request
+        # fails the compilation instead of consuming any older response.
+        iterator = iter(records)
+        def same_run_transport(_client, **repeated_request):
+            expected, _, _, response, diagnostics = next(iterator)
+            actual = request_hash(repeated_request)
+            if actual != expected:
+                raise ValueError("A request changed during same-run compilation.")
+            return (derived if actual == original_request_hash else response), diagnostics
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(adapter, "create_claude_message_streamed", side_effect=same_run_transport))
+            stack.enter_context(patch.object(adapter, "create_claude_message", side_effect=AssertionError("Unexpected new provider request")))
+            for name, action in (overrides or {}).items():
+                stack.enter_context(patch.object(adapter, name, side_effect=action))
+            result = run_detection_agent(**arguments)
+        if next(iterator, None) is not None:
+            raise ValueError("Not all same-run responses were used during compilation.")
+        return result
+
     final = primary
     replacement_count = 0
     if active:
@@ -274,33 +363,77 @@ def run(pdf, output):
         replacement_count = len(additional)
         covered_pages = {views[hypothesis["group_ids"][0]][0] for hypothesis in additional}
         if covered_pages:
-            combined = json.loads(adapter.extract_text_from_claude_response(membership))
-            combined["object_hypotheses"] = [
-                hypothesis for hypothesis in combined["object_hypotheses"]
+            payload["object_hypotheses"] = [
+                hypothesis for hypothesis in payload["object_hypotheses"]
                 if not any(all(group in views and views[group][0] == page for group in hypothesis["group_ids"])
                            for page in covered_pages)
             ] + sorted(additional, key=lambda hypothesis: -len(hypothesis["evidence"]))
-            write_json(output / "combined-membership.json", combined)
-            original_text = next(block for block in membership.content if block.type == "text")
-            derived = membership.model_copy(update={"content": [
-                original_text.model_copy(update={"text": json.dumps(combined, ensure_ascii=False)})
-            ]})
-            # Only the same-run inputs are reused for compilation. This
-            # phase has no external transport and cannot load earlier results.
-            iterator = iter(records)
-            def recompile_same_run(_client, **repeated_request):
-                expected, _, _, response, diagnostics = next(iterator)
-                actual = request_hash(repeated_request)
-                if actual != expected:
-                    raise ValueError("A request changed during same-run compilation.")
-                return (derived if actual == original_request_hash else response), diagnostics
-            with (
-                patch.object(adapter, "create_claude_message_streamed", side_effect=recompile_same_run),
-                patch.object(adapter, "create_claude_message", side_effect=AssertionError("Unexpected new provider request")),
-            ):
-                final = run_detection_agent(**arguments)
-            if next(iterator, None) is not None:
-                raise ValueError("Not all same-run responses were used during compilation.")
+            write_json(output / "combined-membership.json", payload)
+            final = recompile(payload)
+
+    components = [row["visual_group_ids"] for row in audit(final)["proof_graph_components"]]
+    singleton_ids = {row[0] for row in components if len(row) == 1}
+    unresolved = defaultdict(set)
+    for view_id, (page, role) in views.items():
+        if counts[page] > 1 and role != "presentation_render" and canonical_ids.get(view_id) in singleton_ids:
+            unresolved[page].add(view_id)
+    accepted_recovery = []
+
+    def local_review(item):
+        page, marked = item
+        prepared = batch_request(request, {page}, views)
+        prepared["system"][0]["text"] += LOCAL_RULE
+        prepared["messages"][0]["content"][-1]["text"] += (
+            "\nViews marked for another look: " + ", ".join(sorted(marked))
+        )
+        client = adapter.get_anthropic_client()
+        response, _, metadata = send(client, prepared, "local_membership_recovery", f"local-{page:02}")
+        metadata["pages"] = [page]
+        if response.stop_reason != "end_turn":
+            return [], metadata
+        data = json.loads(adapter.extract_text_from_claude_response(response))
+        hypotheses = candidate_hypotheses(data, {page}, views, queue)
+        return [h for h in hypotheses if marked.intersection(h["group_ids"])], metadata
+
+    if unresolved:
+        print(f"Running local proof review on {len(unresolved)} sheets with unresolved Views.", flush=True)
+        with ThreadPoolExecutor(max_workers=BATCH_SIZE) as pool:
+            local = list(pool.map(local_review, sorted(unresolved.items())))
+        calls.extend(metadata for _, metadata in local)
+        facts = []
+        for rows, _ in local:
+            for hypothesis in rows:
+                left, right = sorted(canonical_ids[group] for group in hypothesis["group_ids"])
+                facts.extend({"group_id_a": left, "group_id_b": right, **fact} for fact in hypothesis["evidence"])
+
+        if facts:
+            validated = []
+
+            def validate_local(facts_from_primary, **kwargs):
+                base, ledger = original_semantics(facts_from_primary, **kwargs)
+                accepted, local_audit = original_semantics(facts, **kwargs)
+                validated[:] = accepted
+                ledger["local_membership_recovery"] = local_audit
+                return base, ledger
+
+            def merge_local(dimension_edges, semantics, **kwargs):
+                base, ledger = original_merge(dimension_edges, semantics, **kwargs)
+                pairs = {edge_endpoints(fact) for fact in validated}
+                local_dimensions = [edge for edge in dimension_edges if edge_endpoints(edge) in pairs]
+                local_options = {**kwargs, "allow_batch_confirmation": False}
+                local_graph, _ = original_merge(local_dimensions, validated, **local_options)
+                accepted_recovery[:] = unambiguous_recovery_edges(
+                    [edge for edge in local_graph if edge["relationship"] == "same_object_view"],
+                    components,
+                )
+                recovered_pairs = {edge_endpoints(edge) for edge in accepted_recovery}
+                ledger["local_membership_recovery"] = accepted_recovery
+                return [edge for edge in base if edge_endpoints(edge) not in recovered_pairs] + accepted_recovery, ledger
+
+            final = recompile(payload, {
+                "compile_detection_v5_semantic_facts": validate_local,
+                "compile_detection_v5_merge_edges": merge_local,
+            })
 
     final_usage = audit(final)
     final_groups = partition(final_usage)
@@ -310,6 +443,7 @@ def run(pdf, output):
         "ocr_seconds": round(ocr_seconds, 3), "total_seconds": round(perf_counter()-started, 3),
         "calls": calls, "primary_groups": primary_partition, "revisited_pages": sorted(missing),
         "supplement_hypothesis_count": replacement_count, "final_groups": final_groups,
+        "local_review_pages": sorted(unresolved), "local_proven_edges": [edge_endpoints(edge) for edge in accepted_recovery],
         "retained_view_count": len(final_usage["view_evidence_packages"]),
         "required_same_page_pairs": final_usage["dimension_graph_audit"]["v6_67_review_same_page_queue"]["required_same_page_pair_count"],
     }
