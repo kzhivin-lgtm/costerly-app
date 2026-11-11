@@ -70,7 +70,8 @@ selected tests passed, including unavailable text, omitted coverage, timeout,
 source contradictions, and historical partial review. Final fresh Upload
 confirmed 15/15 pages on Floor 06 and 11/11 on Floor 07 without recovery.
 
-PENDING, P0. Verify Floor 06 at normal OCR concurrency before V8.4.16 rollout.
+PENDING, P0. Verify Floor 06 at normal OCR concurrency on production.
+V8.4.17 shipped the V8.4.16 Discovery checkpoint plus native dimension chains.
 Three standard attempts hit Mistral write timeouts. With one worker in the
 harness, all 15 pages completed fresh OCR and Detection published 26 objects
 with 26 names. The earlier 13-object production witness remains the grouping

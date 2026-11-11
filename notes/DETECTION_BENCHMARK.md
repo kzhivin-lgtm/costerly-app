@@ -25,8 +25,10 @@ Geometry processing on the archived inputs took 3.135 seconds on Floor
 0.02 seconds in both cases. All 424 selected tests passed. Geometry does not
 request another model call.
 Evidence: `output/detection-v8417-dimension-chains/`. The source PDF must
-contain usable vector lines and ticks. Fresh Upload and production rollout
-remain pending.
+contain usable vector lines and ticks. Production is on `b159eca`.
+Railway and the public wrapper passed release checks. The release receipt is
+`output/detection-v8417-dimension-chains/deployment-receipt.json`.
+The first production Upload and chain audit are pending.
 
 ## V8.4.16 candidate, ordinary Discovery page verification
 
