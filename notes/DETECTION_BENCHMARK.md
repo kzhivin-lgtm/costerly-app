@@ -19,6 +19,12 @@ selected regression tests passed. Fresh full Floor 07 Upload
 `run_b1e959a508c243e6bf935a1125c0e674` confirmed all 11 pages, retained
 33 Views, chose centimeters and saved 9 object names in 114.935 seconds
 through File Review. The unattached P11.V3 technical detail was excluded.
+The same fresh inputs and archived replies produced the identical
+nine-object partition under the previous unit inference. The real
+improvement is the controlled 23-to-13 result above. In the fresh run,
+the dimensioned P11.V2 elevation was classified as an unattached render
+and omitted under both unit rules. Floor 07 object count alone does not
+establish complete evidence retention on P11.
 
 In the separate 17-object run `run_d0c489bd78ce44c18f0c79db004a0274`, Mistral
 returned all 11 pages and the native PDF inspection hit its 45-second

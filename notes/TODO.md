@@ -134,6 +134,13 @@ attachment evidence. Floor 06 P04 in
 `run_6bf38c6017d046ffa0c2906bbe1ddf97` mislabeled the render as technical
 and the plan as a render. Verify role correction with the actual image
 and plan and protect the verified P04 elevation link.
+The Floor 07 V8.4.19 fresh witness
+`run_b1e959a508c243e6bf935a1125c0e674` classified dimensioned elevation P11.V2
+as a render and omitted it as unattached. Visual inspection of the source
+crop confirms an orthographic drawing. The exact V8.4.18 unit-rule replay
+preserves the omission, so this is a role-classification witness independent
+of the threshold change. Verify the elevation remains object evidence and
+the neighboring unattached technical detail still follows its own policy.
 
 ACTIVE, P0, recover evidence-backed ordinary Membership on HSL Floor 06.
 Production run `run_24f9ed47537c41758129081ddda9e60a` had 62 Views,
