@@ -8,6 +8,9 @@ and preserved the 10-group Floor 07 control. Production Floor 06 run
 `run_dce43f565ef64a47b1965bd71f97a101` published the owner-reported 13
 objects. Keep the exact witness. Verify repeat Upload stability,
 individual View coverage on P03–P08, and positive render attachment.
+V8.4.21 Floor 06 isolated role classification changes on P03/P07 and weak
+cross-package links on P13. Use the split-sheet diagnosis in the Detection
+benchmark to check each case against its historical witness.
 Track evidence and any incorrect merges in
 `notes/DETECTION_V8_4_13_DIMENSION_MEMBERSHIP_2026_11_10.md`.
 
@@ -21,8 +24,7 @@ Fresh full Floor 07 Upload saved 9 names and retained complete page
 coverage. The separate title-block evidence classification draft remains
 pending.
 
-PENDING, P0. Identify the native PDF worker stall and preserve dimension
-evidence on a partial failure. Floor 07 production
+VERIFIED LOCALLY, P0. Remove the native PDF worker startup stall. Floor 07 production
 `run_d0c489bd78ce44c18f0c79db004a0274` received all 11 Mistral pages, but the
 native PDF worker did not return within 45 seconds. The compiler received
 zero dimension occurrences and published 17 objects. Restoring the identical
@@ -30,9 +32,14 @@ file's native text with the same Views and membership evidence yielded 10
 groups. V8.4.20 adds launch, read and transfer marks to the existing OCR
 usage event. Owner run `run_9b2068aee6dc4415a00bf6c8e009f941` verified
 all three marks in production. All 11 pages and 969 text spans completed
-with exit code 0. On the next timeout, use the last mark and container
-metrics to distinguish launch, parsing and result delivery. Retaining
-native text after a later graphics failure remains a separate task.
+with exit code 0. V8.4.21 owner run
+`run_35b253130e314e7fb9a19ace46ef8d31` timed out with only `parent_started`
+and no child progress. V8.4.22 replaces fork with a fresh interpreter.
+The threaded reproduction and fresh local OCR passed, including all 969
+Floor 07 spans and the N76B P11 attachment. Verify a fresh production upload.
+Passing coordinate OCR into the compiler when native data is unavailable
+and retaining native text after a later graphics failure remain separate
+follow-ups.
 
 PENDING, P1. Preserve complete dimension chains in the evidence envelope
 when the chain has a unique View owner. In the Floor 07 production
@@ -70,6 +77,8 @@ initial link. The V8.4.17 production replay found a late V1/V2 proof
 added after batch expansion. Passing the same proof to the primary
 compiler joins V3 through the existing 79.075-point V2/V3 edge.
 V8.4.20 had topology evidence in the primary review and joined all three.
+In the V8.4.22 local Floor 07 run, N60 had four Views and no accepted
+semantic links. V1/V4 reached 100, but all four Views stayed separate.
 Evaluate reusing bounded same-page expansion after late proof. P06's 375
 plus the ordered 64/61 spans is a positive control. An independent pair
 sharing one major dimension is a negative control.
@@ -81,8 +90,11 @@ independent source measurements support one previously confirmed same-sheet
 package. The production evidence replay attaches the plan at 40, keeps
 nine objects, and preserves other sheet partitions. The fresh Floor 06
 run published 17 objects with identical V8.4.20 and V8.4.21 compiler
-partitions on its saved evidence. A fresh Floor 07 production upload
-remains the N76B acceptance check.
+partitions on its saved evidence. A fresh Floor 07 upload met the object
+count range, but P11 had no compiler dimensions after the native PDF
+worker launch timeout. V8.4.22 local run `run_d250b8fb7f0d4304aa624c608b6bc63e`
+attached V1 at 40 and published all three P11 Views together. Production
+verification remains open.
 
 VERIFIED ON SAVED EVIDENCE, P1. V8.4.18 supporting singleton publication.
 An unattached supporting plan or technical detail remains in Membership and

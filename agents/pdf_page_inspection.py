@@ -12,10 +12,14 @@ from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass, field
 from io import BytesIO
-import multiprocessing
+from multiprocessing.connection import Connection, Pipe
+from pathlib import Path
 import re
+import subprocess
+import sys
+from tempfile import TemporaryFile
 import time
-from typing import Any
+from typing import Any, BinaryIO
 
 
 PDF_PAGE_INSPECTION_CONTRACT_VERSION = "pdf_page_inspection_v1"
@@ -571,7 +575,7 @@ def compact_page_profile_audit(ocr_package: dict[str, Any] | None) -> list[dict[
 
 
 def _isolated_native_page_inspection_worker(
-    file_bytes: bytes, dpi: int, connection: Any,
+    source: BinaryIO, dpi: int, connection: Connection,
 ) -> None:
     started = time.perf_counter()
     cpu_started = time.process_time()
@@ -586,7 +590,7 @@ def _isolated_native_page_inspection_worker(
 
     try:
         progress("launch", "worker_ready")
-        result = inspect_native_pdf_pages(file_bytes, dpi=dpi, progress=progress)
+        result = inspect_native_pdf_pages(source.read(), dpi=dpi, progress=progress)
         progress("transfer", "sending_result")
         connection.send(("ok", result))
     except BrokenPipeError:
@@ -614,8 +618,8 @@ class NativePdfPageInspectionJob:
     pages to OCR while this work is in flight, then collect one bounded result.
     """
 
-    process: Any
-    receive: Any
+    process: subprocess.Popen
+    receive: Connection
     started: float = field(default_factory=time.perf_counter)
     launch_seconds: float = 0.0
 
@@ -655,13 +659,17 @@ class NativePdfPageInspectionJob:
                 result = payload if status == "ok" else _failed_isolated_inspection(str(payload))
                 break
         finally:
-            if timed_out:
-                self.process.terminate()
             self.receive.close()
-            self.process.join(timeout=2)
+            if timed_out:
+                self.process.kill()
+            try:
+                self.process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+                self.process.wait()
         result["worker_telemetry"] = {
             "worker_pid": self.process.pid,
-            "worker_exit_code": self.process.exitcode,
+            "worker_exit_code": self.process.returncode,
             "timeout_seconds": timeout_seconds,
             "elapsed_seconds": round(time.perf_counter() - self.started, 6),
             "last_phase": last_phase,
@@ -673,17 +681,21 @@ class NativePdfPageInspectionJob:
 def start_native_pdf_pages_isolated(
     file_bytes: bytes, *, dpi: int,
 ) -> NativePdfPageInspectionJob:
-    """Start a PyMuPDF inspection before renderer threads are created."""
-    context = multiprocessing.get_context("fork")
-    receive, send = context.Pipe(duplex=False)
-    process = context.Process(
-        target=_isolated_native_page_inspection_worker,
-        args=(file_bytes, dpi, send),
-    )
+    """Start a fresh interpreter without copying the application's threads and locks."""
+    receive, send = Pipe(duplex=False)
     started = time.perf_counter()
     try:
-        process.start()
-    except Exception:
+        with TemporaryFile() as source:
+            source.write(file_bytes)
+            source.seek(0)
+            result_fd = send.fileno()
+            process = subprocess.Popen(
+                [sys.executable, str(Path(__file__).resolve()), str(dpi), str(result_fd)],
+                stdin=source,
+                stdout=subprocess.DEVNULL,
+                pass_fds=(result_fd,),
+            )
+    except BaseException:
         receive.close()
         raise
     finally:
@@ -699,3 +711,10 @@ def inspect_native_pdf_pages_isolated(
 ) -> dict[str, Any]:
     """Contain PyMuPDF vector parsing away from threaded page rendering."""
     return start_native_pdf_pages_isolated(file_bytes, dpi=dpi).collect()
+
+
+if __name__ == "__main__":
+    dpi_arg, result_fd_arg = sys.argv[1:]
+    _isolated_native_page_inspection_worker(
+        sys.stdin.buffer, int(dpi_arg), Connection(int(result_fd_arg), readable=False),
+    )

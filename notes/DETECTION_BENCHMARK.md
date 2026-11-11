@@ -1,5 +1,39 @@
 # Detection Agent benchmark
 
+## V8.4.22, native PDF worker startup
+
+V8.4.21 production run `run_35b253130e314e7fb9a19ace46ef8d31` reached the
+45-second timeout with a child PID and no `worker_ready` mark. A controlled
+threaded reproduction held a lock and blocked the forked child before its
+entry point, yielding the same launch marks and empty native evidence. The
+new launcher executes the same inspection in a fresh Python interpreter,
+keeps the evidence pipe and progress marks, and reaps the worker on failure.
+The timeout remains 45 seconds. The controlled reproduction demonstrates
+the fork failure mode. The specific production lock was not observed.
+
+The new worker read Floor 07 with the parent lock held in 2.23 seconds.
+Three concurrent checks per floor returned consistent output: Floor 06
+15 pages and 1,347 native text spans, Floor 07 11 pages and 969 spans.
+The healthy V8.4.21 and V8.4.22 workers returned identical text blocks,
+graphic regions and vector evidence on both PDFs.
+All 252 selected regression tests passed.
+
+Fresh local processing with live Mistral and Haiku calls completed Floor 07
+as `run_d250b8fb7f0d4304aa624c608b6bc63e`, confirming 11 sheets and 33 Views.
+The two 345 measurements and the 349 measurement reached Fingerprint.
+P11.V2/V3 joined at 93.75 dimensional points, and the one-position rule
+attached V1 at 40 with independent 345 measurements in both Views. The
+document published 12 objects in the harness. P05 contributed four groups:
+its 100-point V1/V4 edge had no accepted proof to initiate the merge. This
+run verifies the PDF and P11 fixes and misses the 9–10 object target.
+
+Fresh local Floor 06 run `run_72d682899bac46418a2f56cccdd80f63` read all
+15 sheets and 1,347 native text spans. It completed with 52 Views and 25
+objects. On P13 it retained seven Views and 20 of the 21 prior pair scores
+exactly, and improved the remaining score. The prior run accepted six
+topology and geometry facts on P13. The new run accepted none, and P13
+published six objects instead of two. Floor 06 grouping remains open.
+
 ## V8.4.21, one-position Fingerprint weight
 
 The short Fingerprint covers one to four dimension positions. A stable,
@@ -28,7 +62,39 @@ partition on the same frozen inputs. The only one-position bonus raised
 P09.V2/V4 from 5.12 to 20.48 and did not enter commercial membership.
 The strongest between-group dimensional scores on P03, P07 and P13
 were 7, 32 and 35.625. PDF inspection completed all 15 pages with exit
-code 0 and returned 1,347 text spans. Fresh Floor 07 acceptance remains open.
+code 0 and returned 1,347 text spans.
+
+Floor 06 split-sheet diagnosis on the same saved run:
+
+- P03 Discovery labeled the render block V1 as an elevation. It received no
+  dimension facts or accepted joins and bypassed the render-only publication
+  gate. The lower-left detail V4 reached 7 points. V8.4.12 attached that same
+  detail by dominant-page context after excluding the renders. The new run
+  had two standalone Views alongside the six-View package, so that rule did
+  not run. V8.4.13 grouped the render area with technical drawings inside a
+  single Discovery View.
+- P07 V2/V7 matched 31 once for 15.625 points. V4/V7 and V5/V7 matched 60
+  and 70 for 32 points each, below the 40-point batch threshold. V8.4.12
+  recognized V1 as technical and attached V7 to the resulting six-View
+  package through dominant-page context. V8.4.21 classified V1 as a render
+  and the separate render pass returned `no_match`. V1 was excluded,
+  leaving five Views in the package.
+- P13 V2 matched V3 and V6 at 10, 25 and 36 for 35.625 points per pair.
+  Topology and geometry joined V3/V6 to each other, with no accepted
+  semantic link to the other package. V8.4.13 supplied those cross-package
+  links through geometry and topology and published all six Views together.
+
+The owner's fresh Floor 07 upload `run_35b253130e314e7fb9a19ace46ef8d31`
+confirmed all 11 pages and published 10 objects in 83.445 seconds. P11 was
+the only split sheet. Discovery retained 11 Views versus 32 in the V8.4.20
+witness. The native PDF worker reached the deadline without sending
+`worker_ready`. It returned zero native text spans and graphic regions.
+On P11, coordinate OCR read 345 on V2/V3 in the post-registry audit. All
+three P11 Views had empty compiler dimension inventories and every pair
+scored zero. The location plan V1 was excluded and V2/V3 published as
+separate objects. Both 349 and 345 are present in the original PDF text
+layer. The fresh run meets the count range, with P11 attachment and View
+recall still open.
 
 ## V8.4.20, native PDF worker telemetry
 

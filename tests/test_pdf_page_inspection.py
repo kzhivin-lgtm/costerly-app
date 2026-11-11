@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from io import BytesIO
-import time
+import subprocess
+import sys
 
 import fitz
 from PIL import Image, ImageDraw
@@ -146,17 +147,67 @@ def test_default_ocr_path_attaches_profile_without_changing_ocr_provider_contrac
 
 
 
+def test_native_inspection_starts_while_a_parent_thread_holds_a_lock():
+    control = """
+from concurrent.futures import ThreadPoolExecutor
+import os
+import sys
+from threading import Lock
+
+from agents.pdf_page_inspection import start_native_pdf_pages_isolated
+
+pdf = sys.stdin.buffer.read()
+lock = Lock()
+# A forked worker would block on the inherited lock before reaching its entry point.
+os.register_at_fork(after_in_child=lock.acquire)
+
+def inspect():
+    return start_native_pdf_pages_isolated(pdf, dpi=200).collect(timeout_seconds=3)
+
+with lock, ThreadPoolExecutor(max_workers=1) as executor:
+    result = executor.submit(inspect).result()
+assert result['sources']['status'] == 'succeeded', result['worker_telemetry']
+assert len(result['text_blocks']) == 1
+assert len(result['page_profiles']) == 2
+assert result['worker_telemetry']['worker_exit_code'] == 0
+"""
+    subprocess.run([sys.executable, "-c", control], input=_sample_pdf(), check=True, timeout=10)
+
+
+def _start_worker_with_stall(monkeypatch, setup):
+    worker = """
+from multiprocessing.connection import Connection
+import sys
+import time
+
+from agents import pdf_page_inspection
+""" + setup + """
+dpi, result_fd = map(int, sys.argv[1:])
+pdf_page_inspection._isolated_native_page_inspection_worker(
+    sys.stdin.buffer, dpi, Connection(result_fd, readable=False),
+)
+"""
+    popen = subprocess.Popen
+
+    def launch(command, **options):
+        return popen([command[0], "-c", worker, *command[2:]], **options)
+
+    monkeypatch.setattr(pdf_page_inspection.subprocess, "Popen", launch)
+    return pdf_page_inspection.start_native_pdf_pages_isolated(_sample_pdf(), dpi=200)
+
+
 def test_native_inspection_timeout_retains_the_page_and_source_in_progress(monkeypatch):
-    original = pdf_page_inspection._native_text_blocks_for_page
+    job = _start_worker_with_stall(monkeypatch, """
+original = pdf_page_inspection._native_text_blocks_for_page
 
-    def stall_second_page(page, *, page_number, dpi):
-        if page_number == 2:
-            time.sleep(20)
-        return original(page, page_number=page_number, dpi=dpi)
+def stall_second_page(page, *, page_number, dpi):
+    if page_number == 2:
+        time.sleep(20)
+    return original(page, page_number=page_number, dpi=dpi)
 
-    monkeypatch.setattr(pdf_page_inspection, "_native_text_blocks_for_page", stall_second_page)
-    job = pdf_page_inspection.start_native_pdf_pages_isolated(_sample_pdf(), dpi=200)
-    result = job.collect(timeout_seconds=1)
+pdf_page_inspection._native_text_blocks_for_page = stall_second_page
+""")
+    result = job.collect(timeout_seconds=2)
 
     assert result["sources"]["error"] == "inspection timeout"
     telemetry = result["worker_telemetry"]
@@ -170,17 +221,15 @@ def test_native_inspection_timeout_retains_the_page_and_source_in_progress(monke
 
 
 def test_native_inspection_timeout_after_reading_records_result_transfer(monkeypatch):
-    class StalledResult(dict):
-        def __reduce__(self):
-            time.sleep(20)
-            return super().__reduce__()
+    job = _start_worker_with_stall(monkeypatch, """
+class StalledResult(dict):
+    def __reduce__(self):
+        time.sleep(20)
+        return super().__reduce__()
 
-    def return_stalled_payload(*args, **kwargs):
-        return StalledResult()
-
-    monkeypatch.setattr(pdf_page_inspection, "inspect_native_pdf_pages", return_stalled_payload)
-    job = pdf_page_inspection.start_native_pdf_pages_isolated(_sample_pdf(), dpi=200)
-    result = job.collect(timeout_seconds=1)
+pdf_page_inspection.inspect_native_pdf_pages = lambda *args, **kwargs: StalledResult()
+""")
+    result = job.collect(timeout_seconds=2)
 
     assert result["sources"]["error"] == "inspection timeout"
     assert result["worker_telemetry"]["last_phase"] == "transfer"
