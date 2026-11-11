@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from io import BytesIO
-import subprocess
-import sys
 
 import fitz
 from PIL import Image, ImageDraw
@@ -11,7 +9,6 @@ from agents.detection_fusion_candidate_regions import (
     build_detection_fusion_page_profile_audit,
     format_detection_fusion_page_profiles,
 )
-from agents import pdf_page_inspection
 from agents.ocr_adapter import build_ocr_evidence
 from agents.ocr_rendering import run_mistral_document_evidence_ocr
 from agents.pdf_page_inspection import (
@@ -130,107 +127,8 @@ def test_default_ocr_path_attaches_profile_without_changing_ocr_provider_contrac
 
     assert package["native_pdf_inspection"]["status"] == "succeeded"
     assert package["native_pdf_inspection"]["profile_count"] == 2
-    telemetry = package["native_pdf_inspection"]["worker_telemetry"]
-    assert telemetry["worker_exit_code"] == 0
-    assert telemetry["last_phase"] == "transfer"
-    launch, read, transfer = (telemetry["marks"][phase] for phase in ("launch", "read", "transfer"))
-    assert launch["stage"] == "pdf_opened" and launch["page_count"] == 2
-    assert launch["worker_ready_after_seconds"] <= launch["pdf_opened_after_seconds"]
-    assert read["last_completed_page"] == 2 and read["text_span_count"] == 1
-    assert transfer["stage"] == "result_received"
-    assert transfer["sending_result_after_seconds"] <= transfer["result_received_after_seconds"]
     assert len(package["evidence"]["page_profiles"]) == 2
     assert all(
         profile["rendered_page"]["status"] == "succeeded"
         for profile in package["evidence"]["page_profiles"]
     )
-
-
-
-def test_native_inspection_starts_while_a_parent_thread_holds_a_lock():
-    control = """
-from concurrent.futures import ThreadPoolExecutor
-import os
-import sys
-from threading import Lock
-
-from agents.pdf_page_inspection import start_native_pdf_pages_isolated
-
-pdf = sys.stdin.buffer.read()
-lock = Lock()
-# A forked worker would block on the inherited lock before reaching its entry point.
-os.register_at_fork(after_in_child=lock.acquire)
-
-def inspect():
-    return start_native_pdf_pages_isolated(pdf, dpi=200).collect(timeout_seconds=3)
-
-with lock, ThreadPoolExecutor(max_workers=1) as executor:
-    result = executor.submit(inspect).result()
-assert result['sources']['status'] == 'succeeded', result['worker_telemetry']
-assert len(result['text_blocks']) == 1
-assert len(result['page_profiles']) == 2
-assert result['worker_telemetry']['worker_exit_code'] == 0
-"""
-    subprocess.run([sys.executable, "-c", control], input=_sample_pdf(), check=True, timeout=10)
-
-
-def _start_worker_with_stall(monkeypatch, setup):
-    worker = """
-from multiprocessing.connection import Connection
-import sys
-import time
-
-from agents import pdf_page_inspection
-""" + setup + """
-dpi, result_fd = map(int, sys.argv[1:])
-pdf_page_inspection._isolated_native_page_inspection_worker(
-    sys.stdin.buffer, dpi, Connection(result_fd, readable=False),
-)
-"""
-    popen = subprocess.Popen
-
-    def launch(command, **options):
-        return popen([command[0], "-c", worker, *command[2:]], **options)
-
-    monkeypatch.setattr(pdf_page_inspection.subprocess, "Popen", launch)
-    return pdf_page_inspection.start_native_pdf_pages_isolated(_sample_pdf(), dpi=200)
-
-
-def test_native_inspection_timeout_retains_the_page_and_source_in_progress(monkeypatch):
-    job = _start_worker_with_stall(monkeypatch, """
-original = pdf_page_inspection._native_text_blocks_for_page
-
-def stall_second_page(page, *, page_number, dpi):
-    if page_number == 2:
-        time.sleep(20)
-    return original(page, page_number=page_number, dpi=dpi)
-
-pdf_page_inspection._native_text_blocks_for_page = stall_second_page
-""")
-    result = job.collect(timeout_seconds=2)
-
-    assert result["sources"]["error"] == "inspection timeout"
-    telemetry = result["worker_telemetry"]
-    assert telemetry["last_phase"] == "read"
-    assert telemetry["worker_exit_code"] < 0
-    assert telemetry["marks"]["launch"]["stage"] == "pdf_opened"
-    read = telemetry["marks"]["read"]
-    assert (read["stage"], read["page_number"], read["last_completed_page"]) == ("native_text", 2, 1)
-    assert read["text_span_count"] == 1
-    assert telemetry["marks"]["transfer"]["stage"] == "pending"
-
-
-def test_native_inspection_timeout_after_reading_records_result_transfer(monkeypatch):
-    job = _start_worker_with_stall(monkeypatch, """
-class StalledResult(dict):
-    def __reduce__(self):
-        time.sleep(20)
-        return super().__reduce__()
-
-pdf_page_inspection.inspect_native_pdf_pages = lambda *args, **kwargs: StalledResult()
-""")
-    result = job.collect(timeout_seconds=2)
-
-    assert result["sources"]["error"] == "inspection timeout"
-    assert result["worker_telemetry"]["last_phase"] == "transfer"
-    assert result["worker_telemetry"]["marks"]["transfer"]["stage"] == "sending_result"

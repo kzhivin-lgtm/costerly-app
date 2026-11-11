@@ -8,18 +8,13 @@ Form XObject, a vector cluster, or an image placement is never an object.
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Callable
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from io import BytesIO
-from multiprocessing.connection import Connection, Pipe
-from pathlib import Path
+import multiprocessing
 import re
-import subprocess
-import sys
-from tempfile import TemporaryFile
 import time
-from typing import Any, BinaryIO
+from typing import Any
 
 
 PDF_PAGE_INSPECTION_CONTRACT_VERSION = "pdf_page_inspection_v1"
@@ -274,14 +269,8 @@ def inspect_native_pdf_pages(
     file_bytes: bytes,
     *,
     dpi: int,
-    progress: Callable[..., None] | None = None,
 ) -> dict[str, Any]:
     """Inspect every PDF page once and return only compact structural facts."""
-
-    def mark(phase: str, stage: str, **details: Any) -> None:
-        if progress is not None:
-            progress(phase, stage, **details)
-
     try:
         import fitz
     except (ImportError, ModuleNotFoundError) as exc:
@@ -299,7 +288,6 @@ def inspect_native_pdf_pages(
     graphic_regions: list[dict[str, Any]] = []
     vector_line_segments: list[dict[str, Any]] = []
     profiles: list[dict[str, Any]] = []
-    mark("launch", "opening_pdf")
     try:
         document = fitz.open(stream=file_bytes, filetype="pdf")
     except Exception as exc:
@@ -315,16 +303,11 @@ def inspect_native_pdf_pages(
             },
         }
     try:
-        page_count = len(document)
-        mark("launch", "pdf_opened", page_count=page_count)
-        for page_index in range(1, page_count + 1):
-            mark("read", "loading_page", page_number=page_index)
-            page = document[page_index - 1]
+        for page_index, page in enumerate(document, start=1):
             page_rect = page.rect * page.rotation_matrix
             page_width, page_height = float(page_rect.width), float(page_rect.height)
 
             page_sources: dict[str, dict[str, Any]] = {}
-            mark("read", "native_text", page_number=page_index)
             started_source = time.perf_counter()
             try:
                 page_text_blocks = _native_text_blocks_for_page(
@@ -340,10 +323,6 @@ def inspect_native_pdf_pages(
             source_seconds["native_text"] += text_seconds
             page_sources["native_text"]["seconds"] = round(text_seconds, 6)
 
-            mark(
-                "read", "image_xobjects", page_number=page_index,
-                text_span_count=len(text_blocks) + len(page_text_blocks),
-            )
             started_source = time.perf_counter()
             try:
                 page_graphics = _native_image_regions_for_page(
@@ -361,7 +340,6 @@ def inspect_native_pdf_pages(
             source_seconds["image_xobjects"] += image_seconds
             page_sources["image_xobjects"]["seconds"] = round(image_seconds, 6)
 
-            mark("read", "form_xobjects", page_number=page_index)
             started_source = time.perf_counter()
             try:
                 raw_xobjects = page.get_xobjects()
@@ -378,7 +356,6 @@ def inspect_native_pdf_pages(
             source_seconds["form_xobjects"] += form_seconds
             page_sources["form_xobjects"]["seconds"] = round(form_seconds, 6)
 
-            mark("read", "vector_summary", page_number=page_index)
             started_source = time.perf_counter()
             content_stream = b""
             vector_stream_error: str | None = None
@@ -482,11 +459,6 @@ def inspect_native_pdf_pages(
             })
             text_blocks.extend(page_text_blocks)
             graphic_regions.extend(page_graphics)
-            mark(
-                "read", "page_completed", page_number=page_index,
-                last_completed_page=page_index, text_span_count=len(text_blocks),
-            )
-        mark("read", "closing_pdf", page_number=page_count)
     finally:
         document.close()
 
@@ -575,29 +547,11 @@ def compact_page_profile_audit(ocr_package: dict[str, Any] | None) -> list[dict[
 
 
 def _isolated_native_page_inspection_worker(
-    source: BinaryIO, dpi: int, connection: Connection,
+    file_bytes: bytes, dpi: int, connection: Any,
 ) -> None:
-    started = time.perf_counter()
-    cpu_started = time.process_time()
-
-    def progress(phase: str, stage: str, **details: Any) -> None:
-        connection.send(("progress", (phase, {
-            "stage": stage,
-            "worker_elapsed_seconds": round(time.perf_counter() - started, 6),
-            "worker_cpu_seconds": round(time.process_time() - cpu_started, 6),
-            **details,
-        })))
-
     try:
-        progress("launch", "worker_ready")
-        result = inspect_native_pdf_pages(source.read(), dpi=dpi, progress=progress)
-        progress("transfer", "sending_result")
-        connection.send(("ok", result))
-    except BrokenPipeError:
-        # The parent has stopped collecting and closed its end of the pipe.
-        pass
+        connection.send(("ok", inspect_native_pdf_pages(file_bytes, dpi=dpi)))
     except Exception as exc:  # pragma: no cover - child-process containment
-        progress("transfer", "sending_error")
         connection.send(("error", str(exc)))
     finally:
         connection.close()
@@ -618,92 +572,41 @@ class NativePdfPageInspectionJob:
     pages to OCR while this work is in flight, then collect one bounded result.
     """
 
-    process: subprocess.Popen
-    receive: Connection
-    started: float = field(default_factory=time.perf_counter)
-    launch_seconds: float = 0.0
+    process: Any
+    receive: Any
 
     def collect(self, *, timeout_seconds: float = 45.0) -> dict[str, Any]:
-        deadline = time.perf_counter() + timeout_seconds
-        marks: dict[str, dict[str, Any]] = {
-            "launch": {"stage": "parent_started", "launch_seconds": self.launch_seconds},
-            "read": {"stage": "pending", "last_completed_page": 0, "text_span_count": 0},
-            "transfer": {"stage": "pending"},
-        }
-        last_phase = "launch"
-        timed_out = False
         try:
-            while True:
-                remaining = deadline - time.perf_counter()
-                if remaining <= 0 or not self.receive.poll(remaining):
-                    timed_out = True
-                    result = _failed_isolated_inspection("inspection timeout")
-                    break
-                try:
-                    status, payload = self.receive.recv()
-                except (EOFError, OSError):
-                    result = _failed_isolated_inspection(
-                        "inspection worker exited without a result",
-                    )
-                    break
-                elapsed = round(time.perf_counter() - self.started, 6)
-                if status == "progress":
-                    last_phase, details = payload
-                    mark = marks[last_phase]
-                    mark.update(details, received_after_seconds=elapsed)
-                    if last_phase in {"launch", "transfer"}:
-                        mark[f"{details['stage']}_after_seconds"] = elapsed
-                    continue
-                last_phase = "transfer"
-                marks[last_phase].update(stage="result_received", result_received_after_seconds=elapsed)
-                result = payload if status == "ok" else _failed_isolated_inspection(str(payload))
-                break
+            if not self.receive.poll(timeout_seconds):
+                self.process.terminate()
+                return _failed_isolated_inspection("inspection timeout")
+            try:
+                status, payload = self.receive.recv()
+            except EOFError:
+                return _failed_isolated_inspection(
+                    "inspection worker exited without a result",
+                )
         finally:
             self.receive.close()
-            if timed_out:
-                self.process.kill()
-            try:
-                self.process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                self.process.kill()
-                self.process.wait()
-        result["worker_telemetry"] = {
-            "worker_pid": self.process.pid,
-            "worker_exit_code": self.process.returncode,
-            "timeout_seconds": timeout_seconds,
-            "elapsed_seconds": round(time.perf_counter() - self.started, 6),
-            "last_phase": last_phase,
-            "marks": marks,
-        }
-        return result
+            self.process.join(timeout=2)
+        if status == "ok":
+            return payload
+        return _failed_isolated_inspection(str(payload))
 
 
 def start_native_pdf_pages_isolated(
     file_bytes: bytes, *, dpi: int,
 ) -> NativePdfPageInspectionJob:
-    """Start a fresh interpreter without copying the application's threads and locks."""
-    receive, send = Pipe(duplex=False)
-    started = time.perf_counter()
-    try:
-        with TemporaryFile() as source:
-            source.write(file_bytes)
-            source.seek(0)
-            result_fd = send.fileno()
-            process = subprocess.Popen(
-                [sys.executable, str(Path(__file__).resolve()), str(dpi), str(result_fd)],
-                stdin=source,
-                stdout=subprocess.DEVNULL,
-                pass_fds=(result_fd,),
-            )
-    except BaseException:
-        receive.close()
-        raise
-    finally:
-        send.close()
-    return NativePdfPageInspectionJob(
-        process=process, receive=receive, started=started,
-        launch_seconds=round(time.perf_counter() - started, 6),
+    """Start a PyMuPDF inspection before renderer threads are created."""
+    context = multiprocessing.get_context("fork")
+    receive, send = context.Pipe(duplex=False)
+    process = context.Process(
+        target=_isolated_native_page_inspection_worker,
+        args=(file_bytes, dpi, send),
     )
+    process.start()
+    send.close()
+    return NativePdfPageInspectionJob(process=process, receive=receive)
 
 
 def inspect_native_pdf_pages_isolated(
@@ -711,10 +614,3 @@ def inspect_native_pdf_pages_isolated(
 ) -> dict[str, Any]:
     """Contain PyMuPDF vector parsing away from threaded page rendering."""
     return start_native_pdf_pages_isolated(file_bytes, dpi=dpi).collect()
-
-
-if __name__ == "__main__":
-    dpi_arg, result_fd_arg = sys.argv[1:]
-    _isolated_native_page_inspection_worker(
-        sys.stdin.buffer, int(dpi_arg), Connection(int(result_fd_arg), readable=False),
-    )

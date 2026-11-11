@@ -1,5 +1,9 @@
 # Done Log
 
+The owner requested a production trial on Detection V8.4.19. The
+rollback restores the runtime from `3f5df2e`. The V8.4.22 restoration
+commit `1d3b951` is the return point.
+
 The owner rejected the Detection V8.4.23 experiment after the Floor 07
 production run returned one broad Island per working sheet. The
 rollback restores the V8.4.22 runtime from `e734f61`. The Detection

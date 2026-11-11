@@ -2657,11 +2657,6 @@ def compile_detection_v5_merge_edges(
         if merge:
             components[root(pair[1])] = root(pair[0])
 
-    initially_confirmed: dict[str, set[str]] = {}
-    if allow_runtime_merges and allow_short_fingerprint_attachment:
-        for group_id in group_ids:
-            initially_confirmed.setdefault(root(group_id), set()).add(group_id)
-
     # Grow a confirmed package through existing same-page Q support. This is
     # the deterministic one-to-batch step: no new pair is searched and a
     # cross-page edge can never be promoted here.
@@ -2686,9 +2681,7 @@ def compile_detection_v5_merge_edges(
                 fact.get("evidence_type") != "dimension_equality"
                 for fact in edge["evidence_facts"]
             )
-            if not anchored or (
-                edge["dimension_similarity_score"] < _V5_DIMENSION_BATCH_MIN_SCORE and not semantic_support
-            ):
+            if not anchored or (edge["dimension_similarity_score"] < 40 and not semantic_support):
                 continue
             components[right_root] = left_root
             confirmed_roots.discard(right_root)
@@ -2709,19 +2702,11 @@ def compile_detection_v5_merge_edges(
             component_members.setdefault(root(group_id), set()).add(group_id)
         edges_by_pair = {(edge["group_id_a"], edge["group_id_b"]): edge for edge in edges}
         attachments = _short_fingerprint_attachments(
-            dimension_edges, edges_by_pair, component_members, initially_confirmed, blocked_pairs,
+            dimension_edges, edges_by_pair, component_members, blocked_pairs,
         )
         for edge, witness in attachments:
             edge["relationship"] = "same_object_view"
             edge["commercial_inseparability"] = "V5 complementary short Fingerprint"
-            if witness["short_position_count"] == 1:
-                base_score = edge["dimension_similarity_score"]
-                weighted_score = max(base_score, _V5_DIMENSION_BATCH_MIN_SCORE)
-                added_points = round(weighted_score - base_score, 3)
-                witness["base_score"] = base_score
-                witness["added_points"] = added_points
-                edge["dimension_similarity_score"] = weighted_score
-                edge["edge_score"] = min(100.0, round(edge["edge_score"] + added_points, 3))
             audit.append({
                 "group_id_a": edge["group_id_a"],
                 "group_id_b": edge["group_id_b"],
@@ -2745,12 +2730,10 @@ def _short_fingerprint_attachments(
     dimension_edges: list[dict[str, Any]],
     edges_by_pair: dict[tuple[str, str], dict[str, Any]],
     components: dict[str, set[str]],
-    initially_confirmed: dict[str, set[str]],
     blocked_pairs: dict[tuple[str, str], str],
 ) -> list[tuple[dict[str, Any], dict[str, Any]]]:
     """Attach a short singleton using independently supported same-sheet dimensions."""
     roots = {group: anchor for anchor, members in components.items() for group in members}
-    initial_roots = {group: anchor for anchor, members in initially_confirmed.items() for group in members}
     candidates: dict[str, dict[str, list[tuple[tuple[str, str], dict[str, Any]]]]] = {}
     for edge in dimension_edges:
         pair = (edge["group_id_a"], edge["group_id_b"])
@@ -2758,51 +2741,23 @@ def _short_fingerprint_attachments(
             continue
         for view, peer in (pair, pair[::-1]):
             match = edge.get("short_dimension_matches", {}).get(view)
-            if not match or len(components[roots[view]]) != 1:
+            if not match or len(components[roots[view]]) != 1 or len(components[roots[peer]]) < 2:
                 continue
-            if match["positions"] == 1:
-                # An earlier dimensional expansion cannot erase a competing
-                # match or supply an independent peer for the one-position bonus.
-                target = initial_roots[peer]
-            else:
-                target = roots[peer]
-                if len(components[target]) < 2:
-                    continue
-            candidates.setdefault(view, {}).setdefault(target, []).append((pair, match))
+            candidates.setdefault(view, {}).setdefault(roots[peer], []).append((pair, match))
     accepted = []
     for view, targets in sorted(candidates.items()):
         qualified = []
         for anchor, supports in targets.items():
             if len(supports) < 2 or any(
-                tuple(sorted((view, member))) in blocked_pairs for member in components[roots[anchor]]
+                tuple(sorted((view, member))) in blocked_pairs for member in components[anchor]
             ):
                 continue
+            exact = {Decimal(value) for _, match in supports for value in match["exact_values_mm"]}
             positions = supports[0][1]["positions"]
-            if positions == 1:
-                # Both peers must already belong to one confirmed package.
-                # Their measurements must come from separate printed evidence.
-                if len(targets) != 1:
-                    continue
-                independent = [
-                    (first, second) for first, second in combinations(sorted(supports), 2)
-                    if not set(first[1]["peer_source_fact_ids"]).intersection(second[1]["peer_source_fact_ids"])
-                ]
-                if not independent:
-                    continue
-                selected = min(
-                    independent, key=lambda pair: (
-                        -max(edges_by_pair[item[0]]["dimension_similarity_score"] for item in pair),
-                        tuple(item[0] for item in pair),
-                    ),
-                )
-                supports = list(selected)
-                match_evidence = {"single_position_matches": [match for _, match in supports]}
-            else:
-                # Count distinct, unambiguous values for multi-position attachment.
-                exact = {Decimal(value) for _, match in supports for value in match["exact_values_mm"]}
-                if len(exact) < 2 or 4 * len(exact) < 3 * positions:
-                    continue
-                match_evidence = {"distinct_exact_values_mm": [str(value) for value in sorted(exact)]}
+            # Repeated or ambiguous values may contribute to pair scoring, but
+            # never count twice as independent dimensions for this attachment.
+            if len(exact) < 2 or 4 * len(exact) < 3 * positions:
+                continue
             best_pair = min(
                 (pair for pair, _ in supports),
                 key=lambda pair: (-edges_by_pair[pair]["dimension_similarity_score"], pair),
@@ -2810,8 +2765,8 @@ def _short_fingerprint_attachments(
             qualified.append((edges_by_pair[best_pair], {
                 "view_id": view,
                 "short_position_count": positions,
+                "distinct_exact_values_mm": [str(value) for value in sorted(exact)],
                 "supporting_pairs": [list(pair) for pair, _ in sorted(supports)],
-                **match_evidence,
             }))
         if len(qualified) == 1:
             accepted.extend(qualified)
@@ -2858,8 +2813,6 @@ def validate_detection_v5_final_result(
 
 _V5_COMMON_DIMENSIONS_MM = frozenset({300, 400, 450, 500, 600, 800, 900, 1000, 1200})
 _V5_SHORT_FINGERPRINT_MAX_POSITIONS = 4
-_V5_SINGLE_POSITION_LARGE_DIMENSION_MM = Decimal("2200")
-_V5_DIMENSION_BATCH_MIN_SCORE = 40.0
 # Keep a coverage bonus below the dimension-only batch confirmation gate.
 _V5_SHORT_FINGERPRINT_SUPPORT_CEILING = 35.0
 
@@ -2890,30 +2843,25 @@ def compile_detection_v5_dimension_graph(
     for values in occurrences.values():
         for value in {Decimal(str(item["value_mm"])) for item in values}:
             frequency[value] = frequency.get(value, 0) + 1
-    def position_key(item: dict[str, Any]) -> str:
-        return str(item.get("ambiguity_key") or item["occurrence_id"])
-
     position_counts = {}
-    stable_positions = {}
     short_stable_values = {}
     for group_id, values in occurrences.items():
         positions = {}
         for item in values:
             value = Decimal(str(item["value_mm"]))
             if value > 0:
-                positions.setdefault(position_key(item), set()).add(value)
+                positions.setdefault(str(item.get("ambiguity_key") or item["occurrence_id"]), set()).add(value)
         position_counts[group_id] = len(positions)
-        stable_positions[group_id] = {
-            key: next(iter(options)) for key, options in positions.items() if len(options) == 1
-        }
-        if 1 <= len(positions) <= _V5_SHORT_FINGERPRINT_MAX_POSITIONS:
-            short_stable_values[group_id] = set(stable_positions[group_id].values())
+        if 2 <= len(positions) <= _V5_SHORT_FINGERPRINT_MAX_POSITIONS:
+            short_stable_values[group_id] = {
+                next(iter(values)) for values in positions.values() if len(values) == 1
+            }
 
     def size_points(value: Decimal) -> float:
         if value < 100: return 2
         if value < 600: return 5
         if value < 1200: return 8
-        if value < _V5_SINGLE_POSITION_LARGE_DIMENSION_MM: return 14
+        if value < 2200: return 14
         return 20
 
     def precision(left: Decimal, right: Decimal) -> float:
@@ -2926,35 +2874,9 @@ def compile_detection_v5_dimension_graph(
         count = max(frequency.get(left, 1), frequency.get(right, 1))
         return 1.75 if count <= 2 else 1.25 if count <= 5 else 0.8
 
-    def single_position_matches(
-        left_id: str, right_id: str, matched: list[tuple[dict[str, Any], dict[str, Any]]],
-    ) -> dict[str, Any]:
-        if allowed_pairs is None or not 0 < page(left_id) == page(right_id) or len(matched) != 1:
-            return {}
-        left, right = matched[0]
-        left_value = stable_positions[left_id].get(position_key(left))
-        right_value = stable_positions[right_id].get(position_key(right))
-        left_sources, right_sources = set(left["source_fact_ids"]), set(right["source_fact_ids"])
-        if left_value is None or right_value is None or not left_sources or not right_sources or left_sources & right_sources:
-            return {}
-        return {
-            group_id: {
-                "positions": 1,
-                "value_mm": str(value),
-                "source_fact_ids": sorted(sources),
-                "peer_value_mm": str(peer_value),
-                "peer_source_fact_ids": sorted(peer_sources),
-            }
-            for group_id, value, sources, peer_value, peer_sources in (
-                (left_id, left_value, left_sources, right_value, right_sources),
-                (right_id, right_value, right_sources, left_value, left_sources),
-            )
-            if position_counts[group_id] == 1
-        }
-
     def score_pair(
         left_id: str, right_id: str,
-    ) -> tuple[float, list[dict[str, Any]], list[dict[str, Any]], dict[str, Any] | None, dict[str, Any]]:
+    ) -> tuple[float, list[dict[str, Any]], list[dict[str, Any]], dict[str, Any] | None]:
         raw_matches: list[tuple[dict[str, Any], dict[str, Any]]] = []
         for left in occurrences.get(left_id, []):
             for right in occurrences.get(right_id, []):
@@ -2969,8 +2891,8 @@ def compile_detection_v5_dimension_graph(
         used_right_slots: set[str] = set()
         matched: list[tuple[dict[str, Any], dict[str, Any]]] = []
         for left, right in raw_matches:
-            left_slot = position_key(left)
-            right_slot = position_key(right)
+            left_slot = str(left.get("ambiguity_key") or left["occurrence_id"])
+            right_slot = str(right.get("ambiguity_key") or right["occurrence_id"])
             if (
                 left["occurrence_id"] in used_left or right["occurrence_id"] in used_right
                 or left_slot in used_left_slots or right_slot in used_right_slots
@@ -3005,18 +2927,7 @@ def compile_detection_v5_dimension_graph(
             feature_rows.append({"left_mm": str(left_value), "right_mm": str(right_value), "matched_occurrences": count, "points": round(points, 3)})
         shorter_count = min(position_counts.get(left_id, 0), position_counts.get(right_id, 0))
         coverage_bonus = None
-        singleton_matches = single_position_matches(left_id, right_id, matched)
-        if singleton_matches and score < _V5_SHORT_FINGERPRINT_SUPPORT_CEILING:
-            points_added = min(3 * score, _V5_SHORT_FINGERPRINT_SUPPORT_CEILING - score)
-            coverage_bonus = {
-                "shorter_position_count": 1,
-                "matched_positions": 1,
-                "exact_matched_positions": exact_positions,
-                "base_score": round(score, 3),
-                "added_points": round(points_added, 3),
-            }
-            score += points_added
-        elif (
+        if (
             allowed_pairs is not None
             and page(left_id) == page(right_id) > 0
             and 2 <= shorter_count <= _V5_SHORT_FINGERPRINT_MAX_POSITIONS
@@ -3064,7 +2975,7 @@ def compile_detection_v5_dimension_graph(
                 })
                 score += points
                 break
-        return round(min(100.0, score), 3), facts, feature_rows, coverage_bonus, singleton_matches
+        return round(min(100.0, score), 3), facts, feature_rows, coverage_bonus
 
     def page(group_id: str) -> int:
         return int(groups_by_id[group_id].get("page_number") or 0)
@@ -3107,7 +3018,7 @@ def compile_detection_v5_dimension_graph(
         return group_id
 
     def record_pair(left_id: str, right_id: str, *, cycle: str) -> float:
-        score, facts, feature_rows, coverage_bonus, singleton_matches = score_pair(left_id, right_id)
+        score, facts, feature_rows, coverage_bonus = score_pair(left_id, right_id)
         candidate = {
             "group_id_a": left_id, "group_id_b": right_id,
             "page_a": page(left_id), "page_b": page(right_id),
@@ -3134,14 +3045,6 @@ def compile_detection_v5_dimension_graph(
             }
             if allowed_pairs is not None and candidate["same_page"]:
                 for group_id in (left_id, right_id):
-                    if position_counts[group_id] == 1:
-                        match = singleton_matches.get(group_id)
-                        if match and (
-                            min(Decimal(match["value_mm"]), Decimal(match["peer_value_mm"]))
-                            >= _V5_SINGLE_POSITION_LARGE_DIMENSION_MM
-                        ):
-                            edge.setdefault("short_dimension_matches", {})[group_id] = match
-                        continue
                     if group_id not in short_stable_values:
                         continue
                     exact_values_mm = {
