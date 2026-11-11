@@ -1,5 +1,25 @@
 # Detection Agent benchmark
 
+## V8.4.15 empty Discovery response recovery
+
+The failed Floor 06 production trace reached Discovery batch 1 of 3.
+Earlier successful Floor 06 production witnesses had two batches with
+text responses. The failed response's stop reason and content blocks
+were unavailable, so the provider cause remains unknown.
+
+The regression reproduced a provider response containing thinking but
+no text. Discovery retained the next batch, recovered only affected
+pages, and published confirmed views with the unresolved page list when
+recovery also returned no text. A separate single-call case recovered
+all pages. The Detection, OCR, timing, and File Review selection passed
+386 tests.
+
+Fresh Floor 06 run `run_7e7beb4abda643d489e73f643b3b5293` completed
+OCR, two Discovery batches, Membership, Document Identity, and Naming
+with 20 objects. The fresh response contained text. The separate
+injected regression verifies the empty-response branch. The earlier
+13-object production witness remains a separate grouping result.
+
 ## V8.4.14 Discovery coverage recovery
 
 The production Floor 07 coverage omission was reproduced with an

@@ -1,5 +1,13 @@
 # Done Log
 
+Detection V8.4.15 handles empty ordinary Haiku Discovery responses
+through the existing page coverage recovery. Available batches
+continue through Membership, and unresolved pages appear in File
+Review. The provider stop reason and block types are recorded for the
+empty response. The Floor 06 fresh check and the injected regressions
+are recorded in the benchmark. The V8.4.14 production tag is the
+rollback reference.
+
 Detection V8.4.14 continues ordinary Haiku runs after omitted Discovery
 page coverage. It restores the ledger for pages with returned Views,
 retries pages with no returned Views, and saves available objects

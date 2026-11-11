@@ -315,6 +315,10 @@ class DetectionVisualRegistryValidationError(RuntimeError):
         self.usage_event = usage_event
 
 
+class ClaudeEmptyTextResponseError(RuntimeError):
+    """Claude completed a request without a usable text block."""
+
+
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA: dict[str, Any] = {
     "type": "array",
     "items": {
@@ -10070,6 +10074,37 @@ def run_anthropic_detection_visual_registry_agent(
             ),
         }
 
+    empty_discovery_responses: list[dict[str, Any]] = []
+
+    def read_discovery_response(
+        response: Any, diagnostics: dict[str, Any], *, pages: list[int], attempt: str,
+    ) -> str:
+        try:
+            return extract_text_from_claude_response(response)
+        except ClaudeEmptyTextResponseError:
+            if not ordinary_haiku_discovery:
+                raise
+            empty_discovery_responses.append({
+                "page_numbers": pages,
+                "attempt": attempt,
+                "request_id": diagnostics.get("request_id"),
+                "stop_reason": getattr(response, "stop_reason", None),
+                "content_block_types": [
+                    getattr(block, "type", None) for block in (getattr(response, "content", None) or ())
+                ],
+            })
+            return ""
+
+    def parse_discovery_response(raw_text: str) -> Any:
+        if raw_text:
+            return json.loads(raw_text)
+        # No response claims exist. Omitted coverage sends these pages through
+        # the same recovery path as any other missing Discovery page.
+        return {
+            "visual_groups": [], "classifications": [],
+            "candidate_region_exceptions": [], "page_coverage": [],
+        }
+
     v641_batches, v641_full_estimate = build_detection_v641_full_page_discovery_batches(
         page_images=page_images,
         source_facts=source_facts,
@@ -10264,12 +10299,15 @@ def run_anthropic_detection_visual_registry_agent(
                 },
             ]
             batch_retry_reason: str | None = None
+            batch_raw_text = read_discovery_response(
+                batch_response, batch_diagnostics, pages=page_numbers, attempt="initial",
+            )
             try:
-                batch_payload = json.loads(extract_text_from_claude_response(batch_response))
+                batch_payload = parse_discovery_response(batch_raw_text)
             except json.JSONDecodeError as initial_error:
                 batch_json_error: json.JSONDecodeError | None = initial_error
                 if _is_retryable_visual_registry_json_truncation(
-                    extract_text_from_claude_response(batch_response),
+                    batch_raw_text,
                     batch_response,
                     max_tokens=batch_initial_max_tokens,
                 ):
@@ -10292,10 +10330,11 @@ def run_anthropic_detection_visual_registry_agent(
                         "context_characters": len(batch_user_text),
                         "retry_kind": "truncated_json",
                     })
+                    batch_raw_text = read_discovery_response(
+                        batch_response, batch_diagnostics, pages=page_numbers, attempt="truncated_json_retry",
+                    )
                     try:
-                        batch_payload = json.loads(
-                            extract_text_from_claude_response(batch_response),
-                        )
+                        batch_payload = parse_discovery_response(batch_raw_text)
                     except json.JSONDecodeError as retry_error:
                         batch_json_error = retry_error
                     else:
@@ -10392,8 +10431,11 @@ def run_anthropic_detection_visual_registry_agent(
                     "context_characters": len(geometry_retry_text),
                     "retry_kind": "invalid_core_geometry",
                 })
+                batch_raw_text = read_discovery_response(
+                    batch_response, batch_diagnostics, pages=page_numbers, attempt="geometry_retry",
+                )
                 try:
-                    batch_payload = json.loads(extract_text_from_claude_response(batch_response))
+                    batch_payload = parse_discovery_response(batch_raw_text)
                 except json.JSONDecodeError as retry_error:
                     raise RuntimeError(
                         f"V6.44 geometry-correction batch {batch_number} returned invalid JSON: "
@@ -10420,7 +10462,7 @@ def run_anthropic_detection_visual_registry_agent(
                 v641_proposal_attempt_summaries.append({
                     "batch_number": batch_number,
                     "attempt_number": attempt_number,
-                    "accepted": attempt_number == len(batch_attempts),
+                    "accepted": attempt_number == len(batch_attempts) and bool(batch_raw_text),
                     "page_numbers": page_numbers,
                     "estimated_input_tokens": int(batch["estimated_tokens"]),
                     "exact_input_tokens": attempt["exact_input_tokens"],
@@ -10486,6 +10528,7 @@ def run_anthropic_detection_visual_registry_agent(
             }
         proposal_raw_text = json.dumps(proposal_raw_payload, ensure_ascii=False)
     else:
+        proposal_pages = list(range(1, len(page_images) + 1))
         if stage_callback:
             stage_callback("Discovery started")
         proposal_response, proposal_diagnostics = stream_message(
@@ -10497,7 +10540,9 @@ def run_anthropic_detection_visual_registry_agent(
             output_config=proposal_output_config,
             **discovery_options,
         )
-        proposal_raw_text = extract_text_from_claude_response(proposal_response)
+        proposal_raw_text = read_discovery_response(
+            proposal_response, proposal_diagnostics, pages=proposal_pages, attempt="initial",
+        )
     proposal_attempt_summaries = (
         v641_proposal_attempt_summaries
         if v641_budgeted_discovery_active
@@ -10510,7 +10555,7 @@ def run_anthropic_detection_visual_registry_agent(
     proposal_retry_reason: str | None = None
     try:
         if not v641_budgeted_discovery_active:
-            proposal_raw_payload = json.loads(proposal_raw_text)
+            proposal_raw_payload = parse_discovery_response(proposal_raw_text)
     except json.JSONDecodeError as initial_error:
         proposal_json_error: json.JSONDecodeError | None = initial_error
         if (
@@ -10537,14 +10582,16 @@ def run_anthropic_detection_visual_registry_agent(
                 )}},
                 **discovery_options,
             )
-            proposal_raw_text = extract_text_from_claude_response(proposal_response)
+            proposal_raw_text = read_discovery_response(
+                proposal_response, proposal_diagnostics, pages=proposal_pages, attempt="truncated_json_retry",
+            )
             proposal_attempt_summaries.append(summarize_proposal_attempt(
                 proposal_response,
                 proposal_diagnostics,
                 max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
             ))
             try:
-                proposal_raw_payload = json.loads(proposal_raw_text)
+                proposal_raw_payload = parse_discovery_response(proposal_raw_text)
             except json.JSONDecodeError as retry_error:
                 proposal_json_error = retry_error
             else:
@@ -10863,7 +10910,13 @@ def run_anthropic_detection_visual_registry_agent(
                     context_characters=len(recovery_text), image_count=len(images),
                     image_bytes=sum(len(image) for image in images),
                 )
-                replacement = json.loads(extract_text_from_claude_response(response))
+                recovery_raw_text = read_discovery_response(
+                    response, recovery_diagnostics, pages=pages, attempt="coverage_recovery",
+                )
+                if not recovery_raw_text:
+                    recovery_audit["error"] = "Claude returned no text content"
+                    continue
+                replacement = json.loads(recovery_raw_text)
                 if not isinstance(replacement, dict) or set(replacement) != discovery_fields:
                     raise ValueError("Discovery coverage recovery response is invalid")
                 if page_set & omitted_discovery_pages:
@@ -11709,6 +11762,7 @@ def run_anthropic_detection_visual_registry_agent(
         "v5_9_proposal": proposal_attempt_summaries[-1],
         "v8_4_11_discovery_coverage_recovery": discovery_recovery_audit,
         "discovery_coverage_gaps": discovery_coverage_gap_audit,
+        "empty_discovery_responses": empty_discovery_responses,
         "v6_13_proposal_truncation_retry": {
             "attempted": proposal_retry_reason is not None,
             "reason": proposal_retry_reason,
@@ -12993,7 +13047,7 @@ def extract_text_from_claude_response(response: Any) -> str:
     """
     texts: list[str] = []
 
-    for block in response.content:
+    for block in (getattr(response, "content", None) or ()):
         block_type = getattr(block, "type", None)
 
         if block_type == "text":
@@ -13004,7 +13058,7 @@ def extract_text_from_claude_response(response: Any) -> str:
     raw_text = "\n".join(texts).strip()
 
     if not raw_text:
-        raise RuntimeError("Claude returned no text content")
+        raise ClaudeEmptyTextResponseError("Claude returned no text content")
 
     return raw_text
 

@@ -20,6 +20,15 @@ Membership continues with available Views. The ledger preserves the
 expected, returned, confirmed, and unresolved pages. File Review
 displays the unresolved pages from the saved run.
 
+VERIFIED IN V8.4.15. V8.4.14 production Floor 06, trace
+`41e7a588-4154-41c1-8efc-9994bf0c3716`, stopped at batch 1 of 3 with
+`Claude returned no text content`. The ordinary Haiku route now records
+the request ID, stop reason, block types, and affected pages. Discovery
+continues through remaining batches and retries the affected pages via
+existing coverage recovery. A second empty response leaves those pages
+unresolved and preserves confirmed objects. Tests cover single-call
+and batched Discovery and a repeat empty response.
+
 ## Production Detection V8.4.11 recovery
 
 ACTIVE, P0, verify the owner's Upload and Processing experience on HSL 06/07.

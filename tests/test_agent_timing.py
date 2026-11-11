@@ -1411,6 +1411,87 @@ def test_ordinary_discovery_continues_after_omitted_pages(recovery_outcome, batc
         assert usage["raw_usage"]["v8_4_11_discovery_coverage_recovery"][0]["error"].startswith("APITimeoutError")
 
 
+@pytest.mark.parametrize(("batched", "recovery_has_text"), [
+    (True, True), (True, False), (False, True),
+])
+def test_ordinary_discovery_recovers_response_without_text(batched, recovery_has_text):
+    def discovery(pages):
+        groups = [
+            {
+                "group_id": f"view-{page}", "page_number": page, "location_hint": "centre",
+                "visual_description": "independent elevation", "representation_kind": "elevation",
+            }
+            for page in pages
+        ]
+        payload = _visual_registry_payload({"visual_groups": groups})
+        for field in ("object_hypotheses", "semantic_facts", "document_scope"):
+            payload.pop(field)
+        payload["page_coverage"] = [
+            {"page_number": page, "visual_group_ids": [f"view-{page}"]} for page in pages
+        ]
+        return payload
+
+    def response(payload=None):
+        return SimpleNamespace(
+            usage=_Usage(),
+            stop_reason="end_turn" if payload is not None else "max_tokens",
+            content=(
+                [SimpleNamespace(type="text", text=json.dumps(payload))]
+                if payload is not None else [SimpleNamespace(type="thinking")]
+            ),
+        )
+
+    initial_pages = [1, 2] if batched else [1, 2, 3]
+    batches = [
+        {"page_numbers": initial_pages, "estimated_tokens": 100_000},
+        {"page_numbers": [3], "estimated_tokens": 100_000},
+    ] if batched else []
+    diagnostics = {
+        "request_started_at": "2026-10-16T00:00:00+00:00",
+        "request_finished_at": "2026-10-16T00:00:01+00:00",
+    }
+    replies = [response(), *([response(discovery([3]))] if batched else [])]
+    retry_index = len(replies)
+    replies += [
+        response(discovery(initial_pages)) if recovery_has_text else response(),
+        response({"object_hypotheses": [], "presentation_render_decisions": []}),
+    ]
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.build_detection_v641_full_page_discovery_batches",
+              return_value=(batches, 200_000 if batched else 10_000)),
+        patch("agents.anthropic_adapter._v641_count_input_tokens", return_value=100_000),
+        patch("agents.anthropic_adapter.build_detection_fusion_candidate_regions", return_value=[]),
+        patch("agents.anthropic_adapter.build_detection_conflict_targets", return_value=[]),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=[
+            (reply, {**diagnostics, "request_id": f"request-{i}"}) for i, reply in enumerate(replies)
+        ]) as stream,
+    ):
+        _, registry, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"] * 3, regions=[], ocr_package=None,
+            model="claude-haiku-5-5", document_category="ordinary_object_set",
+        )
+
+    assert stream.call_count == len(replies)
+    retry_content = stream.call_args_list[retry_index].kwargs["messages"][0]["content"]
+    assert sum(block["type"] == "image" for block in retry_content) == len(initial_pages)
+    assert sorted(obj["identity_pages"] for obj in registry["objects"]) == (
+        [[1], [2], [3]] if recovery_has_text else [[3]]
+    )
+    audit = usage["raw_usage"]
+    assert audit["discovery_coverage_gaps"]["unresolved_pages"] == ([] if recovery_has_text else [1, 2])
+    assert audit["empty_discovery_responses"][0] == {
+        "page_numbers": initial_pages, "attempt": "initial",
+        "request_id": "request-0", "stop_reason": "max_tokens",
+        "content_block_types": ["thinking"],
+    }
+    if batched:
+        assert not audit["v6_13_proposal_truncation_retry"]["attempts"][0]["accepted"]
+    if not recovery_has_text:
+        assert audit["empty_discovery_responses"][1]["attempt"] == "coverage_recovery"
+
+
 def test_presentation_render_without_technical_match_never_creates_registry_object():
     proposal = _visual_registry_payload({
         "visual_groups": [{
