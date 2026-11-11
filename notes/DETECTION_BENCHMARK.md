@@ -12,8 +12,24 @@ The 45-second wait, V8.4.19 unit vote, and Detection logic are unchanged.
 The test PDF returned all three marks through the default OCR entry point.
 A forced timeout during page 2 text reading retained the completed page
 and text count. A forced timeout while preparing the result retained the
-transfer mark. All 436 selected regression tests passed. The owner will
-run Floor 07 on production.
+transfer mark. All 436 selected regression tests passed.
+
+Owner production run `run_9b2068aee6dc4415a00bf6c8e009f941` saved 9
+objects and names from 32 Views in 97.660 seconds through the processing
+cycle. Discovery recovered P11 and confirmed all 11 pages. P03 through
+P11 each published one object. N57 retained all six Views and the
+22 + 88 = 110 chain. N60 joined all three Views, with a 100-point V1/V3
+match and accepted topology evidence. N76B retained both elevations
+(P11.V2/V3, 87.5) in one object. Its location plan P11.V1 scored 35
+against each elevation and was excluded as unattached. No presentation
+render was excluded in this run.
+
+Production persisted all three worker marks. The PDF opened after 0.042 s,
+all 11 native pages returned 969 text spans, and the parent received the
+result after 5.559 s with exit code 0. The unit was cm and Fingerprint
+retained 682 occurrences. This confirms production instrumentation on
+success. The historical 45-second timeout did not recur. See the run
+summary under `output/detection-v8420-native-pdf-telemetry/production/`.
 
 ## V8.4.19, require agreement before inferring bare millimeters
 

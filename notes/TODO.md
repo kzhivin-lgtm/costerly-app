@@ -28,10 +28,11 @@ native PDF worker did not return within 45 seconds. The compiler received
 zero dimension occurrences and published 17 objects. Restoring the identical
 file's native text with the same Views and membership evidence yielded 10
 groups. V8.4.20 adds launch, read and transfer marks to the existing OCR
-usage event. The next owner-run Floor 07 upload should confirm all three
-marks in production. If another timeout occurs, use the last mark and
-container metrics to distinguish launch, parsing and result delivery.
-Retaining native text after a later graphics failure remains a separate task.
+usage event. Owner run `run_9b2068aee6dc4415a00bf6c8e009f941` verified
+all three marks in production. All 11 pages and 969 text spans completed
+with exit code 0. On the next timeout, use the last mark and container
+metrics to distinguish launch, parsing and result delivery. Retaining
+native text after a later graphics failure remains a separate task.
 
 PENDING, P1. Preserve complete dimension chains in the evidence envelope
 when the chain has a unique View owner. In the Floor 07 production
