@@ -1,5 +1,56 @@
 # Detection Agent benchmark
 
+## Supporting technical View first-link experiment
+
+Local rollback tag
+`detection-v8.4.22-before-supporting-views-checkpoint-2026-11-11`
+points to `985721e`. The experiment uses the existing ordinary same-page
+Fingerprint graph and the native dimension spans. A technical View can
+seed a two-View package when it is shallower, has lower foreground occupancy,
+has one to four distinct dimension positions, and has no separately owned
+non-dimension evidence. An exact printed full extent or measured chain
+must agree with the primary View along the same axis and at both ticks.
+Competing same-sheet owners, contradictory full extents, and blocking
+proofs prevent admission. The new edge preserves the Fingerprint score.
+The existing short-Fingerprint rule can attach an additional independently
+supported View. Generic batch confirmation runs before this first link.
+
+The frozen V8.4.22 production replay `run_9c7cecadb23648eaa5505209540e8819`
+reproduces the published 10 groups exactly. With the experimental rule it
+returns 9 groups. P11.V2/V3 join at 87.5 from independently owned 3450 mm
+spans, and the existing one-position rule attaches V1 at 40. The other
+sheets retain their exact View memberships. The saved V8.4.22 local Floor
+07 run already has this package and retains all 12 groups. The two Floor
+06 replays retain all 17 and 25 groups and their exact memberships,
+respectively. These counts do not meet the Floor 06 grouping objective.
+The replay classifier took under 0.2 seconds on each saved input with
+rendered pages and cached native geometry.
+
+The older V8.4.20 replay uses the current short-Fingerprint policy, which
+attaches P11's plan even with the experimental first link disabled.
+Its original published membership therefore differs from the replay
+baseline, and it is excluded from the exact-reproduction claims.
+
+Fresh local Upload `run_0ce12d2dd8c346e79009d78fd50f20e2` completed
+Floor 07 with live Mistral and Haiku calls, 11 confirmed sheets, 969 native
+text spans, 33 Views, and 9 named objects in 87.466 seconds through Detection.
+All three P11 Views were in one package. This run already had an accepted
+model proof, so the first-link rule did not affect its partition.
+
+Fresh local Upload `run_4c704d2537de4270bc03107051101de6` completed
+Floor 06 with 15 confirmed sheets, 1,347 native text spans, 49 Views, and
+13 named objects in 179.163 seconds through Detection. Discovery used
+two batches. Replays with the rule enabled and disabled reproduced the
+exact published partitions and exclusions of both fresh Uploads.
+The run summaries and fixed-input comparisons are in
+`output/detection-supporting-view-experiment-2026-11-11/` in the project
+workspace.
+
+Native PDF fixtures cover exact and chain-derived full extents, independent
+items of equal width, a competing owner, an independently labelled part,
+conflicting extents, renders, two supporting-only roles, and blocked or
+transitive merges. The selected regression suite passed 386 tests.
+
 ## V8.4.22, native PDF worker startup
 
 V8.4.21 production run `run_35b253130e314e7fb9a19ace46ef8d31` reached the

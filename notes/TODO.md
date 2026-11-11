@@ -99,15 +99,18 @@ describe different properties. The reference labels cover technical and
 render roles and object membership. Primary versus supporting labels remain
 to be reviewed.
 
-Proposed first-link condition. Classify the role of a technical View before
-using Fingerprint. Combine sheet-relative core area, occupied pixels, and
-owned drawing evidence with signs of a secondary projection. Allow a first
-link from a supporting View to a primary View when source-owned dimensions
-identify one compatible destination across the same-sheet comparisons. A
-matched full extent or a matching measured chain may supply that evidence.
-Check measurement scope, contradictions, and competing destinations. Select
-numeric cutoffs after checking standalone simple products and supporting
-projections on multiple documents with a held-out control.
+ACTIVE EXPERIMENT, P1. Use registered full extents for the first supporting
+View link. The ordinary route compares foreground occupancy, core depth
+across the dimension axis, and owned dimension positions. A native
+tick-bounded extent or measured chain must match a single primary View
+on the same sheet without a competing or contradictory measurement.
+Saved V8.4.22 Floor 07 evidence restores the three-View P11 package at
+the original 87.5-point first link. Both Floor 06 replay partitions are
+identical to their original results. Fresh local Uploads completed with
+13 named objects on Floor 06 and 9 on Floor 07. Both exact partitions
+replay with the rule enabled and disabled. Verify on a held-out
+non-HSL drawing with simple standalone parts before treating the rule as
+a general replacement for model evidence. See the Detection benchmark.
 
 Make strong same-sheet dimension links less dependent on variable model
 evidence. N60 V1/V3 scored 100 with identical features in

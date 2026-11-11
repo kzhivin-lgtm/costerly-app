@@ -539,7 +539,9 @@ def run_ordinary_haiku_membership(run_registry, *, file_bytes, ocr_package, stag
                     pairs = {edge_endpoints(fact) for fact in validated}
                     local_dimensions = [edge for edge in dimension_edges if edge_endpoints(edge) in pairs]
                     local_graph, _ = original_merge(
-                        local_dimensions, validated, **{**kwargs, "allow_batch_confirmation": False},
+                        local_dimensions, validated, **{
+                            **kwargs, "allow_batch_confirmation": False, "supporting_view_links": None,
+                        },
                     )
                     accepted_recovery[:] = unambiguous_recovery_edges(
                         [edge for edge in local_graph if edge["relationship"] == "same_object_view"],

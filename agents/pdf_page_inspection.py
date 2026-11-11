@@ -513,28 +513,34 @@ def measure_rendered_page_visual_coverage(page_bytes: bytes) -> dict[str, Any]:
     try:
         from PIL import Image
 
-        image = Image.open(BytesIO(page_bytes)).convert("RGB")
-        image.thumbnail((512, 512))
-        pixels = list(image.get_flattened_data())
-        if not pixels:
-            raise ValueError("empty rendered image")
-        buckets = Counter((red // 16, green // 16, blue // 16) for red, green, blue in pixels)
-        dominant = buckets.most_common(1)[0][0]
-        background = tuple(channel * 16 + 8 for channel in dominant)
-        occupied = sum(
-            abs(red - background[0]) + abs(green - background[1]) + abs(blue - background[2]) > 48
-            for red, green, blue in pixels
-        )
-        return {
-            "status": "succeeded",
-            "width": image.width,
-            "height": image.height,
-            "sample_pixel_count": len(pixels),
-            "dominant_background_rgb": list(background),
-            "occupied_area_ratio": round(occupied / len(pixels), 6),
-        }
+        with Image.open(BytesIO(page_bytes)) as source:
+            image = source.convert("RGB")
+            image.thumbnail((512, 512))
+            return measure_rgb_visual_coverage(image)
     except Exception as exc:
         return {"status": "failed", "error": f"{type(exc).__name__}: {exc}"}
+
+
+def measure_rgb_visual_coverage(image) -> dict[str, Any]:
+    """Measure foreground occupancy at the supplied RGB raster scale."""
+    pixels = list(image.get_flattened_data())
+    if not pixels:
+        raise ValueError("empty rendered image")
+    buckets = Counter((red // 16, green // 16, blue // 16) for red, green, blue in pixels)
+    dominant = buckets.most_common(1)[0][0]
+    background = tuple(channel * 16 + 8 for channel in dominant)
+    occupied = sum(
+        abs(red - background[0]) + abs(green - background[1]) + abs(blue - background[2]) > 48
+        for red, green, blue in pixels
+    )
+    return {
+        "status": "succeeded",
+        "width": image.width,
+        "height": image.height,
+        "sample_pixel_count": len(pixels),
+        "dominant_background_rgb": list(background),
+        "occupied_area_ratio": round(occupied / len(pixels), 6),
+    }
 
 
 def attach_rendered_page_measurements(
