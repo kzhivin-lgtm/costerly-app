@@ -1,9 +1,13 @@
 # Done Log
 
 Detection V8.4.26 restores the single-dimension Fingerprint weight.
-The saved V8.4.25 Floor 07 run replays from 10 to 9 objects when P11.V1
-joins the confirmed V2/V3 group. Floor 06 keeps all 20 original groups.
-The V8.4.25 release is the rollback point.
+The saved V8.4.25 replay goes from 10 to 9 objects on Floor 07 and
+preserves all 20 Floor 06 groups. Fresh production Uploads reached
+File Review with 9 objects on Floor 07, including all three P11 Views
+in one group, and 17 on Floor 06. Floor 06 render attachment and
+grouping remain open in TODO. The
+[full checkpoint](DETECTION_V8_4_26_PRODUCTION_CHECKPOINT_2026_11_12.md)
+records the release, V8.4.25 rollback, and verification evidence.
 
 Detection V8.4.25 restores the native PDF worker and its launch, read,
 and transfer diagnostics, plus the document-level bare dimension unit

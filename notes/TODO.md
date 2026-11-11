@@ -2,19 +2,22 @@
 
 ## Ordinary Detection dimension membership, V8.4.13
 
-ACTIVE, P0. Compare owner Uploads on V8.4.26 with the V8.4.25 baseline.
-The V8.4.25 owner runs read 1,347 native spans on Floor 06 and 969 on
-Floor 07, and both inferred centimeters. They published 20 and 10
-objects. The V8.4.26 replay joins the three P11 Views on Floor 07 and
-preserves the Floor 06 partition. Verify fresh P11 membership and
-inspect the remaining Floor 06 splits on P04 and P13.
+ACTIVE, P0. Verify repeat Upload stability and remaining Floor 06 splits.
+Both fresh V8.4.26 owner Uploads reached File Review with all sheets
+covered. Floor 07 published nine objects with P11.V1/V2/V3 together.
+Floor 06 published 17 objects, with four on P03 and two on P14. The
+P04/P13 object splits from the V8.4.25 witness are absent in this fresh
+run. On fixed V8.4.25 evidence, V8.4.26 preserves all 20 Floor 06 groups
+and joins the three P11 Views on Floor 07. Preserve the fresh Floor 07
+P11 membership and verify both floors over repeated Uploads. See the
+[V8.4.26 checkpoint](DETECTION_V8_4_26_PRODUCTION_CHECKPOINT_2026_11_12.md).
 
 ACTIVE, P0. Recover outer dimension labels and evidence-backed joins on the
 same sheet. The final-policy replay passed P06, P10, and P13 on Floor 06
 and preserved the 10-group Floor 07 control. Production Floor 06 run
 `run_dce43f565ef64a47b1965bd71f97a101` published the owner-reported 13
-objects. Keep the exact witness. Verify repeat Upload stability,
-individual View coverage on P03–P08, and positive render attachment.
+objects. Keep the exact witness. Verify individual View coverage on
+P03–P08 and retain the evidence for any incorrect merges.
 V8.4.21 Floor 06 isolated role classification changes on P03/P07 and weak
 cross-package links on P13. Use the split-sheet diagnosis in the Detection
 benchmark to check each case against its historical witness.
@@ -201,6 +204,15 @@ A presentation render is supporting evidence for a technical object. The
 owner confirmed that a render with no proven technical owner must remain
 outside File Review object counts. Keep render role classification and
 render attachment accuracy distinct from that publication rule.
+ACTIVE, P0. Recover evidence-backed ordinary render attachment. In
+V8.4.26 Floor 06 P03, V11/V12 had no dedicated attachment to the V9
+elevation and V1 was incorrectly retained as a technical section.
+Preserve the archived same-sheet review that attached the matching
+crops using triangular shelf supports as evidence. Use the
+[V8.4.26 checkpoint](DETECTION_V8_4_26_PRODUCTION_CHECKPOINT_2026_11_12.md)
+to compare candidates on fixed Views. Verify that unresolved renders
+stay out of published object counts.
+
 V8.4.10 audits omitted ordinary-route render decisions as unresolved
 without aborting technical grouping. An omitted row supplies no
 attachment evidence. Floor 06 P04 in

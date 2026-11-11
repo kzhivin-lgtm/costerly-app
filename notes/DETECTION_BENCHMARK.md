@@ -13,9 +13,34 @@ to 40 points and Floor 07 goes from 10 to 9 objects. Every other
 component and all render exclusions match the saved results.
 
 The replay used the recorded Views, dimension inventory, semantic
-evidence, and anchors. Fresh Upload verification is pending. The
-rollback tag is
-`detection-v8.4.25-pdf-worker-and-unit-vote-production-2026-11-11`.
+evidence, and anchors. Two fresh owner Uploads reached File Review on
+the exact production build:
+
+| File | Production run | Sheets covered | Views | Published objects | Unattached renders | Processing |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| HSL Floor 06 | `run_3ad259c296d74631a2cb7d0db8ad5848` | 15/15 | 62 | 17 | 9 | 152.26 s |
+| HSL Floor 07 | `run_b124d3c31da341a3a80df29bc5e2eb18` | 11/11 | 33 | 9 | 0 | 92.33 s |
+
+The fresh Floor 07 run joined all three P11 Views. The 3450/3490 mm
+pair has a 35-point raw match and an effective 40-point accepted edge
+under the complementary short Fingerprint rule. Floor 06 has four
+objects on P03 and two on P14. The fresh 17 versus 20 counts compare
+different recognition runs. The fixed-input replay preserves all 20
+groups. One fresh run per floor leaves repeatability open.
+
+On Floor 06 P03, V11/V12 show the same three horizontal shelves,
+triangular supports, and dark rectangular openings as V9. The archived
+Haiku 5.5 same-sheet render review attached both crops to that elevation
+in `run_9c65b206c324472bb528a042f90ecf67`. An earlier focused run
+`run_e1f8b4ad645f451ea4827d1d4c8b848e` turned two general-review
+abstentions into links to the same elevation. V8.4.26 has no dedicated
+second render review after the abstention. Its ordinary semantic facts
+match V11/V12 to V1, a render classified as a technical section, while
+the dedicated decisions supply no link to V9. The two older production
+runs that grouped all thumbnails with the main P03 object include a
+misclassified render target. See the
+[full checkpoint](DETECTION_V8_4_26_PRODUCTION_CHECKPOINT_2026_11_12.md)
+for the run IDs, evidence archive and rollback instructions.
 
 ## V8.4.25, native PDF worker and bare dimension unit vote
 

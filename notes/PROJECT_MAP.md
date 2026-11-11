@@ -42,6 +42,9 @@ This file explains where code belongs so the project stays understandable.
   structural admission with the native-graphic Page 23 path.
   `agents/ocr_rendering.py` runs Mistral and local coordinate OCR.
   Coordinate readings are bound after Membership in an audit.
+- The
+  [V8.4.26 production checkpoint](DETECTION_V8_4_26_PRODUCTION_CHECKPOINT_2026_11_12.md)
+  indexes the current rollback tag, owner Uploads, and saved render review.
 - The baseline for the ordinary supporting-View experiment is
   `detection-v8.4.22-before-supporting-views-checkpoint-2026-11-11`.
   Its production and replay evidence is indexed in
