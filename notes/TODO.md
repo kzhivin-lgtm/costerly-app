@@ -24,7 +24,7 @@ Fresh full Floor 07 Upload saved 9 names and retained complete page
 coverage. The separate title-block evidence classification draft remains
 pending.
 
-VERIFIED LOCALLY, P0. Remove the native PDF worker startup stall. Floor 07 production
+VERIFIED ON FLOOR 07 PRODUCTION, P0. Remove the native PDF worker startup stall. Floor 07 production
 `run_d0c489bd78ce44c18f0c79db004a0274` received all 11 Mistral pages, but the
 native PDF worker did not return within 45 seconds. The compiler received
 zero dimension occurrences and published 17 objects. Restoring the identical
@@ -36,7 +36,9 @@ with exit code 0. V8.4.21 owner run
 `run_35b253130e314e7fb9a19ace46ef8d31` timed out with only `parent_started`
 and no child progress. V8.4.22 replaces fork with a fresh interpreter.
 The threaded reproduction and fresh local OCR passed, including all 969
-Floor 07 spans and the N76B P11 attachment. Verify a fresh production upload.
+Floor 07 spans and the N76B P11 attachment. Owner production run
+`run_9c7cecadb23648eaa5505209540e8819` returned all 969 spans from 11 pages
+and exited with code 0 after 6.718 seconds.
 Passing coordinate OCR into the compiler when native data is unavailable
 and retaining native text after a later graphics failure remain separate
 follow-ups.
@@ -69,8 +71,46 @@ membership. Preserve native tick boundaries for short adjacent spans and
 verify complete label placement. Use the real 102 false positive and the
 valid 22 + 88 = 110 witness as separate controls.
 
-PENDING, P1. Make strong same-sheet dimension links less dependent on
-variable model evidence. N60 V1/V3 scored 100 with identical features in
+ACTIVE, P1. Make ordinary Detection repeatable across independent runs.
+The baseline is `detection-v8.4.22-before-supporting-views-checkpoint-2026-11-11`.
+The owner requested a general solution across documents. Measure stability
+at the View boundaries, role classifications, accepted links, and final
+membership. A repeated object count alone is insufficient. Start with
+controlled replays that fix OCR and Views to isolate Membership, then
+repeat Discovery on the same OCR to measure upstream variation. Use mixed
+documents with both valid joins and distinct objects that share dimensions.
+
+Owner direction. Evaluate whether each technical View is primary or
+supporting before Membership. Consider the occupied pixels within the
+View, its extent relative to the sheet, linework, and the amount of local
+dimension and text evidence. Evaluate a lower attachment requirement for
+supporting Views with a plausible destination. Preserve same-sheet
+all-pairs comparison and test standalone items that happen to be simple,
+as well as true supporting Views. The earlier proposal based on one exact
+overall match and an 85-point cutoff was rejected as too case-specific.
+
+Read-only audit. Detection computes core area relative to the sheet for
+floor-plan classification. Pixel occupancy is measured on the whole sheet.
+View packages provide owned facts and Fingerprint counts distinct dimension
+positions. Ordinary Membership has no View-level information measure.
+An offline sample of 22 saved core rectangles from Adda, Lev 1, Lev 2 and
+Page 23 at 144 and 200 DPI showed that small area and low pixel occupancy
+describe different properties. The reference labels cover technical and
+render roles and object membership. Primary versus supporting labels remain
+to be reviewed.
+
+Proposed first-link condition. Classify the role of a technical View before
+using Fingerprint. Combine sheet-relative core area, occupied pixels, and
+owned drawing evidence with signs of a secondary projection. Allow a first
+link from a supporting View to a primary View when source-owned dimensions
+identify one compatible destination across the same-sheet comparisons. A
+matched full extent or a matching measured chain may supply that evidence.
+Check measurement scope, contradictions, and competing destinations. Select
+numeric cutoffs after checking standalone simple products and supporting
+projections on multiple documents with a held-out control.
+
+Make strong same-sheet dimension links less dependent on variable model
+evidence. N60 V1/V3 scored 100 with identical features in
 the V8.4.13 nine-object witness and V8.4.14 production. The former joined
 through V2/V3 topology and geometry evidence; the latter had no accepted
 initial link. The V8.4.17 production replay found a late V1/V2 proof
@@ -94,7 +134,11 @@ partitions on its saved evidence. A fresh Floor 07 upload met the object
 count range, but P11 had no compiler dimensions after the native PDF
 worker launch timeout. V8.4.22 local run `run_d250b8fb7f0d4304aa624c608b6bc63e`
 attached V1 at 40 and published all three P11 Views together. Production
-verification remains open.
+run `run_9c7cecadb23648eaa5505209540e8819` had the dimensions but split
+V2/V3 at 87.5 after invalid compound citations removed its semantic proof.
+Use this as a regression example for the general repeatability work.
+The fixed-input counterfactual restores the prior pair proof and attaches
+V1 at 40.
 
 VERIFIED ON SAVED EVIDENCE, P1. V8.4.18 supporting singleton publication.
 An unattached supporting plan or technical detail remains in Membership and

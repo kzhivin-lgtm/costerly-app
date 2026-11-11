@@ -1,0 +1,32 @@
+{
+  "checkpoint": "detection-v8.4.22-before-supporting-views-checkpoint-2026-11-11",
+  "runtime_commit": "e734f61ecc7eaa57a69f250ec2387d60b25979eb",
+  "production_tag": "detection-v8.4.22-native-pdf-worker-production-2026-11-11",
+  "scope": "pre-experiment baseline and documented production reading verification",
+  "private_archive": "/Users/qb/Documents/ChatGPT/Costerly/backups/detection-v8.4.22-before-supporting-views-checkpoint-2026-11-11/private-replay-evidence.tar.gz",
+  "private_archive_sha256": "8ef4f7dd18840eceae66b00035499a0444edc928f447a9958d585fa544f94130",
+  "member_sha256": {
+    "output/detection-v8422-native-pdf-worker/deployment-receipt.json": "338fee790e04e0935a548f51c7a1447f7c5f3faa17b2368524aab6cd6e66dee8",
+    "output/detection-research-2026-11-10/region-role-membership-references.json": "b9dbd77976f88cedf9d6e13ff4b205461291627ac3c29296f0acd316d7497050",
+    "output/detection-v8422-native-pdf-worker/production/run_9c7cecadb23648eaa5505209540e8819/run.json": "63346b38ab6ff198a7d3b4f4125df8bfa9a01d0174d61604f92e8a8d0e96f70b",
+    "output/detection-v8422-native-pdf-worker/production/run_9c7cecadb23648eaa5505209540e8819/events.json": "cf47fcf4b2d25259d6f2c2f29757ba909fc3dc93e1fd3e040e074cbeb2a71873",
+    "output/detection-v8422-native-pdf-worker/production/run_9c7cecadb23648eaa5505209540e8819/objects.json": "ff519669694d82d2beb66eef499b0e6663b2d9bf96398cfa323a21593e58d883",
+    "output/detection-v8422-native-pdf-worker/production/run_9c7cecadb23648eaa5505209540e8819/registry-audit.json": "c1cda7d0cfdfc3bacaaf2dd1412d708e1fe0adb30579b5a13a8105ebc9484362",
+    "output/detection-v8422-native-pdf-worker/production/run_9c7cecadb23648eaa5505209540e8819/p11-link-replay.json": "8eec157c3ca6bac2b3502ec2a1c461bd0e8b4c94fa63343c275ced8c542feef7",
+    "output/detection-v8421-single-position/production/run_db80fb8ff10c4a1c8ef8a0ab01dce8ec/run.json": "7b38cb7e493f9511005edae7c500d81874784c6392f219bad15bf470e61733c4",
+    "output/detection-v8421-single-position/production/run_db80fb8ff10c4a1c8ef8a0ab01dce8ec/events.json": "2fd10e421a62fa780fa6dac73b1df27a1b219a24169d0691f9ba8e9d9f6219fb",
+    "output/detection-v8421-single-position/production/run_db80fb8ff10c4a1c8ef8a0ab01dce8ec/objects.json": "2a9ab0788b16c8f7cbd7a96eb7c7e74507cc0aff5766d6602a88a405c5843b36",
+    "output/detection-v8421-single-position/production/run_db80fb8ff10c4a1c8ef8a0ab01dce8ec/registry-audit.json": "10c2bf08f117c5344376f24fb4d3deef36acedb8c7bcf74f2392573ec86716f8",
+    "output/detection-v8421-single-position/production/run_db80fb8ff10c4a1c8ef8a0ab01dce8ec/summary.json": "ec9e06b32baf6242db79ef73cf84448dd6d7f01f3e6462b6e93f8914be4e4c67",
+    "output/detection-v8420-native-pdf-telemetry/production/run_9b2068aee6dc4415a00bf6c8e009f941/run.json": "b13395bad41144fd608b67902f1c59482a46f7906e5fb05333ba754bcdd3a647",
+    "output/detection-v8420-native-pdf-telemetry/production/run_9b2068aee6dc4415a00bf6c8e009f941/events.json": "27abaf93048a4d6dd31c6daa52ca970ce4caa535633181f2e7748bf436f12d5f",
+    "output/detection-v8420-native-pdf-telemetry/production/run_9b2068aee6dc4415a00bf6c8e009f941/objects.json": "8fde038fd6969668d6ff8e30437297a3f0ed6cf84b9d56e2547541a89c235bf5",
+    "output/detection-v8420-native-pdf-telemetry/production/run_9b2068aee6dc4415a00bf6c8e009f941/registry-audit.json": "c7f76c248a8d604aae198c405fd4a767605c743957f84314c1150e3d8a97cb0e",
+    "inputs/Hasolelim_Carpentry_Plan_Floor_06.pdf": "ae45b21324421ce4667ba5fe0995b6fb5b74b5aaea7ac32114fa5f10f68f4606",
+    "inputs/Hasolelim_Carpentry_Plan_Floor_07.pdf": "45e51f24b04c75b8b0223ef0e60724faaed65f3c34105b1e32c04b16ec005c69"
+  },
+  "acceptance": {
+    "floor_07_native_pdf": "11 sheets, 969 spans, worker exit 0",
+    "grouping": "open"
+  }
+}

@@ -1,5 +1,11 @@
 # Done Log
 
+Detection V8.4.22 pre-experiment checkpoint. The Floor 07 production run
+confirmed native PDF reading across 11 sheets and 969 text spans.
+The grouping evidence includes the P11 split and its fixed-input replay.
+The baseline tag and private replay archive are indexed in
+`notes/evidence/detection-v8.4.22-before-supporting-views-checkpoint.json`.
+
 Detection V8.4.15 handles empty ordinary Haiku Discovery responses
 through the existing page coverage recovery. Available batches
 continue through Membership, and unresolved pages appear in File

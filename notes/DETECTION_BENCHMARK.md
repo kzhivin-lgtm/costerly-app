@@ -18,6 +18,23 @@ The healthy V8.4.21 and V8.4.22 workers returned identical text blocks,
 graphic regions and vector evidence on both PDFs.
 All 252 selected regression tests passed.
 
+Owner production run `run_9c7cecadb23648eaa5505209540e8819` on V8.4.22
+confirmed all 11 Floor 07 pages, 969 native text spans, and 13 graphic
+regions. The worker reported readiness, completed the read and transfer,
+and exited with code 0 after 6.718 seconds. The OCR stage took 13.209
+seconds. This is one fresh production verification of native PDF reading.
+
+The same production run published 10 objects from 33 Views. P11 was the
+only split sheet. No View was classified or excluded as a render. P11.V1
+was excluded as an unattached mounting plan. V2 and V3 both retained 3450 mm
+and scored 87.5, identical to the V8.4.20 production run that joined them.
+V8.4.22 received a three-View hypothesis whose citations combined an OCR
+fact ID and a View ID with an equals sign. The semantic compiler rejected
+all four facts derived from that hypothesis as unknown source facts. With
+the same dimensions and the prior verified pair evidence cited against
+current sources, the offline replay joins V2/V3 and attaches V1 at 40.
+The replay is stored as `p11-link-replay.json` next to the production audit.
+
 Fresh local processing with live Mistral and Haiku calls completed Floor 07
 as `run_d250b8fb7f0d4304aa624c608b6bc63e`, confirming 11 sheets and 33 Views.
 The two 345 measurements and the 349 measurement reached Fingerprint.
@@ -72,13 +89,19 @@ Floor 06 split-sheet diagnosis on the same saved run:
   detail by dominant-page context after excluding the renders. The new run
   had two standalone Views alongside the six-View package, so that rule did
   not run. V8.4.13 grouped the render area with technical drawings inside a
-  single Discovery View.
+  single Discovery View. The earlier autonomous pixel review of the same
+  PDF (`run_e1f8b4ad645f451ea4827d1d4c8b848e`) did attach two separate P03
+  render Views to the shelf elevation. The proof was the same sequence of
+  triangular brackets and dark rectangular openings. The V8.4.21 role
+  error kept the render block out of that comparison.
 - P07 V2/V7 matched 31 once for 15.625 points. V4/V7 and V5/V7 matched 60
   and 70 for 32 points each, below the 40-point batch threshold. V8.4.12
   recognized V1 as technical and attached V7 to the resulting six-View
   package through dominant-page context. V8.4.21 classified V1 as a render
   and the separate render pass returned `no_match`. V1 was excluded,
-  leaving five Views in the package.
+  leaving five Views in the package. The V1 crop has identical core bounds
+  in the two runs. The V8.4.22 local run repeated the five-View package and
+  separate V7 with healthy native PDF extraction.
 - P13 V2 matched V3 and V6 at 10, 25 and 36 for 35.625 points per pair.
   Topology and geometry joined V3/V6 to each other, with no accepted
   semantic link to the other package. V8.4.13 supplied those cross-package
