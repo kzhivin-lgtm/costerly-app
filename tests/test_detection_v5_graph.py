@@ -980,13 +980,43 @@ def test_v5_dimension_halo_reading_cannot_change_the_document_unit():
     assert [row["value_mm"] for row in fingerprint["occurrences"]] == ["2750", "7090"]
 
 
-def test_v5_keeps_plausible_large_millimeter_readings_and_explicit_units():
-    packages = [{"source_facts": [{"text": "275"}, {"text": "1250"}]}]
+def test_v5_requires_more_than_ten_percent_large_bare_readings_for_mm():
+    facts = [{"text": "275"}] * 18 + [{"text": "1250"}, {"text": "11000"}]
+    assert infer_detection_v5_bare_dimension_unit([{"source_facts": facts}], document_unit="unknown") == (
+        "cm", "nonstandard_100_to_600_value",
+    )
+    packages = [{"source_facts": facts[1:]}]
     assert infer_detection_v5_bare_dimension_unit(packages, document_unit="unknown") == (
-        "mm", "bare_value_over_600",
+        "mm", "bare_values_over_600_exceed_ten_percent",
     )
     assert infer_detection_v5_bare_dimension_unit(packages, document_unit="cm") == (
         "cm", "explicit_document_unit",
+    )
+    assert infer_detection_v5_bare_dimension_unit(
+        [{"source_facts": [{"text": "275"}]}], document_unit="mm",
+    ) == ("mm", "explicit_document_unit")
+
+
+def test_v5_single_large_span_and_duplicate_ocr_do_not_choose_mm():
+    view_box = {"top_left_x": 0, "top_left_y": 0, "bottom_right_x": 200, "bottom_right_y": 100}
+    span = {"text": "1100", "fact_id": "native", "bbox": {
+        "top_left_x": 10, "top_left_y": 10, "bottom_right_x": 40, "bottom_right_y": 20,
+    }}
+    duplicate = {**span, "fact_id": "ocr", "bbox": {**span["bbox"], "top_left_x": 12}}
+    packages = [{"visual_group_id": "view", "page_number": 1, "bbox": view_box,
+                 "source_facts": [span, duplicate, {"text": "275", "fact_id": "small", "bbox": view_box}]}]
+    assert infer_detection_v5_bare_dimension_unit(packages, document_unit="unknown") == (
+        "cm", "nonstandard_100_to_600_value",
+    )
+    fingerprint, = build_detection_v5_dimension_fingerprints(packages, document_unit="cm")
+    assert [row["value_mm"] for row in fingerprint["occurrences"]] == ["11000", "2750"]
+
+    another_label = {**span, "fact_id": "second", "bbox": {
+        "top_left_x": 80, "top_left_y": 10, "bottom_right_x": 110, "bottom_right_y": 20,
+    }}
+    packages[0]["source_facts"].append(another_label)
+    assert infer_detection_v5_bare_dimension_unit(packages, document_unit="unknown") == (
+        "mm", "bare_values_over_600_exceed_ten_percent",
     )
 
 

@@ -11,6 +11,30 @@ individual View coverage on P03–P08, and positive render attachment.
 Track evidence and any incorrect merges in
 `notes/DETECTION_V8_4_13_DIMENSION_MEMBERSHIP_2026_11_10.md`.
 
+VERIFIED, P0. V8.4.19 require a document-level vote
+before inferring millimeters. The owner approved a strict share above 10%
+for unmarked values above 600. Count at least two independent label positions
+and retain explicit document units. Floor 07 production
+`run_613ee950a7e84d23a02608323ed1349b` recovers from 23 to 13 groups with
+the new inference and unchanged View inventory and membership evidence.
+Fresh full Floor 07 Upload saved 9 names and retained complete page
+coverage. The separate title-block evidence classification draft remains
+pending.
+
+PENDING, P0. Find where the native PDF inspection worker stalls and
+preserve dimension evidence on a partial failure. Floor 07 production
+`run_d0c489bd78ce44c18f0c79db004a0274` received all 11 Mistral pages, but the
+native PDF worker did not return within 45 seconds. The compiler received
+zero dimension occurrences and published 17 objects. Replaying those same
+Views and accepted evidence with the identical file's native text restored
+10 groups. Existing logs record the combined worker deadline only. Record
+worker launch and readiness, PDF open, last completed page and source,
+result delivery, and exit status under the existing OCR usage event.
+Correlate child CPU time, wall time, and container resource metrics on a
+timeout. Verify the launch method in the production image and retain
+completed native text if a later graphics stage fails. Keep the
+threshold fix independent of this investigation.
+
 PENDING, P1. Preserve complete dimension chains in the evidence envelope
 when the chain has a unique View owner. In the Floor 07 production
 witness, N60's 248 is already owned by V1 and V3, and N76B's 345 is

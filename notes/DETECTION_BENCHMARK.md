@@ -1,5 +1,33 @@
 # Detection Agent benchmark
 
+## V8.4.19, require agreement before inferring bare millimeters
+
+In the absence of an explicit document unit, millimeters now require at
+least two independent readings above 600 and more than 10% of the eligible
+bare readings. Duplicate OCR observations of a printed label count once.
+A large measurement remains available to Fingerprint under the chosen
+unit. Explicit units, the halo exclusion for unit inference and the
+existing centimeter fallback still apply.
+
+Floor 07 production run `run_613ee950a7e84d23a02608323ed1349b` had one
+reading over 600 among 677 candidates under the old rule: the printed
+sheet number. The saved evidence replay with the new vote stays in
+centimeters, raises same-sheet 100-point pairs from 2 to 20, and publishes
+13 groups instead of 23. Exact request replays on Floor 06 and Floor 07
+preserved the V8.4.18 partitions, 26 and 9 groups respectively. All 430
+selected regression tests passed. Fresh full Floor 07 Upload
+`run_b1e959a508c243e6bf935a1125c0e674` confirmed all 11 pages, retained
+33 Views, chose centimeters and saved 9 object names in 114.935 seconds
+through File Review. The unattached P11.V3 technical detail was excluded.
+
+In the separate 17-object run `run_d0c489bd78ce44c18f0c79db004a0274`, Mistral
+returned all 11 pages and the native PDF inspection hit its 45-second
+deadline. Restoring native text from the matching file hash with the same
+Views and membership evidence yielded 10 groups. The N76B supporting
+detail was excluded after Membership in both production runs. Fingerprint
+scored all its retained same-page peers and 29 or 28 cross-page peers
+respectively. All cross-page scores were zero.
+
 ## V8.4.18, exclude unattached supporting technical Views
 
 Ordinary Detection keeps supporting floor/location plans and technical details
