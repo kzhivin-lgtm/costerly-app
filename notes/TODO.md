@@ -19,14 +19,16 @@ chain under the halo's minimum value of 20. Verify full chain ownership
 without admitting neighboring View or title-block dimensions. Do not
 change the physical core bounds.
 
-VERIFIED ON SAVED EVIDENCE, P1. V8.4.17 native dimension chains.
+CHECKPOINT, P1. V8.4.17 native dimension chains.
 N57 P04.V5 and V6 score 49 instead of 14 because the tick-bounded 22 and
 88 spans match the printed 110 along the same axis. The frozen N57 compiler
 replay changes two groups to one without changing the dominant-page rule.
 The exact V8.4.16 Registry replays preserve the Floor 06 and Floor 07
 partitions. Negative tests cover missing ticks, separate lines, different
-axes, competing Views, and double counting. See the benchmark for
-coordinates, runtime, and outstanding fresh verification.
+axes, competing Views, and double counting. Production run
+`run_52135628283f4164882efb9c3be04158` confirmed the N57 join. The accepted
+checkpoint tag points to `b159eca`, with the touching-label false bonus
+tracked separately below.
 
 PENDING, P1. Reject a chain total when its label crosses a dimension tick.
 V8.4.17 Floor 07 production N57 P04.V4's native text joined 10 and 2 into
@@ -52,15 +54,15 @@ together for same-sheet attachment. Keep the current precision tiers.
 N76B V1's only dimension, 349, matches 345 on V2 and V3 with 1.15% error.
 Count one matching position, prefer a unique confirmed target package,
 and reject competing targets, common dimensions without corroboration,
-and matches on the wrong axis. Verify attachment before changing the
-standalone publication policy.
+and matches on the wrong axis. Verify attachment after the standalone
+publication policy, using N76B's excluded View as the control.
 
-PENDING, P1. A technical View must not create a product by default. A
-supporting plan, elevation, section, or detail attaches to a confirmed
-product or stays out of the product list. It must not stop the cycle.
-Protect standalone Views that independently identify a fabricated item.
-Verify that a rejected View remains in the internal audit and that
-positive N76B attachment is not mistaken for exclusion.
+VERIFIED ON SAVED EVIDENCE, P1. V8.4.18 supporting singleton publication.
+An unattached supporting plan or technical detail remains in Membership and
+its audit, but does not create a product. Attached Views and independent
+fabrication drawings stay publishable. The N76B production replay excludes
+only P11.V1, retains V2/V3, and preserves 35 points for the unaccepted link.
+Fresh verification is recorded in the Detection benchmark.
 
 VERIFIED IN ISOLATION, P0. V8.4.16 ordinary Discovery and File Review publication.
 The V8.4.13 Floor 07 trace `bfdcfcb6-c2e4-4be0-ad1b-fa0865a84b83` omitted a

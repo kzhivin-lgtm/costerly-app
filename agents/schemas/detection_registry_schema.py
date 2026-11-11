@@ -3269,6 +3269,28 @@ def partition_detection_presentation_render_components(
     return retained, sorted(excluded_group_ids), audit
 
 
+def partition_detection_unattached_technical_views(
+    components: list[list[str]],
+    *,
+    visual_groups: list[dict[str, Any]],
+) -> tuple[list[list[str]], list[str]]:
+    """Keep supporting drawing roles in the graph, but never publish them alone."""
+    supporting_kinds = {"floor_plan", "location_plan", "plan_detail", "technical_plan_detail", "technical_detail"}
+    supporting_ids = {
+        group["group_id"] for group in visual_groups
+        if str(group.get("representation_kind") or "").strip().lower().replace("-", "_").replace(" ", "_")
+        in supporting_kinds
+    }
+    retained = []
+    excluded = []
+    for component in components:
+        if len(component) == 1 and component[0] in supporting_ids:
+            excluded.append(component[0])
+        else:
+            retained.append(component)
+    return retained, sorted(excluded)
+
+
 def derive_detection_v5_dominant_page_attachment_edges(
     proof_components: list[list[str]],
     *,

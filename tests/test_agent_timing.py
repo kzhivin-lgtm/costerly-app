@@ -1566,6 +1566,53 @@ def test_presentation_render_without_technical_match_never_creates_registry_obje
     assert usage["raw_usage"]["v6_14_document_scope_requested"] is False
 
 
+@pytest.mark.parametrize("representation", ["floor_plan", "plan_detail", "technical_plan_detail", "technical_detail"])
+def test_unattached_supporting_drawing_is_compared_but_does_not_publish(representation):
+    proposal = _visual_registry_payload({"visual_groups": [
+        {
+            "group_id": "fixture-detail", "page_number": 1, "location_hint": "left",
+            "visual_description": "Fixture detail next to a cabinet",
+            "representation_kind": representation, "evidence_class": "object_evidence",
+        },
+        {
+            "group_id": "cabinet", "page_number": 1, "location_hint": "right",
+            "visual_description": "Fabrication plan of one cabinet",
+            "representation_kind": "plan", "evidence_class": "object_evidence",
+        },
+    ]})
+    for field in ("object_hypotheses", "semantic_facts", "document_scope"):
+        proposal.pop(field)
+    proposal["page_coverage"] = {"1": ["fixture-detail", "cabinet"]}
+    review = {"object_hypotheses": [], "presentation_render_decisions": []}
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", return_value=(_Response(), {
+            "request_started_at": "2026-10-16T00:00:00+00:00",
+            "request_finished_at": "2026-10-16T00:00:01+00:00",
+        })),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=[
+            json.dumps(proposal), json.dumps(review),
+        ]),
+    ):
+        visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None,
+            model="claude-haiku-5-5", document_category="ordinary_object_set",
+        )
+
+    raw = usage["raw_usage"]
+    assert raw["discovery_coverage_gaps"]["confirmed_pages"] == [1]
+    assert raw["excluded_unattached_technical_view_group_ids"] == ["view-001"]
+    assert raw["dimension_graph_audit"]["dimension_similarity_candidates"][0]["same_page"]
+    assert {row["group_id"] for row in raw["dimension_inventory"]} == {"view-001", "view-002"}
+    assert [row["visual_group_ids"] for row in registry["objects"]] == [["view-002"]]
+    assert [row["group_id"] for row in visual_map["_registry_owned_evidence"]] == ["view-002"]
+    assert {
+        "group_id": "view-001", "package_disposition": "excluded_unattached_technical_view",
+        "component_anchor_group_id": None,
+    } in raw["package_decisions"]
+
+
 def test_integrated_visual_registry_rejects_invalid_optional_scope_only():
     payload = _visual_registry_payload({
         "visual_groups": [{

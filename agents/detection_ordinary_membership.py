@@ -227,6 +227,14 @@ def partition(usage):
                   for group in usage["proof_graph_components"])
 
 
+def membership_components(usage):
+    """Recovery still compares supporting Views withheld from standalone publication."""
+    return [
+        *(row["visual_group_ids"] for row in usage["proof_graph_components"]),
+        *([group_id] for group_id in usage.get("excluded_unattached_technical_view_group_ids", [])),
+    ]
+
+
 def dimensional_review_context(usage, canonical_ids, views, queue, page, marked):
     """Supply same-run OCR corroboration without proposing identity."""
     raw_ids = {canonical: raw for raw, canonical in canonical_ids.items() if raw in views}
@@ -444,7 +452,7 @@ def run_ordinary_haiku_membership(run_registry, *, file_bytes, ocr_package, stag
             return []
 
     final = primary
-    prior_components = [row["visual_group_ids"] for row in audit(primary)["proof_graph_components"]]
+    prior_components = membership_components(audit(primary))
     eligible_ids = {
         canonical_ids[group] for group, (_, role) in views.items()
         if group in canonical_ids and role != "presentation_render"
@@ -471,7 +479,7 @@ def run_ordinary_haiku_membership(run_registry, *, file_bytes, ocr_package, stag
             for selected_pairs in attempts:
                 anchor_pairs = selected_pairs
                 candidate = recompile(payload, compile_merge=merge_with_dimensions)
-                new_components = [row["visual_group_ids"] for row in audit(candidate)["proof_graph_components"]]
+                new_components = membership_components(audit(candidate))
                 if all(len({old_groups[g] for g in component if g in old_groups}) <= 1 for component in new_components):
                     final = candidate
                     break
@@ -498,7 +506,7 @@ def run_ordinary_haiku_membership(run_registry, *, file_bytes, ocr_package, stag
                 final = recompile(payload, compile_merge=merge_with_dimensions)
 
         intermediate_usage = audit(final)
-        components = [row["visual_group_ids"] for row in intermediate_usage["proof_graph_components"]]
+        components = membership_components(intermediate_usage)
         singleton_ids = {row[0] for row in components if len(row) == 1}
         for view_id, (page, role) in views.items():
             if counts[page] > 1 and role != "presentation_render" and canonical_ids.get(view_id) in singleton_ids:

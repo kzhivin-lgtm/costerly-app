@@ -1,5 +1,29 @@
 # Detection Agent benchmark
 
+## V8.4.18, exclude unattached supporting technical Views
+
+Ordinary Detection keeps supporting floor/location plans and technical details
+available to Membership. A supporting singleton stays in the audit but does
+not become a Registry object. Attached supporting Views remain evidence of
+their product. A fabrication plan, elevation, or section may still describe
+a product on its own. Dimension scores and merge admission are unchanged.
+
+Replaying publication from V8.4.17 Floor 07 production run
+`run_52135628283f4164882efb9c3be04158` retained all 32 recognized Views in
+its audit and published 10 products instead of 11. Only P11.V1 (`floor_plan`)
+was excluded. V2/V3 stayed together, their 35-point links to V1 remained
+available to Membership, and N60 V3 stayed separate at Fingerprint 100.
+The exact saved V8.4.16 Floor 07 Registry replay also excluded the same
+unattached depiction classified as `technical_detail` and kept the attached
+floor plan. Floor 06's complete partition was unchanged in exact replay.
+Fresh Floor 07 run `run_ed22d52f660e4a4ab5da642857a7030e` completed all 11
+pages and saved 13 names. Discovery classified the N76B location detail as
+context, so the publication rule had no singleton to exclude in that run.
+An exact replay of those same responses with the publication rule disabled
+returned the identical 13-object partition. All 429 selected regression
+tests passed. Artifacts are under
+`output/detection-v8418-unattached-technical-views/`.
+
 ## V8.4.17 candidate, native dimension chains
 
 Ordinary PDF Detection can compare a chain sum with a printed total in

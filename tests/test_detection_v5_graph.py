@@ -6,6 +6,7 @@ from agents.schemas.detection_registry_schema import (
     compile_detection_v5_membership_edges,
     compile_detection_v5_object_hypotheses,
     partition_detection_presentation_render_components,
+    partition_detection_unattached_technical_views,
     derive_detection_v5_dominant_page_attachment_edges,
     compile_detection_v5_semantic_facts,
     validate_detection_v5_final_result,
@@ -23,6 +24,20 @@ VIEWS = [
     {"group_id": "view-001", "evidence_class": "object_evidence"},
     {"group_id": "view-002", "evidence_class": "object_evidence"},
 ]
+
+
+def test_attached_technical_view_remains_product_evidence():
+    published, excluded = partition_detection_unattached_technical_views(
+        [["fixture", "elevation"], ["unattached"], ["fabrication-plan"]],
+        visual_groups=[
+            {"group_id": "fixture", "representation_kind": "technical_plan_detail"},
+            {"group_id": "elevation", "representation_kind": "elevation"},
+            {"group_id": "unattached", "representation_kind": "location_plan"},
+            {"group_id": "fabrication-plan", "representation_kind": "plan"},
+        ],
+    )
+    assert published == [["fixture", "elevation"], ["fabrication-plan"]]
+    assert excluded == ["unattached"]
 
 
 def test_presentation_render_components_require_a_technical_view():
