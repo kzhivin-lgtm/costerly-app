@@ -5,7 +5,10 @@ import re
 from collections import deque
 from decimal import Decimal, InvalidOperation
 from itertools import combinations
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from agents.detection_dimension_chains import DimensionChainMatch
 
 DETECTION_REGISTRY_JSON_SCHEMA: dict[str, Any] = {"type":"object","additionalProperties":False,"required":["objects"],"properties":{"objects":{"type":"array","items":{"type":"object","additionalProperties":False,"required":["object_id","transport_label","quantity","quantity_explicit","identity_pages","estimation_evidence_pages","visual_group_ids","visual_identity","boundary_basis"],"properties":{"object_id":{"type":"string"},"transport_label":{"type":"string"},"quantity":{"type":"number","minimum":0},"quantity_explicit":{"type":"boolean"},"identity_pages":{"type":"array","items":{"type":"integer","minimum":1}},"estimation_evidence_pages":{"type":"array","items":{"type":"integer","minimum":1}},"visual_group_ids":{"type":"array","minItems":1,"items":{"type":"string"}},"visual_identity":{"type":"string"},"boundary_basis":{"type":"string"}}}}}}
 
@@ -2818,6 +2821,7 @@ def compile_detection_v5_dimension_graph(
     fingerprints: list[dict[str, Any]], *, visual_groups: list[dict[str, Any]],
     group_bboxes: dict[str, dict[str, float]] | None = None,
     allowed_pairs: set[tuple[str, str]] | None = None,
+    dimension_chain_matches: dict[tuple[str, str], list[DimensionChainMatch]] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Score Dimension Equality through Q, or build Q for proto-regions.
 
@@ -2941,6 +2945,36 @@ def compile_detection_v5_dimension_graph(
                 "added_points": round(points_added, 3),
             }
             score += points_added
+        chain_matches = (dimension_chain_matches or {}).get((left_id, right_id), ())
+        if chain_matches and page(left_id) == page(right_id):
+            claimed_sources = {source for fact in facts for source in fact["source_fact_ids"]}
+            for match in sorted(chain_matches, key=lambda row: (-row.printed_total.value_mm, row.chain_view, len(row.chain))):
+                if match.source_fact_ids & claimed_sources:
+                    continue
+                total = match.printed_total.value_mm
+                common_factor = 0.8 if total in _V5_COMMON_DIMENSIONS_MM else 1.0
+                # A single derived total is supporting evidence. It cannot, on
+                # its own, meet the existing 40-point batch admission rule.
+                points = min(35.0, size_points(total) * precision(total, total) * rarity(total, total) * common_factor)
+                values = [str(part.value_mm) for part in match.chain]
+                facts.append({
+                    "evidence_type": "dimension_equality",
+                    "evidence_pages": [match.page],
+                    "observation": f"{' + '.join(values)} mm matches a printed {total} mm on the same axis.",
+                    "source_fact_ids": sorted(match.source_fact_ids),
+                    "dimension_chain": {
+                        "chain_view": match.chain_view,
+                        "total_view": match.total_view,
+                        "axis": "x" if match.printed_total.span.axis == 0 else "y",
+                        "values_mm": values,
+                        "total_mm": str(total),
+                        "chain_ticks_pdf_points": [match.chain[0].span.start, *(part.span.end for part in match.chain)],
+                        "total_ticks_pdf_points": [match.printed_total.span.start, match.printed_total.span.end],
+                        "points": round(points, 3),
+                    },
+                })
+                score += points
+                break
         return round(min(100.0, score), 3), facts, feature_rows, coverage_bonus
 
     def page(group_id: str) -> int:
@@ -2992,6 +3026,11 @@ def compile_detection_v5_dimension_graph(
             "cycle": cycle, "dimension_similarity_score": score,
             "features": feature_rows,
         }
+        for fact in facts:
+            if "dimension_chain" in fact:
+                candidate["dimension_chain_match"] = {
+                    **fact["dimension_chain"], "source_fact_ids": fact["source_fact_ids"],
+                }
         if coverage_bonus:
             candidate["short_fingerprint_bonus"] = coverage_bonus
         candidates.append(candidate)

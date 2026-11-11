@@ -19,14 +19,14 @@ chain under the halo's minimum value of 20. Verify full chain ownership
 without admitting neighboring View or title-block dimensions. Do not
 change the physical core bounds.
 
-PENDING, P1. Evaluate geometry-backed, same-axis segment totals as
-Membership evidence. The N57 lower middle and lower right Views scored
-14 in both the V8.4.13 nine-object witness and V8.4.14 production. The
-lower middle View joined via dominant-page attachment in V8.4.13, not a
-sum. Verify that 88 and 22 occupy consecutive spans sharing a physical
-tick before matching their sum to the printed 110 on the same axis.
-Test accidental equal sums across separate lines, Views, or axes.
-Leave dominant-page attachment unchanged.
+VERIFIED ON SAVED EVIDENCE, P1. V8.4.17 native dimension chains.
+N57 P04.V5 and V6 score 49 instead of 14 because the tick-bounded 22 and
+88 spans match the printed 110 along the same axis. The frozen N57 compiler
+replay changes two groups to one without changing the dominant-page rule.
+The exact V8.4.16 Registry replays preserve the Floor 06 and Floor 07
+partitions. Negative tests cover missing ticks, separate lines, different
+axes, competing Views, and double counting. See the benchmark for
+coordinates, runtime, and outstanding fresh verification.
 
 PENDING, P1. Make strong same-sheet dimension links less dependent on
 variable model evidence. N60 V1/V3 scored 100 with identical features in

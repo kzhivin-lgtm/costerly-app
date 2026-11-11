@@ -1103,10 +1103,11 @@ def run_detection_agent(
             )
             if (route.get("category") == "ordinary_object_set" and route["registry_model"] == CLAUDE_HAIKU_MODEL
                     and ocr_package and file_name.lower().endswith(".pdf")):
+                from agents.detection_dimension_chains import native_dimension_span_reader
                 from agents.detection_ordinary_membership import run_ordinary_haiku_membership
 
                 _visual_map, registry, visual_registry_usage = run_ordinary_haiku_membership(
-                    run_registry, file_bytes=file_bytes, ocr_package=ocr_package, stage_callback=stage_callback,
+                    partial(run_registry, read_dimension_spans=native_dimension_span_reader(file_bytes)), file_bytes=file_bytes, ocr_package=ocr_package, stage_callback=stage_callback,
                 )
             else:
                 _visual_map, registry, visual_registry_usage = run_registry(stage_callback=stage_callback)

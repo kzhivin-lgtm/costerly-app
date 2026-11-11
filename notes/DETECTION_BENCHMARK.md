@@ -1,5 +1,33 @@
 # Detection Agent benchmark
 
+## V8.4.17 candidate, native dimension chains
+
+Ordinary PDF Detection can compare a chain sum with a printed total in
+another View on the same sheet. Each label must fit a native segment with
+end ticks. Consecutive segments must share the same tick and have consistent
+scale. The printed total must be on a separate span on the same axis. The
+Dimension Graph records the labels and tick coordinates, caps one derived
+total at 35 points, and does not reuse a fact counted by printed Fingerprint
+matches. Native vector spans are cached within the current RFQ.
+
+Floor 07 production evidence `run_296b14b143d2402bbf01eb660ec5ec39`, N57:
+P04.V5's native vertical 22 and 88 share the PDF tick at (1204.5, 984.7)
+points. Their sum matches the printed 110 in P04.V6. The same saved
+Membership evidence reproduced the two original groups at 14 points. The
+new score of 49 attached V5 to the existing group and produced one group
+with all six Views. The exact V8.4.16 Registry request and reply replays
+retained both archived partitions, 26 objects on Floor 06 and 10 on Floor
+07. The N57 test changes a previously split case, while the Floor 07 full
+replay preserves the already joined case.
+
+Geometry processing on the archived inputs took 3.135 seconds on Floor
+06 and 1.825 seconds on Floor 07. Reusing the cached spans took less than
+0.02 seconds in both cases. All 424 selected tests passed. Geometry does not
+request another model call.
+Evidence: `output/detection-v8417-dimension-chains/`. The source PDF must
+contain usable vector lines and ticks. Fresh Upload and production rollout
+remain pending.
+
 ## V8.4.16 candidate, ordinary Discovery page verification
 
 The historical Floor 06 empty response and Floor 07 omitted coverage row

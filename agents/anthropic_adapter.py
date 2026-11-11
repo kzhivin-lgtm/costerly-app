@@ -23,6 +23,7 @@ from typing import Any, Callable, NamedTuple
 
 import anthropic
 
+from agents.detection_dimension_chains import PageDimensionSpans, build_dimension_chain_matches
 from agents.multilingual_evidence import multilingual_fallback_signal
 
 from config import CLAUDE_HAIKU_MODEL, agent_cost_category, calculate_llm_cost_usd
@@ -9880,6 +9881,7 @@ def run_anthropic_detection_visual_registry_agent(
     document_category: str | None = None,
     stage_callback: Callable[..., None] | None = None,
     review_hooks: DetectionRegistryHooks | None = None,
+    read_dimension_spans: Callable[[int], PageDimensionSpans | None] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     """Run Island discovery, then the route-scoped bounded membership review."""
     stream_message, normalize_visual_map, compile_semantic_facts, compile_merge_edges, count_input_tokens = (
@@ -12228,9 +12230,17 @@ def run_anthropic_detection_visual_registry_agent(
         dimension_inventory_valid = True
         island_dimension_comparison_audit = []
         page_drawing_codes = extract_detection_page_drawing_codes(ocr_package)
+        chain_matches = (
+            build_dimension_chain_matches(
+                dimension_inventory_audit, view_evidence_packages,
+                page_dimensions=_source_dimensions_by_page(ocr_package),
+                excluded_views=presentation_render_group_ids,
+                read_spans=read_dimension_spans,
+            ) if read_dimension_spans is not None else None
+        )
         dimension_relation_edges, dimension_graph_audit = compile_detection_v5_dimension_graph(
             dimension_inventory_audit, visual_groups=visual_map["visual_groups"],
-            group_bboxes=group_bboxes,
+            group_bboxes=group_bboxes, dimension_chain_matches=chain_matches,
             allowed_pairs=(
                 v69_same_object_pairs
                 if v69_criteria_reconciliation_active
