@@ -66,16 +66,21 @@ PENDING, P1. Make strong same-sheet dimension links less dependent on
 variable model evidence. N60 V1/V3 scored 100 with identical features in
 the V8.4.13 nine-object witness and V8.4.14 production. The former joined
 through V2/V3 topology and geometry evidence; the latter had no accepted
-initial link. Replay on a fixed inventory, changing accepted Membership
-evidence alone. P06's 375 plus the ordered 64/61 spans is a positive
-control. A pair of independent objects sharing one major dimension is a
-negative control. Keep the existing independent proof gate until a
-specific improvement passes both.
+initial link. The V8.4.17 production replay found a late V1/V2 proof
+added after batch expansion. Passing the same proof to the primary
+compiler joins V3 through the existing 79.075-point V2/V3 edge.
+V8.4.20 had topology evidence in the primary review and joined all three.
+Evaluate reusing bounded same-page expansion after late proof. P06's 375
+plus the ordered 64/61 spans is a positive control. An independent pair
+sharing one major dimension is a negative control.
 
 PENDING, P1. Apply the existing 2% tolerance and sparse evidence weight
 together for same-sheet attachment. Keep the current precision tiers.
 N76B V1's only dimension, 349, matches 345 on V2 and V3 with 1.15% error.
-Count one matching position, prefer a unique confirmed target package,
+The V8.4.20 replay confirms both links score 35 against the 40-point
+dimension-only attachment gate. The short-Fingerprint rule also requires
+two distinct exact dimensions. Count one matching position, prefer a
+unique confirmed target package,
 and reject competing targets, common dimensions without corroboration,
 and matches on the wrong axis. Verify attachment after the standalone
 publication policy, using N76B's excluded View as the control.

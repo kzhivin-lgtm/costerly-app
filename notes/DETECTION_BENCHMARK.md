@@ -31,6 +31,28 @@ retained 682 occurrences. This confirms production instrumentation on
 success. The historical 45-second timeout did not recur. See the run
 summary under `output/detection-v8420-native-pdf-telemetry/production/`.
 
+The production code is frozen at `e7ea4ff` under
+`detection-v8.4.20-floor07-nine-object-checkpoint-2026-11-11`. The local
+checkpoint manifest records the exact file hash, run, release receipt
+and evidence digests.
+
+The recorded compiler comparison explains the two remaining admission
+cases. N76B P11.V1's 349-to-345 match passes 2% tolerance, but each link
+scores 35 and carries the same single source measurement. The
+dimension-only attachment to a confirmed package requires 40 points.
+The separate short-Fingerprint rule requires two distinct exact matches.
+Raising one edge to 40 in isolation demonstrated the gate.
+
+N60 P05.V1/V3 scored 100 in both V8.4.17 and V8.4.20. The independent
+dimension anchor found one exact large extent (2480 mm), without a
+second exact large extent or corroborating sequence. V8.4.17 confirmed
+V1/V2 in the late local review after batch expansion. That review adds
+the proven pair with batch expansion disabled. Replaying the same late
+proof in the primary compiler joined V3 through the 79.075-point V2/V3
+edge. V8.4.20 had accepted topology evidence in the primary compiler.
+Removing all P05 semantic facts reproduced the split. The replay is
+stored next to the production run summary.
+
 ## V8.4.19, require agreement before inferring bare millimeters
 
 In the absence of an explicit document unit, millimeters now require at
