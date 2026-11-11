@@ -74,16 +74,13 @@ Evaluate reusing bounded same-page expansion after late proof. P06's 375
 plus the ordered 64/61 spans is a positive control. An independent pair
 sharing one major dimension is a negative control.
 
-PENDING, P1. Apply the existing 2% tolerance and sparse evidence weight
-together for same-sheet attachment. Keep the current precision tiers.
-N76B V1's only dimension, 349, matches 345 on V2 and V3 with 1.15% error.
-The V8.4.20 replay confirms both links score 35 against the 40-point
-dimension-only attachment gate. The short-Fingerprint rule also requires
-two distinct exact dimensions. Count one matching position, prefer a
-unique confirmed target package,
-and reject competing targets, common dimensions without corroboration,
-and matches on the wrong axis. Verify attachment after the standalone
-publication policy, using N76B's excluded View as the control.
+VERIFIED ON SAVED EVIDENCE, P1. V8.4.21 one-position short Fingerprint.
+The existing 2% tolerance covers N76B's 349-to-345 match at 1.15% error.
+The large one-position match receives a contextual bonus only when two
+independent source measurements support one previously confirmed same-sheet
+package. The production evidence replay attaches the plan at 40, keeps
+nine objects, and preserves other sheet partitions. A fresh production
+upload remains the acceptance check.
 
 VERIFIED ON SAVED EVIDENCE, P1. V8.4.18 supporting singleton publication.
 An unattached supporting plan or technical detail remains in Membership and

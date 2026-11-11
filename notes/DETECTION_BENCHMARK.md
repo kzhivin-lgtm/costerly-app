@@ -1,5 +1,24 @@
 # Detection Agent benchmark
 
+## V8.4.21, one-position Fingerprint weight
+
+The short Fingerprint covers one to four dimension positions. A stable,
+source-backed one-position match within the existing 2% tolerance receives
+the strongest pair bonus. The pair bonus stays below the 40-point batch
+threshold. A single large dimension can reach 40 for attachment when two
+independent peer measurements support it in the same already confirmed
+same-sheet package and no competing target has a matching dimension.
+Both peer measurements must have distinct source facts.
+
+Frozen V8.4.20 Floor 07 production evidence
+`run_9b2068aee6dc4415a00bf6c8e009f941` attached N76B's P11.V1 plan at 40
+points, up from 35. The two 345 measurements came from separate elevations.
+All 9 objects remained, and only P11 membership changed. Saved full
+registry replays preserved the Floor 06 partition and produced the same
+P11-only improvement on Floor 07. The controls reject a competing
+destination, duplicate evidence, a blocked pair and an out-of-tolerance
+reading. All 438 selected regression tests passed.
+
 ## V8.4.20, native PDF worker telemetry
 
 The existing OCR usage event now records three marks under

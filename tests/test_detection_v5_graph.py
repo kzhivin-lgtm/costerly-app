@@ -233,6 +233,85 @@ def test_short_view_requires_a_unique_confirmed_group_with_complementary_dimensi
     assert not any("short_fingerprint_attachment" in row for row in blocked["edges"])
 
 
+def test_a_single_position_gets_the_strongest_short_fingerprint_weight():
+    views = [{"group_id": group, "page_number": 1} for group in ("a", "b")]
+    controls = []
+    for i in range(4):
+        group_id = f"control-{i}"
+        views.append({"group_id": group_id, "page_number": i + 2})
+        controls.append({
+            "group_id": group_id, "occurrences": [_occurrence(group_id, 600, f"{group_id}-source")],
+        })
+    for position_count in range(1, 6):
+        values = [600, *range(2500, 2500 + position_count - 1)]
+        inventory = [
+            {"group_id": "a", "occurrences": [
+                _occurrence(f"a-{i}", value, f"a-source-{i}") for i, value in enumerate(values)
+            ]},
+            {"group_id": "b", "occurrences": [
+                _occurrence(f"b-{i}", value, f"b-source-{i}")
+                for i, value in enumerate([600, 1000, 1200, 1400, 1600])
+            ]},
+        ]
+        _, audit = compile_detection_v5_dimension_graph(
+            inventory + controls, visual_groups=views, allowed_pairs=set(),
+        )
+        candidate, = audit["dimension_similarity_candidates"]
+        bonus = candidate.get("short_fingerprint_bonus")
+        if position_count == 5:
+            assert bonus is None
+        else:
+            assert bonus["shorter_position_count"] == position_count
+            expected = 22.2 if position_count == 1 else round(25.6 / position_count, 3)
+            assert bonus["added_points"] == expected
+
+
+def test_one_large_near_match_needs_two_independent_peers_in_one_confirmed_group():
+    def verify(*, confirmed=True, duplicate=False, competitor=False, blocked=False, outside_tolerance=False):
+        values = {"a": [3450, 900], "b": [3450, 1300], "plan": [3490 if not outside_tolerance else 3600]}
+        if competitor:
+            values["other"] = [3450, 1800]
+        views = [{"group_id": group, "page_number": 1} for group in values]
+        inventory = [
+            {"group_id": group, "occurrences": [
+                _occurrence(
+                    f"{group}-{i}", value,
+                    "same-print" if duplicate and group in {"a", "b"} and i == 0 else f"{group}-source-{i}",
+                )
+                for i, value in enumerate(dimensions)
+            ]}
+            for group, dimensions in values.items()
+        ]
+        dim_edges, _ = compile_detection_v5_dimension_graph(inventory, visual_groups=views, allowed_pairs=set())
+        facts = [{
+            "group_id_a": "a", "group_id_b": "b", "evidence_type": "explicit_document_relation",
+            "strength": "direct", "observation": "Authored view reference", "source_fact_ids": ["reference"],
+        }] if confirmed else []
+        _, audit = compile_detection_v5_merge_edges(
+            dim_edges, facts, visual_groups=views, allow_short_fingerprint_attachment=True,
+            merge_blocked_pairs={("b", "plan"): "contradiction"} if blocked else {},
+        )
+        return [
+            (row, row["short_fingerprint_attachment"])
+            for row in audit["edges"] if "short_fingerprint_attachment" in row
+        ]
+
+    (edge, witness), = verify()
+    assert edge["dimension_similarity_score"] == 40
+    assert witness["short_position_count"] == 1
+    assert witness["base_score"] == 35
+    assert witness["added_points"] == 5
+    assert witness["supporting_pairs"] == [["a", "plan"], ["b", "plan"]]
+    assert [match["peer_source_fact_ids"] for match in witness["single_position_matches"]] == [
+        ["a-source-0"], ["b-source-0"],
+    ]
+    for control in (
+        {"confirmed": False}, {"duplicate": True}, {"competitor": True},
+        {"blocked": True}, {"outside_tolerance": True},
+    ):
+        assert verify(**control) == [], control
+
+
 def test_v5_strong_cited_pair_in_a_hypothesis_keeps_its_witness():
     evidence = {
         "evidence_type": "unique_geometry", "strength": "standard",
