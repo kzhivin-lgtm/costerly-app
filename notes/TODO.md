@@ -21,19 +21,17 @@ Fresh full Floor 07 Upload saved 9 names and retained complete page
 coverage. The separate title-block evidence classification draft remains
 pending.
 
-PENDING, P0. Find where the native PDF inspection worker stalls and
-preserve dimension evidence on a partial failure. Floor 07 production
+PENDING, P0. Identify the native PDF worker stall and preserve dimension
+evidence on a partial failure. Floor 07 production
 `run_d0c489bd78ce44c18f0c79db004a0274` received all 11 Mistral pages, but the
 native PDF worker did not return within 45 seconds. The compiler received
-zero dimension occurrences and published 17 objects. Replaying those same
-Views and accepted evidence with the identical file's native text restored
-10 groups. Existing logs record the combined worker deadline only. Record
-worker launch and readiness, PDF open, last completed page and source,
-result delivery, and exit status under the existing OCR usage event.
-Correlate child CPU time, wall time, and container resource metrics on a
-timeout. Verify the launch method in the production image and retain
-completed native text if a later graphics stage fails. Keep the
-threshold fix independent of this investigation.
+zero dimension occurrences and published 17 objects. Restoring the identical
+file's native text with the same Views and membership evidence yielded 10
+groups. V8.4.20 adds launch, read and transfer marks to the existing OCR
+usage event. The next owner-run Floor 07 upload should confirm all three
+marks in production. If another timeout occurs, use the last mark and
+container metrics to distinguish launch, parsing and result delivery.
+Retaining native text after a later graphics failure remains a separate task.
 
 PENDING, P1. Preserve complete dimension chains in the evidence envelope
 when the chain has a unique View owner. In the Floor 07 production

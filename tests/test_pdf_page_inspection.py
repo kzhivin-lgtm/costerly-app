@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+import time
 
 import fitz
 from PIL import Image, ImageDraw
@@ -9,6 +10,7 @@ from agents.detection_fusion_candidate_regions import (
     build_detection_fusion_page_profile_audit,
     format_detection_fusion_page_profiles,
 )
+from agents import pdf_page_inspection
 from agents.ocr_adapter import build_ocr_evidence
 from agents.ocr_rendering import run_mistral_document_evidence_ocr
 from agents.pdf_page_inspection import (
@@ -127,8 +129,59 @@ def test_default_ocr_path_attaches_profile_without_changing_ocr_provider_contrac
 
     assert package["native_pdf_inspection"]["status"] == "succeeded"
     assert package["native_pdf_inspection"]["profile_count"] == 2
+    telemetry = package["native_pdf_inspection"]["worker_telemetry"]
+    assert telemetry["worker_exit_code"] == 0
+    assert telemetry["last_phase"] == "transfer"
+    launch, read, transfer = (telemetry["marks"][phase] for phase in ("launch", "read", "transfer"))
+    assert launch["stage"] == "pdf_opened" and launch["page_count"] == 2
+    assert launch["worker_ready_after_seconds"] <= launch["pdf_opened_after_seconds"]
+    assert read["last_completed_page"] == 2 and read["text_span_count"] == 1
+    assert transfer["stage"] == "result_received"
+    assert transfer["sending_result_after_seconds"] <= transfer["result_received_after_seconds"]
     assert len(package["evidence"]["page_profiles"]) == 2
     assert all(
         profile["rendered_page"]["status"] == "succeeded"
         for profile in package["evidence"]["page_profiles"]
     )
+
+
+
+def test_native_inspection_timeout_retains_the_page_and_source_in_progress(monkeypatch):
+    original = pdf_page_inspection._native_text_blocks_for_page
+
+    def stall_second_page(page, *, page_number, dpi):
+        if page_number == 2:
+            time.sleep(20)
+        return original(page, page_number=page_number, dpi=dpi)
+
+    monkeypatch.setattr(pdf_page_inspection, "_native_text_blocks_for_page", stall_second_page)
+    job = pdf_page_inspection.start_native_pdf_pages_isolated(_sample_pdf(), dpi=200)
+    result = job.collect(timeout_seconds=1)
+
+    assert result["sources"]["error"] == "inspection timeout"
+    telemetry = result["worker_telemetry"]
+    assert telemetry["last_phase"] == "read"
+    assert telemetry["worker_exit_code"] < 0
+    assert telemetry["marks"]["launch"]["stage"] == "pdf_opened"
+    read = telemetry["marks"]["read"]
+    assert (read["stage"], read["page_number"], read["last_completed_page"]) == ("native_text", 2, 1)
+    assert read["text_span_count"] == 1
+    assert telemetry["marks"]["transfer"]["stage"] == "pending"
+
+
+def test_native_inspection_timeout_after_reading_records_result_transfer(monkeypatch):
+    class StalledResult(dict):
+        def __reduce__(self):
+            time.sleep(20)
+            return super().__reduce__()
+
+    def return_stalled_payload(*args, **kwargs):
+        return StalledResult()
+
+    monkeypatch.setattr(pdf_page_inspection, "inspect_native_pdf_pages", return_stalled_payload)
+    job = pdf_page_inspection.start_native_pdf_pages_isolated(_sample_pdf(), dpi=200)
+    result = job.collect(timeout_seconds=1)
+
+    assert result["sources"]["error"] == "inspection timeout"
+    assert result["worker_telemetry"]["last_phase"] == "transfer"
+    assert result["worker_telemetry"]["marks"]["transfer"]["stage"] == "sending_result"

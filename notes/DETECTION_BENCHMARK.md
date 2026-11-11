@@ -1,5 +1,20 @@
 # Detection Agent benchmark
 
+## V8.4.20, native PDF worker telemetry
+
+The existing OCR usage event now records three marks under
+`ocr_result.native_pdf_inspection.worker_telemetry`. Launch records worker
+readiness and PDF open. Read records the current source and page, the last
+completed page, text span count and worker CPU time. Transfer records send
+and receipt. The parent also records the worker exit code and last phase.
+The 45-second wait, V8.4.19 unit vote, and Detection logic are unchanged.
+
+The test PDF returned all three marks through the default OCR entry point.
+A forced timeout during page 2 text reading retained the completed page
+and text count. A forced timeout while preparing the result retained the
+transfer mark. All 436 selected regression tests passed. The owner will
+run Floor 07 on production.
+
 ## V8.4.19, require agreement before inferring bare millimeters
 
 In the absence of an explicit document unit, millimeters now require at

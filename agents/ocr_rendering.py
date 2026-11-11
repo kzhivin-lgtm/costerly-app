@@ -219,6 +219,7 @@ def run_mistral_direct_pdf_evidence_ocr(
         "profile_count": len(native_inspection.get("page_profiles") or []),
         "extraction_seconds": native_inspection.get("sources", {}).get("extraction_seconds"),
         "error": native_inspection.get("sources", {}).get("error"),
+        "worker_telemetry": native_inspection.get("worker_telemetry"),
     }
     result["evidence"] = build_ocr_evidence(
         result.get("pages") or [],
@@ -815,6 +816,7 @@ def run_mistral_document_evidence_ocr(
             "timings_seconds": (native_inspection.get("sources") or {}).get(
                 "timings_seconds", {},
             ),
+            "worker_telemetry": native_inspection.get("worker_telemetry"),
         },
         "raw_response": {
             "rendered_page_responses": raw_page_responses,
