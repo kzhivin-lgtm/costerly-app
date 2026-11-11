@@ -28,7 +28,19 @@ Evidence: `output/detection-v8417-dimension-chains/`. The source PDF must
 contain usable vector lines and ticks. Production is on `b159eca`.
 Railway and the public wrapper passed release checks. The release receipt is
 `output/detection-v8417-dimension-chains/deployment-receipt.json`.
-The first production Upload and chain audit are pending.
+Production Floor 07 run `run_52135628283f4164882efb9c3be04158` confirmed all
+11 pages with no Discovery recovery. It published 32 Views and 11 objects.
+N57 P04.V5/V6 scored 49 with the valid 22 + 88 = 110 witness, versus 14
+without it. The frozen compiler kept V5 separate when the witness was
+removed. P04.V1/V4 also gained 25 points from a false 28 + 4 + 70 = 102
+witness. The PDF text layer joined the adjacent 10 and 2 labels into 102.
+The extractor dropped the 2.28-point span between the ticks and bound the
+combined text to the 10 span by its centre. Removing that witness preserved
+all six Views in the same object. On N60 P05.V3/V1, 64 + 33 + 60 + 91 = 248
+was found during geometry replay and was excluded from scoring because
+some labels were already counted by Fingerprint. The pair remained at 100
+and V3 remained separate. Production evidence is under
+`output/detection-v8417-dimension-chains/production/run_52135628283f4164882efb9c3be04158/`.
 
 ## V8.4.16 candidate, ordinary Discovery page verification
 

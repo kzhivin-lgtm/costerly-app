@@ -28,6 +28,15 @@ partitions. Negative tests cover missing ticks, separate lines, different
 axes, competing Views, and double counting. See the benchmark for
 coordinates, runtime, and outstanding fresh verification.
 
+PENDING, P1. Reject a chain total when its label crosses a dimension tick.
+V8.4.17 Floor 07 production N57 P04.V4's native text joined 10 and 2 into
+102. The label centre was inside the 10 span, while the label crossed its
+upper tick. The short adjacent 2 span was filtered before isolation was
+checked. The false P04.V1/V4 witness raised 65 to 90 and did not change
+membership. Preserve native tick boundaries for short adjacent spans and
+verify complete label placement. Use the real 102 false positive and the
+valid 22 + 88 = 110 witness as separate controls.
+
 PENDING, P1. Make strong same-sheet dimension links less dependent on
 variable model evidence. N60 V1/V3 scored 100 with identical features in
 the V8.4.13 nine-object witness and V8.4.14 production. The former joined
