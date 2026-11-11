@@ -1,6 +1,11 @@
 # Detection Agent benchmark
 
-## Supporting technical View first-link experiment
+## V8.4.23, supporting technical View first links
+
+Release tag `detection-v8.4.23-supporting-view-links-production-2026-11-11`.
+Production rollback is
+`detection-v8.4.22-native-pdf-worker-production-2026-11-11`.
+Fresh production Upload acceptance is pending.
 
 Local rollback tag
 `detection-v8.4.22-before-supporting-views-checkpoint-2026-11-11`
@@ -50,6 +55,9 @@ Native PDF fixtures cover exact and chain-derived full extents, independent
 items of equal width, a competing owner, an independently labelled part,
 conflicting extents, renders, two supporting-only roles, and blocked or
 transitive merges. The selected regression suite passed 386 tests.
+The release check passed 388 tests. Its one dependency-list assertion
+also fails on the exact V8.4.22 baseline. The release retains the same
+dependency and build files.
 
 ## V8.4.22, native PDF worker startup
 

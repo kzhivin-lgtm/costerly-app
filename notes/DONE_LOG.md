@@ -1,5 +1,12 @@
 # Done Log
 
+Detection V8.4.23 packages the Haiku 5.5 supporting-View first-link
+experiment for production. The frozen Floor 07 run reproduces the
+10-object split and then recovers the 9-object partition on the same
+inputs. Fresh local Floor 06 and Floor 07 Uploads complete with 13
+and 9 named objects. The Detection benchmark records the controls and
+the V8.4.22 production rollback tag.
+
 Detection V8.4.22 pre-experiment checkpoint. The Floor 07 production run
 confirmed native PDF reading across 11 sheets and 969 text spans.
 The grouping evidence includes the P11 split and its fixed-input replay.
