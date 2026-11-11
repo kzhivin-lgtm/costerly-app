@@ -1,5 +1,11 @@
 # Done Log
 
+Detection V8.4.24 keeps the restored V8.4.19 runtime and fixes the
+render validation failure. A targetless `no_match` for a known
+technical View is audited even if its witness is blank. The exact
+Floor 06 production response replays with all nine real render
+decisions unchanged. See the Detection benchmark for the request ID.
+
 The owner requested a production trial on Detection V8.4.19. The
 rollback restores the runtime from `3f5df2e`. The V8.4.22 restoration
 commit `1d3b951` is the return point.

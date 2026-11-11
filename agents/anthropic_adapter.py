@@ -3992,14 +3992,15 @@ def normalize_detection_v711_presentation_render_decisions(
         if render_id not in render_ids:
             # The review can repeat a known non-render View as a harmless
             # `no_match`. It cannot create a graph edge, so retain it as audit
-            # rather than failing an otherwise complete render review. Never
-            # relax unknown IDs, attachments, unresolved rows or malformed data.
+            # rather than failing an otherwise complete render review. A
+            # no-match needs no witness because it cannot establish a link.
+            # Keep unknown IDs, attachments, unresolved rows and malformed
+            # data subject to validation.
             if (
                 render_id in object_groups
                 and disposition == "no_match"
                 and not technical_id
                 and evidence_type == "none"
-                and witness
             ):
                 ignored_non_render_no_match.append({
                     "render_group_id": group_id_mapping.get(render_id, render_id),

@@ -1,5 +1,22 @@
 # Detection Agent benchmark
 
+## V8.4.24, render abstention validation on the V8.4.19 baseline
+
+The restored V8.4.19 Floor 06 production attempt at 19:57:04 UTC
+confirmed all 15 Discovery pages, then failed in Membership Review
+validation. Haiku 5.5 request `req_011CgwjKaUqcNFPEhNLz6Bvx`
+returned an extra `no_match` row for technical elevation
+`v641-b01-003` on P03. The row had no target, no evidence, and a blank
+witness. V8.4.19 rejected it solely because its witness was blank.
+
+Replaying the captured production rows against V8.4.19 reproduces the
+same error. V8.4.24 records the extra abstention for audit and produces
+the same nine render decisions and zero render links as the control with
+the extra row removed. Positive attachment validation, technical
+grouping, and provider prompts and budgets are unchanged. This replay
+verifies the failed validation stage; fresh Upload grouping is separate.
+The rollback tag is `detection-v8.4.19-restored-production-2026-11-11`.
+
 ## V8.4.23, supporting technical View first links
 
 Release tag `detection-v8.4.23-supporting-view-links-production-2026-11-11`.
