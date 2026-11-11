@@ -2,12 +2,12 @@
 
 ## Ordinary Detection dimension membership, V8.4.13
 
-ACTIVE, P0. Compare owner Uploads on V8.4.25 with the V8.4.17 trial.
-The restored V8.4.17 published 16 objects on Floor 06 and 14 on Floor 07.
-Floor 07's PDF inspection timed out and returned zero native spans.
-V8.4.25 restores the V8.4.20/V8.4.22 worker and the V8.4.19 unit vote.
-Verify native text, Island coverage, dimension chain evidence and
-membership on both floors before reintroducing another grouping rule.
+ACTIVE, P0. Compare owner Uploads on V8.4.26 with the V8.4.25 baseline.
+The V8.4.25 owner runs read 1,347 native spans on Floor 06 and 969 on
+Floor 07, and both inferred centimeters. They published 20 and 10
+objects. The V8.4.26 replay joins the three P11 Views on Floor 07 and
+preserves the Floor 06 partition. Verify fresh P11 membership and
+inspect the remaining Floor 06 splits on P04 and P13.
 
 ACTIVE, P0. Recover outer dimension labels and evidence-backed joins on the
 same sheet. The final-policy replay passed P06, P10, and P13 on Floor 06

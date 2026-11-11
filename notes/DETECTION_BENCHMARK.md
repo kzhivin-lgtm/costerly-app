@@ -1,5 +1,22 @@
 # Detection Agent benchmark
 
+## V8.4.26, single-dimension Fingerprint weight
+
+Restore the V8.4.21 Fingerprint weight on the V8.4.25 runtime. The
+V8.4.25 compiler reproduces the full saved partitions for Floor 06
+(`run_b9dd81d69a1f4698b0f97385047eb534`) and Floor 07
+(`run_1439f67492ed4bf9a6c7fd8b93451f54`). On the same inputs V8.4.26
+preserves all 20 Floor 06 objects and their View membership. On Floor 07
+it joins P11.V1 (3490 mm) to the confirmed V2/V3 group, which provides
+two independent 3450 mm readings. The accepted link increases from 35
+to 40 points and Floor 07 goes from 10 to 9 objects. Every other
+component and all render exclusions match the saved results.
+
+The replay used the recorded Views, dimension inventory, semantic
+evidence, and anchors. Fresh Upload verification is pending. The
+rollback tag is
+`detection-v8.4.25-pdf-worker-and-unit-vote-production-2026-11-11`.
+
 ## V8.4.25, native PDF worker and bare dimension unit vote
 
 Based on the restored V8.4.17 production runtime (`23ed2d0`). Restore

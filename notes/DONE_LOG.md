@@ -1,5 +1,10 @@
 # Done Log
 
+Detection V8.4.26 restores the single-dimension Fingerprint weight.
+The saved V8.4.25 Floor 07 run replays from 10 to 9 objects when P11.V1
+joins the confirmed V2/V3 group. Floor 06 keeps all 20 original groups.
+The V8.4.25 release is the rollback point.
+
 Detection V8.4.25 restores the native PDF worker and its launch, read,
 and transfer diagnostics, plus the document-level bare dimension unit
 vote. Two concurrent checks per Hasolelim floor returned all native text
