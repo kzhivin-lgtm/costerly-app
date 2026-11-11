@@ -1,5 +1,10 @@
 # Done Log
 
+Detection V8.4.25 restores the native PDF worker and its launch, read,
+and transfer diagnostics, plus the document-level bare dimension unit
+vote. Two concurrent checks per Hasolelim floor returned all native text
+spans. The exact V8.4.17 production restoration is the rollback point.
+
 The owner requested a production trial on Detection V8.4.17.
 The rollback restores the exact released runtime from `b159eca`.
 The V8.4.24 release at `0784482` remains the return point.

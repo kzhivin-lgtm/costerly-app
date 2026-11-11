@@ -1,5 +1,22 @@
 # Detection Agent benchmark
 
+## V8.4.25, native PDF worker and bare dimension unit vote
+
+Based on the restored V8.4.17 production runtime (`23ed2d0`). Restore
+the native PDF worker diagnostics and fresh interpreter from V8.4.20
+and V8.4.22, plus the bare dimension unit vote from V8.4.19.
+
+The V8.4.17 owner trial read 1,347 native spans on Floor 06 and timed
+out with zero spans on Floor 07. V8.4.25 returned all 15 pages and 1,347
+spans on Floor 06, and all 11 pages and 969 spans on Floor 07, twice
+per file with four concurrent local inspections. Every worker exited
+with code 0 and logged launch, read and result transfer. The deadline
+remains 45 seconds. Replaying unit inference on the archived Floor 07
+reading that included sheet number 707 switches the inferred unit
+from millimeters to centimeters. Fresh production Upload grouping is
+pending. The rollback tag is
+`detection-v8.4.17-restored-production-2026-11-11`.
+
 The V8.4.17 owner trial restores the production code at `b159eca`,
 tagged `detection-v8.4.17-native-dimension-chains-production-2026-11-11`.
 The previous production release is preserved at `0784482`, tagged
