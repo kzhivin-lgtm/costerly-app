@@ -6433,20 +6433,41 @@ def _validate_discovery_page_coverage(
     return sorted(audit, key=lambda item: item["page_number"])
 
 
-def _restore_coverage_for_returned_views(
-    payload: dict[str, Any], *, omitted_pages: set[int],
-) -> list[int]:
-    """Restore missing bookkeeping where Discovery actually returned Views."""
-    views_by_page: dict[int, list[str]] = {}
-    for group in payload["visual_groups"]:
-        page = group["page_number"]
-        if page in omitted_pages:
-            views_by_page.setdefault(page, []).append(group["group_id"])
-    payload["page_coverage"].extend(
-        {"page_number": page, "visual_group_ids": views_by_page[page]}
-        for page in sorted(views_by_page)
-    )
-    return sorted(views_by_page)
+def _bind_discovery_page_coverage(
+    schema: dict[str, Any], *, pages: list[int],
+) -> dict[str, Any]:
+    """Require a separate inspected-page result for each image in the request."""
+    page_keys = [str(page) for page in pages]
+    return {
+        **schema,
+        "properties": {
+            **schema["properties"],
+            "page_coverage": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": page_keys,
+                "properties": {
+                    page: {"type": "array", "items": {"type": "string"}} for page in page_keys
+                },
+            },
+        },
+    }
+
+
+def _decode_discovery_page_coverage(payload: Any, *, pages: list[int]) -> Any:
+    """Convert provider page keys to the shared coverage representation."""
+    if not isinstance(payload, dict) or not isinstance(payload.get("page_coverage"), dict):
+        return payload
+    coverage = payload["page_coverage"]
+    if not coverage.keys() <= {str(page) for page in pages}:
+        raise ValueError("proposal page coverage has an invalid page")
+    return {
+        **payload,
+        "page_coverage": [
+            {"page_number": page, "visual_group_ids": coverage[str(page)]}
+            for page in pages if str(page) in coverage
+        ],
+    }
 
 
 def _v8411_discovery_technical_counts(payload: dict[str, Any]) -> Counter[int]:
@@ -9940,8 +9961,7 @@ def run_anthropic_detection_visual_registry_agent(
         and not mistral_anchor_admission_active
         and _claude_runtime_model(discovery_model) == CLAUDE_HAIKU_MODEL
     )
-    # Keep the established first-pass batch behavior. Single-pass Discovery and
-    # explicit recovery reserve the output budget for the JSON inventory.
+    # Ordinary Discovery uses the same JSON output budget in every request mode.
     discovery_options = {"thinking": {"type": "disabled"}} if ordinary_haiku_discovery else {}
     prompt_version = (
         DETECTION_V67_MISTRAL_ANCHOR_ADMISSION_PROMPT_VERSION
@@ -9954,6 +9974,11 @@ def run_anthropic_detection_visual_registry_agent(
     proposal_prompt_with_anchor_contract = load_detection_v5_proposal_prompt(
         ada_shaded_render_rule=v634_ada_haiku_discovery_sonnet_review_active,
     )
+    if ordinary_haiku_discovery:
+        proposal_prompt_with_anchor_contract += (
+            "\n\nFor page_coverage, list the visual_group_ids for each supplied page number. "
+            "Use an empty list only after inspecting the page and finding no Islands."
+        )
     if document_scope_enabled:
         proposal_prompt_with_anchor_contract += DETECTION_V611_ASSEMBLY_SCOPE_PROMPT
     if mistral_anchor_text:
@@ -10052,6 +10077,15 @@ def run_anthropic_detection_visual_registry_agent(
         page_images=page_images, regions=regions,
     )
 
+    def discovery_response_diagnostics(response: Any, diagnostics: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "request_id": diagnostics.get("request_id"),
+            "stop_reason": getattr(response, "stop_reason", None),
+            "content_block_types": [
+                getattr(block, "type", None) for block in (getattr(response, "content", None) or ())
+            ],
+        }
+
     def summarize_proposal_attempt(
         response: Any,
         diagnostics: dict[str, Any],
@@ -10060,6 +10094,7 @@ def run_anthropic_detection_visual_registry_agent(
     ) -> dict[str, Any]:
         return {
             "max_tokens": max_tokens,
+            **discovery_response_diagnostics(response, diagnostics),
             **summarize_detection_provider_call(
                 response=response,
                 diagnostics=diagnostics,
@@ -10087,17 +10122,14 @@ def run_anthropic_detection_visual_registry_agent(
             empty_discovery_responses.append({
                 "page_numbers": pages,
                 "attempt": attempt,
-                "request_id": diagnostics.get("request_id"),
-                "stop_reason": getattr(response, "stop_reason", None),
-                "content_block_types": [
-                    getattr(block, "type", None) for block in (getattr(response, "content", None) or ())
-                ],
+                **discovery_response_diagnostics(response, diagnostics),
             })
             return ""
 
-    def parse_discovery_response(raw_text: str) -> Any:
+    def parse_discovery_response(raw_text: str, *, pages: list[int]) -> Any:
         if raw_text:
-            return json.loads(raw_text)
+            payload = json.loads(raw_text)
+            return _decode_discovery_page_coverage(payload, pages=pages) if ordinary_haiku_discovery else payload
         # No response claims exist. Omitted coverage sends these pages through
         # the same recovery path as any other missing Discovery page.
         return {
@@ -10119,8 +10151,13 @@ def run_anthropic_detection_visual_registry_agent(
     )
     proposal_system = build_detection_system_content(prompt=proposal_prompt_with_anchor_contract)
     proposal_messages = [{"role": "user", "content": proposal_content}]
+    proposal_pages = list(range(1, len(page_images) + 1))
+    single_pass_schema = (
+        _bind_discovery_page_coverage(proposal_schema, pages=proposal_pages)
+        if ordinary_haiku_discovery else proposal_schema
+    )
     proposal_output_config = {"format": {"type": "json_schema", "schema": strip_schema_for_claude(
-        proposal_schema,
+        single_pass_schema,
     )}}
     v641_complete_estimate = v641_full_estimate + math.ceil(
         (len(fusion_candidate_region_text) + len(proposal_candidate_queue_text)) / 2,
@@ -10216,6 +10253,8 @@ def run_anthropic_detection_visual_registry_agent(
                 proposal_schema,
                 candidate_regions=batch_candidates,
             )
+            if ordinary_haiku_discovery:
+                batch_proposal_schema = _bind_discovery_page_coverage(batch_proposal_schema, pages=page_numbers)
             batch_output_config = {"format": {"type": "json_schema", "schema": (
                 strip_schema_for_claude(batch_proposal_schema)
             )}}
@@ -10287,6 +10326,7 @@ def run_anthropic_detection_visual_registry_agent(
                 system=proposal_system,
                 messages=batch_messages,
                 output_config=batch_output_config,
+                **discovery_options,
             )
             batch_attempts = [
                 {
@@ -10303,7 +10343,7 @@ def run_anthropic_detection_visual_registry_agent(
                 batch_response, batch_diagnostics, pages=page_numbers, attempt="initial",
             )
             try:
-                batch_payload = parse_discovery_response(batch_raw_text)
+                batch_payload = parse_discovery_response(batch_raw_text, pages=page_numbers)
             except json.JSONDecodeError as initial_error:
                 batch_json_error: json.JSONDecodeError | None = initial_error
                 if _is_retryable_visual_registry_json_truncation(
@@ -10334,7 +10374,7 @@ def run_anthropic_detection_visual_registry_agent(
                         batch_response, batch_diagnostics, pages=page_numbers, attempt="truncated_json_retry",
                     )
                     try:
-                        batch_payload = parse_discovery_response(batch_raw_text)
+                        batch_payload = parse_discovery_response(batch_raw_text, pages=page_numbers)
                     except json.JSONDecodeError as retry_error:
                         batch_json_error = retry_error
                     else:
@@ -10422,6 +10462,7 @@ def run_anthropic_detection_visual_registry_agent(
                     system=proposal_system,
                     messages=geometry_retry_messages,
                     output_config=batch_output_config,
+                    **discovery_options,
                 )
                 batch_attempts.append({
                     "response": batch_response,
@@ -10435,7 +10476,7 @@ def run_anthropic_detection_visual_registry_agent(
                     batch_response, batch_diagnostics, pages=page_numbers, attempt="geometry_retry",
                 )
                 try:
-                    batch_payload = parse_discovery_response(batch_raw_text)
+                    batch_payload = parse_discovery_response(batch_raw_text, pages=page_numbers)
                 except json.JSONDecodeError as retry_error:
                     raise RuntimeError(
                         f"V6.44 geometry-correction batch {batch_number} returned invalid JSON: "
@@ -10468,6 +10509,7 @@ def run_anthropic_detection_visual_registry_agent(
                     "exact_input_tokens": attempt["exact_input_tokens"],
                     "max_tokens": attempt["max_tokens"],
                     "retry_kind": attempt["retry_kind"],
+                    **discovery_response_diagnostics(attempt["response"], attempt["diagnostics"]),
                     **summarize_detection_provider_call(
                         response=attempt["response"],
                         diagnostics=attempt["diagnostics"],
@@ -10528,7 +10570,6 @@ def run_anthropic_detection_visual_registry_agent(
             }
         proposal_raw_text = json.dumps(proposal_raw_payload, ensure_ascii=False)
     else:
-        proposal_pages = list(range(1, len(page_images) + 1))
         if stage_callback:
             stage_callback("Discovery started")
         proposal_response, proposal_diagnostics = stream_message(
@@ -10555,7 +10596,7 @@ def run_anthropic_detection_visual_registry_agent(
     proposal_retry_reason: str | None = None
     try:
         if not v641_budgeted_discovery_active:
-            proposal_raw_payload = parse_discovery_response(proposal_raw_text)
+            proposal_raw_payload = parse_discovery_response(proposal_raw_text, pages=proposal_pages)
     except json.JSONDecodeError as initial_error:
         proposal_json_error: json.JSONDecodeError | None = initial_error
         if (
@@ -10577,9 +10618,7 @@ def run_anthropic_detection_visual_registry_agent(
                     prompt=proposal_prompt_with_anchor_contract,
                 ),
                 messages=[{"role": "user", "content": proposal_content}],
-                output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
-                    proposal_schema,
-                )}},
+                output_config=proposal_output_config,
                 **discovery_options,
             )
             proposal_raw_text = read_discovery_response(
@@ -10591,7 +10630,7 @@ def run_anthropic_detection_visual_registry_agent(
                 max_tokens=DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
             ))
             try:
-                proposal_raw_payload = parse_discovery_response(proposal_raw_text)
+                proposal_raw_payload = parse_discovery_response(proposal_raw_text, pages=proposal_pages)
             except json.JSONDecodeError as retry_error:
                 proposal_json_error = retry_error
             else:
@@ -10679,7 +10718,7 @@ def run_anthropic_detection_visual_registry_agent(
     )
     allowed_response_fields = (
         (expected_discovery_fields,)
-        if mistral_anchor_admission_active
+        if mistral_anchor_admission_active or ordinary_haiku_discovery
         else (discovery_fields, legacy_proposal_fields)
     )
     if not isinstance(proposal_raw_payload, dict) or set(proposal_raw_payload) not in allowed_response_fields:
@@ -10761,17 +10800,11 @@ def run_anthropic_detection_visual_registry_agent(
         if ordinary_haiku_discovery:
             returned_pages = {row["page_number"] for row in proposal_page_coverage}
             omitted_discovery_pages = expected_discovery_pages - returned_pages
-            if omitted_discovery_pages:
-                rebuilt_pages = _restore_coverage_for_returned_views(
-                    proposal_raw_payload, omitted_pages=omitted_discovery_pages,
-                )
-                discovery_coverage_gap_audit = {
-                    "expected_pages": sorted(expected_discovery_pages),
-                    "returned_pages": sorted(returned_pages),
-                    "omitted_pages": sorted(omitted_discovery_pages),
-                    "restored_from_returned_views": rebuilt_pages,
-                }
-                omitted_discovery_pages.difference_update(rebuilt_pages)
+            discovery_coverage_gap_audit = {
+                "expected_pages": proposal_pages,
+                "returned_pages": sorted(returned_pages),
+                "omitted_pages": sorted(omitted_discovery_pages),
+            }
     else:
         proposal_page_coverage = [{
             "status": "legacy_response_without_page_coverage",
@@ -10867,6 +10900,7 @@ def run_anthropic_detection_visual_registry_agent(
             truncated_pages=truncated_pages,
         )
         recovery_pages = sorted(omitted_discovery_pages | set(recall_recovery_pages))
+        verified_recovery_pages: set[int] = set()
         page_limit = DETECTION_V8411_DISCOVERY_RECOVERY_PAGES_PER_CALL
         for offset in range(0, len(recovery_pages), page_limit):
             pages = recovery_pages[offset:offset + page_limit]
@@ -10883,8 +10917,9 @@ def run_anthropic_detection_visual_registry_agent(
                 "sections and details from rendered images, even when they depict the same item. "
                 "Use brief factual labels and give each distinct depiction its own box.",
             ))
-            recovery_schema = bind_detection_candidate_region_exception_ids(
-                proposal_schema, candidate_regions=local_candidates,
+            recovery_schema = _bind_discovery_page_coverage(
+                bind_detection_candidate_region_exception_ids(proposal_schema, candidate_regions=local_candidates),
+                pages=pages,
             )
             content = build_detection_registry_content_blocks(
                 file_name=file_name, file_bytes=file_bytes, user_text=recovery_text,
@@ -10904,19 +10939,23 @@ def run_anthropic_detection_visual_registry_agent(
                     )}},
                     **discovery_options,
                 )
-                recovery_audit["provider"] = summarize_detection_provider_call(
-                    response=response, diagnostics=recovery_diagnostics, requested_model=discovery_model,
-                    prompt_characters=len(proposal_prompt_with_anchor_contract),
-                    context_characters=len(recovery_text), image_count=len(images),
-                    image_bytes=sum(len(image) for image in images),
-                )
+                recovery_audit["provider"] = {
+                    "max_tokens": DETECTION_V613_PROPOSAL_TRUNCATION_RETRY_MAX_TOKENS,
+                    **discovery_response_diagnostics(response, recovery_diagnostics),
+                    **summarize_detection_provider_call(
+                        response=response, diagnostics=recovery_diagnostics, requested_model=discovery_model,
+                        prompt_characters=len(proposal_prompt_with_anchor_contract),
+                        context_characters=len(recovery_text), image_count=len(images),
+                        image_bytes=sum(len(image) for image in images),
+                    ),
+                }
                 recovery_raw_text = read_discovery_response(
                     response, recovery_diagnostics, pages=pages, attempt="coverage_recovery",
                 )
                 if not recovery_raw_text:
                     recovery_audit["error"] = "Claude returned no text content"
                     continue
-                replacement = json.loads(recovery_raw_text)
+                replacement = parse_discovery_response(recovery_raw_text, pages=pages)
                 if not isinstance(replacement, dict) or set(replacement) != discovery_fields:
                     raise ValueError("Discovery coverage recovery response is invalid")
                 if page_set & omitted_discovery_pages:
@@ -10925,9 +10964,6 @@ def run_anthropic_detection_visual_registry_agent(
                         expected_pages=page_set, allow_omitted_pages=True,
                     )
                     returned_pages = {row["page_number"] for row in returned_coverage}
-                    returned_pages.update(_restore_coverage_for_returned_views(
-                        replacement, omitted_pages=page_set - returned_pages,
-                    ))
                     recovery_audit["unconfirmed_pages"] = sorted(page_set - returned_pages)
                 else:
                     _v641_validate_batch_page_coverage(replacement, expected_pages=pages)
@@ -10953,20 +10989,49 @@ def run_anthropic_detection_visual_registry_agent(
                     proposal_raw_payload, replacement, pages=improved_pages,
                     candidate_regions=local_candidates,
                 )
+                verified_recovery_pages.update(returned_pages)
                 recovery_audit["recovered_pages"] = sorted(improved_pages)
             except (ValueError, RuntimeError, TimeoutError, anthropic.APIError) as exc:
                 recovery_audit["error"] = f"{type(exc).__name__}: {exc}"
-        if discovery_recovery_audit or discovery_coverage_gap_audit:
-            proposal_page_coverage = _validate_discovery_page_coverage(
-                proposal_raw_payload["page_coverage"], visual_groups=proposal_raw_payload["visual_groups"],
-                expected_pages=expected_discovery_pages, allow_omitted_pages=True,
+        proposal_page_coverage = _validate_discovery_page_coverage(
+            proposal_raw_payload["page_coverage"], visual_groups=proposal_raw_payload["visual_groups"],
+            expected_pages=expected_discovery_pages, allow_omitted_pages=True,
+        )
+        confirmed_pages = {row["page_number"] for row in proposal_page_coverage}
+        confirmed_pages.difference_update(set(recall_recovery_pages) - verified_recovery_pages)
+        discovery_coverage_gap_audit.update({
+            "confirmed_pages": sorted(confirmed_pages),
+            "unresolved_pages": sorted(expected_discovery_pages - confirmed_pages),
+        })
+        unresolved = discovery_coverage_gap_audit["unresolved_pages"]
+        if unresolved:
+            message = "Detection could not verify every page of the PDF. Retry the upload."
+            failure_usage = build_agent_usage_event(
+                agent_name="detection", operation="rfq_detection_visual_registry",
+                company_id=company_id, run_id=None, file_name=file_name,
+                object_id=None, object_name=None, model=discovery_model,
+                prompt_version=prompt_version, response=proposal_response,
+                started_at=proposal_diagnostics["request_started_at"],
+                finished_at=proposal_diagnostics["request_finished_at"],
+                request_diagnostics={
+                    **proposal_diagnostics,
+                    "validation_stage": "discovery_page_coverage",
+                    "discovery_coverage_gaps": discovery_coverage_gap_audit,
+                    "empty_discovery_responses": empty_discovery_responses,
+                    "discovery_attempts": proposal_attempt_summaries,
+                    "v8_4_11_discovery_coverage_recovery": discovery_recovery_audit,
+                },
             )
-        if discovery_coverage_gap_audit:
-            confirmed_pages = {row["page_number"] for row in proposal_page_coverage}
-            discovery_coverage_gap_audit.update({
-                "confirmed_pages": sorted(confirmed_pages),
-                "unresolved_pages": sorted(expected_discovery_pages - confirmed_pages),
-            })
+            attempts = [*proposal_attempt_summaries, *(
+                row["provider"] for row in discovery_recovery_audit if "provider" in row
+            )]
+            for field in ("input_tokens", "output_tokens"):
+                tokens = sum(attempt[field] for attempt in attempts)
+                failure_usage[field] = failure_usage["raw_usage"][field] = tokens
+            for field in ("input_cost_usd", "output_cost_usd", "total_cost_usd"):
+                failure_usage[field] = format(sum(Decimal(attempt[field]) for attempt in attempts), "f")
+            failure_usage.update(status="failed", error_message=message)
+            raise DetectionVisualRegistryValidationError(message, usage_event=failure_usage)
     proposal_model_payload = copy.deepcopy(proposal_raw_payload)
     proposal_boundary_payload = copy.deepcopy(proposal_raw_payload)
     proposal_scope_payload: dict[str, Any] | None = None

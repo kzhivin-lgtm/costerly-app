@@ -65,3 +65,24 @@ def test_file_review_name_rejects_a_stale_placeholder(monkeypatch):
         )
 
     assert failure.value.current_name == "Storage bench"
+
+
+def test_file_review_blocks_a_saved_run_with_unverified_pages(monkeypatch):
+    from types import SimpleNamespace
+
+    from screens import file_review
+
+    errors = []
+    monkeypatch.setattr(file_review, "st", SimpleNamespace(
+        session_state={"current_run_id": "partial"}, error=errors.append,
+    ))
+    monkeypatch.setattr(file_review, "apply_file_review_css", lambda: None)
+    monkeypatch.setattr(file_review, "_render_file_review_header_only", lambda _controls: None)
+    monkeypatch.setattr(file_review, "_back_to_upload_button", lambda: None)
+    monkeypatch.setattr(file_review, "_consume_prepared_file_review_navigation", lambda **_kwargs: {
+        "run": {"detection_coverage_warning": "Detection could not review page 3"},
+    })
+
+    file_review.render_file_review_screen("company")
+
+    assert errors == ["Detection could not verify every page of the PDF. Upload the PDF again"]

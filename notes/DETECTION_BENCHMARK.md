@@ -1,5 +1,45 @@
 # Detection Agent benchmark
 
+## V8.4.16 candidate, ordinary Discovery page verification
+
+The historical Floor 06 empty response and Floor 07 omitted coverage row
+were reproduced at the application boundary by injecting the recorded
+failure shapes. The provider replies from those production incidents were
+unavailable. In a live A/B with the older production OCR that selects three
+batches, the first seven pages used the full 8,192 output tokens and returned
+truncated JSON with adaptive thinking. The identical request with thinking
+disabled returned all seven pages with 5,515 tokens. Ordinary Discovery now
+disables thinking in initial, geometry correction, and recovery calls.
+
+The old coverage array could be valid JSON with a page absent. The provider
+schema now requires a key for every supplied page and a list of Island IDs
+for each key. The runtime verifies those IDs against the returned inventory.
+On the same fresh Floor 07 input, an experimental boolean page map labeled
+P04 through P11 empty. The required per-page ID lists returned Islands on
+P04 through P11 in one call at the same 12,288-token limit (7,742 used).
+The boolean map was discarded. The existing bounded recovery verifies missing
+or source-contradicted pages before Membership. Unresolved coverage prevents
+publication, and a previously saved partial run cannot open its object list.
+
+Both final Upload runs used fresh OCR and completed Detection, persistence,
+Document Identity, and Naming in an isolated persistence harness. Discovery
+finished without coverage recovery in either run:
+
+- Floor 06 `run_11bc6c628f1340af81bd9fdb99cc15c2`: 15/15 pages confirmed,
+  62 Views, 26 objects, 26 saved names, 143.341 seconds to publication.
+  Three attempts at the normal OCR concurrency hit Mistral write timeouts.
+  The final harness used one OCR worker for all 15 pages. This did not change
+  the application OCR settings. Grouping misses the prior 13-object witness.
+- Floor 07 `run_e47488ebd61d494b888a73ea8492499d`: 11/11 pages confirmed,
+  33 Views, 10 objects, 10 saved names, 84.877 seconds to publication.
+  The normal OCR and single-pass Discovery completed on the final run.
+
+The 415 selected regression tests passed. The earlier boolean experiment
+on Floor 06 exposed an existing render Membership validation error and is
+superseded. Production release remains pending normal-concurrency Floor 06
+verification and assessment of its object partition. Evidence:
+`output/detection-v8416-discovery/`.
+
 ## V8.4.15 empty Discovery response recovery
 
 The failed Floor 06 production trace reached Discovery batch 1 of 3.

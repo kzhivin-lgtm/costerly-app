@@ -1,4 +1,5 @@
 import copy
+from contextlib import nullcontext
 from inspect import getsource
 from io import BytesIO
 import json
@@ -1102,7 +1103,9 @@ def test_integrated_visual_registry_retries_only_a_proven_truncated_proposal(
         }],
     })
     if category:
-        proposal.pop("document_scope")
+        for field in ("object_hypotheses", "semantic_facts", "document_scope"):
+            proposal.pop(field)
+        proposal["page_coverage"] = {"1": ["view_a"]}
     requested_budgets = []
 
     def response_with_output_tokens(output_tokens):
@@ -1262,7 +1265,8 @@ def test_integrated_visual_registry_omits_scope_from_ordinary_contract():
     assert usage["raw_usage"]["v6_11_document_scope"] is None
 
 
-def test_ordinary_discovery_recovers_empty_and_render_only_pages_before_membership():
+@pytest.mark.parametrize("recovery_succeeds", [True, False])
+def test_ordinary_discovery_verifies_source_conflicts_before_membership(recovery_succeeds):
     def group(group_id, page, x, kind):
         bbox = {"top_left_x": x, "top_left_y": 10, "bottom_right_x": x + 10, "bottom_right_y": 20}
         return {
@@ -1275,12 +1279,10 @@ def test_ordinary_discovery_recovers_empty_and_render_only_pages_before_membersh
         payload = _visual_registry_payload({"visual_groups": groups})
         for field in ("object_hypotheses", "semantic_facts", "document_scope"):
             payload.pop(field)
-        payload["page_coverage"] = [
-            {"page_number": page, "visual_group_ids": [
-                item["group_id"] for item in groups if item["page_number"] == page
-            ]}
+        payload["page_coverage"] = {
+            str(page): [item["group_id"] for item in groups if item["page_number"] == page]
             for page in pages
-        ]
+        }
         return payload
 
     overview = group("cover", 1, 10, "title_block")
@@ -1302,9 +1304,12 @@ def test_ordinary_discovery_recovers_empty_and_render_only_pages_before_membersh
               return_value=(_Response(), diagnostics)) as stream,
         patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=[
             json.dumps(discovery([overview, render], [1, 2, 3])),
-            json.dumps(discovery(recovered, [2, 3])),
+            json.dumps(discovery(recovered if recovery_succeeds else [], [2, 3] if recovery_succeeds else [])),
             json.dumps({"object_hypotheses": [], "presentation_render_decisions": []}),
         ]),
+        (nullcontext() if recovery_succeeds else pytest.raises(
+            DetectionVisualRegistryValidationError, match="could not verify every page",
+        )) as failure,
     ):
         _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -1312,6 +1317,11 @@ def test_ordinary_discovery_recovers_empty_and_render_only_pages_before_membersh
             model="claude-haiku-5-5", document_category="ordinary_object_set",
         )
 
+    if not recovery_succeeds:
+        assert stream.call_count == 2
+        gaps = failure.value.usage_event["raw_usage"]["discovery_coverage_gaps"]
+        assert gaps["unresolved_pages"] == [2, 3]
+        return
     assert stream.call_count == 3
     assert [call.kwargs.get("thinking") for call in stream.call_args_list] == [
         {"type": "disabled"}, {"type": "disabled"}, None,
@@ -1325,7 +1335,7 @@ def test_ordinary_discovery_recovers_empty_and_render_only_pages_before_membersh
 @pytest.mark.parametrize(("recovery_outcome", "batched"), [
     ("recovered", False), ("omitted", False), ("timeout", False), ("recovered", True),
 ])
-def test_ordinary_discovery_continues_after_omitted_pages(recovery_outcome, batched):
+def test_ordinary_discovery_requires_every_page_before_membership(recovery_outcome, batched):
     def discovery(*, view_pages, covered_pages):
         groups = [
             {
@@ -1338,13 +1348,9 @@ def test_ordinary_discovery_continues_after_omitted_pages(recovery_outcome, batc
         payload = _visual_registry_payload({"visual_groups": groups})
         for field in ("object_hypotheses", "semantic_facts", "document_scope"):
             payload.pop(field)
-        payload["page_coverage"] = [
-            {
-                "page_number": page,
-                "visual_group_ids": [f"view-{page}"] if page in view_pages else [],
-            }
-            for page in covered_pages
-        ]
+        payload["page_coverage"] = {
+            str(page): [f"view-{page}"] if page in view_pages else [] for page in covered_pages
+        }
         return json.dumps(payload)
 
     diagnostics = {
@@ -1357,8 +1363,8 @@ def test_ordinary_discovery_continues_after_omitted_pages(recovery_outcome, batc
     )
     discovery_replies = [
         discovery(view_pages=[3], covered_pages=range(1, 7)),
-        discovery(view_pages=[10], covered_pages=range(7, 10)),
-    ] if batched else [discovery(view_pages=[3, 10], covered_pages=range(1, 10))]
+        discovery(view_pages=[10], covered_pages=range(7, 11)),
+    ] if batched else [discovery(view_pages=[3, 10], covered_pages=range(1, 11))]
     retry_index = len(discovery_replies)
     replies = [
         *discovery_replies,
@@ -1384,6 +1390,9 @@ def test_ordinary_discovery_continues_after_omitted_pages(recovery_outcome, batc
         patch("agents.anthropic_adapter.build_detection_conflict_targets", return_value=[]),
         patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=responses) as stream,
         patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=replies),
+        (nullcontext() if recover_last_page else pytest.raises(
+            DetectionVisualRegistryValidationError, match="could not verify every page",
+        )) as failure,
     ):
         _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -1391,19 +1400,25 @@ def test_ordinary_discovery_continues_after_omitted_pages(recovery_outcome, batc
             model="claude-haiku-5-5", document_category="ordinary_object_set",
         )
 
-    assert stream.call_count == retry_index + 2
+    assert stream.call_count == retry_index + 1 + int(recover_last_page)
+    expected_batches = [list(range(1, 7)), list(range(7, 12))] if batched else [list(range(1, 12))]
+    for call, pages in zip(stream.call_args_list[:retry_index + 1], [*expected_batches, [11]], strict=True):
+        schema = call.kwargs["output_config"]["format"]["schema"]["properties"]["page_coverage"]
+        assert schema["required"] == [str(page) for page in pages]
+        assert all(item == {"type": "array", "items": {"type": "string"}} for item in schema["properties"].values())
+        assert call.kwargs["thinking"] == {"type": "disabled"}
     retry_content = stream.call_args_list[retry_index].kwargs["messages"][0]["content"]
     assert sum(block["type"] == "image" for block in retry_content) == 1
     assert any("page 11" in block.get("text", "").lower() for block in retry_content)
-    assert sorted(obj["identity_pages"] for obj in registry["objects"]) == (
-        [[3], [10], [11]] if recover_last_page else [[3], [10]]
-    )
+    if recover_last_page:
+        assert sorted(obj["identity_pages"] for obj in registry["objects"]) == [[3], [10], [11]]
+    else:
+        usage = failure.value.usage_event
     gaps = usage["raw_usage"]["discovery_coverage_gaps"]
     assert gaps == {
         "expected_pages": list(range(1, 12)),
-        "returned_pages": list(range(1, 10)),
-        "omitted_pages": [10, 11],
-        "restored_from_returned_views": [10],
+        "returned_pages": list(range(1, 11)),
+        "omitted_pages": [11],
         "confirmed_pages": list(range(1, 12 if recover_last_page else 11)),
         "unresolved_pages": [] if recover_last_page else [11],
     }
@@ -1426,9 +1441,7 @@ def test_ordinary_discovery_recovers_response_without_text(batched, recovery_has
         payload = _visual_registry_payload({"visual_groups": groups})
         for field in ("object_hypotheses", "semantic_facts", "document_scope"):
             payload.pop(field)
-        payload["page_coverage"] = [
-            {"page_number": page, "visual_group_ids": [f"view-{page}"]} for page in pages
-        ]
+        payload["page_coverage"] = {str(page): [f"view-{page}"] for page in pages}
         return payload
 
     def response(payload=None):
@@ -1466,6 +1479,9 @@ def test_ordinary_discovery_recovers_response_without_text(batched, recovery_has
         patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=[
             (reply, {**diagnostics, "request_id": f"request-{i}"}) for i, reply in enumerate(replies)
         ]) as stream,
+        (nullcontext() if recovery_has_text else pytest.raises(
+            DetectionVisualRegistryValidationError, match="could not verify every page",
+        )) as failure,
     ):
         _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -1473,12 +1489,13 @@ def test_ordinary_discovery_recovers_response_without_text(batched, recovery_has
             model="claude-haiku-5-5", document_category="ordinary_object_set",
         )
 
-    assert stream.call_count == len(replies)
+    assert stream.call_count == retry_index + 1 + int(recovery_has_text)
     retry_content = stream.call_args_list[retry_index].kwargs["messages"][0]["content"]
     assert sum(block["type"] == "image" for block in retry_content) == len(initial_pages)
-    assert sorted(obj["identity_pages"] for obj in registry["objects"]) == (
-        [[1], [2], [3]] if recovery_has_text else [[3]]
-    )
+    if recovery_has_text:
+        assert sorted(obj["identity_pages"] for obj in registry["objects"]) == [[1], [2], [3]]
+    else:
+        usage = failure.value.usage_event
     audit = usage["raw_usage"]
     assert audit["discovery_coverage_gaps"]["unresolved_pages"] == ([] if recovery_has_text else [1, 2])
     assert audit["empty_discovery_responses"][0] == {
@@ -1487,7 +1504,11 @@ def test_ordinary_discovery_recovers_response_without_text(batched, recovery_has
         "content_block_types": ["thinking"],
     }
     if batched:
-        assert not audit["v6_13_proposal_truncation_retry"]["attempts"][0]["accepted"]
+        attempts = (
+            audit["v6_13_proposal_truncation_retry"]["attempts"]
+            if recovery_has_text else audit["discovery_attempts"]
+        )
+        assert not attempts[0]["accepted"]
     if not recovery_has_text:
         assert audit["empty_discovery_responses"][1]["attempt"] == "coverage_recovery"
 

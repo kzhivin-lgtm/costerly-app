@@ -11,23 +11,71 @@ individual View coverage on P03–P08, and positive render attachment.
 Track evidence and any incorrect merges in
 `notes/DETECTION_V8_4_13_DIMENSION_MEMBERSHIP_2026_11_10.md`.
 
-VERIFIED IN V8.4.14. V8.4.13 production Floor 07 trace
-`bfdcfcb6-c2e4-4be0-ad1b-fa0865a84b83` stopped at the initial Discovery
-coverage check. Ordinary Haiku Discovery now restores coverage from
-returned Views and retries missing pages with no returned Views at the
-existing token ceiling. If recovery omits a page again or times out,
-Membership continues with available Views. The ledger preserves the
-expected, returned, confirmed, and unresolved pages. File Review
-displays the unresolved pages from the saved run.
+PENDING, P1. Preserve complete dimension chains in the evidence envelope
+when the chain has a unique View owner. In the Floor 07 production
+witness, N60's 248 is already owned by V1 and V3, and N76B's 345 is
+owned by V2 and V3. N76B V3 loses eight native 3 labels from its outer
+chain under the halo's minimum value of 20. Verify full chain ownership
+without admitting neighboring View or title-block dimensions. Do not
+change the physical core bounds.
 
-VERIFIED IN V8.4.15. V8.4.14 production Floor 06, trace
-`41e7a588-4154-41c1-8efc-9994bf0c3716`, stopped at batch 1 of 3 with
-`Claude returned no text content`. The ordinary Haiku route now records
-the request ID, stop reason, block types, and affected pages. Discovery
-continues through remaining batches and retries the affected pages via
-existing coverage recovery. A second empty response leaves those pages
-unresolved and preserves confirmed objects. Tests cover single-call
-and batched Discovery and a repeat empty response.
+PENDING, P1. Evaluate geometry-backed, same-axis segment totals as
+Membership evidence. The N57 lower middle and lower right Views scored
+14 in both the V8.4.13 nine-object witness and V8.4.14 production. The
+lower middle View joined via dominant-page attachment in V8.4.13, not a
+sum. Verify that 88 and 22 occupy consecutive spans sharing a physical
+tick before matching their sum to the printed 110 on the same axis.
+Test accidental equal sums across separate lines, Views, or axes.
+Leave dominant-page attachment unchanged.
+
+PENDING, P1. Make strong same-sheet dimension links less dependent on
+variable model evidence. N60 V1/V3 scored 100 with identical features in
+the V8.4.13 nine-object witness and V8.4.14 production. The former joined
+through V2/V3 topology and geometry evidence; the latter had no accepted
+initial link. Replay on a fixed inventory, changing accepted Membership
+evidence alone. P06's 375 plus the ordered 64/61 spans is a positive
+control. A pair of independent objects sharing one major dimension is a
+negative control. Keep the existing independent proof gate until a
+specific improvement passes both.
+
+PENDING, P1. Apply the existing 2% tolerance and sparse evidence weight
+together for same-sheet attachment. Keep the current precision tiers.
+N76B V1's only dimension, 349, matches 345 on V2 and V3 with 1.15% error.
+Count one matching position, prefer a unique confirmed target package,
+and reject competing targets, common dimensions without corroboration,
+and matches on the wrong axis. Verify attachment before changing the
+standalone publication policy.
+
+PENDING, P1. A technical View must not create a product by default. A
+supporting plan, elevation, section, or detail attaches to a confirmed
+product or stays out of the product list. It must not stop the cycle.
+Protect standalone Views that independently identify a fabricated item.
+Verify that a rejected View remains in the internal audit and that
+positive N76B attachment is not mistaken for exclusion.
+
+VERIFIED IN ISOLATION, P0. V8.4.16 ordinary Discovery and File Review publication.
+The V8.4.13 Floor 07 trace `bfdcfcb6-c2e4-4be0-ad1b-fa0865a84b83` omitted a
+coverage row. The V8.4.14 Floor 06 trace `41e7a588-4154-41c1-8efc-9994bf0c3716`
+yielded no text in the first of three batches. The original replies were
+unavailable. Both failure shapes reproduce at the application boundary.
+Live controlled checks confirm adaptive thinking can exhaust the output
+budget of the first batch, and a required per-page list of Island IDs
+improves recall over boolean acknowledgments. The candidate uses both
+findings at unchanged limits and logs provider stop reasons and block types.
+
+The candidate checks completeness before Membership and File Review.
+Existing bounded recovery distinguishes inspected empty pages from
+unverified pages. Failed recovery cannot publish a partial result. The 415
+selected tests passed, including unavailable text, omitted coverage, timeout,
+source contradictions, and historical partial review. Final fresh Upload
+confirmed 15/15 pages on Floor 06 and 11/11 on Floor 07 without recovery.
+
+PENDING, P0. Verify Floor 06 at normal OCR concurrency before V8.4.16 rollout.
+Three standard attempts hit Mistral write timeouts. With one worker in the
+harness, all 15 pages completed fresh OCR and Detection published 26 objects
+with 26 names. The earlier 13-object production witness remains the grouping
+comparison. Keep grouping work in its existing workstream. See the benchmark
+for final runs, timing, and comparison artifacts.
 
 ## Production Detection V8.4.11 recovery
 

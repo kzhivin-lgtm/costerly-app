@@ -610,8 +610,7 @@ def test_v619_naming_uses_one_annotated_page_per_registry_island_page():
     assert first_page_labels == {"object-001", "object-002"}
 
 
-@pytest.mark.parametrize("unresolved_pages", [[], [2]])
-def test_v49_routes_default_registry_to_haiku_without_evidence_handoff(unresolved_pages):
+def test_v49_routes_default_registry_to_haiku_without_evidence_handoff():
     registry = {"objects": [{
         "object_id": "object-001", "transport_label": "Object 1",
         "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
@@ -624,7 +623,7 @@ def test_v49_routes_default_registry_to_haiku_without_evidence_handoff(unresolve
         registry_call.update(kwargs)
         return {"visual_groups": []}, registry, {
             "event": "visual_registry",
-            "raw_usage": {"discovery_coverage_gaps": {"unresolved_pages": unresolved_pages}},
+            "raw_usage": {"discovery_coverage_gaps": {"unresolved_pages": []}},
         }
 
     with (
@@ -649,11 +648,7 @@ def test_v49_routes_default_registry_to_haiku_without_evidence_handoff(unresolve
     regions_builder.assert_not_called()
     assert len(result["_agent_usage_events"]) == 1
     assert len(result["detected_objects"]) == 1
-    warning = _normalize_run(result["rfq_run"])["detection_coverage_warning"]
-    if unresolved_pages:
-        assert warning and "page 2" in warning
-    else:
-        assert warning is None
+    assert _normalize_run(result["rfq_run"])["detection_coverage_warning"] is None
 
 
 def test_v627_scope_scout_routes_single_assembly_candidate_to_haiku_registry():
@@ -976,7 +971,7 @@ def test_processing_persists_visual_registry_validation_audit_before_reraising(m
         "company_id": "001", "run_id": None, "file_name": "drawing.pdf",
         "agent_name": "detection", "operation": "rfq_detection_visual_registry",
         "model": "test-model", "prompt_version": "test-prompt", "input_tokens": 1,
-        "output_tokens": 1, "status": "failed", "raw_usage": {"audit": "payload"},
+        "output_tokens": 1, "status": "failed", "raw_usage": {"discovery_coverage_gaps": {"unresolved_pages": [2]}},
     }
     persisted: list[dict] = []
     ocr_package = {
@@ -993,7 +988,7 @@ def test_processing_persists_visual_registry_validation_audit_before_reraising(m
     monkeypatch.setattr(
         "use_cases.rfq_processing.run_detection_agent",
         lambda **_kwargs: (_ for _ in ()).throw(
-            DetectionVisualRegistryValidationError("registry invalid", usage_event=failure_event)
+            DetectionVisualRegistryValidationError("Detection could not verify every page", usage_event=failure_event)
         ),
     )
     monkeypatch.setattr(
@@ -1001,9 +996,12 @@ def test_processing_persists_visual_registry_validation_audit_before_reraising(m
         lambda _client, event: persisted.append(event),
     )
 
-    with pytest.raises(DetectionVisualRegistryValidationError, match="registry invalid"):
+    published: list[dict] = []
+    monkeypatch.setattr("use_cases.rfq_processing.upsert_rfq_detection_result", lambda _db, result: published.append(result))
+    with pytest.raises(DetectionVisualRegistryValidationError, match="could not verify every page"):
         process_uploaded_rfq(
             file_name="drawing.pdf", file_bytes=b"pdf", company_id="001",
         )
 
     assert persisted == [failure_event]
+    assert published == []

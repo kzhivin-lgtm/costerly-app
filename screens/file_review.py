@@ -1108,8 +1108,6 @@ def render_file_review_screen(
         _render_missing_run_state(render_header_controls)
         return
 
-    _record_first_file_review_render(str(run_id), company_id)
-
     prepared_data = _consume_prepared_file_review_navigation(
         company_id=company_id,
         run_id=str(run_id),
@@ -1123,6 +1121,13 @@ def render_file_review_screen(
             _render_load_error(exc, render_header_controls)
             return
 
+    if data["run"].get("detection_coverage_warning"):
+        _render_file_review_header_only(render_header_controls)
+        st.error("Detection could not verify every page of the PDF. Upload the PDF again")
+        _back_to_upload_button()
+        return
+
+    _record_first_file_review_render(str(run_id), company_id)
     _sync_run_metadata_state(run_id, data["run"])
     # A retained File Review cache can predate deferred Naming.  Hydrate its
     # narrow, durable name snapshot before object edits and widgets are
@@ -1147,10 +1152,6 @@ def render_file_review_screen(
             refresh_identity=prepared_data is None,
         )
     install_workflow_header_alignment_guard()
-
-    coverage_warning = data["run"].get("detection_coverage_warning")
-    if coverage_warning:
-        st.warning(coverage_warning, icon="⚠️")
 
     _render_file_review_dynamic_content(
         run_id,
