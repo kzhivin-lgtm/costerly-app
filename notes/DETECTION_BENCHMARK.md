@@ -1,5 +1,12 @@
 # Detection Agent benchmark
 
+The V8.4.17 owner trial restores the production code at `b159eca`,
+tagged `detection-v8.4.17-native-dimension-chains-production-2026-11-11`.
+The previous production release is preserved at `0784482`, tagged
+`detection-v8.4.24-render-abstention-production-2026-11-11`.
+Fresh owner Upload verification is pending. See the V8.4.17 section
+for the historical Floor 07 result and the geometry replay controls.
+
 ## V8.4.24, render abstention validation on the V8.4.19 baseline
 
 The restored V8.4.19 Floor 06 production attempt at 19:57:04 UTC

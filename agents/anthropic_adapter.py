@@ -86,7 +86,6 @@ from agents.schemas.detection_registry_schema import (
     derive_detection_proof_components,
     derive_detection_standalone_package_group_ids,
     partition_detection_presentation_render_components,
-    partition_detection_unattached_technical_views,
     derive_detection_v5_dominant_page_attachment_edges,
     compile_detection_dimension_graph,
     normalize_empty_detection_envelope_chains,
@@ -3992,15 +3991,14 @@ def normalize_detection_v711_presentation_render_decisions(
         if render_id not in render_ids:
             # The review can repeat a known non-render View as a harmless
             # `no_match`. It cannot create a graph edge, so retain it as audit
-            # rather than failing an otherwise complete render review. A
-            # no-match needs no witness because it cannot establish a link.
-            # Keep unknown IDs, attachments, unresolved rows and malformed
-            # data subject to validation.
+            # rather than failing an otherwise complete render review. Never
+            # relax unknown IDs, attachments, unresolved rows or malformed data.
             if (
                 render_id in object_groups
                 and disposition == "no_match"
                 and not technical_id
                 and evidence_type == "none"
+                and witness
             ):
                 ignored_non_render_no_match.append({
                     "render_group_id": group_id_mapping.get(render_id, render_id),
@@ -8326,46 +8324,27 @@ def infer_detection_v5_bare_dimension_unit(
 ) -> tuple[str, str]:
     """Infer only the safe document basis needed for bare V5 dimensions.
 
-    An explicit document marker always wins. Infer from positioned object
-    readings, excluding halo facts and duplicate OCR readings of one label.
-    Millimeters require at least two readings above 600 and a share above
-    ten percent. A nonstandard integer from 100 to 600 favors centimeters.
+    An explicit document marker always wins. Infer the bare scale only from
+    plausible object spans. Dimension halo readings still enter the
+    fingerprint, but they cannot set the document scale. Above 600 favors
+    millimeters in the furniture envelope. A nonstandard integer from 100
+    to 600 favors centimeters. Common-only values leave the unit unresolved.
     """
     if document_unit in {"mm", "cm", "m"}:
         return document_unit, "explicit_document_unit"
     bare_values: list[Decimal] = []
-    seen_fact_ids: set[str] = set()
-    positions: dict[tuple[int, Decimal], list[dict[str, int]]] = {}
     for package in view_evidence_packages:
         halo_fact_ids = set(package.get("dimension_envelope_source_fact_ids") or [])
         for fact in package.get("source_facts") or []:
-            fact_id = fact.get("fact_id")
-            if fact_id in halo_fact_ids or fact_id in seen_fact_ids:
+            if fact.get("fact_id") in halo_fact_ids:
                 continue
-            match = _V5_DIMENSION_TEXT_RE.fullmatch(str(fact.get("text") or "").strip())
-            if not match or match.group(2):
-                continue
-            value = Decimal(match.group(1).replace(",", "."))
-            if not 0 < value <= _V5_MAX_OBJECT_DIMENSION_MM:
-                continue
-            if fact_id:
-                seen_fact_ids.add(fact_id)
-            page = fact.get("page_number") or package.get("page_number")
-            box = _detection_bbox(fact.get("bbox"))
-            if isinstance(page, int) and box is not None:
-                same_value_boxes = positions.setdefault((page, value), [])
-                if any(
-                    (overlap := _detection_bbox_intersection(box, previous))
-                    and 2 * _detection_bbox_area(overlap)
-                    >= min(_detection_bbox_area(box), _detection_bbox_area(previous))
-                    for previous in same_value_boxes
-                ):
-                    continue
-                same_value_boxes.append(box)
-            bare_values.append(value)
-    large_count = sum(value > 600 for value in bare_values)
-    if large_count >= 2 and 10 * large_count > len(bare_values):
-        return "mm", "bare_values_over_600_exceed_ten_percent"
+            match = _V5_DIMENSION_TEXT_RE.match(str(fact.get("text") or "").strip())
+            if match and not match.group(2):
+                value = Decimal(match.group(1).replace(",", "."))
+                if value <= _V5_MAX_OBJECT_DIMENSION_MM:
+                    bare_values.append(value)
+    if any(value > 600 for value in bare_values):
+        return "mm", "bare_value_over_600"
     if any(
         Decimal("100") <= value <= Decimal("600")
         and value == value.to_integral_value()
@@ -12475,15 +12454,8 @@ def run_anthropic_detection_visual_registry_agent(
             proof_components,
             visual_groups=visual_map["visual_groups"],
         )
-        excluded_unattached_technical_view_group_ids = []
-        if document_category == "ordinary_object_set":
-            proof_components, excluded_unattached_technical_view_group_ids = (
-                partition_detection_unattached_technical_views(
-                    proof_components, visual_groups=visual_map["visual_groups"],
-                )
-            )
-        registry_visual_group_ids = visual_group_ids - set(excluded_presentation_render_group_ids) - set(
-            excluded_unattached_technical_view_group_ids
+        registry_visual_group_ids = (
+            visual_group_ids - set(excluded_presentation_render_group_ids)
         )
         registry_positive_relation_edges = [
             edge for edge in positive_relation_edges
@@ -12504,14 +12476,6 @@ def run_anthropic_detection_visual_registry_agent(
                     "component_anchor_group_id": None,
                 }
                 for group_id in excluded_presentation_render_group_ids
-            ),
-            *(
-                {
-                    "group_id": group_id,
-                    "package_disposition": "excluded_unattached_technical_view",
-                    "component_anchor_group_id": None,
-                }
-                for group_id in excluded_unattached_technical_view_group_ids
             ),
         ]
         page_number_by_group_id = {
@@ -12722,7 +12686,6 @@ def run_anthropic_detection_visual_registry_agent(
         ),
         "excluded_presentation_render_group_ids": excluded_presentation_render_group_ids,
         "presentation_render_component_audit": presentation_render_component_audit,
-        "excluded_unattached_technical_view_group_ids": excluded_unattached_technical_view_group_ids,
         "proof_component_count": len(proof_components),
         "page_coverage_count": len(resolved_page_coverage),
         "unassigned_page_count": sum(

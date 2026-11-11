@@ -2,6 +2,12 @@
 
 ## Ordinary Detection dimension membership, V8.4.13
 
+ACTIVE, P0. Run the owner trial on the restored V8.4.17 release.
+Compare the new Floor 06 and Floor 07 results with their saved audits.
+Review the V8.4.18–V8.4.24 changes individually against the observed
+failures and retain evidence of any effect on Island coverage and
+membership before proposing a change for production.
+
 ACTIVE, P0. Recover outer dimension labels and evidence-backed joins on the
 same sheet. The final-policy replay passed P06, P10, and P13 on Floor 06
 and preserved the 10-group Floor 07 control. Production Floor 06 run

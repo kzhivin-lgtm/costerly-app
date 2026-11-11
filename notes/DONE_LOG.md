@@ -1,5 +1,9 @@
 # Done Log
 
+The owner requested a production trial on Detection V8.4.17.
+The rollback restores the exact released runtime from `b159eca`.
+The V8.4.24 release at `0784482` remains the return point.
+
 Detection V8.4.24 keeps the restored V8.4.19 runtime and fixes the
 render validation failure. A targetless `no_match` for a known
 technical View is audited even if its witness is blank. The exact

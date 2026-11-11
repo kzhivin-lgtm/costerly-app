@@ -566,16 +566,13 @@ def test_v711_ordinary_route_audits_omitted_renders_without_creating_edges():
     }, attachment]
 
 
-@pytest.mark.parametrize(
-    "non_render_witness", ["", "This is a finish sample, not a presentation render."],
-)
-def test_v711_render_decision_ignores_only_safe_known_non_render_no_match(non_render_witness):
+def test_v711_render_decision_ignores_only_safe_known_non_render_no_match():
     facts, audit = normalize_detection_v711_presentation_render_decisions(
         [
             {
                 "render_group_id": "material-sample", "disposition": "no_match",
                 "technical_group_id": "", "evidence_type": "none",
-                "visual_witness": non_render_witness,
+                "visual_witness": "This is a finish sample, not a presentation render.",
             },
             {
                 "render_group_id": "render", "disposition": "no_match",
@@ -600,7 +597,7 @@ def test_v711_render_decision_ignores_only_safe_known_non_render_no_match(non_re
         {
             "render_group_id": "view-011", "disposition": "ignored_non_render_no_match",
             "technical_group_id": "", "evidence_type": "none",
-            "visual_witness": non_render_witness,
+            "visual_witness": "This is a finish sample, not a presentation render.",
         },
     ]
 
