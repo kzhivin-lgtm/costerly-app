@@ -79,8 +79,10 @@ The existing 2% tolerance covers N76B's 349-to-345 match at 1.15% error.
 The large one-position match receives a contextual bonus only when two
 independent source measurements support one previously confirmed same-sheet
 package. The production evidence replay attaches the plan at 40, keeps
-nine objects, and preserves other sheet partitions. A fresh production
-upload remains the acceptance check.
+nine objects, and preserves other sheet partitions. The fresh Floor 06
+run published 17 objects with identical V8.4.20 and V8.4.21 compiler
+partitions on its saved evidence. A fresh Floor 07 production upload
+remains the N76B acceptance check.
 
 VERIFIED ON SAVED EVIDENCE, P1. V8.4.18 supporting singleton publication.
 An unattached supporting plan or technical detail remains in Membership and

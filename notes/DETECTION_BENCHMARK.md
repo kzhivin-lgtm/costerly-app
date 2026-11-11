@@ -19,6 +19,17 @@ P11-only improvement on Floor 07. The controls reject a competing
 destination, duplicate evidence, a blocked pair and an out-of-tolerance
 reading. All 438 selected regression tests passed.
 
+The owner's fresh V8.4.21 upload was Floor 06,
+`run_db80fb8ff10c4a1c8ef8a0ab01dce8ec`. It confirmed all 15 pages and
+published 17 objects from 58 recognized Views. Compared with the historical
+13-object target, P03 had two additional groups, and P07 and P13 had one
+each. The V8.4.20 and V8.4.21 compilers reproduced the identical fresh
+partition on the same frozen inputs. The only one-position bonus raised
+P09.V2/V4 from 5.12 to 20.48 and did not enter commercial membership.
+The strongest between-group dimensional scores on P03, P07 and P13
+were 7, 32 and 35.625. PDF inspection completed all 15 pages with exit
+code 0 and returned 1,347 text spans. Fresh Floor 07 acceptance remains open.
+
 ## V8.4.20, native PDF worker telemetry
 
 The existing OCR usage event now records three marks under
