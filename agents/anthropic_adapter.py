@@ -24,7 +24,6 @@ from typing import Any, Callable, NamedTuple
 import anthropic
 
 from agents.detection_dimension_chains import PageDimensionSpans, build_dimension_chain_matches
-from agents.detection_supporting_view_links import find_supporting_view_links
 from agents.multilingual_evidence import multilingual_fallback_signal
 
 from config import CLAUDE_HAIKU_MODEL, agent_cost_category, calculate_llm_cost_usd
@@ -12398,18 +12397,6 @@ def run_anthropic_detection_visual_registry_agent(
                 membership_audit["star_hypothesis_components"]
             )
         else:
-            supporting_links = {}
-            if document_category == "ordinary_object_set" and read_dimension_spans is not None:
-                supporting_links = find_supporting_view_links(
-                    visual_groups=visual_map["visual_groups"], view_packages=view_evidence_packages,
-                    object_view_ids={
-                        group_id_mapping[group["group_id"]] for group in raw_groups
-                        if group.get("evidence_class") == "object_evidence"
-                    },
-                    fingerprints=dimension_inventory_audit, page_dimensions=_source_dimensions_by_page(ocr_package),
-                    page_images=page_images, read_spans=read_dimension_spans,
-                    dimension_edges=dimension_relation_edges, dimension_chain_matches=chain_matches or {},
-                )
             positive_relation_edges, v5_merge_audit = compile_merge_edges(
                 [
                     edge for edge in dimension_relation_edges
@@ -12421,7 +12408,6 @@ def run_anthropic_detection_visual_registry_agent(
                 accepted_semantic_facts,
                 visual_groups=visual_map["visual_groups"], group_bboxes=group_bboxes,
                 allow_short_fingerprint_attachment=document_category == "ordinary_object_set",
-                **({"supporting_view_links": supporting_links} if supporting_links else {}),
             )
             positive_relation_edges.extend(presentation_render_edges)
         accepted_merge_edges = [

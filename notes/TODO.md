@@ -99,7 +99,7 @@ describe different properties. The reference labels cover technical and
 render roles and object membership. Primary versus supporting labels remain
 to be reviewed.
 
-ACTIVE, P1. Verify V8.4.23 registered full extents for the first supporting
+REJECTED. V8.4.23 registered full extents for the first supporting
 View link. The ordinary route compares foreground occupancy, core depth
 across the dimension axis, and owned dimension positions. A native
 tick-bounded extent or measured chain must match a single primary View
@@ -108,9 +108,13 @@ Saved V8.4.22 Floor 07 evidence restores the three-View P11 package at
 the original 87.5-point first link. Both Floor 06 replay partitions are
 identical to their original results. Fresh local Uploads completed with
 13 named objects on Floor 06 and 9 on Floor 07. Both exact partitions
-replay with the rule enabled and disabled. Verify a fresh production
-Upload and a held-out non-HSL drawing with simple standalone parts.
-See the Detection benchmark.
+replay with the rule enabled and disabled. The first production Upload,
+`run_dec2d75b92b845bc873b65f969664514`, published nine objects after
+Discovery emitted one broad View per working sheet. The compiler had
+zero same-page pairs, so the first-link check is inconclusive. The owner
+closed the experiment and requested the V8.4.22 production rollback.
+The Discovery failure and per-sheet evidence are recorded in the
+Detection benchmark.
 
 Make strong same-sheet dimension links less dependent on variable model
 evidence. N60 V1/V3 scored 100 with identical features in

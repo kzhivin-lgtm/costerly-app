@@ -1,5 +1,10 @@
 # Done Log
 
+The owner rejected the Detection V8.4.23 experiment after the Floor 07
+production run returned one broad Island per working sheet. The
+rollback restores the V8.4.22 runtime from `e734f61`. The Detection
+benchmark preserves the production evidence.
+
 Detection V8.4.23 packages the Haiku 5.5 supporting-View first-link
 experiment for production. The frozen Floor 07 run reproduces the
 10-object split and then recovers the 9-object partition on the same

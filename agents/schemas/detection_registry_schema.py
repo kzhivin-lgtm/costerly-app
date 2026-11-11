@@ -2,7 +2,7 @@ from __future__ import annotations
 import copy
 import math
 import re
-from collections import Counter, deque
+from collections import deque
 from decimal import Decimal, InvalidOperation
 from itertools import combinations
 from typing import TYPE_CHECKING, Any
@@ -2529,7 +2529,6 @@ def compile_detection_v5_merge_edges(
     allow_batch_confirmation: bool = True,
     dimension_anchor_pairs: set[tuple[str, str]] | None = None,
     allow_short_fingerprint_attachment: bool = False,
-    supporting_view_links: dict[tuple[str, str], dict[str, Any]] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Merge from a minimal semantic proof forest plus deterministic Dimensions."""
     by_pair: dict[tuple[str, str], dict[str, Any]] = {}
@@ -2703,32 +2702,6 @@ def compile_detection_v5_merge_edges(
                 "batch_confirmation": True,
             })
             changed = True
-
-    if allow_runtime_merges and supporting_view_links:
-        member_counts = Counter(root(group_id) for group_id in group_ids)
-        for edge in edges:
-            left, right = edge["group_id_a"], edge["group_id_b"]
-            pair = (left, right)
-            witness = supporting_view_links.get(pair)
-            if (not witness or pair in blocked_pairs or not edge["same_page"]
-                    or root(left) == root(right)
-                    or member_counts[root(left)] != 1 or member_counts[root(right)] != 1):
-                continue
-            # A measured first link can support plan attachment. It cannot
-            # cause generic batch growth into unrelated nearby Views.
-            components[right] = left
-            member_counts[left] = 2
-            if allow_short_fingerprint_attachment:
-                initially_confirmed[left] = {left, right}
-                initially_confirmed.pop(right, None)
-            edge["relationship"] = "same_object_view"
-            edge["commercial_inseparability"] = "V5 registered supporting projection"
-            audit.append({
-                "group_id_a": left, "group_id_b": right,
-                "dimension_similarity_score": edge["dimension_similarity_score"],
-                "edge_score": edge["edge_score"], "merge": True,
-                "supporting_view_first_link": witness,
-            })
 
     if allow_runtime_merges and allow_short_fingerprint_attachment:
         component_members: dict[str, set[str]] = {}
@@ -3393,21 +3366,17 @@ def partition_detection_presentation_render_components(
     return retained, sorted(excluded_group_ids), audit
 
 
-def is_detection_supporting_technical_role(kind: str) -> bool:
-    return str(kind or "").strip().lower().replace("-", "_").replace(" ", "_") in {
-        "floor_plan", "location_plan", "plan_detail", "technical_plan_detail", "technical_detail",
-    }
-
-
 def partition_detection_unattached_technical_views(
     components: list[list[str]],
     *,
     visual_groups: list[dict[str, Any]],
 ) -> tuple[list[list[str]], list[str]]:
     """Keep supporting drawing roles in the graph, but never publish them alone."""
+    supporting_kinds = {"floor_plan", "location_plan", "plan_detail", "technical_plan_detail", "technical_detail"}
     supporting_ids = {
         group["group_id"] for group in visual_groups
-        if is_detection_supporting_technical_role(group.get("representation_kind"))
+        if str(group.get("representation_kind") or "").strip().lower().replace("-", "_").replace(" ", "_")
+        in supporting_kinds
     }
     retained = []
     excluded = []

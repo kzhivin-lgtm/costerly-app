@@ -5,7 +5,27 @@
 Release tag `detection-v8.4.23-supporting-view-links-production-2026-11-11`.
 Production rollback is
 `detection-v8.4.22-native-pdf-worker-production-2026-11-11`.
-Fresh production Upload acceptance is pending.
+The owner rejected V8.4.23 after the first production run. The rollback
+restores the exact V8.4.22 runtime from `e734f61`. The experiment and
+production audit are preserved for reference.
+
+Fresh production Floor 07 Upload `run_dec2d75b92b845bc873b65f969664514`
+completed File Review and Naming with nine objects and all 11 pages
+confirmed. The native PDF worker returned 969 text spans. Discovery
+returned one `elevation_set` per working sheet. The previous production
+run on the identical PDF returned 33 separate object Views. All 33 old
+core boxes fit inside the new sheet-level cores. The cover and whole-floor
+plan were discarded as document context. A P11 title-block strip was
+also excluded as a candidate region. No published render or technical
+View was removed at the later publication step.
+
+The same-page review had zero final View pairs, versus 51 in the prior
+run. The 28 cross-page Fingerprint relations remained supporting only.
+There were no accepted merge edges. P11 stored the 3450 mm and 3490 mm
+readings under one View. Production first-link verification is
+inconclusive because Discovery collapsed the separate Views upstream.
+The saved per-sheet comparison is `page-audit.json` beside the V8.4.23
+production run audit.
 
 Local rollback tag
 `detection-v8.4.22-before-supporting-views-checkpoint-2026-11-11`
