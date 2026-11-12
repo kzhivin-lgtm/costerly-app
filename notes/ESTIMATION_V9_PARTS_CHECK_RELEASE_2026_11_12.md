@@ -400,4 +400,14 @@ The adjacent facade supplies the scale; the carcass supplies the assumed
 thickness. The original 107 rows and nine Block envelopes are unchanged.
 All three rows are allocated to sheet stock (127,308 mm² of cut parts).
 The result has 110 rows, with the other Inventory Check issues still open.
-This verifies local replay; a fresh production Upload is pending.
+
+Railway deployed production commit `820b5669677871c842f8cdeb5e410674d6510453`
+on 2026-11-12 (deployment `47743a48-2824-43b7-88b1-c6ae5a5377ab`).
+Core health returned HTTP 200. The owner applied the SQL migration. A
+replay of the 110-row Lev2 report against the live catalog priced all ten
+purchasing requirements, including one Israel Reference cutout at 400 ILS
+excluding VAT. The material plan stays in review while the inventory has
+open findings. A fresh authenticated production Upload is pending.
+Release checks passed 48 tests; the dependency-list assertion also fails
+against the unchanged 9.4 inputs because it predates the Detection
+dependencies. This release did not change the runtime dependencies.
