@@ -221,3 +221,54 @@ matches 9.3 for all nine Block envelopes, Front counts, and 149 Parts rows.
 Eighteen Adda rows still have missing dimensions. Forty-four focused tests
 and two subtests passed. Production acceptance requires a new Upload and
 confirmation in Objects. The legacy costing agent failure is tracked separately.
+
+### Fresh Lev2 production Upload
+
+Run `run_6096a134aae24951ac6f36a54500c21d`, Detection event
+`15536d54-5d96-4c43-bc60-c72fcd4cf43c`, Parts Check event
+`7a79d15e-df4a-43cd-87c3-3beda4e6d402`. Detection took 53.384 seconds and
+published one object. Parts Check `estimation-v9.4-parts-check` succeeded
+in 57.094 seconds. The Objects report reader returned `ready` for that
+estimate. The downloaded report hash matched the event. All 107 rows
+matched the saved control by identity, quantity, unit and millimeter
+dimensions. It retained nine blocks, the B02 and B04 panels, and the
+2480 × 3005 × 30 mm worktop envelope. Four lower carcass depths use the
+explicit 600 mm estimate. Inventory Check remains open for the worktop
+and unresolved element identities or ownership.
+
+The separate legacy costing pipeline reached `estimation_analyze` and
+failed at `calculation_agent` in event
+`c60a2348-f5ff-4857-ac4b-8b50a82f7d91`. The stored reason is generic and
+does not retain the provider exception. The 9.4 Parts Check report was
+already saved when costing failed.
+
+### Lev2 Parts Check checkpoint
+
+Tag `estimation-v9.4-lev2-parts-check-2026-11-12` points to the deployed
+runtime commit `52f2f8356edcae860be442cc49ef121e5d61c3b9`.
+Two independent repeats ran the production Parts Check pipeline with
+fresh Sonnet responses and the exact saved PDF, Detection result, OCR and
+File Review inputs from `run_6096a134aae24951ac6f36a54500c21d`. The source
+PDF SHA-256 is `b69e132814531862c1abbf2ea3910e0221ab013dd2d0fb184400149d6ec02b1d`.
+
+| Test | Time | Matching Parts rows | Block envelopes | Open Inventory Check items |
+| --- | --- | --- | --- | --- |
+| Fresh production Upload | 57.094 s | 107/107 | 9/9 | 9 |
+| Repeat 1 on the saved Detection input | 45.08 s | 107/107 | 9/9 | 8 |
+| Repeat 2 on the saved Detection input | 41.98 s | 107/107 | 9/9 | 11 |
+
+Both repeats retained all expected part identities, quantities, units and
+millimeter dimensions. Apart from the owner source references on two rows,
+the Parts data also matched the production report. Front observation counts
+and Inventory Check findings varied. The final counts stayed at 17 doors,
+5 drawer fronts and 2 lift-up fronts. Four 600 mm lower carcass depths are
+still assumptions. Replaying each captured model response set without new
+requests reproduced its full Parts Check JSON byte for byte. Report SHA-256
+values for the two repeats are
+`784e555e47a93f2272c7cf618c5eff84b3e0ba48c7c5049aa1cbac9925950ed4` and
+`e420a6b99e1338a4a8863c44a5dc76fff5e801481fb1aba96756c5396fd09c24`.
+
+This checkpoint covers the Lev2 Parts Check results. The two repeats reused
+Detection and File Review, so the test isolates model variability within
+Parts Check. Inventory Check gaps, exact countertop geometry and the legacy
+costing failure remain open.

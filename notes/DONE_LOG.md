@@ -5,7 +5,10 @@ links when native contours independently support the match. Full-height
 unclaimed panels with a unique adjacent assembly are recovered locally.
 Fresh provider responses on both saved Lev2 production inputs matched all
 107 control rows. Lev1 matched all 28. The two-object Adda replay preserves
-all 149 rows. Fresh production Upload acceptance remains active in TODO.
+all 149 rows. A fresh production Lev2 Upload and two repeats with fresh
+model responses matched 107/107 rows and all nine Block envelopes. Runtime
+checkpoint `estimation-v9.4-lev2-parts-check-2026-11-12`. Inventory Check
+findings and costing remain open in TODO.
 See the [Estimation release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md).
 
 Estimation 9.3, work 3.17.4.6. Reproduced and repaired the Adda
