@@ -57,11 +57,11 @@ On an elevated row, a short wide closed panel can lift up, but a tall front
 cannot be identified as lift-up from its location. A stack of horizontal
 moving panels can be drawers. Distinguish an open shelf interior from a closed
 front and distinguish a vertical door from a side or an end filler. Use
-unresolved_front when evidence conflicts. For the object separately identify
-any worktop when visible. Keep the exact supplied candidate IDs.
-Return JSON only:
-{"review":[{"view_id":"view ID","candidate_id":"Cxx","role":"hinged_door | lift_up | drawer | mirror | fixed_surface | fixed_open_shelf | unresolved_front","evidence":"visible reason"}],
-"worktop_view_id":null}"""
+unresolved_front when evidence conflicts. Return exactly one decision per
+supplied ID and no other contours. Use at most five words of visual evidence
+per decision. Identify a worktop separately when visible."""
+REVIEW_ROLES = ("hinged_door", "lift_up", "drawer", "mirror", "fixed_surface",
+                "fixed_open_shelf", "unresolved_front")
 
 
 def read_json(path):
@@ -144,13 +144,13 @@ def bind_source_front(raw, frames):
     return bind_island_faces({**raw, "faces": records}, frames)
 
 
-def run_initial(geometry, key, source, output, *, resume=False, request_provider=None):
+def run_initial(geometry, key, source, output, *, resume=False, request_provider=None, component_pdf=None):
     audit_path = geometry / "estimation-offline-all-islands-evidence.json"
     views = {row["view_id"]: row for row in read_json(audit_path)["documents"][key]}
     request, frames, source_hash = prepare(geometry, key, source_review=True)
     images = island_content(request, views)
     invoke = request_provider or provider(output, source_hash, resume=resume)
-    with ThreadPoolExecutor(max_workers=2) as pool:
+    with ThreadPoolExecutor(max_workers=3) as pool:
         map_call = pool.submit(classify_islands, invoke, views, images, source["detection_context"])
         if any(not any(view["arrows"] and oblique_evidence(view)
                        for view in views.values() if view["object_id"] == oid)
@@ -158,9 +158,32 @@ def run_initial(geometry, key, source, output, *, resume=False, request_provider
             front_call = pool.submit(invoke, "front", request, lambda raw: bind_source_front(raw, frames))
         else:
             front_call = None
+        component_call = None
+        if component_pdf is not None:
+            from tools.estimation_v9_source_review import read_front_components
+
+            captions = {}
+            with pymupdf.open(component_pdf) as pdf:
+                for vid, view in views.items():
+                    leaders = {ident: leader for ident, leader in leader_packet(view).items()
+                               if len(leader["tips"]) >= 2 or any(
+                                   all(abs(a - b) > 3 for a, b in zip(leader["root_px"], tip["xy_px"]))
+                                   for tip in leader["tips"])}
+                    if leaders and (caption := render_caption_image(pdf[view["page"] - 1], view, leaders)):
+                        captions[vid] = caption, leaders
+            component_call = pool.submit(read_front_components, invoke, views, images, provider_request, payload,
+                                         captions=captions, image_block=image_block)
         island_map = map_call.result()
         front = front_call.result()["faces"] if front_call else []
-    return views, frames, images, invoke, island_map, front, source_hash
+        observations, review = None, None
+        if component_call:
+            try:
+                observations = component_call.result()
+                review = {"status": "reviewed", "finding_count": len(observations)}
+            except (RuntimeError, ValueError) as exc:
+                observations = []
+                review = {"status": "review_failed", "error": str(exc)}
+    return views, frames, images, invoke, island_map, front, source_hash, observations, review
 
 
 EXPLICIT_FRONT = """Read the actual printed callouts and their leaders on this
@@ -316,7 +339,7 @@ def stack_and_profiles(views, projections, detection, front):
     return protected, corrections
 
 
-def review_elevations(invoke, views, frames, images, projections, front, protected, corrections):
+def review_elevations(invoke, views, frames, images, projections, front, protected, corrections, *, audit):
     candidates, content = [], []
     covered = {(row["view_id"], row["candidate_id"]) for row in corrections} | protected
     for vid in views:
@@ -326,25 +349,57 @@ def review_elevations(invoke, views, frames, images, projections, front, protect
                      and (vid, row["candidate_id"]) not in covered]
             for face in faces:
                 candidates.append({key: face[key] for key in ("view_id", "candidate_id", "bbox_px")})
-        content.extend(images[vid])
     if not candidates:
         return corrections, []
     keys = {(face["view_id"], face["candidate_id"]) for face in candidates}
-    content.append(payload({"review_candidates": candidates}))
+    by_id = {f"{vid}:{cid}": (vid, cid) for vid, cid in sorted(keys)}
+    candidate_views = {vid for vid, _ in keys}
+    object_ids = {views[vid]["object_id"] for vid in candidate_views}
+    for vid, view in views.items():
+        if view["object_id"] in object_ids:
+            content.extend(images[vid] if vid in candidate_views else images[vid][:2])
+    content.append(payload({"review_candidates": [
+        {"id": f'{face["view_id"]}:{face["candidate_id"]}', "bbox_px": face["bbox_px"]}
+        for face in candidates
+    ]}))
+
+    decision = {"id": {"type": "string", "enum": list(by_id)},
+                "role": {"type": "string", "enum": list(REVIEW_ROLES)},
+                "evidence": {"type": "string"}}
+    fields = {"review": {"type": "array", "items": {
+        "type": "object", "properties": decision, "required": list(decision), "additionalProperties": False}},
+        "worktop_view_id": {"anyOf": [{"type": "string", "enum": sorted(
+            vid for vid, view in views.items() if view["object_id"] in object_ids)}, {"type": "null"}]}}
+    params = provider_request(REVIEW, content, max_tokens=min(8000, max(600, 36 * len(by_id) + 100)))
+    params["output_config"]["format"] = {"type": "json_schema", "schema": {
+        "type": "object", "properties": fields, "required": list(fields), "additionalProperties": False}}
 
     def bind(raw):
-        got = [(row["view_id"], row["candidate_id"]) for row in raw["review"]]
-        if set(got) != keys or len(got) != len(keys):
-            raise ValueError("Front review must cover each candidate once")
-        if raw["worktop_view_id"] is not None and raw["worktop_view_id"] not in frames:
-            raise ValueError("worktop view outside the source")
-        return raw
+        if not isinstance(raw.get("review"), list):
+            raise ValueError("Front role review must return a list")
+        rows = [row for row in raw["review"] if isinstance(row, dict) and isinstance(row.get("id"), str)]
+        counts = Counter(row["id"] for row in rows)
+        accepted = []
+        for row in rows:
+            ident = row["id"]
+            if (ident in by_id and counts[ident] == 1 and row.get("role") in REVIEW_ROLES
+                    and isinstance(row.get("evidence"), str) and row["evidence"].strip()):
+                view_id, candidate_id = by_id[ident]
+                accepted.append({"view_id": view_id, "candidate_id": candidate_id,
+                                 "role": row["role"], "evidence": row["evidence"]})
+        vid = raw.get("worktop_view_id")
+        return accepted, vid if isinstance(vid, str) and vid in frames and views[vid]["object_id"] in object_ids else None
 
-    result = invoke("front-role-review", provider_request(REVIEW, content), bind)
-    vid = result["worktop_view_id"]
+    try:
+        reviewed, vid = invoke("front-role-review", params, bind)
+    except (RuntimeError, ValueError):
+        reviewed, vid = [], None
+    confirmed = {(row["view_id"], row["candidate_id"]) for row in reviewed}
+    audit.extend({"view_id": view_id, "candidate_id": candidate_id, "reason": "front_role_review_pending"}
+                 for view_id, candidate_id in sorted(keys - confirmed))
     features = ([{"role": "worktop", "id": "worktop", "view_id": vid,
                   "quantity": 1, "status": "recognized, full outline unresolved"}] if vid else [])
-    return result["review"] + corrections, features
+    return reviewed + corrections, features
 
 
 def leader_packet(view):
@@ -489,7 +544,8 @@ def find_front_and_blocks(pdf, views, frames, images, invoke, island_map, front,
     marked, labelled = {}, {}
     features, review = [], []
     with ThreadPoolExecutor(max_workers=3) as pool:
-        reviews = pool.submit(review_elevations, invoke, views, frames, images, projections, front, protected, corrections)
+        reviews = pool.submit(review_elevations, invoke, views, frames, images, projections, front,
+                              protected, corrections, audit=audit)
         calls = {}
         for vid, marks in routes.values():
             view = views[vid]
@@ -590,7 +646,7 @@ def run_pipeline(args, source, *, version, request_provider=None):
     v9 = version == "9"
     saved_dimensions = args.saved_dimension_inventory if v9 else None
     if v9:
-        from tools.estimation_v9_source_review import read_front_components, review_original_sheets
+        from tools.estimation_v9_source_review import review_original_sheets
         from use_cases.estimation_v9_inventory import (
             add_inventory_geometry, apply_source_findings, bind_native_components, check_inventory, check_parts,
             include_standalone_parts_scopes, refresh_source_coverage,
@@ -604,18 +660,9 @@ def run_pipeline(args, source, *, version, request_provider=None):
     packet = read_json(geometry / "estimation-offline-all-islands-evidence.json")
     if packet["source_sha256"][args.key] != sha256(args.pdf.read_bytes()).hexdigest():
         raise ValueError("Geometry packet belongs to a different PDF")
-    views, frames, images, invoke, island_map, front, source_hash = run_initial(
+    views, frames, images, invoke, island_map, front, source_hash, component_observations, front_review = run_initial(
         geometry, args.key, {"detection_context": detection}, args.output, resume=args.resume,
-        request_provider=request_provider)
-    component_observations = None
-    front_review = None
-    if v9:
-        try:
-            component_observations = read_front_components(invoke, views, images, provider_request, payload)
-            front_review = {"status": "reviewed", "finding_count": len(component_observations)}
-        except (RuntimeError, ValueError) as exc:
-            component_observations = []
-            front_review = {"status": "review_failed", "error": str(exc)}
+        request_provider=request_provider, component_pdf=args.pdf if v9 else None)
     with pymupdf.open(args.pdf) as pdf:
         page_count = len(pdf)
         objects = find_front_and_blocks(pdf, views, frames, images, invoke, island_map, front, detection,
@@ -672,8 +719,10 @@ def run_pipeline(args, source, *, version, request_provider=None):
                 else:
                     from use_cases.estimation_display_parts import add_source_casework_parts, add_source_display_glass_parts
 
-                    add_source_casework_parts(parts, inventory, result, measurements,
-                                              input_rows=source.get("inputs", ()), detection=detection)
+                    with pymupdf.open(args.pdf) as pdf:
+                        add_source_casework_parts(parts, inventory, result, measurements,
+                                                  input_rows=source.get("inputs", ()), detection=detection,
+                                                  views=views, pdf=pdf)
                     add_source_display_glass_parts(parts, inventory, result)
             parts_filename = "parts.json" if v9 else "cb-parts.json"
             inventory_with_parts = reconcile_object_inventory(inventory, parts)

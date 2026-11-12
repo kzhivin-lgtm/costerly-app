@@ -1,5 +1,6 @@
 """Read visible Front components and review each original PDF sheet for Estimation 9."""
 
+from concurrent.futures import ThreadPoolExecutor
 from math import isfinite
 
 import pymupdf
@@ -41,6 +42,8 @@ details outside major views. Pay attention to small parts and named features
 such as shelves, mirrors, glass boxes, glazing, lighting, bases and closures.
 Use glass_box for a distinct glass display or storage box. Keep distinct
 physical targets separate. Exclude dimensions, borders and construction lines.
+A box must mark one appearance within one drawing view. When the same
+physical feature repeats across projections, use the clearest single appearance.
 A note with no locatable target should be reported with bbox null and scope unclear."""
 
 
@@ -58,6 +61,7 @@ def source_request(request, system, content, *, roles, max_tokens, view_ids=None
     if view_ids:
         view_id = {"type": "string", "enum": sorted(view_ids)}
         finding["view_id"] = view_id
+        finding["annotation_id"] = {"anyOf": [{"type": "string"}, {"type": "null"}]}
         fields["reviewed_view_ids"] = {"type": "array", "items": view_id}
     fields["findings"] = {"type": "array", "items": {
         "type": "object", "properties": finding, "required": list(finding), "additionalProperties": False,
@@ -103,7 +107,7 @@ def bind_findings(raw, *, page, roles, stage, view=None):
     return findings
 
 
-def read_front_components(invoke, views, images, request, payload):
+def read_front_components(invoke, views, images, request, payload, *, captions=None, image_block=None):
     """Read the original Island crops, independently of physical ownership."""
     # One request for the Islands keeps the additional Front pass bounded.
     content = [payload({"allowed_roles": sorted(FRONT_ROLES), "islands": [
@@ -112,10 +116,17 @@ def read_front_components(invoke, views, images, request, payload):
     ]})]
     for vid in views:
         content.extend(images[vid][:2])
+        if vid in (captions or {}):
+            content.extend([{"type": "text", "text": f"{vid}: indexed closeups of printed callouts."},
+                            image_block(captions[vid][0])])
     system = FRONT + "\n" + SCHEMA + """
 For this request, include a view_id on every finding and use its own image
 coordinates. Review every supplied Island and return reviewed_view_ids
-listing every view examined, including empty views."""
+listing every view examined, including empty views. On an indexed closeup,
+copy the printed caption into source_text and its exact A ID into annotation_id
+when you recognize a supplied role. This applies in particular to every LED
+callout, including multiple callouts of the same temperature. Use null for
+annotation_id unless you can read the matching indexed caption."""
 
     def bind(raw):
         if not isinstance(raw, dict) or not isinstance(raw.get("reviewed_view_ids"), list):
@@ -130,8 +141,19 @@ listing every view examined, including empty views."""
             if not isinstance(row, dict) or row.get("view_id") not in grouped:
                 raise ValueError("Front component response contains an unknown Island")
             grouped[row["view_id"]].append(row)
-        return [finding for vid, rows in grouped.items() for finding in bind_findings(
-            {"findings": rows}, page=views[vid]["page"], roles=FRONT_ROLES, stage="front", view=views[vid])]
+        findings = []
+        for vid, rows in grouped.items():
+            bound = bind_findings({"findings": rows}, page=views[vid]["page"], roles=FRONT_ROLES,
+                                  stage="front", view=views[vid])
+            if vid in (captions or {}):
+                _, leaders = captions[vid]
+                for row, finding in zip(rows, bound, strict=True):
+                    ident = row.get("annotation_id")
+                    if (finding["role"] == "lighting" and isinstance(ident, str) and ident in leaders
+                            and finding["source"].get("source_text")):
+                        finding["source"].update(annotation_id=ident, tips=leaders[ident]["tips"])
+            findings.extend(bound)
+        return findings
 
     if not views:
         return []
@@ -141,13 +163,7 @@ listing every view examined, including empty views."""
 
 def review_original_sheets(document, invoke, request, payload, image_block):
     """Run an independent pass on full pages. A failed page stays explicitly open."""
-    results = []
-    for number, page in enumerate(document, 1):
-        scale = min(3, 2200 / max(page.rect.width, page.rect.height))
-        pixmap = page.get_pixmap(matrix=pymupdf.Matrix(scale, scale), alpha=False)
-        content = [payload({"page": number, "allowed_roles": sorted(COMPONENT_ROLES)}),
-                   image_block(pixmap.tobytes("png"))]
-
+    def review(number, content):
         def bind(raw):
             return bind_findings(raw, page=number, roles=COMPONENT_ROLES, stage="inventory_check")
 
@@ -156,7 +172,15 @@ def review_original_sheets(document, invoke, request, payload, image_block):
                                     roles=COMPONENT_ROLES, max_tokens=3500)
             findings = invoke(f"v9-inventory-page-{number:03d}", params, bind)
         except (RuntimeError, ValueError) as exc:
-            results.append({"page": number, "status": "review_failed", "error": str(exc), "findings": []})
-        else:
-            results.append({"page": number, "status": "reviewed", "findings": findings})
-    return results
+            return {"page": number, "status": "review_failed", "error": str(exc), "findings": []}
+        return {"page": number, "status": "reviewed", "findings": findings}
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        futures = []
+        for number, page in enumerate(document, 1):
+            scale = min(3, 2200 / max(page.rect.width, page.rect.height))
+            pixmap = page.get_pixmap(matrix=pymupdf.Matrix(scale, scale), alpha=False)
+            content = [payload({"page": number, "allowed_roles": sorted(COMPONENT_ROLES)}),
+                       image_block(pixmap.tobytes("png"))]
+            futures.append(pool.submit(review, number, content))
+        return [future.result() for future in futures]

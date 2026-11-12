@@ -1,5 +1,14 @@
 # Done Log
 
+Estimation 9.3, work 3.17.4.6. Reproduced and repaired the Adda
+Front review truncation and invalid Block Locator contour failure.
+Parts Check now exports measured fronts, display panes, mirrors,
+visible plinth spans and the kitchen worktop envelope with their
+source evidence. Local runs with fresh provider responses and fixed-input
+controls are recorded in the
+[Estimation release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md).
+Remaining source and production verification is active in TODO.
+
 Detection V8.4.26 restores the single-dimension Fingerprint weight.
 The saved V8.4.25 replay goes from 10 to 9 objects on Floor 07 and
 preserves all 20 Floor 06 groups. Fresh production Uploads reached

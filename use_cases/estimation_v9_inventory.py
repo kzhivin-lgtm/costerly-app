@@ -234,6 +234,17 @@ def _native_contour_owner(obj, source, views, contours):
     return None
 
 
+def _overlapping_mirror(source, ref, views, contours):
+    """A second overlapping contour needs independent evidence of a second mirror."""
+    target = source["bbox_normalized"]
+    for box in _reference_boxes(ref, views, contours):
+        intersection = max(0, min(target[2], box[2]) - max(target[0], box[0])) * max(
+            0, min(target[3], box[3]) - max(target[1], box[1]))
+        if intersection > .20 * min(_area(target), _area(box)):
+            return True
+    return False
+
+
 def _separate_mirror(source, obj, views, contours):
     blocks = [item for item in obj["items"] if item["kind"] == "block"]
     if not blocks:
@@ -282,6 +293,7 @@ def _place_finding(obj, finding, known, views, contours):
             binding := _native_contour_owner(obj, source, views, contours)):
         block, cid = binding
         if any(not ref or ref.get("view_id") != source["view_id"] or ref.get("candidate_id") == cid
+               or (role == "mirror" and _overlapping_mirror(source, ref, views, contours))
                for _, _, ref in related):
             status = "identity_pending"
         else:
@@ -440,6 +452,10 @@ def check_parts(analyze, inventory_with_parts, parts):
                 component["status"] = statuses.pop() if len(statuses) == 1 else "pending_decomposition"
         issues = [{"item_id": scope["block_id"], "reason": "block_construction_pending"}
                   for scope in part_blocks if scope.get("construction_pending")]
+        issues.extend(row for row in analyze["objects"][oid]["front"].get("audit", ())
+                      if row.get("reason") == "front_role_review_pending")
+        issues.extend({"item_id": scope, "reason": "block_locator_review_pending"}
+                      for scope in analyze["objects"][oid]["planner"].get("locator_review_pending", ()))
         if coverage := obj.get("worktop_coverage"):
             issues.append({"role": "worktop", "reason": coverage["status"],
                            "block_ids": coverage["block_ids"]})

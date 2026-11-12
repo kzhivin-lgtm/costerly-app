@@ -357,20 +357,35 @@ def straight_casework(roles, candidates, printed, measure_one, front_counts):
         mirror_dimensions["width"] = measure_one(
             plan, "y", panel["bbox"][1::2], ("near end of perpendicular mounting panel",
                                              "far end of perpendicular mounting panel"), [panel["id"]])
-    section = only(candidates["Section"])
+        panel_depth = measure_one(plan, "x", panel["bbox"][::2], ("rear face of mounting panel",
+                                  "front face of mounting panel"), [panel["id"]])
+        if (panel_depth["value_mm"] and mirror_dimensions["width"]["value_mm"]
+                and panel_depth["value_mm"] <= .1 * mirror_dimensions["width"]["value_mm"]):
+            mirror_dimensions["depth"] = panel_depth
+    section = only(candidates["Section"] + candidates["Side view"])
     if section:
         y_dims = [row for row in printed[section["view_id"]] if row["axis"] == "y"]
         longest = max(y_dims, key=lambda r: r["value_mm"], default=None)
         if longest:
             top, floor = axis_pixels(section, longest)
-            upright = only([c for c in section["candidates"] if abs(c["bbox"][1] - top) <= 2
-                            and c["bbox"][3] - top >= .6 * (floor - top)])
-            if upright:
-                matching_floor = only([c for c in section["candidates"] if abs(c["bbox"][3] - floor) <= 2])
-                if matching_floor:
-                    mirror_dimensions["installed_height"] = measure_one(
-                        section, "y", (upright["bbox"][1], matching_floor["bbox"][3]),
-                        ("top of mirror mounting panel", "floor datum"), [upright["id"], matching_floor["id"]])
+            known_width = mirror_dimensions.get("width", {}).get("value_mm")
+            scale = longest["value_mm"] / (floor - top)
+            upright = only([c for c in section["candidates"] if rectangular(c)
+                            and abs(c["bbox"][1] - top) <= 2 and c["bbox"][3] - top >= .6 * (floor - top)
+                            and known_width and abs(scale * (c["bbox"][2] - c["bbox"][0]) / known_width - 1) <= .035])
+            matching_floor = only([c for c in section["candidates"] if abs(c["bbox"][3] - floor) <= 2])
+            if upright and matching_floor:
+                mirror_dimensions["installed_height"] = measure_one(
+                    section, "y", (upright["bbox"][1], matching_floor["bbox"][3]),
+                    ("top of mirror mounting panel", "floor datum"), [upright["id"], matching_floor["id"]])
+                foot = only([c for c in section["candidates"] if abs(c["bbox"][1] - upright["bbox"][3]) <= 2
+                             and all(abs(a - b) <= 2 for a, b in zip(c["bbox"][::2], upright["bbox"][::2]))
+                             and abs(c["bbox"][3] - matching_floor["bbox"][1]) <= 2])
+                if foot:
+                    mirror_dimensions["height"] = measure_one(
+                        section, "y", (upright["bbox"][1], foot["bbox"][3]),
+                        ("top of mounting panel", "bottom of mounting panel above the floor"),
+                        [upright["id"], foot["id"]])
     if mirror_dimensions:
         result[mirrors[0]["id"]] = mirror_dimensions
     return result

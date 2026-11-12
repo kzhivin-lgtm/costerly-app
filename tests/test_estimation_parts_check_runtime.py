@@ -3,6 +3,7 @@ import hashlib
 import pytest
 
 from tools import probe_estimation_v9
+from tools.probe_estimation_v8_3 import review_elevations
 from use_cases import estimation_parts_check_runtime as runtime
 from use_cases.estimation_detection_context_v7 import build_context
 
@@ -94,6 +95,29 @@ def test_parts_check_download_is_bound_to_estimate_owner_and_content(monkeypatch
     report = runtime.load_parts_check(client=Client(), company_id="owner", run_id="run", estimate_id="estimate")
     assert report == {"status": "ready", "payload": payload, "part_rows": 1}
     assert reads == [f"storage://{runtime.ORIGINALS_BUCKET}/owner/run/parts-check/estimate/{digest}.json"]
+
+
+def test_role_review_preserves_its_valid_decisions_and_reports_unresolved_faces():
+    views = {"view": {"object_id": "object"}}
+    faces = [{"view_id": "view", "candidate_id": ident, "bbox_px": [10, 20, 30, 40], "role": "lift_up"}
+             for ident in ("C01", "C02", "C03")]
+    audit = []
+
+    def invoke(stage, request, bind):
+        assert stage == "front-role-review"
+        schema = request["output_config"]["format"]["schema"]
+        ids = schema["properties"]["review"]["items"]["properties"]["id"]["enum"]
+        assert ids == ["view:C01", "view:C02", "view:C03"]
+        return bind({"review": [{"id": ident, "role": "fixed_surface", "evidence": "fixed side"}
+                                for ident in ("view:C01", "view:C02", "view:C02", "view:C04")],
+                     "worktop_view_id": "foreign-view"})
+
+    reviewed, features = review_elevations(invoke, views, views, {"view": []}, {"view": "Front elevation"},
+                                          faces, set(), [], audit=audit)
+    assert [(r["candidate_id"], r["role"]) for r in reviewed] == [("C01", "fixed_surface")]
+    assert not features
+    assert [(r["candidate_id"], r["reason"]) for r in audit] == [
+        ("C02", "front_role_review_pending"), ("C03", "front_role_review_pending")]
 
 
 @pytest.mark.parametrize("pipeline_fails", [False, True])

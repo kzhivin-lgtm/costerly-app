@@ -17,12 +17,19 @@ from use_cases.estimation_artifacts import _upload_immutable_artifact, download_
 from use_cases.estimation_detection_context_v7 import build_context
 from use_cases.estimation_originals import ORIGINALS_BUCKET
 
-VERSION = "estimation-v9.2-parts-check"
+VERSION = "estimation-v9.3-parts-check"
 OPERATION = "estimation_v9_parts_check"
 _EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="parts-check")
 _LOCK = RLock()
 _JOBS = {}
 _LOG = logging.getLogger(__name__)
+
+
+class PartsCheckRequestError(RuntimeError):
+    def __init__(self, stage, reason):
+        self.stage = stage
+        self.reason = reason
+        super().__init__(f"{stage}: {reason}")
 
 
 def parts_check_enabled():
@@ -48,6 +55,7 @@ def _source_event(client, company_id, run_id):
 
 
 def _request_provider(company_id, run_id, file_name, usage_events):
+    from anthropic import APIError
     from agents.anthropic_adapter import build_agent_usage_event, extract_text_from_claude_response, get_anthropic_client
     from agents.estimation_v4_1_material_facts_agent import _create_message_with_hard_timeout, _json_object
 
@@ -55,16 +63,25 @@ def _request_provider(company_id, run_id, file_name, usage_events):
 
     def invoke(stage, request, validate):
         started = datetime.now(UTC).isoformat()
-        response = _create_message_with_hard_timeout(anthropic, timeout_seconds=120, **request)
-        usage_events.append(build_agent_usage_event(
+        try:
+            response = _create_message_with_hard_timeout(anthropic, timeout_seconds=120, **request)
+        except (APIError, RuntimeError) as exc:
+            raise PartsCheckRequestError(stage, type(exc).__name__) from exc
+        event = build_agent_usage_event(
             agent_name="estimation", operation="estimation_v9_parts_check_request",
             company_id=company_id, run_id=run_id, file_name=file_name, object_id=None, object_name=None,
             model=request["model"], prompt_version=VERSION, response=response, started_at=started,
-            finished_at=datetime.now(UTC).isoformat(), request_diagnostics={"stage": stage},
-        ))
-        if response.stop_reason != "end_turn":
-            raise ValueError(f"Parts Check response was incomplete at {stage}")
-        return validate(_json_object(extract_text_from_claude_response(response)))
+            finished_at=datetime.now(UTC).isoformat(),
+            request_diagnostics={"stage": stage, "stop_reason": response.stop_reason},
+        )
+        usage_events.append(event)
+        try:
+            if response.stop_reason != "end_turn":
+                raise PartsCheckRequestError(stage, "incomplete_response")
+            return validate(_json_object(extract_text_from_claude_response(response)))
+        except (KeyError, TypeError, ValueError) as exc:
+            event["raw_usage"]["validation_error"] = type(exc).__name__
+            raise PartsCheckRequestError(stage, "invalid_response") from exc
 
     return invoke
 
@@ -118,7 +135,10 @@ def _run(*, estimate_id, run_id, company_id, file_name, file_bytes, inputs, ocr_
         status = "succeeded"
     except Exception as exc:
         details.update(failure_stage=stage, error_type=type(exc).__name__)
-        _LOG.warning("Parts Check %s failed for run %s: %s", stage, run_id, type(exc).__name__)
+        if isinstance(exc, PartsCheckRequestError):
+            details.update(request_stage=exc.stage, request_error=exc.reason)
+        _LOG.warning("Parts Check %s failed for run %s: %s", stage, run_id, exc if isinstance(
+            exc, PartsCheckRequestError) else type(exc).__name__)
     # The status makes the report discoverable. Publish it independently of model metrics.
     insert_agent_usage_event(client, {
         "company_id": company_id, "run_id": run_id, "file_name": file_name, "agent_name": "estimation",

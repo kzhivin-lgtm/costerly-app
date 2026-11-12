@@ -162,28 +162,48 @@ def native_locator(objects, views, images, frames, invoke, request, payload):
     content.append(payload(prior))
 
     def bind(raw):
-        if raw["objects"].keys() != prior.keys():
-            raise ValueError("Block Locator changed the object IDs")
+        if not isinstance(raw.get("objects"), dict):
+            raise ValueError("Block Locator must return an object map")
+        result = {}
         for oid, value in raw["objects"].items():
+            if oid not in prior or not isinstance(value, dict) or not isinstance(value.get("add"), dict):
+                continue
             allowed = frames[prior[oid]["view_id"]]["contours"]
-            if value["add"].keys() != prior[oid]["blocks"].keys():
-                raise ValueError("Block Locator changed the existing block IDs")
-            for ids in [*value["add"].values(), value["plinth"]]:
-                if not set(ids) <= allowed.keys() or len(set(ids)) != len(ids):
-                    raise ValueError("Block Locator used an invalid or repeated contour")
-        return raw["objects"]
+            gaps = []
 
-    result = invoke("native-locator", request(NATIVE_LOCATOR, content, max_tokens=3500), bind)
-    for oid, reading in result.items():
+            def clean(ids, scope):
+                if not isinstance(ids, list):
+                    gaps.append(scope)
+                    return []
+                valid = list(dict.fromkeys(cid for cid in ids if isinstance(cid, str) and cid in allowed))
+                if any(not isinstance(cid, str) or cid not in allowed for cid in ids):
+                    gaps.append(scope)
+                return valid
+
+            add = {bid: clean(value["add"].get(bid), bid) for bid in prior[oid]["blocks"]}
+            plinth = clean(value.get("plinth"), "plinth")
+            result[oid] = {"add": add, "plinth": plinth, "unresolved": value.get("unresolved", []),
+                           "validation_gaps": gaps}
+        return result
+
+    try:
+        result = invoke("native-locator", request(NATIVE_LOCATOR, content, max_tokens=3500), bind)
+    except (RuntimeError, ValueError):
+        result = {}
+    for oid, prior_reading in prior.items():
         item = objects[oid]
-        vid = prior[oid]["view_id"]
+        vid = prior_reading["view_id"]
         plan = item["planner"]
+        reading = result.get(oid, {"add": {bid: [] for bid in prior_reading["blocks"]},
+                                   "plinth": [], "unresolved": [], "validation_gaps": list(prior_reading["blocks"])})
         proposal = ground_native_shell_proposal(plan, views[vid], reading)
         resolved = resolve_locator_contours(plan, views[vid], proposal)
         front_ids = {row["candidate_id"] for row in item["front"]["faces"] if row["view_id"] == vid}
         plan = complete_native_assemblies(plan, views[vid], front_ids=front_ids, **resolved)
         item["planner"] = close_display_envelopes(plan, vid)
         plan["reported_unresolved_edges"] = reading["unresolved"]
+        if reading["validation_gaps"]:
+            plan["locator_review_pending"] = reading["validation_gaps"]
 
 
 def rect(box):

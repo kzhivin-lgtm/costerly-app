@@ -122,7 +122,7 @@ def add_source_display_glass_parts(parts, inventory, analyze):
                                         lambda mm: mm, reason="Estimate the glass base on its supporting shelf.")
                                 for axis in ("length", "width"))
                 scope["parts"].extend(glass_box_parts(
-                    width, depth, pending_size, thickness, scope_id=zone["id"], ref=ref))
+                    width, depth, scope.get("glass_box_height", pending_size), thickness, scope_id=zone["id"], ref=ref))
 
 
 def power_supply_watts(length_mm, watts_per_m):
@@ -135,7 +135,7 @@ def power_supply_watts(length_mm, watts_per_m):
 
 
 def _front_parts(rows, faces, spec, *, width, height, depth, panel_t, face_t,
-                 box_material, face_material, divisions, glass, glass_t, source_only=False):
+                 box_material, face_material, divisions, glass, glass_t, source_only=False, face_sizes=None):
     bay_width = _assumed(None)
     if divisions:
         inner_width = _subtract(width, panel_t, divisions + 1)
@@ -150,12 +150,15 @@ def _front_parts(rows, faces, spec, *, width, height, depth, panel_t, face_t,
     for face in faces:
         role = face["role"]
         ref = f"{face['view_id']}:{face['candidate_id']}"
+        measured = (face_sizes or {}).get(ref)
         if role == "drawer":
             face_h = _note_dim(spec, "drawer_face_height")
             face_w = derived("construction_assumption", [width], lambda w: w / role_counts[role] - 2,
                              reason="Equal drawer front widths with a provisional reveal.")
             if source_only and divisions != role_counts[role]:
                 face_w = _assumed(None, width["refs"])
+            if measured:
+                face_w, face_h = measured
             rows.append(_sized("drawer_front", 1, face_material, face_w, face_h, face_t, instance_ref=ref))
             wall = derived("construction_assumption", [face_h], lambda h: h - 40,
                            reason="Provisional drawer-box height below front height.")
@@ -171,6 +174,8 @@ def _front_parts(rows, faces, spec, *, width, height, depth, panel_t, face_t,
             face_h = _note_dim(spec, "door_face_height")
             face_w = derived("construction_assumption", [width], lambda w: w / role_counts[role] - 2,
                              reason="Equal hinged door widths within the observed band.")
+            if measured:
+                face_w, face_h = measured
             hinge_height = face_h["mm"] if source_only else face_h["mm"] or height["mm"] or 1000
             rows.extend([
                 _sized("door_front", 1, face_material, face_w, face_h, face_t, instance_ref=ref),
@@ -242,8 +247,14 @@ def _stock_notes(input_rows, source_objects):
     return notes
 
 
-def _standalone_source_parts(item, callouts):
+def _standalone_source_parts(item, callouts, *, readings, views, printed, facade_thickness):
+    from tools.estimation_casework_part_geometry import casework_closure_spans, casework_plinth_spans
+
     if item["role"] == "plinth" and item.get("quantity") == 1:
+        if views and (runs := casework_plinth_spans(readings, views, printed)):
+            return [{**part("plinth_visible_run", material="plinth stock", length=length,
+                            width=height, thickness=stock(17)), "construction_basis": "visible runs only"}
+                    for length, height in runs]
         refs = [f"{ref['view_id']}:{cid}" for ref in item["source_refs"] for cid in ref.get("contour_ids", ())]
         return [{**part("plinth_kit", material="plinth stock", length=_assumed(None, refs),
                        width=_assumed(None, refs), thickness=_assumed(None, refs)), "unit": "set"}]
@@ -253,17 +264,19 @@ def _standalone_source_parts(item, callouts):
         if ("фасадн" in note or "facade material" in note) and ("гипсокартон" in note or "drywall" in note):
             item["quantity"] = 1
             unknown = _assumed(None, refs)
-            return [_sized("closure_exterior_skin", 1, "facade material", unknown, unknown, unknown),
-                    _sized("closure_interior_skin", 1, "painted drywall", unknown, unknown, unknown)]
+            length, height = (casework_closure_spans(item, readings, views, printed) if views else None) or (unknown, unknown)
+            return [_sized("closure_exterior_skin", 1, "facade material", length, height, facade_thickness or unknown),
+                    _sized("closure_interior_skin", 1, "painted drywall", length, height, unknown)]
     return []
 
 
-def add_source_casework_parts(parts, inventory, analyze, geometry, *, input_rows=(), detection=None):
+def add_source_casework_parts(parts, inventory, analyze, geometry, *, input_rows=(), detection=None, views=None, pdf=None):
     """Build provisional Parts from locked topology and measured shell axes."""
     stock_notes = _stock_notes(input_rows, {row["object_id"]: row for row in (detection or {}).get("objects", ())})
     for oid, obj in inventory["objects"].items():
         planned = analyze["objects"][oid]
         readings = {row["block_id"]: row["measurements"] for row in geometry["objects"][oid]["blocks"]}
+        printed = geometry["objects"][oid].get("printed_dimensions", {})
         blocks = {block["id"]: block for block in planned["planner"]["blocks"]}
         callouts = {row["id"]: row["source_text"] for row in planned["planner"].get("component_callouts", ())}
         output = parts["objects"][oid]
@@ -273,6 +286,7 @@ def add_source_casework_parts(parts, inventory, analyze, geometry, *, input_rows
             scope = scopes.get(ident)
             if scope is None:
                 continue
+            face_sizes = {}
             if item["kind"] == "block":
                 block = blocks[ident]
                 width, height, depth = (_envelope(readings[ident], axis) for axis in ("width", "height", "depth"))
@@ -286,15 +300,25 @@ def add_source_casework_parts(parts, inventory, analyze, geometry, *, input_rows
                     divisions = len(block.get("positions", ())) or len(roles["drawer"])
                     thickness = stock_notes[oid].get("carcass", _assumed(None))
                     face_thickness = stock_notes[oid].get("facade", _assumed(None))
+                    if views:
+                        from tools.estimation_casework_part_geometry import source_casework_part_geometry
+
+                        face_sizes, glass_height = source_casework_part_geometry(
+                            block, readings[ident], faces, views, geometry["objects"][oid]["printed_dimensions"],
+                            glazed=any(child["role"] == "glazed_zone" for child in item["children"]), pdf=pdf)
+                        if glass_height:
+                            scope["glass_box_height"] = glass_height
                     if block["basis"] == "mirror_upright":
-                        scope["parts"] = [_sized("mirror_mounting_panel", 1, "panel stock", height, width, _assumed(None))]
+                        panel_depth = (depth if readings[ident].get("depth", {}).get("from") == "rear face of mounting panel"
+                                       else _assumed(None))
+                        scope["parts"] = [_sized("mirror_mounting_panel", 1, "panel stock", height, width, panel_depth)]
                     else:
                         scope["parts"] = _box(width, height, depth, thickness, "cabinet panel stock",
                                               stock_notes[oid].get("backing", stock(6)), max(0, divisions - 1))
                         _front_parts(scope["parts"], faces, {}, width=width, height=height, depth=depth,
                                      panel_t=thickness, face_t=face_thickness, box_material="cabinet panel stock",
                                      face_material="facade stock", divisions=divisions, glass=None,
-                                     glass_t=None, source_only=True)
+                                     glass_t=None, source_only=True, face_sizes=face_sizes)
                     scope["review"] = ["Standard construction estimate. Confirm joinery, stock and unresolved sizes."]
                     for row in scope["parts"]:
                         if row["role"] not in {"drawer_slide", "hinge"}:
@@ -303,24 +327,32 @@ def add_source_casework_parts(parts, inventory, analyze, geometry, *, input_rows
             else:
                 width = height = _assumed(None)
                 if not scope["parts"]:
-                    scope["parts"] = _standalone_source_parts(item, callouts)
+                    scope["parts"] = _standalone_source_parts(
+                        item, callouts, readings=readings, views=views, printed=printed,
+                        facade_thickness=stock_notes[oid].get("facade"))
                 elements = [item]
             for element in elements:
                 element_id = element["id"]
                 if element["role"] == "mirror":
-                    upright = item["kind"] == "block" and item["role"] == "mirror_upright"
                     refs = [f"{ref['view_id']}:{ref['candidate_id']}" for ref in element["source_refs"]
                             if ref.get("candidate_id")]
                     ref = refs[0] if refs else element_id
+                    face_width, face_height = face_sizes.get(ref, (_assumed(None, refs), _assumed(None, refs)))
                     scope["parts"].append(_sized("mirror_glass", element.get("quantity"), "mirror glass",
-                        height if upright else _assumed(None, refs), width if upright else _assumed(None, refs),
+                        face_height, face_width,
                         _assumed(None, refs), instance_ref=ref, inventory_item_id=element_id))
                 elif element["role"] == "lighting" and "kelvin_values" in element:
                     values = element["kelvin_values"]
                     refs = [f"{ref['view_id']}:{ref['annotation_id']}" for ref in element["source_refs"]]
+                    length = None
+                    if (pdf is not None and views and item["kind"] == "block"
+                            and analyze["islands"].get(readings[ident].get("depth", {}).get("view_id")) == "Top view"):
+                        from tools.estimation_casework_part_geometry import casework_lighting_span
+
+                        length = casework_lighting_span(element, readings[ident], views, printed, pdf)
                     scope["parts"].append({
-                        **part("led_strip_run", element.get("quantity"), material="LED strip",
-                               length=_assumed(None, dict.fromkeys(refs))),
+                        **part("led_strip_run", 1 if length else element.get("quantity"), material="LED strip",
+                               length=length or _assumed(None, dict.fromkeys(refs))),
                         "inventory_item_id": element_id, "instance_ref": element_id, "unit": "run",
                         "colour_temperature_k": values[0] if len(values) == 1 else None,
                         "colour_temperature_status": {0: "temperature_pending", 1: "source_reading"}.get(

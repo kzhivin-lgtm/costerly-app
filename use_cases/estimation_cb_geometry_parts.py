@@ -339,6 +339,30 @@ def plinth_runs(owner, views, printed):
     return parts
 
 
+def worktop_spans(blocks, views, printed):
+    """Size the shared footprint using lower carcasses bound to one plan contour."""
+    footprints = [block["depth_proxy"] for block in blocks.values() if block.get("depth_proxy", {}).get("value_mm")]
+    view_ids = {row["view_id"] for row in footprints}
+    if len(view_ids) != 1 or {row["axis"] for row in footprints} != {"x", "y"}:
+        return dimension(None, "unresolved"), dimension(None, "unresolved")
+    shared = set.intersection(*(set(row["contour_ids"]) for row in footprints))
+    if len(shared) != 1:
+        return dimension(None, "unresolved"), dimension(None, "unresolved")
+    view = views[next(iter(view_ids))]
+    result = []
+    for axis in "xy":
+        across = [row for row in footprints if row["axis"] == axis]
+        far = [row["projection_binding"]["mapped_frontage_px"][1] for row in footprints
+               if row["projection_binding"]["plan_frontage_axis"] == axis]
+        size = view["width" if axis == "x" else "height"]
+        starts = [row["bounds_1000"][0] * size / 1000 for row in across]
+        if not far or max(starts) - min(starts) > 3:
+            return dimension(None, "unresolved"), dimension(None, "unresolved")
+        ids = list(dict.fromkeys(cid for row in footprints for cid in row["contour_ids"]))
+        result.append(casework_span(view, printed, axis, (min(starts), max(far)), ids))
+    return tuple(result)
+
+
 def shared_part(owner, blocks, views, printed):
     result = {"id": owner["id"], "role": owner["role"], "quantity": owner["quantity"],
               "unit": owner.get("unit", "piece"), "attached_block_ids": owner.get("attached_block_ids", []), "parts": []}
@@ -360,9 +384,10 @@ def shared_part(owner, blocks, views, printed):
         result["parts"] = plinth_runs(owner, views, printed)
         result["review"] = ["Visible runs in one kit. Return pieces, corner joints and cut lengths require plan evidence."]
     elif owner["role"] == "worktop":
+        length, width = worktop_spans(blocks, views, printed)
         result["parts"] = [part("shared_worktop", material="worktop stock, finish to verify",
-                                length=dimension(None, "unresolved"), width=dimension(None, "unresolved"), thickness=stock(30))]
-        result["review"] = ["One shared worktop scope. Outline, seam placement and cutouts require plan evidence."]
+                                length=length, width=width, thickness=stock(30))]
+        result["review"] = ["Worktop dimensions describe the plan envelope. Verify edge profiles, seams and cutouts."]
     else:
         result["review"] = ["Shared component construction unresolved."]
     return result

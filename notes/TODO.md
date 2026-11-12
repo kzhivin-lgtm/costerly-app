@@ -1,5 +1,15 @@
 # TODO
 
+## Estimation Parts Check, 3.17.4.6
+
+ACTIVE, P0. Verify the Estimation 9.3 Parts Check report from a fresh
+production Upload against the drawing. Use the frozen Lev1, Lev2 and
+two-object Adda reports as controls. Reconcile open Inventory Check
+findings and corroborate the remaining Adda lower depths, mirror
+thicknesses, LED route lengths and hidden joinery. Keep the plan envelope
+separate from the exact worktop cut outline. Details and timing are in
+the [Estimation release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md).
+
 ## Ordinary Detection dimension membership, V8.4.13
 
 ACTIVE, P0. Verify repeat Upload stability and remaining Floor 06 splits.

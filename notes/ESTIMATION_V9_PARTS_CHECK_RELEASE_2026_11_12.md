@@ -127,3 +127,51 @@ archived, so its output is a control for the handoff and local compilation.
 Two saved Lev1 and three saved Lev2 Block Geometry runs reproduced
 exactly. The Lev2 Parts result also matched the Estimation 9.1 control.
 Thirty-three focused tests passed.
+
+## Estimation 9.3
+
+Work 3.17.4.6. Combined build `estimation-v9.3-detection-v8.4.28`.
+The saved successful Block Geometry results remain the comparison baseline.
+The Parts compiler measures individual fronts, display glass, mirrors,
+visible plinth runs, and closures on corroborated source boundaries.
+The shared kitchen worktop carries its plan envelope and still requires
+seam, edge and cutout confirmation.
+
+The former three-object Adda input `run_b6da521544bb40fba48fb40c73cd0d54`
+reproduced the 9.2 failure. The Front Role Review used all 4,000 output
+tokens and returned truncated JSON. A second failure was an out-of-frame
+contour ID in Block Locator. The role review now binds a compact schema
+to eligible contour IDs and exposes missing or rejected decisions in Parts
+Check. Block Locator retains valid additions to the locked Planner output
+and flags scopes with rejected references. The request ledger records the
+stop reason and validation failure type.
+
+Front component review runs alongside Island Map and initial Front.
+Inventory Check still reviews every original sheet independently, with
+up to three requests in parallel. Indexed callout crops bind LED labels
+to the original vector leaders. Plan strokes provide route extents for
+the two 4000 K lights on the two-object Adda control.
+
+| File | Detection witness | Fresh provider time, end to end | Final compiled control |
+| --- | --- | --- | --- |
+| Lev1 | `run_1cba0b2491dc413c9a3be2fdd526226b` | 53.51 s | 3 Blocks, 28 Parts rows, zero dimension gaps. Block Geometry matches the saved control |
+| Lev2 | `run_189150ebf62447fc958f7c23cc34e3bb` | 45.42 s | 9 Blocks, 107 Parts rows, zero empty part-dimension fields after the plan-envelope compilation. Four lower carcass depths still use the worktop proxy |
+| Adda | `run_090b2315dc6a4036a0932bfbaf9ec319` | 79.46 s | 9 Blocks, 149 Parts rows, 18 rows with missing dimensions. 9 drawer fronts, 8 door fronts, 8 pull-out shelves, 40 panes and 5 LED runs |
+
+The table measures Parts Check from the frozen Detection input through
+local compilation. The final deterministic measurements were also run
+against archived responses from those same source PDFs. The failed
+three-object Adda witness completed with a fresh compact review after
+reusing the exact initial responses; the extra object still lacks a
+source-grounded Block. The second fresh two-object run proposed an overlapping
+second mirror on the mounting-panel contour. The exact-response replay now
+retains this proposal as an unresolved identity finding and publishes one
+mirror on that assembly. Thirty-one focused tests passed. The private
+report publication and download contract were replayed for all three files.
+
+Active, P0: confirm the final report on a fresh production Upload and
+reconcile open Inventory Check findings. On Adda, three lower carcass
+depths, mirror stock thicknesses, three 3000 K route lengths, and hidden
+construction remain open. Verify quantities, profiles and seams before
+using the estimates for fabrication. Material selection and pricing are
+outside the Parts Check scope.
