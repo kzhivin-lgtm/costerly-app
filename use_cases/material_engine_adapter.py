@@ -266,11 +266,11 @@ def _canonical_requirement_unit(value: Any) -> str:
     return _canonical_unit(str(value or "")).replace("²", "2")
 
 
-def _assumption_selection_key(*, material_family: str, requirement_id: str) -> str:
+def _assumption_selection_key(*, material_family: str, object_id: str, requirement_id: str) -> str:
     """Keep no-source allowance groups deterministic without pretending C or I matched."""
     family = re.sub(r"[^a-z0-9_.:-]+", "_", str(material_family or "material").casefold()).strip("_")
     requirement = re.sub(r"[^a-z0-9_.:-]+", "_", str(requirement_id or "requirement").casefold()).strip("_")
-    return f"assumption:{family or 'material'}:{requirement or 'requirement'}"
+    return f"assumption:{object_id}:{family or 'material'}:{requirement or 'requirement'}"
 
 
 def _assumption_candidate(
@@ -304,7 +304,7 @@ def _assumption_candidate(
         purchase_kind, rationale_unit = "sheet", "sheet"
     elif normalized_unit in {"m", "mm", "cm", "lm"} or material_family == "edge_banding":
         purchase_kind, rationale_unit, dimensions = "linear_cut", "m", None
-    elif material_family.startswith("hardware_") or normalized_unit in {"piece", "set"}:
+    elif material_family.startswith("hardware_") or normalized_unit in {"ea", "piece", "set", "pair"}:
         purchase_kind, rationale_unit, dimensions = "piece", "piece", None
     else:
         purchase_kind, rationale_unit, dimensions = "direct", "piece", None
@@ -314,7 +314,7 @@ def _assumption_candidate(
     # facade sheet and an unspecified paint finish never need one impossible
     # purchase candidate to satisfy both a sheet and a direct demand.
     resolved_key = _assumption_selection_key(
-        material_family=material_family, requirement_id=requirement_id,
+        material_family=material_family, object_id=object_id, requirement_id=requirement_id,
     )
     assumption_price = validate_assumption_price_v1({
         "contract_version": ASSUMPTION_PRICE_V1,
@@ -1068,6 +1068,10 @@ def build_material_plan(
                 })
 
             parts = parts_by_requirement.get(requirement_id) or []
+            if reason := material.get("assumption_reason"):
+                add_assumption_fallback(reason_code=str(reason))
+                reasons.add("assumption_fallback")
+                continue
             if material.get("item_kind") == "operation_service":
                 operation_code = str(material.get("operation_code") or "")
                 worktop_family = str((material.get("specification") or {}).get("worktop_family") or "")
@@ -1092,11 +1096,17 @@ def build_material_plan(
                 material_pricing_policies=catalogs.get("material_pricing_policies") or (),
                 material_families=catalogs.get("material_families") or (),
             )
+            hint = normalize_material_phrase(material.get("identity_hint"))
+            hint_tokens = set(hint.split())
+            positions = catalogs.get("reference_positions") or ()
+            if hint_tokens:
+                positions = tuple(row for row in positions if hint_tokens <=
+                                  set(normalize_material_phrase(row.get("canonical_name")).split()))
             specs, default_trace = _active_default_specifications(
                 material_family=str(material.get("family") or ""),
                 specifications=specs,
                 material_default_variants=catalogs.get("material_default_variants") or (),
-                reference_positions=catalogs.get("reference_positions") or (),
+                reference_positions=positions,
                 material_pricing_policies=catalogs.get("material_pricing_policies") or (),
                 material_families=catalogs.get("material_families") or (),
             )
@@ -1147,7 +1157,7 @@ def build_material_plan(
             _reference_key, reference_candidates = israel_reference_supply_candidates(
                 material_family=cache_key[1],
                 specifications=specs,
-                reference_positions=catalogs.get("reference_positions") or (),
+                reference_positions=positions,
                 material_pricing_policies=catalogs.get("material_pricing_policies") or (),
                 material_families=catalogs.get("material_families") or (),
                 price_scope=price_scope,
@@ -1156,12 +1166,35 @@ def build_material_plan(
                     if default_trace is not None else None
                 ),
             )
+            if parts:
+                def fitting_candidates(rows):
+                    return tuple(row for row in rows if row.purchase_kind != "sheet"
+                                 or _sheet_candidate_fits_finished_parts(row, parts))
+
+                company_candidates = fitting_candidates(company_candidates)
+                reference_candidates = fitting_candidates(reference_candidates)
             if facts.get("composition_version") == "cb_parts_material_demand_v1":
+                if hint_tokens:
+                    def named_candidates(rows):
+                        exact = tuple(row for row in rows if normalize_material_phrase(row.display_name) == hint)
+                        matches = exact or tuple(row for row in rows
+                                                 if hint_tokens <= set(normalize_material_phrase(row.display_name).split()))
+                        return matches if len({normalize_material_phrase(row.display_name) for row in matches}) <= 1 else ()
+
+                    company_candidates = named_candidates(company_candidates)
+                    reference_candidates = named_candidates(reference_candidates)
                 compatible = (*company_candidates, *reference_candidates)
                 if not parts and _canonical_requirement_unit(material.get("unit")) == "ea":
                     compatible = tuple(candidate for candidate in compatible if candidate.purchase_kind == "piece")
             else:
                 compatible = company_candidates or reference_candidates
+            if purchase_variant := material.get("purchase_variant"):
+                selection_key = f"{selection_key}|variant={purchase_variant}"
+                compatible = tuple(
+                    replace(candidate, candidate_id=f"{candidate.candidate_id}:variant:{purchase_variant}",
+                            selection_key=selection_key, display_name=f"{candidate.display_name}, {purchase_variant}")
+                    for candidate in compatible
+                )
             for candidate in compatible:
                 candidates[candidate.candidate_id] = candidate
             candidate_ids = tuple(candidate.candidate_id for candidate in compatible)

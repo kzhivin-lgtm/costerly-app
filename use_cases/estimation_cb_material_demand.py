@@ -5,6 +5,7 @@ from math import ceil, isfinite
 from use_cases.estimation_assembly_bom import ASSEMBLY_BOM_V1
 from use_cases.estimation_structural_bom import _CONSTRUCTION_MATERIAL_NAMES, _FAMILY_PREFERENCE
 from use_cases.material_engine_adapter import build_material_plan, material_plan_input_fingerprint, material_plan_snapshot
+from use_cases.material_identity_resolution import normalize_material_phrase
 from use_cases.price_source_taxonomy import catalog_taxonomy_for_family, material_rule_for_text
 
 
@@ -32,14 +33,6 @@ _ROLE_FAMILY_PREFERENCE = {
     "mirror": ("mirror",),
 }
 _MATERIAL_NAMES = {**_CONSTRUCTION_MATERIAL_NAMES, "mirror": "Mirror"}
-_SHEET_DIMENSIONS = ("length", "width", "thickness")
-_SPECIAL_DIMENSIONS = {"led_strip_run": ("length",), "led_power_supply": ()}
-_MATERIAL_HOLDS = {
-    "shared_worktop": "worktop_cut_geometry_unresolved",
-    **dict.fromkeys(("glass_box_bottom", "glass_box_long_wall", "glass_box_end_wall"),
-                    "glass_treatment_resolution_required"),
-    **dict.fromkeys(("led_strip_run", "led_power_supply"), "lighting_material_resolution_required"),
-}
 _WORKTOP_DEFAULT_FAMILY = "engineered_quartz_mineral_hybrid"
 _STONE_CUTOUT_FAMILIES = {"natural_stone_slab", _WORKTOP_DEFAULT_FAMILY, "sintered_ultra_compact_surface",
                           "porcelain_ceramic_slab", "solid_surface", "terrazzo_engineered_agglomerate"}
@@ -88,6 +81,52 @@ def _source_material(measurements):
         family, board_type = materials.pop()
         return family, {"board_type": board_type} if board_type else {}, notes, refs
     return None, {}, notes, ()
+
+
+def _part_material_identity(hint, known_family, catalog_names):
+    """Use the common taxonomy and catalog names when the role has no stock default."""
+    tokens = set(normalize_material_phrase(hint).split())
+    if not tokens:
+        return known_family, None
+    rule = material_rule_for_text(hint)
+    taxonomy = catalog_taxonomy_for_family(rule.family) if rule else None
+    family = known_family or (taxonomy or {}).get("family_code")
+    families = {code for code, name in catalog_names if tokens <= name}
+    if not family and len(families) == 1:
+        family = next(iter(families))
+    return family, hint
+
+
+def _estimated_part_dimensions(row, owner_parts, object_parts, envelope):
+    """Use a corroborated same-role dimension, then the block span for a linear run."""
+    result = dict(row["dimensions"])
+    for axis in ("length", "width"):
+        if axis not in result or _positive(result[axis].get("mm")):
+            continue
+        for peers in (owner_parts, object_parts):
+            values = [other["dimensions"].get(axis, {}) for other in peers if other["role"] == row["role"]]
+            values = [value for value in values if _positive(value.get("mm"))]
+            if values and len({value["mm"] for value in values}) == 1:
+                result[axis] = {**values[0], "basis": "construction_assumption",
+                                "reason": "Estimated from a matching part in the same object."}
+                break
+        if axis == "length" and "width" not in result and not _positive(result[axis].get("mm")):
+            span = envelope.get("width", {})
+            if _positive(span.get("mm")):
+                result[axis] = {**span, "basis": "construction_assumption",
+                                "reason": "Estimated one linear run along its owning block."}
+    return result
+
+
+def _physical_unit(row, role, measurements):
+    unit = str(row.get("unit") or "").strip().lower()
+    if unit == "ea":
+        unit = "piece"
+    if role in _COUNT_ROLES or unit in {"ea", "piece", "pair", "set"}:
+        return unit or "piece"
+    if _positive(measurements.get("length", {}).get("mm")) and "width" not in measurements:
+        return "m"
+    return None
 
 
 def _worktop_requirements(row, part_source, object_quantity, families, materials, review_items):
@@ -165,8 +204,8 @@ def _worktop_cutout_requirements(row, part_source, object_quantity, materials):
         }
 
 
-def build_cb_material_demand(*, parts_report, input_row, allowed_material_families):
-    """Convert each checked part to demand or retain its data for review."""
+def build_cb_material_demand(*, parts_report, input_row, allowed_material_families, catalog_names=()):
+    """Emit a requirement for every identified part, retaining provisional evidence."""
     payload = input_row["input_payload"]
     obj = payload["object"]
     object_id = obj["object_id"]
@@ -189,6 +228,9 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                             for finding in parts_report.get("unassigned_source_findings", ()))
     duplicate_refs = {(issue["role"], issue["source_ref"]) for issue in inventory_issues
                       if issue["reason"] == "duplicate_part_evidence"}
+    object_parts = [row for _, scope in scopes for row in scope["parts"]]
+    envelopes = {block.get("id", block.get("block_id")): block.get("envelope", {})
+                 for block in source.get("blocks", ())}
     source_part_count = 0
     for scope_id, scope in scopes:
         assumptions.extend(f"{scope_id}: {note}" for note in scope.get("review", ()))
@@ -201,55 +243,68 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
             if not _positive(multiplier) or int(multiplier) != multiplier:
                 raise ValueError(f"Invalid scope quantity for {scope_id}")
             role = _ROLES.get(row["role"])
-            measurements = row["dimensions"]
+            measurements = _estimated_part_dimensions(
+                row, scope["parts"], object_parts, envelopes.get(row.get("block_id") or scope_id, {}),
+            )
             refs = list(dict.fromkeys(ref for value in measurements.values() for ref in value.get("refs", ())))
             refs = list(dict.fromkeys([*refs, *row.get("count_refs", ()),
                                        *([row["instance_ref"]] if row.get("instance_ref") else [])]))
             part_source = {**row, "part_id": part_id, "scope_id": scope_id,
                            "scope_quantity": multiplier, "evidence_refs": refs}
             duplicate = (row["role"], row.get("instance_ref")) in duplicate_refs
-            if row["role"] == "shared_worktop" and not duplicate:
+            if duplicate:
+                review_items.append({"part_id": part_id, "role": row["role"], "reason": "duplicate_part_evidence",
+                                     "part_source": part_source})
+                continue
+            if row["role"] == "shared_worktop":
                 area_resolved = _worktop_requirements(
                     row, part_source, object_quantity, allowed_material_families, materials, review_items)
                 _worktop_cutout_requirements(row, part_source, object_quantity, materials)
                 if area_resolved:
                     continue
-            is_count = role in _COUNT_ROLES
-            required = () if is_count else _SPECIAL_DIMENSIONS.get(row["role"], _SHEET_DIMENSIONS)
+            unit = _physical_unit(row, role, measurements)
+            has_sheet_geometry = not unit and all(_positive(measurements.get(axis, {}).get("mm"))
+                                                  for axis in ("length", "width"))
             source_family, material_spec, notes, material_refs = _source_material(measurements)
             preferences = (source_family,) if source_family else _ROLE_FAMILY_PREFERENCE.get(role, ())
             family = next((f for f in preferences if f in allowed_material_families), None)
+            identity_hint = None
+            if not role and not source_family:
+                family, identity_hint = _part_material_identity(row.get("material_hint") or row["role"],
+                                                               family, catalog_names)
             thickness_mm = measurements.get("thickness", {}).get("mm")
             if role == "visible_sheet" and family == _LDSP_FAMILY and not notes and not _positive(thickness_mm):
                 thickness_mm = _LDSP_DEFAULT_THICKNESS_MM
-            missing = [field for field in required if not _positive(
-                thickness_mm if field == "thickness" else measurements.get(field, {}).get("mm"))]
             count = row["quantity"]
-            reason = _MATERIAL_HOLDS.get(row["role"])
-            if duplicate:
-                reason = "duplicate_part_evidence"
-            elif reason is None:
-                if not role:
-                    reason = "unsupported_material_role"
-                elif missing:
-                    reason = "dimensions_unresolved"
-                elif count is None:
-                    reason = "quantity_unresolved"
-                elif notes and not source_family:
-                    reason = "material_note_unresolved"
-                elif not family:
-                    reason = "material_family_unavailable"
+            missing = [axis for axis, value in measurements.items() if not _positive(value.get("mm"))]
+            fallback_reason = None
+            if row["role"] == "shared_worktop":
+                fallback_reason = "worktop_cut_geometry_unresolved"
+            elif notes and not source_family:
+                fallback_reason = "material_note_unresolved"
+            elif not family:
+                fallback_reason = "material_family_unavailable"
+            elif not unit and not has_sheet_geometry:
+                fallback_reason = "dimensions_unresolved"
+            reason = fallback_reason or ("dimensions_unresolved" if missing else
+                                         "quantity_unresolved" if count is None else None)
             if reason:
                 review_items.append({"part_id": part_id, "role": row["role"], "missing_dimensions": missing,
                                      "reason": reason, "part_source": part_source})
-                continue
+            if count is None:
+                count = 1
+                assumptions.append(f"{part_id}: one unit estimated for the identified part.")
+                if role == "drawer_slide" and unit == "piece":
+                    unit = "set"
             if not _positive(count) or int(count) != count:
                 raise ValueError(f"Invalid part quantity for {part_id}")
             quantity = ceil(count * multiplier * object_quantity)
-            unit = (row.get("unit") or "piece") if is_count else None
-            spec = {} if is_count else {**material_spec, "thickness_mm": thickness_mm}
+            unit = unit or (None if has_sheet_geometry else "piece")
+            spec = dict(material_spec)
+            if _positive(thickness_mm) and not unit:
+                spec["thickness_mm"] = thickness_mm
             basis = "source_evidence" if material_refs else "construction_assumption"
-            name = notes[0] if material_refs else _MATERIAL_NAMES[family]
+            name = notes[0] if notes else identity_hint or _MATERIAL_NAMES.get(family, row.get("material_hint") or row["role"])
             if family == "mdf_hdf" and not material_refs and role in {"carcass_sheet", "backing_sheet", "internal_sheet"}:
                 spec.update(board_type="hdf" if role == "backing_sheet" else "mdf", surface="raw")
                 if role == "backing_sheet":
@@ -265,21 +320,28 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                 length = measurements.get("length", {})
                 if _positive(length.get("mm")):
                     spec["depth_mm"] = length["mm"]
-            key = (role, family, name, basis, unit, tuple(sorted(spec.items())))
+            variant = row.get("colour_temperature_k") if unit == "m" else None
+            key = (role, family, name, basis, unit, tuple(sorted(spec.items())), fallback_reason, variant)
             if key not in materials:
                 materials[key] = {
                     "requirement_id": f"cb-material-{len(materials) + 1:03d}",
                     "source_name": name, "family": family, "material_role": role,
                     "specification": spec, "basis": basis, "evidence_refs": [],
-                    "quantity": 0 if is_count else None, "unit": unit, "part_sources": [],
+                    "quantity": 0 if unit else None, "unit": unit, "part_sources": [],
                 }
+                if fallback_reason:
+                    materials[key]["assumption_reason"] = fallback_reason
+                if identity_hint:
+                    materials[key]["identity_hint"] = identity_hint
+                if variant:
+                    materials[key]["purchase_variant"] = f"{variant}K"
             material = materials[key]
             material["evidence_refs"] = list(dict.fromkeys([*material["evidence_refs"], *material_refs]))
             material["part_sources"].append({**part_source, "quantity": quantity, "unit": unit,
-                                             "source_quantity": count, "source_unit": row.get("unit"),
+                                             "source_quantity": row["quantity"], "source_unit": row.get("unit"),
                                              "measurements": measurements})
-            if is_count:
-                material["quantity"] += quantity
+            if unit:
+                material["quantity"] += quantity * measurements["length"]["mm"] / 1000 if unit == "m" else quantity
             else:
                 parts.append({
                     "part_id": part_id, "assembly_id": scope_id, "component_role": row["role"],
@@ -312,8 +374,12 @@ def build_cb_material_facts(*, parts_report, input_rows, catalog_context):
     facts = {}
     run_ids = set()
     allowed = set(catalog_context["families"])
+    catalog_names = [(position.get("family_code"), set(normalize_material_phrase(position.get("canonical_name")).split()))
+                     for position in catalog_context["catalogs"].get("reference_positions", ())
+                     if position.get("family_code") in allowed]
     for row in input_rows:
-        item = build_cb_material_demand(parts_report=parts_report, input_row=row, allowed_material_families=allowed)
+        item = build_cb_material_demand(parts_report=parts_report, input_row=row, allowed_material_families=allowed,
+                                       catalog_names=catalog_names)
         if item["company_id"] != catalog_context["company_id"] or item["object_id"] in facts:
             raise ValueError("Parts costing requires matching catalog tenant and unique object inputs")
         facts[item["object_id"]] = item
@@ -323,6 +389,23 @@ def build_cb_material_facts(*, parts_report, input_rows, catalog_context):
     if "input_ids" in parts_report and sorted(parts_report["input_ids"]) != sorted(item["input_id"] for item in facts.values()):
         raise ValueError("Parts Check input revisions differ from the material demand inputs")
     return facts
+
+
+def _checked_parts_for_estimate(rows, estimated, estimated_counts):
+    owner_counts = {}
+    parts = []
+    for row in rows:
+        owner = row["owner_id"]
+        owner_counts[owner] = owner_counts.get(owner, 0) + 1
+        part_id = f"{owner}:{row['role']}:{owner_counts[owner]:03d}"
+        estimates = estimated.get(part_id, {})
+        dimensions = {**row["dimensions"], **estimates}
+        parts.append({"component_role": row["role"], "quantity": estimated_counts.get(part_id, row.get("quantity")),
+                      **{f"{axis}_mm": dimensions.get(axis, {}).get("mm")
+                         for axis in ("length", "width", "thickness")},
+                      **({"quantity_basis": "construction_assumption"} if part_id in estimated_counts else {}),
+                      **({"estimated_dimensions": estimates} if estimates else {})})
+    return parts
 
 
 def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
@@ -336,31 +419,50 @@ def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
     )
     result = build_material_plan(
         facts_by_object=facts, catalogs=catalogs, material_norm_overrides=material_norm_overrides,
-        material_purchase_overrides=material_purchase_overrides, allow_estimator_allowance=False,
+        material_purchase_overrides=material_purchase_overrides,
     )
     snapshot = material_plan_snapshot(result, input_fingerprint=fingerprint)
     allocations = {(row["object_id"], row["material_requirement_id"]) for row in snapshot["object_material_costs"]}
     unresolved = set(snapshot["unresolved_requirement_ids"])
+    fallback_objects = {row["object_id"] for row in snapshot["assumption_fallbacks"] if row.get("assumption_price")}
+    defaults = {(row["object_id"], row["material_requirement_id"]): row["applied_specifications"]
+                for row in snapshot["applied_material_defaults"] if row.get("applied_specifications")}
     coverage = {}
     for oid, item in facts.items():
         missing = [material["requirement_id"] for material in item["materials"]
                    if (oid, material["requirement_id"]) not in allocations]
         issues = item["review_items"]
         checked_parts = parts_report["objects"][oid].get("parts", ()) if parts_report["stage"] == "Parts Check" else ()
+        estimates = {}
+        estimated_counts = {}
+        for material in item["materials"]:
+            stock_default = defaults.get((oid, material["requirement_id"]), {})
+            for source in material["part_sources"]:
+                dimensions = source.get("measurements", source["dimensions"])
+                original = source["dimensions"]
+                updated = {axis: value for axis, value in dimensions.items()
+                           if _positive(value.get("mm")) and not _positive(original.get(axis, {}).get("mm"))}
+                thickness = stock_default.get("thickness_mm", stock_default.get("thickness"))
+                if _positive(thickness) and not _positive(original.get("thickness", {}).get("mm")):
+                    updated["thickness"] = {"mm": thickness, "basis": "israel_reference_default",
+                                             "reason": "Approved catalog default for the missing thickness."}
+                if updated:
+                    estimates[source["part_id"]] = updated
+                if "source_quantity" in source and source["source_quantity"] is None:
+                    estimated_counts[source["part_id"]] = 1
         coverage[oid] = {"source_part_count": item["source_part_count"], "issues": issues,
                          "unpriced_requirements": missing,
+                         "has_estimated_costs": oid in fallback_objects or bool(estimates or estimated_counts),
                          "has_unresolved_demands": any(value.startswith(f"{oid}:") for value in unresolved),
                          "materials": [{key: material.get(key) for key in ("requirement_id", "source_name", "unit", "quantity")}
                                        for material in item["materials"]],
-                         "parts": [{"component_role": part["role"], "quantity": part.get("quantity"),
-                                    **{f"{axis}_mm": part["dimensions"].get(axis, {}).get("mm")
-                                       for axis in ("length", "width", "thickness")}}
-                                   for part in checked_parts],
+                         "parts": _checked_parts_for_estimate(checked_parts, estimates, estimated_counts),
                          "primary_preview_ref": item["primary_preview_ref"]}
     snapshot["parts_check"] = coverage
     snapshot["parts_check_source"] = {key: parts_report[key] for key in ("run_id", "estimate_id", "input_ids", "source_audit_sha256")
                                       if key in parts_report}
-    if any(row["issues"] or row["unpriced_requirements"] or row["has_unresolved_demands"] for row in coverage.values()):
+    if any(row["issues"] or row["unpriced_requirements"] or row["has_unresolved_demands"]
+           or row["has_estimated_costs"] for row in coverage.values()):
         snapshot["status"] = "needs_review"
         snapshot["reason_codes"].append("cb_parts_review_required")
     return {"composition_version": "cb_parts_material_demand_v1", "facts_by_object": facts,

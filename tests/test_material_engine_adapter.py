@@ -298,7 +298,7 @@ def test_plan_skips_physically_incompatible_company_sheet_for_compatible_israel_
 
     assert result.plan is not None
     assert result.plan.status == "planned"
-    assert result.plan.lines[0].candidate_id == "company-offer:small"
+    assert result.plan.lines[0].candidate_id.startswith("israel-reference:reference-plywood-18:")
 
 
 def test_plan_keeps_complete_company_basket_even_when_reference_is_cheaper():
@@ -400,7 +400,7 @@ def test_profile_dimension_never_uses_an_unrelated_family_default():
     assert result.plan.lines[0].candidate_id.startswith("assumption:")
     assert result.applied_defaults == ()
     assert result.assumption_fallbacks[0]["reason_code"] == "material_pricing_key_incomplete"
-    assert result.assumption_fallbacks[0]["selection_key"] == "assumption:metal_tube:tube"
+    assert result.assumption_fallbacks[0]["selection_key"] == "assumption:frame-a:metal_tube:tube"
 
 
 def test_melamine_one_sided_missing_thickness_uses_generic_laminated_default_position():
@@ -626,10 +626,10 @@ def test_oversized_finished_part_uses_dimension_compatible_assumption_not_sheet_
 
     assert result.plan is not None
     assert result.plan.status == "planned"
-    assert result.plan.lines[0].candidate_id == "company-offer:company-sheet"
+    assert result.plan.lines[0].candidate_id == "assumption:cabinet-a:plywood:sheet"
     assert result.plan.lines[0].purchase_quantity == Decimal("1")
     assert result.plan.lines[0].allocations[0].length_mm == Decimal("2650")
-    assert result.assumption_fallbacks == ()
+    assert result.assumption_fallbacks[0]["resolution"] == "assumption_fallback"
 
 
 def test_plan_uses_evidenced_count_only_for_discrete_resolved_materials():
@@ -936,8 +936,8 @@ def test_assumption_fallbacks_with_one_incomplete_ci_key_stay_physically_separat
     assert result.unresolved_requirement_ids == ()
     assert {line.purchase_kind for line in result.plan.lines} == {"sheet", "direct"}
     assert {fallback["selection_key"] for fallback in result.assumption_fallbacks} == {
-        "assumption:paint_lacquer_stain:finish",
-        "assumption:paint_lacquer_stain:visible_facade",
+        "assumption:cabinet-a:paint_lacquer_stain:finish",
+        "assumption:cabinet-a:paint_lacquer_stain:visible_facade",
     }
 
 

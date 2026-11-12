@@ -116,9 +116,11 @@ def test_assumption_fallback_is_published_as_a_priced_material_line(monkeypatch)
     assert updates[0]["values"]["raw_agent_json"]["price_source"] == "A"
 
 
-def test_material_plan_adds_locked_profile_allowances_after_priced_materials(monkeypatch):
+def test_priced_materials_with_open_review_still_publish_provisional_totals(monkeypatch):
     updates = []
     policy_lines = []
+    totals = []
+    progress = []
     source_lines = [{
         "section": "material", "object_id": "cabinet", "line_id": "line-1", "company_id": "company-1",
         "cost": 1000.0, "source": "estimation_assembly_bom_v4_24",
@@ -134,11 +136,15 @@ def test_material_plan_adds_locked_profile_allowances_after_priced_materials(mon
     }]))
     monkeypatch.setattr(estimation, "update_rfq_estimate_line", lambda _client, **kwargs: updates.append(kwargs))
     monkeypatch.setattr(estimation, "upsert_rfq_estimate_lines", lambda _client, *, lines: policy_lines.extend(lines))
-    monkeypatch.setattr(estimation, "_recalculate_object_estimate_totals", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(estimation, "update_rfq_object_estimate_progress", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(estimation, "_recalculate_object_estimate_totals",
+                        lambda _client, **kwargs: totals.append(kwargs))
+    monkeypatch.setattr(estimation, "update_rfq_object_estimate_progress",
+                        lambda _client, **kwargs: progress.append(kwargs))
 
     estimation.apply_material_plan_allocations(client=object(), estimate_id="estimate-1", plan_snapshot={
         "status": "planned",
+        "parts_check": {"cabinet": {"issues": [{"reason": "dimensions_pending"}],
+                                    "unpriced_requirements": [], "has_unresolved_demands": False}},
         "object_material_costs": [{"object_id": "cabinet", "material_requirement_id": "mdf", "cost_ex_vat": 1000}],
         "lines": [{"purchase_kind": "sheet", "allocations": [{
             "object_id": "cabinet", "material_requirement_id": "mdf", "area_mm2": 1_000_000,
@@ -148,6 +154,8 @@ def test_material_plan_adds_locked_profile_allowances_after_priced_materials(mon
     assert [line["item_name"] for line in policy_lines] == ["Consumables", "Paint consumables", "Packaging"]
     assert [line["cost"] for line in policy_lines] == [50.0, 0.0, 10.0]
     assert all(line["source"] == "pricing_policy" for line in policy_lines)
+    assert totals == [{"estimate_id": "estimate-1", "object_id": "cabinet"}]
+    assert [event["status"] for event in progress] == ["review_required"]
 
 
 def test_profile_paint_consumables_use_only_coating_material_cost():

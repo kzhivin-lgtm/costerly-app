@@ -445,3 +445,23 @@ exceptions. Israel Reference already contains 5 m LED strips, drivers,
 2 m recessed and surface-mounted profiles and a diffuser. An experiment
 showed that the electrical family's empty pricing key and default can
 select cable for a strip unless the catalog identity is preserved.
+
+### Estimation 9.6
+
+Every identified part becomes a material requirement. Missing information
+is kept with its source and can be filled from a matching dimension, an
+owning block span, or an approved catalog default. Unresolved material or
+stock goes to priced Assumption Fallback. Duplicate evidence remains under
+review so it is not costed twice. Exact material name evidence constrains
+catalog matching before pricing. Sheet candidates must fit the part in a
+permitted orientation. A total computed with open findings is marked
+provisional on Objects and the estimate retains Review status.
+
+Verified with the saved Adda, Lev1 and Lev2 inputs and live catalog data:
+all 149, 28 and 110 Parts Check rows, respectively, reached priced
+requirements. Adda's three mirrors used the 4 mm catalog default,
+tempered glass resolved to Israel Reference, and ambiguous LED strip
+requirements received allowances instead of cable prices. The 2850 mm
+LDSP part used a format allowance. Lev2 retained three shelves and the
+400 ILS cutout service. The replay verifies costing and the published
+status contract. A fresh authenticated Upload is pending.

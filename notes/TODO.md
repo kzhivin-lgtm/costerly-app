@@ -66,15 +66,14 @@ estimate. Reconcile drawing evidence to parts and each part to its allocated
 cost. Track gaps and duplicates explicitly. Include Adda stock notes,
 dimensions, tempered glass and lighting in the coverage check. Verify the
 published result and its status in Objects before production acceptance.
-Adda 9.5 has 149 Parts rows. The demand adapter admits 62 and stops 87 at
-review, before catalog resolution or Assumption Fallback. Replace this
-with a general handoff for identified parts that preserves missing fields
-and source evidence. Use catalog defaults or evidence-based assumptions
-before escalating a gap, without extending a part-role allowlist.
-The 20 mm LDSP position exists, but its standard stock is shorter than
-the mounting panel. Require dimensional fit before accepting a sheet
-candidate and route incompatible formats to Fallback. Keep inventory
-review visible. See the [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md).
+Estimation 9.6 passes all identified rows in the saved Adda (149), Lev1
+(28), and Lev2 (110) into priced requirements or Assumption Fallback.
+It retains source evidence, estimates missing dimensions only from
+corroborating evidence or a catalog default, and checks physical sheet
+fit. Objects displays a provisional amount for an estimate with review
+findings and priced requirements. Verify the saved Parts Check, allocated
+costs, and provisional Objects total on the next fresh Upload before
+acceptance. See the [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md).
 
 DEFERRED, P1, USER REQUEST. After the full cycle is verified, measure stage
 time and model calls. Remove repeated analysis, reuse verified outputs and

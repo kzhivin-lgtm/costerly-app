@@ -781,6 +781,8 @@ def _element_rows_from_bom(facts_payload: dict[str, Any]) -> list[dict[str, Any]
         role = str(part.get("component_role") or "")
         label = labels.get(role, role.replace("_", " ").capitalize() or "Element")
         size = f"{_format_number(length)} × {_format_number(width)} mm" if length > 0 and width > 0 else ""
+        if size and any(axis in (part.get("estimated_dimensions") or {}) for axis in ("length", "width")):
+            size = f"≈ {size}"
         key = (label, size)
         grouped.setdefault(key, {"label": label, "quantity": 0, "size": size})["quantity"] += _number(part.get("quantity"), 0)
     return [*result, *grouped.values()]
@@ -1074,7 +1076,9 @@ def apply_material_plan_allocations(
         affected_object_ids.add(object_id)
     for object_id in affected_object_ids | checked_objects.keys():
         checked = checked_objects.get(object_id) or {}
-        if checked and (checked["unpriced_requirements"] or checked["issues"] or checked["has_unresolved_demands"]):
+        review_required = bool(checked.get("issues") or checked.get("has_estimated_costs"))
+        if checked and (checked["unpriced_requirements"] or checked["has_unresolved_demands"]
+                        or object_id not in affected_object_ids):
             update_rfq_object_estimate_totals(
                 client, estimate_id=estimate_id, object_id=object_id,
                 self_cost_ex_vat=None, vat_amount=None, self_cost_total=None,
@@ -1119,9 +1123,9 @@ def apply_material_plan_allocations(
             client,
             estimate_id=estimate_id,
             object_id=object_id,
-            status="completed",
+            status="review_required" if review_required else "completed",
             progress_percent=100,
-            progress_label="materials_costed",
+            progress_label="material_plan_needs_review" if review_required else "materials_costed",
         )
 
 

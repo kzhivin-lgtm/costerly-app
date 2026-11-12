@@ -25,13 +25,13 @@ def _build(rows, families, *, quantity=1, issues=()):
     )
 
 
-def test_checked_carcass_preserves_counts_and_holds_worktop_envelope():
+def test_checked_carcass_preserves_counts_and_sends_unresolved_worktop_to_fallback():
     side = _part("carcass_side", scope_quantity=3, count_refs=["view-1:C01"])
     top = _part("shared_worktop", owner_id="worktop", quantity=1)
     result = _build([side, top], {"melamine_faced_particleboard"}, quantity=2)
 
-    material, = result["materials"]
-    cut, = result["parts"]
+    material, worktop = result["materials"]
+    cut, _worktop_cut = result["parts"]
     assert material["family"] == "melamine_faced_particleboard"
     assert material["basis"] == "construction_assumption"
     assert (cut["length_mm"], cut["width_mm"], cut["quantity"]) == (780, 600, 12)
@@ -39,6 +39,7 @@ def test_checked_carcass_preserves_counts_and_holds_worktop_envelope():
     assert material["part_sources"][0]["evidence_refs"] == ["view-1:D01", "view-1:C01"]
     held, = result["review_items"]
     assert held["reason"] == "worktop_cut_geometry_unresolved"
+    assert worktop["assumption_reason"] == held["reason"]
     assert held["part_source"]["dimensions"] == top["dimensions"]
     assert result["source_part_count"] == 2
 
@@ -68,6 +69,27 @@ def test_duplicate_rows_keep_both_sources_without_creating_demand():
     held = [item for item in result["review_items"] if "part_source" in item]
     assert [item["part_source"]["owner_id"] for item in held] == ["B01", "B02"]
     assert all(item["reason"] == "duplicate_part_evidence" for item in held)
+
+
+def test_unlisted_part_and_missing_dimensions_keep_a_priced_requirement():
+    mirror = _part("mirror_glass", quantity=1)
+    mirror["dimensions"]["thickness"] = {"mm": None}
+    component = _part("new_component_kind", owner_id="B02", quantity=None,
+                      material_hint="Uncatalogued component", dimensions={})
+    context = {"company_id": "company-1", "families": {"mirror"}, "catalogs": {}}
+    result = calculate_cb_materials(
+        parts_report={"stage": "Parts Check", "run_id": "run-1",
+                      "objects": {"object-1": {"parts": [mirror, component]}}},
+        input_rows=[_input()], catalog_context=context,
+    )
+    facts = result["facts_by_object"]["object-1"]
+    assert len(facts["materials"]) == 2
+    assert facts["materials"][0]["specification"] == {}
+    assert facts["materials"][1]["quantity"] == 1
+    plan = result["material_plan"]
+    assert plan["status"] == "needs_review"
+    assert plan["parts_check"]["object-1"]["unpriced_requirements"] == []
+    assert {line["purchase_kind"] for line in plan["lines"]} == {"sheet", "piece"}
 
 
 def test_worktop_surface_areas_are_preserved_without_inventing_end_material():
@@ -101,9 +123,9 @@ def test_worktop_surface_areas_are_preserved_without_inventing_end_material():
 @pytest.mark.parametrize(("pricing_basis", "reference_family", "authority", "cost"), [
     ("piece", "engineered_quartz_mineral_hybrid", "company", 200.0),
     ("square_meter", "engineered_quartz_mineral_hybrid", "israel_reference", 160.0),
-    ("square_meter", "porcelain_ceramic_slab", None, None),
+    ("square_meter", "porcelain_ceramic_slab", "assumption", 400.0),
 ])
-def test_checked_operation_uses_a_compatible_catalog_offer_or_stays_unpriced(
+def test_checked_operation_uses_a_compatible_catalog_offer_or_fallback(
     pricing_basis, reference_family, authority, cost,
 ):
     outline = {"area_basis": "gross_plan_outline", "kitchen_worktop": True, "source_refs": ["plan:C01"],
@@ -127,16 +149,12 @@ def test_checked_operation_uses_a_compatible_catalog_offer_or_stays_unpriced(
     surface, service = result["facts_by_object"]["object-1"]["materials"]
     assert (surface["quantity"], service["quantity"]) == (5, 2)
     snapshot = result["material_plan"]
-    if authority:
-        assert snapshot["object_material_costs"] == [{"object_id": "object-1",
-            "material_requirement_id": service["requirement_id"], "cost_ex_vat": cost}]
-        assert snapshot["lines"][0]["authority"] == authority
-    else:
-        assert not snapshot["object_material_costs"]
-        gap = next(item for item in snapshot["assumption_fallbacks"]
-                   if item["material_requirement_id"] == service["requirement_id"])
-        assert gap["resolution"] == "assumption_required"
-        assert "assumption_price" not in gap
+    priced, = [item for item in snapshot["object_material_costs"]
+               if item["material_requirement_id"] == service["requirement_id"]]
+    line, = [line for line in snapshot["lines"] if any(
+        item["material_requirement_id"] == service["requirement_id"] for item in line["allocations"])]
+    assert (line["authority"], priced["cost_ex_vat"]) == (authority, cost)
+    assert snapshot["parts_check"]["object-1"]["unpriced_requirements"] == []
 
 
 def test_unknown_visible_stock_and_kitchen_worktop_end_default_to_ldsp_17():
