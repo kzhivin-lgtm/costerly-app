@@ -60,12 +60,17 @@ The dimensions are provisional and other Inventory Check gaps stay open.
 Railway reported success for Estimation 9.5 at `820b566`. Fresh Upload
 verification is pending before accepting Lev2 completeness.
 
-PENDING, P0, USER REQUEST. Verify coverage from all drawing views through
+ACTIVE, P0, USER REQUEST. Verify coverage from all drawing views through
 Inventory Check, Blocks, standalone items, Parts Check and the priced
 estimate. Reconcile drawing evidence to parts and each part to its allocated
 cost. Track gaps and duplicates explicitly. Include Adda stock notes,
 dimensions, tempered glass and lighting in the coverage check. Verify the
 published result and its status in Objects before production acceptance.
+The first fresh Adda 9.5 run published 149 Parts rows and priced nine of
+ten emitted requirements. Parts-to-demand holds still exclude glass boxes
+and LED parts. LDSP 20 mm needs a compatible source or a priced assumption.
+Objects renders Review because the server has withheld final totals for
+both objects. See the [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md).
 
 DEFERRED, P1, USER REQUEST. After the full cycle is verified, measure stage
 time and model calls. Remove repeated analysis, reuse verified outputs and

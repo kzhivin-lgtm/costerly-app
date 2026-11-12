@@ -411,3 +411,15 @@ open findings. A fresh authenticated production Upload is pending.
 Release checks passed 48 tests; the dependency-list assertion also fails
 against the unchanged 9.4 inputs because it predates the Detection
 dependencies. This release did not change the runtime dependencies.
+
+Fresh production Adda run `run_d5519c70ba9342f1873b0719749c6ed3`
+published Parts Check 9.5 in 91.89 seconds: two objects, nine Blocks and
+149 part rows (24 and 125). Material Engine allocated 2,955.31 ILS ex VAT
+to nine of the ten admitted requirements. Object 001 has an open LDSP
+20 mm assumption; Object 002 priced all five admitted requirements.
+The demand adapter still holds all 24 glass-box part rows (including
+4 mm tempered parts) and the LED strip rows. Inventory and dimension gaps
+also remain. The server wrote `review_required` and null self-cost totals
+for both objects, so Objects displays Review without a final price.
+This confirms the production handoff and exposes incomplete costing.
+Fresh Lev2 Upload verification remains pending.
