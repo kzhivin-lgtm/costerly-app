@@ -46,6 +46,8 @@ are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK
   structural admission with the native-graphic Page 23 path.
   `agents/ocr_rendering.py` runs Mistral and local coordinate OCR.
   Coordinate readings are bound after Membership in an audit.
+- The [Detection V8.4.28 production checkpoint](DETECTION_V8_4_28_PRODUCTION_CHECKPOINT_2026_11_12.md)
+  records the Ada handoff, owner Adda Upload, and exact rollback.
 - The
   [V8.4.26 production checkpoint](DETECTION_V8_4_26_PRODUCTION_CHECKPOINT_2026_11_12.md)
   indexes the current rollback tag, owner Uploads, and saved render review.

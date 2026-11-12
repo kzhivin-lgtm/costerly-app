@@ -1,5 +1,15 @@
 # Detection Agent benchmark
 
+## V8.4.28, Ada View descriptions and pair evidence
+
+Owner production Adda `run_090b2315dc6a4036a0932bfbaf9ec319`
+published `01/04/06/08` and `02/03/05/07`. All eight Views survived
+and the four same-sheet comparisons were complete. Sonnet supplied the
+View descriptions and both hypotheses passed pair evidence validation.
+The result agrees with both fresh Adda release checks. Fresh Lev 2
+retained all four Views in one kitchen with its render attached.
+Release and evidence are indexed in the [Detection V8.4.28 production checkpoint](DETECTION_V8_4_28_PRODUCTION_CHECKPOINT_2026_11_12.md).
+
 ## V8.4.27, primary render ownership on the same sheet
 
 Fixed-input Floor 06 experiments replayed the saved OCR, Discovery and

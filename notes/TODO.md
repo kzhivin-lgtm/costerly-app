@@ -594,7 +594,7 @@ local-only checkpoint. Annotated tag
 `6c552b35dd8c58b15307635f7efbf2dd7c9f29a9`. Record:
 `notes/DETECTION_V8_4_8_PARALLEL_MEMBERSHIP_CHECKPOINT_2026_11_10.md`.
 
-ACTIVE, P0, stabilize Ada cross-sheet Membership in production.
+COMPLETED, P0, Ada cross-sheet Membership on the owner-accepted Adda Upload.
 The accepted two Adda groups are `01/04/06/08` and `02/03/05/07`.
 Three V8.4.8 Membership production runs on 2026-11-12 used the same PDF,
 eight Bboxes, all four same-sheet pair comparisons, and no Dimension
@@ -642,22 +642,17 @@ after both Sonnet requests were sent (Discovery message
 identical between V8.4.27 `379f91f` and the Estimation 9.2 release
 `f09b9f6`.
 
-V8.4.28 release candidate. Ada Discovery returns Island geometry, type,
-classification, and Mistral anchor decisions. Sonnet describes every
-retained View and submits each positive membership fact with two explicit
-View IDs. The independent same-sheet audit retains its existing queue.
-Two fresh Adda runs, `run_e711c352e6f04e03be88060172782b7c` and
-`run_3be2ece8654f44d39631eeafaec2a788`, each preserved eight Views
-and returned both exact groups. Fresh Lev 2
-`run_b94f440bdba444deba25b92e47c20750` kept one four-View kitchen with
-its render attached. Owner Upload verification is the next gate before
-resuming Parts list and dimension experiments.
+V8.4.28 is deployed at `114a7b8`. The owner accepted production Adda
+`run_090b2315dc6a4036a0932bfbaf9ec319` with the exact two groups
+and all eight Views. Two fresh Adda checks and the Lev 2 kitchen with
+its render passed before deployment. The [Detection V8.4.28 production checkpoint](DETECTION_V8_4_28_PRODUCTION_CHECKPOINT_2026_11_12.md) records the results.
 
-Acceptance: verify exact Adda View membership on fresh repeats, preserve
-Lev 1 and Lev 2 membership and render attachment, and keep every
-same-sheet pair in scope. Test a smaller stable handoff and a bounded
-check of competing cross-sheet memberships before changing release
-behavior. Keep the earlier missing-Bbox-decision failure separate.
+PENDING, P0, verify the Adda Parts Check against the accepted two objects.
+Use the original PDF and persisted File Review evidence from the V8.4.28
+owner Upload. Compare part identities, counts and dimensions against
+the drawing, and record unresolved dimensions with their source evidence.
+Continue the separate Ada Discovery reliability work if a missing anchor
+decision or invalid proposed geometry recurs.
 
 ACTIVE, P0, Haiku 5.5 migration on top of V8.4.8:
 The shared Anthropic adapter migrates existing Haiku calls to

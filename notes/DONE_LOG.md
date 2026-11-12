@@ -1,5 +1,12 @@
 # Done Log
 
+Detection V8.4.28 production, `114a7b8`, owner accepted on 2026-11-12.
+Ada Discovery hands off the fixed Views and Sonnet describes them and
+returns pair evidence with two explicit View IDs. Owner Adda kept all
+eight Views in the two expected objects. Lev 2 kept its render and
+remained one kitchen in the fresh release check. The [Detection V8.4.28 production checkpoint](DETECTION_V8_4_28_PRODUCTION_CHECKPOINT_2026_11_12.md)
+records the run, verification and exact rollback.
+
 Detection V8.4.26 restores the single-dimension Fingerprint weight.
 The saved V8.4.25 replay goes from 10 to 9 objects on Floor 07 and
 preserves all 20 Floor 06 groups. Fresh production Uploads reached
