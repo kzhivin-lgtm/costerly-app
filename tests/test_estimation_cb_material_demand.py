@@ -98,8 +98,14 @@ def test_worktop_surface_areas_are_preserved_without_inventing_end_material():
     ]
 
 
-@pytest.mark.parametrize("pricing_basis", ["piece", "square_meter"])
-def test_checked_operation_uses_a_compatible_catalog_offer_or_stays_unpriced(pricing_basis):
+@pytest.mark.parametrize(("pricing_basis", "reference_family", "authority", "cost"), [
+    ("piece", "engineered_quartz_mineral_hybrid", "company", 200.0),
+    ("square_meter", "engineered_quartz_mineral_hybrid", "israel_reference", 160.0),
+    ("square_meter", "porcelain_ceramic_slab", None, None),
+])
+def test_checked_operation_uses_a_compatible_catalog_offer_or_stays_unpriced(
+    pricing_basis, reference_family, authority, cost,
+):
     outline = {"area_basis": "gross_plan_outline", "kitchen_worktop": True, "source_refs": ["plan:C01"],
                "surfaces": [{"id": "main", "material_role": "main_worktop", "area_m2": 2.5}]}
     cutout = {"id": "render:worktop-cutout-01", "view_id": "render", "surface": "main_worktop"}
@@ -113,18 +119,37 @@ def test_checked_operation_uses_a_compatible_catalog_offer_or_stays_unpriced(pri
             "supplier_operation_offers": [{"operation_offer_id": "offer-1", "operation_id": "op-1", "status": "active",
                                            "pricing_basis": pricing_basis, "currency": "ILS", "vat_included": True,
                                            "source_price": 118}],
+            "israel_operation_prices": [{"operation_service_price_id": "price-1", "operation_id": "op-1", "status": "active",
+                                         "market_code": "IL", "unit": "piece", "currency": "ILS", "price_ex_vat": 80,
+                                         "source_id": "source-1", "material_family_code": reference_family}],
         }},
     )
     surface, service = result["facts_by_object"]["object-1"]["materials"]
     assert (surface["quantity"], service["quantity"]) == (5, 2)
     snapshot = result["material_plan"]
-    if pricing_basis == "piece":
+    if authority:
         assert snapshot["object_material_costs"] == [{"object_id": "object-1",
-            "material_requirement_id": service["requirement_id"], "cost_ex_vat": 200.0}]
-        assert snapshot["lines"][0]["authority"] == "company"
+            "material_requirement_id": service["requirement_id"], "cost_ex_vat": cost}]
+        assert snapshot["lines"][0]["authority"] == authority
     else:
         assert not snapshot["object_material_costs"]
         gap = next(item for item in snapshot["assumption_fallbacks"]
                    if item["material_requirement_id"] == service["requirement_id"])
         assert gap["resolution"] == "assumption_required"
         assert "assumption_price" not in gap
+
+
+def test_unknown_visible_stock_and_kitchen_worktop_end_default_to_ldsp_17():
+    visible = _part("door_front")
+    visible["dimensions"]["thickness"] = {"mm": None}
+    outline = {"area_basis": "gross_plan_outline", "kitchen_worktop": True, "source_refs": ["plan:C01"],
+               "surfaces": [{"id": "main", "material_role": "main_worktop", "area_m2": 2.5},
+                            {"id": "end", "material_role": "contrasting_end", "area_m2": .2}]}
+    worktop = _part("shared_worktop", quantity=1, worktop_outline=outline)
+    worktop["dimensions"]["thickness"] = {"mm": 30, "basis": "construction_assumption"}
+    result = _build([visible, worktop], {"mdf_hdf", "melamine_faced_particleboard", "engineered_quartz_mineral_hybrid"})
+    facade, main, end = result["materials"]
+    assert (facade["family"], facade["specification"]["thickness_mm"]) == ("melamine_faced_particleboard", 17)
+    assert (main["family"], main["specification"]["thickness_mm"]) == ("engineered_quartz_mineral_hybrid", 30)
+    assert (end["family"], end["specification"]["thickness_mm"]) == ("melamine_faced_particleboard", 17)
+    assert end["quantity"] == .2 and end["basis"] == "construction_assumption"

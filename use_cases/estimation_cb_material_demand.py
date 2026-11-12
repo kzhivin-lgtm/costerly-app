@@ -22,10 +22,13 @@ _ROLES = {
     "mirror_glass": "mirror",
 }
 _COUNT_ROLES = {"leg", "drawer_slide", "hinge", "gas_lift"}
+_LDSP_FAMILY = "melamine_faced_particleboard"
+_LDSP_DEFAULT_THICKNESS_MM = 17
 _ROLE_FAMILY_PREFERENCE = {
     **_FAMILY_PREFERENCE,
     "carcass_sheet": _FAMILY_PREFERENCE["internal_sheet"],
     "backing_sheet": ("mdf_hdf",),
+    "visible_sheet": _FAMILY_PREFERENCE["internal_sheet"],
     "mirror": ("mirror",),
 }
 _MATERIAL_NAMES = {**_CONSTRUCTION_MATERIAL_NAMES, "mirror": "Mirror"}
@@ -105,17 +108,24 @@ def _worktop_requirements(row, part_source, object_quantity, families, materials
     for surface in surfaces:
         main = surface["material_role"] == "main_worktop"
         explicit = main and stock_family in families
-        default = main and not stock_notes and outline.get("kitchen_worktop") and _WORKTOP_DEFAULT_FAMILY in families
-        family = stock_family if explicit else _WORKTOP_DEFAULT_FAMILY if default else None
+        default_family = _WORKTOP_DEFAULT_FAMILY if main else _LDSP_FAMILY
+        default = outline.get("kitchen_worktop") and default_family in families and (not main or not stock_notes)
+        family = stock_family if explicit else default_family if default else None
+        surface_thickness = _LDSP_DEFAULT_THICKNESS_MM if default and not main else thickness
+        if explicit:
+            source_name = " / ".join(stock_notes)
+        elif default:
+            source_name = "Artificial stone" if main else _MATERIAL_NAMES[_LDSP_FAMILY]
+        else:
+            source_name = "Main worktop material" if main else "Contrasting finish on beveled end"
         evidence = list(dict.fromkeys([*refs, *stock_refs])) if explicit else refs
         quantity = round(surface["area_m2"] * multiplier, 6)
         key = (part_id, surface["id"])
         materials[key] = {
             "requirement_id": f"cb-material-{len(materials) + 1:03d}",
-            "source_name": " / ".join(stock_notes) if explicit else "Artificial stone" if default else (
-                "Main worktop material" if main else "Contrasting finish on beveled end"),
+            "source_name": source_name,
             "family": family, "material_role": "worktop_sheet",
-            "specification": {"thickness_mm": thickness, **(stock_spec if explicit else {})},
+            "specification": {"thickness_mm": surface_thickness, **(stock_spec if explicit else {})},
             "basis": "ocr_material_note" if explicit else "construction_assumption" if default else "material_unresolved",
             "evidence_refs": evidence, "quantity": quantity, "unit": "m2",
             "area_basis": outline["area_basis"],
@@ -206,10 +216,14 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                     continue
             is_count = role in _COUNT_ROLES
             required = () if is_count else _SPECIAL_DIMENSIONS.get(row["role"], _SHEET_DIMENSIONS)
-            missing = [field for field in required if not _positive(measurements.get(field, {}).get("mm"))]
             source_family, material_spec, notes, material_refs = _source_material(measurements)
             preferences = (source_family,) if source_family else _ROLE_FAMILY_PREFERENCE.get(role, ())
             family = next((f for f in preferences if f in allowed_material_families), None)
+            thickness_mm = measurements.get("thickness", {}).get("mm")
+            if role == "visible_sheet" and family == _LDSP_FAMILY and not notes and not _positive(thickness_mm):
+                thickness_mm = _LDSP_DEFAULT_THICKNESS_MM
+            missing = [field for field in required if not _positive(
+                thickness_mm if field == "thickness" else measurements.get(field, {}).get("mm"))]
             count = row["quantity"]
             reason = _MATERIAL_HOLDS.get(row["role"])
             if duplicate:
@@ -233,7 +247,7 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                 raise ValueError(f"Invalid part quantity for {part_id}")
             quantity = ceil(count * multiplier * object_quantity)
             unit = (row.get("unit") or "piece") if is_count else None
-            spec = {} if is_count else {**material_spec, "thickness_mm": measurements["thickness"]["mm"]}
+            spec = {} if is_count else {**material_spec, "thickness_mm": thickness_mm}
             basis = "source_evidence" if material_refs else "construction_assumption"
             name = notes[0] if material_refs else _MATERIAL_NAMES[family]
             if family == "mdf_hdf" and not material_refs and role in {"carcass_sheet", "backing_sheet", "internal_sheet"}:

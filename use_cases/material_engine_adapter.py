@@ -961,19 +961,21 @@ def israel_reference_supply_candidates(
     return selection_key, tuple(sorted(result, key=lambda candidate: candidate.candidate_id))
 
 
-def _supplier_operation_candidates(operation_code, catalogs, vat_percent):
-    """Resolve a per-piece service against accepted supplier operation offers."""
+def _operation_supply_candidates(operation_code, material_family, catalogs, vat_percent):
+    """Resolve a per-piece service in Company Catalog and Israel Reference."""
     operation = next((row for row in catalogs.get("operations", ())
                       if row.get("operation_code") == operation_code and row.get("active") is True), None)
     if not operation:
         return ()
-    today = date.today().isoformat()
+    today = date.today()
+    selection_key = f"operation:{operation_code}:{material_family}" if material_family else f"operation:{operation_code}"
+    display_name = str(operation.get("operation_name") or operation_code)
     candidates = []
     for offer in catalogs.get("supplier_operation_offers", ()):
         if (offer.get("operation_id") != operation.get("operation_id") or offer.get("status") != "active"
                 or offer.get("pricing_basis") != "piece" or offer.get("currency") != "ILS"
                 or type(offer.get("vat_included")) is not bool
-                or str(offer.get("valid_from") or "") > today):
+                or not _effective(offer, today)):
             continue
         amount = _positive(offer.get("source_price"))
         offer_id = offer.get("operation_offer_id")
@@ -981,9 +983,25 @@ def _supplier_operation_candidates(operation_code, catalogs, vat_percent):
             continue
         candidates.append(MaterialSupplyCandidate(
             candidate_id=f"supplier-operation:{offer_id}", material_family=operation_code,
-            selection_key=f"operation:{operation_code}", purchase_kind="piece",
+            selection_key=selection_key, purchase_kind="piece",
             price_per_purchase_unit=_ex_vat(amount, offer, vat_percent), authority="company", currency="ILS",
-            display_name=str(operation.get("operation_name") or operation_code), offer_id=str(offer_id),
+            display_name=display_name, offer_id=str(offer_id),
+        ))
+    for price in catalogs.get("israel_operation_prices", ()):
+        if (price.get("operation_id") != operation.get("operation_id")
+                or price.get("material_family_code") != material_family
+                or price.get("status") != "active" or price.get("market_code") != "IL"
+                or price.get("unit") != "piece" or price.get("currency") != "ILS"
+                or not price.get("source_id") or not _effective(price, today)):
+            continue
+        amount = _positive(price.get("price_ex_vat"))
+        price_id = price.get("operation_service_price_id")
+        if amount is None or not price_id:
+            continue
+        candidates.append(MaterialSupplyCandidate(
+            candidate_id=f"israel-operation:{price_id}", material_family=operation_code,
+            selection_key=selection_key, purchase_kind="piece", price_per_purchase_unit=amount,
+            authority="israel_reference", currency="ILS", display_name=display_name, reference_price_id=str(price_id),
         ))
     return tuple(candidates)
 
@@ -1052,7 +1070,8 @@ def build_material_plan(
             parts = parts_by_requirement.get(requirement_id) or []
             if material.get("item_kind") == "operation_service":
                 operation_code = str(material.get("operation_code") or "")
-                compatible = _supplier_operation_candidates(operation_code, catalogs, Decimal(str(vat_percent)))
+                worktop_family = str((material.get("specification") or {}).get("worktop_family") or "")
+                compatible = _operation_supply_candidates(operation_code, worktop_family, catalogs, Decimal(str(vat_percent)))
                 quantity = _positive(material.get("quantity"))
                 if not compatible or quantity is None or _canonical_requirement_unit(material.get("unit")) != "ea":
                     add_assumption_fallback(reason_code="supplier_operation_quote_required")
@@ -1062,7 +1081,7 @@ def build_material_plan(
                 demands.append(MaterialDemand(
                     demand_id=f"{object_id}:{requirement_id}:service", object_id=str(object_id),
                     material_requirement_id=requirement_id, material_family=operation_code,
-                    selection_key=f"operation:{operation_code}", quantity=quantity, unit="piece",
+                    selection_key=compatible[0].selection_key, quantity=quantity, unit="piece",
                     compatible_candidate_ids=tuple(candidate.candidate_id for candidate in compatible),
                 ))
                 continue
