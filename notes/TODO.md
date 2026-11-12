@@ -38,12 +38,15 @@ Keep the whole worktop area and count each cutout service separately. A
 complete estimate assigns each requirement a cost and counts it once.
 
 PENDING OWNER APPROVAL, P0. Publish the Israel Reference `stone_cutout`
-rate for one sink opening in a new quartz worktop. Proposed rate is 510 ILS
-excluding VAT, from the Jerusalem bill of quantities dated 15 July 2026,
-Dekel framework item `00.07.046.0170`. Confirm the rate before adding the
-active record. The local Lev2 replay with the LDSP 17 mm defaults prices
-nine of ten requirements. An in-memory copy of the proposed rate prices all
-ten and allocates one cutout. Inventory Check findings remain separate.
+rate for one flush-mount sink opening in a new quartz worktop. Proposed
+estimate benchmark is 400 ILS excluding VAT, pending owner approval.
+Jerusalem's July 2026 bill lists 510 ILS before a 20% project discount
+(408 ILS if apportioned to this item). Beit El's April 2026 bill lists
+500 ILS excluding VAT for item `07.046.0170`. ABC Israel lists 480 ILS and
+Mavric lists 350–450 ILS, with VAT treatment unstated in those two lists.
+The local Lev2 replay with the LDSP 17 mm defaults prices nine of ten
+requirements. A test reference rate prices all ten and allocates one
+cutout. Inventory Check findings remain separate.
 
 PENDING, P0, USER REQUEST. Verify coverage from all drawing views through
 Inventory Check, Blocks, standalone items, Parts Check and the priced
