@@ -1,5 +1,52 @@
 # Detection Agent benchmark
 
+## Ordinary same-sheet render review candidate on V8.4.26
+
+The V8.4.26 Floor 06 primary review sent 75 images and about 41,000
+input tokens. On P03 its ordinary semantic facts saw the recurring
+shelf topology between renders, including one incorrectly labeled as
+a section. Its dedicated decisions omitted a positive render-to-facade
+link and gave blank witnesses for its abstentions. Those replies leave
+the model's reason for each abstention unknown. The archived focused
+review of roughly 4,000 input tokens named a specific shared feature
+and selected the technical elevation.
+
+In candidate validation, the fresh primary reply linked an admitted
+P03 render to itself (request `req_011CgxoergQwsdDuWDtq5vzf`).
+The V8.4.26 validator aborts on that row. The candidate keeps the
+rejected row in the audit and makes the known render eligible for
+same-sheet review. The focused review compares the fixed crops and
+requires a distinct visual feature with an actual technical target.
+It runs after ordinary technical Membership recovery to avoid changing
+which technical Views receive that recovery. Valid primary links stay
+in place. An abstention or failed optional review supplies no edge.
+
+Fresh Floor 06 `run_4fd8d09b885f4e92b0a3e50dff983496` completed
+OCR, all 15 sheets, Registry, Naming, and Document Identity locally.
+It retained 64 Views before render exclusion and published 25 objects.
+The focused stage reviewed six sheets in 15.57 seconds, using 20,907
+input tokens and 5,803 output tokens. It attached zero of the nine
+pending renders. Exact request replay reproduced the same 25-object
+partition on V8.4.26 and the candidate using the fresh recognition
+inputs. The candidate also replayed all focused replies.
+
+At P03 the focused reply recognized the shelves and diagonal supports
+on the actual elevation V9. It kept V1 unresolved while also treating
+shaded crops V10/V11 as possible competing items. Visual inspection
+confirmed both are renders classified as technical details and
+published together as their own object. P04.V1 and P07.V1 are
+dimensioned line drawings incorrectly classified as renders, so both
+were excluded. The experiment verifies the review path but misses the
+attachment outcome. The evidence points to role validation before
+technical Membership as the next experiment.
+
+An exact archived Floor 07 Discovery and Membership replay gives the
+same 12 groups and P11 membership on V8.4.26 and the candidate, with
+zero render requests. The separate saved production compiler replay
+preserves the nine-object result including all three P11 Views.
+These controls use different saved recognition inputs. Fresh Floor 07
+verification remains open.
+
 ## V8.4.26, single-dimension Fingerprint weight
 
 Restore the V8.4.21 Fingerprint weight on the V8.4.25 runtime. The

@@ -366,7 +366,10 @@ def run_ordinary_haiku_membership(run_registry, *, file_bytes, ocr_package, stag
     original_text = next(block for block in membership.content if block.type == "text")
     payload = json.loads(original_text.text)
 
-    def recompile(candidate_payload, *, compile_semantics=original_semantics, compile_merge=original_merge):
+    def recompile(
+        candidate_payload, *, compile_semantics=original_semantics, compile_merge=original_merge,
+        review_unattached_renders=False,
+    ):
         derived = membership.model_copy(update={"content": [
             original_text.model_copy(update={"text": json.dumps(candidate_payload, ensure_ascii=False)})
         ]})
@@ -394,6 +397,7 @@ def run_ordinary_haiku_membership(run_registry, *, file_bytes, ocr_package, stag
             stage_callback=None,
             review_hooks=adapter.DetectionRegistryHooks(
                 replay, adapter.normalize_detection_visual_map_group_ids, compile_semantics, compile_merge, replay_input_count,
+                render_review_stream=adapter.create_claude_message_streamed if review_unattached_renders else None,
             ),
         )
         if any(queues.values()) or any(count_queues.values()):
@@ -444,6 +448,8 @@ def run_ordinary_haiku_membership(run_registry, *, file_bytes, ocr_package, stag
             return []
 
     final = primary
+    final_payload = deepcopy(payload)
+    final_compile = {}
     prior_components = [row["visual_group_ids"] for row in audit(primary)["proof_graph_components"]]
     eligible_ids = {
         canonical_ids[group] for group, (_, role) in views.items()
@@ -474,6 +480,7 @@ def run_ordinary_haiku_membership(run_registry, *, file_bytes, ocr_package, stag
                 new_components = [row["visual_group_ids"] for row in audit(candidate)["proof_graph_components"]]
                 if all(len({old_groups[g] for g in component if g in old_groups}) <= 1 for component in new_components):
                     final = candidate
+                    final_compile = {"compile_merge": merge_with_dimensions}
                     break
             if final is primary:
                 anchor_pairs = set()
@@ -496,6 +503,8 @@ def run_ordinary_haiku_membership(run_registry, *, file_bytes, ocr_package, stag
                                for page in covered_pages)
                 ] + sorted(additional, key=lambda hypothesis: -len(hypothesis["evidence"]))
                 final = recompile(payload, compile_merge=merge_with_dimensions)
+                final_payload = deepcopy(payload)
+                final_compile = {"compile_merge": merge_with_dimensions}
 
         intermediate_usage = audit(final)
         components = [row["visual_group_ids"] for row in intermediate_usage["proof_graph_components"]]
@@ -542,8 +551,18 @@ def run_ordinary_haiku_membership(run_registry, *, file_bytes, ocr_package, stag
                     return [edge for edge in base if edge_endpoints(edge) not in recovered_pairs] + accepted_recovery, ledger
 
                 final = recompile(payload, compile_semantics=validate_local, compile_merge=merge_local)
+                final_payload = payload
+                final_compile = {"compile_semantics": validate_local, "compile_merge": merge_local}
     except (RegistryReplayError, adapter.DetectionVisualRegistryValidationError) as exc:
         failures.append({"stage": "recompile", "error_type": type(exc).__name__})
+
+    render_decisions = audit(final)["semantic_ledger_audit"]["v7_11_presentation_render"]["decisions"]
+    if any(row["disposition"] in {"no_match", "unresolved"} for row in render_decisions):
+        adapter._notify_detection_stage(stage_callback, "Same-sheet render review started", {})
+        try:
+            final = recompile(final_payload, **final_compile, review_unattached_renders=True)
+        except (RegistryReplayError, adapter.DetectionVisualRegistryValidationError) as exc:
+            failures.append({"stage": "same_sheet_render_review", "error_type": type(exc).__name__})
 
     usage = final[2]
     raw = audit(final)

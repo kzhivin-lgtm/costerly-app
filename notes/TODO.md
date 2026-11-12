@@ -210,8 +210,21 @@ elevation and V1 was incorrectly retained as a technical section.
 Preserve the archived same-sheet review that attached the matching
 crops using triangular shelf supports as evidence. Use the
 [V8.4.26 checkpoint](DETECTION_V8_4_26_PRODUCTION_CHECKPOINT_2026_11_12.md)
-to compare candidates on fixed Views. Verify that unresolved renders
-stay out of published object counts.
+to compare candidates on fixed Views. The candidate reviews unresolved
+renders against same-sheet technical crops after ordinary Haiku
+technical recovery. An invalid primary attachment for a known render
+remains unresolved and is eligible for focused review. Verify actual
+crop matches, exclusion of unresolved renders and preservation of the
+technical partition. Fresh Floor 06 preserved the technical partition
+on fixed inputs but recovered zero render links. Visual inspection
+confirmed that P03.V10/V11 are renders labeled as technical and
+P04.V1/P07.V1 are technical drawings labeled as renders. A two-way
+role check before technical Membership is proposed as the next
+experiment. Use the existing lab witness and require positive and
+negative controls. A fresh Floor 07 run requires explicit permission
+for its private PDF and derived crops to reach the OCR and vision
+providers. The exact archived Floor 07 Detection replay preserves
+the V8.4.26 partition.
 
 V8.4.10 audits omitted ordinary-route render decisions as unresolved
 without aborting technical grouping. An omitted row supplies no

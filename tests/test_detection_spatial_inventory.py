@@ -1,4 +1,6 @@
 import json
+from contextlib import nullcontext
+from types import SimpleNamespace
 
 import pytest
 import agents.anthropic_adapter as anthropic_adapter
@@ -564,6 +566,82 @@ def test_v711_ordinary_route_audits_omitted_renders_without_creating_edges():
         "render_group_id": "view-001", "disposition": "unresolved", "technical_group_id": "",
         "evidence_type": "none", "visual_witness": "", "decision_source": "missing_model_decision",
     }, attachment]
+
+
+def test_v711_ordinary_primary_render_self_link_is_eligible_for_review():
+    row = {
+        "render_group_id": "render", "disposition": "attach", "technical_group_id": "render",
+        "evidence_type": "matching_topology", "visual_witness": "registry_view:render",
+    }
+    groups = [{
+        "group_id": "render", "page_number": 1,
+        "evidence_class": "object_evidence", "representation_kind": "presentation_render",
+    }]
+
+    facts, audit = normalize_detection_v711_presentation_render_decisions(
+        [row], visual_groups=groups, group_id_mapping={"render": "view-001"},
+        recover_invalid_attachments=True,
+    )
+
+    assert facts == []
+    assert audit == [{
+        "render_group_id": "view-001", "disposition": "unresolved", "technical_group_id": "",
+        "evidence_type": "none", "visual_witness": "", "decision_source": "invalid_primary_attachment",
+        "rejected_attachment": row,
+    }]
+
+
+def test_same_sheet_render_review_keeps_primary_matches_and_rejects_off_sheet_targets(monkeypatch):
+    inventory = [
+        ("already-attached", 1, "presentation_render"),
+        ("unmatched", 1, "presentation_render"),
+        ("front", 1, "elevation"),
+        ("omitted", 2, "presentation_render"),
+        ("side", 2, "section"),
+        ("isolated", 3, "presentation_render"),
+    ]
+    groups = [
+        dict(group_id=group_id, page_number=page, representation_kind=kind, evidence_class="object_evidence")
+        for group_id, page, kind in inventory
+    ]
+    mapping = {group_id: f"view-{index}" for index, (group_id, _, _) in enumerate(inventory)}
+    monkeypatch.setattr(anthropic_adapter, "get_anthropic_client", lambda: SimpleNamespace(
+        with_options=lambda **kwargs: nullcontext(object()),
+    ))
+
+    def send(client, **request):
+        blocks = request["messages"][0]["content"]
+        visible_ids = [block["text"].split(",")[0].removeprefix("Object View ") for block in blocks[:-1:2]]
+        if visible_ids[0] == "unmatched":
+            assert visible_ids == ["unmatched", "front"]
+        else:
+            assert visible_ids == ["omitted", "side"]
+        # The first page can link locally. The second gets a forged off-sheet target.
+        payload = {"presentation_render_decisions": [{
+            "render_group_id": visible_ids[0], "disposition": "attach", "technical_group_id": "front",
+            "evidence_type": "unique_geometry", "visual_witness": "The two panels share the same offset return.",
+        }]}
+        return SimpleNamespace(
+            stop_reason="end_turn", content=[SimpleNamespace(type="text", text=json.dumps(payload))],
+        ), {"request_started_at": "2026-11-12T10:00:00+00:00", "request_finished_at": "2026-11-12T10:00:01+00:00"}
+
+    facts, audit = anthropic_adapter.review_detection_unattached_renders_on_same_sheet(
+        primary_decisions=[
+            {"render_group_id": mapping[group_id], "disposition": disposition}
+            for group_id, disposition in (
+                ("already-attached", "attach"), ("unmatched", "no_match"),
+                ("omitted", "unresolved"), ("isolated", "no_match"),
+            )
+        ],
+        visual_groups=groups, group_id_mapping=mapping, technical_components=[],
+        view_crops=[dict(group_id=group_id, page_number=page, bytes=b"crop") for group_id, page, _ in inventory],
+        page_context_images=[], model=anthropic_adapter.CLAUDE_HAIKU_MODEL, stream_message=send,
+    )
+
+    assert [(fact["group_id_a"], fact["group_id_b"]) for fact in facts] == [
+        (mapping["unmatched"], mapping["front"]),
+    ]
+    assert [row["status"] for row in audit["sheets"]] == ["reviewed", "failed", "no_comparable_crops"]
 
 
 def test_v711_render_decision_ignores_only_safe_known_non_render_no_match():
