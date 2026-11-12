@@ -37,16 +37,21 @@ with the source and pricing unit. Automatic market research is pending.
 Keep the whole worktop area and count each cutout service separately. A
 complete estimate assigns each requirement a cost and counts it once.
 
-PENDING OWNER APPROVAL, P0. Publish the Israel Reference `stone_cutout`
-rate for one flush-mount sink opening in a new quartz worktop. Proposed
-estimate benchmark is 400 ILS excluding VAT, pending owner approval.
+BLOCKED, P0. Apply the Israel Reference `stone_cutout` migration using an
+authenticated Supabase SQL Editor. Owner approved 400 ILS excluding VAT
+for one flush-mount sink opening in a new quartz worktop on 2026-11-12.
+The [migration](../db/sql/2026_11_12_israel_reference_operation_service_prices.sql)
+contains the scoped price, source evidence and a post-insert check. The live
+data API does not expose the table before the migration is applied.
 Jerusalem's July 2026 bill lists 510 ILS before a 20% project discount
 (408 ILS if apportioned to this item). Beit El's April 2026 bill lists
 500 ILS excluding VAT for item `07.046.0170`. ABC Israel lists 480 ILS and
 Mavric lists 350–450 ILS, with VAT treatment unstated in those two lists.
 The local Lev2 replay with the LDSP 17 mm defaults prices nine of ten
-requirements. A test reference rate prices all ten and allocates one
-cutout. Inventory Check findings remain separate.
+requirements. A replay with the approved 400 ILS rate prices all ten and
+allocates one cutout. Inventory Check still reports open findings. The V02
+render shows intermediate open shelves and the current Parts Check has no
+shelf rows. Resolve that coverage gap before accepting Lev2 completeness.
 
 PENDING, P0, USER REQUEST. Verify coverage from all drawing views through
 Inventory Check, Blocks, standalone items, Parts Check and the priced
