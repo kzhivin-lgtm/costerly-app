@@ -28,16 +28,30 @@ fresh Lev2 run verifies both worktop surface areas and one cutout service.
 Owner-accepted experimental checkpoint
 `estimation-v9.4-lev2-worktop-demand-2026-11-12`.
 
-PENDING, P1. Resolve the `stone_cutout` Material Demand line against an
-accepted supplier operation offer and include the price once in the estimate.
-Keep gross worktop area for material purchasing and preserve an explicit
-pricing gap when no compatible offer is available. Resolve the material of
-the contrasting end separately.
+ACTIVE, P0, USER REQUEST. Complete the shared pricing cycle from Parts
+Check through Material Demand, Material Resolver and Material Engine. The
+production pricing path still reads legacy BOM facts. The Parts Check
+pricing experiment priced seven of ten Lev2 requirements. Drawer slides,
+the contrasting worktop end and the cutout service have no allocated cost.
+Use these three as regression cases for the shared path. Resolve materials
+and purchased services using Company Catalog first and Israel Reference
+second. When both lack a compatible price, use a sourced, estimate-local
+Assumption Fallback. Reserve market search for that case and retain the
+source and pricing unit. Keep the whole worktop area for material purchasing
+and count each cutout service separately. A complete estimate assigns a
+cost to every purchasing requirement, with no duplicate charge.
 
-PENDING, P1. Resolve Adda stock notes, missing dimensions and sourcing for
-tempered glass and lighting before treating the material plan as complete.
-Connect production pricing once the checked handoff and review status can
-be verified through Objects.
+PENDING, P0, USER REQUEST. Verify coverage from all drawing views through
+Inventory Check, Blocks, standalone items, Parts Check and the priced
+estimate. Reconcile drawing evidence to parts and each part to its allocated
+cost. Track gaps and duplicates explicitly. Include Adda stock notes,
+dimensions, tempered glass and lighting in the coverage check. Verify the
+published result and its status in Objects before production acceptance.
+
+DEFERRED, P1, USER REQUEST. After the full cycle is verified, measure stage
+time and model calls. Remove repeated analysis, reuse verified outputs and
+parallelize independent work. Recheck the same fixtures for part coverage,
+dimensions, cost allocation and price sources after each optimization.
 
 ## Ordinary Detection dimension membership, V8.4.13
 
@@ -3784,7 +3798,8 @@ pricing, labor, manufacturing or overhead fields. The result remains
 consumption. Await owner quality review of the cited material identities
 before marking this release accepted.
 
-PENDING USER DECISION, USER REQUEST, next Estimation task after 3.17.4.2:
+HISTORICAL, USER REQUEST, proposed Estimation task after 3.17.4.2. The
+active continuation is tracked under Estimation Parts Check, 3.17.4.6:
 complete every material demand to a material cost rather than leaving an
 unpriced `needs_review` line. Keep evidence extraction separate from this
 deterministic downstream step. The requested authority order is Company Catalog,
