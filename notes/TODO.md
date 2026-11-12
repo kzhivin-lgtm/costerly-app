@@ -25,8 +25,9 @@ VERIFIED locally, P1. Parts Check to Material Demand accounts for every
 row in the Lev1, Lev2 and Adda witnesses. The Lev2 replay restores all
 28 carcass rows and passes 106 rows into the demand contract. A subsequent
 fresh Estimation run verifies the gross worktop outline and the two surface
-areas. Resolve cutouts and the material of the contrasting end before
-accepting the worktop for pricing.
+areas. Keep gross area for material purchasing. Price worktop cutouts per
+operation once supplier operation offers are wired to Material Demand.
+Resolve the material of the contrasting end separately.
 
 PENDING, P1. Resolve Adda stock notes, missing dimensions and sourcing for
 tempered glass and lighting before treating the material plan as complete.

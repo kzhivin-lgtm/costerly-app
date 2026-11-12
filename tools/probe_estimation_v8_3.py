@@ -48,6 +48,18 @@ material cues from unconfirmed substrate or finish.
 Return JSON only:
 {"islands":{"view_id":"projection"},"understanding":{"object_id":{"name":"...",
 "description":"...","characteristics":["..."]}}}"""
+WORKTOP_CUTOUTS = """
+In each object's Understanding, also return worktop_cutouts (empty if none).
+Record one row per visible appliance opening in a worktop. Use a single
+clearest Island per object so alternate views cannot count the same opening
+twice. An opening has an enclosed boundary on the worktop surface. Exclude
+seams, door edges, colour changes and uncut markings. For each opening use
+{\"view_id\":\"...\",\"bbox_px\":[left,top,right,bottom],\"fixture\":\"unknown\",
+\"surface\":\"main_worktop\"}, with tight pixel bounds on the clean crop.
+Fixture is sink, cooktop or unknown. Use sink or cooktop only when the
+drawing identifies it. Surface is main_worktop, contrasting_end or unknown.
+Do not infer dimensions or request any area deduction.
+"""
 REVIEW = """Review only the listed exact native contours. For each, decide
 whether it is an operating front, fixed side, open shelf, frame, or space.
 Compare plan, clean elevations and axonometric. A tall profile on an elevation
@@ -109,7 +121,7 @@ def island_content(request, views):
     return result
 
 
-def classify_islands(invoke, views, images, detection):
+def classify_islands(invoke, views, images, detection, *, include_worktop_cutouts=False):
     by_object = {}
     for vid, view in views.items():
         by_object.setdefault(view["object_id"], []).append(vid)
@@ -126,7 +138,8 @@ def classify_islands(invoke, views, images, detection):
             raise ValueError("Island Map must classify each input Island and object")
         return raw
 
-    return invoke("island-map", provider_request(ISLAND_MAP, content, max_tokens=3000), bind)
+    system = ISLAND_MAP + WORKTOP_CUTOUTS if include_worktop_cutouts else ISLAND_MAP
+    return invoke("island-map", provider_request(system, content, max_tokens=3000), bind)
 
 
 def bind_source_front(raw, frames):
@@ -151,7 +164,8 @@ def run_initial(geometry, key, source, output, *, resume=False, request_provider
     images = island_content(request, views)
     invoke = request_provider or provider(output, source_hash, resume=resume)
     with ThreadPoolExecutor(max_workers=3) as pool:
-        map_call = pool.submit(classify_islands, invoke, views, images, source["detection_context"])
+        map_call = pool.submit(classify_islands, invoke, views, images, source["detection_context"],
+                               include_worktop_cutouts=component_pdf is not None)
         if any(not any(view["arrows"] and oblique_evidence(view)
                        for view in views.values() if view["object_id"] == oid)
                for oid in {view["object_id"] for view in views.values()}):
@@ -695,19 +709,23 @@ def run_pipeline(args, source, *, version, request_provider=None):
             saved_dimension_inventory=read_json(saved_dimensions) if saved_dimensions else None,
         )
         if v9:
-            from tools.estimation_worktop_geometry import worktop_geometry
+            from tools.estimation_worktop_geometry import bind_worktop_cutouts, worktop_geometry
 
             for oid, measurements_for_object in measurements["objects"].items():
                 owners = result["objects"][oid]["planner"].get("object_parts", ())
                 if sum(owner["role"] == "worktop" and not owner.get("envelope_block_id") for owner in owners) != 1:
                     continue
                 object_views = {vid: view for vid, view in views.items() if view["object_id"] == oid}
+                understanding = result["understanding"].get(oid, {})
                 footprint = worktop_geometry(
                     measurements_for_object["blocks"], object_views, measurements_for_object["printed_dimensions"],
-                    result["understanding"].get(oid, {}), result["islands"],
+                    understanding, result["islands"],
                 )
                 if footprint:
                     measurements_for_object["worktop_outline"] = footprint
+                cutouts = bind_worktop_cutouts(understanding.get("worktop_cutouts"), object_views, result["islands"])
+                if cutouts:
+                    measurements_for_object["worktop_cutouts"] = cutouts
             if not args.parts_profile:
                 from use_cases.estimation_lighting_ownership import resolve_lighting_ownership
 

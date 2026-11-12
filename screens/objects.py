@@ -851,7 +851,7 @@ def _render_parts_check(*, estimate_id: str, run_id: str, company_id: str) -> No
     status = result["status"]
     if status == "ready":
         if areas := result.get("worktop_areas"):
-            st.caption("Worktop area before cutouts")
+            st.caption("Worktop material area")
             st.table(areas)
         st.download_button(f"Download Parts Check ({result['part_rows']} rows)",
                            data=result["payload"], file_name="parts-check.json",

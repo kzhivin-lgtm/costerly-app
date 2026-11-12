@@ -1,6 +1,6 @@
 import pytest
 
-from tools.estimation_worktop_geometry import worktop_geometry
+from tools.estimation_worktop_geometry import bind_worktop_cutouts, worktop_geometry
 
 
 def test_worktop_joins_linked_plan_faces_and_requires_finish_evidence_to_split():
@@ -38,3 +38,16 @@ def test_worktop_joins_linked_plan_faces_and_requires_finish_evidence_to_split()
     ambiguous = worktop_geometry(blocks, {"plan": plan}, printed, reading, projections)
     assert ambiguous["outer"]["area_m2"] == split["outer"]["area_m2"]
     assert ambiguous["surfaces"] == []
+
+
+def test_cutouts_require_one_owned_crop_and_do_not_double_count_overlapping_boxes():
+    views = {vid: {"width": 100, "height": 100} for vid in ("plan", "render")}
+    projections = {"plan": "Top view", "render": "Render"}
+    cutout = {"view_id": "render", "bbox_px": [10, 20, 30, 40], "fixture": "unknown"}
+    duplicate = {**cutout, "bbox_px": [11, 21, 31, 41]}
+    second = {**cutout, "bbox_px": [40, 20, 60, 40]}
+    outside = {**cutout, "bbox_px": [0, 0, 200, 100]}
+    foreign = {**cutout, "view_id": "unowned"}
+    result = bind_worktop_cutouts([cutout, duplicate, second, outside, foreign], views, projections)
+    assert [row["bbox_px"] for row in result] == [cutout["bbox_px"], second["bbox_px"]]
+    assert bind_worktop_cutouts([cutout, {**cutout, "view_id": "plan"}], views, projections) == []

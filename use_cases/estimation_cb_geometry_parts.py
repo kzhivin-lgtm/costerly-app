@@ -363,7 +363,7 @@ def worktop_spans(blocks, views, printed):
     return tuple(result)
 
 
-def shared_part(owner, blocks, views, printed, worktop_outline=None):
+def shared_part(owner, blocks, views, printed, worktop_outline=None, worktop_cutouts=()):
     result = {"id": owner["id"], "role": owner["role"], "quantity": owner["quantity"],
               "unit": owner.get("unit", "piece"), "attached_block_ids": owner.get("attached_block_ids", []), "parts": []}
     if owner["role"] == "plinth" and len(owner["appearances"]) == 1 and len(owner["attached_block_ids"]) == 1 and "installed_height" in blocks[owner["attached_block_ids"][0]]:
@@ -389,9 +389,11 @@ def shared_part(owner, blocks, views, printed, worktop_outline=None):
                                 length=length, width=width, thickness=stock(30))]
         if worktop_outline:
             result["parts"][0]["worktop_outline"] = worktop_outline
-            result["review"] = ["Worktop area is measured before cutouts. Verify material, seams and cutouts."]
+            result["review"] = ["Worktop material area follows the outside outline. Verify material and seams."]
         else:
-            result["review"] = ["Worktop dimensions describe the plan envelope. Verify edge profiles, seams and cutouts."]
+            result["review"] = ["Worktop dimensions describe the plan envelope. Verify the outside outline."]
+        if worktop_cutouts:
+            result["parts"][0]["worktop_cutouts"] = worktop_cutouts
     else:
         result["review"] = ["Shared component construction unresolved."]
     return result
@@ -462,7 +464,8 @@ def compile_geometry_parts(analyze, geometry, views):
                 continue
             try:
                 row = shared_part(owner, {bid: item["measurements"] for bid, item in readings.items()},
-                                  object_views, printed, evidence.get("worktop_outline"))
+                                  object_views, printed, evidence.get("worktop_outline"),
+                                  evidence.get("worktop_cutouts", ()))
             except (KeyError, IndexError) as exc:
                 row = {"id": owner["id"], "role": owner["role"], "parts": [], "review": [f"Incomplete component evidence: {exc}"]}
             result["shared_parts"].append(row)

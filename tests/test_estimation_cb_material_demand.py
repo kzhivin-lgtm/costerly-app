@@ -75,15 +75,22 @@ def test_worktop_surface_areas_are_preserved_without_inventing_end_material():
                    {"id": "main", "material_role": "main_worktop", "area_m2": 2.5},
                    {"id": "end", "material_role": "contrasting_end", "area_m2": .2},
                ]}
-    row = _part("shared_worktop", quantity=1, worktop_outline=outline)
+    cutout = {"id": "render:worktop-cutout-01", "view_id": "render", "bbox_px": [10, 20, 40, 50],
+              "fixture_hint": "cooktop", "surface": "main_worktop"}
+    row = _part("shared_worktop", quantity=1, worktop_outline=outline, worktop_cutouts=[cutout, cutout])
     result = _build([row], {"engineered_quartz_mineral_hybrid"}, quantity=2)
 
-    main, end = result["materials"]
+    main, end, service = result["materials"]
     assert (main["family"], main["quantity"], main["unit"]) == ("engineered_quartz_mineral_hybrid", 5, "m2")
     assert main["basis"] == "construction_assumption"
     assert (end["family"], end["quantity"], end["unit"]) == (None, .4, "m2")
     assert "render" in end["evidence_refs"]
+    assert (service["source_name"], service["operation_code"], service["quantity"], service["unit"]) == (
+        "Worktop cutout", "stone_cutout", 2, "piece",
+    )
+    assert service["item_kind"] == "operation_service" and service["family"] is None
+    assert service["part_sources"][0]["cutout"] == cutout
     assert result["parts"] == []
     assert [issue["reason"] for issue in result["review_items"]] == [
-        "worktop_material_family_unresolved", "worktop_cutouts_unresolved",
+        "worktop_material_family_unresolved", "worktop_cutout_supplier_offer_pending",
     ]

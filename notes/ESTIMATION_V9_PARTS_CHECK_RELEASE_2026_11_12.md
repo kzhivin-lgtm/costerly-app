@@ -339,4 +339,16 @@ All nine Block envelopes and 107 Parts Check rows matched the checkpoint.
 The gross area is 3.0 m²: 2.8 m² of main surface (artificial stone by
 assumption) and 0.2 m² of the contrasting beveled end (material unresolved).
 Parts Check displays one decimal place. Machine-readable output retains
-calculation precision. Cutout geometry and the end material remain open.
+calculation precision. The end material remains open.
+
+Worktop material purchasing uses the complete outline without deducting
+appliance openings. Understanding locates openings on one source Island;
+Parts Check keeps the crop location on the worktop part. Material Demand
+records each opening as a separate supplier service, in pieces. Stone
+worktops use the existing `stone_cutout` operation code. Appliance type
+from visual recognition is a hint only. The supplier offer is still
+pending; the stock planner does not treat the service as a material.
+Fresh Lev2 recognition found one opening on V02 in 50.4 seconds with five
+existing Sonnet calls. Replaying those responses through the final adapter
+emitted one `stone_cutout` and the same gross areas, with all nine Block
+envelopes and 107 Parts Check rows still matching the checkpoint.

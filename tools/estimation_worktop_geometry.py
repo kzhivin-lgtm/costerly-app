@@ -14,6 +14,35 @@ def _area(points):
     return abs(sum(x * v - u * y for (x, y), (u, v) in _edges(points))) / 2
 
 
+def bind_worktop_cutouts(rows, views, projections):
+    """Keep distinct openings on one owned view, in its native crop coordinates."""
+    if not isinstance(rows, list) or not rows:
+        return []
+    result = []
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(vid := row.get("view_id"), str):
+            continue
+        view = views.get(vid)
+        if not view or projections.get(vid) not in {"Top view", "Render", "Axonometric view", "Detail"}:
+            continue
+        box = row.get("bbox_px")
+        if not isinstance(box, list) or len(box) != 4 or not all(type(x) in {int, float} for x in box):
+            continue
+        left, top, right, bottom = box
+        if not (0 <= left < right <= view["width"] and 0 <= top < bottom <= view["height"]):
+            continue
+        if result and vid != result[0]["view_id"]:
+            return []  # No safe identity match between alternate projections.
+        if any(min(right, old["bbox_px"][2]) > max(left, old["bbox_px"][0]) and
+               min(bottom, old["bbox_px"][3]) > max(top, old["bbox_px"][1]) for old in result):
+            continue
+        fixture, surface = row.get("fixture"), row.get("surface")
+        result.append({"id": f"{vid}:worktop-cutout-{len(result) + 1:02d}", "view_id": vid, "bbox_px": box,
+                       "fixture_hint": fixture if fixture in ("sink", "cooktop") else "unknown",
+                       "surface": surface if surface in ("main_worktop", "contrasting_end") else "unknown"})
+    return result
+
+
 def _outline(faces, depth):
     counts = Counter()
     for face in faces:
@@ -158,7 +187,7 @@ def worktop_geometry(blocks, views, printed, understanding, projections):
         return {"id": ident, "polygon_px": points, "polygon_mm": polygon_mm,
                 "area_m2": round(_area(polygon_mm) / 1_000_000, 6), **evidence}
 
-    result = {"view_id": view_id, "area_basis": "gross_plan_outline", "cutout_status": "unresolved",
+    result = {"view_id": view_id, "area_basis": "gross_plan_outline",
               "source_refs": refs, "outer": surface("outer", outline), "surfaces": []}
     result["kitchen_worktop"] = bool(re.search(r"\bkitchen\b|кухн", understanding.get("name") or "", re.I))
     finish = _finish_evidence(understanding, views, projections)

@@ -38,6 +38,8 @@ _MATERIAL_HOLDS = {
     **dict.fromkeys(("led_strip_run", "led_power_supply"), "lighting_material_resolution_required"),
 }
 _WORKTOP_DEFAULT_FAMILY = "engineered_quartz_mineral_hybrid"
+_STONE_CUTOUT_FAMILIES = {"natural_stone_slab", _WORKTOP_DEFAULT_FAMILY, "sintered_ultra_compact_surface",
+                          "porcelain_ceramic_slab", "solid_surface", "terrazzo_engineered_agglomerate"}
 
 
 def _positive(value):
@@ -123,9 +125,36 @@ def _worktop_requirements(row, part_source, object_quantity, families, materials
             review_items.append({"part_id": part_id, "surface_id": surface["id"],
                                  "reason": "worktop_material_family_unresolved",
                                  "area_m2": quantity})
-    if outline["cutout_status"] == "unresolved":
-        review_items.append({"part_id": part_id, "reason": "worktop_cutouts_unresolved"})
     return True
+
+
+def _worktop_cutout_requirements(row, part_source, object_quantity, materials, review_items):
+    count = row["quantity"]
+    if not _positive(count) or int(count) != count:
+        return
+    part_id = part_source["part_id"]
+    quantity = int(count * part_source["scope_quantity"] * object_quantity)
+    surface_families = {item["part_sources"][0]["surface"]["material_role"]: item["family"]
+                        for key, item in materials.items() if len(key) == 2 and key[0] == part_id}
+    for cutout in row.get("worktop_cutouts", ()):
+        key = part_id, cutout["id"], "operation_service"
+        if key in materials:
+            continue
+        family = surface_families.get(cutout["surface"])
+        if cutout["surface"] == "unknown" and len(surface_families) == 1:
+            family = next(iter(surface_families.values()))
+        refs = [cutout["view_id"], cutout["id"]]
+        requirement_id = f"cb-material-{len(materials) + 1:03d}"
+        materials[key] = {
+            "requirement_id": requirement_id, "source_name": "Worktop cutout", "family": None,
+            "material_role": "worktop_cutout", "item_kind": "operation_service",
+            "operation_code": "stone_cutout" if family in _STONE_CUTOUT_FAMILIES else None,
+            "specification": {"worktop_family": family},
+            "basis": "source_evidence", "evidence_refs": refs, "quantity": quantity, "unit": "piece",
+            "part_sources": [{**part_source, "cutout": cutout, "evidence_refs": refs}],
+        }
+        review_items.append({"part_id": part_id, "requirement_id": requirement_id,
+                             "reason": "worktop_cutout_supplier_offer_pending"})
 
 
 def build_cb_material_demand(*, parts_report, input_row, allowed_material_families):
@@ -171,9 +200,12 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
             part_source = {**row, "part_id": part_id, "scope_id": scope_id,
                            "scope_quantity": multiplier, "evidence_refs": refs}
             duplicate = (row["role"], row.get("instance_ref")) in duplicate_refs
-            if row["role"] == "shared_worktop" and not duplicate and _worktop_requirements(
-                    row, part_source, object_quantity, allowed_material_families, materials, review_items):
-                continue
+            if row["role"] == "shared_worktop" and not duplicate:
+                area_resolved = _worktop_requirements(
+                    row, part_source, object_quantity, allowed_material_families, materials, review_items)
+                _worktop_cutout_requirements(row, part_source, object_quantity, materials, review_items)
+                if area_resolved:
+                    continue
             is_count = role in _COUNT_ROLES
             required = () if is_count else _SPECIAL_DIMENSIONS.get(row["role"], _SHEET_DIMENSIONS)
             missing = [field for field in required if not _positive(measurements.get(field, {}).get("mm"))]
