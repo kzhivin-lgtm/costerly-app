@@ -62,7 +62,13 @@ from agents.detection_visual_embedding import (
     derive_detection_native_xobject_strong_mutual_pairs,
     format_detection_native_xobject_embedding_prior,
 )
-from agents.detection_page_images import DEFAULT_PAGE_IMAGE_DPI
+from agents.detection_page_images import DEFAULT_PAGE_IMAGE_DPI, render_detection_pdf_view_crops
+from agents.detection_presentation_roles import (
+    RENDER_ROLE_PROMPT,
+    RENDER_ROLE_SCHEMA,
+    presentation_role_corrections,
+    select_presentation_role_crops,
+)
 from agents.detection_spatial_inventory import (
     build_detection_spatial_inventory,
     spatial_inventory_context,
@@ -4121,9 +4127,9 @@ occlusion. Attach only when the same distinctive configuration of parts is visib
 in both crops, such as a particular sequence of divisions, an asymmetric return or a
 distinctive opening in the same location. One matching_topology or unique_geometry
 witness from a single technical View is sufficient, even if no group is confirmed.
-Use the clearest technical View in a confirmed group when
-multiple Views show the same feature. Room context, proximity, finish, generic
-furniture type and group membership do not establish identity.
+Use the technical View that shows the same feature most clearly when several
+show that part. Room context, proximity, finish and generic furniture type
+do not establish identity.
 
 Return one decision per listed render. For attach, name the shared feature in
 visual_witness and use the ID of one displayed technical crop. Use unresolved if the
@@ -4138,12 +4144,14 @@ def review_detection_unattached_renders_on_same_sheet(
     primary_decisions: list[dict[str, Any]],
     visual_groups: list[dict[str, Any]],
     group_id_mapping: dict[str, str],
-    technical_components: list[list[str]],
     view_crops: list[dict[str, Any]],
     page_context_images: list[dict[str, Any]],
     model: str,
     stream_message: Callable[..., Any],
     stage_callback: Callable[..., None] | None = None,
+    file_bytes: bytes | None = None,
+    crop_audit: list[dict[str, Any]] | None = None,
+    coordinate_frames: dict[int, dict[str, Any]] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     pending = {
         row["render_group_id"] for row in primary_decisions
@@ -4168,9 +4176,13 @@ def review_detection_unattached_renders_on_same_sheet(
         if group_id_mapping[group_id] in pending:
             targets_by_page.setdefault(group["page_number"], set()).add(group_id)
     contexts = {image["page_number"]: image for image in page_context_images}
+    source_boxes = {row["group_id"]: row["source_bbox"] for row in crop_audit or [] if "source_bbox" in row}
 
-    def review_sheet(page: int, client: anthropic.Anthropic) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-        targets = targets_by_page[page]
+    def review_sheet(
+        page: int, targets: set[str], client: anthropic.Anthropic, *,
+        decision_source: str = "primary_same_sheet",
+    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        refine = decision_source == "focused_core_retry"
         crops = groups_by_page.get(page, [])
         render_crops = [crop for crop in crops if crop["group_id"] in targets]
         technical_crops = [
@@ -4184,19 +4196,51 @@ def review_detection_unattached_renders_on_same_sheet(
             "page_number": page, "render_ids": sorted(group_id_mapping[g] for g in targets),
             "visible_render_ids": sorted(group_id_mapping[g] for g in visible_targets),
             "technical_ids": sorted(technical_ids),
+            "decision_source": decision_source,
         }
         if not visible_targets or not technical_ids:
             return {**entry, "status": "no_comparable_crops"}, []
 
         visible_crops = [*render_crops, *technical_crops]
+        if file_bytes is not None:
+            frame = (coordinate_frames or {}).get(page, {}).get("fusion_dimensions")
+            if not frame:
+                return {**entry, "status": "pdf_crop_frame_unavailable"}, []
+            try:
+                boxes = {crop["group_id"]: source_boxes[crop["group_id"]] for crop in visible_crops}
+                if refine:
+                    refined_ids = []
+                    for crop in technical_crops:
+                        group_id = crop["group_id"]
+                        core = _detection_bbox(groups[group_id].get("core_bbox"))
+                        if (
+                            core and _detection_bbox_contains(boxes[group_id], core)
+                            and _detection_bbox_area(core) <= 0.8 * _detection_bbox_area(boxes[group_id])
+                        ):
+                            boxes[group_id] = core
+                            refined_ids.append(group_id)
+                    if not refined_ids:
+                        return {**entry, "status": "no_new_visual_evidence"}, []
+                    entry["refined_technical_ids"] = sorted(group_id_mapping[g] for g in refined_ids)
+                sharper = render_detection_pdf_view_crops(file_bytes, page, frame, boxes)
+            except (ImportError, RuntimeError, ValueError, KeyError) as exc:
+                return {**entry, "status": "pdf_crops_unavailable", "error": str(exc)}, []
+            if set(sharper) != set(boxes):
+                return {**entry, "status": "incomplete_pdf_crops"}, []
+            visible_crops = [{**crop, "bytes": sharper[crop["group_id"]]} for crop in visible_crops]
+            entry["crop_source"] = "pdf_at_local_review_resolution"
         visible_groups = [groups[crop["group_id"]] for crop in visible_crops]
-        raw_ids = {group_id_mapping[group["group_id"]]: group["group_id"] for group in visible_groups}
-        confirmed = [technical_ids.intersection(component) for component in technical_components]
         handoff = "Render IDs: " + ", ".join(sorted(visible_targets))
-        handoff += "\nConfirmed technical groups on this sheet:\n" + (
-            "\n".join(", ".join(sorted(raw_ids[g] for g in group)) for group in confirmed if len(group) > 1)
-            or "None."
-        )
+        if refine:
+            handoff += (
+                "\nThe tighter technical crops show the physical subject at greater scale. "
+                "Look for the same distinctive parts within those drawings."
+            )
+        elif decision_source == "focused_incomplete_retry":
+            handoff += (
+                "\nThese are only the renders missing a decision or a visual witness. Return one row for each listed ID, "
+                "including an abstention with the missing feature when you cannot match it."
+            )
         context_images = [contexts[page]] if page in contexts else []
         content = build_detection_v5_membership_content_blocks(
             user_text=handoff, view_crops=visible_crops, page_context_images=context_images,
@@ -4235,12 +4279,35 @@ def review_detection_unattached_renders_on_same_sheet(
             return {**entry, "status": "failed", "error": str(exc)}, []
         return {**entry, "status": "reviewed", "decisions": decisions}, facts
 
-    _notify_detection_stage(stage_callback, "Same-sheet render review started", {"sheet_count": len(targets_by_page)})
+    _notify_detection_stage(stage_callback, "Same-sheet render matching started", {"sheet_count": len(targets_by_page)})
     with get_anthropic_client().with_options(max_retries=0, timeout=20.0) as client:
         with ThreadPoolExecutor(max_workers=4) as workers:
-            futures = [workers.submit(review_sheet, page, client) for page in sorted(targets_by_page)]
-            facts = []
+            futures = [
+                workers.submit(review_sheet, page, targets_by_page[page], client)
+                for page in sorted(targets_by_page)
+            ]
+            facts, retries = [], []
+            raw_ids = {normalized: raw for raw, normalized in group_id_mapping.items()}
             for future in futures:
+                entry, accepted = future.result()
+                audit["sheets"].append(entry)
+                facts.extend(accepted)
+                unresolved = [
+                    row for row in entry.get("decisions", [])
+                    if row["disposition"] == "unresolved"
+                    or (row["disposition"] == "no_match" and not row["visual_witness"])
+                ]
+                if file_bytes is None or not unresolved:
+                    continue
+                incomplete = [row for row in unresolved if not row["visual_witness"]]
+                subset = 0 < len(incomplete) < len(entry["visible_render_ids"])
+                targets = {raw_ids[row["render_group_id"]] for row in (incomplete if subset else unresolved)}
+                source = "focused_incomplete_retry" if subset else "focused_core_retry"
+                retries.append((entry["page_number"], targets, source))
+            for future in [
+                workers.submit(review_sheet, page, targets, client, decision_source=source)
+                for page, targets, source in retries
+            ]:
                 entry, accepted = future.result()
                 audit["sheets"].append(entry)
                 facts.extend(accepted)
@@ -4902,6 +4969,74 @@ def build_detection_v5_membership_content_blocks(
         })
     blocks.append({"type": "text", "text": user_text})
     return blocks
+
+
+def review_detection_presentation_roles(
+    *, visual_groups: list[dict[str, Any]], view_crops: list[dict[str, Any]],
+    model: str, stream_message: Callable[..., Any], stage_callback: Callable[..., None] | None,
+    file_bytes: bytes, coordinate_frames: dict[int, dict[str, Any]],
+) -> tuple[dict[str, dict[str, str]], list[dict[str, Any]]]:
+    candidates = select_presentation_role_crops(visual_groups, view_crops)
+    if not candidates:
+        return {}, []
+    _notify_detection_stage(stage_callback, "Render role verification started", {"view_count": len(candidates)})
+    by_id = {group["group_id"]: group for group in visual_groups}
+    boxes_by_page: dict[int, dict[str, dict[str, int]]] = {}
+    for crop in candidates:
+        group_id = crop["group_id"]
+        group = by_id[group_id]
+        boxes_by_page.setdefault(crop["page_number"], {})[group_id] = group.get("core_bbox") or group["bbox"]
+    sharper = {}
+    for page, boxes in boxes_by_page.items():
+        frame = coordinate_frames.get(page, {}).get("fusion_dimensions")
+        if not frame:
+            continue
+        try:
+            sharper.update(render_detection_pdf_view_crops(file_bytes, page, frame, boxes))
+        except (ImportError, RuntimeError, ValueError, KeyError):
+            continue
+    candidates = [{**crop, "bytes": sharper.get(crop["group_id"], crop["bytes"])} for crop in candidates]
+    corrections: dict[str, dict[str, str]] = {}
+    audit: list[dict[str, Any]] = []
+    with get_anthropic_client().with_options(max_retries=0, timeout=20.0) as client:
+        for offset in range(0, len(candidates), 20):
+            crops = candidates[offset:offset + 20]
+            visible_ids = {crop["group_id"] for crop in crops}
+            row: dict[str, Any] = {
+                "view_ids": sorted(visible_ids), "pdf_crop_ids": sorted(visible_ids.intersection(sharper)),
+            }
+            audit.append(row)
+            content = build_detection_v5_membership_content_blocks(
+                user_text="Describe the visual medium of each crop.",
+                view_crops=crops, page_context_images=[],
+            )
+            try:
+                response, diagnostics = stream_message(
+                    client, model=model, max_tokens=2048, max_stream_seconds=20.0,
+                    system=build_detection_system_content(prompt=RENDER_ROLE_PROMPT),
+                    messages=[{"role": "user", "content": content}],
+                    output_config={"format": {"type": "json_schema", "schema": RENDER_ROLE_SCHEMA}},
+                )
+                row["provider"] = summarize_detection_provider_call(
+                    response=response, diagnostics=diagnostics, requested_model=model,
+                    prompt_characters=len(RENDER_ROLE_PROMPT), context_characters=len(content[-1]["text"]),
+                    image_count=len(crops), image_bytes=sum(len(crop["bytes"]) for crop in crops),
+                )
+                if response.stop_reason != "end_turn":
+                    row["status"] = "incomplete_response"
+                    continue
+                payload = json.loads(extract_text_from_claude_response(response))
+                if not isinstance(payload, dict) or set(payload) != {"presentation_role_decisions"}:
+                    raise ValueError("Invalid presentation role response")
+                accepted = presentation_role_corrections(
+                    visual_groups, visible_ids, payload["presentation_role_decisions"],
+                )
+            except (ValueError, RuntimeError, anthropic.APIError) as exc:
+                row.update(status="failed", error=str(exc))
+                continue
+            row.update(status="reviewed", corrections=accepted)
+            corrections.update(accepted)
+    return corrections, audit
 
 
 def build_detection_v5_source_degraded_registry_content_blocks(
@@ -10062,6 +10197,7 @@ class DetectionRegistryHooks(NamedTuple):
     compile_merge_edges: Callable[..., Any]
     count_input_tokens: Callable[..., int | None]
     render_review_stream: Callable[..., Any] | None = None
+    verify_render_roles: bool = False
 
 
 def run_anthropic_detection_visual_registry_agent(
@@ -11301,6 +11437,21 @@ def run_anthropic_detection_visual_registry_agent(
     proposal_for_review, _ = _validate_and_apply_visual_registry_classifications(
         proposal_discovery_payload, page_frames=review_coordinate_frames,
     )
+    membership_crops, membership_crop_audit = build_detection_v5_membership_view_crops(
+        page_images=page_images, visual_groups=proposal_for_review["visual_groups"],
+        coordinate_frames=review_coordinate_frames,
+    )
+    role_corrections, role_review_audit = {}, []
+    if hooks.verify_render_roles:
+        role_corrections, role_review_audit = review_detection_presentation_roles(
+            visual_groups=proposal_for_review["visual_groups"], view_crops=membership_crops,
+            model=review_model, stream_message=stream_message, stage_callback=stage_callback,
+            file_bytes=file_bytes, coordinate_frames=review_coordinate_frames,
+        )
+        for groups in (proposal_for_review["visual_groups"], proposal_discovery_payload["visual_groups"]):
+            for group in groups:
+                if correction := role_corrections.get(group["group_id"]):
+                    group["representation_kind"] = correction["role"]
     (
         v714_required_conflict_pairs,
         v714_conflict_membership_audit,
@@ -11365,10 +11516,6 @@ def run_anthropic_detection_visual_registry_agent(
     registry_visual_sources = build_detection_v5_registry_visual_sources(
         proposal_for_review["visual_groups"]
     )
-    membership_crops, membership_crop_audit = build_detection_v5_membership_view_crops(
-        page_images=page_images, visual_groups=proposal_for_review["visual_groups"],
-        coordinate_frames=review_coordinate_frames,
-    )
     if v845_global_batched_assembly_scope_active:
         (
             global_scope_payload,
@@ -11389,6 +11536,12 @@ def run_anthropic_detection_visual_registry_agent(
             proposal_scope_payload = global_scope_payload
             document_scope = global_scope
     review_groups = proposal_for_review["visual_groups"]
+    if role_corrections:
+        review_groups = [
+            {**group, "visual_description": role_corrections[group["group_id"]]["visual_witness"]}
+            if group["group_id"] in role_corrections else group
+            for group in review_groups
+        ]
     required_same_page_pairs, review_same_page_queue_audit = (
         finalize_detection_same_page_membership_queue(visual_groups=review_groups)
     )
@@ -12064,6 +12217,7 @@ def run_anthropic_detection_visual_registry_agent(
             ) if v69_reconciliation_response is not None and v69_reconciliation_diagnostics is not None else None
         ),
         "v5_9_review_crop_audit": membership_crop_audit,
+        "presentation_role_review": role_review_audit,
         "v5_9_review_page_context_audit": review_page_context_audit,
         "v6_41_review_context_transport": v641_review_context_audit,
         "v8_4_5_global_batched_assembly_scope": copy.deepcopy(
@@ -12612,11 +12766,10 @@ def run_anthropic_detection_visual_registry_agent(
             recovered_facts, render_review = review_detection_unattached_renders_on_same_sheet(
                 primary_decisions=presentation_render_decision_audit, visual_groups=raw_groups,
                 group_id_mapping=group_id_mapping,
-                technical_components=derive_detection_proof_components(
-                    accepted_merge_edges, visual_group_ids=visual_group_ids,
-                ),
                 view_crops=membership_crops, page_context_images=effective_review_page_context_images,
                 model=review_model, stream_message=hooks.render_review_stream,
+                stage_callback=stage_callback,
+                file_bytes=file_bytes, crop_audit=membership_crop_audit, coordinate_frames=review_coordinate_frames,
             )
             diagnostics["same_sheet_render_review"] = render_review
             diagnostics["request_finished_at"] = max([
@@ -12624,11 +12777,13 @@ def run_anthropic_detection_visual_registry_agent(
                 *(row["request_finished_at"] for row in render_review["sheets"] if "request_finished_at" in row),
             ])
             recovered_edges = build_detection_presentation_render_edges(recovered_facts, page_by_group_id)
+            if recovered_facts and not presentation_render_facts and not v635_ada_pair_local_membership_active:
+                semantic_source_facts.extend(normalized_registry_visual_sources)
             positive_relation_edges.extend(recovered_edges)
             accepted_merge_edges.extend(recovered_edges)
             render_ledger = semantic_ledger_audit["v7_11_presentation_render"]
             recovered_decisions = {
-                row["render_group_id"]: {**row, "decision_source": "focused_same_sheet"}
+                row["render_group_id"]: {**row, "decision_source": sheet["decision_source"]}
                 for sheet in render_review["sheets"] for row in sheet.get("decisions", [])
                 if row["disposition"] == "attach"
             }
@@ -13002,6 +13157,7 @@ def run_anthropic_detection_visual_registry_agent(
     ]
     if same_sheet_review is not None:
         provider_call_usages.append(same_sheet_review["provider"])
+    provider_call_usages.extend(row["provider"] for row in role_review_audit if "provider" in row)
     provider_call_usages.extend(
         row["provider"] for row in diagnostics.get("same_sheet_render_review", {}).get("sheets", [])
         if "provider" in row

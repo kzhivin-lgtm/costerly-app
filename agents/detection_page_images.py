@@ -23,6 +23,35 @@ REGISTRY_MAX_IMAGES = 100
 REGISTRY_REGIONS_PER_PAGE = 3
 
 
+def render_detection_pdf_view_crops(
+    file_bytes: bytes,
+    page_number: int,
+    frame: dict[str, Any],
+    boxes: dict[str, dict[str, int]],
+) -> dict[str, bytes]:
+    """Render fixed Fusion boxes from PDF at the local review resolution."""
+    import pymupdf
+
+    crops = {}
+    with pymupdf.open(stream=file_bytes, filetype="pdf") as document:
+        page = document[page_number - 1]
+        for group_id, box in boxes.items():
+            clip = pymupdf.Rect(
+                box["top_left_x"] / frame["width"] * page.rect.width,
+                box["top_left_y"] / frame["height"] * page.rect.height,
+                box["bottom_right_x"] / frame["width"] * page.rect.width,
+                box["bottom_right_y"] / frame["height"] * page.rect.height,
+            )
+            margin_x, margin_y = clip.width * 0.04, clip.height * 0.04
+            clip = (clip + (-margin_x, -margin_y, margin_x, margin_y)) & page.rect
+            if clip.is_empty:
+                continue
+            scale = 1440 / max(clip.width, clip.height)
+            pixmap = page.get_pixmap(matrix=pymupdf.Matrix(scale, scale), clip=clip, alpha=False)
+            crops[group_id] = pixmap.tobytes("jpeg", jpg_quality=87)
+    return crops
+
+
 def estimated_inline_pdf_bytes(file_bytes: bytes) -> int:
     return 4 * ((len(file_bytes) + 2) // 3)
 

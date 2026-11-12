@@ -1,10 +1,17 @@
 import json
 from contextlib import nullcontext
+from io import BytesIO
 from types import SimpleNamespace
 
 import pytest
+from PIL import Image
 import agents.anthropic_adapter as anthropic_adapter
 
+from agents.detection_presentation_roles import (
+    presentation_role_corrections,
+    select_presentation_role_crops,
+)
+from agents.detection_ordinary_membership import same_sheet_render_ids
 from agents.anthropic_adapter import (
     apply_detection_v67_mistral_anchor_admission,
     build_detection_v69_reconciliation_matrix,
@@ -591,6 +598,46 @@ def test_v711_ordinary_primary_render_self_link_is_eligible_for_review():
     }]
 
 
+def test_presentation_role_review_reverses_only_witnessed_render_drawing_errors():
+    roles = {"drawing": "presentation_render", "render": "elevation", "legitimate": "section"}
+    groups = [{"group_id": group_id, "representation_kind": role} for group_id, role in roles.items()]
+    crops = []
+    for group_id, shade in (("drawing", 255), ("render", 140), ("legitimate", 255)):
+        output = BytesIO()
+        Image.new("L", (128, 128), shade).save(output, format="PNG")
+        crops.append({"group_id": group_id, "bytes": output.getvalue()})
+    visible_ids = {crop["group_id"] for crop in select_presentation_role_crops(groups, crops)}
+    assert visible_ids == {"drawing", "render"}
+
+    decisions = [
+        {"group_id": "drawing", "role": "plan", "visual_witness": "Dimensioned linework with leaders."},
+        {"group_id": "render", "role": "presentation_render", "visual_witness": "Material textures and shadows."},
+        {"group_id": "legitimate", "role": "presentation_render", "visual_witness": "Outside the reviewed crops."},
+    ]
+    changes = presentation_role_corrections(groups, visible_ids, decisions)
+    assert {group_id: change["role"] for group_id, change in changes.items()} == {
+        "drawing": "plan", "render": "presentation_render",
+    }
+    assert set(presentation_role_corrections(groups, visible_ids, [*decisions, decisions[0]])) == {"render"}
+
+
+def test_render_ownership_routes_to_same_sheet_only_when_both_crops_exist():
+    inventory = [
+        ("local-render", 1, "presentation_render"),
+        ("local-drawing", 1, "elevation"),
+        ("cross-sheet-render", 2, "presentation_render"),
+        ("drawing-without-crop", 2, "section"),
+    ]
+    content = [
+        block for view_id, page, _ in inventory[:-1]
+        for block in ({"text": f"Object View {view_id}, PDF page {page}"}, {"type": "image"})
+    ]
+    content.append({"text": "\n".join(
+        f"{view_id}|P{page}|K={role}|D=View|" for view_id, page, role in inventory
+    )})
+    assert same_sheet_render_ids({"messages": [{"content": content}]}) == {"local-render"}
+
+
 def test_same_sheet_render_review_keeps_primary_matches_and_rejects_off_sheet_targets(monkeypatch):
     inventory = [
         ("already-attached", 1, "presentation_render"),
@@ -633,7 +680,7 @@ def test_same_sheet_render_review_keeps_primary_matches_and_rejects_off_sheet_ta
                 ("omitted", "unresolved"), ("isolated", "no_match"),
             )
         ],
-        visual_groups=groups, group_id_mapping=mapping, technical_components=[],
+        visual_groups=groups, group_id_mapping=mapping,
         view_crops=[dict(group_id=group_id, page_number=page, bytes=b"crop") for group_id, page, _ in inventory],
         page_context_images=[], model=anthropic_adapter.CLAUDE_HAIKU_MODEL, stream_message=send,
     )
@@ -642,6 +689,47 @@ def test_same_sheet_render_review_keeps_primary_matches_and_rejects_off_sheet_ta
         (mapping["unmatched"], mapping["front"]),
     ]
     assert [row["status"] for row in audit["sheets"]] == ["reviewed", "failed", "no_comparable_crops"]
+
+
+@pytest.mark.parametrize("core_size,expected_requests", [(10, 1), (7, 2)])
+def test_render_retry_requires_a_tighter_technical_crop(monkeypatch, core_size, expected_requests):
+    source = dict(top_left_x=0, top_left_y=0, bottom_right_x=10, bottom_right_y=10)
+    core = {**source, "bottom_right_x": core_size, "bottom_right_y": core_size}
+    groups = [
+        dict(group_id="render", page_number=1, representation_kind="presentation_render", evidence_class="object_evidence"),
+        dict(group_id="drawing", page_number=1, representation_kind="section", evidence_class="object_evidence", core_bbox=core),
+    ]
+    monkeypatch.setattr(anthropic_adapter, "get_anthropic_client", lambda: SimpleNamespace(
+        with_options=lambda **kwargs: nullcontext(object()),
+    ))
+    rendered_boxes = []
+
+    def render_pdf(_pdf, _page, _frame, boxes):
+        rendered_boxes.append(boxes["drawing"])
+        return {view_id: b"crop" for view_id in boxes}
+
+    def send(_client, **_request):
+        row = {
+            "render_group_id": "render", "disposition": "unresolved", "technical_group_id": "",
+            "evidence_type": "none", "visual_witness": "The detail is too small to compare.",
+        }
+        content = json.dumps({"presentation_render_decisions": [row]})
+        return SimpleNamespace(
+            stop_reason="end_turn", content=[SimpleNamespace(type="text", text=content)],
+        ), {"request_started_at": "2026-11-12T10:00:00+00:00", "request_finished_at": "2026-11-12T10:00:01+00:00"}
+
+    monkeypatch.setattr(anthropic_adapter, "render_detection_pdf_view_crops", render_pdf)
+    _, audit = anthropic_adapter.review_detection_unattached_renders_on_same_sheet(
+        primary_decisions=[{"render_group_id": "render", "disposition": "unresolved"}],
+        visual_groups=groups, group_id_mapping={"render": "render", "drawing": "drawing"},
+        view_crops=[dict(group_id=group["group_id"], page_number=1, bytes=b"crop") for group in groups],
+        page_context_images=[], model=anthropic_adapter.CLAUDE_HAIKU_MODEL, stream_message=send,
+        file_bytes=b"pdf", crop_audit=[dict(group_id=group["group_id"], source_bbox=source) for group in groups],
+        coordinate_frames={1: {"fusion_dimensions": {"width": 10, "height": 10}}},
+    )
+
+    assert sum("provider" in row for row in audit["sheets"]) == expected_requests
+    assert rendered_boxes == ([source, core] if expected_requests == 2 else [source])
 
 
 def test_v711_render_decision_ignores_only_safe_known_non_render_no_match():

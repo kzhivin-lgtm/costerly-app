@@ -210,21 +210,24 @@ elevation and V1 was incorrectly retained as a technical section.
 Preserve the archived same-sheet review that attached the matching
 crops using triangular shelf supports as evidence. Use the
 [V8.4.26 checkpoint](DETECTION_V8_4_26_PRODUCTION_CHECKPOINT_2026_11_12.md)
-to compare candidates on fixed Views. The candidate reviews unresolved
+to compare candidates on fixed Views. The first candidate reviewed unresolved
 renders against same-sheet technical crops after ordinary Haiku
 technical recovery. An invalid primary attachment for a known render
 remains unresolved and is eligible for focused review. Verify actual
 crop matches, exclusion of unresolved renders and preservation of the
-technical partition. Fresh Floor 06 preserved the technical partition
-on fixed inputs but recovered zero render links. Visual inspection
-confirmed that P03.V10/V11 are renders labeled as technical and
-P04.V1/P07.V1 are technical drawings labeled as renders. A two-way
-role check before technical Membership is proposed as the next
-experiment. Use the existing lab witness and require positive and
-negative controls. A fresh Floor 07 run requires explicit permission
-for its private PDF and derived crops to reach the OCR and vision
-providers. The exact archived Floor 07 Detection replay preserves
-the V8.4.26 partition.
+technical partition. The first candidate recovered zero links.
+The current experiment corrects witnessed drawing/render role errors before
+Membership and compares renders against technical crops on the same
+sheet on the first attachment attempt. A second request requires a
+tighter technical crop or a smaller set of renders whose first reply
+supplied no decision or visual witness. The fixed Floor 06 input
+produced four initial links and one link from a tighter crop. The
+focused check left P03.V10/V11 unresolved with a visual witness.
+Verify repeatability on fresh Discovery.
+A fresh Floor 07 run requires explicit permission for its private PDF
+and derived crops to reach the OCR and vision providers. The archived
+Floor 07 Detection replay preserves the V8.4.26 partition with a
+simulated role-review abstention.
 
 V8.4.10 audits omitted ordinary-route render decisions as unresolved
 without aborting technical grouping. An omitted row supplies no

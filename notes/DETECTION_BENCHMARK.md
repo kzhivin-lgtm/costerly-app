@@ -1,5 +1,41 @@
 # Detection Agent benchmark
 
+## Primary render ownership on the same sheet
+
+Fixed-input Floor 06 experiments replayed the saved OCR, Discovery and
+Conflict Resolver for `run_4fd8d09b885f4e92b0a3e50dff983496`. The
+Conflict Resolver originally admitted the two P03 thumbnails as
+technical elevations. P04 and P07 each supplied a dimensioned drawing
+with a render label. The role review compared crop pixels with the
+fixed inventory and changed only confirmed drawing/render role errors.
+The high-resolution review corrected both P03 thumbnails, both
+dimensioned drawings, and the mislabeled P04 interior render.
+
+The whole-document Membership prompt still emitted zero positive render
+decisions on the corrected roles. A focused same-sheet request on those
+inputs emitted four valid attachments. Replaying the previously rejected
+positive replies after registering their canonical visual sources
+confirmed the missing-source failure and recovered all four edges.
+
+The candidate now sends same-sheet render ownership to its own first
+comparison using detailed crops from the source PDF. A second comparison
+requires a materially tighter technical crop or a smaller set of renders
+whose first reply supplied no decision or visual witness. Recompilation
+reuses captured role and attachment replies. The established document-wide
+render route handles renders whose sheet supplies no comparable technical crop.
+
+The first comparison on the fixed Floor 06 inventory attached P03.V1
+and V2 to the shelving elevation V9, P09.V5 to V3, and P09.V6 to V2.
+The tighter technical crop resolved P13.V7 to V2, corroborated by the
+paired straps beside the cushion seam. Registry published all five
+links, 64 Views before exclusions and 23 objects. The first P03 reply
+marked the two newly corrected thumbnails V10 and V11 unresolved
+with blank witnesses. A separate request reusing all other responses
+reviewed only those two renders. Both remained unresolved because the
+model could not confirm the sequence of braces against the elevation.
+The candidate passed 265 Detection tests. Floor 07 was replayed offline
+with a simulated role-review abstention.
+
 ## Ordinary same-sheet render review candidate on V8.4.26
 
 The V8.4.26 Floor 06 primary review sent 75 images and about 41,000

@@ -10,10 +10,9 @@ import json
 import re
 from threading import Lock
 
-import pymupdf
-
 from agents import anthropic_adapter as adapter
 from agents.detection_dimension_anchors import dimension_anchors
+from agents.detection_page_images import render_detection_pdf_view_crops
 from config import CLAUDE_HAIKU_MODEL
 
 
@@ -97,6 +96,14 @@ def primary_request(request):
         block for pair in image_pairs for block in pair
     ] + [{"type": "text", "text": inventory}]
     prompt = PRIMARY_RULE
+    local_renders = same_sheet_render_ids(prepared)
+    if local_renders:
+        prompt += (
+            "\n\nSame-sheet render ownership is handled in its own visual comparison. "
+            "Omit these render IDs from presentation_render_decisions and technical hypotheses: "
+            + ", ".join(sorted(local_renders))
+            + ". Apply the render rule above only to the remaining render IDs."
+        )
     schema = prepared["output_config"]["format"]["schema"]
     if "conflict_pair_decisions" in schema["properties"]:
         marker = "V7.14 TARGETED CONFLICT-ADMISSION MEMBERSHIP MATRIX:"
@@ -121,6 +128,22 @@ def inventory_of(request):
         for line in blocks[-1]["text"].splitlines() if (match := QUEUE_ROW.fullmatch(line))
     }
     return views, queue
+
+
+def same_sheet_render_ids(request):
+    views, _ = inventory_of(request)
+    crop_ids = {
+        match[1] for block in request["messages"][0]["content"][:-1:2]
+        if (match := VIEW_IMAGE_LABEL.fullmatch(block["text"]))
+    }
+    technical_pages = {
+        page for view_id, (page, role) in views.items()
+        if view_id in crop_ids and role != "presentation_render"
+    }
+    return {
+        view_id for view_id, (page, role) in views.items()
+        if view_id in crop_ids and role == "presentation_render" and page in technical_pages
+    }
 
 
 def batch_request(request, pages, views):
@@ -195,26 +218,16 @@ def improve_local_crops(request, pdf_bytes, ocr, usage, page_number):
         if row.get("page_number") == page_number and row.get("source_bbox")
     }
     blocks = request["messages"][0]["content"]
-    with pymupdf.open(stream=pdf_bytes, filetype="pdf") as document:
-        page = document[page_number - 1]
-        for label, image in zip(blocks[:-1:2], blocks[1:-1:2], strict=True):
-            match = VIEW_IMAGE_LABEL.fullmatch(label["text"])
-            if not match or match[1] not in audit_by_id:
-                continue
-            box = audit_by_id[match[1]]
-            clip = pymupdf.Rect(
-                box["top_left_x"] / frame["width"] * page.rect.width,
-                box["top_left_y"] / frame["height"] * page.rect.height,
-                box["bottom_right_x"] / frame["width"] * page.rect.width,
-                box["bottom_right_y"] / frame["height"] * page.rect.height,
-            )
-            margin_x, margin_y = clip.width * 0.04, clip.height * 0.04
-            clip = (clip + (-margin_x, -margin_y, margin_x, margin_y)) & page.rect
-            if clip.is_empty:
-                continue
-            scale = 1440 / max(clip.width, clip.height)
-            pixmap = page.get_pixmap(matrix=pymupdf.Matrix(scale, scale), clip=clip, alpha=False)
-            image["source"]["data"] = standard_b64encode(pixmap.tobytes("jpeg", jpg_quality=87)).decode("ascii")
+    images_by_id = {
+        match[1]: image
+        for label, image in zip(blocks[:-1:2], blocks[1:-1:2], strict=True)
+        if (match := VIEW_IMAGE_LABEL.fullmatch(label["text"])) and match[1] in audit_by_id
+    }
+    crops = render_detection_pdf_view_crops(
+        pdf_bytes, page_number, frame, {group_id: audit_by_id[group_id] for group_id in images_by_id},
+    )
+    for group_id, jpeg in crops.items():
+        images_by_id[group_id]["source"]["data"] = standard_b64encode(jpeg).decode("ascii")
 
 
 def audit(result):
@@ -333,6 +346,25 @@ def run_ordinary_haiku_membership(run_registry, *, file_bytes, ocr_package, stag
             if stage == "membership":
                 prepared = primary_request(request)
         response, diagnostics = adapter.create_claude_message_streamed(client, **prepared)
+        if stage == "membership" and response.stop_reason == "end_turn":
+            local_renders = same_sheet_render_ids(prepared)
+            if local_renders:
+                text = next((block for block in response.content if block.type == "text"), None)
+                try:
+                    payload = json.loads(text.text) if text is not None else None
+                except ValueError:
+                    payload = None
+                rows = payload.get("presentation_render_decisions") if isinstance(payload, dict) else None
+                if isinstance(rows, list):
+                    payload["presentation_render_decisions"] = [
+                        row for row in rows
+                        if not isinstance(row, dict) or not isinstance(row.get("render_group_id"), str)
+                        or row["render_group_id"] not in local_renders
+                    ]
+                    if rows != payload["presentation_render_decisions"]:
+                        response = response.model_copy(update={"content": [
+                            text.model_copy(update={"text": json.dumps(payload, ensure_ascii=False)}),
+                        ]})
         key = request_hash(request)
         with lock:
             record_index = len(records[key])
@@ -353,6 +385,7 @@ def run_ordinary_haiku_membership(run_registry, *, file_bytes, ocr_package, stag
         stage_callback=stage_callback,
         review_hooks=adapter.DetectionRegistryHooks(
             observe, capture_ids, original_semantics, original_merge, count_input_tokens,
+            render_review_stream=observe, verify_render_roles=True,
         ),
     )
     if not memberships:
@@ -366,10 +399,7 @@ def run_ordinary_haiku_membership(run_registry, *, file_bytes, ocr_package, stag
     original_text = next(block for block in membership.content if block.type == "text")
     payload = json.loads(original_text.text)
 
-    def recompile(
-        candidate_payload, *, compile_semantics=original_semantics, compile_merge=original_merge,
-        review_unattached_renders=False,
-    ):
+    def recompile(candidate_payload, *, compile_semantics=original_semantics, compile_merge=original_merge):
         derived = membership.model_copy(update={"content": [
             original_text.model_copy(update={"text": json.dumps(candidate_payload, ensure_ascii=False)})
         ]})
@@ -397,7 +427,7 @@ def run_ordinary_haiku_membership(run_registry, *, file_bytes, ocr_package, stag
             stage_callback=None,
             review_hooks=adapter.DetectionRegistryHooks(
                 replay, adapter.normalize_detection_visual_map_group_ids, compile_semantics, compile_merge, replay_input_count,
-                render_review_stream=adapter.create_claude_message_streamed if review_unattached_renders else None,
+                render_review_stream=replay, verify_render_roles=True,
             ),
         )
         if any(queues.values()) or any(count_queues.values()):
@@ -448,13 +478,19 @@ def run_ordinary_haiku_membership(run_registry, *, file_bytes, ocr_package, stag
             return []
 
     final = primary
-    final_payload = deepcopy(payload)
-    final_compile = {}
-    prior_components = [row["visual_group_ids"] for row in audit(primary)["proof_graph_components"]]
-    eligible_ids = {
+    technical_ids = {
         canonical_ids[group] for group, (_, role) in views.items()
         if group in canonical_ids and role != "presentation_render"
-    } & {group for component in prior_components for group in component}
+    }
+
+    def technical_components(usage):
+        return [
+            component for row in usage["proof_graph_components"]
+            if (component := [group for group in row["visual_group_ids"] if group in technical_ids])
+        ]
+
+    prior_components = technical_components(audit(primary))
+    eligible_ids = {group for component in prior_components for group in component}
     rare_anchors, common_anchors = dimension_recovery_edges(audit(primary), eligible_ids, prior_components)
     rare_anchor_pairs = {edge_endpoints(proof) for proof in rare_anchors}
     anchor_pairs = rare_anchor_pairs | {edge_endpoints(proof) for proof in common_anchors}
@@ -480,13 +516,16 @@ def run_ordinary_haiku_membership(run_registry, *, file_bytes, ocr_package, stag
                 new_components = [row["visual_group_ids"] for row in audit(candidate)["proof_graph_components"]]
                 if all(len({old_groups[g] for g in component if g in old_groups}) <= 1 for component in new_components):
                     final = candidate
-                    final_compile = {"compile_merge": merge_with_dimensions}
                     break
             if final is primary:
                 anchor_pairs = set()
 
-        pages_with_merge = {int(view.split(".")[0][1:]) for group in partition(audit(final))
-                            if len(group) > 1 for view in group}
+        final_usage = audit(final)
+        pages_with_merge = {
+            final_usage["page_local_view_labels"][group]["page_number"]
+            for component in technical_components(final_usage) if len(component) > 1
+            for group in component
+        }
         counts = Counter(page for page, role in views.values() if role != "presentation_render")
         missing = {page for page, count in counts.items() if count > 1} - pages_with_merge
         pages = sorted(counts)
@@ -503,11 +542,9 @@ def run_ordinary_haiku_membership(run_registry, *, file_bytes, ocr_package, stag
                                for page in covered_pages)
                 ] + sorted(additional, key=lambda hypothesis: -len(hypothesis["evidence"]))
                 final = recompile(payload, compile_merge=merge_with_dimensions)
-                final_payload = deepcopy(payload)
-                final_compile = {"compile_merge": merge_with_dimensions}
 
         intermediate_usage = audit(final)
-        components = [row["visual_group_ids"] for row in intermediate_usage["proof_graph_components"]]
+        components = technical_components(intermediate_usage)
         singleton_ids = {row[0] for row in components if len(row) == 1}
         for view_id, (page, role) in views.items():
             if counts[page] > 1 and role != "presentation_render" and canonical_ids.get(view_id) in singleton_ids:
@@ -551,18 +588,8 @@ def run_ordinary_haiku_membership(run_registry, *, file_bytes, ocr_package, stag
                     return [edge for edge in base if edge_endpoints(edge) not in recovered_pairs] + accepted_recovery, ledger
 
                 final = recompile(payload, compile_semantics=validate_local, compile_merge=merge_local)
-                final_payload = payload
-                final_compile = {"compile_semantics": validate_local, "compile_merge": merge_local}
     except (RegistryReplayError, adapter.DetectionVisualRegistryValidationError) as exc:
         failures.append({"stage": "recompile", "error_type": type(exc).__name__})
-
-    render_decisions = audit(final)["semantic_ledger_audit"]["v7_11_presentation_render"]["decisions"]
-    if any(row["disposition"] in {"no_match", "unresolved"} for row in render_decisions):
-        adapter._notify_detection_stage(stage_callback, "Same-sheet render review started", {})
-        try:
-            final = recompile(final_payload, **final_compile, review_unattached_renders=True)
-        except (RegistryReplayError, adapter.DetectionVisualRegistryValidationError) as exc:
-            failures.append({"stage": "same_sheet_render_review", "error_type": type(exc).__name__})
 
     usage = final[2]
     raw = audit(final)
