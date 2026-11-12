@@ -75,8 +75,9 @@ assertion that fails on the same dependency files in V8.4.26. The
 checkpoint preserves the production witness, both release tags, the
 source PDFs, page assignments, visual comparisons, and offline replays.
 The Floor 06 fixed-input replay covers the role review, first comparison,
-and focused retry using saved replies. The Floor 07 replay uses a
-simulated role-review abstention. It covers saved input behavior.
+and focused retry using saved replies. The archived Floor 07 replay
+reproduced its 12-object partition and the P11 join. That fixture
+required zero role-review or render attachment calls.
 
 The private archive is
 `backups/detection-v8.4.27-production-checkpoint-2026-11-12/` in the

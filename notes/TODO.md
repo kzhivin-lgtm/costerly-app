@@ -211,8 +211,8 @@ retry found no tighter crop. P13.V7 and V2 share the paired straps by
 the cushion seam, but `no_match` bypassed retry. Retain one technical
 owner per accepted render and keep unsupported renders out of the
 published count. The [checkpoint](DETECTION_V8_4_27_PRODUCTION_CHECKPOINT_2026_11_12.md)
-preserves the visual evidence. The archived Floor 07 replay used a
-simulated role-review abstention. A fresh agent-run Floor 07 check
+preserves the visual evidence. The archived Floor 07 replay preserved
+the saved 12-object partition and P11 join. A fresh agent-run Floor 07 check
 requires explicit authorization to send its private PDF and crops to
 OCR and vision providers.
 

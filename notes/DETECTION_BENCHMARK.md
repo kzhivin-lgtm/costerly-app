@@ -48,8 +48,9 @@ marked the two newly corrected thumbnails V10 and V11 unresolved
 with blank witnesses. A separate request reusing all other responses
 reviewed only those two renders. Both remained unresolved because the
 model could not confirm the sequence of braces against the elevation.
-The candidate passed 265 Detection tests. Floor 07 was replayed offline
-with a simulated role-review abstention.
+The candidate passed 265 Detection tests. The archived Floor 07 replay
+reproduced its 12-object partition with zero role-review or render
+attachment calls.
 
 ## Ordinary same-sheet render review candidate on V8.4.26
 
