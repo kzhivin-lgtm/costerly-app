@@ -24,10 +24,15 @@ failure reasons under supported trace stages if legacy costing stays active.
 VERIFIED locally, P1. Parts Check to Material Demand accounts for every
 row in the Lev1, Lev2 and Adda witnesses. The Lev2 replay restores all
 28 carcass rows and passes 106 rows into the demand contract. A subsequent
-fresh Estimation run verifies the gross worktop outline and the two surface
-areas. Keep gross area for material purchasing. Price worktop cutouts per
-operation once supplier operation offers are wired to Material Demand.
-Resolve the material of the contrasting end separately.
+fresh Lev2 run verifies both worktop surface areas and one cutout service.
+Owner-accepted experimental checkpoint
+`estimation-v9.4-lev2-worktop-demand-2026-11-12`.
+
+PENDING, P1. Resolve the `stone_cutout` Material Demand line against an
+accepted supplier operation offer and include the price once in the estimate.
+Keep gross worktop area for material purchasing and preserve an explicit
+pricing gap when no compatible offer is available. Resolve the material of
+the contrasting end separately.
 
 PENDING, P1. Resolve Adda stock notes, missing dimensions and sourcing for
 tempered glass and lighting before treating the material plan as complete.

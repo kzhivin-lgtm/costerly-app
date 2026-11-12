@@ -352,3 +352,19 @@ Fresh Lev2 recognition found one opening on V02 in 50.4 seconds with five
 existing Sonnet calls. Replaying those responses through the final adapter
 emitted one `stone_cutout` and the same gross areas, with all nine Block
 envelopes and 107 Parts Check rows still matching the checkpoint.
+
+### Lev2 worktop Material Demand checkpoint
+
+Owner accepted the experimental checkpoint on 2026-11-12, work 3.17.4.6.
+Tag `estimation-v9.4-lev2-worktop-demand-2026-11-12` preserves
+`5479af3bf759bddcb6e219692437fb835be993f7`. The run reused the saved
+Detection and File Review inputs from `run_6096a134aae24951ac6f36a54500c21d`.
+Acceptance covers 3.0 m² of gross worktop area split across the two surface
+requirements, one `stone_cutout` service sourced to V02, and parity with the
+previous Lev2 Parts Check. The fixture subtype and contrasting end material
+remain unconfirmed. Supplier service pricing and production acceptance
+remain open.
+
+Final replay SHA-256 values for `parts-check.json` and `cb-materials.json`
+are `8d9e3edccebbfeb4b5d5570cbe1a360bc24b6fb6fde2bc4ac9367060e64cb3bb`
+and `7d3acee381384e9cbf0c61735593d5b96d59c3b3f3607cdc196deb19dff7d203`.

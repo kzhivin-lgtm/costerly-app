@@ -1,5 +1,13 @@
 # Done Log
 
+Estimation 9.4, work 3.17.4.6. Owner accepted the experimental Lev2
+Material Demand checkpoint. The worktop keeps 3.0 m² of gross area and
+adds one cutout as a supplier service. All 107 Parts Check rows and nine
+Block envelopes match the control. Tag
+`estimation-v9.4-lev2-worktop-demand-2026-11-12` preserves the verified
+implementation. See the
+[Estimation release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md).
+
 Estimation 9.4, work 3.17.4.6. Plan alignment now uses accepted geometric
 links when native contours independently support the match. Full-height
 unclaimed panels with a unique adjacent assembly are recovered locally.
