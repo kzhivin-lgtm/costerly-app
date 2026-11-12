@@ -498,21 +498,27 @@ def check_parts(analyze, inventory_with_parts, parts):
                                    "reason": row["colour_temperature_status"],
                                    "sources": row["colour_temperature_sources"]})
         result["inventory_issues"] = issues
-        result["parts"] = list(_parts_check_rows(obj["items"]))
+        quantities = {scope.get("block_id") or scope["id"]: scope["quantity"]
+                      for scope in [*part_blocks, *parts["objects"][oid]["shared_parts"]]
+                      if "quantity" in scope}
+        result["parts"] = list(_parts_check_rows(obj["items"], quantities))
         if (issues or report["source_coverage"] != "reviewed"
                 or any(row["status"] == "review_required" for row in result["parts"])):
             result["status"] = "gaps_found"
     return report
 
 
-def _parts_check_rows(items, block_id=None):
+def _parts_check_rows(items, quantities, block_id=None):
     for item in items:
         owner_block = item["id"] if item["kind"] == "block" else block_id
         for child in item["children"]:
             if child["kind"] != "part":
-                yield from _parts_check_rows([child], owner_block)
+                yield from _parts_check_rows([child], quantities, owner_block)
                 continue
             fields = {key: value for key, value in child.items() if key != "kind"}
+            scope_quantity = quantities.get(item["id"], quantities.get(owner_block, 1))
+            if scope_quantity != 1:
+                fields["scope_quantity"] = scope_quantity
             missing = sorted(key for key, value in fields["dimensions"].items() if value["mm"] is None)
             quantity_pending = fields.get("quantity") is None
             status = ("review_required" if missing or quantity_pending or fields.get("construction_basis")

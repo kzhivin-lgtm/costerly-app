@@ -743,7 +743,7 @@ def run_pipeline(args, source, *, version, request_provider=None):
             if args.material_context:
                 from use_cases.estimation_cb_material_demand import calculate_cb_materials
 
-                materials = calculate_cb_materials(parts_report=parts, input_rows=source["inputs"],
+                materials = calculate_cb_materials(parts_report=coverage if v9 else parts, input_rows=source["inputs"],
                                                    catalog_context=read_json(args.material_context))
                 (args.output / "cb-materials.json").write_text(json.dumps(materials, ensure_ascii=False, indent=2) + "\n")
     return result

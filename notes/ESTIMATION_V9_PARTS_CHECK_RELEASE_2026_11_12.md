@@ -272,3 +272,55 @@ This checkpoint covers the Lev2 Parts Check results. The two repeats reused
 Detection and File Review, so the test isolates model variability within
 Parts Check. Inventory Check gaps, exact countertop geometry and the legacy
 costing failure remain open.
+
+### Legacy Calculation diagnosis and Material Demand handoff
+
+The three Lev2 production inputs have a saved Dimension Graph and no
+saved structural BOM, successful `assembly_first_bom` usage event, or
+detailed failure trace. The checked-in trace constraint accepts
+`assembly_agent`, while runtime sends `calculation_agent` and catches
+trace insert errors. This can hide the error type from the detailed trace.
+
+One isolated replay used the saved 9.4 Lev2 object input, Dimension Graph
+and source page. A fresh Haiku Analyze response supplied nine scope zones.
+The Haiku Calculation request returned `stop_reason=max_tokens` at 8,000
+output tokens after 32.991 seconds. The runtime passed the incomplete
+response to `JSONDecoder.raw_decode`, which raised `JSONDecodeError` at
+the end of the returned text. This reproduces a cause of the production
+symptom. The historical responses were unavailable for comparison.
+
+Legacy Calculation extracts assemblies, sizes, counts and material family
+hints or assumptions. The structural composer calculates parts and
+requirements before catalog selection and project-wide purchasing. The
+production Material Plan still reads that legacy BOM. A dry run of the
+existing CB Parts adapter against the checked Lev2 repeat produced seven
+material requirements and 55 cut part rows. It reported 28 unsupported
+carcass rows because it maps sides, tops, bottoms and the divider to
+`carcass_sheet`, which has no family preference in that adapter's lookup.
+The dry run stopped at Material Demand and made no production writes.
+
+### Parts Check to Material Demand adapter
+
+The adapter consumes saved Parts Check reports and retains each row in a
+material requirement or a review item. It uses the existing internal-sheet
+family preferences for carcass sheets when a material note is absent.
+Recognized stock notes carry their original text and source references.
+Unresolved notes, ownership conflicts and quantities stay with the source
+row. The shared worktop envelope remains a review item for cut geometry.
+Quantity multipliers are carried from the original scope when present.
+
+| Saved report | Source rows | Rows in demand | Rows held for review |
+| --- | --- | --- | --- |
+| Lev1 | 28 | 28 | 0 |
+| Lev2 | 107 | 106 | 1 |
+| Adda | 149 | 62 | 87 |
+
+The Lev2 replay uses the archived provider responses and reaches the
+existing Material Engine through the experimental material-context entry
+point. All 107 Parts Check rows and all nine Block envelopes match the
+checkpoint. The 28 carcass rows are included. Lev2 needs review because
+the 2480 × 3005 mm worktop dimensions describe an envelope. The Adda review
+rows preserve the unresolved stock notes, missing dimensions, glass
+treatment, lighting specifications and the unsupported interior skin.
+The verification used a saved catalog snapshot and did not publish pricing.
+Seventy-one focused tests passed.

@@ -212,9 +212,13 @@ class TestEstimation9Inventory(unittest.TestCase):
             "blocks": [{"block_id": block["id"], "parts": [row]} for block in block_rows], "shared_parts": [],
         }}}
         parts["objects"]["o"]["blocks"][0]["envelope"] = envelope
+        parts["objects"]["o"]["blocks"][0]["quantity"] = 2
         report = check_parts(self.analyze, reconcile_object_inventory(checked, parts), parts)
         self.assertEqual(report["objects"]["o"]["blocks"][0]["envelope"], envelope)
         self.assertNotIn("envelope", report["objects"]["o"]["blocks"][1])
+        first, second = report["objects"]["o"]["parts"]
+        self.assertEqual(first["scope_quantity"], 2)
+        self.assertNotIn("scope_quantity", second)
         self.assertEqual(report["objects"]["o"]["inventory_issues"], [
             {"role": "drawer_front", "source_ref": "V1:C01", "reason": "duplicate_part_evidence"},
         ])

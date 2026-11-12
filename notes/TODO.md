@@ -13,11 +13,23 @@ thicknesses, LED route lengths and hidden joinery. Keep the plan envelope
 separate from the worktop cut outline. Evidence and timings are in the
 [Estimation release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md).
 
-PENDING, P1. Trace the legacy BOM costing failure separately from Parts Check.
-The three Lev2 production requests reached the costing agent and failed
-before price publication. The 9.4 witness has a `calculation_agent` failure
-event, with only the generic reason stored. Material Resolver and costing
-integration follow Parts Check acceptance.
+VERIFIED in a controlled Lev2 repeat. Legacy Calculation hit its 8,000
+output token limit and passed incomplete JSON to the decoder. The original
+three production events retain only a generic error. The trace stage in
+runtime differs from the stage allowed by the checked-in SQL constraint.
+
+PENDING, P1. Record truncated Calculation responses and other bounded
+failure reasons under supported trace stages if legacy costing stays active.
+
+VERIFIED locally, P1. Parts Check to Material Demand accounts for every
+row in the Lev1, Lev2 and Adda witnesses. The Lev2 replay restores all
+28 carcass rows and passes 106 rows into the demand contract. The worktop
+stays open until there is a cut outline.
+
+PENDING, P1. Resolve Adda stock notes, missing dimensions and sourcing for
+tempered glass and lighting before treating the material plan as complete.
+Connect production pricing once the checked handoff and review status can
+be verified through Objects.
 
 ## Ordinary Detection dimension membership, V8.4.13
 
