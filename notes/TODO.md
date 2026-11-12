@@ -49,9 +49,15 @@ Jerusalem's July 2026 bill lists 510 ILS before a 20% project discount
 Mavric lists 350–450 ILS, with VAT treatment unstated in those two lists.
 The local Lev2 replay with the LDSP 17 mm defaults prices nine of ten
 requirements. A replay with the approved 400 ILS rate prices all ten and
-allocates one cutout. Inventory Check still reports open findings. The V02
-render shows intermediate open shelves and the current Parts Check has no
-shelf rows. Resolve that coverage gap before accepting Lev2 completeness.
+allocates one cutout. Inventory Check still reports open findings.
+
+VERIFIED LOCALLY, P0, USER REQUEST. Parts Check recovers three missing
+fixed shelves in Lev2 B02. The saved run retains its original 107 rows and
+nine Block envelopes; all three added rows reach Material Engine. This is
+a bounded repair for distinct visible shelves with a unique native owner.
+The dimensions are provisional and other Inventory Check gaps stay open.
+Verify on a fresh Upload after the 9.5 release before accepting Lev2
+completeness.
 
 PENDING, P0, USER REQUEST. Verify coverage from all drawing views through
 Inventory Check, Blocks, standalone items, Parts Check and the priced

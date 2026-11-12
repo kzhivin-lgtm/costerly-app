@@ -661,6 +661,7 @@ def run_pipeline(args, source, *, version, request_provider=None):
     saved_dimensions = args.saved_dimension_inventory if v9 else None
     if v9:
         from tools.estimation_v9_source_review import review_original_sheets
+        from use_cases.estimation_shelf_recovery import recover_fixed_shelves
         from use_cases.estimation_v9_inventory import (
             add_inventory_geometry, apply_source_findings, bind_native_components, check_inventory, check_parts,
             include_standalone_parts_scopes, refresh_source_coverage,
@@ -757,10 +758,16 @@ def run_pipeline(args, source, *, version, request_provider=None):
                     add_source_display_glass_parts(parts, inventory, result)
             parts_filename = "parts.json" if v9 else "cb-parts.json"
             inventory_with_parts = reconcile_object_inventory(inventory, parts)
-            (args.output / "object-inventory-parts.json").write_text(
-                json.dumps(inventory_with_parts, ensure_ascii=False, indent=2) + "\n")
             if v9:
                 coverage = check_parts(result, inventory_with_parts, parts)
+                if not args.parts_profile and (repairs := recover_fixed_shelves(
+                        coverage, inventory, parts, result, views,
+                        lambda vid: b64decode(images[vid][1]["source"]["data"]))):
+                    inventory_with_parts = reconcile_object_inventory(inventory, parts)
+                    coverage = check_parts(result, inventory_with_parts, parts)
+                    coverage["automatic_repairs"] = repairs
+                    (args.output / "object-inventory.json").write_text(
+                        json.dumps(inventory, ensure_ascii=False, indent=2) + "\n")
                 for oid, obj in parts["objects"].items():
                     obj["inventory_review_items"] = coverage["objects"][oid]["inventory_issues"]
                     if coverage["source_coverage"] != "reviewed":
@@ -768,6 +775,8 @@ def run_pipeline(args, source, *, version, request_provider=None):
                             {"reason": coverage["source_coverage"]}]
             else:
                 coverage = audit_cb_parts_coverage(result, parts)
+            (args.output / "object-inventory-parts.json").write_text(
+                json.dumps(inventory_with_parts, ensure_ascii=False, indent=2) + "\n")
             check_filename = "parts-check.json" if v9 else "cb-parts-coverage.json"
             (args.output / parts_filename).write_text(json.dumps(parts, ensure_ascii=False, indent=2) + "\n")
             (args.output / check_filename).write_text(json.dumps(coverage, ensure_ascii=False, indent=2) + "\n")

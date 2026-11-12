@@ -385,3 +385,19 @@ including the drawer slides. Three requirements still need evidence or
 a source price: MDF finish, the contrasting worktop end and the cutout
 service. Missing prices enter Assumption Fallback as gaps. Automated price
 research remains open.
+
+Parts Check now makes one bounded repair pass for unowned fixed-shelf
+findings with distinct near-isometric planes and a unique matching native
+elevation. It adds one part per visible plane to its Block, rechecks the
+reconciled inventory and passes the result to Material Demand. It adds no
+model calls and preserves findings without a defensible match.
+
+On the saved Lev2 production input `run_6096a134…`, Front observed an open
+shelf stack in V02; the inventory had no owner for it and Parts Check only
+reported the gap. The repair matched V02 to the B02 lateral bay in V03
+and emitted three separate shelf rows, each provisionally 206 × 206 × 17 mm.
+The adjacent facade supplies the scale; the carcass supplies the assumed
+thickness. The original 107 rows and nine Block envelopes are unchanged.
+All three rows are allocated to sheet stock (127,308 mm² of cut parts).
+The result has 110 rows, with the other Inventory Check issues still open.
+This verifies local replay; a fresh production Upload is pending.
