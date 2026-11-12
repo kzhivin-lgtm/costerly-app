@@ -324,3 +324,19 @@ rows preserve the unresolved stock notes, missing dimensions, glass
 treatment, lighting specifications and the unsupported interior skin.
 The verification used a saved catalog snapshot and did not publish pricing.
 Seventy-one focused tests passed.
+
+### Worktop area from plan contours
+
+The experimental branch compiles the outline from Offline Vector after
+Block Geometry. It joins linked plan faces and calibrates both axes from
+printed dimensions. Separate surface requirements need a seam in the plan
+and finish evidence in Understanding. Parts Check keeps the original part
+and its envelope; Material Demand receives the area of each surface.
+
+A fresh Lev2 Estimation run reused the original Detection output. Five
+Sonnet calls took 41.3 seconds end to end, with no extra call for the worktop.
+All nine Block envelopes and 107 Parts Check rows matched the checkpoint.
+The gross area is 3.0 m²: 2.8 m² of main surface (artificial stone by
+assumption) and 0.2 m² of the contrasting beveled end (material unresolved).
+Parts Check displays one decimal place. Machine-readable output retains
+calculation precision. Cutout geometry and the end material remain open.

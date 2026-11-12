@@ -37,6 +37,7 @@ _MATERIAL_HOLDS = {
                     "glass_treatment_resolution_required"),
     **dict.fromkeys(("led_strip_run", "led_power_supply"), "lighting_material_resolution_required"),
 }
+_WORKTOP_DEFAULT_FAMILY = "engineered_quartz_mineral_hybrid"
 
 
 def _positive(value):
@@ -84,6 +85,49 @@ def _source_material(measurements):
     return None, {}, notes, ()
 
 
+def _worktop_requirements(row, part_source, object_quantity, families, materials, review_items):
+    outline = row.get("worktop_outline") or {}
+    surfaces = outline.get("surfaces") or ()
+    thickness = row["dimensions"].get("thickness", {}).get("mm")
+    count = row["quantity"]
+    if (outline.get("area_basis") != "gross_plan_outline" or not surfaces
+            or not _positive(thickness) or not _positive(count) or int(count) != count
+            or not all(_positive(surface.get("area_m2")) for surface in surfaces)):
+        return False
+    multiplier = count * part_source["scope_quantity"] * object_quantity
+    finish_view = outline.get("finish_evidence", {}).get("view_id")
+    stock_family, stock_spec, stock_notes, stock_refs = _source_material(row["dimensions"])
+    refs = list(dict.fromkeys([*part_source["evidence_refs"], *outline["source_refs"],
+                               *outline.get("seam_source_refs", ()), *([finish_view] if finish_view else [])]))
+    part_id = part_source["part_id"]
+    for surface in surfaces:
+        main = surface["material_role"] == "main_worktop"
+        explicit = main and stock_family in families
+        default = main and not stock_notes and outline.get("kitchen_worktop") and _WORKTOP_DEFAULT_FAMILY in families
+        family = stock_family if explicit else _WORKTOP_DEFAULT_FAMILY if default else None
+        evidence = list(dict.fromkeys([*refs, *stock_refs])) if explicit else refs
+        quantity = round(surface["area_m2"] * multiplier, 6)
+        key = (part_id, surface["id"])
+        materials[key] = {
+            "requirement_id": f"cb-material-{len(materials) + 1:03d}",
+            "source_name": " / ".join(stock_notes) if explicit else "Artificial stone" if default else (
+                "Main worktop material" if main else "Contrasting finish on beveled end"),
+            "family": family, "material_role": "worktop_sheet",
+            "specification": {"thickness_mm": thickness, **(stock_spec if explicit else {})},
+            "basis": "ocr_material_note" if explicit else "construction_assumption" if default else "material_unresolved",
+            "evidence_refs": evidence, "quantity": quantity, "unit": "m2",
+            "area_basis": outline["area_basis"],
+            "part_sources": [{**part_source, "surface": surface, "evidence_refs": evidence}],
+        }
+        if not family:
+            review_items.append({"part_id": part_id, "surface_id": surface["id"],
+                                 "reason": "worktop_material_family_unresolved",
+                                 "area_m2": quantity})
+    if outline["cutout_status"] == "unresolved":
+        review_items.append({"part_id": part_id, "reason": "worktop_cutouts_unresolved"})
+    return True
+
+
 def build_cb_material_demand(*, parts_report, input_row, allowed_material_families):
     """Convert each checked part to demand or retain its data for review."""
     payload = input_row["input_payload"]
@@ -126,6 +170,10 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                                        *([row["instance_ref"]] if row.get("instance_ref") else [])]))
             part_source = {**row, "part_id": part_id, "scope_id": scope_id,
                            "scope_quantity": multiplier, "evidence_refs": refs}
+            duplicate = (row["role"], row.get("instance_ref")) in duplicate_refs
+            if row["role"] == "shared_worktop" and not duplicate and _worktop_requirements(
+                    row, part_source, object_quantity, allowed_material_families, materials, review_items):
+                continue
             is_count = role in _COUNT_ROLES
             required = () if is_count else _SPECIAL_DIMENSIONS.get(row["role"], _SHEET_DIMENSIONS)
             missing = [field for field in required if not _positive(measurements.get(field, {}).get("mm"))]
@@ -134,7 +182,7 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
             family = next((f for f in preferences if f in allowed_material_families), None)
             count = row["quantity"]
             reason = _MATERIAL_HOLDS.get(row["role"])
-            if (row["role"], row.get("instance_ref")) in duplicate_refs:
+            if duplicate:
                 reason = "duplicate_part_evidence"
             elif reason is None:
                 if not role:
@@ -227,10 +275,12 @@ def calculate_cb_materials(*, parts_report, input_rows, catalog_context):
     if len(run_ids) != 1 or facts.keys() != parts_report["objects"].keys():
         raise ValueError("Parts costing requires every immutable input from the same run")
     catalogs = catalog_context["catalogs"]
+    priced_facts = {oid: {**item, "materials": [material for material in item["materials"] if material["family"]]}
+                    for oid, item in facts.items()}
     fingerprint = material_plan_input_fingerprint(
-        facts_by_object=facts, material_default_variants=catalogs.get("material_default_variants") or (),
+        facts_by_object=priced_facts, material_default_variants=catalogs.get("material_default_variants") or (),
     )
-    snapshot = material_plan_snapshot(build_material_plan(facts_by_object=facts, catalogs=catalogs),
+    snapshot = material_plan_snapshot(build_material_plan(facts_by_object=priced_facts, catalogs=catalogs),
                                       input_fingerprint=fingerprint)
     gaps = {oid: item["review_items"] for oid, item in facts.items() if item["review_items"]}
     if gaps:

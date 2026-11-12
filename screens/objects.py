@@ -816,6 +816,22 @@ def _render_live_objects_content(
         )
 
 
+def _worktop_area_rows(report):
+    labels = {"main_worktop": "Main surface", "contrasting_end": "Contrasting end"}
+    rows = []
+    for object_id, obj in report.get("objects", {}).items():
+        for part in obj.get("parts", ()):
+            outline = part.get("worktop_outline") or {}
+            if not outline:
+                continue
+            for surface in outline.get("surfaces", ()):
+                rows.append({"Object": object_id, "Surface": labels.get(surface["material_role"], "Surface"),
+                             "Area (m²)": f"{surface['area_m2']:.1f}"})
+            rows.append({"Object": object_id, "Surface": "Total",
+                         "Area (m²)": f"{outline['outer']['area_m2']:.1f}"})
+    return rows
+
+
 def _render_parts_check(*, estimate_id: str, run_id: str, company_id: str) -> None:
     if not estimate_id or not run_id or not parts_check_enabled():
         return
@@ -824,6 +840,8 @@ def _render_parts_check(*, estimate_id: str, run_id: str, company_id: str) -> No
         try:
             result = load_parts_check(client=get_supabase_client(), company_id=company_id,
                                       run_id=run_id, estimate_id=estimate_id)
+            if result["status"] == "ready":
+                result["worktop_areas"] = _worktop_area_rows(json.loads(result["payload"]))
         except Exception:
             result = {"status": "read_failed"}
         st.session_state.parts_check_result = (key, result)
@@ -832,6 +850,9 @@ def _render_parts_check(*, estimate_id: str, run_id: str, company_id: str) -> No
         return
     status = result["status"]
     if status == "ready":
+        if areas := result.get("worktop_areas"):
+            st.caption("Worktop area before cutouts")
+            st.table(areas)
         st.download_button(f"Download Parts Check ({result['part_rows']} rows)",
                            data=result["payload"], file_name="parts-check.json",
                            mime="application/json", on_click="ignore")

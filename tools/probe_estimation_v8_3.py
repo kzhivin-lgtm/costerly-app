@@ -695,6 +695,19 @@ def run_pipeline(args, source, *, version, request_provider=None):
             saved_dimension_inventory=read_json(saved_dimensions) if saved_dimensions else None,
         )
         if v9:
+            from tools.estimation_worktop_geometry import worktop_geometry
+
+            for oid, measurements_for_object in measurements["objects"].items():
+                owners = result["objects"][oid]["planner"].get("object_parts", ())
+                if sum(owner["role"] == "worktop" and not owner.get("envelope_block_id") for owner in owners) != 1:
+                    continue
+                object_views = {vid: view for vid, view in views.items() if view["object_id"] == oid}
+                footprint = worktop_geometry(
+                    measurements_for_object["blocks"], object_views, measurements_for_object["printed_dimensions"],
+                    result["understanding"].get(oid, {}), result["islands"],
+                )
+                if footprint:
+                    measurements_for_object["worktop_outline"] = footprint
             if not args.parts_profile:
                 from use_cases.estimation_lighting_ownership import resolve_lighting_ownership
 

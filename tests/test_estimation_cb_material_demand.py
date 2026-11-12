@@ -66,3 +66,24 @@ def test_duplicate_rows_keep_both_sources_without_creating_demand():
     held = [item for item in result["review_items"] if "part_source" in item]
     assert [item["part_source"]["owner_id"] for item in held] == ["B01", "B02"]
     assert all(item["reason"] == "duplicate_part_evidence" for item in held)
+
+
+def test_worktop_surface_areas_are_preserved_without_inventing_end_material():
+    outline = {"area_basis": "gross_plan_outline", "cutout_status": "unresolved", "kitchen_worktop": True,
+               "source_refs": ["plan:C01"], "seam_source_refs": ["plan:C02"],
+               "finish_evidence": {"view_id": "render"}, "surfaces": [
+                   {"id": "main", "material_role": "main_worktop", "area_m2": 2.5},
+                   {"id": "end", "material_role": "contrasting_end", "area_m2": .2},
+               ]}
+    row = _part("shared_worktop", quantity=1, worktop_outline=outline)
+    result = _build([row], {"engineered_quartz_mineral_hybrid"}, quantity=2)
+
+    main, end = result["materials"]
+    assert (main["family"], main["quantity"], main["unit"]) == ("engineered_quartz_mineral_hybrid", 5, "m2")
+    assert main["basis"] == "construction_assumption"
+    assert (end["family"], end["quantity"], end["unit"]) == (None, .4, "m2")
+    assert "render" in end["evidence_refs"]
+    assert result["parts"] == []
+    assert [issue["reason"] for issue in result["review_items"]] == [
+        "worktop_material_family_unresolved", "worktop_cutouts_unresolved",
+    ]
