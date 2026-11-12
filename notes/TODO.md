@@ -594,6 +594,71 @@ local-only checkpoint. Annotated tag
 `6c552b35dd8c58b15307635f7efbf2dd7c9f29a9`. Record:
 `notes/DETECTION_V8_4_8_PARALLEL_MEMBERSHIP_CHECKPOINT_2026_11_10.md`.
 
+ACTIVE, P0, stabilize Ada cross-sheet Membership in production.
+The accepted two Adda groups are `01/04/06/08` and `02/03/05/07`.
+Three V8.4.8 Membership production runs on 2026-11-12 used the same PDF,
+eight Bboxes, all four same-sheet pair comparisons, and no Dimension
+Fingerprint edges. The published partitions were:
+
+- `run_c226c39adb364b30a5c3d8d26c91dd2b`: `01/04/06/08`, `02/05`, `03/07`.
+- `run_60b71cf1428b4f8cb93ecc51098a186b`: the accepted two groups.
+- `run_b6da521544bb40fba48fb40c73cd0d54`: `01/04/06/08`, `02/03/07`, `05`.
+
+Reconstructed all three production requests and reproduced their
+partitions with saved replies. Swapping only Sonnet grouping replies
+swapped the correct and split partitions. The same-sheet reply is an
+audit and cannot repair a cross-sheet split. In the last run, Sonnet
+described supporting links from View 05 to the counter, but put them in
+an invalid singleton hypothesis. In the first run, Sonnet supplied
+support inside each two-View fragment without a bridge between them.
+Coordinate OCR captured 33 readings for audit, and none entered the
+active dimension inventory. The earlier V8.4.2 run
+`run_db521bd861aa4a259840ead0388fded4` also published three objects,
+with a different failure: the two first-sheet Views were merged.
+
+On frozen images, schema, Sonnet prompt, and temperature zero, replaying
+the successful Haiku handoff twice produced the exact two groups.
+Replaying the split handoff twice produced incorrect membership both
+times, including one output with two objects and incorrect membership.
+Changing only the View categories recovered the accepted groups once.
+Changing only prose or document notes did not recover them in one trial
+each. This establishes sensitivity to the handoff; it does not isolate
+the Haiku 5.5 migration as the sole historical cause. A separate probe
+removed only the free-form View descriptions from the global Sonnet
+request. All three saved inputs, including both splits and the correct
+control, returned the exact two groups in live Sonnet calls and passed
+the current compiler. Provider IDs: `msg_011Cgy3fRtJocnAvjYHeFLoi`,
+`msg_011Cgy3ffQQxmm1EyRyS9RdS`, and `msg_011Cgy3fav3SM11Em2aoR83b`.
+A fresh test of the same change produced one Lev 2 kitchen with all four
+Views and its render attached (`run_086987b4bd6f4f048503b29d9bfe7308`).
+Fresh Adda `run_1449d7480ab34878b7a62d7b02877939` proposed both correct
+groups but published eight singletons. In each group Sonnet cited three
+Views in one evidence row. The runtime requires two endpoints, discarded
+both rows, and left each P01 View without accepted pair coverage. Two
+other Adda attempts stopped before grouping could be assessed: invalid
+proposed anchor geometry (`msg_011Cgy3rYTWE7doP3wdn7AbT`) and a timeout
+after both Sonnet requests were sent (Discovery message
+`msg_011Cgy3ug3W2sDyYPsS8c93q`). No production change. Detection code is
+identical between V8.4.27 `379f91f` and the Estimation 9.2 release
+`f09b9f6`.
+
+V8.4.28 release candidate. Ada Discovery returns Island geometry, type,
+classification, and Mistral anchor decisions. Sonnet describes every
+retained View and submits each positive membership fact with two explicit
+View IDs. The independent same-sheet audit retains its existing queue.
+Two fresh Adda runs, `run_e711c352e6f04e03be88060172782b7c` and
+`run_3be2ece8654f44d39631eeafaec2a788`, each preserved eight Views
+and returned both exact groups. Fresh Lev 2
+`run_b94f440bdba444deba25b92e47c20750` kept one four-View kitchen with
+its render attached. Owner Upload verification is the next gate before
+resuming Parts list and dimension experiments.
+
+Acceptance: verify exact Adda View membership on fresh repeats, preserve
+Lev 1 and Lev 2 membership and render attachment, and keep every
+same-sheet pair in scope. Test a smaller stable handoff and a bounded
+check of competing cross-sheet memberships before changing release
+behavior. Keep the earlier missing-Bbox-decision failure separate.
+
 ACTIVE, P0, Haiku 5.5 migration on top of V8.4.8:
 The shared Anthropic adapter migrates existing Haiku calls to
 `claude-haiku-5-5`, including legacy configured Haiku IDs. Use low effort and
