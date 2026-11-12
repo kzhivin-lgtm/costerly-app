@@ -39,7 +39,8 @@ Acceptance remains open for work 3.17.4.6. Upload
 `9abd27ad-b865-48e9-9cee-9b91e4d44665`. Detection retained all eight View
 boxes and grouped the corner cabinet as before. It split the straight
 cabinet into `Vanity unit` (P1/P3) and `Console cabinet` (P2/P4). The three
-immutable Estimation inputs retain that partition.
+immutable Estimation inputs retain that partition. The live Detection event
+confirms ADA routing with Haiku 5.5 Discovery and Sonnet 4.6 Membership Review.
 
 The pricing route took 182 seconds from estimate creation to the last
 object update: 48 seconds before Analyze, 25 seconds in shared Analyze,
@@ -58,7 +59,7 @@ handoff data could be read, but the last stage reached by the background
 job and its underlying exception remain unknown. Railway runtime logs
 require an authenticated session. No new model request or upload was made.
 
-The final status and model metrics are written in a single PostgREST
+Estimation 9 wrote the final status and model metrics in a single PostgREST
 insert. The live schema requires `input_tokens` and `output_tokens`. The
 request rows provide both counts, and the terminal row omits them. The
 installed client sends the union of columns without `missing=default`.
@@ -75,9 +76,10 @@ records totalling 116.761 provider seconds. This is a reference, not a
 measurement of this production job. Pending, P0: use runtime logs to
 identify the stop if available.
 
-## Parts Check status repair
+## Estimation 9.1
 
-Work 3.17.4.6. Parts Check writes its terminal status separately, with
+Work 3.17.4.6. Build marker `estimation-v9.1-detection-v8.4.27`. Parts
+Check writes its terminal status separately, with
 explicit zero token counts. Rejected model metrics are logged without
 invalidating the status. Regression tests cover both a saved report and
 a recorded pipeline failure when metrics persistence fails. Existing
