@@ -423,3 +423,25 @@ also remain. The server wrote `review_required` and null self-cost totals
 for both objects, so Objects displays Review without a final price.
 This confirms the production handoff and exposes incomplete costing.
 Fresh Lev2 Upload verification remains pending.
+
+The owner authorized a production Israel Reference position for two-sided
+P2 LDSP, 20 mm. Its typical rate is 98 ILS/m², interpolated one third of
+the way from 96.20 ILS/m² at 19 mm to 101.60 ILS/m² at 22 mm. Both anchors
+share the 2400 × 1220 mm catalog format. The live loader returned the new
+position. A saved Adda replay matched it, but the current sheet calculator
+accepted the 2850 × 1000 mm panel on that 2400 mm stock by area alone.
+Treat this allocation as invalid until the engine checks the physical fit.
+
+The Parts-to-Demand audit accounts for all 149 source rows. 62 entered
+the ten requirements. The remaining 87 were recorded only as review items
+and skipped: 43 unresolved stock notes, 24 glass-box holds, 14 dimension
+gaps, five LED holds and one unsupported role. Missing mirror thicknesses
+never reached the live 4 mm mirror default. The runtime also disables the
+priced estimator allowance for requirements which reach Material Engine.
+Replace this handoff systematically. Preserve each identified part and its
+source, separate missing attributes from identity, and expose assumptions
+and true duplicates for review. Do not bypass review using per-role
+exceptions. Israel Reference already contains 5 m LED strips, drivers,
+2 m recessed and surface-mounted profiles and a diffuser. An experiment
+showed that the electrical family's empty pricing key and default can
+select cable for a strip unless the catalog identity is preserved.
