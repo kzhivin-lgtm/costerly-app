@@ -1,11 +1,18 @@
 # Done Log
 
+Detection V8.4.27 is the owner-accepted Floor 06 production checkpoint.
+Run `run_b64e3ac0a9b34215a4658350c500cee9` reached File Review with
+13 objects and eight verified first-comparison render attachments.
+The [full checkpoint](DETECTION_V8_4_27_PRODUCTION_CHECKPOINT_2026_11_12.md)
+records the production commit, V8.4.26 rollback, preserved evidence, and
+the remaining P05/P13 render misses.
+
 Detection V8.4.26 restores the single-dimension Fingerprint weight.
 The saved V8.4.25 replay goes from 10 to 9 objects on Floor 07 and
 preserves all 20 Floor 06 groups. Fresh production Uploads reached
 File Review with 9 objects on Floor 07, including all three P11 Views
 in one group, and 17 on Floor 06. Floor 06 render attachment and
-grouping remain open in TODO. The
+grouping were open at this checkpoint. The
 [full checkpoint](DETECTION_V8_4_26_PRODUCTION_CHECKPOINT_2026_11_12.md)
 records the release, V8.4.25 rollback, and verification evidence.
 

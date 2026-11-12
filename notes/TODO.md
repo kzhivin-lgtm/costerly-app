@@ -2,15 +2,14 @@
 
 ## Ordinary Detection dimension membership, V8.4.13
 
-ACTIVE, P0. Verify repeat Upload stability and remaining Floor 06 splits.
-Both fresh V8.4.26 owner Uploads reached File Review with all sheets
-covered. Floor 07 published nine objects with P11.V1/V2/V3 together.
-Floor 06 published 17 objects, with four on P03 and two on P14. The
-P04/P13 object splits from the V8.4.25 witness are absent in this fresh
-run. On fixed V8.4.25 evidence, V8.4.26 preserves all 20 Floor 06 groups
-and joins the three P11 Views on Floor 07. Preserve the fresh Floor 07
-P11 membership and verify both floors over repeated Uploads. See the
-[V8.4.26 checkpoint](DETECTION_V8_4_26_PRODUCTION_CHECKPOINT_2026_11_12.md).
+ACTIVE, P0. Verify repeat Upload stability on V8.4.27.
+The accepted Floor 06 Upload reached File Review with 13 objects, one
+on each populated sheet from P03 to P15. The preceding V8.4.26 Upload
+published 17 objects, including four on P03 and two on P14.
+The V8.4.26 Floor 07 Upload published nine objects with P11.V1/V2/V3
+together. Preserve the observed memberships and verify repeat Uploads
+on V8.4.27, including the first fresh Floor 07 Upload on that release.
+See the [V8.4.27 checkpoint](DETECTION_V8_4_27_PRODUCTION_CHECKPOINT_2026_11_12.md).
 
 ACTIVE, P0. Recover outer dimension labels and evidence-backed joins on the
 same sheet. The final-policy replay passed P06, P10, and P13 on Floor 06
@@ -204,30 +203,23 @@ A presentation render is supporting evidence for a technical object. The
 owner confirmed that a render with no proven technical owner must remain
 outside File Review object counts. Keep render role classification and
 render attachment accuracy distinct from that publication rule.
-ACTIVE, P0. Recover evidence-backed ordinary render attachment. In
-V8.4.26 Floor 06 P03, V11/V12 had no dedicated attachment to the V9
-elevation and V1 was incorrectly retained as a technical section.
-Preserve the archived same-sheet review that attached the matching
-crops using triangular shelf supports as evidence. Use the
-[V8.4.26 checkpoint](DETECTION_V8_4_26_PRODUCTION_CHECKPOINT_2026_11_12.md)
-to compare candidates on fixed Views. The first candidate reviewed unresolved
-renders against same-sheet technical crops after ordinary Haiku
-technical recovery. An invalid primary attachment for a known render
-remains unresolved and is eligible for focused review. Verify actual
-crop matches, exclusion of unresolved renders and preservation of the
-technical partition. The first candidate recovered zero links.
-The current experiment corrects witnessed drawing/render role errors before
-Membership and compares renders against technical crops on the same
-sheet on the first attachment attempt. A second request requires a
-tighter technical crop or a smaller set of renders whose first reply
-supplied no decision or visual witness. The fixed Floor 06 input
-produced four initial links and one link from a tighter crop. The
-focused check left P03.V10/V11 unresolved with a visual witness.
-Verify repeatability on fresh Discovery.
-A fresh Floor 07 run requires explicit permission for its private PDF
-and derived crops to reach the OCR and vision providers. The archived
-Floor 07 Detection replay preserves the V8.4.26 partition with a
-simulated role-review abstention.
+
+ACTIVE, P0. Preserve the eight V8.4.27 Floor 06 render attachments on
+repeat Uploads. Review the remaining misses on the fixed production
+inventory. P05.V2 has two relevant features across V4 and V6, and its
+retry found no tighter crop. P13.V7 and V2 share the paired straps by
+the cushion seam, but `no_match` bypassed retry. Retain one technical
+owner per accepted render and keep unsupported renders out of the
+published count. The [checkpoint](DETECTION_V8_4_27_PRODUCTION_CHECKPOINT_2026_11_12.md)
+preserves the visual evidence. The archived Floor 07 replay used a
+simulated role-review abstention. A fresh agent-run Floor 07 check
+requires explicit authorization to send its private PDF and crops to
+OCR and vision providers.
+
+ACTIVE, P1. Measure the V8.4.27 Floor 06 processing increase across
+repeated Uploads. The observed cycle was 197.31 s versus 152.26 s
+on V8.4.26. Record render matching and later technical recovery
+separately before attributing the difference.
 
 V8.4.10 audits omitted ordinary-route render decisions as unresolved
 without aborting technical grouping. An omitted row supplies no

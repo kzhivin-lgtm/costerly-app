@@ -2,6 +2,21 @@
 
 ## V8.4.27, primary render ownership on the same sheet
 
+The owner accepted the fresh Floor 06 production witness
+`run_b64e3ac0a9b34215a4658350c500cee9` as a checkpoint. The Upload
+covered 15/15 sheets and published 13 objects, one on each sheet from
+P03 to P15. All eight published render attachments came from the first
+same-sheet comparison. P03.V1–V4 attached to V11, P04.V1 to V3, and
+P09.V4/V5 to V3 and V6 to V2. P05.V2 and P13.V7 were excluded.
+
+The P05 retry found no materially tighter crop. P13 returned `no_match`
+and did not enter retry despite the paired straps beside the cushion
+seam on V2. No additional render requests were sent. The processing
+cycle was 197.31 s versus 152.26 s in the previous V8.4.26 owner run,
+which published 17 objects and zero render attachments. Fresh Floor 07
+and repeat Uploads on V8.4.27 remain open. See the
+[production checkpoint](DETECTION_V8_4_27_PRODUCTION_CHECKPOINT_2026_11_12.md).
+
 Fixed-input Floor 06 experiments replayed the saved OCR, Discovery and
 Conflict Resolver for `run_4fd8d09b885f4e92b0a3e50dff983496`. The
 Conflict Resolver originally admitted the two P03 thumbnails as
