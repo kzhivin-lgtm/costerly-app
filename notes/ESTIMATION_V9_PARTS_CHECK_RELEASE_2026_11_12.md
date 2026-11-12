@@ -175,3 +175,49 @@ depths, mirror stock thicknesses, three 3000 K route lengths, and hidden
 construction remain open. Verify quantities, profiles and seams before
 using the estimates for fabrication. Material selection and pricing are
 outside the Parts Check scope.
+
+## Estimation 9.4
+
+Work 3.17.4.6. Build `estimation-v9.4-detection-v8.4.28`.
+Previous release and rollback reference `78ad867038eca4b498786758dc76cdd1b9e65194`.
+
+The first Lev2 production run contained 106 Parts rows. It matched 53 of
+107 control rows and left 53 rows with missing dimensions. Substituting only
+its accepted Detection observations into the frozen control reproduced the
+missing block envelopes. Both plan-to-elevation links used `unique_geometry`,
+which Estimation had excluded from the plan alignment. The second production
+run contained 105 rows and matched 100 of 107 control rows. Its relation type
+passed the gate, but two omitted fixed panels reduced the measured spans.
+
+Planner and Block Geometry now accept both geometry-backed link types.
+The native span match still gates selection of the plan and elevation.
+Cross-view depth still requires calibrated drawing scales and matching
+boundaries. On the aligned elevation, an unclaimed full-height rectangular
+panel can extend the uniquely adjacent block at an outer edge or a closed
+seam. Contours already claimed by Front keep their ownership. The recovered
+contour is recorded in Object Inventory and used by Block Geometry and Parts.
+The rule uses drawing geometry and no file names, contour IDs or target counts.
+The Detection implementation and legacy BOM costing are unchanged.
+
+| Saved production input | Fresh Parts Check | Elapsed | Comparison |
+| --- | --- | --- | --- |
+| Lev2 `run_da0b26c5a03742118490aa193e7d15db` | 9 Blocks, 107 rows | 49.70 s | 107/107 matching control rows |
+| Lev2 `run_b5c3bfdf65f44e64bc949b6bcb79c632` | 9 Blocks, 107 rows | 50.85 s | 107/107 matching control rows |
+| Lev1 run prefix `run_16d850` | 3 Blocks, 28 rows | 44.58 s | 28/28 matching control rows |
+
+The fresh provider tests used the original PDF, saved Detection partition
+and OCR from those Uploads. Comparison uses object, block, role, source
+instance, quantity, unit and dimensions. Controlled replays deliberately
+omitting the lost panel reads also reproduced all 107 Lev2 rows. B02 returned
+to 690 × 650 × 1150 mm and B04 to a width of 990 mm. The shared worktop
+returned to a plan envelope of 2480 × 3005 × 30 mm. Parts Check contains zero
+empty dimension fields on both Lev controls. Four Lev2 lower carcass depths
+still use the explicitly assumed 600 mm derived from the worktop proxy.
+The exact worktop cut outline remains open. Front on fresh Lev1 reported
+four drawer observations. Parts retains the three distinct V04 drawer fronts.
+
+On the same archived model responses and inputs, the two-object Adda replay
+matches 9.3 for all nine Block envelopes, Front counts, and 149 Parts rows.
+Eighteen Adda rows still have missing dimensions. Forty-four focused tests
+and two subtests passed. Production acceptance requires a new Upload and
+confirmation in Objects. The legacy costing agent failure is tracked separately.

@@ -1,5 +1,13 @@
 # Done Log
 
+Estimation 9.4, work 3.17.4.6. Plan alignment now uses accepted geometric
+links when native contours independently support the match. Full-height
+unclaimed panels with a unique adjacent assembly are recovered locally.
+Fresh provider responses on both saved Lev2 production inputs matched all
+107 control rows. Lev1 matched all 28. The two-object Adda replay preserves
+all 149 rows. Fresh production Upload acceptance remains active in TODO.
+See the [Estimation release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md).
+
 Estimation 9.3, work 3.17.4.6. Reproduced and repaired the Adda
 Front review truncation and invalid Block Locator contour failure.
 Parts Check now exports measured fronts, display panes, mirrors,

@@ -2,7 +2,7 @@
 
 from statistics import median
 
-from tools.probe_cb_block_boundaries import envelope, rectangular
+from tools.probe_cb_block_boundaries import ORTHOGRAPHIC_PLAN_LINK_TYPES, envelope, rectangular
 
 
 def pixel_scale(view, axis, printed):
@@ -256,7 +256,9 @@ def resolve_orthographic_group(plan, views, projections, printed, observations, 
         return {}
     plan_view, = top_views
     plan_id = plan_view["view_id"]
-    linked = {b if a == plan_id else a for row in observations if row["evidence_type"] == "matching_topology"
+    # Detection can record the same physical correspondence under either visual
+    # evidence type. Depth still requires a calibrated native plan transform.
+    linked = {b if a == plan_id else a for row in observations if row["evidence_type"] in ORTHOGRAPHIC_PLAN_LINK_TYPES
               for a, b in [(row["group_id_a"], row["group_id_b"])] if plan_id in (a, b)}
     linked &= {vid for vid, projection in projections.items() if projection in elevations}
     records = front_envelopes(plan, views)

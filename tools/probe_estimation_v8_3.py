@@ -278,14 +278,14 @@ def structural_front(views, projections, front, detection):
 def stack_and_profiles(views, projections, detection, front):
     """Anchor competing orthographic profiles to a plan-matched column."""
     from tools.probe_cb_block_boundaries import (
-        axis_overlap, front_positions, plan_span_matches, rectangular,
+        ORTHOGRAPHIC_PLAN_LINK_TYPES, axis_overlap, front_positions, plan_span_matches, rectangular,
     )
 
     protected, corrections = set(), []
     rows = {(row["view_id"], row["candidate_id"]): row for row in front}
     for obj in detection["objects"]:
         for relation in obj["accepted_observations"]:
-            if relation["evidence_type"] != "matching_topology":
+            if relation["evidence_type"] not in ORTHOGRAPHIC_PLAN_LINK_TYPES:
                 continue
             first, second = relation["group_id_a"], relation["group_id_b"]
             for plan, elevation in ((first, second), (second, first)):

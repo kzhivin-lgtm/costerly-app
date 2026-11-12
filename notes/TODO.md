@@ -2,13 +2,19 @@
 
 ## Estimation Parts Check, 3.17.4.6
 
-ACTIVE, P0. Verify the Estimation 9.3 Parts Check report from a fresh
-production Upload against the drawing. Use the frozen Lev1, Lev2 and
-two-object Adda reports as controls. Reconcile open Inventory Check
-findings and corroborate the remaining Adda lower depths, mirror
+ACTIVE, P0. Verify Estimation 9.4 after a fresh production Upload. Fresh
+Parts Check requests on both saved Lev2 production inputs match 107/107
+control rows, and the saved Lev1 production input matches 28/28. Confirm
+the same in Objects and retain open Inventory Check findings. Corroborate
+four Lev2 lower carcass depths and the remaining Adda lower depths, mirror
 thicknesses, LED route lengths and hidden joinery. Keep the plan envelope
-separate from the exact worktop cut outline. Details and timing are in
-the [Estimation release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md).
+separate from the worktop cut outline. Evidence and timings are in the
+[Estimation release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md).
+
+PENDING, P1. Trace the legacy BOM costing failure separately from Parts Check.
+Both Lev2 production requests reached the costing agent and failed before
+price publication. The exact exception is absent from the saved events.
+Material Resolver and costing integration follow Parts Check acceptance.
 
 ## Ordinary Detection dimension membership, V8.4.13
 

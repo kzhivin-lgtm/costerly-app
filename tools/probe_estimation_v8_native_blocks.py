@@ -7,7 +7,8 @@ from use_cases.estimation_block_locator_v8 import link_supported_worktop
 
 from tools.probe_cb_adda_ownership import components, contact, corner_plan, edges, hull
 from tools.probe_cb_block_boundaries import (
-    ELEVATION_PROJECTIONS, axis_overlap, build_report, compose_v11, plan_span_matches,
+    ELEVATION_PROJECTIONS, ORTHOGRAPHIC_PLAN_LINK_TYPES, axis_overlap, build_report, compose_v11,
+    edge_fraction, envelope, plan_span_matches, rectangular,
 )
 
 
@@ -17,7 +18,7 @@ def orthographic_blocks(*, views, projections, faces, detection):
     obj, = [row for row in detection["objects"] if row["object_id"] == report["object_id"]]
     options = set()
     for relation in obj["accepted_observations"]:
-        if relation["evidence_type"] != "matching_topology":
+        if relation["evidence_type"] not in ORTHOGRAPHIC_PLAN_LINK_TYPES:
             continue
         a, b = relation["group_id_a"], relation["group_id_b"]
         for plan, elevation in ((a, b), (b, a)):
@@ -268,6 +269,59 @@ def attach_reviewed_sides(plan, views, reviewed):
     plan["fixed_review_pending"] = pending
 
 
+def attach_native_sides(plan, views, faces):
+    """Recover unclaimed side panels on the elevation independently matched to the plan."""
+    vid = plan.get("aligned_elevation_id")
+    if vid is None:
+        return
+    contours = views[vid]["candidates"]
+    frame = envelope(row["bbox"] for row in contours)
+    groups = [(block, appearance["bbox"]) for block in plan["blocks"] if "positions" in block
+              for appearance in block["appearances"] if appearance["view_id"] == vid]
+    occupied = {row["candidate_id"] for row in faces if row["view_id"] == vid}
+    occupied.update(row["contour_id"] for block in plan["blocks"]
+                    for row in block.get("fixed_extensions", ()) if row["view_id"] == vid)
+    choices = defaultdict(list)
+
+    for contour in contours:
+        box = contour["bbox"]
+        width, height = box[2] - box[0], box[3] - box[1]
+        if (contour["id"] in occupied or width <= 0 or height < 3 * width or not rectangular(contour)
+                or min(edge_fraction(contour, 0, side) for side in (False, True)) < .9):
+            continue
+        owners = []
+        for block, group in groups:
+            frontage = group[2] - group[0]
+            if not .08 * frontage <= width <= .67 * frontage or axis_overlap(box, group, 1) < .94:
+                continue
+            for side in (0, 2):
+                opposite = 2 - side
+                gap = (group[side] - box[opposite]) if side == 0 else (box[opposite] - group[side])
+                if not 0 <= gap <= .1 * min(width, frontage):
+                    continue
+                # An exposed edge or a second, adjoining cabinet closes the seam.
+                boundary = abs(box[side] - frame[side]) <= 2
+                neighbor = any(
+                    other is not block
+                    and abs(edge[opposite] - box[side]) <= .1 * width
+                    and edge[1] <= box[1] + 2 and edge[3] >= box[3] - 2
+                    for other, edge in groups
+                )
+                if boundary or neighbor:
+                    owners.append((block, side))
+        if len(owners) == 1:
+            block, side = owners[0]
+            choices[block["id"], side].append((block, contour))
+
+    for candidates in choices.values():
+        if len(candidates) == 1:
+            block, contour = candidates[0]
+            block.setdefault("fixed_extensions", []).append({
+                "view_id": vid, "contour_id": contour["id"], "bbox": contour["bbox"],
+                "basis": "native full-height side at a uniquely owned assembly boundary",
+            })
+
+
 def resolve_locator_contours(plan, view, proposal):
     """Reconcile locator proposals with continuous rails, seams and top rims."""
     contours = {row["id"]: row for row in view["candidates"]}
@@ -463,6 +517,7 @@ def assemble_native_front_blocks(*, views, projections, detection, faces, review
                                                faces=grounded["faces"], detection=detection)
             grounded["audit"].extend(revised["audit"])
             attach_reviewed_sides(plan, own_views, own_review)
+            attach_native_sides(plan, own_views, grounded["faces"])
 
         for feature in object_features:
             if feature["view_id"] not in own_views:

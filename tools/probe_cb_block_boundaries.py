@@ -16,6 +16,7 @@ from use_cases.estimation_detection_context_v7 import digest
 
 FRONT_ROLES = {"hinged_door", "drawer", "lift_up", "unresolved_front", "pull_out_shelf"}
 ELEVATION_PROJECTIONS = {"Front elevation", "Side view", "Rear view"}
+ORTHOGRAPHIC_PLAN_LINK_TYPES = {"matching_topology", "unique_geometry"}
 AUDIT_FILENAME = "estimation-offline-all-islands-evidence.json"
 
 
@@ -363,10 +364,10 @@ def build_report(views, readings, detection, elevations, plan_view=None, aligned
                 or any(abs(a - b) >= 0.0003 for a, b in zip(normalized, view["bbox_normalized"], strict=True))):
             raise ValueError(f"Offline Vector and Detection Island frames disagree: {view_id}")
     observations = [row for row in obj["accepted_observations"]
-                    if row["evidence_type"] == "matching_topology"
+                    if row["evidence_type"] in ORTHOGRAPHIC_PLAN_LINK_TYPES
                     and {row["group_id_a"], row["group_id_b"]} == {plan_view, aligned_elevation}]
     if plan_view is not None and not observations:
-        raise ValueError("no saved Detection topology observation for the requested plan alignment")
+        raise ValueError("no accepted Detection observation for the requested plan alignment")
 
     blocks, unbound, omitted = [], [], {}
     for view_id in elevations:
@@ -511,7 +512,7 @@ def main():
         if plan_view is None and aligned_elevation is None:
             detected, = [obj for obj in detection["objects"] if obj["object_id"] == object_id]
             for observation in detected["accepted_observations"]:
-                if observation["evidence_type"] != "matching_topology":
+                if observation["evidence_type"] not in ORTHOGRAPHIC_PLAN_LINK_TYPES:
                     continue
                 a, b = observation["group_id_a"], observation["group_id_b"]
                 for top, elevation in ((a, b), (b, a)):
