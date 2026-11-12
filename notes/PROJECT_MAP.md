@@ -2,6 +2,10 @@
 
 This file explains where code belongs so the project stays understandable.
 
+Estimation 9 Parts Check uses the accepted File Review PDF handoff and
+publishes a private report from Objects. Work 3.17.4.6 and verification
+are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md).
+
 ## Entry Point
 
 - `app.py` sets Streamlit page config, applies global CSS, initializes state, and routes to screens.

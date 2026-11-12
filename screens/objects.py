@@ -20,6 +20,7 @@ from ui.screen_transition import (
 )
 from use_cases.estimation import load_objects_estimation_data
 from use_cases.estimation_runtime import submit_prepared_estimation_job
+from use_cases.estimation_parts_check_runtime import load_parts_check, parts_check_enabled
 from use_cases.object_detail_runtime import submit_object_detail_prefetch
 from use_cases.final_approval import final_approval
 from use_cases.estimation_progress import clear_estimate_progress, get_estimate_progress
@@ -815,6 +816,35 @@ def _render_live_objects_content(
         )
 
 
+def _render_parts_check(*, estimate_id: str, run_id: str, company_id: str) -> None:
+    if not estimate_id or not run_id or not parts_check_enabled():
+        return
+    key = company_id, run_id, estimate_id
+    if st.button("Parts Check", key=f"parts-check-{estimate_id}"):
+        try:
+            result = load_parts_check(client=get_supabase_client(), company_id=company_id,
+                                      run_id=run_id, estimate_id=estimate_id)
+        except Exception:
+            result = {"status": "read_failed"}
+        st.session_state.parts_check_result = (key, result)
+    active_key, result = st.session_state.get("parts_check_result", (None, {}))
+    if active_key != key:
+        return
+    status = result["status"]
+    if status == "ready":
+        st.download_button(f"Download Parts Check ({result['part_rows']} rows)",
+                           data=result["payload"], file_name="parts-check.json",
+                           mime="application/json", on_click="ignore")
+    elif status == "running":
+        st.info("Parts Check is running. Select Parts Check again to refresh.")
+    elif status == "failed":
+        st.warning("Parts Check could not finish for this upload.")
+    elif status == "read_failed":
+        st.warning("Parts Check could not be loaded. Try again.")
+    else:
+        st.caption("Parts Check is not available for this upload yet.")
+
+
 def render_objects_screen(
     company_id: str,
     *,
@@ -897,6 +927,7 @@ def render_objects_screen(
         data=_data_with_progress(screen_state.data, estimate_id),
     )
     _render_object_detail_navigation_bridges(action_data)
+    _render_parts_check(estimate_id=str(estimate_id or ""), run_id=str(run_id or ""), company_id=company_id)
     _render_objects_actions(
         company_id=company_id,
         run_id=run_id,

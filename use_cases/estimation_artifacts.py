@@ -23,6 +23,7 @@ def _upload_immutable_artifact(
     path: str,
     payload: bytes,
     content_type: str,
+    bucket: str = EVIDENCE_BUCKET,
 ) -> None:
     """Upload a content-addressed artifact through a bounded safe retry.
 
@@ -33,7 +34,7 @@ def _upload_immutable_artifact(
     """
     for attempt in range(_IDEMPOTENT_UPLOAD_ATTEMPTS):
         try:
-            client.storage.from_(EVIDENCE_BUCKET).upload(
+            client.storage.from_(bucket).upload(
                 path,
                 payload,
                 file_options={"content-type": content_type, "upsert": "true"},
@@ -65,16 +66,16 @@ def evidence_signed_url(*, client: Any, storage_ref: str, company_id: str) -> st
     return getattr(response, "signedURL", None) or getattr(response, "signed_url", None)
 
 
-def download_evidence_artifact(*, client: Any, storage_ref: str) -> bytes:
+def download_evidence_artifact(*, client: Any, storage_ref: str, bucket: str = EVIDENCE_BUCKET) -> bytes:
     """Download one private evidence artifact from its immutable storage ref."""
-    prefix = f"storage://{EVIDENCE_BUCKET}/"
+    prefix = f"storage://{bucket}/"
     ref = str(storage_ref or "").strip()
     if not ref.startswith(prefix):
         raise ValueError("evidence storage_ref must use the private evidence bucket")
     object_path = ref[len(prefix):]
     if not object_path or object_path.startswith("/") or ".." in object_path.split("/"):
         raise ValueError("evidence storage_ref has an invalid object path")
-    payload = client.storage.from_(EVIDENCE_BUCKET).download(object_path)
+    payload = client.storage.from_(bucket).download(object_path)
     if not isinstance(payload, (bytes, bytearray)) or not payload:
         raise RuntimeError("private evidence artifact download returned no bytes")
     return bytes(payload)

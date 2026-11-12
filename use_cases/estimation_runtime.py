@@ -20,6 +20,7 @@ from db.repositories import (
 from db.supabase_client import get_supabase_client
 from use_cases.estimation_handoff import persist_estimation_inputs
 from use_cases.estimation_originals import describe_estimation_original
+from use_cases.estimation_parts_check_runtime import submit_parts_check
 from use_cases.estimation_object_to_estimate_runtime import (
     ESTIMATION_ACTIVE_BOM_AGENT_VERSION,
     ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,
@@ -725,6 +726,9 @@ def _run_estimation_job(
 
     inputs_available = bool(created_inputs)
     if inputs_available:
+        submit_parts_check(estimate_id=estimate_id, run_id=run_id, company_id=company_id,
+                           file_name=file_name, file_bytes=file_bytes, inputs=created_inputs,
+                           ocr_package=ocr["ocr_result"])
         estimation_result = _run_estimation_v5_3_for_all_objects(
                 client=client,
                 estimate_id=estimate_id,

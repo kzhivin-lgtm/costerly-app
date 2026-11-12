@@ -139,6 +139,8 @@ def test_prepared_worker_persists_accepted_snapshot_before_estimation(monkeypatc
 
 def test_v5_3_runtime_routes_all_objects_through_2vn_geometry_bom_path(monkeypatch):
     events = []
+    monkeypatch.setattr(runtime, "submit_parts_check",
+                        lambda **kwargs: events.append(("parts_check", kwargs["inputs"])))
     monkeypatch.setattr(runtime, "get_supabase_client", lambda: object())
     monkeypatch.setattr(runtime, "fetch_rfq_run", lambda _client, _run_id: _Frame([{}]))
     monkeypatch.setattr(runtime, "fetch_rfq_detected_objects", lambda _client, _run_id: _Frame([{}]))
@@ -173,7 +175,8 @@ def test_v5_3_runtime_routes_all_objects_through_2vn_geometry_bom_path(monkeypat
         shell={"estimate_id": "estimate-1"},
     )
 
-    assert [event[0] for event in events] == ["v4_run"]
+    assert [event[0] for event in events] == ["parts_check", "v4_run"]
+    assert events[0][1] == events[1][1]
     assert result["estimation"]["status"] == "completed"
     assert result["estimation"]["estimated_objects"] == 1
     assert result["estimation_version"] == "v5_3_2vn_geometry_composer"

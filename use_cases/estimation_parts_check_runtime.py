@@ -1,0 +1,174 @@
+"""Produce and publish Parts Check from the immutable File Review handoff."""
+
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
+from hashlib import sha256
+import json
+import logging
+from pathlib import Path
+import re
+from tempfile import TemporaryDirectory
+from threading import RLock
+
+from config import get_optional_secret
+from db.repositories import insert_agent_usage_events
+from db.supabase_client import get_supabase_client
+from use_cases.estimation_artifacts import _upload_immutable_artifact, download_evidence_artifact
+from use_cases.estimation_detection_context_v7 import build_context
+from use_cases.estimation_originals import ORIGINALS_BUCKET
+
+VERSION = "estimation-v9-parts-check"
+OPERATION = "estimation_v9_parts_check"
+_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="parts-check")
+_LOCK = RLock()
+_JOBS = {}
+_LOG = logging.getLogger(__name__)
+
+
+def parts_check_enabled():
+    return get_optional_secret("ESTIMATION_V9_PARTS_CHECK", "true").lower() in {"1", "true", "yes", "on"}
+
+
+def _reports(client, company_id, run_id, estimate_id):
+    return (client.table("agent_usage_events").select("status,raw_usage")
+            .eq("company_id", company_id).eq("run_id", run_id).eq("operation", OPERATION)
+            .eq("raw_usage->>estimate_id", estimate_id).order("created_at", desc=True).limit(1).execute().data or [])
+
+
+def _source_event(client, company_id, run_id):
+    rows = (client.table("agent_usage_events").select("id,company_id,run_id,raw_usage")
+            .eq("company_id", company_id).eq("run_id", run_id).eq("status", "succeeded")
+            .eq("operation", "rfq_detection_visual_registry")
+            .order("created_at", desc=True).limit(12).execute().data or [])
+    for row in rows:
+        audit = row.get("raw_usage") or {}
+        if isinstance(audit, dict) and audit.get("view_evidence_packages"):
+            return row
+    raise ValueError("Published Detection evidence is unavailable")
+
+
+def _request_provider(company_id, run_id, file_name, usage_events):
+    from agents.anthropic_adapter import build_agent_usage_event, extract_text_from_claude_response, get_anthropic_client
+    from agents.estimation_v4_1_material_facts_agent import _create_message_with_hard_timeout, _json_object
+
+    anthropic = get_anthropic_client().with_options(timeout=120, max_retries=0)
+
+    def invoke(stage, request, validate):
+        started = datetime.now(UTC).isoformat()
+        response = _create_message_with_hard_timeout(anthropic, timeout_seconds=120, **request)
+        usage_events.append(build_agent_usage_event(
+            agent_name="estimation", operation="estimation_v9_parts_check_request",
+            company_id=company_id, run_id=run_id, file_name=file_name, object_id=None, object_name=None,
+            model=request["model"], prompt_version=VERSION, response=response, started_at=started,
+            finished_at=datetime.now(UTC).isoformat(), request_diagnostics={"stage": stage},
+        ))
+        if response.stop_reason != "end_turn":
+            raise ValueError(f"Parts Check response was incomplete at {stage}")
+        return validate(_json_object(extract_text_from_claude_response(response)))
+
+    return invoke
+
+
+def _artifact_prefix(company_id, run_id, estimate_id):
+    if not all(re.fullmatch(r"[A-Za-z0-9_-]+", part) for part in (company_id, run_id, estimate_id)):
+        raise ValueError("Invalid Parts Check identity")
+    return f"{company_id}/{run_id}/parts-check/{estimate_id}/"
+
+
+def _run(*, estimate_id, run_id, company_id, file_name, file_bytes, inputs, ocr_package):
+    client = get_supabase_client()
+    usage_events = []
+    status = "failed"
+    started = datetime.now(UTC).isoformat()
+    input_ids = sorted(row["input_id"] for row in inputs)
+    original_sha256 = sha256(file_bytes).hexdigest()
+    details = {"estimate_id": estimate_id, "input_ids": input_ids, "source_pdf_sha256": original_sha256}
+    stage = "load_detection"
+    try:
+        prior = _reports(client, company_id, run_id, estimate_id)
+        if (prior and prior[0]["status"] == "succeeded" and prior[0]["raw_usage"].get("input_ids") == input_ids
+                and prior[0]["raw_usage"].get("source_pdf_sha256") == original_sha256):
+            return
+        detection = _source_event(client, company_id, run_id)
+        context = build_context(inputs=inputs, event=detection, ocr_package=ocr_package,
+                                include_measurements=True, published_partition=True)
+        details["detection_event_id"] = detection["id"]
+        stage = "run_parts_check"
+        from tools.probe_estimation_v9 import run_parts_check
+
+        with TemporaryDirectory(prefix="costerly-parts-check-") as directory:
+            pdf = Path(directory) / "source.pdf"
+            pdf.write_bytes(file_bytes)
+            report = run_parts_check(pdf=pdf, detection_context=context, output=Path(directory) / "output",
+                                     inputs=inputs, request_provider=_request_provider(
+                                         company_id, run_id, file_name, usage_events))
+        expected_objects = {row["input_payload"]["object"]["object_id"] for row in inputs}
+        if report["stage"] != "Parts Check" or set(report["objects"]) != expected_objects:
+            raise ValueError("Parts Check must report every accepted File Review object")
+        report.update(estimation_version=VERSION, run_id=run_id, estimate_id=estimate_id,
+                      source_pdf_sha256=original_sha256, detection_event_id=detection["id"])
+        payload = (json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode()
+        digest = sha256(payload).hexdigest()
+        stage = "publish_parts_check"
+        path = _artifact_prefix(company_id, run_id, estimate_id) + f"{digest}.json"
+        _upload_immutable_artifact(client=client, path=path, payload=payload, content_type="application/json",
+                                   bucket=ORIGINALS_BUCKET)
+        details.update(report_sha256=digest, source_coverage=report["source_coverage"],
+                       part_rows=sum(len(obj["parts"]) for obj in report["objects"].values()))
+        status = "succeeded"
+    except Exception as exc:
+        details.update(failure_stage=stage, error_type=type(exc).__name__)
+        _LOG.warning("Parts Check %s failed for run %s: %s", stage, run_id, type(exc).__name__)
+    usage_events.append({
+        "company_id": company_id, "run_id": run_id, "file_name": file_name, "agent_name": "estimation",
+        "operation": OPERATION, "model": "deterministic", "prompt_version": VERSION, "status": status,
+        "started_at": started, "finished_at": datetime.now(UTC).isoformat(), "raw_usage": details,
+    })
+    insert_agent_usage_events(client, usage_events)
+
+
+def submit_parts_check(**inputs):
+    """Queue one active report per estimate, off the pricing and screen workers."""
+    if not parts_check_enabled() or Path(inputs["file_name"]).suffix.lower() != ".pdf":
+        return
+    key = (inputs["company_id"], inputs["run_id"], inputs["estimate_id"],
+           tuple(sorted(row["input_id"] for row in inputs["inputs"])))
+    with _LOCK:
+        if key in _JOBS:
+            return
+        job = _EXECUTOR.submit(_run, **inputs)
+        _JOBS[key] = job
+
+    def release(finished):
+        with _LOCK:
+            _JOBS.pop(key, None)
+        if finished.exception():
+            _LOG.error("Parts Check publication failed for run %s: %s", key[1], type(finished.exception()).__name__)
+
+    job.add_done_callback(release)
+
+
+def load_parts_check(*, client, company_id, run_id, estimate_id):
+    """Load only a report attached to this tenant's exact estimate and upload."""
+    estimates = (client.table("rfq_estimates").select("estimate_id").eq("company_id", company_id)
+                 .eq("run_id", run_id).eq("estimate_id", estimate_id).limit(1).execute().data or [])
+    if not estimates:
+        return {"status": "unavailable"}
+    with _LOCK:
+        if any(key[:3] == (company_id, run_id, estimate_id) for key in _JOBS):
+            return {"status": "running"}
+    rows = _reports(client, company_id, run_id, estimate_id)
+    if not rows:
+        return {"status": "unavailable"}
+    event = rows[0]
+    if event["status"] != "succeeded":
+        return {"status": "failed", "stage": event["raw_usage"].get("failure_stage")}
+    digest = event["raw_usage"]["report_sha256"]
+    if not re.fullmatch(r"[0-9a-f]{64}", digest):
+        raise ValueError("Invalid Parts Check artifact hash")
+    path = _artifact_prefix(company_id, run_id, estimate_id) + f"{digest}.json"
+    payload = download_evidence_artifact(client=client, storage_ref=f"storage://{ORIGINALS_BUCKET}/{path}",
+                                         bucket=ORIGINALS_BUCKET)
+    if sha256(payload).hexdigest() != digest:
+        raise ValueError("Parts Check artifact changed after publication")
+    return {"status": "ready", "payload": payload, "part_rows": event["raw_usage"]["part_rows"]}
