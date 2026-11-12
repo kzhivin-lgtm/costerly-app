@@ -11,7 +11,7 @@ from tempfile import TemporaryDirectory
 from threading import RLock
 
 from config import get_optional_secret
-from db.repositories import insert_agent_usage_events
+from db.repositories import insert_agent_usage_event, insert_agent_usage_events
 from db.supabase_client import get_supabase_client
 from use_cases.estimation_artifacts import _upload_immutable_artifact, download_evidence_artifact
 from use_cases.estimation_detection_context_v7 import build_context
@@ -119,12 +119,17 @@ def _run(*, estimate_id, run_id, company_id, file_name, file_bytes, inputs, ocr_
     except Exception as exc:
         details.update(failure_stage=stage, error_type=type(exc).__name__)
         _LOG.warning("Parts Check %s failed for run %s: %s", stage, run_id, type(exc).__name__)
-    usage_events.append({
+    # The status makes the report discoverable. Publish it independently of model metrics.
+    insert_agent_usage_event(client, {
         "company_id": company_id, "run_id": run_id, "file_name": file_name, "agent_name": "estimation",
         "operation": OPERATION, "model": "deterministic", "prompt_version": VERSION, "status": status,
+        "input_tokens": 0, "output_tokens": 0,
         "started_at": started, "finished_at": datetime.now(UTC).isoformat(), "raw_usage": details,
     })
-    insert_agent_usage_events(client, usage_events)
+    try:
+        insert_agent_usage_events(client, usage_events)
+    except Exception as exc:
+        _LOG.warning("Parts Check usage persistence failed for run %s: %s", run_id, type(exc).__name__)
 
 
 def submit_parts_check(**inputs):
