@@ -1,6 +1,6 @@
 # Detection Agent benchmark
 
-## Primary render ownership on the same sheet
+## V8.4.27, primary render ownership on the same sheet
 
 Fixed-input Floor 06 experiments replayed the saved OCR, Discovery and
 Conflict Resolver for `run_4fd8d09b885f4e92b0a3e50dff983496`. The
