@@ -33,6 +33,26 @@ def test_published_partition_accepts_singletons_and_keeps_only_bound_dimensions(
     assert measurement["occurrence_id"] == "width"
     assert measurement["source_refs"] == ["detection:detection:note"]
 
+    numeric_box = dict(top_left_x=22, top_left_y=34, bottom_right_x=34, bottom_right_y=40)
+    normalized_box = dict(top_left_x=.2, top_left_y=.4, bottom_right_x=.4, bottom_right_y=.5)
+    reading = {"fact_id": "coordinate-note", "page_number": 1, "bbox": numeric_box, "text": "510"}
+    coordinate = {"occurrence_id": "coordinate-width", "value_mm": "510", "original_text": "510",
+                  "unit_basis": "mm", "normalized_bbox": normalized_box,
+                  "source_fact_ids": ["coordinate-note"]}
+    event["raw_usage"]["coordinate_dimension_audit"] = {
+        "bbox_frame": "ocr_page_pixels", "view_readings": {"view": [reading]},
+        "view_fingerprints": [{"group_id": "view", "occurrences": [coordinate, {
+            **coordinate, "occurrence_id": "misplaced", "normalized_bbox": {**normalized_box, "top_left_x": .1},
+        }]}],
+    }
+    context = build_context(inputs=inputs, event=event, include_measurements=True, published_partition=True)
+    obj, = context["objects"]
+    supplemental, = obj["coordinate_dimension_inventory"]["view"]
+    assert supplemental["occurrence_id"] == "coordinate-width"
+    assert supplemental["label_axis"] == "x"
+    assert supplemental["source_refs"] == ["detection:detection:coordinate-note"]
+    assert obj["dimension_inventory"][0]["occurrences"] == [measurement]
+
 
 def test_parts_check_download_is_bound_to_estimate_owner_and_content(monkeypatch):
     payload = b'{"stage":"Parts Check"}'

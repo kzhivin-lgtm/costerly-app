@@ -112,11 +112,17 @@ def add_source_display_glass_parts(parts, inventory, analyze):
             scope = scopes[item["id"]]
             if not scope["parts"]:
                 scope["construction_pending"] = True
+            shelves_by_ref = {row["instance_ref"]: row for row in scope["parts"]
+                              if row["role"] == "pull_out_shelf" and row.get("instance_ref")}
             for cid in matches:
                 ref = f"{source['view_id']}:{cid}"
                 pending_size = dimension(None, "unresolved", [note_ref, ref])
+                shelf = shelves_by_ref.get(ref, {}).get("dimensions", {})
+                width, depth = (derived("construction_assumption", [shelf.get(axis, pending_size)],
+                                        lambda mm: mm, reason="Estimate the glass base on its supporting shelf.")
+                                for axis in ("length", "width"))
                 scope["parts"].extend(glass_box_parts(
-                    pending_size, pending_size, pending_size, thickness, scope_id=zone["id"], ref=ref))
+                    width, depth, pending_size, thickness, scope_id=zone["id"], ref=ref))
 
 
 def power_supply_watts(length_mm, watts_per_m):
@@ -193,7 +199,8 @@ OCR_LOOKALIKES = str.maketrans({
     "м": "m", "н": "h", "о": "o", "п": "n", "р": "p", "с": "c", "т": "y", "у": "y",
     "ф": "f", "ч": "c", "ы": "b",
 })
-STOCK_LABELS = {"carcass": ("корпусный", "carcass"), "facade": ("фасадный", "facade", "front")}
+STOCK_LABELS = {"carcass": ("корпусный", "carcass"), "facade": ("фасадный", "facade", "front"),
+                "backing": ("задний", "backing")}
 MM_STOCK = re.compile(r"(?<![\d.,×xх])(\d{1,2}(?:[.,]\d)?)\s*(?:mm|мм)\b", re.IGNORECASE)
 
 
@@ -283,7 +290,7 @@ def add_source_casework_parts(parts, inventory, analyze, geometry, *, input_rows
                         scope["parts"] = [_sized("mirror_mounting_panel", 1, "panel stock", height, width, _assumed(None))]
                     else:
                         scope["parts"] = _box(width, height, depth, thickness, "cabinet panel stock",
-                                              _assumed(None), max(0, divisions - 1))
+                                              stock_notes[oid].get("backing", stock(6)), max(0, divisions - 1))
                         _front_parts(scope["parts"], faces, {}, width=width, height=height, depth=depth,
                                      panel_t=thickness, face_t=face_thickness, box_material="cabinet panel stock",
                                      face_material="facade stock", divisions=divisions, glass=None,

@@ -204,10 +204,17 @@ class TestEstimation9Inventory(unittest.TestCase):
             {"page": page, "status": "reviewed", "findings": []} for page in (1, 2)
         ])
         row = {"role": "drawer_front", "instance_ref": "V1:C01", "dimensions": {}}
+        envelope = {
+            "width": {"mm": 1200, "basis": "printed_dimension", "refs": ["V1-D01"]},
+            "depth": {"mm": None, "basis": "unresolved", "refs": []},
+        }
         parts = {"source_audit_sha256": "test", "objects": {"o": {
             "blocks": [{"block_id": block["id"], "parts": [row]} for block in block_rows], "shared_parts": [],
         }}}
+        parts["objects"]["o"]["blocks"][0]["envelope"] = envelope
         report = check_parts(self.analyze, reconcile_object_inventory(checked, parts), parts)
+        self.assertEqual(report["objects"]["o"]["blocks"][0]["envelope"], envelope)
+        self.assertNotIn("envelope", report["objects"]["o"]["blocks"][1])
         self.assertEqual(report["objects"]["o"]["inventory_issues"], [
             {"role": "drawer_front", "source_ref": "V1:C01", "reason": "duplicate_part_evidence"},
         ])

@@ -95,3 +95,35 @@ Check itself stays a deterministic reconciliation of Parts with the checked
 inventory. Verify recall on archived findings and measure the whole path
 before setting a production latency target. The proposal has no runtime
 changes in this repair.
+
+## Estimation 9.2
+
+Work 3.17.4.6. Build marker `estimation-v9.2-detection-v8.4.27`.
+Offline Vector feeds Island Map and Understanding, then Front, Block
+Planner and Block Locator. Object Inventory and Inventory Check precede
+Block Geometry. Parts uses its measured block envelopes. Parts Check
+now includes those envelopes and their source references.
+
+The Adda production witness `run_60b71cf1428b4f8cb93ecc51098a186b`
+had 33 RapidOCR numeric readings and an empty canonical dimension
+inventory. Estimation 9.2 validates the saved coordinate readings against
+each frozen View and uses them when the primary measurements yield no
+printed spans. The casework resolver can corroborate owned orthographic
+views by their drawer bank or by matching both elevations to one plan.
+Glass box base estimates reuse the corresponding shelf size, and the
+standard backing recipe uses 6 mm when no thickness is available.
+
+An offline replay used the exact production Detection and OCR payloads,
+the matching original PDF and archived Analyze and Inventory Check model
+responses. All nine block envelopes had at least one axis, 22 of 27 axes
+were resolved, and five blocks had all three axes. The report contained
+149 rows and 75 rows with an unresolved dimension. Eight glass bases
+had estimated footprints and 40 panes were represented. The earlier
+production report contained 147 rows and 139 dimension gaps. New upload
+acceptance and full detail sizing remain open. Remaining work includes
+front face boundaries, glass wall heights, LED routes, partial block
+depths and standalone dimensions. Model responses in the replay were
+archived, so its output is a control for the handoff and local compilation.
+Two saved Lev1 and three saved Lev2 Block Geometry runs reproduced
+exactly. The Lev2 Parts result also matched the Estimation 9.1 control.
+Thirty-three focused tests passed.

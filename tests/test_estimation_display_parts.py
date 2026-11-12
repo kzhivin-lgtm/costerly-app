@@ -59,6 +59,29 @@ class TestDisplayParts(unittest.TestCase):
         self.assertEqual({row["instance_ref"] for row in scope["parts"]}, {"V1:C1", "V1:C2"})
         self.assertTrue(all(row["dimensions"]["length"]["mm"] is None for row in scope["parts"]))
 
+    def test_glass_footprint_uses_only_its_own_measured_shelf(self):
+        zone = {"id": "zone", "role": "glazed_zone", "quantity": None, "source_refs": [{
+            "view_id": "V1", "annotation_id": "A1", "source_text": "Витрина / Стекло",
+            "tips": [{"xy_px": [15, 18]}],
+        }]}
+        inventory = {"objects": {"o": {"items": [{"kind": "block", "id": "B1", "children": [zone]}]}}}
+        scope = {"block_id": "B1", "parts": [{"role": "pull_out_shelf", "instance_ref": "V1:C1",
+                 "dimensions": {"length": dimension(544, "scaled_projection", ["width-note"]),
+                                "width": dimension(300, "scaled_projection", ["depth-note"])}}]}
+        parts = {"objects": {"o": {"blocks": [scope]}}}
+        analyze = {"objects": {"o": {
+            "front": {"faces": [{"role": "pull_out_shelf", "view_id": "V1", "candidate_id": "C1",
+                                 "bbox_px": [10, 20, 30, 30]}]},
+            "planner": {"blocks": [{"id": "B1", "members": ["C1"]}]},
+        }}}
+        add_source_display_glass_parts(parts, inventory, analyze)
+        _, base, long_wall, end_wall = scope["parts"]
+        self.assertEqual([d["mm"] for d in base["dimensions"].values()], [544, 300, 4])
+        self.assertEqual(base["dimensions"]["length"]["basis"], "construction_assumption")
+        self.assertEqual(base["dimensions"]["width"]["refs"], ["depth-note"])
+        self.assertIsNone(long_wall["dimensions"]["width"]["mm"])
+        self.assertIsNone(end_wall["dimensions"]["width"]["mm"])
+
     def test_power_supply_uses_headroom_and_steps_up_over_five_metres(self):
         self.assertEqual([power_supply_watts(length, 6) for length in (1000, 5000, 5001, 6000, 7000)],
                          [40, 40, 50, 50, 60])

@@ -162,7 +162,7 @@ def compare_tier_height(measurement, overall, installed):
             "sources": [overall, installed], "projection_check_mm": measurement["value_mm"]}
 
 
-def corner_casework(roles, candidates, printed, measure_one, axono_box):
+def corner_casework(roles, candidates, printed, measure_one, axono_box, *, require_return_match=False):
     displays = sorted(roles["drawer_and_pull_out_bay"], key=lambda block: axono_box(block)[0])
     mirrors = roles["mirror_upright"]
     lower = sorted(roles["assumed_lower_frame_split"], key=lambda block: axono_box(block)[0])
@@ -205,6 +205,8 @@ def corner_casework(roles, candidates, printed, measure_one, axono_box):
                         c["bbox"][0] >= plan_bays[-1]["bbox"][2] - 5 and
                         abs((c["bbox"][3] - c["bbox"][1]) * scale[0] /
                             ((x1 - x0) * return_scale[0]) - 1) <= .06])
+    if require_return_match and plan_return is None:
+        return {}
     left_plan, right_plan = plan_bays[insert_at - 1:insert_at + 1]
     bridge = only([c for c in plan["candidates"] if rectangular(c)
                    and abs(c["bbox"][0] - left_plan["bbox"][2]) <= 5
@@ -389,6 +391,8 @@ def resolve_casework_group(plan, front, views, projections, printed, observation
     source_view = views[vid]
     contours = {row["id"]: row for row in source_view["candidates"]}
     candidates = align_views(views, projections, vid, observations)
+    owned_projections = {role: [view for key, view in views.items() if projections[key] == role]
+                         for role in candidates}
 
     def axono_box(block):
         return envelope(contours[ident]["bbox"] for ident in block["appearances"][vid])
@@ -401,14 +405,19 @@ def resolve_casework_group(plan, front, views, projections, printed, observation
                   if r["evidence_type"] == "matching_topology"}
         front_view = only([v for key, v in views.items() if projections[key] == "Front elevation"])
         side_view = only([v for key, v in views.items() if projections[key] == "Side view"])
-        if not front_view or not side_view or frozenset((front_view["view_id"], side_view["view_id"])) not in linked:
-            return {}
-        # Two independently linked pairs meet through the native bay and return
-        # dimensions. Detection confirms their object scope before this match.
-        candidates["Front elevation"] = [front_view]
-        candidates["Side view"] = [side_view]
-        result = corner_casework(roles, candidates, printed, measure_one, axono_box)
+        result = {}
+        if front_view and side_view and frozenset((front_view["view_id"], side_view["view_id"])) in linked:
+            candidates["Front elevation"] = [front_view]
+            candidates["Side view"] = [side_view]
+            result = corner_casework(roles, candidates, printed, measure_one, axono_box)
+        if not result:
+            # The plan must corroborate both elevations when their semantic edge is absent.
+            result = corner_casework(roles, owned_projections, printed, measure_one, axono_box,
+                                     require_return_match=True)
     else:
         result = straight_casework(roles, candidates, printed, measure_one, front["instance_counts"])
+        if not result:
+            # The drawer section count and the matching rim on the plan provide the link.
+            result = straight_casework(roles, owned_projections, printed, measure_one, front["instance_counts"])
     unknown = {"value_mm": None, "method": "unresolved", "reason": "No separately bound physical boundary pair"}
     return {bid: {**dict.fromkeys(("width", "depth", "height"), unknown), **values} for bid, values in result.items()}

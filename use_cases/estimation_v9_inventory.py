@@ -419,6 +419,11 @@ def check_parts(analyze, inventory_with_parts, parts):
     report["unassigned_source_findings"] = inventory_with_parts["unassigned_source_findings"]
     for oid, obj in inventory_with_parts["objects"].items():
         result = report["objects"][oid]
+        part_blocks = parts["objects"][oid]["blocks"]
+        envelopes = {row["block_id"]: row["envelope"] for row in part_blocks if "envelope" in row}
+        for block in result["blocks"]:
+            if block["id"] in envelopes:
+                block["envelope"] = deepcopy(envelopes[block["id"]])
         scopes = {item["id"]: item for item in _items(obj["items"]) if item["kind"] != "part"}
         native_owners = {}
         for observation in obj["observations"]:
@@ -434,7 +439,7 @@ def check_parts(analyze, inventory_with_parts, parts):
                 statuses = {scopes[scope_id]["parts_status"] for scope_id in scope_ids}
                 component["status"] = statuses.pop() if len(statuses) == 1 else "pending_decomposition"
         issues = [{"item_id": scope["block_id"], "reason": "block_construction_pending"}
-                  for scope in parts["objects"][oid]["blocks"] if scope.get("construction_pending")]
+                  for scope in part_blocks if scope.get("construction_pending")]
         if coverage := obj.get("worktop_coverage"):
             issues.append({"role": "worktop", "reason": coverage["status"],
                            "block_ids": coverage["block_ids"]})

@@ -7,10 +7,65 @@ from decimal import Decimal, InvalidOperation
 from use_cases.estimation_dimension_graph import build_dimension_graph
 
 VERSION = "estimation_detection_context_v7_1"
+_BOX_KEYS = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
 
 
 def digest(value):
     return sha256(json.dumps(value, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+
+
+def _coordinate_measurements(audit, islands, event_id):
+    coordinate_audit = audit.get("coordinate_dimension_audit") or {}
+    if coordinate_audit.get("bbox_frame") != "ocr_page_pixels":
+        return {}
+    owned = {island["island_id"]: island for island in islands}
+    inventory = {}
+    for group in coordinate_audit.get("view_fingerprints") or []:
+        vid = group.get("group_id")
+        if vid not in owned:
+            continue
+        island = owned[vid]
+        crop = island["bbox"]
+        width = crop["bottom_right_x"] - crop["top_left_x"]
+        height = crop["bottom_right_y"] - crop["top_left_y"]
+        if width <= 0 or height <= 0:
+            continue
+        facts = {fact["fact_id"]: fact for fact in coordinate_audit.get("view_readings", {}).get(vid, [])
+                 if fact.get("fact_id") and fact.get("page_number") == island["page_number"]}
+        readings = []
+        for occurrence in group.get("occurrences") or []:
+            refs = occurrence.get("source_fact_ids") or []
+            bbox = occurrence.get("normalized_bbox") or {}
+            if not refs or any(ref not in facts for ref in refs) or not all(
+                isinstance(bbox.get(key), (int, float)) for key in _BOX_KEYS
+            ):
+                continue
+            x0, y0, x1, y1 = (bbox[key] for key in _BOX_KEYS)
+            try:
+                value = Decimal(str(occurrence["value_mm"]))
+            except (KeyError, InvalidOperation):
+                continue
+            if not value.is_finite() or value <= 0 or not (0 <= x0 < x1 <= 1 and 0 <= y0 < y1 <= 1):
+                continue
+            if not occurrence.get("occurrence_id") or occurrence.get("unit_basis") not in {"mm", "cm", "m"}:
+                continue
+            # Verify that the saved crop-relative position belongs to the frozen View.
+            source_box = facts[refs[0]].get("bbox") or {}
+            if not all(isinstance(source_box.get(key), (int, float)) for key in _BOX_KEYS):
+                continue
+            if not occurrence.get("original_text") or facts[refs[0]].get("text") != occurrence["original_text"]:
+                continue
+            if any(abs((source_box[key] - origin) / size - bbox[key]) > .025
+                   for key, origin, size in zip(_BOX_KEYS, (crop["top_left_x"], crop["top_left_y"]) * 2,
+                                                (width, height) * 2, strict=True)):
+                continue
+            readings.append({**deepcopy(occurrence),
+                             "label_axis": "x" if (x1 - x0) * width >= (y1 - y0) * height else "y",
+                             "source_refs": [f"detection:{event_id}:{ref}" for ref in refs],
+                             "render_basis": "coordinate_ocr_audit"})
+        if readings:
+            inventory[vid] = readings
+    return inventory
 
 
 def build_context(*, inputs, event, ocr_package=None, include_measurements=False, published_partition=False):
@@ -176,6 +231,9 @@ def build_context(*, inputs, event, ocr_package=None, include_measurements=False
             if published_partition:
                 present = {row["group_id"] for row in inventory}
                 inventory.extend({"group_id": sid, "occurrences": []} for sid in sorted(members - present))
+                coordinate_inventory = _coordinate_measurements(audit, obj["islands"], event["id"])
+                if coordinate_inventory:
+                    obj["coordinate_dimension_inventory"] = coordinate_inventory
             obj["dimension_inventory"] = inventory
             obj["dimension_correspondences"] = [
                 dict(group_id_a=edge["group_id_a"], group_id_b=edge["group_id_b"],

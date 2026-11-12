@@ -424,11 +424,18 @@ def run_block_geometry(pdf_path, audit_path, source, analyze, key, *, dimension_
                     pdf, {vid: view for vid, view in measurable.items() if not inventory.get(vid)},
                     dimension_reader, dimension_unit,
                 ))
-            printed = {vid: printed_spans(pdf[view["page"] - 1], view,
-                           inventory.get(vid) or local_inventory.get(vid, []),
-                           fragmented=bool(local_inventory.get(vid)))
-                       for vid, view in measurable.items()
-                       if analyze["islands"][vid] != "Section" or local_inventory.get(vid)}
+            coordinate_inventory = source_object.get("coordinate_dimension_inventory", {})
+            printed = {}
+            for vid, view in measurable.items():
+                supplemental = local_inventory.get(vid) or coordinate_inventory.get(vid, [])
+                if analyze["islands"][vid] == "Section" and not supplemental:
+                    continue
+                page = pdf[view["page"] - 1]
+                spans = printed_spans(page, view, inventory.get(vid, []),
+                                      fragmented=bool(local_inventory.get(vid)))
+                if not spans and supplemental:
+                    spans = printed_spans(page, view, supplemental, fragmented=True)
+                printed[vid] = spans
             readings = resolve_supported_group(obj["planner"], views, analyze["islands"], printed)
             if not readings:
                 readings = resolve_orthographic_group(
