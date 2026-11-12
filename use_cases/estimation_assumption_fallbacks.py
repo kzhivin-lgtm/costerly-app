@@ -52,7 +52,7 @@ def persist_material_assumption_fallbacks(
     *, client: Any, estimate_id: str, company_id: str,
     facts_by_object: Mapping[str, Mapping[str, Any]], plan_snapshot: Mapping[str, Any],
 ) -> int:
-    """Create or update the private C/I/A follow-up for every priced A line.
+    """Create or update a private follow-up for each fallback or pricing gap.
 
     This does not change the customer-visible estimate or gate its result. A
     subsequent plan rebuild updates the same case assumption for the same

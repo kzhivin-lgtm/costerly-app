@@ -1,6 +1,6 @@
 """Produce and publish Parts Check from the immutable File Review handoff."""
 
-from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from hashlib import sha256
 import json
@@ -10,18 +10,15 @@ import re
 from tempfile import TemporaryDirectory
 from threading import RLock
 
-from config import get_optional_secret
 from db.repositories import insert_agent_usage_event, insert_agent_usage_events
-from db.supabase_client import get_supabase_client
 from use_cases.estimation_artifacts import _upload_immutable_artifact, download_evidence_artifact
 from use_cases.estimation_detection_context_v7 import build_context
 from use_cases.estimation_originals import ORIGINALS_BUCKET
 
-VERSION = "estimation-v9.4-parts-check"
+VERSION = "estimation-v9.5-parts-check"
 OPERATION = "estimation_v9_parts_check"
-_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="parts-check")
 _LOCK = RLock()
-_JOBS = {}
+_RUNNING = set()
 _LOG = logging.getLogger(__name__)
 
 
@@ -30,10 +27,6 @@ class PartsCheckRequestError(RuntimeError):
         self.stage = stage
         self.reason = reason
         super().__init__(f"{stage}: {reason}")
-
-
-def parts_check_enabled():
-    return get_optional_secret("ESTIMATION_V9_PARTS_CHECK", "true").lower() in {"1", "true", "yes", "on"}
 
 
 def _reports(client, company_id, run_id, estimate_id):
@@ -92,8 +85,50 @@ def _artifact_prefix(company_id, run_id, estimate_id):
     return f"{company_id}/{run_id}/parts-check/{estimate_id}/"
 
 
-def _run(*, estimate_id, run_id, company_id, file_name, file_bytes, inputs, ocr_package):
-    client = get_supabase_client()
+def _read_report_payload(client, *, company_id, run_id, estimate_id, digest):
+    if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+        raise ValueError("Invalid Parts Check artifact hash")
+    path = _artifact_prefix(company_id, run_id, estimate_id) + f"{digest}.json"
+    payload = download_evidence_artifact(client=client, storage_ref=f"storage://{ORIGINALS_BUCKET}/{path}",
+                                         bucket=ORIGINALS_BUCKET)
+    if sha256(payload).hexdigest() != digest:
+        raise ValueError("Parts Check artifact changed after publication")
+    return payload
+
+
+@contextmanager
+def _running_report(key):
+    with _LOCK:
+        _RUNNING.add(key)
+    try:
+        yield
+    finally:
+        with _LOCK:
+            _RUNNING.discard(key)
+
+
+def _write_source_pdf(path, file_name, file_bytes):
+    extension = Path(file_name).suffix.lower()
+    if extension == ".pdf":
+        path.write_bytes(file_bytes)
+    elif extension in {".png", ".jpg", ".jpeg"}:
+        import pymupdf
+
+        with pymupdf.open(stream=file_bytes, filetype=extension[1:]) as image:
+            path.write_bytes(image.convert_to_pdf())
+    else:
+        raise ValueError("Unsupported Estimation document format")
+
+
+def run_parts_check_for_estimate(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inputs, ocr_package):
+    """Return the saved report to the same estimate worker that will price it."""
+    key = (company_id, run_id, estimate_id)
+    with _running_report(key):
+        return _run(client=client, estimate_id=estimate_id, run_id=run_id, company_id=company_id,
+                    file_name=file_name, file_bytes=file_bytes, inputs=inputs, ocr_package=ocr_package)
+
+
+def _run(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inputs, ocr_package):
     usage_events = []
     status = "failed"
     started = datetime.now(UTC).isoformat()
@@ -101,11 +136,15 @@ def _run(*, estimate_id, run_id, company_id, file_name, file_bytes, inputs, ocr_
     original_sha256 = sha256(file_bytes).hexdigest()
     details = {"estimate_id": estimate_id, "input_ids": input_ids, "source_pdf_sha256": original_sha256}
     stage = "load_detection"
+    report = None
     try:
         prior = _reports(client, company_id, run_id, estimate_id)
         if (prior and prior[0]["status"] == "succeeded" and prior[0]["raw_usage"].get("input_ids") == input_ids
                 and prior[0]["raw_usage"].get("source_pdf_sha256") == original_sha256):
-            return
+            return json.loads(_read_report_payload(
+                client, company_id=company_id, run_id=run_id, estimate_id=estimate_id,
+                digest=prior[0]["raw_usage"].get("report_sha256"),
+            ))
         detection = _source_event(client, company_id, run_id)
         context = build_context(inputs=inputs, event=detection, ocr_package=ocr_package,
                                 include_measurements=True, published_partition=True)
@@ -115,7 +154,7 @@ def _run(*, estimate_id, run_id, company_id, file_name, file_bytes, inputs, ocr_
 
         with TemporaryDirectory(prefix="costerly-parts-check-") as directory:
             pdf = Path(directory) / "source.pdf"
-            pdf.write_bytes(file_bytes)
+            _write_source_pdf(pdf, file_name, file_bytes)
             report = run_parts_check(pdf=pdf, detection_context=context, output=Path(directory) / "output",
                                      inputs=inputs, request_provider=_request_provider(
                                          company_id, run_id, file_name, usage_events))
@@ -123,7 +162,7 @@ def _run(*, estimate_id, run_id, company_id, file_name, file_bytes, inputs, ocr_
         if report["stage"] != "Parts Check" or set(report["objects"]) != expected_objects:
             raise ValueError("Parts Check must report every accepted File Review object")
         report.update(estimation_version=VERSION, run_id=run_id, estimate_id=estimate_id,
-                      source_pdf_sha256=original_sha256, detection_event_id=detection["id"])
+                      source_pdf_sha256=original_sha256, detection_event_id=detection["id"], input_ids=input_ids)
         payload = (json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode()
         digest = sha256(payload).hexdigest()
         stage = "publish_parts_check"
@@ -150,27 +189,7 @@ def _run(*, estimate_id, run_id, company_id, file_name, file_bytes, inputs, ocr_
         insert_agent_usage_events(client, usage_events)
     except Exception as exc:
         _LOG.warning("Parts Check usage persistence failed for run %s: %s", run_id, type(exc).__name__)
-
-
-def submit_parts_check(**inputs):
-    """Queue one active report per estimate, off the pricing and screen workers."""
-    if not parts_check_enabled() or Path(inputs["file_name"]).suffix.lower() != ".pdf":
-        return
-    key = (inputs["company_id"], inputs["run_id"], inputs["estimate_id"],
-           tuple(sorted(row["input_id"] for row in inputs["inputs"])))
-    with _LOCK:
-        if key in _JOBS:
-            return
-        job = _EXECUTOR.submit(_run, **inputs)
-        _JOBS[key] = job
-
-    def release(finished):
-        with _LOCK:
-            _JOBS.pop(key, None)
-        if finished.exception():
-            _LOG.error("Parts Check publication failed for run %s: %s", key[1], type(finished.exception()).__name__)
-
-    job.add_done_callback(release)
+    return report if status == "succeeded" else None
 
 
 def load_parts_check(*, client, company_id, run_id, estimate_id):
@@ -180,7 +199,7 @@ def load_parts_check(*, client, company_id, run_id, estimate_id):
     if not estimates:
         return {"status": "unavailable"}
     with _LOCK:
-        if any(key[:3] == (company_id, run_id, estimate_id) for key in _JOBS):
+        if (company_id, run_id, estimate_id) in _RUNNING:
             return {"status": "running"}
     rows = _reports(client, company_id, run_id, estimate_id)
     if not rows:
@@ -188,12 +207,8 @@ def load_parts_check(*, client, company_id, run_id, estimate_id):
     event = rows[0]
     if event["status"] != "succeeded":
         return {"status": "failed", "stage": event["raw_usage"].get("failure_stage")}
-    digest = event["raw_usage"]["report_sha256"]
-    if not re.fullmatch(r"[0-9a-f]{64}", digest):
-        raise ValueError("Invalid Parts Check artifact hash")
-    path = _artifact_prefix(company_id, run_id, estimate_id) + f"{digest}.json"
-    payload = download_evidence_artifact(client=client, storage_ref=f"storage://{ORIGINALS_BUCKET}/{path}",
-                                         bucket=ORIGINALS_BUCKET)
-    if sha256(payload).hexdigest() != digest:
-        raise ValueError("Parts Check artifact changed after publication")
-    return {"status": "ready", "payload": payload, "part_rows": event["raw_usage"]["part_rows"]}
+    details = event["raw_usage"]
+    payload = _read_report_payload(client, company_id=company_id, run_id=run_id, estimate_id=estimate_id,
+                                   digest=details["report_sha256"])
+    return {"status": "ready", "payload": payload, "part_rows": details["part_rows"],
+            "input_ids": details.get("input_ids", ())}

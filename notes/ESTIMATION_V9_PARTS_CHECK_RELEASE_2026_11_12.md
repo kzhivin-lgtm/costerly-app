@@ -368,3 +368,20 @@ remain open.
 Final replay SHA-256 values for `parts-check.json` and `cb-materials.json`
 are `8d9e3edccebbfeb4b5d5570cbe1a360bc24b6fb6fde2bc4ac9367060e64cb3bb`
 and `7d3acee381384e9cbf0c61735593d5b96d59c3b3f3607cdc196deb19dff7d203`.
+
+### Estimation 9.5
+
+The estimate worker saves Parts Check before building Material Demand and
+calling Material Engine. The second geometry and BOM pipeline is removed
+from the launch. Repricing reads the saved, hash-checked report and its
+exact File Review input revisions. Objects and Object Detail read the same
+material plan. Unpriced requirements remain visible and an incomplete plan
+cannot publish a final self cost.
+
+Supplier services can enter the engine as per-piece Company Catalog offers.
+The saved Lev2 replay against current Supabase catalogs retains 107 parts
+across nine Blocks. Seven of ten purchasing requirements receive prices,
+including the drawer slides. Three requirements still need evidence or
+a source price: MDF finish, the contrasting worktop end and the cutout
+service. Missing prices enter Assumption Fallback as gaps. Automated price
+research remains open.

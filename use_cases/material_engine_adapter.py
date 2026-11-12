@@ -961,6 +961,33 @@ def israel_reference_supply_candidates(
     return selection_key, tuple(sorted(result, key=lambda candidate: candidate.candidate_id))
 
 
+def _supplier_operation_candidates(operation_code, catalogs, vat_percent):
+    """Resolve a per-piece service against accepted supplier operation offers."""
+    operation = next((row for row in catalogs.get("operations", ())
+                      if row.get("operation_code") == operation_code and row.get("active") is True), None)
+    if not operation:
+        return ()
+    today = date.today().isoformat()
+    candidates = []
+    for offer in catalogs.get("supplier_operation_offers", ()):
+        if (offer.get("operation_id") != operation.get("operation_id") or offer.get("status") != "active"
+                or offer.get("pricing_basis") != "piece" or offer.get("currency") != "ILS"
+                or type(offer.get("vat_included")) is not bool
+                or str(offer.get("valid_from") or "") > today):
+            continue
+        amount = _positive(offer.get("source_price"))
+        offer_id = offer.get("operation_offer_id")
+        if amount is None or not offer_id:
+            continue
+        candidates.append(MaterialSupplyCandidate(
+            candidate_id=f"supplier-operation:{offer_id}", material_family=operation_code,
+            selection_key=f"operation:{operation_code}", purchase_kind="piece",
+            price_per_purchase_unit=_ex_vat(amount, offer, vat_percent), authority="company", currency="ILS",
+            display_name=str(operation.get("operation_name") or operation_code), offer_id=str(offer_id),
+        ))
+    return tuple(candidates)
+
+
 def build_material_plan(
     *,
     facts_by_object: Mapping[str, Mapping[str, Any]],
@@ -968,6 +995,7 @@ def build_material_plan(
     material_norm_overrides: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
     material_purchase_overrides: Mapping[str, Mapping[str, Any]] | None = None,
     vat_percent: Decimal | int | float | str = Decimal("18"),
+    allow_estimator_allowance: bool = True,
 ) -> MaterialEngineResult:
     """Build one document-wide purchase plan from facts and approved norms.
 
@@ -1006,7 +1034,10 @@ def build_material_plan(
                     "material_requirement_id": requirement_id,
                     "source_name": str(material.get("source_name") or material.get("family") or "Material"),
                     "material_family": str(material.get("family") or ""),
-                    "specification": dict(material.get("specification") or {}),
+                    "specification": {
+                        **dict(material.get("specification") or {}),
+                        **({"operation_code": material["operation_code"]} if material.get("operation_code") else {}),
+                    },
                     "selection_key": selection_key,
                     "quantity_per_item": (
                         None if total_quantity is None else float(total_quantity / object_quantity)
@@ -1019,6 +1050,22 @@ def build_material_plan(
                 })
 
             parts = parts_by_requirement.get(requirement_id) or []
+            if material.get("item_kind") == "operation_service":
+                operation_code = str(material.get("operation_code") or "")
+                compatible = _supplier_operation_candidates(operation_code, catalogs, Decimal(str(vat_percent)))
+                quantity = _positive(material.get("quantity"))
+                if not compatible or quantity is None or _canonical_requirement_unit(material.get("unit")) != "ea":
+                    add_assumption_fallback(reason_code="supplier_operation_quote_required")
+                    reasons.add("assumption_fallback")
+                    continue
+                candidates.update((candidate.candidate_id, candidate) for candidate in compatible)
+                demands.append(MaterialDemand(
+                    demand_id=f"{object_id}:{requirement_id}:service", object_id=str(object_id),
+                    material_requirement_id=requirement_id, material_family=operation_code,
+                    selection_key=f"operation:{operation_code}", quantity=quantity, unit="piece",
+                    compatible_candidate_ids=tuple(candidate.candidate_id for candidate in compatible),
+                ))
+                continue
             specs = _complete_common_sheet_finish(material_family=str(material.get("family") or ""), source_name=material.get("source_name"), specifications=dict(material.get("specification") or {}))
             specs, drawer_slide_trace = _apply_drawer_slide_last_resort_default(
                 material_family=str(material.get("family") or ""),
@@ -1090,7 +1137,12 @@ def build_material_plan(
                     if default_trace is not None else None
                 ),
             )
-            compatible = company_candidates or reference_candidates
+            if facts.get("composition_version") == "cb_parts_material_demand_v1":
+                compatible = (*company_candidates, *reference_candidates)
+                if not parts and _canonical_requirement_unit(material.get("unit")) == "ea":
+                    compatible = tuple(candidate for candidate in compatible if candidate.purchase_kind == "piece")
+            else:
+                compatible = company_candidates or reference_candidates
             for candidate in compatible:
                 candidates[candidate.candidate_id] = candidate
             candidate_ids = tuple(candidate.candidate_id for candidate in compatible)
@@ -1224,11 +1276,15 @@ def build_material_plan(
     for fallback in assumption_fallbacks:
         object_id = str(fallback["object_id"])
         requirement_id = str(fallback["material_requirement_id"])
+        parts = tuple(item for item in fallback.pop("parts", []) if isinstance(item, Mapping))
+        if not allow_estimator_allowance:
+            fallback["resolution"] = "assumption_required"
+            unresolved.append(f"{object_id}:{requirement_id}")
+            continue
         material = {
             "source_name": fallback["source_name"], "family": fallback["material_family"],
             "specification": fallback["specification"], "unit": fallback.get("unit"),
         }
-        parts = tuple(item for item in fallback.pop("parts", []) if isinstance(item, Mapping))
         candidate, priced_fallback = _assumption_candidate(
             object_id=object_id, requirement_id=requirement_id, material=material,
             selection_key=fallback.get("selection_key"), parts=parts,

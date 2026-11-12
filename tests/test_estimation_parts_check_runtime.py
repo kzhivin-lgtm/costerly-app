@@ -93,7 +93,7 @@ def test_parts_check_download_is_bound_to_estimate_owner_and_content(monkeypatch
                                     estimate_id="estimate") == {"status": "unavailable"}
     assert reads == []
     report = runtime.load_parts_check(client=Client(), company_id="owner", run_id="run", estimate_id="estimate")
-    assert report == {"status": "ready", "payload": payload, "part_rows": 1}
+    assert report == {"status": "ready", "payload": payload, "part_rows": 1, "input_ids": ()}
     assert reads == [f"storage://{runtime.ORIGINALS_BUCKET}/owner/run/parts-check/estimate/{digest}.json"]
 
 
@@ -150,7 +150,6 @@ def test_parts_check_status_survives_usage_write_failure(monkeypatch, pipeline_f
     write_attempts = []
     statuses = []
     uploads = []
-    monkeypatch.setattr(runtime, "get_supabase_client", lambda: client)
     monkeypatch.setattr(runtime, "_reports", lambda *_: [])
     monkeypatch.setattr(runtime, "_source_event", lambda *_: {"id": "detection"})
     monkeypatch.setattr(runtime, "build_context", lambda **_: {})
@@ -158,7 +157,7 @@ def test_parts_check_status_survives_usage_write_failure(monkeypatch, pipeline_f
     monkeypatch.setattr(runtime, "_upload_immutable_artifact", lambda **kwargs: uploads.append(kwargs))
     monkeypatch.setattr(probe_estimation_v9, "run_parts_check", run_pipeline)
 
-    runtime._run(estimate_id="estimate", run_id="run", company_id="company", file_name="source.pdf",
+    runtime.run_parts_check_for_estimate(client=client, estimate_id="estimate", run_id="run", company_id="company", file_name="source.pdf",
                  file_bytes=b"pdf", inputs=[{"input_id": "input", "input_payload": {
                      "object": {"object_id": "object"},
                  }}], ocr_package={})

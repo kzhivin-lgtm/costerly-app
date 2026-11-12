@@ -20,7 +20,7 @@ from ui.screen_transition import (
 )
 from use_cases.estimation import load_objects_estimation_data
 from use_cases.estimation_runtime import submit_prepared_estimation_job
-from use_cases.estimation_parts_check_runtime import load_parts_check, parts_check_enabled
+from use_cases.estimation_parts_check_runtime import load_parts_check
 from use_cases.object_detail_runtime import submit_object_detail_prefetch
 from use_cases.final_approval import final_approval
 from use_cases.estimation_progress import clear_estimate_progress, get_estimate_progress
@@ -833,7 +833,7 @@ def _worktop_area_rows(report):
 
 
 def _render_parts_check(*, estimate_id: str, run_id: str, company_id: str) -> None:
-    if not estimate_id or not run_id or not parts_check_enabled():
+    if not estimate_id or not run_id:
         return
     key = company_id, run_id, estimate_id
     if st.button("Parts Check", key=f"parts-check-{estimate_id}"):

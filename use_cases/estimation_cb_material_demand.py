@@ -1,6 +1,6 @@
 """Adapt preliminary CB Parts to the existing assembly BOM material contract."""
 
-from math import isfinite
+from math import ceil, isfinite
 
 from use_cases.estimation_assembly_bom import ASSEMBLY_BOM_V1
 from use_cases.estimation_structural_bom import _CONSTRUCTION_MATERIAL_NAMES, _FAMILY_PREFERENCE
@@ -128,12 +128,12 @@ def _worktop_requirements(row, part_source, object_quantity, families, materials
     return True
 
 
-def _worktop_cutout_requirements(row, part_source, object_quantity, materials, review_items):
+def _worktop_cutout_requirements(row, part_source, object_quantity, materials):
     count = row["quantity"]
     if not _positive(count) or int(count) != count:
         return
     part_id = part_source["part_id"]
-    quantity = int(count * part_source["scope_quantity"] * object_quantity)
+    quantity = ceil(count * part_source["scope_quantity"] * object_quantity)
     surface_families = {item["part_sources"][0]["surface"]["material_role"]: item["family"]
                         for key, item in materials.items() if len(key) == 2 and key[0] == part_id}
     for cutout in row.get("worktop_cutouts", ()):
@@ -153,8 +153,6 @@ def _worktop_cutout_requirements(row, part_source, object_quantity, materials, r
             "basis": "source_evidence", "evidence_refs": refs, "quantity": quantity, "unit": "piece",
             "part_sources": [{**part_source, "cutout": cutout, "evidence_refs": refs}],
         }
-        review_items.append({"part_id": part_id, "requirement_id": requirement_id,
-                             "reason": "worktop_cutout_supplier_offer_pending"})
 
 
 def build_cb_material_demand(*, parts_report, input_row, allowed_material_families):
@@ -164,8 +162,8 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
     object_id = obj["object_id"]
     object_quantity = obj["quantity"]
     stage = parts_report["stage"]
-    if stage not in {"CB Parts", "Parts Check"} or not _positive(object_quantity) or int(object_quantity) != object_quantity:
-        raise ValueError("Parts demand requires an immutable object input with a whole positive quantity")
+    if stage not in {"CB Parts", "Parts Check"} or not _positive(object_quantity):
+        raise ValueError("Parts demand requires an immutable object input with a positive quantity")
     if parts_report.get("run_id", payload["run_id"]) != payload["run_id"]:
         raise ValueError("Parts Check must belong to the same run as the immutable object input")
     source = parts_report["objects"][object_id]
@@ -203,7 +201,7 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
             if row["role"] == "shared_worktop" and not duplicate:
                 area_resolved = _worktop_requirements(
                     row, part_source, object_quantity, allowed_material_families, materials, review_items)
-                _worktop_cutout_requirements(row, part_source, object_quantity, materials, review_items)
+                _worktop_cutout_requirements(row, part_source, object_quantity, materials)
                 if area_resolved:
                     continue
             is_count = role in _COUNT_ROLES
@@ -233,7 +231,7 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                 continue
             if not _positive(count) or int(count) != count:
                 raise ValueError(f"Invalid part quantity for {part_id}")
-            quantity = int(count * multiplier * object_quantity)
+            quantity = ceil(count * multiplier * object_quantity)
             unit = (row.get("unit") or "piece") if is_count else None
             spec = {} if is_count else {**material_spec, "thickness_mm": measurements["thickness"]["mm"]}
             basis = "source_evidence" if material_refs else "construction_assumption"
@@ -247,6 +245,8 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                     quantity *= 2
                 elif unit != "piece" or int(count * multiplier) % 2:
                     raise ValueError("Drawer slide pieces must form complete sets")
+                else:
+                    quantity = 2 * ceil(count * multiplier * object_quantity / 2)
                 unit = "piece"
                 length = measurements.get("length", {})
                 if _positive(length.get("mm")):
@@ -293,8 +293,8 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
     }
 
 
-def calculate_cb_materials(*, parts_report, input_rows, catalog_context):
-    """Calculate one document through the existing estimate-wide Material Plan."""
+def build_cb_material_facts(*, parts_report, input_rows, catalog_context):
+    """Bind the checked document to the same immutable inputs and catalog tenant."""
     facts = {}
     run_ids = set()
     allowed = set(catalog_context["families"])
@@ -306,18 +306,48 @@ def calculate_cb_materials(*, parts_report, input_rows, catalog_context):
         run_ids.add(item["run_id"])
     if len(run_ids) != 1 or facts.keys() != parts_report["objects"].keys():
         raise ValueError("Parts costing requires every immutable input from the same run")
+    if "input_ids" in parts_report and sorted(parts_report["input_ids"]) != sorted(item["input_id"] for item in facts.values()):
+        raise ValueError("Parts Check input revisions differ from the material demand inputs")
+    return facts
+
+
+def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
+                           material_norm_overrides=None, material_purchase_overrides=None):
+    """Calculate one document through the existing estimate-wide Material Plan."""
+    facts = build_cb_material_facts(parts_report=parts_report, input_rows=input_rows, catalog_context=catalog_context)
     catalogs = catalog_context["catalogs"]
-    priced_facts = {oid: {**item, "materials": [material for material in item["materials"] if material["family"]]}
-                    for oid, item in facts.items()}
     fingerprint = material_plan_input_fingerprint(
-        facts_by_object=priced_facts, material_default_variants=catalogs.get("material_default_variants") or (),
+        facts_by_object=facts, material_default_variants=catalogs.get("material_default_variants") or (),
+        material_norm_overrides=material_norm_overrides, material_purchase_overrides=material_purchase_overrides,
     )
-    snapshot = material_plan_snapshot(build_material_plan(facts_by_object=priced_facts, catalogs=catalogs),
-                                      input_fingerprint=fingerprint)
-    gaps = {oid: item["review_items"] for oid, item in facts.items() if item["review_items"]}
-    if gaps:
+    result = build_material_plan(
+        facts_by_object=facts, catalogs=catalogs, material_norm_overrides=material_norm_overrides,
+        material_purchase_overrides=material_purchase_overrides, allow_estimator_allowance=False,
+    )
+    snapshot = material_plan_snapshot(result, input_fingerprint=fingerprint)
+    allocations = {(row["object_id"], row["material_requirement_id"]) for row in snapshot["object_material_costs"]}
+    unresolved = set(snapshot["unresolved_requirement_ids"])
+    coverage = {}
+    for oid, item in facts.items():
+        missing = [material["requirement_id"] for material in item["materials"]
+                   if (oid, material["requirement_id"]) not in allocations]
+        issues = item["review_items"]
+        checked_parts = parts_report["objects"][oid].get("parts", ()) if parts_report["stage"] == "Parts Check" else ()
+        coverage[oid] = {"source_part_count": item["source_part_count"], "issues": issues,
+                         "unpriced_requirements": missing,
+                         "has_unresolved_demands": any(value.startswith(f"{oid}:") for value in unresolved),
+                         "materials": [{key: material.get(key) for key in ("requirement_id", "source_name", "unit", "quantity")}
+                                       for material in item["materials"]],
+                         "parts": [{"component_role": part["role"], "quantity": part.get("quantity"),
+                                    **{f"{axis}_mm": part["dimensions"].get(axis, {}).get("mm")
+                                       for axis in ("length", "width", "thickness")}}
+                                   for part in checked_parts],
+                         "primary_preview_ref": item["primary_preview_ref"]}
+    snapshot["parts_check"] = coverage
+    snapshot["parts_check_source"] = {key: parts_report[key] for key in ("run_id", "estimate_id", "input_ids", "source_audit_sha256")
+                                      if key in parts_report}
+    if any(row["issues"] or row["unpriced_requirements"] or row["has_unresolved_demands"] for row in coverage.values()):
         snapshot["status"] = "needs_review"
-        snapshot["cb_parts_review_items"] = gaps
         snapshot["reason_codes"].append("cb_parts_review_required")
     return {"composition_version": "cb_parts_material_demand_v1", "facts_by_object": facts,
             "material_plan": snapshot}

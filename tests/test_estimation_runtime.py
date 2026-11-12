@@ -1,7 +1,5 @@
 import use_cases.estimation_runtime as runtime
-from decimal import Decimal
 from json import JSONDecodeError
-from types import SimpleNamespace
 
 import pytest
 
@@ -137,49 +135,51 @@ def test_prepared_worker_persists_accepted_snapshot_before_estimation(monkeypatc
     assert events[-1][1]["shell"] == {"status": "pending"}
 
 
-def test_v5_3_runtime_routes_all_objects_through_2vn_geometry_bom_path(monkeypatch):
+@pytest.mark.parametrize("stage", ["planned", "parts_check", "material_plan"])
+def test_estimation_prices_the_saved_parts_check_and_reports_stage_failures(monkeypatch, stage):
     events = []
-    monkeypatch.setattr(runtime, "submit_parts_check",
-                        lambda **kwargs: events.append(("parts_check", kwargs["inputs"])))
+    report = {"stage": "Parts Check", "objects": {"object-1": {"parts": []}}}
+    rows = [{"input_id": "input-1", "input_payload": {"object": {"object_id": "object-1"}}}]
     monkeypatch.setattr(runtime, "get_supabase_client", lambda: object())
-    monkeypatch.setattr(runtime, "fetch_rfq_run", lambda _client, _run_id: _Frame([{}]))
-    monkeypatch.setattr(runtime, "fetch_rfq_detected_objects", lambda _client, _run_id: _Frame([{}]))
-    monkeypatch.setattr(
-        runtime,
-        "fetch_latest_ocr_result",
-        lambda _client, _run_id: {"ocr_event_id": "ocr-1", "ocr_result": {}},
-    )
-    monkeypatch.setattr(
-        runtime,
-        "persist_estimation_inputs",
-        lambda **_kwargs: {
-            "created_inputs": [{"input_id": "input-1", "input_payload": {}}]
-        },
-    )
-    monkeypatch.setattr(runtime, "describe_estimation_original", lambda **_kwargs: object())
-    monkeypatch.setattr(
-        runtime,
-        "_run_estimation_v5_3_for_all_objects",
-        lambda **kwargs: events.append(("v4_run", kwargs["created_inputs"])) or {
-            "processed_input_ids": ["input-1"], "failed": {}
-        },
-    )
+    monkeypatch.setattr(runtime, "fetch_rfq_run", lambda *_: _Frame([{}]))
+    monkeypatch.setattr(runtime, "fetch_rfq_detected_objects", lambda *_: _Frame([{}]))
+    monkeypatch.setattr(runtime, "fetch_latest_ocr_result",
+                        lambda *_: {"ocr_event_id": "ocr-1", "ocr_result": {}})
+    monkeypatch.setattr(runtime, "persist_estimation_inputs", lambda **_: {"created_inputs": rows})
+    monkeypatch.setattr(runtime, "describe_estimation_original", lambda **_: {})
+    monkeypatch.setattr(runtime, "_set_object_progress", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(runtime, "_mark_material_plan_failed", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(runtime, "update_rfq_object_estimate_totals", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(runtime, "_set_object_technical_failure",
+                        lambda _client, **kwargs: events.append(kwargs["label"]))
 
+    def check(**kwargs):
+        assert kwargs["inputs"] is rows
+        events.append("parts_check")
+        return None if stage == "parts_check" else report
+
+    def price(**kwargs):
+        assert kwargs["parts_report"] is report and kwargs["input_rows"] is rows
+        events.append("material_plan")
+        if stage == "material_plan":
+            raise ConnectionError("catalog unavailable")
+        return {"status": "planned"}
+
+    monkeypatch.setattr(runtime, "run_parts_check_for_estimate", check)
+    monkeypatch.setattr(runtime, "_build_and_persist_material_plan", price)
     result = runtime._run_estimation_job(
-        estimate_id="estimate-1",
-        run_id="run-1",
-        company_id="company-1",
-        file_name="drawing.pdf",
-        file_bytes=b"pdf",
-        ignored_object_ids=set(),
+        estimate_id="estimate-1", run_id="run-1", company_id="company-1",
+        file_name="drawing.pdf", file_bytes=b"pdf", ignored_object_ids=set(),
         shell={"estimate_id": "estimate-1"},
     )
 
-    assert [event[0] for event in events] == ["parts_check", "v4_run"]
-    assert events[0][1] == events[1][1]
-    assert result["estimation"]["status"] == "completed"
-    assert result["estimation"]["estimated_objects"] == 1
-    assert result["estimation_version"] == "v5_3_2vn_geometry_composer"
+    if stage == "planned":
+        assert events == ["parts_check", "material_plan"]
+        assert result["estimation"]["status"] == "completed"
+    else:
+        assert events == (["parts_check", "parts_check_technical_failure"] if stage == "parts_check" else
+                          ["parts_check", "material_plan", "material_plan_technical_failure"])
+        assert result["estimation"]["failed_objects"] == {"input-1": f"{stage}_technical_failure"}
 
 
 def test_handoff_failure_ends_known_objects_instead_of_leaving_progress_running(monkeypatch):
@@ -208,7 +208,7 @@ def test_handoff_failure_ends_known_objects_instead_of_leaving_progress_running(
         lambda _client, **kwargs: terminal_updates.append(kwargs),
     )
 
-    with pytest.raises(RuntimeError, match="Estimation V4 handoff failed: Expecting value"):
+    with pytest.raises(RuntimeError, match="Estimation handoff failed: Expecting value"):
         runtime._run_estimation_job(
             estimate_id="estimate-1", run_id="run-1", company_id="company-1",
             file_name="drawing.pdf", file_bytes=b"pdf", ignored_object_ids=set(),
@@ -221,7 +221,7 @@ def test_handoff_failure_ends_known_objects_instead_of_leaving_progress_running(
     }]
 
 
-def test_all_ignored_objects_finish_as_empty_v4_estimate(monkeypatch):
+def test_all_ignored_objects_finish_as_empty_estimate(monkeypatch):
     monkeypatch.setattr(runtime, "get_supabase_client", lambda: object())
     monkeypatch.setattr(runtime, "fetch_rfq_run", lambda _client, _run_id: _Frame([{}]))
     monkeypatch.setattr(runtime, "fetch_rfq_detected_objects", lambda _client, _run_id: _Frame([]))
@@ -236,108 +236,6 @@ def test_all_ignored_objects_finish_as_empty_v4_estimate(monkeypatch):
     assert result["estimation"] == {
         "status": "no_objects", "estimated_objects": 0, "failed_objects": {}
     }
-
-
-def test_material_engine_plan_runs_after_bom_and_cannot_block_object_publishing(monkeypatch):
-    events = []
-    facts = {
-        "object-1": {"facts_payload": {"object_id": "object-1", "materials": [], "parts": []}},
-    }
-
-    monkeypatch.setattr(runtime, "build_estimation_material_context", lambda *_args: {"catalogs": {}, "families": {"mdf"}})
-    captured_facts = {}
-    monkeypatch.setattr(
-        runtime,
-        "run_object_to_estimate_bom_batch",
-        lambda **kwargs: captured_facts.update(kwargs) or events.append("bom") or {"failed": {}},
-    )
-    monkeypatch.setattr(runtime, "fetch_latest_estimation_facts_by_object", lambda _client, **_kwargs: facts)
-    monkeypatch.setattr(runtime, "fetch_rfq_estimate_material_norm_overrides", lambda *_args, **_kwargs: SimpleNamespace(empty=True))
-    monkeypatch.setattr(runtime, "fetch_rfq_estimate_material_purchase_overrides", lambda *_args, **_kwargs: SimpleNamespace(empty=True))
-    monkeypatch.setattr(runtime, "persist_material_assumption_fallbacks", lambda **_kwargs: 0)
-    monkeypatch.setattr(
-        runtime,
-        "build_material_plan",
-        lambda **_kwargs: events.append("material_plan") or SimpleNamespace(
-            plan=SimpleNamespace(status="planned", lines=[SimpleNamespace(total_cost=Decimal("42"))]),
-            demand_count=1, candidate_count=1, unresolved_requirement_ids=(), reason_codes=(),
-        ),
-    )
-    monkeypatch.setattr(runtime, "material_plan_snapshot", lambda _shadow, **_kwargs: {
-        "status": "planned", "demand_count": 1, "candidate_count": 1,
-        "lines": [{"total_cost": 42.0}], "unresolved_requirement_ids": [], "reason_codes": [],
-    })
-    monkeypatch.setattr(
-        runtime,
-        "upsert_rfq_estimate_material_plan",
-        lambda *_args, **_kwargs: events.append("material_plan_persisted"),
-    )
-    monkeypatch.setattr(runtime, "publish_estimation_approximate_bom_object", lambda **_kwargs: events.append("publish") or {"status": "ready"})
-    monkeypatch.setattr(runtime, "_set_object_progress", lambda _client, **_kwargs: None)
-    monkeypatch.setattr(runtime, "update_rfq_object_estimate_progress", lambda _client, **_kwargs: None)
-
-    result = runtime._run_estimation_v4_1_for_all_objects(
-        client=object(), estimate_id="estimate-1",
-        created_inputs=[{
-            "input_id": "input-1", "object_id": "object-1",
-            "input_payload": {"company_id": "company-1", "run_id": "run-1"},
-        }],
-    )
-
-    assert events == ["bom", "material_plan", "material_plan_persisted", "publish"]
-    assert captured_facts["allowed_material_families"] == ["mdf"]
-    assert result["processed_input_ids"] == ["input-1"]
-    assert result["material_engine_plan"] == {
-        "status": "planned", "demand_count": 1, "candidate_count": 1,
-        "planned_line_count": 1, "planned_material_cost_ex_vat": 42.0,
-        "unresolved_requirement_ids": [], "assumption_fallback_count": 0, "reason_codes": [],
-    }
-
-
-def test_material_plan_technical_failure_ends_each_object_instead_of_leaving_70_percent(monkeypatch):
-    progress = []
-
-    monkeypatch.setattr(runtime, "build_estimation_material_context", lambda *_args: {"catalogs": {}, "families": {"mdf"}})
-    monkeypatch.setattr(runtime, "run_object_to_estimate_bom_batch", lambda **_kwargs: {"failed": {}})
-    monkeypatch.setattr(
-        runtime,
-        "_build_and_persist_material_plan",
-        lambda **_kwargs: (_ for _ in ()).throw(ConnectionError("temporary database outage")),
-    )
-    monkeypatch.setattr(
-        runtime,
-        "_set_object_progress",
-        lambda _client, **kwargs: progress.append(("running", kwargs["percent"], kwargs["label"])),
-    )
-    monkeypatch.setattr(
-        runtime,
-        "_set_object_technical_failure",
-        lambda _client, **kwargs: progress.append(("failed", 100, kwargs["label"])),
-    )
-    traces = []
-    monkeypatch.setattr(
-        runtime,
-        "_record_failure_trace",
-        lambda **kwargs: traces.append((kwargs["input_id"], kwargs["stage"], type(kwargs["exc"]).__name__)),
-    )
-
-    result = runtime._run_estimation_v4_1_for_all_objects(
-        client=object(), estimate_id="estimate-1",
-        created_inputs=[{
-            "input_id": "input-1", "object_id": "object-1",
-            "input_payload": {"company_id": "company-1", "run_id": "run-1"},
-        }],
-    )
-
-    assert result["processed_input_ids"] == []
-    assert result["failed"] == {"input-1": "material_plan_technical_failure"}
-    assert result["material_engine_plan"]["status"] == "failed"
-    assert progress == [
-        ("running", 1, "building_object_geometry"),
-        ("running", 55, "building_project_material_plan"),
-        ("failed", 100, "material_plan_technical_failure"),
-    ]
-    assert traces == [("input-1", "material_plan", "ConnectionError")]
 
 
 class _Row:

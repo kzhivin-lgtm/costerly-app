@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from concurrent.futures import Future, ThreadPoolExecutor
+import json
+import logging
 from threading import RLock
 from typing import Mapping
 
@@ -8,43 +10,29 @@ from use_cases.estimation import start_estimation_for_run
 from use_cases.rfq_processing import apply_file_review_edits, save_file_review_run_metadata
 from agents.anthropic_adapter import DETECTION_PROMPT_VERSION
 from db.repositories import (
-    fetch_latest_estimation_facts_by_object,
+    fetch_estimation_object_input,
     fetch_latest_ocr_result,
     fetch_rfq_estimate_material_norm_overrides,
     fetch_rfq_estimate_material_purchase_overrides,
     fetch_rfq_object_estimates,
     fetch_rfq_detected_objects,
     fetch_rfq_run,
+    replace_rfq_estimate_lines_for_object,
+    update_rfq_object_estimate_totals,
     upsert_rfq_estimate_material_plan,
 )
 from db.supabase_client import get_supabase_client
 from use_cases.estimation_handoff import persist_estimation_inputs
 from use_cases.estimation_originals import describe_estimation_original
-from use_cases.estimation_parts_check_runtime import submit_parts_check
-from use_cases.estimation_object_to_estimate_runtime import (
-    ESTIMATION_ACTIVE_BOM_AGENT_VERSION,
-    ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,
-    ESTIMATION_APPROXIMATE_BOM_AGENT_VERSION,
-    _record_failure_trace,
-    _record_stage_event,
-    run_assembly_first_bom_batch,
-    run_object_to_estimate_bom_batch,
-)
-from use_cases.material_engine_adapter import (
-    material_plan_input_fingerprint,
-    material_plan_snapshot,
-    build_material_plan,
-)
+from use_cases.estimation_parts_check_runtime import VERSION, load_parts_check, run_parts_check_for_estimate
+from use_cases.estimation_cb_material_demand import calculate_cb_materials
 from use_cases.estimation_material_context import build_estimation_material_context
 from use_cases.estimation_assumption_fallbacks import persist_material_assumption_fallbacks
-from use_cases.estimation_v3_material_publisher import (
-    publish_estimation_approximate_bom_object,
-    publish_estimation_assembly_bom_object,
-)
 from db.repositories import update_rfq_object_estimate_progress
 from use_cases.estimation_progress import set_object_progress
 
 
+_LOG = logging.getLogger(__name__)
 _ESTIMATION_EXECUTOR = ThreadPoolExecutor(max_workers=1)
 _MATERIAL_PLAN_LOCK = RLock()
 _MATERIAL_PLAN_FUTURES: dict[str, Future] = {}
@@ -67,82 +55,98 @@ def _material_purchase_overrides_by_selection_key(rows: object) -> dict[str, dic
     return {str(row.get("selection_key") or ""): dict(row) for _, row in rows.iterrows() if str(row.get("selection_key") or "")}
 
 
-def _build_and_persist_material_plan(
-    *,
-    client: object,
-    estimate_id: str,
-    run_id: str,
-    company_id: str,
-    catalogs: Mapping[str, object] | None = None,
-    bom_agent_version: str = ESTIMATION_ACTIVE_BOM_AGENT_VERSION,
-) -> dict[str, object]:
-    """Compute one estimate-wide plan from the latest facts and user norms."""
-    shared_catalogs = catalogs or build_estimation_material_context(client, company_id)["catalogs"]
-    facts_by_object = fetch_latest_estimation_facts_by_object(
-        client, run_id=run_id, agent_version=bom_agent_version,
+def _publish_material_demand_lines(client, *, estimate_id, facts_by_object):
+    for object_id, facts in facts_by_object.items():
+        lines = []
+        for index, demand in enumerate(facts["materials"], 1):
+            quantity = demand.get("quantity")
+            lines.append({
+                "estimate_id": estimate_id, "object_id": object_id, "company_id": facts["company_id"],
+                "line_id": f"{object_id}_material_{index:04d}", "section": "material",
+                "group_name": "Supplier services" if demand.get("item_kind") == "operation_service" else "Materials",
+                "item_name": demand["source_name"], "catalog_match_query": demand.get("family") or demand.get("operation_code"),
+                "unit": demand.get("unit"), "quantity": None if quantity is None else quantity / facts["quantity"],
+                "cost": None, "unit_cost": None, "source": "parts_check", "sort_order": index * 10,
+                "needs_price": True, "needs_review": False, "quantity_basis": "per_finished_item",
+                "raw_agent_json": {"facts": demand},
+            })
+        replace_rfq_estimate_lines_for_object(client, estimate_id=estimate_id, object_id=object_id, lines=lines)
+
+
+def _build_and_persist_material_plan(*, client, estimate_id, company_id, parts_report, input_rows):
+    """Price the checked document through the shared estimate-wide engine."""
+    catalog_context = build_estimation_material_context(client, company_id)
+    norms = _material_norm_overrides_by_requirement(fetch_rfq_estimate_material_norm_overrides(client, estimate_id))
+    purchases = _material_purchase_overrides_by_selection_key(fetch_rfq_estimate_material_purchase_overrides(client, estimate_id))
+    calculation = calculate_cb_materials(
+        parts_report=parts_report, input_rows=input_rows, catalog_context=catalog_context,
+        material_norm_overrides=norms, material_purchase_overrides=purchases,
     )
-    override_rows = fetch_rfq_estimate_material_norm_overrides(client, estimate_id)
-    overrides = _material_norm_overrides_by_requirement(override_rows)
-    purchase_overrides = _material_purchase_overrides_by_selection_key(fetch_rfq_estimate_material_purchase_overrides(client, estimate_id))
-    fingerprint = material_plan_input_fingerprint(
-        facts_by_object=facts_by_object,
-        material_norm_overrides=overrides,
-        material_purchase_overrides=purchase_overrides,
-        material_default_variants=shared_catalogs.get("material_default_variants") or (),
-    )
-    result = build_material_plan(
-        facts_by_object=facts_by_object,
-        catalogs=shared_catalogs,
-        material_norm_overrides=overrides,
-        material_purchase_overrides=purchase_overrides,
-    )
-    snapshot = material_plan_snapshot(result, input_fingerprint=fingerprint)
+    snapshot = calculation["material_plan"]
+    facts_by_object = calculation["facts_by_object"]
+    _publish_material_demand_lines(client, estimate_id=estimate_id, facts_by_object=facts_by_object)
+
+    from use_cases.estimation import apply_material_plan_allocations
+
     try:
         snapshot["assumption_job_sync"] = {
             "status": "synced",
             "count": persist_material_assumption_fallbacks(
-                client=client,
-                estimate_id=estimate_id,
-                company_id=company_id,
-                facts_by_object=facts_by_object,
-                plan_snapshot=snapshot,
+                client=client, estimate_id=estimate_id, company_id=company_id,
+                facts_by_object=facts_by_object, plan_snapshot=snapshot,
             ),
         }
     except Exception as exc:
-        # Research-job persistence must be observable, but an internal staff
-        # queue outage cannot turn an already priced A line back into an error.
-        snapshot["assumption_job_sync"] = {
-            "status": "failed",
-            "error": f"{type(exc).__name__}: {exc}",
-        }
-    plan = result.plan
+        snapshot["assumption_job_sync"] = {"status": "failed", "error": type(exc).__name__}
+        _LOG.warning("Assumption follow-up failed for estimate %s", estimate_id, exc_info=True)
+
     upsert_rfq_estimate_material_plan(
-        client,
-        estimate_id=estimate_id,
-        company_id=company_id,
-        plan_payload=snapshot,
-        plan_status=plan.status if plan else "needs_review",
-        input_fingerprint=fingerprint,
+        client, estimate_id=estimate_id, company_id=company_id, plan_payload=snapshot,
+        plan_status=snapshot["status"], input_fingerprint=snapshot["input_fingerprint"],
     )
+    apply_material_plan_allocations(client, estimate_id=estimate_id, plan_snapshot=snapshot)
     return snapshot
+
+
+def _mark_material_plan_failed(client, *, estimate_id, company_id, reason):
+    try:
+        upsert_rfq_estimate_material_plan(
+            client, estimate_id=estimate_id, company_id=company_id,
+            plan_payload={"status": "failed", "reason_codes": [reason]}, plan_status="failed",
+        )
+    except Exception:
+        _LOG.exception("Could not publish the material plan failure for estimate %s", estimate_id)
 
 
 def _recalculate_material_plan_job(*, estimate_id: str, run_id: str, company_id: str) -> dict[str, object]:
     client = get_supabase_client()
-    snapshot = _build_and_persist_material_plan(
-        client=client,
-        estimate_id=estimate_id,
-        run_id=run_id,
-        company_id=company_id,
-    )
-    from use_cases.estimation import apply_material_plan_allocations
+    try:
+        return _recalculate_from_parts_check(client, estimate_id=estimate_id, run_id=run_id, company_id=company_id)
+    except Exception:
+        _mark_material_plan_failed(client, estimate_id=estimate_id, company_id=company_id,
+                                   reason="material_plan_technical_failure")
+        raise
 
-    apply_material_plan_allocations(
-        client,
-        estimate_id=estimate_id,
-        plan_snapshot=snapshot,
+
+def _recalculate_from_parts_check(client, *, estimate_id, run_id, company_id):
+    saved = load_parts_check(client=client, company_id=company_id, run_id=run_id, estimate_id=estimate_id)
+    if saved["status"] != "ready" or not saved.get("input_ids"):
+        raise RuntimeError("The estimate has no published Parts Check with immutable input references")
+    report = json.loads(saved["payload"])
+    objects = fetch_rfq_object_estimates(client, estimate_id)
+    quantities = {str(row["object_id"]): row["quantity"] for _, row in objects.iterrows()}
+    input_rows = []
+    for input_id in saved["input_ids"]:
+        row = fetch_estimation_object_input(client, input_id=input_id)
+        if not row or row.get("company_id") != company_id or row.get("run_id") != run_id:
+            raise ValueError("Parts Check input does not belong to this estimate")
+        payload = row["input_payload"]
+        obj = payload["object"]
+        quantity = quantities[obj["object_id"]]
+        input_rows.append({**row, "input_payload": {**payload, "object": {**obj, "quantity": float(quantity)}}})
+    return _build_and_persist_material_plan(
+        client=client, estimate_id=estimate_id, company_id=company_id, parts_report=report, input_rows=input_rows,
     )
-    return snapshot
 
 
 def _submit_pending_material_plan_recalculation(estimate_id: str) -> Future | None:
@@ -261,296 +265,6 @@ def _mark_handoff_failure(
             continue
 
 
-def _run_estimation_v4_1_for_all_objects(
-    *,
-    client: object,
-    estimate_id: str,
-    created_inputs: list[dict[str, object]],
-    bom_agent_version: str = ESTIMATION_APPROXIMATE_BOM_AGENT_VERSION,
-    bom_runner: object | None = None,
-    bom_publisher: object | None = None,
-) -> dict[str, object]:
-    """Build cited geometry, deterministic BOM and one project-wide material plan."""
-    failed: dict[str, str] = {}
-    if bom_runner is None:
-        bom_runner = run_object_to_estimate_bom_batch
-    if bom_publisher is None:
-        bom_publisher = publish_estimation_approximate_bom_object
-    completed_inputs: list[str] = []
-    total = len(created_inputs)
-    valid_inputs: list[dict[str, object]] = []
-    index_by_input = {}
-    for index, input_row in enumerate(created_inputs, start=1):
-        object_id = str(input_row.get("object_id") or "")
-        input_id = str(input_row.get("input_id") or "")
-        if not object_id or not input_id:
-            failed[input_id or f"row-{index}"] = "invalid_estimation_input"
-            continue
-        valid_inputs.append(input_row)
-        index_by_input[input_id] = index
-
-    def mark_geometry_start(input_row: Mapping[str, object]) -> None:
-        input_id = str(input_row.get("input_id") or "")
-        object_id = str(input_row.get("object_id") or "")
-        _set_object_progress(
-            client,
-            estimate_id=estimate_id,
-            object_id=object_id,
-            percent=max(1, int((index_by_input[input_id] - 1) * 45 / max(total, 1))),
-            label="building_object_geometry",
-        )
-
-    first_payload = valid_inputs[0].get("input_payload") if valid_inputs else None
-    company_id = str(first_payload.get("company_id") or "") if isinstance(first_payload, Mapping) else ""
-    shared_context = build_estimation_material_context(client, company_id) if company_id else None
-
-    for input_row in valid_inputs:
-        mark_geometry_start(input_row)
-    facts_result = bom_runner(
-        client=client,
-        inputs=valid_inputs,
-        allowed_material_families=sorted(shared_context["families"]),
-    )
-
-    successful_inputs = [
-        input_row for input_row in valid_inputs
-        if str(input_row.get("input_id") or "") not in facts_result["failed"]
-    ]
-    if not successful_inputs:
-        for input_row in valid_inputs:
-            input_id = str(input_row["input_id"])
-            object_id = str(input_row["object_id"])
-            failed[input_id] = str(facts_result["failed"].get(input_id) or "structural_bom_failed")
-            update_rfq_object_estimate_progress(
-                client, estimate_id=estimate_id, object_id=object_id,
-                status="failed", progress_percent=100, progress_label="structural_bom_failed",
-            )
-        return {
-            "processed_input_ids": completed_inputs,
-            "failed": failed,
-            "material_engine_plan": {"status": "not_run", "reason": "no_structural_bom"},
-        }
-
-    material_plan_summary: dict[str, object] = {"status": "not_run"}
-    material_plan_snapshot_data: dict[str, object] | None = None
-    if shared_context and successful_inputs:
-        first_payload = successful_inputs[0].get("input_payload")
-        run_id = str(first_payload.get("run_id") or "") if isinstance(first_payload, Mapping) else ""
-        if run_id:
-            for input_row in successful_inputs:
-                input_id = str(input_row["input_id"])
-                if input_id not in facts_result["failed"]:
-                    _set_object_progress(
-                        client,
-                        estimate_id=estimate_id,
-                        object_id=str(input_row["object_id"]),
-                        percent=55,
-                        label="building_project_material_plan",
-                    )
-            try:
-                snapshot = _build_and_persist_material_plan(
-                    client=client,
-                    estimate_id=estimate_id,
-                    run_id=run_id,
-                    company_id=company_id,
-                    catalogs=shared_context["catalogs"],
-                    bom_agent_version=bom_agent_version,
-                )
-                material_plan_snapshot_data = snapshot
-                material_plan_summary = {
-                    "status": snapshot["status"],
-                    "demand_count": snapshot["demand_count"],
-                    "candidate_count": snapshot["candidate_count"],
-                    "planned_line_count": len(snapshot["lines"]),
-                    "planned_material_cost_ex_vat": sum(
-                        line["total_cost"] for line in snapshot["lines"]
-                    ),
-                    "unresolved_requirement_ids": snapshot["unresolved_requirement_ids"],
-                    "assumption_fallback_count": len(snapshot.get("assumption_fallbacks") or ()),
-                    "reason_codes": snapshot["reason_codes"],
-                }
-                for input_row in successful_inputs:
-                    _record_stage_event(
-                        client=client, input_row=input_row, stage="material_plan", status="succeeded",
-                        details={"reason_code": str(snapshot.get("status") or "planned"),
-                                 "material_count": len(snapshot.get("lines") or ())},
-                    )
-            except Exception as exc:
-                # A real infrastructure error is distinct from an unavailable
-                # catalog item. Do not publish the intermediate 70% BOM state
-                # as if costing were still in progress.
-                material_plan_summary = {
-                    "status": "failed",
-                    "error": f"{type(exc).__name__}: {exc}",
-                }
-                for input_row in successful_inputs:
-                    input_id = str(input_row["input_id"])
-                    if input_id in facts_result["failed"]:
-                        continue
-                    _record_failure_trace(
-                        client=client, input_id=input_id, stage="material_plan", exc=exc,
-                    )
-                    _record_stage_event(
-                        client=client, input_row=input_row, stage="material_plan", status="failed",
-                        details={"reason_code": "material_plan_technical_failure"},
-                    )
-                    failed[input_id] = "material_plan_technical_failure"
-                    _set_object_technical_failure(
-                        client,
-                        estimate_id=estimate_id,
-                        object_id=str(input_row["object_id"]),
-                        label="material_plan_technical_failure",
-                    )
-                return {
-                    "processed_input_ids": completed_inputs,
-                    "failed": failed,
-                    "material_engine_plan": material_plan_summary,
-                }
-
-    if material_plan_snapshot_data is None:
-        # A missing company context or run identity is also a technical
-        # failure. It must not fall through to the intermediate BOM publisher
-        # and create a permanently running 70% row.
-        material_plan_summary = {
-            "status": "failed",
-            "error": "material_plan_not_available",
-        }
-        for input_row in valid_inputs:
-            input_id = str(input_row["input_id"])
-            if input_id in facts_result["failed"]:
-                continue
-            _record_failure_trace(
-                client=client, input_id=input_id, stage="material_plan",
-                exc=RuntimeError("Material plan was not available."),
-            )
-            _record_stage_event(
-                client=client, input_row=input_row, stage="material_plan", status="failed",
-                details={"reason_code": "material_plan_not_available"},
-            )
-            failed[input_id] = "material_plan_not_available"
-            _set_object_technical_failure(
-                client,
-                estimate_id=estimate_id,
-                object_id=str(input_row["object_id"]),
-                label="material_plan_not_available",
-            )
-        return {
-            "processed_input_ids": completed_inputs,
-            "failed": failed,
-            "material_engine_plan": material_plan_summary,
-        }
-
-    for input_row in valid_inputs:
-        object_id = str(input_row["object_id"])
-        input_id = str(input_row["input_id"])
-        error = facts_result["failed"].get(input_id)
-        if error:
-            failed[input_id] = error
-            update_rfq_object_estimate_progress(
-                client,
-                estimate_id=estimate_id,
-                object_id=object_id,
-                status="failed",
-                progress_percent=100,
-                progress_label="object_to_estimate_bom_failed",
-            )
-            continue
-        _set_object_progress(
-            client,
-            estimate_id=estimate_id,
-            object_id=object_id,
-            percent=55,
-            label="approximate_bom_ready_for_costing",
-        )
-        try:
-            if bom_agent_version == ESTIMATION_APPROXIMATE_BOM_AGENT_VERSION:
-                published = bom_publisher(client=client, estimate_id=estimate_id, input_row=input_row)
-            else:
-                published = bom_publisher(
-                    client=client, estimate_id=estimate_id, input_row=input_row,
-                    agent_version=bom_agent_version,
-                )
-            completed_inputs.append(input_id)
-            if published.get("status") != "ready":
-                failed[input_id] = f"unexpected_publisher_status:{published.get('status')}"
-                _record_failure_trace(
-                    client=client, input_id=input_id, stage="publisher",
-                    exc=RuntimeError("Publisher did not produce a ready result."),
-                )
-                _record_stage_event(
-                    client=client, input_row=input_row, stage="publisher", status="failed",
-                    details={"reason_code": "publisher_not_ready"},
-                )
-            else:
-                _record_stage_event(
-                    client=client, input_row=input_row, stage="publisher", status="succeeded",
-                    details={"reason_code": "published"},
-                )
-        except Exception as exc:
-            failed[input_id] = f"{type(exc).__name__}: {exc}"
-            _record_failure_trace(client=client, input_id=input_id, stage="publisher", exc=exc)
-            _record_stage_event(
-                client=client, input_row=input_row, stage="publisher", status="failed",
-                details={"reason_code": "publisher_technical_failure"},
-            )
-            update_rfq_object_estimate_progress(
-                client,
-                estimate_id=estimate_id,
-                object_id=object_id,
-                status="failed",
-                progress_percent=100,
-                progress_label="approximate_bom_publisher_failed",
-            )
-    if material_plan_snapshot_data:
-        from use_cases.estimation import apply_material_plan_allocations
-
-        try:
-            apply_material_plan_allocations(
-                client,
-                estimate_id=estimate_id,
-                plan_snapshot=material_plan_snapshot_data,
-            )
-            for input_row in valid_inputs:
-                if str(input_row.get("input_id") or "") in completed_inputs:
-                    _record_stage_event(
-                        client=client, input_row=input_row, stage="allocation", status="succeeded",
-                        details={"reason_code": "allocated"},
-                    )
-        except Exception as exc:
-            for input_row in valid_inputs:
-                input_id = str(input_row["input_id"])
-                if input_id not in completed_inputs:
-                    continue
-                _record_failure_trace(client=client, input_id=input_id, stage="allocation", exc=exc)
-                _record_stage_event(
-                    client=client, input_row=input_row, stage="allocation", status="failed",
-                    details={"reason_code": "material_allocation_technical_failure"},
-                )
-                failed[input_id] = "material_allocation_technical_failure"
-                _set_object_technical_failure(
-                    client, estimate_id=estimate_id,
-                    object_id=str(input_row["object_id"]),
-                    label="material_allocation_technical_failure",
-                )
-    return {
-        "processed_input_ids": completed_inputs,
-        "failed": failed,
-        "material_engine_plan": material_plan_summary,
-    }
-
-
-def _run_estimation_v5_3_for_all_objects(
-    *, client: object, estimate_id: str, created_inputs: list[dict[str, object]],
-) -> dict[str, object]:
-    """Run V5.6 Analyze, constrained Calculation and 2VN composition through costing."""
-    return _run_estimation_v4_1_for_all_objects(
-        client=client, estimate_id=estimate_id, created_inputs=created_inputs,
-        bom_agent_version=ESTIMATION_ASSEMBLY_BOM_AGENT_VERSION,
-        bom_runner=run_assembly_first_bom_batch,
-        bom_publisher=publish_estimation_assembly_bom_object,
-    )
-
-
 def submit_estimation_job(
     *,
     estimate_id: str,
@@ -647,7 +361,7 @@ def _persist_prepared_launch_and_run(
     ignored_object_ids: set[str],
     create_shell: bool,
 ) -> dict[str, object]:
-    """Persist an accepted launch snapshot, then run the unchanged Estimation job."""
+    """Persist an accepted launch snapshot, then run Estimation."""
     save_file_review_run_metadata(
         run_id=run_id,
         values=metadata_values,
@@ -690,7 +404,7 @@ def _run_estimation_job(
     ignored_object_ids: set[str],
     shell: dict[str, object] | None,
 ) -> dict[str, object]:
-    """Persist the immutable V4 handoff, then run geometry, BOM and material planning."""
+    """Build the checked parts and price them from the immutable File Review handoff."""
     created_inputs: list[dict[str, object]] = []
     client = get_supabase_client()
     object_rows_data: list[dict[str, object]] = []
@@ -722,28 +436,51 @@ def _run_estimation_job(
             objects=object_rows_data,
             ignored_object_ids=ignored_object_ids,
         )
-        raise RuntimeError(f"Estimation V4 handoff failed: {exc}") from exc
+        raise RuntimeError(f"Estimation handoff failed: {exc}") from exc
 
-    inputs_available = bool(created_inputs)
-    if inputs_available:
-        submit_parts_check(estimate_id=estimate_id, run_id=run_id, company_id=company_id,
-                           file_name=file_name, file_bytes=file_bytes, inputs=created_inputs,
-                           ocr_package=ocr["ocr_result"])
-        estimation_result = _run_estimation_v5_3_for_all_objects(
-                client=client,
-                estimate_id=estimate_id,
-                created_inputs=created_inputs,
-        )
+    if created_inputs:
+        object_ids = [row["input_payload"]["object"]["object_id"] for row in created_inputs]
+        stage = "parts_check"
+        try:
+            for object_id in object_ids:
+                _set_object_progress(client, estimate_id=estimate_id, object_id=object_id,
+                                     percent=15, label="building_parts_check")
+            report = run_parts_check_for_estimate(
+                client=client, estimate_id=estimate_id, run_id=run_id, company_id=company_id,
+                file_name=file_name, file_bytes=file_bytes, inputs=created_inputs, ocr_package=ocr["ocr_result"],
+            )
+            if report is None:
+                raise RuntimeError("Parts Check did not produce a checked report")
+            stage = "material_plan"
+            for object_id in object_ids:
+                _set_object_progress(client, estimate_id=estimate_id, object_id=object_id,
+                                     percent=70, label="building_project_material_plan")
+            snapshot = _build_and_persist_material_plan(
+                client=client, estimate_id=estimate_id, company_id=company_id,
+                parts_report=report, input_rows=created_inputs,
+            )
+        except Exception:
+            _LOG.exception("Estimation failed at %s for estimate %s", stage, estimate_id)
+            _mark_material_plan_failed(client, estimate_id=estimate_id, company_id=company_id,
+                                       reason=f"{stage}_technical_failure")
+            for object_id in object_ids:
+                update_rfq_object_estimate_totals(
+                    client, estimate_id=estimate_id, object_id=object_id,
+                    self_cost_ex_vat=None, vat_amount=None, self_cost_total=None,
+                )
+                _set_object_technical_failure(client, estimate_id=estimate_id, object_id=object_id,
+                                              label=f"{stage}_technical_failure")
+            return {
+                "estimate_id": estimate_id, "run_id": run_id, "shell": shell,
+                "estimation": {"status": "completed_with_failures", "estimated_objects": 0,
+                               "failed_objects": {row["input_id"]: f"{stage}_technical_failure" for row in created_inputs}},
+                "estimation_version": VERSION,
+            }
         return {
-            "estimate_id": estimate_id,
-            "run_id": run_id,
-            "shell": shell,
-            "estimation": {
-                "status": "completed" if not estimation_result["failed"] else "completed_with_failures",
-                "estimated_objects": len(estimation_result["processed_input_ids"]),
-                "failed_objects": estimation_result["failed"],
-            },
-            "estimation_version": "v5_3_2vn_geometry_composer",
+            "estimate_id": estimate_id, "run_id": run_id, "shell": shell,
+            "estimation": {"status": "completed" if snapshot["status"] == "planned" else "review_required",
+                           "estimated_objects": len(created_inputs), "failed_objects": {}},
+            "estimation_version": VERSION,
         }
     if shell and int(shell.get("object_count") or 0) == 0:
         return {
@@ -755,6 +492,6 @@ def _run_estimation_job(
                 "estimated_objects": 0,
                 "failed_objects": {},
             },
-            "estimation_version": "v4_object_to_estimate_bom",
+            "estimation_version": VERSION,
         }
-    raise RuntimeError("Estimation V4 input handoff produced no estimable objects.")
+    raise RuntimeError("Estimation input handoff produced no estimable objects.")

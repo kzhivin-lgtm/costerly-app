@@ -127,9 +127,12 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
                 _escape("—"),
                 f'<span class="object-detail-row-cost">{_money(row.get("total"))}</span>',
             ]
+        required_unit = str(row.get("required_material_unit") or "")
+        required_value = row.get("required_material_value")
+        required_text = f"{float(required_value):.1f}" if required_unit == "m²" and required_value is not None else _number_text(required_value)
         return [
             _source_marker(row.get("price_source")) + f'<span class="object-detail-material-name">{_escape(row.get("item"))}</span>',
-            _material_input_html(value=_number_text(row.get("required_material_value")), field="required_material", line_id=str(row.get("required_material_line_id") or ""), unit=str(row.get("required_material_unit") or "")),
+            _material_input_html(value=required_text, field="required_material", line_id=str(row.get("required_material_line_id") or ""), unit=required_unit),
             _purchase_unit_html(row.get("purchase_unit")),
             _material_input_html(value=_number_text(row.get("purchase_quantity_value")), field="purchase_quantity", line_id=str(row.get("purchase_quantity_line_id") or ""), unit=""),
             f'<span class="object-detail-row-cost">{_money(row.get("total"))}</span>',

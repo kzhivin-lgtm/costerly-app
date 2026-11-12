@@ -6,7 +6,6 @@ from typing import Any
 
 from db.repositories import (
     fetch_company_overhead_settings,
-    fetch_latest_estimation_facts_by_object,
     fetch_rfq_estimate_pricing_overrides,
     fetch_rfq_estimate_lines,
     fetch_rfq_estimate_lines_for_object,
@@ -28,8 +27,6 @@ from db.repositories import (
     upsert_rfq_estimate_shell,
 )
 from db.supabase_client import get_supabase_client
-from agents.estimation_v3_material_facts_agent import ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION
-from use_cases.estimation_object_to_estimate_runtime import ESTIMATION_ACTIVE_BOM_AGENT_VERSION
 from db.company_access import assert_estimate_owned, assert_run_owned
 from state.company_auth import company_auth_enabled
 from state.session import get_company_id
@@ -79,6 +76,11 @@ def _material_plan_blocking_state(row: Any) -> tuple[str, str]:
     status = _material_plan_status(row)
     if status == "needs_review":
         payload = dict((row or {}).get("plan_payload") or {}) if isinstance(row, dict) else {}
+        if checked := payload.get("parts_check"):
+            unpriced = sum(len(obj["unpriced_requirements"]) for obj in checked.values())
+            issues = sum(len(obj["issues"]) for obj in checked.values())
+            return ("MATERIAL PLAN INCOMPLETE",
+                    f"Open checks: {unpriced} unpriced requirements and {issues} Parts Check findings.")
         assumption_count = len(payload.get("assumption_fallbacks") or [])
         unresolved_count = len(payload.get("unresolved_requirement_ids") or [])
         count = assumption_count or unresolved_count
@@ -225,31 +227,18 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
     markup_percent = _number(settings.get("sale_price_markup_percent"), 30)
     delivery_percent = _number(settings.get("delivery_percent"), 3)
     installation_percent = _number(settings.get("installation_percent"), 10)
-    facts_by_object: dict[str, dict] = {}
-    if not objects_df.empty:
-        run_id = str(objects_df.iloc[0].get("run_id") or "")
-        if run_id:
-            try:
-                facts_by_object = fetch_latest_estimation_facts_by_object(
-                    client,
-                    run_id=run_id,
-                    agent_version=ESTIMATION_ACTIVE_BOM_AGENT_VERSION,
-                )
-            except Exception:
-                facts_by_object = {}
-
+    checked_objects = material_plan.get("parts_check") or {}
     rows = []
     for _, item in objects_df.iterrows():
         row = item.to_dict()
         object_id = str(row.get("object_id") or "")
         quantity = _number(row.get("quantity"), 1)
-        facts_result = facts_by_object.get(object_id) or {}
-        facts_payload = facts_result.get("facts_payload") or {}
-        materials = facts_payload.get("materials") or []
+        checked = checked_objects.get(object_id) or {}
+        materials = checked.get("materials") or _material_rows_from_plan(material_plan, object_id=object_id)
         material_names = [
-            str(material.get("source_name") or "").strip()
+            str(material.get("source_name") or material.get("item") or "").strip()
             for material in materials
-            if isinstance(material, dict) and str(material.get("source_name") or "").strip()
+            if str(material.get("source_name") or material.get("item") or "").strip()
         ]
         status = str(row.get("status") or "pending")
         self_cost = row.get("self_cost_ex_vat")
@@ -274,8 +263,7 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
                 "sale_price_overridden": sale_price_overridden,
                 "suggestion": f"suggested: SC + {_format_number(markup_percent)}%",
                 "reviewed": bool(row.get("approved")),
-                "details_available": bool(facts_result),
-                "facts_status": facts_result.get("status"),
+                "details_available": bool(checked or materials),
             }
         )
 
@@ -437,32 +425,8 @@ def load_object_detail_data(
 
     object_row = matching.iloc[0].to_dict()
     canonical_quantity = _number(object_row.get("quantity"), 1)
-    facts_result = {}
-    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="object-detail-read") as executor:
-        facts_future = executor.submit(
-            fetch_latest_estimation_facts_by_object,
-            client,
-            run_id=str(object_row.get("run_id") or ""),
-            agent_version=ESTIMATION_ACTIVE_BOM_AGENT_VERSION,
-        )
-        settings_future = executor.submit(
-            fetch_company_overhead_settings, client, str(object_row.get("company_id")),
-        )
-        try:
-            facts_result = facts_future.result().get(object_id) or {}
-        except Exception:
-            facts_result = {}
-        settings = _first_row(settings_future.result())
-    if not facts_result:
-        try:
-            facts_result = fetch_latest_estimation_facts_by_object(
-                client,
-                run_id=str(object_row.get("run_id") or ""),
-                agent_version=ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION,
-            ).get(object_id) or {}
-        except Exception:
-            facts_result = {}
-    facts_payload = facts_result.get("facts_payload") or {}
+    checked = (material_plan.get("parts_check") or {}).get(object_id) or {}
+    settings = _first_row(fetch_company_overhead_settings(client, str(object_row.get("company_id"))))
     vat_percent = _number(settings.get("vat_percent"), 18)
     employer_load_percent = _number(settings.get("employer_load_percent"), 25)
 
@@ -534,8 +498,13 @@ def load_object_detail_data(
     plan_material_rows = _material_rows_from_plan(material_plan, object_id=object_id)
     if plan_material_rows:
         material_rows = plan_material_rows + _material_policy_rows_from_lines(lines_df)
-    elif not material_rows:
-        material_rows = _material_rows_from_material_facts(facts_payload)
+    if checked:
+        missing = set(checked.get("unpriced_requirements") or ())
+        material_rows = [*plan_material_rows, *[
+            {"item": material["source_name"], "required_material_value": material["quantity"],
+             "required_material_unit": {"m2": "m²"}.get(material["unit"], material["unit"]), "total": None}
+            for material in checked["materials"] if material["requirement_id"] in missing
+        ], *_material_policy_rows_from_lines(lines_df)]
 
     material_total = sum(_number(row.get("cost"), 0) for row in material_rows)
     manufacturing_total = sum(
@@ -556,11 +525,6 @@ def load_object_detail_data(
     employer_load = round(labor_base_total * employer_load_percent / 100, 2)
     labor_total = labor_base_total + employer_load + manufacturing_total
     overhead_total = sum(_number(row.get("cost"), 0) for row in overhead_rows)
-    operation_confidences = [
-        _number(row.get("confidence"), 0)
-        for row in (facts_payload.get("labor_operations") or [])
-        if isinstance(row, dict) and row.get("confidence") is not None
-    ]
 
     return {
         "object_key": object_id,
@@ -573,16 +537,14 @@ def load_object_detail_data(
         "material_plan_status": plan_status,
         "material_plan_blocking_label": plan_blocking_label,
         "material_plan_blocking_message": plan_blocking_message,
-        "confidence": round(sum(operation_confidences) / len(operation_confidences))
-        if operation_confidences else "—",
+        "confidence": "—",
         "preview_label": "Object preview",
         "preview_url": _estimation_preview_url(
             client,
-            str(facts_payload.get("primary_preview_ref") or ""),
+            str(checked.get("primary_preview_ref") or ""),
             company_id=str(object_row.get("company_id") or ""),
         ),
-        "facts_status": facts_result.get("status"),
-        "elements": _element_rows_from_bom(facts_payload),
+        "elements": _element_rows_from_bom(checked),
         "sections": [
             {
                 "key": "material",
@@ -601,36 +563,15 @@ def load_object_detail_data(
     }
 
 
-def _material_rows_from_material_facts(facts_payload: dict[str, Any]) -> list[dict[str, Any]]:
-    rows = []
-    target_quantity = max(_number(facts_payload.get("quantity"), 1), 1)
-    for material in facts_payload.get("materials") or []:
-        if not isinstance(material, dict):
-            continue
-        raw_quantity = material.get("quantity")
-        quantity_per_item = (
-            None if raw_quantity is None
-            else round(_number(raw_quantity, 0) / target_quantity, 6)
-        )
-        rows.append({
-            "group": "Detected materials",
-            "line_id": material.get("requirement_id"),
-            "item": material.get("source_name") or material.get("family"),
-            "unit": material.get("unit"),
-            "unit_cost": None,
-            "qty": quantity_per_item,
-            "cost": None,
-        })
-    return rows
-
-
 def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -> list[dict[str, Any]]:
     """Project nesting is internal; render the selected material and physical demand."""
     assumption_by_requirement = {
         str(row.get("material_requirement_id") or ""): row
         for row in plan_snapshot.get("assumption_fallbacks") or []
-        if isinstance(row, dict)
+        if isinstance(row, dict) and str(row.get("object_id") or "") in {"", object_id}
     }
+    allocated_costs = {str(row["material_requirement_id"]): _number(row.get("cost_ex_vat"), 0)
+                       for row in plan_snapshot.get("object_material_costs", ()) if row.get("object_id") == object_id}
     rows = []
     for line in plan_snapshot.get("lines") or []:
         if not isinstance(line, dict):
@@ -668,7 +609,8 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
             "purchase_quantity_value": _number(line.get("purchase_quantity"), 0),
             "purchase_quantity_unit": _purchase_unit_label(purchase_kind),
             "purchase_quantity_line_id": f"__material_purchase__:{line.get('selection_key')}",
-            "total": _number(line.get("total_cost"), 0),
+            "total": (round(sum(allocated_costs.get(req, 0) for req in requirement_ids), 2)
+                      if plan_snapshot.get("parts_check") else _number(line.get("total_cost"), 0)),
         })
     return rows
 
@@ -836,7 +778,8 @@ def _element_rows_from_bom(facts_payload: dict[str, Any]) -> list[dict[str, Any]
             continue
         length = _number(part.get("length_mm"), 0)
         width = _number(part.get("width_mm"), 0)
-        label = labels.get(str(part.get("component_role") or ""), "Element")
+        role = str(part.get("component_role") or "")
+        label = labels.get(role, role.replace("_", " ").capitalize() or "Element")
         size = f"{_format_number(length)} × {_format_number(width)} mm" if length > 0 and width > 0 else ""
         key = (label, size)
         grouped.setdefault(key, {"label": label, "quantity": 0, "size": size})["quantity"] += _number(part.get("quantity"), 0)
@@ -1059,7 +1002,8 @@ def apply_material_plan_allocations(
         for row in plan_snapshot.get("assumption_fallbacks") or []
         if isinstance(row, dict)
     }
-    if not allocation_costs and not assumption_fallbacks:
+    checked_objects = plan_snapshot.get("parts_check") or {}
+    if not allocation_costs and not assumption_fallbacks and not checked_objects:
         return
     lines_df = fetch_rfq_estimate_lines(client, estimate_id)
     affected_object_ids: set[str] = set()
@@ -1128,7 +1072,18 @@ def apply_material_plan_allocations(
             },
         )
         affected_object_ids.add(object_id)
-    for object_id in affected_object_ids:
+    for object_id in affected_object_ids | checked_objects.keys():
+        checked = checked_objects.get(object_id) or {}
+        if checked and (checked["unpriced_requirements"] or checked["issues"] or checked["has_unresolved_demands"]):
+            update_rfq_object_estimate_totals(
+                client, estimate_id=estimate_id, object_id=object_id,
+                self_cost_ex_vat=None, vat_amount=None, self_cost_total=None,
+            )
+            update_rfq_object_estimate_progress(
+                client, estimate_id=estimate_id, object_id=object_id,
+                status="review_required", progress_percent=100, progress_label="material_plan_needs_review",
+            )
+            continue
         object_rows = fetch_rfq_estimate_lines_for_object(
             client,
             estimate_id=estimate_id,
@@ -1571,12 +1526,14 @@ def _recalculate_object_estimate_totals(
     labor_base_total = 0.0
     manufacturing_total = 0.0
     overhead_total = 0.0
+    checked_material_plan = False
     for _, line in lines_df.iterrows():
         row = line.to_dict()
         section = str(row.get("section") or "")
         cost = _number(row.get("cost"), 0)
         if section == "material":
             material_total += cost
+            checked_material_plan |= row.get("source") == "parts_check"
         elif section == "labor":
             if row.get("source") == "manufacturing_engine":
                 manufacturing_total += cost
@@ -1585,6 +1542,8 @@ def _recalculate_object_estimate_totals(
         elif section == "overhead":
             overhead_total += cost
 
+    if checked_material_plan:
+        material_total /= _number(object_row.get("quantity"), 1) or 1
     employer_load = round(labor_base_total * employer_load_percent / 100, 2)
     self_cost_ex_vat = round(
         material_total + labor_base_total + employer_load + manufacturing_total + overhead_total,

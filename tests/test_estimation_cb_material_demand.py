@@ -1,4 +1,6 @@
-from use_cases.estimation_cb_material_demand import build_cb_material_demand
+import pytest
+
+from use_cases.estimation_cb_material_demand import build_cb_material_demand, calculate_cb_materials
 
 
 def _input(quantity=1):
@@ -92,5 +94,37 @@ def test_worktop_surface_areas_are_preserved_without_inventing_end_material():
     assert service["part_sources"][0]["cutout"] == cutout
     assert result["parts"] == []
     assert [issue["reason"] for issue in result["review_items"]] == [
-        "worktop_material_family_unresolved", "worktop_cutout_supplier_offer_pending",
+        "worktop_material_family_unresolved",
     ]
+
+
+@pytest.mark.parametrize("pricing_basis", ["piece", "square_meter"])
+def test_checked_operation_uses_a_compatible_catalog_offer_or_stays_unpriced(pricing_basis):
+    outline = {"area_basis": "gross_plan_outline", "kitchen_worktop": True, "source_refs": ["plan:C01"],
+               "surfaces": [{"id": "main", "material_role": "main_worktop", "area_m2": 2.5}]}
+    cutout = {"id": "render:worktop-cutout-01", "view_id": "render", "surface": "main_worktop"}
+    row = _part("shared_worktop", quantity=1, worktop_outline=outline, worktop_cutouts=[cutout])
+    result = calculate_cb_materials(
+        parts_report={"stage": "Parts Check", "run_id": "run-1", "input_ids": ["input-1"],
+                      "objects": {"object-1": {"parts": [row]}}},
+        input_rows=[_input(2)],
+        catalog_context={"company_id": "company-1", "families": {"engineered_quartz_mineral_hybrid"}, "catalogs": {
+            "operations": [{"operation_id": "op-1", "operation_code": "stone_cutout", "active": True}],
+            "supplier_operation_offers": [{"operation_offer_id": "offer-1", "operation_id": "op-1", "status": "active",
+                                           "pricing_basis": pricing_basis, "currency": "ILS", "vat_included": True,
+                                           "source_price": 118}],
+        }},
+    )
+    surface, service = result["facts_by_object"]["object-1"]["materials"]
+    assert (surface["quantity"], service["quantity"]) == (5, 2)
+    snapshot = result["material_plan"]
+    if pricing_basis == "piece":
+        assert snapshot["object_material_costs"] == [{"object_id": "object-1",
+            "material_requirement_id": service["requirement_id"], "cost_ex_vat": 200.0}]
+        assert snapshot["lines"][0]["authority"] == "company"
+    else:
+        assert not snapshot["object_material_costs"]
+        gap = next(item for item in snapshot["assumption_fallbacks"]
+                   if item["material_requirement_id"] == service["requirement_id"])
+        assert gap["resolution"] == "assumption_required"
+        assert "assumption_price" not in gap

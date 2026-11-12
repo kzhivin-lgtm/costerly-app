@@ -178,7 +178,6 @@ def test_v3_object_detail_loads_with_a_planned_material_plan(monkeypatch):
             "plan_status": "planned", "plan_payload": {"status": "planned"},
         }]),
     )
-    monkeypatch.setattr(estimation, "fetch_latest_estimation_facts_by_object", lambda *_args, **_kwargs: {})
     monkeypatch.setattr(
         estimation,
         "fetch_company_overhead_settings",

@@ -18,9 +18,6 @@ output token limit and passed incomplete JSON to the decoder. The original
 three production events retain only a generic error. The trace stage in
 runtime differs from the stage allowed by the checked-in SQL constraint.
 
-PENDING, P1. Record truncated Calculation responses and other bounded
-failure reasons under supported trace stages if legacy costing stays active.
-
 VERIFIED locally, P1. Parts Check to Material Demand accounts for every
 row in the Lev1, Lev2 and Adda witnesses. The Lev2 replay restores all
 28 carcass rows and passes 106 rows into the demand contract. A subsequent
@@ -28,18 +25,17 @@ fresh Lev2 run verifies both worktop surface areas and one cutout service.
 Owner-accepted experimental checkpoint
 `estimation-v9.4-lev2-worktop-demand-2026-11-12`.
 
-ACTIVE, P0, USER REQUEST. Complete the shared pricing cycle from Parts
-Check through Material Demand, Material Resolver and Material Engine. The
-production pricing path still reads legacy BOM facts. The Parts Check
-pricing experiment priced seven of ten Lev2 requirements. Drawer slides,
-the contrasting worktop end and the cutout service have no allocated cost.
-Use these three as regression cases for the shared path. Resolve materials
-and purchased services using Company Catalog first and Israel Reference
-second. When both lack a compatible price, use a sourced, estimate-local
-Assumption Fallback. Reserve market search for that case and retain the
-source and pricing unit. Keep the whole worktop area for material purchasing
-and count each cutout service separately. A complete estimate assigns a
-cost to every purchasing requirement, with no duplicate charge.
+ACTIVE, P0, USER REQUEST. Complete the pricing cycle from Parts Check
+through Material Demand, Material Resolver and Material Engine. Estimation
+9.5 connects initial pricing and repricing to the same checked report. A
+saved Lev2 replay against current Supabase catalogs retains 107 parts and
+prices seven of ten purchasing requirements, including the drawer slides.
+The MDF finish, contrasting worktop material and cutout quote remain open.
+Use Company Catalog first and Israel Reference second. When neither has a
+compatible price, complete a sourced, estimate-local Assumption Fallback
+with the source and pricing unit. Automatic market research is pending.
+Keep the whole worktop area and count each cutout service separately. A
+complete estimate assigns each requirement a cost and counts it once.
 
 PENDING, P0, USER REQUEST. Verify coverage from all drawing views through
 Inventory Check, Blocks, standalone items, Parts Check and the priced

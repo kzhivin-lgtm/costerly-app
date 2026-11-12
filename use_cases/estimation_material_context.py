@@ -38,10 +38,15 @@ def _optional_rows(client: Any, table: str, *, filters: Mapping[str, Any]) -> li
 def build_estimation_material_context(client: Any, company_id: str) -> dict[str, Any]:
     """Load only catalog data needed for deterministic material purchasing."""
     return {
+        "company_id": company_id,
         "families": fetch_estimation_resolver_material_families(client),
         "catalogs": {
             "items": _rows(client, "company_material_items", filters={"company_id": company_id}),
             "offers": _rows(client, "company_material_offers", filters={"company_id": company_id}),
+            "supplier_operation_offers": _optional_rows(
+                client, "company_supplier_operation_offers", filters={"company_id": company_id, "status": "active"},
+            ),
+            "operations": _optional_rows(client, "reference_operations", filters={"active": True}),
             "reference_positions": load_active_israel_reference_positions(client),
             "material_families": _rows(client, "reference_material_families", filters={"active": True}),
             "material_pricing_policies": _rows(client, "reference_material_family_pricing_policies", filters={"active": True}),
