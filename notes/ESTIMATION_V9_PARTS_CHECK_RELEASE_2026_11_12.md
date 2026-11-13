@@ -19,7 +19,15 @@ end generated no grain-based stock choice. Its nine Blocks and 110 Parts
 rows matched the 9.15 control counts. The solid wood and imitation cases
 are covered by automated contract tests.
 
-Local candidate. The prior Adda Front discrepancy remains open.
+Released to production on 2026-11-13. GitHub main and Railway deployment
+`72afab55-468e-4fa3-8c73-1e4bf72beac0` agree on runtime commit
+`c2797995620e3a37e54b5f0799798ac4b2191eda`. Production health and the
+app wrapper returned HTTP 200, and an anonymous Streamlit run exposed
+`estimation-v9.16-detection-v8.4.29`. Pre-deploy verification had 79
+passes and one dependency-list assertion that also failed on 9.14
+with identical dependency files. Rollback is
+`estimation-v9.14-checkpoint` at `14605a4`. A fresh production Lev1
+Upload is pending. The prior Adda Front discrepancy remains open.
 
 ## Estimation 9.15 Drawer runs and sheet thickness
 

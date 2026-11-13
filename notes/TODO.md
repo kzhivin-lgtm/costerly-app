@@ -5765,7 +5765,9 @@ cause from the local screenshot alone.
   carries its source into Parts. Fresh Lev1 and Lev2 controls verify the
   veneered MDF choice and the plain-colour exclusion. Solid wood needs
   a verbatim drawing note. Catalog coverage stays open.
-  Release verification is pending. A fresh Adda control tagged two
+  Railway deployed 9.16 at `c279799`; production runtime verified.
+  Fresh Lev1 Upload through the Materials screen is pending.
+  A fresh Adda control tagged two
   mirrors on V02 and created three straight-object Blocks, versus two in
   the accepted witness. Compare the Front evidence before any changes.
 - Object Detail approve action: remove stale screen fragment flicker after clicking Approve.
