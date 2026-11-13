@@ -17,8 +17,12 @@ shows the same amount without the approximation sign.
 Local Chrome with the saved Adda Material Plan verified both navigation
 orders with cold, warm and failed prefetch, mouse and keyboard use, narrow
 layout, the running object state, and return after a failed detail read.
-The focused suite passed 32 tests. An authenticated production witness
-remains pending.
+The focused suite passed 32 tests. Railway confirmed Estimation 9.9 at
+`d291888`, deployment `b82b99c5-8b53-42d5-a952-43f047b970c1`. On 2026-11-13
+the owner confirmed Review works on production Adda and accepted the
+Objects Estimation changes. The screenshots also capture the existing
+Materials and Elements presentation. Tag `estimation-v9.9-checkpoint`
+pins the accepted runtime for rollback.
 
 ## Estimation 9.8 stock inheritance
 

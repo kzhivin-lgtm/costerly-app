@@ -1,5 +1,11 @@
 # Done Log
 
+Estimation 9.9. The owner confirmed the Objects Estimation Review fix
+on production Adda on 2026-11-13 and accepted the short subtitles and
+self-cost display. Tag `estimation-v9.9-checkpoint` pins the deployed
+runtime `d291888`. See the
+[Estimation release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md).
+
 Detection V8.4.29 Ada checkpoint accepted on 2026-11-13. Four Adda
 repeats with fresh model replies and saved OCR returned Views
 01/04/06/08 and 02/03/05/07 with the same eight boxes. Lev1 and Lev2
