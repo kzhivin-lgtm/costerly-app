@@ -74,6 +74,13 @@ fit. Objects displays a provisional amount for an estimate with review
 findings and priced requirements. Verify the saved Parts Check, allocated
 costs, and provisional Objects total on the next fresh Upload before
 acceptance. See the [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md).
+Next owner verification is a fresh Adda Upload on the combined Estimation
+9.6 and Detection V8.4.29 build. Verify exact File Review membership
+01/04/06/08 and 02/03/05/07 before comparing Parts Check, purchasing units,
+price sources, allocations, and the amount displayed in Objects. Production
+run `run_3aa7bc04987e442fb8c2fdf691e22fee` fed a wrong 5+3 Detection
+partition into Estimation 9.6. Its costing does not verify the corrected
+two-object input.
 
 DEFERRED, P1, USER REQUEST. After the full cycle is verified, measure stage
 time and model calls. Remove repeated analysis, reuse verified outputs and
@@ -846,7 +853,7 @@ same source facts in the validator if exposing their IDs. Handoff alone
 did not meet acceptance and remains experimental. Raw results and the
 citation check are in `/private/tmp/costerly-adda-fingerprint-ab/`.
 
-V8.4.29 candidate, 2026-11-13. The owner asked to restore the Ada
+ACCEPTED CHECKPOINT on saved OCR, V8.4.29, 2026-11-13. The owner asked to restore the Ada
 Discovery and Membership behavior from before the Haiku 5.5 migration.
 On saved Adda OCR with fresh provider responses, swapping only the
 Discovery model in V8.4.28 gave 0/2 exact partitions with Haiku 4.5
@@ -866,6 +873,16 @@ four-View kitchen and attached the render
 Saved-input provider results are in
 `/private/tmp/costerly-ada-haiku45/comparison.json`. Fresh authenticated
 production Upload verification is pending. Runtime rollback is `a420198`.
+
+Two additional Adda repeats on commit `420a7e4` used the same saved
+PDF and OCR with fresh Haiku 4.5 and Sonnet 4.6 responses. Both matched
+the exact View groups 01/04/06/08 and 02/03/05/07, with all eight View
+boxes identical across the four candidate runs. New runs took 47.82 s
+(`run_be30ba54f20645739f91e30eecfe5837`) and 42.12 s
+(`run_bd3cadaad25840829fd0b92ea3e752d0`). The saved-input result is 4/4.
+All six benchmark runs replayed offline with exact requests and evidence
+regions. See the [V8.4.29 checkpoint](DETECTION_V8_4_29_ADA_HAIKU45_CHECKPOINT_2026_11_13.md)
+for the tag, private archive and rollback reference.
 
 Deferred unless the restored contract fails fresh verification. Test
 bounded reconciliation of contested View assignments before compiling final groups. Compare the

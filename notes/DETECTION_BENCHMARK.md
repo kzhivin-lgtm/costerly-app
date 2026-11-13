@@ -1,5 +1,14 @@
 # Detection Agent benchmark
 
+## V8.4.29, restored Ada Discovery and Membership
+
+Adda matched 01/04/06/08 and 02/03/05/07 in four of four runs with
+fresh Haiku 4.5 and Sonnet 4.6 replies on saved OCR. The eight View
+boxes matched across all repeats. Lev1 retained six Views in one object.
+Lev2 retained four Views in one kitchen and attached the render.
+All six outputs reproduced offline. Fresh authenticated Upload remains
+open. See the [checkpoint](DETECTION_V8_4_29_ADA_HAIKU45_CHECKPOINT_2026_11_13.md).
+
 ## V8.4.27, primary render ownership on the same sheet
 
 Fixed-input Floor 06 experiments replayed the saved OCR, Discovery and

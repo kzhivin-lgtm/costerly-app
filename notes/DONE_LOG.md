@@ -1,5 +1,12 @@
 # Done Log
 
+Detection V8.4.29 Ada checkpoint accepted on 2026-11-13. Four Adda
+repeats with fresh model replies and saved OCR returned Views
+01/04/06/08 and 02/03/05/07 with the same eight boxes. Lev1 and Lev2
+matched their controls, including Lev2 render attachment. The six runs
+replayed offline. The next verification is the owner's fresh Adda
+Upload through Objects pricing. See the [checkpoint](DETECTION_V8_4_29_ADA_HAIKU45_CHECKPOINT_2026_11_13.md).
+
 Estimation 9.4, work 3.17.4.6. Owner accepted the experimental Lev2
 Material Demand checkpoint. The worktop keeps 3.0 m² of gross area and
 adds one cutout as a supplier service. All 107 Parts Check rows and nine
