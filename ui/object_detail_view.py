@@ -26,23 +26,26 @@ def _money(value: object) -> str:
     if isinstance(value, float) and value != value:
         return "—"
     try:
-        amount = float(value)
-        if not math.isfinite(amount):
-            return "—"
-        return f"₪{math.floor(amount + 0.5):,}".replace(",", "\u202f")
+        return f"₪{round(float(value)):,}".replace(",", "\u202f")
     except (TypeError, ValueError):
         return _escape(value)
 
 
-def _material_quantity_text(value: object, *, unit: str = "") -> str:
+def _unit_price(value: object) -> str:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return "—"
+    return f"₪{number:,.2f}".rstrip("0").rstrip(".").replace(",", "\u202f") if math.isfinite(number) else "—"
+
+
+def _material_quantity_text(value: object) -> str:
     try:
         amount = float(value)
     except (TypeError, ValueError):
         return ""
     if not math.isfinite(amount):
         return ""
-    if unit in {"m²", "m2"}:
-        return f"{math.floor(amount * 10 + 0.5) / 10:.1f}"
     rounded = math.floor(amount + 0.5)
     return "<1" if 0 < amount < 0.5 else str(rounded)
 
@@ -107,11 +110,10 @@ def _material_input_html(*, value: object, field: str, line_id: str, unit: str) 
         f'<span class="object-detail-material-input-unit">{_escape(unit)}</span>'
         if has_unit else ""
     )
-    display_value = _material_quantity_text(value, unit=unit)
     return (
-        f'<span class="object-detail-material-input{modifier}" data-unit="{_escape(unit) if unit else ""}">'
-        + (_input_html(display_value, "number", field, line_id, original_value=value) if line_id else
-           f'<span class="object-detail-cell-input object-detail-cell-input--number">{_escape(display_value)}</span>')
+        f'<span class="object-detail-material-input{modifier}">'
+        + (_input_html(value, "number", field, line_id, original_value=value) if line_id else
+           f'<span class="object-detail-cell-input object-detail-cell-input--number">{_escape(value)}</span>')
         + unit_html
         + "</span>"
     )
@@ -156,14 +158,15 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
             ]
         required_unit = str(row.get("required_material_unit") or "")
         required_value = row.get("required_material_value")
+        required_text = _material_quantity_text(required_value)
         purchase_unit = str(row.get("purchase_unit") or "")
         display_unit = "" if required_unit.casefold() == purchase_unit.casefold() == "piece" else required_unit
         return [
             _source_marker(row.get("price_source")) + f'<span class="object-detail-material-name">{_escape(row.get("item"))}</span>',
-            _material_input_html(value=required_value, field="required_material", line_id=str(row.get("required_material_line_id") or ""), unit=display_unit),
+            _material_input_html(value=required_text, field="required_material", line_id=str(row.get("required_material_line_id") or ""), unit=display_unit),
             _purchase_unit_html(row.get("purchase_unit")),
-            f'<span class="object-detail-unit-price">{_money(row.get("purchase_unit_cost"))}</span>',
-            _material_input_html(value=row.get("purchase_quantity_value"), field="purchase_quantity", line_id=str(row.get("purchase_quantity_line_id") or ""), unit=""),
+            f'<span class="object-detail-unit-price">{_unit_price(row.get("purchase_unit_cost"))}</span>',
+            _material_input_html(value=_material_quantity_text(row.get("purchase_quantity_value")), field="purchase_quantity", line_id=str(row.get("purchase_quantity_line_id") or ""), unit=""),
             f'<span class="object-detail-row-cost">{_money(row.get("total"))}</span>',
         ]
     if columns[0] == "Work":
@@ -283,6 +286,10 @@ def _table_html(section: dict[str, object]) -> str:
                 + "</div>"
             )
         return (
+            '<div class="object-detail-material-actions" hidden>'
+            '<span class="object-detail-material-edit-status" role="status" aria-live="polite"></span>'
+            '<button type="button" class="object-detail-material-save" disabled>Save changes</button>'
+            '</div>'
             f'<div class="{table_class}" data-section="{_escape(section_key)}">'
             f'<div class="object-detail-table-head-row">{header}</div>'
             f'{"".join(body_parts)}'
@@ -405,6 +412,9 @@ def _footer_html(
     run_id: object,
     estimate_id: object,
     object_id: object,
+    *,
+    approval_ready: bool,
+    blocking_label: object = "MATERIALS FINALIZING",
 ) -> str:
     back_params = (
         f"screen=objects&run_id={html.escape(str(run_id or ''))}"
@@ -416,20 +426,29 @@ def _footer_html(
         f"&object_id={html.escape(str(object_id or ''))}"
         "&od_snapshot=[]&od_approve_after=1"
     )
+    approve = (
+        f'<a class="object-detail-footer-button object-detail-footer-button--primary" href="?{approve_params}" '
+        'data-streamlit-bridge-key="object_detail_approve_bridge" '
+        'target="_self" data-object-detail-approve="true">'
+        'APPROVE ESTIMATE'
+        '</a>'
+        if approval_ready else
+        '<span class="object-detail-footer-button object-detail-footer-button--primary '
+        'object-detail-footer-button--disabled" aria-disabled="true">'
+        f'{_escape(blocking_label)}'
+        '</span>'
+    )
     return (
         '<div class="object-detail-footer-actions">'
         f'<a class="object-detail-footer-button object-detail-footer-button--secondary" '
         'data-streamlit-bridge-key="object_detail_back_bridge" '
         f'href="?{back_params}" target="_self">'
-        'Back to Objects'
+        'BACK TO OBJECTS'
         '</a>'
-        '<button type="button" class="object-detail-footer-button object-detail-footer-button--secondary '
-        'object-detail-material-save" hidden disabled>Save changes</button>'
-        f'<a class="object-detail-footer-button object-detail-footer-button--primary" href="?{approve_params}" '
-        'data-streamlit-bridge-key="object_detail_approve_bridge" '
-        'target="_self" data-object-detail-approve="true">Approve</a>'
-        '</div>'
-        '<p class="object-detail-material-edit-status" role="status" aria-live="polite"></p>'
+        f'<span hidden data-object-detail-approval-config data-href="{approve_params}" '
+        f'data-blocking-label="{_escape(blocking_label)}"></span>'
+        + approve
+        + '</div>'
     )
 
 
@@ -449,7 +468,7 @@ def hero_heading_html(data: dict[str, object]) -> str:
         '<span class="object-detail-info-label">QTY:</span>'
         '<span class="object-detail-info-value object-detail-quantity-input" '
         'data-object-quantity-input="true" contenteditable="true" inputmode="decimal" '
-        f'tabindex="0">{_escape(data["quantity"])}</span>'
+        f'tabindex="0">{_quantity(data["quantity"])}</span>'
         '<span>·</span>'
         '<span class="object-detail-info-label">AI confidence:</span>'
         f'<span class="object-detail-info-value">{_escape(data["confidence"])}</span>'
@@ -532,5 +551,7 @@ def detail_html(
             run_id=run_id,
             estimate_id=estimate_id,
             object_id=object_id,
+            approval_ready=bool(data.get("material_plan_ready")),
+            blocking_label=data.get("material_plan_blocking_label") or "MATERIALS FINALIZING",
         )
     )

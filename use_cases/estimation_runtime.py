@@ -28,7 +28,7 @@ from use_cases.estimation_handoff import persist_estimation_inputs
 from use_cases.estimation_originals import describe_estimation_original
 from use_cases.estimation_parts_check_runtime import VERSION, load_parts_check, run_parts_check_for_estimate
 from use_cases.estimation_cb_material_demand import calculate_cb_materials
-from use_cases.material_engine_adapter import replan_material_norm_snapshot, reprice_material_purchase_snapshot
+from use_cases.material_engine_adapter import reprice_material_purchase_snapshot
 from use_cases.estimation_material_context import build_estimation_material_context
 from use_cases.estimation_assumption_fallbacks import persist_material_assumption_fallbacks
 from db.repositories import update_rfq_object_estimate_progress
@@ -39,7 +39,7 @@ _LOG = logging.getLogger(__name__)
 _ESTIMATION_EXECUTOR = ThreadPoolExecutor(max_workers=1)
 _MATERIAL_PLAN_LOCK = RLock()
 _MATERIAL_PLAN_FUTURES: dict[str, Future] = {}
-_MATERIAL_PLAN_PENDING_REQUESTS: dict[str, tuple[str, str, list[Future], bool, frozenset[str]]] = {}
+_MATERIAL_PLAN_PENDING_REQUESTS: dict[str, tuple[str, str, list[Future], bool]] = {}
 _MATERIAL_PLAN_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="material-plan")
 
 
@@ -133,8 +133,7 @@ def _mark_material_plan_failed(client, *, estimate_id, company_id, reason, prese
         _LOG.exception("Could not publish the material plan failure for estimate %s", estimate_id)
 
 
-def _recalculate_material_plan_job(*, estimate_id: str, run_id: str, company_id: str,
-                                   purchase_only: bool = False, norm_keys: frozenset[str] = frozenset()) -> dict[str, object]:
+def _recalculate_material_plan_job(*, estimate_id: str, run_id: str, company_id: str, purchase_only: bool = False) -> dict[str, object]:
     client = get_supabase_client()
     if purchase_only:
         rows = fetch_rfq_estimate_material_plan(client, estimate_id)
@@ -154,40 +153,11 @@ def _recalculate_material_plan_job(*, estimate_id: str, run_id: str, company_id:
                                                  plan_payload=snapshot, plan_status=snapshot["status"])
             return snapshot
     try:
-        if norm_keys:
-            if scoped := _recalculate_material_norms(client, estimate_id, company_id, norm_keys):
-                return scoped
         return _recalculate_from_parts_check(client, estimate_id=estimate_id, run_id=run_id, company_id=company_id)
     except Exception:
         _mark_material_plan_failed(client, estimate_id=estimate_id, company_id=company_id,
                                    reason="material_plan_technical_failure", preserve_snapshot=True)
         raise
-
-
-def _recalculate_material_norms(client, estimate_id, company_id, norm_keys):
-    plans = fetch_rfq_estimate_material_plan(client, estimate_id)
-    if plans.empty:
-        return None
-    saved = plans.iloc[0].get("plan_payload") or {}
-    if saved.get("status") not in {"planned", "needs_review"} or not saved.get("parts_check") or not saved.get("lines"):
-        return None
-    owners = {(row["object_id"], row["material_requirement_id"])
-              for line in saved["lines"] if line["selection_key"] in norm_keys for row in line["allocations"]}
-    norms = _material_norm_overrides_by_requirement(fetch_rfq_estimate_material_norm_overrides(client, estimate_id))
-    norms = {owner: value for owner, value in norms.items() if owner in owners}
-    if not norms:
-        return None
-    quantities = {str(row["object_id"]): row["quantity"] for _, row in fetch_rfq_object_estimates(client, estimate_id).iterrows()}
-    purchases = _material_purchase_overrides_by_selection_key(fetch_rfq_estimate_material_purchase_overrides(client, estimate_id))
-    if not (outcome := replan_material_norm_snapshot(saved, norms, quantities, purchases, changed_keys=norm_keys)):
-        return None
-    snapshot, changed = outcome
-    from use_cases.estimation import apply_material_plan_allocations
-
-    apply_material_plan_allocations(client, estimate_id=estimate_id, plan_snapshot=snapshot, changed_requirements=changed)
-    upsert_rfq_estimate_material_plan(client, estimate_id=estimate_id, company_id=company_id,
-                                     plan_payload=snapshot, plan_status=snapshot["status"])
-    return snapshot
 
 
 def _recalculate_from_parts_check(client, *, estimate_id, run_id, company_id):
@@ -217,14 +187,13 @@ def _submit_pending_material_plan_recalculation(estimate_id: str) -> Future | No
     request = _MATERIAL_PLAN_PENDING_REQUESTS.pop(estimate_id, None)
     if request is None:
         return None
-    run_id, company_id, receipts, purchase_only, norm_keys = request
+    run_id, company_id, receipts, purchase_only = request
     future = _MATERIAL_PLAN_EXECUTOR.submit(
         _recalculate_material_plan_job,
         estimate_id=estimate_id,
         run_id=run_id,
         company_id=company_id,
         purchase_only=purchase_only,
-        norm_keys=norm_keys,
     )
     _MATERIAL_PLAN_FUTURES[estimate_id] = future
 
@@ -245,16 +214,14 @@ def _submit_pending_material_plan_recalculation(estimate_id: str) -> Future | No
 
 
 def queue_material_plan_recalculation(*, estimate_id: str, run_id: str, company_id: str,
-                                      purchase_only: bool = False, norm_keys: frozenset[str] = frozenset()) -> Future:
+                                      purchase_only: bool = False) -> Future:
     """Coalesce edits, but never lose a change that lands during a rebuild."""
     with _MATERIAL_PLAN_LOCK:
         receipt = Future()
         pending = _MATERIAL_PLAN_PENDING_REQUESTS.get(estimate_id)
         receipts = pending[2] if pending else []
-        if pending:
-            norm_keys = norm_keys | pending[4] if norm_keys and pending[4] else frozenset()
         _MATERIAL_PLAN_PENDING_REQUESTS[estimate_id] = (
-            run_id, company_id, [*receipts, receipt], purchase_only and (pending is None or pending[3]), norm_keys,
+            run_id, company_id, [*receipts, receipt], purchase_only and (pending is None or pending[3]),
         )
         if estimate_id not in _MATERIAL_PLAN_FUTURES:
             _submit_pending_material_plan_recalculation(estimate_id)

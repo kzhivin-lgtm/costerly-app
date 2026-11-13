@@ -386,7 +386,7 @@ def main() -> None:
         requested_trace_id=st.query_params.get("obs_trace"),
         screen=str(st.session_state.get("screen") or "upload"),
         started_at=_SCRIPT_STARTED_AT,
-        build_version="estimation-v9.19-detection-v8.4.29",
+        build_version="estimation-v9.17-detection-v8.4.29",
     )
     trace.annotate(
         run_sequence=st.session_state._runtime_run_sequence,

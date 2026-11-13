@@ -142,9 +142,9 @@ def test_priced_materials_with_open_review_still_publish_provisional_totals(monk
                         lambda _client, **kwargs: progress.append(kwargs))
 
     estimation.apply_material_plan_allocations(client=object(), estimate_id="estimate-1", plan_snapshot={
-        "status": "needs_review",
+        "status": "planned",
         "parts_check": {"cabinet": {"issues": [{"reason": "dimensions_pending"}],
-                                    "unpriced_requirements": ["unpriced"], "has_unresolved_demands": True}},
+                                    "unpriced_requirements": [], "has_unresolved_demands": False}},
         "object_material_costs": [{"object_id": "cabinet", "material_requirement_id": "mdf", "cost_ex_vat": 1000}],
         "lines": [{"purchase_kind": "sheet", "allocations": [{
             "object_id": "cabinet", "material_requirement_id": "mdf", "area_mm2": 1_000_000,
