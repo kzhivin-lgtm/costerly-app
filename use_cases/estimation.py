@@ -597,7 +597,7 @@ def load_object_detail_data(
                 "key": "material",
                 "title": "Materials",
                 "metrics": [],
-                "columns": ["Material", "Required material", "Purchase unit", "Purchase quantity", "Total"],
+                "columns": ["Material", "Required material", "Purchase unit", "Unit price", "Purchase quantity", "Total"],
                 "rows": sorted(material_rows, key=_material_display_order),
             },
         ],
@@ -669,7 +669,7 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
             "purchase_kind": purchase_kind,
             "purchase_is_manual": bool(line.get("purchase_quantity_is_manual")),
             "project_required": project_required,
-            "purchase_unit_cost": _number(line.get("price_per_purchase_unit"), 0),
+            "purchase_unit_cost": line.get("price_per_purchase_unit"),
             "stock_coverage": (
                 length * width / 1_000_000 / 1.10 if purchase_kind == "sheet" else
                 length / 1_000 if purchase_kind == "linear_stock" else

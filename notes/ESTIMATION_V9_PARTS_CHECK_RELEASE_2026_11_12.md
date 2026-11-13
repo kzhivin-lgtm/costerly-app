@@ -1,5 +1,22 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.13 Materials unit price and quantity editing
+
+Materials shows the price per purchase unit as a read-only column
+between Purchase Unit and Purchase Quantity. Formula rows show no unit
+price. Quantity inputs are narrower and keep the centered alignment.
+
+The 9.12 preview rewrote untouched purchase fields using a baseline that
+existed only after JavaScript initialization. With those attributes
+absent, the saved Lev1 control reproduced the blank fields in Chrome.
+The server now renders each editable field with its baseline. The local
+preview only restores a purchase input when the preview previously
+changed that field. Preview and batch save behavior remain the same.
+Chrome verified the repair against the missing-baseline reproduction on
+saved Lev1 at 1280 px and Adda at 390 px, including two edits in one save.
+The focused suite passed 82 tests. Authenticated production interaction
+remains open.
+
 ## Estimation 9.12 Object Detail draft and save
 
 The owner’s Lev1 purchase edit saved successfully in 9.11 but held all

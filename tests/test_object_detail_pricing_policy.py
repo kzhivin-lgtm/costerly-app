@@ -1,6 +1,8 @@
 import pandas as pd
 
-from ui.object_detail_view import _group_summary_value, _number_text, _quantity, _row_values, _table_html
+from ui.object_detail_view import (
+    MATERIAL_PURCHASE_COLUMNS, _group_summary_value, _number_text, _quantity, _row_values, _table_html,
+)
 from use_cases import estimation
 from use_cases.estimation import _material_rows_from_plan
 
@@ -79,11 +81,12 @@ def test_project_allocation_never_displays_an_effective_area_price():
 def test_material_purchase_table_shows_demand_and_purchase_without_allocation_language():
     section = {
         "key": "material", "title": "Materials",
-        "columns": ["Material", "Required material", "Purchase unit", "Purchase quantity", "Total"],
+        "columns": MATERIAL_PURCHASE_COLUMNS,
         "rows": [{
             "item": "Veneered MDF 18 mm", "price_source": "A", "required_material_value": 5.2,
             "required_material_unit": "m²", "required_material_line_id": "__material_requirement__:mdf",
             "purchase_unit": "sheet 2440 × 1220 mm", "purchase_quantity_value": 2,
+            "purchase_unit_cost": 199.75,
             "purchase_quantity_unit": "sheet", "purchase_quantity_line_id": "__material_purchase__:mdf", "total": 400,
         }],
     }
@@ -94,8 +97,12 @@ def test_material_purchase_table_shows_demand_and_purchase_without_allocation_la
     assert ">A</span><span class=\"object-detail-material-name\">Veneered MDF 18 mm</span>" in values[0]
     assert "required_material" in values[1]
     assert "object-detail-purchase-unit" in values[2]
-    assert "purchase_quantity" in values[3]
-    assert "sheet" not in values[3]
+    assert "₪199.75" in values[3]
+    assert "contenteditable" not in values[3]
+    assert "purchase_quantity" in values[4]
+    assert 'data-original-value="2"' in values[4]
+    assert "sheet" not in values[4]
+    assert html.index(">Unit price<") < html.index(">Purchase quantity<")
     assert "Project allocation" not in html
     assert "Project material plan" not in html
 
@@ -103,7 +110,7 @@ def test_material_purchase_table_shows_demand_and_purchase_without_allocation_la
 def test_material_purchase_table_shows_locked_profile_formula_without_purchase_inputs():
     section = {
         "key": "material", "title": "Materials",
-        "columns": ["Material", "Required material", "Purchase unit", "Purchase quantity", "Total"],
+        "columns": MATERIAL_PURCHASE_COLUMNS,
         "rows": [{
             "item": "Paint consumables", "locked": True, "policy_percent": 10,
             "policy_basis": "coatings", "total": 25,
@@ -116,7 +123,8 @@ def test_material_purchase_table_shows_locked_profile_formula_without_purchase_i
     assert values[1] == "10% of coating materials"
     assert values[2] == "Formula"
     assert values[3] == "—"
-    assert "₪25" in values[4]
+    assert values[4] == "—"
+    assert "₪25" in values[5]
 
 
 def test_assumption_rows_hide_assembly_roles_but_preserve_net_demand_and_purchase():

@@ -251,6 +251,20 @@ def apply_object_detail_css() -> None:
             --detail-grid: minmax(260px, 2.1fr) repeat(4, minmax(0, 1fr));
         }
 
+        .object-detail-table[data-section="material"].object-detail-table--cols-6 {
+            --detail-grid: minmax(175px, 2.35fr) minmax(88px, 0.95fr) minmax(96px, 1.05fr)
+                           minmax(70px, 0.75fr) minmax(85px, 0.95fr) minmax(70px, 0.75fr);
+        }
+
+        .object-detail-table--cols-6[data-section="material"] :is(.object-detail-table-head, .object-detail-table-cell) {
+            padding-inline: 7px;
+        }
+
+        .object-detail-unit-price {
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
         .object-detail-table--cols-4 {
             --detail-grid: minmax(260px, 2.1fr) repeat(3, minmax(0, 1fr));
         }
@@ -396,7 +410,7 @@ def apply_object_detail_css() -> None:
         }
 
         .object-detail-material-input {
-            width: min(100%, 136px);
+            width: min(100%, 80px);
             min-height: 34px;
             border: 1px solid rgba(42, 31, 44, 0.16);
             border-radius: 8px;
@@ -426,7 +440,11 @@ def apply_object_detail_css() -> None:
 
         .object-detail-material-input--bare .object-detail-cell-input {
             border-radius: 7px;
-            padding-right: 10px;
+            padding-inline: 6px;
+        }
+
+        .object-detail-material-input--bare {
+            width: min(100%, 64px);
         }
 
         .object-detail-material-input--required {
@@ -478,11 +496,11 @@ def apply_object_detail_css() -> None:
 
         .object-detail-material-input-unit {
             position: absolute;
-            right: 10px;
+            right: 5px;
             pointer-events: none;
             color: rgba(42, 31, 44, 0.72);
             font-family: var(--font-mono);
-            font-size: 12px;
+            font-size: 10px;
             font-weight: 700;
         }
 
@@ -650,6 +668,10 @@ def apply_object_detail_css() -> None:
             .object-detail-table-head-row,
             .object-detail-table-row {
                 min-width: 760px;
+            }
+
+            .object-detail-table--cols-6[data-section="material"] :is(.object-detail-table-head-row, .object-detail-table-row) {
+                min-width: 584px;
             }
 
             .object-detail-elements-table .object-detail-table-head-row,

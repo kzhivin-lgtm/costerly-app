@@ -1959,6 +1959,8 @@ def install_object_detail_input_guard(
                 && Number(raw) > 0 && Number(raw) < 1e10;
             const rowPreview = row => JSON.parse(row.dataset.materialPreview);
             const numberText = value => String(Math.round(value * 10000) / 10000);
+            const unitPriceText = value => value == null ? "—"
+                : `₪${Number(value).toLocaleString("en-US", {maximumFractionDigits: 2}).replace(/,/g, "\u202f")}`;
             const contextFor = input => ({input, field: input.dataset.field, lineId: input.dataset.lineId});
             const invalidMaterial = () => materialRows().some(row => row.querySelector('[aria-invalid="true"]'));
             const updateSaveControls = message => {
@@ -1976,9 +1978,13 @@ def install_object_detail_input_guard(
                     const purchase = rowField(row, "purchase_quantity");
                     const req = required && draft.get(editKey(contextFor(required)));
                     const buy = purchase && draft.get(editKey(contextFor(purchase)));
+                    const canUpdatePurchase = purchase && parentDoc.activeElement !== purchase &&
+                        purchase.getAttribute("aria-invalid") !== "true";
                     if (!req && !buy) {
-                        if (purchase && parentDoc.activeElement !== purchase) {
-                            setEditableValue(purchase, purchase.dataset.originalValue);
+                        if (canUpdatePurchase && purchase.dataset.materialPreviewValue &&
+                            base.purchase_quantity_value != null) {
+                            setEditableValue(purchase, purchase.dataset.originalValue ?? numberText(base.purchase_quantity_value));
+                            delete purchase.dataset.materialPreviewValue;
                         }
                         return {row, base, cost: Number(base.total) || 0};
                     }
@@ -1990,11 +1996,13 @@ def install_object_detail_input_guard(
                         purchaseQuantity = ["sheet", "piece", "linear_stock"].includes(base.purchase_kind)
                             ? Math.ceil(consumption - 1e-10) : consumption;
                     }
-                    if (!buy && purchase && parentDoc.activeElement !== purchase) {
-                        setEditableValue(purchase, numberText(purchaseQuantity));
+                    if (!buy && canUpdatePurchase && Number.isFinite(purchaseQuantity)) {
+                        const text = numberText(purchaseQuantity);
+                        if (editableValue(purchase) !== text) setEditableValue(purchase, text);
+                        purchase.dataset.materialPreviewValue = text;
                     }
-                    const cost = projectRequired > 0
-                        ? purchaseQuantity * base.purchase_unit_cost * localRequired / projectRequired : 0;
+                    const cost = projectRequired > 0 && base.purchase_unit_cost != null
+                        ? purchaseQuantity * base.purchase_unit_cost * localRequired / projectRequired : Number(base.total) || 0;
                     return {row, base, cost};
                 });
                 let materialDelta = 0;
@@ -2041,6 +2049,7 @@ def install_object_detail_input_guard(
                     return;
                 }
                 const pending = activeSave?.edits.find(edit => editKey(edit) === key);
+                delete input.dataset.materialPreviewValue;
                 if (!pending && Number(raw) === Number(input.dataset.originalValue)) draft.delete(key);
                 else draft.set(key, {field: ctx.field, lineId: ctx.lineId, value: raw});
                 previewMaterials();
@@ -2098,9 +2107,12 @@ def install_object_detail_input_guard(
                     const row = rows.get(base.purchase_quantity_line_id || base.item);
                     if (!row) continue;
                     row.dataset.materialPreview = JSON.stringify(base);
+                    const unitPrice = row.querySelector(".object-detail-unit-price");
+                    if (unitPrice) unitPrice.textContent = unitPriceText(base.purchase_unit_cost);
                     for (const field of ["required_material", "purchase_quantity"]) {
                         const input = rowField(row, field);
                         if (!input || base[field + "_value"] == null) continue;
+                        delete input.dataset.materialPreviewValue;
                         input.dataset.originalValue = field === "required_material" && base.required_material_unit === "m²"
                             ? Number(base[field + "_value"]).toFixed(1) : numberText(base[field + "_value"]);
                         if (input === current?.input) continue;
@@ -2335,7 +2347,9 @@ def install_object_detail_input_guard(
 
             function seedInputBaselines() {
                 for (const input of parentDoc.querySelectorAll(".object-detail-cell-input[data-field]")) {
-                    input.dataset.originalValue = normalizeInputValue(input);
+                    if (input.dataset.originalValue === undefined) {
+                        input.dataset.originalValue = normalizeInputValue(input);
+                    }
                 }
                 const quantity = objectQuantityInput();
                 if (quantity) quantity.dataset.originalValue = cleanNumber(quantity.textContent) || "1";
@@ -2351,6 +2365,7 @@ def install_object_detail_input_guard(
                 const ctx = inputContext(event);
                 if (!ctx) return;
                 ctx.input.dataset.editStartValue = normalizeInputValue(ctx.input);
+                if (materialField(ctx.field)) return;
                 if (!ctx.input.classList.contains("object-detail-cell-input--text")) {
                     setEditableValue(ctx.input, ctx.input.dataset.editStartValue);
                 }

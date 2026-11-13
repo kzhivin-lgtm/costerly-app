@@ -7,6 +7,11 @@ import math
 from ui.layout import _workflow_title_html
 
 
+MATERIAL_PURCHASE_COLUMNS = (
+    "Material", "Required material", "Purchase unit", "Unit price", "Purchase quantity", "Total",
+)
+
+
 def _escape(value: object) -> str:
     """Return escaped text and a dash for missing table values."""
     if value is None or value == "":
@@ -24,6 +29,14 @@ def _money(value: object) -> str:
         return f"₪{round(float(value)):,}".replace(",", "\u202f")
     except (TypeError, ValueError):
         return _escape(value)
+
+
+def _unit_price(value: object) -> str:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return "—"
+    return f"₪{number:,.2f}".rstrip("0").rstrip(".").replace(",", "\u202f") if math.isfinite(number) else "—"
 
 
 def _quantity(value: object) -> str:
@@ -65,15 +78,17 @@ def _metric_html(label: str, value: object) -> str:
     )
 
 
-def _input_html(value: object, kind: str = "text", field: str = "", line_id: str = "") -> str:
+def _input_html(value: object, kind: str = "text", field: str = "", line_id: str = "",
+                original_value: object = None) -> str:
     """Render an editable visual field wired by the Object Detail input guard."""
     field_attr = f' data-field="{_escape(field)}"' if field else ""
     line_id_attr = f' data-line-id="{_escape(line_id)}"' if line_id else ""
+    original_attr = f' data-original-value="{_escape(original_value)}"' if original_value is not None else ""
     inputmode = "text" if kind == "text" else "decimal"
     return (
         f'<div class="object-detail-cell-input object-detail-cell-input--{kind}" '
         f'role="textbox" contenteditable="true" tabindex="0" inputmode="{inputmode}"'
-        f'{field_attr}{line_id_attr}>{_escape(value)}</div>'
+        f'{field_attr}{line_id_attr}{original_attr}>{_escape(value)}</div>'
     )
 
 
@@ -86,7 +101,7 @@ def _material_input_html(*, value: object, field: str, line_id: str, unit: str) 
     )
     return (
         f'<span class="object-detail-material-input{modifier}">'
-        + (_input_html(value, "number", field, line_id) if line_id else
+        + (_input_html(value, "number", field, line_id, original_value=value) if line_id else
            f'<span class="object-detail-cell-input object-detail-cell-input--number">{_escape(value)}</span>')
         + unit_html
         + "</span>"
@@ -118,7 +133,7 @@ def _source_marker(value: object) -> str:
 def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]:
     """Map normalized estimate rows to visible table cells."""
     columns = section["columns"]
-    if columns == ["Material", "Required material", "Purchase unit", "Purchase quantity", "Total"]:
+    if tuple(columns) == MATERIAL_PURCHASE_COLUMNS:
         if row.get("locked"):
             percent = _number_text(row.get("policy_percent"))
             basis = "coating materials" if row.get("policy_basis") == "coatings" else "primary materials"
@@ -126,6 +141,7 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
                 _escape(row.get("item")),
                 _escape(f"{percent}% of {basis}" if percent else "Formula"),
                 _escape("Formula"),
+                _escape("—"),
                 _escape("—"),
                 f'<span class="object-detail-row-cost">{_money(row.get("total"))}</span>',
             ]
@@ -138,6 +154,7 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
             _source_marker(row.get("price_source")) + f'<span class="object-detail-material-name">{_escape(row.get("item"))}</span>',
             _material_input_html(value=required_text, field="required_material", line_id=str(row.get("required_material_line_id") or ""), unit=display_unit),
             _purchase_unit_html(row.get("purchase_unit")),
+            f'<span class="object-detail-unit-price">{_unit_price(row.get("purchase_unit_cost"))}</span>',
             _material_input_html(value=_number_text(row.get("purchase_quantity_value")), field="purchase_quantity", line_id=str(row.get("purchase_quantity_line_id") or ""), unit=""),
             f'<span class="object-detail-row-cost">{_money(row.get("total"))}</span>',
         ]
@@ -243,7 +260,7 @@ def _table_html(section: dict[str, object]) -> str:
     )
 
     body_parts: list[str] = []
-    if columns == ["Material", "Required material", "Purchase unit", "Purchase quantity", "Total"]:
+    if tuple(columns) == MATERIAL_PURCHASE_COLUMNS:
         for row in rows:
             values = _row_values(section, row)
             preview = _material_preview(row)
