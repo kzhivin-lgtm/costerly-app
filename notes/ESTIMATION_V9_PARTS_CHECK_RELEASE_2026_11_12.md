@@ -1,6 +1,9 @@
 # Estimation 9 Parts Check from Upload
 
-## Objects Estimation review and subtitles
+## Estimation 9.9 Objects Estimation review and subtitles
+
+Advance the Estimation release number in the runtime and this record for
+every production Estimation release, including small interface fixes.
 
 The owner reported that Review stayed disabled for a ready object after
 returning from Object Detail. The completed table used prefetch readiness
