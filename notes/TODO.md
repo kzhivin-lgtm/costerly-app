@@ -5775,7 +5775,10 @@ cause from the local screenshot alone.
   Detection edge. Fresh Lev1, Lev2 and Adda Estimation runs used saved
   Detection inputs. Adda reproduced the accepted 2/7 block split and
   one straight-object mirror. Keep tracking Adda mirror repeatability
-  and incomplete sheet demand. See the release record.
+  and incomplete sheet demand. Railway deployed `2a4a548`; runtime
+  and checkpoint tags verified. Await the fresh Lev1 production Upload
+  to compare three blocks, three drawers, two supports and the complete
+  purchase plan with the 9.17 control. See the release record.
 - Object Detail approve action: remove stale screen fragment flicker after clicking Approve.
 
 ## Later

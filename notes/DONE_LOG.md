@@ -1,5 +1,12 @@
 # Done Log
 
+Estimation 9.17, work 3.17.4.6. The owner approved the checkpoint and
+production rollout. `estimation-v9.17-checkpoint` pins `2a4a548`.
+Railway deployed it and the active runtime reported 9.17. The verified
+controls cover Lev1, Lev2 and Adda from saved Detection inputs. The
+fresh Lev1 production comparison is tracked in the
+[release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-917-front-and-supported-tabletop-recovery).
+
 Estimation 9.14, work 3.17.4.6. The owner accepted the Materials interface
 and the Lev1 production repeatability checkpoint. Three fresh uploads
 matched 28 part rows and ten purchase lines. Materials cost 2,758.49 ILS

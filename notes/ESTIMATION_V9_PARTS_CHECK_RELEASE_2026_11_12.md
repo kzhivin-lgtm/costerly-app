@@ -35,6 +35,19 @@ open shelf). Adda Parts counts match the accepted 24 and 133 row
 controls. All three fresh replies were replayed on the final code.
 The 9.17 check covers Estimation from the saved Detection handoff.
 
+Owner approved the checkpoint and production deployment on 2026-11-13.
+Tag `estimation-v9.17-checkpoint` pins runtime `2a4a548`.
+Tag `estimation-v9.16-before-v9.17` pins the previous runtime
+`c279799`. Railway deployment `086322ce-3c88-4fe2-b12c-70cb86d5ac20`
+succeeded, the wrapper and core health returned HTTP 200, and the
+Streamlit startup probe reported `estimation-v9.17-detection-v8.4.29`.
+The private archive at
+`backups/estimation-v9.17-production-checkpoint-2026-11-13/`
+preserves the three control inputs and outputs, the staged failure
+replay, the Lev1 catalog and purchasing plan, and both Git references.
+The saved Lev1 control has 11 purchase lines totaling 3,551.72 ILS
+before VAT and overhead. A fresh authenticated Lev1 Upload is pending.
+
 ## Estimation 9.16 Wood-grain material decision
 
 Work 3.17.4.6. Understanding returns the chosen material per visible

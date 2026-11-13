@@ -1,5 +1,14 @@
 # Detection Agent benchmark
 
+## Lev1 handoff to Estimation 9.17, 2026-11-13
+
+The failed 9.16 production input preserved all six Island boxes but
+omitted the V01–V04 relationship. With that saved handoff, the 9.17
+control recovered the drawer case, the frame and the supported table
+without restoring the edge in Detection. The fresh production comparison
+is tracked in the
+[Estimation release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-917-front-and-supported-tabletop-recovery).
+
 ## Lev1 production repeatability, 2026-11-13
 
 Three fresh Lev1 uploads on Estimation 9.12 through 9.14 took the Ada
