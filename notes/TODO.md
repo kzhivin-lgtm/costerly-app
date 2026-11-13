@@ -871,8 +871,10 @@ object (`run_1205c1e09d4e43e398a600b263a76c87`). Lev2 returned one
 four-View kitchen and attached the render
 (`run_3013e57350b449d7b47cd368fc5acd7d`). 193 focused tests passed, including the runtime build marker check.
 Saved-input provider results are in
-`/private/tmp/costerly-ada-haiku45/comparison.json`. Fresh authenticated
-production Upload verification is pending. Runtime rollback is `a420198`.
+`/private/tmp/costerly-ada-haiku45/comparison.json`. Railway deployed
+`534abf4` on 2026-11-13. The public wrapper and Core report V8.4.29.
+Fresh authenticated Adda Upload verification is pending. Runtime rollback
+is `a420198`.
 
 Two additional Adda repeats on commit `420a7e4` used the same saved
 PDF and OCR with fresh Haiku 4.5 and Sonnet 4.6 responses. Both matched

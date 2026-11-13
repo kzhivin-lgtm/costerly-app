@@ -29,6 +29,16 @@ Private replay archive
 contains the PDFs, OCR, replies, evidence regions, Git bundle,
 restore instructions, and checksums.
 
+## Production release
+
+GitHub main advanced to `534abf4df1f1c78b138aa07c1f493548c2ad41b6`
+on 2026-11-13. Railway deployment
+`28884ea7-c138-4cd5-adbf-6584f5e3cc14` reported success for that commit.
+The Cloudflare wrapper and Streamlit Core both reported
+`estimation-v9.6-detection-v8.4.29`. Core health returned HTTP 200.
+The next authenticated Adda Upload will verify Detection and the
+Estimation result in Objects.
+
 ## Return to Estimation
 
 Production Adda `run_3aa7bc04987e442fb8c2fdf691e22fee` gave V01 to
@@ -39,7 +49,7 @@ accounts for 149 identified part rows. Fresh recognition can change
 the row count, so compare source coverage, dimensions, quantities and
 costs.
 
-After release, the owner will upload Adda and start Estimation. First
+The owner will upload Adda on this release and start Estimation. First
 verify the two exact File Review groups. Then reconcile each Parts
 Check report with Material Demand and the allocated Material Engine
 costs. Verify units, Company Catalog or Israel Reference matches,
