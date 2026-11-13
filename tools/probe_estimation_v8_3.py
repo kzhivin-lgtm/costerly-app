@@ -48,6 +48,20 @@ material cues from unconfirmed substrate or finish.
 Return JSON only:
 {"islands":{"view_id":"projection"},"understanding":{"object_id":{"name":"...",
 "description":"...","characteristics":["..."]}}}"""
+VISIBLE_FINISH = """
+For each object, also return wood_grain as a list of
+{"role":"...", "view_id":"...", "finish_group":"..."}.
+Use it only for clear visible wood grain on a finished surface, not a plain wood-like color
+or material guessed from a line drawing. A role is eligible only when its observed parts
+share the finish. Leave it out if different parts of the same role have different finishes.
+Allowed roles: seat_cover (seat or base cover), drawer_front, door_front, lift_up_front,
+fixed_panel, frame_cap, frame_side, frame_backing, vertical_rib, tabletop.
+If one crop shows the same finish on several roles, report each role separately and give
+them the same short finish_group. Use different groups for visibly different finishes.
+Check the top cover, operating fronts and decorative frame separately against the visible
+finish characteristics. Use the clearest crop for each role. Report only the observed
+grain. Substrate and thickness are decided downstream. Return an empty list when unclear.
+"""
 WORKTOP_CUTOUTS = """
 In each object's Understanding, also return worktop_cutouts (empty if none).
 Record one row per visible appliance opening in a worktop. Use a single
@@ -136,9 +150,22 @@ def classify_islands(invoke, views, images, detection, *, include_worktop_cutout
                 not set(raw["islands"].values()) <= PROJECTIONS or
                 raw["understanding"].keys() != by_object.keys()):
             raise ValueError("Island Map must classify each input Island and object")
+        if include_worktop_cutouts:
+            from use_cases.estimation_cb_geometry_parts import VISIBLE_GRAIN_ROLES
+
+            for oid, understanding in raw["understanding"].items():
+                if "wood_grain" not in understanding:
+                    continue
+                cues = understanding["wood_grain"]
+                understanding["wood_grain"] = [
+                    cue for cue in cues if isinstance(cue, dict)
+                    and isinstance(cue.get("role"), str) and cue["role"] in VISIBLE_GRAIN_ROLES
+                    and cue.get("view_id") in by_object[oid]
+                    and isinstance(cue.get("finish_group", ""), str)
+                ] if isinstance(cues, list) else []
         return raw
 
-    system = ISLAND_MAP + WORKTOP_CUTOUTS if include_worktop_cutouts else ISLAND_MAP
+    system = ISLAND_MAP + WORKTOP_CUTOUTS + VISIBLE_FINISH if include_worktop_cutouts else ISLAND_MAP
     return invoke("island-map", provider_request(system, content, max_tokens=3000), bind)
 
 

@@ -7,7 +7,7 @@ import pymupdf
 from tools.estimation_block_geometry import bind_dimension, span
 from tools.estimation_casework_geometry import measure
 from tools.probe_cb_block_boundaries import envelope, rectangular
-from use_cases.estimation_cb_geometry_parts import geometry_dimension
+from use_cases.estimation_cb_geometry_parts import equal_drawer_run, geometry_dimension
 
 
 def _bounds(reading, view, axis):
@@ -247,7 +247,7 @@ def casework_lighting_span(item, readings, views, printed, pdf):
     return None
 
 
-def source_casework_part_geometry(block, readings, faces, views, printed, *, glazed, pdf=None):
+def source_casework_part_geometry(block, readings, faces, views, printed, *, glazed, panel_t=None, pdf=None):
     """Transfer a uniquely matched component row to the existing Front instances."""
     height = readings.get("height", {})
     width = readings.get("width", {})
@@ -284,8 +284,12 @@ def source_casework_part_geometry(block, readings, faces, views, printed, *, gla
                      ))
 
     def bind(role, row):
+        equal_faces, equal_box = (equal_drawer_run(
+            view, printed, [contour["id"] for contour in row], geometry_dimension(width), panel_t,
+        ) if role == "drawer" and panel_t is not None else (None, None))
         for face, contour in zip(sorted(by_role[role], key=lambda face: face["bbox_px"][0]), row, strict=True):
-            matches[f'{face["view_id"]}:{face["candidate_id"]}'] = dimensions(*contour["bbox"], [contour["id"]])
+            sizes = equal_faces or dimensions(*contour["bbox"], [contour["id"]])
+            matches[f'{face["view_id"]}:{face["candidate_id"]}'] = (*sizes, equal_box) if equal_box else sizes
 
     if block["basis"] == "mirror_upright" and len(by_role["mirror"]) == 1:
         face = _one([c for c in contours.values() if rectangular(c)

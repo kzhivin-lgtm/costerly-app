@@ -45,7 +45,7 @@ def test_checked_carcass_preserves_counts_and_sends_unresolved_worktop_to_fallba
 
 
 def test_source_stock_note_overrides_family_assumption_with_original_evidence():
-    face = _part("door_front")
+    face = _part("door_front", visual_stock={"surface": "wood_grain", "refs": ["view-1"]})
     face["dimensions"]["thickness"] = {
         "mm": 18, "basis": "ocr_material_note", "refs": ["ocr:18"],
         "source_text": ["Фанера 18 мм"],
@@ -57,6 +57,18 @@ def test_source_stock_note_overrides_family_assumption_with_original_evidence():
     assert material["basis"] == "source_evidence"
     assert material["evidence_refs"] == ["ocr:18"]
     assert material["specification"]["thickness_mm"] == 18
+
+
+def test_compatible_visible_wood_grain_parts_share_one_veneered_mdf_demand():
+    finish = {"surface": "wood_grain", "refs": ["view-1"]}
+    seat = _part("seat_cover", visual_stock=finish)
+    rail = _part("frame_side", owner_id="B02", visual_stock=finish)
+    material, = _build([seat, rail], {"mdf_hdf", "melamine_faced_particleboard"})["materials"]
+    assert material["source_name"] == "Veneered MDF"
+    assert material["specification"] == {"board_type": "mdf", "surface": "veneer_two_sided", "thickness_mm": 17}
+    assert material["basis"] == "construction_assumption"
+    assert material["evidence_refs"] == ["view-1"]
+    assert [source["role"] for source in material["part_sources"]] == ["seat_cover", "frame_side"]
 
 
 def test_cyrillic_stock_ocr_matches_a_shared_alias_with_original_evidence():

@@ -1,5 +1,38 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.15 Drawer runs and sheet thickness
+
+Work 3.17.4.6. Parts gives visually similar drawers one size when they
+form a horizontal row with a printed overall width and have no individual
+printed dimensions. It retains each Front instance. Clear visible wood
+grain supports a provisional veneered MDF stock choice in Material Demand.
+Explicit stock notes retain priority. Nearby vector thickness projections
+can share a nominal thickness only where the part construction and finish
+agree. The original projection and the printed anchor remain traceable.
+
+With Lev1's saved Detection partition and fresh Estimation responses,
+three drawer fronts are 498 × 227 mm and three drawer bottoms are
+600 × 478 mm. V04's external caption `4` binds 40 mm to the right
+upright. The 39 mm seat and 36–37 mm ribs use 40 mm as a construction
+assumption. The left upright remains a separate 30 mm projection.
+The saved catalogs produce one 40 mm veneered MDF demand with two
+allowance sheets and no exact catalog price. Lev1's materials subtotal
+is 3,493.42 ILS excluding VAT, with four allowances. The estimate
+continues to report open coverage findings.
+
+A Lev2 repeat kept nine Blocks, two lift-up fronts and five drawer fronts.
+The different heights in its vertical stack remain distinct. The fresh
+repeat yielded 110 Parts rows and is not an exact match to the historical
+107-row witness.
+
+An Adda repeat kept all 133 rows for the corner object and reported 25
+rows for the straight object. Front tagged two mirror contours on V02
+for the straight object, which produced three Blocks instead of the two
+in the accepted witness. This happened before Parts and remains open.
+The three archived 9.12–9.14 Lev1 estimates still replay with their
+original ten purchasing lines and 2,923.99 ILS self cost excluding VAT.
+Estimation 9.15 remains a local candidate pending the Adda review.
+
 ## Estimation 9.14 production checkpoint
 
 The owner accepted the Materials interface and the Lev1 material-cost

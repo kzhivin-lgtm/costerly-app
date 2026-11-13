@@ -5750,12 +5750,20 @@ cause from the local screenshot alone.
   untouched quantities, saves once, and displays read-only unit prices.
   Runtime `estimation-v9.14-checkpoint`. See the
   [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-914-production-checkpoint).
-- Lev1 Parts and Material Demand audit. PENDING, P1, USER REQUEST. After
+- Lev1 Parts and Material Demand audit. ACTIVE, P1, USER REQUEST. After
   the 9.14 repeatability checkpoint, trace the saved run
   `run_f837297d641e489880b162626eaf5916` for unexpected Parts counts,
   repeated sheet material variants, and 10 Assumption Fallback rows.
   Compare with the current 28-row control, which still uses six allowances
   totaling 1,200 ILS and has 29 open findings on 9.14.
+  Estimation 9.15 adds equal horizontal drawers and a common nominal
+  thickness when vector gaps and compatible finishes support it. Lev1
+  verifies one 40 mm veneer MDF requirement for the seat, ribs and right
+  upright. Catalog coverage for that thickness, the contrasting tabletop
+  construction and the remaining Parts Check findings are still open.
+  Release verification is pending. A fresh Adda control tagged two
+  mirrors on V02 and created three straight-object Blocks, versus two in
+  the accepted witness. Compare the Front evidence before any changes.
 - Object Detail approve action: remove stale screen fragment flicker after clicking Approve.
 
 ## Later

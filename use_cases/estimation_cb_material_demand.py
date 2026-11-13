@@ -312,6 +312,11 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
             if material_refs and row.get("material_note"):
                 material_refs = tuple(dict.fromkeys([*material_refs, *measurements.get("thickness", {}).get("refs", ())]))
             preferences = (source_family,) if source_family else _ROLE_FAMILY_PREFERENCE.get(role, ())
+            visual_stock = row.get("visual_stock", {})
+            visible_veneer = (not notes and not unit and visual_stock.get("surface") == "wood_grain"
+                              and "mdf_hdf" in allowed_material_families)
+            if visible_veneer:
+                preferences = ("mdf_hdf",)
             family = next((f for f in preferences if f in allowed_material_families), None)
             identity_hint = None
             if row["role"] == "led_strip_run" and _LED_FAMILY in allowed_material_families:
@@ -360,6 +365,9 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                 spec.update(board_type="hdf" if role == "backing_sheet" else "mdf", surface="raw")
                 if role == "backing_sheet":
                     name = "HDF"
+            if visible_veneer:
+                name = "Veneered MDF"
+                spec.update(board_type="mdf", surface="veneer_two_sided")
             if role == "drawer_slide":
                 if unit == "set":
                     quantity *= 2
@@ -372,11 +380,12 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                 if _positive(length.get("mm")):
                     spec["depth_mm"] = length["mm"]
             variant = row.get("colour_temperature_k") if unit == "m" else None
-            key = (role, family, name, basis, unit, tuple(sorted(spec.items())), fallback_reason, variant)
+            demand_role = "visible_sheet" if visible_veneer else role
+            key = (demand_role, family, name, basis, unit, tuple(sorted(spec.items())), fallback_reason, variant)
             if key not in materials:
                 materials[key] = {
                     "requirement_id": f"cb-material-{len(materials) + 1:03d}",
-                    "source_name": name, "family": family, "material_role": role,
+                    "source_name": name, "family": family, "material_role": demand_role,
                     "specification": spec, "basis": basis, "evidence_refs": [],
                     "quantity": 0 if unit else None, "unit": unit, "part_sources": [],
                 }
@@ -387,7 +396,9 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                 if variant:
                     materials[key]["purchase_variant"] = f"{variant}K"
             material = materials[key]
-            material["evidence_refs"] = list(dict.fromkeys([*material["evidence_refs"], *material_refs]))
+            material["evidence_refs"] = list(dict.fromkeys([
+                *material["evidence_refs"], *material_refs, *(visual_stock.get("refs", ()) if visible_veneer else ()),
+            ]))
             material["part_sources"].append({**part_source, "quantity": quantity, "unit": unit,
                                              "source_quantity": row["quantity"], "source_unit": row.get("unit"),
                                              "measurements": measurements})
@@ -398,7 +409,7 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                     "part_id": part_id, "assembly_id": scope_id, "component_role": row["role"],
                     "material_requirement_id": material["requirement_id"], "quantity": quantity,
                     "length_mm": measurements["length"]["mm"], "width_mm": measurements["width"]["mm"],
-                    "rotation_allowed": role not in {"visible_sheet", "worktop_sheet"},
+                    "rotation_allowed": demand_role not in {"visible_sheet", "worktop_sheet"},
                     "basis": "construction_assumption", "evidence_refs": refs,
                     "assumption_reason": "Cut geometry comes from the preliminary Parts estimate.",
                 })

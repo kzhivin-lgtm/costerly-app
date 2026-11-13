@@ -155,20 +155,23 @@ def _front_parts(rows, faces, spec, *, width, height, depth, panel_t, face_t,
         measured = (face_sizes or {}).get(ref)
         if role == "drawer":
             face_h = _note_dim(spec, "drawer_face_height")
+            box_width = bay_width
             face_w = derived("construction_assumption", [width], lambda w: w / role_counts[role] - 2,
                              reason="Equal drawer front widths with a provisional reveal.")
             if source_only and divisions != role_counts[role]:
                 face_w = _assumed(None, width["refs"])
             if measured:
-                face_w, face_h = measured
+                face_w, face_h = measured[:2]
+                if len(measured) == 3:
+                    box_width = measured[2]
             rows.append(_sized("drawer_front", 1, face_material, face_w, face_h, face_t, instance_ref=ref))
             wall = derived("construction_assumption", [face_h], lambda h: h - 40,
                            reason="Provisional drawer-box height below front height.")
             rows.extend([
                 _sized("drawer_box_side", 2, box_material, slide, wall, panel_t, instance_ref=ref),
-                _sized("drawer_box_end", 2, box_material, _subtract(bay_width, panel_t, 2), wall,
+                _sized("drawer_box_end", 2, box_material, _subtract(box_width, panel_t, 2), wall,
                        panel_t, instance_ref=ref),
-                _sized("drawer_box_bottom", 1, box_material, bay_width, slide, stock(6), instance_ref=ref),
+                _sized("drawer_box_bottom", 1, box_material, box_width, slide, stock(6), instance_ref=ref),
                 {**part("drawer_slide", 2, material="concealed soft-close drawer slide", length=slide),
                  "unit": "piece", "instance_ref": ref},
             ])
@@ -379,7 +382,8 @@ def add_source_casework_parts(parts, inventory, analyze, geometry, *, input_rows
 
                         face_sizes, glass_height = source_casework_part_geometry(
                             block, readings[ident], faces, views, geometry["objects"][oid]["printed_dimensions"],
-                            glazed=any(child["role"] == "glazed_zone" for child in item["children"]), pdf=pdf)
+                            glazed=any(child["role"] == "glazed_zone" for child in item["children"]),
+                            panel_t=thickness, pdf=pdf)
                         if glass_height:
                             scope["glass_box_height"] = glass_height
                     if block["basis"] == "mirror_upright":
@@ -420,14 +424,24 @@ def add_source_casework_parts(parts, inventory, analyze, geometry, *, input_rows
                         facade_thickness=stock_notes[oid].get("facade"))
                 elements = [item]
             for row in scope["parts"]:
-                if row["role"] not in PLINTH_PARTS:
+                is_plinth = row["role"] in PLINTH_PARTS
+                if not is_plinth and not row.get("visual_stock"):
                     continue
                 refs = {ref for axis in ("length", "width")
                         for ref in row["dimensions"].get(axis, {}).get("refs", ())}
+                if not is_plinth and row.get("instance_ref"):
+                    refs = {row["instance_ref"]}
                 local = _part_stock_callout(material_callouts, refs)
                 facade = stock_notes[oid].get("facade")
-                _apply_stock(row, facade if not local or _same_facade_stock(local, facade) else None,
-                             local, role="facade")
+                if is_plinth:
+                    _apply_stock(row, facade if not local or _same_facade_stock(local, facade) else None,
+                                 local, role="facade")
+                elif local or row["role"] in {"drawer_front", "door_front", "lift_up_front"}:
+                    exact = row["dimensions"].get("thickness", {}).get("basis") == "printed_dimension"
+                    thickness = row["dimensions"].get("thickness")
+                    _apply_stock(row, facade if not local else None, local, role="facade")
+                    if exact and (not local or local["mm"] is None):
+                        row["dimensions"]["thickness"] = thickness
             for element in elements:
                 element_id = element["id"]
                 if element["role"] == "mirror":

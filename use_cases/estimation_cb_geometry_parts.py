@@ -2,14 +2,121 @@
 
 from collections import defaultdict
 from math import isfinite
+import re
 from statistics import median
 
 from use_cases.estimation_structural_bom import _hinges_per_facade, _slide_depth_mm
 
 
-VERSION = "CB Parts Geometry V1.1"
+VERSION = "CB Parts Geometry V1.2"
 CASEWORK_BASES = {"visible_front_band", "assumed_width_split", "tall_stack_candidate"}
 CASEWORK_FRONT_PARTS = {"hinged_door": "door_front", "lift_up": "lift_up_front", "drawer": "drawer_front"}
+VISIBLE_GRAIN_ROLES = {
+    "seat_cover", "drawer_front", "door_front", "lift_up_front", "fixed_panel", "frame_cap", "frame_side",
+    "frame_backing", "vertical_rib", "tabletop",
+}
+_FRAME_SURFACES = {"frame_cap", "frame_side", "vertical_rib"}
+_NEARBY_THICKNESS_MM = 4
+_FINISH_SUBJECTS = {
+    "panel": _FRAME_SURFACES,
+    "base carcass": {"seat_cover"},
+    "bench": {"seat_cover"},
+    "bench seat": {"seat_cover"},
+    "seat": {"seat_cover"},
+    "drawer fronts": {"drawer_front"},
+    "door fronts": {"door_front"},
+}
+
+
+def _close_thickness(first, second):
+    return abs(first - second) <= min(_NEARBY_THICKNESS_MM, .12 * max(first, second))
+
+
+def visible_grain_evidence(understanding):
+    """Keep the exact Island or characteristic that supports each finish."""
+    refs = defaultdict(set)
+    groups = defaultdict(set)
+    descriptions = {}
+    for item in understanding.get("wood_grain", ()):
+        refs[item["role"]].add(item["view_id"])
+        if group := item.get("finish_group"):
+            groups[item["role"]].add(group)
+    for index, line in enumerate(understanding.get("characteristics", ()), 1):
+        observation = re.split(r"[—;]|\b(?:contrasting|likely|possibly|probably)\b",
+                               line.casefold(), maxsplit=1)[0]
+        subjects = re.match(
+            r"(?:(?:visible|warm|cool|brown|light|dark|natural|toned|medium)[ -]+)*"
+            r"(?:timber|wood)(?: grain| finish) on (.+)", observation,
+        ) or re.match(
+            r"(.+?)\s+(?:finished in|clad in|show)\s+[^,;]*\b(?:wood|timber) with visible grain\b", observation,
+        )
+        if not subjects:
+            continue
+        ref = f"understanding:characteristic:{index}"
+        for subject in re.split(r",|\band\b", subjects[1]):
+            for role in _FINISH_SUBJECTS.get(subject.strip(" .").removeprefix("the "), ()):
+                refs[role].add(ref)
+                descriptions[role] = ref
+    description_groups = defaultdict(set)
+    for role, ref in descriptions.items():
+        description_groups[ref].update(groups[role])
+    for role, ref in descriptions.items():
+        if not groups[role] and len(description_groups[ref]) <= 1:
+            groups[role].update(description_groups[ref] or {ref})
+    return {role: (evidence, next(iter(groups[role])) if len(groups[role]) == 1 else None)
+            for role, evidence in refs.items()}
+
+
+def _normalize_thicknesses(compatible):
+    """Retain vector measurements when adopting a common nominal thickness."""
+    anchors = [d for d in compatible if d["basis"] == "printed_dimension"]
+    remaining = []
+    for thickness in (d for d in compatible if d["basis"] == "scaled_projection"):
+        close_anchors = [d for d in anchors if _close_thickness(d["mm"], thickness["mm"])]
+        values = {d["mm"] for d in close_anchors}
+        if not values:
+            remaining.append(thickness)
+        elif len(values) == 1:
+            observed_mm = thickness["mm"]
+            thickness.update(derived("construction_assumption", [thickness, *close_anchors],
+                                     lambda _, mm, *rest: mm,
+                                     reason="Use the nearby printed nominal thickness for compatible visible sheets."))
+            thickness["projected_mm"] = observed_mm
+    remaining.sort(key=lambda d: d["mm"])
+    while remaining:
+        same_stock = [d for d in remaining if _close_thickness(d["mm"], remaining[0]["mm"])]
+        remaining = remaining[len(same_stock):]
+        if len({d["mm"] for d in same_stock}) < 2:
+            continue
+        middle = median(d["mm"] for d in same_stock)
+        nominal = min((d["mm"] for d in same_stock), key=lambda mm: abs(mm - middle))
+        common = derived("construction_assumption", same_stock, lambda *sizes: nominal,
+                         reason="Use one nominal thickness for nearby projections of compatible visible sheets.")
+        for thickness in same_stock:
+            thickness.update(common, projected_mm=thickness["mm"])
+
+
+def finish_visible_parts(result, understanding):
+    grain = visible_grain_evidence(understanding)
+    compatible = defaultdict(list)
+    for scope in [*result["blocks"], *result["shared_parts"]]:
+        for row in scope["parts"]:
+            role = row["role"]
+            refs, finish_group = grain.get(role, ((), None))
+            if refs:
+                row["visual_stock"] = {"surface": "wood_grain", "refs": sorted(refs)}
+            thickness = row["dimensions"].get("thickness", {})
+            if role not in VISIBLE_GRAIN_ROLES or thickness.get("mm") is None:
+                continue
+            if finish_group and role in _FRAME_SURFACES | {"seat_cover"}:
+                key = (finish_group, "visible_structure")
+            else:
+                # With an unknown finish, keep the comparison within the same
+                # role and assembly. A common finish lets matching roles span blocks.
+                key = (finish_group, role) if finish_group else (scope.get("block_id") or scope["id"], role)
+            compatible[key].append(thickness)
+    for thicknesses in compatible.values():
+        _normalize_thicknesses(thicknesses)
 
 
 def dimension(mm, basis, refs=()):
@@ -67,6 +174,51 @@ def box_dimension(view, printed, axis, contour_id):
     return projected(view, printed, axis, interval(contours(view)[contour_id], axis), [contour_id])
 
 
+def direct_span(view, printed, axis, bounds, ids):
+    from tools.estimation_block_geometry import EDGE_TOLERANCE
+
+    size = view["width" if axis == "x" else "height"]
+    low, high = (value * 1000 / size for value in bounds)
+    matches = [row for row in printed.get(view["view_id"], ()) if row["axis"] == axis
+               and abs(row["bounds"][0] - low) <= EDGE_TOLERANCE
+               and abs(row["bounds"][1] - high) <= EDGE_TOLERANCE]
+    if not matches:
+        return None
+    refs = [f'{view["view_id"]}:{cid}' for cid in ids] + [row["source_id"] for row in matches]
+    if len({row["value_mm"] for row in matches}) != 1:
+        return {**dimension(None, "unresolved", refs), "reason": "Conflicting printed dimensions."}
+    return dimension(matches[0]["value_mm"], "printed_dimension", refs)
+
+
+def face_dimension(view, printed, axis, cid):
+    bounds = interval(contours(view)[cid], axis)
+    return direct_span(view, printed, axis, bounds, [cid]) or projected(view, printed, axis, bounds, [cid])
+
+
+def equivalent_drawer_faces(view, printed, ids):
+    """Equalize an unlabeled, regular horizontal run while preserving total face span."""
+    if len(ids) < 2:
+        return None
+    boxes = contours(view)
+    ordered = sorted((boxes[cid] for cid in ids), key=lambda box: box[0])
+    if any(not 0 <= b[0] - a[2] <= .15 * min(a[2] - a[0], b[2] - b[0])
+           for a, b in zip(ordered, ordered[1:])):
+        return None
+    widths, heights = ([face_dimension(view, printed, axis, cid) for cid in ids] for axis in "xy")
+    for axis, values in zip("xy", (widths, heights), strict=True):
+        sizes = [value["mm"] for value in values]
+        if (None in sizes or any(value["basis"] == "printed_dimension" for value in values)
+                or max(sizes) - min(sizes) > .06 * median(sizes)):
+            return None
+        if axis == "y" and max(boxes[cid][1] for cid in ids) - min(boxes[cid][1] for cid in ids) > .06 * min(
+            boxes[cid][3] - boxes[cid][1] for cid in ids
+        ):
+            return None
+    return tuple(derived("construction_assumption", values, lambda *sizes: sum(sizes) / len(sizes),
+                         reason="Equal, visually similar drawers share the measured horizontal run.")
+                 for values in (widths, heights))
+
+
 def drawer_box_parts(box_width, face_height, slide_length, *, instance_ref):
     drawer_t, bottom_t = stock(17), stock(6)
     box_height = derived("construction_assumption", [face_height], lambda h: h - 40,
@@ -81,6 +233,20 @@ def drawer_box_parts(box_width, face_height, slide_length, *, instance_ref):
         part("drawer_box_bottom", material="backing sheet stock", length=slide_length,
              width=box_width, thickness=bottom_t),
     )]
+
+
+def equal_drawer_run(view, printed, ids, width, sheet):
+    if width["basis"] != "printed_dimension":
+        return None, None
+    faces = equivalent_drawer_faces(view, printed, ids)
+    if not faces:
+        return None, None
+    box_width = derived(
+        "construction_assumption", [width, sheet],
+        lambda w, t: (w - (len(ids) + 1) * t) / len(ids) - 26,
+        reason="Equal bays share the printed frame width after sides, dividers and slide clearance.",
+    )
+    return (faces, box_width) if box_width["mm"] is not None else (None, None)
 
 
 def drawer_frame_parts(block, measurements, views, printed, front):
@@ -101,7 +267,7 @@ def drawer_frame_parts(block, measurements, views, printed, front):
     depth = box_dimension(side, printed, "x", case_id)
     height = box_dimension(side, printed, "y", case_id)
     width = geometry_dimension(measurements["carcass_width"])
-    seat_t = box_dimension(view, printed, "y", seat_id)
+    seat_t = face_dimension(view, printed, "y", seat_id)
     carcass = "carcass sheet stock"
     visible = "visible panel stock, substrate and finish to verify"
     back = "backing sheet stock"
@@ -126,14 +292,19 @@ def drawer_frame_parts(block, measurements, views, printed, front):
                            reason="Cabinet depth minus 100 mm, rounded down to a 100 mm step.")
     left, right = interval(appearance["bbox"], "x")
     edges = [left, *((boxes[a][2] + boxes[b][0]) / 2 for a, b in zip(ids, ids[1:])), right]
+    equal_faces, shared_box_width = equal_drawer_run(view, printed, ids, width, carcass_t)
     for index, cid in enumerate(ids):
-        face_width = box_dimension(view, printed, "x", cid)
-        face_height = box_dimension(view, printed, "y", cid)
-        bay_width = projected(view, printed, "x", edges[index:index + 2], [appearance["frame"], cid])
-        wall_factor = (1.0 if index == 0 else .5) + (1.0 if index == len(ids) - 1 else .5)
-        box_width = derived("construction_assumption", [bay_width, carcass_t],
-                            lambda w, t: w - wall_factor * t - 26,
-                            reason="Bay between assumed dividers and sides, less 13 mm slide clearance per side.")
+        if equal_faces:
+            face_width, face_height = equal_faces
+            box_width = shared_box_width
+        else:
+            face_width = face_dimension(view, printed, "x", cid)
+            face_height = face_dimension(view, printed, "y", cid)
+            bay_width = projected(view, printed, "x", edges[index:index + 2], [appearance["frame"], cid])
+            wall_factor = (1.0 if index == 0 else .5) + (1.0 if index == len(ids) - 1 else .5)
+            box_width = derived("construction_assumption", [bay_width, carcass_t],
+                                lambda w, t: w - wall_factor * t - 26,
+                                reason="Bay between assumed dividers and sides, less 13 mm slide clearance per side.")
         ref = f'{view["view_id"]}:{cid}'
         parts.append({**part("drawer_front", material=visible, length=face_width, width=face_height,
                              thickness=face_t), "instance_ref": ref})
@@ -149,31 +320,44 @@ def framed_panel_parts(block, measurements, views, printed, projections):
     width, depth, height = (geometry_dimension(measurements[key]) for key in ("width", "depth", "height"))
     facing = "visible panel stock, substrate and finish to verify"
     sheet = stock(20)
-    inner_w = derived("construction_assumption", [width, sheet], lambda w, t: w - 2 * t,
+    boxes = contours(view)
+    cells = sorted(appearance["top_cell_ids"], key=lambda cid: boxes[cid][0])
+    frame = appearance["frame"]
+    sides = [(boxes[frame][0], boxes[cells[0]][0]), (boxes[cells[-1]][2], boxes[frame][2])]
+    side_thicknesses = []
+    for bounds, cid in zip(sides, (cells[0], cells[-1]), strict=True):
+        exact = direct_span(view, printed, "x", bounds, [frame, cid])
+        projection = projected(view, printed, "x", bounds, [frame, cid])
+        side_thicknesses.append(exact or (projection if projection["mm"] is not None else stock(20)))
+    inner_w = derived("construction_assumption", [width, *side_thicknesses], lambda w, a, b: w - a - b,
                       reason="Caps and backing fit between the two outer cheeks.")
     inner_h = derived("construction_assumption", [height, sheet], lambda h, t: h - 2 * t,
                       reason="Ribs and backing fit between the caps.")
-    parts = [
-        part("frame_side", 2, material=facing, length=height, width=depth, thickness=sheet),
+    parts = (
+        [part("frame_side", 2, material=facing, length=height, width=depth, thickness=side_thicknesses[0])]
+        if side_thicknesses[0] == side_thicknesses[1]
+        else [part("frame_side", material=facing, length=height, width=depth, thickness=t) for t in side_thicknesses]
+    )
+    parts += [
         part("frame_cap", 2, material=facing, length=inner_w, width=depth, thickness=sheet),
         part("frame_backing", material=facing, length=inner_h, width=inner_w, thickness=sheet),
     ]
     faces = {projections[row["view_id"]] for row in block["appearances"]}
     if not {"Front elevation", "Rear view"} <= faces:
         raise ValueError("Symmetric frame assumption requires matching front and rear projections")
-    cells = appearance["top_cell_ids"]
-    boxes = contours(view)
-    cells = sorted(cells, key=lambda cid: boxes[cid][0])
     rib_depth = derived("construction_assumption", [depth, sheet], lambda d, t: (d - t) / 2,
                         reason="Two matching faces around one assumed central backing sheet.")
     ribs = defaultdict(list)
     for left, right in zip(cells, cells[1:]):
-        gap = projected(view, printed, "x", (boxes[left][2], boxes[right][0]), [left, right])
-        ribs[gap["mm"]].append(gap)
-    for mm, gaps in ribs.items():
+        bounds = (boxes[left][2], boxes[right][0])
+        gap = direct_span(view, printed, "x", bounds, [left, right]) or projected(
+            view, printed, "x", bounds, [left, right],
+        )
+        ribs[gap["mm"], gap["basis"]].append(gap)
+    for (mm, basis), gaps in ribs.items():
         refs = dict.fromkeys(ref for gap in gaps for ref in gap["refs"])
         parts.append(part("vertical_rib", 2 * len(gaps), material=facing,
-                          length=inner_h, width=rib_depth, thickness=dimension(mm, "scaled_projection", refs)))
+                          length=inner_h, width=rib_depth, thickness=dimension(mm, basis, refs)))
     return parts, ["The visible dividers are measured as projected gaps between bays. The cut list assumes a symmetric frame with a central backing; verify rib profiles, joints and backing before fabrication."]
 
 
@@ -196,7 +380,7 @@ def supported_top_parts(block, measurements, views, printed, front, owner):
         raise ValueError("Supported top lacks an owned section contour")
     parts = []
     for index, cid in enumerate(plate_ids):
-        thickness = box_dimension(view, printed, "y", cid)
+        thickness = face_dimension(view, printed, "y", cid)
         layer_depth = depth if index == 0 else box_dimension(view, printed, "x", cid)
         layer_width = width if index == 0 else derived(
             "construction_assumption", [width], lambda w: w,
@@ -286,7 +470,11 @@ def casework_parts(block, measurements, views, printed, front):
         parts.append({**panel, "instance_ref": f"{vid}:{cid}"})
 
     group_kinds = [{face_rows[cid]["role"] for cid in group} for group in groups]
+    equal_faces, equal_box_width = (equal_drawer_run(view, printed, ids, width, sheet)
+                                    if all(kinds == {"drawer"} for kinds in group_kinds) else (None, None))
     partitions = sum(("drawer" in left) != ("drawer" in right) for left, right in zip(group_kinds, group_kinds[1:]))
+    if equal_faces:
+        partitions = len(ids) - 1
     if partitions:
         clear_depth = derived("construction_assumption", [depth, back_t], lambda d, t: d - t,
                               reason="Vertical divisions stop against the backing.")
@@ -294,7 +482,10 @@ def casework_parts(block, measurements, views, printed, front):
                           length=inside_h, width=clear_depth, thickness=sheet))
     for cid in ids:
         role = face_rows[cid]["role"]
-        length, face_h = (size(boxes[cid], axis, [cid]) for axis in ("x", "y"))
+        length, face_h = equal_faces or tuple(size(boxes[cid], axis, [cid]) for axis in ("x", "y"))
+        if role == "drawer" and not equal_faces:
+            length = direct_span(view, printed, "x", interval(boxes[cid], "x"), [cid]) or length
+            face_h = direct_span(view, printed, "y", interval(boxes[cid], "y"), [cid]) or face_h
         ref = f"{vid}:{cid}"
         face_part = part(CASEWORK_FRONT_PARTS.get(role, "unresolved_front"), material="visible facade stock",
                          length=length, width=face_h, thickness=sheet)
@@ -302,8 +493,10 @@ def casework_parts(block, measurements, views, printed, front):
         if role == "drawer":
             slide = derived("construction_assumption", [depth], _slide_depth_mm,
                             reason="Cabinet depth minus 100 mm, rounded down to a 100 mm step.")
-            drawer_width = derived("construction_assumption", [length, sheet], lambda w, t: w - 2 * t - 26,
-                                   reason="Use facade span as a bay proxy, allowing side panels and slide clearances.")
+            drawer_width = equal_box_width or derived(
+                "construction_assumption", [length, sheet], lambda w, t: w - 2 * t - 26,
+                reason="Use facade span as a bay proxy, allowing side panels and slide clearances.",
+            )
             parts.extend(drawer_box_parts(drawer_width, face_h, slide, instance_ref=ref))
             parts.append({**part("drawer_slide", 2, material="drawer slide hardware", length=slide),
                           "unit": "piece", "instance_ref": ref})
@@ -469,6 +662,7 @@ def compile_geometry_parts(analyze, geometry, views):
             except (KeyError, IndexError) as exc:
                 row = {"id": owner["id"], "role": owner["role"], "parts": [], "review": [f"Incomplete component evidence: {exc}"]}
             result["shared_parts"].append(row)
+        finish_visible_parts(result, analyze.get("understanding", {}).get(oid, {}))
         objects[oid] = result
     return {"stage": "CB Parts", "version": VERSION, "status": "preliminary_requires_review",
             "source_audit_sha256": analyze["source_audit_sha256"], "provider_calls": 0, "objects": objects}

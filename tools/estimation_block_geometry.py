@@ -51,10 +51,24 @@ def path_spans(segments, tips):
         for start, end in zip(positions, positions[1:]):
             if end - start < 4:
                 continue
-            if any(abs(a[1 - axis] - across) <= 1 and abs(b[1 - axis] - across) <= 1
-                   and min(a[axis], b[axis]) <= start + 1 and max(a[axis], b[axis]) >= end - 1
-                   for a, b in segments):
-                yield {"axis": "xy"[axis], "bounds": [start, end], "across": across}
+            line = [(min(a[axis], b[axis]), max(a[axis], b[axis])) for a, b in segments
+                    if abs(a[1 - axis] - across) <= 1 and abs(b[1 - axis] - across) <= 1]
+            if not any(lo <= start + 1 and hi >= end - 1 for lo, hi in line):
+                continue
+            span = {"axis": "xy"[axis], "bounds": [start, end], "across": across}
+            if end - start <= 35:
+                # Short dimensions can have both arrows and the caption outside
+                # the measured span. Use the continuous dimension line to find the caption.
+                lo, hi = start, end
+                for _ in range(len(line)):
+                    connected = [(a, b) for a, b in line if a <= hi + 1 and b >= lo - 1]
+                    extended = min(a for a, _ in connected), max(b for _, b in connected)
+                    if extended == (lo, hi):
+                        break
+                    lo, hi = extended
+                if lo < start - 3 and hi > end + 3:
+                    span["caption_bounds"] = [lo, hi]
+            yield span
 
 
 def printed_spans(page, view, inventory, *, fragmented=False):
@@ -114,9 +128,14 @@ def printed_spans(page, view, inventory, *, fragmented=False):
                 continue
             axis = "xy".index(span["axis"])
             low, high = span["bounds"]
+            caption_low, caption_high = span.get("caption_bounds", (low, high))
+            extended_caption = (not low <= center[axis] <= high
+                                and caption_low <= center[axis] <= caption_high)
+            if extended_caption:
+                low, high = caption_low, caption_high
             gap = max(low - center[axis], center[axis] - high, 0)
             across = abs(center[1 - axis] - span["across"])
-            if across <= (58 if fragmented else 90) and gap <= (45 if fragmented else 155):
+            if across <= (58 if fragmented or extended_caption else 90) and gap <= (45 if fragmented else 155):
                 score = across + 1.8 * gap + .15 * abs(center[axis] - (low + high) / 2)
                 choices.append((score, span))
         if choices:
