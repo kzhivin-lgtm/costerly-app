@@ -912,6 +912,15 @@ def upsert_rfq_estimate_material_purchase_overrides(
     ], on_conflict="estimate_id,selection_key").execute()
 
 
+def delete_rfq_estimate_material_purchase_overrides(
+    client: Client, *, estimate_id: str, company_id: str, selection_keys: set[str],
+) -> None:
+    if selection_keys:
+        client.table("rfq_estimate_material_purchase_overrides").delete().eq(
+            "estimate_id", estimate_id,
+        ).eq("company_id", company_id).in_("selection_key", sorted(selection_keys)).execute()
+
+
 def mark_rfq_estimate_material_plan_stale(
     client: Client,
     *,

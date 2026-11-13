@@ -7,6 +7,7 @@ import re
 from typing import Any
 
 from db.repositories import (
+    delete_rfq_estimate_material_purchase_overrides,
     fetch_company_overhead_settings,
     fetch_rfq_estimate_pricing_overrides,
     fetch_rfq_estimate_lines,
@@ -1057,10 +1058,11 @@ def save_object_detail_material_edits(
     if not plan.get("parts_check_source"):
         raise ValueError("A saved material plan is required.")
     owned = {
-        line["selection_key"] for line in plan.get("lines", ())
+        line["selection_key"]: line for line in plan.get("lines", ())
         if line.get("selection_key") and any(a.get("object_id") == object_id for a in line.get("allocations", ()))
     }
     purchases, norm_rows = {}, {}
+    auto_purchase = set()
     for edit in edits:
         if not isinstance(edit, dict):
             raise ValueError("Invalid material edit.")
@@ -1080,9 +1082,15 @@ def save_object_detail_material_edits(
         if line_id.startswith("__material_selection__:"):
             key = line_id.removeprefix("__material_selection__:")
             norms = _material_norms_from_plan(plan, selection_key=key) if key in owned else {}
+            if key in owned:
+                auto_purchase.add(key)
         elif line_id.startswith("__material_requirement__:"):
             requirement_id = line_id.removeprefix("__material_requirement__:")
             norms = {key: val for key, val in _material_norms_from_plan(plan).items() if key[1] == requirement_id}
+            auto_purchase.update(key for key, line in owned.items() if any(
+                allocation.get("object_id") == object_id and allocation.get("material_requirement_id") == requirement_id
+                for allocation in line["allocations"]
+            ))
         else:
             norms = {}
         requirements = {key[1]: val for key, val in norms.items() if key[0] == object_id}
@@ -1108,6 +1116,9 @@ def save_object_detail_material_edits(
         )
     if norm_rows:
         upsert_rfq_estimate_material_norm_overrides(client, rows=list(norm_rows.values()))
+        delete_rfq_estimate_material_purchase_overrides(
+            client, estimate_id=estimate_id, company_id=company_id, selection_keys=auto_purchase - purchases.keys(),
+        )
         return _invalidate_and_queue_material_plan(
             client, estimate_id=estimate_id, company_id=company_id, run_id=str(obj["run_id"]),
             reason_code="material_norm_changed", previous_plan=plan,

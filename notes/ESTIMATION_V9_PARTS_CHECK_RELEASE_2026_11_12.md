@@ -1,5 +1,26 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.14 Materials quantity edits and display
+
+Purchase Unit and Unit Price wrap to two lines. The quantity fields are
+wider and display whole values (positive quantities below half a unit show
+`<1`). The preview and saved plan keep the exact quantities.
+
+Editing Purchase Quantity changes only the purchase and its cost.
+Editing Required Material returns that row to calculated purchasing,
+including when a manual purchase was already saved. A manual purchase
+entered after a required edit still wins for that draft. The browser
+updates immediately; Save sends one batch. The material engine accepts
+the canonical piece unit for Assumption requirements as well as catalog
+requirements.
+
+The saved Lev1 Assumption sheet rate is 200 ILS per sheet, an allowance.
+The separate LDSP 17 mm and 20 mm Israel Reference lines cost 295.85 and
+286.94 ILS per sheet, respectively. Material selection is unchanged.
+Local Chrome verified both edit orders and persistence on saved Lev1
+at 1280 px and Adda at 390 px. The focused suite passed 83 tests.
+Authenticated production interaction remains open.
+
 ## Estimation 9.13 Materials unit price and quantity editing
 
 Materials shows the price per purchase unit as a read-only column

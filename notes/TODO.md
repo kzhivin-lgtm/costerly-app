@@ -5753,6 +5753,10 @@ cause from the local screenshot alone.
 - Estimation 9.13 Materials editing and unit price. ACTIVE, P1, USER REQUEST.
   Preserve untouched quantities during local edits, compact the quantity
   inputs, and show the read-only Unit Price before Purchase Quantity.
+- Estimation 9.14 Materials quantity behavior. ACTIVE, P1, USER REQUEST.
+  Wrap the two headings, widen inputs, and display whole quantities.
+  Purchase edits preserve demand; required edits recalculate purchases
+  through the preview and save.
 - Lev1 Parts and Material Demand audit. PENDING, P1, USER REQUEST. After
   Object Detail is stable, trace the saved run
   `run_f837297d641e489880b162626eaf5916` for unexpected Parts counts,

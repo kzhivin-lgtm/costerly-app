@@ -39,6 +39,17 @@ def _unit_price(value: object) -> str:
     return f"₪{number:,.2f}".rstrip("0").rstrip(".").replace(",", "\u202f") if math.isfinite(number) else "—"
 
 
+def _material_quantity_text(value: object) -> str:
+    try:
+        amount = float(value)
+    except (TypeError, ValueError):
+        return ""
+    if not math.isfinite(amount):
+        return ""
+    rounded = math.floor(amount + 0.5)
+    return "<1" if 0 < amount < 0.5 else str(rounded)
+
+
 def _quantity(value: object) -> str:
     try:
         number = float(value)
@@ -147,7 +158,7 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
             ]
         required_unit = str(row.get("required_material_unit") or "")
         required_value = row.get("required_material_value")
-        required_text = f"{float(required_value):.1f}" if required_unit == "m²" and required_value is not None else _number_text(required_value)
+        required_text = _material_quantity_text(required_value)
         purchase_unit = str(row.get("purchase_unit") or "")
         display_unit = "" if required_unit.casefold() == purchase_unit.casefold() == "piece" else required_unit
         return [
@@ -155,7 +166,7 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
             _material_input_html(value=required_text, field="required_material", line_id=str(row.get("required_material_line_id") or ""), unit=display_unit),
             _purchase_unit_html(row.get("purchase_unit")),
             f'<span class="object-detail-unit-price">{_unit_price(row.get("purchase_unit_cost"))}</span>',
-            _material_input_html(value=_number_text(row.get("purchase_quantity_value")), field="purchase_quantity", line_id=str(row.get("purchase_quantity_line_id") or ""), unit=""),
+            _material_input_html(value=_material_quantity_text(row.get("purchase_quantity_value")), field="purchase_quantity", line_id=str(row.get("purchase_quantity_line_id") or ""), unit=""),
             f'<span class="object-detail-row-cost">{_money(row.get("total"))}</span>',
         ]
     if columns[0] == "Work":
@@ -255,12 +266,17 @@ def _table_html(section: dict[str, object]) -> str:
     column_count = len(columns)
     section_key = str(section.get("key") or _slug(section.get("title")))
     table_class = f"object-detail-table object-detail-table--cols-{column_count}"
-    header = "".join(
-        f'<div class="object-detail-table-head">{_escape(column)}</div>' for column in columns
-    )
+    material_table = tuple(columns) == MATERIAL_PURCHASE_COLUMNS
+    header_cells = []
+    for column in columns:
+        label = _escape(column)
+        if material_table and column in {"Purchase unit", "Unit price"}:
+            label = f'<span>{label.replace(" ", "<br> ", 1)}</span>'
+        header_cells.append(f'<div class="object-detail-table-head">{label}</div>')
+    header = "".join(header_cells)
 
     body_parts: list[str] = []
-    if tuple(columns) == MATERIAL_PURCHASE_COLUMNS:
+    if material_table:
         for row in rows:
             values = _row_values(section, row)
             preview = _material_preview(row)

@@ -642,6 +642,26 @@ def test_plan_prices_assumption_fallback_after_company_and_israel_have_no_candid
     }
 
 
+def test_required_piece_override_recalculates_assumption_purchase():
+    facts = {
+        "object_id": "bench", "quantity": 1,
+        "materials": [{
+            "requirement_id": "leg", "source_name": "Furniture leg",
+            "family": "purchased_fabricated_component", "specification": {},
+            "quantity": 2, "unit": "piece", "assumption_reason": "material_pricing_key_incomplete",
+        }],
+        "parts": [],
+    }
+    result = build_material_plan(
+        facts_by_object={"bench": facts}, catalogs=_catalogs(),
+        material_norm_overrides={("bench", "leg"): {"unit": "piece", "quantity_per_item": 3}},
+    )
+    line = result.plan.lines[0]
+    assert line.allocations[0].quantity == 3
+    assert line.purchase_quantity == 3
+    assert line.total_cost == 600
+
+
 def test_oversized_finished_part_uses_dimension_compatible_assumption_not_sheet_split():
     result = build_material_plan(
         facts_by_object={"cabinet-a": _facts("cabinet-a", "tall-side", length=2650, width=600)},

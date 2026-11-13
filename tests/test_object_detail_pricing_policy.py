@@ -102,7 +102,7 @@ def test_material_purchase_table_shows_demand_and_purchase_without_allocation_la
     assert "purchase_quantity" in values[4]
     assert 'data-original-value="2"' in values[4]
     assert "sheet" not in values[4]
-    assert html.index(">Unit price<") < html.index(">Purchase quantity<")
+    assert html.index("Purchase<br> unit") < html.index("Unit<br> price") < html.index(">Purchase quantity<")
     assert "Project allocation" not in html
     assert "Project material plan" not in html
 

@@ -1413,8 +1413,8 @@ def build_material_plan(
         override = overrides.get((object_id, requirement_id)) or {}
         override_unit = str(override.get("unit") or "")
         override_quantity = _positive(override.get("quantity_per_item"))
-        expected_unit = {"sheet": "m2", "linear_cut": "m"}.get(candidate.purchase_kind, "piece")
-        if override_quantity is not None and _canonical_requirement_unit(override_unit) == expected_unit:
+        expected_units = {"sheet": {"m2"}, "linear_cut": {"m"}}.get(candidate.purchase_kind, {"piece", "ea"})
+        if override_quantity is not None and _canonical_requirement_unit(override_unit) in expected_units:
             demand = _demand_from_net_requirement(
                 demand_id=f"{object_id}:{requirement_id}:assumption", object_id=object_id,
                 requirement_id=requirement_id, material_family=candidate.material_family,

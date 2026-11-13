@@ -1958,7 +1958,8 @@ def install_object_detail_input_guard(
             const validAmount = raw => /^(?:\\d+(?:\\.\\d{0,4})?|\\.\\d{1,4})$/.test(raw)
                 && Number(raw) > 0 && Number(raw) < 1e10;
             const rowPreview = row => JSON.parse(row.dataset.materialPreview);
-            const numberText = value => String(Math.round(value * 10000) / 10000);
+            const quantityText = value => Number(value) > 0 && Number(value) < 0.5
+                ? "<1" : String(Math.round(Number(value)));
             const unitPriceText = value => value == null ? "—"
                 : `₪${Number(value).toLocaleString("en-US", {maximumFractionDigits: 2}).replace(/,/g, "\u202f")}`;
             const contextFor = input => ({input, field: input.dataset.field, lineId: input.dataset.lineId});
@@ -1983,7 +1984,7 @@ def install_object_detail_input_guard(
                     if (!req && !buy) {
                         if (canUpdatePurchase && purchase.dataset.materialPreviewValue &&
                             base.purchase_quantity_value != null) {
-                            setEditableValue(purchase, purchase.dataset.originalValue ?? numberText(base.purchase_quantity_value));
+                            setEditableValue(purchase, purchase.dataset.originalValue ?? quantityText(base.purchase_quantity_value));
                             delete purchase.dataset.materialPreviewValue;
                         }
                         return {row, base, cost: Number(base.total) || 0};
@@ -1991,13 +1992,13 @@ def install_object_detail_input_guard(
                     const localRequired = req ? Number(req.value) : base.required_material_value;
                     const projectRequired = base.project_required - base.required_material_value + localRequired;
                     let purchaseQuantity = buy ? Number(buy.value) : base.purchase_quantity_value;
-                    if (req && !buy && !base.purchase_is_manual && base.stock_coverage > 0) {
+                    if (req && !buy && base.stock_coverage > 0) {
                         const consumption = projectRequired / base.stock_coverage;
                         purchaseQuantity = ["sheet", "piece", "linear_stock"].includes(base.purchase_kind)
                             ? Math.ceil(consumption - 1e-10) : consumption;
                     }
                     if (!buy && canUpdatePurchase && Number.isFinite(purchaseQuantity)) {
-                        const text = numberText(purchaseQuantity);
+                        const text = quantityText(purchaseQuantity);
                         if (editableValue(purchase) !== text) setEditableValue(purchase, text);
                         purchase.dataset.materialPreviewValue = text;
                     }
@@ -2036,6 +2037,14 @@ def install_object_detail_input_guard(
                 const input = ctx.input;
                 const raw = materialValue(input);
                 const key = editKey(ctx);
+                const prior = draft.get(key);
+                if ((prior && Number(raw) === Number(prior.value)) ||
+                    ((reportInvalid || !prior) && raw === input.dataset.editStartValue)) {
+                    input.removeAttribute("aria-invalid");
+                    if (reportInvalid && prior) setEditableValue(input, quantityText(prior.value));
+                    updateSaveControls();
+                    return;
+                }
                 if (!validAmount(raw)) {
                     if (reportInvalid) {
                         input.setAttribute("aria-invalid", "true");
@@ -2044,14 +2053,21 @@ def install_object_detail_input_guard(
                     return;
                 }
                 input.removeAttribute("aria-invalid");
-                if (!draft.has(key) && Number(raw) === Number(input.dataset.editStartValue)) {
-                    updateSaveControls();
-                    return;
-                }
+                const row = input.closest("[data-material-preview]");
+                const required = rowField(row, "required_material");
+                const overridesPreview = ctx.field === "purchase_quantity" && required && draft.has(editKey(contextFor(required)));
                 const pending = activeSave?.edits.find(edit => editKey(edit) === key);
                 delete input.dataset.materialPreviewValue;
-                if (!pending && Number(raw) === Number(input.dataset.originalValue)) draft.delete(key);
+                if (!pending && !overridesPreview && Number(raw) === Number(input.dataset.originalValue)) draft.delete(key);
                 else draft.set(key, {field: ctx.field, lineId: ctx.lineId, value: raw});
+                if (ctx.field === "required_material" && draft.has(key)) {
+                    const purchase = rowField(row, "purchase_quantity");
+                    if (purchase) {
+                        draft.delete(editKey(contextFor(purchase)));
+                        purchase.removeAttribute("aria-invalid");
+                    }
+                }
+                if (reportInvalid) setEditableValue(input, quantityText(raw));
                 previewMaterials();
                 updateSaveControls();
             }
@@ -2113,10 +2129,10 @@ def install_object_detail_input_guard(
                         const input = rowField(row, field);
                         if (!input || base[field + "_value"] == null) continue;
                         delete input.dataset.materialPreviewValue;
-                        input.dataset.originalValue = field === "required_material" && base.required_material_unit === "m²"
-                            ? Number(base[field + "_value"]).toFixed(1) : numberText(base[field + "_value"]);
+                        input.dataset.originalValue = quantityText(base[field + "_value"]);
                         if (input === current?.input) continue;
-                        setEditableValue(input, draft.get(editKey(contextFor(input)))?.value ?? input.dataset.originalValue);
+                        const pending = draft.get(editKey(contextFor(input)));
+                        setEditableValue(input, pending ? quantityText(pending.value) : input.dataset.originalValue);
                     }
                 }
                 const final = parentDoc.querySelector(".object-detail-final");
@@ -2143,8 +2159,8 @@ def install_object_detail_input_guard(
                     }
                     approval.replaceWith(next);
                 }
-                if (current && validAmount(current.value) &&
-                    (draft.has(editKey(current)) || current.value !== current.input.dataset.editStartValue)) {
+                if (current && validAmount(current.value) && current.value !== current.input.dataset.editStartValue &&
+                    !draft.has(editKey(current)) && !submitted.some(edit => editKey(edit) === editKey(current))) {
                     if (Number(current.value) === Number(current.input.dataset.originalValue)) draft.delete(editKey(current));
                     else draft.set(editKey(current), {field: current.field, lineId: current.lineId, value: current.value});
                 }
@@ -2364,8 +2380,11 @@ def install_object_detail_input_guard(
                 }
                 const ctx = inputContext(event);
                 if (!ctx) return;
+                if (materialField(ctx.field)) {
+                    ctx.input.dataset.editStartValue = materialValue(ctx.input);
+                    return;
+                }
                 ctx.input.dataset.editStartValue = normalizeInputValue(ctx.input);
-                if (materialField(ctx.field)) return;
                 if (!ctx.input.classList.contains("object-detail-cell-input--text")) {
                     setEditableValue(ctx.input, ctx.input.dataset.editStartValue);
                 }

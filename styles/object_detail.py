@@ -252,8 +252,8 @@ def apply_object_detail_css() -> None:
         }
 
         .object-detail-table[data-section="material"].object-detail-table--cols-6 {
-            --detail-grid: minmax(175px, 2.35fr) minmax(88px, 0.95fr) minmax(96px, 1.05fr)
-                           minmax(70px, 0.75fr) minmax(85px, 0.95fr) minmax(70px, 0.75fr);
+            --detail-grid: minmax(175px, 2.35fr) minmax(106px, 1fr) minmax(96px, 1.05fr)
+                           minmax(70px, 0.75fr) minmax(92px, 0.95fr) minmax(70px, 0.75fr);
         }
 
         .object-detail-table--cols-6[data-section="material"] :is(.object-detail-table-head, .object-detail-table-cell) {
@@ -410,7 +410,7 @@ def apply_object_detail_css() -> None:
         }
 
         .object-detail-material-input {
-            width: min(100%, 80px);
+            width: min(100%, 94px);
             min-height: 34px;
             border: 1px solid rgba(42, 31, 44, 0.16);
             border-radius: 8px;
@@ -444,7 +444,7 @@ def apply_object_detail_css() -> None:
         }
 
         .object-detail-material-input--bare {
-            width: min(100%, 64px);
+            width: min(100%, 76px);
         }
 
         .object-detail-material-input--required {
@@ -671,7 +671,7 @@ def apply_object_detail_css() -> None:
             }
 
             .object-detail-table--cols-6[data-section="material"] :is(.object-detail-table-head-row, .object-detail-table-row) {
-                min-width: 584px;
+                min-width: 609px;
             }
 
             .object-detail-elements-table .object-detail-table-head-row,
