@@ -12,7 +12,23 @@ Detection and Parts Check code and the same Material Engine calculation.
 Verification: 89 focused tests passed. Browser fixtures at 1280 and 390 px
 verified the green state after confirmation, stable button width, new
 edits, revert, failed save and retry, clean approval, approval with a
-draft and return navigation. Authenticated 9.22 acceptance remains open.
+draft and return navigation. The owner accepted the Saved interaction in
+production on 2026-11-14. The remote tag `estimation-v9.22-checkpoint`
+pins `f7a56c4`, served by Railway deployment
+`479e9f0e-c230-4b72-a877-49ec781e8b62` and Cloudflare. Authenticated
+Approve remains open.
+
+Save latency is open. The owner reported about 6 s from clicking Save
+to seeing confirmation for a one-field Lev1 edit. Production run
+`run_31435630873547c781ab00abc423a07a` persisted the 600 mm slide purchase
+quantity as 30. The object total was updated 1.980 s after the override
+write and the Material Plan 2.697 s after that same write. These are
+database intervals. The authenticated fragment checks scope, object and
+plan before submitting pricing. After pricing it reloads Object Detail
+and reruns the fragment to deliver the receipt. There are no timestamps
+for the click, worker queue delay or browser acknowledgement in this
+witness. Measure each stage before optimizing. The Lev1 material audit
+is deferred until the owner resumes it.
 
 ## Estimation 9.21 Object Detail and scoped material edits
 

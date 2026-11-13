@@ -21,9 +21,11 @@ See the [9.21 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#es
    handler and server entry point. Parts Check findings remain in the
    saved report. Verify that an Adda object with a `needs_review` plan
    can be approved and the approval persists on return to Objects.
-2. VERIFIED LOCALLY, P1, USER REQUEST. Keep Back to Objects, Save changes
-   and APPROVE in the footer. Save changes is disabled without a draft and shows a green Saved
-   after server confirmation until the next edit. Save persists the draft
+2. COMPLETED FOR SAVE FEEDBACK, P1, USER REQUEST. The owner accepted the
+   Saved state on 9.22 at `estimation-v9.22-checkpoint`. Keep Back to Objects,
+   Save changes and APPROVE in the footer. Save changes is disabled without
+   a draft and shows a green Saved after confirmation until the next edit.
+   Save persists the draft
    without approving or refreshing the page. APPROVE with a draft saves
    valid edits first. A failed save leaves the draft visible and actionable.
    Verify pristine, edited, saving, saved and failed states, including
@@ -46,6 +48,13 @@ See the [9.21 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#es
    affects prior charges. Current 9.17 allocates by net area and clears
    all object approvals on material edits. See the
    [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#shared-sheet-purchasing-and-review-status).
+
+PENDING, P1, USER REPORT. Reduce authenticated Object Detail Save latency
+for a one-field edit. The owner observed about 6 s on Lev1 after 9.22.
+The recorded override-to-plan interval was 2.697 s. Measure from click
+through request, validation, queue, calculation and publication, then
+detail read and browser receipt. Preserve the in-place Saved state and
+scope the edit to the affected position.
 
 VERIFIED on a fresh Lev2 production Upload. Parts Check completed in
 57.094 seconds and the private reader returned 107/107 matching control
@@ -5803,7 +5812,7 @@ cause from the local screenshot alone.
   untouched quantities, saves once, and displays read-only unit prices.
   Runtime `estimation-v9.14-checkpoint`. See the
   [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-914-production-checkpoint).
-- Lev1 Parts and Material Demand audit. ACTIVE, P1, USER REQUEST. After
+- Lev1 Parts and Material Demand audit. DEFERRED BY OWNER, P1, USER REQUEST. After
   the 9.14 repeatability checkpoint, trace the saved run
   `run_f837297d641e489880b162626eaf5916` for unexpected Parts counts,
   repeated sheet material variants, and 10 Assumption Fallback rows.

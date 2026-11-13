@@ -3,7 +3,9 @@
 Estimation 9.22, work 3.17.4.6. The three Object Detail footer actions
 keep their positions. Save changes confirms the write in place with a
 green Saved state. APPROVE is uppercase. The 89 focused tests and both
-browser fixture widths passed. See the
+browser fixture widths passed. The owner accepted the Saved interaction
+in production. Remote tag `estimation-v9.22-checkpoint` pins `f7a56c4`.
+Save latency remains open. See the
 [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-922-object-detail-save-feedback).
 
 Estimation 9.21, work 3.17.4.6. Rebuilt Object Detail and scoped
