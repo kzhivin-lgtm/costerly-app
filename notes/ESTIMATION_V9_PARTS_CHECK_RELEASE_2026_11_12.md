@@ -1,5 +1,44 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.19 Scoped material edits and Front recovery
+
+Production Lev1 `run_aefe2128a4dd472fb5995eb1a5735fcd` returned one
+object with the same six View boxes and dimensional inventory as the
+9.17 witness. It misread four contours on the side and rear projections
+as drawer fronts. That yielded seven Blocks, seven drawers, 65 Parts
+rows, 35 rows with missing dimensions and 16 purchase lines, including
+10 Assumption Fallbacks. Repricing the saved report with the checkpoint
+catalog and no override gave 8,469.86 ILS for materials. The persisted
+148-piece drawer-slide norm changed the slide purchase from 7 sets to
+74 sets and increased the materials total to 14,901.86 ILS. The edit
+was persisted at 22:05:51 and the updated Material Plan at 22:06:33.
+Production lacked substage timings for that 42-second interval.
+
+A drawer-bank match now carries its host View when the supported top
+is linked through Detection. Front and Planner use the same native
+support evidence for either supported-top route. This prevents side
+and rear profiles from expanding into false drawer blocks. Fresh model
+replies on the saved failing Detection input yielded 3 Blocks, 3 drawers,
+2 supports and 29 Parts rows with complete dimensions. The material
+plan has 11 lines and costs 3,893.42 ILS. Finish and thickness variation
+remains, including the seat material. Offline controls preserve Lev2
+and both Adda objects. Detection code stays at V8.4.29.
+
+Required Material shows square metres to one decimal in and out of focus.
+Returning to the displayed baseline clears the draft while retaining the
+original precise value. Approve with a saved total writes the approval and
+returns through the existing Objects cache. A saved stock line can replan
+a sheet, piece or direct norm using its selected offer and existing
+allocations. Only affected material and object totals are republished.
+Broader changes or lines without adequate saved pricing evidence use the
+full existing recalculation. The allocation rule for shared stock stays
+unchanged. On saved Lev1 and Adda, scoped repricing matched the full
+calculation for the edited runner, LDSP sheet and shared mirror. Browser
+checks at 1280 and 390 px covered decimal entry, revert and approval.
+
+Private witness `backups/estimation-v9.18-lev1-material-regression-2026-11-13/`
+preserves the production report, edit, purchases and replay comparisons.
+
 ## Estimation 9.18 Object Detail approval and material editing
 
 Object Detail approves with the available prices. The Material Plan

@@ -1959,12 +1959,14 @@ def install_object_detail_input_guard(
             let activeSave = null;
             const materialField = field => field === "required_material" || field === "purchase_quantity";
             const editKey = ctx => JSON.stringify([ctx.field, ctx.lineId]);
-            const materialValue = input => String(editableValue(input) || "").trim();
+            const materialValue = input => String(editableValue(input) || "").trim().replace(",", ".");
             const validAmount = raw => /^(?:\\d+(?:\\.\\d{0,4})?|\\.\\d{1,4})$/.test(raw)
                 && Number(raw) > 0 && Number(raw) < 1e10;
             const rowPreview = row => JSON.parse(row.dataset.materialPreview);
-            const quantityText = value => Number(value) > 0 && Number(value) < 0.5
-                ? "<1" : String(Math.round(Number(value)));
+            const areaInput = input => ["m²", "m2"].includes(input?.parentElement?.dataset.unit);
+            const quantityText = (value, input) => areaInput(input)
+                ? (Math.round(Number(value) * 10) / 10).toFixed(1)
+                : Number(value) > 0 && Number(value) < 0.5 ? "<1" : String(Math.round(Number(value)));
             const contextFor = input => ({input, field: input.dataset.field, lineId: input.dataset.lineId});
             const objectQuantityContext = input => ({input, field: "object_quantity", lineId: "__object__"});
             const invalidMaterial = () => objectQuantityInput()?.getAttribute("aria-invalid") === "true" ||
@@ -2048,10 +2050,14 @@ def install_object_detail_input_guard(
                 const raw = materialValue(input);
                 const key = editKey(ctx);
                 const prior = draft.get(key);
-                if ((prior && Number(raw) === Number(prior.value)) ||
-                    ((reportInvalid || !prior) && raw === input.dataset.editStartValue)) {
+                const previous = prior?.value ?? input.dataset.materialPreviewValue ?? input.dataset.originalValue;
+                const unchanged = raw !== "" && (raw === input.dataset.editStartValue || Number(raw) === Number(previous));
+                const baseline = input.dataset.originalValue;
+                const restored = raw !== "" && baseline != null && (Number(raw) === Number(baseline) ||
+                    (areaInput(input) && Number(raw) === Number(quantityText(baseline, input))));
+                if ((prior && Number(raw) === Number(prior.value) && !restored) || (!prior && unchanged)) {
                     input.removeAttribute("aria-invalid");
-                    if (reportInvalid && materialField(ctx.field)) setEditableValue(input, quantityText(prior?.value ?? raw));
+                    if (reportInvalid && materialField(ctx.field)) setEditableValue(input, quantityText(previous ?? raw, input));
                     updateSaveControls();
                     return;
                 }
@@ -2074,8 +2080,8 @@ def install_object_detail_input_guard(
                 const overridesPreview = ctx.field === "purchase_quantity" && required && draft.has(editKey(contextFor(required)));
                 const pending = activeSave?.edits.find(edit => editKey(edit) === key);
                 delete input.dataset.materialPreviewValue;
-                if (!pending && !overridesPreview && Number(raw) === Number(input.dataset.originalValue)) draft.delete(key);
-                else draft.set(key, {field: ctx.field, lineId: ctx.lineId, value: raw});
+                if (!pending && !overridesPreview && restored) draft.delete(key);
+                else draft.set(key, {field: ctx.field, lineId: ctx.lineId, value: restored && !overridesPreview ? baseline : raw});
                 if (ctx.field === "required_material" && draft.has(key)) {
                     const purchase = rowField(row, "purchase_quantity");
                     if (purchase) {
@@ -2083,7 +2089,7 @@ def install_object_detail_input_guard(
                         purchase.removeAttribute("aria-invalid");
                     }
                 }
-                if (reportInvalid) setEditableValue(input, objectQuantity ? raw : quantityText(raw));
+                if (reportInvalid) setEditableValue(input, objectQuantity ? raw : quantityText(raw, input));
                 previewMaterials();
                 updateSaveControls();
             }
@@ -2159,7 +2165,7 @@ def install_object_detail_input_guard(
                         input.dataset.originalValue = String(base[field + "_value"]);
                         if (input === current?.input) continue;
                         const pending = draft.get(editKey(contextFor(input)));
-                        setEditableValue(input, quantityText(pending?.value ?? input.dataset.originalValue));
+                        setEditableValue(input, quantityText(pending?.value ?? input.dataset.originalValue, input));
                     }
                 }
                 const final = parentDoc.querySelector(".object-detail-final");
@@ -2396,7 +2402,7 @@ def install_object_detail_input_guard(
                     const pending = draft.get(editKey(ctx));
                     const exact = pending?.value ?? ctx.input.dataset.materialPreviewValue ?? ctx.input.dataset.originalValue;
                     if (exact != null && ctx.input.getAttribute("aria-invalid") !== "true") {
-                        const editable = String(Number(Number(exact).toFixed(4)));
+                        const editable = areaInput(ctx.input) ? quantityText(exact, ctx.input) : String(Number(Number(exact).toFixed(4)));
                         if (editable !== materialValue(ctx.input)) setEditableValue(ctx.input, editable);
                     }
                     ctx.input.dataset.editStartValue = materialValue(ctx.input);
@@ -2445,7 +2451,7 @@ def install_object_detail_input_guard(
                 }
                 const allowedKeys = new Set([
                     "Backspace", "Delete", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
-                    "Home", "End", "Tab", "Escape", ".",
+                    "Home", "End", "Tab", "Escape", ".", ",",
                 ]);
                 if (event.metaKey || event.ctrlKey || event.altKey || allowedKeys.has(event.key)) return;
                 if (!/^[0-9]$/.test(event.key)) event.preventDefault();
@@ -2459,7 +2465,7 @@ def install_object_detail_input_guard(
                 }
                 const ctx = inputContext(event);
                 if (!ctx || ctx.input.classList.contains("object-detail-cell-input--text")) return;
-                if (event.data && /[^0-9.]/.test(event.data)) event.preventDefault();
+                if (event.data && /[^0-9.,]/.test(event.data)) event.preventDefault();
             }
 
             function handleInput(event) {
@@ -2480,7 +2486,7 @@ def install_object_detail_input_guard(
                 if (ctx.input.classList.contains("object-detail-cell-input--text")) return;
                 event.preventDefault();
                 const text = event.clipboardData ? event.clipboardData.getData("text") : "";
-                parentDoc.execCommand("insertText", false, cleanNumber(text));
+                parentDoc.execCommand("insertText", false, cleanNumber(text.replace(",", ".")));
             }
 
             function handleBlur(event) {
@@ -2585,7 +2591,8 @@ def install_object_detail_input_guard(
                     event.preventDefault();
                     event.stopImmediatePropagation();
                     if (invalidMaterial()) updateSaveControls("Correct the highlighted quantity before approving.");
-                    else if (!activeSave) submitDraft(true);
+                    else if (activeSave) activeSave.approveAfterSave = true;
+                    else submitDraft(true);
                     return;
                 }
                 if (!button || parentWindow[SUBMITTING_KEY]) return;

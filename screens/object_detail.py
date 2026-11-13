@@ -303,7 +303,7 @@ def _approve_current_object_and_return(
     object_id: str,
     run_id: str | None = None,
     object_key: str | None = None,
-    recalculate: bool = True,
+    recalculate: bool = False,
 ) -> None:
     user_id = str(st.session_state.get("auth_user_id") or "")
     if user_id:
@@ -340,12 +340,17 @@ def _approve_current_object_and_return(
             approved_object_keys.add(object_key or object_id)
             st.session_state.screen = "objects"
             return
-    approve_object_estimate(
-        estimate_id=estimate_id,
-        object_id=object_id,
-        recalculate=recalculate,
-    )
-    _mark_objects_estimation_dirty(estimate_id)
+    try:
+        approve_object_estimate(
+            estimate_id=estimate_id,
+            object_id=object_id,
+            recalculate=recalculate,
+        )
+    except Exception:
+        _LOG.exception("Could not approve object %s in estimate %s", object_id, estimate_id)
+        st.session_state.object_detail_approval_error = "Could not approve the object. Please try again."
+        return
+    invalidate_object_detail_cache(estimate_id)
     approved_object_keys = st.session_state.setdefault("approved_object_keys", set())
     approved_object_keys.add(object_key or object_id)
     st.session_state.screen = "objects"

@@ -96,6 +96,7 @@ def test_material_purchase_table_shows_demand_and_purchase_without_allocation_la
 
     assert ">A</span><span class=\"object-detail-material-name\">Veneered MDF 18 mm</span>" in values[0]
     assert "required_material" in values[1]
+    assert '>5.2</div><span class="object-detail-material-input-unit">m²</span>' in values[1]
     assert "object-detail-purchase-unit" in values[2]
     assert "₪200" in values[3]
     assert 'data-original-value="5.2"' in values[1]
@@ -215,7 +216,10 @@ def test_object_approval_uses_existing_costs_without_querying_material_plan(monk
     approved = []
     monkeypatch.setattr(estimation, "company_auth_enabled", lambda: False)
     monkeypatch.setattr(estimation, "get_supabase_client", lambda: object())
-    monkeypatch.setattr(estimation, "_recalculate_object_estimate_totals", lambda *_args, **_kwargs: None)
+    def unexpected_recalculation(*_args, **_kwargs):
+        raise AssertionError("Approval recalculated a saved total")
+
+    monkeypatch.setattr(estimation, "_recalculate_object_estimate_totals", unexpected_recalculation)
     monkeypatch.setattr(estimation, "update_rfq_object_estimate_approved", lambda _, **values: approved.append(values))
 
     def unexpected_plan_read(*_args, **_kwargs):

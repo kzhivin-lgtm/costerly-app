@@ -866,7 +866,7 @@ def approve_object_estimate(
     *,
     estimate_id: str,
     object_id: str,
-    recalculate: bool = True,
+    recalculate: bool = False,
 ) -> None:
     """Mark one object estimate approved in Supabase."""
     client = get_supabase_client()
@@ -1018,6 +1018,8 @@ def save_object_detail_material_edits(
             object_quantity = _number(edit.get("value"), 0)
             if not isfinite(object_quantity) or not 0 < object_quantity <= 1_000_000 or object_quantity != round(object_quantity, 3):
                 raise ValueError("Enter a positive object quantity with up to three decimal places.")
+    if object_quantity == current_quantity:
+        object_quantity = None
     if object_quantity is not None:
         current_quantity = object_quantity
     for edit in edits:
@@ -1043,21 +1045,24 @@ def save_object_detail_material_edits(
         if line_id.startswith("__material_selection__:"):
             key = line_id.removeprefix("__material_selection__:")
             norms = _material_norms_from_plan(plan, selection_key=key) if key in owned else {}
-            if key in owned:
-                auto_purchase.add(key)
+            affected_keys = {key} if key in owned else set()
         elif line_id.startswith("__material_requirement__:"):
             requirement_id = line_id.removeprefix("__material_requirement__:")
             norms = {key: val for key, val in _material_norms_from_plan(plan).items() if key[1] == requirement_id}
-            auto_purchase.update(key for key, line in owned.items() if any(
+            affected_keys = {key for key, line in owned.items() if any(
                 allocation.get("object_id") == object_id and allocation.get("material_requirement_id") == requirement_id
                 for allocation in line["allocations"]
-            ))
+            )}
         else:
             norms = {}
+            affected_keys = set()
         requirements = {key[1]: val for key, val in norms.items() if key[0] == object_id}
         if not requirements or len({unit for unit, _ in requirements.values()}) != 1:
             raise ValueError("This material row has no editable requirement.")
         total = sum(quantity for _, quantity in requirements.values())
+        if object_quantity is None and abs(amount - total) < 1e-8:
+            continue
+        auto_purchase.update(affected_keys)
         per_item = amount / current_quantity
         ordered = sorted(requirements.items(), key=lambda item: item[1][1])
         shares = [(key, unit, round(per_item * quantity / total, 4))
@@ -1071,6 +1076,10 @@ def save_object_detail_material_edits(
                 "material_requirement_id": requirement_id, "company_id": company_id,
                 "quantity_per_item": quantity, "unit": unit, "source_line_id": None}
 
+    if not norm_rows and not purchases and object_quantity is None:
+        receipt = Future()
+        receipt.set_result(plan)
+        return receipt
     if object_quantity is not None:
         update_object_quantity(estimate_id=estimate_id, run_id=str(obj["run_id"]), object_id=object_id,
                                quantity=object_quantity, queue_recalculation=False)
@@ -1084,6 +1093,28 @@ def save_object_detail_material_edits(
             client, estimate_id=estimate_id, company_id=company_id, selection_keys=auto_purchase - purchases.keys(),
         )
     if norm_rows or object_quantity is not None:
+        # A quantity change can affect every material. A pure norm edit
+        # only touches stock lines whose complete allocation is saved.
+        edited_requirements = set(norm_rows)
+        norm_keys = set()
+        owners_by_requirement: dict[str, set[str]] = {}
+        for key, line in owned.items():
+            for allocation in line["allocations"]:
+                requirement = allocation.get("material_requirement_id")
+                if allocation.get("object_id") == object_id and requirement in edited_requirements:
+                    owners_by_requirement.setdefault(requirement, set()).add(key)
+                    norm_keys.add(key)
+        scoped_norm = (object_quantity is None and set(owners_by_requirement) == edited_requirements
+                       and all(len(keys) == 1 for keys in owners_by_requirement.values())
+                       and not (purchases.keys() - norm_keys))
+        if scoped_norm:
+            reset_rfq_object_estimate_approvals(client, estimate_id=estimate_id)
+            from use_cases.estimation_runtime import queue_material_plan_recalculation
+
+            return queue_material_plan_recalculation(
+                estimate_id=estimate_id, company_id=company_id, run_id=str(obj["run_id"]),
+                norm_keys=frozenset(norm_keys),
+            )
         return _invalidate_and_queue_material_plan(
             client, estimate_id=estimate_id, company_id=company_id, run_id=str(obj["run_id"]),
             reason_code="material_norm_changed" if norm_rows else "object_quantity_changed", previous_plan=plan,
@@ -1252,21 +1283,21 @@ def apply_material_plan_allocations(
             str(object_context.get("company_id") or ""),
         ))
         primary_material_total, coating_material_total = _material_policy_base_totals(object_rows)
-        upsert_rfq_estimate_lines(
-            client,
-            lines=_material_policy_lines(
-                estimate_id=estimate_id,
-                object_id=object_id,
-                company_id=str(object_context.get("company_id") or ""),
-                settings=settings,
-                primary_material_total=primary_material_total,
-                coating_material_total=coating_material_total,
-            ),
+        policy_lines = _material_policy_lines(
+            estimate_id=estimate_id,
+            object_id=object_id,
+            company_id=str(object_context.get("company_id") or ""),
+            settings=settings,
+            primary_material_total=primary_material_total,
+            coating_material_total=coating_material_total,
         )
+        upsert_rfq_estimate_lines(client, lines=policy_lines)
         _recalculate_object_estimate_totals(
             client,
             estimate_id=estimate_id,
             object_id=object_id,
+            **({"object_row": object_context, "settings": settings, "lines_df": object_rows,
+                "published_policy_lines": policy_lines} if changed_requirements is not None else {}),
         )
         update_rfq_object_estimate_progress(
             client,
@@ -1640,43 +1671,43 @@ def _recalculate_object_estimate_totals(
     estimate_id: str,
     object_id: str,
     approved: bool | None = None,
+    object_row: dict[str, Any] | None = None,
+    settings: dict[str, Any] | None = None,
+    lines_df: Any = None,
+    published_policy_lines: list[dict[str, Any]] | None = None,
 ) -> None:
-    objects_df = fetch_rfq_object_estimates(client, estimate_id)
-    matching = objects_df[objects_df["object_id"] == object_id]
-    if matching.empty:
-        return
-
-    object_row = matching.iloc[0].to_dict()
-    settings = _first_row(fetch_company_overhead_settings(client, str(object_row.get("company_id"))))
+    if object_row is None:
+        objects_df = fetch_rfq_object_estimates(client, estimate_id)
+        matching = objects_df[objects_df["object_id"] == object_id]
+        if matching.empty:
+            return
+        object_row = matching.iloc[0].to_dict()
+    if settings is None:
+        settings = _first_row(fetch_company_overhead_settings(client, str(object_row.get("company_id"))))
     vat_percent = _number(settings.get("vat_percent"), 18)
     employer_load_percent = _number(settings.get("employer_load_percent"), 25)
 
-    lines_df = fetch_rfq_estimate_lines_for_object(
-        client,
-        estimate_id=estimate_id,
-        object_id=object_id,
-    )
-    primary_material_total, coating_material_total = _material_policy_base_totals(lines_df)
-    for _, item in lines_df.iterrows():
-        row = item.to_dict()
-        if row.get("section") != "material" or row.get("source") != "pricing_policy":
-            continue
-        raw_agent_json = row.get("raw_agent_json") or {}
-        percent = _number(
-            raw_agent_json.get("percent") if isinstance(raw_agent_json, dict) else None,
-            0,
+    if lines_df is None:
+        lines_df = fetch_rfq_estimate_lines_for_object(
+            client, estimate_id=estimate_id, object_id=object_id,
         )
-        basis = raw_agent_json.get("basis") if isinstance(raw_agent_json, dict) else None
-        base = coating_material_total if basis == "coatings" else primary_material_total
-        amount = round(base * percent / 100, 2)
-        update_rfq_estimate_line(
-            client,
-            estimate_id=estimate_id,
-            line_id=str(row.get("line_id") or ""),
-            values={"cost": amount, "updated_at": datetime.now(UTC).isoformat()},
-        )
-        lines_df.loc[lines_df["line_id"] == row.get("line_id"), "cost"] = amount
-    material_total = 0.0
+    if published_policy_lines is None:
+        primary_material_total, coating_material_total = _material_policy_base_totals(lines_df)
+        for _, item in lines_df.iterrows():
+            row = item.to_dict()
+            if row.get("section") != "material" or row.get("source") != "pricing_policy":
+                continue
+            raw_agent_json = row.get("raw_agent_json") or {}
+            percent = _number(raw_agent_json.get("percent") if isinstance(raw_agent_json, dict) else None, 0)
+            basis = raw_agent_json.get("basis") if isinstance(raw_agent_json, dict) else None
+            base = coating_material_total if basis == "coatings" else primary_material_total
+            amount = round(base * percent / 100, 2)
+            update_rfq_estimate_line(
+                client, estimate_id=estimate_id, line_id=str(row.get("line_id") or ""),
+                values={"cost": amount, "updated_at": datetime.now(UTC).isoformat()},
+            )
+            lines_df.loc[lines_df["line_id"] == row.get("line_id"), "cost"] = amount
+    material_total = sum(row["cost"] for row in published_policy_lines or ())
     labor_base_total = 0.0
     manufacturing_total = 0.0
     overhead_total = 0.0
@@ -1686,6 +1717,8 @@ def _recalculate_object_estimate_totals(
         section = str(row.get("section") or "")
         cost = _number(row.get("cost"), 0)
         if section == "material":
+            if published_policy_lines is not None and row.get("source") == "pricing_policy":
+                continue
             material_total += cost
             checked_material_plan |= row.get("source") == "parts_check"
         elif section == "labor":

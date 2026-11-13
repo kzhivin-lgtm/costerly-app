@@ -14,6 +14,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from hashlib import sha256
 import json
 import re
+from types import SimpleNamespace
 from typing import Any, Mapping, Sequence
 
 from use_cases.material_identity_resolution import _hard_compatibility, normalize_material_phrase
@@ -170,8 +171,6 @@ def reprice_material_purchase_snapshot(
     snapshot: Mapping[str, Any], overrides: Mapping[str, Mapping[str, Any]],
 ) -> tuple[dict[str, Any], set[tuple[str, str]]]:
     """Change only purchase quantities and their cost shares, keeping demand intact."""
-    from types import SimpleNamespace
-
     costs = {
         (row["object_id"], row["material_requirement_id"]): Decimal(str(row["cost_ex_vat"]))
         for row in snapshot["object_material_costs"]
@@ -203,6 +202,91 @@ def reprice_material_purchase_snapshot(
         lines.append({**line, "purchase_quantity": float(amount), "total_cost": float(new_total),
                       "purchase_quantity_is_manual": True})
     return {**snapshot, "lines": lines, "object_material_costs": [
+        {"object_id": oid, "material_requirement_id": req, "cost_ex_vat": float(cost)}
+        for (oid, req), cost in sorted(costs.items())
+    ]}, changed
+
+
+def replan_material_norm_snapshot(snapshot, norms, object_quantities, purchases, *, changed_keys):
+    """Replan only changed stock lines, using their saved purchase format and price."""
+    costs = {(row["object_id"], row["material_requirement_id"]): Decimal(str(row["cost_ex_vat"]))
+             for row in snapshot["object_material_costs"]}
+    changed = set()
+    lines = []
+    seen = set()
+    for line in snapshot["lines"]:
+        key = line["selection_key"]
+        if key not in changed_keys:
+            lines.append(line)
+            continue
+        seen.add(key)
+        kind = line["purchase_kind"]
+        if kind not in {"sheet", "piece", "direct"} or line["authority"] not in {"company", "israel_reference"}:
+            return None
+        candidate = MaterialSupplyCandidate(
+            candidate_id=line["candidate_id"], material_family=key.split("|", 1)[0], selection_key=key,
+            purchase_kind=kind, price_per_purchase_unit=line["price_per_purchase_unit"], currency=line["currency"],
+            purchasable_dimensions=line["purchasable_dimensions"], package_quantity=line["package_quantity"] or 1,
+            authority=line["authority"], display_name=line["display_name"],
+        )
+        demands, old_weights, replaced, retained_allocations = [], {}, set(), {}
+        for row in line["allocations"]:
+            owner = (row["object_id"], row["material_requirement_id"])
+            common = {"object_id": owner[0], "material_requirement_id": owner[1],
+                      "material_family": candidate.material_family, "selection_key": key,
+                      "compatible_candidate_ids": (candidate.candidate_id,)}
+            weight = _allocation_weight(SimpleNamespace(**{
+                name: _decimal(row.get(name)) for name in ("length_mm", "width_mm", "area_mm2", "volume_mm3", "quantity")
+            }))
+            old_weights[owner] = old_weights.get(owner, Decimal("0")) + weight
+            if owner in norms:
+                if owner in replaced:
+                    continue
+                override = norms[owner]
+                per_item = _positive(override.get("quantity_per_item"))
+                quantity = _positive(object_quantities.get(owner[0]))
+                if per_item is None or quantity is None:
+                    return None
+                total = per_item * quantity
+                demand = _demand_from_net_requirement(
+                    demand_id=f"{owner[0]}:{owner[1]}:manual-norm", object_id=owner[0], requirement_id=owner[1],
+                    material_family=candidate.material_family, selection_key=key, total_quantity=total,
+                    unit=override["unit"], candidate_ids=(candidate.candidate_id,),
+                )
+                if demand is None or (kind == "sheet") != (demand.area_mm2 is not None):
+                    return None
+                replaced.add(owner)
+            else:
+                demand = MaterialDemand(**common, demand_id=row["demand_id"], unit="piece",
+                                        quantity=row.get("quantity") or 1, area_mm2=row.get("area_mm2"))
+                if kind == "sheet" and demand.area_mm2 is None:
+                    return None
+                retained_allocations[row["demand_id"]] = row
+            demands.append(demand)
+        if not replaced or any(costs.get(owner) is None for owner in old_weights):
+            return None
+        plan = plan_material_purchases(demands=demands, candidates=(candidate,))
+        plan = _apply_purchase_quantity_overrides(plan, purchases)
+        if plan.status != "planned":
+            return None
+        result = MaterialEngineResult(plan=plan, demand_count=len(demands), candidate_count=1,
+                                      candidate_authorities=((candidate.candidate_id, line["authority"]),),
+                                      candidate_display_names=((candidate.candidate_id, line["display_name"]),),
+                                      candidate_purchase_forms=((candidate.candidate_id, line),))
+        rebuilt = material_plan_snapshot(result)
+        old = _split_purchase_cost(Decimal(str(line["total_cost"])), old_weights)
+        for row in rebuilt["object_material_costs"]:
+            owner = (row["object_id"], row["material_requirement_id"])
+            costs[owner] += Decimal(str(row["cost_ex_vat"])) - old[owner]
+            changed.add(owner)
+        (new_line,) = rebuilt["lines"]
+        new_line["allocations"] = [retained_allocations.get(row["demand_id"], row) for row in new_line["allocations"]]
+        lines.append(new_line)
+    if seen != set(changed_keys):
+        return None
+    return {**snapshot, "lines": lines, "input_fingerprint": None,
+            "reason_codes": sorted({*snapshot["reason_codes"], "manual_material_norm_without_geometry"}),
+            "object_material_costs": [
         {"object_id": oid, "material_requirement_id": req, "cost_ex_vat": float(cost)}
         for (oid, req), cost in sorted(costs.items())
     ]}, changed

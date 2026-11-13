@@ -34,13 +34,15 @@ def _money(value: object) -> str:
         return _escape(value)
 
 
-def _material_quantity_text(value: object) -> str:
+def _material_quantity_text(value: object, *, unit: str = "") -> str:
     try:
         amount = float(value)
     except (TypeError, ValueError):
         return ""
     if not math.isfinite(amount):
         return ""
+    if unit in {"m²", "m2"}:
+        return f"{math.floor(amount * 10 + 0.5) / 10:.1f}"
     rounded = math.floor(amount + 0.5)
     return "<1" if 0 < amount < 0.5 else str(rounded)
 
@@ -105,10 +107,11 @@ def _material_input_html(*, value: object, field: str, line_id: str, unit: str) 
         f'<span class="object-detail-material-input-unit">{_escape(unit)}</span>'
         if has_unit else ""
     )
+    display_value = _material_quantity_text(value, unit=unit)
     return (
-        f'<span class="object-detail-material-input{modifier}">'
-        + (_input_html(_material_quantity_text(value), "number", field, line_id, original_value=value) if line_id else
-           f'<span class="object-detail-cell-input object-detail-cell-input--number">{_escape(_material_quantity_text(value))}</span>')
+        f'<span class="object-detail-material-input{modifier}" data-unit="{_escape(unit) if unit else ""}">'
+        + (_input_html(display_value, "number", field, line_id, original_value=value) if line_id else
+           f'<span class="object-detail-cell-input object-detail-cell-input--number">{_escape(display_value)}</span>')
         + unit_html
         + "</span>"
     )
