@@ -438,7 +438,7 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
     }
 
 
-def build_cb_material_facts(*, parts_report, input_rows, catalog_context):
+def build_cb_material_facts(*, parts_report, input_rows, catalog_context, object_ids=None):
     """Bind the checked document to the same immutable inputs and catalog tenant."""
     facts = {}
     run_ids = set()
@@ -454,10 +454,14 @@ def build_cb_material_facts(*, parts_report, input_rows, catalog_context):
             raise ValueError("Parts costing requires matching catalog tenant and unique object inputs")
         facts[item["object_id"]] = item
         run_ids.add(item["run_id"])
-    if len(run_ids) != 1 or facts.keys() != parts_report["objects"].keys():
-        raise ValueError("Parts costing requires every immutable input from the same run")
-    if "input_ids" in parts_report and sorted(parts_report["input_ids"]) != sorted(item["input_id"] for item in facts.values()):
-        raise ValueError("Parts Check input revisions differ from the material demand inputs")
+    expected_objects = parts_report["objects"].keys() if object_ids is None else object_ids
+    if len(run_ids) != 1 or facts.keys() != expected_objects:
+        raise ValueError("Parts costing requires matching immutable inputs from the same run")
+    if "input_ids" in parts_report:
+        checked_inputs = set(parts_report["input_ids"])
+        fact_inputs = {item["input_id"] for item in facts.values()}
+        if (object_ids is None and checked_inputs != fact_inputs) or not fact_inputs <= checked_inputs:
+            raise ValueError("Parts Check input revisions differ from the material demand inputs")
     return facts
 
 

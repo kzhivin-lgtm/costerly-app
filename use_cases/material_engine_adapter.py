@@ -10,10 +10,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from datetime import date
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_CEILING, ROUND_HALF_UP
 from hashlib import sha256
 import json
 import re
+from types import SimpleNamespace
 from typing import Any, Mapping, Sequence
 
 from use_cases.material_identity_resolution import _hard_compatibility, normalize_material_phrase
@@ -170,8 +171,6 @@ def reprice_material_purchase_snapshot(
     snapshot: Mapping[str, Any], overrides: Mapping[str, Mapping[str, Any]],
 ) -> tuple[dict[str, Any], set[tuple[str, str]]]:
     """Change only purchase quantities and their cost shares, keeping demand intact."""
-    from types import SimpleNamespace
-
     costs = {
         (row["object_id"], row["material_requirement_id"]): Decimal(str(row["cost_ex_vat"]))
         for row in snapshot["object_material_costs"]
@@ -190,10 +189,7 @@ def reprice_material_purchase_snapshot(
             if not allocation.get("material_requirement_id"):
                 continue
             key = (allocation["object_id"], allocation["material_requirement_id"])
-            weight = _allocation_weight(SimpleNamespace(**{
-                name: _decimal(allocation.get(name))
-                for name in ("length_mm", "width_mm", "area_mm2", "volume_mm3", "quantity")
-            }))
+            weight = _snapshot_allocation_weight(allocation)
             weights[key] = weights.get(key, Decimal("0")) + weight
         old = _split_purchase_cost(Decimal(str(line["total_cost"])), weights)
         new_total = amount * Decimal(str(line["price_per_purchase_unit"]))
@@ -206,6 +202,215 @@ def reprice_material_purchase_snapshot(
         {"object_id": oid, "material_requirement_id": req, "cost_ex_vat": float(cost)}
         for (oid, req), cost in sorted(costs.items())
     ]}, changed
+
+
+def _snapshot_allocation_weight(row: Mapping[str, Any]) -> Decimal:
+    from types import SimpleNamespace
+
+    return _allocation_weight(SimpleNamespace(**{
+        name: _decimal(row.get(name))
+        for name in ("length_mm", "width_mm", "area_mm2", "volume_mm3", "quantity")
+    }))
+
+
+def _material_quantity_sources(facts):
+    """Recover exact counts where a quantity edit crosses part rounding."""
+    totals, part_counts = {}, {}
+    for oid, item in facts.items():
+        for material in item["materials"]:
+            owner = oid, material["requirement_id"]
+            amount = _positive(material.get("quantity"))
+            if amount is not None:
+                totals[owner] = amount
+            for part in material.get("part_sources", ()):
+                count = _positive(part.get("quantity"))
+                if count is not None:
+                    part_counts[oid, part["part_id"]] = count
+    return totals, part_counts
+
+
+def _snapshot_material_demands(
+    line: Mapping[str, Any],
+    candidate: MaterialSupplyCandidate,
+    norms: Mapping[tuple[str, str], Mapping[str, Any]],
+    object_quantities: Mapping[str, Any],
+    quantity_ratios: Mapping[str, Decimal],
+    quantity_sources,
+) -> list[MaterialDemand] | None:
+    by_demand = {}
+    edited_owners = set()
+    kind = candidate.purchase_kind
+    totals, part_counts = quantity_sources
+    saved_weights = {}
+    for row in line["allocations"]:
+        key = row["object_id"], row["material_requirement_id"], row["demand_id"]
+        saved_weights[key] = saved_weights.get(key, Decimal("0")) + _snapshot_allocation_weight(row)
+    for allocation in line["allocations"]:
+        owner = (allocation["object_id"], allocation["material_requirement_id"])
+        common = {
+            "object_id": owner[0], "material_requirement_id": owner[1],
+            "material_family": candidate.material_family, "selection_key": candidate.selection_key,
+            "compatible_candidate_ids": (candidate.candidate_id,),
+        }
+        if owner in norms:
+            if owner in edited_owners:
+                continue
+            edited_owners.add(owner)
+            override = norms[owner]
+            per_item = _positive(override.get("quantity_per_item"))
+            count = _positive(object_quantities.get(owner[0]))
+            if per_item is None or count is None:
+                return None
+            demand = _demand_from_net_requirement(
+                demand_id=f"{owner[0]}:{owner[1]}:manual-norm", object_id=owner[0],
+                requirement_id=owner[1], material_family=candidate.material_family,
+                selection_key=candidate.selection_key, candidate_ids=(candidate.candidate_id,),
+                total_quantity=per_item * count, unit=override["unit"],
+            )
+            if demand is None:
+                return None
+            unit = _canonical_requirement_unit(demand.unit)
+            if kind == "sheet" and demand.area_mm2 is None and unit != "sheet":
+                return None
+            if kind in {"linear_stock", "linear_cut"} and demand.linear_length_mm is None:
+                return None
+            if kind == "volume_direct" and demand.volume_mm3 is None:
+                return None
+            if kind in {"piece", "direct"} and unit not in {"piece", "ea", "set", "pair", "dozen"}:
+                return None
+            by_demand[(*owner, demand.demand_id)] = demand
+            continue
+
+        demand_id = allocation["demand_id"]
+        key = (*owner, demand_id)
+        ratio = quantity_ratios.get(owner[0], Decimal("1"))
+        previous = by_demand.get(key)
+        length = _positive(allocation.get("length_mm"))
+        count = _positive(allocation.get("quantity"))
+        area = _positive(allocation.get("area_mm2"))
+        volume = _positive(allocation.get("volume_mm3"))
+        width = _positive(allocation.get("width_mm"))
+        source_part_id = demand_id.removeprefix(f"{owner[0]}:").removesuffix(":assumption")
+        exact_count = part_counts.get((owner[0], source_part_id))
+        exact_total = totals.get(owner)
+        if exact_total is not None and demand_id.endswith((":net-demand", ":service", ":assumption")):
+            factor = {"sheet": Decimal("1000000"), "linear_stock": Decimal("1000"),
+                      "linear_cut": Decimal("1000"), "volume_direct": Decimal("1000000000")}.get(kind, Decimal("1"))
+            if exact_count is None and saved_weights[key] > 0:
+                ratio = exact_total * factor / saved_weights[key]
+        kwargs = {"quantity": Decimal("1"), "unit": "piece"}
+        if kind == "sheet" and area is not None:
+            if count is not None and length is None:
+                kwargs = {"quantity": (count * ratio).to_integral_value(rounding=ROUND_CEILING), "unit": "sheet"}
+            elif count is not None and length is not None and width is not None:
+                units = exact_count or count * ratio
+                kwargs.update(length_mm=length, width_mm=width, quantity=units)
+            else:
+                kwargs["area_mm2"] = area * ratio
+        elif kind in {"linear_stock", "linear_cut"} and length is not None:
+            if kind == "linear_stock" and count is not None:
+                kwargs.update(length_mm=length, quantity=(previous.quantity if previous else Decimal("0")) + count * ratio)
+            else:
+                kwargs["linear_length_mm"] = (previous.linear_length_mm if previous else Decimal("0")) + length * ratio
+        elif kind == "volume_direct" and volume is not None:
+            if exact_count is not None and count is not None:
+                ratio = exact_count / count
+            kwargs["volume_mm3"] = volume * ratio
+        elif kind in {"piece", "direct"} and count is not None:
+            kwargs["quantity"] = exact_count or count * ratio
+        else:
+            return None
+        by_demand[key] = MaterialDemand(**common, demand_id=demand_id, **kwargs)
+    demands = list(by_demand.values())
+    if kind == "linear_stock":
+        demands = [
+            replace(demand, quantity=demand.quantity.to_integral_value(rounding=ROUND_CEILING))
+            if demand.length_mm is not None else demand
+            for demand in demands
+        ]
+    return demands
+
+
+def replan_material_norm_snapshot(
+    snapshot, norms, object_quantities, purchases, *, changed_keys, quantity_ratios=None, quantity_facts=None,
+):
+    """Replan the edited stock lines with their saved offer and allocations."""
+    quantity_ratios = quantity_ratios or {}
+    quantity_sources = _material_quantity_sources(quantity_facts or {})
+    costs = {(row["object_id"], row["material_requirement_id"]): Decimal(str(row["cost_ex_vat"]))
+             for row in snapshot["object_material_costs"]}
+    changed = set()
+    lines = []
+    seen = set()
+    for line in snapshot["lines"]:
+        key = line["selection_key"]
+        if key not in changed_keys:
+            lines.append(line)
+            continue
+        seen.add(key)
+        candidate = MaterialSupplyCandidate(
+            candidate_id=line["candidate_id"], material_family=key.split("|", 1)[0], selection_key=key,
+            purchase_kind=line["purchase_kind"], price_per_purchase_unit=line["price_per_purchase_unit"],
+            currency=line["currency"], purchasable_dimensions=line["purchasable_dimensions"],
+            package_quantity=line["package_quantity"] or 1,
+            authority=line["authority"], display_name=line["display_name"],
+        )
+        demands = _snapshot_material_demands(line, candidate, norms, object_quantities, quantity_ratios, quantity_sources)
+        if not demands:
+            return None
+        old_weights = {}
+        for allocation in line["allocations"]:
+            owner = (allocation["object_id"], allocation["material_requirement_id"])
+            old_weights[owner] = old_weights.get(owner, Decimal("0")) + _snapshot_allocation_weight(allocation)
+        if any(owner not in costs for owner in old_weights):
+            return None
+
+        plan = _apply_purchase_quantity_overrides(
+            plan_material_purchases(demands=demands, candidates=(candidate,)), purchases,
+        )
+        if plan.status != "planned":
+            return None
+        result = MaterialEngineResult(
+            plan=plan, demand_count=len(demands), candidate_count=1,
+            candidate_authorities=((candidate.candidate_id, line["authority"]),),
+            candidate_display_names=((candidate.candidate_id, line["display_name"]),),
+            candidate_purchase_forms=((candidate.candidate_id, line),),
+        )
+        rebuilt = material_plan_snapshot(result)
+        old_costs = _split_purchase_cost(Decimal(str(line["total_cost"])), old_weights)
+        (new_line,) = rebuilt["lines"]
+        new_weights = {}
+        for allocation in new_line["allocations"]:
+            owner = (allocation["object_id"], allocation["material_requirement_id"])
+            new_weights[owner] = new_weights.get(owner, Decimal("0")) + _snapshot_allocation_weight(allocation)
+        for row in rebuilt["object_material_costs"]:
+            owner = (row["object_id"], row["material_requirement_id"])
+            new_cost = Decimal(str(row["cost_ex_vat"]))
+            costs[owner] += new_cost - old_costs[owner]
+            if new_cost != old_costs[owner] or new_weights[owner] != old_weights[owner]:
+                changed.add(owner)
+        if line["purchase_quantity"] != new_line["purchase_quantity"]:
+            changed.update(old_weights)
+        if candidate.purchase_kind == "sheet":
+            original_rows = {
+                (row["object_id"], row["demand_id"]): row for row in line["allocations"]
+                if (row["object_id"], row["material_requirement_id"]) not in norms
+                and row["object_id"] not in quantity_ratios
+            }
+            new_line["allocations"] = [original_rows.get((row["object_id"], row["demand_id"]), row)
+                                       for row in new_line["allocations"]]
+        lines.append(new_line)
+    if seen != set(changed_keys):
+        return None
+    reasons = set(snapshot["reason_codes"])
+    if norms:
+        reasons.add("manual_material_norm_without_geometry")
+    return {**snapshot, "lines": lines, "input_fingerprint": None,
+            "reason_codes": sorted(reasons),
+            "object_material_costs": [
+                {"object_id": oid, "material_requirement_id": req, "cost_ex_vat": float(cost)}
+                for (oid, req), cost in sorted(costs.items())
+            ]}, changed
 
 
 def material_plan_snapshot(
@@ -1114,6 +1319,7 @@ def build_material_plan(
                         None if total_quantity is None else float(total_quantity / object_quantity)
                     ),
                     "object_quantity": float(object_quantity),
+                    "source_total_quantity": total_quantity,
                     "unit": material.get("unit"),
                     "reason_code": reason_code,
                     "resolution": "assumption_fallback",
@@ -1392,6 +1598,7 @@ def build_material_plan(
         object_id = str(fallback["object_id"])
         requirement_id = str(fallback["material_requirement_id"])
         parts = tuple(item for item in fallback.pop("parts", []) if isinstance(item, Mapping))
+        source_total_quantity = fallback.pop("source_total_quantity", None)
         if not allow_estimator_allowance:
             fallback["resolution"] = "assumption_required"
             unresolved.append(f"{object_id}:{requirement_id}")
@@ -1445,9 +1652,8 @@ def build_material_plan(
                     continue
             if appended:
                 continue
-        quantity_per_item = _positive(fallback.get("quantity_per_item")) or Decimal("1")
         object_quantity = _positive(fallback.get("object_quantity")) or Decimal("1")
-        total_quantity = quantity_per_item * object_quantity
+        total_quantity = source_total_quantity or object_quantity
         demand_kwargs: dict[str, Any] = {}
         if candidate.purchase_kind == "linear_cut":
             demand_kwargs["linear_length_mm"] = total_quantity * Decimal("1000")

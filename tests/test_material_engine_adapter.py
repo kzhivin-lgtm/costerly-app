@@ -7,6 +7,7 @@ from use_cases.material_engine_adapter import (
     material_plan_object_cost_allocations,
     material_plan_snapshot,
     build_material_plan,
+    replan_material_norm_snapshot,
     reprice_material_purchase_snapshot,
 )
 
@@ -572,6 +573,30 @@ def test_plan_uses_net_material_area_when_parts_are_unavailable():
     assert result.plan.status == "planned"
     assert result.plan.lines[0].purchase_quantity == Decimal("1")
     assert result.reason_codes == ()
+
+
+def test_editing_one_sheet_norm_replans_only_its_saved_stock_and_keeps_other_parts():
+    facts = {
+        "cabinet-a": _facts("cabinet-a", "side-a", width=800),
+        "cabinet-b": _facts("cabinet-b", "side-b", width=800),
+    }
+    catalogs = _catalogs(_offer("sheet", price="100"))
+    saved = material_plan_snapshot(build_material_plan(facts_by_object=facts, catalogs=catalogs))
+    (original,) = saved["lines"]
+    unrelated = {**original, "selection_key": "other-stock"}
+    saved["lines"].append(unrelated)
+    norms = {("cabinet-a", "plywood"): {"quantity_per_item": 3.3, "unit": "m²"}}
+
+    updated, changed = replan_material_norm_snapshot(
+        saved, norms, {"cabinet-a": 1}, {}, changed_keys={original["selection_key"]},
+    )
+    rebuilt = material_plan_snapshot(build_material_plan(
+        facts_by_object=facts, catalogs=catalogs, material_norm_overrides=norms,
+    ))
+
+    assert changed == {("cabinet-a", "plywood"), ("cabinet-b", "plywood")}
+    assert updated["object_material_costs"] == rebuilt["object_material_costs"]
+    assert updated["lines"] == [rebuilt["lines"][0], unrelated]
 
 
 def test_manual_norm_creates_an_area_demand_without_inventing_part_geometry():

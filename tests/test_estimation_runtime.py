@@ -30,6 +30,92 @@ def test_material_edits_wait_for_the_rebuild_that_includes_them(monkeypatch):
     assert second.result() == third.result() == "latest plan"
 
 
+def test_scoped_material_save_reprices_only_edited_stock_and_its_owners(monkeypatch):
+    import pandas as pd
+    from use_cases import estimation
+
+    def line(key, owner, amount, price, kind="piece"):
+        allocation = {"object_id": owner, "material_requirement_id": key, "demand_id": key,
+                      "quantity": amount if kind == "piece" else None,
+                      "length_mm": amount if kind == "linear_stock" else None}
+        quantity = amount if kind == "piece" else 1
+        return {
+            "selection_key": key, "candidate_id": key, "authority": "assumption",
+            "display_name": key, "currency": "ILS", "purchase_kind": kind,
+            "price_per_purchase_unit": price, "total_cost": quantity * price,
+            "purchasable_dimensions": {"length_mm": 5000} if kind == "linear_stock" else {},
+            "package_quantity": 1, "purchase_quantity": quantity,
+            "purchase_quantity_is_manual": False, "allocations": [allocation],
+        }
+
+    shared = line("LED", "object-a", 1000, 50, "linear_stock")
+    shared["allocations"].append({"object_id": "object-b", "material_requirement_id": "led",
+                                  "demand_id": "other-LED", "length_mm": 2000, "quantity": None})
+    unrelated = line("Hinge", "object-c", 4, 10)
+    saved = {"status": "needs_review", "reason_codes": [], "lines": [shared, unrelated],
+             "object_material_costs": [
+                 {"object_id": "object-a", "material_requirement_id": "LED", "cost_ex_vat": 16.67},
+                 {"object_id": "object-b", "material_requirement_id": "led", "cost_ex_vat": 33.33},
+                 {"object_id": "object-c", "material_requirement_id": "Hinge", "cost_ex_vat": 40},
+             ]}
+    writes = {}
+    monkeypatch.setattr(runtime, "fetch_rfq_estimate_material_plan", lambda *_: pd.DataFrame([{"plan_payload": saved}]))
+    monkeypatch.setattr(runtime, "fetch_rfq_object_estimates", lambda *_: pd.DataFrame([
+        {"object_id": oid, "quantity": 1} for oid in ("object-a", "object-b", "object-c")
+    ]))
+    for name in ("fetch_rfq_estimate_material_purchase_overrides", "fetch_rfq_estimate_material_norm_overrides"):
+        monkeypatch.setattr(runtime, name, lambda *_: pd.DataFrame())
+    for name in ("upsert_rfq_estimate_material_norm_overrides", "delete_rfq_estimate_material_purchase_overrides",
+                 "upsert_rfq_estimate_material_plan"):
+        monkeypatch.setattr(runtime, name, lambda _client, _name=name, **kw: writes.update({_name: kw}))
+    monkeypatch.setattr(estimation, "apply_material_plan_allocations", lambda _client, **kw: writes.update(allocations=kw))
+
+    edit = {("object-a", "LED"): {"unit": "m", "quantity_per_item": 7.5}}
+    snapshot = runtime._recalculate_edited_material_lines(
+        object(), "estimate", "run", "company", {"LED"}, set(), {}, edit, {},
+    )
+
+    assert snapshot["lines"][0]["purchase_quantity"] == 2
+    assert snapshot["lines"][1] == unrelated
+    assert writes["allocations"]["changed_requirements"] == {("object-a", "LED"), ("object-b", "led")}
+    assert writes["upsert_rfq_estimate_material_norm_overrides"]["rows"] == list(edit.values())
+    assert writes["delete_rfq_estimate_material_purchase_overrides"]["selection_keys"] == {"LED"}
+    assert writes["upsert_rfq_estimate_material_plan"]["plan_payload"] == snapshot
+
+
+def test_concurrent_material_edits_keep_the_latest_override_and_quantity(monkeypatch):
+    jobs = []
+
+    class Executor:
+        def submit(self, _fn, **kwargs):
+            future = Future()
+            jobs.append((kwargs, future))
+            return future
+
+    monkeypatch.setattr(runtime, "_MATERIAL_PLAN_EXECUTOR", Executor())
+    monkeypatch.setattr(runtime, "_MATERIAL_PLAN_FUTURES", {})
+    monkeypatch.setattr(runtime, "_MATERIAL_PLAN_PENDING_REQUESTS", {})
+    ids = {"estimate_id": "estimate", "run_id": "run", "company_id": "company"}
+    running = runtime.queue_material_plan_recalculation(**ids, purchase_keys=frozenset())
+    earlier = runtime.queue_material_plan_recalculation(
+        **ids, purchase_keys=frozenset({"LED"}), purchase_edits={"LED": 4}, quantity_edits={"a": 2},
+    )
+    later = runtime.queue_material_plan_recalculation(
+        **ids, norm_keys=frozenset({"LED"}), purchase_keys=frozenset(),
+        norm_edits={("a", "LED"): {"unit": "m", "quantity_per_item": 7}}, quantity_edits={"a": 3},
+    )
+
+    jobs[0][1].set_result("initial")
+    request, future = jobs[1]
+    assert running.result() == "initial"
+    assert request["norm_keys"] == {"LED"} and not request["purchase_keys"]
+    assert not request["purchase_edits"]
+    assert request["quantity_edits"] == {"a": 3}
+    assert request["norm_edits"][("a", "LED")]["quantity_per_item"] == 7
+    future.set_result("updated")
+    assert earlier.result() == later.result() == "updated"
+
+
 def test_submit_creates_estimate_shell_before_background_job(monkeypatch):
     events = []
     future = object()

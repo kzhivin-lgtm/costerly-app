@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import inspect
 from concurrent.futures import Future
 from pathlib import Path
 
@@ -1139,11 +1140,9 @@ def test_projects_is_one_page_with_native_partner_disclosure_rows():
 
 
 def test_objects_initializes_action_state_before_live_fragment_branch():
-    source = Path("screens/objects.py").read_text()
+    source = inspect.getsource(objects.render_objects_screen)
     state_index = source.index("screen_state = _current_objects_state(estimate_id)")
-    live_index = source.index(
-        'if estimate_id and isinstance(st.session_state.get("estimation_batch_future"), Future):'
-    )
+    live_index = source.index("_render_live_objects_content(")
 
     assert state_index < live_index
 

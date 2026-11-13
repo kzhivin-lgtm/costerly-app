@@ -18,7 +18,6 @@ from ui.js_guards import (
     install_workflow_header_alignment_guard,
 )
 from use_cases.estimation import (
-    _require_final_material_plan,
     apply_object_detail_line_edit,
     apply_object_detail_snapshot,
     approve_object_estimate,
@@ -153,7 +152,6 @@ def _render_object_detail(
     *,
     render_header_controls: Callable[[], None] | None = None,
 ) -> None:
-    approval_ready = bool(data.get("material_plan_ready"))
     if render_header_controls is None:
         st.markdown(object_detail_view.hero_html(data), unsafe_allow_html=True)
     else:
@@ -180,8 +178,6 @@ def _render_object_detail(
         ),
         unsafe_allow_html=True,
     )
-    if not approval_ready:
-        st.info(str(data.get("material_plan_blocking_message") or "Materials are being finalized."))
     if st.session_state.get("object_detail_approval_error"):
         st.error(st.session_state.pop("object_detail_approval_error"))
     with st.container(key="object_detail_navigation_bridges"):
@@ -191,7 +187,7 @@ def _render_object_detail(
             on_click=_return_to_objects,
         )
         st.button(
-            "Approve Estimate",
+            "Approve",
             key="object_detail_approve_bridge",
             on_click=_approve_current_object_and_return,
             kwargs={
@@ -199,7 +195,6 @@ def _render_object_detail(
                 "object_id": context.object_id,
                 "run_id": context.run_id,
             },
-            disabled=not approval_ready,
         )
 
 
@@ -245,15 +240,14 @@ def _material_editor(context: ObjectDetailContext) -> None:
             estimate_id=context.estimate_id, object_id=context.object_id,
             edits=edits,
         )
-        st.session_state.pop("approved_object_keys", None)
         future.result()
+        st.session_state.pop("approved_object_keys", None)
         _mark_objects_estimation_dirty(context.estimate_id)
         data = load_object_detail_data(estimate_id=context.estimate_id, object_id=context.object_id)
         result.update(
             rows=object_detail_view.material_preview_rows(data),
             self_cost=data["self_cost"],
-            approval_ready=data["material_plan_ready"],
-            blocking_label=data["material_plan_blocking_label"],
+            quantity=data["quantity"],
         )
     except ValueError as exc:
         result["error"] = str(exc)
@@ -309,16 +303,11 @@ def _approve_current_object_and_return(
     object_id: str,
     run_id: str | None = None,
     object_key: str | None = None,
-    recalculate: bool = True,
+    recalculate: bool = False,
 ) -> None:
     user_id = str(st.session_state.get("auth_user_id") or "")
     if user_id:
         client = get_supabase_client()
-        try:
-            _require_final_material_plan(client, estimate_id)
-        except ValueError as exc:
-            st.session_state.object_detail_approval_error = str(exc)
-            return
         edits = fetch_rfq_object_detail_draft(
             client,
             user_id=user_id,
@@ -341,7 +330,7 @@ def _approve_current_object_and_return(
             )
             if not approved:
                 st.session_state.object_detail_approval_error = (
-                    "Material norms changed. Materials are being recalculated for every object."
+                    "Saving the updated material quantities. Approve once the totals are ready."
                 )
                 _mark_objects_estimation_dirty(estimate_id)
                 return
@@ -351,12 +340,17 @@ def _approve_current_object_and_return(
             approved_object_keys.add(object_key or object_id)
             st.session_state.screen = "objects"
             return
-    approve_object_estimate(
-        estimate_id=estimate_id,
-        object_id=object_id,
-        recalculate=recalculate,
-    )
-    _mark_objects_estimation_dirty(estimate_id)
+    try:
+        approve_object_estimate(
+            estimate_id=estimate_id,
+            object_id=object_id,
+            recalculate=recalculate,
+        )
+    except Exception:
+        _LOG.exception("Could not approve object %s in estimate %s", object_id, estimate_id)
+        st.session_state.object_detail_approval_error = "Could not approve the object. Please try again."
+        return
+    invalidate_object_detail_cache(estimate_id)
     approved_object_keys = st.session_state.setdefault("approved_object_keys", set())
     approved_object_keys.add(object_key or object_id)
     st.session_state.screen = "objects"

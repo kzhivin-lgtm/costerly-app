@@ -1,5 +1,11 @@
 # Done Log
 
+Estimation 9.21, work 3.17.4.6. Rebuilt Object Detail and scoped
+Material Engine edits from the 9.17 rollback. The focused suite and
+both browser fixture widths passed. Saved material and recognition
+controls passed. Authenticated production acceptance is pending.
+See the [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-921-object-detail-and-scoped-material-edits).
+
 Estimation 9.18, work 3.17.4.6. Object Detail approval uses the available
 prices. The footer saves edits without approving, and valid drafts can
 save before approval. Numeric fields follow the end-caret and focus-unit

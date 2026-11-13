@@ -6,6 +6,23 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 
+_MOVE_CARET_TO_END = """
+            function moveCaretToEnd(input) {
+                if (!input) return;
+                if (input.matches("input")) {
+                    input.setSelectionRange(input.value.length, input.value.length);
+                    return;
+                }
+                const selection = parentWindow.getSelection();
+                const range = parentDoc.createRange();
+                range.selectNodeContents(input);
+                range.collapse(false);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+"""
+
+
 def install_workflow_header_alignment_guard(
     title_selector: str = "h1.workflow-title",
 ) -> None:
@@ -178,19 +195,7 @@ def install_company_metrics_input_guard() -> None:
                 return target.closest(".company-pricing-input");
             }
 
-            function moveCaretToEnd(input) {
-                if (!input) return;
-                if (input.matches && input.matches("input")) {
-                    input.setSelectionRange(input.value.length, input.value.length);
-                    return;
-                }
-                const selection = parentWindow.getSelection();
-                const range = parentDoc.createRange();
-                range.selectNodeContents(input);
-                range.collapse(false);
-                selection.removeAllRanges();
-                selection.addRange(range);
-            }
+            __MOVE_CARET_TO_END__
 
             function phoneInput(target) {
                 return target && target.matches && target.matches(".st-key-profile_public_phone input")
@@ -434,7 +439,7 @@ def install_company_metrics_input_guard() -> None:
             };
         })();
         </script>
-        """,
+        """.replace("__MOVE_CARET_TO_END__", _MOVE_CARET_TO_END),
         height=0,
         width=0,
     )
@@ -766,7 +771,8 @@ def signal_app_ready_to_embed(
                 if (control.closest(".objects-pricing-review-button")) {
                     return "objects_to_object_detail";
                 }
-                if (control.closest(".object-detail-footer-button--secondary")) {
+                if (control.closest(".object-detail-footer-button--secondary") &&
+                    control.dataset.streamlitBridgeKey === "object_detail_back_bridge") {
                     return "object_detail_to_objects";
                 }
                 if (control.closest(".object-detail-footer-button--primary")) {
@@ -1944,63 +1950,84 @@ def install_object_detail_input_guard(
             parentWindow[SUBMITTING_KEY] = false;
             const scope = [ESTIMATE_ID, OBJECT_ID];
             const materialRows = () => [...parentDoc.querySelectorAll("[data-material-preview]")];
-            const controls = () => parentDoc.querySelector(".object-detail-material-actions");
-            const saveButton = () => controls()?.querySelector(".object-detail-material-save");
+            const saveButton = () => parentDoc.querySelector(".object-detail-material-save");
             const setStatus = message => {
-                const node = controls()?.querySelector(".object-detail-material-edit-status");
+                const node = parentDoc.querySelector(".object-detail-material-edit-status");
                 if (node) node.textContent = message;
             };
             const draft = new Map();
             let activeSave = null;
             const materialField = field => field === "required_material" || field === "purchase_quantity";
             const editKey = ctx => JSON.stringify([ctx.field, ctx.lineId]);
-            const materialValue = input => String(editableValue(input) || "").trim();
+            const materialValue = input => String(editableValue(input) || "").trim().replace(",", ".");
             const validAmount = raw => /^(?:\\d+(?:\\.\\d{0,4})?|\\.\\d{1,4})$/.test(raw)
                 && Number(raw) > 0 && Number(raw) < 1e10;
             const rowPreview = row => JSON.parse(row.dataset.materialPreview);
-            const quantityText = value => Number(value) > 0 && Number(value) < 0.5
-                ? "<1" : String(Math.round(Number(value)));
-            const unitPriceText = value => value == null ? "—"
-                : `₪${Number(value).toLocaleString("en-US", {maximumFractionDigits: 2}).replace(/,/g, "\u202f")}`;
+            const areaInput = input => ["m²", "m2"].includes(input?.parentElement?.dataset.unit);
+            const fractionalMaterial = input => ["m", "m³"].includes(input?.parentElement?.dataset.unit) ||
+                input?.dataset.field === "purchase_quantity";
+            const quantityText = (value, input) => areaInput(input)
+                ? (Math.round(Number(value) * 10) / 10).toFixed(1)
+                : fractionalMaterial(input) ? String(Math.round(Number(value) * 10000) / 10000)
+                : Number(value) > 0 && Number(value) < 0.5 ? "<1" : String(Math.round(Number(value)));
             const contextFor = input => ({input, field: input.dataset.field, lineId: input.dataset.lineId});
-            const invalidMaterial = () => materialRows().some(row => row.querySelector('[aria-invalid="true"]'));
+            const objectQuantityContext = input => ({input, field: "object_quantity", lineId: "__object__"});
+            const invalidMaterial = () => objectQuantityInput()?.getAttribute("aria-invalid") === "true" ||
+                materialRows().some(row => row.querySelector('[aria-invalid="true"]'));
             const updateSaveControls = message => {
-                if (!controls()) return;
-                controls().hidden = !draft.size && !activeSave && !invalidMaterial() && !message;
-                saveButton().disabled = !draft.size || !!activeSave || invalidMaterial();
-                saveButton().textContent = activeSave ? "Saving…" : "Save changes";
-                setStatus(message || (activeSave ? "Saving changes…" : draft.size ? "Unsaved changes" : ""));
+                const button = saveButton();
+                if (!button) return;
+                button.hidden = !draft.size && !activeSave && !invalidMaterial();
+                button.disabled = !draft.size || !!activeSave || invalidMaterial();
+                button.textContent = activeSave ? "Saving…" : "Save changes";
+                setStatus(message || "");
             };
+            __MOVE_CARET_TO_END__
 
             function previewMaterials() {
+                const quantityInput = objectQuantityInput();
+                const count = Number(quantityInput?.dataset.originalValue) || 1;
+                const quantityEdit = quantityInput && draft.get(editKey(objectQuantityContext(quantityInput)));
+                const nextCount = quantityEdit ? Number(quantityEdit.value) : count;
                 const projected = materialRows().map(row => {
                     const base = rowPreview(row);
                     const required = rowField(row, "required_material");
                     const purchase = rowField(row, "purchase_quantity");
                     const req = required && draft.get(editKey(contextFor(required)));
                     const buy = purchase && draft.get(editKey(contextFor(purchase)));
+                    const canUpdateRequired = required && parentDoc.activeElement !== required &&
+                        required.getAttribute("aria-invalid") !== "true";
                     const canUpdatePurchase = purchase && parentDoc.activeElement !== purchase &&
                         purchase.getAttribute("aria-invalid") !== "true";
-                    if (!req && !buy) {
+                    if (!req && !buy && (!quantityEdit || base.locked || !(base.required_material_value > 0))) {
+                        if (canUpdateRequired && required.dataset.materialPreviewValue) {
+                            setEditableValue(required, quantityText(base.required_material_value, required));
+                            delete required.dataset.materialPreviewValue;
+                        }
                         if (canUpdatePurchase && purchase.dataset.materialPreviewValue &&
                             base.purchase_quantity_value != null) {
-                            setEditableValue(purchase, purchase.dataset.originalValue ?? quantityText(base.purchase_quantity_value));
+                            setEditableValue(purchase, quantityText(base.purchase_quantity_value, purchase));
                             delete purchase.dataset.materialPreviewValue;
                         }
                         return {row, base, cost: Number(base.total) || 0};
                     }
-                    const localRequired = req ? Number(req.value) : base.required_material_value;
+                    const localRequired = req ? Number(req.value) : base.required_material_value * nextCount / count;
+                    if (!req && canUpdateRequired && (quantityEdit || required.dataset.materialPreviewValue)) {
+                        setEditableValue(required, quantityText(localRequired, required));
+                        if (quantityEdit) required.dataset.materialPreviewValue = String(localRequired);
+                        else delete required.dataset.materialPreviewValue;
+                    }
                     const projectRequired = base.project_required - base.required_material_value + localRequired;
                     let purchaseQuantity = buy ? Number(buy.value) : base.purchase_quantity_value;
-                    if (req && !buy && base.stock_coverage > 0) {
+                    if ((req || (quantityEdit && !base.purchase_is_manual)) && !buy && base.stock_coverage > 0) {
                         const consumption = projectRequired / base.stock_coverage;
                         purchaseQuantity = ["sheet", "piece", "linear_stock"].includes(base.purchase_kind)
                             ? Math.ceil(consumption - 1e-10) : consumption;
                     }
                     if (!buy && canUpdatePurchase && Number.isFinite(purchaseQuantity)) {
-                        const text = quantityText(purchaseQuantity);
+                        const text = quantityText(purchaseQuantity, purchase);
                         if (editableValue(purchase) !== text) setEditableValue(purchase, text);
-                        purchase.dataset.materialPreviewValue = text;
+                        purchase.dataset.materialPreviewValue = String(purchaseQuantity);
                     }
                     const cost = projectRequired > 0 && base.purchase_unit_cost != null
                         ? purchaseQuantity * base.purchase_unit_cost * localRequired / projectRequired : Number(base.total) || 0;
@@ -2009,8 +2036,7 @@ def install_object_detail_input_guard(
                 let materialDelta = 0;
                 let coatingDelta = 0;
                 for (const {row, base, cost} of projected) {
-                    if (base.locked) continue;
-                    if (base.total == null) continue;
+                    if (base.locked || base.total == null) continue;
                     setRowCost(row, cost);
                     materialDelta += cost - base.total;
                     if (base.is_coating) coatingDelta += cost - base.total;
@@ -2025,8 +2051,7 @@ def install_object_detail_input_guard(
                 }
                 const final = parentDoc.querySelector(".object-detail-final");
                 if (!final || !Number.isFinite(Number(final.dataset.baseCost))) return;
-                const count = Number(objectQuantityInput()?.dataset.originalValue) || 1;
-                const cost = Number(final.dataset.baseCost) + (materialDelta + formulaDelta) / count;
+                const cost = (Number(final.dataset.baseCost) * count + materialDelta + formulaDelta) / nextCount;
                 const vat = cost * Number(final.dataset.vatPercent || 0) / 100;
                 setFinal("excl_vat", cost);
                 setFinal("vat", vat);
@@ -2038,28 +2063,41 @@ def install_object_detail_input_guard(
                 const raw = materialValue(input);
                 const key = editKey(ctx);
                 const prior = draft.get(key);
-                if ((prior && Number(raw) === Number(prior.value)) ||
-                    ((reportInvalid || !prior) && raw === input.dataset.editStartValue)) {
+                const previous = prior?.value ?? input.dataset.materialPreviewValue ?? input.dataset.originalValue;
+                const unchanged = raw !== "" && (raw === input.dataset.editStartValue || Number(raw) === Number(previous));
+                const baseline = input.dataset.originalValue;
+                const displayedBaseline = materialField(ctx.field) ? quantityText(baseline, input) : null;
+                const restored = raw !== "" && baseline != null && (
+                    Number(raw) === Number(baseline) || raw === displayedBaseline ||
+                    (areaInput(input) && Number(raw) === Number(displayedBaseline))
+                );
+                if ((prior && Number(raw) === Number(prior.value) && !restored) || (!prior && unchanged)) {
                     input.removeAttribute("aria-invalid");
-                    if (reportInvalid && prior) setEditableValue(input, quantityText(prior.value));
+                    if (reportInvalid && materialField(ctx.field)) setEditableValue(input, quantityText(previous ?? raw, input));
                     updateSaveControls();
                     return;
                 }
-                if (!validAmount(raw)) {
+                const objectQuantity = ctx.field === "object_quantity";
+                const amount = Number(raw);
+                const row = input.closest("[data-material-preview]");
+                const valid = validAmount(raw) && (!objectQuantity ||
+                    (amount === Math.round(amount * 1000) / 1000 && amount <= 1_000_000));
+                if (!valid) {
                     if (reportInvalid) {
                         input.setAttribute("aria-invalid", "true");
-                        updateSaveControls("Enter a positive quantity with up to four decimal places.");
+                        updateSaveControls(objectQuantity
+                            ? "Enter a positive object quantity with up to three decimal places."
+                            : "Enter a positive quantity with up to four decimal places.");
                     }
                     return;
                 }
                 input.removeAttribute("aria-invalid");
-                const row = input.closest("[data-material-preview]");
                 const required = rowField(row, "required_material");
                 const overridesPreview = ctx.field === "purchase_quantity" && required && draft.has(editKey(contextFor(required)));
                 const pending = activeSave?.edits.find(edit => editKey(edit) === key);
                 delete input.dataset.materialPreviewValue;
-                if (!pending && !overridesPreview && Number(raw) === Number(input.dataset.originalValue)) draft.delete(key);
-                else draft.set(key, {field: ctx.field, lineId: ctx.lineId, value: raw});
+                if (!pending && !overridesPreview && restored) draft.delete(key);
+                else draft.set(key, {field: ctx.field, lineId: ctx.lineId, value: restored && !overridesPreview ? baseline : raw});
                 if (ctx.field === "required_material" && draft.has(key)) {
                     const purchase = rowField(row, "purchase_quantity");
                     if (purchase) {
@@ -2067,20 +2105,19 @@ def install_object_detail_input_guard(
                         purchase.removeAttribute("aria-invalid");
                     }
                 }
-                if (reportInvalid) setEditableValue(input, quantityText(raw));
+                if (reportInvalid) setEditableValue(input, objectQuantity ? raw : quantityText(raw, input));
                 previewMaterials();
                 updateSaveControls();
             }
 
-            function saveMaterialDraft(event) {
-                const button = event.target?.closest?.(".object-detail-material-save");
-                if (!button || activeSave || !draft.size || invalidMaterial()) return;
+            function submitDraft(approveAfterSave = false) {
+                if (activeSave || !draft.size || invalidMaterial()) return;
                 const submit = parentWindow.__costerlySubmitMaterialEdit;
                 if (typeof submit !== "function") {
                     updateSaveControls("The material editor is connecting. Try again.");
                     return;
                 }
-                const request = {id: crypto.randomUUID(), scope, edits: [...draft.values()]};
+                const request = {id: crypto.randomUUID(), scope, edits: [...draft.values()], approveAfterSave};
                 activeSave = request;
                 request.timeout = parentWindow.setTimeout(() => {
                     if (activeSave !== request) return;
@@ -2091,9 +2128,14 @@ def install_object_detail_input_guard(
                 submit({id: request.id, scope, edits: request.edits});
             }
 
+            function saveMaterialDraft(event) {
+                if (event.target?.closest?.(".object-detail-material-save")) submitDraft();
+            }
+
             function receiveMaterialSave(result) {
                 if (JSON.stringify(result.scope) !== JSON.stringify(scope) || result.id !== activeSave?.id) return;
                 const submitted = activeSave.edits;
+                const approveAfterSave = activeSave.approveAfterSave;
                 parentWindow.clearTimeout(activeSave.timeout);
                 activeSave = null;
                 if (result.error) {
@@ -2113,6 +2155,13 @@ def install_object_detail_input_guard(
                     const key = editKey(edit);
                     if (Number(draft.get(key)?.value) === Number(edit.value)) draft.delete(key);
                 }
+                const quantity = objectQuantityInput();
+                if (quantity && result.quantity != null) {
+                    quantity.dataset.originalValue = String(result.quantity);
+                    if (quantity !== focused && !draft.has(editKey(objectQuantityContext(quantity)))) {
+                        setEditableValue(quantity, String(result.quantity));
+                    }
+                }
                 // Keep the input nodes in place, even when a save completes during another edit.
                 const rows = new Map();
                 for (const row of materialRows()) {
@@ -2124,15 +2173,15 @@ def install_object_detail_input_guard(
                     if (!row) continue;
                     row.dataset.materialPreview = JSON.stringify(base);
                     const unitPrice = row.querySelector(".object-detail-unit-price");
-                    if (unitPrice) unitPrice.textContent = unitPriceText(base.purchase_unit_cost);
+                    if (unitPrice) unitPrice.textContent = base.purchase_unit_cost == null ? "—" : formatMoney(base.purchase_unit_cost);
                     for (const field of ["required_material", "purchase_quantity"]) {
                         const input = rowField(row, field);
                         if (!input || base[field + "_value"] == null) continue;
                         delete input.dataset.materialPreviewValue;
-                        input.dataset.originalValue = quantityText(base[field + "_value"]);
+                        input.dataset.originalValue = String(base[field + "_value"]);
                         if (input === current?.input) continue;
                         const pending = draft.get(editKey(contextFor(input)));
-                        setEditableValue(input, pending ? quantityText(pending.value) : input.dataset.originalValue);
+                        setEditableValue(input, quantityText(pending?.value ?? input.dataset.originalValue, input));
                     }
                 }
                 const final = parentDoc.querySelector(".object-detail-final");
@@ -2141,31 +2190,16 @@ def install_object_detail_input_guard(
                     const node = parentDoc.querySelector(`[data-final="${field}"]`);
                     if (node) node.textContent = result.self_cost[field] == null ? "—" : formatMoney(result.self_cost[field]);
                 }
-                const approval = parentDoc.querySelector(".object-detail-footer-button--primary");
-                const config = parentDoc.querySelector("[data-object-detail-approval-config]");
-                if (approval && config && result.approval_ready !== approval.matches("a")) {
-                    const next = parentDoc.createElement(result.approval_ready ? "a" : "span");
-                    next.className = "object-detail-footer-button object-detail-footer-button--primary";
-                    if (result.approval_ready) {
-                        next.href = config.dataset.href;
-                        next.target = "_self";
-                        next.dataset.streamlitBridgeKey = "object_detail_approve_bridge";
-                        next.dataset.objectDetailApprove = "true";
-                        next.textContent = "APPROVE ESTIMATE";
-                    } else {
-                        next.classList.add("object-detail-footer-button--disabled");
-                        next.setAttribute("aria-disabled", "true");
-                        next.textContent = result.blocking_label || config.dataset.blockingLabel;
-                    }
-                    approval.replaceWith(next);
-                }
                 if (current && validAmount(current.value) && current.value !== current.input.dataset.editStartValue &&
                     !draft.has(editKey(current)) && !submitted.some(edit => editKey(edit) === editKey(current))) {
                     if (Number(current.value) === Number(current.input.dataset.originalValue)) draft.delete(editKey(current));
                     else draft.set(editKey(current), {field: current.field, lineId: current.lineId, value: current.value});
                 }
                 previewMaterials();
-                updateSaveControls(draft.size ? "Unsaved changes" : "Changes saved");
+                updateSaveControls(draft.size ? "" : "Changes saved");
+                if (approveAfterSave && !draft.size && !invalidMaterial()) {
+                    parentDoc.querySelector("[data-object-detail-approve]")?.click();
+                }
             }
 
             function inputContext(event) {
@@ -2252,7 +2286,8 @@ def install_object_detail_input_guard(
 
             function setRowCost(row, value) {
                 const cost = row ? row.querySelector(".object-detail-row-cost") : null;
-                if (cost) cost.textContent = formatMoney(value);
+                const text = formatMoney(value);
+                if (cost && cost.textContent !== text) cost.textContent = text;
             }
 
             function metricValue(section, metric) {
@@ -2375,19 +2410,38 @@ def install_object_detail_input_guard(
                 const quantity = objectQuantityInput(event.target);
                 if (quantity) {
                     quantity.dataset.editStartValue = cleanNumber(quantity.textContent) || quantity.dataset.originalValue || "1";
-                    quantity.textContent = "";
+                    moveCaretToEnd(quantity);
                     return;
                 }
                 const ctx = inputContext(event);
                 if (!ctx) return;
                 if (materialField(ctx.field)) {
+                    const pending = draft.get(editKey(ctx));
+                    const exact = pending?.value ?? ctx.input.dataset.materialPreviewValue ?? ctx.input.dataset.originalValue;
+                    if (exact != null && ctx.input.getAttribute("aria-invalid") !== "true") {
+                        const editable = areaInput(ctx.input) ? quantityText(exact, ctx.input) : String(Number(Number(exact).toFixed(4)));
+                        if (editable !== materialValue(ctx.input)) setEditableValue(ctx.input, editable);
+                    }
                     ctx.input.dataset.editStartValue = materialValue(ctx.input);
+                    moveCaretToEnd(ctx.input);
                     return;
                 }
                 ctx.input.dataset.editStartValue = normalizeInputValue(ctx.input);
                 if (!ctx.input.classList.contains("object-detail-cell-input--text")) {
                     setEditableValue(ctx.input, ctx.input.dataset.editStartValue);
+                    moveCaretToEnd(ctx.input);
                 }
+            }
+
+            function handleNumericPointerDown(event) {
+                if (event.button !== 0) return;
+                const target = event.target;
+                const input = objectQuantityInput(target) || inputContext(event)?.input ||
+                    target.closest?.(".object-detail-material-input")?.querySelector("[contenteditable]");
+                if (!input || input.classList.contains("object-detail-cell-input--text")) return;
+                event.preventDefault();
+                input.focus();
+                moveCaretToEnd(input);
             }
 
             function handleKeydown(event) {
@@ -2414,7 +2468,7 @@ def install_object_detail_input_guard(
                 }
                 const allowedKeys = new Set([
                     "Backspace", "Delete", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
-                    "Home", "End", "Tab", "Escape", ".",
+                    "Home", "End", "Tab", "Escape", ".", ",",
                 ]);
                 if (event.metaKey || event.ctrlKey || event.altKey || allowedKeys.has(event.key)) return;
                 if (!/^[0-9]$/.test(event.key)) event.preventDefault();
@@ -2428,10 +2482,15 @@ def install_object_detail_input_guard(
                 }
                 const ctx = inputContext(event);
                 if (!ctx || ctx.input.classList.contains("object-detail-cell-input--text")) return;
-                if (event.data && /[^0-9.]/.test(event.data)) event.preventDefault();
+                if (event.data && /[^0-9.,]/.test(event.data)) event.preventDefault();
             }
 
             function handleInput(event) {
+                const quantity = objectQuantityInput(event.target);
+                if (quantity) {
+                    stageMaterialEdit(objectQuantityContext(quantity));
+                    return;
+                }
                 const ctx = inputContext(event);
                 if (!ctx || ctx.input.classList.contains("object-detail-cell-input--text")) return;
                 if (materialField(ctx.field)) stageMaterialEdit(ctx);
@@ -2444,16 +2503,13 @@ def install_object_detail_input_guard(
                 if (ctx.input.classList.contains("object-detail-cell-input--text")) return;
                 event.preventDefault();
                 const text = event.clipboardData ? event.clipboardData.getData("text") : "";
-                parentDoc.execCommand("insertText", false, cleanNumber(text));
+                parentDoc.execCommand("insertText", false, cleanNumber(text.replace(",", ".")));
             }
 
             function handleBlur(event) {
                 const quantity = objectQuantityInput(event.target);
                 if (quantity) {
-                    const nextValue = cleanNumber(quantity.textContent);
-                    quantity.textContent = formatNumber(readNumber(
-                        nextValue || quantity.dataset.editStartValue || quantity.dataset.originalValue || "1"
-                    ));
+                    stageMaterialEdit(objectQuantityContext(quantity), true);
                     return;
                 }
                 const ctx = inputContext(event);
@@ -2491,22 +2547,6 @@ def install_object_detail_input_guard(
                     })).filter((edit) => edit.line_id && edit.field && edit.value !== edit.originalValue &&
                         edit.field !== "required_material" && edit.field !== "purchase_quantity");
                 });
-                const quantity = objectQuantityInput();
-                if (quantity) {
-                    const value = cleanNumber(quantity.textContent)
-                        || quantity.dataset.editStartValue
-                        || quantity.dataset.originalValue
-                        || "1";
-                    const originalValue = quantity.dataset.originalValue || value;
-                    if (value !== originalValue) {
-                        edits.push({
-                            line_id: "__object__",
-                            field: "object_quantity",
-                            value,
-                            originalValue,
-                        });
-                    }
-                }
                 return edits;
             }
 
@@ -2565,9 +2605,11 @@ def install_object_detail_input_guard(
             async function prepareApproveSnapshot(event) {
                 const button = findApproveButton(event.target);
                 if (button && (activeSave || draft.size || invalidMaterial())) {
-                    updateSaveControls(activeSave ? "Saving changes…" : "Save material changes before approving.");
                     event.preventDefault();
                     event.stopImmediatePropagation();
+                    if (invalidMaterial()) updateSaveControls("Correct the highlighted quantity before approving.");
+                    else if (activeSave) activeSave.approveAfterSave = true;
+                    else submitDraft(true);
                     return;
                 }
                 if (!button || parentWindow[SUBMITTING_KEY]) return;
@@ -2608,13 +2650,13 @@ def install_object_detail_input_guard(
                     markCurrentValuesSaved();
                     parentWindow[SUBMITTING_KEY] = false;
                     button.removeAttribute("aria-disabled");
-                    button.textContent = "APPROVE ESTIMATE";
+                    button.textContent = "Approve";
                     button.setAttribute("data-streamlit-bridge-key", "object_detail_approve_bridge");
                     button.click();
                 } catch (error) {
                     parentWindow[SUBMITTING_KEY] = false;
                     button.removeAttribute("aria-disabled");
-                    button.textContent = "APPROVE ESTIMATE";
+                    button.textContent = "Approve";
                     if (parentWindow.console && parentWindow.console.error) {
                         parentWindow.console.error("Could not save Object Detail draft", error);
                     }
@@ -2622,6 +2664,7 @@ def install_object_detail_input_guard(
             }
 
             parentDoc.addEventListener("focusin", handleFocus, true);
+            parentDoc.addEventListener("pointerdown", handleNumericPointerDown, true);
             parentDoc.addEventListener("keydown", handleKeydown, true);
             parentDoc.addEventListener("beforeinput", handleBeforeInput, true);
             parentDoc.addEventListener("paste", handlePaste, true);
@@ -2638,6 +2681,7 @@ def install_object_detail_input_guard(
 
             parentWindow[HANDLER_KEY] = () => {
                 parentDoc.removeEventListener("focusin", handleFocus, true);
+                parentDoc.removeEventListener("pointerdown", handleNumericPointerDown, true);
                 parentDoc.removeEventListener("keydown", handleKeydown, true);
                 parentDoc.removeEventListener("beforeinput", handleBeforeInput, true);
                 parentDoc.removeEventListener("paste", handlePaste, true);
@@ -2663,7 +2707,8 @@ def install_object_detail_input_guard(
         .replace("__OBJECT_ID__", object_id_json)
         .replace("__SUPABASE_URL__", supabase_url_json)
         .replace("__SUPABASE_ANON_KEY__", supabase_anon_key_json)
-        .replace("__SUPABASE_ACCESS_TOKEN__", supabase_access_token_json),
+        .replace("__SUPABASE_ACCESS_TOKEN__", supabase_access_token_json)
+        .replace("__MOVE_CARET_TO_END__", _MOVE_CARET_TO_END),
         height=0,
     )
 

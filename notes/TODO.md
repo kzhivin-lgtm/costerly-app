@@ -2,8 +2,15 @@
 
 ## Estimation Parts Check, 3.17.4.6
 
-Estimation 9.18 is live at runtime `241ca27`. Steps 1–3 passed local
-verification and still need an authenticated production approval witness.
+Estimation 9.21 is ready for release from the 9.17 checkpoint.
+VERIFIED LOCALLY, P0. Restore available-price approval, draft Save and
+one-decimal area. Replan only the stock and totals affected by edits to
+required material, purchase quantity and object quantity. Preserve
+independent approvals and confirm the same behavior in authenticated
+production Object Detail. Compare a fresh Lev1 Upload with the three
+correct 9.17 controls and verify authenticated Save-to-Objects latency.
+Detection's existing grouping defect stays in its own backlog item.
+See the [9.21 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-921-object-detail-and-scoped-material-edits).
 
 1. VERIFIED LOCALLY, P0, USER REQUEST. Remove the Material Plan completeness gate
    from Object Detail approval. Keep Approve available with the existing

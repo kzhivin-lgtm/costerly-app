@@ -1,5 +1,43 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.21 Object Detail and scoped material edits
+
+Work 3.17.4.6. Start from production rollback `bdd0620`, the 9.17
+runtime checkpoint. Restore the 9.18 footer and approval with the available
+prices, plus the 9.19 decimal-area formatting and corroborated Front fix.
+The 9.20 preparation was diagnostic only.
+
+The browser previews an edit immediately and saves once through the
+existing Object Detail bridge. Approve with a draft waits for that save.
+A failed save retains the draft. Required Material shows area to one
+decimal and keeps full stored precision when the user reverts a draft.
+
+Material edits use the saved selected offer, purchase unit and allocations.
+A Required Material edit replans its stock and dependent allocations.
+A Purchase Quantity edit keeps required demand and reprices the purchase
+and dependent allocations. Object quantity replans the materials that
+object uses, including their shared stock, and preserves independent stock
+and approvals. Fractional object counts use the saved Parts Check for the
+affected object so the existing physical part rounding still applies.
+The draft save does not rerun Detection, recognition, Parts Check or the
+entire estimate. Pre-checkpoint material plans remain readable.
+The quantity path also avoids a float round-trip in Assumption Fallback
+that previously turned an exact two-piece demand into three purchases.
+
+Verification: 295 focused tests passed. Browser fixture tests at 1280 and
+390 px covered amount entry, dependent purchase preview, purchase-only
+editing, reverting, failed save and retry, approval and return navigation.
+Saved Lev1 and Adda matched full Material Engine results for sheet, LED,
+mirror and fallback edits and object quantities 2 and 1.333. Saved Front
+and Parts Check evidence preserved Lev2 and both Adda objects. Lev1
+returned three Blocks, three drawers and two supports. All 12 archived
+Lev1 Detection requests and partitions replayed identically to the
+checkpoint, including the two known failures. The owner's third fresh 9.17
+Upload, `run_423326c87f9c4768915a3930a3753d67`, published V01–V06 as one
+object at 23:07 Israel time. Authenticated 9.21 Upload and Object Detail
+latency remain pending.
+
+
 ## Estimation 9.19 Scoped material edits and Front recovery
 
 Production Lev1 `run_aefe2128a4dd472fb5995eb1a5735fcd` returned one

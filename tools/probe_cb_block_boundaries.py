@@ -319,7 +319,7 @@ def supported_top_witnesses(views, projections, readings, observations, printed)
     linked = connected_views(bank["view_id"], observations)
     candidates = [ext for vid, view in views.items() if projections[vid] == "Side view"
                   for ext in supported_extensions(view)]
-    direct = [ext for ext in candidates if ext["view_id"] in linked]
+    direct = [{**ext, "host_view_id": bank["view_id"]} for ext in candidates if ext["view_id"] in linked]
     if direct:
         return direct
     if not printed:
@@ -349,13 +349,14 @@ def attach_supported_top(blocks, views, readings, projections, observations, *, 
     side_view = extension["view_id"]
     directly_linked = {other for row in observations if side_view in (row["group_id_a"], row["group_id_b"])
                        for other in (row["group_id_a"], row["group_id_b"])} - {side_view}
-    if extension.get("dimension_witness"):
-        # The paired frame and matched width can certify a second projected
-        # view even if Detection did not connect it to the side crop.
-        directly_linked.update(
-            row["view_id"] for frame in blocks if frame["basis"] == "matched_framed_panel"
-            for row in frame["appearances"] if any(a["view_id"] == view_id for a in frame["appearances"])
-        )
+    if extension.get("host_view_id") == view_id:
+        # Both supported-extension routes can use the corroborating frame
+        # pair when the same top and two supports are visible in elevation.
+        from tools.probe_estimation_v8_grounded_front import linked_support_faces
+
+        frame_pairs = [frame["appearances"] for frame in blocks if frame["basis"] == "matched_framed_panel"]
+        support_faces = linked_support_faces(views, projections, observations, extensions=[extension], frame_pairs=frame_pairs)
+        directly_linked.update(face["view_id"] for face in support_faces)
         linked.update(directly_linked)
     support_sets = {}
     for reading in readings:

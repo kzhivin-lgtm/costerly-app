@@ -295,8 +295,9 @@ def structural_front(views, projections, front, detection, *, frame_pairs, suppo
     drawer_objects = {views[vid]["object_id"] for vid in banks}
     for obj in detection["objects"]:
         own = {vid: view for vid, view in views.items() if view["object_id"] == obj["object_id"]}
+        extensions = (supported_tops or {}).get(obj["object_id"])
         legs = linked_support_faces(own, projections, obj["accepted_observations"],
-                                    extensions=(supported_tops or {}).get(obj["object_id"]), frame_pairs=frame_pairs)
+                                    extensions=extensions, frame_pairs=frame_pairs)
         if not legs:
             continue
         leg_view = legs[0]["view_id"]
@@ -384,6 +385,8 @@ def corroborate_supported_tops(pdf, views, projections, front, detection):
         local = {vid: projections[vid] for vid in own}
         direct = supported_top_witnesses(own, local, front, obj["accepted_observations"], {})
         if direct:
+            if len(direct) == 1:
+                result[oid] = direct
             continue
         if (not any(local[vid] == "Side view" and supported_extensions(view) for vid, view in own.items())
                 or not any(local[vid] in ELEVATION_PROJECTIONS and drawer_frame(view, front)
