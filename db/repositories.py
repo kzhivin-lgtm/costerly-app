@@ -873,7 +873,7 @@ def upsert_rfq_estimate_material_norm_override(
     source_line_id: str,
 ) -> None:
     """Persist the user-edited net material norm, never a purchase quantity."""
-    client.table("rfq_estimate_material_norm_overrides").upsert(
+    upsert_rfq_estimate_material_norm_overrides(client, rows=[
         {
             "estimate_id": estimate_id,
             "object_id": object_id,
@@ -882,8 +882,15 @@ def upsert_rfq_estimate_material_norm_override(
             "quantity_per_item": quantity_per_item,
             "unit": unit,
             "source_line_id": source_line_id,
-            "updated_at": datetime.now(UTC).isoformat(),
         },
+    ])
+
+
+def upsert_rfq_estimate_material_norm_overrides(client: Client, *, rows: list[dict]) -> None:
+    """Save all requirements of a displayed material row in one write."""
+    updated_at = datetime.now(UTC).isoformat()
+    client.table("rfq_estimate_material_norm_overrides").upsert(
+        [{**row, "updated_at": updated_at} for row in rows],
         on_conflict="estimate_id,object_id,material_requirement_id",
     ).execute()
 
@@ -901,13 +908,16 @@ def mark_rfq_estimate_material_plan_stale(
     estimate_id: str,
     company_id: str,
     reason_code: str,
+    previous_plan: dict | None = None,
 ) -> None:
     """Invalidate the derived purchase plan after an estimate input changes."""
     payload = {
         "contract_version": "estimate_material_plan_v1",
+        "lines": [],
+        **(previous_plan or {}),
         "status": "stale",
         "reason_codes": [reason_code],
-        "lines": [],
+        "input_fingerprint": None,
     }
     upsert_rfq_estimate_material_plan(
         client,

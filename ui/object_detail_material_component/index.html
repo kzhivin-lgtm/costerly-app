@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"></head>
+<body>
+<script>
+  const host = window.parent;
+  const send = (type, values = {}) =>
+    host.postMessage({isStreamlitMessage: true, type, ...values}, "*");
+  const submit = payload => send("streamlit:setComponentValue", {value: payload});
+  addEventListener("message", event => {
+    if (event.source !== host || event.data?.type !== "streamlit:render") return;
+    host.__costerlySubmitMaterialEdit = submit;
+  });
+  addEventListener("pagehide", () => {
+    if (host.__costerlySubmitMaterialEdit === submit) delete host.__costerlySubmitMaterialEdit;
+  });
+  send("streamlit:componentReady", {apiVersion: 1});
+  send("streamlit:setFrameHeight", {height: 0});
+</script>
+</body>
+</html>

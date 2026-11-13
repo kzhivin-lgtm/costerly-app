@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import UTC, datetime
+from math import isfinite
 import re
 from typing import Any
 
@@ -21,6 +22,7 @@ from db.repositories import (
     update_rfq_object_estimate_progress,
     update_rfq_object_estimate_totals,
     upsert_rfq_estimate_material_norm_override,
+    upsert_rfq_estimate_material_norm_overrides,
     upsert_rfq_estimate_material_purchase_override,
     upsert_rfq_estimate_lines,
     mark_rfq_estimate_material_plan_stale,
@@ -112,19 +114,21 @@ def _invalidate_and_queue_material_plan(
     company_id: str,
     run_id: str,
     reason_code: str,
-) -> None:
+    previous_plan: dict[str, Any] | None = None,
+) -> Future:
     """Invalidate every object approval, then queue one estimate-wide rebuild."""
     mark_rfq_estimate_material_plan_stale(
         client,
         estimate_id=estimate_id,
         company_id=company_id,
         reason_code=reason_code,
+        **({"previous_plan": previous_plan} if previous_plan is not None else {}),
     )
     reset_rfq_object_estimate_approvals(client, estimate_id=estimate_id)
     # Local import avoids the existing runtime -> estimation dependency cycle.
     from use_cases.estimation_runtime import queue_material_plan_recalculation
 
-    queue_material_plan_recalculation(
+    return queue_material_plan_recalculation(
         estimate_id=estimate_id,
         run_id=run_id,
         company_id=company_id,
@@ -648,7 +652,10 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
             ),
             "price_source": authority,
             "required_material_value": required_value, "required_material_unit": required_unit,
-            "required_material_line_id": f"__material_requirement__:{next(iter(requirement_ids))}" if len(requirement_ids) == 1 else "",
+            "required_material_line_id": (
+                f"__material_requirement__:{next(iter(requirement_ids))}" if len(requirement_ids) == 1
+                else f"__material_selection__:{selection_key}" if selection_key else ""
+            ),
             "purchase_unit": _purchase_unit_display(line),
             "purchase_quantity_value": _number(line.get("purchase_quantity"), 0),
             "purchase_quantity_unit": _purchase_unit_label(purchase_kind),
@@ -963,11 +970,15 @@ def _project_material_purchase_rows(plan_snapshot: dict[str, Any]) -> list[dict[
     return result
 
 
-def _material_norms_from_plan(plan_snapshot: dict[str, Any]) -> dict[tuple[str, str], tuple[str, float]]:
+def _material_norms_from_plan(
+    plan_snapshot: dict[str, Any], *, selection_key: str | None = None,
+) -> dict[tuple[str, str], tuple[str, float]]:
     """Return internal allocation weights, never rendered purchase quantities."""
     result: dict[tuple[str, str], tuple[str, float]] = {}
     for line in plan_snapshot.get("lines") or []:
         if not isinstance(line, dict):
+            continue
+        if selection_key is not None and line.get("selection_key") != selection_key:
             continue
         purchase_kind = str(line.get("purchase_kind") or "")
         if purchase_kind == "sheet":
@@ -976,6 +987,8 @@ def _material_norms_from_plan(plan_snapshot: dict[str, Any]) -> dict[tuple[str, 
             unit, divisor, dimension = "m", 1_000.0, "length"
         elif purchase_kind in {"piece", "direct"}:
             unit, divisor, dimension = "piece", 1.0, "quantity"
+        elif purchase_kind == "volume_direct":
+            unit, divisor, dimension = "m³", 1_000_000_000.0, "volume"
         else:
             continue
         for allocation in line.get("allocations") or []:
@@ -997,6 +1010,8 @@ def _material_norms_from_plan(plan_snapshot: dict[str, Any]) -> dict[tuple[str, 
             elif dimension == "length":
                 amount = _number(allocation.get("length_mm"), 0) / divisor
                 amount *= _number(allocation.get("quantity"), 1)
+            elif dimension == "volume":
+                amount = _number(allocation.get("volume_mm3"), 0) / divisor
             else:
                 amount = _number(allocation.get("quantity"), 0)
             if amount <= 0:
@@ -1010,6 +1025,68 @@ def _material_norms_from_plan(plan_snapshot: dict[str, Any]) -> dict[tuple[str, 
                 continue
             result[key] = (unit, (existing[1] if existing else 0.0) + amount)
     return result
+
+
+def save_object_detail_material_edit(
+    *, estimate_id: str, object_id: str, field: str, line_id: str, value: Any,
+) -> Future:
+    """Save the edited row, then rebuild the shared estimate from Parts Check."""
+    amount = _number(value, 0)
+    if not isfinite(amount) or amount < 0.0001 or amount >= 10_000_000_000:
+        raise ValueError("Enter a positive quantity with up to 10 digits before the decimal point.")
+    client = get_supabase_client()
+    _assert_screen_estimate_access(client, estimate_id)
+    obj = _object_material_context(client, estimate_id=estimate_id, object_id=object_id)
+    company_id = str(obj["company_id"])
+    snapshot = _first_row(fetch_rfq_estimate_material_plan(client, estimate_id))
+    plan = snapshot.get("plan_payload") or {}
+    if not plan.get("parts_check_source"):
+        raise ValueError("A published Parts Check is required to recalculate this estimate.")
+    owned_lines = {
+        line["selection_key"]: line for line in plan.get("lines", ())
+        if line.get("selection_key") and any(a.get("object_id") == object_id for a in line.get("allocations", ()))
+    }
+    if field == "purchase_quantity" and line_id.startswith("__material_purchase__:"):
+        key = line_id.removeprefix("__material_purchase__:")
+        if key not in owned_lines:
+            raise ValueError("This purchase line is no longer available.")
+        upsert_rfq_estimate_material_purchase_override(
+            client, estimate_id=estimate_id, selection_key=key, company_id=company_id, purchase_quantity=amount,
+        )
+        reason = "purchase_quantity_changed"
+    elif field == "required_material":
+        if line_id.startswith("__material_selection__:"):
+            key = line_id.removeprefix("__material_selection__:")
+            norms = _material_norms_from_plan(plan, selection_key=key) if key in owned_lines else {}
+        elif line_id.startswith("__material_requirement__:"):
+            requirement_id = line_id.removeprefix("__material_requirement__:")
+            norms = {key: val for key, val in _material_norms_from_plan(plan).items() if key[1] == requirement_id}
+        else:
+            norms = {}
+        requirements = {key[1]: val for key, val in norms.items() if key[0] == object_id}
+        if not requirements or len({unit for unit, _ in requirements.values()}) != 1:
+            raise ValueError("This material row has no editable requirement.")
+        total = sum(quantity for _, quantity in requirements.values())
+        per_item = amount / (_number(obj.get("quantity"), 1) or 1)
+        ordered = sorted(requirements.items(), key=lambda item: item[1][1])
+        shares = [(key, unit, round(per_item * quantity / total, 4))
+                  for key, (unit, quantity) in ordered[:-1]]
+        last_key, (last_unit, _) = ordered[-1]
+        shares.append((last_key, last_unit, round(per_item - sum(q for _, _, q in shares), 4)))
+        if any(quantity <= 0 for _, _, quantity in shares):
+            raise ValueError("The required quantity is too small for this material row.")
+        upsert_rfq_estimate_material_norm_overrides(client, rows=[
+            {"estimate_id": estimate_id, "object_id": object_id, "material_requirement_id": requirement_id,
+             "company_id": company_id, "quantity_per_item": quantity, "unit": unit, "source_line_id": None}
+            for requirement_id, unit, quantity in shares
+        ])
+        reason = "material_norm_changed"
+    else:
+        raise ValueError("This field cannot be recalculated.")
+    return _invalidate_and_queue_material_plan(
+        client, estimate_id=estimate_id, company_id=company_id, run_id=str(obj["run_id"]),
+        reason_code=reason, previous_plan=plan,
+    )
 
 
 def apply_material_plan_allocations(

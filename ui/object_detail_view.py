@@ -85,7 +85,8 @@ def _material_input_html(*, value: object, field: str, line_id: str, unit: str) 
     )
     return (
         f'<span class="object-detail-material-input{modifier}">'
-        + _input_html(value, "number", field, line_id)
+        + (_input_html(value, "number", field, line_id) if line_id else
+           f'<span class="object-detail-cell-input object-detail-cell-input--number">{_escape(value)}</span>')
         + unit_html
         + "</span>"
     )
@@ -236,6 +237,7 @@ def _table_html(section: dict[str, object]) -> str:
                 + "</div>"
             )
         return (
+            '<div class="object-detail-material-edit-status" role="status" aria-live="polite"></div>'
             f'<div class="{table_class}" data-section="{_escape(section_key)}">'
             f'<div class="object-detail-table-head-row">{header}</div>'
             f'{"".join(body_parts)}'

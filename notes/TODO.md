@@ -5735,6 +5735,18 @@ cause from the local screenshot alone.
 - Object Detail: show AI Confidence when available.
 - Object Detail: implement Object Preview image capture/display.
 - Object Detail to Objects Estimation navigation: remove stale screen fragment flicker on return.
+- Estimation 9.10 Object Detail presentation. ACTIVE, P1, USER REQUEST.
+  Align Required Material, show piece only under Purchase Unit, and put
+  stock sheets, glass, hardware and LED in the requested order. Show a
+  collapsed Elements table with one row for each matching part type and
+  size across Blocks. Both saved Adda objects passed browser checks with
+  editing and return navigation. Railway deployed `b86906d`. Owner
+  verification in an authenticated production session is pending.
+- Estimation 9.11 Object Detail material editing. ACTIVE, P1, USER REQUEST.
+  Center both quantity headings and Required Material values. Reprice on
+  blur through the existing Material Engine, with no new Parts Check run.
+  Saved Adda browser replay covers both fields, shared purchase, and
+  retry. Owner verification of edits on an authenticated estimate is pending.
 - Object Detail approve action: remove stale screen fragment flicker after clicking Approve.
 
 ## Later

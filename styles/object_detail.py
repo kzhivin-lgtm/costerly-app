@@ -436,8 +436,25 @@ def apply_object_detail_css() -> None:
         .object-detail-material-input--required .object-detail-cell-input {
             display: block;
             border-radius: 7px;
-            padding: 6px 38px 6px 8px;
-            text-align: right;
+            padding: 6px 8px;
+            text-align: center;
+        }
+
+        .object-detail-table[data-section="material"] .object-detail-table-head {
+            text-align: center;
+        }
+
+        .object-detail-table[data-section="material"] .object-detail-table-head:first-child {
+            text-align: left;
+        }
+
+        .object-detail-material-edit-status {
+            margin: 8px 0;
+            color: var(--color-text-strong);
+        }
+
+        .object-detail-material-edit-status:empty {
+            display: none;
         }
 
         .object-detail-material-input-unit {

@@ -12,6 +12,7 @@ from agents.anthropic_adapter import DETECTION_PROMPT_VERSION
 from db.repositories import (
     fetch_estimation_object_input,
     fetch_latest_ocr_result,
+    fetch_rfq_estimate_material_plan,
     fetch_rfq_estimate_material_norm_overrides,
     fetch_rfq_estimate_material_purchase_overrides,
     fetch_rfq_object_estimates,
@@ -19,6 +20,7 @@ from db.repositories import (
     fetch_rfq_run,
     replace_rfq_estimate_lines_for_object,
     update_rfq_object_estimate_totals,
+    upsert_rfq_estimate_lines,
     upsert_rfq_estimate_material_plan,
 )
 from db.supabase_client import get_supabase_client
@@ -36,7 +38,8 @@ _LOG = logging.getLogger(__name__)
 _ESTIMATION_EXECUTOR = ThreadPoolExecutor(max_workers=1)
 _MATERIAL_PLAN_LOCK = RLock()
 _MATERIAL_PLAN_FUTURES: dict[str, Future] = {}
-_MATERIAL_PLAN_PENDING_REQUESTS: dict[str, tuple[str, str]] = {}
+_MATERIAL_PLAN_PENDING_REQUESTS: dict[str, tuple[str, str, list[Future]]] = {}
+_MATERIAL_PLAN_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="material-plan")
 
 
 def _material_norm_overrides_by_requirement(rows: object) -> dict[tuple[str, str], dict[str, object]]:
@@ -55,7 +58,7 @@ def _material_purchase_overrides_by_selection_key(rows: object) -> dict[str, dic
     return {str(row.get("selection_key") or ""): dict(row) for _, row in rows.iterrows() if str(row.get("selection_key") or "")}
 
 
-def _publish_material_demand_lines(client, *, estimate_id, facts_by_object):
+def _publish_material_demand_lines(client, *, estimate_id, facts_by_object, replace_object_lines=True):
     for object_id, facts in facts_by_object.items():
         lines = []
         for index, demand in enumerate(facts["materials"], 1):
@@ -70,10 +73,13 @@ def _publish_material_demand_lines(client, *, estimate_id, facts_by_object):
                 "needs_price": True, "needs_review": False, "quantity_basis": "per_finished_item",
                 "raw_agent_json": {"facts": demand},
             })
-        replace_rfq_estimate_lines_for_object(client, estimate_id=estimate_id, object_id=object_id, lines=lines)
+        if replace_object_lines:
+            replace_rfq_estimate_lines_for_object(client, estimate_id=estimate_id, object_id=object_id, lines=lines)
+        else:
+            upsert_rfq_estimate_lines(client, lines=lines)
 
 
-def _build_and_persist_material_plan(*, client, estimate_id, company_id, parts_report, input_rows):
+def _build_and_persist_material_plan(*, client, estimate_id, company_id, parts_report, input_rows, rebuild=False):
     """Price the checked document through the shared estimate-wide engine."""
     catalog_context = build_estimation_material_context(client, company_id)
     norms = _material_norm_overrides_by_requirement(fetch_rfq_estimate_material_norm_overrides(client, estimate_id))
@@ -84,7 +90,9 @@ def _build_and_persist_material_plan(*, client, estimate_id, company_id, parts_r
     )
     snapshot = calculation["material_plan"]
     facts_by_object = calculation["facts_by_object"]
-    _publish_material_demand_lines(client, estimate_id=estimate_id, facts_by_object=facts_by_object)
+    _publish_material_demand_lines(
+        client, estimate_id=estimate_id, facts_by_object=facts_by_object, replace_object_lines=not rebuild,
+    )
 
     from use_cases.estimation import apply_material_plan_allocations
 
@@ -100,19 +108,25 @@ def _build_and_persist_material_plan(*, client, estimate_id, company_id, parts_r
         snapshot["assumption_job_sync"] = {"status": "failed", "error": type(exc).__name__}
         _LOG.warning("Assumption follow-up failed for estimate %s", estimate_id, exc_info=True)
 
+    apply_material_plan_allocations(client, estimate_id=estimate_id, plan_snapshot=snapshot)
     upsert_rfq_estimate_material_plan(
         client, estimate_id=estimate_id, company_id=company_id, plan_payload=snapshot,
         plan_status=snapshot["status"], input_fingerprint=snapshot["input_fingerprint"],
     )
-    apply_material_plan_allocations(client, estimate_id=estimate_id, plan_snapshot=snapshot)
     return snapshot
 
 
-def _mark_material_plan_failed(client, *, estimate_id, company_id, reason):
+def _mark_material_plan_failed(client, *, estimate_id, company_id, reason, preserve_snapshot=False):
     try:
+        previous = {}
+        if preserve_snapshot:
+            rows = fetch_rfq_estimate_material_plan(client, estimate_id)
+            if not rows.empty:
+                previous = rows.iloc[0].get("plan_payload") or {}
         upsert_rfq_estimate_material_plan(
             client, estimate_id=estimate_id, company_id=company_id,
-            plan_payload={"status": "failed", "reason_codes": [reason]}, plan_status="failed",
+            plan_payload={**previous, "status": "failed", "reason_codes": [reason], "input_fingerprint": None},
+            plan_status="failed",
         )
     except Exception:
         _LOG.exception("Could not publish the material plan failure for estimate %s", estimate_id)
@@ -124,7 +138,7 @@ def _recalculate_material_plan_job(*, estimate_id: str, run_id: str, company_id:
         return _recalculate_from_parts_check(client, estimate_id=estimate_id, run_id=run_id, company_id=company_id)
     except Exception:
         _mark_material_plan_failed(client, estimate_id=estimate_id, company_id=company_id,
-                                   reason="material_plan_technical_failure")
+                                   reason="material_plan_technical_failure", preserve_snapshot=True)
         raise
 
 
@@ -146,6 +160,7 @@ def _recalculate_from_parts_check(client, *, estimate_id, run_id, company_id):
         input_rows.append({**row, "input_payload": {**payload, "object": {**obj, "quantity": float(quantity)}}})
     return _build_and_persist_material_plan(
         client=client, estimate_id=estimate_id, company_id=company_id, parts_report=report, input_rows=input_rows,
+        rebuild=True,
     )
 
 
@@ -154,8 +169,8 @@ def _submit_pending_material_plan_recalculation(estimate_id: str) -> Future | No
     request = _MATERIAL_PLAN_PENDING_REQUESTS.pop(estimate_id, None)
     if request is None:
         return None
-    run_id, company_id = request
-    future = _ESTIMATION_EXECUTOR.submit(
+    run_id, company_id, receipts = request
+    future = _MATERIAL_PLAN_EXECUTOR.submit(
         _recalculate_material_plan_job,
         estimate_id=estimate_id,
         run_id=run_id,
@@ -163,9 +178,17 @@ def _submit_pending_material_plan_recalculation(estimate_id: str) -> Future | No
     )
     _MATERIAL_PLAN_FUTURES[estimate_id] = future
 
-    def schedule_latest_if_changed(_completed: Future) -> None:
+    def schedule_latest_if_changed(completed: Future) -> None:
         with _MATERIAL_PLAN_LOCK:
-            _submit_pending_material_plan_recalculation(estimate_id)
+            if _submit_pending_material_plan_recalculation(estimate_id) is None:
+                _MATERIAL_PLAN_FUTURES.pop(estimate_id, None)
+        for receipt in receipts:
+            if completed.cancelled():
+                receipt.cancel()
+            elif (error := completed.exception()) is not None:
+                receipt.set_exception(error)
+            else:
+                receipt.set_result(completed.result())
 
     future.add_done_callback(schedule_latest_if_changed)
     return future
@@ -174,14 +197,13 @@ def _submit_pending_material_plan_recalculation(estimate_id: str) -> Future | No
 def queue_material_plan_recalculation(*, estimate_id: str, run_id: str, company_id: str) -> Future:
     """Coalesce edits, but never lose a change that lands during a rebuild."""
     with _MATERIAL_PLAN_LOCK:
-        _MATERIAL_PLAN_PENDING_REQUESTS[estimate_id] = (run_id, company_id)
-        active = _MATERIAL_PLAN_FUTURES.get(estimate_id)
-        if active is not None and not active.done():
-            return active
-        submitted = _submit_pending_material_plan_recalculation(estimate_id)
-        if submitted is None:
-            raise RuntimeError("Material-plan recalculation request was not queued")
-        return submitted
+        receipt = Future()
+        pending = _MATERIAL_PLAN_PENDING_REQUESTS.get(estimate_id)
+        receipts = pending[2] if pending else []
+        _MATERIAL_PLAN_PENDING_REQUESTS[estimate_id] = (run_id, company_id, [*receipts, receipt])
+        if estimate_id not in _MATERIAL_PLAN_FUTURES:
+            _submit_pending_material_plan_recalculation(estimate_id)
+        return receipt
 
 
 def _set_object_progress(

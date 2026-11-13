@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import Future
 from dataclasses import dataclass
 import json
 from typing import Callable
@@ -11,6 +12,7 @@ from db.supabase_client import get_supabase_client
 from styles.object_detail import apply_object_detail_css
 from ui import object_detail_view
 from ui.layout import render_screen_header
+from ui.object_detail_material_bridge import material_edit_bridge
 from ui.js_guards import (
     install_object_detail_input_guard,
     install_workflow_header_alignment_guard,
@@ -21,6 +23,7 @@ from use_cases.estimation import (
     apply_object_detail_snapshot,
     approve_object_estimate,
     load_object_detail_data,
+    save_object_detail_material_edit,
 )
 from state.company_auth import company_auth_enabled
 from state.session import invalidate_object_detail_cache
@@ -51,12 +54,13 @@ def render_object_detail_screen(
     if _approve_after_pending_changes(context):
         st.rerun()
 
+    edit_result = _receive_material_edit(context)
     data = _load_object_detail_or_render_error(context)
     if data is None:
         return
 
     _render_object_detail(data, context, render_header_controls=render_header_controls)
-    _install_object_detail_runtime(context)
+    _install_object_detail_runtime(context, edit_result=edit_result)
     install_workflow_header_alignment_guard("h1.object-detail-title")
 
 
@@ -201,7 +205,7 @@ def _return_to_objects() -> None:
     st.session_state.screen = "objects"
 
 
-def _install_object_detail_runtime(context: ObjectDetailContext) -> None:
+def _install_object_detail_runtime(context: ObjectDetailContext, *, edit_result: dict | None = None) -> None:
     install_object_detail_input_guard(
         run_id=context.run_id,
         estimate_id=context.estimate_id,
@@ -211,7 +215,55 @@ def _install_object_detail_runtime(context: ObjectDetailContext) -> None:
         supabase_access_token=(
             st.session_state.get("auth_access_token") if company_auth_enabled() else None
         ),
+        material_edit_result=edit_result,
     )
+
+
+def _receive_material_edit(context: ObjectDetailContext) -> dict | None:
+    key = (context.estimate_id, context.object_id)
+    results = st.session_state.setdefault("object_detail_material_edit_results", {})
+    request = material_edit_bridge(key="object_detail_material_edit", default=None)
+    if not isinstance(request, dict) or request.get("scope") != list(key) or not isinstance(request.get("id"), str):
+        return results.get(key)
+    request_id = request["id"]
+    previous = results.get(key) or {}
+    if request_id == previous.get("id"):
+        pending = previous.get("pending")
+        if isinstance(pending, Future):
+            _watch_material_edit(context, pending, request_id)
+        return previous
+
+    try:
+        future = save_object_detail_material_edit(
+            estimate_id=context.estimate_id, object_id=context.object_id,
+            field=str(request.get("field") or ""), line_id=str(request.get("lineId") or ""), value=request.get("value"),
+        )
+        st.session_state.pop("approved_object_keys", None)
+    except ValueError as exc:
+        results[key] = {"id": request_id, "error": str(exc)}
+    except Exception:
+        results[key] = {"id": request_id, "error": "Could not save the change. Try again."}
+    else:
+        results[key] = {"id": request_id, "pending": future}
+        _watch_material_edit(context, future, request_id)
+    return results[key]
+
+
+@st.fragment(run_every=0.75)
+def _watch_material_edit(context: ObjectDetailContext, future: Future, request_id: str) -> None:
+    """Refresh only while the current Object Detail has a pending material edit."""
+    if st.session_state.get("screen") != "object_detail" or _current_object_detail_context() != context:
+        return
+    if not future.done():
+        return
+    result = {"id": request_id}
+    try:
+        future.result()
+    except Exception:
+        result["error"] = "Could not recalculate materials. Try again."
+    st.session_state["object_detail_material_edit_results"][(context.estimate_id, context.object_id)] = result
+    _mark_objects_estimation_dirty(context.estimate_id)
+    st.rerun()
 
 
 def _consume_pending_object_detail_edit() -> bool:

@@ -1,7 +1,33 @@
-import use_cases.estimation_runtime as runtime
+from concurrent.futures import Future
 from json import JSONDecodeError
 
 import pytest
+
+import use_cases.estimation_runtime as runtime
+
+
+def test_material_edits_wait_for_the_rebuild_that_includes_them(monkeypatch):
+    jobs = []
+
+    class Executor:
+        def submit(self, _function, **_kwargs):
+            jobs.append(Future())
+            return jobs[-1]
+
+    monkeypatch.setattr(runtime, "_MATERIAL_PLAN_EXECUTOR", Executor())
+    monkeypatch.setattr(runtime, "_MATERIAL_PLAN_FUTURES", {})
+    monkeypatch.setattr(runtime, "_MATERIAL_PLAN_PENDING_REQUESTS", {})
+    ids = {"estimate_id": "estimate-1", "run_id": "run-1", "company_id": "company-1"}
+
+    first = runtime.queue_material_plan_recalculation(**ids)
+    second = runtime.queue_material_plan_recalculation(**ids)
+    third = runtime.queue_material_plan_recalculation(**ids)
+    assert len(jobs) == 1
+    jobs[0].set_result("first plan")
+    assert first.result() == "first plan"
+    assert not second.done() and not third.done() and len(jobs) == 2
+    jobs[1].set_result("latest plan")
+    assert second.result() == third.result() == "latest plan"
 
 
 def test_submit_creates_estimate_shell_before_background_job(monkeypatch):

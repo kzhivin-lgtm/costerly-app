@@ -15,7 +15,7 @@ from use_cases.estimation_artifacts import _upload_immutable_artifact, download_
 from use_cases.estimation_detection_context_v7 import build_context
 from use_cases.estimation_originals import ORIGINALS_BUCKET
 
-VERSION = "estimation-v9.10-parts-check"
+VERSION = "estimation-v9.11-parts-check"
 OPERATION = "estimation_v9_parts_check"
 _LOCK = RLock()
 _RUNNING = set()

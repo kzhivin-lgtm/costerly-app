@@ -1917,6 +1917,7 @@ def install_object_detail_input_guard(
     supabase_url: str | None = None,
     supabase_anon_key: str | None = None,
     supabase_access_token: str | None = None,
+    material_edit_result: dict | None = None,
 ) -> None:
     """Install staged Object Detail editing and approve/discard behavior."""
     run_id_json = json.dumps(run_id)
@@ -1925,6 +1926,12 @@ def install_object_detail_input_guard(
     supabase_url_json = json.dumps(supabase_url.rstrip("/")) if supabase_url else "null"
     supabase_anon_key_json = json.dumps(supabase_anon_key) if supabase_anon_key else "null"
     supabase_access_token_json = json.dumps(supabase_access_token) if supabase_access_token else "null"
+    result = material_edit_result or {}
+    material_edit_result_json = json.dumps({
+        "id": result.get("id"),
+        "pending": bool(result.get("pending")),
+        "error": result.get("error"),
+    }).replace("<", "\\u003c")
     components.html(
         """
         <script>
@@ -1937,11 +1944,59 @@ def install_object_detail_input_guard(
             const SUPABASE_URL = __SUPABASE_URL__;
             const SUPABASE_ANON_KEY = __SUPABASE_ANON_KEY__;
             const SUPABASE_ACCESS_TOKEN = __SUPABASE_ACCESS_TOKEN__;
+            const MATERIAL_RESULT = __MATERIAL_EDIT_RESULT__;
             const HANDLER_KEY = "__costerlyObjectDetailInputGuardCleanup";
             const SUBMITTING_KEY = "__costerlyObjectDetailSubmittingSnapshot";
+            const MATERIAL_KEY = "__costerlyObjectDetailMaterialEdit";
 
             if (parentWindow[HANDLER_KEY]) parentWindow[HANDLER_KEY]();
             parentWindow[SUBMITTING_KEY] = false;
+            const scope = [ESTIMATE_ID, OBJECT_ID];
+            const status = () => parentDoc.querySelector(".object-detail-material-edit-status");
+            const materialInputs = () => parentDoc.querySelectorAll(
+                ".object-detail-material-input [data-field='required_material'], " +
+                ".object-detail-material-input [data-field='purchase_quantity']"
+            );
+            const setStatus = message => {
+                const node = status();
+                if (node) node.textContent = message;
+            };
+            const setPending = pending => {
+                for (const input of materialInputs()) {
+                    if (!input.dataset.lineId) continue;
+                    input.contentEditable = pending ? "false" : "true";
+                    if (pending) input.setAttribute("aria-disabled", "true");
+                    else input.removeAttribute("aria-disabled");
+                }
+                setStatus(pending ? "Recalculating materials…" : "");
+            };
+
+            function submitMaterialEdit(ctx) {
+                const input = ctx.input;
+                const raw = String(editableValue(input) || "").trim();
+                const original = input.dataset.originalValue || "";
+                if (JSON.stringify(parentWindow[MATERIAL_KEY]?.scope) === JSON.stringify(scope)) return;
+                if (raw === original || (raw && Number(raw) === Number(original))) {
+                    input.removeAttribute("aria-invalid");
+                    setStatus("");
+                    return;
+                }
+                if (!/^(?:\\d+(?:\\.\\d{0,4})?|\\.\\d{1,4})$/.test(raw) || Number(raw) <= 0 || Number(raw) >= 1e10) {
+                    input.setAttribute("aria-invalid", "true");
+                    setStatus("Enter a positive quantity with up to four decimal places.");
+                    return;
+                }
+                const submit = parentWindow.__costerlySubmitMaterialEdit;
+                if (typeof submit !== "function") {
+                    setStatus("The material editor is connecting. Try again.");
+                    return;
+                }
+                input.removeAttribute("aria-invalid");
+                const request = {id: crypto.randomUUID(), scope, field: ctx.field, lineId: ctx.lineId, value: raw};
+                parentWindow[MATERIAL_KEY] = request;
+                setPending(true);
+                submit(request);
+            }
 
             function inputContext(event) {
                 const target = event.target;
@@ -1949,7 +2004,7 @@ def install_object_detail_input_guard(
                 const input = target.closest(".object-detail-cell-input");
                 if (!input) return null;
                 const row = input.closest(".object-detail-table-row");
-                const lineId = row ? row.dataset.lineId || "" : "";
+                const lineId = input.dataset.lineId || (row ? row.dataset.lineId || "" : "");
                 const field = input.dataset.field || "";
                 if (!lineId || !field) return null;
                 return { input, lineId, field };
@@ -2226,6 +2281,10 @@ def install_object_detail_input_guard(
                 }
                 const ctx = inputContext(event);
                 if (!ctx) return;
+                if (ctx.field === "required_material" || ctx.field === "purchase_quantity") {
+                    submitMaterialEdit(ctx);
+                    return;
+                }
                 const nextValue = normalizeInputValue(ctx.input);
                 if (!ctx.input.classList.contains("object-detail-cell-input--text")) {
                     if (ctx.input.classList.contains("object-detail-cell-input--percent")) {
@@ -2236,7 +2295,7 @@ def install_object_detail_input_guard(
                         setEditableValue(ctx.input, formatMoney(nextValue));
                     }
                 }
-                if (ctx.field !== "required_material" && ctx.field !== "purchase_quantity") updateCalculations(ctx.input.closest(".object-detail-table-row"));
+                updateCalculations(ctx.input.closest(".object-detail-table-row"));
             }
 
             function findApproveButton(target) {
@@ -2252,7 +2311,8 @@ def install_object_detail_input_guard(
                         field: input.dataset.field || "",
                         value: normalizeInputValue(input),
                         originalValue: input.dataset.originalValue ?? normalizeInputValue(input),
-                    })).filter((edit) => edit.line_id && edit.field && edit.value !== edit.originalValue);
+                    })).filter((edit) => edit.line_id && edit.field && edit.value !== edit.originalValue &&
+                        edit.field !== "required_material" && edit.field !== "purchase_quantity");
                 });
                 const quantity = objectQuantityInput();
                 if (quantity) {
@@ -2277,6 +2337,11 @@ def install_object_detail_input_guard(
                 const back = event.target && event.target.closest
                     ? event.target.closest('[data-streamlit-bridge-key="object_detail_back_bridge"]')
                     : null;
+                if (back && JSON.stringify(parentWindow[MATERIAL_KEY]?.scope) === JSON.stringify(scope)) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    return;
+                }
                 if (!back || !snapshotEdits().length) return;
                 if (back.dataset.discardConfirmed === "true") {
                     delete back.dataset.discardConfirmed;
@@ -2322,6 +2387,11 @@ def install_object_detail_input_guard(
 
             async function prepareApproveSnapshot(event) {
                 const button = findApproveButton(event.target);
+                if (button && JSON.stringify(parentWindow[MATERIAL_KEY]?.scope) === JSON.stringify(scope)) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    return;
+                }
                 if (!button || parentWindow[SUBMITTING_KEY]) return;
                 const edits = snapshotEdits();
                 if (!edits.length) return;
@@ -2402,6 +2472,20 @@ def install_object_detail_input_guard(
             };
             seedInputBaselines();
             seedRowBaselines();
+            const activeEdit = parentWindow[MATERIAL_KEY];
+            if (activeEdit && JSON.stringify(activeEdit.scope) === JSON.stringify(scope)) {
+                if (MATERIAL_RESULT.id === activeEdit.id && !MATERIAL_RESULT.pending) {
+                    delete parentWindow[MATERIAL_KEY];
+                    setPending(false);
+                    setStatus(MATERIAL_RESULT.error || "");
+                } else {
+                    setPending(true);
+                }
+            } else if (MATERIAL_RESULT.pending) {
+                setPending(true);
+            } else if (MATERIAL_RESULT.error) {
+                setStatus(MATERIAL_RESULT.error);
+            }
         })();
         </script>
         """
@@ -2410,7 +2494,8 @@ def install_object_detail_input_guard(
         .replace("__OBJECT_ID__", object_id_json)
         .replace("__SUPABASE_URL__", supabase_url_json)
         .replace("__SUPABASE_ANON_KEY__", supabase_anon_key_json)
-        .replace("__SUPABASE_ACCESS_TOKEN__", supabase_access_token_json),
+        .replace("__SUPABASE_ACCESS_TOKEN__", supabase_access_token_json)
+        .replace("__MATERIAL_EDIT_RESULT__", material_edit_result_json),
         height=0,
     )
 

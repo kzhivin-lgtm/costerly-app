@@ -263,7 +263,7 @@ def _physical_purchase_dimensions(value: Mapping[str, Any] | None) -> dict[str, 
 
 
 def _canonical_requirement_unit(value: Any) -> str:
-    return _canonical_unit(str(value or "")).replace("²", "2")
+    return _canonical_unit(str(value or "")).replace("²", "2").replace("³", "3")
 
 
 def _assumption_selection_key(*, material_family: str, object_id: str, requirement_id: str) -> str:
@@ -588,6 +588,8 @@ def _demand_from_net_requirement(
     }
     if normalized in {"m2", "sqm", "square_meter", "square_metre"}:
         return MaterialDemand(**common, area_mm2=total_quantity * Decimal("1000000"))
+    if normalized == "m3":
+        return MaterialDemand(**common, volume_mm3=total_quantity * Decimal("1000000000"))
     if normalized in {"m", "lm", "linear_meter", "linear_metre"}:
         return MaterialDemand(**common, linear_length_mm=total_quantity * Decimal("1000"))
     if normalized in {"mm", "cm"}:
@@ -1044,9 +1046,13 @@ def build_material_plan(
             if isinstance(part, Mapping):
                 parts_by_requirement.setdefault(str(part.get("material_requirement_id") or ""), []).append(part)
         for requirement_id, material in sorted(materials.items()):
+            override = overrides.get((str(object_id), requirement_id))
+            override_unit = str((override or {}).get("unit") or "")
+            override_quantity = _positive((override or {}).get("quantity_per_item"))
+            object_quantity = _positive(facts.get("quantity")) or Decimal("1")
+
             def add_assumption_fallback(*, reason_code: str, selection_key: str | None = None) -> None:
                 total_quantity = _positive(material.get("quantity"))
-                object_quantity = _positive(facts.get("quantity")) or Decimal("1")
                 assumption_fallbacks.append({
                     "object_id": str(object_id),
                     "material_requirement_id": requirement_id,
@@ -1076,7 +1082,11 @@ def build_material_plan(
                 operation_code = str(material.get("operation_code") or "")
                 worktop_family = str((material.get("specification") or {}).get("worktop_family") or "")
                 compatible = _operation_supply_candidates(operation_code, worktop_family, catalogs, Decimal(str(vat_percent)))
-                quantity = _positive(material.get("quantity"))
+                quantity = (
+                    override_quantity * object_quantity
+                    if override_quantity is not None and _canonical_requirement_unit(override_unit) in {"ea", "piece"}
+                    else _positive(material.get("quantity"))
+                )
                 if not compatible or quantity is None or _canonical_requirement_unit(material.get("unit")) != "ea":
                     add_assumption_fallback(reason_code="supplier_operation_quote_required")
                     reasons.add("assumption_fallback")
@@ -1204,14 +1214,20 @@ def build_material_plan(
                 )
                 reasons.add("assumption_fallback")
                 continue
-            override = overrides.get((str(object_id), requirement_id))
-            object_quantity = _positive(facts.get("quantity")) or Decimal("1")
             material_quantity = _positive(material.get("quantity"))
             if override:
-                override_unit = str(override.get("unit") or "")
-                override_quantity = _positive(override.get("quantity_per_item"))
-                sheet_area_override = bool(parts) and all(candidate.purchase_kind == "sheet" for candidate in compatible) and _canonical_requirement_unit(override_unit) in {"m2", "sqm", "square_meter", "square_metre"}
-                if override_quantity is None or (not sheet_area_override and _canonical_requirement_unit(override_unit) != _canonical_requirement_unit(material.get("unit"))):
+                normalized_override = _canonical_requirement_unit(override_unit)
+                allowed_units = {
+                    "sheet": {"m2", "sqm", "square_meter", "square_metre", "sheet"},
+                    "linear_stock": {"m", "lm", "linear_meter", "linear_metre", "mm", "cm"},
+                    "linear_cut": {"m", "lm", "linear_meter", "linear_metre", "mm", "cm"},
+                    "volume_direct": {"m3"},
+                    "piece": {"piece", "ea", "set", "pair", "dozen"},
+                    "direct": {"piece", "ea", "set", "pair", "dozen"},
+                }
+                if override_quantity is None or not any(
+                    normalized_override in allowed_units.get(candidate.purchase_kind, set()) for candidate in compatible
+                ):
                     add_assumption_fallback(
                         reason_code="manual_material_norm_invalid", selection_key=selection_key,
                     )
@@ -1347,6 +1363,22 @@ def build_material_plan(
             "selection_key": candidate.selection_key, "unit": priced_fallback["unit"],
             "assumption_price": priced_fallback["assumption_price"],
         })
+        override = overrides.get((object_id, requirement_id)) or {}
+        override_unit = str(override.get("unit") or "")
+        override_quantity = _positive(override.get("quantity_per_item"))
+        expected_unit = {"sheet": "m2", "linear_cut": "m"}.get(candidate.purchase_kind, "piece")
+        if override_quantity is not None and _canonical_requirement_unit(override_unit) == expected_unit:
+            demand = _demand_from_net_requirement(
+                demand_id=f"{object_id}:{requirement_id}:assumption", object_id=object_id,
+                requirement_id=requirement_id, material_family=candidate.material_family,
+                selection_key=candidate.selection_key,
+                total_quantity=override_quantity * (_positive(fallback.get("object_quantity")) or Decimal("1")),
+                unit=override_unit, candidate_ids=(candidate.candidate_id,),
+            )
+            if demand is not None:
+                demands.append(demand)
+                reasons.add("manual_material_norm_without_geometry")
+                continue
         if candidate.purchase_kind == "sheet" and parts:
             appended = 0
             for part in parts:

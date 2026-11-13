@@ -1,5 +1,23 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.11 Object Detail material edits
+
+Required Material and Purchase Quantity have centered headings and values.
+Leaving either field saves the changed value and refreshes the affected
+purchase rows, formula costs, VAT and object totals. Required Material is
+the net demand for this object; Purchase Quantity is the shared purchase
+amount for the estimate. The Material Engine uses the published Parts Check
+and existing purchase rules. It makes no model calls and does not rerun
+Parts Check. An unchanged edit triggers no rebuild.
+
+The saved Adda control exercised both fields in Chrome, using the real
+Material Engine and local persistence fixtures. Checks covered 1280 px and
+390 px alignment, keyboard and pointer blur, a failed rebuild and retry,
+and the shared purchase after navigating to the second object. The focused
+suite passed 81 tests. The rollback
+tag is `estimation-v9.10-checkpoint` (`b86906d`). Authenticated production
+interaction remains for the owner to verify on an editable estimate.
+
 ## Estimation 9.10 Object Detail Materials and Elements
 
 Materials displays panel stock before glass and mirrors, followed by
