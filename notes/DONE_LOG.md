@@ -1,9 +1,19 @@
 # Done Log
 
+Estimation 9.22, work 3.17.4.6. The three Object Detail footer actions
+keep their positions. Save changes confirms the write in place with a
+green Saved state. APPROVE is uppercase. The 89 focused tests and both
+browser fixture widths passed. See the
+[release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-922-object-detail-save-feedback).
+
 Estimation 9.21, work 3.17.4.6. Rebuilt Object Detail and scoped
 Material Engine edits from the 9.17 rollback. The focused suite and
 both browser fixture widths passed. Saved material and recognition
-controls passed. Authenticated production acceptance is pending.
+controls passed. Railway and Cloudflare reported 9.21 at `20e0288`.
+The remote tag `estimation-v9.21-checkpoint` preserves the exact result.
+Fresh Lev1 and Adda matched the accepted View groups. Authenticated Save
+changed one line and published 2.14 seconds after the override write.
+Authenticated Approve is pending.
 See the [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-921-object-detail-and-scoped-material-edits).
 
 Estimation 9.18, work 3.17.4.6. Object Detail approval uses the available

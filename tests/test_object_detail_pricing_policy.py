@@ -205,10 +205,10 @@ def test_v3_object_detail_loads_with_a_planned_material_plan(monkeypatch):
     assert detail["material_plan_status"] == "planned"
 
 
-def test_object_detail_footer_has_approve_and_a_hidden_save_between_actions():
+def test_object_detail_footer_has_approve_and_a_disabled_save_between_actions():
     footer = _footer_html("run-1", "estimate-1", "object-1")
-    assert footer.index("Back to Objects") < footer.index("Save changes") < footer.index(">Approve<")
-    assert 'object-detail-material-save" hidden disabled' in footer
+    assert footer.index("Back to Objects") < footer.index("Save changes") < footer.index(">APPROVE<")
+    assert 'object-detail-material-save" disabled' in footer
     assert 'data-streamlit-bridge-key="object_detail_approve_bridge"' in footer
 
 

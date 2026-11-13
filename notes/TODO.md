@@ -2,13 +2,14 @@
 
 ## Estimation Parts Check, 3.17.4.6
 
-Estimation 9.21 is ready for release from the 9.17 checkpoint.
-VERIFIED LOCALLY, P0. Restore available-price approval, draft Save and
+Estimation 9.21 is protected at `20e0288` by `estimation-v9.21-checkpoint`.
+DEPLOYED, P0. Restore available-price approval, draft Save and
 one-decimal area. Replan only the stock and totals affected by edits to
 required material, purchase quantity and object quantity. Preserve
-independent approvals and confirm the same behavior in authenticated
-production Object Detail. Compare a fresh Lev1 Upload with the three
-correct 9.17 controls and verify authenticated Save-to-Objects latency.
+independent approvals. Fresh 9.21 Lev1 matched V01–V06 and the saved
+Parts Check and material total. The authenticated one-line Save published
+2.14 seconds after the override write and preserved all other lines.
+Authenticated Approve and its latency remain to verify.
 Detection's existing grouping defect stays in its own backlog item.
 See the [9.21 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-921-object-detail-and-scoped-material-edits).
 
@@ -20,13 +21,13 @@ See the [9.21 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#es
    handler and server entry point. Parts Check findings remain in the
    saved report. Verify that an Adda object with a `needs_review` plan
    can be approved and the approval persists on return to Objects.
-2. VERIFIED LOCALLY, P1, USER REQUEST. Put Back to Objects and Approve in the footer.
-   Insert Save changes between them only when an edit is pending. Save
-   changes persists the draft without approving or refreshing the page.
-   Approve with a draft saves valid edits first, then approves after the
-   write succeeds. A failed save leaves the draft
-   visible and actionable. Verify pristine, edited, saving, saved and
-   failed states, including reverting the last edit and returning to Objects.
+2. VERIFIED LOCALLY, P1, USER REQUEST. Keep Back to Objects, Save changes
+   and APPROVE in the footer. Save changes is disabled without a draft and shows a green Saved
+   after server confirmation until the next edit. Save persists the draft
+   without approving or refreshing the page. APPROVE with a draft saves
+   valid edits first. A failed save leaves the draft visible and actionable.
+   Verify pristine, edited, saving, saved and failed states, including
+   reverting the last edit and returning to Objects.
 3. VERIFIED LOCALLY, P1, USER REQUEST. In Required Material, keep the unit adjacent
    to the number at rest. Hide the unit on focus and restore it on blur.
    Apply the shared numeric end-caret rule to pointer entry and keyboard
@@ -5834,7 +5835,14 @@ cause from the local screenshot alone.
   one on the Detection-linked path. Seven of 11 purchase lines matched;
   materials were 3,693.42 ILS versus 3,551.72 ILS. Verify attachment
   of the corroborated support pair on both Planner paths and material
-  coverage of the seat. See the release record.
+  coverage of the seat. Production 9.21 verified both supports and all
+  29 Parts dimensions. Its nine sheet lines include four LDSP positions.
+  Preserve explicit drawing materials. Reuse finish and nominal thickness
+  where the evidence links panels, prefer compatible stock already in the
+  material plan, and map thick finished panels to face layers and, where
+  needed, a core or spacers. Check the resulting purchase demand against
+  the saved Lev1, Lev2 and Adda controls. The [material audit](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#lev1-sheet-material-audit)
+  records why the smallest historical lists are not acceptance controls.
 - Object Detail approve action: remove stale screen fragment flicker after clicking Approve.
 
 ## Later

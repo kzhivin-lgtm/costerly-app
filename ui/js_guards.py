@@ -1951,9 +1951,11 @@ def install_object_detail_input_guard(
             const scope = [ESTIMATE_ID, OBJECT_ID];
             const materialRows = () => [...parentDoc.querySelectorAll("[data-material-preview]")];
             const saveButton = () => parentDoc.querySelector(".object-detail-material-save");
-            const setStatus = message => {
+            const setStatus = (message, saved = false) => {
                 const node = parentDoc.querySelector(".object-detail-material-edit-status");
-                if (node) node.textContent = message;
+                if (!node) return;
+                node.toggleAttribute("data-confirmation", saved);
+                node.textContent = message;
             };
             const draft = new Map();
             let activeSave = null;
@@ -1977,10 +1979,12 @@ def install_object_detail_input_guard(
             const updateSaveControls = message => {
                 const button = saveButton();
                 if (!button) return;
-                button.hidden = !draft.size && !activeSave && !invalidMaterial();
-                button.disabled = !draft.size || !!activeSave || invalidMaterial();
-                button.textContent = activeSave ? "Saving…" : "Save changes";
-                setStatus(message || "");
+                const invalid = invalidMaterial();
+                const saved = button.hasAttribute("data-saved") && !draft.size && !activeSave && !invalid;
+                button.disabled = !draft.size || !!activeSave || invalid;
+                button.classList.toggle("object-detail-material-save--saved", saved);
+                button.textContent = activeSave ? "Saving…" : saved ? "Saved" : "Save changes";
+                setStatus(message || (saved ? "Changes saved" : ""), saved && !message);
             };
             __MOVE_CARET_TO_END__
 
@@ -2195,8 +2199,9 @@ def install_object_detail_input_guard(
                     if (Number(current.value) === Number(current.input.dataset.originalValue)) draft.delete(editKey(current));
                     else draft.set(editKey(current), {field: current.field, lineId: current.lineId, value: current.value});
                 }
+                saveButton()?.setAttribute("data-saved", "");
                 previewMaterials();
-                updateSaveControls(draft.size ? "" : "Changes saved");
+                updateSaveControls();
                 if (approveAfterSave && !draft.size && !invalidMaterial()) {
                     parentDoc.querySelector("[data-object-detail-approve]")?.click();
                 }
@@ -2650,13 +2655,13 @@ def install_object_detail_input_guard(
                     markCurrentValuesSaved();
                     parentWindow[SUBMITTING_KEY] = false;
                     button.removeAttribute("aria-disabled");
-                    button.textContent = "Approve";
+                    button.textContent = "APPROVE";
                     button.setAttribute("data-streamlit-bridge-key", "object_detail_approve_bridge");
                     button.click();
                 } catch (error) {
                     parentWindow[SUBMITTING_KEY] = false;
                     button.removeAttribute("aria-disabled");
-                    button.textContent = "Approve";
+                    button.textContent = "APPROVE";
                     if (parentWindow.console && parentWindow.console.error) {
                         parentWindow.console.error("Could not save Object Detail draft", error);
                     }

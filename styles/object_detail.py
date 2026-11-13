@@ -484,9 +484,26 @@ def apply_object_detail_css() -> None:
 
         .object-detail-material-edit-status:empty { margin: 0; }
 
+        .object-detail-material-edit-status[data-confirmation] {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: 0;
+            overflow: hidden;
+            clip-path: inset(50%);
+            white-space: nowrap;
+        }
+
         .object-detail-material-save:disabled {
             opacity: 0.55;
             cursor: default;
+        }
+
+        .object-detail-footer-button.object-detail-material-save--saved:disabled {
+            background: var(--color-success-bg);
+            border-color: var(--color-success);
+            color: var(--color-success);
+            opacity: 1;
         }
 
         .object-detail-material-input-unit {

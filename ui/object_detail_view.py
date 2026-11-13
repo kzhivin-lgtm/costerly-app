@@ -423,10 +423,10 @@ def _footer_html(
         'Back to Objects'
         '</a>'
         '<button type="button" class="object-detail-footer-button object-detail-footer-button--secondary '
-        'object-detail-material-save" hidden disabled>Save changes</button>'
+        'object-detail-material-save" disabled>Save changes</button>'
         f'<a class="object-detail-footer-button object-detail-footer-button--primary" href="?{approve_params}" '
         'data-streamlit-bridge-key="object_detail_approve_bridge" '
-        'target="_self" data-object-detail-approve="true">Approve</a>'
+        'target="_self" data-object-detail-approve="true">APPROVE</a>'
         '</div>'
         '<p class="object-detail-material-edit-status" role="status" aria-live="polite"></p>'
     )

@@ -1,5 +1,19 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.22 Object Detail save feedback
+
+Work 3.17.4.6. Keep all three footer actions visible. Save changes starts
+disabled, becomes available for a valid draft and turns green with the
+label Saved once the server acknowledges the write. A new edit restores
+Save changes. Reverting it restores the previous saved state. Save errors
+remain visible, and the success announcement is available to screen
+readers. The approval action reads APPROVE. The release uses the same
+Detection and Parts Check code and the same Material Engine calculation.
+Verification: 89 focused tests passed. Browser fixtures at 1280 and 390 px
+verified the green state after confirmation, stable button width, new
+edits, revert, failed save and retry, clean approval, approval with a
+draft and return navigation. Authenticated 9.22 acceptance remains open.
+
 ## Estimation 9.21 Object Detail and scoped material edits
 
 Work 3.17.4.6. Start from production rollback `bdd0620`, the 9.17
@@ -34,8 +48,65 @@ returned three Blocks, three drawers and two supports. All 12 archived
 Lev1 Detection requests and partitions replayed identically to the
 checkpoint, including the two known failures. The owner's third fresh 9.17
 Upload, `run_423326c87f9c4768915a3930a3753d67`, published V01–V06 as one
-object at 23:07 Israel time. Authenticated 9.21 Upload and Object Detail
-latency remain pending.
+object at 23:07 Israel time. GitHub main is `20e0288`. Railway
+deployment `38951ba5-bed2-436d-93f4-495dcc0bf2a1` succeeded and the
+Railway Core and Cloudflare markers both report `estimation-v9.21-detection-v8.4.29`.
+Core health is HTTP 200. The first authenticated 9.21 Lev1 Upload
+`run_88ad7350c5e34c8db8b06cf58c154828` kept V01–V06 in one object
+and published 3 Blocks, 3 drawers, 2 supports and 29 complete Parts Check
+rows. All row roles, quantities and dimensions match the saved 9.19
+Front recovery control. The linked Material Plan published 11 priced
+purchase lines, including 5 Assumption Fallback lines at 1,400 ILS.
+Materials total 3,893.42 ILS before VAT. Self cost is 4,127.02 ILS before
+VAT and 4,869.88 ILS after VAT. Detection Upload took 48.09 s, Parts
+Check took 33.97 s, and the Material Plan was published 31.47 s later.
+The plan is `needs_review` with 23 source/ownership findings and zero
+unpriced requirements. The later authenticated save on the same estimate
+changed the LDSP 20 mm purchase from two to four sheets. Its line cost
+changed from 573.888 to 1,147.776 ILS and materials from 3,893.42 to
+4,467.31 ILS. The plan was published 2.14 s after the override write.
+The other ten purchase lines and Parts Check were identical. Authenticated
+Approve remains to verify.
+
+The owner's repeat Lev1 Upload `run_fa1d635b62434af58a103e34a27db8af`
+returned one object with V01–V06 and the same View evidence as the first
+9.21 Upload. Adda `run_a4ddf02ed4ae4aba9fcedc770c03e4f9` returned the
+groups V01/V04/V06/V08 and V02/V03/V05/V07. The two repeats verify File
+Review grouping. Their Estimation was not observed. The annotated remote
+tag `estimation-v9.21-checkpoint` pins `20e0288`. The bundle, receipts,
+source events, saved Parts and material plans are under
+`backups/estimation-v9.21-lev1-production-verification-2026-11-13/`.
+
+### Lev1 sheet material audit
+
+The initial 9.21 plan has nine sheet purchase lines, including four LDSP
+positions. The seat (39 mm from a scaled projection) and the worktop
+underlayer (40 mm) reach Material Demand without a finish or material note.
+The role-based fallback assigns LDSP and the exact stock thicknesses are
+unmatched. The 17 mm LDSP is shared by the carcass, drawer boxes and
+plinth. The 20 mm LDSP goes to the rear panel of the slatted assembly.
+The grain evidence already reaches the drawer fronts, frame, ribs and
+worktop. The handoff supports veneered MDF on those parts.
+
+The smallest saved production plan, 9.16, shows two sheet lines, but
+mislabels seven front openings and lacks dimensions on 29 of 45 Parts
+rows. Some sheet demand ended up in piece allowances. The smallest plan
+with complete part dimensions, 9.3, had four sheet lines and 28 Parts
+rows. Parts has three drawer fronts and two supports in three Blocks.
+Front records four drawers, so 9.3 is a material comparison and has a
+known Front discrepancy. The 9.15 local control has eight sheet lines
+with three Blocks, three drawers and two supports. It grouped the seat,
+ribs and right upright into one 40 mm veneered MDF requirement. That
+requirement still needed Assumption Fallback.
+
+Pending: propagate corroborated finish and nominal thickness between
+compatible panels, prefer already required compatible stock, and resolve
+thick finished panels into available face layers and an optional core or
+spacer. Keep the finished size in Parts Check and send actual layer stock
+to Material Demand. Drawing specifications and explicit material breaks
+take precedence. The assembly and catalog choices remain open. Replay
+the verified Lev1 report and check Lev2 and both Adda objects before
+changing pricing. The 9.22 release contains footer changes only.
 
 
 ## Estimation 9.19 Scoped material edits and Front recovery
