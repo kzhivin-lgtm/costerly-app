@@ -1,5 +1,22 @@
 # Estimation 9 Parts Check from Upload
 
+## Objects Estimation review and subtitles
+
+The owner reported that Review stayed disabled for a ready object after
+returning from Object Detail. The completed table used prefetch readiness
+to disable the link and had no refresh to observe the pending read finish.
+Review now follows the object estimate status. Object Detail reuses a
+finished prefetch or makes its normal authorized read with a loading
+indicator. The subtitle uses the main facade stock by allocated area and
+includes LED, mirror and glass boxes only when present. The self-cost cell
+shows the same amount without the approximation sign.
+
+Local Chrome with the saved Adda Material Plan verified both navigation
+orders with cold, warm and failed prefetch, mouse and keyboard use, narrow
+layout, the running object state, and return after a failed detail read.
+The focused suite passed 32 tests. An authenticated production witness
+remains pending.
+
 ## Estimation 9.8 stock inheritance
 
 Work 3.17.4.6. Parts uses the printed material and finish for an individual
@@ -19,7 +36,26 @@ corner panel as 16 mm plywood. The replay retained 157 Parts rows (24 and
 133). Pricing against the active catalogs yielded 11 sheets of 16 mm
 plywood, 3 of 18 mm, no LDSP, and no Assumption Fallback. Purchase cost:
 9,810.51 ILS excluding VAT, down from 10,363.92 ILS in the owner 9.7 run.
-Fresh Upload acceptance is separate.
+An autonomous repeat from the same saved Detection evidence used nine new
+model responses and reproduced the same material selections, Parts counts
+and purchase total. The seven relevant test modules passed (69 tests).
+Railway reported a successful production deployment for commit `7cf9207`,
+deployment `5db90e3c-01fe-4fd3-80c5-920090a87375`.
+
+Fresh production Upload `run_9dddd6c9088945c08c234e2597f2f7e2` produced
+estimate `run_9dddd6c9088945c08c234e2597f2f7e2_estimate_20261113120235`
+with a new Detection event. Both groups exactly matched the accepted
+partition: V02/V03/V05/V07 for the straight object and V01/V04/V06/V08
+for the corner cabinet. The straight object's displayed name was
+`Vanity unit`. Parts Check 9.8 completed in 96.5 seconds and published
+157 rows (24 and 133), matching the 9.7 role and quantity counts. Both
+plinths and the straight backing used 18 mm plywood, with the latter bound
+to `view-002:A04` and `C04`. The corner backing used 16 mm plywood.
+Twenty demands received catalog prices, with zero unresolved requirements
+and zero Assumption Fallback. Purchase cost reproduced 9,810.51 ILS
+excluding VAT. Both objects remain in Review for open Parts findings.
+The straight shelf, additional corner plinth spans and LED power supplies
+remain outstanding.
 
 Work 3.17.4.6. The owner confirmed the production release on 2026-11-12.
 The release starts from Detection V8.4.27 at

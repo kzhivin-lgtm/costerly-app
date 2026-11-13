@@ -31,6 +31,8 @@ from db.company_access import assert_estimate_owned, assert_run_owned
 from state.company_auth import company_auth_enabled
 from state.session import get_company_id
 from models.estimation import ObjectEstimateSeed
+from use_cases.material_normalization import canonical_material_display_name
+from use_cases.price_source_taxonomy import source_family_for_catalog_family
 from use_cases.retry import read_with_retry
 
 
@@ -198,6 +200,49 @@ def build_estimate_id(run_id: str) -> str:
     return f"{run_id}_estimate_{estimate_stamp}"
 
 
+_FRONT_PART_ROLES = {"facade", "door_front", "drawer_front", "lift_up_front", "hinged_facade", "lift_up_facade"}
+_VISIBLE_PARTS = (
+    ("LED", {"led_strip_run"}),
+    ("Mirror", {"mirror", "mirror_glass"}),
+    ("Glass boxes", {"glass_box", "glass_box_bottom", "glass_box_long_wall", "glass_box_end_wall"}),
+)
+
+
+def _object_visible_materials(plan: dict[str, Any], checked: dict[str, Any], object_id: str) -> str:
+    """Summarize one facade material and the visible features of this object."""
+    roles = {part.get("component_role") for part in checked.get("parts", ())}
+    front_area: dict[str, float] = {}
+    for line in plan.get("lines") or ():
+        allocations = [a for a in line.get("allocations") or () if a.get("object_id") == object_id]
+        if not allocations:
+            continue
+        family, *keys = str(line.get("selection_key") or "").split("|")
+        attrs = dict(key.split("=", 1) for key in keys if "=" in key)
+        if family == "mirror":
+            roles.add("mirror")
+        if family == "hardware_electrical_component" and str(line.get("display_name") or "").lower().startswith("led strip"):
+            roles.add("led_strip_run")
+        for allocation in allocations:
+            parts = str(allocation.get("demand_id") or "").removesuffix(":assumption").rsplit(":", 2)
+            if len(parts) < 3:
+                continue
+            role = parts[-2]
+            roles.add(role)
+            if role in _FRONT_PART_ROLES and family and not family.startswith("assumption:"):
+                entity = _ASSUMPTION_MATERIAL_DISPLAY_NAMES.get(family) or source_family_for_catalog_family(family)
+                if family == "mdf_hdf" and attrs.get("board_type") in {"mdf", "hdf"}:
+                    entity = attrs["board_type"]
+                label = canonical_material_display_name(entity, {"thickness_mm": attrs.get("thickness")})
+                front_area[label] = front_area.get(label, 0) + _number(allocation.get("area_mm2"), 0)
+    labels = []
+    if front_area:
+        labels.append(f"{max(front_area, key=front_area.__getitem__)} fronts")
+    elif roles & _FRONT_PART_ROLES:
+        labels.append("Fronts")
+    labels.extend(label for label, component_roles in _VISIBLE_PARTS if roles & component_roles)
+    return " · ".join(labels)
+
+
 def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
     """Load current object estimate statuses for the Objects Estimation screen."""
     client = get_supabase_client()
@@ -234,12 +279,7 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
         object_id = str(row.get("object_id") or "")
         quantity = _number(row.get("quantity"), 1)
         checked = checked_objects.get(object_id) or {}
-        materials = checked.get("materials") or _material_rows_from_plan(material_plan, object_id=object_id)
-        material_names = [
-            str(material.get("source_name") or material.get("item") or "").strip()
-            for material in materials
-            if str(material.get("source_name") or material.get("item") or "").strip()
-        ]
+        visible_materials = _object_visible_materials(material_plan, checked, object_id)
         status = str(row.get("status") or "pending")
         self_cost = row.get("self_cost_ex_vat")
         priced = status in {"completed", "review_required"} and self_cost is not None
@@ -251,7 +291,7 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
             {
                 "object_key": row.get("object_id"),
                 "name": row.get("object_name"),
-                "materials": ", ".join(material_names),
+                "materials": visible_materials,
                 "quantity": quantity,
                 "self_cost_unit": self_cost if self_cost is not None else status,
                 "status": status,
@@ -263,7 +303,8 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
                 "sale_price_overridden": sale_price_overridden,
                 "suggestion": f"suggested: SC + {_format_number(markup_percent)}%",
                 "reviewed": bool(row.get("approved")),
-                "details_available": bool(checked or materials),
+                "details_available": bool(checked or visible_materials or
+                                          _material_rows_from_plan(material_plan, object_id=object_id)),
             }
         )
 

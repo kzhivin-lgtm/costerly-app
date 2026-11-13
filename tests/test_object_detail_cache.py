@@ -111,8 +111,7 @@ def test_prefetch_runtime_passes_explicit_company_scope(monkeypatch):
     }
 
 
-def test_review_waits_for_object_detail_prefetch_not_the_global_material_plan(monkeypatch):
-    """A terminal object becomes clickable only after its own detail is cached."""
+def test_completed_object_prefetch_runs_without_the_global_material_plan(monkeypatch):
     st.session_state.clear()
     prefetch = Future()
     submitted = []
@@ -127,36 +126,34 @@ def test_review_waits_for_object_detail_prefetch_not_the_global_material_plan(mo
         "rows": [{"object_key": "object-1", "status": "completed"}],
     }
 
-    preparing = objects._prepare_completed_object_detail_reviews(
+    objects._prefetch_completed_object_details(
         estimate_id="estimate-1", company_id="610", data=data,
     )
 
-    assert preparing["rows"][0]["review_ready"] is False
     assert submitted == [{
         "estimate_id": "estimate-1", "object_id": "object-1", "company_id": "610",
     }]
 
     prefetch.set_result({"name": "Cabinet", "sections": []})
-    ready = objects._prepare_completed_object_detail_reviews(
+    objects._prefetch_completed_object_details(
         estimate_id="estimate-1", company_id="610", data=data,
     )
 
-    assert ready["rows"][0]["review_ready"] is True
     assert st.session_state.object_detail_data_cache[("estimate-1", "object-1")]["name"] == "Cabinet"
 
 
-def test_review_action_is_disabled_until_its_prefetch_snapshot_is_ready():
+def test_review_action_remains_a_link_while_detail_is_uncached():
     from ui import objects_pricing
 
     html = objects_pricing._review_action_html(
-        {"object_key": "object-1", "status": "completed", "review_ready": False},
+        {"object_key": "object-1", "status": "completed"},
         estimate_id="estimate-1",
         run_id="run-1",
     )
 
-    assert "Preparing Review" in html
-    assert "aria-disabled=\"true\"" in html
-    assert "href=" not in html
+    assert ">Review</a>" in html
+    assert "aria-disabled" not in html
+    assert "object_id=object-1" in html
 
 
 def test_failed_prefetch_falls_back_once_without_fragment_retry(monkeypatch):
@@ -172,15 +169,31 @@ def test_failed_prefetch_falls_back_once_without_fragment_retry(monkeypatch):
     monkeypatch.setattr(objects, "submit_object_detail_prefetch", submit)
     data = {"rows": [{"object_key": "object-1", "status": "completed"}]}
 
-    first = objects._prepare_completed_object_detail_reviews(
+    objects._prefetch_completed_object_details(
         estimate_id="estimate-1", company_id="610", data=data,
     )
-    second = objects._prepare_completed_object_detail_reviews(
+    objects._prefetch_completed_object_details(
         estimate_id="estimate-1", company_id="610", data=data,
     )
 
-    assert first["rows"][0]["review_ready"] is False
-    assert second["rows"][0]["review_ready"] is True
+    objects._prefetch_completed_object_details(estimate_id="estimate-1", company_id="610", data=data)
+    assert ("estimate-1", "object-1") in st.session_state.object_detail_prefetch_failed
     assert submitted == [{
         "estimate_id": "estimate-1", "object_id": "object-1", "company_id": "610",
     }]
+
+
+def test_open_second_object_after_return_uses_foreground_read_if_prefetch_is_pending(monkeypatch):
+    st.session_state.clear()
+    st.session_state.current_estimate_id = "estimate-1"
+    running = Future()
+    running.set_running_or_notify_cancel()
+    st.session_state.object_detail_prefetch_futures = {("estimate-1", "object-2"): running}
+    st.session_state.object_detail_data_cache = {("estimate-1", "object-1"): {"name": "First"}}
+    monkeypatch.setattr(object_detail, "load_object_detail_data", lambda **kw: {"name": kw["object_id"]})
+    objects._open_object_detail("object-1")
+    assert object_detail._load_object_detail_or_render_error(object_detail._current_object_detail_context()) == {"name": "First"}
+    object_detail._return_to_objects()
+    objects._open_object_detail("object-2")
+    assert object_detail._load_object_detail_or_render_error(object_detail._current_object_detail_context()) == {"name": "object-2"}
+    assert not running.done()

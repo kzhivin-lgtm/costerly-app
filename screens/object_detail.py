@@ -113,32 +113,28 @@ def _load_object_detail_or_render_error(context: ObjectDetailContext) -> dict[st
 
     prefetches = st.session_state.setdefault("object_detail_prefetch_futures", {})
     prefetch = prefetches.pop(cache_key, None)
+    if prefetch is not None:
+        if prefetch.done():
+            try:
+                data = prefetch.result()
+            except Exception:
+                pass
+            else:
+                cache[cache_key] = data
+                dirty_estimates.discard(context.estimate_id)
+                return data
+        else:
+            prefetch.cancel()
     try:
-        data = (
-            prefetch.result()
-            if prefetch is not None
-            else load_object_detail_data(
+        with st.spinner("Loading Object Detail"):
+            data = load_object_detail_data(
                 estimate_id=context.estimate_id,
                 object_id=context.object_id,
             )
-        )
         cache[cache_key] = data
         dirty_estimates.discard(context.estimate_id)
         return data
     except Exception as exc:
-        # A speculative read must never make a valid Review unavailable. Retry
-        # once on the normal request path before showing a real load failure.
-        if prefetch is not None:
-            try:
-                data = load_object_detail_data(
-                    estimate_id=context.estimate_id,
-                    object_id=context.object_id,
-                )
-                cache[cache_key] = data
-                dirty_estimates.discard(context.estimate_id)
-                return data
-            except Exception as retry_exc:
-                exc = retry_exc
         st.error(f"Could not load Object Detail: {exc}")
         _back_to_objects_button()
         return None
