@@ -5,8 +5,10 @@
 The failed 9.16 production input preserved all six Island boxes but
 omitted the V01–V04 relationship. With that saved handoff, the 9.17
 control recovered the drawer case, the frame and the supported table
-without restoring the edge in Detection. The fresh production comparison
-is tracked in the
+without restoring the edge in Detection. Fresh 9.17 Upload
+`run_037c9562735b4213854d5fd44f7e611e` matched all six boxes and
+restored V01–V04. The three Block envelopes matched the control.
+The support handoff and purchase differences are recorded in the
 [Estimation release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-917-front-and-supported-tabletop-recovery).
 
 ## Lev1 production repeatability, 2026-11-13

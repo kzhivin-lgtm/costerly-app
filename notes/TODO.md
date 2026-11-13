@@ -5776,9 +5776,13 @@ cause from the local screenshot alone.
   Detection inputs. Adda reproduced the accepted 2/7 block split and
   one straight-object mirror. Keep tracking Adda mirror repeatability
   and incomplete sheet demand. Railway deployed `2a4a548`; runtime
-  and checkpoint tags verified. Await the fresh Lev1 production Upload
-  to compare three blocks, three drawers, two supports and the complete
-  purchase plan with the 9.17 control. See the release record.
+  and checkpoint tags verified. Fresh Lev1
+  `run_037c9562735b4213854d5fd44f7e611e` matched three Blocks and three
+  drawers. Front counted two supports, Parts and purchasing retained
+  one on the Detection-linked path. Seven of 11 purchase lines matched;
+  materials were 3,693.42 ILS versus 3,551.72 ILS. Verify attachment
+  of the corroborated support pair on both Planner paths and material
+  coverage of the seat. See the release record.
 - Object Detail approve action: remove stale screen fragment flicker after clicking Approve.
 
 ## Later

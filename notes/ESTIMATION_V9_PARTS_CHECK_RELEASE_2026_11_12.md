@@ -46,7 +46,31 @@ The private archive at
 preserves the three control inputs and outputs, the staged failure
 replay, the Lev1 catalog and purchasing plan, and both Git references.
 The saved Lev1 control has 11 purchase lines totaling 3,551.72 ILS
-before VAT and overhead. A fresh authenticated Lev1 Upload is pending.
+before VAT and overhead.
+
+### Fresh 9.17 Lev1 production verification
+
+Run `run_037c9562735b4213854d5fd44f7e611e` published Parts Check on
+2026-11-13 at 20:49 Israel time. Detection retained all six boxes but
+restored the V01–V04 edge that the control lacked. The three Blocks
+and all Block dimensions matched the control. Front reported three
+drawers and two legs. Parts retained three 498 × 227 × 20 mm drawer
+fronts, but carried only one support via `view-005:C04`. Planner's
+existing Detection path still requires a direct relationship to the
+view showing the second leg when attaching support contours. The
+dimension-backed path used in the control also admits the corroborating
+frame view. The raw production Front response was not saved.
+
+Parts retained 29 rows with complete dimensions but four rows differed
+from the control. The seat did not carry a wood-grain material decision
+and used 39 mm LDSP. The two rib groups used 40 mm veneered MDF, while
+the control used 37 mm veneered MDF for the seat and rib groups.
+Seven of 11 purchase lines matched exactly. The 30 mm upright moved
+from Israel Reference LDSP to veneered MDF (+341.70 ILS), and one fewer
+support reduced the total by 200 ILS. Other changed rows netted to
+zero. Materials were 3,693.42 ILS ex VAT versus 3,551.72 ILS in the
+control. Production self cost was 3,915.02 ILS ex VAT and 4,619.72 ILS
+including VAT. Production acceptance is partial.
 
 ## Estimation 9.16 Wood-grain material decision
 
