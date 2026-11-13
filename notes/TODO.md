@@ -2,26 +2,42 @@
 
 ## Estimation Parts Check, 3.17.4.6
 
-PENDING, P1, USER REQUEST. Refine the Object Detail Materials editor.
-Display all monetary amounts, including read-only Unit Price, as whole ILS
-on initial render, live preview and after saving. Preserve calculation
-precision. Put Save changes in the footer action group next to Back to
-Objects. Keep the draft, save progress and errors actionable without a
-page refresh. Show Required Material units adjacent to the displayed
-value when the field is blurred. Hide the unit while focused and restore
-it on blur. Use the existing shared end-caret rule for numeric fields on
-pointer entry and keyboard focus, including clicks between digits. Verify
-on a two-object estimate that local preview and batch save retain exact
-requirements, shared purchases and costs when navigating between objects.
+Estimation 9.18 is live at runtime `241ca27`. Steps 1–3 passed local
+verification and still need an authenticated production approval witness.
 
-ACTIVE, P1, USER REQUEST. Clarify Material Plan Incomplete using the
-saved estimate's actual review reason. Fresh Adda prices all purchase
-lines and shares one mirror sheet across both objects. The current label
-combines open Parts Check findings, estimated values and genuinely
-unpriced requirements under the same status. Retain estimate-wide sheet
-rounding and verify review and approval behavior against the persisted
-reason before changing its gate. See the
-[release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#shared-sheet-purchasing-and-review-status).
+1. VERIFIED LOCALLY, P0, USER REQUEST. Remove the Material Plan completeness gate
+   from Object Detail approval. Keep Approve available with the existing
+   prices, including plans with open Parts Check findings or unpriced
+   positions. Remove the Material Plan Incomplete replacement action and
+   its blocking notice. Apply the same rule to the button, approval
+   handler and server entry point. Parts Check findings remain in the
+   saved report. Verify that an Adda object with a `needs_review` plan
+   can be approved and the approval persists on return to Objects.
+2. VERIFIED LOCALLY, P1, USER REQUEST. Put Back to Objects and Approve in the footer.
+   Insert Save changes between them only when an edit is pending. Save
+   changes persists the draft without approving or refreshing the page.
+   Approve with a draft saves valid edits first, then approves after the
+   write succeeds. A failed save leaves the draft
+   visible and actionable. Verify pristine, edited, saving, saved and
+   failed states, including reverting the last edit and returning to Objects.
+3. VERIFIED LOCALLY, P1, USER REQUEST. In Required Material, keep the unit adjacent
+   to the number at rest. Hide the unit on focus and restore it on blur.
+   Apply the shared numeric end-caret rule to pointer entry and keyboard
+   focus, including clicks between digits. Show all prices, including
+   Unit Price, as whole ILS on initial render, live preview and after
+   saving. Preserve exact values for calculations and persistence. Verify
+   normal and narrow layouts and the immediate local cost preview.
+4. DEFERRED BY OWNER, P1, USER REQUEST. When reviewing the next object, use the
+   capacity remaining on compatible sheets already charged to approved
+   objects. Charge the current object for additional sheets required by
+   the estimate. The estimate pays for each sheet once. Show the object's
+   net Required Material and its charge. The internal shared assignment
+   may stay hidden. Verify both approval orders, an edit absorbed by
+   remaining capacity, and an edit that requires an extra sheet. Define
+   how reopening an approved object or changing shared purchase terms
+   affects prior charges. Current 9.17 allocates by net area and clears
+   all object approvals on material edits. See the
+   [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#shared-sheet-purchasing-and-review-status).
 
 VERIFIED on a fresh Lev2 production Upload. Parts Check completed in
 57.094 seconds and the private reader returned 107/107 matching control

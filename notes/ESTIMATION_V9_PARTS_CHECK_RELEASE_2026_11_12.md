@@ -23,6 +23,11 @@ an edit and saving before approval. Authenticated production approval on
 an existing Adda estimate remains to be confirmed. Estimate-wide sheet
 purchase and allocation rules are deferred to their separate task.
 
+GitHub main published runtime `241ca27`. Railway deployment
+`477f61b8-9e48-4278-bb16-ea7c8a77fa2c` reported success on 2026-11-13.
+The anonymous core startup probe and Cloudflare wrapper both reported
+`estimation-v9.18-detection-v8.4.29`.
+
 ## Estimation 9.17 Front and supported tabletop recovery
 
 Work 3.17.4.6. Front and Planner share one unambiguous vector frame

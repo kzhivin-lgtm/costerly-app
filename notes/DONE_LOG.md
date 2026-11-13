@@ -1,5 +1,12 @@
 # Done Log
 
+Estimation 9.18, work 3.17.4.6. Object Detail approval uses the available
+prices. The footer saves edits without approving, and valid drafts can
+save before approval. Numeric fields follow the end-caret and focus-unit
+rules. All 170 focused tests and both local browser sizes passed. Railway
+and Cloudflare report 9.18. Authenticated Adda acceptance remains open.
+See the [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-918-object-detail-approval-and-material-editing).
+
 Estimation 9.17, work 3.17.4.6. The owner approved the checkpoint and
 production rollout. `estimation-v9.17-checkpoint` pins `2a4a548`.
 Railway deployed it and the active runtime reported 9.17. The verified
