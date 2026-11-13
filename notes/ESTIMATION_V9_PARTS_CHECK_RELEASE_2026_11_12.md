@@ -1,5 +1,26 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.16 Wood-grain material decision
+
+Work 3.17.4.6. Understanding returns the chosen material per visible
+part role alongside its Island and finish group. Visible wood grain on
+sheet parts supports veneered MDF as an estimating assumption. A solid
+wood choice requires a matching verbatim OCR note for the object that
+explicitly specifies solid wood for the role. Explicit material callouts
+take precedence. Parts carries the decision into Material Demand; no new
+model call is added.
+
+With saved Detection inputs and fresh Estimation responses, Lev1's
+Understanding explicitly selected veneered MDF for the seat, drawer
+fronts and frame members. Material Demand retained the 20, 30 and
+40 mm requirements, with a single 40 mm requirement for the seat, ribs
+and right upright. Lev2's plain green fronts and timber-coloured worktop
+end generated no grain-based stock choice. Its nine Blocks and 110 Parts
+rows matched the 9.15 control counts. The solid wood and imitation cases
+are covered by automated contract tests.
+
+Local candidate. The prior Adda Front discrepancy remains open.
+
 ## Estimation 9.15 Drawer runs and sheet thickness
 
 Work 3.17.4.6. Parts gives visually similar drawers one size when they

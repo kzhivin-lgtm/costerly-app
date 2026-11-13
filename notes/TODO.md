@@ -5761,6 +5761,10 @@ cause from the local screenshot alone.
   verifies one 40 mm veneer MDF requirement for the seat, ribs and right
   upright. Catalog coverage for that thickness, the contrasting tabletop
   construction and the remaining Parts Check findings are still open.
+  Estimation 9.16 moves the veneer decision into Understanding and
+  carries its source into Parts. Fresh Lev1 and Lev2 controls verify the
+  veneered MDF choice and the plain-colour exclusion. Solid wood needs
+  a verbatim drawing note. Catalog coverage stays open.
   Release verification is pending. A fresh Adda control tagged two
   mirrors on V02 and created three straight-object Blocks, versus two in
   the accepted witness. Compare the Front evidence before any changes.

@@ -50,17 +50,24 @@ Return JSON only:
 "description":"...","characteristics":["..."]}}}"""
 VISIBLE_FINISH = """
 For each object, also return wood_grain as a list of
-{"role":"...", "view_id":"...", "finish_group":"..."}.
-Use it only for clear visible wood grain on a finished surface, not a plain wood-like color
-or material guessed from a line drawing. A role is eligible only when its observed parts
-share the finish. Leave it out if different parts of the same role have different finishes.
+{"role":"...", "view_id":"...", "finish_group":"...", "material":"veneered_mdf"}.
+Decide the material for each eligible part role from its form, visible grain and drawing notes.
+Treat a clear wood-grain pattern on a sheet or panel as veneer and choose veneered MDF
+as the estimating substrate when the drawing does not specify a different material.
+Do not infer solid wood from grain, colour or a species name. Choose "solid_wood" only
+if a drawing note explicitly specifies solid wood for that role. For "solid_wood" also
+return "source_ref" from material_notes and a verbatim "source_quote" naming the role
+and solid material. If a note specifies another material, omit that role here.
+Plain wood-like colour or hatch alone does not qualify. A role is eligible only when
+its observed parts share the finish and material.
 Allowed roles: seat_cover (seat or base cover), drawer_front, door_front, lift_up_front,
 fixed_panel, frame_cap, frame_side, frame_backing, vertical_rib, tabletop.
 If one crop shows the same finish on several roles, report each role separately and give
 them the same short finish_group. Use different groups for visibly different finishes.
 Check the top cover, operating fronts and decorative frame separately against the visible
-finish characteristics. Use the clearest crop for each role. Report only the observed
-grain. Substrate and thickness are decided downstream. Return an empty list when unclear.
+finish characteristics. Use the clearest crop for each role. In characteristics,
+state the visible evidence and whether the material is an assumption or explicitly
+specified. Use Parts Geometry for thickness. Return an empty list when unclear.
 """
 WORKTOP_CUTOUTS = """
 In each object's Understanding, also return worktop_cutouts (empty if none).
@@ -135,12 +142,38 @@ def island_content(request, views):
     return result
 
 
-def classify_islands(invoke, views, images, detection, *, include_worktop_cutouts=False):
+def classify_islands(invoke, views, images, detection, *, include_worktop_cutouts=False, inputs=()):
     by_object = {}
     for vid, view in views.items():
         by_object.setdefault(view["object_id"], []).append(vid)
     context = {"objects": by_object, "projections": sorted(PROJECTIONS),
                "detection": detection}
+    notes = {}
+    if include_worktop_cutouts:
+        from use_cases.estimation_cb_geometry_parts import (
+            SOLID_WOOD, VENEERED_MDF, VISIBLE_GRAIN_ROLES, is_explicit_solid_wood_note,
+        )
+        from use_cases.price_source_taxonomy import material_rule_for_text
+
+        for row in inputs:
+            data = row["input_payload"]
+            oid = data["object"]["object_id"]
+            if oid not in by_object:
+                continue
+            evidence = data["evidence"]
+            for block in (*evidence.get("ocr_blocks", ()), *evidence.get("ocr_literal_items", ())):
+                if not block.get("block_ref"):
+                    continue
+                lines = []
+                for line in block["text"].splitlines():
+                    if is_explicit_solid_wood_note(line) or (
+                            (rule := material_rule_for_text(line)) and rule.family in {
+                                "mdf", "hdf", "plywood", "particleboard", "laminated panel", "veneer",
+                            }):
+                        lines.append(line.strip())
+                if lines:
+                    notes.setdefault(oid, {})[block["block_ref"]] = lines
+        context["material_notes"] = notes
     content = [payload(context)]
     for vid in images:
         content.extend(images[vid][:2])
@@ -151,18 +184,26 @@ def classify_islands(invoke, views, images, detection, *, include_worktop_cutout
                 raw["understanding"].keys() != by_object.keys()):
             raise ValueError("Island Map must classify each input Island and object")
         if include_worktop_cutouts:
-            from use_cases.estimation_cb_geometry_parts import VISIBLE_GRAIN_ROLES
-
             for oid, understanding in raw["understanding"].items():
                 if "wood_grain" not in understanding:
                     continue
                 cues = understanding["wood_grain"]
-                understanding["wood_grain"] = [
-                    cue for cue in cues if isinstance(cue, dict)
-                    and isinstance(cue.get("role"), str) and cue["role"] in VISIBLE_GRAIN_ROLES
-                    and cue.get("view_id") in by_object[oid]
-                    and isinstance(cue.get("finish_group", ""), str)
-                ] if isinstance(cues, list) else []
+                accepted = []
+                for cue in cues if isinstance(cues, list) else ():
+                    if (not isinstance(cue, dict) or not isinstance(cue.get("role"), str)
+                            or cue["role"] not in VISIBLE_GRAIN_ROLES or cue.get("view_id") not in by_object[oid]
+                            or not isinstance(cue.get("finish_group", ""), str)
+                            or cue.get("material", VENEERED_MDF) not in (VENEERED_MDF, SOLID_WOOD)):
+                        continue
+                    bound = {key: cue[key] for key in ("role", "view_id", "finish_group", "material") if key in cue}
+                    if cue.get("material") == SOLID_WOOD:
+                        ref, quote = cue.get("source_ref"), cue.get("source_quote")
+                        if (not isinstance(ref, str) or not isinstance(quote, str) or not is_explicit_solid_wood_note(quote)
+                                or quote.strip() not in notes.get(oid, {}).get(ref, ())):
+                            continue
+                        bound["solid_wood_note"] = {"ref": ref, "text": quote.strip()}
+                    accepted.append(bound)
+                understanding["wood_grain"] = accepted
         return raw
 
     system = ISLAND_MAP + WORKTOP_CUTOUTS + VISIBLE_FINISH if include_worktop_cutouts else ISLAND_MAP
@@ -192,7 +233,7 @@ def run_initial(geometry, key, source, output, *, resume=False, request_provider
     invoke = request_provider or provider(output, source_hash, resume=resume)
     with ThreadPoolExecutor(max_workers=3) as pool:
         map_call = pool.submit(classify_islands, invoke, views, images, source["detection_context"],
-                               include_worktop_cutouts=component_pdf is not None)
+                               include_worktop_cutouts=component_pdf is not None, inputs=source.get("inputs", ()))
         if any(not any(view["arrows"] and oblique_evidence(view)
                        for view in views.values() if view["object_id"] == oid)
                for oid in {view["object_id"] for view in views.values()}):
@@ -703,7 +744,8 @@ def run_pipeline(args, source, *, version, request_provider=None):
     if packet["source_sha256"][args.key] != sha256(args.pdf.read_bytes()).hexdigest():
         raise ValueError("Geometry packet belongs to a different PDF")
     views, frames, images, invoke, island_map, front, source_hash, component_observations, front_review = run_initial(
-        geometry, args.key, {"detection_context": detection}, args.output, resume=args.resume,
+        geometry, args.key, {"detection_context": detection, "inputs": source.get("inputs", ())},
+        args.output, resume=args.resume,
         request_provider=request_provider, component_pdf=args.pdf if v9 else None)
     with pymupdf.open(args.pdf) as pdf:
         page_count = len(pdf)

@@ -4,6 +4,7 @@ from math import ceil, isfinite
 import re
 
 from use_cases.estimation_assembly_bom import ASSEMBLY_BOM_V1
+from use_cases.estimation_cb_geometry_parts import VENEERED_MDF, is_explicit_solid_wood_note
 from use_cases.estimation_structural_bom import _CONSTRUCTION_MATERIAL_NAMES, _FAMILY_PREFERENCE
 from use_cases.material_engine_adapter import build_material_plan, material_plan_input_fingerprint, material_plan_snapshot
 from use_cases.material_identity_resolution import normalize_material_phrase
@@ -102,8 +103,13 @@ def _source_material(measurements, family_alias_context, material_note=None):
         words = note.casefold().split(maxsplit=1)
         token = words[0].strip(".,:;()") if words else ""
         family = {"мдф": "mdf", "хдф": "hdf"}.get(token)
+        explicit_solid = is_explicit_solid_wood_note(note)
+        if explicit_solid:
+            family = "solid timber"
         if not family and (rule := material_rule_for_text(note)):
             family = rule.family
+        if family == "solid timber" and not explicit_solid:
+            return None, {}, notes, ()
         taxonomy = catalog_taxonomy_for_family(family)
         if not taxonomy:
             alias_family = (_stock_alias_family(note, family_alias_context)
@@ -314,6 +320,7 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
             preferences = (source_family,) if source_family else _ROLE_FAMILY_PREFERENCE.get(role, ())
             visual_stock = row.get("visual_stock", {})
             visible_veneer = (not notes and not unit and visual_stock.get("surface") == "wood_grain"
+                              and visual_stock.get("material", VENEERED_MDF) == VENEERED_MDF
                               and "mdf_hdf" in allowed_material_families)
             if visible_veneer:
                 preferences = ("mdf_hdf",)

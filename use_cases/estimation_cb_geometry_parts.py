@@ -15,6 +15,16 @@ VISIBLE_GRAIN_ROLES = {
     "seat_cover", "drawer_front", "door_front", "lift_up_front", "fixed_panel", "frame_cap", "frame_side",
     "frame_backing", "vertical_rib", "tabletop",
 }
+VENEERED_MDF = "veneered_mdf"
+SOLID_WOOD = "solid_wood"
+_SOLID_WOOD_NOTE = re.compile(
+    r"\bsolid[ -]+(?:wood|timber|oak|ash|beech|maple|walnut|pine|birch)\b|"
+    r"\bмассив(?:а|ом)?\b|עץ מלא|עץ גושני", re.IGNORECASE,
+)
+_NON_SOLID_QUALIFIER = re.compile(
+    r"\b(?:not|imitation|effect|look|style|optional|veneer\w*|mdf|hpl|plywood|"
+    r"or|either|имитац\w*|не|или|под|шпон\w*|мдф|фанер\w*)\b|פורניר", re.IGNORECASE,
+)
 _FRAME_SURFACES = {"frame_cap", "frame_side", "vertical_rib"}
 _NEARBY_THICKNESS_MM = 4
 _FINISH_SUBJECTS = {
@@ -32,16 +42,29 @@ def _close_thickness(first, second):
     return abs(first - second) <= min(_NEARBY_THICKNESS_MM, .12 * max(first, second))
 
 
+def is_explicit_solid_wood_note(text):
+    return bool(_SOLID_WOOD_NOTE.search(text) and not _NON_SOLID_QUALIFIER.search(text))
+
+
 def visible_grain_evidence(understanding):
     """Keep the exact Island or characteristic that supports each finish."""
     refs = defaultdict(set)
     groups = defaultdict(set)
+    choices = defaultdict(set)
+    solid_notes = defaultdict(dict)
     descriptions = {}
-    for item in understanding.get("wood_grain", ()):
-        refs[item["role"]].add(item["view_id"])
+    cues = understanding.get("wood_grain", ())
+    for item in cues:
+        role = item["role"]
+        refs[role].add(item["view_id"])
+        choices[role].add(item.get("material", VENEERED_MDF))
+        if note := item.get("solid_wood_note"):
+            solid_notes[role][note["ref"]] = note["text"]
         if group := item.get("finish_group"):
-            groups[item["role"]].add(group)
-    for index, line in enumerate(understanding.get("characteristics", ()), 1):
+            groups[role].add(group)
+    # Text-only replies predating the material decision can still be replayed.
+    legacy = "wood_grain" not in understanding or any("material" not in item for item in cues)
+    for index, line in enumerate(understanding.get("characteristics", ()) if legacy else (), 1):
         observation = re.split(r"[—;]|\b(?:contrasting|likely|possibly|probably)\b",
                                line.casefold(), maxsplit=1)[0]
         subjects = re.match(
@@ -57,14 +80,25 @@ def visible_grain_evidence(understanding):
             for role in _FINISH_SUBJECTS.get(subject.strip(" .").removeprefix("the "), ()):
                 refs[role].add(ref)
                 descriptions[role] = ref
+                if not choices[role]:
+                    choices[role].add(VENEERED_MDF)
     description_groups = defaultdict(set)
     for role, ref in descriptions.items():
         description_groups[ref].update(groups[role])
     for role, ref in descriptions.items():
         if not groups[role] and len(description_groups[ref]) <= 1:
             groups[role].update(description_groups[ref] or {ref})
-    return {role: (evidence, next(iter(groups[role])) if len(groups[role]) == 1 else None)
-            for role, evidence in refs.items()}
+    return {
+        role: {
+            "surface": "wood_grain", "refs": sorted(evidence), "material": next(iter(choices[role])),
+            **({"finish_group": next(iter(groups[role]))} if len(groups[role]) == 1 else {}),
+            **({"material_note": {"basis": "ocr_material_note", "mm": None,
+                                 "refs": list(solid_notes[role]), "source_text": list(solid_notes[role].values())}}
+               if solid_notes[role] else {}),
+        }
+        for role, evidence in refs.items() if len(choices[role]) == 1
+        and (SOLID_WOOD not in choices[role] or solid_notes[role])
+    }
 
 
 def _normalize_thicknesses(compatible):
@@ -102,18 +136,22 @@ def finish_visible_parts(result, understanding):
     for scope in [*result["blocks"], *result["shared_parts"]]:
         for row in scope["parts"]:
             role = row["role"]
-            refs, finish_group = grain.get(role, ((), None))
-            if refs:
-                row["visual_stock"] = {"surface": "wood_grain", "refs": sorted(refs)}
+            evidence = grain.get(role, {})
+            finish_group = evidence.get("finish_group")
+            if evidence:
+                row["visual_stock"] = {key: evidence[key] for key in ("surface", "refs", "material")}
+                if note := evidence.get("material_note"):
+                    row["material_note"] = note
             thickness = row["dimensions"].get("thickness", {})
             if role not in VISIBLE_GRAIN_ROLES or thickness.get("mm") is None:
                 continue
             if finish_group and role in _FRAME_SURFACES | {"seat_cover"}:
-                key = (finish_group, "visible_structure")
+                key = (evidence["material"], finish_group, "visible_structure")
             else:
                 # With an unknown finish, keep the comparison within the same
                 # role and assembly. A common finish lets matching roles span blocks.
-                key = (finish_group, role) if finish_group else (scope.get("block_id") or scope["id"], role)
+                key = ((evidence["material"], finish_group, role) if finish_group
+                       else (scope.get("block_id") or scope["id"], role))
             compatible[key].append(thickness)
     for thicknesses in compatible.values():
         _normalize_thicknesses(thicknesses)

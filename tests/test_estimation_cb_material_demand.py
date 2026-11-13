@@ -60,7 +60,7 @@ def test_source_stock_note_overrides_family_assumption_with_original_evidence():
 
 
 def test_compatible_visible_wood_grain_parts_share_one_veneered_mdf_demand():
-    finish = {"surface": "wood_grain", "refs": ["view-1"]}
+    finish = {"surface": "wood_grain", "refs": ["view-1"], "material": "veneered_mdf"}
     seat = _part("seat_cover", visual_stock=finish)
     rail = _part("frame_side", owner_id="B02", visual_stock=finish)
     material, = _build([seat, rail], {"mdf_hdf", "melamine_faced_particleboard"})["materials"]
@@ -69,6 +69,17 @@ def test_compatible_visible_wood_grain_parts_share_one_veneered_mdf_demand():
     assert material["basis"] == "construction_assumption"
     assert material["evidence_refs"] == ["view-1"]
     assert [source["role"] for source in material["part_sources"]] == ["seat_cover", "frame_side"]
+
+
+def test_explicit_solid_wood_survives_material_demand():
+    face = _part("door_front",
+                 visual_stock={"surface": "wood_grain", "refs": ["view-1"], "material": "solid_wood"},
+                 material_note={"basis": "ocr_material_note", "refs": ["ocr:solid"],
+                                "source_text": ["Фасады: массив дуба, 17 мм."]})
+    material, = _build([face], {"timber_solid_wood_panel", "mdf_hdf"})["materials"]
+    assert material["family"] == "timber_solid_wood_panel"
+    assert material["basis"] == "source_evidence"
+    assert "ocr:solid" in material["evidence_refs"]
 
 
 def test_cyrillic_stock_ocr_matches_a_shared_alias_with_original_evidence():

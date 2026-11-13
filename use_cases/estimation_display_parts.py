@@ -5,7 +5,7 @@ from decimal import Decimal, ROUND_CEILING
 from difflib import SequenceMatcher
 import re
 
-from use_cases.estimation_cb_geometry_parts import derived, dimension, geometry_dimension, part, stock
+from use_cases.estimation_cb_geometry_parts import VISIBLE_GRAIN_ROLES, derived, dimension, geometry_dimension, part, stock
 from use_cases.estimation_cb_parts_coverage import planner_owners
 from use_cases.estimation_structural_bom import _hinges_per_facade, _slide_depth_mm
 from use_cases.price_source_taxonomy import material_rule_for_text
@@ -425,7 +425,7 @@ def add_source_casework_parts(parts, inventory, analyze, geometry, *, input_rows
                 elements = [item]
             for row in scope["parts"]:
                 is_plinth = row["role"] in PLINTH_PARTS
-                if not is_plinth and not row.get("visual_stock"):
+                if not is_plinth and row["role"] not in VISIBLE_GRAIN_ROLES:
                     continue
                 refs = {ref for axis in ("length", "width")
                         for ref in row["dimensions"].get(axis, {}).get("refs", ())}
@@ -436,7 +436,8 @@ def add_source_casework_parts(parts, inventory, analyze, geometry, *, input_rows
                 if is_plinth:
                     _apply_stock(row, facade if not local or _same_facade_stock(local, facade) else None,
                                  local, role="facade")
-                elif local or row["role"] in {"drawer_front", "door_front", "lift_up_front"}:
+                elif local or (row.get("visual_stock") and not row.get("material_note") and
+                               row["role"] in {"drawer_front", "door_front", "lift_up_front"}):
                     exact = row["dimensions"].get("thickness", {}).get("basis") == "printed_dimension"
                     thickness = row["dimensions"].get("thickness")
                     _apply_stock(row, facade if not local else None, local, role="facade")
