@@ -739,6 +739,144 @@ same-sheet pair in scope. Test a smaller stable handoff and a bounded
 check of competing cross-sheet memberships before changing release
 behavior. Keep the earlier missing-Bbox-decision failure separate.
 
+ACTIVE, P0, USER REQUEST. Diagnose and repair contradictory Ada Membership.
+Three production Adda uploads used the same PDF, V8.4.28, eight identical
+View boxes and 33 identical coordinate OCR labels. Control
+`run_d5519c70ba9342f1873b0719749c6ed3` published 01/04/06/08 and 02/03/05/07.
+`run_eec21ee34689424c96fa1b9ebd077452` published one eight-View component
+with a false V01–V05 bridge. `run_3aa7bc04987e442fb8c2fdf691e22fee`
+published 5+3 after proposing V01–V07 instead of supporting V01 with the
+corner unit. The two Sonnet calls ran in parallel. All four same-sheet
+decisions were `different` each time, but the compiler checks positive
+local evidence coverage and uses the pair review only for completeness.
+Historical comparison, 2026-11-13. The two accepted V8.4.8 local runs used
+Haiku 4.5 and byte-identical saved Discovery replies, including View types
+and descriptions. In both, Sonnet tied straight-counter V05 to plan V07
+using the stepped profile and 700/1000 mm depths, while corner V01 was
+tied to its own vitrine and return. V8.4.9 also passed two recorded Adda
+controls with Haiku 5.5 and the same saved OCR package, so the migration
+alone does not explain the later splits. Before V8.4.28 the three
+production V8.4.8 Membership runs above still carried Haiku descriptions
+and two split the straight counter. The current V8.4.28 failure can
+instead attach V05 to the opposite plan V08 or attach V02 to V01.
+The stable result to preserve is exact View membership, not object
+count. See the V8.4.8 parallel Membership and V8.4.9 coordinate OCR
+checkpoint records for the successful historical runs.
+
+Offline reconstruction on V8.4.9 and pre-V8.4.28 V8.4.27 ran five
+identical fixture sets through both code versions. Each rebuilt the
+same Sonnet request and compiled the same partition from the saved
+response. The three November 12 production fixtures rebuilt an
+identical Haiku 5.5 Discovery request, including transport options.
+The November 10 good V8.4.9 control differed only in the bbox of
+one OCR title-block table. All three production Discovery replies
+varied in View types, descriptions, and context rows. Only the text
+changed in the downstream Sonnet request. Twelve OCR cross-swaps
+left that request and its compiled result unchanged when holding the
+saved provider replies fixed. This rules out the intervening code
+changes for these Adda fixtures. The archive cannot identify a
+provider-side change or prove the 4.5-to-5.5 migration alone caused
+the instability. No provider calls were made for this reconstruction.
+Artifacts: `/private/tmp/costerly-adda-before-v8428/`.
+
+The ordinary Membership fingerprints contain zero occurrences. An offline
+replay of the existing scoring on the saved coordinate fingerprints
+consistently supported V03–V07, V04–V06 and V06–V08.
+
+V8.4.28 removes free-form Haiku View descriptions from both the Discovery
+schema and the Sonnet handoff. The earlier controlled probe recovered the
+correct partition on all three saved inputs after removing that field.
+The recent three production replies contain zero Haiku descriptions and
+eight Sonnet descriptions each. Offline replay reproduced all three
+partitions. Swapping only the Sonnet descriptions between the correct and
+eight-View grouping replies preserved each original partition.
+
+Completed diagnostic, 2026-11-13. Rebuilding the three production Membership
+requests from saved Discovery replies produced identical image hashes for
+all 12 images, system prompt, schema and settings. The text handoff varied
+in raw View type labels (e.g. `elevation_line_drawing` vs `elevation`) and
+one run included an extra `text_notes` row. On the frozen eight-View merge
+input, Sonnet 4.6 at temperature 0 returned 8, 5+3, 8 with the production
+prompt and 8, 8, 8 with only the requirement and schema field for
+`view_descriptions` removed. All six missed the exact partition. Same-sheet
+responses and the compiler were held fixed; the wrong membership was
+already in the raw model hypotheses. The test demonstrates variation even
+with identical request payloads and rules out description removal alone
+as a fix for this input. It does not isolate the effect of each handoff
+label on fresh production outcomes. Keep the accepted Haiku/Sonnet split.
+Raw responses, request hashes, and offline compilation evidence are in
+`/private/tmp/costerly-adda-sonnet-description-ab/`.
+
+Reject two standalone fixes. A hard veto on every `different` label would
+contradict a valid Lev2 witness whose observation describes two elevations
+of the same kitchen. The minimum-cut replay on Adda's existing positive
+edges and four negative constraints yielded 4+3+1 for the eight-View
+merge and three equally minimal alternatives for the 5+3 run. Test a
+bounded reconciliation of competing cross-sheet assignments using exact
+View witnesses, coordinate dimensions for support, and actual physical
+scope conflicts. Accept both saved bad inputs only when the exact Adda
+partition is restored without changing the successful Adda and Lev
+controls. Fresh repeats and production acceptance remain pending.
+
+Proposed, P0, Ada Membership stability. Keep the V8.4.28 model roles and
+the existing calls. First compare the unchanged Membership request with
+a variant that adds the existing Dimension Fingerprint before grouping.
+Build it from coordinate OCR attributed to locked technical Views. Pass
+a compact per-View fingerprint and positive Dimension Similarity matches,
+with their source references and units. Matching measurements support a
+pair when the Views show corresponding physical geometry. Missing readings
+or no shared measurements leave the relationship open.
+Offline, the existing scorer on Adda's saved cross-sheet fingerprints
+supported V03–V07, V04–V06 and V06–V08. V05 scores zero against both plans
+V07 and V08, and V01/V02 have no coordinate readings. Membership still
+needs geometric evidence for those Views.
+
+Completed A/B, 2026-11-13. Two Sonnet repeats on each of three frozen Adda
+inputs, unchanged V8.4.28 versus the same request with a per-View
+Dimension Fingerprint and the three positive similarity matches. The
+handoff was present before Sonnet returned descriptions or Membership.
+Exact membership was 0/6 in both arms. The baseline returned one object
+five times and a wrong 5+3 once. The fingerprint arm proposed the
+dimension-supported pairs and left or misassigned other Views. The
+unchanged compiler rejected 23 semantic evidence rows citing new COCR IDs
+that were not registered as Membership source facts. Removing only those
+citations in a local diagnostic changed four compiled partitions but
+recovered no exact result. A production integration must register the
+same source facts in the validator if exposing their IDs. Handoff alone
+did not meet acceptance and remains experimental. Raw results and the
+citation check are in `/private/tmp/costerly-adda-fingerprint-ab/`.
+
+V8.4.29 candidate, 2026-11-13. The owner asked to restore the Ada
+Discovery and Membership behavior from before the Haiku 5.5 migration.
+On saved Adda OCR with fresh provider responses, swapping only the
+Discovery model in V8.4.28 gave 0/2 exact partitions with Haiku 4.5
+and 1/2 with Haiku 5.5. The original V8.4.8 checkpoint `6c552b3` with
+Haiku 4.5 passed 2/2. Restored its Haiku Discovery descriptions and
+Sonnet Membership request and evidence schema on Estimation 9.6 base
+`a420198`. Bypass legacy model remapping only for Ada Discovery.
+Restore its 4.5 temperature-zero request settings. Retain current OCR,
+render attachment, post-membership Naming, and Estimation 9.6.
+On current code with the restored contract, Adda returned both exact
+groups twice (39.27 s and 40.17 s,
+`run_943e832d05074310baccbcc16745aa70`,
+`run_6fb60a33b6f34d84b04bb0438a7a26e2`). Lev1 returned one six-View
+object (`run_1205c1e09d4e43e398a600b263a76c87`). Lev2 returned one
+four-View kitchen and attached the render
+(`run_3013e57350b449d7b47cd368fc5acd7d`). 193 focused tests passed, including the runtime build marker check.
+Saved-input provider results are in
+`/private/tmp/costerly-ada-haiku45/comparison.json`. Fresh authenticated
+production Upload verification is pending. Runtime rollback is `a420198`.
+
+Deferred unless the restored contract fails fresh verification. Test
+bounded reconciliation of contested View assignments before compiling final groups. Compare the
+competing physical witnesses, keep verified membership, and retain unresolved
+assignments explicitly where the source cannot distinguish them. A same-sheet
+`different` decision can flag a conflict for comparison. It does not prove
+two objects. Preserve the shared-plan star and independent render rules.
+Test against frozen Adda split and merge failures and their successful
+control, then exact membership on fresh Adda and the Lev controls.
+No runtime change or release is approved by this proposal.
+
 ACTIVE, P0, Haiku 5.5 migration on top of V8.4.8:
 The shared Anthropic adapter migrates existing Haiku calls to
 `claude-haiku-5-5`, including legacy configured Haiku IDs. Use low effort and

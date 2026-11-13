@@ -191,7 +191,7 @@ DETECTION_V847_STAR_HYPOTHESIS_COMPONENTS_VERSION = (
     # shared View as merge evidence by itself.
     "detection_v8_4_7_star_hypothesis_components"
 )
-DETECTION_V8428_ADA_MEMBERSHIP_VERSION = "detection_v8_4_28_ada_view_descriptions_and_pairs"
+DETECTION_V848_PARALLEL_MEMBERSHIP_VERSION = "detection_v8_4_8_parallel_membership"
 DETECTION_V848_SAME_SHEET_REVIEW_PROMPT = (
     "Compare every listed pair. Use only the physical outline, major junctions, and connected "
     "module arrangement of the two named bodies. A colored overlay or neighboring strokes "
@@ -202,23 +202,13 @@ DETECTION_V848_SAME_SHEET_REVIEW_PROMPT = (
 )
 DETECTION_V848_GLOBAL_PAIR_PROOF_PROMPT = (
     "\n\nFor the global decision, find a common plan or section that supports each technical projection. "
-    "Describe visual geometry from both Views in each positive observation. "
+    "In every visual evidence row, the first two source_fact_ids must be the registry_view IDs of the exact pair "
+    "of technical Views, even if a printed number is mentioned. Cite visual geometry from both Views. "
     "Do not include render Views in object_hypotheses. Decide render attachment separately from technical membership. "
     "Check the plan and render for matching distinctive corner geometry and placement of terminal modules."
 )
-DETECTION_V8428_ADA_MEMBERSHIP_PROMPT = (
-    "\n\nFor Ada, first fill view_descriptions for every listed Object Evidence View. "
-    "Use a short factual description of the depiction based on the image, without guessing its membership. "
-    "Then group the fixed Views. For each positive hypothesis evidence row, give the exact two "
-    "distinct View IDs in group_id_a and group_id_b. Both must be members of that hypothesis. "
-    "Use separate observations for separate pairs, and cover every member with at least one pair. "
-    "The runtime cites those two Views automatically. Use optional source_fact_ids only for "
-    "printed source facts. Put any third View used as a physical witness in structural_witness, "
-    "never in source_fact_ids. These output field instructions supersede any generic citation "
-    "format for object_hypotheses.\n"
-)
 DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS = 180
-DETECTION_V634_ADA_DISCOVERY_MODEL = CLAUDE_HAIKU_MODEL
+DETECTION_V634_ADA_DISCOVERY_MODEL = "claude-haiku-4-5-20251001"
 DETECTION_V627_SCOPE_SCOUT_PROMPT_VERSION = "detection_v6_27_scope_scout"
 DETECTION_V75_CONFLICT_RESOLVER_PROMPT_VERSION = (
     "detection_v7_5_independent_visual_conflict_resolver"
@@ -1133,8 +1123,13 @@ def _claude_runtime_model(model: str | None) -> str | None:
     return model
 
 
-def _prepare_claude_request(kwargs: dict[str, Any]) -> dict[str, Any]:
-    if _claude_runtime_model(kwargs.get("model")) == CLAUDE_HAIKU_MODEL:
+def _prepare_claude_request(
+    kwargs: dict[str, Any], *, preserve_model: bool = False,
+) -> dict[str, Any]:
+    model = kwargs.get("model")
+    if not preserve_model:
+        model = _claude_runtime_model(model)
+    if model == CLAUDE_HAIKU_MODEL:
         kwargs["model"] = CLAUDE_HAIKU_MODEL
         # Haiku 5.5 rejects sampling controls and defaults to adaptive thinking.
         for parameter in ("temperature", "top_p", "top_k"):
@@ -1168,6 +1163,7 @@ def create_claude_message_streamed(
     client: anthropic.Anthropic,
     *,
     max_stream_seconds: float | None = None,
+    preserve_model: bool = False,
     on_stream_phase: Callable[[str, float], None] | None = None,
     cancel_requested: Callable[[], bool] | None = None,
     **kwargs: Any,
@@ -1184,7 +1180,9 @@ def create_claude_message_streamed(
     try:
         if cancel_requested is not None and cancel_requested():
             raise RuntimeError("Claude stream was cancelled.")
-        with client.messages.stream(**_prepare_claude_request(kwargs)) as stream:
+        with client.messages.stream(
+            **_prepare_claude_request(kwargs, preserve_model=preserve_model),
+        ) as stream:
             request_id = stream.request_id
             for event in stream:
                 if cancel_requested is not None and cancel_requested():
@@ -3853,7 +3851,6 @@ def format_detection_v5_membership_handoff(
     source_facts: list[dict[str, Any]],
     max_facts_per_view: int = 6,
     max_fact_characters: int = 120,
-    include_view_descriptions: bool = True,
 ) -> str:
     """Make a compact, View-local membership handoff without page-wide OCR."""
     context_by_page: dict[int, list[str]] = {}
@@ -3900,9 +3897,8 @@ def format_detection_v5_membership_handoff(
                 )
             if len(local_facts) >= max_facts_per_view:
                 break
-        description_field = f"D={description}|" if include_view_descriptions else ""
         object_lines.append(
-            f"{group_id}|P{page_number}|K={kind}|{description_field}"
+            f"{group_id}|P{page_number}|K={kind}|D={description}|"
             f"SRC=registry_view:{group_id}{';' + ';'.join(local_facts) if local_facts else ''}"
         )
     context_lines = [
@@ -3924,12 +3920,10 @@ def format_detection_v5_review_handoff(
     draft_hypotheses: object,
     required_same_page_pairs: list[tuple[str, str]],
     include_same_page_queue: bool = True,
-    include_view_descriptions: bool = True,
 ) -> str:
     """Give Review locked Views, drafts and its mandatory same-page queue."""
     lines = [format_detection_v5_membership_handoff(
         visual_groups=visual_groups, source_facts=source_facts,
-        include_view_descriptions=include_view_descriptions,
     )]
     proposal_lines: list[str] = []
     if isinstance(draft_hypotheses, list):
@@ -8418,7 +8412,7 @@ def apply_detection_v642_multilingual_evidence_fallback(
     try:
         response = create_claude_message(
             get_anthropic_client(),
-            model=DETECTION_V634_ADA_DISCOVERY_MODEL,
+            model=CLAUDE_HAIKU_MODEL,
             max_tokens=DETECTION_V642_MULTILINGUAL_EVIDENCE_MAX_TOKENS,
             messages=[{"role": "user", "content": prompt}],
             output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(
@@ -8435,12 +8429,12 @@ def apply_detection_v642_multilingual_evidence_fallback(
         input_tokens = int(getattr(usage_values, "input_tokens", 0) or 0)
         output_tokens = int(getattr(usage_values, "output_tokens", 0) or 0)
         costs = calculate_llm_cost_usd(
-            model=DETECTION_V634_ADA_DISCOVERY_MODEL,
+            model=CLAUDE_HAIKU_MODEL,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
         )
         usage = {
-            "model": DETECTION_V634_ADA_DISCOVERY_MODEL,
+            "model": CLAUDE_HAIKU_MODEL,
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "input_cost_usd": costs["input_cost_usd"],
@@ -10315,7 +10309,11 @@ def run_anthropic_detection_visual_registry_agent(
         and _claude_runtime_model(discovery_model) == CLAUDE_HAIKU_MODEL
     )
     # Ordinary Discovery uses the same JSON output budget in every request mode.
-    discovery_options = {"thinking": {"type": "disabled"}} if ordinary_haiku_discovery else {}
+    discovery_options: dict[str, Any] = {}
+    if ordinary_haiku_discovery:
+        discovery_options["thinking"] = {"type": "disabled"}
+    if v634_ada_haiku_discovery_sonnet_review_active:
+        discovery_options["preserve_model"] = True
     prompt_version = (
         DETECTION_V67_MISTRAL_ANCHOR_ADMISSION_PROMPT_VERSION
         if mistral_anchor_admission_active
@@ -10324,9 +10322,7 @@ def run_anthropic_detection_visual_registry_agent(
     mistral_anchor_text = format_detection_v67_mistral_graphic_anchors(
         candidate_regions,
     ) if mistral_anchor_admission_active else ""
-    proposal_prompt_with_anchor_contract = load_detection_v5_proposal_prompt(
-        ada_shaded_render_rule=v634_ada_haiku_discovery_sonnet_review_active,
-    )
+    proposal_prompt_with_anchor_contract = load_detection_v5_proposal_prompt()
     if ordinary_haiku_discovery:
         proposal_prompt_with_anchor_contract += (
             "\n\nFor page_coverage, list the visual_group_ids for each supplied page number. "
@@ -10357,18 +10353,6 @@ def run_anthropic_detection_visual_registry_agent(
         proposal_schema,
         candidate_regions=candidate_regions,
     )
-    if v634_ada_haiku_discovery_sonnet_review_active:
-        proposal_prompt_with_anchor_contract = proposal_prompt_with_anchor_contract.replace(
-            "`visual_description` must identify the depicted form,\n", ""
-        )
-        group_schema = proposal_schema["properties"]["visual_groups"]["items"]
-        group_schema["required"].remove("visual_description")
-        del group_schema["properties"]["visual_description"]
-        proposal_prompt_with_anchor_contract += (
-            "\n\nAda Discovery returns Island geometry, location, representation_kind and "
-            "classification. The review model writes the visual descriptions. Do not put a "
-            "description in the Discovery response. Keep each location and classification reason compact."
-        )
     fusion_page_profiles = build_detection_fusion_page_profile_audit(ocr_package)
     candidate_visual_groups = [{
         "group_id": str(candidate["candidate_region_id"]),
@@ -11579,8 +11563,8 @@ def run_anthropic_detection_visual_registry_agent(
         and all(row.get("representation_kind") != "presentation_render" for row in object_views)
     )
     review_aliases: dict[str, str] = {}
-    if v634_ada_haiku_discovery_sonnet_review_active:
-        prompt_version = DETECTION_V8428_ADA_MEMBERSHIP_VERSION
+    if split_membership:
+        prompt_version = DETECTION_V848_PARALLEL_MEMBERSHIP_VERSION
     if technical_membership:
         # Keep the tested compact image labels in the provider request only.
         # Registry and every downstream consumer retain the Discovery IDs.
@@ -11616,7 +11600,6 @@ def run_anthropic_detection_visual_registry_agent(
         visual_groups=review_groups, source_facts=review_source_facts,
         draft_hypotheses=[], required_same_page_pairs=required_same_page_pairs,
         include_same_page_queue=not split_membership,
-        include_view_descriptions=not v634_ada_haiku_discovery_sonnet_review_active,
     )
     review_prompt_with_membership_contract = review_prompt
     if v637_ada_covered_pair_local_membership_active:
@@ -11713,8 +11696,6 @@ def run_anthropic_detection_visual_registry_agent(
         review_prompt_with_membership_contract = load_detection_v848_technical_membership_prompt()
     elif split_membership:
         review_prompt_with_membership_contract += DETECTION_V848_GLOBAL_PAIR_PROOF_PROMPT
-    if v634_ada_haiku_discovery_sonnet_review_active:
-        review_prompt_with_membership_contract += DETECTION_V8428_ADA_MEMBERSHIP_PROMPT
     review_crops = [dict(row, group_id=review_aliases[row["group_id"]]) for row in membership_crops] if review_aliases else membership_crops
     review_content = build_detection_v5_membership_content_blocks(
         user_text=review_handoff, view_crops=review_crops,
@@ -11734,25 +11715,6 @@ def run_anthropic_detection_visual_registry_agent(
         membership_review_schema["properties"]["conflict_pair_decisions"] = (
             DETECTION_V714_CONFLICT_PAIR_DECISIONS_SCHEMA
         )
-    description_ids = {
-        row["group_id"] for row in review_groups if row.get("evidence_class") == "object_evidence"
-    } if v634_ada_haiku_discovery_sonnet_review_active else set()
-    if v634_ada_haiku_discovery_sonnet_review_active:
-        membership_properties = membership_review_schema["properties"]
-        descriptions_schema = {
-            "type": "object", "additionalProperties": False,
-            "required": sorted(description_ids),
-            "properties": {view_id: {"type": "string"} for view_id in sorted(description_ids)},
-        }
-        membership_review_schema["properties"] = {
-            "view_descriptions": descriptions_schema, **membership_properties,
-        }
-        membership_review_schema["required"].insert(0, "view_descriptions")
-        evidence_schema = membership_properties["object_hypotheses"]["items"]["properties"]["evidence"]["items"]
-        evidence_schema["required"].remove("source_fact_ids")
-        for endpoint in ("group_id_a", "group_id_b"):
-            evidence_schema["required"].append(endpoint)
-            evidence_schema["properties"][endpoint] = {"type": "string"}
     v641_review_exact_input_tokens: int | None = None
     _notify_detection_stage(
         stage_callback,
@@ -11927,26 +11889,15 @@ def run_anthropic_detection_visual_registry_agent(
             review_attempts, start=1,
         )
     ]
-    expected_membership_fields = set(membership_review_schema["required"])
     valid_technical_payload = not technical_membership or (
-        isinstance(review_raw_payload, dict) and set(review_raw_payload) == expected_membership_fields
+        isinstance(review_raw_payload, dict) and set(review_raw_payload) == {"object_hypotheses"}
     )
-    view_descriptions: dict[str, str] = {}
-    valid_descriptions = not v634_ada_haiku_discovery_sonnet_review_active
-    if v634_ada_haiku_discovery_sonnet_review_active and isinstance(review_raw_payload, dict):
-        descriptions = review_raw_payload.get("view_descriptions")
-        if isinstance(descriptions, dict) and set(descriptions) == description_ids and all(
-            isinstance(value, str) and value.strip() for value in descriptions.values()
-        ):
-            view_descriptions = descriptions
-            valid_descriptions = True
     if technical_membership and valid_technical_payload:
         # Discovery fixed this inventory before either Sonnet call. There is
         # no render decision to ask for when every retained View is technical.
         review_raw_payload["presentation_render_decisions"] = []
-        expected_membership_fields.add("presentation_render_decisions")
     review_contract_valid = (
-        valid_technical_payload and valid_descriptions
+        valid_technical_payload
         and isinstance(review_raw_payload, dict)
         and isinstance(
             review_raw_payload.get(
@@ -11960,7 +11911,14 @@ def run_anthropic_detection_visual_registry_agent(
             (set(review_raw_payload) == {"pairwise_decisions"})
             if v69_criteria_reconciliation_active
             else (
-                set(review_raw_payload) == expected_membership_fields
+                set(review_raw_payload) == (
+                    {
+                        "object_hypotheses", "presentation_render_decisions",
+                        "conflict_pair_decisions",
+                    }
+                    if v714_conflict_membership_active
+                    else {"object_hypotheses", "presentation_render_decisions"}
+                )
                 and isinstance(review_raw_payload.get("presentation_render_decisions"), list)
                 and (
                     isinstance(review_raw_payload.get("conflict_pair_decisions"), list)
@@ -12004,13 +11962,6 @@ def run_anthropic_detection_visual_registry_agent(
         )
     if review_aliases:
         review_raw_payload = restore_detection_membership_view_ids(review_raw_payload, review_aliases)
-    if v634_ada_haiku_discovery_sonnet_review_active:
-        ids_by_alias = {alias: group_id for group_id, alias in review_aliases.items()}
-        view_descriptions = {
-            ids_by_alias.get(view_id, view_id): " ".join(description.split())[:240]
-            for view_id, description in view_descriptions.items()
-        }
-        review_raw_payload["view_descriptions"] = view_descriptions
     review_presentation_render_decisions = (
         [] if v69_criteria_reconciliation_active
         else review_raw_payload["presentation_render_decisions"]
@@ -12390,10 +12341,6 @@ def run_anthropic_detection_visual_registry_agent(
                 "visual registry must contain visual groups, classifications, hypotheses and semantic facts"
             )
         raw_groups = payload["visual_groups"]
-        if v634_ada_haiku_discovery_sonnet_review_active:
-            for group in raw_groups:
-                group["visual_description"] = view_descriptions[group["group_id"]]
-            registry_visual_sources = build_detection_v5_registry_visual_sources(raw_groups)
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
             normalize_visual_map(
@@ -12563,10 +12510,13 @@ def run_anthropic_detection_visual_registry_agent(
                             normalized_evidence.append(evidence)
                             continue
                         normalized_evidence_row = copy.deepcopy(evidence)
-                        if v634_ada_haiku_discovery_sonnet_review_active:
-                            for endpoint in ("group_id_a", "group_id_b"):
-                                view_id = str(normalized_evidence_row.get(endpoint) or "")
-                                normalized_evidence_row[endpoint] = group_id_mapping.get(view_id, view_id)
+                        if v635_ada_pair_local_membership_active:
+                            normalized_evidence_row["source_fact_ids"] = (
+                                _normalize_source_degraded_registry_view_ids(
+                                    normalized_evidence_row.get("source_fact_ids"),
+                                    group_id_mapping=group_id_mapping,
+                                )
+                            )
                         if isinstance(normalized_evidence_row.get("structural_witness"), dict):
                             witness = copy.deepcopy(normalized_evidence_row["structural_witness"])
                             witness["witness_view_id"] = group_id_mapping.get(
@@ -12597,30 +12547,21 @@ def run_anthropic_detection_visual_registry_agent(
                             # the established semantic validator evaluates it.
                             evidence["strength"] = "standard"
                         cited_view_ids = sorted({
-                            evidence.pop("group_id_a", ""),
-                            evidence.pop("group_id_b", ""),
+                            source_id.removeprefix("registry_view:")
+                            for source_id in evidence.get("source_fact_ids") or []
+                            if isinstance(source_id, str)
+                            and source_id.startswith("registry_view:")
+                            and source_id.removeprefix("registry_view:") in hypothesis_group_ids
                         })
-                        if len(cited_view_ids) != 2 or not set(cited_view_ids).issubset(hypothesis_group_ids):
+                        if len(cited_view_ids) != 2:
                             semantic_facts_outside_dimension_queue.append({
-                                "reason": "ada_hypothesis_pair_requires_two_distinct_members",
+                                "reason": "v6_36_hypothesis_evidence_requires_exactly_two_local_views",
                                 "hypothesis_group_ids": sorted(hypothesis_group_ids),
                                 "evidence_index": evidence_index,
                                 "cited_view_ids": cited_view_ids,
                             })
                             continue
                         pair = tuple(cited_view_ids)
-                        citations = [f"registry_view:{view_id}" for view_id in pair]
-                        citations.extend(
-                            source_id for source_id in evidence.get("source_fact_ids") or []
-                            if isinstance(source_id, str) and not source_id.startswith("registry_view:")
-                        )
-                        if (
-                            evidence.get("evidence_type") == "direct_shared_structure"
-                            and isinstance(witness := evidence.get("structural_witness"), dict)
-                            and witness.get("witness_view_id") in hypothesis_group_ids
-                        ):
-                            citations.append(f"registry_view:{witness['witness_view_id']}")
-                        evidence["source_fact_ids"] = list(dict.fromkeys(citations))
                         semantic_facts.append({
                             "group_id_a": pair[0], "group_id_b": pair[1], **evidence,
                         })

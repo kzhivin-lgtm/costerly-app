@@ -27,7 +27,8 @@ from agents.anthropic_adapter import (
     DETECTION_V611_SCOPE_OBSERVATION_MAX_CHARS,
     DETECTION_V843_ASSEMBLY_SCOPE_COMPACTION_PROMPT_VERSION,
     DETECTION_V842_SAFE_NON_RENDER_DECISION_PROMPT_VERSION,
-    DETECTION_V8428_ADA_MEMBERSHIP_VERSION,
+    DETECTION_V847_STAR_HYPOTHESIS_COMPONENTS_VERSION,
+    DETECTION_V848_PARALLEL_MEMBERSHIP_VERSION,
     DETECTION_V713_MEMBERSHIP_REVIEW_MAX_STREAM_SECONDS,
     apply_benchmark_run_suffix,
     build_agent_usage_event,
@@ -1844,6 +1845,7 @@ def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
     proposal = _visual_registry_payload({
         "visual_groups": [{
             "group_id": "raw_view", "page_number": 1, "location_hint": "centre",
+            "visual_description": "one freestanding cabinet elevation",
             "representation_kind": "elevation",
             "bbox": {"top_left_x": 100, "top_left_y": 120,
                      "bottom_right_x": 800, "bottom_right_y": 850},
@@ -1884,13 +1886,10 @@ def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
         ) as create_message,
         patch(
             "agents.anthropic_adapter.extract_text_from_claude_response",
-            side_effect=[json.dumps(proposal), json.dumps({
-                "view_descriptions": {"raw_view": "A freestanding cabinet elevation"},
-                "object_hypotheses": [], "presentation_render_decisions": [],
-            })],
+            side_effect=[json.dumps(proposal), json.dumps({"object_hypotheses": [], "presentation_render_decisions": []})],
         ),
     ):
-        visual_map, _, usage = run_anthropic_detection_visual_registry_agent(
+        _, _, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"page"], regions=[], ocr_package=ocr_package,
             model="claude-sonnet-4-6", mistral_anchor_admission=True,
@@ -1898,13 +1897,20 @@ def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
         )
 
     assert [call.kwargs["model"] for call in create_message.call_args_list] == [
-        DETECTION_V634_ADA_DISCOVERY_MODEL,
+        "claude-haiku-4-5-20251001",
         "claude-sonnet-4-6",
     ]
-    discovery_schema = create_message.call_args_list[0].kwargs["output_config"]["format"]["schema"]
-    assert "visual_description" not in discovery_schema["properties"]["visual_groups"]["items"]["properties"]
-    assert visual_map["visual_groups"][0]["visual_description"] == "A freestanding cabinet elevation"
-    assert usage["prompt_version"] == DETECTION_V8428_ADA_MEMBERSHIP_VERSION
+    discovery_call = create_message.call_args_list[0].kwargs
+    assert discovery_call["preserve_model"] is True
+    assert discovery_call["temperature"] == 0
+    discovery_schema = discovery_call["output_config"]["format"]["schema"]
+    assert "visual_description" in discovery_schema["properties"]["visual_groups"]["items"]["required"]
+    review_call = create_message.call_args_list[1].kwargs
+    assert "preserve_model" not in review_call
+    review_schema = review_call["output_config"]["format"]["schema"]
+    assert "view_descriptions" not in review_schema["properties"]
+    assert "|D=one freestanding cabinet elevation|" in review_call["messages"][0]["content"][-1]["text"]
+    assert usage["prompt_version"] == DETECTION_V847_STAR_HYPOTHESIS_COMPONENTS_VERSION
     assert usage["raw_usage"]["v6_34_ada_haiku_discovery_sonnet_review_active"] is True
     assert usage["raw_usage"]["v6_35_ada_pair_local_membership_active"] is True
     assert usage["raw_usage"]["v6_36_ada_connected_pair_local_membership_active"] is True
@@ -1916,9 +1922,9 @@ def test_v634_ada_uses_v631_haiku_discovery_and_sonnet_review():
     assert usage["raw_usage"]["v5_9_proposal"]["model"] == DETECTION_V634_ADA_DISCOVERY_MODEL
     assert usage["raw_usage"]["v5_9_review"]["model"] == "claude-sonnet-4-6"
     assert (usage["input_tokens"], usage["output_tokens"]) == (200, 40)
-    assert usage["input_cost_usd"] == "0.000310"
-    assert usage["output_cost_usd"] == "0.000310"
-    assert usage["total_cost_usd"] == "0.000620"
+    assert usage["input_cost_usd"] == "0.000400"
+    assert usage["output_cost_usd"] == "0.000400"
+    assert usage["total_cost_usd"] == "0.000800"
 
     invalid_proposal = copy.deepcopy(proposal)
     invalid_proposal.pop("candidate_region_decisions")
@@ -1958,6 +1964,7 @@ def test_v848_ada_compares_every_same_sheet_pair_independently_of_grouping(missi
             {
                 "group_id": "raw-plan", "page_number": 1,
                 "location_hint": "upper left",
+                "visual_description": "L-shaped kitchen plan with corner cabinet",
                 "representation_kind": "plan",
                 "bbox": {"top_left_x": 100, "top_left_y": 100,
                          "bottom_right_x": 700, "bottom_right_y": 500},
@@ -1967,6 +1974,7 @@ def test_v848_ada_compares_every_same_sheet_pair_independently_of_grouping(missi
             {
                 "group_id": "raw-left", "page_number": 1,
                 "location_hint": "lower left",
+                "visual_description": "left elevation of the L-shaped kitchen",
                 "representation_kind": "elevation",
                 "bbox": {"top_left_x": 100, "top_left_y": 600,
                          "bottom_right_x": 700, "bottom_right_y": 1000},
@@ -1976,6 +1984,7 @@ def test_v848_ada_compares_every_same_sheet_pair_independently_of_grouping(missi
             {
                 "group_id": "raw-right", "page_number": 1,
                 "location_hint": "lower right",
+                "visual_description": "right elevation of the same kitchen tower run",
                 "representation_kind": "elevation",
                 "bbox": {"top_left_x": 800, "top_left_y": 600,
                          "bottom_right_x": 1400, "bottom_right_y": 1000},
@@ -2009,11 +2018,6 @@ def test_v848_ada_compares_every_same_sheet_pair_independently_of_grouping(missi
         },
     ]
     review = {
-        "view_descriptions": {
-            "raw-plan": "The plan shows an L-shaped kitchen.",
-            "raw-left": "The elevation shows the left cabinet run.",
-            "raw-right": "The elevation shows the right tower unit.",
-        },
         "object_hypotheses": [
             {
                 "group_ids": ["view-001", "view-002"],
@@ -2021,7 +2025,7 @@ def test_v848_ada_compares_every_same_sheet_pair_independently_of_grouping(missi
                 "evidence": [{
                     "evidence_type": "matching_topology", "strength": "standard",
                     "observation": "The distinctive corner cabinet run occurs in both Views.",
-                    "group_id_a": "raw-plan", "group_id_b": "raw-left",
+                    "source_fact_ids": ["registry_view:view-001", "registry_view:view-002"],
                 }],
             },
             {
@@ -2030,7 +2034,7 @@ def test_v848_ada_compares_every_same_sheet_pair_independently_of_grouping(missi
                 "evidence": [{
                     "evidence_type": "unique_geometry", "strength": "standard",
                     "observation": "The distinctive tall end unit occurs in both Views.",
-                    "group_id_a": "raw-plan", "group_id_b": "raw-right",
+                    "source_fact_ids": ["registry_view:view-001", "registry_view:view-003"],
                 }],
             },
         ],
@@ -2059,10 +2063,6 @@ def test_v848_ada_compares_every_same_sheet_pair_independently_of_grouping(missi
             concurrent_calls.wait()
             if "object_hypotheses" in properties:
                 calls["grouping"] = content
-                evidence = properties["object_hypotheses"]["items"]["properties"]["evidence"]["items"]
-                assert {"group_id_a", "group_id_b"} <= set(evidence["required"])
-                assert "source_fact_ids" not in evidence["required"]
-                assert set(properties["view_descriptions"]["required"]) == {"raw-plan", "raw-left", "raw-right"}
                 payload = review
             else:
                 assert list(properties) == ["Q001", "Q002", "Q003"]
@@ -2104,8 +2104,7 @@ def test_v848_ada_compares_every_same_sheet_pair_independently_of_grouping(missi
     assert create_message.call_count == 3
     assert calls["pairs"].count("\nQ") == 3
     assert "REQUIRED SAME-PAGE MEMBERSHIP QUEUE" not in calls["grouping"]
-    assert "|D=" not in calls["grouping"]
-    assert usage["prompt_version"] == DETECTION_V8428_ADA_MEMBERSHIP_VERSION
+    assert usage["prompt_version"] == DETECTION_V848_PARALLEL_MEMBERSHIP_VERSION
     assert len(usage["raw_usage"]["v8_4_8_same_sheet_review"]["decisions"]) == 3
     assert (usage["input_tokens"], usage["output_tokens"]) == (300, 60)
     assert [item["visual_group_ids"] for item in registry["objects"]] == [[
