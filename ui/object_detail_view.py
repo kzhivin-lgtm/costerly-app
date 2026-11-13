@@ -78,7 +78,7 @@ def _input_html(value: object, kind: str = "text", field: str = "", line_id: str
 
 def _material_input_html(*, value: object, field: str, line_id: str, unit: str) -> str:
     has_unit = bool(str(unit or "").strip())
-    modifier = " object-detail-material-input--with-unit" if has_unit else " object-detail-material-input--bare"
+    modifier = " object-detail-material-input--required" if field == "required_material" else " object-detail-material-input--bare"
     unit_html = (
         f'<span class="object-detail-material-input-unit">{_escape(unit)}</span>'
         if has_unit else ""
@@ -130,9 +130,11 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
         required_unit = str(row.get("required_material_unit") or "")
         required_value = row.get("required_material_value")
         required_text = f"{float(required_value):.1f}" if required_unit == "m²" and required_value is not None else _number_text(required_value)
+        purchase_unit = str(row.get("purchase_unit") or "")
+        display_unit = "" if required_unit.casefold() == purchase_unit.casefold() == "piece" else required_unit
         return [
             _source_marker(row.get("price_source")) + f'<span class="object-detail-material-name">{_escape(row.get("item"))}</span>',
-            _material_input_html(value=required_text, field="required_material", line_id=str(row.get("required_material_line_id") or ""), unit=required_unit),
+            _material_input_html(value=required_text, field="required_material", line_id=str(row.get("required_material_line_id") or ""), unit=display_unit),
             _purchase_unit_html(row.get("purchase_unit")),
             _material_input_html(value=_number_text(row.get("purchase_quantity_value")), field="purchase_quantity", line_id=str(row.get("purchase_quantity_line_id") or ""), unit=""),
             f'<span class="object-detail-row-cost">{_money(row.get("total"))}</span>',
@@ -321,7 +323,7 @@ def _final_html(data: dict[str, object]) -> str:
 
 
 def _elements_html(rows: object) -> str:
-    """Keep structural decomposition available without making it a cost table."""
+    """Show the grouped part list using the Materials table styling."""
     if not isinstance(rows, list) or not rows:
         return ""
     body = []
@@ -329,17 +331,24 @@ def _elements_html(rows: object) -> str:
         if not isinstance(row, dict):
             continue
         body.append(
-            '<li class="object-detail-elements-row">'
-            f'{_escape(_number_text(row.get("quantity")))} × {_escape(row.get("label"))}'
-            f' <span>{_escape(row.get("size"))}</span>'
-            '</li>'
+            '<div class="object-detail-table-row" data-section="elements" role="row">'
+            f'<div class="object-detail-table-cell" role="cell">{_escape(row.get("label"))}</div>'
+            f'<div class="object-detail-table-cell" role="cell">{_escape(row.get("size"))}</div>'
+            f'<div class="object-detail-table-cell" role="cell">{_escape(_number_text(row.get("quantity")))}</div>'
+            '</div>'
         )
     if not body:
         return ""
     return (
         '<details class="object-detail-elements">'
-        '<summary>Elements</summary>'
-        f'<ul>{"".join(body)}</ul>'
+        '<summary class="object-detail-section-title">Elements</summary>'
+        '<div class="object-detail-table object-detail-elements-table" role="table" aria-label="Elements">'
+        '<div class="object-detail-table-head-row" role="row">'
+        '<div class="object-detail-table-head" role="columnheader">Element</div>'
+        '<div class="object-detail-table-head" role="columnheader">Dimensions</div>'
+        '<div class="object-detail-table-head" role="columnheader">Quantity</div>'
+        '</div>'
+        f'{"".join(body)}</div>'
         '</details>'
     )
 

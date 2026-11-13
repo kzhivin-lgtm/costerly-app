@@ -1,5 +1,21 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.10 Object Detail Materials and Elements
+
+Materials displays panel stock before glass and mirrors, followed by
+other materials, hardware, LED, and the locked formula rows. Required
+Material uses a common numeric alignment and shows the piece unit only in
+Purchase Unit when both units are pieces.
+
+Elements opens a table with the same styling as Materials. Its rows group
+the same part role and dimensions, including thickness, across all Blocks
+of the object. Estimated dimensions retain their indicator, and incomplete
+panel sizes remain separate. The saved Adda estimate rendered 14 and 56
+rows from 24 and 133 Parts rows with the same total quantities. Local
+Chrome checked both objects at 1280 px and 390 px, keyboard and pointer
+interaction, purchase quantity editing, and return with unsaved edits.
+The rollback checkpoint is `estimation-v9.9-checkpoint`.
+
 ## Estimation 9.9 Objects Estimation review and subtitles
 
 Advance the Estimation release number in the runtime and this record for

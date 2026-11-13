@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
+import re
 from typing import Any
 
 from db.repositories import (
@@ -592,7 +593,7 @@ def load_object_detail_data(
                 "title": "Materials",
                 "metrics": [],
                 "columns": ["Material", "Required material", "Purchase unit", "Purchase quantity", "Total"],
-                "rows": material_rows,
+                "rows": sorted(material_rows, key=_material_display_order),
             },
         ],
         "self_cost": {
@@ -638,6 +639,8 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
             if authority == "A" and len(requirement_ids) == 1
             and next(iter(requirement_ids), "") in assumption_by_requirement else None
         )
+        selection_key = str(line.get("selection_key") or "")
+        family = (fallback or {}).get("material_family") or selection_key.split("|", 1)[0]
         rows.append({
             "item": (
                 _assumption_material_display_name(fallback)
@@ -650,10 +653,29 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
             "purchase_quantity_value": _number(line.get("purchase_quantity"), 0),
             "purchase_quantity_unit": _purchase_unit_label(purchase_kind),
             "purchase_quantity_line_id": f"__material_purchase__:{line.get('selection_key')}",
+            **({"material_family": family} if family else {}),
             "total": (round(sum(allocated_costs.get(req, 0) for req in requirement_ids), 2)
                       if plan_snapshot.get("parts_check") else _number(line.get("total_cost"), 0)),
         })
     return rows
+
+
+def _material_display_order(row: dict[str, Any]) -> int:
+    """Order Object Detail rows by what they represent, retaining order within each group."""
+    if row.get("locked"):
+        return 5
+    name = str(row.get("item") or "").casefold()
+    family = str(row.get("material_family") or "")
+    unit = str(row.get("purchase_unit") or row.get("unit") or "").casefold()
+    if re.search(r"\bled\b|светодиод", name):
+        return 4
+    if family in {"glass", "mirror"} or re.search(r"\b(?:glass|mirror)\b|стекло|зеркал", name):
+        return 1
+    if unit.startswith("sheet") or row.get("required_material_unit") == "m²" or unit in {"m²", "m2"}:
+        return 0
+    if family.startswith("hardware_") or unit in {"piece", "pcs", "set", "pair"}:
+        return 3
+    return 2
 
 
 def _material_policy_rows_from_lines(lines_df: Any) -> list[dict[str, Any]]:
@@ -795,38 +817,37 @@ def _element_rows_from_bom(facts_payload: dict[str, Any]) -> list[dict[str, Any]
         "carcass_side": "Side panel", "carcass_top_bottom": "Top / bottom panel",
         "carcass_back": "Back panel", "facade": "Front panel", "drawer_front": "Drawer front",
         "drawer_bottom": "Drawer bottom", "drawer_side": "Drawer side", "drawer_back": "Drawer back",
-        "top": "Top panel", "leg": "Leg",
+        "top": "Top panel", "leg": "Leg", "led_strip_run": "LED strip run",
     }
-    result = []
-    drawer_assemblies = {
-        str(assembly.get("assembly_id") or ""): sum(
-            _number(group.get("quantity"), 0)
-            for group in assembly.get("front_groups") or []
-            if isinstance(group, dict) and group.get("front_kind") == "drawer_front"
-        )
-        for assembly in facts_payload.get("assemblies") or []
-        if isinstance(assembly, dict)
-    }
-    for assembly_id, quantity in drawer_assemblies.items():
-        if quantity > 0:
-            result.append({"label": "Drawer box", "quantity": quantity, "size": ""})
-    grouped: dict[tuple[str, str], dict[str, Any]] = {}
-    for part in facts_payload.get("parts") or []:
+    axes = ("length", "width", "thickness")
+    grouped: dict[tuple[object, ...], dict[str, Any]] = {}
+    for index, part in enumerate(facts_payload.get("parts") or []):
         if not isinstance(part, dict):
             continue
-        if (str(part.get("assembly_id") or "") in drawer_assemblies
-                and str(part.get("component_role") or "") in {"drawer_front", "drawer_bottom", "drawer_side", "drawer_back"}):
-            continue
-        length = _number(part.get("length_mm"), 0)
-        width = _number(part.get("width_mm"), 0)
         role = str(part.get("component_role") or "")
         label = labels.get(role, role.replace("_", " ").capitalize() or "Element")
-        size = f"{_format_number(length)} × {_format_number(width)} mm" if length > 0 and width > 0 else ""
-        if size and any(axis in (part.get("estimated_dimensions") or {}) for axis in ("length", "width")):
-            size = f"≈ {size}"
-        key = (label, size)
-        grouped.setdefault(key, {"label": label, "quantity": 0, "size": size})["quantity"] += _number(part.get("quantity"), 0)
-    return [*result, *grouped.values()]
+        dimensions = tuple(_number(part.get(f"{axis}_mm"), 0) or None for axis in axes)
+        count = _number(part.get("quantity"), 0)
+        # A missing panel dimension is not evidence of an identical cut.
+        length, width, thickness = dimensions
+        incomplete = (
+            length is None and (width is not None or thickness is not None)
+            or width is None and thickness is not None
+            or width is not None and thickness is None and "thickness_mm" in part
+        )
+        key = (role, *dimensions, index if incomplete or count <= 0 else None)
+        if key not in grouped:
+            last = max((i for i, value in enumerate(dimensions) if value is not None), default=-1)
+            size = " × ".join(_format_number(value) if value is not None else "—" for value in dimensions[:last + 1])
+            grouped[key] = {"label": label, "quantity": 0, "size": f"{size} mm" if size else "",
+                            "estimated": False}
+        row = grouped[key]
+        row["estimated"] |= bool(part.get("estimated_dimensions"))
+        row["quantity"] = row["quantity"] + count if count > 0 else None
+    for row in grouped.values():
+        if row.pop("estimated") and row["size"]:
+            row["size"] = f"≈ {row['size']}"
+    return list(grouped.values())
 
 
 def _estimation_preview_url(

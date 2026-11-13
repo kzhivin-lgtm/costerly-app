@@ -255,6 +255,19 @@ def apply_object_detail_css() -> None:
             --detail-grid: minmax(260px, 2.1fr) repeat(3, minmax(0, 1fr));
         }
 
+        .object-detail-elements {
+            margin: 0 0 24px;
+        }
+
+        .object-detail-elements > summary {
+            cursor: pointer;
+        }
+
+        .object-detail-elements-table {
+            --detail-grid: minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 1fr);
+            margin-top: 12px;
+        }
+
         .object-detail-table-head-row,
         .object-detail-table-row {
             display: grid;
@@ -416,9 +429,21 @@ def apply_object_detail_css() -> None:
             padding-right: 10px;
         }
 
+        .object-detail-material-input--required {
+            position: relative;
+        }
+
+        .object-detail-material-input--required .object-detail-cell-input {
+            display: block;
+            border-radius: 7px;
+            padding: 6px 38px 6px 8px;
+            text-align: right;
+        }
+
         .object-detail-material-input-unit {
-            flex: 0 0 auto;
-            padding: 0 10px 0 2px;
+            position: absolute;
+            right: 10px;
+            pointer-events: none;
             color: rgba(42, 31, 44, 0.72);
             font-family: var(--font-mono);
             font-size: 12px;
@@ -589,6 +614,17 @@ def apply_object_detail_css() -> None:
             .object-detail-table-head-row,
             .object-detail-table-row {
                 min-width: 760px;
+            }
+
+            .object-detail-elements-table .object-detail-table-head-row,
+            .object-detail-elements-table .object-detail-table-row {
+                min-width: 0;
+            }
+
+            .object-detail-elements-table .object-detail-table-cell,
+            .object-detail-elements-table .object-detail-table-head {
+                padding-inline: 8px;
+                overflow-wrap: anywhere;
             }
         }
         </style>

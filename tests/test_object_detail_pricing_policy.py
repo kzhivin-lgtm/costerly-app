@@ -140,7 +140,8 @@ def test_assumption_rows_hide_assembly_roles_but_preserve_net_demand_and_purchas
         "item": "Particleboard 18 mm", "price_source": "A", "required_material_value": 2.279,
         "required_material_unit": "m²", "required_material_line_id": "__material_requirement__:board",
         "purchase_unit": "sheet 2440 × 1220 mm", "purchase_quantity_value": 2.0,
-        "purchase_quantity_unit": "sheet", "purchase_quantity_line_id": "__material_purchase__:None", "total": 400.0,
+        "purchase_quantity_unit": "sheet", "purchase_quantity_line_id": "__material_purchase__:None",
+        "material_family": "particleboard", "total": 400.0,
     }]
 
 
