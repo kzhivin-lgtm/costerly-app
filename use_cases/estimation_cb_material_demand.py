@@ -1,6 +1,7 @@
 """Adapt preliminary CB Parts to the existing assembly BOM material contract."""
 
 from math import ceil, isfinite
+import re
 
 from use_cases.estimation_assembly_bom import ASSEMBLY_BOM_V1
 from use_cases.estimation_structural_bom import _CONSTRUCTION_MATERIAL_NAMES, _FAMILY_PREFERENCE
@@ -25,6 +26,8 @@ _ROLES = {
 _COUNT_ROLES = {"leg", "drawer_slide", "hinge", "gas_lift"}
 _LDSP_FAMILY = "melamine_faced_particleboard"
 _LDSP_DEFAULT_THICKNESS_MM = 17
+_STANDARD_LED_STRIP = "LED strip standard output"
+_LED_FAMILY = "hardware_electrical_component"
 _ROLE_FAMILY_PREFERENCE = {
     **_FAMILY_PREFERENCE,
     "carcass_sheet": _FAMILY_PREFERENCE["internal_sheet"],
@@ -36,6 +39,7 @@ _MATERIAL_NAMES = {**_CONSTRUCTION_MATERIAL_NAMES, "mirror": "Mirror"}
 _WORKTOP_DEFAULT_FAMILY = "engineered_quartz_mineral_hybrid"
 _STONE_CUTOUT_FAMILIES = {"natural_stone_slab", _WORKTOP_DEFAULT_FAMILY, "sintered_ultra_compact_surface",
                           "porcelain_ceramic_slab", "solid_surface", "terrazzo_engineered_agglomerate"}
+_CYRILLIC_OCR_GLYPHS = str.maketrans("авекмнорстухф", "abekmhopcyyxf")
 
 
 def _positive(value):
@@ -52,7 +56,39 @@ def _source_scopes(stage, source):
     return list(by_owner.items())
 
 
-def _source_material(measurements):
+def _stock_alias_family(note, family_alias_context):
+    text = normalize_material_phrase(note)
+    matches = set()
+    for family, context in family_alias_context.items():
+        for alias in context.get("family_aliases", ()):
+            phrase = normalize_material_phrase(alias)
+            if phrase and re.search(rf"(?<!\w){re.escape(phrase)}(?!\w)", text):
+                matches.add(family)
+                break
+    return next(iter(matches)) if len(matches) == 1 else None
+
+
+def _ocr_stock_alias_family(note, family_alias_context):
+    # A role-labelled thickness note can contain Latin OCR for a Cyrillic
+    # material token. Compare its leading token only against shared aliases.
+    token = normalize_material_phrase(note).split()[0:1]
+    if not token or not re.fullmatch(r"[a-z]{6,}", token[0]):
+        return None
+    observed = token[0].replace("ph", "f").replace("n", "h")
+    matches = set()
+    for family, context in family_alias_context.items():
+        for alias in context.get("family_aliases", ()):
+            phrase = normalize_material_phrase(alias)
+            if not re.fullmatch(r"[а-яё]{6,}", phrase):
+                continue
+            expected = phrase.translate(_CYRILLIC_OCR_GLYPHS)
+            if (len(observed) == len(expected) and observed[:3] == expected[:3]
+                    and sum(a != b for a, b in zip(observed, expected)) <= 1):
+                matches.add(family)
+    return next(iter(matches)) if len(matches) == 1 else None
+
+
+def _source_material(measurements, family_alias_context):
     thickness = measurements.get("thickness", {})
     if thickness.get("basis") != "ocr_material_note":
         return None, {}, (), ()
@@ -63,15 +99,18 @@ def _source_material(measurements):
         return None, {}, (), ()
     materials = set()
     for note in notes:
-        # Drawing OCR also supplies Russian material terms. Match the literal
-        # term, and leave a corrupted or ambiguous label for review.
         words = note.casefold().split(maxsplit=1)
         token = words[0].strip(".,:;()") if words else ""
-        family = {"фанера": "plywood", "мдф": "mdf", "хдф": "hdf"}.get(token)
+        family = {"мдф": "mdf", "хдф": "hdf"}.get(token)
         if not family and (rule := material_rule_for_text(note)):
             family = rule.family
         taxonomy = catalog_taxonomy_for_family(family)
         if not taxonomy:
+            alias_family = (_stock_alias_family(note, family_alias_context)
+                            or _ocr_stock_alias_family(note, family_alias_context))
+            if alias_family:
+                materials.add((alias_family, None))
+                continue
             return None, {}, notes, ()
         code = taxonomy["family_code"]
         board_type = family if code == "mdf_hdf" and family in {"mdf", "hdf"} else None
@@ -129,7 +168,7 @@ def _physical_unit(row, role, measurements):
     return None
 
 
-def _worktop_requirements(row, part_source, object_quantity, families, materials, review_items):
+def _worktop_requirements(row, part_source, object_quantity, families, materials, review_items, family_alias_context):
     outline = row.get("worktop_outline") or {}
     surfaces = outline.get("surfaces") or ()
     thickness = row["dimensions"].get("thickness", {}).get("mm")
@@ -140,7 +179,7 @@ def _worktop_requirements(row, part_source, object_quantity, families, materials
         return False
     multiplier = count * part_source["scope_quantity"] * object_quantity
     finish_view = outline.get("finish_evidence", {}).get("view_id")
-    stock_family, stock_spec, stock_notes, stock_refs = _source_material(row["dimensions"])
+    stock_family, stock_spec, stock_notes, stock_refs = _source_material(row["dimensions"], family_alias_context)
     refs = list(dict.fromkeys([*part_source["evidence_refs"], *outline["source_refs"],
                                *outline.get("seam_source_refs", ()), *([finish_view] if finish_view else [])]))
     part_id = part_source["part_id"]
@@ -204,8 +243,10 @@ def _worktop_cutout_requirements(row, part_source, object_quantity, materials):
         }
 
 
-def build_cb_material_demand(*, parts_report, input_row, allowed_material_families, catalog_names=()):
+def build_cb_material_demand(*, parts_report, input_row, allowed_material_families, catalog_names=(),
+                             family_alias_context=None):
     """Emit a requirement for every identified part, retaining provisional evidence."""
+    family_alias_context = family_alias_context or {}
     payload = input_row["input_payload"]
     obj = payload["object"]
     object_id = obj["object_id"]
@@ -258,20 +299,27 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                 continue
             if row["role"] == "shared_worktop":
                 area_resolved = _worktop_requirements(
-                    row, part_source, object_quantity, allowed_material_families, materials, review_items)
+                    row, part_source, object_quantity, allowed_material_families, materials, review_items,
+                    family_alias_context)
                 _worktop_cutout_requirements(row, part_source, object_quantity, materials)
                 if area_resolved:
                     continue
             unit = _physical_unit(row, role, measurements)
             has_sheet_geometry = not unit and all(_positive(measurements.get(axis, {}).get("mm"))
                                                   for axis in ("length", "width"))
-            source_family, material_spec, notes, material_refs = _source_material(measurements)
+            source_family, material_spec, notes, material_refs = _source_material(measurements, family_alias_context)
             preferences = (source_family,) if source_family else _ROLE_FAMILY_PREFERENCE.get(role, ())
             family = next((f for f in preferences if f in allowed_material_families), None)
             identity_hint = None
-            if not role and not source_family:
+            if row["role"] == "led_strip_run" and _LED_FAMILY in allowed_material_families:
+                family, identity_hint = _LED_FAMILY, _STANDARD_LED_STRIP
+            elif not role and not source_family:
                 family, identity_hint = _part_material_identity(row.get("material_hint") or row["role"],
                                                                family, catalog_names)
+                if not family and (alias_family := _stock_alias_family(identity_hint, family_alias_context)):
+                    family = alias_family
+                    if family == "gypsum_board":
+                        identity_hint = None
             thickness_mm = measurements.get("thickness", {}).get("mm")
             if role == "visible_sheet" and family == _LDSP_FAMILY and not notes and not _positive(thickness_mm):
                 thickness_mm = _LDSP_DEFAULT_THICKNESS_MM
@@ -379,7 +427,8 @@ def build_cb_material_facts(*, parts_report, input_rows, catalog_context):
                      if position.get("family_code") in allowed]
     for row in input_rows:
         item = build_cb_material_demand(parts_report=parts_report, input_row=row, allowed_material_families=allowed,
-                                       catalog_names=catalog_names)
+                                       catalog_names=catalog_names,
+                                       family_alias_context=catalog_context.get("family_alias_context"))
         if item["company_id"] != catalog_context["company_id"] or item["object_id"] in facts:
             raise ValueError("Parts costing requires matching catalog tenant and unique object inputs")
         facts[item["object_id"]] = item

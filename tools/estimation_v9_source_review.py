@@ -6,8 +6,10 @@ from math import isfinite
 import pymupdf
 
 from use_cases.estimation_v9_inventory import COMPONENT_ROLES, page_box
+from use_cases.estimation_door_hardware import DOOR_OPENING_ROLES
 
-FRONT_ROLES = COMPONENT_ROLES - {"hinged_door", "lift_up", "drawer", "support_leg", "pull_out_shelf"}
+FRONT_ROLES = (COMPONENT_ROLES - {"hinged_door", "lift_up", "drawer", "support_leg", "pull_out_shelf"}
+               | DOOR_OPENING_ROLES)
 SCOPES = {"standalone", "block_member", "unclear"}
 SCHEMA = """Return JSON only:
 {"findings":[{"role":"one supplied role","scope":"standalone | block_member | unclear",
@@ -34,6 +36,11 @@ Keep mirrors and lighting attached to the physical assembly. Group plinth
 segments under one object-level kit. Distinguish separate worktops only
 when the drawing shows a real break in the run.
 Read printed callouts where they are legible and follow their leaders.
+For a fully visible individual hinged door, use door_without_handle if the
+opening edge is clear and there is no external or integrated pull. Use
+door_with_pull if a handle, finger pull, recessed grip, or pull profile is
+visible. Draw the box around the whole leaf. Skip unreadable or occluded
+leaves. Keep one finding per leaf and skip drawers and lift-up flaps.
 An apparent feature can be part of a block. Retain the evidence without
 inventing hidden components. Ignore geometry clipped from adjacent Islands."""
 INVENTORY = """Independently read this full original sheet for physical elements
@@ -157,7 +164,7 @@ annotation_id unless you can read the matching indexed caption."""
 
     if not views:
         return []
-    params = source_request(request, system, content, roles=FRONT_ROLES, max_tokens=5500, view_ids=views)
+    params = source_request(request, system, content, roles=FRONT_ROLES, max_tokens=7500, view_ids=views)
     return invoke("v9-front-components", params, bind)
 
 

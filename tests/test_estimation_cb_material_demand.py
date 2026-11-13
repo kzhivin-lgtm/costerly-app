@@ -59,6 +59,27 @@ def test_source_stock_note_overrides_family_assumption_with_original_evidence():
     assert material["specification"]["thickness_mm"] == 18
 
 
+def test_cyrillic_stock_ocr_matches_a_shared_alias_with_original_evidence():
+    face = _part("carcass_side")
+    face["dimensions"]["thickness"] = {
+        "mm": 16, "basis": "ocr_material_note", "refs": ["ocr:16"],
+        "source_text": ["Phanepe 6epe3o8a 16 MM. (Macno)"],
+    }
+    report = {"stage": "Parts Check", "objects": {"object-1": {"parts": [face]}}}
+    aliases = {"plywood": {"family_aliases": ["фанера"]}}
+    facts = build_cb_material_demand(parts_report=report, input_row=_input(),
+                                    allowed_material_families={"plywood", "mdf_hdf"}, family_alias_context=aliases)
+    material, = facts["materials"]
+    assert material["family"] == "plywood"
+    assert material["specification"] == {"thickness_mm": 16}
+    assert material["evidence_refs"] == ["ocr:16"]
+    assert "assumption_reason" not in material
+    aliases["mdf_hdf"] = {"family_aliases": ["фанера"]}
+    facts = build_cb_material_demand(parts_report=report, input_row=_input(),
+                                    allowed_material_families={"plywood", "mdf_hdf"}, family_alias_context=aliases)
+    assert facts["materials"][0]["assumption_reason"] == "material_note_unresolved"
+
+
 def test_duplicate_rows_keep_both_sources_without_creating_demand():
     rows = [_part("door_front", instance_ref="view-1:C01", owner_id=owner) for owner in ("B01", "B02")]
     issue = {"role": "door_front", "source_ref": "view-1:C01", "reason": "duplicate_part_evidence"}

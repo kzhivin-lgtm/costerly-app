@@ -469,6 +469,7 @@ def assemble_native_front_blocks(*, views, projections, detection, faces, review
     from tools.probe_estimation_v8_grounded_front import (
         ground_front, ground_opening_pairs, linked_support_faces, review_front_roles, unresolved_adjacent_profiles,
     )
+    from use_cases.estimation_door_hardware import DOOR_OPENING_ROLES
 
     marked_sources = marked_sources or {}
     labelled_sources = labelled_sources or {}
@@ -531,8 +532,9 @@ def assemble_native_front_blocks(*, views, projections, detection, faces, review
             elif feature["role"] == "worktop" and not any(row["role"] == "worktop" for row in plan["object_parts"]):
                 plan["object_parts"].append(feature)
         if component_observations is not None:
-            grounded["components"] = [row for row in component_observations
-                                      if row["source"]["view_id"] in own_views]
+            observations = [row for row in component_observations if row["source"]["view_id"] in own_views]
+            grounded["components"] = [row for row in observations if row["role"] not in DOOR_OPENING_ROLES]
+            grounded["door_opening_observations"] = [row for row in observations if row["role"] in DOOR_OPENING_ROLES]
         objects[ident] = {"front": grounded, "planner": plan,
                           "context_only_views": sorted(own_views.keys() - {row["view_id"] for row in grounded["faces"]})}
     return objects

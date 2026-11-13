@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from db.repositories import fetch_estimation_resolver_material_families
+from use_cases.catalog_aliases import build_estimation_alias_context
 from use_cases.israel_reference_catalog import load_active_israel_reference_positions
 
 
@@ -37,9 +38,17 @@ def _optional_rows(client: Any, table: str, *, filters: Mapping[str, Any]) -> li
 
 def build_estimation_material_context(client: Any, company_id: str) -> dict[str, Any]:
     """Load only catalog data needed for deterministic material purchasing."""
+    families = fetch_estimation_resolver_material_families(client)
+    family_rows = _rows(client, "reference_material_families", filters={"active": True})
+    family_alias_context = build_estimation_alias_context(
+        family_codes=families, pricing_key_fields_by_family={}, family_rows=family_rows,
+        family_alias_rows=_rows(client, "reference_material_family_aliases", filters={"active": True}),
+        pricing_key_alias_rows=(),
+    )
     return {
         "company_id": company_id,
-        "families": fetch_estimation_resolver_material_families(client),
+        "families": families,
+        "family_alias_context": family_alias_context,
         "catalogs": {
             "items": _rows(client, "company_material_items", filters={"company_id": company_id}),
             "offers": _rows(client, "company_material_offers", filters={"company_id": company_id}),
@@ -51,7 +60,7 @@ def build_estimation_material_context(client: Any, company_id: str) -> dict[str,
                 client, "market_operation_service_prices", filters={"market_code": "IL", "status": "active"},
             ),
             "reference_positions": load_active_israel_reference_positions(client),
-            "material_families": _rows(client, "reference_material_families", filters={"active": True}),
+            "material_families": family_rows,
             "material_pricing_policies": _rows(client, "reference_material_family_pricing_policies", filters={"active": True}),
             "material_default_variants": _optional_rows(
                 client,

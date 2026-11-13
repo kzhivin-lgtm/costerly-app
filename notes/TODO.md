@@ -74,13 +74,57 @@ fit. Objects displays a provisional amount for an estimate with review
 findings and priced requirements. Verify the saved Parts Check, allocated
 costs, and provisional Objects total on the next fresh Upload before
 acceptance. See the [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md).
-Next owner verification is a fresh Adda Upload on the combined Estimation
-9.6 and Detection V8.4.29 build. Verify exact File Review membership
-01/04/06/08 and 02/03/05/07 before comparing Parts Check, purchasing units,
-price sources, allocations, and the amount displayed in Objects. Production
-run `run_3aa7bc04987e442fb8c2fdf691e22fee` fed a wrong 5+3 Detection
-partition into Estimation 9.6. Its costing does not verify the corrected
-two-object input.
+Fresh owner Adda Upload `run_abee9f6a111c486b92a3a0eeef872ba7`
+verified exact V8.4.29 membership and an Estimation 9.6 price for both
+objects. Parts Check returned 149 rows across nine Blocks. All 22
+published requirements have an allocated cost. The Objects data loader
+returns 20,788.23 ILS with VAT, delivery and installation. Both objects
+remain in Review. Reconcile the 27 unassigned source findings, LED
+lengths, and the 5,155 ILS fallback share before accepting price accuracy.
+See the [Adda checkpoint](DETECTION_V8_4_29_ADA_HAIKU45_CHECKPOINT_2026_11_13.md).
+
+ACTIVE, P0, USER REQUEST. Require complete Adda benchmark coverage with
+Company Catalog or Israel Reference prices and zero Assumption Fallback.
+On the fresh owner Upload above, Parts Check omitted eight push latches,
+five 40 W power supplies and the straight object's open shelf. The lighting
+lengths, three corner plinth spans and specified hardware types also need
+reconciliation. Compare physical items and quantities, including paired
+slides and shared stock purchases. The saved Material Plan put 5,155 ILS
+into Assumption Fallback across twelve requirements: 2,200 for plywood
+whose OCR note bypassed matching, 1,355 for a generic LED identity that
+matched multiple catalog positions, 1,000 for HDF and 400 for LDSP rejected
+by sheet fit, and 200 for drywall with no resolved Family. Recover missing
+Parts first, resolve catalog identity and verify eligible stock dimensions
+before accepting the price. Preserve drawing evidence and approved catalog
+units, including 5 m LED coils and verified power-supply specifications.
+Estimation 9.7 local replay on the saved production Parts and source-locked
+Front verifies eight push latches on eight hinged leaves. Add one per leaf
+when the drawing confirms handleless construction or specifies push opening.
+Leave unclear leaves open and honor visible pulls. Israel Reference already
+has an active Push latch at 25 ILS per piece. The replay resolved the damaged
+16 mm plywood OCR through the shared `фанера` alias. Two of the four
+plywood requirements priced from Israel Reference. The remaining two still
+require physically compatible stock. Ten requirements and 4,555 ILS remain
+in Assumption Fallback in the unmodified 9.7 replay. The window closure
+callout on Adda sheet 1 explicitly specifies drywall on its room-facing
+side. Keep it in the estimate for now. Its scope and catalog price remain open.
+Owner decision: estimate sheet purchases from material area using catalog
+stock and the existing allowance. A finished part larger than a stock sheet
+must not invalidate catalog pricing. Leave fabrication decisions to production.
+Use one standard catalog LED strip rate and 6 W/m for the estimate. Use color
+temperature only to separate 5 m coil purchases; each temperature needs at
+least one coil for any positive demand. No pricing split by strip type,
+temperature or electrical specification is required for this estimate.
+An isolated replay on saved Adda quantities with these purchasing rules
+leaves only drywall in Assumption Fallback (200 ILS allowance). All sheet
+requirements price from catalogs and each LED temperature gets one 125 ILS
+coil on the current lengths. The reviewed lighting benchmark still expects
+two coils per temperature and five power supplies. Reconcile missing Parts
+and lengths before acceptance. Estimation 9.7 now runs the area and coil
+rules in Material Engine. The gypsum board catalog entry uses the observed
+52 ILS per sheet including VAT, or 44.07 ILS excluding VAT. A replay through
+9.7 and the active catalog priced every emitted requirement with zero
+Assumption Fallback. Fresh Upload verification remains open.
 
 DEFERRED, P1, USER REQUEST. After the full cycle is verified, measure stage
 time and model calls. Remove repeated analysis, reuse verified outputs and
@@ -873,7 +917,7 @@ four-View kitchen and attached the render
 Saved-input provider results are in
 `/private/tmp/costerly-ada-haiku45/comparison.json`. Railway deployed
 `534abf4` on 2026-11-13. The public wrapper and Core report V8.4.29.
-Fresh authenticated Adda Upload verification is pending. Runtime rollback
+The fresh owner Adda Upload verified exact membership. Runtime rollback
 is `a420198`.
 
 Two additional Adda repeats on commit `420a7e4` used the same saved

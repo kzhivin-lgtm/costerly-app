@@ -150,7 +150,7 @@ MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
     )),
     # Wood sheets. Twin and Okoume prove plywood, but are attributes, not brands.
     TaxonomyRule("Wood Sheets", "plywood", (
-        "plywood", "lumber core", "sanded plywood", "blockboard", "marine plywood",
+        "plywood", "фанера", "lumber core", "sanded plywood", "blockboard", "marine plywood",
         "לביד", "לבידים", "דיקט", "סנדוויץ", "סנדויץ", "לביד ימי", "לוח לבוד",
         "okume", "okoume", "אוקומה", "אוקמה", "twin", "טווין", "combi", "קומבי",
     )),

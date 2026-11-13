@@ -1166,7 +1166,7 @@ def build_material_plan(
                     if default_trace is not None else None
                 ),
             )
-            if parts:
+            if parts and facts.get("composition_version") != "cb_parts_material_demand_v1":
                 def fitting_candidates(rows):
                     return tuple(row for row in rows if row.purchase_kind != "sheet"
                                  or _sheet_candidate_fits_finished_parts(row, parts))

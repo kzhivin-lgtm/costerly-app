@@ -632,6 +632,22 @@ def test_oversized_finished_part_uses_dimension_compatible_assumption_not_sheet_
     assert result.assumption_fallbacks[0]["resolution"] == "assumption_fallback"
 
 
+def test_parts_check_prices_an_oversized_panel_from_catalog_sheet_area():
+    facts = _facts("cabinet-a", "long-panel", length=3200, width=1000)
+    facts["composition_version"] = "cb_parts_material_demand_v1"
+    result = build_material_plan(
+        facts_by_object={"cabinet-a": facts},
+        catalogs=_catalogs(_offer("company-sheet", dimensions={"length_mm": 2440, "width_mm": 1220})),
+    )
+
+    assert not result.assumption_fallbacks
+    line, = result.plan.lines
+    assert line.purchase_quantity == 2
+    allocation, = line.allocations
+    assert allocation.length_mm == 3200
+    assert allocation.area_mm2 == 3200000
+
+
 def test_plan_uses_evidenced_count_only_for_discrete_resolved_materials():
     facts = {
         "object_id": "cabinet-a",

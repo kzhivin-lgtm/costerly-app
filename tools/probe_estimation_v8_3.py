@@ -750,12 +750,14 @@ def run_pipeline(args, source, *, version, request_provider=None):
                     apply_reviewed_display_parts(parts, inventory, result, measurements, read_json(args.parts_profile))
                 else:
                     from use_cases.estimation_display_parts import add_source_casework_parts, add_source_display_glass_parts
+                    from use_cases.estimation_door_hardware import add_push_latches
 
                     with pymupdf.open(args.pdf) as pdf:
                         add_source_casework_parts(parts, inventory, result, measurements,
                                                   input_rows=source.get("inputs", ()), detection=detection,
                                                   views=views, pdf=pdf)
                     add_source_display_glass_parts(parts, inventory, result)
+                    add_push_latches(parts, result, views, source.get("inputs", ()))
             parts_filename = "parts.json" if v9 else "cb-parts.json"
             inventory_with_parts = reconcile_object_inventory(inventory, parts)
             if v9:
