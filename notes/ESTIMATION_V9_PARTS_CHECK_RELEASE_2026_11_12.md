@@ -1,5 +1,65 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.14 production checkpoint
+
+The owner accepted the Materials interface and the Lev1 material-cost
+repeatability checkpoint on 2026-11-13, work 3.17.4.6. Tag
+`estimation-v9.14-checkpoint` pins the runtime and rollback point
+`14605a4bdb999952ea7fc10a3ca9de6a4bba43ff`. Railway deployment
+`c04a13d9-ab7e-4314-b4f2-8b18f7c82291` reported success for this commit.
+
+The three fresh production uploads use the same `Lev_1.pdf` with SHA-256
+`56bfa63e0236c85a161a2fa95a8996b03003df8f2f01d54ac4236acb5a7287b8`.
+Each Detection run assigns `P01.V1` through `P01.V6` to one object with
+identical view bounding boxes. Each estimate has three Blocks, the same
+28 part rows by role, dimensions and quantity (54 total units), ten
+identical purchase lines and zero unpriced requirements.
+
+| Local time (Israel) | Version | Run | Detection cycle | Detection tokens in / out | Detection API | Parts Check | Estimation tokens in / out | Estimation API | Parts Check to saved Material Plan |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 17:28 | 9.12 | `run_5a5362fcee2d445888bfab457f0ce5a2` | 42.546 s | 23,993 / 4,392 | $0.086973 | 49.277 s | 50,768 / 4,086 | $0.213594 | 30.717 s |
+| 17:45 | 9.13 | `run_22aed17fe86e4cae8ea006fb4c266a98` | 43.872 s | 23,993 / 4,546 | $0.088079 | 61.536 s | 51,044 / 4,931 | $0.227097 | 30.877 s |
+| 18:09 | 9.14 | `run_339be39b989242669a24ce9d2b631d20` | 51.091 s | 23,993 / 4,706 | $0.090442 | 52.187 s | 50,761 / 3,384 | $0.203043 | 34.131 s |
+
+Detection tokens and API cost include deferred Naming. Cost includes
+Mistral OCR at $0.004 per sheet. The Detection cycle timer ends before
+Naming, which finished 54.459 seconds after the start of the 9.14 cycle.
+Each Parts Check recorded five Sonnet 4.6 requests with zero cache reads.
+Detection plus Parts Check API cost was $0.293485 on 9.14.
+
+| Purchase | Source | Unit | Quantity | ILS per unit | ILS excluding VAT |
+| --- | --- | --- | ---: | ---: | ---: |
+| MDF 50 mm | Assumption Fallback | sheet | 1 | 200 | 200.00 |
+| LDSP 36 mm | Assumption Fallback | sheet | 1 | 200 | 200.00 |
+| LDSP 37 mm | Assumption Fallback | sheet | 1 | 200 | 200.00 |
+| LDSP 39 mm | Assumption Fallback | sheet | 1 | 200 | 200.00 |
+| LDSP 40 mm | Assumption Fallback | sheet | 1 | 200 | 200.00 |
+| Furniture leg | Assumption Fallback | piece | 1 | 200 | 200.00 |
+| 600 mm roller runner | Israel Reference | piece | 3 | 96 | 288.00 |
+| HDF 6 mm | Israel Reference | sheet | 1 | 104.91024 | 104.91 |
+| LDSP 17 mm | Israel Reference | sheet | 2 | 295.84512 | 591.69 |
+| LDSP 20 mm | Israel Reference | sheet | 2 | 286.944 | 573.89 |
+
+Materials cost 2,758.49 ILS excluding VAT. Assumption Fallback accounts
+for 1,200.00 ILS. Consumables add 137.92 ILS and packaging adds 27.58 ILS.
+Paint consumables are zero. Self cost is 2,923.99 ILS excluding VAT and
+3,450.31 ILS including 526.32 ILS VAT. None of the three plans has a
+manual purchase override. The three plans stay in Review with 31, 28
+and 29 open findings, respectively. The earlier 9.11 Lev1 run
+`run_f837297d641e489880b162626eaf5916` had 55 part rows and a saved manual
+purchase quantity of 60 runners. The acceptance covers repeatable Lev1
+pricing across the three recorded runs. The outstanding material choices,
+part counts and older divergence remain tracked in TODO.
+
+Private archive `backups/estimation-v9.14-lev1-production-checkpoint-2026-11-13/`
+contains the source PDF, exact Detection and usage events, immutable
+File Review inputs, Parts Check reports, original plans and object totals,
+catalog and policy replay inputs, a Git bundle, a receipt and SHA-256
+checksums. The replay recalculates each saved report with the archived
+catalog and settings. It matches every purchase line, the part signature,
+the per-requirement costs and the published totals. It verifies Detection
+against the saved partitions and bounding boxes.
+
 ## Estimation 9.14 Materials quantity edits and display
 
 Purchase Unit and Unit Price wrap to two lines. The quantity fields are

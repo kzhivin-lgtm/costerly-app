@@ -1,5 +1,13 @@
 # Done Log
 
+Estimation 9.14, work 3.17.4.6. The owner accepted the Materials interface
+and the Lev1 production repeatability checkpoint. Three fresh uploads
+matched 28 part rows and ten purchase lines. Materials cost 2,758.49 ILS
+and self cost was 2,923.99 ILS excluding VAT in each. Offline replay
+matched all three. Tag `estimation-v9.14-checkpoint` pins `14605a4`.
+Six Assumption Fallback lines and the Lev1 Parts audit remain open.
+See the [Estimation release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md).
+
 Estimation 9.9. The owner confirmed the Objects Estimation Review fix
 on production Adda on 2026-11-13 and accepted the short subtitles and
 self-cost display. Tag `estimation-v9.9-checkpoint` pins the deployed

@@ -5742,25 +5742,20 @@ cause from the local screenshot alone.
   size across Blocks. Both saved Adda objects passed browser checks with
   editing and return navigation. Railway deployed `b86906d`. Owner
   verification in an authenticated production session is pending.
-- Estimation 9.11 Object Detail material editing. ACTIVE, P1, USER REQUEST.
-  Center both quantity headings and Required Material values. Reprice on
-  blur through the existing Material Engine, with no new Parts Check run.
-  Saved Adda browser replay covers both fields, shared purchase, and
-  retry. Owner verification of edits on an authenticated estimate is pending.
-- Estimation 9.12 Object Detail editing responsiveness. ACTIVE, P1, USER
-  REQUEST. Update the cost preview as the user types, save the draft once,
-  keep inputs usable, and preserve the draft if saving fails.
-- Estimation 9.13 Materials editing and unit price. ACTIVE, P1, USER REQUEST.
-  Preserve untouched quantities during local edits, compact the quantity
-  inputs, and show the read-only Unit Price before Purchase Quantity.
-- Estimation 9.14 Materials quantity behavior. ACTIVE, P1, USER REQUEST.
-  Wrap the two headings, widen inputs, and display whole quantities.
-  Purchase edits preserve demand; required edits recalculate purchases
-  through the preview and save.
+- Estimation 9.14 Materials quantity behavior and Lev1 costing checkpoint.
+  COMPLETED, OWNER-ACCEPTED, P1, USER REQUEST. Three production runs and
+  offline replay agree on 28 part rows, ten purchase lines and 2,923.99 ILS
+  self cost excluding VAT. This closes the Materials editor iterations
+  9.11 through 9.14. The accepted flow previews costs locally, preserves
+  untouched quantities, saves once, and displays read-only unit prices.
+  Runtime `estimation-v9.14-checkpoint`. See the
+  [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-914-production-checkpoint).
 - Lev1 Parts and Material Demand audit. PENDING, P1, USER REQUEST. After
-  Object Detail is stable, trace the saved run
+  the 9.14 repeatability checkpoint, trace the saved run
   `run_f837297d641e489880b162626eaf5916` for unexpected Parts counts,
   repeated sheet material variants, and 10 Assumption Fallback rows.
+  Compare with the current 28-row control, which still uses six allowances
+  totaling 1,200 ILS and has 29 open findings on 9.14.
 - Object Detail approve action: remove stale screen fragment flicker after clicking Approve.
 
 ## Later

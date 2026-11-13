@@ -1,5 +1,14 @@
 # Detection Agent benchmark
 
+## Lev1 production repeatability, 2026-11-13
+
+Three fresh Lev1 uploads on Estimation 9.12 through 9.14 took the Ada
+single technical sheet route. OCR found six graphic regions and no
+strong source object code. All six Views `P01.V1` through `P01.V6`
+belong to one object with identical bounding boxes in all three runs.
+The [Estimation 9.14 checkpoint](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-914-production-checkpoint)
+records the exact runs, timings, costs and private evidence archive.
+
 ## V8.4.29, restored Ada Discovery and Membership
 
 Adda matched 01/04/06/08 and 02/03/05/07 in four of four runs with
