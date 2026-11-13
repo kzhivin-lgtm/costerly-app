@@ -72,6 +72,58 @@ zero. Materials were 3,693.42 ILS ex VAT versus 3,551.72 ILS in the
 control. Production self cost was 3,915.02 ILS ex VAT and 4,619.72 ILS
 including VAT. Production acceptance is partial.
 
+### Fresh 9.17 Adda production verification
+
+Owner Upload `run_59e79abf1ba648da92382a809ec205a9` published Parts
+Check on 2026-11-13 at 20:54 Israel time. Detection returned the accepted
+two sets of Views, 02/03/05/07 for the straight console and 01/04/06/08
+for the corner cabinet. Front counts and the 2/7 Block split matched
+the internal control. All 24/133 Parts rows matched by owner, role,
+quantity, dimensions and material hint. Two straight and 15 corner
+rows still have incomplete dimensions in Parts Check.
+
+An offline Material Engine replay priced the archived internal Parts
+Check and the fresh production Parts Check with the saved catalog.
+Both replays matched all 11 persisted purchase lines by selection,
+authority, quantity, unit price and total. The document total was
+9,810.51 ILS for materials excluding VAT, with zero Assumption Fallback
+and zero unpriced requirements. Allocated materials were 1,926.16 ILS
+for the straight console and 7,884.36 ILS for the corner cabinet after
+per-requirement rounding. Published self costs including VAT were
+2,409.24 ILS and 9,861.76 ILS, respectively. No purchase overrides were
+present. Both objects still require Review. The LED power supplies are
+absent from the control and production Parts and purchasing, so the
+agreement verifies repeatability on this run and leaves completeness open.
+
+### Shared sheet purchasing and review status
+
+Material Engine groups compatible requirements by resolved material across
+the estimate. For area-based sheet demand, it adds the exact net areas of
+all objects, applies the 10% allowance once, divides by the selected sheet
+area and rounds the purchase quantity up. The net area remains per object.
+The purchased line's cost is allocated back by each object's share of the
+net area. An explicit demand in whole sheets is added as whole sheets.
+
+Fresh Adda proves sharing. The straight console requires 1.4 m² of mirror
+and the corner cabinet requires 1.680275 m². The 2440 × 1830 mm format
+covers both with one shared sheet. Two separate estimates would buy one
+sheet each. The shared purchase line costs 1,339.56 ILS excluding VAT.
+Changing Required Material previews the new estimate-wide quantity from
+the current purchase format. Save updates the shared plan using stored
+Parts Check evidence. Editing Purchase Quantity changes the shared
+purchase and allocated costs while preserving the net requirement.
+
+The fresh Adda Material Plan has zero unpriced requirements and carries
+`cb_parts_review_required`. The material plan adapter marks a plan
+`needs_review` when Parts Check has findings, unresolved requirements or
+estimated costs. Object Detail currently labels all of those conditions
+`Material Plan Incomplete` and gates approval. Its detail counts 40
+findings for the straight console and 71 for the corner cabinet. Those
+counts are Material Demand review messages, distinct from the 17 Parts
+rows with incomplete dimensions. Lev1 carries the same Parts Check
+reason and also `assumption_fallback`. Both statuses were verified on
+persisted plans from the two owner uploads.
+
 ## Estimation 9.16 Wood-grain material decision
 
 Work 3.17.4.6. Understanding returns the chosen material per visible

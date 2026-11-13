@@ -2,6 +2,27 @@
 
 ## Estimation Parts Check, 3.17.4.6
 
+PENDING, P1, USER REQUEST. Refine the Object Detail Materials editor.
+Display all monetary amounts, including read-only Unit Price, as whole ILS
+on initial render, live preview and after saving. Preserve calculation
+precision. Put Save changes in the footer action group next to Back to
+Objects. Keep the draft, save progress and errors actionable without a
+page refresh. Show Required Material units adjacent to the displayed
+value when the field is blurred. Hide the unit while focused and restore
+it on blur. Use the existing shared end-caret rule for numeric fields on
+pointer entry and keyboard focus, including clicks between digits. Verify
+on a two-object estimate that local preview and batch save retain exact
+requirements, shared purchases and costs when navigating between objects.
+
+ACTIVE, P1, USER REQUEST. Clarify Material Plan Incomplete using the
+saved estimate's actual review reason. Fresh Adda prices all purchase
+lines and shares one mirror sheet across both objects. The current label
+combines open Parts Check findings, estimated values and genuinely
+unpriced requirements under the same status. Retain estimate-wide sheet
+rounding and verify review and approval behavior against the persisted
+reason before changing its gate. See the
+[release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#shared-sheet-purchasing-and-review-status).
+
 VERIFIED on a fresh Lev2 production Upload. Parts Check completed in
 57.094 seconds and the private reader returned 107/107 matching control
 rows from nine Blocks. Two additional repeats with fresh model responses
@@ -131,6 +152,14 @@ retained the glass dimensions. The geometry repair allows uniquely bound
 orthographic measurements when the axonometric mounting extent is incomplete.
 The omission replay restored 2000 × 700 mm from the original printed evidence.
 Fresh production verification remains open.
+
+Fresh 9.17 Adda Upload `run_59e79abf1ba648da92382a809ec205a9` matches
+the 24/133 internal Parts rows and all 11 purchase lines, totaling
+9,810.51 ILS for materials excluding VAT. Zero Assumption Fallback and
+zero unpriced demands are verified. Both objects remain in Review with
+17 dimension gaps in Parts Check and no LED power-supply lines. The
+[release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#fresh-917-adda-production-verification)
+retains the evidence and replay comparison.
 
 DEFERRED, P1, USER REQUEST. After the full cycle is verified, measure stage
 time and model calls. Remove repeated analysis, reuse verified outputs and

@@ -6,7 +6,10 @@ Railway deployed it and the active runtime reported 9.17. The verified
 controls cover Lev1, Lev2 and Adda from saved Detection inputs. Fresh
 Lev1 production matched the three Blocks and three drawers. Front
 counted both supports. Parts and purchasing retained one, so full
-production acceptance remains open. See the
+production acceptance remains open. Fresh Adda matched all 157 control
+Parts rows and all 11 purchase lines at 9,810.51 ILS excluding VAT.
+Both objects share one mirror sheet. The plan still requires Parts Check
+review despite zero unpriced demands. See the
 [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-917-front-and-supported-tabletop-recovery).
 
 Estimation 9.14, work 3.17.4.6. The owner accepted the Materials interface
