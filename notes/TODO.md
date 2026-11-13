@@ -124,7 +124,13 @@ and lengths before acceptance. Estimation 9.7 now runs the area and coil
 rules in Material Engine. The gypsum board catalog entry uses the observed
 52 ILS per sheet including VAT, or 44.07 ILS excluding VAT. A replay through
 9.7 and the active catalog priced every emitted requirement with zero
-Assumption Fallback. Fresh Upload verification remains open.
+Assumption Fallback. The first fresh control on the accepted Adda partition
+produced 157 rows and one fallback for the straight mirror. The native
+locator left out the lower mounting contour while the plan and section
+retained the glass dimensions. The geometry repair allows uniquely bound
+orthographic measurements when the axonometric mounting extent is incomplete.
+The omission replay restored 2000 × 700 mm from the original printed evidence.
+Fresh production verification remains open.
 
 DEFERRED, P1, USER REQUEST. After the full cycle is verified, measure stage
 time and model calls. Remove repeated analysis, reuse verified outputs and

@@ -140,9 +140,12 @@ def _upright_mirror_sizes(block, readings, face, views, printed, pdf):
              if row["id"] in block["appearances"][face["view_id"]] and row["id"] != face["candidate_id"]]
     if not shell or not face.get("bbox_px"):
         return None
-    left, top, right, bottom = envelope(shell)
     a, b, c, d = face["bbox_px"]
-    ratios = (c - a) / (right - left), (d - b) / (bottom - top)
+    # A partially visible mounting face is not a reliable scale reference.
+    # The plan and section still have independent dimension evidence.
+    left, top, right, bottom = envelope(shell)
+    height_ratio = (d - b) / (bottom - top) if top <= b < d <= bottom else None
+    width_ratio = (c - a) / (right - left) if height_ratio is not None and right - left >= c - a else None
 
     panel, = (row for row in plan["candidates"] if row["id"] == width["contour_ids"][0])
     plan_matches = []
@@ -157,7 +160,8 @@ def _upright_mirror_sizes(block, readings, face, views, printed, pdf):
         boundary = span(plan, "y", bounds, "first end of mirror edge", "last end of mirror edge",
                         [f"pdf-path-{ident}"])
         reading = bind_dimension(boundary, printed)
-        if reading["value_mm"] and abs(reading["value_mm"] / width["value_mm"] - ratios[0]) <= .08:
+        if (reading["value_mm"] and reading["value_mm"] < width["value_mm"]
+                and (width_ratio is None or abs(reading["value_mm"] / width["value_mm"] - width_ratio) <= .08)):
             plan_matches.append(reading)
     mirror_width = _one(plan_matches)
     if not mirror_width:
@@ -177,7 +181,8 @@ def _upright_mirror_sizes(block, readings, face, views, printed, pdf):
                 for end in (b, d)]
         if all(pair) and abs(pair[0]["bounds"][1] - pair[1]["bounds"][1]) <= 1:
             size = pair[0]["value_mm"] - pair[1]["value_mm"]
-            if abs(size / height["value_mm"] - ratios[1]) <= .08:
+            if (0 < size < height["value_mm"]
+                    and (height_ratio is None or abs(size / height["value_mm"] - height_ratio) <= .08)):
                 boundary = span(section, "y", (b, d), "top of mirror", "bottom of mirror", [contour["id"]])
                 section_matches.append({**boundary, "value_mm": size, "method": "shared_floor_difference",
                                         "sources": pair})
