@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import json
 import math
 
 from ui.layout import _workflow_title_html
@@ -216,6 +217,20 @@ def _group_summary_value(column: str, group_rows: list[dict[str, object]]) -> st
     return ""
 
 
+def _material_preview(row: dict[str, object]) -> dict[str, object]:
+    return {key: row[key] for key in (
+        "total", "required_material_value", "required_material_unit", "required_material_line_id",
+        "purchase_quantity_value", "purchase_quantity_line_id", "purchase_kind",
+        "purchase_is_manual", "project_required", "purchase_unit_cost", "stock_coverage",
+        "is_coating", "locked", "policy_percent", "policy_basis", "item",
+    ) if key in row}
+
+
+def material_preview_rows(data: dict[str, object]) -> list[dict[str, object]]:
+    return [_material_preview(row) for section in data["sections"] if section["key"] == "material"
+            for row in section["rows"]]
+
+
 def _table_html(section: dict[str, object]) -> str:
     """Render a grouped cost table from normalized estimate rows."""
     columns = section["columns"]
@@ -231,13 +246,17 @@ def _table_html(section: dict[str, object]) -> str:
     if columns == ["Material", "Required material", "Purchase unit", "Purchase quantity", "Total"]:
         for row in rows:
             values = _row_values(section, row)
+            preview = _material_preview(row)
             body_parts.append(
-                '<div class="object-detail-table-row" data-section="materials">'
+                f'<div class="object-detail-table-row" data-section="materials" data-material-preview="{_escape(json.dumps(preview))}">'
                 + "".join(f'<div class="object-detail-table-cell">{value}</div>' for value in values)
                 + "</div>"
             )
         return (
-            '<div class="object-detail-material-edit-status" role="status" aria-live="polite"></div>'
+            '<div class="object-detail-material-actions" hidden>'
+            '<span class="object-detail-material-edit-status" role="status" aria-live="polite"></span>'
+            '<button type="button" class="object-detail-material-save" disabled>Save changes</button>'
+            '</div>'
             f'<div class="{table_class}" data-section="{_escape(section_key)}">'
             f'<div class="object-detail-table-head-row">{header}</div>'
             f'{"".join(body_parts)}'
@@ -306,7 +325,8 @@ def _final_html(data: dict[str, object]) -> str:
     """Render final self-cost block."""
     summary = data["self_cost"]
     return (
-        '<div class="object-detail-final">'
+        f'<div class="object-detail-final" data-vat-percent="{_escape(summary.get("vat_percent", 18))}" '
+        f'data-base-cost="{_escape(summary["excl_vat"])}">'
         f'<div class="object-detail-final-title">{_escape(summary["title"])}</div>'
         '<div>'
         '<div class="object-detail-final-label">Excl. VAT</div>'
@@ -392,6 +412,8 @@ def _footer_html(
         f'href="?{back_params}" target="_self">'
         'BACK TO OBJECTS'
         '</a>'
+        f'<span hidden data-object-detail-approval-config data-href="{approve_params}" '
+        f'data-blocking-label="{_escape(blocking_label)}"></span>'
         + approve
         + '</div>'
     )

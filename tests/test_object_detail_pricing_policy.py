@@ -136,7 +136,11 @@ def test_assumption_rows_hide_assembly_roles_but_preserve_net_demand_and_purchas
         }],
     }, object_id="object-1")
 
-    assert rows == [{
+    assert [{key: row[key] for key in (
+        "item", "price_source", "required_material_value", "required_material_unit",
+        "required_material_line_id", "purchase_unit", "purchase_quantity_value",
+        "purchase_quantity_unit", "purchase_quantity_line_id", "material_family", "total",
+    )} for row in rows] == [{
         "item": "Particleboard 18 mm", "price_source": "A", "required_material_value": 2.279,
         "required_material_unit": "m²", "required_material_line_id": "__material_requirement__:board",
         "purchase_unit": "sheet 2440 × 1220 mm", "purchase_quantity_value": 2.0,

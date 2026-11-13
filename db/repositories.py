@@ -896,10 +896,20 @@ def upsert_rfq_estimate_material_norm_overrides(client: Client, *, rows: list[di
 
 
 def upsert_rfq_estimate_material_purchase_override(client: Client, *, estimate_id: str, selection_key: str, company_id: str, purchase_quantity: float) -> None:
-    client.table("rfq_estimate_material_purchase_overrides").upsert({
-        "estimate_id": estimate_id, "selection_key": selection_key, "company_id": company_id,
-        "purchase_quantity": purchase_quantity, "updated_at": datetime.now(UTC).isoformat(),
-    }, on_conflict="estimate_id,selection_key").execute()
+    upsert_rfq_estimate_material_purchase_overrides(
+        client, estimate_id=estimate_id, company_id=company_id, quantities={selection_key: purchase_quantity},
+    )
+
+
+def upsert_rfq_estimate_material_purchase_overrides(
+    client: Client, *, estimate_id: str, company_id: str, quantities: dict[str, float],
+) -> None:
+    updated_at = datetime.now(UTC).isoformat()
+    client.table("rfq_estimate_material_purchase_overrides").upsert([
+        {"estimate_id": estimate_id, "selection_key": key, "company_id": company_id,
+         "purchase_quantity": quantity, "updated_at": updated_at}
+        for key, quantity in quantities.items()
+    ], on_conflict="estimate_id,selection_key").execute()
 
 
 def mark_rfq_estimate_material_plan_stale(

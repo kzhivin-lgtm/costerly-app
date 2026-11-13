@@ -7,6 +7,7 @@ from use_cases.material_engine_adapter import (
     material_plan_object_cost_allocations,
     material_plan_snapshot,
     build_material_plan,
+    reprice_material_purchase_snapshot,
 )
 
 
@@ -533,6 +534,29 @@ def test_shared_purchase_cost_is_allocated_back_to_each_object_without_rounding_
         ("cabinet-b", "plywood"): Decimal("50.00"),
     }
     assert sum(allocations.values()) == result.plan.lines[0].total_cost
+
+
+def test_editing_purchase_quantity_uses_existing_demands_and_reallocates_both_objects():
+    facts = {
+        "cabinet-a": _facts("cabinet-a", "side-a", width=800),
+        "cabinet-b": _facts("cabinet-b", "side-b", width=800),
+    }
+    catalogs = _catalogs(_offer("sheet", price="100"))
+    saved = material_plan_snapshot(build_material_plan(facts_by_object=facts, catalogs=catalogs))
+    saved["parts_check"] = {"cabinet-a": {"parts": ["unchanged"]}}
+    original = saved["lines"][0]
+    overrides = {original["selection_key"]: {"purchase_quantity": 3}}
+    updated, changed = reprice_material_purchase_snapshot(saved, overrides)
+    rebuilt = material_plan_snapshot(build_material_plan(
+        facts_by_object=facts, catalogs=catalogs, material_purchase_overrides=overrides,
+    ))
+
+    assert changed == {("cabinet-a", "plywood"), ("cabinet-b", "plywood")}
+    assert updated["object_material_costs"] == rebuilt["object_material_costs"]
+    assert updated["lines"] == rebuilt["lines"]
+    assert updated["parts_check"] == saved["parts_check"]
+    assert original["purchase_quantity"] == 1
+    assert updated["lines"][0]["purchase_quantity"] == 3
 
 
 def test_plan_uses_net_material_area_when_parts_are_unavailable():

@@ -24,6 +24,7 @@ from db.repositories import (
     upsert_rfq_estimate_material_norm_override,
     upsert_rfq_estimate_material_norm_overrides,
     upsert_rfq_estimate_material_purchase_override,
+    upsert_rfq_estimate_material_purchase_overrides,
     upsert_rfq_estimate_lines,
     mark_rfq_estimate_material_plan_stale,
     reset_rfq_object_estimate_approvals,
@@ -602,6 +603,7 @@ def load_object_detail_data(
         ],
         "self_cost": {
             "title": f"{object_row.get('object_name') or 'Object'} self cost (SC)",
+            "vat_percent": vat_percent,
             "excl_vat": object_row.get("self_cost_ex_vat"),
             "vat": object_row.get("vat_amount"),
             "total": object_row.get("self_cost_total"),
@@ -645,6 +647,10 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
         )
         selection_key = str(line.get("selection_key") or "")
         family = (fallback or {}).get("material_family") or selection_key.split("|", 1)[0]
+        project_required, _ = _required_material_volume(line["allocations"], purchase_kind=purchase_kind)
+        dimensions = line.get("purchasable_dimensions") or {}
+        length = _number(dimensions.get("length_mm"), 0)
+        width = _number(dimensions.get("width_mm"), 0)
         rows.append({
             "item": (
                 _assumption_material_display_name(fallback)
@@ -660,6 +666,16 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
             "purchase_quantity_value": _number(line.get("purchase_quantity"), 0),
             "purchase_quantity_unit": _purchase_unit_label(purchase_kind),
             "purchase_quantity_line_id": f"__material_purchase__:{line.get('selection_key')}",
+            "purchase_kind": purchase_kind,
+            "purchase_is_manual": bool(line.get("purchase_quantity_is_manual")),
+            "project_required": project_required,
+            "purchase_unit_cost": _number(line.get("price_per_purchase_unit"), 0),
+            "stock_coverage": (
+                length * width / 1_000_000 / 1.10 if purchase_kind == "sheet" else
+                length / 1_000 if purchase_kind == "linear_stock" else
+                _number(line.get("package_quantity"), 1) or 1
+            ),
+            "is_coating": family in _COATING_MATERIAL_FAMILIES,
             **({"material_family": family} if family else {}),
             "total": (round(sum(allocated_costs.get(req, 0) for req in requirement_ids), 2)
                       if plan_snapshot.get("parts_check") else _number(line.get("total_cost"), 0)),
@@ -1027,37 +1043,43 @@ def _material_norms_from_plan(
     return result
 
 
-def save_object_detail_material_edit(
-    *, estimate_id: str, object_id: str, field: str, line_id: str, value: Any,
+def save_object_detail_material_edits(
+    *, estimate_id: str, object_id: str, edits: list[dict[str, Any]],
 ) -> Future:
-    """Save the edited row, then rebuild the shared estimate from Parts Check."""
-    amount = _number(value, 0)
-    if not isfinite(amount) or amount < 0.0001 or amount >= 10_000_000_000:
-        raise ValueError("Enter a positive quantity with up to 10 digits before the decimal point.")
+    """Validate and save a material draft, then queue one pricing update."""
+    if not edits or len(edits) > 500:
+        raise ValueError("Select between 1 and 500 material changes.")
     client = get_supabase_client()
     _assert_screen_estimate_access(client, estimate_id)
     obj = _object_material_context(client, estimate_id=estimate_id, object_id=object_id)
     company_id = str(obj["company_id"])
-    snapshot = _first_row(fetch_rfq_estimate_material_plan(client, estimate_id))
-    plan = snapshot.get("plan_payload") or {}
+    plan = _first_row(fetch_rfq_estimate_material_plan(client, estimate_id)).get("plan_payload") or {}
     if not plan.get("parts_check_source"):
-        raise ValueError("A published Parts Check is required to recalculate this estimate.")
-    owned_lines = {
-        line["selection_key"]: line for line in plan.get("lines", ())
+        raise ValueError("A saved material plan is required.")
+    owned = {
+        line["selection_key"] for line in plan.get("lines", ())
         if line.get("selection_key") and any(a.get("object_id") == object_id for a in line.get("allocations", ()))
     }
-    if field == "purchase_quantity" and line_id.startswith("__material_purchase__:"):
-        key = line_id.removeprefix("__material_purchase__:")
-        if key not in owned_lines:
-            raise ValueError("This purchase line is no longer available.")
-        upsert_rfq_estimate_material_purchase_override(
-            client, estimate_id=estimate_id, selection_key=key, company_id=company_id, purchase_quantity=amount,
-        )
-        reason = "purchase_quantity_changed"
-    elif field == "required_material":
+    purchases, norm_rows = {}, {}
+    for edit in edits:
+        if not isinstance(edit, dict):
+            raise ValueError("Invalid material edit.")
+        field = edit.get("field")
+        line_id = str(edit.get("lineId") or "")
+        amount = _number(edit.get("value"), 0)
+        if not isfinite(amount) or amount < 0.0001 or amount >= 10_000_000_000 or amount != round(amount, 4):
+            raise ValueError("Enter a positive quantity with up to four decimal places.")
+        if field == "purchase_quantity" and line_id.startswith("__material_purchase__:"):
+            key = line_id.removeprefix("__material_purchase__:")
+            if key not in owned:
+                raise ValueError("This purchase line is no longer available.")
+            purchases[key] = amount
+            continue
+        if field != "required_material":
+            raise ValueError("This field cannot be recalculated.")
         if line_id.startswith("__material_selection__:"):
             key = line_id.removeprefix("__material_selection__:")
-            norms = _material_norms_from_plan(plan, selection_key=key) if key in owned_lines else {}
+            norms = _material_norms_from_plan(plan, selection_key=key) if key in owned else {}
         elif line_id.startswith("__material_requirement__:"):
             requirement_id = line_id.removeprefix("__material_requirement__:")
             norms = {key: val for key, val in _material_norms_from_plan(plan).items() if key[1] == requirement_id}
@@ -1075,18 +1097,26 @@ def save_object_detail_material_edit(
         shares.append((last_key, last_unit, round(per_item - sum(q for _, _, q in shares), 4)))
         if any(quantity <= 0 for _, _, quantity in shares):
             raise ValueError("The required quantity is too small for this material row.")
-        upsert_rfq_estimate_material_norm_overrides(client, rows=[
-            {"estimate_id": estimate_id, "object_id": object_id, "material_requirement_id": requirement_id,
-             "company_id": company_id, "quantity_per_item": quantity, "unit": unit, "source_line_id": None}
-            for requirement_id, unit, quantity in shares
-        ])
-        reason = "material_norm_changed"
-    else:
-        raise ValueError("This field cannot be recalculated.")
-    return _invalidate_and_queue_material_plan(
-        client, estimate_id=estimate_id, company_id=company_id, run_id=str(obj["run_id"]),
-        reason_code=reason, previous_plan=plan,
-    )
+        for requirement_id, unit, quantity in shares:
+            norm_rows[requirement_id] = {"estimate_id": estimate_id, "object_id": object_id,
+                "material_requirement_id": requirement_id, "company_id": company_id,
+                "quantity_per_item": quantity, "unit": unit, "source_line_id": None}
+
+    if purchases:
+        upsert_rfq_estimate_material_purchase_overrides(
+            client, estimate_id=estimate_id, company_id=company_id, quantities=purchases,
+        )
+    if norm_rows:
+        upsert_rfq_estimate_material_norm_overrides(client, rows=list(norm_rows.values()))
+        return _invalidate_and_queue_material_plan(
+            client, estimate_id=estimate_id, company_id=company_id, run_id=str(obj["run_id"]),
+            reason_code="material_norm_changed", previous_plan=plan,
+        )
+    reset_rfq_object_estimate_approvals(client, estimate_id=estimate_id)
+    from use_cases.estimation_runtime import queue_material_plan_recalculation
+
+    return queue_material_plan_recalculation(estimate_id=estimate_id, company_id=company_id,
+                                              run_id=str(obj["run_id"]), purchase_only=True)
 
 
 def apply_material_plan_allocations(
@@ -1094,6 +1124,7 @@ def apply_material_plan_allocations(
     *,
     estimate_id: str,
     plan_snapshot: dict[str, Any],
+    changed_requirements: set[tuple[str, str]] | None = None,
 ) -> None:
     """Project rounded purchase costs back into the owning Object Detail rows."""
     # A partial plan is still authoritative for the requirements it actually
@@ -1154,6 +1185,8 @@ def apply_material_plan_allocations(
             continue
         object_id = str(line.get("object_id") or "")
         requirement_id = _material_requirement_id(line)
+        if changed_requirements is not None and (object_id, requirement_id) not in changed_requirements:
+            continue
         assumption = assumption_fallbacks.get((object_id, requirement_id))
         allocated_cost = allocation_costs.get((object_id, requirement_id))
         norm = material_norms.get((object_id, requirement_id))
@@ -1213,7 +1246,8 @@ def apply_material_plan_allocations(
             },
         )
         affected_object_ids.add(object_id)
-    for object_id in affected_object_ids | checked_objects.keys():
+    target_objects = affected_object_ids | checked_objects.keys() if changed_requirements is None else affected_object_ids
+    for object_id in target_objects:
         checked = checked_objects.get(object_id) or {}
         review_required = bool(checked.get("issues") or checked.get("has_estimated_costs"))
         if checked and (checked["unpriced_requirements"] or checked["has_unresolved_demands"]

@@ -126,7 +126,26 @@ def _allocation_weight(allocation: Any) -> Decimal:
         return allocation.length_mm * allocation.width_mm
     if allocation.length_mm is not None:
         return allocation.length_mm
+    if allocation.volume_mm3 is not None:
+        return allocation.volume_mm3
     return allocation.quantity or Decimal("1")
+
+
+def _split_purchase_cost(total_cost: Decimal, weights: Mapping[tuple[str, str], Decimal]) -> dict[tuple[str, str], Decimal]:
+    denominator = sum(weights.values(), Decimal("0"))
+    if denominator <= 0:
+        return {}
+    total_cost = total_cost.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    costs = {}
+    remaining = total_cost
+    ordered = sorted(weights.items())
+    for index, (key, weight) in enumerate(ordered):
+        cost = remaining if index == len(ordered) - 1 else (
+            total_cost * weight / denominator
+        ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        costs[key] = cost
+        remaining -= cost
+    return costs
 
 
 def material_plan_object_cost_allocations(result: MaterialEngineResult) -> dict[tuple[str, str], Decimal]:
@@ -142,24 +161,51 @@ def material_plan_object_cost_allocations(result: MaterialEngineResult) -> dict[
                 continue
             key = (allocation.object_id, str(allocation.material_requirement_id))
             weights_by_requirement[key] = weights_by_requirement.get(key, Decimal("0")) + weight
-        denominator = sum(weights_by_requirement.values(), Decimal("0"))
-        if denominator <= 0:
-            continue
-        total_cost = line.total_cost.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        allocated = Decimal("0")
-        ordered = sorted(weights_by_requirement.items())
-        for index, (key, weight) in enumerate(ordered):
-            if index == len(ordered) - 1:
-                allocated_cost = total_cost - allocated
-            else:
-                allocated_cost = (total_cost * weight / denominator).quantize(
-                    Decimal("0.01"), rounding=ROUND_HALF_UP,
-                )
-                allocated += allocated_cost
-            result_by_requirement[key] = result_by_requirement.get(key, Decimal("0")) + (
-                allocated_cost
-            )
+        for key, cost in _split_purchase_cost(line.total_cost, weights_by_requirement).items():
+            result_by_requirement[key] = result_by_requirement.get(key, Decimal("0")) + cost
     return result_by_requirement
+
+
+def reprice_material_purchase_snapshot(
+    snapshot: Mapping[str, Any], overrides: Mapping[str, Mapping[str, Any]],
+) -> tuple[dict[str, Any], set[tuple[str, str]]]:
+    """Change only purchase quantities and their cost shares, keeping demand intact."""
+    from types import SimpleNamespace
+
+    costs = {
+        (row["object_id"], row["material_requirement_id"]): Decimal(str(row["cost_ex_vat"]))
+        for row in snapshot["object_material_costs"]
+    }
+    lines = []
+    changed = set()
+    for line in snapshot["lines"]:
+        amount = _positive((overrides.get(line["selection_key"]) or {}).get("purchase_quantity"))
+        if amount is None or (
+            amount == Decimal(str(line["purchase_quantity"])) and line.get("purchase_quantity_is_manual")
+        ):
+            lines.append(line)
+            continue
+        weights: dict[tuple[str, str], Decimal] = {}
+        for allocation in line["allocations"]:
+            if not allocation.get("material_requirement_id"):
+                continue
+            key = (allocation["object_id"], allocation["material_requirement_id"])
+            weight = _allocation_weight(SimpleNamespace(**{
+                name: _decimal(allocation.get(name))
+                for name in ("length_mm", "width_mm", "area_mm2", "volume_mm3", "quantity")
+            }))
+            weights[key] = weights.get(key, Decimal("0")) + weight
+        old = _split_purchase_cost(Decimal(str(line["total_cost"])), weights)
+        new_total = amount * Decimal(str(line["price_per_purchase_unit"]))
+        for key, cost in _split_purchase_cost(new_total, weights).items():
+            costs[key] = costs.get(key, Decimal("0")) - old[key] + cost
+            changed.add(key)
+        lines.append({**line, "purchase_quantity": float(amount), "total_cost": float(new_total),
+                      "purchase_quantity_is_manual": True})
+    return {**snapshot, "lines": lines, "object_material_costs": [
+        {"object_id": oid, "material_requirement_id": req, "cost_ex_vat": float(cost)}
+        for (oid, req), cost in sorted(costs.items())
+    ]}, changed
 
 
 def material_plan_snapshot(
@@ -204,6 +250,7 @@ def material_plan_snapshot(
                     "length_mm": None if allocation.length_mm is None else float(allocation.length_mm),
                     "width_mm": None if allocation.width_mm is None else float(allocation.width_mm),
                     "area_mm2": None if allocation.area_mm2 is None else float(allocation.area_mm2),
+                    **({"volume_mm3": float(allocation.volume_mm3)} if allocation.volume_mm3 is not None else {}),
                     "quantity": None if allocation.quantity is None else float(allocation.quantity),
                     "rotated": allocation.rotated,
                 }

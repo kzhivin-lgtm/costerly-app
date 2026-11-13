@@ -448,13 +448,32 @@ def apply_object_detail_css() -> None:
             text-align: left;
         }
 
-        .object-detail-material-edit-status {
-            margin: 8px 0;
-            color: var(--color-text-strong);
+        .object-detail-material-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            margin: 0 0 8px;
+            flex-wrap: wrap;
         }
 
-        .object-detail-material-edit-status:empty {
-            display: none;
+        .object-detail-material-actions[hidden] {
+            visibility: hidden;
+        }
+
+        .object-detail-material-save {
+            border: 1px solid rgba(42, 31, 44, 0.18);
+            border-radius: 8px;
+            background: white;
+            color: var(--color-text-strong);
+            padding: 6px 12px;
+            font: inherit;
+            cursor: pointer;
+        }
+
+        .object-detail-material-save:disabled {
+            opacity: 0.55;
+            cursor: default;
         }
 
         .object-detail-material-input-unit {

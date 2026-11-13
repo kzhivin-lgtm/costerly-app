@@ -1917,7 +1917,6 @@ def install_object_detail_input_guard(
     supabase_url: str | None = None,
     supabase_anon_key: str | None = None,
     supabase_access_token: str | None = None,
-    material_edit_result: dict | None = None,
 ) -> None:
     """Install staged Object Detail editing and approve/discard behavior."""
     run_id_json = json.dumps(run_id)
@@ -1926,12 +1925,6 @@ def install_object_detail_input_guard(
     supabase_url_json = json.dumps(supabase_url.rstrip("/")) if supabase_url else "null"
     supabase_anon_key_json = json.dumps(supabase_anon_key) if supabase_anon_key else "null"
     supabase_access_token_json = json.dumps(supabase_access_token) if supabase_access_token else "null"
-    result = material_edit_result or {}
-    material_edit_result_json = json.dumps({
-        "id": result.get("id"),
-        "pending": bool(result.get("pending")),
-        "error": result.get("error"),
-    }).replace("<", "\\u003c")
     components.html(
         """
         <script>
@@ -1944,58 +1937,207 @@ def install_object_detail_input_guard(
             const SUPABASE_URL = __SUPABASE_URL__;
             const SUPABASE_ANON_KEY = __SUPABASE_ANON_KEY__;
             const SUPABASE_ACCESS_TOKEN = __SUPABASE_ACCESS_TOKEN__;
-            const MATERIAL_RESULT = __MATERIAL_EDIT_RESULT__;
             const HANDLER_KEY = "__costerlyObjectDetailInputGuardCleanup";
             const SUBMITTING_KEY = "__costerlyObjectDetailSubmittingSnapshot";
-            const MATERIAL_KEY = "__costerlyObjectDetailMaterialEdit";
 
             if (parentWindow[HANDLER_KEY]) parentWindow[HANDLER_KEY]();
             parentWindow[SUBMITTING_KEY] = false;
             const scope = [ESTIMATE_ID, OBJECT_ID];
-            const status = () => parentDoc.querySelector(".object-detail-material-edit-status");
-            const materialInputs = () => parentDoc.querySelectorAll(
-                ".object-detail-material-input [data-field='required_material'], " +
-                ".object-detail-material-input [data-field='purchase_quantity']"
-            );
+            const materialRows = () => [...parentDoc.querySelectorAll("[data-material-preview]")];
+            const controls = () => parentDoc.querySelector(".object-detail-material-actions");
+            const saveButton = () => controls()?.querySelector(".object-detail-material-save");
             const setStatus = message => {
-                const node = status();
+                const node = controls()?.querySelector(".object-detail-material-edit-status");
                 if (node) node.textContent = message;
             };
-            const setPending = pending => {
-                for (const input of materialInputs()) {
-                    if (!input.dataset.lineId) continue;
-                    input.contentEditable = pending ? "false" : "true";
-                    if (pending) input.setAttribute("aria-disabled", "true");
-                    else input.removeAttribute("aria-disabled");
-                }
-                setStatus(pending ? "Recalculating materials…" : "");
+            const draft = new Map();
+            let activeSave = null;
+            const materialField = field => field === "required_material" || field === "purchase_quantity";
+            const editKey = ctx => JSON.stringify([ctx.field, ctx.lineId]);
+            const materialValue = input => String(editableValue(input) || "").trim();
+            const validAmount = raw => /^(?:\\d+(?:\\.\\d{0,4})?|\\.\\d{1,4})$/.test(raw)
+                && Number(raw) > 0 && Number(raw) < 1e10;
+            const rowPreview = row => JSON.parse(row.dataset.materialPreview);
+            const numberText = value => String(Math.round(value * 10000) / 10000);
+            const contextFor = input => ({input, field: input.dataset.field, lineId: input.dataset.lineId});
+            const invalidMaterial = () => materialRows().some(row => row.querySelector('[aria-invalid="true"]'));
+            const updateSaveControls = message => {
+                if (!controls()) return;
+                controls().hidden = !draft.size && !activeSave && !invalidMaterial() && !message;
+                saveButton().disabled = !draft.size || !!activeSave || invalidMaterial();
+                saveButton().textContent = activeSave ? "Saving…" : "Save changes";
+                setStatus(message || (activeSave ? "Saving changes…" : draft.size ? "Unsaved changes" : ""));
             };
 
-            function submitMaterialEdit(ctx) {
+            function previewMaterials() {
+                const projected = materialRows().map(row => {
+                    const base = rowPreview(row);
+                    const required = rowField(row, "required_material");
+                    const purchase = rowField(row, "purchase_quantity");
+                    const req = required && draft.get(editKey(contextFor(required)));
+                    const buy = purchase && draft.get(editKey(contextFor(purchase)));
+                    if (!req && !buy) {
+                        if (purchase && parentDoc.activeElement !== purchase) {
+                            setEditableValue(purchase, purchase.dataset.originalValue);
+                        }
+                        return {row, base, cost: Number(base.total) || 0};
+                    }
+                    const localRequired = req ? Number(req.value) : base.required_material_value;
+                    const projectRequired = base.project_required - base.required_material_value + localRequired;
+                    let purchaseQuantity = buy ? Number(buy.value) : base.purchase_quantity_value;
+                    if (req && !buy && !base.purchase_is_manual && base.stock_coverage > 0) {
+                        const consumption = projectRequired / base.stock_coverage;
+                        purchaseQuantity = ["sheet", "piece", "linear_stock"].includes(base.purchase_kind)
+                            ? Math.ceil(consumption - 1e-10) : consumption;
+                    }
+                    if (!buy && purchase && parentDoc.activeElement !== purchase) {
+                        setEditableValue(purchase, numberText(purchaseQuantity));
+                    }
+                    const cost = projectRequired > 0
+                        ? purchaseQuantity * base.purchase_unit_cost * localRequired / projectRequired : 0;
+                    return {row, base, cost};
+                });
+                let materialDelta = 0;
+                let coatingDelta = 0;
+                for (const {row, base, cost} of projected) {
+                    if (base.locked) continue;
+                    if (base.total == null) continue;
+                    setRowCost(row, cost);
+                    materialDelta += cost - base.total;
+                    if (base.is_coating) coatingDelta += cost - base.total;
+                }
+                let formulaDelta = 0;
+                for (const {row, base} of projected) {
+                    if (!base.locked) continue;
+                    const delta = (base.policy_basis === "coatings" ? coatingDelta : materialDelta)
+                        * Number(base.policy_percent || 0) / 100;
+                    setRowCost(row, Number(base.total || 0) + delta);
+                    formulaDelta += delta;
+                }
+                const final = parentDoc.querySelector(".object-detail-final");
+                if (!final || !Number.isFinite(Number(final.dataset.baseCost))) return;
+                const count = Number(objectQuantityInput()?.dataset.originalValue) || 1;
+                const cost = Number(final.dataset.baseCost) + (materialDelta + formulaDelta) / count;
+                const vat = cost * Number(final.dataset.vatPercent || 0) / 100;
+                setFinal("excl_vat", cost);
+                setFinal("vat", vat);
+                setFinal("total", cost + vat);
+            }
+
+            function stageMaterialEdit(ctx, reportInvalid = false) {
                 const input = ctx.input;
-                const raw = String(editableValue(input) || "").trim();
-                const original = input.dataset.originalValue || "";
-                if (JSON.stringify(parentWindow[MATERIAL_KEY]?.scope) === JSON.stringify(scope)) return;
-                if (raw === original || (raw && Number(raw) === Number(original))) {
-                    input.removeAttribute("aria-invalid");
-                    setStatus("");
-                    return;
-                }
-                if (!/^(?:\\d+(?:\\.\\d{0,4})?|\\.\\d{1,4})$/.test(raw) || Number(raw) <= 0 || Number(raw) >= 1e10) {
-                    input.setAttribute("aria-invalid", "true");
-                    setStatus("Enter a positive quantity with up to four decimal places.");
-                    return;
-                }
-                const submit = parentWindow.__costerlySubmitMaterialEdit;
-                if (typeof submit !== "function") {
-                    setStatus("The material editor is connecting. Try again.");
+                const raw = materialValue(input);
+                const key = editKey(ctx);
+                if (!validAmount(raw)) {
+                    if (reportInvalid) {
+                        input.setAttribute("aria-invalid", "true");
+                        updateSaveControls("Enter a positive quantity with up to four decimal places.");
+                    }
                     return;
                 }
                 input.removeAttribute("aria-invalid");
-                const request = {id: crypto.randomUUID(), scope, field: ctx.field, lineId: ctx.lineId, value: raw};
-                parentWindow[MATERIAL_KEY] = request;
-                setPending(true);
-                submit(request);
+                if (!draft.has(key) && Number(raw) === Number(input.dataset.editStartValue)) {
+                    updateSaveControls();
+                    return;
+                }
+                const pending = activeSave?.edits.find(edit => editKey(edit) === key);
+                if (!pending && Number(raw) === Number(input.dataset.originalValue)) draft.delete(key);
+                else draft.set(key, {field: ctx.field, lineId: ctx.lineId, value: raw});
+                previewMaterials();
+                updateSaveControls();
+            }
+
+            function saveMaterialDraft(event) {
+                const button = event.target?.closest?.(".object-detail-material-save");
+                if (!button || activeSave || !draft.size || invalidMaterial()) return;
+                const submit = parentWindow.__costerlySubmitMaterialEdit;
+                if (typeof submit !== "function") {
+                    updateSaveControls("The material editor is connecting. Try again.");
+                    return;
+                }
+                const request = {id: crypto.randomUUID(), scope, edits: [...draft.values()]};
+                activeSave = request;
+                request.timeout = parentWindow.setTimeout(() => {
+                    if (activeSave !== request) return;
+                    activeSave = null;
+                    updateSaveControls("No response yet. Your changes are still here.");
+                }, 90000);
+                updateSaveControls();
+                submit({id: request.id, scope, edits: request.edits});
+            }
+
+            function receiveMaterialSave(result) {
+                if (JSON.stringify(result.scope) !== JSON.stringify(scope) || result.id !== activeSave?.id) return;
+                const submitted = activeSave.edits;
+                parentWindow.clearTimeout(activeSave.timeout);
+                activeSave = null;
+                if (result.error) {
+                    for (const row of materialRows()) {
+                        for (const input of row.querySelectorAll("[data-field][data-line-id]")) {
+                            const key = editKey(contextFor(input));
+                            if (Number(draft.get(key)?.value) === Number(input.dataset.originalValue)) draft.delete(key);
+                        }
+                    }
+                    updateSaveControls(result.error);
+                    return;
+                }
+                const focused = parentDoc.activeElement;
+                const current = focused?.dataset?.lineId && materialField(focused.dataset.field)
+                    ? {...contextFor(focused), value: materialValue(focused)} : null;
+                for (const edit of submitted) {
+                    const key = editKey(edit);
+                    if (Number(draft.get(key)?.value) === Number(edit.value)) draft.delete(key);
+                }
+                // Keep the input nodes in place, even when a save completes during another edit.
+                const rows = new Map();
+                for (const row of materialRows()) {
+                    const base = rowPreview(row);
+                    rows.set(base.purchase_quantity_line_id || base.item, row);
+                }
+                for (const base of result.rows) {
+                    const row = rows.get(base.purchase_quantity_line_id || base.item);
+                    if (!row) continue;
+                    row.dataset.materialPreview = JSON.stringify(base);
+                    for (const field of ["required_material", "purchase_quantity"]) {
+                        const input = rowField(row, field);
+                        if (!input || base[field + "_value"] == null) continue;
+                        input.dataset.originalValue = field === "required_material" && base.required_material_unit === "m²"
+                            ? Number(base[field + "_value"]).toFixed(1) : numberText(base[field + "_value"]);
+                        if (input === current?.input) continue;
+                        setEditableValue(input, draft.get(editKey(contextFor(input)))?.value ?? input.dataset.originalValue);
+                    }
+                }
+                const final = parentDoc.querySelector(".object-detail-final");
+                if (final) final.dataset.baseCost = result.self_cost.excl_vat ?? "";
+                for (const field of ["excl_vat", "vat", "total"]) {
+                    const node = parentDoc.querySelector(`[data-final="${field}"]`);
+                    if (node) node.textContent = result.self_cost[field] == null ? "—" : formatMoney(result.self_cost[field]);
+                }
+                const approval = parentDoc.querySelector(".object-detail-footer-button--primary");
+                const config = parentDoc.querySelector("[data-object-detail-approval-config]");
+                if (approval && config && result.approval_ready !== approval.matches("a")) {
+                    const next = parentDoc.createElement(result.approval_ready ? "a" : "span");
+                    next.className = "object-detail-footer-button object-detail-footer-button--primary";
+                    if (result.approval_ready) {
+                        next.href = config.dataset.href;
+                        next.target = "_self";
+                        next.dataset.streamlitBridgeKey = "object_detail_approve_bridge";
+                        next.dataset.objectDetailApprove = "true";
+                        next.textContent = "APPROVE ESTIMATE";
+                    } else {
+                        next.classList.add("object-detail-footer-button--disabled");
+                        next.setAttribute("aria-disabled", "true");
+                        next.textContent = result.blocking_label || config.dataset.blockingLabel;
+                    }
+                    approval.replaceWith(next);
+                }
+                if (current && validAmount(current.value) &&
+                    (draft.has(editKey(current)) || current.value !== current.input.dataset.editStartValue)) {
+                    if (Number(current.value) === Number(current.input.dataset.originalValue)) draft.delete(editKey(current));
+                    else draft.set(editKey(current), {field: current.field, lineId: current.lineId, value: current.value});
+                }
+                previewMaterials();
+                updateSaveControls(draft.size ? "Unsaved changes" : "Changes saved");
             }
 
             function inputContext(event) {
@@ -2258,7 +2400,8 @@ def install_object_detail_input_guard(
             function handleInput(event) {
                 const ctx = inputContext(event);
                 if (!ctx || ctx.input.classList.contains("object-detail-cell-input--text")) return;
-                if (ctx.field !== "required_material" && ctx.field !== "purchase_quantity") updateRowCost(ctx.input.closest(".object-detail-table-row"));
+                if (materialField(ctx.field)) stageMaterialEdit(ctx);
+                else updateRowCost(ctx.input.closest(".object-detail-table-row"));
             }
 
             function handlePaste(event) {
@@ -2282,7 +2425,7 @@ def install_object_detail_input_guard(
                 const ctx = inputContext(event);
                 if (!ctx) return;
                 if (ctx.field === "required_material" || ctx.field === "purchase_quantity") {
-                    submitMaterialEdit(ctx);
+                    stageMaterialEdit(ctx, true);
                     return;
                 }
                 const nextValue = normalizeInputValue(ctx.input);
@@ -2337,12 +2480,12 @@ def install_object_detail_input_guard(
                 const back = event.target && event.target.closest
                     ? event.target.closest('[data-streamlit-bridge-key="object_detail_back_bridge"]')
                     : null;
-                if (back && JSON.stringify(parentWindow[MATERIAL_KEY]?.scope) === JSON.stringify(scope)) {
+                if (back && activeSave) {
                     event.preventDefault();
                     event.stopImmediatePropagation();
                     return;
                 }
-                if (!back || !snapshotEdits().length) return;
+                if (!back || (!draft.size && !invalidMaterial() && !snapshotEdits().length)) return;
                 if (back.dataset.discardConfirmed === "true") {
                     delete back.dataset.discardConfirmed;
                     return;
@@ -2387,7 +2530,8 @@ def install_object_detail_input_guard(
 
             async function prepareApproveSnapshot(event) {
                 const button = findApproveButton(event.target);
-                if (button && JSON.stringify(parentWindow[MATERIAL_KEY]?.scope) === JSON.stringify(scope)) {
+                if (button && (activeSave || draft.size || invalidMaterial())) {
+                    updateSaveControls(activeSave ? "Saving changes…" : "Save material changes before approving.");
                     event.preventDefault();
                     event.stopImmediatePropagation();
                     return;
@@ -2448,7 +2592,9 @@ def install_object_detail_input_guard(
             parentDoc.addEventListener("beforeinput", handleBeforeInput, true);
             parentDoc.addEventListener("paste", handlePaste, true);
             parentDoc.addEventListener("input", handleInput, true);
+            parentDoc.addEventListener("click", saveMaterialDraft, true);
             parentDoc.addEventListener("click", prepareApproveSnapshot, true);
+            parentWindow.__costerlyReceiveMaterialEdit = receiveMaterialSave;
             parentDoc.addEventListener("focusout", handleBlur, true);
             parentDoc.addEventListener("click", confirmDiscard, true);
             parentWindow.__costerlyObjectDetailDraft = {
@@ -2462,7 +2608,10 @@ def install_object_detail_input_guard(
                 parentDoc.removeEventListener("beforeinput", handleBeforeInput, true);
                 parentDoc.removeEventListener("paste", handlePaste, true);
                 parentDoc.removeEventListener("input", handleInput, true);
+                parentDoc.removeEventListener("click", saveMaterialDraft, true);
                 parentDoc.removeEventListener("click", prepareApproveSnapshot, true);
+                if (activeSave) parentWindow.clearTimeout(activeSave.timeout);
+                if (parentWindow.__costerlyReceiveMaterialEdit === receiveMaterialSave) delete parentWindow.__costerlyReceiveMaterialEdit;
                 parentDoc.removeEventListener("focusout", handleBlur, true);
                 parentDoc.removeEventListener("click", confirmDiscard, true);
                 const modal = parentDoc.querySelector(".object-detail-discard-modal");
@@ -2472,20 +2621,6 @@ def install_object_detail_input_guard(
             };
             seedInputBaselines();
             seedRowBaselines();
-            const activeEdit = parentWindow[MATERIAL_KEY];
-            if (activeEdit && JSON.stringify(activeEdit.scope) === JSON.stringify(scope)) {
-                if (MATERIAL_RESULT.id === activeEdit.id && !MATERIAL_RESULT.pending) {
-                    delete parentWindow[MATERIAL_KEY];
-                    setPending(false);
-                    setStatus(MATERIAL_RESULT.error || "");
-                } else {
-                    setPending(true);
-                }
-            } else if (MATERIAL_RESULT.pending) {
-                setPending(true);
-            } else if (MATERIAL_RESULT.error) {
-                setStatus(MATERIAL_RESULT.error);
-            }
         })();
         </script>
         """
@@ -2494,8 +2629,7 @@ def install_object_detail_input_guard(
         .replace("__OBJECT_ID__", object_id_json)
         .replace("__SUPABASE_URL__", supabase_url_json)
         .replace("__SUPABASE_ANON_KEY__", supabase_anon_key_json)
-        .replace("__SUPABASE_ACCESS_TOKEN__", supabase_access_token_json)
-        .replace("__MATERIAL_EDIT_RESULT__", material_edit_result_json),
+        .replace("__SUPABASE_ACCESS_TOKEN__", supabase_access_token_json),
         height=0,
     )
 

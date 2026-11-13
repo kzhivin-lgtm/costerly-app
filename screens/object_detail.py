@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from concurrent.futures import Future
 from dataclasses import dataclass
 import json
+import logging
 from typing import Callable
 import streamlit as st
 
@@ -23,10 +23,13 @@ from use_cases.estimation import (
     apply_object_detail_snapshot,
     approve_object_estimate,
     load_object_detail_data,
-    save_object_detail_material_edit,
+    save_object_detail_material_edits,
 )
 from state.company_auth import company_auth_enabled
 from state.session import invalidate_object_detail_cache
+
+
+_LOG = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -54,13 +57,13 @@ def render_object_detail_screen(
     if _approve_after_pending_changes(context):
         st.rerun()
 
-    edit_result = _receive_material_edit(context)
     data = _load_object_detail_or_render_error(context)
     if data is None:
         return
 
     _render_object_detail(data, context, render_header_controls=render_header_controls)
-    _install_object_detail_runtime(context, edit_result=edit_result)
+    _install_object_detail_runtime(context)
+    _material_editor(context)
     install_workflow_header_alignment_guard("h1.object-detail-title")
 
 
@@ -205,7 +208,7 @@ def _return_to_objects() -> None:
     st.session_state.screen = "objects"
 
 
-def _install_object_detail_runtime(context: ObjectDetailContext, *, edit_result: dict | None = None) -> None:
+def _install_object_detail_runtime(context: ObjectDetailContext) -> None:
     install_object_detail_input_guard(
         run_id=context.run_id,
         estimate_id=context.estimate_id,
@@ -215,55 +218,50 @@ def _install_object_detail_runtime(context: ObjectDetailContext, *, edit_result:
         supabase_access_token=(
             st.session_state.get("auth_access_token") if company_auth_enabled() else None
         ),
-        material_edit_result=edit_result,
     )
 
 
-def _receive_material_edit(context: ObjectDetailContext) -> dict | None:
+@st.fragment
+def _material_editor(context: ObjectDetailContext) -> None:
+    """Handle explicit saves without replacing the Object Detail DOM."""
     key = (context.estimate_id, context.object_id)
     results = st.session_state.setdefault("object_detail_material_edit_results", {})
-    request = material_edit_bridge(key="object_detail_material_edit", default=None)
+    if _current_object_detail_context() != context:
+        return
+    # The component returns the last submitted draft. Present the previous
+    # receipt first, then acknowledge a new draft through a second render.
+    request = material_edit_bridge(result=results.get(key), key="object_detail_material_edit", default=None)
     if not isinstance(request, dict) or request.get("scope") != list(key) or not isinstance(request.get("id"), str):
-        return results.get(key)
+        return
     request_id = request["id"]
-    previous = results.get(key) or {}
-    if request_id == previous.get("id"):
-        pending = previous.get("pending")
-        if isinstance(pending, Future):
-            _watch_material_edit(context, pending, request_id)
-        return previous
-
+    if request_id == (results.get(key) or {}).get("id"):
+        return
+    result = {"id": request_id, "scope": list(key)}
     try:
-        future = save_object_detail_material_edit(
+        edits = request.get("edits")
+        if not isinstance(edits, list):
+            raise ValueError("No material changes to save.")
+        future = save_object_detail_material_edits(
             estimate_id=context.estimate_id, object_id=context.object_id,
-            field=str(request.get("field") or ""), line_id=str(request.get("lineId") or ""), value=request.get("value"),
+            edits=edits,
         )
         st.session_state.pop("approved_object_keys", None)
-    except ValueError as exc:
-        results[key] = {"id": request_id, "error": str(exc)}
-    except Exception:
-        results[key] = {"id": request_id, "error": "Could not save the change. Try again."}
-    else:
-        results[key] = {"id": request_id, "pending": future}
-        _watch_material_edit(context, future, request_id)
-    return results[key]
-
-
-@st.fragment(run_every=0.75)
-def _watch_material_edit(context: ObjectDetailContext, future: Future, request_id: str) -> None:
-    """Refresh only while the current Object Detail has a pending material edit."""
-    if st.session_state.get("screen") != "object_detail" or _current_object_detail_context() != context:
-        return
-    if not future.done():
-        return
-    result = {"id": request_id}
-    try:
         future.result()
+        _mark_objects_estimation_dirty(context.estimate_id)
+        data = load_object_detail_data(estimate_id=context.estimate_id, object_id=context.object_id)
+        result.update(
+            rows=object_detail_view.material_preview_rows(data),
+            self_cost=data["self_cost"],
+            approval_ready=data["material_plan_ready"],
+            blocking_label=data["material_plan_blocking_label"],
+        )
+    except ValueError as exc:
+        result["error"] = str(exc)
     except Exception:
-        result["error"] = "Could not recalculate materials. Try again."
-    st.session_state["object_detail_material_edit_results"][(context.estimate_id, context.object_id)] = result
-    _mark_objects_estimation_dirty(context.estimate_id)
-    st.rerun()
+        _LOG.exception("Could not save material edits for estimate %s", context.estimate_id)
+        result["error"] = "Could not save material changes. Your edits are still here."
+    results[key] = result
+    st.rerun(scope="fragment")
 
 
 def _consume_pending_object_detail_edit() -> bool:

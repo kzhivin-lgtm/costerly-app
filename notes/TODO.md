@@ -5747,6 +5747,13 @@ cause from the local screenshot alone.
   blur through the existing Material Engine, with no new Parts Check run.
   Saved Adda browser replay covers both fields, shared purchase, and
   retry. Owner verification of edits on an authenticated estimate is pending.
+- Estimation 9.12 Object Detail editing responsiveness. ACTIVE, P1, USER
+  REQUEST. Update the cost preview as the user types, save the draft once,
+  keep inputs usable, and preserve the draft if saving fails.
+- Lev1 Parts and Material Demand audit. PENDING, P1, USER REQUEST. After
+  Object Detail is stable, trace the saved run
+  `run_f837297d641e489880b162626eaf5916` for unexpected Parts counts,
+  repeated sheet material variants, and 10 Assumption Fallback rows.
 - Object Detail approve action: remove stale screen fragment flicker after clicking Approve.
 
 ## Later

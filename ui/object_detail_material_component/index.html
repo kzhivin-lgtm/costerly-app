@@ -10,6 +10,8 @@
   addEventListener("message", event => {
     if (event.source !== host || event.data?.type !== "streamlit:render") return;
     host.__costerlySubmitMaterialEdit = submit;
+    const result = event.data.args?.result;
+    if (result) host.__costerlyReceiveMaterialEdit?.(result);
   });
   addEventListener("pagehide", () => {
     if (host.__costerlySubmitMaterialEdit === submit) delete host.__costerlySubmitMaterialEdit;

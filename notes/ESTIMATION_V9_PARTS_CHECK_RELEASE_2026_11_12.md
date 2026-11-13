@@ -1,5 +1,27 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.12 Object Detail draft and save
+
+The owner’s Lev1 purchase edit saved successfully in 9.11 but held all
+material inputs for 42 seconds while the plan rebuilt. In 9.12, entering
+a quantity updates a local cost preview and leaves the page in place.
+Save changes sends the whole draft once, and the server reconciles the
+preview without replacing the input nodes. A failed save keeps the draft.
+Required Material previews use the current stock format; the saved plan
+still owns catalog selection and exact packing.
+
+Purchase-only saves update prices and allocations from the existing plan.
+Changes to Required Material rebuild the material plan from the saved
+Parts Check, with no recognition calls. Neither path changes the Parts
+rows. The Lev1 material selection and part-count audit is separate.
+
+The focused suite passed 82 tests. Local Chrome used the saved Lev1
+estimate at 1280 px and the saved Adda estimate at 390 px. Both verified
+no request during input, draft persistence after a failed save, continued
+editing during a save, and preserved input nodes. Adda also verified the
+updated shared purchase in the second object. Authenticated production
+interaction remains open.
+
 ## Estimation 9.11 Object Detail material edits
 
 Required Material and Purchase Quantity have centered headings and values.
