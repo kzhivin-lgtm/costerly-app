@@ -5766,10 +5766,16 @@ cause from the local screenshot alone.
   veneered MDF choice and the plain-colour exclusion. Solid wood needs
   a verbatim drawing note. Catalog coverage stays open.
   Railway deployed 9.16 at `c279799`; production runtime verified.
-  Fresh Lev1 Upload through the Materials screen is pending.
-  A fresh Adda control tagged two
-  mirrors on V02 and created three straight-object Blocks, versus two in
-  the accepted witness. Compare the Front evidence before any changes.
+  Fresh Lev1 `run_c085a65508e247349f6b2bb673a13d7d` failed acceptance
+  with seven openings marked as doors despite matching Detection boxes.
+  Parts priced unmeasured sheet cuts as pieces, producing 7,000 ILS
+  in two allowances. Initial Front requests are identical in offline
+  reconstruction. Estimation 9.17 verifies both the frame recovery with
+  a Detail label and the supported-extension geometry without the
+  Detection edge. Fresh Lev1, Lev2 and Adda Estimation runs used saved
+  Detection inputs. Adda reproduced the accepted 2/7 block split and
+  one straight-object mirror. Keep tracking Adda mirror repeatability
+  and incomplete sheet demand. See the release record.
 - Object Detail approve action: remove stale screen fragment flicker after clicking Approve.
 
 ## Later

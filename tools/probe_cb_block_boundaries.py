@@ -226,10 +226,43 @@ def matching_bays(a, b):
                    for x, y in zip(pair_a, pair_b)) for spans in (second, mirrored))
 
 
-def structural_candidates(views, readings):
+def matched_frame_pairs(views, projections, protected=()):
+    """Match continuous frames even when a corroborating crop is labelled Detail."""
+    from tools.probe_cb_adda_ownership import contact
+
+    appearances = []
+    for vid, view in views.items():
+        if projections[vid] not in ELEVATION_PROJECTIONS | {"Detail"}:
+            continue
+        contours = {row["id"]: row for row in view["candidates"]}
+        for appearance in framed_panel_appearances(view):
+            frame = contours[appearance["frame"]]
+            members = {cid for cid, row in contours.items() if encloses(frame["bbox"], row["bbox"])}
+            cells = set(appearance["top_cell_ids"])
+            if (any((vid, cid) in protected for cid in members | {frame["id"]})
+                    or not all(contact(frame, contours[cid], vertical=True) >= .9 *
+                               (contours[cid]["bbox"][3] - contours[cid]["bbox"][1]) for cid in cells)):
+                continue
+            openings = sorted(
+                cid for cid in members if rectangular(contours[cid])
+                and contact(frame, contours[cid], vertical=True) >= .9 *
+                (contours[cid]["bbox"][3] - contours[cid]["bbox"][1]))
+            appearances.append({**appearance, "opening_contours": openings})
+    pairs = {}
+    for a, b in combinations(appearances, 2):
+        oid = views[a["view_id"]]["object_id"]
+        if (oid == views[b["view_id"]]["object_id"] and matching_bays(a, b)
+                and any(projections[row["view_id"]] in ELEVATION_PROJECTIONS for row in (a, b))):
+            pairs.setdefault(oid, []).append((a, b))
+    return [candidates[0] for candidates in pairs.values() if len(candidates) == 1]
+
+
+def structural_candidates(views, readings, *, frame_pairs=None):
     drawer_frames = [frame for view in views if (frame := drawer_frame(view, readings))]
-    framed_panels = [appearance for view in views for appearance in framed_panel_appearances(view)]
-    matches = [(a, b) for a, b in combinations(framed_panels, 2) if matching_bays(a, b)]
+    matches = frame_pairs
+    if matches is None:
+        framed_panels = [appearance for view in views for appearance in framed_panel_appearances(view)]
+        matches = [(a, b) for a, b in combinations(framed_panels, 2) if matching_bays(a, b)]
     candidates = [("shared_drawer_frame", [frame]) for frame in drawer_frames]
     if len(matches) == 1:
         candidates.append(("matched_framed_panel", list(matches[0])))
@@ -274,21 +307,56 @@ def supported_extensions(view):
     return extensions
 
 
-def attach_supported_top(blocks, views, readings, projections, observations):
+def supported_top_witnesses(views, projections, readings, observations, printed):
+    """Keep the Detection path first and require an independent dimensional match otherwise."""
+    from tools.estimation_block_geometry import supported_extension_dimensions
+
+    banks = [bank for vid, view in views.items() if projections[vid] in ELEVATION_PROJECTIONS
+             if (bank := drawer_frame(view, readings))]
+    if len(banks) != 1:
+        return []
+    bank, = banks
+    linked = connected_views(bank["view_id"], observations)
+    candidates = [ext for vid, view in views.items() if projections[vid] == "Side view"
+                  for ext in supported_extensions(view)]
+    direct = [ext for ext in candidates if ext["view_id"] in linked]
+    if direct:
+        return direct
+    if not printed:
+        return []
+    matches = []
+    for extension in candidates:
+        if any(vid not in printed for vid in (bank["view_id"], extension["view_id"])):
+            continue
+        if witness := supported_extension_dimensions(views, projections, printed, bank, extension):
+            matches.append({**extension, "dimension_witness": witness, "host_view_id": bank["view_id"]})
+    return matches if len(matches) == 1 else []
+
+
+def attach_supported_top(blocks, views, readings, projections, observations, *, extensions=None):
     frames = [block for block in blocks if block["basis"] == "shared_drawer_frame"]
     if len(frames) != 1:
         return
     block = frames[0]
     view_id = block["appearances"][0]["view_id"]
     linked = connected_views(view_id, observations)
-    extensions = [extension for vid, kind in projections.items() if kind == "Side view" and vid in linked
-                  for extension in supported_extensions(views[vid])]
+    if extensions is None:
+        extensions = [extension for vid, kind in projections.items() if kind == "Side view" and vid in linked
+                      for extension in supported_extensions(views[vid])]
     if len(extensions) != 1:
         return
     extension = extensions[0]
     side_view = extension["view_id"]
     directly_linked = {other for row in observations if side_view in (row["group_id_a"], row["group_id_b"])
                        for other in (row["group_id_a"], row["group_id_b"])} - {side_view}
+    if extension.get("dimension_witness"):
+        # The paired frame and matched width can certify a second projected
+        # view even if Detection did not connect it to the side crop.
+        directly_linked.update(
+            row["view_id"] for frame in blocks if frame["basis"] == "matched_framed_panel"
+            for row in frame["appearances"] if any(a["view_id"] == view_id for a in frame["appearances"])
+        )
+        linked.update(directly_linked)
     support_sets = {}
     for reading in readings:
         vid = reading["view_id"]
@@ -311,12 +379,12 @@ def attach_supported_top(blocks, views, readings, projections, observations):
                                     for leg in legs)
 
 
-def compose_v11(report, views, readings, projections, detection):
+def compose_v11(report, views, readings, projections, detection, *, frame_pairs=None, extensions=None):
     elevations = report["elevation_ids"]
-    structural = structural_candidates([views[vid] for vid in elevations], readings)
+    structural = structural_candidates([views[vid] for vid in elevations], readings, frame_pairs=frame_pairs)
     obj, = [obj for obj in detection["objects"] if obj["object_id"] == report["object_id"]]
     observations = obj["accepted_observations"]
-    attach_supported_top(structural, views, readings, projections, observations)
+    attach_supported_top(structural, views, readings, projections, observations, extensions=extensions)
     roles = {(row["view_id"], row["candidate_id"]): row["role"] for row in readings}
     retained, unassigned = [], []
     for block in report["blocks"]:

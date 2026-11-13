@@ -161,7 +161,8 @@ annotation_id unless you can read the matching indexed caption."""
                 _, leaders = captions[vid]
                 for row, finding in zip(rows, bound, strict=True):
                     ident = row.get("annotation_id")
-                    if (finding["role"] in {"lighting", "material_callout"} and isinstance(ident, str) and ident in leaders
+                    if (finding["role"] in ({"lighting", "material_callout"} | DOOR_OPENING_ROLES)
+                            and isinstance(ident, str) and ident in leaders
                             and finding["source"].get("source_text")):
                         finding["source"].update(annotation_id=ident, tips=leaders[ident]["tips"])
             findings.extend(bound)

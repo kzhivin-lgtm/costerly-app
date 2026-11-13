@@ -281,36 +281,27 @@ Return JSON only:
 "role":"drawer | pull_out_shelf | mirror","evidence":"printed label and arrow or direct label"}]}"""
 
 
-def structural_front(views, projections, front, detection):
+def structural_front(views, projections, front, detection, *, frame_pairs, supported_tops=None):
     """Keep repeated frame cells and a supported extension's side profile out of Front."""
-    from itertools import combinations
-
     from tools.probe_cb_block_boundaries import (
-        box_area, drawer_frame, encloses, framed_panel_appearances, matching_bays, supported_extensions,
+        box_area, drawer_frame, encloses, supported_extensions,
     )
     from tools.probe_estimation_v8_grounded_front import linked_support_faces
 
-    framed = [appearance for vid, view in views.items() if projections[vid] in ELEVATION_PROJECTIONS
-              for appearance in framed_panel_appearances(view)]
-    matches = [(a, b) for a, b in combinations(framed, 2)
-               if views[a["view_id"]]["object_id"] == views[b["view_id"]]["object_id"] and matching_bays(a, b)]
-    fixed = set()
-    for a, b in matches:
-        for appearance in (a, b):
-            vid = appearance["view_id"]
-            fixed.update((vid, row["id"]) for row in views[vid]["candidates"]
-                         if encloses(appearance["bbox"], row["bbox"]) or row["id"] == appearance["frame"])
+    fixed = {(appearance["view_id"], cid) for pair in frame_pairs for appearance in pair
+             for cid in (*appearance["opening_contours"], appearance["frame"])}
 
     banks = {vid: frame for vid, view in views.items() if (frame := drawer_frame(view, front))}
     drawer_objects = {views[vid]["object_id"] for vid in banks}
     for obj in detection["objects"]:
         own = {vid: view for vid, view in views.items() if view["object_id"] == obj["object_id"]}
-        legs = linked_support_faces(own, projections, obj["accepted_observations"])
+        legs = linked_support_faces(own, projections, obj["accepted_observations"],
+                                    extensions=(supported_tops or {}).get(obj["object_id"]), frame_pairs=frame_pairs)
         if not legs:
             continue
         leg_view = legs[0]["view_id"]
         opposite = {b["view_id"] if a["view_id"] == leg_view else a["view_id"]
-                    for a, b in matches if leg_view in (a["view_id"], b["view_id"])}
+                    for a, b in frame_pairs if leg_view in (a["view_id"], b["view_id"])}
         if not (opposite & banks.keys()):
             continue
         under = min(row["bbox_px"][1] for row in legs)
@@ -355,6 +346,57 @@ def structural_front(views, projections, front, detection):
         else:
             retained.append(row)
     return retained, audit
+
+
+def frame_opening_evidence(pdf, views, projections, component_observations):
+    from tools.probe_cb_block_boundaries import framed_panel_appearances
+    from use_cases.estimation_v9_inventory import _overlap, page_box
+
+    protected = set()
+    for vid, view in views.items():
+        if (projections[vid] not in ELEVATION_PROJECTIONS | {"Detail"}
+                or not framed_panel_appearances(view)):
+            continue
+        _, strokes = thin_strokes(pdf[view["page"] - 1], view)
+        protected.update((vid, row["id"]) for row in view["candidates"] if mark_on_face(row, strokes))
+        protected.update((vid, cid) for mark in view.get("x_marks", ()) for cid in mark["leaf_candidates"])
+        for finding in component_observations or ():
+            source = finding["source"]
+            if source["view_id"] != vid or not source.get("bbox_normalized"):
+                continue
+            if finding["role"] in {"door_with_pull", "door_without_handle"}:
+                matches = [row["id"] for row in view["candidates"] if _overlap(
+                    source["bbox_normalized"], page_box(row["bbox"], view, size=(view["width"], view["height"]))) >= .65]
+                if len(matches) == 1 and (finding["role"] == "door_with_pull" or any(
+                        set(tip["contours"]) == set(matches) for tip in source.get("tips", ()))):
+                    protected.add((vid, matches[0]))
+    return protected
+
+
+def corroborate_supported_tops(pdf, views, projections, front, detection):
+    from tools.estimation_block_geometry import source_printed_spans
+    from tools.probe_cb_block_boundaries import drawer_frame, supported_extensions, supported_top_witnesses
+
+    result = {}
+    for obj in detection["objects"]:
+        oid = obj["object_id"]
+        own = {vid: view for vid, view in views.items() if view["object_id"] == oid}
+        local = {vid: projections[vid] for vid in own}
+        direct = supported_top_witnesses(own, local, front, obj["accepted_observations"], {})
+        if direct:
+            continue
+        if (not any(local[vid] == "Side view" and supported_extensions(view) for vid, view in own.items())
+                or not any(local[vid] in ELEVATION_PROJECTIONS and drawer_frame(view, front)
+                           for vid, view in own.items())
+                or not any(kind == "Top view" for kind in local.values())):
+            continue
+        measurable = {vid: view for vid, view in own.items()
+                      if local[vid] in ELEVATION_PROJECTIONS | {"Top view"}}
+        printed = source_printed_spans(pdf, measurable, obj)
+        matches = supported_top_witnesses(own, local, front, obj["accepted_observations"], printed)
+        if matches:
+            result[oid] = matches
+    return result
 
 
 def stack_and_profiles(views, projections, detection, front):
@@ -608,12 +650,18 @@ def source_routes(pdf, views, projections):
 
 def find_front_and_blocks(pdf, views, frames, images, invoke, island_map, front, detection,
                           *, component_observations=None):
+    from tools.probe_cb_block_boundaries import matched_frame_pairs
+
     projections = island_map["islands"]
     routes = source_routes(pdf, views, projections)
     for vid, _ in routes.values():
         if oblique_evidence(views[vid]):
             projections[vid] = AXONOMETRIC
-    front, audit = structural_front(views, projections, front, detection)
+    frame_pairs = matched_frame_pairs(views, projections,
+                                      frame_opening_evidence(pdf, views, projections, component_observations))
+    supported_tops = corroborate_supported_tops(pdf, views, projections, front, detection)
+    front, audit = structural_front(views, projections, front, detection, frame_pairs=frame_pairs,
+                                   supported_tops=supported_tops)
     protected, corrections = stack_and_profiles(views, projections, detection, front)
     present = {(row["view_id"], row["candidate_id"]) for row in front}
     for row in corrections:
@@ -646,7 +694,7 @@ def find_front_and_blocks(pdf, views, frames, images, invoke, island_map, front,
     objects = assemble_native_front_blocks(
         views=views, projections=projections, detection=detection, faces=front, review=review,
         marked_sources=marked, labelled_sources=labelled, object_features=features,
-        component_observations=component_observations,
+        component_observations=component_observations, frame_pairs=frame_pairs, supported_tops=supported_tops,
     )
     for oid, obj in objects.items():
         front_result = obj["front"]

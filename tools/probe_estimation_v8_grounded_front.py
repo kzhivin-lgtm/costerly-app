@@ -138,16 +138,21 @@ def unresolved_adjacent_profiles(faces, *, views, reviewed_fixed, primary_elevat
     return {"faces": retained, "audit": audit}
 
 
-def linked_support_faces(views, projections, observations):
+def linked_support_faces(views, projections, observations, *, extensions=None, frame_pairs=()):
     """Recover a support pair where a linked elevation exposes both legs."""
-    extensions = [item for vid, view in views.items() if projections[vid] == "Side view"
-                  for item in supported_extensions(view)]
+    if extensions is None:
+        extensions = [item for vid, view in views.items() if projections[vid] == "Side view"
+                      for item in supported_extensions(view)]
     if len(extensions) != 1:
         return []
-    linked = connected_views(extensions[0]["view_id"], observations)
+    extension, = extensions
+    linked = connected_views(extension["view_id"], observations)
+    extra_views = {a["view_id"] for pair in frame_pairs if any(
+        row["view_id"] == extension.get("host_view_id") for row in pair) for a in pair}
+    linked.update(extra_views)
     candidates = []
     for vid in sorted(linked & views.keys()):
-        if projections[vid] not in {"Front elevation", "Rear view"}:
+        if projections[vid] not in {"Front elevation", "Rear view"} and vid not in extra_views:
             continue
         contours = [row for row in views[vid]["candidates"] if rectangular(row)]
         for top in contours:

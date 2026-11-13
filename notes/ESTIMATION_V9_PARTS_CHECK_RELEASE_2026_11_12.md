@@ -1,5 +1,40 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.17 Front and supported tabletop recovery
+
+Work 3.17.4.6. Front and Planner share one unambiguous vector frame
+match. A Detail crop can corroborate an elevation when the repeated
+cells share their vertical edges with the continuous frame. Native
+opening marks, a visible pull or a bound door callout protect the
+frame from automatic classification as openings. Parts uses the same
+corroborating pair. Supported worktop recovery first uses the existing
+Detection route. The alternate route requires the top to contact the
+side profile and visible supports, a unique attached plan outline, a
+matching depth, a dimensioned height and a compatible host frontage.
+Neither route changes the Detection partition or the Island Map label.
+
+The archived failed production run did not retain raw model replies.
+The staged replay used its PDF and Detection inputs, the fresh A/B
+Island Map result with V06 marked Detail and the archived raw Front
+response that called the frame cells doors. The first change removed
+false doors and recovered the frame, leaving two blocks and six
+drawer appearances. The second recovered the supported top, removed
+duplicate drawer observations and restored three blocks, three drawers
+and two physical supports across the elevations.
+
+Fresh Estimation requests used saved Detection inputs. Lev1 used the
+failed production partition and repeated the Detail label. It returned
+the drawer case, the frame and a 1600 × 1150 × 750 mm supported table,
+with 29 Parts rows and no missing dimensions. Lev2 returned the same
+nine block assignments and Front contour IDs as its 9.16 control:
+17 hinged doors, five drawers, two lift-up fronts and one unresolved
+front on V04. Adda returned two blocks for the straight object (one
+mirror and three drawers) and seven blocks for the corner object
+(eight doors, six drawers, eight pull-out shelves, two mirrors and one
+open shelf). Adda Parts counts match the accepted 24 and 133 row
+controls. All three fresh replies were replayed on the final code.
+The 9.17 check covers Estimation from the saved Detection handoff.
+
 ## Estimation 9.16 Wood-grain material decision
 
 Work 3.17.4.6. Understanding returns the chosen material per visible
@@ -26,8 +61,61 @@ app wrapper returned HTTP 200, and an anonymous Streamlit run exposed
 `estimation-v9.16-detection-v8.4.29`. Pre-deploy verification had 79
 passes and one dependency-list assertion that also failed on 9.14
 with identical dependency files. Rollback is
-`estimation-v9.14-checkpoint` at `14605a4`. A fresh production Lev1
-Upload is pending. The prior Adda Front discrepancy remains open.
+`estimation-v9.14-checkpoint` at `14605a4`. The prior Adda Front
+discrepancy remains open.
+
+### Fresh production Lev1 regression
+
+Run `run_c085a65508e247349f6b2bb673a13d7d` published Parts Check at
+19:58 Israel time on 2026-11-13. The PDF digest and the Detection
+partition, including all six Island bounding boxes, match 9.14.
+The first persisted discrepancy is in Front: seven openings in the
+framed back, `view-004:C02` through `view-004:C08`, became hinged
+doors. Block Planner produced eight Blocks instead of three. The
+drawer frame retained three Front instances but was left without
+geometry and without drawer parts. The supported side table was
+replaced by a worktop with unresolved dimensions. Production published
+45 Parts rows, 29 with missing dimensions, against 28 in 9.14 and 29
+in the local 9.16 control. Production request logs contain usage and
+stage names but no raw model response, so they do not distinguish the
+initial Front reply from the subsequent Front role review.
+
+Material Demand assigned a piece unit to 28 LDSP pieces and seven HDF
+backs with unresolved dimensions. Assumption Fallback charged 200 ILS
+per piece, totaling 7,000 ILS for these two lines. The seven false
+doors also added 14 hinges at 17 ILS. Repricing the exact published
+9.16 Parts Check with the archived 9.14 catalog reproduced every
+production purchase line. Materials subtotal before VAT and overhead
+was 7,933.85 ILS, versus 2,758.49 ILS on 9.14 and 3,493.42 ILS on
+the local 9.16 control. Production self cost was 8,409.88 ILS before
+VAT and 9,923.66 ILS including VAT. The fresh Lev1 acceptance failed.
+
+An offline reconstruction from both production Detection witnesses gave
+identical native geometry and byte-equivalent canonical initial Front
+requests (SHA-256 `d98ea9539f2f1672507c4681c0a6b5c9df1db58dbd33de1bdc17d67008939448`).
+The initial Front call runs independently of the changed combined
+Island Map and Understanding request. An earlier saved raw Front
+response already calls the frame openings doors. The native filter
+removes them when it can match V04 and V06 as elevations. Changing only
+V06 to a non-elevation lets the false doors survive in replay; the
+production Island Map response was not retained, so this failure mode
+is reproducible without establishing the exact production label.
+One fresh A/B pair used the failed run's exact Detection input and
+the same six clean crops. The 9.14 and 9.16 Island Map prompts both
+returned `Detail` for V06, with identical labels across all six
+Islands. Both fresh maps let false doors through when replayed against
+the earlier raw Front response. This isolates a shared dependency on
+the view label. It does not establish a change in error frequency or
+prove which label the original production response used.
+
+The fresh Detection run kept the same six Island boxes and V04–V06
+match, but lost V01–V04. All three accepted production controls retained
+that link. Removing only this link from the old context loses the
+independently supported tabletop and introduces three false blocks,
+while the frame openings remain filtered. Restoring only this link in
+the fresh context restores all three expected Blocks when replaying the
+archived Front and projections. Estimation's supported-extension rule
+requires a graph path to V05 despite the native contact evidence.
 
 ## Estimation 9.15 Drawer runs and sheet thickness
 

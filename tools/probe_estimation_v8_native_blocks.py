@@ -12,7 +12,7 @@ from tools.probe_cb_block_boundaries import (
 )
 
 
-def orthographic_blocks(*, views, projections, faces, detection):
+def orthographic_blocks(*, views, projections, faces, detection, frame_pairs=None, extensions=None):
     elevations = sorted(vid for vid, role in projections.items() if role in ELEVATION_PROJECTIONS)
     report = build_report(views, faces, detection, elevations)
     obj, = [row for row in detection["objects"] if row["object_id"] == report["object_id"]]
@@ -30,7 +30,7 @@ def orthographic_blocks(*, views, projections, faces, detection):
     if len(options) == 1:
         plan, elevation = options.pop()
         report = build_report(views, faces, detection, elevations, plan, elevation)
-    result = compose_v11(report, views, faces, projections, detection)
+    result = compose_v11(report, views, faces, projections, detection, frame_pairs=frame_pairs, extensions=extensions)
     object_parts = []
     supports = []
     for block in result["blocks"]:
@@ -464,7 +464,7 @@ def close_display_envelopes(plan, view_id):
 
 def assemble_native_front_blocks(*, views, projections, detection, faces, review=(),
                                  marked_sources=None, labelled_sources=None, object_features=(),
-                                 component_observations=None):
+                                 component_observations=None, frame_pairs=None, supported_tops=None):
     """One repeatable handoff from fresh source readings to native assembly candidates."""
     from tools.probe_estimation_v8_grounded_front import (
         ground_front, ground_opening_pairs, linked_support_faces, review_front_roles, unresolved_adjacent_profiles,
@@ -497,14 +497,19 @@ def assemble_native_front_blocks(*, views, projections, detection, faces, review
             grounded = {"faces": labelled_sources[vid], "audit": []}
             plan = labelled_bank_blocks(view=own_views[vid], faces=grounded["faces"])
         else:
+            own_pairs = (None if frame_pairs is None else
+                         [pair for pair in frame_pairs if pair[0]["view_id"] in own_views])
+            extensions = (supported_tops or {}).get(ident)
             own_review = [row for row in review if row["view_id"] in own_views]
             revised = review_front_roles(raw, own_review)
             seen = {(row["view_id"], row["candidate_id"]) for row in revised["faces"]}
             revised["faces"].extend(row for row in linked_support_faces(own_views, own_projections,
-                obj["accepted_observations"]) if (row["view_id"], row["candidate_id"]) not in seen)
+                obj["accepted_observations"], extensions=extensions, frame_pairs=own_pairs or ())
+                if (row["view_id"], row["candidate_id"]) not in seen)
             grounded = ground_front(revised["faces"], views=own_views, projections=own_projections)
             plan = orthographic_blocks(views=own_views, projections=own_projections,
-                                       faces=grounded["faces"], detection=detection)
+                                       faces=grounded["faces"], detection=detection, frame_pairs=own_pairs,
+                                       extensions=extensions)
             primary = {appearance["view_id"] for block in plan["blocks"] for appearance in block["appearances"]
                        if appearance.get("matching_plan_spans")}
             if primary and own_review:
@@ -515,7 +520,8 @@ def assemble_native_front_blocks(*, views, projections, detection, faces, review
                     grounded = ground_front(profiles["faces"], views=own_views, projections=own_projections)
                     grounded["audit"].extend(profiles["audit"])
                     plan = orthographic_blocks(views=own_views, projections=own_projections,
-                                               faces=grounded["faces"], detection=detection)
+                                               faces=grounded["faces"], detection=detection, frame_pairs=own_pairs,
+                                               extensions=extensions)
             grounded["audit"].extend(revised["audit"])
             attach_reviewed_sides(plan, own_views, own_review)
             attach_native_sides(plan, own_views, grounded["faces"])

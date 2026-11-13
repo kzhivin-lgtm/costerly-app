@@ -381,7 +381,9 @@ def framed_panel_parts(block, measurements, views, printed, projections):
         part("frame_backing", material=facing, length=inner_h, width=inner_w, thickness=sheet),
     ]
     faces = {projections[row["view_id"]] for row in block["appearances"]}
-    if not {"Front elevation", "Rear view"} <= faces:
+    matched_geometry = (len(block["appearances"]) == 2
+                        and all(row.get("opening_contours") for row in block["appearances"]))
+    if not matched_geometry and not {"Front elevation", "Rear view"} <= faces:
         raise ValueError("Symmetric frame assumption requires matching front and rear projections")
     rib_depth = derived("construction_assumption", [depth, sheet], lambda d, t: (d - t) / 2,
                         reason="Two matching faces around one assumed central backing sheet.")

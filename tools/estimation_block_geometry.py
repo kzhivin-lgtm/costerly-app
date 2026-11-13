@@ -269,7 +269,7 @@ def linked_side(views, block, parts):
     return view, attached, carcass, plinth, ledge, upper, top_ids, top_box, supports, floor
 
 
-def linked_plan(views, projections, printed, side_depth, side_calibration):
+def linked_plan(views, projections, printed, side_depth, side_calibration, *, require_attachment=False):
     """Confirm the plan's axes against the visible side footprint."""
     estimated_depth = project_value(side_depth["bounds_1000"], side_calibration)
     matches = []
@@ -301,6 +301,8 @@ def linked_plan(views, projections, printed, side_depth, side_calibration):
                     depth_edges = ("attached tabletop edge", "outer tabletop edge")
                 elif attached == {1}:
                     depth_edges = ("outer tabletop edge", "attached tabletop edge")
+                elif require_attachment:
+                    continue
                 depth = bind_dimension(span(view, axis, depth_coords, *depth_edges, [contour["id"]]), printed)
                 width = bind_dimension(span(view, "y" if axis == "x" else "x", width_coords,
                                             "first lateral tabletop edge", "opposite lateral tabletop edge",
@@ -309,6 +311,52 @@ def linked_plan(views, projections, printed, side_depth, side_calibration):
                         abs(depth["value_mm"] - estimated_depth) <= max(10, .02 * estimated_depth)):
                     matches.append((width, depth))
     return unique(matches)
+
+
+def supported_extension_dimensions(views, projections, printed, bank, extension):
+    """Corroborate a supported side extension against the plan and drawer frontage."""
+    front = views[bank["view_id"]]
+    side = views[extension["view_id"]]
+    box = by_id(side)[extension["attached_side"]]["bbox"]
+    top = extension["top"]
+    floor = max(row["bbox"][3] for row in extension["supports"])
+    fw = bind_dimension(span(front, "x", bank["bbox"][::2], "left", "right", [bank["frame"]]), printed)
+    side_depth = bind_dimension(span(side, "x", box[::2], "front", "back", [extension["attached_side"]]),
+                                printed, allow_estimate=True)
+    if not side_depth["sources"]:
+        low, high = side_depth["bounds_1000"]
+        scales = [row for row in printed[side["view_id"]] if row["axis"] == "x"
+                  and row["bounds"][0] <= low + EDGE_TOLERANCE
+                  and abs(row["bounds"][1] - high) <= EDGE_TOLERANCE]
+        if scales:
+            side_depth = {**side_depth, "sources": [max(scales, key=lambda row: row["value_mm"])]}
+    top_height = bind_dimension(span(side, "y", (top["bbox"][1], floor), "top", "floor", top["contour_ids"]), printed)
+    if (fw["method"] != "printed_dimension" or not side_depth["sources"]
+            or top_height["method"] != "printed_dimension"):
+        return None
+    footprint = span(side, "x", top["bbox"][::2], "attached edge", "outer edge", top["contour_ids"])
+    matched = linked_plan(views, projections, printed, footprint, side_depth["sources"][0], require_attachment=True)
+    if not matched:
+        return None
+    width, depth = matched
+    # The frontage and plan width must describe the same span, allowing
+    # minor inset or overhang between the frame and its cover.
+    if abs(width["value_mm"] - fw["value_mm"]) > max(10, .02 * fw["value_mm"]):
+        return None
+    return {"width": width, "depth": depth, "height": top_height, "host_width": fw}
+
+
+def source_printed_spans(pdf, views, source_object):
+    """Read the same Detection dimensions for a geometry-backed Planner decision."""
+    inventory = {row["group_id"]: row["occurrences"] for row in source_object.get("dimension_inventory", ())}
+    coordinate = source_object.get("coordinate_dimension_inventory", {})
+    result = {}
+    for vid, view in views.items():
+        page = pdf[view["page"] - 1]
+        result[vid] = printed_spans(page, view, inventory.get(vid, []))
+        if not result[vid] and coordinate.get(vid):
+            result[vid] = printed_spans(page, view, coordinate[vid], fragmented=True)
+    return result
 
 
 def resolve_supported_group(plan, views, projections, printed):
@@ -436,6 +484,12 @@ def run_block_geometry(pdf_path, audit_path, source, analyze, key, *, dimension_
             inventory = {row["group_id"]: row["occurrences"] for row in source_object["dimension_inventory"]}
             measurable = {vid: view for vid, view in views.items()
                           if analyze["islands"][vid] in ELEVATIONS | {"Top view", "Section"}}
+            for block in obj["planner"]["blocks"]:
+                if block["basis"] == "matched_framed_panel":
+                    for appearance in block["appearances"]:
+                        if appearance.get("opening_contours"):
+                            vid = appearance["view_id"]
+                            measurable[vid] = views[vid]
             if dimension_reader:
                 from tools.estimation_local_dimension_ocr import read_dimension_labels
 
