@@ -2,12 +2,68 @@ import unittest
 
 from use_cases.estimation_cb_geometry_parts import dimension
 from use_cases.estimation_display_parts import (
-    _coils, _lighting, _stock_notes, add_source_display_glass_parts, glass_box_parts, power_supply_watts,
+    _coils, _lighting, _stock_notes, add_source_casework_parts, add_source_display_glass_parts,
+    glass_box_parts, power_supply_watts,
 )
+from use_cases.estimation_cb_material_demand import build_cb_material_demand
 from use_cases.estimation_v9_inventory import lighting_temperature_readings
 
 
 class TestDisplayParts(unittest.TestCase):
+    def test_bound_material_note_and_stock_roles_flow_into_demand(self):
+        obj_id, block_a, block_b = "fixture", "left", "right"
+        callout = {"view_id": "elevation", "annotation_id": "A8",
+                   "source_text": "Stained plywood with polyurethane lacquer",
+                   "tips": [{"contours": ["panel"]}]}
+        plan = {"front": {"faces": [], "material_callouts": [callout]},
+                "planner": {"blocks": [
+                    {"id": block_a, "basis": "mirror_upright", "appearances": {"elevation": ["panel", "glass"]}},
+                    {"id": block_b, "basis": "mirror_upright", "appearances": {"elevation": ["hidden"]}},
+                ]}}
+        dims = {"width": {"value_mm": 600, "method": "printed_dimension"},
+                "height": {"value_mm": 900, "method": "printed_dimension"},
+                "depth": {"value_mm": 25, "method": "scaled_projection", "from": "rear face of mounting panel"}}
+        inventory = {"objects": {obj_id: {"items": [
+            {"id": block_a, "kind": "block", "children": [{"id": "mirror", "role": "mirror", "quantity": 1,
+             "source_refs": [{"view_id": "elevation", "candidate_id": "glass"}]}]},
+            {"id": block_b, "kind": "block", "children": []},
+            {"id": "toe-kick", "kind": "standalone", "role": "plinth"},
+        ]}}}
+        inputs = {"input_id": "i", "input_payload": {"run_id": "r", "company_id": "c",
+                  "object": {"object_id": obj_id, "quantity": 1},
+                  "evidence": {"ocr_blocks": [{"block_ref": "schedule", "text":
+                    "Carcass material: MDF 19 mm\nFacade material: Plywood 21 mm, stain and polyurethane"}]}}}
+
+        def compute():
+            parts = {"objects": {obj_id: {"blocks": [{"block_id": i, "parts": []} for i in (block_a, block_b)],
+                     "shared_parts": [{"id": "toe-kick", "parts": [{"role": "plinth_front", "quantity": 1,
+                     "material_hint": "plinth", "dimensions": {"length": dimension(1200, "measured"),
+                       "width": dimension(90, "measured"), "thickness": dimension(17, "default")}}]}]}}}
+            add_source_casework_parts(parts, inventory, {"objects": {obj_id: plan}},
+                {"objects": {obj_id: {"blocks": [{"block_id": i, "measurements": dims} for i in (block_a, block_b)]}}},
+                input_rows=[inputs], detection={"objects": [{"object_id": obj_id, "input_id": "i"}]})
+            scopes = parts["objects"][obj_id]
+            rows = [{**p, "owner_id": s.get("block_id") or s["id"]}
+                    for s in [*scopes["blocks"], *scopes["shared_parts"]]
+                    for p in s["parts"] if p["role"] != "mirror_glass"]
+            facts = build_cb_material_demand(parts_report={"stage": "Parts Check", "objects": {obj_id: {"parts": rows}}},
+                input_row=inputs, allowed_material_families={"plywood", "mdf_hdf", "melamine_faced_particleboard"})
+            return rows, facts["materials"]
+
+        rows, materials = compute()
+        self.assertEqual([(m["family"], m["specification"]["thickness_mm"]) for m in materials],
+                         [("plywood", 21), ("mdf_hdf", 19), ("plywood", 21)])
+        self.assertEqual(rows[0]["material_note"]["refs"], ["elevation:A8", "elevation:panel"])
+        self.assertEqual(rows[0]["dimensions"]["thickness"]["basis"], "inherited_facade_stock")
+        self.assertEqual(rows[-1]["material_basis"], "inherited_facade_stock")
+
+        callout["source_text"] = "Plywood 24 mm, stain and polyurethane"
+        self.assertEqual(compute()[1][0]["specification"]["thickness_mm"], 24)
+        callout["tips"][0]["contours"] = ["glass"]
+        rows, materials = compute()
+        self.assertEqual(rows[0]["material_basis"], "inherited_carcass_stock")
+        self.assertEqual(materials[0]["family"], "mdf_hdf")
+
     def test_stock_notes_keep_explicit_measurements_and_reject_conflicts(self):
         row = {"input_id": "i", "input_payload": {
             "object": {"object_id": "o"},

@@ -533,7 +533,10 @@ def assemble_native_front_blocks(*, views, projections, detection, faces, review
                 plan["object_parts"].append(feature)
         if component_observations is not None:
             observations = [row for row in component_observations if row["source"]["view_id"] in own_views]
-            grounded["components"] = [row for row in observations if row["role"] not in DOOR_OPENING_ROLES]
+            grounded["components"] = [row for row in observations
+                                      if row["role"] not in DOOR_OPENING_ROLES | {"material_callout"}]
+            grounded["material_callouts"] = [row["source"] for row in observations
+                                             if row["role"] == "material_callout"]
             grounded["door_opening_observations"] = [row for row in observations if row["role"] in DOOR_OPENING_ROLES]
         objects[ident] = {"front": grounded, "planner": plan,
                           "context_only_views": sorted(own_views.keys() - {row["view_id"] for row in grounded["faces"]})}

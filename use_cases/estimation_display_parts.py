@@ -6,7 +6,9 @@ from difflib import SequenceMatcher
 import re
 
 from use_cases.estimation_cb_geometry_parts import derived, dimension, geometry_dimension, part, stock
+from use_cases.estimation_cb_parts_coverage import planner_owners
 from use_cases.estimation_structural_bom import _hinges_per_facade, _slide_depth_mm
+from use_cases.price_source_taxonomy import material_rule_for_text
 
 
 def _assumed(value, refs=()):
@@ -224,7 +226,7 @@ def _stock_notes(input_rows, source_objects):
                 label, colon, spec = line.partition(":")
                 words = re.findall(r"[^\W\d_]+", label.casefold())
                 values = MM_STOCK.findall(spec)
-                if not colon or len(words) != 2 or len(values) != 1 or re.search(r"\d\s*[–×xх-]\s*\d", spec):
+                if not colon or len(words) != 2 or len(values) > 1 or re.search(r"\d\s*[–×xх-]\s*\d", spec):
                     continue
                 if words[1] != "material" and SequenceMatcher(
                         None, words[1].translate(OCR_LOOKALIKES), "материал".translate(OCR_LOOKALIKES)).ratio() < .72:
@@ -233,8 +235,8 @@ def _stock_notes(input_rows, source_objects):
                 roles = [role for role, labels in STOCK_LABELS.items() if any(
                     first == name or (len(first) >= 6 and SequenceMatcher(
                         None, first, name.translate(OCR_LOOKALIKES)).ratio() >= .78) for name in labels)]
-                value = float(values[0].replace(",", "."))
-                if len(roles) == 1 and value > 0:
+                value = float(values[0].replace(",", ".")) if values else None
+                if len(roles) == 1 and (value > 0 if value is not None else material_rule_for_text(spec)):
                     evidence[oid][roles[0]].append((value, block["block_ref"], spec.strip()))
     notes = defaultdict(dict)
     for oid, roles in evidence.items():
@@ -245,6 +247,76 @@ def _stock_notes(input_rows, source_objects):
                                     "refs": list(dict.fromkeys(ref for _, ref, _ in rows)),
                                     "source_text": list(dict.fromkeys(spec for _, _, spec in rows))}
     return notes
+
+
+PLINTH_PARTS = {"plinth_visible_run", "plinth_front", "plinth_return", "plinth_kit"}
+
+
+def _part_stock_callout(callouts, contour_refs):
+    """Use a material note only when every arrow tip hits this part."""
+    matches = defaultdict(list)
+    for source in callouts:
+        tips = source.get("tips") or ()
+        text = source.get("source_text")
+        if not text or not source.get("annotation_id") or not tips:
+            continue
+        vid = source["view_id"]
+        hits = [{f"{vid}:{cid}" for cid in tip["contours"]} for tip in tips]
+        if all(hit and hit <= contour_refs for hit in hits):
+            matches[" ".join(text.casefold().split())].append(source)
+    if len(matches) != 1:
+        return None
+    sources, = matches.values()
+    text = sources[0]["source_text"]
+    values = {float(v.replace(",", ".")) for v in MM_STOCK.findall(text)}
+    if len(values) > 1:
+        return None
+    return {"mm": next(iter(values), None), "basis": "ocr_material_note",
+            "refs": list(dict.fromkeys(ref for source in sources
+                for ref in [f"{source['view_id']}:{source['annotation_id']}",
+                            *(f"{source['view_id']}:{cid}" for tip in source["tips"] for cid in tip["contours"])])),
+            "source_text": [text]}
+
+
+def _finish_words(text):
+    value = text.casefold().translate(OCR_LOOKALIKES)
+    return {finish for finish, pattern in {
+        "stain": r"\bstain|[tym][oо][hн][uiи]?po",
+        "polyurethane": r"polyurethane|[np]o[li]uyp",
+        "oil": r"\boil\b|mac[ln]o",
+    }.items() if re.search(pattern, value)}
+
+
+def _same_facade_stock(local, facade):
+    if not facade:
+        return False
+    local_text, = local["source_text"]
+    material = material_rule_for_text(local_text)
+    finish = _finish_words(local_text)
+    return bool(material and finish and all(
+        (rule := material_rule_for_text(text)) and rule.family == material.family
+        and finish == _finish_words(text) for text in facade["source_text"]
+    ))
+
+
+def _apply_stock(row, inherited, local, *, role):
+    if local:
+        row["material_note"] = local
+        row["material_hint"] = local["source_text"][0]
+        row["material_basis"] = "part_material_callout"
+        if local["mm"] is not None:
+            row["dimensions"]["thickness"] = local
+        elif inherited and inherited["mm"] is not None:
+            row["dimensions"]["thickness"] = {
+                **inherited, "basis": "inherited_facade_stock",
+                "refs": list(dict.fromkeys([*local["refs"], *inherited["refs"]])),
+            }
+    elif inherited:
+        row["material_note"] = inherited
+        if inherited["mm"] is not None:
+            row["dimensions"]["thickness"] = inherited
+        row["material_hint"] = inherited["source_text"][0]
+        row["material_basis"] = f"inherited_{role}_stock"
 
 
 def _standalone_source_parts(item, callouts, *, readings, views, printed, facade_thickness):
@@ -281,6 +353,8 @@ def add_source_casework_parts(parts, inventory, analyze, geometry, *, input_rows
         callouts = {row["id"]: row["source_text"] for row in planned["planner"].get("component_callouts", ())}
         output = parts["objects"][oid]
         scopes = {row.get("block_id") or row["id"]: row for row in [*output["blocks"], *output["shared_parts"]]}
+        material_callouts = planned["front"].get("material_callouts", ())
+        owners = planner_owners(planned["planner"])
         for item in obj["items"]:
             ident = item["id"]
             scope = scopes.get(ident)
@@ -324,6 +398,20 @@ def add_source_casework_parts(parts, inventory, analyze, geometry, *, input_rows
                         if row["role"] not in {"drawer_slide", "hinge"}:
                             row["construction_basis"] = "standard_construction_estimate"
                 elements = item["children"]
+                panels = [row for row in scope["parts"] if row["role"] == "mirror_mounting_panel"]
+                if panels:
+                    glass_refs = {f"{ref['view_id']}:{ref['candidate_id']}"
+                                  for child in elements if child["role"] == "mirror"
+                                  for ref in child["source_refs"] if ref.get("candidate_id")}
+                    panel_refs = {f"{vid}:{cid}" for vid, ids in block.get("appearances", {}).items()
+                                  for cid in ids if owners[f"{vid}:{cid}"] == {ident}} - glass_refs
+                    local = _part_stock_callout(material_callouts, panel_refs) if len(panels) == 1 else None
+                    facade = stock_notes[oid].get("facade")
+                    inherited = stock_notes[oid].get("carcass")
+                    if local:
+                        inherited = facade if _same_facade_stock(local, facade) else None
+                    for row in panels:
+                        _apply_stock(row, inherited, local, role="carcass")
             else:
                 width = height = _assumed(None)
                 if not scope["parts"]:
@@ -331,6 +419,15 @@ def add_source_casework_parts(parts, inventory, analyze, geometry, *, input_rows
                         item, callouts, readings=readings, views=views, printed=printed,
                         facade_thickness=stock_notes[oid].get("facade"))
                 elements = [item]
+            for row in scope["parts"]:
+                if row["role"] not in PLINTH_PARTS:
+                    continue
+                refs = {ref for axis in ("length", "width")
+                        for ref in row["dimensions"].get(axis, {}).get("refs", ())}
+                local = _part_stock_callout(material_callouts, refs)
+                facade = stock_notes[oid].get("facade")
+                _apply_stock(row, facade if not local or _same_facade_stock(local, facade) else None,
+                             local, role="facade")
             for element in elements:
                 element_id = element["id"]
                 if element["role"] == "mirror":

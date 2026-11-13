@@ -1,5 +1,26 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.8 stock inheritance
+
+Work 3.17.4.6. Parts uses the printed material and finish for an individual
+panel when an indexed leader binds it to that panel. A hidden mirror backing
+inherits the object's carcass stock when there is no local specification.
+Plinth pieces inherit the object's facade stock unless an explicit part
+callout specifies another material. An explicit local thickness wins. A
+local note with matching facade material and finish can inherit its stock
+thickness, with both sources retained. Front reads material callouts in the
+existing component request. The rollback reference is `c705688` (9.7).
+
+Adda verification combined one fresh Front component request with frozen
+remaining provider responses. Front read the plywood and finish note at
+`view-002:A04`; the native leader terminates on panel contour `C04`. The
+straight panel and both plinths priced as 18 mm plywood, and the hidden
+corner panel as 16 mm plywood. The replay retained 157 Parts rows (24 and
+133). Pricing against the active catalogs yielded 11 sheets of 16 mm
+plywood, 3 of 18 mm, no LDSP, and no Assumption Fallback. Purchase cost:
+9,810.51 ILS excluding VAT, down from 10,363.92 ILS in the owner 9.7 run.
+Fresh Upload acceptance is separate.
+
 Work 3.17.4.6. The owner confirmed the production release on 2026-11-12.
 The release starts from Detection V8.4.27 at
 `379f91f5760dbacb1652da2a6d0b379d17745586` and ports the Parts Check

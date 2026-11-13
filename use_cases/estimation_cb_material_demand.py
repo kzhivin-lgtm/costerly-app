@@ -88,11 +88,11 @@ def _ocr_stock_alias_family(note, family_alias_context):
     return next(iter(matches)) if len(matches) == 1 else None
 
 
-def _source_material(measurements, family_alias_context):
-    thickness = measurements.get("thickness", {})
-    if thickness.get("basis") != "ocr_material_note":
+def _source_material(measurements, family_alias_context, material_note=None):
+    source = material_note or measurements.get("thickness", {})
+    if source.get("basis") != "ocr_material_note":
         return None, {}, (), ()
-    notes = thickness.get("source_text") or ()
+    notes = source.get("source_text") or ()
     if isinstance(notes, str):
         notes = (notes,)
     if not notes:
@@ -115,7 +115,7 @@ def _source_material(measurements, family_alias_context):
         code = taxonomy["family_code"]
         board_type = family if code == "mdf_hdf" and family in {"mdf", "hdf"} else None
         materials.add((code, board_type))
-    refs = tuple(thickness.get("refs", ()))
+    refs = tuple(source.get("refs", ()))
     if len(materials) == 1 and refs:
         family, board_type = materials.pop()
         return family, {"board_type": board_type} if board_type else {}, notes, refs
@@ -307,7 +307,10 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
             unit = _physical_unit(row, role, measurements)
             has_sheet_geometry = not unit and all(_positive(measurements.get(axis, {}).get("mm"))
                                                   for axis in ("length", "width"))
-            source_family, material_spec, notes, material_refs = _source_material(measurements, family_alias_context)
+            source_family, material_spec, notes, material_refs = _source_material(
+                measurements, family_alias_context, row.get("material_note"))
+            if material_refs and row.get("material_note"):
+                material_refs = tuple(dict.fromkeys([*material_refs, *measurements.get("thickness", {}).get("refs", ())]))
             preferences = (source_family,) if source_family else _ROLE_FAMILY_PREFERENCE.get(role, ())
             family = next((f for f in preferences if f in allowed_material_families), None)
             identity_hint = None

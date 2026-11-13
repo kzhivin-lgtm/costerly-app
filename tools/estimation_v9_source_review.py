@@ -9,7 +9,7 @@ from use_cases.estimation_v9_inventory import COMPONENT_ROLES, page_box
 from use_cases.estimation_door_hardware import DOOR_OPENING_ROLES
 
 FRONT_ROLES = (COMPONENT_ROLES - {"hinged_door", "lift_up", "drawer", "support_leg", "pull_out_shelf"}
-               | DOOR_OPENING_ROLES)
+               | DOOR_OPENING_ROLES | {"material_callout"})
 SCOPES = {"standalone", "block_member", "unclear"}
 SCHEMA = """Return JSON only:
 {"findings":[{"role":"one supplied role","scope":"standalone | block_member | unclear",
@@ -36,6 +36,11 @@ Keep mirrors and lighting attached to the physical assembly. Group plinth
 segments under one object-level kit. Distinguish separate worktops only
 when the drawing shows a real break in the run.
 Read printed callouts where they are legible and follow their leaders.
+Use material_callout for a printed material or finish specification whose
+leader points to a specific panel or part. Transcribe the complete note,
+including any second line, finish, and thickness, without supplying a
+missing value. Include the indexed annotation_id where available. Keep
+general material schedules separate; they are not part-specific callouts.
 For a fully visible individual hinged door, use door_without_handle if the
 opening edge is clear and there is no external or integrated pull. Use
 door_with_pull if a handle, finger pull, recessed grip, or pull profile is
@@ -156,7 +161,7 @@ annotation_id unless you can read the matching indexed caption."""
                 _, leaders = captions[vid]
                 for row, finding in zip(rows, bound, strict=True):
                     ident = row.get("annotation_id")
-                    if (finding["role"] == "lighting" and isinstance(ident, str) and ident in leaders
+                    if (finding["role"] in {"lighting", "material_callout"} and isinstance(ident, str) and ident in leaders
                             and finding["source"].get("source_text")):
                         finding["source"].update(annotation_id=ident, tips=leaders[ident]["tips"])
             findings.extend(bound)
