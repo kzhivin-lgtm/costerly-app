@@ -75,6 +75,11 @@ def apply_object_detail_css() -> None:
             box-shadow: 0 0 0 2px rgba(128, 73, 198, 0.10);
         }
 
+        .object-detail-quantity-input[aria-invalid="true"]:not(:focus),
+        .object-detail-material-input:has([aria-invalid="true"]):not(:focus-within) {
+            border-color: #b43b46;
+        }
+
         .object-detail-discard-modal {
             position: fixed;
             inset: 0;
@@ -447,15 +452,21 @@ def apply_object_detail_css() -> None:
             width: min(100%, 76px);
         }
 
-        .object-detail-material-input--required {
-            position: relative;
-        }
-
         .object-detail-material-input--required .object-detail-cell-input {
             display: block;
+            flex: 0 1 auto;
             border-radius: 7px;
-            padding: 6px 8px;
+            padding: 6px 0;
             text-align: center;
+        }
+
+        .object-detail-material-input--required:focus-within .object-detail-cell-input {
+            flex: 1 1 auto;
+            padding-inline: 4px;
+        }
+
+        .object-detail-material-input--required:focus-within .object-detail-material-input-unit {
+            display: none;
         }
 
         .object-detail-table[data-section="material"] .object-detail-table-head {
@@ -466,28 +477,12 @@ def apply_object_detail_css() -> None:
             text-align: left;
         }
 
-        .object-detail-material-actions {
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            gap: 12px;
-            margin: 0 0 8px;
-            flex-wrap: wrap;
+        .object-detail-material-edit-status {
+            margin: 8px 0 0;
+            text-align: right;
         }
 
-        .object-detail-material-actions[hidden] {
-            visibility: hidden;
-        }
-
-        .object-detail-material-save {
-            border: 1px solid rgba(42, 31, 44, 0.18);
-            border-radius: 8px;
-            background: white;
-            color: var(--color-text-strong);
-            padding: 6px 12px;
-            font: inherit;
-            cursor: pointer;
-        }
+        .object-detail-material-edit-status:empty { margin: 0; }
 
         .object-detail-material-save:disabled {
             opacity: 0.55;
@@ -495,8 +490,7 @@ def apply_object_detail_css() -> None:
         }
 
         .object-detail-material-input-unit {
-            position: absolute;
-            right: 5px;
+            margin-inline-start: 4px;
             pointer-events: none;
             color: rgba(42, 31, 44, 0.72);
             font-family: var(--font-mono);
@@ -567,7 +561,8 @@ def apply_object_detail_css() -> None:
 
         .object-detail-footer-actions {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-auto-columns: minmax(0, 1fr);
+            grid-auto-flow: column;
             gap: 18px;
             margin-top: 34px;
         }
@@ -586,7 +581,6 @@ def apply_object_detail_css() -> None:
             font-family: var(--font-mono);
             font-size: var(--button-font-size);
             font-weight: var(--button-font-weight);
-            text-transform: uppercase;
             text-decoration: none;
             transition: background 140ms ease, border-color 140ms ease, color 140ms ease, opacity 140ms ease;
             cursor: pointer;
@@ -639,13 +633,7 @@ def apply_object_detail_css() -> None:
             color: var(--button-primary-text);
         }
 
-        .object-detail-footer-button--disabled,
-        .object-detail-footer-button--disabled:hover {
-            background: rgba(42, 31, 44, 0.10);
-            border-color: rgba(42, 31, 44, 0.10);
-            color: rgba(42, 31, 44, 0.42) !important;
-            cursor: not-allowed;
-        }
+        .object-detail-footer-button[hidden] { display: none; }
 
         @media (max-width: 760px) {
             .object-detail-hero,
@@ -655,6 +643,8 @@ def apply_object_detail_css() -> None:
                 grid-template-columns: 1fr;
                 row-gap: 14px;
             }
+
+            .object-detail-footer-actions { grid-auto-flow: row; }
 
             .object-detail-preview-placeholder {
                 width: 100%;

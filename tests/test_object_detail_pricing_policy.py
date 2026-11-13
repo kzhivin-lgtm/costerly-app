@@ -1,7 +1,7 @@
 import pandas as pd
 
 from ui.object_detail_view import (
-    MATERIAL_PURCHASE_COLUMNS, _group_summary_value, _number_text, _quantity, _row_values, _table_html,
+    MATERIAL_PURCHASE_COLUMNS, _footer_html, _group_summary_value, _number_text, _quantity, _row_values, _table_html,
 )
 from use_cases import estimation
 from use_cases.estimation import _material_rows_from_plan
@@ -97,7 +97,8 @@ def test_material_purchase_table_shows_demand_and_purchase_without_allocation_la
     assert ">A</span><span class=\"object-detail-material-name\">Veneered MDF 18 mm</span>" in values[0]
     assert "required_material" in values[1]
     assert "object-detail-purchase-unit" in values[2]
-    assert "₪199.75" in values[3]
+    assert "₪200" in values[3]
+    assert 'data-original-value="5.2"' in values[1]
     assert "contenteditable" not in values[3]
     assert "purchase_quantity" in values[4]
     assert 'data-original-value="2"' in values[4]
@@ -201,7 +202,60 @@ def test_v3_object_detail_loads_with_a_planned_material_plan(monkeypatch):
 
     assert detail["material_plan_ready"] is True
     assert detail["material_plan_status"] == "planned"
-    assert detail["material_plan_blocking_label"] == "MATERIALS FINALIZING"
+
+
+def test_object_detail_footer_has_approve_and_a_hidden_save_between_actions():
+    footer = _footer_html("run-1", "estimate-1", "object-1")
+    assert footer.index("Back to Objects") < footer.index("Save changes") < footer.index(">Approve<")
+    assert 'object-detail-material-save" hidden disabled' in footer
+    assert 'data-streamlit-bridge-key="object_detail_approve_bridge"' in footer
+
+
+def test_object_approval_uses_existing_costs_without_querying_material_plan(monkeypatch):
+    approved = []
+    monkeypatch.setattr(estimation, "company_auth_enabled", lambda: False)
+    monkeypatch.setattr(estimation, "get_supabase_client", lambda: object())
+    monkeypatch.setattr(estimation, "_recalculate_object_estimate_totals", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(estimation, "update_rfq_object_estimate_approved", lambda _, **values: approved.append(values))
+
+    def unexpected_plan_read(*_args, **_kwargs):
+        raise AssertionError("Approval queried the material plan")
+
+    monkeypatch.setattr(estimation, "fetch_rfq_estimate_material_plan", unexpected_plan_read)
+
+    estimation.approve_object_estimate(estimate_id="estimate-1", object_id="object-1")
+
+    assert approved == [{"estimate_id": "estimate-1", "object_id": "object-1", "approved": True}]
+
+
+def test_quantity_and_material_draft_uses_new_quantity_in_one_rebuild(monkeypatch):
+    writes = []
+    monkeypatch.setattr(estimation, "get_supabase_client", lambda: object())
+    monkeypatch.setattr(estimation, "company_auth_enabled", lambda: False)
+    monkeypatch.setattr(estimation, "_object_material_context", lambda *_args, **_kwargs: {
+        "quantity": 1, "company_id": "company-1", "run_id": "run-1",
+    })
+    plan = {"parts_check_source": {"run_id": "run-1"}, "lines": [{
+        "selection_key": "mdf", "allocations": [{"object_id": "object-1", "material_requirement_id": "mdf"}],
+    }]}
+    monkeypatch.setattr(estimation, "fetch_rfq_estimate_material_plan",
+                        lambda *_args: pd.DataFrame([{"plan_payload": plan}]))
+    monkeypatch.setattr(estimation, "_material_norms_from_plan", lambda *_args: {("object-1", "mdf"): ("m2", 2)})
+    monkeypatch.setattr(estimation, "update_object_quantity", lambda **kwargs: writes.append(kwargs))
+    monkeypatch.setattr(estimation, "upsert_rfq_estimate_material_norm_overrides",
+                        lambda _client, *, rows: writes.extend(rows))
+    monkeypatch.setattr(estimation, "delete_rfq_estimate_material_purchase_overrides", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(estimation, "_invalidate_and_queue_material_plan", lambda *_args, **kwargs: writes.append(kwargs))
+
+    estimation.save_object_detail_material_edits(estimate_id="estimate-1", object_id="object-1", edits=[
+        {"field": "required_material", "lineId": "__material_requirement__:mdf", "value": "5.5"},
+        {"field": "object_quantity", "lineId": "__object__", "value": "2"},
+    ])
+
+    quantity, norm, rebuild = writes
+    assert quantity["quantity"] == 2 and not quantity["queue_recalculation"]
+    assert norm["quantity_per_item"] == 2.75
+    assert rebuild["reason_code"] == "material_norm_changed"
 
 
 def test_server_material_edit_recalculates_line_and_object_totals(monkeypatch):

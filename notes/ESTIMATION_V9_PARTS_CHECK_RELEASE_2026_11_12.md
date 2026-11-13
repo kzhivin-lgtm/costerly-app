@@ -1,5 +1,28 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.18 Object Detail approval and material editing
+
+Object Detail approves with the available prices. The Material Plan
+status no longer replaces Approve or blocks the server action. Priced
+allocations still publish the available totals if other requirements
+are unpriced. Parts Check keeps its findings.
+
+The footer shows Back to Objects and Approve, with Save changes between
+them while a draft is pending. A save preserves the current screen and
+does not approve. Approve with a valid draft saves it before approving.
+If saving fails, the draft remains editable. Object quantity and material
+edits can be sent together and queue one material recalculation from the
+saved report. Unit Price and all displayed money use whole ILS. The
+input keeps its exact saved baseline, hides its unit while focused, and
+uses the shared end-caret rule on pointer and keyboard entry.
+
+Verification before release: 170 focused tests passed. Headless Chrome at
+1280 px and 390 px exercised the actual Object Detail markup and client
+guard with a simulated save bridge, including validation, retry, reverting
+an edit and saving before approval. Authenticated production approval on
+an existing Adda estimate remains to be confirmed. Estimate-wide sheet
+purchase and allocation rules are deferred to their separate task.
+
 ## Estimation 9.17 Front and supported tabletop recovery
 
 Work 3.17.4.6. Front and Planner share one unambiguous vector frame
