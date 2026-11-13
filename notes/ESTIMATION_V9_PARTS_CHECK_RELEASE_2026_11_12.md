@@ -15,6 +15,11 @@ rows from 24 and 133 Parts rows with the same total quantities. Local
 Chrome checked both objects at 1280 px and 390 px, keyboard and pointer
 interaction, purchase quantity editing, and return with unsaved edits.
 The rollback checkpoint is `estimation-v9.9-checkpoint`.
+The focused suite passed 33 tests. Railway confirmed production commit
+`b86906d`, deployment `820051af-38bd-4498-ad3d-32e19a33c9a5`. The
+owner's production screenshot confirms the reordered Materials and the
+collapsed Elements section. Tag `estimation-v9.10-checkpoint` pins this
+runtime before changing the material editors.
 
 ## Estimation 9.9 Objects Estimation review and subtitles
 
