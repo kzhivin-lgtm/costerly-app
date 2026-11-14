@@ -1,5 +1,33 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.24 Finish and compatible sheet stock candidate
+
+Rollback baseline `estimation-v9.23-checkpoint`. Understanding prefers the
+coloured or axonometric view for finish and drawing dimensions for geometry.
+It can report the visible underlayer of a tabletop and exposed carcass sides.
+Parts supplements missing structured finish cues from explicitly observed
+grain in the saved characteristics. Explicit source materials and thicknesses
+retain priority. Nearby projected thicknesses still use the established
+printed-anchor rule.
+
+Parts reuses a compatible veneer sheet for a provisional drawer front when
+the finish matches and a separate stock thickness is unnecessary. An
+existing compatible 20 mm requirement stays in use. With no equivalent
+20 mm requirement, a matching measured 30 mm panel can supply the drawer
+fronts. Corroborated veneered carcass stock can supply compatible undimensioned
+frame caps or backing before dependent sizes are calculated. Actual stocked
+layers for thick finished panels remain pending.
+
+Offline Lev1 replays using both the archived 9.17 and 9.16 Understanding
+outputs produced three blocks, three drawers, two supports and 29 Parts.
+The seat joins the ribs and right upright in one 40 mm veneered MDF
+requirement. Total sheet positions are eight instead of nine in the latest
+production witness. The left upright stays at 30 mm and the drawer fronts
+share 20 mm with the frame caps. The saved evidence does not identify the
+finish of the frame backing or tabletop underlayer. The Lev2 and Adda
+replays produced identical object reports and source coverage. One fresh
+visual reading remains to verify. No new runtime release is deployed.
+
 ## Estimation 9.23 Object Detail save latency
 
 Work 3.17.4.6. Use `estimation-v9.22-checkpoint` as the baseline for an

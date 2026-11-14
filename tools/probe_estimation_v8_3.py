@@ -58,16 +58,21 @@ Do not infer solid wood from grain, colour or a species name. Choose "solid_wood
 if a drawing note explicitly specifies solid wood for that role. For "solid_wood" also
 return "source_ref" from material_notes and a verbatim "source_quote" naming the role
 and solid material. If a note specifies another material, omit that role here.
-Plain wood-like colour or hatch alone does not qualify. A role is eligible only when
-its observed parts share the finish and material.
+Use the clearest coloured or axonometric view for finish, and the drawing annotations
+and measured elevations for geometry. Extend a finish to another visible panel when
+the rendering shows that it shares the same identified decor. Plain colour or hatch
+in isolation does not establish veneer. A role is eligible only when its observed
+parts share the finish and material.
 Allowed roles: seat_cover (seat or base cover), drawer_front, door_front, lift_up_front,
-fixed_panel, frame_cap, frame_side, frame_backing, vertical_rib, tabletop.
+fixed_panel, frame_cap, frame_side, frame_backing, vertical_rib, tabletop,
+tabletop_underlayer (visible lower plate), carcass_side (visible exterior sides).
 If one crop shows the same finish on several roles, report each role separately and give
 them the same short finish_group. Use different groups for visibly different finishes.
-Check the top cover, operating fronts and decorative frame separately against the visible
-finish characteristics. Use the clearest crop for each role. In characteristics,
+Check the seat or top cover, operating fronts, outer sides and decorative frame separately
+against the visible finish characteristics. In characteristics,
 state the visible evidence and whether the material is an assumption or explicitly
-specified. Use Parts Geometry for thickness. Return an empty list when unclear.
+specified. Parts Geometry uses one stock thickness for compatible panels where the
+drawing leaves it open, while preserving explicit dimensions. Return an empty list when unclear.
 """
 WORKTOP_CUTOUTS = """
 In each object's Understanding, also return worktop_cutouts (empty if none).

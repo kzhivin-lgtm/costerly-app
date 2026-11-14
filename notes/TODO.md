@@ -5854,6 +5854,11 @@ cause from the local screenshot alone.
   evidence before Parts. The current normalizer still maps the ribs to
   40 mm. Restoring the successful 9.16 finish cues in an offline replay
   reunites the seat with the ribs and right upright at 40 mm veneered MDF.
+  The 9.24 candidate recovers corroborated finish and reuses compatible
+  provisional sheet stock inside Parts. Offline Lev1 goes from nine to
+  eight sheet positions. Lev2 and Adda Parts replays match their controls.
+  Confirm the new finish cues on a fresh Lev1 model response, especially
+  the visible backing and underlayer, before deploying this candidate.
   Preserve explicit drawing materials. Reuse finish and nominal thickness
   where the evidence links panels, prefer compatible stock already in the
   material plan, and map thick finished panels to face layers and, where
