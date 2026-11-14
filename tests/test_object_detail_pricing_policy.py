@@ -441,7 +441,7 @@ def test_saved_led_label_uses_original_reference_price_metadata_without_changing
             return self
 
         def execute(self):
-            return SimpleNamespace(data=[{"model_price_id": price_id, "model_metadata": {"voltage_v": 24}}])
+            return SimpleNamespace(data=[{"model_price_id": price_id, "model_metadata": {"voltage_v": 24, "rated_w_per_m": 4.8}}])
 
     plan = {"lines": [line, {**line, "candidate_id": line["candidate_id"].replace("4000K", "3000K")}]}
     enriched = estimation._with_saved_led_catalog_specs(Query(), plan)
@@ -449,4 +449,4 @@ def test_saved_led_label_uses_original_reference_price_metadata_without_changing
     assert "voltage_v" not in line["purchasable_dimensions"]
     actual = enriched["lines"][0]
     assert estimation._plan_material_display_label(actual, family="hardware_electrical_component",
-                                                   name=actual["display_name"]) == "LED 4000 K 6 W/m 24 V"
+                                                   name=actual["display_name"]) == "LED 4000 K 4.8 W/m 24 V"

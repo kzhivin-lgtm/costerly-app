@@ -1,5 +1,12 @@
 # Done Log
 
+Estimation 9.35, work 3.17.4.6. The approved material families drive
+their catalog and Object Detail labels. Adda's LED label reports the
+supplier's 4.8 W/m rating. All 14 purchase lines retained their
+candidate IDs, amounts and prices in replay. The saved production
+Adda data and both browser widths rendered the new labels. See the
+[release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-935-labels-by-material-family).
+
 Estimation 9.34, work 3.17.4.6. Shared compact material titles and
 unit-driven quantity display. All 14 Adda purchase lines kept their
 exact costs and quantities. Verified 451 focused tests, both browser

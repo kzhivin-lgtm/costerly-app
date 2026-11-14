@@ -1,5 +1,27 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.35 labels by material family
+
+Work 3.17.4.6. Rollback is 9.34 at `9d41443`. Applies the approved
+family matrix to Company Catalog, Israel Reference and Object Detail.
+Use structured product attributes first. For legacy positions missing
+an attribute, preserve an explicit functional label from the catalog
+name or keep the canonical name available as evidence. Display labels
+can coincide for compatible items; their stock, offer IDs, Pricing Keys
+and exact prices are preserved. Ordinary plywood shows type and
+thickness. Special boards, finishes and treatments remain identifiable.
+Keep the stock format in Purchase Unit and the full chosen item name
+available in the material label tooltip.
+
+LED labels use the selected supplier rating, temperature and voltage.
+Adda shows 4.8 W/m and 24 V. Its 6 W/m driver sizing allowance and
+30 W/100 W selected drivers are unchanged. The 9.33 Adda replay
+matched all 14 candidate IDs, amounts, prices and allocations.
+Verified 3,945 Israel Reference positions and 48 Company Catalog
+records, the saved production Adda data, 467 focused tests, and
+browser fixtures at 1280 and 390 px. Authenticated production review
+remains open.
+
 ## Estimation 9.34 material labels and quantity display
 
 Work 3.17.4.6. Rollback is `estimation-v9.33-checkpoint`.
@@ -22,6 +44,107 @@ and 48 Company Catalog material records from the production snapshot.
 Browser fixtures at 1280 and 390 px verified the rendered labels,
 12.936 m displayed as 12.9 m, the absence of edits on focus/blur,
 and a staged 15.67 m edit saved at full precision.
+
+## Review matrix for material labels by family
+
+Owner-approved on 2026-11-14. The live Israel Reference audit
+found 59 active policies, 3,945 positions and 55 populated families.
+Use structured attributes evidenced for the chosen product. Exact
+stock format stays in Purchase Unit. Functional dimensions may
+identify the product. Prices alone cannot establish a material
+attribute. The LED price anchor is 24 V and rated 4.8 W/m. Adda's
+driver-sizing allowance is 6 W/m. The label shows the catalog rating
+and the calculation retains the sizing allowance.
+
+
+### Boards, wood and veneer
+
+| Family | Proposed label attributes |
+| --- | --- |
+| `plywood` | Plywood + thickness; explicit required service class if applicable |
+| `plywood_special` | Plywood + functional subtype (film-faced, anti-slip, flexible) + thickness |
+| `mdf_hdf` | MDF or HDF + thickness; selected veneer, laminate, lacquer or functional grade |
+| `melamine_faced_particleboard` | LDSP + thickness; exceptional grade or single-sided finish if selected |
+| `particleboard` | Particleboard + thickness; functional binder or grade if selected |
+| `fibreboard_hardboard` | Hardboard + thickness; selected oil-tempered or other functional grade |
+| `osb` | OSB class (OSB/2, OSB/3, OSB/4) + thickness where known |
+| `gypsum_board` | Gypsum board + thickness; moisture or fire grade if specified |
+| `timber_solid_wood_panel` | Species + solid timber panel + thickness; construction if distinct |
+| `wood_veneer` | Species + veneer; paper or fleece backing if selected |
+| `aluminium_composite_panel` | Aluminium composite panel + thickness; fire class if specified |
+| `composite_sandwich_panel` | Sandwich panel + thickness + core type |
+| `lightweight_sandwich_panel` | Lightweight panel + thickness + core type |
+
+### Glass, plastics and laminates
+
+| Family | Proposed label attributes |
+| --- | --- |
+| `glass` | Glass + thickness + selected treatment, e.g. Tempered safety |
+| `mirror` | Mirror + thickness; selected tint or safety backing where relevant |
+| `acrylic_pmma` | Acrylic + thickness; Cast or Extruded where specified |
+| `polycarbonate_petg_pvc_abs` | Actual polymer + thickness; functional grade if selected |
+| `sheet_plastic` | Actual polymer or grade, e.g. HDPE + thickness |
+| `hpl_cpl` | HPL or CPL + thickness; selected functional grade |
+| `compact_laminate` | Compact laminate + thickness; core type only if relevant to selected variant |
+| `edge_banding` | Actual material (ABS, PVC or Veneer) + width × thickness; décor match if required |
+| `decorative_film_foil` | Film type + working width or finish when needed to identify the product |
+| `vinyl_film` | Vinyl film + working width where it matters |
+
+### Stone and worktops
+
+| Family | Proposed label attributes |
+| --- | --- |
+| `natural_stone_slab` | Stone type + thickness; selected finish or price tier when applicable |
+| `engineered_quartz_mineral_hybrid` | Quartz or mineral hybrid + thickness + selected price tier when applicable |
+| `sintered_ultra_compact_surface` | Sintered surface + thickness + selected price tier when applicable |
+| `porcelain_ceramic_slab` | Porcelain or ceramic + thickness + selected price tier when applicable |
+| `solid_surface` | Solid surface + thickness; acrylic/polyester grade or price tier if relevant |
+| `terrazzo_engineered_agglomerate` | Terrazzo or agglomerate + thickness; binder type if relevant |
+
+### Metals
+
+| Family | Proposed label attributes |
+| --- | --- |
+| `sheet_metal` | Metal + thickness + explicit functional type, such as galvanized or perforated |
+| `round_tube` | Round tube + diameter; nonstandard parent metal and wall where needed |
+| `rectangular_tube` | Rectangular tube + cross-section; nonstandard parent metal and wall where needed |
+| `square_tube` | Square tube + cross-section; nonstandard parent metal and wall where needed |
+| `angle` | Angle + cross-section; parent metal when nonstandard |
+| `flat_bar` | Flat bar + width × thickness; parent metal when nonstandard |
+| `metal_flat_bar` | No current positions. Flat bar + metal + width × thickness |
+| `metal_profile_angle_channel` | No current positions. Profile type + metal + cross-section |
+| `metal_round_bar_rod_wire` | No current positions. Rod, bar or wire + metal + diameter |
+| `metal_tube` | No current positions. Tube type + metal + cross-section |
+
+### Hardware and electrical
+
+| Family | Proposed label attributes |
+| --- | --- |
+| `hardware_drawer_slide` | Mechanism or mounting type + nominal length; explicit load class or close/open feature |
+| `hardware_hinge` | Hinge type + fitting geometry or opening angle as relevant; distinctive mechanism |
+| `hardware_lift_system` | Lift type + force in N or load class when known |
+| `hardware_door_system` | Mechanism type + necessary compatibility size or load |
+| `hardware_drawer_system` | Drawer system type + nominal depth or side height when needed |
+| `hardware_storage_system` | Storage system type + working size or capacity when needed |
+| `hardware_furniture_system` | Furniture system type + compatibility dimensions when needed |
+| `hardware_handle` | Handle type + hole spacing if applicable; finish when selected and relevant |
+| `hardware_lock_latch` | Lock or latch type + operating variant when needed |
+| `hardware_connector` | Connector type + fitting diameter or mating size |
+| `hardware_fastener` | Fastener type + diameter × length; material or corrosion class when relevant |
+| `hardware_mounting_part` | Fitting type + mating diameter or size when needed |
+| `hardware_leg_caster` | Leg or caster type + height or wheel diameter; load rating where needed |
+| `hardware_electrical_component` | LED strip: temperature + rated W/m + voltage. Driver: voltage + rated W. LED profile: form + diffuser. Other items: electrical or fitting spec that determines compatibility |
+
+### Coatings, packaging and bought components
+
+| Family | Proposed label attributes |
+| --- | --- |
+| `paint_lacquer_stain` | Coating system + selected clear or pigmented finish and gloss class when relevant |
+| `primer` | Primer type + intended substrate where it matters |
+| `powder_coating` | Coating system + selected finish or colour class when relevant |
+| `filler_hardener_thinner` | Product function + compatible chemistry or system |
+| `packaging_material` | Packaging format + grade or physical spec when necessary |
+| `purchased_fabricated_component` | Component type + functional variant or fitting size as needed |
 
 ## Estimation 9.33 object purchase review and glass area
 

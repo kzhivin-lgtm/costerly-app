@@ -3199,12 +3199,13 @@ def list_price_catalog(access) -> list[dict]:
         )
         specifications = dict(material.get("specifications") or {})
         material_family = str(specifications.get("material_family") or "").strip()
-        canonical_name = str(material.get("canonical_name") or "Material")
+        stored_name = str(material.get("canonical_name") or "Material")
+        canonical_name = stored_name
+        offer_dimensions = offer.get("purchasable_dimensions") or {}
         # Format through the material component, but translate the global
         # resolver key back into its established user-facing entity first.
         if material_family:
             display_specifications = dict(specifications)
-            offer_dimensions = offer.get("purchasable_dimensions") or {}
             if isinstance(offer_dimensions, Mapping):
                 for field in ("length_mm", "width_mm", "depth_mm", "diameter_mm"):
                     if not display_specifications.get(field) and offer_dimensions.get(field):
@@ -3221,9 +3222,12 @@ def list_price_catalog(access) -> list[dict]:
                 "material_type": category,
                 "canonical_name": canonical_name,
                 "display_label": material_catalog_display_label(
-                    canonical_name, family=material_family,
+                    stored_name if material_family else canonical_name, family=material_family,
                     purchase_kind=str(offer.get("purchase_unit") or ""),
-                    specifications=specifications,
+                    specifications={**specifications, **{
+                        key: offer_dimensions[key] for key in ("voltage_v", "rated_w_per_m")
+                        if isinstance(offer_dimensions, Mapping) and key in offer_dimensions
+                    }},
                 ),
                 "identity_status": {
                     "tone": identity_status.tone,

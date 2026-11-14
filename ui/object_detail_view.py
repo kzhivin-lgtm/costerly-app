@@ -166,8 +166,12 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
         required_value = row.get("required_material_value")
         purchase_unit = str(row.get("purchase_unit") or "")
         display_unit = "" if required_unit == purchase_unit and required_unit in {"piece", "set"} else required_unit
+        name = row.get("item")
+        reference_name = row.get("material_reference_name")
+        title = f' title="{_escape(reference_name)}"' if reference_name and reference_name != name else ""
         return [
-            _source_marker(row.get("price_source")) + f'<span class="object-detail-material-name">{_escape(row.get("item"))}</span>',
+            _source_marker(row.get("price_source"))
+            + f'<span class="object-detail-material-name"{title}>{_escape(name)}</span>',
             _material_input_html(value=required_value, field="required_material", line_id=str(row.get("required_material_line_id") or ""), unit=display_unit,
                                  decimals=_material_quantity_decimals(required_unit)),
             _purchase_unit_html(row.get("purchase_unit")),

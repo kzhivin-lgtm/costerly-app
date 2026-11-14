@@ -611,10 +611,11 @@ def _preview_stock_cuts(allocations, object_id):
 
 
 def _with_saved_led_catalog_specs(client: Any, plan: dict[str, Any]) -> dict[str, Any]:
-    """Recover voltage for saved stock lines created before it was copied into the plan."""
+    """Recover the catalog rating and voltage for previously saved LED stock."""
     price_ids = {}
     for line in plan.get("lines") or ():
-        if (line.get("purchasable_dimensions") or {}).get("voltage_v"):
+        specs = {**(line.get("purchasable_dimensions") or {}), **(line.get("label_specifications") or {})}
+        if specs.get("voltage_v") and specs.get("rated_w_per_m"):
             continue
         name = str(line.get("display_name") or "")
         if line.get("purchase_kind") != "linear_stock" or not name.lower().startswith("led strip"):
@@ -644,10 +645,12 @@ def _with_saved_led_catalog_specs(client: Any, plan: dict[str, Any]) -> dict[str
 
 
 def _plan_material_display_label(line: dict[str, Any], *, family: str, name: object) -> str:
-    dimensions = dict(line.get("purchasable_dimensions") or {})
+    key_specs = dict(segment.split("=", 1) for segment in str(line.get("selection_key") or "").split("|")[1:]
+                     if "=" in segment)
     return material_catalog_display_label(
         name, family=family, purchase_kind=str(line.get("purchase_kind") or ""),
-        specifications=dimensions,
+        specifications={**key_specs, **(line.get("purchasable_dimensions") or {}),
+                        **(line.get("label_specifications") or {})},
     )
 
 
@@ -704,6 +707,7 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
                 if isinstance(fallback, dict) else line.get("display_name"))
         rows.append({
             "item": _plan_material_display_label(line, family=family, name=item),
+            "material_reference_name": item,
             "price_source": authority,
             "required_material_value": required_value, "required_material_unit": required_unit,
             "required_material_line_id": (

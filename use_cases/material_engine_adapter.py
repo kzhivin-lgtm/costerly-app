@@ -521,6 +521,8 @@ def material_plan_snapshot(
             "candidate_id": line.candidate_id,
             "authority": authorities.get(line.candidate_id),
             "display_name": display_names.get(line.candidate_id),
+            **({"label_specifications": purchase_forms[line.candidate_id]["label_specifications"]}
+               if purchase_forms.get(line.candidate_id, {}).get("label_specifications") else {}),
             "purchase_kind": line.purchase_kind,
             "purchasable_dimensions": dict(
                 purchase_forms.get(line.candidate_id, {}).get("purchasable_dimensions") or {}
@@ -1144,7 +1146,7 @@ def company_supply_candidates(
                 package_quantity=package_quantity,
                 authority="company",
                 display_name=str(item.get("canonical_name") or item.get("normalized_name") or ""),
-                offer_id=offer_id,
+                offer_id=offer_id, label_specifications=item.get("specifications"),
             ))
     return selection_key, tuple(sorted(result, key=lambda candidate: candidate.candidate_id))
 
@@ -1211,13 +1213,18 @@ def israel_reference_supply_candidates(
             if not price_id or typical is None:
                 continue
             unit = _canonical_unit(price.get("unit"))
+            metadata = price.get("model_metadata") or {}
+            label_specs = {**dict(position.get("specifications") or {})}
+            for key in ("rated_w_per_m", "voltage_v", "led_driver_watts", "colour_temperatures_k"):
+                if metadata.get(key) is not None:
+                    label_specs[key] = metadata[key]
             if family_code in _AREA_PURCHASE_FAMILIES:
                 if unit == "sqm":
                     result.append(MaterialSupplyCandidate(
                         candidate_id=f"israel-reference:{position_id}:{price_id}:area",
                         material_family=material_family, selection_key=selection_key, purchase_kind="area_direct",
                         price_per_purchase_unit=typical, currency=normalized_currency, authority="israel_reference",
-                        display_name=str(position.get("canonical_name") or ""), reference_price_id=price_id,
+                        display_name=str(position.get("canonical_name") or ""), reference_price_id=price_id, label_specifications=label_specs,
                     ))
             elif unit == "sqm":
                 for supply_format in formats:
@@ -1237,7 +1244,7 @@ def israel_reference_supply_candidates(
                         purchasable_dimensions=dimensions,
                         authority="israel_reference",
                         display_name=str(position.get("canonical_name") or ""),
-                        reference_price_id=price_id,
+                        reference_price_id=price_id, label_specifications=label_specs,
                     ))
             elif unit == "sheet":
                 # A source price expressed per sheet is safe only when the
@@ -1261,7 +1268,7 @@ def israel_reference_supply_candidates(
                         purchasable_dimensions=dimensions,
                         authority="israel_reference",
                         display_name=str(position.get("canonical_name") or ""),
-                        reference_price_id=price_id,
+                        reference_price_id=price_id, label_specifications=label_specs,
                     ))
             elif unit in _LINEAR_UNITS:
                 for supply_format in formats:
@@ -1271,7 +1278,6 @@ def israel_reference_supply_candidates(
                     if not format_id or length is None:
                         continue
                     is_edge_cut = family_code == "edge_banding"
-                    metadata = price.get("model_metadata") or {}
                     for key in ("voltage_v", "rated_w_per_m"):
                         if value := _positive(metadata.get(key)):
                             dimensions[key] = value
@@ -1285,7 +1291,7 @@ def israel_reference_supply_candidates(
                         purchasable_dimensions=dimensions,
                         authority="israel_reference",
                         display_name=str(position.get("canonical_name") or ""),
-                        reference_price_id=price_id,
+                        reference_price_id=price_id, label_specifications=label_specs,
                     ))
             elif unit == "kg":
                 specifications = dict(position.get("specifications") or {})
@@ -1315,7 +1321,7 @@ def israel_reference_supply_candidates(
                         purchase_kind=kind, price_per_purchase_unit=typical * kilograms,
                         currency=normalized_currency, purchasable_dimensions=dimensions,
                         authority="israel_reference", display_name=str(position.get("canonical_name") or ""),
-                        reference_price_id=price_id,
+                        reference_price_id=price_id, label_specifications=label_specs,
                     ))
             elif unit == "m3":
                 result.append(MaterialSupplyCandidate(
@@ -1324,7 +1330,7 @@ def israel_reference_supply_candidates(
                     purchase_kind="volume_direct", price_per_purchase_unit=typical,
                     currency=normalized_currency, authority="israel_reference",
                     display_name=str(position.get("canonical_name") or ""),
-                    reference_price_id=price_id,
+                    reference_price_id=price_id, label_specifications=label_specs,
                 ))
             elif unit in _REFERENCE_DISCRETE_PACKAGE_QUANTITIES:
                 driver_rating = _positive((price.get("model_metadata") or {}).get("led_driver_watts"))
@@ -1339,7 +1345,7 @@ def israel_reference_supply_candidates(
                     authority="israel_reference",
                     display_name=str(position.get("canonical_name") or ""),
                     purchasable_dimensions={"power_w": driver_rating} if driver_rating is not None else None,
-                    reference_price_id=price_id,
+                    reference_price_id=price_id, label_specifications=label_specs,
                 ))
     return selection_key, tuple(sorted(result, key=lambda candidate: candidate.candidate_id))
 
@@ -1582,7 +1588,9 @@ def build_material_plan(
                     selection_key = f"{selection_key}|led_driver_w={smallest}"
                     compatible = tuple(replace(candidate, selection_key=selection_key,
                                                candidate_id=f"{candidate.candidate_id}:led-driver",
-                                               display_name=f"{candidate.display_name}, {smallest} W")
+                                               display_name=f"{candidate.display_name}, {smallest} W",
+                                               label_specifications={**dict(candidate.label_specifications or {}),
+                                                                     "power_w": float(smallest)})
                                        for candidate in compatible)
             elif facts.get("composition_version") == "cb_parts_material_demand_v1":
                 if hint_tokens:
@@ -1612,10 +1620,12 @@ def build_material_plan(
                 selection_key = f"{selection_key}|variant={purchase_variant}"
                 compatible = tuple(
                     replace(candidate, candidate_id=f"{candidate.candidate_id}:variant:{purchase_variant}",
-                            selection_key=selection_key, display_name=(
-                                f"{candidate.display_name}, {purchase_variant}, {material['led_watts_per_m']} W/m"
-                                if material.get("led_watts_per_m") else f"{candidate.display_name}, {purchase_variant}"
-                            ))
+                            selection_key=selection_key, display_name=f"{candidate.display_name}, {purchase_variant}",
+                            label_specifications={
+                                **dict(candidate.label_specifications or {}),
+                                **({"colour_temperature_k": int(purchase_variant.removesuffix("K"))}
+                                   if re.fullmatch(r"\d{4}K", str(purchase_variant)) else {}),
+                            })
                     for candidate in compatible
                 )
             for candidate in compatible:
@@ -1889,6 +1899,7 @@ def build_material_plan(
                     ),
                     "package_quantity": float(candidate.package_quantity),
                     "kerf_mm": float(candidate.kerf_mm),
+                    "label_specifications": dict(candidate.label_specifications or {}),
                 },
             )
             for candidate_id, candidate in candidates.items()

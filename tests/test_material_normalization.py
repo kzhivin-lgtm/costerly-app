@@ -128,9 +128,52 @@ def test_material_catalog_display_names_preserve_purchase_identity_facts():
         ("Side-mount roller runner, 300 mm, 25 kg class", {}, "Side-mount roller runner 300 mm 25 kg class"),
         ("LED aluminium U-profile with diffuser", {}, "LED aluminium U-profile with diffuser"),
         ("LED strip connector, 24 V", {}, "LED strip connector 24 V"),
-        ("LED strip standard output, 4000K, 6 W/m", {"specifications": {"voltage_v": 24}}, "LED 4000 K 6 W/m 24 V"),
+        ("LED strip standard output, 4000K, 6 W/m", {"specifications": {"voltage_v": 24, "rated_w_per_m": 4.8}}, "LED 4000 K 4.8 W/m 24 V"),
         ("LED strip 3000K 4,8 W/m 12 V", {}, "LED 3000 K 4.8 W/m 12 V"),
     ]
     for name, kwargs, label in examples:
         assert material_catalog_display_label(name, **kwargs) == label
         assert material_catalog_display_label(label, **kwargs) == label
+
+
+def test_family_labels_use_structured_classifiers_and_keep_functional_variants():
+    from use_cases.material_normalization import material_catalog_display_label as label
+
+    assert label("Supplier sheet 2440 × 1220 mm", family="plywood", specifications={
+        "thickness": 18, "species": "birch", "grade": "B/BB",
+    }) == "Plywood 18 mm"
+    assert label("Plywood", family="plywood", specifications={
+        "thickness": 18, "required_species": "birch", "required_service_class": "exterior",
+    }) == "Plywood 18 mm Exterior Birch"
+    assert label("Plywood, 18 mm, Marine  BS 1088", family="plywood_special") == "Plywood 18 mm Marine BS 1088"
+    assert label("HDF raw panel", family="mdf_hdf", specifications={
+        "board_type": "hdf", "surface": "raw", "thickness": 6,
+    }) == "HDF 6 mm"
+    assert label("MDF", family="mdf_hdf", specifications={
+        "board_type": "mdf", "surface": "veneer_two_sided", "thickness": 18,
+    }) == "Veneered MDF 18 mm two-sided"
+    assert label("Plain catalog wording", family="rectangular_tube", specifications={
+        "nominal_size": "40x20", "material_subfamily": "standard_steel", "length": 6000,
+    }) == "Rectangular Tube 40 × 20 mm"
+    assert label("Clear safety glass", family="glass", specifications={
+        "thickness": 4, "treatment": "Tempered safety",
+    }) == "Glass 4 mm Tempered safety"
+    assert label("Edge banding 2400 × 1200 mm", family="edge_banding", specifications={
+        "substrate": "abs", "width_mm": 22, "thickness_mm": 2,
+    }) == "ABS Edge Banding 22 × 2 mm"
+    assert label("Natural stone slab, 20 mm, Granite, slab, premium colour tier", family="natural_stone_slab",
+                 specifications={"stone_type": "granite", "thickness": 20}) == "Granite 20 mm premium colour tier"
+    assert label("Lift-up flap system", family="hardware_lift_system",
+                 specifications={"force_n": 100}) == "Lift-up flap system 100 N"
+    assert label("Hinge, 110 degree", family="hardware_hinge",
+                 specifications={"opening_angle_deg": 110}) == "Hinge 110°"
+    assert label("Constant-voltage LED driver LS Slim 24 V", family="hardware_electrical_component",
+                 specifications={"led_driver_watts": 30}) == "LED Driver 24 V 30 W"
+
+
+def test_catalog_led_options_do_not_override_selected_colour_temperature():
+    from use_cases.material_normalization import material_catalog_display_label as label
+
+    specs = {"colour_temperatures_k": [3000, 4000], "voltage_v": 24, "rated_w_per_m": 4.8}
+    assert label("LED strip standard output", specifications=specs) == "LED 3000/4000 K 4.8 W/m 24 V"
+    assert label("LED strip standard output, 4000K, 6 W/m", specifications=specs) == "LED 4000 K 4.8 W/m 24 V"

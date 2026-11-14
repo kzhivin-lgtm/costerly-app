@@ -100,6 +100,7 @@ class MaterialSupplyCandidate:
     display_name: str = ""
     offer_id: str | None = None
     reference_price_id: str | None = None
+    label_specifications: Mapping[str, object] | None = None
 
 
 @dataclass(frozen=True)
