@@ -15,7 +15,7 @@ from use_cases.estimation_artifacts import _upload_immutable_artifact
 from use_cases.estimation_originals import ORIGINALS_BUCKET
 
 OPERATION = "estimation_overlay_pdf"
-VERSION = "estimation-v9.30-overlays"
+VERSION = "estimation-v9.36-overlays"
 _WORKER = ThreadPoolExecutor(max_workers=1, thread_name_prefix="estimation-overlay")
 _READS = ThreadPoolExecutor(max_workers=2, thread_name_prefix="estimation-overlay-status")
 _READ_LOCK = RLock()

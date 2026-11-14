@@ -1,5 +1,11 @@
 # Done Log
 
+Estimation 9.36, work 3.17.4.6. Front and Block PDFs can cover
+complementary views. The Lev2 replay showed all nine blocks and five
+drawer fronts across V03/V04. Both Adda objects kept their single
+axonometric crop. See the
+[release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-936-complementary-overlay-views).
+
 Estimation 9.35, work 3.17.4.6. The approved material families drive
 their catalog and Object Detail labels. Adda's LED label reports the
 supplier's 4.8 W/m rating. All 14 purchase lines retained their

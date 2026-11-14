@@ -13,12 +13,24 @@ Authenticated Approve and its latency remain to verify.
 Detection's existing grouping defect stays in its own backlog item.
 See the [9.21 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-921-object-detail-and-scoped-material-edits).
 
-PENDING, P1, USER REQUEST. Verify the Front and Block PDF links beside
-Elements on a new authenticated estimate, including access, late
-readiness, unavailable links and the first click on each PDF. The owner
-accepted the 9.30 format, protected by `estimation-v9.30-checkpoint`.
-The archived replay and local browser checks passed. See the
-[9.30 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-930-single-view-front-and-block-pdfs).
+PENDING, P1, USER REQUEST. Verify both PDF links beside Elements on a
+new authenticated estimate, including late readiness and first click.
+The owner verified access on 9.35 with Lev2 and found that the PDF
+omitted its second wing. 9.36 uses one crop when coverage is complete
+and adds complementary crops when needed. Prefer localized
+axonometry, then front elevation. Lev2 replay displays B01-B09 and
+all five drawers across two pages. Both Adda objects stay one page
+per layer. Verify the new PDFs from a fresh authenticated Upload.
+[9.36 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-936-complementary-overlay-views).
+
+PENDING, P0, VERIFIED PRODUCTION FINDING. Restore size and area takeoff
+on Lev2 `run_033dc1bc8da746728907e45d8a550cd7`. Trace why Block
+Geometry left all three axes empty on V04 blocks B07-B09 and why the
+separate worktop has no usable cut outline or material family. Compare
+the saved 9.4 geometry evidence with the fresh run. Verify priced
+HDF and LDSP by area and price the sink cutout as a separate operation.
+Preserve the recognized block and drawer counts. The current run's
+four fallback lines total ₪3,600 excluding VAT.
 
 PENDING, P2, DISCOVERED DURING VERIFICATION. Align the production
 dependency contract test with the pinned deployment dependencies.

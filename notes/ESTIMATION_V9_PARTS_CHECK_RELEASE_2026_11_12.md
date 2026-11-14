@@ -1,5 +1,30 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.36 complementary overlay views
+
+Work 3.17.4.6. Rollback is 9.35 at `3da89b8`.
+Block selects one view when it covers all localized blocks, otherwise
+selects a complementary pair when sufficient and keeps adding views
+if more are needed. Among suitable views it prefers native axonometry
+and front elevation. Front shows views with localized outlines and
+suppresses partial support appearances when the full support count is
+already visible. The two PDFs still publish in the background.
+
+Fresh 9.35 Lev2 `run_033dc1bc8da746728907e45d8a550cd7` saved nine
+Blocks and five drawer fronts. Its old PDF stopped at V03. Replay
+with the archived same-source PDF and geometry verifies B01-B06 and
+two drawers on V03, B07-B09 and three drawers on V04, and one crop per
+PDF on both Adda objects. Lev1 kept three drawers and two legs in
+the Front overlay across two views. No new model calls.
+
+The fresh Lev2 run priced three unmeasured backs as HDF, 12 carcass
+panels plus one divider as LDSP, and one unmeasured MDF worktop as
+fallback pieces. B07-B09 are missing the full geometry envelope.
+The sink cutout is present but has no resolved worktop family, so
+it also received a fallback. This remains a separate calculation
+investigation. The newly deployed PDF path needs a fresh authenticated
+Upload for acceptance.
+
 ## Estimation 9.35 labels by material family
 
 Work 3.17.4.6. Rollback is 9.34 at `9d41443`. Applies the approved
