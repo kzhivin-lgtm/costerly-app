@@ -14,11 +14,23 @@ Detection's existing grouping defect stays in its own backlog item.
 See the [9.21 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-921-object-detail-and-scoped-material-edits).
 
 ACTIVE, P1, USER REQUEST. Open the Front and Block PDF overlays beside
-Elements without delaying Estimation or resetting unsaved edits. Local
-PDF and browser checks passed. Verify the links on a new authenticated
-estimate, including access, late readiness, unavailable links and the
-first click on each PDF. See the
-[9.26 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-926-object-detail-overlay-pdfs).
+Elements without delaying Estimation or resetting unsaved edits. The
+owner approved the Adda corner sample. Estimation 9.30 renders one
+representative crop per PDF, preferring an axonometric view with usable
+evidence, then a front elevation. Front shows individual outlines and
+a legend. Block shows closed exterior outlines, visible edges between
+the outer faces, original IDs and separate parallel lines at shared
+seams. Local replay passed on Lev1, Lev2 and both Adda objects. Verify
+the links on a new authenticated estimate, including access, late
+readiness, unavailable links and the first click on each PDF. See the
+[9.30 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-930-single-view-front-and-block-pdfs).
+
+PENDING, P1, USER REQUEST. Agree on a furniture parts glossary for
+Elements and parts lists. Review the existing Parts roles and choose a
+clear English display name and definition for each. Start with Adda's
+`closure_exterior_skin` and `closure_interior_skin`, which represent
+opposite faces of the window closure. Record the mapping from internal
+roles to display names after the terminology is agreed.
 
 1. VERIFIED LOCALLY, P0, USER REQUEST. Remove the Material Plan completeness gate
    from Object Detail approval. Keep Approve available with the existing

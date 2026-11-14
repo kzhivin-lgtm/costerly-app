@@ -15,7 +15,7 @@ from use_cases.estimation_artifacts import _upload_immutable_artifact
 from use_cases.estimation_originals import ORIGINALS_BUCKET
 
 OPERATION = "estimation_overlay_pdf"
-VERSION = "estimation-v9.26-overlays"
+VERSION = "estimation-v9.30-overlays"
 _WORKER = ThreadPoolExecutor(max_workers=1, thread_name_prefix="estimation-overlay")
 _READS = ThreadPoolExecutor(max_workers=2, thread_name_prefix="estimation-overlay-status")
 _READ_LOCK = RLock()
@@ -51,7 +51,8 @@ def _publish(directory, company_id, run_id, estimate_id, revision, file_name):
         geometry = json.loads((output / "geometry" / "estimation-offline-all-islands-evidence.json").read_text())
         rendering = perf_counter()
         for object_id, layer, data in build_overlay_pdfs((source / "source.pdf").read_bytes(), result,
-                                                         geometry["documents"]["document"]):
+                                                         geometry["documents"]["document"],
+                                                         project_name=Path(file_name).stem):
             render_seconds += perf_counter() - rendering
             try:
                 path = _prefix(company_id, run_id, estimate_id, revision, object_id) + f"{layer}.pdf"

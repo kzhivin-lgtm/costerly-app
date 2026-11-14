@@ -1,5 +1,13 @@
 # Done Log
 
+Estimation 9.30 renders the approved single-view format for Front and
+Block. Eight one-page PDFs passed replay on Lev1, Lev2 and both Adda
+objects. Adda V01 showed distinct B01/B02 borders and face edges for
+B01 and B04. The renderer passed 117 focused tests and local browser
+checks at 1280 and 390 px. Authenticated
+testing on a fresh Upload remains open. See the
+[release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-930-single-view-front-and-block-pdfs).
+
 Estimation 9.26 adds private Front and Block PDFs beside Elements.
 Generation and storage run after Parts Check in a separate worker.
 Local browser checks at 1280 px and 390 px passed, along with 115

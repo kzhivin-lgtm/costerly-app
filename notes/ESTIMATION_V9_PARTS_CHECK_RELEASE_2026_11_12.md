@@ -1,5 +1,36 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.30 single-view Front and Block PDFs
+
+The owner approved the single-view Adda sample. The renderer builds one
+Front and one Block PDF per object. Each fits one representative crop
+on a single page. An axonometric view with usable geometry takes
+priority over a front elevation. The original drawing retains its PDF
+geometry and the overlays use the saved Front and Block Locator output.
+The Front legend counts the elements shown on the selected view.
+
+Block draws the closed outer boundary and uses source drawing lines to
+recover visible edges between outer faces where they are supported.
+Adjacent block borders are separated into parallel colored strokes.
+Block labels retain their IDs, and Block uses the thicker stroke from
+the approved sample. A footer identifies missing block marks on the chosen
+view. An empty overlay uses the selected source crop and states that
+the corresponding geometry is unavailable on that view.
+
+The background worker uses no additional model calls. Prior saved
+PDF links retain their format. The rollback baseline is the previous
+production release `8d29c6e` (9.26).
+
+Replaying frozen inputs for Lev1, Lev2 and both Adda objects created
+eight single-page PDFs. The Adda V01 replay verified seven Block IDs,
+three visible face-seam edges each for B01 and B04, and Front counts
+of eight hinged doors, six drawers, eight pull-out shelves, two mirrors
+and one open shelf. Median local generation took 39 ms for Lev1,
+42 ms for Lev2 and 697 ms for both Adda objects, excluding storage and
+link signing. Local browser checks at 1280 and 390 px passed for
+readiness, opening both previews and retaining draft material edits.
+The authenticated flow on a fresh Upload remains open.
+
 ## Estimation 9.26 Object Detail overlay PDFs
 
 The protected baseline is `estimation-v9.25-checkpoint` at `ff8436d`.
