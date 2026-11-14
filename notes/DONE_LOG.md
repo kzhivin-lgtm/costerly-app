@@ -1,5 +1,13 @@
 # Done Log
 
+Estimation 9.37 production checkpoint, work 3.17.4.6. The owner
+requested the checkpoint at runtime `ffdbd9f`. Fresh Lev2 confirmed
+two pages per overlay, all nine blocks, five drawers, the 3.0 m²
+worktop and a ₪400 catalog cutout. The archived purchase replay
+matches the production plan, including its one veneer allowance.
+Door-count reconciliation remains open. See the
+[checkpoint record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-937-production-checkpoint).
+
 Estimation 9.37, work 3.17.4.6. Recovered Lev2 return-side dimensions
 through the accepted elevation chain and the native plan. Preserved
 sheet family and thickness for parts with incomplete cut dimensions.

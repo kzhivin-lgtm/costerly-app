@@ -13,27 +13,31 @@ Authenticated Approve and its latency remain to verify.
 Detection's existing grouping defect stays in its own backlog item.
 See the [9.21 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-921-object-detail-and-scoped-material-edits).
 
-PENDING, P1, USER REQUEST. Verify both PDF links beside Elements on a
-new authenticated estimate, including late readiness and first click.
-The owner verified access on 9.35 with Lev2 and found that the PDF
-omitted its second wing. 9.36 uses one crop when coverage is complete
-and adds complementary crops when needed. Prefer localized
-axonometry, then front elevation. Lev2 replay displays B01-B09 and
-all five drawers across two pages. Both Adda objects stay one page
-per layer. Verify the new PDFs from a fresh authenticated Upload.
-[9.36 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-936-complementary-overlay-views).
+VERIFIED IN PRODUCTION, P1, USER REQUEST. Fresh Lev2
+`run_e9a4fcd6893d4908aaaa56cc7d7c55ef` on 9.37 published both Front
+and Block PDFs with V03/V04. All nine blocks and five drawers appear.
+Authentication, late readiness and first-click behavior remain covered
+by the prior local fixture and await direct live UI confirmation.
 
-VERIFIED OFFLINE, P0, USER REQUEST. Recheck Lev2 on a fresh 9.37
-Upload. Saved production Detection for `run_033dc1bc8da746728907e45d8a550cd7`
-has a V01-V03-V04 geometry chain. Block Geometry now measures the
-linked V04 blocks and uses the existing native plan checks for depth.
-The replay retains nine blocks and five drawers. Both PDFs show
-V03/V04. The outside worktop measures 3.0 m² including the bevel and
-without subtracting the opening. Where the contrasting finish is
-confirmed, split 2.8 m² quartz and 0.2 m² LDSP. The separate cutout
-uses Israel Reference at ₪400 ex VAT. Cabinet depth for B07/B09 is
-estimated from the worktop. Check the fixture hint against the source.
-[9.37 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-937-linked-elevations-and-material-identity).
+VERIFIED IN PRODUCTION, P0, USER REQUEST. 9.37 recovered measurements
+for the second Lev2 wing and its cut parts. The gross worktop measured
+3.0 m² including the bevel without subtracting the opening. HDF 6 mm
+and LDSP 17 mm resolved through Israel Reference, as did one cutout at
+₪400 ex VAT. B07/B09 retain a depth assumption. The fixture subtype
+remains a hint. See the [9.37 checkpoint](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-937-production-checkpoint).
+
+PENDING, P1, USER REPORT. Reconcile the 15 physical doors counted by the
+owner with the 17 hinged contours on the fresh 9.37 Lev2. Compare the
+two PDF elevations and the original axonometry. Determine whether the
+disputed contours are fixed faces or duplicate appearances before
+changing Front or Parts. The existing height rule produced 50 hinges;
+the two lift-up fronts and one unresolved front added no hinges.
+
+PENDING, P1, VERIFIED PRODUCTION FINDING. Review why Lev2 assigned
+veneered MDF 17 mm to four fixed panels (V03:C17, C01, C26 and C12)
+and why the resulting stock had no compatible catalog price. The
+fresh 9.37 plan included a ₪200 allowance. Preserve the proven
+worktop, carcass and cutout results while reviewing the finish evidence.
 
 PENDING, P2, DISCOVERED DURING VERIFICATION. Align the production
 dependency contract test with the pinned deployment dependencies.

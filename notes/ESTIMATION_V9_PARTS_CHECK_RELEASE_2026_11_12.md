@@ -32,6 +32,35 @@ dimension findings and held the quartz area open. Lev1 and Adda
 matched 9.36 in Parts, purchase lines and overlay views. All 154 focused
 tests passed. Fresh authenticated Upload remains the live check.
 
+### Estimation 9.37 production checkpoint
+
+Owner requested the checkpoint on 2026-11-14. The annotated
+`estimation-v9.37-checkpoint` tag pins `ffdbd9fbc6c2b5c49646046ae3afdd31e376e887`.
+Railway and Cloudflare served `estimation-v9.37-detection-v8.4.29`.
+The rollback baseline stays at `2cab833` (9.36).
+
+Fresh production Lev2 `run_e9a4fcd6893d4908aaaa56cc7d7c55ef` completed
+with nine blocks, 110 Parts rows and five drawers. Both published
+PDFs cover V03 and V04. The gross worktop area was 3.019621 m²
+(2.826887 m² quartz and 0.192734 m² contrasting LDSP).
+The plan bought four HDF 6 mm sheets, twelve LDSP 17 mm sheets and
+one stone cutout at ₪400 ex VAT. The separate veneered MDF 17 mm line
+was a ₪200 allowance for four fixed panels: V03:C17, C01, C26 and C12.
+That finish reading and catalog match remain open. The saved Material
+Plan reproduced from immutable Parts, inputs and the catalog snapshot.
+
+Front classified 17 hinged leaves (11 on V03 and six on V04), two
+lift-up fronts and one unresolved front. Parts used three hinges
+for 16 leaves above 600 mm and two for the 599 mm leaf V03:C13.
+The Company Catalog purchase line was 50 hinges at ₪17 each.
+The owner counted 15 doors. The two disputed contours are unconfirmed.
+Keep the Front count discrepancy separate from the hinge quantity rule.
+No estimation logic changed in this checkpoint.
+
+Private backup `backups/estimation-v9.37-checkpoint-2026-11-14/`
+includes the original PDF, live Parts and plan, both published PDFs,
+the per-contour hinge audit and offline reproduction checks.
+
 ## Estimation 9.36 complementary overlay views
 
 Work 3.17.4.6. Rollback is 9.35 at `3da89b8`.
