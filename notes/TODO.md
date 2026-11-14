@@ -198,6 +198,16 @@ zero unpriced demands are verified. Both objects remain in Review with
 [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#fresh-917-adda-production-verification)
 retains the evidence and replay comparison.
 
+Fresh 9.25 on the accepted Adda input reconfirms all nine block
+envelopes, 157 physical Parts rows and the 9,810.51 ILS purchase plan.
+Keep this item active. There are still 17 Parts dimension gaps, including
+three LED lengths, and no power supplies. Size one supply from the total
+LED length per object with 25% headroom. Verify the strip lengths and
+the corner plinth spans against the reviewed profile. Ten cuts exceed
+the quoted stock format in both versions; keep the agreed area-based
+pricing and distinguish it from a fabrication layout. See
+[9.25 Adda verification](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#adda-fresh-925-on-the-accepted-detection-input).
+
 DEFERRED, P1, USER REQUEST. After the full cycle is verified, measure stage
 time and model calls. Remove repeated analysis, reuse verified outputs and
 parallelize independent work. Recheck the same fixtures for part coverage,
@@ -5878,9 +5888,13 @@ cause from the local screenshot alone.
   [production audit](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#first-production-lev1-regression).
   9.25 passes the archived failure and two fresh Understanding responses
   with six sheet positions and one allowance for supports. Lev2 and
-  Adda saved Parts, block envelopes and Front counts match. Complete
-  Upload acceptance on a new Lev1 and compare the material plan, including
-  the one remaining support allowance. Keep the projected versus printed
+  Adda saved Parts, block envelopes and Front counts match. Fresh Lev1
+  Upload confirmed six sheet positions, 29 Parts and one support allowance.
+  Purchase acceptance remains partial. Verify the ownership and finish
+  of the central backing and flag a catalog sheet when a single cut does
+  not fit it. The 2180 x 1530 mm backing exceeds the quoted 2440 x 1220 mm
+  veneer sheet, and the CB Parts path estimates sheet counts by total
+  area with a waste factor. Retain projected versus printed
   thickness trace and retain the 9.23 rollback reference. See the
   [9.25 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-925-finish-evidence-and-compatible-sheet-purchasing).
   Preserve explicit drawing materials. Reuse finish and nominal thickness

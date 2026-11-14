@@ -2,9 +2,13 @@
 
 Estimation 9.25, work 3.17.4.6. Corrected finish and shared compatible
 sheet allowances. Lev1 went from 11 sheet positions to six on the
-retained failure and on two fresh Understanding responses. Physical
-scope matched all saved Lev2 and Adda controls. Full live Upload
-acceptance is pending. See the
+retained failure, two fresh Understanding responses and the production
+Upload. Production Lev1 costs 3,992.14 ILS before VAT with one support
+allowance. Fresh Adda Estimation matched all 157 physical Parts and
+9,810.51 ILS on the accepted Detection handoff. The owner requested a
+checkpoint before building PDF overlays. The runtime rollback is
+`estimation-v9.25-checkpoint` at `ff8436d`. Adda lighting, open dimensions
+and sheet-format warnings remain in TODO. See the
 [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-925-finish-evidence-and-compatible-sheet-purchasing).
 
 Estimation 9.24 deployed at owner request. GitHub main is `ce2408c`.

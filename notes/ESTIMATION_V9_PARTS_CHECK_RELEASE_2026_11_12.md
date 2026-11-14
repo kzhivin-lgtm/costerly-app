@@ -5,6 +5,11 @@
 Work 3.17.4.6. Use the first live 9.24 Lev1 regression as the failure
 witness and `estimation-v9.23-checkpoint` (`d00e5d9`) as the rollback
 baseline. Preserve the source dimensions, part counts and locked blocks.
+The owner requested the full checkpoint before the overlay work.
+`estimation-v9.25-checkpoint` preserves deployed runtime `ff8436d`.
+The private archive `backups/estimation-v9.25-checkpoint-2026-11-14/`
+contains the bundle, source controls, exact Lev1 Upload result, and
+fresh Adda Estimation results and request receipts.
 
 Understanding records role-level finish alongside the surface geometry.
 Parts retains explicit stock notes and conflicting visual evidence. It
@@ -41,6 +46,54 @@ model calls used only six saved Island PNG crops and the existing OCR and
 Detection context. Other responses were frozen in these replays. Lev2 and
 both Adda objects matched all parts, block envelopes and Front counts on
 their saved inputs. Live Upload verification is tracked separately.
+
+### Live Lev1 Upload
+
+`run_8394e4fdaec540e2b5c26e3bae5f29fd` published the 9.25 Parts Check
+and Material Plan without overrides. It kept three blocks, three
+drawers, two supports and 29 Parts rows. Actual materials are 3,992.14 ILS
+excluding VAT, with six sheet positions, 11 sheets in total and one
+400 ILS allowance for both supports. The two positions that differ
+from the offline procurement are 20 mm veneered MDF (five sheets
+instead of four) and 17 mm LDSP (two sheets instead of three).
+The live model described a matching grain behind the ribs, which led
+Parts to assign the 2180 x 1530 mm central backing to the 20 mm veneer
+position. That cut cannot fit the selected 2440 x 1220 mm sheet.
+The 30 mm upright is projected, and the 40 mm upright retains its
+explicit dimension. Both lower carcass sides remain 17 mm LDSP.
+The current sheet estimator rounds up total net area with 10 percent
+waste and does not establish that catalog cuts fit. The preceding
+shared allowance check confirms one common estimated sheet quantity
+and compatible source dimensions, not a generated cut layout.
+
+### Adda fresh 9.25 on the accepted Detection input
+
+Used the current runtime `ff8436d`, the original Adda PDF locally and the
+immutable two-object inputs of the 9.17 production benchmark
+`run_59e79abf1ba648da92382a809ec205a9`. All nine Estimation requests
+were fresh. Detection and Upload were outside this run. The cycle took
+89.46 s and used 61,283 input and 7,743 output tokens. No reviewed Parts
+profile, saved model replies, or manual adjustments entered the fresh run.
+
+The two objects retain the accepted V02/V03/V05/V07 and V01/V04/V06/V08
+partitions, and match the 2/7 block envelopes, Front contour identities,
+and all 24/133 part owners, roles, quantities and dimensions. A spelling
+difference in the birch plywood note leaves the purchase material
+unchanged. The current catalogs match all 11 benchmark purchase lines:
+9,810.51 ILS ex VAT, with zero unpriced requirements or Assumption
+Fallback. The 17 incomplete Parts dimensions remain.
+
+Compared with the earlier reviewed Adda profile, lighting is still
+incomplete. The runtime sees five lighting runs, leaves three lengths
+open, and budgets 3.95 m at 3000 K and 2.825 m at 4000 K. The reviewed
+profile budgets 8.700 m and 6.036 m respectively. The fresh run budgets
+one 5 m coil per temperature and emits no power supply. The current
+owner rule calls for one supply sized for the object's total length.
+Ten finished cuts exceed the quoted stock format in both the production
+benchmark and fresh 9.25 estimate. The agreed area-based estimate keeps
+the catalog price for these cuts. Fabrication layout remains outside
+the estimate. Fresh evidence and purchasing comparison are archived in
+`output/estimation-v9.25-adda-comparison/` in the handoff workspace.
 
 ## Estimation 9.24 Finish and compatible sheet stock candidate
 
