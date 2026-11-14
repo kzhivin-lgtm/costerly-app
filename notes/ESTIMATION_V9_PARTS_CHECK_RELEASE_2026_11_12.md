@@ -26,7 +26,7 @@ production witness. The left upright stays at 30 mm and the drawer fronts
 share 20 mm with the frame caps. The saved evidence does not identify the
 finish of the frame backing or tabletop underlayer. The Lev2 and Adda
 replays produced identical object reports and source coverage. One fresh
-visual reading remains to verify. No new runtime release is deployed.
+visual reading remains to verify.
 
 Approved experimental scope:
 
@@ -80,7 +80,12 @@ two supports and 29 Parts rows are preserved. The tabletop underlayer and
 frame backing lack corroborated finish in the saved reply and retain their
 existing stock. Lev2 and both Adda objects match the saved Parts reports.
 The surface binder, overlay and layer handoff passed local regression tests.
-Fresh Understanding and production rollout remain pending.
+The owner approved production deployment on 2026-11-14. GitHub main
+contains `ce2408c`. Railway deployment `dd232100-147a-4ba3-928c-7b2bd2360307`
+succeeded. The live Core and Cloudflare wrapper both report
+`estimation-v9.24-detection-v8.4.29`, and Core health is HTTP 200.
+Fresh production Understanding remains to verify. Rollback target is
+`estimation-v9.23-checkpoint` at `d00e5d9`.
 
 ## Estimation 9.23 Object Detail save latency
 

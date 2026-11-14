@@ -5858,13 +5858,14 @@ cause from the local screenshot alone.
   provisional sheet stock inside Parts. Offline Lev1 goes from nine to
   eight sheet positions. Lev2 and Adda Parts replays match their controls.
   Confirm the new finish cues on a fresh Lev1 model response, especially
-  the visible backing and underlayer, before deploying this candidate.
+  the visible backing and underlayer. The owner approved production
+  deployment before this fresh verification. 9.24 is live at `ce2408c`.
   The 9.24 experiment binds visual finish to a surface, reads explicit
   stock before fitted sizes, and costs an eligible 40 mm veneered panel as
   two 20 mm cuts. Lev1 now has seven sheet positions in the saved replay.
   Fresh model surface evidence still needs verification, particularly
   for the frame backing and tabletop underlayer. Review the source overlay,
-  Parts and purchase demand before promotion. See the [9.24 experiment](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-924-finish-and-compatible-sheet-stock-candidate).
+  Parts and purchase demand before accepting the production result. See the [9.24 experiment](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-924-finish-and-compatible-sheet-stock-candidate).
   Preserve explicit drawing materials. Reuse finish and nominal thickness
   where the evidence links panels, prefer compatible stock already in the
   material plan, and map thick finished panels to face layers and, where
