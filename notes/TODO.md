@@ -13,17 +13,17 @@ Authenticated Approve and its latency remain to verify.
 Detection's existing grouping defect stays in its own backlog item.
 See the [9.21 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-921-object-detail-and-scoped-material-edits).
 
-ACTIVE, P1, USER REQUEST. Open the Front and Block PDF overlays beside
-Elements without delaying Estimation or resetting unsaved edits. The
-owner approved the Adda corner sample. Estimation 9.30 renders one
-representative crop per PDF, preferring an axonometric view with usable
-evidence, then a front elevation. Front shows individual outlines and
-a legend. Block shows closed exterior outlines, visible edges between
-the outer faces, original IDs and separate parallel lines at shared
-seams. Local replay passed on Lev1, Lev2 and both Adda objects. Verify
-the links on a new authenticated estimate, including access, late
-readiness, unavailable links and the first click on each PDF. See the
+PENDING, P1, USER REQUEST. Verify the Front and Block PDF links beside
+Elements on a new authenticated estimate, including access, late
+readiness, unavailable links and the first click on each PDF. The owner
+accepted the 9.30 format, protected by `estimation-v9.30-checkpoint`.
+The archived replay and local browser checks passed. See the
 [9.30 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-930-single-view-front-and-block-pdfs).
+
+PENDING, P2, DISCOVERED DURING VERIFICATION. Align the production
+dependency contract test with the pinned deployment dependencies.
+`test_production_dependencies_are_exactly_pinned` fails on both 9.26
+and 9.30 because its expected list omits existing entries.
 
 PENDING, P1, USER REQUEST. Agree on a furniture parts glossary for
 Elements and parts lists. Review the existing Parts roles and choose a

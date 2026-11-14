@@ -2,6 +2,12 @@
 
 ## Estimation 9.30 single-view Front and Block PDFs
 
+The owner accepted the release on 2026-11-14. The protected runtime tag
+`estimation-v9.30-checkpoint` identifies `a459aad7cae65dd5f234563e52992cc8522b9ed1`.
+Production Core served `estimation-v9.30-detection-v8.4.29` with health
+`ok`. The Cloudflare wrapper returned HTTP 200. Use this tag as the
+starting point for subsequent Estimation work.
+
 The owner approved the single-view Adda sample. The renderer builds one
 Front and one Block PDF per object. Each fits one representative crop
 on a single page. An axonometric view with usable geometry takes
@@ -30,6 +36,18 @@ and one open shelf. Median local generation took 39 ms for Lev1,
 link signing. Local browser checks at 1280 and 390 px passed for
 readiness, opening both previews and retaining draft material edits.
 The authenticated flow on a fresh Upload remains open.
+
+The private archive `backups/estimation-v9.30-checkpoint-2026-11-14/`
+preserves the Git bundle, source PDFs, exact renderer inputs, all eight
+PDFs and PNGs, verification records and rollback instructions. The
+archive replay matched all eight rendered pages pixel for pixel using
+Lev1 V04, Lev2 V03, the straight Adda V02 and the corner Adda V01. The
+checks cover the saved recognition output and rendering. A new Upload
+would also exercise live recognition, storage and private link signing.
+The checkpoint suite passed 34 checks. Its one failure,
+`test_production_dependencies_are_exactly_pinned`, reproduced on 9.26:
+the test's expected dependency list omits existing production entries.
+The dependency manifests and the test are identical at both releases.
 
 ## Estimation 9.26 Object Detail overlay PDFs
 
