@@ -1,5 +1,12 @@
 # Done Log
 
+Estimation 9.25, work 3.17.4.6. Corrected finish and shared compatible
+sheet allowances. Lev1 went from 11 sheet positions to six on the
+retained failure and on two fresh Understanding responses. Physical
+scope matched all saved Lev2 and Adda controls. Full live Upload
+acceptance is pending. See the
+[release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-925-finish-evidence-and-compatible-sheet-purchasing).
+
 Estimation 9.24 deployed at owner request. GitHub main is `ce2408c`.
 Railway and Cloudflare serve 9.24 with Core health HTTP 200. The Lev1
 offline replay has seven sheet positions, down from nine. Fresh production

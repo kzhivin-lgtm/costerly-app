@@ -613,12 +613,13 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
         requirement_ids = {
             str(allocation.get("material_requirement_id") or "") for allocation in allocations
         }
-        fallback = (
-            assumption_by_requirement[next(iter(requirement_ids))]
-            if authority == "A" and len(requirement_ids) == 1
-            and next(iter(requirement_ids), "") in assumption_by_requirement else None
-        )
         selection_key = str(line.get("selection_key") or "")
+        fallback = None
+        if authority == "A":
+            fallback = next((item for req in sorted(requirement_ids)
+                             if (item := assumption_by_requirement.get(req))
+                             and (item.get("selection_key") == selection_key
+                                  or (len(requirement_ids) == 1 and not item.get("selection_key")))), None)
         family = (fallback or {}).get("material_family") or selection_key.split("|", 1)[0]
         project_required, _ = _required_material_volume(line["allocations"], purchase_kind=purchase_kind)
         dimensions = line.get("purchasable_dimensions") or {}

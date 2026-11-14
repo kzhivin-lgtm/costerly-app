@@ -8,6 +8,7 @@ project-level purchase-plan presentation is being connected.
 
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass, replace
 from datetime import date
 from decimal import Decimal, InvalidOperation, ROUND_CEILING, ROUND_HALF_UP
@@ -560,11 +561,8 @@ def _assumption_candidate(
         purchase_kind, rationale_unit, dimensions = "piece", "piece", None
     else:
         purchase_kind, rationale_unit, dimensions = "direct", "piece", None
-    # An A is a priced estimate-local fallback, not a physically compatible
-    # substitute for another demand which merely shares the same incomplete
-    # C/I pricing key.  Keep it requirement-scoped so, for example, a painted
-    # facade sheet and an unspecified paint finish never need one impossible
-    # purchase candidate to satisfy both a sheet and a direct demand.
+    # Allowances start requirement-scoped. The plan can share finished sheet
+    # stock only after checking physical compatibility and material identity.
     resolved_key = _assumption_selection_key(
         material_family=material_family, object_id=object_id, requirement_id=requirement_id,
     )
@@ -619,6 +617,21 @@ def _sheet_candidate_fits_finished_parts(
         if not unrotated and not rotated:
             return False
     return True
+
+
+def _shared_sheet_allowance_key(fallback, parts, candidate):
+    """Identify interchangeable sheet allowances without conflating priced requirements."""
+    spec = fallback["specification"]
+    if (not fallback["share_sheet_allowance"] or candidate.purchase_kind != "sheet" or not parts
+            or fallback["reason_code"] != "no_company_or_israel_candidate"
+            or not fallback["selection_key"] or _positive(spec.get("thickness_mm")) is None
+            or not _sheet_candidate_fits_finished_parts(candidate, parts)):
+        return None
+    return (fallback["object_id"], candidate.material_family, fallback["selection_key"],
+            normalize_material_phrase(candidate.display_name), fallback["finish_group"],
+            json.dumps(spec, sort_keys=True, default=str),
+            tuple(sorted(candidate.purchasable_dimensions.items())), candidate.currency,
+            candidate.price_per_purchase_unit)
 
 
 def _present_value(value: Any) -> bool:
@@ -1324,6 +1337,8 @@ def build_material_plan(
                     "reason_code": reason_code,
                     "resolution": "assumption_fallback",
                     "parts": [dict(part) for part in parts],
+                    "share_sheet_allowance": facts.get("composition_version") == "cb_parts_material_demand_v1",
+                    "finish_group": material.get("finish_group"),
                 })
 
             parts = parts_by_requirement.get(requirement_id) or []
@@ -1594,28 +1609,48 @@ def build_material_plan(
                 reasons.add("assumption_fallback")
                 continue
             demands.append(direct_demand)
+    allowance_candidates = {}
+    sheet_groups = defaultdict(list)
+    for fallback in assumption_fallbacks:
+        if not allow_estimator_allowance:
+            continue
+        parts = tuple(item for item in fallback["parts"] if isinstance(item, Mapping))
+        owner = str(fallback["object_id"]), str(fallback["material_requirement_id"])
+        material = {"source_name": fallback["source_name"], "family": fallback["material_family"],
+                    "specification": fallback["specification"], "unit": fallback.get("unit")}
+        candidate, priced = _assumption_candidate(
+            object_id=owner[0], requirement_id=owner[1], material=material,
+            selection_key=fallback.get("selection_key"), parts=parts, reason_code=str(fallback["reason_code"]),
+        )
+        allowance_candidates[owner] = candidate, priced["assumption_price"]
+        if (key := _shared_sheet_allowance_key(fallback, parts, candidate)) is not None:
+            sheet_groups[key].append(owner)
+    for key, owners in sheet_groups.items():
+        if len(owners) < 2:
+            continue
+        digest = sha256(json.dumps(key, default=str).encode()).hexdigest()[:20]
+        candidate = allowance_candidates[owners[0]][0]
+        shared = replace(candidate, candidate_id=f"assumption-sheet:{digest}",
+                         selection_key=f"{candidate.material_family}|assumption_sheet={digest}")
+        for owner in owners:
+            allowance_candidates[owner] = shared, allowance_candidates[owner][1]
+
     for fallback in assumption_fallbacks:
         object_id = str(fallback["object_id"])
         requirement_id = str(fallback["material_requirement_id"])
         parts = tuple(item for item in fallback.pop("parts", []) if isinstance(item, Mapping))
         source_total_quantity = fallback.pop("source_total_quantity", None)
+        fallback.pop("share_sheet_allowance")
+        fallback.pop("finish_group")
         if not allow_estimator_allowance:
             fallback["resolution"] = "assumption_required"
             unresolved.append(f"{object_id}:{requirement_id}")
             continue
-        material = {
-            "source_name": fallback["source_name"], "family": fallback["material_family"],
-            "specification": fallback["specification"], "unit": fallback.get("unit"),
-        }
-        candidate, priced_fallback = _assumption_candidate(
-            object_id=object_id, requirement_id=requirement_id, material=material,
-            selection_key=fallback.get("selection_key"), parts=parts,
-            reason_code=str(fallback["reason_code"]),
-        )
+        candidate, assumption_price = allowance_candidates[object_id, requirement_id]
         candidates[candidate.candidate_id] = candidate
         fallback.update({
-            "selection_key": candidate.selection_key, "unit": priced_fallback["unit"],
-            "assumption_price": priced_fallback["assumption_price"],
+            "selection_key": candidate.selection_key, "unit": assumption_price["unit"],
+            "assumption_price": assumption_price,
         })
         override = overrides.get((object_id, requirement_id)) or {}
         override_unit = str(override.get("unit") or "")

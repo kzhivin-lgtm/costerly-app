@@ -5876,6 +5876,13 @@ cause from the local screenshot alone.
   separate ownership, usage and provenance. The saved LDSP 40 mm pair
   nests on one fallback sheet in the diagnostic. See the
   [production audit](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#first-production-lev1-regression).
+  9.25 passes the archived failure and two fresh Understanding responses
+  with six sheet positions and one allowance for supports. Lev2 and
+  Adda saved Parts, block envelopes and Front counts match. Complete
+  Upload acceptance on a new Lev1 and compare the material plan, including
+  the one remaining support allowance. Keep the projected versus printed
+  thickness trace and retain the 9.23 rollback reference. See the
+  [9.25 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-925-finish-evidence-and-compatible-sheet-purchasing).
   Preserve explicit drawing materials. Reuse finish and nominal thickness
   where the evidence links panels, prefer compatible stock already in the
   material plan, and map thick finished panels to face layers and, where

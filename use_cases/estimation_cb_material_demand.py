@@ -20,7 +20,7 @@ _ROLES = {
                     "frame_cap", "frame_side", "vertical_rib", "plinth_front", "plinth_return",
                     "plinth_visible_run", "closure_exterior_skin"), "visible_sheet"),
     **dict.fromkeys(("tabletop", "shared_worktop"), "worktop_sheet"),
-    "tabletop_underlayer": "internal_sheet",
+    "tabletop_underlayer": "worktop_substrate",
     "support_leg": "leg", "drawer_slide": "drawer_slide", "hinge": "hinge", "gas_lift": "gas_lift",
     "mirror_glass": "mirror",
 }
@@ -34,6 +34,7 @@ _ROLE_FAMILY_PREFERENCE = {
     "carcass_sheet": _FAMILY_PREFERENCE["internal_sheet"],
     "backing_sheet": ("mdf_hdf",),
     "visible_sheet": _FAMILY_PREFERENCE["internal_sheet"],
+    "worktop_substrate": _FAMILY_PREFERENCE["worktop_sheet"],
     "mirror": ("mirror",),
 }
 _MATERIAL_NAMES = {**_CONSTRUCTION_MATERIAL_NAMES, "mirror": "Mirror"}
@@ -368,7 +369,10 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                 spec["thickness_mm"] = thickness_mm
             basis = "source_evidence" if material_refs else "construction_assumption"
             name = notes[0] if notes else identity_hint or _MATERIAL_NAMES.get(family, row.get("material_hint") or row["role"])
-            if family == "mdf_hdf" and not material_refs and role in {"carcass_sheet", "backing_sheet", "internal_sheet"}:
+            plain_worktop = (row["role"] == "tabletop" and not notes and has_sheet_geometry
+                             and any(cue["finish"] == "plain" for cue in row.get("finish_surfaces", ())))
+            if family == "mdf_hdf" and not material_refs and (
+                    plain_worktop or role in {"carcass_sheet", "backing_sheet", "internal_sheet", "worktop_substrate"}):
                 spec.update(board_type="hdf" if role == "backing_sheet" else "mdf", surface="raw")
                 if role == "backing_sheet":
                     name = "HDF"
@@ -395,8 +399,10 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                 if _positive(length.get("mm")):
                     spec["depth_mm"] = length["mm"]
             variant = row.get("colour_temperature_k") if unit == "m" else None
+            finish_group = visual_stock.get("finish_group") if visible_veneer else None
             demand_role = "visible_sheet" if visible_veneer else role
-            key = (demand_role, family, name, basis, unit, tuple(sorted(spec.items())), fallback_reason, variant)
+            key = (demand_role, family, name, basis, unit, tuple(sorted(spec.items())), fallback_reason,
+                   variant, finish_group)
             if key not in materials:
                 materials[key] = {
                     "requirement_id": f"cb-material-{len(materials) + 1:03d}",
@@ -410,6 +416,8 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                     materials[key]["identity_hint"] = identity_hint
                 if variant:
                     materials[key]["purchase_variant"] = f"{variant}K"
+                if finish_group:
+                    materials[key]["finish_group"] = finish_group
             material = materials[key]
             material["evidence_refs"] = list(dict.fromkeys([
                 *material["evidence_refs"], *material_refs, *(visual_stock.get("refs", ()) if visible_veneer else ()),

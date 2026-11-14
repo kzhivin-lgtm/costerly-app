@@ -1,5 +1,47 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.25 Finish evidence and compatible sheet purchasing
+
+Work 3.17.4.6. Use the first live 9.24 Lev1 regression as the failure
+witness and `estimation-v9.23-checkpoint` (`d00e5d9`) as the rollback
+baseline. Preserve the source dimensions, part counts and locked blocks.
+
+Understanding records role-level finish alongside the surface geometry.
+Parts retains explicit stock notes and conflicting visual evidence. It
+rejects a broad uncorroborated raster side mark as a basis for changing
+carcass stock. Across a unique connection in elevation, matching
+visible decor can support a missing finish on the frame sides or base
+cover. Adjacent dimensions and the visible cues remain in the part
+trace. Parts estimates the unmarked central backing from the attached
+carcass stock. When a corroborated exposed carcass side and the drawer
+fronts use one decor, the side can use the nearby provisional face stock.
+Parts recalculates adjoining cuts and drawer clearances. Printed
+dimensions and explicit stock notes retain priority.
+
+The 40 mm veneer estimate purchases two 20 mm cuts for each eligible
+finished part. A plain tabletop and its substrate can be priced as MDF
+with separate cut geometry. Material Engine shares one sheet allowance
+inside an object where the catalog key, full specification, known decor,
+price and stock format agree and each cut fits. It nests the actual cuts
+and retains each requirement and its cost allocation. The original
+Lev1 pair `cb-material-009` and `cb-material-013` reproduced one
+2440 x 1220 sheet and 200 ILS in an isolated procurement test.
+
+The repaired Lev1 plan has six sheet positions, one allowance for the
+supports, and materials of 3,969.98 ILS excluding VAT. 9.24 had 11 sheet
+positions, seven allowances and 3,751.72 ILS at production. The comparison
+uses the archived catalog and no manual overrides. The repaired estimate
+keeps one object, three blocks, three equal drawer fronts, two supports
+and 29 Parts rows. The backing's 17 mm stock and the plain tabletop's
+MDF substrate are construction assumptions. A final fresh Understanding
+response took 25.537 s, 17,523 input and 1,391 output tokens. An earlier
+fresh response and the replay of retained 9.24 finish evidence produced
+the same procurement quantities and total with the final code. The two
+model calls used only six saved Island PNG crops and the existing OCR and
+Detection context. Other responses were frozen in these replays. Lev2 and
+both Adda objects matched all parts, block envelopes and Front counts on
+their saved inputs. Live Upload verification is tracked separately.
+
 ## Estimation 9.24 Finish and compatible sheet stock candidate
 
 Rollback baseline `estimation-v9.23-checkpoint`. Understanding prefers the

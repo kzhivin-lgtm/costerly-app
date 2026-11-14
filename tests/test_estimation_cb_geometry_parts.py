@@ -9,7 +9,8 @@ from PIL import Image
 from tools.estimation_block_geometry import path_spans
 from tools.probe_estimation_v8_3 import MAX_FINISH_SURFACES, classify_islands, write_finish_overlays
 from use_cases.estimation_cb_geometry_parts import (
-    _compatible_frame_stock, dimension, equal_drawer_run, finish_visible_parts, stock, visible_grain_evidence,
+    _compatible_frame_stock, _structural_finish_links, dimension, equal_drawer_run, finish_visible_parts, stock,
+    visible_grain_evidence,
 )
 
 
@@ -29,6 +30,10 @@ def test_equal_horizontal_drawers_preserve_individual_dimension_or_stack():
     faces, box = equal_drawer_run(view, printed, ["A", "B"], width, sheet)
     assert [item["mm"] for item in faces] == [476, 200]
     assert box["mm"] == 468
+    same_faces, narrower_box = equal_drawer_run(
+        view, printed, ["A", "B"], width, sheet, side_sheet=dimension(20, "construction_assumption"),
+    )
+    assert same_faces == faces and narrower_box["mm"] == 466
     assert equal_drawer_run(view, printed, ["B", "C"], width, sheet) == (None, None)
 
     printed["view-1"].append({"axis": "x", "bounds": [10, 130], "value_mm": 480, "source_id": "front-width"})
@@ -80,6 +85,30 @@ def test_parts_recovers_missing_finish_from_observed_characteristic():
     assert seat["dimensions"]["thickness"]["projected_mm"] == 39
     assert seat["visual_stock"]["refs"] == ["understanding:characteristic:1"]
     assert "tabletop" not in visible_grain_evidence(understanding)
+
+
+def test_structural_finish_links_fill_missing_surfaces_and_respect_conflicts():
+    frame = {"id": "A", "basis": "matched_framed_panel",
+             "appearances": [{"view_id": "front", "bbox": [0, 10, 150, 71]}]}
+    drawers = {"id": "D", "basis": "shared_drawer_frame",
+               "appearances": [{"view_id": "front", "bbox": [1, 72, 149, 98]}]}
+    distant = {"id": "F", "basis": "shared_drawer_frame",
+               "appearances": [{"view_id": "front", "bbox": [200, 72, 350, 98]}]}
+    surfaces = [{"role": role, "view_id": "axon", "finish": "wood_grain", "finish_group": "oak"}
+                for role in ("frame_cap", "vertical_rib", "drawer_front")]
+    understanding = {"finish_surfaces": surfaces}
+    links = _structural_finish_links([frame, drawers, distant], understanding, visible_grain_evidence(understanding))
+    assert set(links) == {("A", "frame_side"), ("D", "seat_cover")}
+    assert links["D", "seat_cover"]["refs"] == ["axon", "front"]
+
+    understanding["wood_grain"] = [{"role": "tabletop", "view_id": "axon", "finish_group": "oak"},
+                                   {"role": "frame_backing", "view_id": "axon", "finish_group": "oak"}]
+    surfaces.extend({"role": role, "view_id": "axon", "finish": "plain", "finish_group": "paint"}
+                    for role in ("seat_cover", "tabletop"))
+    grain = visible_grain_evidence(understanding)
+    assert "tabletop" not in grain
+    assert grain["frame_backing"]["material"] == "veneered_mdf"
+    assert set(_structural_finish_links([frame, drawers], understanding, grain)) == {("A", "frame_side")}
 
 
 def test_part_stock_reuse_preserves_printed_thickness_and_separate_finishes():

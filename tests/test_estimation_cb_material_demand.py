@@ -71,6 +71,18 @@ def test_compatible_visible_wood_grain_parts_share_one_veneered_mdf_demand():
     assert [source["role"] for source in material["part_sources"]] == ["seat_cover", "frame_side"]
 
 
+def test_supported_worktop_substrate_defaults_to_raw_mdf_and_keeps_its_cut():
+    underlayer = _part("tabletop_underlayer", quantity=1)
+    underlayer["dimensions"]["thickness"]["mm"] = 40
+    demand = _build([underlayer], {"melamine_faced_particleboard", "mdf_hdf"})
+    material, = demand["materials"]
+    cut, = demand["parts"]
+    assert material["family"] == "mdf_hdf"
+    assert material["specification"] == {"board_type": "mdf", "surface": "raw", "thickness_mm": 40}
+    assert material["basis"] == "construction_assumption"
+    assert (cut["length_mm"], cut["width_mm"], cut["quantity"]) == (780, 600, 1)
+
+
 def test_veneered_layup_keeps_finished_part_and_combines_material_cuts():
     visual = {"surface": "wood_grain", "refs": ["view-1"], "material": "veneered_mdf"}
     seat = _part("seat_cover", visual_stock=visual, sheet_layup={"finished_mm": 40, "layer_mm": 20, "layer_count": 2})

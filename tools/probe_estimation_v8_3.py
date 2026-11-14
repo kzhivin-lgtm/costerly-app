@@ -56,6 +56,10 @@ Use {"role":"...", "view_id":"...", "bbox_crop_1000":[left,top,right,bottom],
 Use 0–1000 coordinates relative to the clean crop. Locate the visible surface itself.
 Finish is wood_grain, plain, unclear or solid_wood. Use unclear when the finish is unreadable.
 Base the finish on the surface's visible grain, colour and drawing notes.
+Also return wood_grain as an independent list of confirmed roles, using
+{"role":"...", "view_id":"...", "finish_group":"...", "material":"veneered_mdf"}.
+If a role's wood grain is clear but the box is hard to draw, retain the role evidence.
+Leave a role out of wood_grain when parts with that role show different finishes.
 Treat a clear wood-grain pattern on a sheet or panel as veneer and choose veneered MDF
 as the estimating substrate when the drawing does not specify a different material.
 Do not infer solid wood from grain, colour or a species name. Choose "solid_wood" only
@@ -70,6 +74,10 @@ they share a role. Use the same finish group only for corroborated matching deco
 Allowed roles: seat_cover (seat or base cover), drawer_front, door_front, lift_up_front,
 fixed_panel, frame_cap, frame_side, frame_backing, vertical_rib, tabletop,
 tabletop_underlayer (visible lower plate), carcass_side (visible exterior sides).
+Use frame_side for a side closing a decorative frame and carcass_side for a side
+closing a storage carcass. Use frame_backing for the panel behind rails or ribs;
+fixed_panel means a separate closure. Compare the lower cover to the extension
+before naming either surface. Each finish group identifies one decor across views.
 If one crop shows the same finish on several roles, report each role separately and give
 them the same short finish_group. Use different groups for visibly different finishes.
 Check the seat or top cover, operating fronts, outer sides and decorative frame separately

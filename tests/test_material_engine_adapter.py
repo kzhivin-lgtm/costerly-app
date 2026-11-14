@@ -1,6 +1,8 @@
 from datetime import date
 from decimal import Decimal
 
+import pytest
+
 from use_cases.material_engine_adapter import (
     company_supply_candidates,
     israel_reference_supply_candidates,
@@ -1024,6 +1026,31 @@ def test_assumption_fallbacks_with_one_incomplete_ci_key_stay_physically_separat
         "assumption:cabinet-a:paint_lacquer_stain:finish",
         "assumption:cabinet-a:paint_lacquer_stain:visible_facade",
     }
+
+
+@pytest.mark.parametrize(("specification", "finish", "expected"), [
+    ({"thickness_mm": 18}, "oak", 1),
+    ({"thickness_mm": 20}, "oak", 2),
+    ({"thickness_mm": 18}, "walnut", 2),
+])
+def test_parts_check_shares_only_interchangeable_sheet_allowances(specification, finish, expected):
+    facts = _facts("case", "side")
+    facts["composition_version"] = "cb_parts_material_demand_v1"
+    facts["materials"][0].update(material_role="visible_sheet", finish_group="oak", unit=None)
+    facts["materials"].append({
+        **facts["materials"][0], "requirement_id": "lower-panel", "material_role": "internal_sheet",
+        "specification": specification, "finish_group": finish,
+    })
+    facts["parts"].append({**facts["parts"][0], "part_id": "bottom", "material_requirement_id": "lower-panel"})
+
+    result = build_material_plan(facts_by_object={"case": facts}, catalogs=_catalogs())
+    assert len(result.plan.lines) == expected
+    assert sum(line.purchase_quantity for line in result.plan.lines) == expected
+    assert {item["material_requirement_id"] for item in result.assumption_fallbacks} == {"plywood", "lower-panel"}
+    assert len({item["selection_key"] for item in result.assumption_fallbacks}) == expected
+    costs = material_plan_object_cost_allocations(result)
+    assert set(costs) == {("case", "plywood"), ("case", "lower-panel")}
+    assert sum(costs.values()) == Decimal(200 * expected)
 
 
 def test_every_purchase_plan_is_priced_when_another_fact_needs_assumption():
