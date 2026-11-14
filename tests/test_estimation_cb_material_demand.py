@@ -49,13 +49,13 @@ def test_unmeasured_lighting_does_not_borrow_another_route_or_price_it_as_a_piec
     assert result["review_items"][0]["reason"] == "lighting_route_length_unresolved"
 
 
-def test_checked_carcass_preserves_counts_and_sends_unresolved_worktop_to_fallback():
+def test_checked_carcass_preserves_counts_and_does_not_price_worktop_envelope_as_area():
     side = _part("carcass_side", scope_quantity=3, count_refs=["view-1:C01"])
-    top = _part("shared_worktop", owner_id="worktop", quantity=1)
-    result = _build([side, top], {"melamine_faced_particleboard"}, quantity=2)
+    top = _part("shared_worktop", owner_id="worktop", quantity=1, kitchen_worktop=True)
+    result = _build([side, top], {"melamine_faced_particleboard", "engineered_quartz_mineral_hybrid"}, quantity=2)
 
     material, worktop = result["materials"]
-    cut, _worktop_cut = result["parts"]
+    cut, = result["parts"]
     assert material["family"] == "melamine_faced_particleboard"
     assert material["basis"] == "construction_assumption"
     assert (cut["length_mm"], cut["width_mm"], cut["quantity"]) == (780, 600, 12)
@@ -63,9 +63,67 @@ def test_checked_carcass_preserves_counts_and_sends_unresolved_worktop_to_fallba
     assert material["part_sources"][0]["evidence_refs"] == ["view-1:D01", "view-1:C01"]
     held, = result["review_items"]
     assert held["reason"] == "worktop_cut_geometry_unresolved"
-    assert worktop["assumption_reason"] == held["reason"]
+    assert worktop["geometry_pending"] and worktop["quantity"] is None
+    assert (worktop["family"], worktop["unit"]) == ("engineered_quartz_mineral_hybrid", "m2")
+    assert worktop["specification"]["thickness_mm"] == 17
     assert held["part_source"]["dimensions"] == top["dimensions"]
     assert result["source_part_count"] == 2
+
+
+@pytest.mark.parametrize("role,family,thickness", [
+    ("carcass_back", "mdf_hdf", 6), ("carcass_side", "melamine_faced_particleboard", 17),
+])
+def test_unmeasured_sheet_part_keeps_its_stock_with_measured_parts(role, family, thickness):
+    rows = [_part(role, owner_id=owner) for owner in ("B01", "B02", "B03")]
+    for row in rows:
+        row["dimensions"]["thickness"]["mm"] = thickness
+    rows[0]["dimensions"]["length"]["mm"] = None
+    rows[0]["dimensions"]["width"]["mm"] = None
+    rows[2]["dimensions"]["length"]["mm"] = 1150
+    rows[2]["dimensions"]["width"]["mm"] = 250
+    result = _build(rows, {family})
+
+    material, = result["materials"]
+    assert material["specification"]["thickness_mm"] == thickness
+    assert material["quantity"] is None and "geometry_pending" not in material
+    assert len(material["part_sources"]) == 3
+    assert [cut["assembly_id"] for cut in result["parts"]] == ["B02", "B03"]
+    issue, = result["review_items"]
+    assert issue["reason"] == "dimensions_unresolved"
+    assert issue["part_source"]["owner_id"] == "B01"
+
+
+def test_pending_stock_is_explicitly_unpriced_and_quartz_cutout_stays_a_service():
+    quartz = "engineered_quartz_mineral_hybrid"
+    back = _part("carcass_back")
+    back["dimensions"] = {"length": {"mm": None}, "width": {"mm": None}, "thickness": {"mm": 6}}
+    top = _part("shared_worktop", owner_id="worktop", quantity=1, kitchen_worktop=True, worktop_cutouts=[
+        {"id": "V02:C01", "view_id": "V02", "surface": "main_worktop"},
+    ])
+    catalog = {"company_id": "company-1", "families": {quartz, "mdf_hdf"}, "catalogs": {
+        "operations": [{"operation_id": "op-1", "operation_code": "stone_cutout", "active": True}],
+        "israel_operation_prices": [{
+            "operation_service_price_id": "p1", "operation_id": "op-1", "market_code": "IL",
+            "status": "active", "material_family_code": quartz, "price_ex_vat": 400,
+            "currency": "ILS", "unit": "piece", "source_id": "s1",
+        }],
+    }}
+    result = calculate_cb_materials(
+        parts_report={"stage": "Parts Check", "objects": {"object-1": {"parts": [back, top]}}},
+        input_rows=[_input()], catalog_context=catalog,
+    )
+    hdf, worktop, cutout = result["facts_by_object"]["object-1"]["materials"]
+    assert hdf["specification"]["thickness_mm"] == 6
+    assert worktop["family"] == quartz
+    assert worktop["quantity"] is None and worktop["unit"] == "m2"
+    assert cutout["operation_code"] == "stone_cutout"
+    plan = result["material_plan"]
+    assert set(plan["parts_check"]["object-1"]["unpriced_requirements"]) == {
+        hdf["requirement_id"], worktop["requirement_id"],
+    }
+    assert not plan["assumption_fallbacks"]
+    line, = plan["lines"]
+    assert (line["purchase_quantity"], line["price_per_purchase_unit"]) == (1, 400)
 
 
 def test_source_stock_note_overrides_family_assumption_with_original_evidence():

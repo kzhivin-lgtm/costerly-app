@@ -5,7 +5,7 @@ from math import ceil, isfinite
 import re
 
 from use_cases.estimation_assembly_bom import ASSEMBLY_BOM_V1
-from use_cases.estimation_cb_geometry_parts import VENEERED_MDF, is_explicit_solid_wood_note
+from use_cases.estimation_cb_geometry_parts import VENEERED_MDF, is_explicit_solid_wood_note, is_kitchen_name
 from use_cases.estimation_structural_bom import _CONSTRUCTION_MATERIAL_NAMES, _FAMILY_PREFERENCE
 from use_cases.material_engine_adapter import build_material_plan, material_plan_input_fingerprint, material_plan_snapshot, material_review_purchases
 from use_cases.material_identity_resolution import normalize_material_phrase
@@ -229,26 +229,32 @@ def _physical_unit(row, role, measurements):
     return None
 
 
-def _worktop_requirements(row, part_source, object_quantity, families, materials, review_items, family_alias_context):
+def _worktop_requirements(row, part_source, object_quantity, families, materials, review_items,
+                          family_alias_context, *, kitchen):
     outline = row.get("worktop_outline") or {}
     surfaces = outline.get("surfaces") or ()
     thickness = row["dimensions"].get("thickness", {}).get("mm")
     count = row["quantity"]
-    if (outline.get("area_basis") != "gross_plan_outline" or not surfaces
-            or not _positive(thickness) or not _positive(count) or int(count) != count
-            or not all(_positive(surface.get("area_m2")) for surface in surfaces)):
-        return False
-    multiplier = count * part_source["scope_quantity"] * object_quantity
+    area_resolved = (outline.get("area_basis") == "gross_plan_outline" and bool(surfaces)
+                     and all(_positive(surface.get("area_m2")) for surface in surfaces))
+    count_resolved = _positive(count) and int(count) == count
+    if count is not None and not count_resolved:
+        raise ValueError(f"Invalid part quantity for {part_source['part_id']}")
+    multiplier = (count if count_resolved else 1) * part_source["scope_quantity"] * object_quantity
     finish_view = outline.get("finish_evidence", {}).get("view_id")
-    stock_family, stock_spec, stock_notes, stock_refs = _source_material(row["dimensions"], family_alias_context)
-    refs = list(dict.fromkeys([*part_source["evidence_refs"], *outline["source_refs"],
+    stock_family, stock_spec, stock_notes, stock_refs = _source_material(
+        row["dimensions"], family_alias_context, row.get("material_note"),
+    )
+    refs = list(dict.fromkeys([*part_source["evidence_refs"], *outline.get("source_refs", ()),
                                *outline.get("seam_source_refs", ()), *([finish_view] if finish_view else [])]))
     part_id = part_source["part_id"]
-    for surface in surfaces:
+    kitchen = row.get("kitchen_worktop", outline.get("kitchen_worktop", kitchen))
+    surface_families = {}
+    for surface in surfaces if area_resolved else ({"id": "main", "material_role": "main_worktop"},):
         main = surface["material_role"] == "main_worktop"
         explicit = main and stock_family in families
         default_family = _WORKTOP_DEFAULT_FAMILY if main else _LDSP_FAMILY
-        default = outline.get("kitchen_worktop") and default_family in families and (not main or not stock_notes)
+        default = kitchen and default_family in families and (not main or not stock_notes)
         family = stock_family if explicit else default_family if default else None
         surface_thickness = _LDSP_DEFAULT_THICKNESS_MM if default and not main else thickness
         if explicit:
@@ -258,39 +264,42 @@ def _worktop_requirements(row, part_source, object_quantity, families, materials
         else:
             source_name = "Main worktop material" if main else "Contrasting finish on beveled end"
         evidence = list(dict.fromkeys([*refs, *stock_refs])) if explicit else refs
-        quantity = round(surface["area_m2"] * multiplier, 6)
-        key = (part_id, surface["id"])
-        materials[key] = {
+        quantity = round(surface["area_m2"] * multiplier, 6) if area_resolved else None
+        specification = {"thickness_mm": surface_thickness} if _positive(surface_thickness) else {}
+        if explicit:
+            specification.update(stock_spec)
+        surface_families[surface["material_role"]] = family
+        materials[part_id, surface["id"]] = {
             "requirement_id": f"cb-material-{len(materials) + 1:03d}",
             "source_name": source_name,
             "family": family, "material_role": "worktop_sheet",
-            "specification": {"thickness_mm": surface_thickness, **(stock_spec if explicit else {})},
+            "specification": specification,
             "basis": "ocr_material_note" if explicit else "construction_assumption" if default else "material_unresolved",
             "evidence_refs": evidence, "quantity": quantity, "unit": "m2",
-            "area_basis": outline["area_basis"],
             "part_sources": [{**part_source, "surface": surface, "evidence_refs": evidence}],
+            **({"area_basis": outline["area_basis"]} if area_resolved else {"geometry_pending": True}),
         }
-        if not family:
-            review_items.append({"part_id": part_id, "surface_id": surface["id"],
-                                 "reason": "worktop_material_family_unresolved",
-                                 "area_m2": quantity})
-    return True
+        if not area_resolved or not family or not count_resolved:
+            reason = ("worktop_cut_geometry_unresolved" if not area_resolved else
+                      "worktop_material_family_unresolved" if not family else "quantity_unresolved")
+            review_items.append({"part_id": part_id, "surface_id": surface["id"], "reason": reason,
+                                 "area_m2": quantity, "part_source": part_source})
+    _worktop_cutout_requirements(row, part_source, object_quantity, materials, surface_families,
+                                area_resolved=area_resolved)
 
 
-def _worktop_cutout_requirements(row, part_source, object_quantity, materials):
+def _worktop_cutout_requirements(row, part_source, object_quantity, materials, surface_families, *, area_resolved):
     count = row["quantity"]
     if not _positive(count) or int(count) != count:
         return
     part_id = part_source["part_id"]
     quantity = ceil(count * part_source["scope_quantity"] * object_quantity)
-    surface_families = {item["part_sources"][0]["surface"]["material_role"]: item["family"]
-                        for key, item in materials.items() if len(key) == 2 and key[0] == part_id}
     for cutout in row.get("worktop_cutouts", ()):
         key = part_id, cutout["id"], "operation_service"
         if key in materials:
             continue
         family = surface_families.get(cutout["surface"])
-        if cutout["surface"] == "unknown" and len(surface_families) == 1:
+        if cutout["surface"] == "unknown" and area_resolved and len(surface_families) == 1:
             family = next(iter(surface_families.values()))
         refs = [cutout["view_id"], cutout["id"]]
         requirement_id = f"cb-material-{len(materials) + 1:03d}"
@@ -312,6 +321,7 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
     obj = payload["object"]
     object_id = obj["object_id"]
     object_quantity = obj["quantity"]
+    kitchen = is_kitchen_name(obj.get("object_name"))
     stage = parts_report["stage"]
     if stage not in {"CB Parts", "Parts Check"} or not _positive(object_quantity):
         raise ValueError("Parts demand requires an immutable object input with a positive quantity")
@@ -365,12 +375,11 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                                      "reason": "lighting_route_length_unresolved"})
                 continue
             if row["role"] == "shared_worktop":
-                area_resolved = _worktop_requirements(
+                _worktop_requirements(
                     row, part_source, object_quantity, allowed_material_families, materials, review_items,
-                    family_alias_context)
-                _worktop_cutout_requirements(row, part_source, object_quantity, materials)
-                if area_resolved:
-                    continue
+                    family_alias_context, kitchen=kitchen,
+                )
+                continue
             unit = _physical_unit(row, role, measurements)
             has_sheet_geometry = not unit and all(_positive(measurements.get(axis, {}).get("mm"))
                                                   for axis in ("length", "width"))
@@ -402,13 +411,13 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
             count = row["quantity"]
             missing = [axis for axis, value in measurements.items() if not _positive(value.get("mm"))]
             fallback_reason = None
-            if row["role"] == "shared_worktop":
-                fallback_reason = "worktop_cut_geometry_unresolved"
-            elif notes and not source_family:
+            pending_sheet = bool(not unit and not has_sheet_geometry and family
+                                 and "length" in measurements and "width" in measurements)
+            if notes and not source_family:
                 fallback_reason = "material_note_unresolved"
             elif not family:
                 fallback_reason = "material_family_unavailable"
-            elif not unit and not has_sheet_geometry:
+            elif not unit and not has_sheet_geometry and not pending_sheet:
                 fallback_reason = "dimensions_unresolved"
             reason = fallback_reason or ("dimensions_unresolved" if missing else
                                          "quantity_unresolved" if count is None else None)
@@ -423,7 +432,7 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
             if not _positive(count) or int(count) != count:
                 raise ValueError(f"Invalid part quantity for {part_id}")
             quantity = ceil(count * multiplier * object_quantity)
-            unit = unit or (None if has_sheet_geometry else "piece")
+            unit = unit or (None if has_sheet_geometry or (pending_sheet and not fallback_reason) else "piece")
             spec = dict(material_spec)
             if _positive(thickness_mm) and not unit:
                 spec["thickness_mm"] = thickness_mm
@@ -470,6 +479,8 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                     "specification": spec, "basis": basis, "evidence_refs": [],
                     "quantity": 0 if unit else None, "unit": unit, "part_sources": [],
                 }
+                if pending_sheet and not fallback_reason:
+                    materials[key]["geometry_pending"] = True
                 if role in {"drawer_slide", "pull_out_shelf_slide"}:
                     materials[key]["purchase_package_quantity"] = 2
                 if fallback_reason:
@@ -490,7 +501,8 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                                              "measurements": measurements})
             if unit:
                 material["quantity"] += quantity * measurements["length"]["mm"] / 1000 if unit == "m" else quantity
-            else:
+            elif has_sheet_geometry:
+                material.pop("geometry_pending", None)
                 parts.append({
                     "part_id": part_id, "assembly_id": scope_id, "component_role": row["role"],
                     "material_requirement_id": material["requirement_id"], "quantity": cut_quantity,
@@ -612,8 +624,12 @@ def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
                          "unpriced_requirements": missing,
                          "has_estimated_costs": oid in fallback_objects or bool(estimates or estimated_counts),
                          "has_unresolved_demands": any(value.startswith(f"{oid}:") for value in unresolved),
-                         "materials": [{key: material.get(key) for key in ("requirement_id", "source_name", "unit", "quantity")}
-                                       for material in item["materials"]],
+                         "materials": [
+                             {**{key: material.get(key) for key in ("requirement_id", "source_name", "unit", "quantity")},
+                              **({key: material[key] for key in ("family", "specification")}
+                                 if material.get("geometry_pending") else {})}
+                             for material in item["materials"]
+                         ],
                          "parts": _checked_parts_for_estimate(checked_parts, estimates, estimated_counts),
                          "primary_preview_ref": item["primary_preview_ref"]}
     snapshot["parts_check"] = coverage

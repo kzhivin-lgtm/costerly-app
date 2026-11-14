@@ -1,5 +1,12 @@
 # Done Log
 
+Estimation 9.37, work 3.17.4.6. Recovered Lev2 return-side dimensions
+through the accepted elevation chain and the native plan. Preserved
+sheet family and thickness for parts with incomplete cut dimensions.
+The gross, beveled worktop outline produced 3.0 m² and its one cutout
+cost ₪400 ex VAT in the saved replay. Lev1 and Adda matched 9.36.
+See the [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-937-linked-elevations-and-material-identity).
+
 Estimation 9.36, work 3.17.4.6. Front and Block PDFs can cover
 complementary views. The Lev2 replay showed all nine blocks and five
 drawer fronts across V03/V04. Both Adda objects kept their single

@@ -4,6 +4,7 @@ from collections import Counter, defaultdict
 import re
 
 from tools.estimation_orthographic_geometry import pixel_scale
+from use_cases.estimation_cb_geometry_parts import is_kitchen_name
 
 
 def _edges(points):
@@ -189,7 +190,7 @@ def worktop_geometry(blocks, views, printed, understanding, projections):
 
     result = {"view_id": view_id, "area_basis": "gross_plan_outline",
               "source_refs": refs, "outer": surface("outer", outline), "surfaces": []}
-    result["kitchen_worktop"] = bool(re.search(r"\bkitchen\b|кухн", understanding.get("name") or "", re.I))
+    result["kitchen_worktop"] = is_kitchen_name(understanding.get("name"))
     finish = _finish_evidence(understanding, views, projections)
     seam = _terminal_seam(outline, faces, starts, inner, ends)
     if not finish:

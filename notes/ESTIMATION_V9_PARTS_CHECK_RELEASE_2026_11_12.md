@@ -1,5 +1,37 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.37 linked elevations and material identity
+
+Work 3.17.4.6. Rollback to 9.36 at `2cab833`. Detection and Analyze
+prompts are unchanged. Block Geometry follows accepted geometry and
+topology relations through orthographic views. Depth still requires
+independent native plan calibration. The V04 replay resolved widths
+1245/840/1110 mm and heights 780/1150/780 mm for B07/B08/B09. B08
+depth binds at 250 mm. B07 and B09 use the existing 600 mm construction
+allowance supported by the 635 mm worktop footprint proxy.
+
+Material Demand keeps known sheet family and thickness independently
+of the cut dimensions. Incomplete cuts share the compatible stock
+identity and retain their review findings. They add no area until
+measurements are available. If the requirement has no measurable
+cut, keep it visibly unpriced. The main kitchen worktop defaults to the
+quartz or mineral-hybrid family when source stock is unspecified,
+including before the area is known. The gross polygon area includes
+the corner and bevel. Openings remain separate supplier operations.
+
+Replayed the saved production Detection packet from
+`run_033dc1bc8da746728907e45d8a550cd7` with archived model responses and
+the saved production catalog. Nine blocks, five drawers and all 110
+part roles, owners and counts were preserved. Both PDFs showed V03/V04.
+The gross outline measured 3.019621 m². With saved contrasting-finish
+evidence, 2.826887 m² was quartz and 0.192734 m² was LDSP. HDF 6 mm and
+LDSP 17 mm resolved as catalog stock. The catalog priced one cutout
+at ₪400 ex VAT. No priced fallback remained. The same calculation on
+the original incomplete Parts retained sixteen sheet pieces in the
+dimension findings and held the quartz area open. Lev1 and Adda
+matched 9.36 in Parts, purchase lines and overlay views. All 154 focused
+tests passed. Fresh authenticated Upload remains the live check.
+
 ## Estimation 9.36 complementary overlay views
 
 Work 3.17.4.6. Rollback is 9.35 at `3da89b8`.

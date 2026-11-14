@@ -808,7 +808,11 @@ def worktop_spans(blocks, views, printed):
     return tuple(result)
 
 
-def shared_part(owner, blocks, views, printed, worktop_outline=None, worktop_cutouts=()):
+def is_kitchen_name(name):
+    return bool(re.search(r"\bkitchen\b|кухн", name or "", re.I))
+
+
+def shared_part(owner, blocks, views, printed, worktop_outline=None, worktop_cutouts=(), *, kitchen_worktop=False):
     result = {"id": owner["id"], "role": owner["role"], "quantity": owner["quantity"],
               "unit": owner.get("unit", "piece"), "attached_block_ids": owner.get("attached_block_ids", []), "parts": []}
     if owner["role"] == "plinth" and len(owner["appearances"]) == 1 and len(owner["attached_block_ids"]) == 1 and "installed_height" in blocks[owner["attached_block_ids"][0]]:
@@ -832,6 +836,8 @@ def shared_part(owner, blocks, views, printed, worktop_outline=None, worktop_cut
         length, width = worktop_spans(blocks, views, printed)
         result["parts"] = [part("shared_worktop", material="worktop stock, finish to verify",
                                 length=length, width=width, thickness=stock(30))]
+        if kitchen_worktop:
+            result["parts"][0]["kitchen_worktop"] = True
         if worktop_outline:
             result["parts"][0]["worktop_outline"] = worktop_outline
             result["review"] = ["Worktop material area follows the outside outline. Verify material and seams."]
@@ -958,7 +964,8 @@ def compile_geometry_parts(analyze, geometry, views, *, stock_notes=None):
             try:
                 row = shared_part(owner, {bid: item["measurements"] for bid, item in readings.items()},
                                   object_views, printed, evidence.get("worktop_outline"),
-                                  evidence.get("worktop_cutouts", ()))
+                                  evidence.get("worktop_cutouts", ()),
+                                  kitchen_worktop=is_kitchen_name(understanding.get("name")))
             except (KeyError, IndexError) as exc:
                 row = {"id": owner["id"], "role": owner["role"], "parts": [], "review": [f"Incomplete component evidence: {exc}"]}
             result["shared_parts"].append(row)

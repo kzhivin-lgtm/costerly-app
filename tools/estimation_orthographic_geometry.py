@@ -2,7 +2,7 @@
 
 from statistics import median
 
-from tools.probe_cb_block_boundaries import ORTHOGRAPHIC_PLAN_LINK_TYPES, envelope, rectangular
+from tools.probe_cb_block_boundaries import ORTHOGRAPHIC_PLAN_LINK_TYPES, connected_views, envelope, rectangular
 
 
 def pixel_scale(view, axis, printed):
@@ -99,7 +99,7 @@ def front_envelopes(plan, views):
     return records
 
 
-def orient_elevations(views, plan, records, printed, linked, span, bind_dimension):
+def orient_elevations(views, plan, records, printed, linked, span, bind_dimension, *, direct_links):
     """Find the two transforms using a marked plan span and a detached shell."""
     scales = [pixel_scale(plan, axis, printed) for axis in "xy"]
     contours = {row["id"]: row for row in plan["candidates"]}
@@ -109,7 +109,7 @@ def orient_elevations(views, plan, records, printed, linked, span, bind_dimensio
     for record in records.values():
         vid = record["view"]
         front = views[vid]
-        if vid not in linked or not record["plan_refs"]:
+        if vid not in direct_links or not record["plan_refs"]:
             continue
         scale = pixel_scale(front, "x", printed)
         if scale is None:
@@ -256,15 +256,21 @@ def resolve_orthographic_group(plan, views, projections, printed, observations, 
         return {}
     plan_view, = top_views
     plan_id = plan_view["view_id"]
-    # Detection can record the same physical correspondence under either visual
-    # evidence type. Depth still requires a calibrated native plan transform.
-    linked = {b if a == plan_id else a for row in observations if row["evidence_type"] in ORTHOGRAPHIC_PLAN_LINK_TYPES
-              for a, b in [(row["group_id_a"], row["group_id_b"])] if plan_id in (a, b)}
-    linked &= {vid for vid, projection in projections.items() if projection in elevations}
-    records = front_envelopes(plan, views)
-    routes = orient_elevations(views, plan_view, records, printed, linked, span, bind_dimension)
+    elevations_in_object = {vid for vid in views if projections.get(vid) in elevations}
+    orthographic_ids = elevations_in_object | {plan_id}
+    links = [row for row in observations if row["evidence_type"] in ORTHOGRAPHIC_PLAN_LINK_TYPES
+             and {row["group_id_a"], row["group_id_b"]} <= orthographic_ids]
+    linked = connected_views(plan_id, links) - {plan_id}
     if not linked:
         return {}
+
+    # A secondary elevation can be linked through the primary one, but its
+    # depth still requires a uniquely calibrated mapping to the native plan.
+    direct_links = connected_views(plan_id, [row for row in links
+                                  if plan_id in (row["group_id_a"], row["group_id_b"])]) - {plan_id}
+    records = front_envelopes(plan, views)
+    routes = orient_elevations(views, plan_view, records, printed, linked, span, bind_dimension,
+                                direct_links=direct_links)
     worktop = any(row["role"] == "worktop" for row in plan["object_parts"])
 
     def measure(view, axis, ends, first, last, ids):

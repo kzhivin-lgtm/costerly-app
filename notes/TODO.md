@@ -23,18 +23,17 @@ all five drawers across two pages. Both Adda objects stay one page
 per layer. Verify the new PDFs from a fresh authenticated Upload.
 [9.36 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-936-complementary-overlay-views).
 
-PENDING, P0, VERIFIED PRODUCTION FINDING. Restore size and area takeoff
-on Lev2 `run_033dc1bc8da746728907e45d8a550cd7`. Trace why Block
-Geometry left all three axes empty on V04 blocks B07-B09 and why the
-separate worktop has no usable cut outline or material family. Compare
-the saved 9.4 geometry evidence with the fresh run. Detection passed
-a direct V01-V03 link and an indirect V01-V03-V04 chain. V04 has four
-printed dimensions. Block Geometry currently skips the V04 envelopes
-because it requires a direct plan link. The worktop outline requires
-both orientations. Verify HDF and LDSP by area and price each confirmed
-worktop cutout separately. Check the fixture hint against the source:
-the saved cutout was labeled cooktop. Preserve block and drawer counts.
-The four fallback lines total ₪3,600 excluding VAT.
+VERIFIED OFFLINE, P0, USER REQUEST. Recheck Lev2 on a fresh 9.37
+Upload. Saved production Detection for `run_033dc1bc8da746728907e45d8a550cd7`
+has a V01-V03-V04 geometry chain. Block Geometry now measures the
+linked V04 blocks and uses the existing native plan checks for depth.
+The replay retains nine blocks and five drawers. Both PDFs show
+V03/V04. The outside worktop measures 3.0 m² including the bevel and
+without subtracting the opening. Where the contrasting finish is
+confirmed, split 2.8 m² quartz and 0.2 m² LDSP. The separate cutout
+uses Israel Reference at ₪400 ex VAT. Cabinet depth for B07/B09 is
+estimated from the worktop. Check the fixture hint against the source.
+[9.37 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-937-linked-elevations-and-material-identity).
 
 PENDING, P2, DISCOVERED DURING VERIFICATION. Align the production
 dependency contract test with the pinned deployment dependencies.

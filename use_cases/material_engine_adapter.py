@@ -1465,6 +1465,10 @@ def build_material_plan(
                 })
 
             parts = parts_by_requirement.get(requirement_id) or []
+            if material.get("geometry_pending") and override_quantity is None:
+                unresolved.append(f"{object_id}:{requirement_id}")
+                reasons.add("material_geometry_required")
+                continue
             if reason := material.get("assumption_reason"):
                 add_assumption_fallback(reason_code=str(reason))
                 reasons.add("assumption_fallback")

@@ -1,5 +1,6 @@
 import pytest
 
+from tools.estimation_orthographic_geometry import resolve_orthographic_group
 from tools.probe_cb_block_boundaries import build_report
 from tools.probe_estimation_v8_native_blocks import attach_native_sides
 
@@ -43,3 +44,36 @@ def test_native_side_recovery_requires_full_height_and_unclaimed_contour(reserve
     attach_native_sides(plan, views, faces)
 
     assert [row["contour_id"] for row in block.get("fixed_extensions", [])] == expected
+
+
+@pytest.mark.parametrize("secondary_witness,expected", [
+    ("unique_geometry", {"B01", "B02"}), ("same_material", {"B01"}),
+])
+def test_linked_return_can_measure_its_elevation_without_claiming_depth(secondary_witness, expected):
+    views = {
+        vid: {"view_id": vid, "page": 1, "width": 100, "height": 100,
+              "candidates": [rectangle("c", [0, 0, 100, 100])]}
+        for vid in ("plan", "main", "return")
+    }
+    projections = {"plan": "Top view", "main": "Front elevation", "return": "Side view"}
+    plan = {"object_parts": [], "blocks": [
+        {"id": block, "positions": [["c"]], "basis": "visible_front_band",
+         "appearances": [{"view_id": vid, "bbox": [0, 0, 100, 100]}]}
+        for block, vid in (("B01", "main"), ("B02", "return"))
+    ]}
+    observations = [
+        {"group_id_a": "plan", "group_id_b": "main", "evidence_type": "matching_topology"},
+        {"group_id_a": "return", "group_id_b": "main", "evidence_type": secondary_witness},
+    ]
+    printed = {vid: [{"axis": "x", "bounds": (0, 500), "value_mm": 300}] for vid in views}
+    result = resolve_orthographic_group(
+        plan, views, projections, printed, observations,
+        span=lambda view, axis, ends, *_: {"view_id": view["view_id"], "axis": axis,
+                                          "bounds_1000": tuple(10 * end for end in ends)},
+        bind_dimension=lambda boundary, printed: {**boundary, "value_mm": None},
+        elevations={"Front elevation", "Side view"}, edge_tolerance=3,
+    )
+    assert set(result) == expected
+    if "B02" in result:
+        assert result["B02"]["width"]["value_mm"] == 600
+        assert result["B02"]["depth"]["value_mm"] is None

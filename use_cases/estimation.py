@@ -569,7 +569,10 @@ def _object_detail_material_rows(plan: dict[str, Any], lines: Any, object_id: st
     if rows or checked:
         missing = set(checked.get("unpriced_requirements") or ())
         rows.extend({
-            "item": material_catalog_display_label(material["source_name"]),
+            "item": material_catalog_display_label(
+                material["source_name"], family=material.get("family") or "",
+                specifications=material.get("specification"),
+            ),
             "required_material_value": material["quantity"],
             "required_material_unit": {"m2": "m²"}.get(material["unit"], material["unit"]), "total": None,
         } for material in checked.get("materials", ()) if material["requirement_id"] in missing)
