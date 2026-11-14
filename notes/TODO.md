@@ -219,13 +219,21 @@ retains the evidence and replay comparison.
 
 Fresh 9.25 on the accepted Adda input reconfirms all nine block
 envelopes, 157 physical Parts rows and the 9,810.51 ILS purchase plan.
-Keep this item active. There are still 17 Parts dimension gaps, including
-three LED lengths, and no power supplies. Size one supply from the total
-LED length per object with 25% headroom. Verify the strip lengths and
-the corner plinth spans against the reviewed profile. Ten cuts exceed
+Keep this item active for the remaining dimension gaps and the corner
+plinth spans. See the LED follow-up immediately below. Ten cuts exceed
 the quoted stock format in both versions; keep the agreed area-based
 pricing and distinguish it from a fabrication layout. See
 [9.25 Adda verification](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#adda-fresh-925-on-the-accepted-detection-input).
+
+ACTIVE, P1, USER REQUEST. Estimation 9.31 measures LED along supported
+furniture fronts, includes a U-profile and diffuser kit in 2 m stock,
+and sizes one power supply per physical object at 6 W/m plus 25 percent
+headroom. The Adda saved replay measures 2.9 m for the straight upright
+and 12.936 m for the corner object (eight shelves and two mirror
+perimeters). At the proposed price, a local catalog fixture resolved all
+eight 2 m bars and one 40 W and one 100 W allowance. Approve the profile
+kit price before seeding Israel Reference and deploying. The existing
+price is a generic driver allowance; the estimate records required watts.
 
 DEFERRED, P1, USER REQUEST. After the full cycle is verified, measure stage
 time and model calls. Remove repeated analysis, reuse verified outputs and
@@ -4642,18 +4650,10 @@ is always `needs_review`, even when other requirements already have concrete
 purchase lines. Those partial lines remain traceable diagnostics but can never
 unlock Final Approval.
 
-Lighting-material request, 2026-10-14: lighting is not one generic Hardware
-line. The catalog and Resolver need distinct purchasable families for LED
-strip, aluminium LED profile with diffuser, LED power supply and lighting
-connector/cable. Candidate Default Matrix baseline: an 8 W/m strip sold in
-5 m coils and a 2 m profile with diffuser. Material Engine must group matching
-lighting runs across the entire Estimate, round strip to 5 m coils and profile
-to 2 m lengths, then derive compatible power-supply capacity from total
-installed strip length and strip W/m. The configured power headroom, default
-colour temperature and default profile form remain pending owner approval. A
-user-specified voltage, colour temperature, strip power, profile form or
-power-supply capacity always overrides the default and is retained as source
-evidence.
+DEFERRED, P2, USER REQUEST. Extend the catalog lighting estimate with
+connector and cable quantities, and retain explicit electrical specs for
+a future installation calculation. Current strip, profile kit and supply
+scope is tracked in the Estimation 9.31 item above.
 
 DEFERRED, P1, USER REQUEST, Aluminium/PVC glazing and enclosure pilot:
 prepare a separate catalog and Resolver program for the prospective aluminium

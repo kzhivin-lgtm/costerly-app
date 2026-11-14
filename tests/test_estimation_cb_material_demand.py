@@ -25,6 +25,29 @@ def _build(rows, families, *, quantity=1, issues=()):
     )
 
 
+def test_lighting_accessories_size_one_supply_per_physical_object_across_temperatures():
+    strips = [_part("led_strip_run", quantity=1, unit="run", colour_temperature_k=kelvin,
+                    dimensions={"length": {"mm": length, "refs": [str(kelvin)]}})
+              for kelvin, length in ((3000, 4000), (4000, 6000))]
+    result = _build(strips, {"hardware_electrical_component"}, quantity=2.0)
+    warm, neutral, profile, supply = result["materials"]
+    assert [(line["quantity"], line["purchase_variant"]) for line in (warm, neutral)] == [(8, "3000K"), (12, "4000K")]
+    assert (profile["quantity"], profile["unit"]) == (20, "m")
+    assert (supply["quantity"], supply["unit"], supply["purchase_variant"]) == (2, "piece", "80 W")
+    assert supply["lighting_capacity"]["installed_m_per_object"] == 10
+
+
+def test_unmeasured_lighting_does_not_borrow_another_route_or_price_it_as_a_piece():
+    strip = _part("led_strip_run", quantity=1, unit="run", colour_temperature_k=3000,
+                  dimensions={"length": {"mm": 1500, "refs": ["view-1:A1"]}})
+    missing = {**strip, "dimensions": {"length": {"mm": None, "refs": ["view-1:A2"]}}}
+    result = _build([strip, missing], {"hardware_electrical_component"})
+    strip, profile, supply = result["materials"]
+    assert strip["quantity"] == profile["quantity"] == 1.5
+    assert supply["lighting_capacity"]["partial"]
+    assert result["review_items"][0]["reason"] == "lighting_route_length_unresolved"
+
+
 def test_checked_carcass_preserves_counts_and_sends_unresolved_worktop_to_fallback():
     side = _part("carcass_side", scope_quantity=3, count_refs=["view-1:C01"])
     top = _part("shared_worktop", owner_id="worktop", quantity=1)

@@ -33,6 +33,33 @@ def _envelope(readings, axis):
     return geometry_dimension(readings.get(axis, {"value_mm": None, "method": "unresolved"}))
 
 
+def _source_lighting_length(element, rows, measurements):
+    """Size the fronts within the scope that owns the drawing's lighting note."""
+    source_refs = list(dict.fromkeys(f"{ref['view_id']}:{ref['annotation_id']}" for ref in element["source_refs"]))
+    shelves = [row for row in rows if row["role"] == "pull_out_shelf"]
+    mirrors = [row for row in rows if row["role"] == "mirror_glass"]
+    if shelves and not mirrors and all(row.get("quantity") for row in shelves):
+        segments = [(row["dimensions"]["length"], row["quantity"]) for row in shelves]
+        reason = "One lighting run across the front edge of each pull-out shelf in the lit scope."
+    elif mirrors and not shelves and all(row.get("quantity") for row in mirrors):
+        upright = measurements.get("installed_height", {})
+        if len(mirrors) == 1 and upright.get("from") == "top of mirror mounting panel" and upright.get("value_mm"):
+            segments = [(geometry_dimension(upright), 1)]
+            reason = "Estimated straight lighting span along the full-height mirror upright."
+        else:
+            segments = [(row["dimensions"][axis], 2 * row["quantity"]) for row in mirrors
+                        for axis in ("length", "width")]
+            reason = "Full perimeter of each mirror in the lit scope."
+    else:
+        return None
+    sizes, counts = zip(*segments)
+    length = derived("construction_assumption", sizes, lambda *mm: sum(n * size for n, size in zip(counts, mm)),
+                     reason=reason)
+    length["refs"] = list(dict.fromkeys([*source_refs, *length["refs"],
+                                         *(row["instance_ref"] for row in shelves + mirrors if row.get("instance_ref"))]))
+    return length
+
+
 def _box(width, height, depth, thickness, material, back_t, partitions):
     inner_w = _subtract(width, thickness, 2)
     inner_h = _subtract(height, thickness, 2)
@@ -443,7 +470,8 @@ def add_source_casework_parts(parts, inventory, analyze, geometry, *, input_rows
                     _apply_stock(row, facade if not local else None, local, role="facade")
                     if exact and (not local or local["mm"] is None):
                         row["dimensions"]["thickness"] = thickness
-            for element in elements:
+            single_lighting_note = sum(element["role"] == "lighting" for element in elements) == 1
+            for element in sorted(elements, key=lambda row: row["role"] == "lighting"):
                 element_id = element["id"]
                 if element["role"] == "mirror":
                     refs = [f"{ref['view_id']}:{ref['candidate_id']}" for ref in element["source_refs"]
@@ -456,8 +484,9 @@ def add_source_casework_parts(parts, inventory, analyze, geometry, *, input_rows
                 elif element["role"] == "lighting" and "kelvin_values" in element:
                     values = element["kelvin_values"]
                     refs = [f"{ref['view_id']}:{ref['annotation_id']}" for ref in element["source_refs"]]
-                    length = None
-                    if (pdf is not None and views and item["kind"] == "block"
+                    length = (_source_lighting_length(element, scope["parts"], readings.get(ident, {}))
+                              if single_lighting_note else None)
+                    if (length is None and pdf is not None and views and item["kind"] == "block"
                             and analyze["islands"].get(readings[ident].get("depth", {}).get("view_id")) == "Top view"):
                         from tools.estimation_casework_part_geometry import casework_lighting_span
 

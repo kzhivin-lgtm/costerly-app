@@ -1,5 +1,6 @@
 """Adapt preliminary CB Parts to the existing assembly BOM material contract."""
 
+from decimal import Decimal, ROUND_CEILING
 from math import ceil, isfinite
 import re
 
@@ -28,6 +29,8 @@ _COUNT_ROLES = {"leg", "drawer_slide", "hinge", "gas_lift"}
 _LDSP_FAMILY = "melamine_faced_particleboard"
 _LDSP_DEFAULT_THICKNESS_MM = 17
 _STANDARD_LED_STRIP = "LED strip standard output"
+_LED_PROFILE_KIT = "LED aluminium U-profile with diffuser"
+_LED_DRIVER = "Constant-voltage LED driver"
 _LED_FAMILY = "hardware_electrical_component"
 _ROLE_FAMILY_PREFERENCE = {
     **_FAMILY_PREFERENCE,
@@ -146,6 +149,8 @@ def _part_material_identity(hint, known_family, catalog_names):
 def _estimated_part_dimensions(row, owner_parts, object_parts, envelope):
     """Use a corroborated same-role dimension, then the block span for a linear run."""
     result = dict(row["dimensions"])
+    if row["role"] == "led_strip_run":
+        return result
     for axis in ("length", "width"):
         if axis not in result or _positive(result[axis].get("mm")):
             continue
@@ -162,6 +167,40 @@ def _estimated_part_dimensions(row, owner_parts, object_parts, envelope):
                 result[axis] = {**span, "basis": "construction_assumption",
                                 "reason": "Estimated one linear run along its owning block."}
     return result
+
+
+def _lighting_accessories(materials, object_quantity, lighting_family, review_items):
+    strips = [row for row in materials.values() if row.get("identity_hint") == _STANDARD_LED_STRIP]
+    if not strips:
+        return
+    for strip in strips:
+        strip["quantity"] = round(strip["quantity"], 6)
+    installed_m = sum(Decimal(str(row["quantity"])) for row in strips)
+    installed_per_object = installed_m / Decimal(str(object_quantity))
+    watts = installed_per_object * Decimal("6") * Decimal("1.25")
+    capacity = max(40, 10 * int((watts / 10).to_integral_value(rounding=ROUND_CEILING)))
+    refs = list(dict.fromkeys(ref for strip in strips for ref in strip["evidence_refs"]))
+    sources = [part for strip in strips for part in strip["part_sources"]]
+    for name, role, quantity, unit in (
+        (_LED_PROFILE_KIT, "led_profile_kit", float(installed_m), "m"),
+        (_LED_DRIVER, "led_power_supply", object_quantity, "piece"),
+    ):
+        materials[role] = {
+            "requirement_id": f"cb-material-{len(materials) + 1:03d}",
+            "source_name": name, "family": lighting_family,
+            "material_role": role, "identity_hint": name, "specification": {},
+            "basis": "construction_assumption", "evidence_refs": refs,
+            "quantity": quantity, "unit": unit, "part_sources": sources,
+        }
+    driver = materials["led_power_supply"]
+    driver["purchase_variant"] = f"{capacity} W"
+    driver["lighting_capacity"] = {
+        "minimum_w": capacity, "watts_per_m": 6, "headroom_percent": 25,
+        "installed_m_per_object": float(installed_per_object),
+        "price_basis": "generic_driver_catalog_allowance",
+    }
+    if any(row.get("reason") == "lighting_route_length_unresolved" for row in review_items):
+        driver["lighting_capacity"]["partial"] = True
 
 
 def _physical_unit(row, role, measurements):
@@ -304,6 +343,10 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                 review_items.append({"part_id": part_id, "role": row["role"], "reason": "duplicate_part_evidence",
                                      "part_source": part_source})
                 continue
+            if row["role"] == "led_strip_run" and not _positive(measurements.get("length", {}).get("mm")):
+                review_items.append({"part_id": part_id, "role": row["role"], "part_source": part_source,
+                                     "reason": "lighting_route_length_unresolved"})
+                continue
             if row["role"] == "shared_worktop":
                 area_resolved = _worktop_requirements(
                     row, part_source, object_quantity, allowed_material_families, materials, review_items,
@@ -421,6 +464,7 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
             material = materials[key]
             material["evidence_refs"] = list(dict.fromkeys([
                 *material["evidence_refs"], *material_refs, *(visual_stock.get("refs", ()) if visible_veneer else ()),
+                *(refs if row["role"] == "led_strip_run" else ()),
             ]))
             material["part_sources"].append({**part_source, "quantity": cut_quantity, "unit": unit,
                                              "source_quantity": row["quantity"], "source_unit": row.get("unit"),
@@ -436,6 +480,8 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                     "basis": "construction_assumption", "evidence_refs": refs,
                     "assumption_reason": "Cut geometry comes from the preliminary Parts estimate.",
                 })
+    if _LED_FAMILY in allowed_material_families:
+        _lighting_accessories(materials, object_quantity, _LED_FAMILY, review_items)
     review_items.extend({"part_id": row["instance_ref"], "role": row["role"], "reason": "ownership_unresolved"}
                         for row in source.get("unassigned_fronts", ()))
     for index, issue in enumerate(inventory_issues, 1):
