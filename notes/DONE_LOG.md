@@ -1,5 +1,12 @@
 # Done Log
 
+Estimation 9.31 sizes LED from shelf edges and mirror routes, packs
+2 m profiles with diffuser by cut, and selects one catalog-rated
+supply per physical object. Verified 27 live price rows and a saved
+Adda replay against them. The replay selected nine bars, five reels
+and two power supplies. See the
+[release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-931-led-takeoff-and-purchasing).
+
 Estimation 9.30 was accepted and protected at `a459aad` by
 `estimation-v9.30-checkpoint`. Production served 9.30 and Core health
 was `ok`. The archive replay matched eight one-page Front and Block

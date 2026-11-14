@@ -57,6 +57,8 @@ def _source_lighting_length(element, rows, measurements):
                      reason=reason)
     length["refs"] = list(dict.fromkeys([*source_refs, *length["refs"],
                                          *(row["instance_ref"] for row in shelves + mirrors if row.get("instance_ref"))]))
+    if length["mm"] is not None:
+        length["segments"] = [{"length_mm": size["mm"], "quantity": count} for size, count in segments]
     return length
 
 

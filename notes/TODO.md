@@ -225,15 +225,12 @@ the quoted stock format in both versions; keep the agreed area-based
 pricing and distinguish it from a fabrication layout. See
 [9.25 Adda verification](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#adda-fresh-925-on-the-accepted-detection-input).
 
-ACTIVE, P1, USER REQUEST. Estimation 9.31 measures LED along supported
-furniture fronts, includes a U-profile and diffuser kit in 2 m stock,
-and sizes one power supply per physical object at 6 W/m plus 25 percent
-headroom. The Adda saved replay measures 2.9 m for the straight upright
-and 12.936 m for the corner object (eight shelves and two mirror
-perimeters). At the proposed price, a local catalog fixture resolved all
-eight 2 m bars and one 40 W and one 100 W allowance. Approve the profile
-kit price before seeding Israel Reference and deploying. The existing
-price is a generic driver allowance; the estimate records required watts.
+PENDING, P1, USER REQUEST. Verify Estimation 9.31 LED pricing on a fresh
+authenticated Adda Upload. The saved replay against live Israel Reference
+matched both objects, bought nine 2 m profile kits and five 5 m reels,
+and selected one 60 W and one 100 W driver. All 27 imported or refreshed
+catalog prices were verified. See the
+[9.31 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-931-led-takeoff-and-purchasing).
 
 DEFERRED, P1, USER REQUEST. After the full cycle is verified, measure stage
 time and model calls. Remove repeated analysis, reuse verified outputs and

@@ -1213,6 +1213,7 @@ def israel_reference_supply_candidates(
                     reference_price_id=price_id,
                 ))
             elif unit in _REFERENCE_DISCRETE_PACKAGE_QUANTITIES:
+                driver_rating = _positive((price.get("model_metadata") or {}).get("led_driver_watts"))
                 result.append(MaterialSupplyCandidate(
                     candidate_id=f"israel-reference:{position_id}:{price_id}",
                     material_family=material_family,
@@ -1223,6 +1224,7 @@ def israel_reference_supply_candidates(
                     package_quantity=_REFERENCE_DISCRETE_PACKAGE_QUANTITIES[unit],
                     authority="israel_reference",
                     display_name=str(position.get("canonical_name") or ""),
+                    purchasable_dimensions={"power_w": driver_rating} if driver_rating is not None else None,
                     reference_price_id=price_id,
                 ))
     return selection_key, tuple(sorted(result, key=lambda candidate: candidate.candidate_id))
@@ -1451,7 +1453,23 @@ def build_material_plan(
 
                 company_candidates = fitting_candidates(company_candidates)
                 reference_candidates = fitting_candidates(reference_candidates)
-            if facts.get("composition_version") == "cb_parts_material_demand_v1":
+            driver_minimum = _positive((material.get("lighting_capacity") or {}).get("minimum_w"))
+            if driver_minimum is not None:
+                sized = tuple(candidate for candidate in (*company_candidates, *reference_candidates)
+                              if candidate.purchase_kind == "piece"
+                              and hint_tokens <= set(normalize_material_phrase(candidate.display_name).split())
+                              and (_positive((candidate.purchasable_dimensions or {}).get("power_w")) or 0) >= driver_minimum)
+                smallest = min((_positive(candidate.purchasable_dimensions["power_w"]) for candidate in sized),
+                               default=None)
+                compatible = tuple(candidate for candidate in sized
+                                   if _positive(candidate.purchasable_dimensions["power_w"]) == smallest)
+                if compatible:
+                    selection_key = f"{selection_key}|led_driver_w={smallest}"
+                    compatible = tuple(replace(candidate, selection_key=selection_key,
+                                               candidate_id=f"{candidate.candidate_id}:led-driver",
+                                               display_name=f"{candidate.display_name}, {smallest} W")
+                                       for candidate in compatible)
+            elif facts.get("composition_version") == "cb_parts_material_demand_v1":
                 if hint_tokens:
                     def named_candidates(rows):
                         exact = tuple(row for row in rows if normalize_material_phrase(row.display_name) == hint)
@@ -1466,6 +1484,12 @@ def build_material_plan(
                     compatible = tuple(candidate for candidate in compatible if candidate.purchase_kind == "piece")
             else:
                 compatible = company_candidates or reference_candidates
+            if material.get("material_role") == "led_profile_kit":
+                selection_key = f"{selection_key}|led_profile_kit"
+                compatible = tuple(replace(candidate, selection_key=selection_key,
+                                           candidate_id=f"{candidate.candidate_id}:led-profile") for candidate in compatible
+                                   if candidate.purchase_kind == "linear_stock"
+                                   and _positive((candidate.purchasable_dimensions or {}).get("length_mm")) == 2000)
             if purchase_variant := material.get("purchase_variant"):
                 selection_key = f"{selection_key}|variant={purchase_variant}"
                 compatible = tuple(
@@ -1556,6 +1580,16 @@ def build_material_plan(
                 )
                 reasons.add("assumption_fallback")
             if parts:
+                continue
+            if cuts := material.get("linear_cuts"):
+                for cut in cuts:
+                    length = cut["length_mm"]
+                    demands.append(MaterialDemand(
+                        demand_id=f"{object_id}:{requirement_id}:cut-{length}", object_id=str(object_id),
+                        material_requirement_id=requirement_id, material_family=str(material.get("family") or ""),
+                        selection_key=selection_key, quantity=cut["quantity"], unit="piece", length_mm=length,
+                        compatible_candidate_ids=candidate_ids,
+                    ))
                 continue
             # Explicit historical/manual units remain supported. Newly
             # extracted V3 facts leave this null and obtain a unit only from a

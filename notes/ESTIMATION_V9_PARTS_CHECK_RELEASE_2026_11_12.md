@@ -1,6 +1,6 @@
 # Estimation 9 Parts Check from Upload
 
-## Estimation 9.31 LED takeoff and purchasing candidate
+## Estimation 9.31 LED takeoff and purchasing
 
 The rollback is `estimation-v9.30-checkpoint`. The runtime previously
 used a single plan span for each lit cabinet bay. Missing mirror lengths
@@ -15,26 +15,35 @@ available when this construction rule does not apply. An unresolved LED
 length stays in review and cannot borrow another run's length.
 
 Material Demand purchases standard strip in 5 m rolls by colour
-temperature and adds the U-profile with diffuser at the same installed
-length. The catalog supply format rounds that demand to 2 m bars. One
+temperature and transfers the individual shelf and mirror edge cuts
+to Material Engine. It packs those cuts into 2 m U-profile and diffuser
+bars, splitting longer edges at the stock length and reusing offcuts. One
 supply per physical object uses all installed runs at 6 W/m with 25%
-headroom, rounded up to 10 W increments with a 40 W minimum. Driver
-pricing currently uses the generic catalog allowance.
+headroom and a 40 W minimum, and selects the smallest suitable stocked
+driver rating. The source price remains attached to its actual rating.
 
 The Adda replay used saved model outputs. The straight upright gave
-2.900 m at 3000 K and one 40 W supply. The corner gave 7.300 m at
+2.900 m at 3000 K and a 40 W sizing requirement. The corner gave 7.300 m at
 3000 K from two mirror perimeters (2.620 m and 4.680 m) and 5.636 m at
 4000 K from two rows of four shelves (4 × 544 mm and 4 × 865 mm).
-It requires one 100 W supply. Non-lighting part roles, quantities and
-dimensions matched the baseline. A local catalog fixture purchased
-eight 2 m profile kits across both objects and produced zero fallback
-lines. The supplier price and production catalog write await approval.
+The corner needs at least 98 W. Non-lighting part roles, quantities and
+dimensions matched the baseline. The saved Parts replay with production
+prices selected a 60 W unit for the straight console and a 100 W unit
+for the corner, both LEDON Click. It purchased nine 2 m profile kits,
+three 3000 K rolls and two 4000 K rolls, with zero Assumption Fallback.
+Two profile bars cover the straight console and seven cover the corner.
+Exact feasibility checked that the joint set does not fit eight bars.
 
-Price observations are 60 ILS per 2 m kit at
-[Belline, SKU 200670AL3-2M](https://www.belshop.co.il/234479-%D7%9E%D7%A1%D7%99%D7%9C%D7%95%D7%AA-%D7%90%D7%9C%D7%95%D7%9E%D7%99%D7%A0%D7%99%D7%95%D7%9D-%D7%9C%D7%9C%D7%93%D7%99%D7%9D)
-and 28 ILS/m for a narrow channel and diffuser at
-[LedMaster](https://www.ledmaster.co.il/product/%D7%A4%D7%A8%D7%95%D7%A4%D7%99%D7%9C%D7%99%D7%9D-%D7%AA%D7%90%D7%95%D7%A8%D7%94-%D7%9C%D7%93).
-Proposed catalog allowance is 50 ILS excluding VAT per 2 m kit.
+The evidence file `notes/evidence/estimation-v9.31-led/prices.json`
+stores the dated retail observations and source pages. The profile is
+56 ILS retail per 2 m (28 ILS/m at LedMaster). The standard strip anchor
+is an Or-Shay Nisko 24 V 4.8 W/m reel, 52.20 ILS per 5 m in either
+colour temperature. This is a price anchor and the load estimate
+retains the 6 W/m budget. The seed `tools/seed_israel_led_prices.py`
+updated strip pricing and installed 25 driver offers across ten actual
+ratings from 30 W to 200 W and one profile kit. All 27 active price rows
+were read back from production. Prices used by the Engine exclude VAT.
+Fresh authenticated Upload remains open.
 
 ## Estimation 9.30 single-view Front and Block PDFs
 

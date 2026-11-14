@@ -32,6 +32,7 @@ _STANDARD_LED_STRIP = "LED strip standard output"
 _LED_PROFILE_KIT = "LED aluminium U-profile with diffuser"
 _LED_DRIVER = "Constant-voltage LED driver"
 _LED_FAMILY = "hardware_electrical_component"
+_LED_PROFILE_STOCK_MM = 2000
 _ROLE_FAMILY_PREFERENCE = {
     **_FAMILY_PREFERENCE,
     "carcass_sheet": _FAMILY_PREFERENCE["internal_sheet"],
@@ -178,7 +179,7 @@ def _lighting_accessories(materials, object_quantity, lighting_family, review_it
     installed_m = sum(Decimal(str(row["quantity"])) for row in strips)
     installed_per_object = installed_m / Decimal(str(object_quantity))
     watts = installed_per_object * Decimal("6") * Decimal("1.25")
-    capacity = max(40, 10 * int((watts / 10).to_integral_value(rounding=ROUND_CEILING)))
+    capacity = max(40, int(watts.to_integral_value(rounding=ROUND_CEILING)))
     refs = list(dict.fromkeys(ref for strip in strips for ref in strip["evidence_refs"]))
     sources = [part for strip in strips for part in strip["part_sources"]]
     for name, role, quantity, unit in (
@@ -193,11 +194,22 @@ def _lighting_accessories(materials, object_quantity, lighting_family, review_it
             "quantity": quantity, "unit": unit, "part_sources": sources,
         }
     driver = materials["led_power_supply"]
-    driver["purchase_variant"] = f"{capacity} W"
+    profile = materials["led_profile_kit"]
+    cuts = {}
+    for source in sources:
+        length = source["measurements"]["length"]
+        segments = length.get("segments") or [{"length_mm": length["mm"], "quantity": 1}]
+        for segment in segments:
+            full, remainder = divmod(segment["length_mm"], _LED_PROFILE_STOCK_MM)
+            quantity = segment["quantity"] * source["quantity"]
+            if full:
+                cuts[_LED_PROFILE_STOCK_MM] = cuts.get(_LED_PROFILE_STOCK_MM, 0) + full * quantity
+            if remainder:
+                cuts[remainder] = cuts.get(remainder, 0) + quantity
+    profile["linear_cuts"] = [{"length_mm": length, "quantity": count} for length, count in sorted(cuts.items())]
     driver["lighting_capacity"] = {
         "minimum_w": capacity, "watts_per_m": 6, "headroom_percent": 25,
         "installed_m_per_object": float(installed_per_object),
-        "price_basis": "generic_driver_catalog_allowance",
     }
     if any(row.get("reason") == "lighting_route_length_unresolved" for row in review_items):
         driver["lighting_capacity"]["partial"] = True

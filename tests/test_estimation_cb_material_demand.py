@@ -33,7 +33,8 @@ def test_lighting_accessories_size_one_supply_per_physical_object_across_tempera
     warm, neutral, profile, supply = result["materials"]
     assert [(line["quantity"], line["purchase_variant"]) for line in (warm, neutral)] == [(8, "3000K"), (12, "4000K")]
     assert (profile["quantity"], profile["unit"]) == (20, "m")
-    assert (supply["quantity"], supply["unit"], supply["purchase_variant"]) == (2, "piece", "80 W")
+    assert (supply["quantity"], supply["unit"], supply["lighting_capacity"]["minimum_w"]) == (2, "piece", 75)
+    assert profile["linear_cuts"] == [{"length_mm": 2000, "quantity": 10}]
     assert supply["lighting_capacity"]["installed_m_per_object"] == 10
 
 
