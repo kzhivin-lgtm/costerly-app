@@ -49,14 +49,16 @@ See the [9.21 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#es
    all object approvals on material edits. See the
    [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#shared-sheet-purchasing-and-review-status).
 
-ACTIVE, P1, USER REPORT. Reduce authenticated Object Detail Save latency
+COMPLETED, OWNER-ACCEPTED, P1, USER REPORT. Reduce Object Detail Save latency
 for a one-field edit. The owner observed about 6 s on Lev1 after 9.22.
 The recorded override-to-plan interval was 2.697 s. Measure from click
 through request, validation, queue, calculation and publication, then
 detail read and browser receipt. 9.23 parallelizes independent reads,
 reuses object data and builds a smaller receipt. Preserve the in-place
-Saved state and scope the edit to the affected position. Confirm the
-click-to-Saved gain in an authenticated production session.
+Saved state and scope the edit to the affected position. The owner
+confirmed correct, faster-feeling production behavior on 9.23. The
+benchmark measured 3.53 s to 2.77 s. An exact authenticated production
+timing was not captured. Tag `estimation-v9.23-checkpoint`.
 
 VERIFIED on a fresh Lev2 production Upload. Parts Check completed in
 57.094 seconds and the private reader returned 107/107 matching control

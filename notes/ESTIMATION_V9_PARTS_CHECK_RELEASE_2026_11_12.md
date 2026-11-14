@@ -25,8 +25,13 @@ was 1.46 and 1.34 s. Plan publication to the final receipt read was
 0.71 and 0.42 s. Both builds updated one manual purchase quantity and
 returned identical Materials rows and self-cost totals. 101 focused
 tests passed. Browser fixtures also covered failure and retry, approval,
-return, editing and reverting on desktop and mobile. Authenticated
-production click-to-Saved timing remains open.
+return, editing and reverting on desktop and mobile. On 2026-11-14 the
+owner confirmed that production Save worked correctly and felt faster.
+The 2.77 s is the browser benchmark. There is no timed authenticated
+production sample. Tag `estimation-v9.23-checkpoint` pins production
+commit `d00e5d9` and Railway deployment
+`20e418cc-49fe-42f6-ae7c-151fca829155`. Rollback baseline is
+`estimation-v9.22-checkpoint`.
 
 ## Estimation 9.22 Object Detail save feedback
 
