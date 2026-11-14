@@ -13,7 +13,7 @@ from db.supabase_client import get_supabase_client
 from styles.object_detail import apply_object_detail_css
 from ui import object_detail_view
 from ui.layout import render_screen_header
-from ui.object_detail_material_bridge import material_edit_bridge
+from ui.object_detail_material_bridge import material_edit_bridge, overlay_status_bridge
 from ui.js_guards import (
     install_object_detail_input_guard,
     install_workflow_header_alignment_guard,
@@ -65,6 +65,8 @@ def render_object_detail_screen(
     _render_object_detail(data, context, render_header_controls=render_header_controls)
     _install_object_detail_runtime(context)
     _material_editor(context)
+    if revision := data.get("overlay_revision"):
+        _overlay_links(context, company_id, str(revision))
     install_workflow_header_alignment_guard("h1.object-detail-title")
 
 
@@ -216,6 +218,37 @@ def _install_object_detail_runtime(context: ObjectDetailContext) -> None:
             st.session_state.get("auth_access_token") if company_auth_enabled() else None
         ),
     )
+
+
+@st.fragment
+def _overlay_links(context: ObjectDetailContext, company_id: str, revision: str) -> None:
+    """Update only preview link state. The element and material DOM stays mounted."""
+    from use_cases.estimation_overlay_runtime import submit_overlay_status
+
+    if _current_object_detail_context() != context:
+        return
+    key = (company_id, context.run_id, context.estimate_id, context.object_id, revision)
+    state = st.session_state.get("object_detail_overlay_state")
+    if not state or state["key"] != key or (
+            state["urls"] is not None and perf_counter() - state["signed_at"] >= 3300):
+        state = {"key": key, "future": None, "urls": None, "signed_at": 0}
+        st.session_state.object_detail_overlay_state = state
+
+    if state["future"] is not None and state["future"].done():
+        try:
+            state["urls"] = state["future"].result()
+        except Exception:
+            _LOG.exception("Could not load overlays for %s", context.estimate_id)
+        state.update(future=None, signed_at=perf_counter())
+
+    poll = overlay_status_bridge(revision=revision, objectId=context.object_id, urls=state["urls"],
+                                 key=f"object_detail_overlay:{context.estimate_id}:{context.object_id}:{revision}",
+                                 default=0)
+    elapsed = perf_counter() - state["signed_at"]
+    if poll and state["urls"] is None and state["future"] is None and elapsed >= 1:
+        state["future"] = submit_overlay_status(company_id=company_id, run_id=context.run_id,
+                                               estimate_id=context.estimate_id, revision=revision,
+                                               object_id=context.object_id)
 
 
 @st.fragment

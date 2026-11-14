@@ -7,3 +7,8 @@ material_edit_bridge = components.declare_component(
     "costerly_object_detail_material_edit",
     path=str(Path(__file__).with_name("object_detail_material_component")),
 )
+
+overlay_status_bridge = components.declare_component(
+    "costerly_object_detail_overlays",
+    path=str(Path(__file__).with_name("object_detail_overlay_component")),
+)

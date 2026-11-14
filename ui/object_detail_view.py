@@ -369,9 +369,11 @@ def _final_html(data: dict[str, object]) -> str:
     )
 
 
-def _elements_html(rows: object) -> str:
+def _elements_html(rows: object, *, revision: object = None, object_id: object = None) -> str:
     """Show the grouped part list using the Materials table styling."""
-    if not isinstance(rows, list) or not rows:
+    if not isinstance(rows, list):
+        rows = []
+    if not rows and not revision:
         return ""
     body = []
     for row in rows:
@@ -384,9 +386,17 @@ def _elements_html(rows: object) -> str:
             f'<div class="object-detail-table-cell" role="cell">{_escape(_number_text(row.get("quantity")))}</div>'
             '</div>'
         )
-    if not body:
-        return ""
+    controls = (
+        f'<div class="object-detail-overlay-actions" data-overlay-revision="{_escape(revision)}" '
+        f'data-overlay-object="{_escape(object_id)}">'
+        + "".join(f'<a class="object-detail-overlay-button" data-overlay-layer="{layer}" '
+                  'role="link" aria-disabled="true" target="_blank" rel="noopener noreferrer" '
+                  f'title="Preparing {layer.title()} PDF">{layer.title()}</a>'
+                  for layer in ("front", "block"))
+        + '</div>'
+    ) if revision else ""
     return (
+        '<div class="object-detail-elements-section">'
         '<details class="object-detail-elements">'
         '<summary class="object-detail-section-title">Elements</summary>'
         '<div class="object-detail-table object-detail-elements-table" role="table" aria-label="Elements">'
@@ -396,7 +406,7 @@ def _elements_html(rows: object) -> str:
         '<div class="object-detail-table-head" role="columnheader">Quantity</div>'
         '</div>'
         f'{"".join(body)}</div>'
-        '</details>'
+        f'</details>{controls}</div>'
     )
 
 
@@ -525,7 +535,7 @@ def detail_html(
     """Render Object Detail sections, totals, and footer actions."""
     return (
         "".join(_section_html(section) for section in data["sections"])
-        + _elements_html(data.get("elements"))
+        + _elements_html(data.get("elements"), revision=data.get("overlay_revision"), object_id=object_id)
         + _final_html(data)
         + _footer_html(
             run_id=run_id,

@@ -1,5 +1,12 @@
 # Done Log
 
+Estimation 9.26 adds private Front and Block PDFs beside Elements.
+Generation and storage run after Parts Check in a separate worker.
+Local browser checks at 1280 px and 390 px passed, along with 115
+focused tests. Authenticated testing on a new Upload remains open.
+Rollback target: `estimation-v9.25-checkpoint`. See the
+[release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-926-object-detail-overlay-pdfs).
+
 Estimation 9.25, work 3.17.4.6. Corrected finish and shared compatible
 sheet allowances. Lev1 went from 11 sheet positions to six on the
 retained failure, two fresh Understanding responses and the production

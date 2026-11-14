@@ -437,6 +437,10 @@ def load_object_detail_data(
     object_row = matching.iloc[0].to_dict()
     canonical_quantity = _number(object_row.get("quantity"), 1)
     checked = (material_plan.get("parts_check") or {}).get(object_id) or {}
+    overlay_source = material_plan.get("parts_check_source") or {}
+    overlay_revision = (overlay_source.get("overlay_revision")
+                        if overlay_source.get("estimate_id") == estimate_id
+                        and overlay_source.get("run_id") == object_row.get("run_id") else None)
     settings = _first_row(fetch_company_overhead_settings(client, str(object_row.get("company_id"))))
     vat_percent = _number(settings.get("vat_percent"), 18)
     employer_load_percent = _number(settings.get("employer_load_percent"), 25)
@@ -518,6 +522,7 @@ def load_object_detail_data(
             company_id=str(object_row.get("company_id") or ""),
         ),
         "elements": _element_rows_from_bom(checked),
+        "overlay_revision": overlay_revision,
         "sections": [
             {
                 "key": "material",

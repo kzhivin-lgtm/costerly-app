@@ -13,6 +13,13 @@ Authenticated Approve and its latency remain to verify.
 Detection's existing grouping defect stays in its own backlog item.
 See the [9.21 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-921-object-detail-and-scoped-material-edits).
 
+ACTIVE, P1, USER REQUEST. Open the Front and Block PDF overlays beside
+Elements without delaying Estimation or resetting unsaved edits. Local
+PDF and browser checks passed. Verify the links on a new authenticated
+estimate, including access, late readiness, unavailable links and the
+first click on each PDF. See the
+[9.26 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-926-object-detail-overlay-pdfs).
+
 1. VERIFIED LOCALLY, P0, USER REQUEST. Remove the Material Plan completeness gate
    from Object Detail approval. Keep Approve available with the existing
    prices, including plans with open Parts Check findings or unpriced

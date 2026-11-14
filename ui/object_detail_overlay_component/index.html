@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"></head>
+<body>
+<script>
+  const host = window.parent;
+  let timer;
+  let requested = 0;
+  let latest;
+  const maxChecks = 30;
+  const send = (type, values = {}) =>
+    host.postMessage({isStreamlitMessage: true, type, ...values}, "*");
+  const actions = ({revision, objectId}) =>
+    Array.from(host.document.querySelectorAll(".object-detail-overlay-actions"))
+      .find(node => node.dataset.overlayRevision === revision && node.dataset.overlayObject === objectId);
+
+  function display(args, attempts = 0) {
+      const panel = actions(args);
+      if (!panel && attempts < 20) {
+        timer = setTimeout(() => display(args, attempts + 1), 100);
+        return;
+      }
+      for (const link of panel?.querySelectorAll("[data-overlay-layer]") ?? []) {
+        const url = args.urls?.[link.dataset.overlayLayer];
+        if (url) {
+          link.href = url;
+          link.removeAttribute("aria-disabled");
+          link.title = "Open PDF in a new tab";
+        } else {
+          link.removeAttribute("href");
+          link.setAttribute("aria-disabled", "true");
+          link.title = args.urls === null
+            ? "PDF is still preparing. Reopen this item to check again."
+            : "PDF unavailable for this view";
+        }
+      }
+  }
+
+  addEventListener("message", event => {
+    if (event.source !== host || event.data?.type !== "streamlit:render") return;
+    clearTimeout(timer);
+    const args = event.data.args;
+    latest = args;
+    if (args.urls !== null || requested >= maxChecks) {
+      display(args);
+      return;
+    }
+    timer = setTimeout(check, requested ? nextDelay() : 100);
+  });
+  const nextDelay = () => requested < 10 ? 1500 : 4000;
+  function check() {
+    if (!latest || !actions(latest)) return;
+    if (requested >= maxChecks) {
+      display(latest);
+      return;
+    }
+    send("streamlit:setComponentValue", {value: ++requested});
+    timer = setTimeout(check, nextDelay());
+  }
+  addEventListener("pagehide", () => clearTimeout(timer));
+  send("streamlit:componentReady", {apiVersion: 1});
+  send("streamlit:setFrameHeight", {height: 0});
+</script>
+</body>
+</html>

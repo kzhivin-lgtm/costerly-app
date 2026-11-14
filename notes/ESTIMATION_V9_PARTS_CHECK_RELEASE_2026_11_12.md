@@ -1,5 +1,30 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.26 Object Detail overlay PDFs
+
+The protected baseline is `estimation-v9.25-checkpoint` at `ff8436d`.
+The Object Detail Elements header has separate Front and Block links.
+They open private PDFs built from the original pages and the accepted
+Front and Block Locator geometry. Native Front outlines retain their
+shape. Block polygons render only their combined exterior, and a
+Planner elevation bound is dashed when the exact shell is unavailable.
+No overlay adds recognition, model calls, or quantities.
+
+After Parts Check publishes, one background worker renders and uploads
+the artifacts. Material calculation does not wait for it. The estimate,
+run, Parts Check revision and object identify the artifact. Only the
+Object Detail preview component checks its readiness. The check leaves
+the Elements disclosure and unsaved inputs intact. Estimates without a
+saved overlay revision retain their original Elements header.
+
+Median local render time across five repeats was 1.218 s for both Lev1
+PDFs, 0.051 s for both Lev2 PDFs and 0.608 s for all four Adda PDFs.
+These timings exclude upload, link signing and browser download.
+Rendered all 20 pages for visual inspection. Streamlit and Chrome
+fixtures at 1280 and 390 px exercised pending to ready, unavailable,
+old estimates, keyboard and mouse opening, and stable material inputs.
+The authenticated production flow with a new estimate is tracked in TODO.
+
 ## Estimation 9.25 Finish evidence and compatible sheet purchasing
 
 Work 3.17.4.6. Use the first live 9.24 Lev1 regression as the failure

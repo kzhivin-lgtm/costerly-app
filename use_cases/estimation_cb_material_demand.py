@@ -549,7 +549,8 @@ def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
                          "parts": _checked_parts_for_estimate(checked_parts, estimates, estimated_counts),
                          "primary_preview_ref": item["primary_preview_ref"]}
     snapshot["parts_check"] = coverage
-    snapshot["parts_check_source"] = {key: parts_report[key] for key in ("run_id", "estimate_id", "input_ids", "source_audit_sha256")
+    snapshot["parts_check_source"] = {key: parts_report[key] for key in ("run_id", "estimate_id", "input_ids", "source_audit_sha256",
+                                                                        "overlay_revision")
                                       if key in parts_report}
     if any(row["issues"] or row["unpriced_requirements"] or row["has_unresolved_demands"]
            or row["has_estimated_costs"] for row in coverage.values()):

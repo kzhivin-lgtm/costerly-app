@@ -274,12 +274,52 @@ def apply_object_detail_css() -> None:
             --detail-grid: minmax(260px, 2.1fr) repeat(3, minmax(0, 1fr));
         }
 
-        .object-detail-elements {
+        .object-detail-elements-section {
+            position: relative;
             margin: 0 0 24px;
         }
 
         .object-detail-elements > summary {
             cursor: pointer;
+        }
+
+        .object-detail-overlay-actions {
+            position: absolute;
+            inset: 0 0 auto auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .object-detail-elements-section:has(.object-detail-overlay-actions) summary {
+            padding-right: 155px;
+            min-height: 34px;
+        }
+
+        .object-detail-overlay-button,
+        .object-detail-overlay-button:link,
+        .object-detail-overlay-button:visited {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 64px;
+            min-height: 32px;
+            padding: 0 10px;
+            border: 1px solid var(--button-secondary-border);
+            border-radius: var(--button-radius);
+            background: var(--button-secondary-bg);
+            color: var(--button-secondary-text);
+            font: 600 13px var(--font-sans);
+            text-decoration: none;
+        }
+
+        .object-detail-overlay-button[href]:hover {
+            border-color: var(--color-accent);
+        }
+
+        .object-detail-overlay-button[aria-disabled="true"] {
+            opacity: .5;
+            cursor: default;
         }
 
         .object-detail-elements-table {

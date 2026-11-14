@@ -9,13 +9,14 @@ from pathlib import Path
 import re
 from tempfile import TemporaryDirectory
 from threading import RLock
+from uuid import uuid4
 
 from db.repositories import insert_agent_usage_event, insert_agent_usage_events
 from use_cases.estimation_artifacts import _upload_immutable_artifact, download_evidence_artifact
 from use_cases.estimation_detection_context_v7 import build_context
 from use_cases.estimation_originals import ORIGINALS_BUCKET
 
-VERSION = "estimation-v9.25-parts-check"
+VERSION = "estimation-v9.26-parts-check"
 OPERATION = "estimation_v9_parts_check"
 _LOCK = RLock()
 _RUNNING = set()
@@ -137,6 +138,7 @@ def _run(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inpu
     details = {"estimate_id": estimate_id, "input_ids": input_ids, "source_pdf_sha256": original_sha256}
     stage = "load_detection"
     report = None
+    directory = None
     try:
         prior = _reports(client, company_id, run_id, estimate_id)
         if (prior and prior[0]["status"] == "succeeded" and prior[0]["raw_usage"].get("input_ids") == input_ids
@@ -152,17 +154,20 @@ def _run(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inpu
         stage = "run_parts_check"
         from tools.probe_estimation_v9 import run_parts_check
 
-        with TemporaryDirectory(prefix="costerly-parts-check-") as directory:
-            pdf = Path(directory) / "source.pdf"
-            _write_source_pdf(pdf, file_name, file_bytes)
-            report = run_parts_check(pdf=pdf, detection_context=context, output=Path(directory) / "output",
-                                     inputs=inputs, request_provider=_request_provider(
-                                         company_id, run_id, file_name, usage_events))
+        directory = TemporaryDirectory(prefix="costerly-parts-check-")
+        folder = Path(directory.name)
+        pdf = folder / "source.pdf"
+        _write_source_pdf(pdf, file_name, file_bytes)
+        report = run_parts_check(pdf=pdf, detection_context=context, output=folder / "output",
+                                 inputs=inputs, request_provider=_request_provider(
+                                     company_id, run_id, file_name, usage_events))
         expected_objects = {row["input_payload"]["object"]["object_id"] for row in inputs}
         if report["stage"] != "Parts Check" or set(report["objects"]) != expected_objects:
             raise ValueError("Parts Check must report every accepted File Review object")
         report.update(estimation_version=VERSION, run_id=run_id, estimate_id=estimate_id,
                       source_pdf_sha256=original_sha256, detection_event_id=detection["id"], input_ids=input_ids)
+        if (folder / "output" / "result.json").exists():
+            report["overlay_revision"] = uuid4().hex
         payload = (json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode()
         digest = sha256(payload).hexdigest()
         stage = "publish_parts_check"
@@ -172,12 +177,24 @@ def _run(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inpu
         details.update(report_sha256=digest, source_coverage=report["source_coverage"],
                        part_rows=sum(len(obj["parts"]) for obj in report["objects"].values()))
         status = "succeeded"
+        if "overlay_revision" in report:
+            try:
+                from use_cases.estimation_overlay_runtime import queue_overlay_pdfs
+
+                queue_overlay_pdfs(directory, company_id=company_id, run_id=run_id, estimate_id=estimate_id,
+                                   revision=report["overlay_revision"], file_name=file_name)
+                directory = None
+            except Exception:
+                _LOG.exception("Could not queue Estimation overlays for %s", estimate_id)
     except Exception as exc:
         details.update(failure_stage=stage, error_type=type(exc).__name__)
         if isinstance(exc, PartsCheckRequestError):
             details.update(request_stage=exc.stage, request_error=exc.reason)
         _LOG.warning("Parts Check %s failed for run %s: %s", stage, run_id, exc if isinstance(
             exc, PartsCheckRequestError) else type(exc).__name__)
+    finally:
+        if directory is not None:
+            directory.cleanup()
     # The status makes the report discoverable. Publish it independently of model metrics.
     insert_agent_usage_event(client, {
         "company_id": company_id, "run_id": run_id, "file_name": file_name, "agent_name": "estimation",
