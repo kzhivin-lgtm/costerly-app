@@ -20,10 +20,13 @@ the Front overlay across two views. No new model calls.
 The fresh Lev2 run priced three unmeasured backs as HDF, 12 carcass
 panels plus one divider as LDSP, and one unmeasured MDF worktop as
 fallback pieces. B07-B09 are missing the full geometry envelope.
-The sink cutout is present but has no resolved worktop family, so
-it also received a fallback. This remains a separate calculation
-investigation. The newly deployed PDF path needs a fresh authenticated
-Upload for acceptance.
+The saved Detection packet has V01-V03 and V03-V04 geometry links
+and four printed dimensions on V04. The orthographic geometry
+resolver requires a direct plan link, so it skips V04. Worktop Geometry
+requires two plan orientations. The detected cutout has a cooktop hint
+and no resolved worktop family, so it also received a fallback.
+The new PDF path requires a fresh authenticated Upload for acceptance.
+All 36 focused tests passed.
 
 ## Estimation 9.35 labels by material family
 

@@ -27,10 +27,14 @@ PENDING, P0, VERIFIED PRODUCTION FINDING. Restore size and area takeoff
 on Lev2 `run_033dc1bc8da746728907e45d8a550cd7`. Trace why Block
 Geometry left all three axes empty on V04 blocks B07-B09 and why the
 separate worktop has no usable cut outline or material family. Compare
-the saved 9.4 geometry evidence with the fresh run. Verify priced
-HDF and LDSP by area and price the sink cutout as a separate operation.
-Preserve the recognized block and drawer counts. The current run's
-four fallback lines total ₪3,600 excluding VAT.
+the saved 9.4 geometry evidence with the fresh run. Detection passed
+a direct V01-V03 link and an indirect V01-V03-V04 chain. V04 has four
+printed dimensions. Block Geometry currently skips the V04 envelopes
+because it requires a direct plan link. The worktop outline requires
+both orientations. Verify HDF and LDSP by area and price each confirmed
+worktop cutout separately. Check the fixture hint against the source:
+the saved cutout was labeled cooktop. Preserve block and drawer counts.
+The four fallback lines total ₪3,600 excluding VAT.
 
 PENDING, P2, DISCOVERED DURING VERIFICATION. Align the production
 dependency contract test with the pinned deployment dependencies.
