@@ -5866,6 +5866,16 @@ cause from the local screenshot alone.
   Fresh model surface evidence still needs verification, particularly
   for the frame backing and tabletop underlayer. Review the source overlay,
   Parts and purchase demand before accepting the production result. See the [9.24 experiment](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-924-finish-and-compatible-sheet-stock-candidate).
+  Production Lev1 9.24 missed the finish on the seat and both uprights,
+  assigned a slat-panel side cue to the cabinet base, and increased the
+  sheet list from nine to 11. Keep this witness for the next repair. Bind
+  finish to the owning surface and track rejected and missing evidence.
+  P1, USER REPORT. Compatible sheet allowances can appear twice when
+  procurement keys differ by demand role. Check family, finish, size,
+  format, price and cut compatibility before shared nesting. Preserve
+  separate ownership, usage and provenance. The saved LDSP 40 mm pair
+  nests on one fallback sheet in the diagnostic. See the
+  [production audit](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#first-production-lev1-regression).
   Preserve explicit drawing materials. Reuse finish and nominal thickness
   where the evidence links panels, prefer compatible stock already in the
   material plan, and map thick finished panels to face layers and, where

@@ -84,8 +84,42 @@ The owner approved production deployment on 2026-11-14. GitHub main
 contains `ce2408c`. Railway deployment `dd232100-147a-4ba3-928c-7b2bd2360307`
 succeeded. The live Core and Cloudflare wrapper both report
 `estimation-v9.24-detection-v8.4.29`, and Core health is HTTP 200.
-Fresh production Understanding remains to verify. Rollback target is
-`estimation-v9.23-checkpoint` at `d00e5d9`.
+Rollback target is `estimation-v9.23-checkpoint` at `d00e5d9`.
+
+### First production Lev1 regression
+
+Owner upload `run_3b2593ab751a4da5b552e19a5b41d20c` used the same
+PDF and View boxes as the comparison. Detection returned one object.
+The three Blocks, three drawers, two supports and all 29 sized Parts
+rows survived. The saved 9.24 material plan has 11 sheet positions and
+seven allowance lines. Repricing the previous production Parts on the
+same archived catalogs without user overrides gives nine sheet positions,
+five allowance lines and 3,893.42 ILS. The 9.24 plan is 3,751.72 ILS
+excluding VAT. The earlier seven-position offline result used saved
+finish evidence and did not exercise fresh surface recognition.
+
+The surface marks retained in Parts Check omit the seat and the
+`frame_side` role. The `carcass_side` mark describes the right side
+of the slat panel, while Parts applies it to the cabinet below. Its
+rectangle lies mostly outside that panel in the reconstructed overlay.
+Parts uses that assignment to move the caps from 20 to 17 mm. The 40 mm
+printed upright drops out of the veneer finish group and the ribs
+consolidate at projected 36 mm. Parts carries no qualifying 40 mm
+veneered rows into the approved estimating layup in this run. The
+archive retains accepted Parts evidence. It cannot determine whether a
+missing mark was absent in the raw model reply or was rejected in binding.
+
+The two LDSP 40 mm rows are `cb-material-009` for the right frame upright
+and `cb-material-013` for the lower table plate. They have the same
+family, thickness, 2440 x 1220 fallback format and 200 ILS allowance.
+Material Demand keys them separately as `visible_sheet` and
+`internal_sheet`. Assumption Fallback then keeps separate requirement
+keys because neither has a catalog candidate. A read-only diagnostic
+combined only these two requirements, preserving geometry and rotation.
+Both cuts nested on one sheet. This demonstrates the cost of splitting
+the currently declared stock. It does not validate LDSP for the upright.
+Preserve individual source requirements. Fix finish assignment before
+coalescing compatible fallback stock for shared nesting.
 
 ## Estimation 9.23 Object Detail save latency
 
