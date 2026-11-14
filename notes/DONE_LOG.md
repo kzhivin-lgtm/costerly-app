@@ -1,5 +1,11 @@
 # Done Log
 
+Estimation 9.23, work 3.17.4.6. A one-field Save on the copied Lev1
+estimate took 2.77 s to turn green, down from 3.53 s across five paired
+browser runs. The material rows and totals matched. 101 focused tests
+passed. Authenticated production latency remains to verify. See the
+[release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-923-object-detail-save-latency).
+
 Estimation 9.22, work 3.17.4.6. The three Object Detail footer actions
 keep their positions. Save changes confirms the write in place with a
 green Saved state. APPROVE is uppercase. The 89 focused tests and both

@@ -196,13 +196,19 @@ def _recalculate_edited_material_lines(
 ):
     from use_cases.estimation import apply_material_plan_allocations
 
-    plans = fetch_rfq_estimate_material_plan(client, estimate_id)
+    with ThreadPoolExecutor(max_workers=3, thread_name_prefix="material-plan-read") as executor:
+        plan_future = executor.submit(fetch_rfq_estimate_material_plan, client, estimate_id)
+        objects_future = executor.submit(fetch_rfq_object_estimates, client, estimate_id)
+        purchases_future = executor.submit(fetch_rfq_estimate_material_purchase_overrides, client, estimate_id)
+        plans = plan_future.result()
+        objects = objects_future.result()
+        purchases = _material_purchase_overrides_by_selection_key(purchases_future.result())
     saved = plans.iloc[0].get("plan_payload") if not plans.empty else None
     if not saved or saved.get("status") not in {"planned", "needs_review"}:
         raise ValueError("The saved material plan is not available yet. Try again when it is ready.")
 
-    objects = fetch_rfq_object_estimates(client, estimate_id)
-    quantities = {str(row["object_id"]): row["quantity"] for _, row in objects.iterrows()}
+    object_contexts = {str(row["object_id"]): row for row in objects.to_dict("records")}
+    quantities = {oid: row["quantity"] for oid, row in object_contexts.items()}
     prior_quantities = saved.get("object_quantities") or quantities
     ratios = {oid: Decimal(str(value)) / Decimal(str(prior_quantities[oid]))
               for oid, value in quantity_edits.items() if value != prior_quantities[oid]}
@@ -225,9 +231,6 @@ def _recalculate_edited_material_lines(
     for line in saved["lines"]:
         if any(row["object_id"] in ratios for row in line["allocations"]):
             changed_stock.add(line["selection_key"])
-    purchases = _material_purchase_overrides_by_selection_key(
-        fetch_rfq_estimate_material_purchase_overrides(client, estimate_id),
-    )
     clear_purchase_keys = norm_keys - purchase_keys
     for key in clear_purchase_keys:
         purchases.pop(key, None)
@@ -289,9 +292,11 @@ def _recalculate_edited_material_lines(
             client, estimate_id=estimate_id, object_id=oid, quantity=quantities[oid],
         )
         update_rfq_detected_object(client, run_id=run_id, object_id=oid, values={"quantity": quantities[oid]})
+        object_contexts[oid]["quantity"] = quantities[oid]
     apply_material_plan_allocations(
         client, estimate_id=estimate_id, plan_snapshot=snapshot, changed_requirements=changed,
         changed_quantity_objects=set(ratios),
+        object_contexts=object_contexts,
     )
     upsert_rfq_estimate_material_plan(
         client, estimate_id=estimate_id, company_id=company_id,

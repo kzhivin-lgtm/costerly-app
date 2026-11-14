@@ -1,5 +1,33 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.23 Object Detail save latency
+
+Work 3.17.4.6. Use `estimation-v9.22-checkpoint` as the baseline for an
+edit to the purchase quantity of the 600 mm Lev1 drawer slides. Replay
+the saved estimate through the real Streamlit component in headless
+Chrome. Use an isolated copy of the production rows and observed read
+latencies. Simulate write latency and keep it fixed across both builds.
+Measure from click to the green Saved border. Compare the priced rows,
+purchase override and all self-cost totals.
+
+Run independent Object Detail validation and material worker reads in
+parallel. Reuse object data from the worker in its totals calculation.
+The receipt reads persisted material rows and totals. It skips overhead
+settings, Parts presentation and preview signing. Preserve the scoped
+Material Engine calculation, worker ordering and server-confirmed Saved
+state. Add a browser performance entry with validation, pricing and
+receipt timings for future authenticated Save measurements.
+
+Five paired browser runs measured a median 3.53 s to the green button
+on 9.22 and 2.77 s on 9.23, with 22 and 19 save-time database calls.
+The request-to-override interval was 0.89 and 0.50 s. Override-to-plan
+was 1.46 and 1.34 s. Plan publication to the final receipt read was
+0.71 and 0.42 s. Both builds updated one manual purchase quantity and
+returned identical Materials rows and self-cost totals. 101 focused
+tests passed. Browser fixtures also covered failure and retry, approval,
+return, editing and reverting on desktop and mobile. Authenticated
+production click-to-Saved timing remains open.
+
 ## Estimation 9.22 Object Detail save feedback
 
 Work 3.17.4.6. Keep all three footer actions visible. Save changes starts

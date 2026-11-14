@@ -205,6 +205,40 @@ def test_v3_object_detail_loads_with_a_planned_material_plan(monkeypatch):
     assert detail["material_plan_status"] == "planned"
 
 
+def test_material_save_receipt_matches_detail_without_loading_preview_or_settings(monkeypatch):
+    plan = {"status": "needs_review", "parts_check": {"object-1": {
+        "primary_preview_ref": "storage://rfq-estimation-evidence/company-1/preview.png",
+        "unpriced_requirements": ["missing"],
+        "materials": [{"requirement_id": "missing", "source_name": "Unpriced panel", "quantity": 1.5, "unit": "m2"}],
+    }}}
+    checks = []
+    monkeypatch.setattr(estimation, "get_supabase_client", lambda: object())
+    monkeypatch.setattr(estimation, "_assert_screen_estimate_access", lambda _client, estimate_id, **_: checks.append(estimate_id))
+    monkeypatch.setattr(estimation, "fetch_rfq_estimate_material_plan", lambda *_: pd.DataFrame([{"plan_payload": plan}]))
+    monkeypatch.setattr(estimation, "fetch_rfq_object_estimates", lambda *_: pd.DataFrame([{
+        "object_id": "object-1", "company_id": "company-1", "quantity": 2,
+        "self_cost_ex_vat": 100, "vat_amount": 18, "self_cost_total": 118,
+    }]))
+    monkeypatch.setattr(estimation, "fetch_rfq_estimate_lines_for_object", lambda *_, **__: pd.DataFrame([{
+        "section": "material", "source": "pricing_policy", "item_name": "Consumables",
+        "cost": 5, "raw_agent_json": {"percent": 5, "basis": "materials"},
+    }]))
+    monkeypatch.setattr(estimation, "fetch_company_overhead_settings", lambda *_: pd.DataFrame())
+    detail = estimation.load_object_detail_data(estimate_id="estimate-1", object_id="object-1")
+
+    def unexpected(*_, **__):
+        raise AssertionError("The save receipt does not need this read")
+
+    monkeypatch.setattr(estimation, "_estimation_preview_url", unexpected)
+    monkeypatch.setattr(estimation, "_element_rows_from_bom", unexpected)
+    monkeypatch.setattr(estimation, "fetch_company_overhead_settings", unexpected)
+    receipt = estimation.load_object_detail_material_receipt(estimate_id="estimate-1", object_id="object-1")
+    assert checks == ["estimate-1", "estimate-1"]
+    assert receipt["sections"][0]["rows"] == detail["sections"][0]["rows"]
+    assert receipt["quantity"] == detail["quantity"] == 2
+    assert receipt["self_cost"] == {key: detail["self_cost"][key] for key in ("excl_vat", "vat", "total")}
+
+
 def test_object_detail_footer_has_approve_and_a_disabled_save_between_actions():
     footer = _footer_html("run-1", "estimate-1", "object-1")
     assert footer.index("Back to Objects") < footer.index("Save changes") < footer.index(">APPROVE<")

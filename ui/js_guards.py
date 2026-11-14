@@ -2122,6 +2122,7 @@ def install_object_detail_input_guard(
                     return;
                 }
                 const request = {id: crypto.randomUUID(), scope, edits: [...draft.values()], approveAfterSave};
+                request.started = parentWindow.performance.now();
                 activeSave = request;
                 request.timeout = parentWindow.setTimeout(() => {
                     if (activeSave !== request) return;
@@ -2139,6 +2140,7 @@ def install_object_detail_input_guard(
             function receiveMaterialSave(result) {
                 if (JSON.stringify(result.scope) !== JSON.stringify(scope) || result.id !== activeSave?.id) return;
                 const submitted = activeSave.edits;
+                const started = activeSave.started;
                 const approveAfterSave = activeSave.approveAfterSave;
                 parentWindow.clearTimeout(activeSave.timeout);
                 activeSave = null;
@@ -2202,6 +2204,10 @@ def install_object_detail_input_guard(
                 saveButton()?.setAttribute("data-saved", "");
                 previewMaterials();
                 updateSaveControls();
+                const performance = parentWindow.performance;
+                performance.clearMeasures("object-detail-save");
+                performance.measure("object-detail-save",
+                    {start: started, end: performance.now(), detail: result.timing});
                 if (approveAfterSave && !draft.size && !invalidMaterial()) {
                     parentDoc.querySelector("[data-object-detail-approve]")?.click();
                 }

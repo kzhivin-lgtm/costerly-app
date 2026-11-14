@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 import logging
+from time import perf_counter
 from typing import Callable
 import streamlit as st
 
@@ -22,6 +23,7 @@ from use_cases.estimation import (
     apply_object_detail_snapshot,
     approve_object_estimate,
     load_object_detail_data,
+    load_object_detail_material_receipt,
     save_object_detail_material_edits,
 )
 from state.company_auth import company_auth_enabled
@@ -232,6 +234,7 @@ def _material_editor(context: ObjectDetailContext) -> None:
     if request_id == (results.get(key) or {}).get("id"):
         return
     result = {"id": request_id, "scope": list(key)}
+    started = perf_counter()
     try:
         edits = request.get("edits")
         if not isinstance(edits, list):
@@ -240,15 +243,22 @@ def _material_editor(context: ObjectDetailContext) -> None:
             estimate_id=context.estimate_id, object_id=context.object_id,
             edits=edits,
         )
+        submitted = perf_counter()
         future.result()
+        published = perf_counter()
         st.session_state.pop("approved_object_keys", None)
         _mark_objects_estimation_dirty(context.estimate_id)
-        data = load_object_detail_data(estimate_id=context.estimate_id, object_id=context.object_id)
+        data = load_object_detail_material_receipt(estimate_id=context.estimate_id, object_id=context.object_id)
         result.update(
             rows=object_detail_view.material_preview_rows(data),
             self_cost=data["self_cost"],
             quantity=data["quantity"],
         )
+        result["timing"] = {
+            "validation": round((submitted - started) * 1000),
+            "pricing": round((published - submitted) * 1000),
+            "receipt": round((perf_counter() - published) * 1000),
+        }
     except ValueError as exc:
         result["error"] = str(exc)
     except Exception:

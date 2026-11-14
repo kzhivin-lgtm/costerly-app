@@ -441,39 +441,12 @@ def load_object_detail_data(
     vat_percent = _number(settings.get("vat_percent"), 18)
     employer_load_percent = _number(settings.get("employer_load_percent"), 25)
 
-    material_rows = []
     labor_rows = []
     overhead_rows = []
 
     for _, line in lines_df.iterrows():
         item = line.to_dict()
-        if item.get("section") == "material":
-            raw_agent_json = item.get("raw_agent_json") or {}
-            material_rows.append(
-                {
-                    "group": item.get("group_name"),
-                    "line_id": item.get("line_id"),
-                    "item": item.get("item_name"),
-                    "unit": item.get("unit"),
-                    "unit_cost": item.get("unit_cost"),
-                    "qty": item.get("quantity"),
-                    "cost": item.get("cost"),
-                    "price_source": (
-                        raw_agent_json.get("price_source")
-                        if isinstance(raw_agent_json, dict) else None
-                    ),
-                    "material_plan_allocation": (
-                        raw_agent_json.get("material_plan_allocation")
-                        if isinstance(raw_agent_json, dict) else None
-                    ),
-                    "locked": item.get("source") == "pricing_policy",
-                    "policy_percent": (
-                        raw_agent_json.get("percent")
-                        if isinstance(raw_agent_json, dict) else None
-                    ),
-                }
-            )
-        elif item.get("section") == "labor":
+        if item.get("section") == "labor":
             labor_rows.append(
                 {
                     "group": item.get("group_name"),
@@ -506,16 +479,7 @@ def load_object_detail_data(
                 }
             )
 
-    plan_material_rows = _material_rows_from_plan(material_plan, object_id=object_id)
-    if plan_material_rows:
-        material_rows = plan_material_rows + _material_policy_rows_from_lines(lines_df)
-    if checked:
-        missing = set(checked.get("unpriced_requirements") or ())
-        material_rows = [*plan_material_rows, *[
-            {"item": material["source_name"], "required_material_value": material["quantity"],
-             "required_material_unit": {"m2": "m²"}.get(material["unit"], material["unit"]), "total": None}
-            for material in checked["materials"] if material["requirement_id"] in missing
-        ], *_material_policy_rows_from_lines(lines_df)]
+    material_rows = _object_detail_material_rows(material_plan, lines_df, object_id)
 
     material_total = sum(_number(row.get("cost"), 0) for row in material_rows)
     manufacturing_total = sum(
@@ -560,7 +524,7 @@ def load_object_detail_data(
                 "title": "Materials",
                 "metrics": [],
                 "columns": ["Material", "Required material", "Purchase unit", "Unit price", "Purchase quantity", "Total"],
-                "rows": sorted(material_rows, key=_material_display_order),
+                "rows": material_rows,
             },
         ],
         "self_cost": {
@@ -571,6 +535,53 @@ def load_object_detail_data(
             "total": object_row.get("self_cost_total"),
         },
     }
+
+
+def load_object_detail_material_receipt(
+    *, estimate_id: str, object_id: str,
+) -> dict[str, Any]:
+    """Project a committed save into the editor's rows and totals."""
+    client = get_supabase_client()
+    _assert_screen_estimate_access(client, estimate_id)
+    with ThreadPoolExecutor(max_workers=3, thread_name_prefix="material-receipt") as executor:
+        object_future = executor.submit(_object_material_context, client, estimate_id=estimate_id, object_id=object_id)
+        lines_future = executor.submit(fetch_rfq_estimate_lines_for_object, client, estimate_id=estimate_id,
+                                       object_id=object_id)
+        plan_future = executor.submit(fetch_rfq_estimate_material_plan, client, estimate_id)
+        obj, lines = object_future.result(), lines_future.result()
+        saved_plan = _first_row(plan_future.result()).get("plan_payload") or {}
+    return {
+        "sections": [{"key": "material", "rows": _object_detail_material_rows(saved_plan, lines, object_id)}],
+        "quantity": _number(obj.get("quantity"), 1),
+        "self_cost": {"excl_vat": obj.get("self_cost_ex_vat"), "vat": obj.get("vat_amount"),
+                      "total": obj.get("self_cost_total")},
+    }
+
+
+def _object_detail_material_rows(plan: dict[str, Any], lines: Any, object_id: str) -> list[dict[str, Any]]:
+    rows = _material_rows_from_plan(plan, object_id=object_id)
+    checked = (plan.get("parts_check") or {}).get(object_id) or {}
+    if rows or checked:
+        missing = set(checked.get("unpriced_requirements") or ())
+        rows.extend({
+            "item": material["source_name"], "required_material_value": material["quantity"],
+            "required_material_unit": {"m2": "m²"}.get(material["unit"], material["unit"]), "total": None,
+        } for material in checked.get("materials", ()) if material["requirement_id"] in missing)
+        rows.extend(_material_policy_rows_from_lines(lines))
+    else:
+        for item in lines.to_dict("records"):
+            if item.get("section") != "material":
+                continue
+            raw = item.get("raw_agent_json")
+            raw = raw if isinstance(raw, dict) else {}
+            rows.append({
+                "group": item.get("group_name"), "line_id": item.get("line_id"), "item": item.get("item_name"),
+                "unit": item.get("unit"), "unit_cost": item.get("unit_cost"), "qty": item.get("quantity"),
+                "cost": item.get("cost"), "price_source": raw.get("price_source"),
+                "material_plan_allocation": raw.get("material_plan_allocation"),
+                "locked": item.get("source") == "pricing_policy", "policy_percent": raw.get("percent"),
+            })
+    return sorted(rows, key=_material_display_order)
 
 
 def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -> list[dict[str, Any]]:
@@ -999,9 +1010,12 @@ def save_object_detail_material_edits(
         raise ValueError("Select between 1 and 500 material changes.")
     client = get_supabase_client()
     _assert_screen_estimate_access(client, estimate_id)
-    obj = _object_material_context(client, estimate_id=estimate_id, object_id=object_id)
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="material-edit-read") as executor:
+        object_future = executor.submit(_object_material_context, client, estimate_id=estimate_id, object_id=object_id)
+        plan_future = executor.submit(fetch_rfq_estimate_material_plan, client, estimate_id)
+        obj = object_future.result()
+        plan = _first_row(plan_future.result()).get("plan_payload") or {}
     company_id = str(obj["company_id"])
-    plan = _first_row(fetch_rfq_estimate_material_plan(client, estimate_id)).get("plan_payload") or {}
     owned = {
         line["selection_key"]: line for line in plan.get("lines", ())
         if line.get("selection_key") and any(a.get("object_id") == object_id for a in line.get("allocations", ()))
@@ -1101,6 +1115,7 @@ def apply_material_plan_allocations(
     plan_snapshot: dict[str, Any],
     changed_requirements: set[tuple[str, str]] | None = None,
     changed_quantity_objects: set[str] | None = None,
+    object_contexts: dict[str, dict[str, Any]] | None = None,
 ) -> None:
     """Project rounded purchase costs back into the owning Object Detail rows."""
     # A partial plan is still authoritative for the requirements it actually
@@ -1245,11 +1260,9 @@ def apply_material_plan_allocations(
             estimate_id=estimate_id,
             object_id=object_id,
         )
-        object_context = _object_material_context(
-            client,
-            estimate_id=estimate_id,
-            object_id=object_id,
-        )
+        object_context = (object_contexts or {}).get(object_id)
+        if object_context is None:
+            object_context = _object_material_context(client, estimate_id=estimate_id, object_id=object_id)
         settings = _first_row(fetch_company_overhead_settings(
             client,
             str(object_context.get("company_id") or ""),
