@@ -1,5 +1,20 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.39 Object Detail footer spacing
+
+Work 3.17.4.6. Rollback is `estimation-v9.38-checkpoint`.
+The Object Detail layout removes the space taken by nonvisual Streamlit
+bridges below the footer actions while keeping the bridges mounted.
+At the end of a scrollable Object Detail page, the two gaps above and
+below the actions match at 58 px. The global Privacy Policy stays fixed
+to the viewport on every screen. When a page fits on screen without
+scrolling, the gap below the actions depends on viewport height.
+
+Verified with the real Streamlit layout inside the local Cloudflare
+wrapper at 1280 and 390 px, including short and long content, opening
+Elements, keyboard focus, the action controls and the Objects screen.
+78 focused checks passed. Parts Check stays at 9.38.
+
 ## Estimation 9.38 block Elements and hinge thresholds
 
 Work 3.17.4.6. Rollback is `estimation-v9.37-checkpoint`.

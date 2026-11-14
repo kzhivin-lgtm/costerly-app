@@ -601,12 +601,32 @@ def apply_object_detail_css() -> None:
             font-size: 12px;
         }
 
+        .stApp:has(.object-detail-footer-actions) {
+            --object-detail-summary-bottom: 24px;
+            --object-detail-action-gap: 34px;
+            /* The fixed link starts 31px above the viewport bottom. The final
+               Markdown container carries 16px of margin after the actions. */
+            --post-upload-bottom: calc(var(--object-detail-summary-bottom) + var(--object-detail-action-gap) + 47px);
+        }
+
+        /* Keep the zero-height Streamlit bridges mounted without their layout gaps. */
+        [data-testid="stElementContainer"]:has(.object-detail-footer-actions) ~ :is(
+            [data-testid="stLayoutWrapper"]:has(.st-key-object_detail_navigation_bridges),
+            [data-testid="stElementContainer"]:has(iframe[title="st.iframe"]),
+            [data-testid="stElementContainer"]:has([data-costerly-screen="object_detail"]),
+            .st-key-object_detail_material_edit,
+            [class*="st-key-object_detail_overlay"]
+        ) {
+            position: absolute;
+            pointer-events: none;
+        }
+
         .object-detail-final {
             display: grid;
             grid-template-columns: minmax(0, 1fr) repeat(3, max-content);
             column-gap: 42px;
             align-items: end;
-            padding: 10px 0 24px 0;
+            padding: 10px 0 var(--object-detail-summary-bottom);
             margin-top: 0;
         }
 
@@ -643,7 +663,7 @@ def apply_object_detail_css() -> None:
             grid-auto-columns: minmax(0, 1fr);
             grid-auto-flow: column;
             gap: 18px;
-            margin-top: 34px;
+            margin-top: var(--object-detail-action-gap);
         }
 
         .st-key-object_detail_navigation_bridges {

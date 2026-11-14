@@ -1,5 +1,10 @@
 # Done Log
 
+Estimation 9.39, work 3.17.4.6. Removed excess Object Detail footer
+space and kept the fixed Privacy Policy on every screen. Local browser
+measurements at 1280 and 390 px matched the existing 58 px gap.
+See the [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-939-object-detail-footer-spacing).
+
 Estimation 9.38 accepted production checkpoint, work 3.17.4.6.
 Tag `estimation-v9.38-checkpoint` pins runtime `771ca22`.
 Fresh Lev2 confirmed 37 hinges, nine Blocks and Common parts, and
