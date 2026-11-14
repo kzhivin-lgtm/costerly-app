@@ -158,6 +158,27 @@ the verified Lev1 report and check Lev2 and both Adda objects before
 changing pricing. The 9.22 release contains footer changes only.
 
 
+On 2026-11-14, fresh Lev1 `run_2f324f89be3d4315be2bec33b6aee177`
+and the two previous complete production reports had the same PDF hash,
+three Blocks, three drawers, two supports and 29 Parts rows. All three
+normalize projected rib thicknesses of 36 and 37 mm to the 40 mm marked
+on the right upright. All three carry the seat at projected 39 mm without
+`visual_stock` and purchase it as a separate 39 mm LDSP allowance. The
+same seat state is present in production 9.17
+`run_037c9562735b4213854d5fd44f7e611e` and two archived 9.15 trials.
+
+The normalization code and Understanding finish instructions are
+unchanged from 9.16. Replaying the saved 9.16 finish cues on current
+geometry produced a single 40 mm veneered MDF demand for the seat, ribs
+and right upright. Removing only the seat cue reproduced 39 mm without
+finish evidence. Removing only its finish group retained veneer and kept
+39 mm. Production logs do not retain the raw Understanding reply. An
+omitted cue and a cue rejected by validation remain indistinguishable.
+The tabletop underlayer stayed at 40 mm LDSP in the replay. It has no
+material note and its role is outside the allowed finish cues. The
+adapter uses finished thickness as stock thickness. A layer or spacer
+recipe requires additional stock composition logic.
+
 ## Estimation 9.19 Scoped material edits and Front recovery
 
 Production Lev1 `run_aefe2128a4dd472fb5995eb1a5735fcd` returned one

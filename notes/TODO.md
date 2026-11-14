@@ -5816,7 +5816,7 @@ cause from the local screenshot alone.
   untouched quantities, saves once, and displays read-only unit prices.
   Runtime `estimation-v9.14-checkpoint`. See the
   [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-914-production-checkpoint).
-- Lev1 Parts and Material Demand audit. DEFERRED BY OWNER, P1, USER REQUEST. After
+- Lev1 Parts and Material Demand audit. ACTIVE, P1, USER REQUEST. After
   the 9.14 repeatability checkpoint, trace the saved run
   `run_f837297d641e489880b162626eaf5916` for unexpected Parts counts,
   repeated sheet material variants, and 10 Assumption Fallback rows.
@@ -5850,6 +5850,10 @@ cause from the local screenshot alone.
   of the corroborated support pair on both Planner paths and material
   coverage of the seat. Production 9.21 verified both supports and all
   29 Parts dimensions. Its nine sheet lines include four LDSP positions.
+  The 9.23 production repeat confirms the seat loses usable finish
+  evidence before Parts. The current normalizer still maps the ribs to
+  40 mm. Restoring the successful 9.16 finish cues in an offline replay
+  reunites the seat with the ribs and right upright at 40 mm veneered MDF.
   Preserve explicit drawing materials. Reuse finish and nominal thickness
   where the evidence links panels, prefer compatible stock already in the
   material plan, and map thick finished panels to face layers and, where
