@@ -1,5 +1,12 @@
 # Done Log
 
+Estimation 9.38 accepted production checkpoint, work 3.17.4.6.
+Tag `estimation-v9.38-checkpoint` pins runtime `771ca22`.
+Fresh Lev2 confirmed 37 hinges, nine Blocks and Common parts, and
+both two-page PDFs. All nine live purchase lines replayed exactly.
+The owner confirmed the interface. See the
+[checkpoint record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-938-accepted-production-checkpoint).
+
 Estimation 9.38, work 3.17.4.6. Added collapsible Elements by Block
 and moved the third hinge threshold to above 800 mm. Saved Lev2
 replay produced 37 hinges with existing Front, parts and prices

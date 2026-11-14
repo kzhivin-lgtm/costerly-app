@@ -19,13 +19,37 @@ report. When the matching report is unavailable, the flat list stays
 available. Disclosures are native browser elements with no callbacks.
 Local browser checks at 1280/390 px covered these states, shared-only
 and empty cases, keyboard access and the existing PDF controls.
-170 focused checks passed. Fresh authenticated review remains open.
+170 focused checks passed. The owner confirmed the interface in production
+and requested the checkpoint. See the fresh Lev2 production result below.
 
 The owner's marked V03:C13 in B05 is an opening candidate. It is
 currently a 560 × 599 mm door with two hinges. Defer a Front rule
 until exposed inner edges or another view corroborate an open cavity,
 then verify the fixture against its source. The 15 versus 17 door
 discrepancy remains open.
+
+### Estimation 9.38 accepted production checkpoint
+
+On 2026-11-14, the owner confirmed the interface and requested a full
+checkpoint. Tag `estimation-v9.38-checkpoint` pins production runtime
+`771ca220406f3eff41837cb7c0ac5ff824a02c92`. Railway and Cloudflare
+served `estimation-v9.38-detection-v8.4.29`. Restore 9.37 through
+`estimation-v9.37-checkpoint`.
+
+Fresh Lev2 `run_6a409b8b5a78486390709b0c2e6c3252` returned nine
+blocks, five drawers, 17 hinged contours and 37 hinges at ₪17 each.
+The persisted Elements plan has nine named blocks and Common parts.
+Both published PDFs contain V03 and V04. The gross worktop is
+3.019621 m². Nine purchase lines replay exactly from the stored Parts,
+inputs and catalog snapshot. This run adds two push latches for
+B08 V04:C05/C06 under the existing no-visible-pull rule. It retains
+the separate ₪200 veneered MDF allowance. The opening candidate
+V03:C13 and the door-count discrepancy stay open.
+
+The private archive is `backups/estimation-v9.38-checkpoint-2026-11-14/`.
+It includes the runtime bundle, original source and live Lev2
+artifacts, archived UI and Parts verification and the project records.
+This checkpoint changes documentation only.
 
 ## Estimation 9.37 linked elevations and material identity
 

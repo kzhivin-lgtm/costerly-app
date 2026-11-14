@@ -37,13 +37,12 @@ The second disputed contour remains unidentified. The 9.37 rule
 produced 50 hinges and the 9.38 replay produced 37. The two lift-up
 fronts and one unresolved front add no hinges.
 
-VERIFIED OFFLINE, P1, USER REQUEST. Confirm 9.38 Object Detail
-Elements on a new authenticated estimate and on a saved 9.37 estimate.
-Elements and its Block groups start closed, matching parts combine
-only within each group and Common parts follows the Blocks. Covers
-mouse, keyboard, mobile width and current Front/Block PDF controls.
-Accept the new hinge thresholds from one fresh Estimation run.
-[9.38 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-938-block-elements-and-hinge-thresholds).
+COMPLETED, P1, USER REQUEST. Estimation 9.38 Elements and hinge
+thresholds are protected by `estimation-v9.38-checkpoint`.
+The owner accepted the UI. Fresh Lev2 confirms 37 hinges and stored
+ownership for nine Blocks and Common parts. Older estimates and the
+flat fallback were verified in a local browser. See the
+[9.38 checkpoint](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-938-accepted-production-checkpoint).
 
 PENDING, P1, VERIFIED PRODUCTION FINDING. Review why Lev2 assigned
 veneered MDF 17 mm to four fixed panels (V03:C17, C01, C26 and C12)
