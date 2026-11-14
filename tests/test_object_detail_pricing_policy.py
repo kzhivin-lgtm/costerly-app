@@ -295,6 +295,35 @@ def test_quantity_and_material_draft_uses_new_quantity_in_one_scoped_job(monkeyp
     assert not scoped_job["purchase_keys"]
 
 
+def test_required_runner_sets_are_saved_as_physical_pieces(monkeypatch):
+    from use_cases import estimation_runtime
+
+    queued = []
+    selection = "hardware_drawer_slide|nominal_length=300"
+    monkeypatch.setattr(estimation, "get_supabase_client", lambda: object())
+    monkeypatch.setattr(estimation, "company_auth_enabled", lambda: False)
+    monkeypatch.setattr(estimation, "_object_material_context", lambda *_args, **_kwargs: {
+        "quantity": 1, "company_id": "company-1", "run_id": "run-1",
+    })
+    plan = {"status": "planned", "parts_check_source": {"run_id": "run-1"}, "lines": [{
+        "selection_key": selection, "purchase_kind": "piece", "package_quantity": 2,
+        "allocations": [{"object_id": "object-1", "material_requirement_id": "runner", "quantity": 6}],
+    }]}
+    monkeypatch.setattr(estimation, "fetch_rfq_estimate_material_plan",
+                        lambda *_args: pd.DataFrame([{"plan_payload": plan}]))
+    monkeypatch.setattr(estimation_runtime, "queue_material_plan_recalculation", lambda **kwargs: queued.append(kwargs))
+
+    estimation.save_object_detail_material_edits(estimate_id="estimate-1", object_id="object-1", edits=[
+        {"field": "required_material", "lineId": "__material_requirement__:runner", "value": "4"},
+    ])
+
+    job, = queued
+    override = job["norm_edits"]["object-1", "runner"]
+    assert (override["quantity_per_item"], override["unit"]) == (8, "piece")
+    assert job["norm_keys"] == {selection}
+    assert not job["purchase_keys"]
+
+
 def test_server_material_edit_recalculates_line_and_object_totals(monkeypatch):
     lines = [
         {
@@ -355,3 +384,20 @@ def test_server_material_edit_recalculates_line_and_object_totals(monkeypatch):
     assert totals["self_cost_ex_vat"] == 420.0
     assert totals["vat_amount"] == 75.6
     assert totals["self_cost_total"] == 495.6
+
+
+def test_shared_purchasing_shows_project_demand_and_cost_beside_object_values():
+    section = {
+        "key": "material", "title": "Materials", "columns": MATERIAL_PURCHASE_COLUMNS,
+        "rows": [{
+            "item": "Drawer runner", "required_material_value": 3, "required_material_unit": "set",
+            "purchase_unit": "set", "purchase_quantity_value": 9, "purchase_unit_cost": 72,
+            "total": 216, "shared_purchase": True, "project_required": 9, "purchase_total": 648,
+        }],
+    }
+    html = _table_html(section)
+    assert "Project purchase<br>quantity" in html
+    assert "Object total" in html
+    assert ">9 set project</small>" in html
+    assert ">₪648 project</small>" in html
+    assert ">set<" in html and ">₪216</span>" in html

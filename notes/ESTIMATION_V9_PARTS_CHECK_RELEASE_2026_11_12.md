@@ -1,5 +1,36 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.32 materials and purchase quantities
+
+Work 3.17.4.6. Rollback is the 9.31 runtime at `ae83ddd`. Object
+Detail shows net consumption, the purchase unit, the price per purchase
+unit and the quantity bought. Shared lines show the project consumption
+and purchase cost alongside the object's allocated cost. Material Engine
+still combines compatible demand across objects before rounding. A
+2440 × 1220 mm sheet covers 2.9768 m². The existing 10% sheet allowance
+still gives two sheets for 5 m² of combined net demand.
+
+Parts distinguishes drawer runners and pull-out shelf runners. Two
+physical runners are one purchase set for either role, per the owner's
+final clarification. The editor, project purchase summary and unit price
+use `set`. Editing required sets converts back to physical runner counts
+for the saved norm. Editing purchase quantity leaves required sets
+intact. The earlier single-runner trial listing was removed from the
+active Israel Reference catalog before release.
+
+LED strips keep the 5 m roll by temperature, profiles use 2 m bars with
+diffusers, and each physical object has one sized power supply. The
+editor packs profile cuts using the same order, cut allowance and stock
+length as Material Engine. The saved Adda control grew from nine to
+sixteen profile bars when the corner quantity went from one to two.
+A saved Adda replay with production catalog data returned 3 console
+runner sets and 14 corner sets at 72 ILS per set excluding VAT, nine
+profile bars, five strip rolls, two power supplies and no assumptions.
+The focused suite passed 107 tests. The browser fixture passed at 1280
+px and 390 px for scoped Save, separate Required and Purchase edits,
+and profile quantities. Fresh authenticated Upload and live approval
+verification remain open.
+
 ## Estimation 9.31 LED takeoff and purchasing
 
 The rollback is `estimation-v9.30-checkpoint`. The runtime previously

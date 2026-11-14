@@ -244,3 +244,16 @@ def test_engine_never_splits_an_oversized_finished_panel_into_fictitious_cut_par
 
     assert plan.status == "planned"
     assert plan.lines[0].purchase_quantity == Decimal("2")
+
+
+def test_shared_five_square_metres_buy_two_full_plywood_sheets():
+    plan = plan_material_purchases(
+        demands=(
+            _demand("cabinet-a-plywood", object_id="cabinet-a", area_mm2=2_100_000),
+            _demand("cabinet-b-plywood", object_id="cabinet-b", area_mm2=2_900_000),
+        ),
+        candidates=(_sheet(price="200"),),
+    )
+    line, = plan.lines
+    assert line.purchase_quantity == 2
+    assert line.total_cost == 400

@@ -1988,6 +1988,65 @@ def install_object_detail_input_guard(
             };
             __MOVE_CARET_TO_END__
 
+            function stockPurchaseQuantity(base, ratio, replaceLocal, projectRequired) {
+                const stock = base.stock_coverage * 1000;
+                const kerf = base.stock_kerf_mm || 0;
+                const cuts = new Map();
+                let loose = projectRequired * 1000;
+                for (const cut of base.stock_cuts || []) {
+                    if (replaceLocal && cut.local) continue;
+                    const scaled = cut.quantity * (cut.local ? ratio : 1);
+                    const quantity = Math.ceil(scaled - 1e-10);
+                    const length = cut.length_mm + kerf;
+                    loose += (quantity - scaled) * cut.length_mm;
+                    loose -= quantity * cut.length_mm;
+                    cuts.set(length, (cuts.get(length) || 0) + quantity);
+                }
+                let bins = [];
+                for (const [length, quantity] of [...cuts].sort(([a], [b]) => b - a)) {
+                    let outstanding = quantity;
+                    const updated = [];
+                    // A run stores consecutive stock pieces with the same space remaining.
+                    const add = (free, count) => { if (count > 0) updated.push({free, count}); };
+                    for (const {free, count} of bins) {
+                        const capacity = Math.floor((free + 1e-8) / length);
+                        if (capacity < 1 || outstanding === 0) {
+                            add(free, count);
+                            continue;
+                        }
+                        const full = Math.min(count, Math.floor(outstanding / capacity));
+                        add(free - capacity * length, full);
+                        outstanding -= full * capacity;
+                        const partial = full < count ? Math.min(outstanding, capacity) : 0;
+                        if (partial) add(free - partial * length, 1);
+                        outstanding -= partial;
+                        add(free, count - full - Number(partial > 0));
+                    }
+                    const capacity = Math.floor((stock + 1e-8) / length);
+                    if (outstanding && capacity < 1) return base.purchase_quantity_value;
+                    if (outstanding) {
+                        add(stock - capacity * length, Math.floor(outstanding / capacity));
+                        if (outstanding % capacity) add(stock - (outstanding % capacity) * length, 1);
+                    }
+                    bins = updated;
+                }
+                const free = bins.reduce((sum, bin) => sum + bin.free * bin.count, 0);
+                return bins.reduce((sum, bin) => sum + bin.count, 0)
+                    + Math.max(0, Math.ceil((loose - free - 1e-8) / stock));
+            }
+
+            function setProjectMaterial(row, base, required, purchase) {
+                const requirement = row.querySelector("[data-project-material-required]");
+                if (requirement) {
+                    const display = Number(required.toFixed(1)).toLocaleString("en-US");
+                    requirement.textContent = `${display} ${base.required_material_unit} project`;
+                }
+                const total = row.querySelector("[data-project-material-total]");
+                if (total && base.purchase_unit_cost != null && purchase != null) {
+                    total.textContent = `${formatMoney(purchase * base.purchase_unit_cost)} project`;
+                }
+            }
+
             function previewMaterials() {
                 const quantityInput = objectQuantityInput();
                 const count = Number(quantityInput?.dataset.originalValue) || 1;
@@ -2013,6 +2072,7 @@ def install_object_detail_input_guard(
                             setEditableValue(purchase, quantityText(base.purchase_quantity_value, purchase));
                             delete purchase.dataset.materialPreviewValue;
                         }
+                        setProjectMaterial(row, base, base.project_required, base.purchase_quantity_value);
                         return {row, base, cost: Number(base.total) || 0};
                     }
                     const localRequired = req ? Number(req.value) : base.required_material_value * nextCount / count;
@@ -2025,14 +2085,17 @@ def install_object_detail_input_guard(
                     let purchaseQuantity = buy ? Number(buy.value) : base.purchase_quantity_value;
                     if ((req || (quantityEdit && !base.purchase_is_manual)) && !buy && base.stock_coverage > 0) {
                         const consumption = projectRequired / base.stock_coverage;
-                        purchaseQuantity = ["sheet", "piece", "linear_stock"].includes(base.purchase_kind)
-                            ? Math.ceil(consumption - 1e-10) : consumption;
+                        purchaseQuantity = base.purchase_kind === "linear_stock" && base.stock_cuts?.length
+                            ? stockPurchaseQuantity(base, nextCount / count, !!req, projectRequired)
+                            : ["sheet", "piece", "linear_stock"].includes(base.purchase_kind)
+                                ? Math.ceil(consumption - 1e-10) : consumption;
                     }
                     if (!buy && canUpdatePurchase && Number.isFinite(purchaseQuantity)) {
                         const text = quantityText(purchaseQuantity, purchase);
                         if (editableValue(purchase) !== text) setEditableValue(purchase, text);
                         purchase.dataset.materialPreviewValue = String(purchaseQuantity);
                     }
+                    setProjectMaterial(row, base, projectRequired, purchaseQuantity);
                     const cost = projectRequired > 0 && base.purchase_unit_cost != null
                         ? purchaseQuantity * base.purchase_unit_cost * localRequired / projectRequired : Number(base.total) || 0;
                     return {row, base, cost};

@@ -589,6 +589,26 @@ def _object_detail_material_rows(plan: dict[str, Any], lines: Any, object_id: st
     return sorted(rows, key=_material_display_order)
 
 
+def _runner_set_size(line: dict[str, Any]) -> int:
+    if line.get("purchase_kind") != "piece" or _number(line.get("package_quantity"), 1) != 2:
+        return 1
+    selection = str(line.get("selection_key") or "")
+    name = str(line.get("display_name") or "").casefold()
+    return 2 if "hardware_drawer_slide" in selection or ("assumption:" in selection and "slide" in name) else 1
+
+
+def _preview_stock_cuts(allocations, object_id):
+    cuts = {}
+    for row in allocations:
+        count, length = row.get("quantity"), row.get("length_mm")
+        if not count or not length:
+            continue
+        key = row["object_id"], row["material_requirement_id"], row["demand_id"], length
+        cuts[key] = cuts.get(key, 0) + count
+    return [{"length_mm": key[-1], "quantity": count, "local": key[0] == object_id}
+            for key, count in cuts.items()]
+
+
 def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -> list[dict[str, Any]]:
     """Project nesting is internal; render the selected material and physical demand."""
     assumption_by_requirement = {
@@ -627,6 +647,12 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
                                   or (len(requirement_ids) == 1 and not item.get("selection_key")))), None)
         family = (fallback or {}).get("material_family") or selection_key.split("|", 1)[0]
         project_required, _ = _required_material_volume(line["allocations"], purchase_kind=purchase_kind)
+        set_size = _runner_set_size(line)
+        if set_size > 1:
+            required_value /= set_size
+            project_required /= set_size
+            required_unit = "set"
+        purchase_unit = _purchase_unit_display(line)
         dimensions = line.get("purchasable_dimensions") or {}
         length = _number(dimensions.get("length_mm"), 0)
         width = _number(dimensions.get("width_mm"), 0)
@@ -641,18 +667,24 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
                 f"__material_requirement__:{next(iter(requirement_ids))}" if len(requirement_ids) == 1
                 else f"__material_selection__:{selection_key}" if selection_key else ""
             ),
-            "purchase_unit": _purchase_unit_display(line),
+            "purchase_unit": purchase_unit,
             "purchase_quantity_value": _number(line.get("purchase_quantity"), 0),
-            "purchase_quantity_unit": _purchase_unit_label(purchase_kind),
+            "purchase_quantity_unit": purchase_unit.split(" ", 1)[0],
             "purchase_quantity_line_id": f"__material_purchase__:{line.get('selection_key')}",
             "purchase_kind": purchase_kind,
             "purchase_is_manual": bool(line.get("purchase_quantity_is_manual")),
             "project_required": project_required,
+            "shared_purchase": any(row.get("object_id") != object_id for row in line["allocations"]),
+            "purchase_total": _number(line.get("total_cost"), 0),
+            **({
+                "stock_cuts": _preview_stock_cuts(line["allocations"], object_id),
+                "stock_kerf_mm": _number(line.get("kerf_mm"), 0),
+            } if purchase_kind == "linear_stock" else {}),
             "purchase_unit_cost": line.get("price_per_purchase_unit"),
             "stock_coverage": (
                 length * width / 1_000_000 / 1.10 if purchase_kind == "sheet" else
                 length / 1_000 if purchase_kind == "linear_stock" else
-                _number(line.get("package_quantity"), 1) or 1
+                (_number(line.get("package_quantity"), 1) or 1) / set_size
             ),
             "is_coating": family in _COATING_MATERIAL_FAMILIES,
             **({"material_family": family} if family else {}),
@@ -810,8 +842,15 @@ def _purchase_unit_display(line: dict[str, Any]) -> str:
         return "sheet"
     if purchase_kind == "linear_stock":
         length = _number(dimensions.get("length_mm"), 0) if isinstance(dimensions, dict) else 0
-        return f"stock {_format_number(length)} mm" if length > 0 else "stock length"
-    return "piece" if purchase_kind in {"piece", "direct"} else _purchase_unit_label(purchase_kind)
+        name = str(line.get("display_name") or "").casefold()
+        unit = "roll" if "led strip" in name else "bar" if "led" in name and "profile" in name else "stock"
+        return f"{unit} {_format_number(length)} mm" if length > 0 else "stock length"
+    if purchase_kind in {"piece", "direct"}:
+        count = _number(line.get("package_quantity"), 1)
+        if _runner_set_size(line) > 1:
+            return "set"
+        return f"pack of {_format_number(count)}" if count > 1 else "piece"
+    return _purchase_unit_label(purchase_kind)
 
 
 def _element_rows_from_bom(facts_payload: dict[str, Any]) -> list[dict[str, Any]]:
@@ -941,7 +980,7 @@ def _project_material_purchase_rows(plan_snapshot: dict[str, Any]) -> list[dict[
             continue
         result.append({
             "item": str(line.get("display_name") or "Material"),
-            "purchase": f"{_format_number(quantity)} {_purchase_unit_label(line.get('purchase_kind'))}",
+            "purchase": f"{_format_number(quantity)} {_purchase_unit_display(line)}",
             "unit_price": _number(line.get("price_per_purchase_unit"), 0),
             "total_cost": _number(line.get("total_cost"), 0),
             "price_source": {"company": "C", "israel_reference": "I"}.get(
@@ -1077,6 +1116,10 @@ def save_object_detail_material_edits(
         requirements = {key[1]: val for key, val in norms.items() if key[0] == object_id}
         if not requirements or len({unit for unit, _ in requirements.values()}) != 1:
             raise ValueError("This material row has no editable requirement.")
+        # Saved material norms are in physical runner counts; the editor uses two-piece sets.
+        set_sizes = {_runner_set_size(owned[key]) for key in affected_keys}
+        if set_sizes == {2}:
+            amount *= 2
         total = sum(quantity for _, quantity in requirements.values())
         if object_quantity is None and abs(amount - total) < 1e-8:
             continue
@@ -1157,7 +1200,7 @@ def apply_material_plan_allocations(
         (str(allocation.get("object_id") or ""), str(allocation.get("material_requirement_id") or "")): {
             "purchase_kind": str(line.get("purchase_kind") or ""),
             "purchase_quantity": _number(line.get("purchase_quantity"), 0),
-            "purchase_unit": _purchase_unit_label(line.get("purchase_kind")),
+            "purchase_unit": _purchase_unit_display(line),
             "price_per_purchase_unit": _number(line.get("price_per_purchase_unit"), 0),
             "purchase_total_cost": _number(line.get("total_cost"), 0),
         }

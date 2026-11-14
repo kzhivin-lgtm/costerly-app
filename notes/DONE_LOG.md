@@ -1,5 +1,13 @@
 # Done Log
 
+Estimation 9.32, work 3.17.4.6. Object Detail shows project purchase
+quantities and shared totals with scope labels. Both types of runner
+purchase use sets of two, and the saved Adda replay confirmed 17 sets
+and zero assumptions. Profile preview matched the server at 16 bars
+when corner quantity doubled. All 107 focused tests and the two browser
+fixture widths passed. Fresh authenticated Upload remains open. See the
+[release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-932-materials-and-purchase-quantities).
+
 Estimation 9.31 sizes LED from shelf edges and mirror routes, packs
 2 m profiles with diffuser by cut, and selects one catalog-rated
 supply per physical object. Verified 27 live price rows and a saved

@@ -119,7 +119,7 @@ def _purchase_unit_html(value: object) -> str:
     """Keep a sheet type and its dimensions legible within a compact column."""
     text = str(value or "").strip()
     purchase_kind, separator, dimensions = text.partition(" ")
-    if purchase_kind.lower() == "sheet" and separator and dimensions.strip():
+    if purchase_kind.lower() in {"sheet", "roll", "bar"} and separator and dimensions.strip():
         return (
             '<span class="object-detail-purchase-unit">'
             f'<span class="object-detail-purchase-unit-kind">{_escape(purchase_kind)}</span>'
@@ -155,15 +155,25 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
         required_unit = str(row.get("required_material_unit") or "")
         required_value = row.get("required_material_value")
         purchase_unit = str(row.get("purchase_unit") or "")
-        display_unit = "" if required_unit.casefold() == purchase_unit.casefold() == "piece" else required_unit
+        display_unit = "" if required_unit == purchase_unit and required_unit in {"piece", "set"} else required_unit
+        project_caption = ""
+        project_total = ""
+        if row.get("shared_purchase"):
+            project_caption = (
+                '<small data-project-material-required>'
+                f'{_escape(_number_text(row.get("project_required"), decimals=1))} {_escape(required_unit)} project</small>'
+            )
+            project_total = (
+                f'<small data-project-material-total>{_money(row.get("purchase_total"))} project</small>'
+            )
         return [
             _source_marker(row.get("price_source")) + f'<span class="object-detail-material-name">{_escape(row.get("item"))}</span>',
-            _material_input_html(value=required_value, field="required_material", line_id=str(row.get("required_material_line_id") or ""), unit=display_unit),
+            _material_input_html(value=required_value, field="required_material", line_id=str(row.get("required_material_line_id") or ""), unit=display_unit) + project_caption,
             _purchase_unit_html(row.get("purchase_unit")),
             f'<span class="object-detail-unit-price">{_money(row.get("purchase_unit_cost"))}</span>',
             _material_input_html(value=row.get("purchase_quantity_value"), field="purchase_quantity",
                                  line_id=str(row.get("purchase_quantity_line_id") or ""), unit=""),
-            f'<span class="object-detail-row-cost">{_money(row.get("total"))}</span>',
+            f'<span class="object-detail-row-cost">{_money(row.get("total"))}</span>' + project_total,
         ]
     if columns[0] == "Work":
         return [
@@ -246,6 +256,7 @@ def _material_preview(row: dict[str, object]) -> dict[str, object]:
         "total", "required_material_value", "required_material_unit", "required_material_line_id",
         "purchase_quantity_value", "purchase_quantity_line_id", "purchase_kind",
         "purchase_is_manual", "project_required", "purchase_unit_cost", "stock_coverage",
+        "stock_cuts", "stock_kerf_mm",
         "is_coating", "locked", "policy_percent", "policy_basis", "item",
     ) if key in row}
 
@@ -263,9 +274,13 @@ def _table_html(section: dict[str, object]) -> str:
     section_key = str(section.get("key") or _slug(section.get("title")))
     table_class = f"object-detail-table object-detail-table--cols-{column_count}"
     material_table = tuple(columns) == MATERIAL_PURCHASE_COLUMNS
+    shared_purchase = material_table and any(row.get("shared_purchase") for row in rows)
     header_cells = []
     for column in columns:
         label = _escape(column)
+        if shared_purchase:
+            label = {"Purchase quantity": "Project purchase<br>quantity",
+                     "Total": "Object total"}.get(column, label)
         if material_table and column in {"Purchase unit", "Unit price"}:
             label = f'<span>{label.replace(" ", "<br> ", 1)}</span>'
         header_cells.append(f'<div class="object-detail-table-head">{label}</div>')

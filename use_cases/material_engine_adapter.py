@@ -354,6 +354,7 @@ def replan_material_norm_snapshot(
             purchase_kind=line["purchase_kind"], price_per_purchase_unit=line["price_per_purchase_unit"],
             currency=line["currency"], purchasable_dimensions=line["purchasable_dimensions"],
             package_quantity=line["package_quantity"] or 1,
+            kerf_mm=line.get("kerf_mm", 0),
             authority=line["authority"], display_name=line["display_name"],
         )
         demands = _snapshot_material_demands(line, candidate, norms, object_quantities, quantity_ratios, quantity_sources)
@@ -442,6 +443,7 @@ def material_plan_snapshot(
                 purchase_forms.get(line.candidate_id, {}).get("purchasable_dimensions") or {}
             ),
             "package_quantity": purchase_forms.get(line.candidate_id, {}).get("package_quantity"),
+            "kerf_mm": purchase_forms.get(line.candidate_id, {}).get("kerf_mm", 0),
             "purchase_quantity": float(line.purchase_quantity),
             "purchase_quantity_is_manual": line.purchase_quantity_is_manual,
             "price_per_purchase_unit": float(line.price_per_purchase_unit),
@@ -558,7 +560,9 @@ def _assumption_candidate(
     elif normalized_unit in {"m", "mm", "cm", "lm"} or material_family == "edge_banding":
         purchase_kind, rationale_unit, dimensions = "linear_cut", "m", None
     elif material_family.startswith("hardware_") or normalized_unit in {"ea", "piece", "set", "pair"}:
-        purchase_kind, rationale_unit, dimensions = "piece", "piece", None
+        purchase_kind, rationale_unit, dimensions = "piece", (
+            "set" if material.get("purchase_package_quantity") == 2 else "piece"
+        ), None
     else:
         purchase_kind, rationale_unit, dimensions = "direct", "piece", None
     # Allowances start requirement-scoped. The plan can share finished sheet
@@ -583,6 +587,7 @@ def _assumption_candidate(
         purchase_kind=purchase_kind, price_per_purchase_unit=_ASSUMPTION_ALLOWANCE_ILS,
         currency="ILS", purchasable_dimensions=dimensions, authority="assumption",
         display_name=str(material.get("source_name") or material_family),
+        package_quantity=material.get("purchase_package_quantity") or 1,
     )
     fallback = {
         "object_id": object_id, "material_requirement_id": requirement_id,
@@ -1335,6 +1340,7 @@ def build_material_plan(
                     ),
                     "object_quantity": float(object_quantity),
                     "source_total_quantity": total_quantity,
+                    "purchase_package_quantity": material.get("purchase_package_quantity"),
                     "unit": material.get("unit"),
                     "reason_code": reason_code,
                     "resolution": "assumption_fallback",
@@ -1490,6 +1496,9 @@ def build_material_plan(
                                            candidate_id=f"{candidate.candidate_id}:led-profile") for candidate in compatible
                                    if candidate.purchase_kind == "linear_stock"
                                    and _positive((candidate.purchasable_dimensions or {}).get("length_mm")) == 2000)
+            if package_quantity := material.get("purchase_package_quantity"):
+                compatible = tuple(candidate for candidate in compatible
+                                   if candidate.purchase_kind == "piece" and candidate.package_quantity == package_quantity)
             if purchase_variant := material.get("purchase_variant"):
                 selection_key = f"{selection_key}|variant={purchase_variant}"
                 compatible = tuple(
@@ -1651,7 +1660,8 @@ def build_material_plan(
         parts = tuple(item for item in fallback["parts"] if isinstance(item, Mapping))
         owner = str(fallback["object_id"]), str(fallback["material_requirement_id"])
         material = {"source_name": fallback["source_name"], "family": fallback["material_family"],
-                    "specification": fallback["specification"], "unit": fallback.get("unit")}
+                    "specification": fallback["specification"], "unit": fallback.get("unit"),
+                    "purchase_package_quantity": fallback["purchase_package_quantity"]}
         candidate, priced = _assumption_candidate(
             object_id=owner[0], requirement_id=owner[1], material=material,
             selection_key=fallback.get("selection_key"), parts=parts, reason_code=str(fallback["reason_code"]),
@@ -1765,6 +1775,7 @@ def build_material_plan(
                         candidate.purchasable_dimensions
                     ),
                     "package_quantity": float(candidate.package_quantity),
+                    "kerf_mm": float(candidate.kerf_mm),
                 },
             )
             for candidate_id, candidate in candidates.items()

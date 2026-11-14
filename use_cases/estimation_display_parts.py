@@ -221,7 +221,7 @@ def _front_parts(rows, faces, spec, *, width, height, depth, panel_t, face_t,
         elif role == "pull_out_shelf":
             rows.extend([
                 _sized("pull_out_shelf", 1, box_material, bay_width, slide, panel_t, instance_ref=ref),
-                {**part("drawer_slide", 2, material="concealed soft-close pull-out slide", length=slide),
+                {**part("pull_out_shelf_slide", 2, material="pull-out shelf slide", length=slide),
                  "unit": "piece", "instance_ref": ref},
             ])
             if glass:
@@ -428,7 +428,7 @@ def add_source_casework_parts(parts, inventory, analyze, geometry, *, input_rows
                                      glass_t=None, source_only=True, face_sizes=face_sizes)
                     scope["review"] = ["Standard construction estimate. Confirm joinery, stock and unresolved sizes."]
                     for row in scope["parts"]:
-                        if row["role"] not in {"drawer_slide", "hinge"}:
+                        if row["role"] not in {"drawer_slide", "pull_out_shelf_slide", "hinge"}:
                             row["construction_basis"] = "standard_construction_estimate"
                 elements = item["children"]
                 panels = [row for row in scope["parts"] if row["role"] == "mirror_mounting_panel"]

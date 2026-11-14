@@ -23,9 +23,9 @@ _ROLES = {
     **dict.fromkeys(("tabletop", "shared_worktop"), "worktop_sheet"),
     "tabletop_underlayer": "worktop_substrate",
     "support_leg": "leg", "drawer_slide": "drawer_slide", "hinge": "hinge", "gas_lift": "gas_lift",
-    "mirror_glass": "mirror",
+    "mirror_glass": "mirror", "pull_out_shelf_slide": "pull_out_shelf_slide",
 }
-_COUNT_ROLES = {"leg", "drawer_slide", "hinge", "gas_lift"}
+_COUNT_ROLES = {"leg", "drawer_slide", "pull_out_shelf_slide", "hinge", "gas_lift"}
 _LDSP_FAMILY = "melamine_faced_particleboard"
 _LDSP_DEFAULT_THICKNESS_MM = 17
 _STANDARD_LED_STRIP = "LED strip standard output"
@@ -40,6 +40,7 @@ _ROLE_FAMILY_PREFERENCE = {
     "visible_sheet": _FAMILY_PREFERENCE["internal_sheet"],
     "worktop_substrate": _FAMILY_PREFERENCE["worktop_sheet"],
     "mirror": ("mirror",),
+    "pull_out_shelf_slide": _FAMILY_PREFERENCE["drawer_slide"],
 }
 _MATERIAL_NAMES = {**_CONSTRUCTION_MATERIAL_NAMES, "mirror": "Mirror"}
 _WORKTOP_DEFAULT_FAMILY = "engineered_quartz_mineral_hybrid"
@@ -342,6 +343,8 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
             if not _positive(multiplier) or int(multiplier) != multiplier:
                 raise ValueError(f"Invalid scope quantity for {scope_id}")
             role = _ROLES.get(row["role"])
+            if role == "drawer_slide" and row.get("material_hint") == "concealed soft-close pull-out slide":
+                role = "pull_out_shelf_slide"
             measurements = _estimated_part_dimensions(
                 row, scope["parts"], object_parts, envelopes.get(row.get("block_id") or scope_id, {}),
             )
@@ -413,7 +416,7 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
             if count is None:
                 count = 1
                 assumptions.append(f"{part_id}: one unit estimated for the identified part.")
-                if role == "drawer_slide" and unit == "piece":
+                if role in {"drawer_slide", "pull_out_shelf_slide"} and unit == "piece":
                     unit = "set"
             if not _positive(count) or int(count) != count:
                 raise ValueError(f"Invalid part quantity for {part_id}")
@@ -442,11 +445,11 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                 spec["thickness_mm"] = layup["layer_mm"]
                 cut_quantity *= layup["layer_count"]
                 assumptions.append(f"{part_id}: {layup['layer_count']} sheet layers per finished panel.")
-            if role == "drawer_slide":
-                if unit == "set":
+            if role in {"drawer_slide", "pull_out_shelf_slide"}:
+                if unit in {"set", "pair"}:
                     quantity *= 2
                 elif unit != "piece" or int(count * multiplier) % 2:
-                    raise ValueError("Drawer slide pieces must form complete sets")
+                    raise ValueError("Runner pieces must form complete sets")
                 else:
                     quantity = 2 * ceil(count * multiplier * object_quantity / 2)
                 unit = "piece"
@@ -465,6 +468,8 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                     "specification": spec, "basis": basis, "evidence_refs": [],
                     "quantity": 0 if unit else None, "unit": unit, "part_sources": [],
                 }
+                if role in {"drawer_slide", "pull_out_shelf_slide"}:
+                    materials[key]["purchase_package_quantity"] = 2
                 if fallback_reason:
                     materials[key]["assumption_reason"] = fallback_reason
                 if identity_hint:

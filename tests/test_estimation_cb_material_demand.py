@@ -266,3 +266,14 @@ def test_unknown_visible_stock_and_kitchen_worktop_end_default_to_ldsp_17():
     assert (main["family"], main["specification"]["thickness_mm"]) == ("engineered_quartz_mineral_hybrid", 30)
     assert (end["family"], end["specification"]["thickness_mm"]) == ("melamine_faced_particleboard", 17)
     assert end["quantity"] == .2 and end["basis"] == "construction_assumption"
+
+
+def test_runner_demand_keeps_physical_counts_and_distinguishes_purchase_packages():
+    old_shelf = _part("drawer_slide", material_hint="concealed soft-close pull-out slide")
+    new_shelf = _part("pull_out_shelf_slide", material_hint="pull-out shelf slide")
+    drawer = _part("drawer_slide", material_hint="concealed soft-close drawer slide")
+    rows = [drawer, old_shelf, new_shelf]
+    materials = _build(rows, {"hardware_drawer_slide"}, quantity=2)["materials"]
+
+    assert [(row["material_role"], row["quantity"], row["unit"], row["purchase_package_quantity"])
+            for row in materials] == [("drawer_slide", 4, "piece", 2), ("pull_out_shelf_slide", 8, "piece", 2)]

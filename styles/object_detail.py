@@ -265,6 +265,18 @@ def apply_object_detail_css() -> None:
             padding-inline: 7px;
         }
 
+        .object-detail-table-row[data-section="materials"] .object-detail-table-cell:has(small) {
+            flex-direction: column;
+            justify-content: center;
+            gap: 3px;
+        }
+
+        .object-detail-table-row[data-section="materials"] small {
+            font-size: 10px;
+            opacity: 0.72;
+            text-align: center;
+        }
+
         .object-detail-unit-price {
             white-space: nowrap;
             font-variant-numeric: tabular-nums;
