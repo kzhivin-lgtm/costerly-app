@@ -1,5 +1,12 @@
 # Done Log
 
+Estimation 9.34, work 3.17.4.6. Shared compact material titles and
+unit-driven quantity display. All 14 Adda purchase lines kept their
+exact costs and quantities. Verified 451 focused tests, both browser
+fixture widths and all catalog material records in the saved production
+snapshot. See the
+[release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-934-material-labels-and-quantity-display).
+
 Estimation 9.33, work 3.17.4.6, is protected at `estimation-v9.33-checkpoint` (`adaa7de`). Object Detail prices whole purchase
 units on the active object. Later reviews use stock paid for at prior
 approvals. Glass and mirror use catalog rates per square metre.

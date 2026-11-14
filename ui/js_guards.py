@@ -1965,13 +1965,11 @@ def install_object_detail_input_guard(
             const validAmount = raw => /^(?:\\d+(?:\\.\\d{0,4})?|\\.\\d{1,4})$/.test(raw)
                 && Number(raw) > 0 && Number(raw) < 1e10;
             const rowPreview = row => JSON.parse(row.dataset.materialPreview);
-            const areaInput = input => ["m²", "m2"].includes(input?.parentElement?.dataset.unit);
-            const fractionalMaterial = input => ["m", "m³"].includes(input?.parentElement?.dataset.unit) ||
-                input?.dataset.field === "purchase_quantity";
-            const quantityText = (value, input) => areaInput(input)
-                ? (Math.round(Number(value) * 10) / 10).toFixed(1)
-                : fractionalMaterial(input) ? String(Math.round(Number(value) * 10000) / 10000)
-                : Number(value) > 0 && Number(value) < 0.5 ? "<1" : String(Math.round(Number(value)));
+            const quantityText = (value, input) => {
+                const decimals = Number(input?.parentElement?.dataset.quantityDecimals || 0);
+                const scale = 10 ** decimals;
+                return (Math.round(Number(value) * scale) / scale).toFixed(decimals);
+            };
             const contextFor = input => ({input, field: input.dataset.field, lineId: input.dataset.lineId});
             const objectQuantityContext = input => ({input, field: "object_quantity", lineId: "__object__"});
             const invalidMaterial = () => objectQuantityInput()?.getAttribute("aria-invalid") === "true" ||
@@ -2122,8 +2120,8 @@ def install_object_detail_input_guard(
                 const baseline = input.dataset.originalValue;
                 const displayedBaseline = materialField(ctx.field) ? quantityText(baseline, input) : null;
                 const restored = raw !== "" && baseline != null && (
-                    Number(raw) === Number(baseline) || raw === displayedBaseline ||
-                    (areaInput(input) && Number(raw) === Number(displayedBaseline))
+                    Number(raw) === Number(baseline) ||
+                    (displayedBaseline != null && Number(raw) === Number(displayedBaseline))
                 );
                 if ((prior && Number(raw) === Number(prior.value) && !restored) || (!prior && unchanged)) {
                     input.removeAttribute("aria-invalid");
@@ -2483,7 +2481,7 @@ def install_object_detail_input_guard(
                     const pending = draft.get(editKey(ctx));
                     const exact = pending?.value ?? ctx.input.dataset.materialPreviewValue ?? ctx.input.dataset.originalValue;
                     if (exact != null && ctx.input.getAttribute("aria-invalid") !== "true") {
-                        const editable = areaInput(ctx.input) ? quantityText(exact, ctx.input) : String(Number(Number(exact).toFixed(4)));
+                        const editable = quantityText(exact, ctx.input);
                         if (editable !== materialValue(ctx.input)) setEditableValue(ctx.input, editable);
                     }
                     ctx.input.dataset.editStartValue = materialValue(ctx.input);

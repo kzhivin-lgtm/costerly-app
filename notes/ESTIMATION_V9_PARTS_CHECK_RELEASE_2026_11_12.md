@@ -1,5 +1,28 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.34 material labels and quantity display
+
+Work 3.17.4.6. Rollback is `estimation-v9.33-checkpoint`.
+Company Catalog, Israel Reference and Object Detail share a compact
+material label. Source names, pricing keys, IDs and stock dimensions
+remain available. Sheet dimensions appear in Purchase Unit. A 12 V
+and a 24 V LED strip can render separately. New plans carry the
+selected strip's catalog voltage. Previously saved Israel Reference
+lines recover it from their saved supplier price ID. An unknown
+voltage stays unknown. Estimated W/m remains the same load basis used
+by the driver calculation.
+
+Required Material and Purchase Quantity use a precision chosen from
+their physical unit. Discrete units render as integers; continuous
+amounts use one decimal in initial markup, draft pricing, focus and
+the save receipt. The exact values remain in the plan and edits.
+The Adda replay preserved all part, purchase and cost signatures.
+The catalog audit covered 3,945 active Israel Reference positions
+and 48 Company Catalog material records from the production snapshot.
+Browser fixtures at 1280 and 390 px verified the rendered labels,
+12.936 m displayed as 12.9 m, the absence of edits on focus/blur,
+and a staged 15.67 m edit saved at full precision.
+
 ## Estimation 9.33 object purchase review and glass area
 
 Work 3.17.4.6. Owner accepted the checkpoint on 2026-11-14.

@@ -398,3 +398,55 @@ def test_material_table_only_shows_current_object_quantities_and_cost():
     assert "project" not in html.lower()
     assert 'data-original-value="3"' in html
     assert ">set<" in html and ">₪216</span>" in html
+
+
+def test_continuous_material_quantities_round_in_both_columns_and_keep_exact_values():
+    section = {
+        "key": "material", "title": "Materials", "columns": MATERIAL_PURCHASE_COLUMNS,
+        "rows": [{
+            "item": "Mirror", "required_material_value": 3.460584, "required_material_unit": "m²",
+            "required_material_line_id": "area-required", "purchase_quantity_line_id": "area-purchase",
+            "purchase_kind": "area_direct", "purchase_unit": "m²", "purchase_quantity_value": 3.460584,
+        }, {
+            "item": "Profile", "required_material_value": 12.936, "required_material_unit": "m",
+            "required_material_line_id": "length-required", "purchase_quantity_line_id": "bar-purchase",
+            "purchase_kind": "linear_stock", "purchase_unit": "bar 2000 mm", "purchase_quantity_value": 7,
+        }],
+    }
+    markup = _table_html(section)
+    assert markup.count('data-original-value="3.460584">3.5<') == 2
+    assert 'data-original-value="12.936">12.9<' in markup
+    assert 'data-original-value="7">7<' in markup
+
+
+def test_saved_led_label_uses_original_reference_price_metadata_without_changing_stored_plan():
+    from types import SimpleNamespace
+
+    price_id = "f59f2d3d-d1f1-4f45-a52f-df7d452dbb21"
+    line = {"candidate_id": f"israel-reference:model:{price_id}:format:variant:4000K",
+            "display_name": "LED strip standard output, 4000K, 6 W/m",
+            "purchase_kind": "linear_stock", "purchasable_dimensions": {"length_mm": 5000}}
+    calls = []
+
+    class Query:
+        def table(self, name):
+            assert name == "market_material_model_prices"
+            return self
+
+        def select(self, columns):
+            return self
+
+        def in_(self, column, keys):
+            calls.extend(keys)
+            return self
+
+        def execute(self):
+            return SimpleNamespace(data=[{"model_price_id": price_id, "model_metadata": {"voltage_v": 24}}])
+
+    plan = {"lines": [line, {**line, "candidate_id": line["candidate_id"].replace("4000K", "3000K")}]}
+    enriched = estimation._with_saved_led_catalog_specs(Query(), plan)
+    assert calls == [price_id]
+    assert "voltage_v" not in line["purchasable_dimensions"]
+    actual = enriched["lines"][0]
+    assert estimation._plan_material_display_label(actual, family="hardware_electrical_component",
+                                                   name=actual["display_name"]) == "LED 4000 K 6 W/m 24 V"

@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from use_cases.material_normalization import material_catalog_display_label
+
 
 def _rows(client: Any, table: str, *, filters: dict[str, Any]) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
@@ -62,19 +64,32 @@ def load_active_israel_reference_positions(client: Any) -> list[dict[str, Any]]:
     formats: dict[str, list[dict[str, Any]]] = {}
     for row in _rows(client, "reference_market_material_supply_formats", filters={"active": True}):
         formats.setdefault(str(row.get("market_material_listing_id") or ""), []).append(row)
-    return [
-        {
-            # The storage primary key currently belongs to the normalized
-            # material-model relation.  It is deliberately exposed to runtime
-            # code only as an opaque Israel Reference position identifier.
+    positions = []
+    for model in models:
+        model_id = str(model.get("material_model_id") or "")
+        listing = listings_by_model.get(model_id)
+        if listing is None:
+            continue
+        family_id = str(model.get("family_id") or "")
+        family_code = family_code_by_id.get(family_id, "")
+        model_specs = attributes.get(model_id, {})
+        model_prices = prices.get(model_id, [])
+        model_formats = formats.get(str(listing.get("market_material_listing_id") or ""), [])
+        label_specs = dict(model_specs)
+        if len(model_prices) == 1:
+            label_specs.update(model_prices[0].get("model_metadata") or {})
+        positions.append({
+            # Resolver treats the normalized storage model ID as an opaque position.
             "reference_position_id": model_id,
-            "family_id": str(model.get("family_id") or ""),
-            "family_code": family_code_by_id.get(str(model.get("family_id") or ""), ""),
+            "family_id": family_id,
+            "family_code": family_code,
             "canonical_name": str(model.get("canonical_name") or ""),
-            "specifications": attributes.get(model_id, {}),
-            "prices": prices.get(model_id, []),
-            "supply_formats": formats.get(str(listings_by_model[model_id].get("market_material_listing_id") or ""), []),
-        }
-        for model in models
-        if (model_id := str(model.get("material_model_id") or "")) in listings_by_model
-    ]
+            "display_label": material_catalog_display_label(
+                model.get("canonical_name"), family=family_code, specifications=label_specs,
+                purchase_kind="sheet" if any(row.get("purchase_unit") == "sheet" for row in model_formats) else "",
+            ),
+            "specifications": model_specs,
+            "prices": model_prices,
+            "supply_formats": model_formats,
+        })
+    return positions

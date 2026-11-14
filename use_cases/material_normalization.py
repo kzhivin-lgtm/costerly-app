@@ -227,3 +227,51 @@ def canonical_material_display_name(
     if family and family.casefold() not in {"other", "unclassified", "unknown"}:
         return canonical_display_name(family, attributes)
     return " ".join(str(fallback or "Material").strip().split()) or "Material"
+
+
+_SHEET_SIZE = re.compile(
+    r"(?<![\d.])\d+(?:\.\d+)?\s*(?:mm|cm|m)?\s*[×xх]\s*\d+(?:\.\d+)?"
+    r"\s*(?:mm|cm|m|millimet(?:res?|ers?))\b",
+    re.IGNORECASE,
+)
+_BOARD_NAME = re.compile(r"\b(?:plywood|mdf|hdf|osb|ldsp|hardboard|particleboard|fibreboard|fiberboard)\b", re.I)
+_LED_STRIP_LABEL = re.compile(
+    r"^LED\s+(?:(?:flexible\s+)?strip\b(?!\s+(?:connector|adapter|clip|mount)\b)|\d{4}\s*K\b)",
+    re.I,
+)
+_HDF_EXPANSION = re.compile(r"\bhigh[\s-]+density[\s-]+(?:fibre|fiber)[\s-]*board\b", re.I)
+
+
+def material_catalog_display_label(
+    name: object,
+    *,
+    family: str = "",
+    purchase_kind: str = "",
+    specifications: Mapping[str, Any] | None = None,
+) -> str:
+    """Render a catalog label without changing its pricing identity or source evidence."""
+    label = str(name or "").strip() or "Material"
+    decimals = re.sub(r"(?<=\d),(?=\d)", ".", label)
+    if _LED_STRIP_LABEL.search(decimals):
+        specs = specifications or {}
+        temperature = re.search(r"\b(\d{4})\s*K\b", decimals, re.I)
+        wattage = re.search(r"\b(\d+(?:\.\d+)?)\s*W\s*/\s*m\b", decimals, re.I)
+        voltage = re.search(r"\b(\d+(?:\.\d+)?)\s*V(?:DC)?\b", decimals, re.I)
+        temperature_value = temperature[1] if temperature else _display_mm(specs.get("colour_temperature_k"))
+        watts = wattage[1] if wattage else _display_mm(specs.get("rated_w_per_m") or specs.get("watts_per_m"))
+        volts = voltage[1] if voltage else _display_mm(specs.get("voltage_v"))
+        if temperature_value or watts or volts:
+            return " ".join(filter(None, [
+                "LED", f"{temperature_value} K" if temperature_value else "",
+                f"{watts} W/m" if watts else "", f"{volts} V" if volts else "",
+            ]))
+        return "LED strip"
+    if purchase_kind == "sheet" or _BOARD_NAME.search(decimals) or family in {"glass", "mirror"}:
+        decimals = _SHEET_SIZE.sub("", decimals)
+    if _HDF_EXPANSION.search(decimals):
+        decimals = _HDF_EXPANSION.sub("" if re.search(r"\bHDF\b", decimals, re.I) else "HDF", decimals)
+    if family in {"plywood", "plywood_special"} or re.search(r"\b(?:plywood|hdf)\b", decimals, re.I):
+        decimals = re.sub(r"\braw\b", "", decimals, flags=re.I)
+    if family == "mirror" or re.match(r"mirror\b", decimals, re.I):
+        decimals = re.sub(r"\blow[- ]iron\b", "", decimals, flags=re.I)
+    return " ".join(decimals.replace(",", " ").split()) or "Material"

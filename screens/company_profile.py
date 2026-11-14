@@ -2975,7 +2975,7 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
             for row in rows:
                 source_id = str(row.get("source_id") or "")
                 row_id = str(row.get("source_row_id") or "")
-                canonical_name = str(row.get("canonical_name") or "Material")
+                title = str(row.get("display_label") or row.get("canonical_name") or "Material")
                 original_name = str(row.get("original_name") or "")
                 supplier_name = str(row.get("supplier_name") or "Unknown supplier")
                 source = sources_by_id.get(source_id) or {}
@@ -2985,7 +2985,7 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                         st.session_state._removing_price_source_row = (source_id, row_id)
                         st.session_state._price_source_action_location = "catalog"
                     material_col.markdown(
-                        _price_source_material_name_markup(canonical_name, original_name),
+                        _price_source_material_name_markup(title, original_name),
                         unsafe_allow_html=True,
                     )
                     category_col.markdown(

@@ -43,7 +43,7 @@ from use_cases.catalog_aliases import (
     load_price_source_alias_context,
     normalize_measurement_unit,
 )
-from use_cases.material_normalization import canonical_material_display_name
+from use_cases.material_normalization import canonical_material_display_name, material_catalog_display_label
 from use_cases.material_supply_format import apply_price_source_purchasable_dimensions
 from use_cases.price_source_reference_linking import resolve_price_source_reference_links
 from use_cases.price_source_taxonomy import (
@@ -3220,6 +3220,11 @@ def list_price_catalog(access) -> list[dict]:
                 "department": department,
                 "material_type": category,
                 "canonical_name": canonical_name,
+                "display_label": material_catalog_display_label(
+                    canonical_name, family=material_family,
+                    purchase_kind=str(offer.get("purchase_unit") or ""),
+                    specifications=specifications,
+                ),
                 "identity_status": {
                     "tone": identity_status.tone,
                     "label": identity_status.label,

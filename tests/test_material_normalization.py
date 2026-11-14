@@ -31,6 +31,7 @@ def test_identity_normalizer_retains_only_domain_attributes_not_source_prose():
         "plywood_variant": "",
         "species": "",
         "substrate": "",
+        "board_type": "",
         "surface": "",
         "coating": "",
         "colour": "black",
@@ -111,3 +112,25 @@ def test_known_product_system_uses_one_canonical_display_spelling():
 
     assert identity["brand"] == "Blum"
     assert identity["product_system"] == "Movento"
+
+
+def test_material_catalog_display_names_preserve_purchase_identity_facts():
+    from use_cases.material_normalization import material_catalog_display_label
+
+    examples = [
+        ("Plywood, 16 mm, raw", {}, "Plywood 16 mm"),
+        ("Plywood 18 mm 1220 x 2440 millimetres", {"purchase_kind": "sheet"}, "Plywood 18 mm"),
+        ("Plywood 18 mm 1220 × 2440 mm", {}, "Plywood 18 mm"),
+        ("HDF, 6 mm, High-density fibreboard, raw", {}, "HDF 6 mm"),
+        ("Aluminium Angle 100 × 50 mm", {}, "Aluminium Angle 100 × 50 mm"),
+        ("Mirror, 4 mm, Low-iron", {}, "Mirror 4 mm"),
+        ("Glass, 4 mm, Tempered safety", {}, "Glass 4 mm Tempered safety"),
+        ("Side-mount roller runner, 300 mm, 25 kg class", {}, "Side-mount roller runner 300 mm 25 kg class"),
+        ("LED aluminium U-profile with diffuser", {}, "LED aluminium U-profile with diffuser"),
+        ("LED strip connector, 24 V", {}, "LED strip connector 24 V"),
+        ("LED strip standard output, 4000K, 6 W/m", {"specifications": {"voltage_v": 24}}, "LED 4000 K 6 W/m 24 V"),
+        ("LED strip 3000K 4,8 W/m 12 V", {}, "LED 3000 K 4.8 W/m 12 V"),
+    ]
+    for name, kwargs, label in examples:
+        assert material_catalog_display_label(name, **kwargs) == label
+        assert material_catalog_display_label(label, **kwargs) == label

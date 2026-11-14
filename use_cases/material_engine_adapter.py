@@ -48,7 +48,7 @@ _REFERENCE_DISCRETE_PACKAGE_QUANTITIES = {
     "dozen": Decimal("12"),
 }
 _PHYSICAL_PURCHASABLE_DIMENSION_KEYS = frozenset({
-    "length_mm", "width_mm", "height_mm", "thickness_mm", "diameter_mm",
+    "length_mm", "width_mm", "height_mm", "thickness_mm", "diameter_mm", "voltage_v", "rated_w_per_m",
 })
 _DRAWER_SLIDE_LAST_RESORT_DEPTH_MM = 400
 _ASSUMPTION_ALLOWANCE_ILS = Decimal("200")
@@ -1129,6 +1129,10 @@ def company_supply_candidates(
             if price_and_quantity is None:
                 continue
             price, package_quantity = price_and_quantity
+            purchase_dimensions = dict(offer.get("purchasable_dimensions") or {})
+            for key in ("voltage_v", "rated_w_per_m"):
+                if key not in purchase_dimensions and (value := _positive(item.get("specifications", {}).get(key))):
+                    purchase_dimensions[key] = value
             result.append(MaterialSupplyCandidate(
                 candidate_id=f"company-offer:{offer_id}",
                 material_family=material_family,
@@ -1136,7 +1140,7 @@ def company_supply_candidates(
                 purchase_kind=kind,
                 price_per_purchase_unit=price,
                 currency=normalized_currency,
-                purchasable_dimensions=offer.get("purchasable_dimensions") or None,
+                purchasable_dimensions=purchase_dimensions or None,
                 package_quantity=package_quantity,
                 authority="company",
                 display_name=str(item.get("canonical_name") or item.get("normalized_name") or ""),
@@ -1267,6 +1271,10 @@ def israel_reference_supply_candidates(
                     if not format_id or length is None:
                         continue
                     is_edge_cut = family_code == "edge_banding"
+                    metadata = price.get("model_metadata") or {}
+                    for key in ("voltage_v", "rated_w_per_m"):
+                        if value := _positive(metadata.get(key)):
+                            dimensions[key] = value
                     result.append(MaterialSupplyCandidate(
                         candidate_id=f"israel-reference:{position_id}:{price_id}:{format_id}",
                         material_family=material_family,

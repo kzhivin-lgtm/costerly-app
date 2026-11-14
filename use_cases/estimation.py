@@ -33,7 +33,7 @@ from db.company_access import assert_estimate_owned, assert_run_owned
 from state.company_auth import company_auth_enabled
 from state.session import get_company_id
 from models.estimation import ObjectEstimateSeed
-from use_cases.material_normalization import canonical_material_display_name
+from use_cases.material_normalization import canonical_material_display_name, material_catalog_display_label
 from use_cases.price_source_taxonomy import source_family_for_catalog_family
 from use_cases.retry import read_with_retry
 
@@ -483,7 +483,7 @@ def load_object_detail_data(
                 }
             )
 
-    material_rows = _object_detail_material_rows(material_plan, lines_df, object_id)
+    material_rows = _object_detail_material_rows(_with_saved_led_catalog_specs(client, material_plan), lines_df, object_id)
 
     material_total = sum(_number(row.get("cost"), 0) for row in material_rows)
     manufacturing_total = sum(
@@ -554,7 +554,7 @@ def load_object_detail_material_receipt(
                                        object_id=object_id)
         plan_future = executor.submit(fetch_rfq_estimate_material_plan, client, estimate_id)
         obj, lines = object_future.result(), lines_future.result()
-        saved_plan = _first_row(plan_future.result()).get("plan_payload") or {}
+        saved_plan = _with_saved_led_catalog_specs(client, _first_row(plan_future.result()).get("plan_payload") or {})
     return {
         "sections": [{"key": "material", "rows": _object_detail_material_rows(saved_plan, lines, object_id)}],
         "quantity": _number(obj.get("quantity"), 1),
@@ -569,7 +569,8 @@ def _object_detail_material_rows(plan: dict[str, Any], lines: Any, object_id: st
     if rows or checked:
         missing = set(checked.get("unpriced_requirements") or ())
         rows.extend({
-            "item": material["source_name"], "required_material_value": material["quantity"],
+            "item": material_catalog_display_label(material["source_name"]),
+            "required_material_value": material["quantity"],
             "required_material_unit": {"m2": "m²"}.get(material["unit"], material["unit"]), "total": None,
         } for material in checked.get("materials", ()) if material["requirement_id"] in missing)
         rows.extend(_material_policy_rows_from_lines(lines))
@@ -580,7 +581,7 @@ def _object_detail_material_rows(plan: dict[str, Any], lines: Any, object_id: st
             raw = item.get("raw_agent_json")
             raw = raw if isinstance(raw, dict) else {}
             rows.append({
-                "group": item.get("group_name"), "line_id": item.get("line_id"), "item": item.get("item_name"),
+                "group": item.get("group_name"), "line_id": item.get("line_id"), "item": material_catalog_display_label(item.get("item_name")),
                 "unit": item.get("unit"), "unit_cost": item.get("unit_cost"), "qty": item.get("quantity"),
                 "cost": item.get("cost"), "price_source": raw.get("price_source"),
                 "material_plan_allocation": raw.get("material_plan_allocation"),
@@ -607,6 +608,47 @@ def _preview_stock_cuts(allocations, object_id):
         cuts[key] = cuts.get(key, 0) + count
     return [{"length_mm": key[-1], "quantity": count, "local": key[0] == object_id}
             for key, count in cuts.items()]
+
+
+def _with_saved_led_catalog_specs(client: Any, plan: dict[str, Any]) -> dict[str, Any]:
+    """Recover voltage for saved stock lines created before it was copied into the plan."""
+    price_ids = {}
+    for line in plan.get("lines") or ():
+        if (line.get("purchasable_dimensions") or {}).get("voltage_v"):
+            continue
+        name = str(line.get("display_name") or "")
+        if line.get("purchase_kind") != "linear_stock" or not name.lower().startswith("led strip"):
+            continue
+        candidate = str(line.get("candidate_id") or "")
+        match = re.match(r"^israel-reference:[^:]+:([0-9a-f-]{36}):", candidate)
+        if match:
+            price_ids[candidate] = match[1]
+    if not price_ids:
+        return plan
+    try:
+        rows = (client.table("market_material_model_prices").select("model_price_id,model_metadata")
+                .in_("model_price_id", sorted(set(price_ids.values()))).execute().data or [])
+    except Exception:
+        return plan
+    metadata = {row["model_price_id"]: row.get("model_metadata") or {} for row in rows}
+    lines = []
+    for line in plan["lines"]:
+        price_id = price_ids.get(line.get("candidate_id"))
+        specs = metadata.get(price_id, {})
+        if specs:
+            dimensions = {**{k: specs[k] for k in ("voltage_v", "rated_w_per_m") if specs.get(k)},
+                          **(line.get("purchasable_dimensions") or {})}
+            line = {**line, "purchasable_dimensions": dimensions}
+        lines.append(line)
+    return {**plan, "lines": lines}
+
+
+def _plan_material_display_label(line: dict[str, Any], *, family: str, name: object) -> str:
+    dimensions = dict(line.get("purchasable_dimensions") or {})
+    return material_catalog_display_label(
+        name, family=family, purchase_kind=str(line.get("purchase_kind") or ""),
+        specifications=dimensions,
+    )
 
 
 def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -> list[dict[str, Any]]:
@@ -658,11 +700,10 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
         dimensions = line.get("purchasable_dimensions") or {}
         length = _number(dimensions.get("length_mm"), 0)
         width = _number(dimensions.get("width_mm"), 0)
+        item = (_assumption_material_display_name(fallback)
+                if isinstance(fallback, dict) else line.get("display_name"))
         rows.append({
-            "item": (
-                _assumption_material_display_name(fallback)
-                if isinstance(fallback, dict) else str(line.get("display_name") or "Material")
-            ),
+            "item": _plan_material_display_label(line, family=family, name=item),
             "price_source": authority,
             "required_material_value": required_value, "required_material_unit": required_unit,
             "required_material_line_id": (
@@ -845,7 +886,10 @@ def _purchase_unit_display(line: dict[str, Any]) -> str:
     if purchase_kind == "linear_stock":
         length = _number(dimensions.get("length_mm"), 0) if isinstance(dimensions, dict) else 0
         name = str(line.get("display_name") or "").casefold()
-        unit = "roll" if "led strip" in name else "bar" if "led" in name and "profile" in name else "stock"
+        selection = str(line.get("selection_key") or "")
+        unit = "roll" if "led strip" in name else "bar" if (
+            "led_profile_kit" in selection or ("led" in name and "profile" in name)
+        ) else "stock"
         return f"{unit} {_format_number(length)} mm" if length > 0 else "stock length"
     if purchase_kind in {"piece", "direct"}:
         count = _number(line.get("package_quantity"), 1)
@@ -992,9 +1036,13 @@ def _project_material_purchase_rows(plan_snapshot: dict[str, Any]) -> list[dict[
             cost = sum(row["total"] for row in purchases.values())
         if quantity <= 0:
             continue
+        kind = str(line.get("purchase_kind") or "")
+        quantity_text = f"{quantity:.0f}" if kind in {"sheet", "piece", "linear_stock"} else f"{quantity:.1f}"
         result.append({
-            "item": str(line.get("display_name") or "Material"),
-            "purchase": f"{_format_number(quantity)} {_purchase_unit_display(line)}",
+            "item": _plan_material_display_label(
+                line, family=str(line.get("selection_key") or "").split("|", 1)[0], name=line.get("display_name"),
+            ),
+            "purchase": f"{quantity_text} {_purchase_unit_display(line)}",
             "unit_price": _number(line.get("price_per_purchase_unit"), 0),
             "total_cost": cost,
             "price_source": {"company": "C", "israel_reference": "I"}.get(

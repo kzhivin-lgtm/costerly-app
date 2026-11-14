@@ -34,19 +34,28 @@ def _money(value: object) -> str:
         return _escape(value)
 
 
-def _material_quantity_text(value: object, *, unit: str = "", is_purchase: bool = False) -> str:
+_DISCRETE_MATERIAL_UNITS = {
+    "ea", "piece", "pcs", "set", "pair", "pack", "sheet", "roll", "bar", "stock", "dozen",
+}
+
+
+def _material_quantity_decimals(unit: str, *, purchase_kind: str = "") -> int:
+    if purchase_kind:
+        return 0 if purchase_kind in {"sheet", "linear_stock", "piece"} else 1
+    normalized = str(unit or "").lower().strip()
+    return 0 if not normalized or normalized.split()[0] in _DISCRETE_MATERIAL_UNITS else 1
+
+
+def _material_quantity_text(value: object, *, decimals: int) -> str:
     try:
         amount = float(value)
     except (TypeError, ValueError):
         return ""
     if not math.isfinite(amount):
         return ""
-    if unit in {"m²", "m2"}:
-        return f"{math.floor(amount * 10 + 0.5) / 10:.1f}"
-    if unit in {"m", "m³"} or is_purchase:
-        return _number_text(amount, decimals=4)
-    rounded = math.floor(amount + 0.5)
-    return "<1" if 0 < amount < 0.5 else str(rounded)
+    factor = 10 ** decimals
+    rounded = math.floor(amount * factor + 0.5) / factor
+    return f"{rounded:.{decimals}f}"
 
 
 def _quantity(value: object) -> str:
@@ -98,16 +107,17 @@ def _input_html(value: object, kind: str = "text", field: str = "", line_id: str
     )
 
 
-def _material_input_html(*, value: object, field: str, line_id: str, unit: str) -> str:
+def _material_input_html(*, value: object, field: str, line_id: str, unit: str, decimals: int) -> str:
     has_unit = bool(str(unit or "").strip())
     modifier = " object-detail-material-input--required" if field == "required_material" else " object-detail-material-input--bare"
     unit_html = (
         f'<span class="object-detail-material-input-unit">{_escape(unit)}</span>'
         if has_unit else ""
     )
-    display_value = _material_quantity_text(value, unit=unit, is_purchase=field == "purchase_quantity")
+    display_value = _material_quantity_text(value, decimals=decimals)
     return (
-        f'<span class="object-detail-material-input{modifier}" data-unit="{_escape(unit) if unit else ""}">'
+        f'<span class="object-detail-material-input{modifier}" data-unit="{_escape(unit) if unit else ""}" '
+        f'data-quantity-decimals="{decimals}">'
         + (_input_html(display_value, "number", field, line_id, original_value=value) if line_id else
            f'<span class="object-detail-cell-input object-detail-cell-input--number">{_escape(display_value)}</span>')
         + unit_html
@@ -158,11 +168,14 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
         display_unit = "" if required_unit == purchase_unit and required_unit in {"piece", "set"} else required_unit
         return [
             _source_marker(row.get("price_source")) + f'<span class="object-detail-material-name">{_escape(row.get("item"))}</span>',
-            _material_input_html(value=required_value, field="required_material", line_id=str(row.get("required_material_line_id") or ""), unit=display_unit),
+            _material_input_html(value=required_value, field="required_material", line_id=str(row.get("required_material_line_id") or ""), unit=display_unit,
+                                 decimals=_material_quantity_decimals(required_unit)),
             _purchase_unit_html(row.get("purchase_unit")),
             f'<span class="object-detail-unit-price">{_money(row.get("purchase_unit_cost"))}</span>',
             _material_input_html(value=row.get("purchase_quantity_value"), field="purchase_quantity",
-                                 line_id=str(row.get("purchase_quantity_line_id") or ""), unit=""),
+                                 line_id=str(row.get("purchase_quantity_line_id") or ""), unit="",
+                                 decimals=_material_quantity_decimals(row.get("purchase_quantity_unit") or purchase_unit,
+                                                                      purchase_kind=row.get("purchase_kind") or "")),
             f'<span class="object-detail-row-cost">{_money(row.get("total"))}</span>',
         ]
     if columns[0] == "Work":

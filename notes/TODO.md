@@ -69,6 +69,12 @@ roles to display names after the terminology is agreed.
    object quantities. Local unit and browser tests passed.
    [Release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-933-object-purchase-review-and-glass-area).
 
+IMPLEMENTED, P1, USER REQUEST. Compact material labels throughout the
+catalog and Object Detail. Format continuous material units to one
+decimal and discrete units as integers. Keep original names, purchase
+formats, exact quantities and prices. 9.34 audit, saved Adda replay and
+browser checks passed. Owner review of the live output remains open.
+
 COMPLETED, OWNER-ACCEPTED, P1, USER REPORT. Reduce Object Detail Save latency
 for a one-field edit. The owner observed about 6 s on Lev1 after 9.22.
 The recorded override-to-plan interval was 2.697 s. Measure from click
