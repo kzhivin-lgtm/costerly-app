@@ -11,6 +11,8 @@ from use_cases.material_engine_adapter import (
     build_material_plan,
     replan_material_norm_snapshot,
     reprice_material_purchase_snapshot,
+    material_review_purchases,
+    object_purchase_key,
 )
 
 
@@ -1071,3 +1073,44 @@ def test_every_purchase_plan_is_priced_when_another_fact_needs_assumption():
     assert result.unresolved_requirement_ids == ()
     assert result.reason_codes == ("assumption_fallback",)
     assert result.assumption_fallbacks[0]["reason_code"] == "material_pricing_key_incomplete"
+
+
+
+def test_material_review_charges_the_first_object_for_whole_sheets_and_shares_the_remainder():
+    selection = "plywood|thickness=18"
+    snapshot = {"object_material_costs": [], "lines": [{
+        "selection_key": selection, "candidate_id": "hdf", "purchase_kind": "sheet",
+        "purchasable_dimensions": {"length_mm": 2400, "width_mm": 1220},
+        "price_per_purchase_unit": 105, "currency": "ILS", "authority": "company",
+        "allocations": [{"object_id": oid, "material_requirement_id": f"req-{oid}",
+                         "demand_id": oid, "area_mm2": area}
+                        for oid, area in (("A", 3_436_000), ("B", 10_791_000))],
+    }]}
+
+    def check(order, expected, overrides=None):
+        result = material_review_purchases(snapshot, review_order=order, overrides=overrides)
+        purchases = result["lines"][0]["object_purchases"]
+        assert {oid: row["quantity"] for oid, row in purchases.items()} == expected
+        assert {row["object_id"]: row["cost_ex_vat"] for row in result["object_material_costs"]} == {
+            oid: quantity * 105 for oid, quantity in expected.items()
+        }
+
+    check([], {"A": 2, "B": 5})
+    check(["A"], {"A": 2, "B": 4})
+    check(["B"], {"A": 1, "B": 5})
+    check(["B", "A"], {"A": 1, "B": 5})
+    check(["A", "B"], {"A": 3, "B": 3}, {object_purchase_key("A", selection): {"purchase_quantity": 3}})
+
+
+def test_reference_mirror_consumption_is_direct_area_without_a_sheet_minimum():
+    position = _reference_position(
+        prices=[_reference_price(unit="sqm", typical="300")],
+    )
+    position.update(family_code="mirror", canonical_name="Mirror")
+    key, candidates = israel_reference_supply_candidates(
+        material_family="mirror", specifications={"thickness_mm": 18},
+        reference_positions=[position], material_pricing_policies=[_policy()],
+        material_families=[{**_family(), "family_code": "mirror"}],
+    )
+    assert key
+    assert [(row.purchase_kind, row.price_per_purchase_unit) for row in candidates] == [("area_direct", 300)]

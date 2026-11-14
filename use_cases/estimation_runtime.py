@@ -22,6 +22,7 @@ from db.repositories import (
     fetch_rfq_run,
     replace_rfq_estimate_lines_for_object,
     update_rfq_detected_object,
+    update_rfq_object_estimate_approved,
     update_rfq_object_estimate_quantity,
     update_rfq_object_estimate_totals,
     upsert_rfq_estimate_lines,
@@ -34,7 +35,9 @@ from use_cases.estimation_handoff import persist_estimation_inputs
 from use_cases.estimation_originals import describe_estimation_original
 from use_cases.estimation_parts_check_runtime import VERSION, load_parts_check, run_parts_check_for_estimate
 from use_cases.estimation_cb_material_demand import build_cb_material_facts, calculate_cb_materials
-from use_cases.material_engine_adapter import replan_material_norm_snapshot, reprice_material_purchase_snapshot
+from use_cases.material_engine_adapter import (
+    material_review_purchases, object_purchase_key, replan_material_norm_snapshot, reprice_material_purchase_snapshot,
+)
 from use_cases.estimation_material_context import build_estimation_material_context
 from use_cases.estimation_assumption_fallbacks import persist_material_assumption_fallbacks
 from db.repositories import update_rfq_object_estimate_progress
@@ -57,6 +60,7 @@ class _MaterialPlanRequest(NamedTuple):
     quantity_edits: dict[str, float]
     norm_edits: dict[tuple[str, str], dict]
     purchase_edits: dict[str, float]
+    approve_objects: tuple[str, ...]
 
 
 _MATERIAL_PLAN_PENDING_REQUESTS: dict[str, _MaterialPlanRequest] = {}
@@ -100,14 +104,15 @@ def _publish_material_demand_lines(client, *, estimate_id, facts_by_object, repl
             upsert_rfq_estimate_lines(client, lines=lines)
 
 
-def _build_and_persist_material_plan(*, client, estimate_id, company_id, parts_report, input_rows, rebuild=False):
+def _build_and_persist_material_plan(*, client, estimate_id, company_id, parts_report, input_rows,
+                                     rebuild=False, review_order=()):
     """Price the checked document through the shared estimate-wide engine."""
     catalog_context = build_estimation_material_context(client, company_id)
     norms = _material_norm_overrides_by_requirement(fetch_rfq_estimate_material_norm_overrides(client, estimate_id))
     purchases = _material_purchase_overrides_by_selection_key(fetch_rfq_estimate_material_purchase_overrides(client, estimate_id))
     calculation = calculate_cb_materials(
         parts_report=parts_report, input_rows=input_rows, catalog_context=catalog_context,
-        material_norm_overrides=norms, material_purchase_overrides=purchases,
+        material_norm_overrides=norms, material_purchase_overrides=purchases, material_review_order=review_order,
     )
     snapshot = calculation["material_plan"]
     facts_by_object = calculation["facts_by_object"]
@@ -159,12 +164,13 @@ def _recalculate_material_plan_job(*, estimate_id: str, run_id: str, company_id:
                                    purchase_keys: frozenset[str] | None = None,
                                    quantity_edits: Mapping[str, float] | None = None,
                                    norm_edits: Mapping[tuple[str, str], dict] | None = None,
-                                   purchase_edits: Mapping[str, float] | None = None) -> dict[str, object]:
+                                   purchase_edits: Mapping[str, float] | None = None,
+                                   approve_objects: tuple[str, ...] = ()) -> dict[str, object]:
     client = get_supabase_client()
     if purchase_keys is not None:
         return _recalculate_edited_material_lines(
             client, estimate_id, run_id, company_id, norm_keys, purchase_keys, quantity_edits or {},
-            norm_edits or {}, purchase_edits or {},
+            norm_edits or {}, purchase_edits or {}, approve_objects=approve_objects,
         )
     if purchase_only:
         rows = fetch_rfq_estimate_material_plan(client, estimate_id)
@@ -193,6 +199,7 @@ def _recalculate_material_plan_job(*, estimate_id: str, run_id: str, company_id:
 
 def _recalculate_edited_material_lines(
     client, estimate_id, run_id, company_id, norm_keys, purchase_keys, quantity_edits, norm_edits, purchase_edits,
+    *, approve_objects=(),
 ):
     from use_cases.estimation import apply_material_plan_allocations
 
@@ -231,7 +238,31 @@ def _recalculate_edited_material_lines(
     for line in saved["lines"]:
         if any(row["object_id"] in ratios for row in line["allocations"]):
             changed_stock.add(line["selection_key"])
-    clear_purchase_keys = norm_keys - purchase_keys
+    review_order = saved.get("material_review_order")
+    if review_order is not None:
+        approved = {oid for oid, row in object_contexts.items() if row.get("approved")}
+        review_order = [oid for oid in review_order if oid in approved]
+        review_order.extend(oid for oid in object_contexts if oid in approved and oid not in review_order)
+        edited_objects = set(ratios) | {oid for oid, _ in norm_edits}
+        edited_objects.update(
+            oid for oid in object_contexts if any(key.startswith(f"object:{oid}:") for key in purchase_edits)
+        )
+        reset_from = next((index for index, oid in enumerate(review_order) if oid in edited_objects), len(review_order))
+        reset_approvals = set(review_order[reset_from:])
+        review_order = review_order[:reset_from]
+        review_order.extend(oid for oid in approve_objects if oid in object_contexts and oid not in review_order)
+        affected_owners = set(norm_edits) | {
+            (row["object_id"], row["material_requirement_id"])
+            for line in saved["lines"] for row in line["allocations"] if row["object_id"] in ratios
+        }
+        clear_purchase_keys = {
+            object_purchase_key(row["object_id"], line["selection_key"])
+            for line in saved["lines"] for row in line["allocations"]
+            if (row["object_id"], row["material_requirement_id"]) in affected_owners
+        } - purchase_keys
+    else:
+        reset_approvals = set()
+        clear_purchase_keys = norm_keys - purchase_keys
     for key in clear_purchase_keys:
         purchases.pop(key, None)
     purchases.update({key: {"purchase_quantity": value} for key, value in purchase_edits.items()})
@@ -251,11 +282,24 @@ def _recalculate_edited_material_lines(
         if outcome is None:
             raise ValueError("The edited quantity cannot be priced with the saved purchase unit.")
         snapshot, changed = outcome
-    if manual_purchases := {key: purchases[key] for key in purchase_keys - changed_stock if key in purchases}:
-        snapshot, repriced = reprice_material_purchase_snapshot(snapshot, manual_purchases)
-        changed.update(repriced)
+    if review_order is None:
+        manual_purchases = {key: purchases[key] for key in purchase_keys - changed_stock if key in purchases}
+        if manual_purchases:
+            snapshot, repriced = reprice_material_purchase_snapshot(snapshot, manual_purchases)
+            changed.update(repriced)
 
-    if not changed_stock and not changed and not ratios and not purchase_edits:
+    if review_order is not None:
+        previous_review_order = saved["material_review_order"]
+        review_keys = changed_stock | {line["selection_key"] for line in saved["lines"]
+                                      if any(object_purchase_key(row["object_id"], line["selection_key"]) in purchase_edits
+                                             for row in line["allocations"])}
+        snapshot = material_review_purchases(snapshot, review_order=review_order, overrides=purchases,
+                                             changed_keys=review_keys if review_order == previous_review_order else None)
+        previous_cost = {(row["object_id"], row["material_requirement_id"]): row["cost_ex_vat"]
+                         for row in saved["object_material_costs"]}
+        changed = {(row["object_id"], row["material_requirement_id"]) for row in snapshot["object_material_costs"]
+                   if row["cost_ex_vat"] != previous_cost.get((row["object_id"], row["material_requirement_id"]))}
+    if not changed_stock and not changed and not ratios and not purchase_edits and not approve_objects:
         return snapshot
     checked_objects = snapshot.get("parts_check") or {}
     if ratios and checked_objects:
@@ -297,11 +341,16 @@ def _recalculate_edited_material_lines(
         client, estimate_id=estimate_id, plan_snapshot=snapshot, changed_requirements=changed,
         changed_quantity_objects=set(ratios),
         object_contexts=object_contexts,
+        protected_approval_objects=set(review_order or ()),
     )
     upsert_rfq_estimate_material_plan(
         client, estimate_id=estimate_id, company_id=company_id,
         plan_payload=snapshot, plan_status=snapshot["status"],
     )
+    for oid in reset_approvals - set(approve_objects):
+        update_rfq_object_estimate_approved(client, estimate_id=estimate_id, object_id=oid, approved=False)
+    for oid in approve_objects:
+        update_rfq_object_estimate_approved(client, estimate_id=estimate_id, object_id=oid, approved=True)
     return snapshot
 
 
@@ -331,6 +380,9 @@ def _recalculate_from_parts_check(client, *, estimate_id, run_id, company_id):
     return _build_and_persist_material_plan(
         client=client, estimate_id=estimate_id, company_id=company_id, parts_report=report, input_rows=input_rows,
         rebuild=True,
+        review_order=tuple(str(row["object_id"]) for _, row in
+                           (objects.sort_values("updated_at") if "updated_at" in objects else objects).iterrows()
+                           if row.get("approved")),
     )
 
 
@@ -350,6 +402,7 @@ def _submit_pending_material_plan_recalculation(estimate_id: str) -> Future | No
         quantity_edits=request.quantity_edits,
         norm_edits=request.norm_edits,
         purchase_edits=request.purchase_edits,
+        approve_objects=request.approve_objects,
     )
     _MATERIAL_PLAN_FUTURES[estimate_id] = future
 
@@ -375,6 +428,7 @@ def queue_material_plan_recalculation(
     quantity_edits: Mapping[str, float] | None = None,
     norm_edits: Mapping[tuple[str, str], dict] | None = None,
     purchase_edits: Mapping[str, float] | None = None,
+    approve_objects: tuple[str, ...] = (),
 ) -> Future:
     """Coalesce edits for one estimate without dropping a changed stock line."""
     with _MATERIAL_PLAN_LOCK:
@@ -391,13 +445,14 @@ def queue_material_plan_recalculation(
             cleared = norm_keys - (purchase_keys or frozenset())
             edited_purchases = {**{key: value for key, value in pending.purchase_edits.items() if key not in cleared},
                                 **edited_purchases}
+            approve_objects = tuple(dict.fromkeys((*pending.approve_objects, *approve_objects)))
             norm_keys |= pending.norm_keys
             if purchase_keys is not None or pending.purchase_keys is not None:
                 purchase_keys = (purchase_keys or frozenset()) | ((pending.purchase_keys or frozenset()) - cleared)
             purchase_only = purchase_only and pending.purchase_only
         _MATERIAL_PLAN_PENDING_REQUESTS[estimate_id] = _MaterialPlanRequest(
             run_id, company_id, receipts, purchase_only, norm_keys, purchase_keys, edited_quantities,
-            edited_norms, edited_purchases,
+            edited_norms, edited_purchases, approve_objects,
         )
         if estimate_id not in _MATERIAL_PLAN_FUTURES:
             _submit_pending_material_plan_recalculation(estimate_id)

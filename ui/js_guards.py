@@ -2035,18 +2035,6 @@ def install_object_detail_input_guard(
                     + Math.max(0, Math.ceil((loose - free - 1e-8) / stock));
             }
 
-            function setProjectMaterial(row, base, required, purchase) {
-                const requirement = row.querySelector("[data-project-material-required]");
-                if (requirement) {
-                    const display = Number(required.toFixed(1)).toLocaleString("en-US");
-                    requirement.textContent = `${display} ${base.required_material_unit} project`;
-                }
-                const total = row.querySelector("[data-project-material-total]");
-                if (total && base.purchase_unit_cost != null && purchase != null) {
-                    total.textContent = `${formatMoney(purchase * base.purchase_unit_cost)} project`;
-                }
-            }
-
             function previewMaterials() {
                 const quantityInput = objectQuantityInput();
                 const count = Number(quantityInput?.dataset.originalValue) || 1;
@@ -2072,7 +2060,6 @@ def install_object_detail_input_guard(
                             setEditableValue(purchase, quantityText(base.purchase_quantity_value, purchase));
                             delete purchase.dataset.materialPreviewValue;
                         }
-                        setProjectMaterial(row, base, base.project_required, base.purchase_quantity_value);
                         return {row, base, cost: Number(base.total) || 0};
                     }
                     const localRequired = req ? Number(req.value) : base.required_material_value * nextCount / count;
@@ -2081,23 +2068,23 @@ def install_object_detail_input_guard(
                         if (quantityEdit) required.dataset.materialPreviewValue = String(localRequired);
                         else delete required.dataset.materialPreviewValue;
                     }
-                    const projectRequired = base.project_required - base.required_material_value + localRequired;
+                    const combinedRequired = (base.prior_required || 0) + localRequired;
                     let purchaseQuantity = buy ? Number(buy.value) : base.purchase_quantity_value;
                     if ((req || (quantityEdit && !base.purchase_is_manual)) && !buy && base.stock_coverage > 0) {
-                        const consumption = projectRequired / base.stock_coverage;
-                        purchaseQuantity = base.purchase_kind === "linear_stock" && base.stock_cuts?.length
-                            ? stockPurchaseQuantity(base, nextCount / count, !!req, projectRequired)
+                        const consumption = combinedRequired / base.stock_coverage;
+                        const totalStock = base.purchase_kind === "linear_stock" && base.stock_cuts?.length
+                            ? stockPurchaseQuantity(base, nextCount / count, !!req, combinedRequired)
                             : ["sheet", "piece", "linear_stock"].includes(base.purchase_kind)
                                 ? Math.ceil(consumption - 1e-10) : consumption;
+                        purchaseQuantity = Math.max(0, totalStock - (base.prior_purchase_quantity || 0));
                     }
                     if (!buy && canUpdatePurchase && Number.isFinite(purchaseQuantity)) {
                         const text = quantityText(purchaseQuantity, purchase);
                         if (editableValue(purchase) !== text) setEditableValue(purchase, text);
                         purchase.dataset.materialPreviewValue = String(purchaseQuantity);
                     }
-                    setProjectMaterial(row, base, projectRequired, purchaseQuantity);
-                    const cost = projectRequired > 0 && base.purchase_unit_cost != null
-                        ? purchaseQuantity * base.purchase_unit_cost * localRequired / projectRequired : Number(base.total) || 0;
+                    const cost = purchaseQuantity != null && base.purchase_unit_cost != null
+                        ? purchaseQuantity * base.purchase_unit_cost : Number(base.total) || 0;
                     return {row, base, cost};
                 });
                 let materialDelta = 0;
@@ -2147,13 +2134,16 @@ def install_object_detail_input_guard(
                 const objectQuantity = ctx.field === "object_quantity";
                 const amount = Number(raw);
                 const row = input.closest("[data-material-preview]");
-                const valid = validAmount(raw) && (!objectQuantity ||
+                const purchase = ctx.field === "purchase_quantity";
+                const wholeStock = purchase && row && ["sheet", "linear_stock", "piece"].includes(rowPreview(row).purchase_kind);
+                const valid = validAmount(raw) && (!wholeStock || Number.isInteger(amount)) && (!objectQuantity ||
                     (amount === Math.round(amount * 1000) / 1000 && amount <= 1_000_000));
                 if (!valid) {
                     if (reportInvalid) {
                         input.setAttribute("aria-invalid", "true");
                         updateSaveControls(objectQuantity
                             ? "Enter a positive object quantity with up to three decimal places."
+                            : wholeStock ? "Enter a whole number of purchase units."
                             : "Enter a positive quantity with up to four decimal places.");
                     }
                     return;

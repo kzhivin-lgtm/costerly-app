@@ -184,7 +184,7 @@ def test_unlisted_part_and_missing_dimensions_keep_a_priced_requirement():
     plan = result["material_plan"]
     assert plan["status"] == "needs_review"
     assert plan["parts_check"]["object-1"]["unpriced_requirements"] == []
-    assert {line["purchase_kind"] for line in plan["lines"]} == {"sheet", "piece"}
+    assert {line["purchase_kind"] for line in plan["lines"]} == {"area_direct", "piece"}
 
 
 def test_worktop_surface_areas_are_preserved_without_inventing_end_material():

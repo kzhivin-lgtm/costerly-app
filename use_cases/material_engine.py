@@ -15,7 +15,7 @@ from decimal import Decimal, InvalidOperation, ROUND_CEILING
 from typing import Literal, Mapping, Sequence
 
 
-PurchaseKind = Literal["sheet", "linear_stock", "linear_cut", "volume_direct", "piece", "direct"]
+PurchaseKind = Literal["sheet", "area_direct", "linear_stock", "linear_cut", "volume_direct", "piece", "direct"]
 PlanStatus = Literal["planned", "needs_review"]
 _MAX_SHEET_SPLIT_PIECES_PER_FINISHED_PART = 256
 _APPROXIMATE_SHEET_WASTE_FACTOR = Decimal("1.10")
@@ -279,6 +279,28 @@ def _place_sheet_parts(
     ))
 
 
+def _plan_area_direct(*, demands, candidate):
+    allocations = []
+    for demand in demands:
+        area = _demand_area(demand)
+        if area is None:
+            if demand.length_mm is None or demand.width_mm is None:
+                return _CandidatePlan(line=None, reason_code="area_geometry_required")
+            length, width = _demand_dimensions(demand)
+            area = length * width * _demand_quantity(demand, whole=True)
+        allocations.append(MaterialAllocation(
+            demand_id=demand.demand_id, purchase_index=1, object_id=demand.object_id,
+            material_requirement_id=demand.material_requirement_id, area_mm2=area,
+        ))
+    quantity = sum(row.area_mm2 for row in allocations) / Decimal("1000000")
+    price = _positive(candidate.price_per_purchase_unit, "candidate.price_per_purchase_unit")
+    return _CandidatePlan(line=MaterialPurchaseLine(
+        selection_key=candidate.selection_key, candidate_id=candidate.candidate_id,
+        purchase_kind="area_direct", purchase_quantity=quantity, price_per_purchase_unit=price,
+        total_cost=quantity * price, currency=candidate.currency, allocations=tuple(allocations),
+    ))
+
+
 def _place_linear_stock(
     *, demands: Sequence[MaterialDemand], candidate: MaterialSupplyCandidate
 ) -> _CandidatePlan:
@@ -429,6 +451,8 @@ def _plan_candidate(
     _validate_candidate(candidate)
     if candidate.purchase_kind == "sheet":
         return _place_sheet_parts(demands=demands, candidate=candidate)
+    if candidate.purchase_kind == "area_direct":
+        return _plan_area_direct(demands=demands, candidate=candidate)
     if candidate.purchase_kind == "linear_stock":
         return _place_linear_stock(demands=demands, candidate=candidate)
     if candidate.purchase_kind == "linear_cut":

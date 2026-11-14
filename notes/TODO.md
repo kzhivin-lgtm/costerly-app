@@ -56,39 +56,17 @@ roles to display names after the terminology is agreed.
    Unit Price, as whole ILS on initial render, live preview and after
    saving. Preserve exact values for calculations and persistence. Verify
    normal and narrow layouts and the immediate local cost preview.
-4. DEFERRED BY OWNER, P1, USER REQUEST. When reviewing the next object, use the
-   capacity remaining on compatible sheets already charged to approved
-   objects. Charge the current object for additional sheets required by
-   the estimate. The estimate pays for each sheet once. Show the object's
-   net Required Material and its charge. The internal shared assignment
-   may stay hidden. Verify both approval orders, an edit absorbed by
-   remaining capacity, and an edit that requires an extra sheet. Define
-   how reopening an approved object or changing shared purchase terms
-   affects prior charges. Current 9.17 allocates by net area and clears
-   all object approvals on material edits. See the
-   [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#shared-sheet-purchasing-and-review-status).
-
-PENDING, P1, USER REPORT. Verify 9.32 purchase quantities and package
-units on fresh authenticated Adda. Include Save, Approve and reopening
-both items. Adda production before the fix
-`run_74f8b79460d2400d8783aedeca34db08` shows two objects at quantity 1
-with no overrides. The console and corner require 6 and 28 individual
-runners, and the shared plan buys 17 two-piece sets. Both screens label
-the purchase unit as `piece`. V4.20 (`156f9a1`, 2026-11-02) first
-combined object-level Required Material with estimate-wide Purchase
-Quantity and added that unit label. The draft preview started using
-aggregate consumption in 9.12 (`039b6b8`), before 9.31 introduced
-profile cuts (`ae83ddd`). The Object Detail renderer and preview are
-identical in 9.30 and 9.31. In the saved
-9.31 Adda replay, changing the corner object quantity from 1 to 2 gives
-15 profile bars by preview length rounding and 16 by the persisted cut
-planning path. 9.32 now shows 3 console sets and 14 corner sets on the
-same source evidence. The browser and saved calculation agree on 16
-profile bars with quantity 2. The local browser tested one scoped Save
-and immediate feedback at two widths. The owner finalized two-piece
-sets for both runner roles. The separate approval-order charging change
-remains deferred. See the
-[9.32 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-932-materials-and-purchase-quantities).
+4. IMPLEMENTED, P1, USER REQUEST. Confirm authenticated Object Detail
+   review in both orders on Adda. Show only the current object's net
+   demand, actual purchase units, unit price and charge. Let the
+   next object use the compatible stock bought when an earlier one
+   was approved. Verify scoped Save, retry, approval, and reopening
+   an earlier item after both were approved. Glass and mirrors price
+   at cut area. The production defect was confirmed in 9.32 on
+   `run_e6977dff98d64744becf450ea35ed4d7`. 9.33 replay returned
+   six HDF sheets total in either approval order and all corrected
+   object quantities. Local unit and browser tests passed.
+   [Release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-933-object-purchase-review-and-glass-area).
 
 COMPLETED, OWNER-ACCEPTED, P1, USER REPORT. Reduce Object Detail Save latency
 for a one-field edit. The owner observed about 6 s on Lev1 after 9.22.

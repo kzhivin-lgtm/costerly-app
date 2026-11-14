@@ -1,5 +1,13 @@
 # Done Log
 
+Estimation 9.33, work 3.17.4.6. Object Detail prices whole purchase
+units on the active object. Later reviews use stock paid for at prior
+approvals. Glass and mirror use catalog rates per square metre.
+LED labels show temperature and estimated load, and Adda's Vanity
+uses a 30 W driver. Verified on the production Parts artifact with
+live catalog prices, 128 focused tests, and two browser fixture widths.
+See the [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-933-object-purchase-review-and-glass-area).
+
 Estimation 9.32, work 3.17.4.6. Object Detail shows project purchase
 quantities and shared totals with scope labels. Both types of runner
 purchase use sets of two, and the saved Adda replay confirmed 17 sets

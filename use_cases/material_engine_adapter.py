@@ -52,6 +52,7 @@ _PHYSICAL_PURCHASABLE_DIMENSION_KEYS = frozenset({
 })
 _DRAWER_SLIDE_LAST_RESORT_DEPTH_MM = 400
 _ASSUMPTION_ALLOWANCE_ILS = Decimal("200")
+_AREA_PURCHASE_FAMILIES = {"glass", "mirror"}
 _ASSUMPTION_SHEET_DIMENSIONS = {"length_mm": Decimal("2440"), "width_mm": Decimal("1220")}
 
 
@@ -214,6 +215,86 @@ def _snapshot_allocation_weight(row: Mapping[str, Any]) -> Decimal:
     }))
 
 
+def object_purchase_key(object_id: str, selection_key: str) -> str:
+    return f"object:{object_id}:{selection_key}"
+
+
+def material_review_purchases(snapshot, *, review_order=(), overrides=None, changed_keys=None):
+    """Charge approved objects in review order. Each draft sees only approved stock."""
+    overrides = overrides if overrides is not None else snapshot.get("review_purchase_overrides", {})
+    order = list(dict.fromkeys(review_order))
+    previous_costs = {(row["object_id"], row["material_requirement_id"]): row["cost_ex_vat"]
+                      for row in snapshot.get("object_material_costs", ())}
+    costs = {}
+    lines = []
+    for line in snapshot["lines"]:
+        if changed_keys is not None and line["selection_key"] not in changed_keys:
+            lines.append(line)
+            continue
+        allocations = line["allocations"]
+        owners = sorted({row["object_id"] for row in allocations})
+        if not owners or not all(row.get("demand_id") and row.get("material_requirement_id") for row in allocations):
+            lines.append(line)
+            continue
+        candidate = MaterialSupplyCandidate(
+            candidate_id=line["candidate_id"], material_family=line["selection_key"].split("|", 1)[0],
+            selection_key=line["selection_key"], purchase_kind=line["purchase_kind"],
+            price_per_purchase_unit=line["price_per_purchase_unit"], currency=line["currency"],
+            purchasable_dimensions=line.get("purchasable_dimensions"),
+            package_quantity=line.get("package_quantity") or 1, kerf_mm=line.get("kerf_mm", 0),
+            authority=line["authority"],
+        )
+        demands = _snapshot_material_demands(line, candidate, {}, {}, {}, ({}, {}))
+        group = defaultdict(list)
+        for demand in demands or ():
+            group[demand.object_id].append(demand)
+        if set(group) != set(owners):
+            lines.append(line)
+            continue
+
+        approved_demands = []
+        approved_bought = Decimal("0")
+        local_lines = {}
+        approved = [oid for oid in order if oid in group]
+        approved_ids = set()
+        for oid in [*approved, *(oid for oid in owners if oid not in approved)]:
+            owner_is_approved = oid in approved
+            prefix = approved_demands if candidate.purchase_kind in {"sheet", "linear_stock", "piece"} else []
+            purchase = plan_material_purchases(demands=[*prefix, *group[oid]], candidates=(candidate,))
+            if not purchase.lines:
+                raise ValueError("Cannot price the object using its saved purchase unit.")
+            bought = purchase.lines[0].purchase_quantity
+            already_bought = approved_bought if prefix else Decimal("0")
+            key = object_purchase_key(oid, candidate.selection_key)
+            override = _decimal((overrides.get(key) or {}).get("purchase_quantity"))
+            quantity = override if override is not None else max(Decimal("0"), bought - already_bought)
+            price = Decimal(str(candidate.price_per_purchase_unit))
+            total = (price * quantity).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            local_lines[oid] = {
+                "quantity": float(quantity), "total": float(total), "manual": override is not None,
+                "prior_purchase_quantity": float(already_bought),
+                "prior_allocations": [row for row in allocations if row["object_id"] in approved_ids] if prefix else [],
+            }
+            weights = defaultdict(Decimal)
+            for row in allocations:
+                if row["object_id"] == oid:
+                    weights[(oid, row["material_requirement_id"])] += _snapshot_allocation_weight(row)
+            for key, cost in _split_purchase_cost(total, weights).items():
+                costs[key] = costs.get(key, Decimal("0")) + cost
+            if owner_is_approved and candidate.purchase_kind in {"sheet", "linear_stock", "piece"}:
+                approved_ids.add(oid)
+                approved_demands.extend(group[oid])
+                approved_bought += quantity
+        lines.append({**line, "object_purchases": local_lines})
+
+    costs = {**previous_costs, **{key: float(cost) for key, cost in costs.items()}}
+    return {**snapshot, "lines": lines, "material_review_order": order,
+            "review_purchase_overrides": dict(overrides), "object_material_costs": [
+                {"object_id": oid, "material_requirement_id": req, "cost_ex_vat": cost}
+                for (oid, req), cost in sorted(costs.items())
+            ]}
+
+
 def _material_quantity_sources(facts):
     """Recover exact counts where a quantity edit crosses part rounding."""
     totals, part_counts = {}, {}
@@ -271,7 +352,7 @@ def _snapshot_material_demands(
             if demand is None:
                 return None
             unit = _canonical_requirement_unit(demand.unit)
-            if kind == "sheet" and demand.area_mm2 is None and unit != "sheet":
+            if kind in {"sheet", "area_direct"} and demand.area_mm2 is None and unit != "sheet":
                 return None
             if kind in {"linear_stock", "linear_cut"} and demand.linear_length_mm is None:
                 return None
@@ -295,12 +376,12 @@ def _snapshot_material_demands(
         exact_count = part_counts.get((owner[0], source_part_id))
         exact_total = totals.get(owner)
         if exact_total is not None and demand_id.endswith((":net-demand", ":service", ":assumption")):
-            factor = {"sheet": Decimal("1000000"), "linear_stock": Decimal("1000"),
+            factor = {"sheet": Decimal("1000000"), "area_direct": Decimal("1000000"), "linear_stock": Decimal("1000"),
                       "linear_cut": Decimal("1000"), "volume_direct": Decimal("1000000000")}.get(kind, Decimal("1"))
             if exact_count is None and saved_weights[key] > 0:
                 ratio = exact_total * factor / saved_weights[key]
         kwargs = {"quantity": Decimal("1"), "unit": "piece"}
-        if kind == "sheet" and area is not None:
+        if kind in {"sheet", "area_direct"} and area is not None:
             if count is not None and length is None:
                 kwargs = {"quantity": (count * ratio).to_integral_value(rounding=ROUND_CEILING), "unit": "sheet"}
             elif count is not None and length is not None and width is not None:
@@ -379,6 +460,7 @@ def replan_material_norm_snapshot(
             candidate_purchase_forms=((candidate.candidate_id, line),),
         )
         rebuilt = material_plan_snapshot(result)
+        review_pricing = snapshot.get("material_review_order") is not None
         old_costs = _split_purchase_cost(Decimal(str(line["total_cost"])), old_weights)
         (new_line,) = rebuilt["lines"]
         new_weights = {}
@@ -388,7 +470,8 @@ def replan_material_norm_snapshot(
         for row in rebuilt["object_material_costs"]:
             owner = (row["object_id"], row["material_requirement_id"])
             new_cost = Decimal(str(row["cost_ex_vat"]))
-            costs[owner] += new_cost - old_costs[owner]
+            if not review_pricing:
+                costs[owner] += new_cost - old_costs[owner]
             if new_cost != old_costs[owner] or new_weights[owner] != old_weights[owner]:
                 changed.add(owner)
         if line["purchase_quantity"] != new_line["purchase_quantity"]:
@@ -545,7 +628,9 @@ def _assumption_candidate(
     )
     raw_unit = str(material.get("unit") or "").strip()
     normalized_unit = _canonical_requirement_unit(raw_unit)
-    if has_sheet_geometry:
+    if has_sheet_geometry and material_family in _AREA_PURCHASE_FAMILIES:
+        purchase_kind, rationale_unit, dimensions = "area_direct", "m²", None
+    elif has_sheet_geometry:
         # The A fallback must remain physically capable of producing every
         # declared finished panel. Do not recycle a conventional 2440x1220
         # sheet when the evidence requires a larger one, and never split the
@@ -929,6 +1014,9 @@ def _purchase_price_and_quantity(
     if normalized_price is None:
         return None
 
+    if kind == "area_direct":
+        return _ex_vat(normalized_price, offer, vat_percent), Decimal("1")
+
     if kind == "sheet":
         length = _positive(dimensions.get("length_mm"))
         width = _positive(dimensions.get("width_mm"))
@@ -1017,6 +1105,11 @@ def company_supply_candidates(
             if str(offer.get("price_scope") or "material_only") != price_scope:
                 continue
             kind = _offer_kind(offer)
+            if material_family in _AREA_PURCHASE_FAMILIES:
+                if (_canonical_unit(offer.get("source_unit")) != "sqm"
+                        or _canonical_unit(offer.get("normalized_unit")) != "sqm"):
+                    continue
+                kind = "area_direct"
             # A discrete package is itself the required purchase format.  It
             # has no geometric dimensions to provide.
             status_dimensions = offer.get("purchasable_dimensions") or (
@@ -1026,7 +1119,7 @@ def company_supply_candidates(
                 item, pricing_policies=policies,
                 purchasable_dimensions=status_dimensions,
             )
-            package_is_complete = kind == "piece" and status.missing == ("purchase format",)
+            package_is_complete = kind in {"piece", "area_direct"} and status.missing == ("purchase format",)
             if status.tone not in {"blue", "green"} and not package_is_complete:
                 continue
             offer_id = str(offer.get("offer_id") or "").strip()
@@ -1114,7 +1207,15 @@ def israel_reference_supply_candidates(
             if not price_id or typical is None:
                 continue
             unit = _canonical_unit(price.get("unit"))
-            if unit == "sqm":
+            if family_code in _AREA_PURCHASE_FAMILIES:
+                if unit == "sqm":
+                    result.append(MaterialSupplyCandidate(
+                        candidate_id=f"israel-reference:{position_id}:{price_id}:area",
+                        material_family=material_family, selection_key=selection_key, purchase_kind="area_direct",
+                        price_per_purchase_unit=typical, currency=normalized_currency, authority="israel_reference",
+                        display_name=str(position.get("canonical_name") or ""), reference_price_id=price_id,
+                    ))
+            elif unit == "sqm":
                 for supply_format in formats:
                     dimensions = dict(supply_format.get("purchasable_dimensions") or {})
                     length = _positive(dimensions.get("length_mm"))
@@ -1503,7 +1604,10 @@ def build_material_plan(
                 selection_key = f"{selection_key}|variant={purchase_variant}"
                 compatible = tuple(
                     replace(candidate, candidate_id=f"{candidate.candidate_id}:variant:{purchase_variant}",
-                            selection_key=selection_key, display_name=f"{candidate.display_name}, {purchase_variant}")
+                            selection_key=selection_key, display_name=(
+                                f"{candidate.display_name}, {purchase_variant}, {material['led_watts_per_m']} W/m"
+                                if material.get("led_watts_per_m") else f"{candidate.display_name}, {purchase_variant}"
+                            ))
                     for candidate in compatible
                 )
             for candidate in compatible:
@@ -1520,6 +1624,7 @@ def build_material_plan(
                 normalized_override = _canonical_requirement_unit(override_unit)
                 allowed_units = {
                     "sheet": {"m2", "sqm", "square_meter", "square_metre", "sheet"},
+                    "area_direct": {"m2", "sqm", "square_meter", "square_metre"},
                     "linear_stock": {"m", "lm", "linear_meter", "linear_metre", "mm", "cm"},
                     "linear_cut": {"m", "lm", "linear_meter", "linear_metre", "mm", "cm"},
                     "volume_direct": {"m3"},
@@ -1699,7 +1804,7 @@ def build_material_plan(
         override = overrides.get((object_id, requirement_id)) or {}
         override_unit = str(override.get("unit") or "")
         override_quantity = _positive(override.get("quantity_per_item"))
-        expected_units = {"sheet": {"m2"}, "linear_cut": {"m"}}.get(candidate.purchase_kind, {"piece", "ea"})
+        expected_units = {"sheet": {"m2"}, "area_direct": {"m2"}, "linear_cut": {"m"}}.get(candidate.purchase_kind, {"piece", "ea"})
         if override_quantity is not None and _canonical_requirement_unit(override_unit) in expected_units:
             demand = _demand_from_net_requirement(
                 demand_id=f"{object_id}:{requirement_id}:assumption", object_id=object_id,
@@ -1712,7 +1817,7 @@ def build_material_plan(
                 demands.append(demand)
                 reasons.add("manual_material_norm_without_geometry")
                 continue
-        if candidate.purchase_kind == "sheet" and parts:
+        if candidate.purchase_kind in {"sheet", "area_direct"} and parts:
             appended = 0
             for part in parts:
                 try:

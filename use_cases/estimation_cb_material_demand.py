@@ -7,7 +7,7 @@ import re
 from use_cases.estimation_assembly_bom import ASSEMBLY_BOM_V1
 from use_cases.estimation_cb_geometry_parts import VENEERED_MDF, is_explicit_solid_wood_note
 from use_cases.estimation_structural_bom import _CONSTRUCTION_MATERIAL_NAMES, _FAMILY_PREFERENCE
-from use_cases.material_engine_adapter import build_material_plan, material_plan_input_fingerprint, material_plan_snapshot
+from use_cases.material_engine_adapter import build_material_plan, material_plan_input_fingerprint, material_plan_snapshot, material_review_purchases
 from use_cases.material_identity_resolution import normalize_material_phrase
 from use_cases.price_source_taxonomy import catalog_taxonomy_for_family, material_rule_for_text
 
@@ -33,6 +33,7 @@ _LED_PROFILE_KIT = "LED aluminium U-profile with diffuser"
 _LED_DRIVER = "Constant-voltage LED driver"
 _LED_FAMILY = "hardware_electrical_component"
 _LED_PROFILE_STOCK_MM = 2000
+_LED_ESTIMATE_WATTS_PER_M = 6
 _ROLE_FAMILY_PREFERENCE = {
     **_FAMILY_PREFERENCE,
     "carcass_sheet": _FAMILY_PREFERENCE["internal_sheet"],
@@ -177,10 +178,11 @@ def _lighting_accessories(materials, object_quantity, lighting_family, review_it
         return
     for strip in strips:
         strip["quantity"] = round(strip["quantity"], 6)
+        strip["led_watts_per_m"] = _LED_ESTIMATE_WATTS_PER_M
     installed_m = sum(Decimal(str(row["quantity"])) for row in strips)
     installed_per_object = installed_m / Decimal(str(object_quantity))
-    watts = installed_per_object * Decimal("6") * Decimal("1.25")
-    capacity = max(40, int(watts.to_integral_value(rounding=ROUND_CEILING)))
+    watts = installed_per_object * Decimal(_LED_ESTIMATE_WATTS_PER_M) * Decimal("1.25")
+    capacity = int(watts.to_integral_value(rounding=ROUND_CEILING))
     refs = list(dict.fromkeys(ref for strip in strips for ref in strip["evidence_refs"]))
     sources = [part for strip in strips for part in strip["part_sources"]]
     for name, role, quantity, unit in (
@@ -209,7 +211,7 @@ def _lighting_accessories(materials, object_quantity, lighting_family, review_it
                 cuts[remainder] = cuts.get(remainder, 0) + quantity
     profile["linear_cuts"] = [{"length_mm": length, "quantity": count} for length, count in sorted(cuts.items())]
     driver["lighting_capacity"] = {
-        "minimum_w": capacity, "watts_per_m": 6, "headroom_percent": 25,
+        "minimum_w": capacity, "watts_per_m": _LED_ESTIMATE_WATTS_PER_M, "headroom_percent": 25,
         "installed_m_per_object": float(installed_per_object),
     }
     if any(row.get("reason") == "lighting_route_length_unresolved" for row in review_items):
@@ -562,7 +564,7 @@ def _checked_parts_for_estimate(rows, estimated, estimated_counts):
 
 
 def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
-                           material_norm_overrides=None, material_purchase_overrides=None):
+                           material_norm_overrides=None, material_purchase_overrides=None, material_review_order=()):
     """Calculate one document through the existing estimate-wide Material Plan."""
     facts = build_cb_material_facts(parts_report=parts_report, input_rows=input_rows, catalog_context=catalog_context)
     catalogs = catalog_context["catalogs"]
@@ -574,7 +576,10 @@ def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
         facts_by_object=facts, catalogs=catalogs, material_norm_overrides=material_norm_overrides,
         material_purchase_overrides=material_purchase_overrides,
     )
-    snapshot = material_plan_snapshot(result, input_fingerprint=fingerprint)
+    snapshot = material_review_purchases(
+        material_plan_snapshot(result, input_fingerprint=fingerprint),
+        review_order=material_review_order, overrides=material_purchase_overrides,
+    )
     allocations = {(row["object_id"], row["material_requirement_id"]) for row in snapshot["object_material_costs"]}
     unresolved = set(snapshot["unresolved_requirement_ids"])
     fallback_objects = {row["object_id"] for row in snapshot["assumption_fallbacks"] if row.get("assumption_price")}

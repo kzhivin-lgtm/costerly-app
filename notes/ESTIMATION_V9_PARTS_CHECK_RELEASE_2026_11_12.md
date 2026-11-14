@@ -1,5 +1,41 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.33 object purchase review and glass area
+
+Work 3.17.4.6. Rollback is 9.32 at `49d8e34`. Adda production run
+`run_e6977dff98d64744becf450ea35ed4d7` confirmed the defect. The
+Vanity unit displayed 6 estimate-wide sheets of HDF and 152.03 ILS
+of prorated cost alongside 3.436 m² of its own demand.
+
+Object Detail now shows net material, purchase unit, unit price, local
+purchase quantity and local cost. Drafts price independently against
+already approved purchases. Approving an object reserves the purchased
+quantity and its charge so a subsequent object uses remaining stock.
+A saved edit to an approved object returns it and the approvals that
+depended on its stock to review. The material worker serializes approval
+and quantity edits. A direct purchase override is scoped to its object.
+The display and preview omit the shared stock bookkeeping.
+
+Israel Reference and applicable Company Catalog glass and mirror area
+rates now buy finished cut area, with no stock-sheet rounding. The
+accepted LED estimate remains 6 W/m and displays that assumption and
+colour temperature. The verified Nisko 4.8 W/m retail strip remains
+the price anchor, 52.20 ILS including VAT per 5 m roll, 44.24 excluding
+VAT. The material rule uses 25% capacity headroom, selecting the smallest
+compatible catalog rating with no 40 W floor. A 2.900 m LED run needs
+21.75 W and the existing catalog supplies one 30 W unit.
+
+The production Parts replay estimates the Vanity unit at 2 HDF sheets
+for 209.82 ILS, 3 runner sets for 216 ILS, one LED roll for 44.24 ILS,
+two 2 m profile kits for 94.92 ILS, one 30 W driver for 55.93 ILS, and
+1.4 m² mirror for 420 ILS, all excluding VAT. The corner's 3.460584 m²
+of glass cost 1098.15 ILS at 317.33 per m². HDF allocates 2 + 4 sheets
+in Vanity-first approval order or 5 + 1 in reverse order, six either
+way. 128 focused tests passed, and the browser fixture verified local
+price changes and a scoped Save at 1280 and 390 px. The production
+Parts artifact was reused without model calls. Authenticated Save and
+Approve after deployment require a live check.
+
 ## Estimation 9.32 materials and purchase quantities
 
 Work 3.17.4.6. Rollback is the 9.31 runtime at `ae83ddd`. Object

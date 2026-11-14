@@ -375,3 +375,51 @@ class _Frame:
     def iterrows(self):
         for index, row in enumerate(self._rows):
             yield index, _Row(row)
+
+
+def test_approval_and_manual_purchase_publish_review_order_with_scoped_costs(monkeypatch):
+    import pandas as pd
+    from use_cases import estimation
+    from use_cases.material_engine_adapter import material_review_purchases, object_purchase_key
+
+    alloc = [{"object_id": oid, "material_requirement_id": "hdf", "demand_id": oid, "area_mm2": area}
+             for oid, area in (("A", 3_436_000), ("B", 10_791_000))]
+    raw = {"status": "planned", "reason_codes": [], "object_material_costs": [], "lines": [{
+        "selection_key": "hdf", "candidate_id": "offer", "purchase_kind": "sheet",
+        "purchasable_dimensions": {"length_mm": 2400, "width_mm": 1220}, "package_quantity": 1,
+        "price_per_purchase_unit": 105, "purchase_quantity": 6, "total_cost": 630,
+        "currency": "ILS", "authority": "company", "allocations": alloc,
+    }]}
+    saved = material_review_purchases(raw)
+    objects = {oid: {"object_id": oid, "quantity": 1, "approved": False} for oid in ("A", "B")}
+    overrides = {}
+    monkeypatch.setattr(runtime, "fetch_rfq_estimate_material_plan", lambda *_: pd.DataFrame([{"plan_payload": saved}]))
+    monkeypatch.setattr(runtime, "fetch_rfq_object_estimates", lambda *_: pd.DataFrame(objects.values()))
+    monkeypatch.setattr(runtime, "fetch_rfq_estimate_material_purchase_overrides", lambda *_: pd.DataFrame([
+        {"selection_key": key, "purchase_quantity": qty} for key, qty in overrides.items()
+    ]))
+    monkeypatch.setattr(runtime, "upsert_rfq_estimate_material_purchase_overrides",
+                        lambda _client, **kw: overrides.update(kw["quantities"]))
+    def publish(_client, **kw):
+        nonlocal saved
+        saved = kw["plan_payload"]
+    monkeypatch.setattr(runtime, "upsert_rfq_estimate_material_plan", publish)
+    monkeypatch.setattr(estimation, "apply_material_plan_allocations", lambda *_a, **kw: None)
+    monkeypatch.setattr(runtime, "update_rfq_object_estimate_approved",
+                        lambda _client, object_id, approved, **_kw: objects[object_id].update(approved=approved))
+
+    def purchase_quantities():
+        return {oid: item["quantity"] for oid, item in saved["lines"][0]["object_purchases"].items()}
+
+    runtime._recalculate_edited_material_lines(
+        object(), "estimate", "run", "company", set(), set(), {}, {}, {}, approve_objects=("A",),
+    )
+    assert objects["A"]["approved"] and saved["material_review_order"] == ["A"]
+    assert purchase_quantities() == {"A": 2, "B": 4}
+
+    override_key = object_purchase_key("B", "hdf")
+    runtime._recalculate_edited_material_lines(
+        object(), "estimate", "run", "company", set(), {override_key}, {}, {}, {override_key: 5},
+    )
+    assert overrides == {override_key: 5}
+    assert objects["A"]["approved"] and purchase_quantities() == {"A": 2, "B": 5}

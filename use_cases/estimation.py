@@ -646,11 +646,13 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
                              and (item.get("selection_key") == selection_key
                                   or (len(requirement_ids) == 1 and not item.get("selection_key")))), None)
         family = (fallback or {}).get("material_family") or selection_key.split("|", 1)[0]
-        project_required, _ = _required_material_volume(line["allocations"], purchase_kind=purchase_kind)
+        purchase = (line.get("object_purchases") or {}).get(object_id)
+        prior_allocations = purchase.get("prior_allocations", []) if purchase else []
+        prior_required, _ = _required_material_volume(prior_allocations, purchase_kind=purchase_kind)
         set_size = _runner_set_size(line)
         if set_size > 1:
             required_value /= set_size
-            project_required /= set_size
+            prior_required /= set_size
             required_unit = "set"
         purchase_unit = _purchase_unit_display(line)
         dimensions = line.get("purchasable_dimensions") or {}
@@ -668,16 +670,15 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
                 else f"__material_selection__:{selection_key}" if selection_key else ""
             ),
             "purchase_unit": purchase_unit,
-            "purchase_quantity_value": _number(line.get("purchase_quantity"), 0),
+            "purchase_quantity_value": _number(purchase["quantity"] if purchase else line.get("purchase_quantity"), 0),
             "purchase_quantity_unit": purchase_unit.split(" ", 1)[0],
             "purchase_quantity_line_id": f"__material_purchase__:{line.get('selection_key')}",
             "purchase_kind": purchase_kind,
-            "purchase_is_manual": bool(line.get("purchase_quantity_is_manual")),
-            "project_required": project_required,
-            "shared_purchase": any(row.get("object_id") != object_id for row in line["allocations"]),
-            "purchase_total": _number(line.get("total_cost"), 0),
+            "purchase_is_manual": bool(purchase["manual"] if purchase else line.get("purchase_quantity_is_manual")),
+            "prior_required": prior_required,
+            "prior_purchase_quantity": purchase["prior_purchase_quantity"] if purchase else 0,
             **({
-                "stock_cuts": _preview_stock_cuts(line["allocations"], object_id),
+                "stock_cuts": _preview_stock_cuts([*prior_allocations, *allocations], object_id),
                 "stock_kerf_mm": _number(line.get("kerf_mm"), 0),
             } if purchase_kind == "linear_stock" else {}),
             "purchase_unit_cost": line.get("price_per_purchase_unit"),
@@ -688,7 +689,8 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
             ),
             "is_coating": family in _COATING_MATERIAL_FAMILIES,
             **({"material_family": family} if family else {}),
-            "total": (round(sum(allocated_costs.get(req, 0) for req in requirement_ids), 2)
+            "total": (purchase["total"] if purchase else
+                      round(sum(allocated_costs.get(req, 0) for req in requirement_ids), 2)
                       if plan_snapshot.get("parts_check") else _number(line.get("total_cost"), 0)),
         })
     return rows
@@ -748,7 +750,7 @@ def _assumption_material_display_name(fallback: dict[str, Any]) -> str:
 def _required_material_volume(
     allocations: list[dict[str, Any]], *, purchase_kind: str,
 ) -> tuple[float, str]:
-    if purchase_kind == "sheet":
+    if purchase_kind in {"sheet", "area_direct"}:
         area_mm2 = sum(
             _number(allocation.get("area_mm2"), 0)
             or (
@@ -930,12 +932,18 @@ def approve_object_estimate(
             estimate_id=estimate_id,
             object_id=object_id,
         )
-    update_rfq_object_estimate_approved(
-        client,
-        estimate_id=estimate_id,
-        object_id=object_id,
-        approved=True,
-    )
+    rows = fetch_rfq_estimate_material_plan(client, estimate_id)
+    plan = _first_row(rows).get("plan_payload") or {}
+    if plan.get("material_review_order") is not None and object_id not in plan["material_review_order"]:
+        from use_cases.estimation_runtime import queue_material_plan_recalculation
+
+        obj = _object_material_context(client, estimate_id=estimate_id, object_id=object_id)
+        queue_material_plan_recalculation(
+            estimate_id=estimate_id, run_id=str(obj["run_id"]), company_id=str(obj["company_id"]),
+            purchase_keys=frozenset(), approve_objects=(object_id,),
+        ).result(timeout=12)
+    else:
+        update_rfq_object_estimate_approved(client, estimate_id=estimate_id, object_id=object_id, approved=True)
 
 
 def _object_material_context(client: Any, *, estimate_id: str, object_id: str) -> dict[str, Any]:
@@ -961,6 +969,7 @@ def _material_total_cost(*, unit_cost: float, quantity_per_item: float, object_q
 def _purchase_unit_label(purchase_kind: object) -> str:
     return {
         "sheet": "sheet",
+        "area_direct": "m²",
         "linear_stock": "stock length",
         "linear_cut": "cut length",
         "piece": "piece",
@@ -976,13 +985,18 @@ def _project_material_purchase_rows(plan_snapshot: dict[str, Any]) -> list[dict[
         if not isinstance(line, dict):
             continue
         quantity = _number(line.get("purchase_quantity"), 0)
+        cost = _number(line.get("total_cost"), 0)
+        purchases = line.get("object_purchases") or {}
+        if purchases and purchases.keys() <= set(plan_snapshot.get("material_review_order", ())):
+            quantity = sum(row["quantity"] for row in purchases.values())
+            cost = sum(row["total"] for row in purchases.values())
         if quantity <= 0:
             continue
         result.append({
             "item": str(line.get("display_name") or "Material"),
             "purchase": f"{_format_number(quantity)} {_purchase_unit_display(line)}",
             "unit_price": _number(line.get("price_per_purchase_unit"), 0),
-            "total_cost": _number(line.get("total_cost"), 0),
+            "total_cost": cost,
             "price_source": {"company": "C", "israel_reference": "I"}.get(
                 str(line.get("authority") or ""), "A"
             ),
@@ -1001,7 +1015,7 @@ def _material_norms_from_plan(
         if selection_key is not None and line.get("selection_key") != selection_key:
             continue
         purchase_kind = str(line.get("purchase_kind") or "")
-        if purchase_kind == "sheet":
+        if purchase_kind in {"sheet", "area_direct"}:
             unit, divisor, dimension = "m²", 1_000_000.0, "area"
         elif purchase_kind in {"linear_stock", "linear_cut"}:
             unit, divisor, dimension = "m", 1_000.0, "length"
@@ -1088,13 +1102,19 @@ def save_object_detail_material_edits(
             continue
         if not plan.get("parts_check_source"):
             raise ValueError("A saved material plan is required to edit materials.")
-        amount = _number(edit.get("value"), 0)
+        amount = _number(edit.get("value"), -1)
         if not isfinite(amount) or amount < 0.0001 or amount >= 10_000_000_000 or amount != round(amount, 4):
             raise ValueError("Enter a positive quantity with up to four decimal places.")
         if field == "purchase_quantity" and line_id.startswith("__material_purchase__:"):
             key = line_id.removeprefix("__material_purchase__:")
             if key not in owned:
                 raise ValueError("This purchase line is no longer available.")
+            if owned[key].get("purchase_kind") in {"sheet", "linear_stock", "piece"} and amount != int(amount):
+                raise ValueError("Enter a whole number of purchase units.")
+            if plan.get("material_review_order") is not None:
+                from use_cases.material_engine_adapter import object_purchase_key
+
+                key = object_purchase_key(object_id, key)
             purchases[key] = amount
             continue
         if field != "required_material":
@@ -1165,6 +1185,7 @@ def apply_material_plan_allocations(
     changed_requirements: set[tuple[str, str]] | None = None,
     changed_quantity_objects: set[str] | None = None,
     object_contexts: dict[str, dict[str, Any]] | None = None,
+    protected_approval_objects: set[str] | None = None,
 ) -> None:
     """Project rounded purchase costs back into the owning Object Detail rows."""
     # A partial plan is still authoritative for the requirements it actually
@@ -1341,7 +1362,8 @@ def apply_material_plan_allocations(
             estimate_id=estimate_id,
             object_id=object_id,
             **({"object_row": object_context, "settings": settings, "lines_df": object_rows,
-                "published_policy_lines": policy_lines, "approved": False}
+                "published_policy_lines": policy_lines,
+                "approved": None if object_id in (protected_approval_objects or ()) else False}
                if changed_requirements is not None else {}),
         )
         update_rfq_object_estimate_progress(

@@ -246,7 +246,7 @@ def test_object_detail_footer_has_approve_and_a_disabled_save_between_actions():
     assert 'data-streamlit-bridge-key="object_detail_approve_bridge"' in footer
 
 
-def test_object_approval_uses_existing_costs_without_querying_material_plan(monkeypatch):
+def test_legacy_object_approval_uses_existing_costs(monkeypatch):
     approved = []
     monkeypatch.setattr(estimation, "company_auth_enabled", lambda: False)
     monkeypatch.setattr(estimation, "get_supabase_client", lambda: object())
@@ -256,10 +256,7 @@ def test_object_approval_uses_existing_costs_without_querying_material_plan(monk
     monkeypatch.setattr(estimation, "_recalculate_object_estimate_totals", unexpected_recalculation)
     monkeypatch.setattr(estimation, "update_rfq_object_estimate_approved", lambda _, **values: approved.append(values))
 
-    def unexpected_plan_read(*_args, **_kwargs):
-        raise AssertionError("Approval queried the material plan")
-
-    monkeypatch.setattr(estimation, "fetch_rfq_estimate_material_plan", unexpected_plan_read)
+    monkeypatch.setattr(estimation, "fetch_rfq_estimate_material_plan", lambda *_a: pd.DataFrame())
 
     estimation.approve_object_estimate(estimate_id="estimate-1", object_id="object-1")
 
@@ -386,18 +383,18 @@ def test_server_material_edit_recalculates_line_and_object_totals(monkeypatch):
     assert totals["self_cost_total"] == 495.6
 
 
-def test_shared_purchasing_shows_project_demand_and_cost_beside_object_values():
+def test_material_table_only_shows_current_object_quantities_and_cost():
     section = {
         "key": "material", "title": "Materials", "columns": MATERIAL_PURCHASE_COLUMNS,
         "rows": [{
             "item": "Drawer runner", "required_material_value": 3, "required_material_unit": "set",
-            "purchase_unit": "set", "purchase_quantity_value": 9, "purchase_unit_cost": 72,
-            "total": 216, "shared_purchase": True, "project_required": 9, "purchase_total": 648,
+            "purchase_unit": "set", "purchase_quantity_value": 3, "purchase_unit_cost": 72,
+            "purchase_quantity_line_id": "__material_purchase__:runner",
+            "total": 216,
         }],
     }
     html = _table_html(section)
-    assert "Project purchase<br>quantity" in html
-    assert "Object total" in html
-    assert ">9 set project</small>" in html
-    assert ">₪648 project</small>" in html
+    assert "Purchase quantity" in html and ">Total<" in html
+    assert "project" not in html.lower()
+    assert 'data-original-value="3"' in html
     assert ">set<" in html and ">₪216</span>" in html
