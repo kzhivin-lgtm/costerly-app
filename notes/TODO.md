@@ -56,7 +56,8 @@ roles to display names after the terminology is agreed.
    Unit Price, as whole ILS on initial render, live preview and after
    saving. Preserve exact values for calculations and persistence. Verify
    normal and narrow layouts and the immediate local cost preview.
-4. IMPLEMENTED, P1, USER REQUEST. Confirm authenticated Object Detail
+4. IMPLEMENTED, P1, USER REQUEST. Runtime accepted at
+   `estimation-v9.33-checkpoint`. Confirm authenticated Object Detail
    review in both orders on Adda. Show only the current object's net
    demand, actual purchase units, unit price and charge. Let the
    next object use the compatible stock bought when an earlier one

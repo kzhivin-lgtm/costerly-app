@@ -1,6 +1,6 @@
 # Done Log
 
-Estimation 9.33, work 3.17.4.6. Object Detail prices whole purchase
+Estimation 9.33, work 3.17.4.6, is protected at `estimation-v9.33-checkpoint` (`adaa7de`). Object Detail prices whole purchase
 units on the active object. Later reviews use stock paid for at prior
 approvals. Glass and mirror use catalog rates per square metre.
 LED labels show temperature and estimated load, and Adda's Vanity

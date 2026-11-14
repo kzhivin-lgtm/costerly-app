@@ -2,7 +2,12 @@
 
 ## Estimation 9.33 object purchase review and glass area
 
-Work 3.17.4.6. Rollback is 9.32 at `49d8e34`. Adda production run
+Work 3.17.4.6. Owner accepted the checkpoint on 2026-11-14.
+`estimation-v9.33-checkpoint` pins `adaa7de9e9d44393f9b85af49c8656e6dda7155b`.
+The private handoff archive is `backups/estimation-v9.33-checkpoint-2026-11-14`.
+It holds the production artifacts, offline replay, Git bundle and checksum manifest.
+The replay matches all 14 purchase lines and both HDF approval orders.
+Rollback is 9.32 at `49d8e34`. Adda production run
 `run_e6977dff98d64744becf450ea35ed4d7` confirmed the defect. The
 Vanity unit displayed 6 estimate-wide sheets of HDF and 152.03 ILS
 of prorated cost alongside 3.436 m² of its own demand.
