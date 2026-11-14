@@ -8,7 +8,7 @@ from statistics import median
 from use_cases.estimation_structural_bom import _hinges_per_facade, _slide_depth_mm
 
 
-VERSION = "CB Parts Geometry V1.3"
+VERSION = "CB Parts Geometry V1.4"
 CASEWORK_BASES = {"visible_front_band", "assumed_width_split", "tall_stack_candidate"}
 CASEWORK_FRONT_PARTS = {"hinged_door": "door_front", "lift_up": "lift_up_front", "drawer": "drawer_front"}
 VISIBLE_GRAIN_ROLES = {
@@ -17,6 +17,7 @@ VISIBLE_GRAIN_ROLES = {
 }
 VENEERED_MDF = "veneered_mdf"
 SOLID_WOOD = "solid_wood"
+_VENEER_PANEL_LAYUP = {"finished_mm": 40, "layer_mm": 20, "layer_count": 2}
 _SOLID_WOOD_NOTE = re.compile(
     r"\bsolid[ -]+(?:wood|timber|oak|ash|beech|maple|walnut|pine|birch)\b|"
     r"\bмассив(?:а|ом)?\b|עץ מלא|עץ גושני", re.IGNORECASE,
@@ -85,7 +86,10 @@ def visible_grain_evidence(understanding):
     groups = defaultdict(set)
     choices = defaultdict(set)
     solid_notes = defaultdict(dict)
-    cues = understanding.get("wood_grain", ())
+    surfaces = defaultdict(list)
+    for surface in understanding.get("finish_surfaces", ()):
+        surfaces[surface["role"]].append(surface)
+    cues = _surface_finish_cues(surfaces) if "finish_surfaces" in understanding else understanding.get("wood_grain", ())
     for item in cues:
         role = item["role"]
         refs[role].add(item["view_id"])
@@ -96,6 +100,8 @@ def visible_grain_evidence(understanding):
             groups[role].add(group)
     for index, line in enumerate(understanding.get("characteristics", ()), 1):
         roles = _characteristic_finish_roles(line)
+        if "finish_surfaces" in understanding:
+            roles &= {role for role, rows in surfaces.items() if all(row["finish"] == "wood_grain" for row in rows)}
         linked = {group for role in roles for group in groups[role]}
         if not roles or len(linked) > 1 or any(SOLID_WOOD in choices[role] for role in roles):
             continue
@@ -111,6 +117,7 @@ def visible_grain_evidence(understanding):
     return {
         role: {
             "surface": "wood_grain", "refs": sorted(evidence), "material": next(iter(choices[role])),
+            **({"surfaces": surfaces[role]} if role in surfaces else {}),
             **({"finish_group": next(iter(groups[role]))} if len(groups[role]) == 1 else {}),
             **({"material_note": {"basis": "ocr_material_note", "mm": None,
                                  "refs": list(solid_notes[role]), "source_text": list(solid_notes[role].values())}}
@@ -119,6 +126,18 @@ def visible_grain_evidence(understanding):
         for role, evidence in refs.items() if len(choices[role]) == 1
         and (SOLID_WOOD not in choices[role] or solid_notes[role])
     }
+
+
+def _surface_finish_cues(surfaces):
+    for rows in surfaces.values():
+        finishes = {row["finish"] for row in rows}
+        groups = {row["finish_group"] for row in rows if row["finish_group"]}
+        if finishes == {"solid_wood"}:
+            for row in rows:
+                yield {**row, "material": SOLID_WOOD}
+        elif finishes == {"wood_grain"} and len(groups) <= 1:
+            for row in rows:
+                yield {**row, "material": VENEERED_MDF}
 
 
 def _normalize_thicknesses(compatible):
@@ -155,10 +174,22 @@ def finish_visible_parts(result, understanding, *, grain=None):
         grain = visible_grain_evidence(understanding)
     compatible = defaultdict(list)
     veneer_groups = defaultdict(list)
+    observed = defaultdict(list)
+    for surface in understanding.get("finish_surfaces", ()):
+        observed[surface["role"]].append(surface)
     for scope in [*result["blocks"], *result["shared_parts"]]:
         for row in scope["parts"]:
             role = row["role"]
-            evidence = grain.get(role, {})
+            surfaces = observed.get(role, ())
+            matched = _part_finish_surfaces(row, surfaces)
+            if matched:
+                row["finish_surfaces"] = matched
+            if matched and len(matched) < len(surfaces):
+                evidence = visible_grain_evidence({"finish_surfaces": matched}).get(role, {})
+            elif surfaces and not matched:
+                evidence = {}
+            else:
+                evidence = grain.get(role, {})
             finish_group = evidence.get("finish_group")
             if evidence:
                 row["visual_stock"] = {key: evidence[key] for key in ("surface", "refs", "material")}
@@ -187,6 +218,34 @@ def finish_visible_parts(result, understanding, *, grain=None):
         _reuse_veneer_stock_for_drawer_fronts(rows)
 
 
+def _part_finish_surfaces(part_row, surfaces):
+    """Use a finished contour match when available. Keep conflicting views separate."""
+    ref = part_row.get("instance_ref")
+    refs = ({ref} if ref else {ref for axis in part_row.get("dimensions", {}).values()
+                              for ref in axis.get("refs", ())})
+    if matches := [row for row in surfaces if row.get("contour_ref") in refs]:
+        return matches
+    same_view = ref and surfaces and all(row.get("contour_ref", "").startswith(ref.rsplit(":", 1)[0] + ":")
+                                         for row in surfaces)
+    if same_view:
+        return []
+    return list(surfaces)
+
+
+def apply_sheet_layups(parts):
+    """Attach the estimating recipe after explicit material callouts have been applied."""
+    for obj in parts["objects"].values():
+        for scope in [*obj["blocks"], *obj["shared_parts"]]:
+            for row in scope["parts"]:
+                thickness = row["dimensions"].get("thickness", {})
+                if (row["role"] in _FRAME_SURFACES | {"seat_cover"}
+                        and row.get("visual_stock", {}).get("material") == VENEERED_MDF
+                        and not row.get("material_note") and thickness.get("basis") != "ocr_material_note"
+                        and thickness.get("mm") == _VENEER_PANEL_LAYUP["finished_mm"]):
+                    row["sheet_layup"] = {**_VENEER_PANEL_LAYUP, "basis": "construction_assumption",
+                                         "reason": "Budget two full MDF layers for the finished veneered panel."}
+
+
 def _reuse_veneer_stock_for_drawer_fronts(rows):
     """Outside-applied drawer fronts can reuse compatible face stock without changing the box."""
     existing = [panel["dimensions"]["thickness"] for panel in rows if not _provisional_drawer_front(panel)]
@@ -196,14 +255,17 @@ def _reuse_veneer_stock_for_drawer_fronts(rows):
         thickness = row["dimensions"]["thickness"]
         if any(other["mm"] == thickness["mm"] for other in existing):
             continue
-        target = min((other for other in existing if other.get("reason") != _PROVISIONAL_STOCK
-                      and thickness["mm"] < other["mm"] <= _MAX_DRAWER_FRONT_STOCK_MM),
-                     key=lambda other: other["mm"], default=None)
+        target = _existing_sheet(existing, minimum=thickness["mm"], maximum=_MAX_DRAWER_FRONT_STOCK_MM)
         if target:
             row["dimensions"]["thickness"] = derived(
                 "construction_assumption", [thickness, target], lambda _, mm: mm,
                 reason="Reuse compatible veneered stock already required for this finish.",
             )
+
+
+def _existing_sheet(choices, *, minimum, maximum):
+    return min((other for other in choices if other.get("reason") != _PROVISIONAL_STOCK
+                and minimum < other["mm"] <= maximum), key=lambda other: other["mm"], default=None)
 
 
 def _provisional_drawer_front(row):
@@ -341,7 +403,7 @@ def equal_drawer_run(view, printed, ids, width, sheet):
     return (faces, box_width) if box_width["mm"] is not None else (None, None)
 
 
-def drawer_frame_parts(block, measurements, views, printed, front):
+def drawer_frame_parts(block, measurements, views, printed, front, *, stock_notes=None):
     appearance, = block["appearances"]
     view = views[appearance["view_id"]]
     ids = appearance["drawer_faces"]
@@ -363,7 +425,10 @@ def drawer_frame_parts(block, measurements, views, printed, front):
     carcass = "carcass sheet stock"
     visible = "visible panel stock, substrate and finish to verify"
     back = "backing sheet stock"
-    carcass_t, backing_t, face_t = stock(_CARCASS_STOCK_MM), stock(6), stock(20)
+    stock_notes = stock_notes or {}
+    carcass_t = stock_notes.get("carcass") or stock(_CARCASS_STOCK_MM)
+    backing_t = stock_notes.get("backing") or stock(6)
+    face_t = stock_notes.get("facade") or stock(20)
     inside_w = derived("construction_assumption", [width, carcass_t], lambda w, t: w - 2 * t,
                        reason="Bottom and back fit between the carcass sides.")
     divider_h = derived("construction_assumption", [height, carcass_t], lambda h, t: h - t,
@@ -406,7 +471,8 @@ def drawer_frame_parts(block, measurements, views, printed, front):
     return parts, ["Drawer internals, divider count, slide clearances and joint layout are provisional."]
 
 
-def framed_panel_parts(block, measurements, views, printed, projections, *, shared_stock=None):
+def framed_panel_parts(block, measurements, views, printed, projections, *, shared_stock=None,
+                       matching_side_finish=False):
     appearance = next(row for row in block["appearances"] if row["view_id"] == measurements["width"]["view_id"])
     view = views[appearance["view_id"]]
     width, depth, height = (geometry_dimension(measurements[key]) for key in ("width", "depth", "height"))
@@ -423,6 +489,8 @@ def framed_panel_parts(block, measurements, views, printed, projections, *, shar
         exact = direct_span(view, printed, "x", bounds, [frame, cid])
         projection = projected(view, printed, "x", bounds, [frame, cid])
         side_thicknesses.append(exact or (projection if projection["mm"] is not None else stock(20)))
+    if matching_side_finish:
+        _normalize_thicknesses([value for value in side_thicknesses if value["mm"] is not None])
     inner_w = derived("construction_assumption", [width, *side_thicknesses], lambda w, a, b: w - a - b,
                       reason="Caps and backing fit between the two outer cheeks.")
     inner_h = derived("construction_assumption", [height, cap_t], lambda h, t: h - 2 * t,
@@ -517,7 +585,7 @@ def casework_span(view, printed, axis, bounds, ids):
                      [*local["refs"], anchor["source_id"]])
 
 
-def casework_parts(block, measurements, views, printed, front):
+def casework_parts(block, measurements, views, printed, front, *, stock_notes=None):
     appearance, = block["appearances"]
     view = views[appearance["view_id"]]
     vid = view["view_id"]
@@ -549,7 +617,10 @@ def casework_parts(block, measurements, views, printed, front):
         width = size(body, "x", ids)
         review.append("Cabinet width excludes the separately owned lateral panel.")
 
-    sheet, back_t = stock(_CARCASS_STOCK_MM), stock(6)
+    stock_notes = stock_notes or {}
+    sheet = stock_notes.get("carcass") or stock(_CARCASS_STOCK_MM)
+    back_t = stock_notes.get("backing") or stock(6)
+    face_t = stock_notes.get("facade") or sheet
     inside_w = derived("construction_assumption", [width, sheet], lambda w, t: w - 2 * t,
                        reason="Horizontal panels and backing fit between the two sides.")
     inside_h = derived("construction_assumption", [height, sheet], lambda h, t: h - 2 * t,
@@ -584,7 +655,7 @@ def casework_parts(block, measurements, views, printed, front):
             face_h = direct_span(view, printed, "y", interval(boxes[cid], "y"), [cid]) or face_h
         ref = f"{vid}:{cid}"
         face_part = part(CASEWORK_FRONT_PARTS.get(role, "unresolved_front"), material="visible facade stock",
-                         length=length, width=face_h, thickness=sheet)
+                         length=length, width=face_h, thickness=face_t)
         parts.append({**face_part, "instance_ref": ref})
         if role == "drawer":
             slide = derived("construction_assumption", [depth], _slide_depth_mm,
@@ -688,7 +759,7 @@ def shared_part(owner, blocks, views, printed, worktop_outline=None, worktop_cut
     return result
 
 
-def compile_geometry_parts(analyze, geometry, views):
+def compile_geometry_parts(analyze, geometry, views, *, stock_notes=None):
     """Preserve locked identities and report unsupported construction explicitly."""
     if (geometry["stage"] != "Block Geometry" or analyze["version"] != geometry["analyze_version"]
             or analyze["source_audit_sha256"] != geometry["source_audit_sha256"]
@@ -702,10 +773,17 @@ def compile_geometry_parts(analyze, geometry, views):
         readings = {row["block_id"]: row for row in evidence["blocks"]}
         blocks = planner["blocks"]
         understanding = analyze.get("understanding", {}).get(oid, {})
+        explicit_stock = (stock_notes or {}).get(oid, {})
         grain = visible_grain_evidence(understanding)
         has_carcass = any(block["basis"] in CASEWORK_BASES | {"shared_drawer_frame"} for block in blocks)
-        frame_sheet = (_compatible_frame_stock(grain)
-                       if has_carcass and not obj["front"].get("material_callouts") else None)
+        frame_sheet = {}
+        sides = grain.get("frame_side", {})
+        matching_side_finish = bool(sides.get("finish_group") and sides.get("material") == VENEERED_MDF)
+        if not obj["front"].get("material_callouts"):
+            if has_carcass and "carcass" not in explicit_stock:
+                frame_sheet.update(_compatible_frame_stock(grain))
+        else:
+            matching_side_finish = False
         if (len(readings) != len(evidence["blocks"]) or len(readings) != len(blocks)
                 or {row["id"]: row["basis"] for row in blocks} != {bid: row["basis"] for bid, row in readings.items()}):
             raise ValueError(f"{oid} Block Geometry must cover the exact locked Blocks")
@@ -738,10 +816,13 @@ def compile_geometry_parts(analyze, geometry, views):
                 key: geometry_dimension(value) for key, value in measurements.items()}, "parts": []}
             try:
                 if block["basis"] == "shared_drawer_frame":
-                    row["parts"], row["review"] = drawer_frame_parts(block, measurements, object_views, printed, front)
+                    row["parts"], row["review"] = drawer_frame_parts(
+                        block, measurements, object_views, printed, front, stock_notes=explicit_stock,
+                    )
                 elif block["basis"] == "matched_framed_panel":
                     row["parts"], row["review"] = framed_panel_parts(
                         block, measurements, object_views, printed, analyze["islands"], shared_stock=frame_sheet,
+                        matching_side_finish=matching_side_finish,
                     )
                 elif block["basis"] == "independently_supported_extension":
                     owner, = owners[bid]
@@ -749,7 +830,9 @@ def compile_geometry_parts(analyze, geometry, views):
                     row["object_part_id"] = owner["id"]
                     consumed.add(owner["id"])
                 elif block["basis"] in CASEWORK_BASES:
-                    row["parts"], row["review"] = casework_parts(block, measurements, object_views, printed, front)
+                    row["parts"], row["review"] = casework_parts(
+                        block, measurements, object_views, printed, front, stock_notes=explicit_stock,
+                    )
                 else:
                     row["review"] = ["Construction pattern unresolved."]
             except (KeyError, ValueError, StopIteration, IndexError) as exc:

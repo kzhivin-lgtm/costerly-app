@@ -1,8 +1,13 @@
+from base64 import b64encode
 from copy import deepcopy
+from io import BytesIO
 import json
 
+import pytest
+from PIL import Image
+
 from tools.estimation_block_geometry import path_spans
-from tools.probe_estimation_v8_3 import classify_islands
+from tools.probe_estimation_v8_3 import MAX_FINISH_SURFACES, classify_islands, write_finish_overlays
 from use_cases.estimation_cb_geometry_parts import (
     _compatible_frame_stock, dimension, equal_drawer_run, finish_visible_parts, stock, visible_grain_evidence,
 )
@@ -131,3 +136,40 @@ def test_understanding_binds_solid_wood_only_to_a_literal_source_note():
     assert door["material_note"]["refs"] == ["ocr-1"]
     assert drawer["visual_stock"]["material"] == "veneered_mdf"
     assert "material_note" not in drawer
+
+
+def test_finish_surfaces_keep_two_fronts_with_different_finishes_separate(tmp_path):
+    views = {"v1": {"object_id": "o", "width": 1000, "height": 1000, "candidates": [
+        {"id": "C1", "bbox": [20, 20, 200, 100]}, {"id": "C2", "bbox": [220, 20, 400, 100]},
+    ]}}
+    sample = {"role": "drawer_front", "view_id": "v1", "finish": "wood_grain", "evidence": "grain lines",
+              "finish_group": "oak", "bbox_crop_1000": [20, 20, 200, 100]}
+
+    def bind(rows):
+        return classify_islands(lambda _stage, _request, validate: validate({
+            "islands": {"v1": "Front elevation"}, "understanding": {"o": {"finish_surfaces": rows}},
+        }), views, {}, {}, include_worktop_cutouts=True)["understanding"]["o"]
+
+    assert len(bind([sample] * (MAX_FINISH_SURFACES - 1))["finish_surfaces"]) == MAX_FINISH_SURFACES - 1
+    assert len(bind([sample] * MAX_FINISH_SURFACES)["finish_surfaces"]) == MAX_FINISH_SURFACES
+    with pytest.raises(ValueError, match="finish surfaces"):
+        bind([sample] * (MAX_FINISH_SURFACES + 1))
+    understanding = bind([sample,
+                          {**sample, "finish": "plain", "bbox_crop_1000": [220, 20, 400, 100]},
+                          {**sample, "view_id": "v2"}, {**sample, "bbox_crop_1000": [0, 10, 1001, 50]}])
+    assert understanding["finish_surface_audit"] == {"supplied": 4, "accepted": 2, "limit": MAX_FINISH_SURFACES}
+    first, second = ({"role": "drawer_front", "instance_ref": f"v1:C{i}", "dimensions": {}} for i in (1, 2))
+    finish_visible_parts({"blocks": [{"block_id": "B1", "parts": [first, second]}], "shared_parts": []}, understanding)
+    assert first["visual_stock"]["material"] == "veneered_mdf"
+    assert first["finish_surfaces"][0]["contour_ref"] == "v1:C1"
+    assert second["finish_surfaces"][0]["finish"] == "plain"
+    assert "visual_stock" not in second
+    image = BytesIO()
+    Image.new("RGB", (1000, 1000), "white").save(image, format="PNG")
+    write_finish_overlays({"o": understanding}, {"v1": [None, {"source": {
+        "data": b64encode(image.getvalue()).decode(),
+    }}]}, tmp_path)
+    overlay = tmp_path / "finish-overlays"
+    assert (overlay / "v1.png").is_file()
+    legend = json.loads((overlay / "legend.json").read_text())
+    assert [(row["label"], row["contour_ref"]) for row in legend["v1"]] == [(1, "v1:C1"), (2, "v1:C2")]

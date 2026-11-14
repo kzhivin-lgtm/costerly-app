@@ -375,6 +375,14 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
             if visible_veneer:
                 name = "Veneered MDF"
                 spec.update(board_type="mdf", surface="veneer_two_sided")
+            layup = row.get("sheet_layup") if visible_veneer and has_sheet_geometry else None
+            cut_quantity = quantity
+            if (layup and _positive(layup.get("layer_mm")) and type(layup.get("layer_count")) is int
+                    and 1 < layup["layer_count"] <= 4
+                    and layup["layer_mm"] * layup["layer_count"] == layup.get("finished_mm") == thickness_mm):
+                spec["thickness_mm"] = layup["layer_mm"]
+                cut_quantity *= layup["layer_count"]
+                assumptions.append(f"{part_id}: {layup['layer_count']} sheet layers per finished panel.")
             if role == "drawer_slide":
                 if unit == "set":
                     quantity *= 2
@@ -406,7 +414,7 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
             material["evidence_refs"] = list(dict.fromkeys([
                 *material["evidence_refs"], *material_refs, *(visual_stock.get("refs", ()) if visible_veneer else ()),
             ]))
-            material["part_sources"].append({**part_source, "quantity": quantity, "unit": unit,
+            material["part_sources"].append({**part_source, "quantity": cut_quantity, "unit": unit,
                                              "source_quantity": row["quantity"], "source_unit": row.get("unit"),
                                              "measurements": measurements})
             if unit:
@@ -414,7 +422,7 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
             else:
                 parts.append({
                     "part_id": part_id, "assembly_id": scope_id, "component_role": row["role"],
-                    "material_requirement_id": material["requirement_id"], "quantity": quantity,
+                    "material_requirement_id": material["requirement_id"], "quantity": cut_quantity,
                     "length_mm": measurements["length"]["mm"], "width_mm": measurements["width"]["mm"],
                     "rotation_allowed": demand_role not in {"visible_sheet", "worktop_sheet"},
                     "basis": "construction_assumption", "evidence_refs": refs,

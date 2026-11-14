@@ -8,11 +8,11 @@ from pathlib import Path
 from use_cases.estimation_cb_geometry_parts import compile_geometry_parts
 
 
-def run_geometry_parts(audit_path, analyze, geometry, key):
+def run_geometry_parts(audit_path, analyze, geometry, key, *, stock_notes=None):
     native = audit_path.read_bytes()
     if sha256(native).hexdigest() != analyze["source_audit_sha256"]:
         raise ValueError("Parts must use the native evidence locked by Analyze")
-    return compile_geometry_parts(analyze, geometry, json.loads(native)["documents"][key])
+    return compile_geometry_parts(analyze, geometry, json.loads(native)["documents"][key], stock_notes=stock_notes)
 
 
 def main():

@@ -71,6 +71,21 @@ def test_compatible_visible_wood_grain_parts_share_one_veneered_mdf_demand():
     assert [source["role"] for source in material["part_sources"]] == ["seat_cover", "frame_side"]
 
 
+def test_veneered_layup_keeps_finished_part_and_combines_material_cuts():
+    visual = {"surface": "wood_grain", "refs": ["view-1"], "material": "veneered_mdf"}
+    seat = _part("seat_cover", visual_stock=visual, sheet_layup={"finished_mm": 40, "layer_mm": 20, "layer_count": 2})
+    seat["dimensions"]["thickness"]["mm"] = 40
+    face = _part("drawer_front", visual_stock=visual)
+    face["dimensions"]["thickness"]["mm"] = 20
+    result = _build([seat, face], {"mdf_hdf"})
+    material, = result["materials"]
+    assert material["specification"]["thickness_mm"] == 20
+    assert [part["quantity"] for part in result["parts"]] == [4, 2]
+    assert result["source_part_count"] == 2
+    assert material["part_sources"][0]["dimensions"]["thickness"]["mm"] == 40
+    assert material["part_sources"][0]["source_quantity"] == 2
+
+
 def test_explicit_solid_wood_survives_material_demand():
     face = _part("door_front",
                  visual_stock={"surface": "wood_grain", "refs": ["view-1"], "material": "solid_wood"},

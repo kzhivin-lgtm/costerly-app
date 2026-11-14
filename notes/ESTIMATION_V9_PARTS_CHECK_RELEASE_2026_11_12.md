@@ -28,6 +28,60 @@ finish of the frame backing or tabletop underlayer. The Lev2 and Adda
 replays produced identical object reports and source coverage. One fresh
 visual reading remains to verify. No new runtime release is deployed.
 
+Approved experimental scope:
+
+1. Understanding records an observation for each visible surface: its View,
+   region or contour, visible finish cue, and corroborated links to surfaces
+   with the same decor. Record an unclear finish explicitly. Keep the evidence
+   on the part so it can be checked on an overlay.
+2. Parts uses the material note bound to the surface first. In its absence,
+   visible wood grain on a sheet part supports the veneered MDF estimating
+   default. A plain colour alone is insufficient. Hidden parts use the
+   construction stock rule. Retain the source and reason for each choice.
+3. Parts chooses nominal thickness before deriving dependent cut dimensions.
+   Preserve printed thickness. Use compatible printed evidence to resolve
+   nearby vector projections and retain the original projection. For unknown
+   thickness, reuse compatible stock already required by the object, or pick
+   one construction default for the compatible group. Material, finish, fit,
+   hardware, and construction must permit reuse. Record why separate stock
+   is required. Derive fitted widths, clearances and other dependent sizes
+   after stock selection.
+4. Keep finished thickness in Parts. Pass actual layer requirements to
+   Material Demand when an approved construction recipe applies. Each layer
+   retains its stock specification and source part. Material Engine prices
+   and nests compatible stock across the estimate.
+5. Verify the finish overlay, Parts, and purchase positions together. Lev1
+   should show the seat with the matching 40 mm veneered structure, assuming
+   its visual cue is confirmed. Lev2's plain fronts must retain their finish
+   and Adda's material callouts must retain their specified materials. Check
+   that interchangeable assumptions consolidate, explicit dimensions and
+   differing stock remain distinct, and part counts are preserved. These
+   controls provide test expectations only.
+
+Experimental implementation and evidence. Understanding validates up to 24
+surface observations per object. A rectangle is kept in crop coordinates and
+receives a native contour reference only on an unambiguous match. Parts can
+keep two fronts with different finishes separate. Offline overlays write the
+validated rectangles and their legend. Older saved replies keep role-level
+finish evidence. The cut compiler now reads explicit role-based OCR stock
+before deriving fitted dimensions and reuses compatible default veneer stock
+in the covered frame and drawer constructions. Other unknown assemblies
+retain their current construction defaults.
+
+The estimating recipe for a 40 mm veneered seat or frame member specifies
+two full 20 mm sheets per panel cut. The finished Parts rows remain 40 mm.
+Material Demand counts two cuts per finished panel and combines them with
+existing 20 mm veneer stock. With the same archived Lev1 catalog, the
+pre-change control had nine sheet positions and 3,551.72 ILS in materials.
+The experiment has seven sheet positions and 4,247.42 ILS. The cost rises
+because the recipe consumes four catalog sheets at the matched 20 mm
+price, replacing the earlier 40 mm allowance. Three Blocks, three drawers,
+two supports and 29 Parts rows are preserved. The tabletop underlayer and
+frame backing lack corroborated finish in the saved reply and retain their
+existing stock. Lev2 and both Adda objects match the saved Parts reports.
+The surface binder, overlay and layer handoff passed local regression tests.
+Fresh Understanding and production rollout remain pending.
+
 ## Estimation 9.23 Object Detail save latency
 
 Work 3.17.4.6. Use `estimation-v9.22-checkpoint` as the baseline for an

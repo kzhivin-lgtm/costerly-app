@@ -6,7 +6,7 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from hashlib import sha256
 from io import BytesIO
-from math import hypot
+from math import hypot, isfinite
 import json
 from pathlib import Path
 
@@ -48,10 +48,14 @@ material cues from unconfirmed substrate or finish.
 Return JSON only:
 {"islands":{"view_id":"projection"},"understanding":{"object_id":{"name":"...",
 "description":"...","characteristics":["..."]}}}"""
+MAX_FINISH_SURFACES = 24
 VISIBLE_FINISH = """
-For each object, also return wood_grain as a list of
-{"role":"...", "view_id":"...", "finish_group":"...", "material":"veneered_mdf"}.
-Decide the material for each eligible part role from its form, visible grain and drawing notes.
+For each object, return finish_surfaces with one row per distinguishable visible panel surface.
+Use {"role":"...", "view_id":"...", "bbox_crop_1000":[left,top,right,bottom],
+"finish":"wood_grain", "finish_group":"...", "evidence":"short visible cue"}.
+Use 0–1000 coordinates relative to the clean crop. Locate the visible surface itself.
+Finish is wood_grain, plain, unclear or solid_wood. Use unclear when the finish is unreadable.
+Base the finish on the surface's visible grain, colour and drawing notes.
 Treat a clear wood-grain pattern on a sheet or panel as veneer and choose veneered MDF
 as the estimating substrate when the drawing does not specify a different material.
 Do not infer solid wood from grain, colour or a species name. Choose "solid_wood" only
@@ -61,8 +65,8 @@ and solid material. If a note specifies another material, omit that role here.
 Use the clearest coloured or axonometric view for finish, and the drawing annotations
 and measured elevations for geometry. Extend a finish to another visible panel when
 the rendering shows that it shares the same identified decor. Plain colour or hatch
-in isolation does not establish veneer. A role is eligible only when its observed
-parts share the finish and material.
+in isolation does not establish veneer. Report different surfaces separately even when
+they share a role. Use the same finish group only for corroborated matching decor.
 Allowed roles: seat_cover (seat or base cover), drawer_front, door_front, lift_up_front,
 fixed_panel, frame_cap, frame_side, frame_backing, vertical_rib, tabletop,
 tabletop_underlayer (visible lower plate), carcass_side (visible exterior sides).
@@ -72,8 +76,10 @@ Check the seat or top cover, operating fronts, outer sides and decorative frame 
 against the visible finish characteristics. In characteristics,
 state the visible evidence and whether the material is an assumption or explicitly
 specified. Parts Geometry uses one stock thickness for compatible panels where the
-drawing leaves it open, while preserving explicit dimensions. Return an empty list when unclear.
-"""
+drawing leaves it open, while preserving explicit dimensions.
+Return at most {limit} surfaces per object. Prefer the clearest view when a surface repeats.
+Prioritize distinct finishes and visible surfaces where the material would otherwise be unclear.
+""".replace("{limit}", str(MAX_FINISH_SURFACES))
 WORKTOP_CUTOUTS = """
 In each object's Understanding, also return worktop_cutouts (empty if none).
 Record one row per visible appliance opening in a worktop. Use a single
@@ -190,6 +196,17 @@ def classify_islands(invoke, views, images, detection, *, include_worktop_cutout
             raise ValueError("Island Map must classify each input Island and object")
         if include_worktop_cutouts:
             for oid, understanding in raw["understanding"].items():
+                if "finish_surfaces" in understanding:
+                    supplied = understanding["finish_surfaces"]
+                    understanding["finish_surfaces"] = bind_finish_surfaces(
+                        supplied, {vid: views[vid] for vid in by_object[oid]},
+                        VISIBLE_GRAIN_ROLES, notes.get(oid, {}),
+                        is_explicit_solid_wood_note,
+                    )
+                    understanding["finish_surface_audit"] = {
+                        "supplied": len(supplied), "accepted": len(understanding["finish_surfaces"]),
+                        "limit": MAX_FINISH_SURFACES,
+                    }
                 if "wood_grain" not in understanding:
                     continue
                 cues = understanding["wood_grain"]
@@ -212,7 +229,76 @@ def classify_islands(invoke, views, images, detection, *, include_worktop_cutout
         return raw
 
     system = ISLAND_MAP + WORKTOP_CUTOUTS + VISIBLE_FINISH if include_worktop_cutouts else ISLAND_MAP
-    return invoke("island-map", provider_request(system, content, max_tokens=3000), bind)
+    max_tokens = min(3000 + 2000 * len(by_object), 12000) if include_worktop_cutouts else 3000
+    return invoke("island-map", provider_request(system, content, max_tokens=max_tokens), bind)
+
+
+def bind_finish_surfaces(rows, views, roles, notes, solid_wood_note):
+    if not isinstance(rows, list) or len(rows) > MAX_FINISH_SURFACES:
+        raise ValueError(f"Understanding must return at most {MAX_FINISH_SURFACES} finish surfaces per object")
+    accepted = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        view_id, role, finish, box = (row.get(field) for field in ("view_id", "role", "finish", "bbox_crop_1000"))
+        if (not isinstance(view_id, str) or view_id not in views or not isinstance(role, str) or role not in roles
+                or finish not in ("wood_grain", "plain", "unclear", "solid_wood")
+                or not isinstance(box, list) or len(box) != 4
+                or not all(type(v) in (int, float) and isfinite(v) and 0 <= v <= 1000 for v in box)
+                or box[0] >= box[2] or box[1] >= box[3]):
+            continue
+        group, evidence = row.get("finish_group", ""), row.get("evidence")
+        if not isinstance(group, str) or not isinstance(evidence, str) or not evidence.strip():
+            continue
+        bound = {"view_id": view_id, "role": role, "finish": finish, "bbox_crop_1000": box,
+                 "evidence": evidence, "finish_group": group}
+        view = views[view_id]
+        if view.get("width") and view.get("height"):
+            candidates = [candidate["id"] for candidate in view.get("candidates", ())
+                          if _finish_surface_matches(box, candidate["bbox"], view["width"], view["height"])]
+            if len(candidates) == 1:
+                bound["contour_ref"] = f"{view_id}:{candidates[0]}"
+        if finish == "solid_wood":
+            ref, quote = row.get("source_ref"), row.get("source_quote")
+            if (not isinstance(ref, str) or not isinstance(quote, str) or not solid_wood_note(quote)
+                    or quote.strip() not in notes.get(ref, ())):
+                continue
+            bound["solid_wood_note"] = {"ref": ref, "text": quote.strip()}
+        accepted.append(bound)
+    return accepted
+
+
+def _finish_surface_matches(box, candidate, width, height):
+    x0, y0, x1, y1 = box
+    l, t, r, b = (1000 * value / axis for value, axis in zip(candidate, (width, height, width, height), strict=True))
+    intersection = max(0, min(r, x1) - max(l, x0)) * max(0, min(b, y1) - max(t, y0))
+    union = (r - l) * (b - t) + (x1 - x0) * (y1 - y0) - intersection
+    return union > 0 and intersection / union >= .65
+
+
+def write_finish_overlays(understanding, images, output):
+    by_view = {}
+    for obj in understanding.values():
+        for surface in obj.get("finish_surfaces", ()):
+            by_view.setdefault(surface["view_id"], []).append(surface)
+    if not by_view:
+        return
+    folder = output / "finish-overlays"
+    folder.mkdir(exist_ok=True)
+    colours = {"wood_grain": "#8051b1", "plain": "#167083", "unclear": "#ae5d16", "solid_wood": "#65792d"}
+    legend = {}
+    for view_id, surfaces in by_view.items():
+        crop = Image.open(BytesIO(b64decode(images[view_id][1]["source"]["data"]))).convert("RGB")
+        draw = ImageDraw.Draw(crop)
+        for index, surface in enumerate(surfaces, 1):
+            coords = tuple(round(value * (crop.width if axis % 2 == 0 else crop.height) / 1000)
+                           for axis, value in enumerate(surface["bbox_crop_1000"]))
+            colour = colours[surface["finish"]]
+            draw.rectangle(coords, outline=colour, width=max(2, crop.width // 350))
+            draw.text((coords[0] + 3, coords[1] + 3), str(index), fill="white", stroke_width=2, stroke_fill=colour)
+        crop.save(folder / f"{view_id}.png")
+        legend[view_id] = [{"label": index, **surface} for index, surface in enumerate(surfaces, 1)]
+    (folder / "legend.json").write_text(json.dumps(legend, ensure_ascii=False, indent=2) + "\n")
 
 
 def bind_source_front(raw, frames):
@@ -810,6 +896,8 @@ def run_pipeline(args, source, *, version, request_provider=None):
     native_locator(objects, views, images, frames, invoke, provider_request, payload)
     raster_locator(objects, views, island_map["islands"], images, invoke, provider_request, payload)
     result = {**island_map, "version": version, "objects": objects, "source_audit_sha256": source_hash}
+    if v9:
+        write_finish_overlays(result["understanding"], images, args.output)
     from use_cases.estimation_object_inventory import build_object_inventory, reconcile_object_inventory
 
     inventory = build_object_inventory(result, views.values(), page_count=page_count)
@@ -864,9 +952,17 @@ def run_pipeline(args, source, *, version, request_provider=None):
         (args.output / "block-geometry.json").write_text(json.dumps(measurements, ensure_ascii=False, indent=2) + "\n")
         if args.cb_parts:
             from tools.estimation_geometry_parts import run_geometry_parts
+            from use_cases.estimation_cb_geometry_parts import apply_sheet_layups
             from use_cases.estimation_cb_parts_coverage import audit_cb_parts_coverage
 
-            parts = run_geometry_parts(geometry / AUDIT_FILE, result, measurements, args.key)
+            stock_notes = None
+            if v9 and not args.parts_profile:
+                from use_cases.estimation_display_parts import _stock_notes
+
+                stock_notes = _stock_notes(source.get("inputs", ()), {obj["object_id"]: obj for obj in detection["objects"]})
+                stock_notes = {oid: {role: note for role, note in notes.items() if note["mm"] is not None}
+                               for oid, notes in stock_notes.items()}
+            parts = run_geometry_parts(geometry / AUDIT_FILE, result, measurements, args.key, stock_notes=stock_notes)
             if v9:
                 include_standalone_parts_scopes(parts, inventory)
                 if args.parts_profile:
@@ -883,6 +979,7 @@ def run_pipeline(args, source, *, version, request_provider=None):
                                                   views=views, pdf=pdf)
                     add_source_display_glass_parts(parts, inventory, result)
                     add_push_latches(parts, result, views, source.get("inputs", ()))
+                    apply_sheet_layups(parts)
             parts_filename = "parts.json" if v9 else "cb-parts.json"
             inventory_with_parts = reconcile_object_inventory(inventory, parts)
             if v9:
