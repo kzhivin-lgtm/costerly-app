@@ -387,23 +387,46 @@ def _final_html(data: dict[str, object]) -> str:
     )
 
 
-def _elements_html(rows: object, *, revision: object = None, object_id: object = None) -> str:
-    """Show the grouped part list using the Materials table styling."""
-    if not isinstance(rows, list):
-        rows = []
-    if not rows and not revision:
-        return ""
+def _elements_table(rows, label):
+    if not rows:
+        return '<p class="object-detail-elements-empty">No parts listed.</p>'
     body = []
     for row in rows:
-        if not isinstance(row, dict):
-            continue
         body.append(
             '<div class="object-detail-table-row" data-section="elements" role="row">'
             f'<div class="object-detail-table-cell" role="cell">{_escape(row.get("label"))}</div>'
             f'<div class="object-detail-table-cell" role="cell">{_escape(row.get("size"))}</div>'
-            f'<div class="object-detail-table-cell" role="cell">{_escape(_number_text(row.get("quantity")))}</div>'
+            f'<div class="object-detail-table-cell" role="cell">{_escape(_quantity(row.get("quantity")))}</div>'
             '</div>'
         )
+    return (
+        f'<div class="object-detail-table object-detail-elements-table" role="table" aria-label="{_escape(label)}">'
+        '<div class="object-detail-table-head-row" role="row">'
+        '<div class="object-detail-table-head" role="columnheader">Element</div>'
+        '<div class="object-detail-table-head" role="columnheader">Dimensions</div>'
+        '<div class="object-detail-table-head" role="columnheader">Quantity</div>'
+        '</div>'
+        f'{"".join(body)}</div>'
+    )
+
+
+def _elements_html(groups: object, *, revision: object = None, object_id: object = None) -> str:
+    """Show the part tables inside independent Elements and block disclosures."""
+    if not isinstance(groups, list):
+        groups = []
+    if not groups and not revision:
+        return ""
+    sections = []
+    for group in groups:
+        label = group["label"]
+        table = _elements_table(group["rows"], label or "Elements")
+        if label:
+            sections.append(
+                '<details class="object-detail-element-group">'
+                f'<summary>{_escape(label)}</summary>{table}</details>'
+            )
+        else:
+            sections.append(table)
     controls = (
         f'<div class="object-detail-overlay-actions" data-overlay-revision="{_escape(revision)}" '
         f'data-overlay-object="{_escape(object_id)}">'
@@ -417,13 +440,7 @@ def _elements_html(rows: object, *, revision: object = None, object_id: object =
         '<div class="object-detail-elements-section">'
         '<details class="object-detail-elements">'
         '<summary class="object-detail-section-title">Elements</summary>'
-        '<div class="object-detail-table object-detail-elements-table" role="table" aria-label="Elements">'
-        '<div class="object-detail-table-head-row" role="row">'
-        '<div class="object-detail-table-head" role="columnheader">Element</div>'
-        '<div class="object-detail-table-head" role="columnheader">Dimensions</div>'
-        '<div class="object-detail-table-head" role="columnheader">Quantity</div>'
-        '</div>'
-        f'{"".join(body)}</div>'
+        f'<div class="object-detail-element-groups">{"".join(sections)}</div>'
         f'</details>{controls}</div>'
     )
 

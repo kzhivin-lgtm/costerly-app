@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import UTC, datetime
+import json
+import logging
 from math import isfinite
 import re
 from typing import Any
@@ -485,6 +487,9 @@ def load_object_detail_data(
 
     material_rows = _object_detail_material_rows(_with_saved_led_catalog_specs(client, material_plan), lines_df, object_id)
 
+    element_source = _with_saved_element_ownership(
+        client, checked, overlay_source, object_row, estimate_id=estimate_id, object_id=object_id,
+    )
     material_total = sum(_number(row.get("cost"), 0) for row in material_rows)
     manufacturing_total = sum(
         _number(row.get("cost"), 0)
@@ -521,7 +526,7 @@ def load_object_detail_data(
             str(checked.get("primary_preview_ref") or ""),
             company_id=str(object_row.get("company_id") or ""),
         ),
-        "elements": _element_rows_from_bom(checked),
+        "elements": _element_groups(element_source),
         "overlay_revision": overlay_revision,
         "sections": [
             {
@@ -906,6 +911,90 @@ def _purchase_unit_display(line: dict[str, Any]) -> str:
     return _purchase_unit_label(purchase_kind)
 
 
+def _with_saved_element_ownership(client, checked, source, object_row, *, estimate_id, object_id):
+    """Use the immutable Parts result to enrich the flat snapshots saved before 9.38."""
+    parts = checked.get("parts") or []
+    run_id = object_row.get("run_id")
+    company_id = object_row.get("company_id")
+    if (not parts or all("block_id" in row for row in parts)
+            or not run_id or not company_id or source.get("run_id") != run_id
+            or source.get("estimate_id") != estimate_id or not source.get("source_audit_sha256")):
+        return checked
+
+    from use_cases.estimation_parts_check_runtime import load_parts_check
+
+    try:
+        saved = load_parts_check(client=client, company_id=str(company_id), run_id=str(run_id),
+                                 estimate_id=estimate_id)
+        if saved["status"] != "ready":
+            return checked
+        report = json.loads(saved["payload"])
+        if report.get("source_audit_sha256") != source.get("source_audit_sha256"):
+            return checked
+        obj = report["objects"][object_id]
+        original = obj["parts"]
+        if len(original) != len(parts):
+            return checked
+        for row, detail in zip(parts, original, strict=True):
+            if row.get("component_role") != detail["role"]:
+                return checked
+            if detail.get("quantity") is not None and row.get("quantity") != detail["quantity"]:
+                return checked
+            if any(value.get("mm") is not None and row.get(f"{axis}_mm") != value["mm"]
+                   for axis, value in detail["dimensions"].items() if axis in ("length", "width", "thickness")
+                   and axis not in row.get("estimated_dimensions", {})):
+                return checked
+    except Exception:
+        logging.getLogger(__name__).warning("Could not read archived element ownership for estimate %s", estimate_id,
+                                            exc_info=True)
+        return checked
+    return {**checked, "blocks": obj.get("blocks", []),
+            "parts": [{**row, "block_id": detail.get("block_id"),
+                       "scope_quantity": detail.get("scope_quantity", 1),
+                       "colour_temperature_k": detail.get("colour_temperature_k")}
+                      for row, detail in zip(parts, original, strict=True)]}
+
+
+def _element_groups(facts_payload):
+    parts = [row for row in facts_payload.get("parts") or () if isinstance(row, dict)]
+    if not all("block_id" in row for row in parts):
+        rows = _element_rows_from_bom({"parts": parts})
+        return [{"label": "", "rows": rows}] if rows else []
+
+    blocks = {block["id"]: block for block in facts_payload.get("blocks", ()) if block.get("id")}
+    scoped = {block_id: [] for block_id in blocks}
+    common = []
+    for row in parts:
+        if block_id := row["block_id"]:
+            scoped.setdefault(block_id, []).append(row)
+        else:
+            common.append(row)
+    groups = []
+    for block_id, rows in scoped.items():
+        block = blocks.get(block_id, {})
+        name = block.get("name") or _element_block_name(block.get("basis"), rows)
+        groups.append({"label": f"{block_id} · {name}" if name else block_id,
+                       "rows": _element_rows_from_bom({"parts": rows})})
+    if common:
+        groups.append({"label": "Common parts", "rows": _element_rows_from_bom({"parts": common})})
+    return groups
+
+
+def _element_block_name(basis, rows):
+    names = {"matched_framed_panel": "Framed panel", "independently_supported_extension": "Supported tabletop",
+             "mirror_upright": "Mirror upright", "tall_stack_candidate": "Tall cabinet"}
+    if basis in names:
+        return names[basis]
+    roles = {row.get("component_role") for row in rows}
+    if "drawer_front" in roles:
+        return "Cabinet with drawers and doors" if "door_front" in roles else "Drawer cabinet"
+    if "lift_up_front" in roles:
+        return "Lift-up cabinet"
+    if "door_front" in roles or "carcass_side" in roles:
+        return "Cabinet"
+    return ""
+
+
 def _element_rows_from_bom(facts_payload: dict[str, Any]) -> list[dict[str, Any]]:
     labels = {
         "carcass_side": "Side panel", "carcass_top_bottom": "Top / bottom panel",
@@ -920,8 +1009,10 @@ def _element_rows_from_bom(facts_payload: dict[str, Any]) -> list[dict[str, Any]
             continue
         role = str(part.get("component_role") or "")
         label = labels.get(role, role.replace("_", " ").capitalize() or "Element")
+        if temperature := part.get("colour_temperature_k"):
+            label = f"{label} {_format_number(temperature)} K"
         dimensions = tuple(_number(part.get(f"{axis}_mm"), 0) or None for axis in axes)
-        count = _number(part.get("quantity"), 0)
+        count = _number(part.get("quantity"), 0) * _number(part.get("scope_quantity"), 1)
         # A missing panel dimension is not evidence of an identical cut.
         length, width, thickness = dimensions
         incomplete = (
@@ -929,7 +1020,7 @@ def _element_rows_from_bom(facts_payload: dict[str, Any]) -> list[dict[str, Any]
             or width is None and thickness is not None
             or width is not None and thickness is None and "thickness_mm" in part
         )
-        key = (role, *dimensions, index if incomplete or count <= 0 else None)
+        key = (role, *dimensions, part.get("colour_temperature_k"), index if incomplete or count <= 0 else None)
         if key not in grouped:
             last = max((i for i, value in enumerate(dimensions) if value is not None), default=-1)
             size = " × ".join(_format_number(value) if value is not None else "—" for value in dimensions[:last + 1])

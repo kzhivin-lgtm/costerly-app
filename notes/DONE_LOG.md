@@ -1,5 +1,11 @@
 # Done Log
 
+Estimation 9.38, work 3.17.4.6. Added collapsible Elements by Block
+and moved the third hinge threshold to above 800 mm. Saved Lev2
+replay produced 37 hinges with existing Front, parts and prices
+preserved elsewhere. Local browser checks passed at two widths.
+See the [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-938-block-elements-and-hinge-thresholds).
+
 Estimation 9.37 production checkpoint, work 3.17.4.6. The owner
 requested the checkpoint at runtime `ffdbd9f`. Fresh Lev2 confirmed
 two pages per overlay, all nine blocks, five drawers, the 3.0 m²

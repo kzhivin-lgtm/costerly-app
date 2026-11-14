@@ -291,7 +291,7 @@ def apply_object_detail_css() -> None:
             gap: 8px;
         }
 
-        .object-detail-elements-section:has(.object-detail-overlay-actions) summary {
+        .object-detail-elements-section:has(.object-detail-overlay-actions) .object-detail-elements > summary {
             padding-right: 155px;
             min-height: 34px;
         }
@@ -320,6 +320,28 @@ def apply_object_detail_css() -> None:
         .object-detail-overlay-button[aria-disabled="true"] {
             opacity: .5;
             cursor: default;
+        }
+
+        .object-detail-element-groups {
+            margin-top: 8px;
+        }
+
+        .object-detail-element-group {
+            border-top: 1px solid rgba(42, 31, 44, 0.12);
+        }
+
+        .object-detail-element-group > summary {
+            padding: 12px 0;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .object-detail-element-group .object-detail-elements-table {
+            margin: 0 0 12px;
+        }
+
+        .object-detail-elements-empty {
+            margin: 0 0 12px;
         }
 
         .object-detail-elements-table {

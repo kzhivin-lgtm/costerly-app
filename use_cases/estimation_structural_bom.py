@@ -388,7 +388,7 @@ def _slide_depth_mm(cabinet_depth_mm: float) -> int:
 def _hinges_per_facade(height_mm: float) -> int:
     if height_mm > 2000:
         return 4
-    if height_mm > 600:
+    if height_mm > 800:
         return 3
     return 2
 

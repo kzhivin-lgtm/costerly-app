@@ -30,8 +30,20 @@ PENDING, P1, USER REPORT. Reconcile the 15 physical doors counted by the
 owner with the 17 hinged contours on the fresh 9.37 Lev2. Compare the
 two PDF elevations and the original axonometry. Determine whether the
 disputed contours are fixed faces or duplicate appearances before
-changing Front or Parts. The existing height rule produced 50 hinges;
-the two lift-up fronts and one unresolved front added no hinges.
+changing Front. The owner marked V03:C13 in B05, a 560 × 599 mm
+contour currently counted as a door with two hinges. Discuss treating
+an aperture with corroborated exposed inner edges as an open bay.
+The second disputed contour remains unidentified. The 9.37 rule
+produced 50 hinges and the 9.38 replay produced 37. The two lift-up
+fronts and one unresolved front add no hinges.
+
+VERIFIED OFFLINE, P1, USER REQUEST. Confirm 9.38 Object Detail
+Elements on a new authenticated estimate and on a saved 9.37 estimate.
+Elements and its Block groups start closed, matching parts combine
+only within each group and Common parts follows the Blocks. Covers
+mouse, keyboard, mobile width and current Front/Block PDF controls.
+Accept the new hinge thresholds from one fresh Estimation run.
+[9.38 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-938-block-elements-and-hinge-thresholds).
 
 PENDING, P1, VERIFIED PRODUCTION FINDING. Review why Lev2 assigned
 veneered MDF 17 mm to four fixed panels (V03:C17, C01, C26 and C12)
@@ -4521,7 +4533,8 @@ default, never silently disappear or stop cost composition. Default hidden and
 visible board thickness is 18 mm where source does not state it. One block has
 front topology, exposure and nested hardware: every drawer front creates one
 drawer-slide purchase set with `floor((depth_mm - 100) / 100) * 100`; each
-hinged facade creates individual hinges using `<=600:2, >600:3, >2000:4`; each
+hinged facade creates individual hinges using the 9.38 threshold
+(`<=800:2, >800:3, >2000:4`, superseding V5.1's 600 mm threshold); each
 lift-up facade creates one gas-lift purchase set. Visible fronts/exposed ends,
 hidden carcass, backing, finish and worktop remain distinct material demands.
 The model recognises topology only. Composer derives conventional parts and

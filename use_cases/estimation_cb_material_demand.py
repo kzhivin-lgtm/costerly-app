@@ -567,7 +567,9 @@ def _checked_parts_for_estimate(rows, estimated, estimated_counts):
         part_id = f"{owner}:{row['role']}:{owner_counts[owner]:03d}"
         estimates = estimated.get(part_id, {})
         dimensions = {**row["dimensions"], **estimates}
-        parts.append({"component_role": row["role"], "quantity": estimated_counts.get(part_id, row.get("quantity")),
+        parts.append({"component_role": row["role"], "block_id": row.get("block_id"),
+                      "quantity": estimated_counts.get(part_id, row.get("quantity")),
+                      **{key: row[key] for key in ("scope_quantity", "colour_temperature_k") if key in row},
                       **{f"{axis}_mm": dimensions.get(axis, {}).get("mm")
                          for axis in ("length", "width", "thickness")},
                       **({"quantity_basis": "construction_assumption"} if part_id in estimated_counts else {}),
@@ -630,6 +632,8 @@ def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
                                  if material.get("geometry_pending") else {})}
                              for material in item["materials"]
                          ],
+                         "blocks": [{key: block[key] for key in ("id", "name", "basis") if key in block}
+                                    for block in parts_report["objects"][oid].get("blocks", ()) if "id" in block],
                          "parts": _checked_parts_for_estimate(checked_parts, estimates, estimated_counts),
                          "primary_preview_ref": item["primary_preview_ref"]}
     snapshot["parts_check"] = coverage

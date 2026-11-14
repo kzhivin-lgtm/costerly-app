@@ -1,5 +1,32 @@
 # Estimation 9 Parts Check from Upload
 
+## Estimation 9.38 block Elements and hinge thresholds
+
+Work 3.17.4.6. Rollback is `estimation-v9.37-checkpoint`.
+Parts allocates two hinges through 800 mm, three above 800 mm through
+2000 mm, and four above 2000 mm on each hinged leaf. The saved Lev2
+replay retains 17 hinge contours, nine blocks and five drawers.
+Its purchase falls from 50 to 37 hinges and from ₪850 to ₪629
+before VAT at the saved catalog price. All other part and purchase
+signatures match the 9.37 control.
+
+Object Detail starts with Elements closed. Each Block has a separate
+closed section, using its title when present or a description from
+the Parts roles and Block basis. Matching cuts consolidate within
+their Block. Common parts follow the Blocks. New Material Plans carry
+ownership. Older flat plans recover it from a matching immutable Parts
+report. When the matching report is unavailable, the flat list stays
+available. Disclosures are native browser elements with no callbacks.
+Local browser checks at 1280/390 px covered these states, shared-only
+and empty cases, keyboard access and the existing PDF controls.
+170 focused checks passed. Fresh authenticated review remains open.
+
+The owner's marked V03:C13 in B05 is an opening candidate. It is
+currently a 560 × 599 mm door with two hinges. Defer a Front rule
+until exposed inner edges or another view corroborate an open cavity,
+then verify the fixture against its source. The 15 versus 17 door
+discrepancy remains open.
+
 ## Estimation 9.37 linked elevations and material identity
 
 Work 3.17.4.6. Rollback to 9.36 at `2cab833`. Detection and Analyze
