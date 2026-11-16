@@ -186,6 +186,37 @@ def object_detail_navigation_key(object_id: object) -> str:
     return f"object_detail_nav_{digest}"
 
 
+def review_action_ready(row: dict[str, object]) -> bool:
+    """The row exposes an active link to the object preview."""
+    return not _is_project_cost_row(row) and _row_status(row) in {"completed", "review_required"}
+
+
+def cycle_metrics_html(rows, *, elapsed, ready_seconds, cost_usd, running):
+    """Render the Objects lap and the readiness of each visible project object."""
+    def seconds(value):
+        return "—" if value is None else f"{value:.1f}s"
+
+    def cents(value):
+        if value is None:
+            return "Pending" if running else "—"
+        amount = value * 100
+        return "&lt;0.01¢" if 0 < amount < 0.005 else f"{amount:.2f}¢"
+
+    parts = [
+        f'<span>Total lap <strong>{seconds(elapsed)}</strong></span>',
+        f'<span title="Model cost for the whole Estimation cycle in US cents">'
+        f'TC <strong>{cents(cost_usd)}</strong></span>',
+    ]
+    object_rows = sorted((row for row in rows if not _is_project_cost_row(row)), key=_object_key)
+    for index, row in enumerate(object_rows, 1):
+        ready = ready_seconds.get(_object_key(row))
+        value = "Failed" if ready is None and _row_status(row) == "failed" else seconds(ready)
+        parts.append(
+            f'<span>R{index} · {_escape(row.get("name"))} <strong>{value}</strong></span>'
+        )
+    return '<div class="objects-cycle-metrics" aria-label="Estimation cycle">' + "".join(parts) + '</div>'
+
+
 def _review_action_html(
     row: dict[str, object],
     *,
@@ -193,7 +224,7 @@ def _review_action_html(
     run_id: str | None,
 ) -> str:
     status = _row_status(row)
-    if status in {"completed", "review_required"}:
+    if review_action_ready(row):
         action_label = "Done" if row.get("reviewed") else "Review"
         action_class = " objects-pricing-review-button--done" if row.get("reviewed") else ""
         object_id = quote(str(row.get("object_key") or ""))
@@ -403,6 +434,7 @@ def _pricing_table_html(
     estimate_id: str | None,
     run_id: str | None,
     proposal_pdf_url: str | None = None,
+    cycle_html: str = "",
 ) -> str:
     """Build the complete Objects Estimation pricing table HTML."""
     object_rows = _rows_html(
@@ -421,6 +453,7 @@ def _pricing_table_html(
     )
     return (
         f'<div class="objects-pricing-card" data-vat-percent="{_number(summary.get("vat_percent"), 18)}">'
+        f'{cycle_html}'
         f'{_pricing_table_header_html()}'
         '<div class="objects-pricing-table">'
         f'{object_rows}'

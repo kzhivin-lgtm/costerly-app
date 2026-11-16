@@ -1569,6 +1569,7 @@ def _continue_to_objects_estimation(
             **plan,
             "estimate_id": estimate_id,
             "create_shell": True,
+            "cycle_started_at": action_started_at,
         }
         # `app.py` may validate screen ownership before Objects gets its first
         # render. This record is session-local and exists only until the

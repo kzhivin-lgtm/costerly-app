@@ -728,6 +728,11 @@ def _run_estimation_job(
     if created_inputs:
         object_ids = [row["input_payload"]["object"]["object_id"] for row in created_inputs]
         prepared_calculation = None
+        cost_usd = None
+
+        def record_parts_cost(amount):
+            nonlocal cost_usd
+            cost_usd = amount
 
         def prepare_sheet_layout(parts):
             nonlocal prepared_calculation
@@ -745,7 +750,7 @@ def _run_estimation_job(
             report = run_parts_check_for_estimate(
                 client=client, estimate_id=estimate_id, run_id=run_id, company_id=company_id,
                 file_name=file_name, file_bytes=file_bytes, inputs=created_inputs, ocr_package=ocr["ocr_result"],
-                prepare_sheet_layout=prepare_sheet_layout,
+                prepare_sheet_layout=prepare_sheet_layout, record_cost=record_parts_cost,
             )
             if report is None:
                 raise RuntimeError("Parts Check did not produce a checked report")
@@ -773,12 +778,14 @@ def _run_estimation_job(
                 "estimation": {"status": "completed_with_failures", "estimated_objects": 0,
                                "failed_objects": {row["input_id"]: f"{stage}_technical_failure" for row in created_inputs}},
                 "estimation_version": VERSION,
+                "cost_usd": cost_usd,
             }
         return {
             "estimate_id": estimate_id, "run_id": run_id, "shell": shell,
             "estimation": {"status": "completed" if snapshot["status"] == "planned" else "review_required",
                            "estimated_objects": len(created_inputs), "failed_objects": {}},
             "estimation_version": VERSION,
+            "cost_usd": cost_usd,
         }
     if shell and int(shell.get("object_count") or 0) == 0:
         return {
@@ -791,5 +798,6 @@ def _run_estimation_job(
                 "failed_objects": {},
             },
             "estimation_version": VERSION,
+            "cost_usd": 0.0,
         }
     raise RuntimeError("Estimation input handoff produced no estimable objects.")

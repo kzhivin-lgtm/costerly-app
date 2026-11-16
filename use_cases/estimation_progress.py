@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from threading import Lock
 from typing import Any
@@ -7,6 +8,28 @@ from typing import Any
 
 _LOCK = Lock()
 _PROGRESS: dict[str, dict[str, Any]] = {}
+
+
+@dataclass
+class EstimationCycle:
+    """One accepted launch and the first Objects render of each usable action."""
+
+    started_at: float
+    ready_seconds: dict[str, float] = field(default_factory=dict)
+    total_seconds: float | None = None
+    worker_finished: bool = False
+    worker_failed: bool = False
+    cost_usd: float | None = None
+
+    def observe(self, now: float, *, ready_ids: list[str], all_terminal: bool) -> float:
+        if self.total_seconds is not None:
+            return self.total_seconds
+        elapsed = max(0.0, now - self.started_at)
+        for object_id in ready_ids:
+            self.ready_seconds.setdefault(object_id, elapsed)
+        if self.worker_finished and (all_terminal or self.worker_failed):
+            self.total_seconds = elapsed
+        return elapsed
 
 
 def set_object_progress(

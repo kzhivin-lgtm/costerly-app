@@ -19,8 +19,22 @@ on 2026-11-16. Railway deployment 565b48ec-e71c-4ad3-8b90-c804f08bdbe2
 succeeded. The live Cloudflare wrapper served
 estimation-labor-v1-detection-v8.4.29. All 97 focused tests passed and the
 saved Lev1, Lev2, and Adda controls ran locally. Labor V1.1 replaces the
-estimate-level preview with the object-level comparison. Owner trial and
-authenticated production CNC acceptance remain pending.
+estimate-level preview with the object-level comparison. Commit e27d09a
+deployed via Railway d361ae8c-7c42-4ba0-a7dc-3ee816b9d3cf and Cloudflare
+served estimation-labor-v1.1-detection-v8.4.29. All 105 focused tests passed.
+The saved Adda object values reconcile to the estimate's sheets, blanks,
+cut length, drilling count, and time. Owner trial and authenticated
+production CNC acceptance remain pending.
+
+Labor V1.2, USER REQUEST. Objects Estimation shows the elapsed lap from
+Continue, R1…RN when each named object's Review action first renders active,
+and one estimate-wide TC in US cents from the Parts Check model requests.
+The timings live in the active session. Older estimates without a measured
+cycle show unavailable values. Uses the current Objects refresh. CNC remains
+in Object Detail below Materials and Elements, with two columns: In-house
+and Subcontractor. 167 focused tests passed; the Object Detail component
+also rendered and calculated for all four objects in the saved Lev1, Lev2
+and Adda controls. Authenticated live cycle and owner acceptance are pending.
 
 ## Estimation Parts Check, 3.17.4.6
 
@@ -5345,6 +5359,13 @@ It bypasses the per-part fit filter. The saved quantities reproduce as 12
 LDSP, 4 HDF and 1 veneered MDF, including the oversized demand areas. The
 CNC layout used 11 LDSP, 4 HDF and 1 veneered MDF for the placeable subset.
 Reconcile stock formats before interpreting that difference as a purchase saving.
+Labor V1 leaves the purchase quantities intact, verified against the saved
+controls and the first deployment's runtime. On the same Parts and Material
+Plan snapshots, Lev1 purchases 12 sheets and lays out 12, Lev2 purchases 17
+and lays out 16 with two B05 carcass sides 2535 × 620 × 17 mm left unplaced,
+and Adda purchases 20 and lays out 21 with five unplaced pieces. In Adda,
+HDF 6 mm alone uses 8 sheets versus 6 purchased. Resolve these group-level
+differences before using the layout to set purchase quantities.
 Offline format check: splitting the 2886 mm plinth into two test pieces of
 1443 mm and filling one 2800×2070 sheet each of LDSP and HDF with compatible
 parts gave 16 sheets for 105 dimensioned blanks (10 standard LDSP, 3 standard

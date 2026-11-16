@@ -3,6 +3,7 @@ from __future__ import annotations
 from concurrent.futures import Future
 from dataclasses import dataclass
 import json
+from time import perf_counter
 from typing import Callable
 
 import streamlit as st
@@ -23,7 +24,7 @@ from use_cases.estimation_runtime import submit_prepared_estimation_job
 from use_cases.estimation_parts_check_runtime import load_parts_check
 from use_cases.object_detail_runtime import submit_object_detail_prefetch
 from use_cases.final_approval import final_approval
-from use_cases.estimation_progress import clear_estimate_progress, get_estimate_progress
+from use_cases.estimation_progress import EstimationCycle, clear_estimate_progress, get_estimate_progress
 from use_cases.proposal_pdf import load_estimate_proposal_url
 from db.supabase_client import get_supabase_client
 from db.workflow_routes import ensure_object_workflow_route_tokens, workflow_route_key
@@ -154,10 +155,16 @@ def _consume_estimation_future() -> None:
     if not isinstance(future, Future) or not future.done():
         return
 
+    estimate_id = st.session_state.get("current_estimate_id")
+    cycle_estimate_id = st.session_state.pop("objects_estimation_future_id", None)
+    cycle = _estimation_cycle(cycle_estimate_id)
     try:
-        st.session_state.last_estimation_result = future.result()
+        result = future.result()
+        st.session_state.last_estimation_result = result
         st.session_state.last_estimation_error = None
-        estimate_id = st.session_state.get("current_estimate_id")
+        if cycle and isinstance(result, dict) and result.get("estimate_id") == cycle_estimate_id:
+            cycle.cost_usd = result.get("cost_usd")
+            cycle.worker_failed = (result.get("estimation") or {}).get("status") == "completed_with_failures"
         if estimate_id:
             st.session_state.setdefault("estimation_terminal_failures", {}).pop(
                 str(estimate_id), None,
@@ -166,12 +173,15 @@ def _consume_estimation_future() -> None:
             invalidate_object_detail_cache(str(estimate_id))
     except Exception as exc:
         st.session_state.last_estimation_error = str(exc)
-        estimate_id = st.session_state.get("current_estimate_id")
+        if cycle:
+            cycle.worker_failed = True
         if estimate_id:
             st.session_state.setdefault("estimation_terminal_failures", {})[
                 str(estimate_id)
             ] = str(exc)
     finally:
+        if cycle:
+            cycle.worker_finished = True
         st.session_state.prepared_estimate_access = None
         clear_estimate_progress(st.session_state.get("current_estimate_id"))
         st.session_state.estimation_batch_future = None
@@ -194,6 +204,8 @@ def _start_prepared_estimation_launch() -> None:
         st.session_state.last_estimation_error = "The prepared Objects launch is incomplete. Please return to File Review."
         return
 
+    cycle = EstimationCycle(started_at=request.get("cycle_started_at", perf_counter()))
+    st.session_state.setdefault("objects_estimation_cycles", {})[estimate_id] = cycle
     try:
         st.session_state.estimation_batch_future = submit_prepared_estimation_job(
             estimate_id=estimate_id,
@@ -207,10 +219,12 @@ def _start_prepared_estimation_launch() -> None:
             ignored_object_ids=set(request.get("ignored_object_ids") or set()),
             create_shell=bool(request.get("create_shell")),
         )
+        st.session_state.objects_estimation_future_id = estimate_id
         st.session_state.setdefault("estimation_terminal_failures", {}).pop(
             estimate_id, None,
         )
     except Exception as exc:
+        cycle.worker_failed = cycle.worker_finished = True
         st.session_state.last_estimation_error = str(exc)
         st.session_state.prepared_estimate_access = None
     finally:
@@ -437,6 +451,10 @@ def _rows_with_approved_overlay(rows: list[dict[str, object]]) -> list[dict[str,
     ]
 
 
+def _estimation_cycle(estimate_id: str | None) -> EstimationCycle | None:
+    return st.session_state.get("objects_estimation_cycles", {}).get(estimate_id)
+
+
 def _render_pricing_table(
     data: dict[str, object],
     *,
@@ -444,13 +462,29 @@ def _render_pricing_table(
     run_id: str | None,
 ) -> None:
     """Render the Objects Estimation pricing table."""
+    rows = _rows_with_approved_overlay(data["rows"])
+    cycle = _estimation_cycle(estimate_id)
+    elapsed = None
+    if cycle:
+        ready_ids = [
+            str(row["object_key"]) for row in rows
+            if row.get("object_key") and objects_pricing.review_action_ready(row)
+        ]
+        failed_count = sum(objects_pricing.row_status(row) == "failed" for row in rows)
+        elapsed = cycle.observe(perf_counter(), ready_ids=ready_ids,
+                                all_terminal=len(ready_ids) + failed_count == len(rows))
     st.markdown(
         objects_pricing.pricing_table_html(
-            rows=_rows_with_approved_overlay(data["rows"]),
+            rows=rows,
             project_costs=data["project_costs"],
             summary=data["summary"],
             estimate_id=estimate_id,
             run_id=run_id,
+            cycle_html=objects_pricing.cycle_metrics_html(
+                rows, elapsed=elapsed, ready_seconds=cycle.ready_seconds if cycle else {},
+                cost_usd=cycle.cost_usd if cycle else None,
+                running=bool(cycle and not cycle.worker_finished),
+            ) if estimate_id else "",
             proposal_pdf_url=(
                 st.session_state.get("proposal_pdf_urls_by_estimate", {}).get(str(estimate_id))
                 if estimate_id

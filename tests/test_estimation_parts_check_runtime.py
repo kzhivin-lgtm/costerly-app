@@ -141,7 +141,9 @@ def test_parts_check_status_survives_usage_write_failure(monkeypatch, pipeline_f
 
     def run_pipeline(*, request_provider, **_):
         request_provider.append({"operation": "estimation_v9_parts_check_request",
-                                 "input_tokens": 10, "output_tokens": 2})
+                                 "input_tokens": 10, "output_tokens": 2, "total_cost_usd": 0.0051})
+        request_provider.append({"operation": "estimation_v9_parts_check_request",
+                                 "input_tokens": 15, "output_tokens": 3, "total_cost_usd": 0.0099})
         if pipeline_fails:
             raise ValueError("Invalid model response")
         return {"stage": "Parts Check", "source_coverage": "reviewed",
@@ -151,6 +153,7 @@ def test_parts_check_status_survives_usage_write_failure(monkeypatch, pipeline_f
     write_attempts = []
     statuses = []
     uploads = []
+    costs = []
     monkeypatch.setattr(runtime, "_reports", lambda *_: [])
     monkeypatch.setattr(runtime, "_source_event", lambda *_: {"id": "detection"})
     monkeypatch.setattr(runtime, "build_context", lambda **_: {})
@@ -161,7 +164,7 @@ def test_parts_check_status_survives_usage_write_failure(monkeypatch, pipeline_f
     runtime.run_parts_check_for_estimate(client=client, estimate_id="estimate", run_id="run", company_id="company", file_name="source.pdf",
                  file_bytes=b"pdf", inputs=[{"input_id": "input", "input_payload": {
                      "object": {"object_id": "object"},
-                 }}], ocr_package={}, prepare_sheet_layout=lambda report: {
+                 }}], ocr_package={}, record_cost=costs.append, prepare_sheet_layout=lambda report: {
                      "version": "cnc_sheet_layout_v1", "estimate_id": report["estimate_id"],
                  })
 
@@ -169,6 +172,8 @@ def test_parts_check_status_survives_usage_write_failure(monkeypatch, pipeline_f
     status, = statuses
     assert status["operation"] == runtime.OPERATION
     assert status["input_tokens"] == status["output_tokens"] == 0
+    assert costs == [pytest.approx(0.015)]
+    assert status["raw_usage"]["request_cost_usd"] == pytest.approx(0.015)
     if pipeline_fails:
         assert status["status"] == "failed"
         assert status["raw_usage"]["failure_stage"] == "run_parts_check"

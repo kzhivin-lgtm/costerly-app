@@ -28,6 +28,24 @@ def apply_objects_css() -> None:
             color: var(--color-text-strong);
         }
 
+        .objects-cycle-metrics {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 24px;
+            padding: 12px 0;
+            margin-bottom: 16px;
+            border-block: 1px solid rgba(42, 31, 44, 0.14);
+            color: rgba(42, 31, 44, 0.7);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            font-variant-numeric: tabular-nums;
+            overflow-wrap: anywhere;
+        }
+
+        .objects-cycle-metrics strong {
+            color: var(--color-text);
+        }
+
         div[data-testid="stElementContainer"]:has(.objects-estimation-header),
         div[data-testid="stElementContainer"]:has(.objects-pricing-card) {
             margin-top: 0 !important;

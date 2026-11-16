@@ -256,6 +256,34 @@ def apply_object_detail_css() -> None:
             --detail-grid: minmax(260px, 2.1fr) repeat(4, minmax(0, 1fr));
         }
 
+        .object-detail-table[data-section="cnc"] {
+            --detail-grid: repeat(2, minmax(0, 1fr));
+        }
+
+        .object-detail-table[data-section="cnc"] :is(.object-detail-table-head-row, .object-detail-table-row) {
+            min-width: 0;
+        }
+
+        .object-detail-table[data-section="cnc"] .object-detail-table-cell {
+            flex-direction: column;
+            align-items: start;
+            justify-content: center;
+            overflow-wrap: anywhere;
+        }
+
+        .object-detail-table[data-section="cnc"] :is(.object-detail-table-head, .object-detail-table-cell):nth-child(2) {
+            justify-content: center;
+            border-left: 1px solid rgba(42, 31, 44, 0.12);
+        }
+
+        .object-detail-table[data-section="cnc"] .object-detail-table-head:nth-child(2) {
+            justify-content: flex-start;
+        }
+
+        .object-detail-cnc-value {
+            font-weight: 600;
+        }
+
         .object-detail-table[data-section="material"].object-detail-table--cols-6 {
             --detail-grid: minmax(175px, 2.35fr) minmax(106px, 1fr) minmax(96px, 1.05fr)
                            minmax(70px, 0.75fr) minmax(92px, 0.95fr) minmax(70px, 0.75fr);

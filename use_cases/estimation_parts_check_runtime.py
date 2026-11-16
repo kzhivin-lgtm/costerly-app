@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from hashlib import sha256
 import json
 import logging
+from math import fsum, isfinite
 from pathlib import Path
 import re
 from tempfile import TemporaryDirectory
@@ -24,9 +25,10 @@ _LOG = logging.getLogger(__name__)
 
 
 class PartsCheckRequestError(RuntimeError):
-    def __init__(self, stage, reason):
+    def __init__(self, stage, reason, *, usage_unavailable=False):
         self.stage = stage
         self.reason = reason
+        self.usage_unavailable = usage_unavailable
         super().__init__(f"{stage}: {reason}")
 
 
@@ -48,7 +50,7 @@ def _source_event(client, company_id, run_id):
     raise ValueError("Published Detection evidence is unavailable")
 
 
-def _request_provider(company_id, run_id, file_name, usage_events):
+def _request_provider(company_id, run_id, estimate_id, file_name, usage_events):
     from anthropic import APIError
     from agents.anthropic_adapter import build_agent_usage_event, extract_text_from_claude_response, get_anthropic_client
     from agents.estimation_v4_1_material_facts_agent import _create_message_with_hard_timeout, _json_object
@@ -60,14 +62,16 @@ def _request_provider(company_id, run_id, file_name, usage_events):
         try:
             response = _create_message_with_hard_timeout(anthropic, timeout_seconds=120, **request)
         except (APIError, RuntimeError) as exc:
-            raise PartsCheckRequestError(stage, type(exc).__name__) from exc
+            raise PartsCheckRequestError(stage, type(exc).__name__, usage_unavailable=True) from exc
         event = build_agent_usage_event(
             agent_name="estimation", operation="estimation_v9_parts_check_request",
             company_id=company_id, run_id=run_id, file_name=file_name, object_id=None, object_name=None,
             model=request["model"], prompt_version=VERSION, response=response, started_at=started,
             finished_at=datetime.now(UTC).isoformat(),
-            request_diagnostics={"stage": stage, "stop_reason": response.stop_reason},
+            request_diagnostics={"estimate_id": estimate_id, "stage": stage, "stop_reason": response.stop_reason},
         )
+        if getattr(response, "usage", None) is None:
+            event["total_cost_usd"] = None
         usage_events.append(event)
         try:
             if response.stop_reason != "end_turn":
@@ -78,6 +82,15 @@ def _request_provider(company_id, run_id, file_name, usage_events):
             raise PartsCheckRequestError(stage, "invalid_response") from exc
 
     return invoke
+
+
+def _request_cost_usd(usage_events, *, usage_unavailable):
+    costs = [event.get("total_cost_usd") for event in usage_events]
+    if usage_unavailable or any(
+        not isinstance(cost, (int, float)) or not isfinite(cost) or cost < 0 for cost in costs
+    ):
+        return None
+    return fsum(costs)
 
 
 def _artifact_prefix(company_id, run_id, estimate_id):
@@ -122,13 +135,13 @@ def _write_source_pdf(path, file_name, file_bytes):
 
 
 def run_parts_check_for_estimate(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inputs, ocr_package,
-                                 prepare_sheet_layout=None):
+                                 prepare_sheet_layout=None, record_cost=None):
     """Return the saved report to the same estimate worker that will price it."""
     key = (company_id, run_id, estimate_id)
     with _running_report(key):
         return _run(client=client, estimate_id=estimate_id, run_id=run_id, company_id=company_id,
                     file_name=file_name, file_bytes=file_bytes, inputs=inputs, ocr_package=ocr_package,
-                    prepare_sheet_layout=prepare_sheet_layout)
+                    prepare_sheet_layout=prepare_sheet_layout, record_cost=record_cost)
 
 
 def _store_report(client, *, report, company_id, run_id, estimate_id):
@@ -141,8 +154,9 @@ def _store_report(client, *, report, company_id, run_id, estimate_id):
 
 
 def _run(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inputs, ocr_package,
-         prepare_sheet_layout=None):
+         prepare_sheet_layout=None, record_cost=None):
     usage_events = []
+    usage_unavailable = False
     status = "failed"
     started = datetime.now(UTC).isoformat()
     input_ids = sorted(row["input_id"] for row in inputs)
@@ -155,10 +169,13 @@ def _run(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inpu
         prior = _reports(client, company_id, run_id, estimate_id)
         if (prior and prior[0]["status"] == "succeeded" and prior[0]["raw_usage"].get("input_ids") == input_ids
                 and prior[0]["raw_usage"].get("source_pdf_sha256") == original_sha256):
-            return json.loads(_read_report_payload(
+            cached = json.loads(_read_report_payload(
                 client, company_id=company_id, run_id=run_id, estimate_id=estimate_id,
                 digest=prior[0]["raw_usage"].get("report_sha256"),
             ))
+            if record_cost is not None:
+                record_cost(0.0)
+            return cached
         detection = _source_event(client, company_id, run_id)
         context = build_context(inputs=inputs, event=detection, ocr_package=ocr_package,
                                 include_measurements=True, published_partition=True)
@@ -172,7 +189,7 @@ def _run(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inpu
         _write_source_pdf(pdf, file_name, file_bytes)
         report = run_parts_check(pdf=pdf, detection_context=context, output=folder / "output",
                                  inputs=inputs, request_provider=_request_provider(
-                                     company_id, run_id, file_name, usage_events))
+                                     company_id, run_id, estimate_id, file_name, usage_events))
         expected_objects = {row["input_payload"]["object"]["object_id"] for row in inputs}
         if report["stage"] != "Parts Check" or set(report["objects"]) != expected_objects:
             raise ValueError("Parts Check must report every accepted File Review object")
@@ -202,12 +219,17 @@ def _run(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inpu
     except Exception as exc:
         details.update(failure_stage=stage, error_type=type(exc).__name__)
         if isinstance(exc, PartsCheckRequestError):
+            usage_unavailable = exc.usage_unavailable
             details.update(request_stage=exc.stage, request_error=exc.reason)
         _LOG.warning("Parts Check %s failed for run %s: %s", stage, run_id, exc if isinstance(
             exc, PartsCheckRequestError) else type(exc).__name__)
     finally:
         if directory is not None:
             directory.cleanup()
+    cost_usd = _request_cost_usd(usage_events, usage_unavailable=usage_unavailable)
+    if record_cost is not None:
+        record_cost(cost_usd)
+    details["request_cost_usd"] = cost_usd
     # The status makes the report discoverable. Publish it independently of model metrics.
     insert_agent_usage_event(client, {
         "company_id": company_id, "run_id": run_id, "file_name": file_name, "agent_name": "estimation",

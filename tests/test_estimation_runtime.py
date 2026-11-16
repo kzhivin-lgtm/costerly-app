@@ -268,6 +268,7 @@ def test_estimation_prices_the_saved_parts_check_and_reports_stage_failures(monk
     def check(**kwargs):
         assert kwargs["inputs"] is rows
         events.append("parts_check")
+        kwargs["record_cost"](0.0789)
         return None if stage == "parts_check" else report
 
     def price(**kwargs):
@@ -285,6 +286,7 @@ def test_estimation_prices_the_saved_parts_check_and_reports_stage_failures(monk
         shell={"estimate_id": "estimate-1"},
     )
 
+    assert result["cost_usd"] == 0.0789
     if stage == "planned":
         assert events == ["parts_check", "material_plan"]
         assert result["estimation"]["status"] == "completed"
