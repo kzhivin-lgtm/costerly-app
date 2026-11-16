@@ -77,6 +77,7 @@ from use_cases.machinery import (
     CNC_ESTIMATE_LEVEL_DEFAULT,
     CNC_ESTIMATE_LEVEL_KEY,
     CNC_ESTIMATE_LEVELS,
+    CNC_OPERATOR_RATE_KIND,
     INDUSTRY_LABELS,
     PROFILE_COSTING_MACHINE_CODES,
     PROFILE_MACHINE_SPECS,
@@ -496,7 +497,7 @@ def _render_machinery_pricing(
     return method, values
 
 
-def _render_cnc_machine_rate(
+def _render_cnc_operator_rate(
     saved: dict,
     key_prefix: str,
     *,
@@ -506,15 +507,16 @@ def _render_cnc_machine_rate(
     saved_pricing = saved.get("pricing") or {}
     currency = str(saved_pricing.get("currency") or "ILS").upper()
     saved_rate = saved_pricing.get("rate") if saved_method == "hourly" else ""
-    widget_key = f"{key_prefix}_machine_rate"
+    widget_key = f"{key_prefix}_operator_rate"
     with method_column:
         entered_rate = st.text_input(
-            f"Machine rate / hour ({currency})",
+            f"Operator rate / hour ({currency})",
             value=(
                 _labor_form_number(saved_rate, decimals=2, grouped=True)
                 if saved_rate not in (None, "")
                 else ""
             ),
+            help="Enter the operator's base hourly wage. Estimation adds employer costs separately.",
             key=widget_key,
             on_change=_format_grouped_number_input,
             args=(widget_key,),
@@ -531,7 +533,7 @@ def _render_cnc_machine_rate(
     pricing: dict[str, object] = {
         "rate": normalized_rate,
         "currency": currency,
-        "rate_kind": str(saved_pricing.get("rate_kind") or "internal_cost"),
+        "rate_kind": CNC_OPERATOR_RATE_KIND,
     }
     for key in ("setup_fee", "minimum_charge"):
         if saved_pricing.get(key) not in (None, ""):
@@ -931,7 +933,7 @@ def _render_owner_machinery(
                         if defer_costing:
                             if spec.code == "wood_cnc_router":
                                 costing_row = st.columns([1, 2])
-                                pricing_method, pricing = _render_cnc_machine_rate(
+                                pricing_method, pricing = _render_cnc_operator_rate(
                                     saved,
                                     row_key,
                                     method_column=costing_row[0],
@@ -1051,6 +1053,7 @@ def _render_owner_machinery(
         use_container_width=True,
     ):
         return
+    cnc_changed = False
     try:
         for draft in drafts:
             machine_code = str(draft["machine_code"])
@@ -1059,6 +1062,7 @@ def _render_owner_machinery(
                 if not draft.get("saved_status"):
                     continue
                 deactivate_company_machinery(access, machine_code=machine_code)
+                cnc_changed |= machine_code == "wood_cnc_router"
                 deactivate_supplier_services(access, machine_code=machine_code)
                 continue
             status = "in_house" if availability == "Yes" else "not_in_house"
@@ -1099,6 +1103,7 @@ def _render_owner_machinery(
                 accepts_external_work=False,
                 estimate_level=draft.get("estimate_level"),
             )
+            cnc_changed |= machine_code == "wood_cnc_router"
             deactivate_supplier_services(access, machine_code=machine_code)
             if status == "not_in_house" and supplier_id:
                 save_supplier_service(
@@ -1118,6 +1123,12 @@ def _render_owner_machinery(
     except Exception:
         logger.exception("Company machinery batch save failed")
         st.error("Machinery settings could not be saved. Check the values and try again")
+    finally:
+        if cnc_changed:
+            comparisons = st.session_state.get("labor_v1_comparisons", {})
+            for identity in list(comparisons):
+                if identity[0] == access.company_id:
+                    comparisons.pop(identity, None)
 
 
 @st.fragment

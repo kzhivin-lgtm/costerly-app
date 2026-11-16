@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import logging
+from math import isfinite
 import re
 from typing import TYPE_CHECKING, Mapping, Sequence
 
@@ -25,6 +26,7 @@ STRUCTURED_PRICING_METHODS = {"hourly", "per_sheet", "per_part", "per_job"}
 CNC_ESTIMATE_LEVELS = (1, 2, 3, 4, 5)
 CNC_ESTIMATE_LEVEL_DEFAULT = 3
 CNC_ESTIMATE_LEVEL_KEY = "estimate_level"
+CNC_OPERATOR_RATE_KIND = "operator_wage"
 LOGGER = logging.getLogger(__name__)
 
 
@@ -275,7 +277,7 @@ def _validate_pricing(method: str, values: Mapping[str, object]) -> tuple[str, d
         rate = float(values.get("rate") or 0)
     except (TypeError, ValueError) as exc:
         raise MachineryError("Enter a valid rate.") from exc
-    if rate <= 0:
+    if not isfinite(rate) or rate <= 0:
         raise MachineryError("Enter a rate greater than zero.")
     currency = _clean_text(values.get("currency")).upper()
     if len(currency) != 3:
@@ -283,7 +285,7 @@ def _validate_pricing(method: str, values: Mapping[str, object]) -> tuple[str, d
     pricing: dict[str, object] = {"rate": rate, "currency": currency}
     rate_kind = _clean_text(values.get("rate_kind"))
     if rate_kind:
-        if rate_kind not in {"internal_cost", "customer_price", "supplier_quote"}:
+        if rate_kind not in {"internal_cost", "customer_price", "supplier_quote", CNC_OPERATOR_RATE_KIND}:
             raise MachineryError("Choose a valid rate type.")
         pricing["rate_kind"] = rate_kind
     for key in ("setup_fee", "minimum_charge"):
@@ -331,6 +333,33 @@ def list_company_machinery(access: CompanyAccess) -> list[dict]:
         .eq("active", True)
         .execute()
     ).data or []
+
+
+def load_cnc_operator_wage(client, company_id: str) -> float | None:
+    """Read the base hourly wage for the company's own wood router in ILS."""
+    rows = (
+        client.table("company_machinery")
+        .select("pricing_method,pricing")
+        .eq("company_id", company_id)
+        .eq("machine_code", "wood_cnc_router")
+        .eq("availability_status", "in_house")
+        .eq("active", True)
+        .limit(1)
+        .execute()
+    ).data or []
+    if not rows or rows[0].get("pricing_method") != "hourly":
+        return None
+    pricing = rows[0].get("pricing") or {}
+    # Existing CNC profiles stored the same field under the old Machine rate label.
+    if pricing.get("rate_kind") not in {None, "", "internal_cost", CNC_OPERATOR_RATE_KIND}:
+        return None
+    if str(pricing.get("currency") or "").upper() != "ILS":
+        return None
+    try:
+        wage = float(pricing.get("rate"))
+    except (TypeError, ValueError):
+        return None
+    return wage if isfinite(wage) and wage > 0 else None
 
 
 def list_company_suppliers(access: CompanyAccess) -> list[dict]:

@@ -108,6 +108,27 @@ at each planned joint. On saved Lev2, displayed in-house CNC costs
 reconcile to ILS 4,260 stock + 344 operator = 4,604. Subcontractor
 figures reconcile to 3,920 stock and cutting + 1,056 drilling = 4,976.
 205 targeted tests passed and the saved Lev2 comparison was checked.
+Commit e66309c deployed via Railway 8bad8f0f-4bcd-41b8-88d2-6e651211da0c.
+A new Cloudflare session served estimation-labor-v1.2.5-detection-v8.4.29.
+
+Labor V1.2.6, USER REQUEST. The CNC hourly field in Machinery sets the
+operator's base wage, including values saved under the previous label.
+The object comparison adds 25% once and rounds operator hours up. It
+includes no separate machine hourly charge. Leave ordinary joints in
+backs and plinths in the quantity and time calculation, but only show
+joints in visible panels in the estimate. CNC Labor is a budget estimate;
+shop drawings and the final cutting list are prepared after order approval.
+457 focused tests passed. The saved Lev2 replay still uses 16 sheets
+and 106 parts, with ILS 4,604 in-house and ILS 4,976 subcontracted.
+Changing the base wage to ILS 80 in the replay changes five rounded
+operator hours to ILS 500 and leaves the subcontractor estimate unchanged.
+
+PENDING, P1, USER REQUEST. Estimate CNC file preparation separately
+from setup and cutting. Measure operator time on a known job and
+compare it with a supplier quote before adding a default. Some shops
+request a ready vector file; [Bemida](https://bemida.co.il/cnc-dxf/)
+can quote drawing preparation. Count it once according to who prepares
+the file and whether the supplier includes the service.
 
 PENDING, P1, USER REPORT. Diagnose Lev2's observed Objects Estimation
 lap increase from 97.3 s to 144 s. The two production Parts Check
@@ -116,7 +137,11 @@ Estimate record creation to persisted Material Plan took 93.51 and
 90.15 s. The wall-clock increase is outside this database interval.
 Correlate accepted Continue, dispatch and first ready render by estimate
 ID to isolate the remainder. The latest five model requests cost USD
-0.211911. Front and island-map together accounted for USD 0.125088.
+0.211911. Front (41.11 s, USD 0.068706), front components (15.70 s,
+USD 0.034470) and island map (22.40 s, USD 0.056382) ran in parallel.
+Front role review (7.02 s, USD 0.034698) and source inventory (12.24 s,
+USD 0.017655) followed. Last model response at 61.48 s from Parts Check
+start; the remaining 18.44 s are not timed by substage.
 
 ## Estimation Parts Check, 3.17.4.6
 

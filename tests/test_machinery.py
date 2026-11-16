@@ -71,6 +71,19 @@ class _Client:
         return _Query(self, name)
 
 
+@pytest.mark.parametrize("kind, currency, expected", [
+    ("internal_cost", "ILS", 80),
+    ("operator_wage", "ILS", 80),
+    ("customer_price", "ILS", None),
+    ("operator_wage", "USD", None),
+])
+def test_cnc_operator_wage_reads_legacy_and_new_profile_rates(kind, currency, expected):
+    client = _Client(reads={"company_machinery": [
+        {"pricing_method": "hourly", "pricing": {"rate": 80, "rate_kind": kind, "currency": currency}},
+    ]})
+    assert machinery.load_cnc_operator_wage(client, "company-a") == expected
+
+
 def test_catalog_is_compact_and_keeps_cnc_and_laser_separate():
     assert len(machinery.MACHINE_SPECS) == 27
     assert len(machinery.PROFILE_MACHINE_SPECS) == 16

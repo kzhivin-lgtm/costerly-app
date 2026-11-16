@@ -74,6 +74,10 @@ class LaborV1Test(TestCase):
         self.assertEqual(result["in_house"]["operator_hours"], 1)
         self.assertEqual(result["in_house"]["operator_ex_vat"], 68.75)
         self.assertEqual(result["in_house"]["machine_ex_vat"], round(result["work"]["machine_minutes"], 2))
+        configured = calculate_labor_v1(layout, plan, operator_gross_rate=80)
+        self.assertEqual(configured["in_house"]["operator_ex_vat"], 100)
+        self.assertIsNone(configured["in_house"]["machine_ex_vat"])
+        self.assertEqual(configured["subcontractor"], result["subcontractor"])
 
     def test_oversize_back_and_visible_front_are_joined_if_only_standard_stock_is_selected(self):
         report = {"objects": {"object-001": {"parts": [_part("carcass_back"), _part("door_front")]}}}

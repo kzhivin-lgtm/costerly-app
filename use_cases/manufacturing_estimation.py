@@ -336,7 +336,7 @@ def _cnc_in_house(feature, context, rows) -> CostCalculation:
         )
         params[key] = value
         ids.extend(parameter_ids)
-    machine_rate = _machine_rate_override(context, "wood_cnc_router") or params["machine_capacity_rate_per_hour"]
+    # The CNC hourly value in Machinery is now an operator wage, not a capacity rate.
     return calculate_cnc_router_in_house(
         CncRouterInHouseInputs(
             material_cost=ZERO,
@@ -350,7 +350,7 @@ def _cnc_in_house(feature, context, rows) -> CostCalculation:
             programming_minutes=params["programming_minutes"],
             setup_minutes=params["setup_minutes"],
             sheet_handling_minutes=_scale(params["sheet_handling_minutes"], feature.get("sheet_count") or 1),
-            machine_capacity_rate_per_hour=machine_rate,
+            machine_capacity_rate_per_hour=params["machine_capacity_rate_per_hour"],
             programmer_rate_per_hour=params["programmer_rate_per_hour"],
             operator_rate_per_hour=params["operator_rate_per_hour"],
             operator_attendance_fraction=params["operator_attendance_fraction"],

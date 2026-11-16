@@ -12,7 +12,7 @@ from use_cases.wood_cnc_calculation import (
 )
 
 
-LABOR_VERSION = "Labor V1.2.5"
+LABOR_VERSION = "Labor V1.2.6"
 LAYOUT_VERSION = "cnc_sheet_layout_v2"
 SHEET_FAMILIES = {
     "mdf_hdf", "faced_mdf", "fibreboard_hardboard", "particleboard",
@@ -259,7 +259,7 @@ def _object_work(groups, object_id):
     return projected, work
 
 
-def calculate_labor_v1(layout, plan, *, machine_rate=None, object_id=None):
+def calculate_labor_v1(layout, plan, *, machine_rate=None, object_id=None, operator_gross_rate=None):
     """Compare CNC work and purchasing for the same parts, without duplicate stock charges."""
     if layout.get("version") != LAYOUT_VERSION or layout["basis_sha256"] != sheet_layout_basis(plan):
         raise ValueError("The saved CNC layout and current material plan have different quantities or stock")
@@ -277,10 +277,11 @@ def calculate_labor_v1(layout, plan, *, machine_rate=None, object_id=None):
             if (object_id in row["object_ids"] if "object_ids" in row
                 else _belongs(row["reference"], object_id) or row["reference"] in stock_names)
         ]
-    internal = in_house_cost(work, gross_rate_per_hour=OPERATOR_RATE, machine_rate_per_hour=machine_rate)
+    gross_rate = OPERATOR_RATE if operator_gross_rate is None else operator_gross_rate
+    internal = in_house_cost(work, gross_rate_per_hour=gross_rate, machine_rate_per_hour=machine_rate)
     machine = internal["machine_cost"]
     operator_hours = ceil(round(internal["labor_hours"], 9))
-    operator_rate = OPERATOR_RATE * (1 + EMPLOYER_LOAD)
+    operator_rate = gross_rate * (1 + EMPLOYER_LOAD)
     operator = round(operator_hours * operator_rate, 2)
     shop_rows = []
     for group in groups:

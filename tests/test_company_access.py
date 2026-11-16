@@ -1384,6 +1384,9 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
         values["capabilities"] = machinery._validate_capabilities(
             values["machine_code"], values["capabilities"]
         )
+        values["pricing_method"], values["pricing"] = machinery._validate_pricing(
+            values["pricing_method"], values["pricing"]
+        )
         saved.append(values)
         return values
 
@@ -1392,6 +1395,8 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
     app.session_state["test_profile_role"] = "owner"
     app.session_state["screen"] = "account"
     app.session_state["company_profile_tab"] = "Machinery"
+    identity = ("company-a", "run-a", "estimate-a", "object-a")
+    app.session_state["labor_v1_comparisons"] = {identity: {}}
     app.run()
 
     app.get("button_group")[0].set_value("Yes")
@@ -1400,11 +1405,11 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
     assert [field.label for field in app.slider] == [
         "Estimate reserve :gray[Standard reserve]"
     ]
-    machine_rate = next(
+    operator_rate = next(
         field for field in app.text_input
-        if field.label == "Machine rate / hour (ILS)"
+        if field.label == "Operator rate / hour (ILS)"
     )
-    assert machine_rate.value == ""
+    assert operator_rate.value == ""
     next(button for button in app.button if button.label == "Save").click()
     app.run()
     assert not saved
@@ -1414,11 +1419,11 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
     next(field for field in app.text_input if field.label == "Working width (m) *").set_value("1.3")
     next(field for field in app.checkbox if field.label == "Solid wood").check()
     next(field for field in app.checkbox if field.label == "Horizontal drilling").check()
-    machine_rate = next(
+    operator_rate = next(
         field for field in app.text_input
-        if field.label == "Machine rate / hour (ILS)"
+        if field.label == "Operator rate / hour (ILS)"
     )
-    machine_rate.set_value("1200")
+    operator_rate.set_value("80")
     next(button for button in app.button if button.label == "Save").click()
     app.run()
 
@@ -1428,9 +1433,11 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
     assert saved[0]["capabilities"]["solid_wood"] is True
     assert saved[0]["capabilities"]["horizontal_drilling"] is True
     assert saved[0]["pricing_method"] == "hourly"
-    assert saved[0]["pricing"]["rate"] == "1200"
+    assert saved[0]["pricing"]["rate"] == 80
     assert saved[0]["pricing"]["currency"] == "ILS"
+    assert saved[0]["pricing"]["rate_kind"] == "operator_wage"
     assert saved[0]["estimate_level"] is None
+    assert identity not in app.session_state["labor_v1_comparisons"]
 
 
 def test_grouped_number_input_formats_whole_and_decimal_thousands():
@@ -2190,7 +2197,7 @@ def test_sheet_laser_has_exception_checkboxes_without_costing_method(monkeypatch
     ]
     assert "Costing method" not in [field.label for field in app.selectbox]
     assert not any(
-        field.label.startswith("Machine rate / hour")
+        field.label.startswith("Operator rate / hour")
         for field in app.text_input
     )
 

@@ -9,9 +9,10 @@ import streamlit as st
 from db.repositories import fetch_rfq_estimate_material_plan
 from db.supabase_client import get_supabase_client
 from use_cases.estimation_labor_v1 import (
-    LAYOUT_VERSION, build_sheet_layout, calculate_labor_v1, describe_layout_issues, sheet_layout_basis,
+    LAYOUT_VERSION, SPLIT_ROLES, build_sheet_layout, calculate_labor_v1, describe_layout_issues, sheet_layout_basis,
 )
 from use_cases.estimation_parts_check_runtime import load_parts_check
+from use_cases.machinery import load_cnc_operator_wage
 
 
 _LOG = logging.getLogger(__name__)
@@ -40,7 +41,9 @@ def _calculate(client, *, identity):
     layout = report.get("sheet_layout") or {}
     if layout.get("version") != LAYOUT_VERSION or layout.get("basis_sha256") != sheet_layout_basis(plan):
         layout = build_sheet_layout(report, plan)
-    result = calculate_labor_v1(layout, plan, object_id=object_id)
+    result = calculate_labor_v1(
+        layout, plan, object_id=object_id, operator_gross_rate=load_cnc_operator_wage(client, company_id),
+    )
     result["issues"] = describe_layout_issues(result["issues"], layout, report)
     return {"status": "ready", "result": result}
 
@@ -88,26 +91,19 @@ def _cnc_section(body):
 
 
 def _joined_parts_html(joins):
-    if not joins:
-        return ""
-    labels = {"carcass_side": "cabinet side", "carcass_back": "back panel", "frame_backing": "back panel"}
+    labels = {"carcass_side": "cabinet side"}
     entries = []
     for join in joins:
         _, block, role, _ = join["part_id"].rsplit(":", 3)
-        if role.startswith("plinth_"):
-            name = "Plinth"
-        else:
-            name = f"{block} {labels.get(role, role.replace('_', ' '))}"
+        if role in SPLIT_ROLES:
+            continue
+        name = f"{block} {labels.get(role, role.replace('_', ' '))}"
         quantity = join["part_count"]
         count = f"{quantity} × " if quantity > 1 else ""
-        length, width = join["length_mm"], join["width_mm"]
-        finished_length = length * join["length_sections"]
-        finished_width = width * join["width_sections"]
-        entries.append(
-            f"<li>{count}{escape(name)} ({finished_length:g} × {finished_width:g} mm): "
-            f"{join['pieces_per_part']} pieces each, {length:g} × {width:g} mm</li>"
-        )
-    return "<p><strong>Parts made in sections</strong></p><ul>" + "".join(entries) + "</ul>"
+        entries.append(f"<li>{count}{escape(name)}</li>")
+    if not entries:
+        return ""
+    return "<p><strong>Visible parts with a joint</strong></p><ul>" + "".join(entries) + "</ul>"
 
 
 def _comparison_html(result):
