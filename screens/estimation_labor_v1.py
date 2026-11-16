@@ -200,17 +200,17 @@ def _comparison_html(result):
     duration = f"{prep_minutes:.2f}".rstrip("0").rstrip(".")
     comparison_rows = [
         (("File preparation", _money(prep_cost) if prep_minutes else "—", f"{duration} min" if prep_minutes else ""),
-         ("Stock and cutting", _estimate(supplier_stock, not unpriced_sheets), supplier_stock_note)),
-        (("Operator", _money(operator) if has_work else "—",
-          f"{internal['operator_hours']} h" if has_work else ""),
-         ("Drilling allowance", _money(supplier_drilling), f"₪{external['drilling_rate']}/part")),
-        (("Edge banding labor", _money(edge["in_house_ex_vat"]) if edge["metres"] else "—",
-          f"{metres} · {edge['minutes']:.1f} min" if edge["metres"] else ""),
          ("File preparation", "Included", "") if prep_minutes and supplier_includes_prep else
          ("File preparation", _money(prep_cost) if prep_minutes else "—", "Our operator" if prep_minutes else "")),
-        (("Materials", _estimate(material_amount, materials_complete), " · ".join(material_notes)),
+        (("Operator", _money(operator) if has_work else "—",
+          f"{internal['operator_hours']} h" if has_work else ""),
+         ("Stock and cutting", _estimate(supplier_stock, not unpriced_sheets), supplier_stock_note)),
+        (("Edge banding labor", _money(edge["in_house_ex_vat"]) if edge["metres"] else "—",
+          f"{metres} · {edge['minutes']:.1f} min" if edge["metres"] else ""),
          ("Edge banding", _estimate(supplier_edge if edge["metres"] else None, supplier_edge_complete),
           " · ".join(supplier_edge_notes))),
+        (("Materials", _estimate(material_amount, materials_complete), " · ".join(material_notes)),
+         ("Drilling allowance", _money(supplier_drilling), f"₪{external['drilling_rate']}/part")),
         (("Estimated cost", _estimate(internal_total, layout_complete and materials_complete), "Materials + labor"),
          ("Estimated cost", _estimate(supplier_total, layout_complete and not unpriced_sheets
                                       and supplier_edge_complete), "Materials + labor")),
