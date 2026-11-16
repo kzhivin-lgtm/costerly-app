@@ -234,6 +234,27 @@ for melamine/PVC; real wood veneer ILS 9/14 per m as an estimate.
 The contractor price includes tape in the virtual profile. In-house
 application is labor only: 7 m/min, 12 s per side, 10 min setup at
 ILS 50/h gross +25%. The Materials block retains sheet and tape stock.
+Israel Reference edge tape refresh, 2026-11-16. Active rates for the
+0.8 mm, 24/45/65 mm bands: veneer ILS 3.68/6.80/9.82 per m,
+respectively. These are estimates based on local published offers:
+23 mm oak/walnut, 34 mm and 40 mm comparables, and proportional
+extrapolation to 65 mm. The 65 mm band requires a quote. Melamine
+ILS 0.68/0.85/1.12 per m remains a provisional benchmark: [Makor
+Haformika](https://makorhaformaika.co.il/catalogs/melamine/) identifies
+matched edging suppliers but does not publish an exact material quote.
+Do not substitute PVC offers as melamine evidence. Track confirmed
+pre-glued melamine and wide pre-glued veneer quotes as pending, P2.
+Tape consumption is priced per metre. The reference format is a
+nominal 50 m roll at each band's own width. Follow supplier pack data
+for procurement: Domicile pre-glued 22/34 mm is 50 m; observed SryaWood
+offers are 50 m at 34 mm and 100 m at 23/40 mm, adhesive unspecified.
+[TWIZERS](https://www.twizers.com/edges/) lists matching 50 × 0.8 mm
+edging for natural oak and American walnut; price, glue and pack are
+unconfirmed. Source offer sizes and price status are recorded in the
+active catalog metadata by `tools/refresh_israel_reference_edge_banding.py`.
+This is a material catalog data update; CNC installed tariffs stay the same.
+Live read-back and Materials replay passed for all six positions: 17/40/55 mm
+panels used 24/45/65 mm tape and priced 2.5 m without a full roll minimum.
 Radius/bevel premium remains an estimate for a future explicit
 contour input; wood lipping, finishing and delivery are separate.
 For owner-supplied stock keep
