@@ -95,7 +95,28 @@ the replay uses 17 sheets, 108 blanks, and two sections per B05 side
 shown in CNC time breakdown. 205 targeted tests passed. Both saved Lev2
 paths also rendered in the local Object Detail component. Supplier quote,
 matching decor availability and authenticated production acceptance remain
-open.
+open. Commit e97ef9a deployed via Railway f89b97a6-bfd1-4756-a1cc-0013edae2c44.
+A new Cloudflare session served estimation-labor-v1.2.4-detection-v8.4.29.
+
+Labor V1.2.5, USER REQUEST. Show TC in dollars to two decimal places
+and display whole shekels in CNC. Put sheet and part counts on each
+material line, including the subcontractor rate per sheet. The owned
+CNC comparison charges sheet stock and operator labor. Machinery's
+hourly rate stays available for other calculations. The time breakdown
+names the B05 back panel and plinth and shows the full size and pieces
+at each planned joint. On saved Lev2, displayed in-house CNC costs
+reconcile to ILS 4,260 stock + 344 operator = 4,604. Subcontractor
+figures reconcile to 3,920 stock and cutting + 1,056 drilling = 4,976.
+205 targeted tests passed and the saved Lev2 comparison was checked.
+
+PENDING, P1, USER REPORT. Diagnose Lev2's observed Objects Estimation
+lap increase from 97.3 s to 144 s. The two production Parts Check
+records on 16 November (15:09 and 15:44 UTC) took 80.04 and 79.92 s.
+Estimate record creation to persisted Material Plan took 93.51 and
+90.15 s. The wall-clock increase is outside this database interval.
+Correlate accepted Continue, dispatch and first ready render by estimate
+ID to isolate the remainder. The latest five model requests cost USD
+0.211911. Front and island-map together accounted for USD 0.125088.
 
 ## Estimation Parts Check, 3.17.4.6
 

@@ -17,17 +17,6 @@ from use_cases.estimation_parts_check_runtime import load_parts_check
 _LOG = logging.getLogger(__name__)
 
 
-def _machine_rate(client, company_id):
-    rows = (client.table("company_machinery").select("pricing")
-            .eq("company_id", company_id).eq("machine_code", "wood_cnc_router")
-            .eq("active", True).eq("availability_status", "in_house")
-            .eq("pricing_method", "hourly").limit(1).execute().data or [])
-    rate = (rows[0].get("pricing") or {}).get("rate") if rows else None
-    if isinstance(rate, (int, float)) and not isinstance(rate, bool) and rate > 0:
-        return rate
-    return None
-
-
 def _calculate(client, *, identity):
     company_id, run_id, estimate_id, object_id = identity
     params = {"client": client, "company_id": company_id, "run_id": run_id, "estimate_id": estimate_id}
@@ -51,15 +40,13 @@ def _calculate(client, *, identity):
     layout = report.get("sheet_layout") or {}
     if layout.get("version") != LAYOUT_VERSION or layout.get("basis_sha256") != sheet_layout_basis(plan):
         layout = build_sheet_layout(report, plan)
-    result = calculate_labor_v1(
-        layout, plan, object_id=object_id, machine_rate=_machine_rate(client, company_id),
-    )
+    result = calculate_labor_v1(layout, plan, object_id=object_id)
     result["issues"] = describe_layout_issues(result["issues"], layout, report)
     return {"status": "ready", "result": result}
 
 
 def _money(amount):
-    return "—" if amount is None else f"₪{amount:,.2f}"
+    return "—" if amount is None else f"₪{round(amount):,}"
 
 
 def _sheets(quantity):
@@ -100,6 +87,29 @@ def _cnc_section(body):
     )
 
 
+def _joined_parts_html(joins):
+    if not joins:
+        return ""
+    labels = {"carcass_side": "cabinet side", "carcass_back": "back panel", "frame_backing": "back panel"}
+    entries = []
+    for join in joins:
+        _, block, role, _ = join["part_id"].rsplit(":", 3)
+        if role.startswith("plinth_"):
+            name = "Plinth"
+        else:
+            name = f"{block} {labels.get(role, role.replace('_', ' '))}"
+        quantity = join["part_count"]
+        count = f"{quantity} × " if quantity > 1 else ""
+        length, width = join["length_mm"], join["width_mm"]
+        finished_length = length * join["length_sections"]
+        finished_width = width * join["width_sections"]
+        entries.append(
+            f"<li>{count}{escape(name)} ({finished_length:g} × {finished_width:g} mm): "
+            f"{join['pieces_per_part']} pieces each, {length:g} × {width:g} mm</li>"
+        )
+    return "<p><strong>Parts made in sections</strong></p><ul>" + "".join(entries) + "</ul>"
+
+
 def _comparison_html(result):
     work = result["work"]
     internal = result["in_house"]
@@ -108,33 +118,33 @@ def _comparison_html(result):
     issues = result["issues"]
     if not rows and not issues:
         return _cnc_section('<p class="object-detail-cnc-caption">No sheet goods for CNC on this object.</p>')
-    caption = (
-        f'<p class="object-detail-cnc-caption">{_sheets(work["sheet_count"])} CNC sheets'
-        f' · {work["blank_count"]} parts to cut</p>'
-    )
+    sheets = _sheets(work["sheet_count"])
+    parts = f"{work['blank_count']} parts"
     priced_stock = [row["stock_ex_vat"] for row in rows if row["stock_ex_vat"] is not None]
-    machine = internal["machine_ex_vat"]
+    stock_cost = sum(priced_stock) if priced_stock else None
     operator = internal["operator_ex_vat"]
     has_work = bool(work["blank_count"])
     supplier_stock = external["bundle_ex_vat"] if has_work else None
     supplier_drilling = external["machining_ex_vat"] if has_work else None
-    internal_total = operator + sum(priced_stock) + (machine or 0) if has_work else None
-    supplier_total = supplier_stock + supplier_drilling if has_work else None
+    # Sum the rounded lines so the displayed whole-shekel totals reconcile.
+    internal_total = round(operator) + round(stock_cost or 0) if has_work else None
+    supplier_total = round(supplier_stock) + round(supplier_drilling) if has_work else None
     layout_complete = not issues and not result["unplaced_blanks"]
-    internal_complete = layout_complete and len(priced_stock) == len(rows) and machine is not None
+    internal_complete = layout_complete and len(priced_stock) == len(rows)
     missing_stock = sorted({
         f"{row['material']} ({row['thickness_mm']:g} mm)"
         for row in rows if row["sheets"] and row["stock_ex_vat"] is None
     })
+    in_house_stock = f"{sheets} sheets"
+    if missing_stock:
+        in_house_stock += f" · Price needed for {', '.join(missing_stock)}"
     comparison = _comparison_table([
-        (("Sheet stock", _money(sum(priced_stock) if priced_stock else None),
-          f"Price needed for {', '.join(missing_stock)}" if missing_stock else ""),
-         ("Stock and cutting", _money(supplier_stock), f"₪{external['sheet_rate']}/sheet")),
+        ((f"Sheet stock · {parts}", _money(stock_cost), in_house_stock),
+         (f"Stock and cutting · {parts}", _money(supplier_stock),
+          f"{sheets} sheets × {_money(external['sheet_rate'])}")),
         (("Operator", _money(operator) if has_work else "—",
-          f"{internal['operator_hours']} h × {_money(internal['operator_rate'])}"),
+          f"{internal['operator_hours']} h"),
          ("Drilling allowance", _money(supplier_drilling), f"₪{external['drilling_rate']}/part")),
-        (("Machine", _money(machine) if machine is not None else "Rate needed",
-          f"{_money(internal['machine_rate'])}/h" if machine is not None else ""), None),
         (("Estimated cost", _estimate(internal_total, internal_complete), ""),
          ("Estimated cost", _estimate(supplier_total, layout_complete), "")),
     ])
@@ -152,18 +162,7 @@ def _comparison_html(result):
         + "".join(f"<li>{escape(row['description'])}</li>" for row in issues)
         + "</ul>"
     ) if issues else ""
-    joins = result.get("joined_parts") or ()
-    joined = ""
-    if joins:
-        entries = []
-        for join in joins:
-            _, block, role, _ = join["part_id"].rsplit(":", 3)
-            part = f"{block} · {'cabinet side' if role == 'carcass_side' else role.replace('_', ' ')}"
-            entries.append(
-                f"<li>{escape(part)} · {join['part_count']} part(s), {join['pieces_per_part']} pieces per part "
-                f"({join['length_mm']:g} × {join['width_mm']:g} mm each)</li>"
-            )
-        joined = "<p><strong>Parts cut with a joint</strong></p><ul>" + "".join(entries) + "</ul>"
+    joined = _joined_parts_html(result["joined_parts"])
     estimated_stock = ""
     for row in rows:
         if row["stock_price_is_estimated"] and row["sheets"]:
@@ -179,9 +178,7 @@ def _comparison_html(result):
         f'<tbody>{minutes}</tbody><tfoot><tr><th scope="row">Total</th>'
         f'<td>{work["machine_minutes"]:.1f}</td></tr></tfoot></table>{estimated_stock}{joined}{excluded}</details>'
     )
-    return _cnc_section(
-        caption + comparison + '<p class="object-detail-cnc-caption">Costs before VAT.</p>' + details
-    )
+    return _cnc_section(comparison + details)
 
 
 def _estimate(value, complete):

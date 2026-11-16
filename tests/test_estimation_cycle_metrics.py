@@ -58,9 +58,9 @@ def test_cycle_reports_first_active_review_per_object_and_total_cost(monkeypatch
     tick[0] = 115.5
     b["status"] = "completed"
     app.session_state["test_rows"] = [a, b]
-    future.set_result({"estimate_id": "estimate", "estimation": {"status": "completed"}, "cost_usd": 0.0789})
+    future.set_result({"estimate_id": "estimate", "estimation": {"status": "completed"}, "cost_usd": 0.2119})
     html = render()
-    assert "Total lap <strong>15.5s" in html and "TC <strong>7.89¢" in html
+    assert "Total lap <strong>15.5s" in html and "TC <strong>0.21</strong>" in html
     assert "R1 · Base &amp; drawers <strong>7.2s" in html
     assert "R2 · Tall cabinet <strong>15.5s" in html
     assert html.count('href="?screen=object_detail') == 2

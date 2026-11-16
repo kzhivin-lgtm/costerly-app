@@ -196,16 +196,15 @@ def cycle_metrics_html(rows, *, elapsed, ready_seconds, cost_usd, running):
     def seconds(value):
         return "—" if value is None else f"{value:.1f}s"
 
-    def cents(value):
+    def dollars(value):
         if value is None:
             return "Pending" if running else "—"
-        amount = value * 100
-        return "&lt;0.01¢" if 0 < amount < 0.005 else f"{amount:.2f}¢"
+        return "&lt;0.01" if 0 < value < 0.005 else f"{value:.2f}"
 
     parts = [
         f'<span>Total lap <strong>{seconds(elapsed)}</strong></span>',
-        f'<span title="Model cost for the whole Estimation cycle in US cents">'
-        f'TC <strong>{cents(cost_usd)}</strong></span>',
+        f'<span title="Model cost for the whole Estimation cycle in US dollars">'
+        f'TC <strong>{dollars(cost_usd)}</strong></span>',
     ]
     object_rows = sorted((row for row in rows if not _is_project_cost_row(row)), key=_object_key)
     for index, row in enumerate(object_rows, 1):
