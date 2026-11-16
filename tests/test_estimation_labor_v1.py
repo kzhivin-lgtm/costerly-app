@@ -52,8 +52,8 @@ class LaborV1Test(TestCase):
             self.assertEqual(result["work"]["sheet_count"], 0.5)
             self.assertEqual(result["work"]["blank_count"], 1)
             self.assertEqual(result["in_house"]["materials"][0]["stock_ex_vat"], 90)
-            self.assertEqual(result["subcontractor"][0]["bundle_ex_vat"], 122.5)
-            self.assertEqual(result["subcontractor"][0]["machining_ex_vat"], 12)
+            self.assertEqual(result["subcontractor"]["bundle_ex_vat"], 122.5)
+            self.assertEqual(result["subcontractor"]["machining_ex_vat"], 12)
         for key in ("cut_m", "machine_minutes", "setup_minutes"):
             self.assertAlmostEqual(first["work"][key] + second["work"][key], estimate["work"][key])
 
@@ -69,9 +69,8 @@ class LaborV1Test(TestCase):
         with patch("use_cases.wood_cnc_calculation._layout", side_effect=AssertionError("Repacked in Calculation")):
             result = calculate_labor_v1(layout, plan, machine_rate=60)
         self.assertEqual(result["in_house"]["materials"][0]["stock_ex_vat"], 180)
-        self.assertEqual(result["subcontractor"][0]["bundle_ex_vat"], 245)
-        self.assertEqual(result["subcontractor"][0]["machining_ex_vat"], 36)
-        self.assertEqual(result["subcontractor"][0]["size_mm"], [2440, 1220])
+        self.assertEqual(result["subcontractor"]["bundle_ex_vat"], 245)
+        self.assertEqual(result["subcontractor"]["machining_ex_vat"], 36)
         self.assertGreater(result["in_house"]["operator_ex_vat"], 0)
 
     def test_only_concealed_back_splits_and_unplaced_work_keeps_subtotal_partial(self):
@@ -86,16 +85,28 @@ class LaborV1Test(TestCase):
         self.assertEqual(row["unplaced"], {"object-001:B01:door_front:002": 1})
         result = calculate_labor_v1(layout, plan)
         self.assertEqual(result["work"]["drilled_part_count"], 0)
-        self.assertEqual(result["subcontractor"][0]["bundle_ex_vat"], 245)
-        self.assertIn("placed parts only", result["subcontractor"][0]["status"])
+        self.assertEqual(result["subcontractor"]["bundle_ex_vat"], 245)
+        self.assertEqual(result["unplaced_blanks"], 1)
         self.assertEqual(len(result["issues"]), 1)
 
-    def test_unknown_supplier_quote_and_changed_quantity_are_explicit(self):
-        report = {"objects": {"object-001": {"parts": [_part("fixed_panel")]}}}
-        plan = _plan([_allocation("B01:fixed_panel:001")], family="mdf_hdf")
+    def test_supplier_allowance_covers_same_mixed_stock_without_inventing_machine_rate(self):
+        report = {"objects": {"object-001": {"parts": [
+            _part("door_front"), _part("fixed_panel"), _part("carcass_back"),
+        ]}}}
+        plan = _plan([_allocation("B01:door_front:001")])
+        plan["lines"] += _plan([_allocation("B01:fixed_panel:002")], family="mdf_hdf", thickness=20)["lines"]
+        plan["lines"] += _plan([_allocation("B01:carcass_back:003")], family="fibreboard_hardboard", thickness=6)["lines"]
         layout = build_sheet_layout(report, plan)
+        # Existing Parts snapshots can contain the old supplier-only subset.
+        # Calculation must use the shared layout even when that field exists.
+        for group in layout["groups"]:
+            group["supplier_layout"] = None
         result = calculate_labor_v1(layout, plan)
-        self.assertIsNone(result["subcontractor"][0]["bundle_ex_vat"])
+        self.assertEqual(result["work"]["sheet_count"], 3)
+        self.assertEqual(result["work"]["drilled_part_count"], 2)
+        self.assertEqual(result["subcontractor"]["bundle_ex_vat"], 735)
+        self.assertEqual(result["subcontractor"]["machining_ex_vat"], 24)
+        self.assertIsNone(result["in_house"]["machine_rate"])
         self.assertIsNone(result["in_house"]["machine_ex_vat"])
         plan["object_quantities"]["object-001"] = 2
         with self.assertRaisesRegex(ValueError, "different quantities"):

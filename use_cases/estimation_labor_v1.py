@@ -12,7 +12,7 @@ from use_cases.wood_cnc_calculation import (
 )
 
 
-LABOR_VERSION = "Labor V1.2"
+LABOR_VERSION = "Labor V1.2.1"
 LAYOUT_VERSION = "cnc_sheet_layout_v1"
 SHEET_FAMILIES = {
     "mdf_hdf", "faced_mdf", "fibreboard_hardboard", "particleboard",
@@ -22,7 +22,6 @@ PLINTH_ROLES = {"plinth_visible_run", "plinth_front", "plinth_return"}
 SPLIT_ROLES = PLINTH_ROLES | {"carcass_back", "frame_backing"}
 DRILL_EXCLUSIONS = SPLIT_ROLES | {"drawer_box_bottom"}
 PANEL_ROLES = {"carcass_sheet", "backing_sheet", "internal_sheet", "visible_sheet", "worktop_substrate"}
-SUPPLIER_SHEET = (2440, 1220)
 SUPPLIER_SHEET_RATE = 245
 SUPPLIER_MACHINING_RATE = 12
 EMPLOYER_LOAD = 0.25
@@ -203,25 +202,19 @@ def build_sheet_layout(report, plan):
             layout = _placed(batch, group["split_allowed"])
             for part_id in layout["unplaced"]:
                 issues.append({"reference": part_id, "issue": "Does not fit the selected sheet"})
-            standard_supplier = (family == "melamine_faced_particleboard" and thickness == 17
-                                 and w == 1220 and l in (2400, 2440))
-            supplier_layout = layout if (l, w) == SUPPLIER_SHEET else None
-            if standard_supplier and supplier_layout is None:
-                supplier_layout = _placed(replace(batch, length_mm=SUPPLIER_SHEET[0]), group["split_allowed"])
             groups.append({
                 "selection_key": line["selection_key"], "candidate_id": line["candidate_id"],
                 "material": line["display_name"], "thickness_mm": thickness, "size_mm": [l, w],
                 "layout": layout, "drilling": group["drilling"],
-                "supplier_layout": supplier_layout if standard_supplier else None,
             })
     return {"version": LAYOUT_VERSION, "basis_sha256": sheet_layout_basis(plan), "groups": groups, "issues": issues}
 
 
-def _workload(groups, layout_key, *, tool_changes=None):
+def _workload(groups, *, tool_changes=None):
     layouts = []
     drilling = []
     for group in groups:
-        layout = group[layout_key]
+        layout = group["layout"]
         if layout is None:
             continue
         layouts.append({**layout, "placements": [Placement(**p) for p in layout["placements"]]})
@@ -264,14 +257,13 @@ def _object_work(groups, object_id):
     projected = []
     for group in groups:
         layout = _object_layout(group["layout"], object_id)
-        supplier = _object_layout(group["supplier_layout"], object_id)
-        if layout is None and supplier is None:
+        if layout is None:
             continue
         projected.append({
-            **group, "layout": layout, "supplier_layout": supplier,
+            **group, "layout": layout,
             "drilling": [row for row in group["drilling"] if _belongs(row["part_id"], object_id)],
         })
-    work = _workload(projected, "layout", tool_changes=0)
+    work = _workload(projected, tool_changes=0)
     active = [group["layout"] for group in groups if group["layout"]["stock_count"]]
     stock_total = sum(row["stock_count"] for row in active)
     if stock_total:
@@ -290,7 +282,7 @@ def calculate_labor_v1(layout, plan, *, machine_rate=None, object_id=None):
     groups = layout["groups"]
     issues = layout["issues"]
     if object_id is None:
-        work = _workload(groups, "layout")
+        work = _workload(groups)
     else:
         groups, work = _object_work(groups, object_id)
         stock_names = {line["display_name"] for line in priced_lines.values()
@@ -303,7 +295,7 @@ def calculate_labor_v1(layout, plan, *, machine_rate=None, object_id=None):
     internal = in_house_cost(work, gross_rate_per_hour=OPERATOR_RATE, machine_rate_per_hour=machine_rate)
     machine = internal["machine_cost"]
     operator = round(internal["labor_hours"] * OPERATOR_RATE * (1 + EMPLOYER_LOAD), 2)
-    shop_rows, supplier_rows = [], []
+    shop_rows = []
     for group in groups:
         saved_layout = group["layout"]
         line = priced_lines[group["selection_key"]]
@@ -317,20 +309,18 @@ def calculate_labor_v1(layout, plan, *, machine_rate=None, object_id=None):
                 "stock_is_assumed": line["selection_key"].startswith("assumption:"),
                 "cut_m": saved_layout["cut_m"], "path_m": saved_layout["path_m"],
             })
-        supplier = group["supplier_layout"]
-        if not supplier or not supplier["stock_count"]:
-            supplier_rows.append({**detail, "sheets": None, "bundle_ex_vat": None, "machining_ex_vat": None,
-                                  "status": "Supplier quote required" if not supplier else "Supplier format does not fit"})
-            continue
-        drills = _workload([group], "supplier_layout")["drilled_part_count"]
-        sheet_charge = round(supplier["stock_count"] * SUPPLIER_SHEET_RATE, 2)
-        supplier_rows.append({
-            **detail, "size_mm": list(SUPPLIER_SHEET), "sheets": supplier["stock_count"], "drilled_parts": drills,
-            "bundle_ex_vat": sheet_charge, "machining_ex_vat": drills * SUPPLIER_MACHINING_RATE,
-            "status": "Israel standard estimate · placed parts only" if supplier["unplaced"] else "Israel standard estimate",
-        })
+    supplier = {
+        "sheet_rate": SUPPLIER_SHEET_RATE,
+        "drilling_rate": SUPPLIER_MACHINING_RATE,
+        "bundle_ex_vat": round(work["sheet_count"] * SUPPLIER_SHEET_RATE, 2),
+        "machining_ex_vat": work["drilled_part_count"] * SUPPLIER_MACHINING_RATE,
+    }
     return {
         "version": LABOR_VERSION, "work": work, "issues": issues,
-        "in_house": {"operator_ex_vat": operator, "machine_ex_vat": machine, "materials": shop_rows},
-        "subcontractor": supplier_rows,
+        "unplaced_blanks": sum(sum(group["layout"]["unplaced"].values()) for group in groups),
+        "in_house": {
+            "operator_ex_vat": operator, "operator_rate": OPERATOR_RATE * (1 + EMPLOYER_LOAD),
+            "machine_ex_vat": machine, "machine_rate": machine_rate, "materials": shop_rows,
+        },
+        "subcontractor": supplier,
     }

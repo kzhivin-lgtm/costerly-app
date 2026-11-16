@@ -1,7 +1,6 @@
 """Labor V1 comparison for the open Object Detail card."""
 
 from html import escape
-from itertools import zip_longest
 import json
 import logging
 
@@ -60,14 +59,6 @@ def _money(amount):
     return "—" if amount is None else f"₪{amount:,.2f}"
 
 
-def _material(row):
-    return f"{row['material']} · {row['thickness_mm']:g} mm"
-
-
-def _format(row):
-    return " × ".join(f"{d:g}" for d in row["size_mm"])
-
-
 def _sheets(quantity):
     return "—" if quantity is None else f"{quantity:.2f}".rstrip("0").rstrip(".")
 
@@ -98,64 +89,62 @@ def _comparison_table(rows):
     )
 
 
-def _stock_label(row):
-    return f"{_material(row)} · {_format(row)} mm"
-
-
 def _show_comparison(result):
     work = result["work"]
     internal = result["in_house"]
     rows = internal["materials"]
     external = result["subcontractor"]
     issues = result["issues"]
-    if not rows and not external and not issues:
+    if not rows and not issues:
         _comparison_table(())
         st.info("No sheet goods for CNC on this object.")
         return
-    st.caption("Cutting and drilling · Costs before VAT · Shared sheets allocated by area")
-    if issues:
-        st.warning(f"{len(issues)} layout item(s) need review. The calculated scope is partial.")
+    st.caption("Same CNC layout in both scenarios · Costs before VAT · Shared sheets allocated by area")
+    if result["unplaced_blanks"]:
+        st.warning(f'{result["unplaced_blanks"]} blanks did not fit. Both estimates are partial.')
+    elif issues:
+        st.warning("Some CNC parts need review. Both estimates are partial.")
     priced_stock = [row["stock_ex_vat"] for row in rows if row["stock_ex_vat"] is not None]
     machine = internal["machine_ex_vat"]
     operator = internal["operator_ex_vat"]
-    priced = [row for row in external if row["bundle_ex_vat"] is not None]
-    supplier_stock = sum(row["bundle_ex_vat"] for row in priced) if priced else None
-    supplier_drilling = sum(row["machining_ex_vat"] for row in priced) if priced else None
-    internal_total = operator + sum(priced_stock) + (machine or 0) if work["blank_count"] else None
-    supplier_total = supplier_stock + supplier_drilling if priced else None
-    internal_complete = not issues and len(priced_stock) == len(rows) and machine is not None
-    supplier_complete = not issues and len(priced) == len(external)
+    has_work = bool(work["blank_count"])
+    supplier_stock = external["bundle_ex_vat"] if has_work else None
+    supplier_drilling = external["machining_ex_vat"] if has_work else None
+    internal_total = operator + sum(priced_stock) + (machine or 0) if has_work else None
+    supplier_total = supplier_stock + supplier_drilling if has_work else None
+    layout_complete = not issues and not result["unplaced_blanks"]
+    internal_complete = layout_complete and len(priced_stock) == len(rows) and machine is not None
+    machine_label = "Machine" if machine is None else f"Machine · {_money(internal['machine_rate'])}/h"
+
+    def shared(label, value):
+        return (label, value), (label, value)
+
     _comparison_table([
-        (("Sheet share", _sheets(work["sheet_count"])),
-         ("Sheet share", _sheets(sum(row["sheets"] for row in priced)) if priced else "—")),
-        (("Parts with drilling", str(work["drilled_part_count"])),
-         ("Parts with drilling", str(sum(row["drilled_parts"] for row in priced)) if priced else "—")),
-        (("Machine time", f"{work['machine_minutes']:.1f} min"), None),
+        shared("CNC sheets", _sheets(work["sheet_count"])),
+        shared("Blanks laid out", str(work["blank_count"])),
+        shared("Parts with drilling", str(work["drilled_part_count"])),
+        shared("Cut length", f"{work['cut_m']:.1f} m"),
+        shared("Estimated CNC time", f"{work['machine_minutes']:.1f} min"),
         (("Sheet stock", _money(sum(priced_stock) if priced_stock else None)),
-         ("Stock and cutting", _money(supplier_stock))),
-        (("Operator", _money(operator) if work["blank_count"] else "—"),
-         ("Drilling allowance", _money(supplier_drilling))),
-        (("Machine", _money(machine) if machine is not None else "Rate needed"), None),
+         (f"Stock and cutting · ₪{external['sheet_rate']}/sheet", _money(supplier_stock))),
+        ((f"Operator · {_money(internal['operator_rate'])}/h", _money(operator) if has_work else "—"),
+         (f"Drilling allowance · ₪{external['drilling_rate']}/part", _money(supplier_drilling))),
+        ((machine_label, _money(machine) if machine is not None else "Rate needed"), None),
         (("Estimated cost", _estimate(internal_total, internal_complete)),
-         ("Estimated cost", _estimate(supplier_total, supplier_complete))),
+         ("Estimated cost", _estimate(supplier_total, layout_complete))),
     ])
-    if len(priced) < len(external):
-        st.write(f"Subcontractor quote needed for {len(external) - len(priced)} stock group(s).")
-    with st.expander("Material and machining details"):
-        if rows or external:
-            shop_details = [
-                (_stock_label(row), f"{_sheets(row['sheets'])} sheets · {row['cut_m']:.1f} m cut"
-                 f" · {row['path_m']:.1f} m toolpath · {_money(row['stock_ex_vat'])}"
-                 + (" (allowance)" if row["stock_is_assumed"] else ""))
-                for row in rows
-            ]
-            vendor_details = [
-                (_stock_label(row), f"{_sheets(row['sheets'])} sheets · {_money(row['bundle_ex_vat'])} stock and cutting"
-                 f" · {_money(row['machining_ex_vat'])} drilling · {row['status']}")
-                for row in external
-            ]
-            _comparison_table(zip_longest(shop_details, vendor_details))
-        if issues:
+    st.caption("Subcontractor pricing is a budget allowance per sheet and per drilled part. Time is a CNC model estimate.")
+    with st.expander("CNC time breakdown"):
+        _comparison_table([
+            shared(label, f"{work[key]:.1f} min") for label, key in (
+                ("Setup", "setup_minutes"), ("Load sheets", "load_minutes"),
+                ("Unload parts and scrap", "unload_minutes"), ("Clean table", "cleanup_minutes"),
+                ("Cutting", "cut_minutes"), ("Moves", "move_minutes"), ("Drilling", "drilling_minutes"),
+                ("Tool changes", "tool_change_minutes"),
+            )
+        ])
+    if issues:
+        with st.expander("Layout issues"):
             for row in issues:
                 st.text(f"{row['reference']}: {row['issue']}")
 

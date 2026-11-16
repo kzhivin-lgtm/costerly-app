@@ -34,7 +34,24 @@ cycle show unavailable values. Uses the current Objects refresh. CNC remains
 in Object Detail below Materials and Elements, with two columns: In-house
 and Subcontractor. 167 focused tests passed; the Object Detail component
 also rendered and calculated for all four objects in the saved Lev1, Lev2
-and Adda controls. Authenticated live cycle and owner acceptance are pending.
+and Adda controls. Commit c4d5b04 deployed via Railway
+bb025cbb-e059-4193-b3e6-a231a855e62c; a new Cloudflare session served
+estimation-labor-v1.2-detection-v8.4.29. Authenticated live cycle and owner
+acceptance are pending.
+
+Labor V1.2.1, USER REQUEST. Use one saved CNC layout per object for both
+scenarios. Include every placed CNC stock group in both columns and show
+the same blanks, sheets, cut length, drilled parts and model minutes.
+Keep supplier pricing as a single budget allowance across those sheets:
+ILS 245 per sheet including stock and cutting, plus ILS 12 per drilled
+part. Show unplaced blanks as exclusions from both subtotals. In-house
+still uses saved stock prices, ILS 55/h plus 25% for the operator, and
+the configured CNC machine rate when available. Never assume a machine
+rate. Saved Lev2: 16 sheets, 104 placed blanks, 86 with drilling, 202.581 m,
+246.689 min. ILS 4,156.60 in-house before the machine charge and ILS 4,952
+subcontracted, ex VAT, for the placed scope. Two B05 blanks did not fit.
+167 focused tests passed and all four saved Lev1, Lev2 and Adda objects
+rendered locally. Authenticated production acceptance is pending.
 
 ## Estimation Parts Check, 3.17.4.6
 
