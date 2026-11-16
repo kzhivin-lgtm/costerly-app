@@ -2,6 +2,13 @@
 
 ## Estimation Labor V1
 
+COMPLETED, owner acceptance and protected checkpoint, 2026-11-17.
+Labor V1.2.15 (`36b3aa7`) is pinned by `estimation-labor-v1.2.15-2026-11-17`.
+Labor V1.2.16 (`6930392`) aligns the five CNC cost rows. Both routes keep
+their previous totals on the four saved control cards. See the
+[checkpoint and replay](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1215-production-checkpoint) and the
+[1.2.16 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1216-cnc-comparison-order).
+
 ACTIVE, P1, USER REQUEST. Release Labor V1 for sheet CNC in-house and
 subcontracting. Fresh Parts Check publishes an immutable layout after stock
 resolution. Older estimates can add the layout from their saved Parts and
