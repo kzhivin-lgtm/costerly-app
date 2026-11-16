@@ -155,12 +155,39 @@ same prep cost for our operator; the supplier-included configuration
 omits this extra charge.
 457 focused tests passed. Offline card replay: Lev1 19.06 min, Lev2
 60 min, Adda straight 13.41 min and corner 50.82 min. Adda's 91 source
-positions give 64.24 min before display rounding; the corner's 72
+positions give 64.24 min when displayed; the corner's 72
 source positions give 95 physical blanks.
+Commit 39660b6 deployed via Railway 04602e8b-3e22-460c-83f3-0e8e08799d3e.
+Cloudflare served estimation-labor-v1.2.7-detection-v8.4.29.
 Measure active operator time on known jobs before treating this as a
 validated norm. [Bemida](https://bemida.co.il/cnc-dxf/) can quote drawing
 preparation. Count preparation once according to who does it and
 whether the supplier includes it.
+
+Labor V1.2.8, USER APPROVED. Set manual sheet handling to 7 minutes:
+4 to load, 2 to unload parts and scrap, 1 to clean. Stock, cutting,
+drilling, job setup, file preparation and the supplier rates are
+unchanged. 457 focused tests passed. On the saved Lev2 control the
+machine cycle dropped from 248.92 to 200.92 minutes. Rounded operator
+hours fell from 5 to 4. Displayed CNC totals are ILS 4,604 in-house
+and ILS 5,045 subcontracted, a difference of ILS 441. Saved Lev1
+has an unresolved stock price and shows an in-house subtotal.
+
+PENDING, P1, USER REQUEST. Confirm default file preparation scope for
+subcontracted sheet CNC. [Algolan](https://algolan-express.co.il/)
+accepts plans or dimensions and generates its own CNC programs; its
+per-sheet price explicitly covers cutting and lists internal machining
+separately. [Alfandari](https://alfandari.biz/מבצעים/) lists stock and cut
+without a stated file preparation fee. [WoodCut](https://woodcut.co.il/contact/)
+requires a vector, [Bemida](https://bemida.co.il/cnc-dxf/) can charge to
+prepare a drawing, and [Carmi](https://carmi-woods.co.il/special-order/)
+charges for planning complex work. Supplier nesting is distinct from
+preparing input drawings, part lists and drilling specifications.
+Recommendation pending approval: when the supplier nests and programs,
+budget only our time to prepare and check the packet we send; add a
+supplier fee only when quoted. Verify the handoff on one known order
+before setting a default for our shortened scope. V1.2.7 still budgets
+our full file preparation in both scenarios by default.
 
 PENDING, P1, USER REPORT. Diagnose Lev2's observed Objects Estimation
 lap increase from 97.3 s to 144 s. The two production Parts Check

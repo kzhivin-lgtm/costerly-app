@@ -43,7 +43,8 @@ class WoodCncCalculationTest(unittest.TestCase):
         a, b = Blank("A", 600, 400), Blank("B", 600, 400)
         result = cnc_workload([_batch([a, b], common_cut=True)], drilling_parts=[a, b])
         row = result["batches"][0]
-        self.assertEqual((result["sheet_count"], result["handling_minutes"], result["setup_minutes"]), (1, 10, 10))
+        self.assertEqual((result["sheet_count"], result["handling_minutes"], result["setup_minutes"]), (1, 7, 10))
+        self.assertEqual((result["load_minutes"], result["unload_minutes"], result["cleanup_minutes"]), (4, 2, 1))
         self.assertAlmostEqual(row["perimeter_m"], 4)
         self.assertAlmostEqual(row["common_m"], 0.4)
         self.assertAlmostEqual(row["cut_m"], 3.6)

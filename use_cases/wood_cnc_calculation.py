@@ -16,9 +16,9 @@ class CncParameters:
     solid_feed_m_min: float = 6
     trim_mm: float = 5
     batch_setup_min: float = 10
-    sheet_load_min: float = 5
-    sheet_unload_min: float = 3
-    sheet_cleanup_min: float = 2
+    sheet_load_min: float = 4
+    sheet_unload_min: float = 2
+    sheet_cleanup_min: float = 1
     solid_blank_handling_min: float = 10
     transition_seconds_per_pass: float = 3
     tool_change_min: float = 0.5
@@ -313,8 +313,7 @@ def cnc_workload_from_layout(layouts, *, drilling_parts=(), tool_changes=None, p
     active = [r for r in results if r["stock_count"]]
     sheets = sum(r["stock_count"] for r in active if r["stock_kind"] != "solid_blank")
     blanks = sum(r["stock_count"] for r in active if r["stock_kind"] == "solid_blank")
-    # Panels use the approved manual 5 + 3 + 2. Solid blanks have an
-    # independent handling assumption even if its preview value is also 10.
+    # Panel handling and solid blank handling use separate assumptions.
     load = sheets * parameters.sheet_load_min
     unload = sheets * parameters.sheet_unload_min
     cleanup = sheets * parameters.sheet_cleanup_min
