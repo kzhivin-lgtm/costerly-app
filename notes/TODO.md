@@ -64,7 +64,21 @@ allowances. On saved Lev2, 246.689 model minutes cost 5 operator hours
 (ILS 343.75). In-house priced stock is ILS 3,673.94. The known subtotal is
 ILS 4,017.69 before the missing sheet and machine rate. CNC scope and
 subcontractor budget are unchanged. 168 focused tests passed and all four
-saved Lev1, Lev2 and Adda objects rendered locally.
+saved Lev1, Lev2 and Adda objects rendered locally. Commit a5dea61
+deployed via Railway 1a0a5053-23b8-42e2-81e4-a8ad760dc51c. A new Cloudflare
+session served estimation-labor-v1.2.2-detection-v8.4.29. Authenticated
+production acceptance remains pending.
+
+Labor V1.2.3, USER REQUEST. Restore TC in US cents from numeric usage
+strings and recover missing aggregates from the estimate's saved usage.
+Remove both rules around the cycle metrics. Load CNC on Object Detail in
+a parallel fragment. Show sheets and parts above the price table, align
+labels with amounts, and show time once in the white breakdown. The
+breakdown includes total time and excluded parts. Opening a card with an
+outdated layout recomputes it read-only. On saved Lev2 there are 15 CNC
+sheets and 104 placed blanks; two B05 sides at 2535 × 620 mm exceed the
+2400 × 1220 mm stock. 189 targeted tests passed. The local Object Detail
+component rendered automatically and reused its result on rerender.
 
 ## Estimation Parts Check, 3.17.4.6
 
@@ -120,17 +134,23 @@ ACTIVE, P1, USER REQUEST. Review woodworking sheet prices in Company
 Catalog and Israel Reference and replace generic ILS 200 allowances with
 supported prices for compatible stock. Audited the saved Lev1, Lev2 and
 Adda plans on 16 November: 15 CNC sheet purchase lines, five allowance
-lines. Lev1 has veneered MDF 37 mm (2 sheets), MDF 50 mm (1, finish
-unspecified) and LDSP 40 mm (2 lines, 1 sheet each). Review finished
-thickness versus purchased stock and the physical layup before pricing
-these. Lev2 has one assumed 2440 × 1220 × 17 mm veneered MDF sheet for
-four fixed panels, V03:C17, C01, C26 and C12, inferred from a rendering
-cue on a brown wood-grain corner. Confirm veneer versus wood-look
-melamine. Farjun lists the 17 mm veneered MDF format but has no usable
-public price. Bemida's listing is priced with cutting for a different
-thickness. Adda had no sheet-price allowance on this saved run. Supabase
-catalog replacement and full catalog coverage remain pending. Preserve
-the proven worktop, carcass and cutout results.
+lines. The owner rejected the Lev1 stock assumptions of veneered MDF
+37 mm, MDF 50 mm and both LDSP 40 mm lines. Parts derived 37 mm from
+nearby projections, 50 mm from P01's scaled profile, and 40 mm from a
+printed B02 dimension and a separate P01 scaled profile. Check which
+physical dimensions these measure and confirm the layup before pricing.
+For a specified 50 mm MDF layup the owner suggests 2 × 25 mm. Finsa
+lists factory MDF up to 50 mm; local availability is unverified. EGGER
+lists 38 mm Eurodekor faced chipboard and a separate 38 mm laminated
+particleboard worktop. Keep those product options distinct from Lev1.
+
+The owner confirmed that all Lev2 side panels are the same colour
+and the material is unspecified. Kitchen faces use the existing LDSP
+fallback for unspecified material even when the rendering suggests
+grain. Explicit material notes still determine stock. Saved Parts and
+catalog data reproduce 12 LDSP and 4 HDF sheets for purchasing, with
+15 CNC sheets and no veneered MDF allowance. Adda had no sheet-price
+allowance in the saved run. Full sheet catalog coverage remains pending.
 
 PENDING, P2, DISCOVERED DURING VERIFICATION. Align the production
 dependency contract test with the pinned deployment dependencies.

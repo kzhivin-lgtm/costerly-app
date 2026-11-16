@@ -12,7 +12,7 @@ from use_cases.wood_cnc_calculation import (
 )
 
 
-LABOR_VERSION = "Labor V1.2.2"
+LABOR_VERSION = "Labor V1.2.3"
 LAYOUT_VERSION = "cnc_sheet_layout_v1"
 SHEET_FAMILIES = {
     "mdf_hdf", "faced_mdf", "fibreboard_hardboard", "particleboard",
@@ -225,6 +225,30 @@ def _workload(groups, *, tool_changes=None):
 
 def _belongs(part_id, object_id):
     return part_id.partition(":")[0] == object_id
+
+
+def describe_layout_issues(issues, layout, report):
+    """Add source dimensions and sheet size to excluded parts."""
+    parts = _parts_index(report)
+    excluded = {}
+    labels = {"carcass_side": "cabinet side", "carcass_back": "cabinet back"}
+    for group in layout["groups"]:
+        for reference, count in group["layout"]["unplaced"].items():
+            part = parts.get(reference, {})
+            role = part.get("role", "part")
+            name = labels.get(role, role.replace("_", " "))
+            block = part.get("block_id") or part.get("owner_id")
+            where = f"{block}, " if block else ""
+            dims = part.get("dimensions") or {}
+            length, width = (dims.get(axis, {}).get("mm") for axis in ("length", "width"))
+            size = f" ({length:g} × {width:g} mm)" if _positive(length) and _positive(width) else ""
+            stock = " × ".join(f"{value:g}" for value in group["size_mm"])
+            unit = name if count == 1 else f"{name}s"
+            excluded[reference] = f"{where}{count} {unit}{size}. Selected sheet: {stock} mm."
+    return [
+        {**issue, "description": excluded.get(issue["reference"], f"{issue['reference']}: {issue['issue']}")}
+        for issue in issues
+    ]
 
 
 def _object_layout(layout, object_id):

@@ -265,9 +265,10 @@ def apply_object_detail_css() -> None:
         }
 
         .object-detail-table[data-section="cnc"] .object-detail-table-cell {
-            flex-direction: column;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
             align-items: start;
-            justify-content: center;
+            gap: 8px;
             overflow-wrap: anywhere;
         }
 
@@ -282,6 +283,52 @@ def apply_object_detail_css() -> None:
 
         .object-detail-cnc-value {
             font-weight: 600;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .object-detail-cnc-rate {
+            display: block;
+            color: var(--color-text-muted, #6b626b);
+            font-size: 0.875em;
+        }
+
+        .object-detail-cnc-caption {
+            margin: 6px 0 12px;
+            font-size: 13px;
+        }
+
+        .object-detail-cnc-breakdown {
+            margin-top: 12px;
+        }
+
+        .object-detail-cnc-breakdown > summary,
+        .object-detail-cnc-breakdown > p,
+        .object-detail-cnc-breakdown > ul {
+            padding: 10px 14px;
+            margin: 0;
+        }
+
+        .object-detail-cnc-breakdown > summary {
+            cursor: pointer;
+        }
+
+        .object-detail-cnc-breakdown > ul {
+            padding-inline-start: 32px;
+        }
+
+        .object-detail-cnc-breakdown table {
+            width: 100%;
+            margin: 0;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .object-detail-cnc-breakdown :is(th, td):last-child {
+            text-align: right;
+        }
+
+        .object-detail-cnc-breakdown tfoot {
+            font-weight: 700;
         }
 
         .object-detail-table[data-section="material"].object-detail-table--cols-6 {

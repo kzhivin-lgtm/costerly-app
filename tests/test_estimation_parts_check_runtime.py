@@ -141,9 +141,9 @@ def test_parts_check_status_survives_usage_write_failure(monkeypatch, pipeline_f
 
     def run_pipeline(*, request_provider, **_):
         request_provider.append({"operation": "estimation_v9_parts_check_request",
-                                 "input_tokens": 10, "output_tokens": 2, "total_cost_usd": 0.0051})
+                                 "input_tokens": 10, "output_tokens": 2, "total_cost_usd": "0.005100"})
         request_provider.append({"operation": "estimation_v9_parts_check_request",
-                                 "input_tokens": 15, "output_tokens": 3, "total_cost_usd": 0.0099})
+                                 "input_tokens": 15, "output_tokens": 3, "total_cost_usd": "0.009900"})
         if pipeline_fails:
             raise ValueError("Invalid model response")
         return {"stage": "Parts Check", "source_coverage": "reviewed",

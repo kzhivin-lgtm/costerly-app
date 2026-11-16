@@ -17,11 +17,14 @@ def _part(role, **fields):
             **fields}
 
 
-def _build(rows, families, *, quantity=1, issues=()):
+def _build(rows, families, *, quantity=1, issues=(), name=None):
+    source = _input(quantity)
+    if name:
+        source["input_payload"]["object"]["object_name"] = name
     return build_cb_material_demand(
         parts_report={"stage": "Parts Check", "run_id": "run-1",
                       "objects": {"object-1": {"parts": rows, "inventory_issues": list(issues)}}},
-        input_row=_input(quantity), allowed_material_families=families,
+        input_row=source, allowed_material_families=families,
     )
 
 
@@ -132,13 +135,24 @@ def test_source_stock_note_overrides_family_assumption_with_original_evidence():
         "mm": 18, "basis": "ocr_material_note", "refs": ["ocr:18"],
         "source_text": ["Фанера 18 мм"],
     }
-    result = _build([face], {"plywood", "mdf_hdf"})
+    result = _build([face], {"plywood", "mdf_hdf", "melamine_faced_particleboard"}, name="Kitchen")
 
     material, = result["materials"]
     assert material["family"] == "plywood"
     assert material["basis"] == "source_evidence"
     assert material["evidence_refs"] == ["ocr:18"]
     assert material["specification"]["thickness_mm"] == 18
+
+
+def test_unspecified_kitchen_panels_use_melamine_even_with_a_grain_cue():
+    panel = _part("fixed_panel", visual_stock={
+        "surface": "wood_grain", "material": "veneered_mdf", "refs": ["view-1"],
+    })
+    result = _build([panel], {"mdf_hdf", "melamine_faced_particleboard"}, name="Kitchen")
+    material, = result["materials"]
+    assert material["family"] == "melamine_faced_particleboard"
+    assert material["specification"]["thickness_mm"] == 17
+    assert material["basis"] == "construction_assumption"
 
 
 def test_compatible_visible_wood_grain_parts_share_one_veneered_mdf_demand():

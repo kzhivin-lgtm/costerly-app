@@ -21,7 +21,7 @@ from ui.screen_transition import (
 )
 from use_cases.estimation import load_objects_estimation_data
 from use_cases.estimation_runtime import submit_prepared_estimation_job
-from use_cases.estimation_parts_check_runtime import load_parts_check
+from use_cases.estimation_parts_check_runtime import load_estimation_cycle_cost, load_parts_check
 from use_cases.object_detail_runtime import submit_object_detail_prefetch
 from use_cases.final_approval import final_approval
 from use_cases.estimation_progress import EstimationCycle, clear_estimate_progress, get_estimate_progress
@@ -460,11 +460,13 @@ def _render_pricing_table(
     *,
     estimate_id: str | None,
     run_id: str | None,
+    company_id: str | None = None,
 ) -> None:
     """Render the Objects Estimation pricing table."""
     rows = _rows_with_approved_overlay(data["rows"])
     cycle = _estimation_cycle(estimate_id)
     elapsed = None
+    running = bool(cycle and not cycle.worker_finished)
     if cycle:
         ready_ids = [
             str(row["object_key"]) for row in rows
@@ -473,6 +475,20 @@ def _render_pricing_table(
         failed_count = sum(objects_pricing.row_status(row) == "failed" for row in rows)
         elapsed = cycle.observe(perf_counter(), ready_ids=ready_ids,
                                 all_terminal=len(ready_ids) + failed_count == len(rows))
+    cost_usd = cycle.cost_usd if cycle else None
+    if cost_usd is None and not running and estimate_id and run_id and company_id and rows and all(
+        objects_pricing.review_action_ready(row) for row in rows
+    ):
+        key = company_id, run_id, estimate_id
+        costs = st.session_state.setdefault("objects_saved_cycle_costs", {})
+        if key not in costs:
+            try:
+                costs[key] = load_estimation_cycle_cost(
+                    client=get_supabase_client(), company_id=company_id, run_id=run_id, estimate_id=estimate_id,
+                )
+            except Exception:
+                costs[key] = None
+        cost_usd = costs[key]
     st.markdown(
         objects_pricing.pricing_table_html(
             rows=rows,
@@ -482,8 +498,8 @@ def _render_pricing_table(
             run_id=run_id,
             cycle_html=objects_pricing.cycle_metrics_html(
                 rows, elapsed=elapsed, ready_seconds=cycle.ready_seconds if cycle else {},
-                cost_usd=cycle.cost_usd if cycle else None,
-                running=bool(cycle and not cycle.worker_finished),
+                cost_usd=cost_usd,
+                running=running,
             ) if estimate_id else "",
             proposal_pdf_url=(
                 st.session_state.get("proposal_pdf_urls_by_estimate", {}).get(str(estimate_id))
@@ -751,6 +767,7 @@ def _render_objects_table_content(
     estimate_id: str | None,
     run_id: str | None,
     screen_state: ObjectsScreenState,
+    company_id: str | None = None,
 ) -> None:
     """Render the messages and pricing table that may change during Estimation."""
     _render_objects_messages(
@@ -759,7 +776,7 @@ def _render_objects_table_content(
         cache_warning=screen_state.cache_warning,
     )
     data = _data_with_progress(screen_state.data, estimate_id)
-    _render_pricing_table(data, estimate_id=estimate_id, run_id=run_id)
+    _render_pricing_table(data, estimate_id=estimate_id, run_id=run_id, company_id=company_id)
 
 
 @st.fragment(run_every=1.5)
@@ -802,6 +819,7 @@ def _render_live_objects_content(
         _render_objects_table_content(
             estimate_id=estimate_id,
             run_id=run_id,
+            company_id=company_id,
             screen_state=ObjectsScreenState(
                 data=routed_data,
                 data_error=screen_state.data_error,
@@ -936,6 +954,7 @@ def render_objects_screen(
         _render_objects_table_content(
             estimate_id=estimate_id,
             run_id=run_id,
+            company_id=company_id,
             screen_state=screen_state,
         )
 

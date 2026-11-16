@@ -389,7 +389,8 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                 material_refs = tuple(dict.fromkeys([*material_refs, *measurements.get("thickness", {}).get("refs", ())]))
             preferences = (source_family,) if source_family else _ROLE_FAMILY_PREFERENCE.get(role, ())
             visual_stock = row.get("visual_stock", {})
-            visible_veneer = (not notes and not unit and visual_stock.get("surface") == "wood_grain"
+            kitchen_face = kitchen and role == "visible_sheet"
+            visible_veneer = (not kitchen_face and not notes and not unit and visual_stock.get("surface") == "wood_grain"
                               and visual_stock.get("material", VENEERED_MDF) == VENEERED_MDF
                               and "mdf_hdf" in allowed_material_families)
             if visible_veneer:

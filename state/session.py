@@ -251,6 +251,10 @@ def invalidate_object_detail_cache(estimate_id: str) -> None:
     if not estimate_key:
         return
     st.session_state.setdefault("object_detail_data_cache_dirty", set()).add(estimate_key)
+    comparisons = st.session_state.get("labor_v1_comparisons", {})
+    for key in list(comparisons):
+        if key[2] == estimate_key:
+            comparisons.pop(key, None)
     cache = st.session_state.setdefault("object_detail_data_cache", {})
     for key in list(cache):
         if isinstance(key, tuple) and key and key[0] == estimate_key:

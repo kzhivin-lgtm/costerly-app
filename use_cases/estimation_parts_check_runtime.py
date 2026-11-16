@@ -85,12 +85,38 @@ def _request_provider(company_id, run_id, estimate_id, file_name, usage_events):
 
 
 def _request_cost_usd(usage_events, *, usage_unavailable):
-    costs = [event.get("total_cost_usd") for event in usage_events]
-    if usage_unavailable or any(
-        not isinstance(cost, (int, float)) or not isfinite(cost) or cost < 0 for cost in costs
-    ):
+    if usage_unavailable:
         return None
+    costs = []
+    for event in usage_events:
+        value = event.get("total_cost_usd")
+        if isinstance(value, bool):
+            return None
+        try:
+            cost = float(value)
+        except (TypeError, ValueError, OverflowError):
+            return None
+        if not isfinite(cost) or cost < 0:
+            return None
+        costs.append(cost)
     return fsum(costs)
+
+
+def load_estimation_cycle_cost(*, client, company_id, run_id, estimate_id):
+    """Recover the cost of the displayed estimate from persisted usage."""
+    reports = _reports(client, company_id, run_id, estimate_id)
+    if not reports or reports[0]["status"] != "succeeded":
+        return None
+    amount = (reports[0].get("raw_usage") or {}).get("request_cost_usd")
+    if amount is not None:
+        return _request_cost_usd([{"total_cost_usd": amount}], usage_unavailable=False)
+    events = (
+        client.table("agent_usage_events").select("total_cost_usd")
+        .eq("company_id", company_id).eq("run_id", run_id)
+        .eq("operation", "estimation_v9_parts_check_request")
+        .eq("raw_usage->>estimate_id", estimate_id).execute().data or []
+    )
+    return _request_cost_usd(events, usage_unavailable=False) if events else None
 
 
 def _artifact_prefix(company_id, run_id, estimate_id):
