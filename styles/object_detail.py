@@ -298,6 +298,21 @@ def apply_object_detail_css() -> None:
             font-size: 13px;
         }
 
+        .object-detail-cnc-count {
+            display: none;
+            margin-inline-start: 12px;
+            color: var(--color-text-muted, #6b626b);
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0;
+            text-transform: none;
+            white-space: nowrap;
+        }
+
+        .object-detail-cnc[open] > summary .object-detail-cnc-count {
+            display: inline;
+        }
+
         .object-detail-cnc-breakdown {
             margin-top: 12px;
         }

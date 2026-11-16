@@ -83,10 +83,11 @@ def _comparison_table(rows):
     )
 
 
-def _cnc_section(body):
+def _cnc_section(body, *, count_label=""):
+    counts = f'<span class="object-detail-cnc-count">{escape(count_label)}</span>' if count_label else ""
     return (
-        '<details class="object-detail-elements object-detail-elements-section object-detail-cnc" open>'
-        '<summary class="object-detail-section-title">CNC</summary>'
+        '<details class="object-detail-elements object-detail-elements-section object-detail-cnc">'
+        f'<summary class="object-detail-section-title">CNC{counts}</summary>'
         f'{body}</details>'
     )
 
@@ -146,7 +147,7 @@ def _comparison_html(result):
         return _cnc_section('<p class="object-detail-cnc-caption">No sheet goods for CNC on this object.</p>')
     sheets = _sheets(work["sheet_count"])
     count_label = f"{sheets} {'sheet' if work['sheet_count'] == 1 else 'sheets'}"
-    count_label += f" · {work['blank_count']} {'part' if work['blank_count'] == 1 else 'parts'}"
+    count_label += f", {work['blank_count']} {'part' if work['blank_count'] == 1 else 'parts'}"
     operator = internal["operator_ex_vat"]
     has_work = bool(work["blank_count"])
     supplier_stock = external["bundle_ex_vat"] if has_work else None
@@ -155,73 +156,66 @@ def _comparison_html(result):
     prep_cost = preparation["operator_ex_vat"]
     supplier_includes_prep = preparation["supplier_includes_preparation"]
     # Sum the rounded lines so the displayed whole-shekel totals reconcile.
-    internal_labor = (round(operator) + round(prep_cost) + round(edge["in_house_ex_vat"])
-                      if has_work or prep_minutes or edge["metres"] else None)
+    internal_labor = round(operator) + round(prep_cost) + round(edge["in_house_ex_vat"])
     sheet_amounts = [row["stock_ex_vat"] for row in rows if row["sheets"]]
     priced_sheet_amounts = [amount for amount in sheet_amounts if amount is not None]
     sheet_stock = sum(priced_sheet_amounts) if priced_sheet_amounts else None
     sheet_stock_complete = len(sheet_amounts) == len(priced_sheet_amounts)
     tape_stock = edge["tape_stock_ex_vat"]
     tape_stock_complete = edge["tape_stock_complete"]
-    internal_total = (
-        internal_labor + round(sheet_stock or 0) + round(tape_stock or 0)
-        if internal_labor is not None else None
-    )
-    supplier_total = (round(supplier_stock or 0) + round(supplier_drilling or 0) + round(edge["supplier_ex_vat"])
+    materials_complete = sheet_stock_complete and tape_stock_complete
+    material_cost = round(sheet_stock or 0) + round(tape_stock or 0)
+    material_amount = material_cost if sheet_stock is not None or (edge["metres"] and tape_stock is not None) else None
+    material_notes = []
+    if sheet_amounts:
+        material_notes.append(f"Sheets {_money(sheet_stock)}")
+    if edge["metres"]:
+        material_notes.append(f"Edge tape {_money(tape_stock)}")
+    if not materials_complete:
+        material_notes.append("Quote needed")
+    internal_total = internal_labor + material_cost if has_work or prep_minutes or edge["metres"] else None
+
+    supplier_edge = round(edge["supplier_ex_vat"])
+    supplier_edge_complete = not edge["supplier_unpriced_metres"]
+    supplier_edge_notes = []
+    metres = f"{edge['metres']:.1f} m"
+    if edge["metres"]:
+        supplier_edge_notes.append(metres)
+        if edge["supplier_includes_tape"]:
+            supplier_edge_notes.append("Tape included")
+        else:
+            supplier_edge += round(tape_stock or 0)
+            supplier_edge_complete = supplier_edge_complete and tape_stock_complete
+            supplier_edge_notes.append(f"Edge tape {_money(tape_stock)}")
+        if not supplier_edge_complete:
+            supplier_edge_notes.append("Quote needed")
+
+    supplier_total = (round(supplier_stock or 0) + round(supplier_drilling or 0) + supplier_edge
                       if has_work or edge["metres"] else None)
     if prep_minutes and not supplier_includes_prep:
         supplier_total = (supplier_total or 0) + round(prep_cost)
-    if edge["metres"] and not edge["supplier_includes_tape"]:
-        supplier_total = (supplier_total or 0) + round(tape_stock or 0)
     layout_complete = not issues and not result["unplaced_blanks"]
     unpriced_sheets = external["unpriced_sheets"]
-    supplier_stock_note = count_label
-    if unpriced_sheets:
-        supplier_stock_note += f" · {_sheets(unpriced_sheets)} need a quote"
+    supplier_stock_note = f"{_sheets(unpriced_sheets)} need a quote" if unpriced_sheets else ""
+    duration = f"{prep_minutes:.2f}".rstrip("0").rstrip(".")
     comparison_rows = [
-        (("CNC workload", count_label, ""),
-         ("Stock and cutting", _money(supplier_stock),
-          supplier_stock_note)),
+        (("File preparation", _money(prep_cost) if prep_minutes else "—", f"{duration} min" if prep_minutes else ""),
+         ("Stock and cutting", _estimate(supplier_stock, not unpriced_sheets), supplier_stock_note)),
         (("Operator", _money(operator) if has_work else "—",
-          f"{internal['operator_hours']} h"),
+          f"{internal['operator_hours']} h" if has_work else ""),
          ("Drilling allowance", _money(supplier_drilling), f"₪{external['drilling_rate']}/part")),
-        (("Sheet stock", _estimate(sheet_stock, sheet_stock_complete),
-          "" if sheet_stock_complete else "Some stock needs a quote") if sheet_amounts else None, None),
-    ]
-    if prep_minutes:
-        duration = f"{prep_minutes:.2f}".rstrip("0").rstrip(".")
-        comparison_rows.append((
-            ("File preparation", _money(prep_cost), f"{duration} min"),
-            ("File preparation", "Included", "") if supplier_includes_prep
-            else ("File preparation", _money(prep_cost), "Our operator"),
-        ))
-    if edge["metres"]:
-        metres = f"{edge['metres']:.1f} m"
-        supplier_edge_note = metres
-        if edge["supplier_includes_tape"]:
-            supplier_edge_note += " · Tape included"
-        if edge["supplier_unpriced_metres"]:
-            supplier_edge_note += f" · {edge['supplier_unpriced_metres']:.1f} m need a quote"
-        comparison_rows.append((
-            ("Edge banding labor", _money(edge["in_house_ex_vat"]), f"{metres} · {edge['minutes']:.1f} min"),
-            ("Edge banding", _estimate(edge["supplier_ex_vat"], not edge["supplier_unpriced_metres"]),
-             supplier_edge_note),
-        ))
-        tape_row = ("Edge tape", _estimate(tape_stock, tape_stock_complete),
-                    "" if tape_stock_complete else "Quote needed")
-        comparison_rows.append((tape_row, None if edge["supplier_includes_tape"] else tape_row))
-    comparison_rows += [
-        (("Estimated labor", _estimate(internal_labor, layout_complete), ""),
-         ("Estimated labor", "Included", "No separate labor rate") if supplier_total is not None
-         else ("Estimated labor", "—", "Quote needed")),
-        (("Estimated cost", _estimate(internal_total, layout_complete and sheet_stock_complete
-                                      and tape_stock_complete), "Materials + labor"),
+        (("Edge banding labor", _money(edge["in_house_ex_vat"]) if edge["metres"] else "—",
+          f"{metres} · {edge['minutes']:.1f} min" if edge["metres"] else ""),
+         ("File preparation", "Included", "") if prep_minutes and supplier_includes_prep else
+         ("File preparation", _money(prep_cost) if prep_minutes else "—", "Our operator" if prep_minutes else "")),
+        (("Materials", _estimate(material_amount, materials_complete), " · ".join(material_notes)),
+         ("Edge banding", _estimate(supplier_edge if edge["metres"] else None, supplier_edge_complete),
+          " · ".join(supplier_edge_notes))),
+        (("Estimated cost", _estimate(internal_total, layout_complete and materials_complete), "Materials + labor"),
          ("Estimated cost", _estimate(supplier_total, layout_complete and not unpriced_sheets
-                                      and not edge["supplier_unpriced_metres"]
-                                      and (edge["supplier_includes_tape"] or tape_stock_complete)),
-          "Materials + labor")),
+                                      and supplier_edge_complete), "Materials + labor")),
     ]
-    comparison = _comparison_table([row for row in comparison_rows if any(row)])
+    comparison = _comparison_table(comparison_rows)
     breakdown = (
         ("Setup", "setup_minutes"), ("Load sheets", "load_minutes"),
         ("Unload parts and scrap", "unload_minutes"), ("Clean table", "cleanup_minutes"),
@@ -244,7 +238,7 @@ def _comparison_html(result):
         f'<tbody>{minutes}</tbody><tfoot><tr><th scope="row">Total</th>'
         f'<td>{work["machine_minutes"]:.1f}</td></tr></tfoot></table>{joined}{excluded}</details>'
     )
-    return _cnc_section(comparison + _supplier_stock_html(external["materials"]) + details)
+    return _cnc_section(comparison + _supplier_stock_html(external["materials"]) + details, count_label=count_label)
 
 
 def _estimate(value, complete):
