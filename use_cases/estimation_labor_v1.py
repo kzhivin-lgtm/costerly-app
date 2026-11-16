@@ -16,7 +16,7 @@ from use_cases.wood_cnc_calculation import (
 )
 
 
-LABOR_VERSION = "Labor V1.2.11"
+LABOR_VERSION = "Labor V1.2.10"
 LAYOUT_VERSION = "cnc_sheet_layout_v2"
 SHEET_FAMILIES = {
     "mdf_hdf", "faced_mdf", "fibreboard_hardboard", "particleboard",

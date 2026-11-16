@@ -224,8 +224,8 @@ these format and catalogue changes.
 Other special formats and unmatched material identities stay quote-based.
 Supplier machining is ILS 12 per part requiring internal machining once.
 The same Parts edge runs supply Materials and CNC. Use melamine tape on
-LDSP and real wood veneer tape on veneered panels; PVC remains available
-for explicitly HPL-faced stock. Parts records consumed metres and width.
+LDSP and real wood veneer tape on veneered panels, by consumed metres
+and width band; PVC remains available for explicitly HPL-faced stock.
 Skip back panels and 5 mm drawer bottoms; omit panel ends fitted between
 adjacent panels. Price tape through Company Catalog / Israel Reference;
 an unpriced tape is a quote gap, not a generic ILS 200 allowance.
@@ -234,40 +234,6 @@ for melamine/PVC; real wood veneer ILS 9/14 per m as an estimate.
 The contractor price includes tape in the virtual profile. In-house
 application is labor only: 7 m/min, 12 s per side, 10 min setup at
 ILS 50/h gross +25%. The Materials block retains sheet and tape stock.
-Israel Reference edge tape refresh, 2026-11-16. Active rates for the
-0.8 mm, 24/45/65 mm bands: veneer ILS 3.68/6.80/9.82 per m,
-respectively. These are estimates based on local published offers:
-23 mm oak/walnut, 34 mm and 40 mm comparables, and proportional
-extrapolation to 65 mm. The 65 mm band requires a quote. Melamine
-ILS 0.68/0.85/1.12 per m remains a provisional benchmark: [Makor
-Haformika](https://makorhaformaika.co.il/catalogs/melamine/) identifies
-matched edging suppliers but does not publish an exact material quote.
-Do not substitute PVC offers as melamine evidence. Track confirmed
-pre-glued melamine and wide pre-glued veneer quotes as pending, P2.
-Tape consumption is priced per metre. The reference format is a
-nominal 50 m roll at each band's own width. Follow supplier pack data
-for procurement: Domicile pre-glued 22/34 mm is 50 m; observed SryaWood
-offers are 50 m at 34 mm and 100 m at 23/40 mm, adhesive unspecified.
-[TWIZERS](https://www.twizers.com/edges/) lists matching 50 × 0.8 mm
-edging for natural oak and American walnut; price, glue and pack are
-unconfirmed. Source offer sizes and price status are recorded in the
-active catalog metadata by `tools/refresh_israel_reference_edge_banding.py`.
-This is a material catalog data update; CNC installed tariffs stay the same.
-Live read-back passed for the six catalog positions (17/40/55 mm panels
-select 24/45/65 mm tape).
-Labor V1.2.11, approved by owner: Methods differ in Materials. Veneer
-is priced by consumed metres. Melamine is bought in whole rolls using
-the offer's format and price; the provisional Israel Reference roll is
-50 m (ILS 34/42.50/56 in the 24/45/65 mm bands). Pool compatible lengths
-by width and declared decor across the estimate and keep approved
-stock sharing between objects. A visual colour cue or missing cue does
-not create a second decor. CNC application still uses consumed metres.
-Verified from source PDF: Lev2's wood-coloured area is on the worktop.
-The cabinets have one rendered finish, without a separate decor note.
-Replay of saved Parts with live edge prices: Lev2 195.984 m of 24 mm
-melamine, four rolls, ILS 136. Lev1 veneer remained priced by the metre;
-Adda introduced no tape lines. CNC sheet counts stayed 17/12/24 and
-application minutes and contractor tariffs were unchanged.
 Radius/bevel premium remains an estimate for a future explicit
 contour input; wood lipping, finishing and delivery are separate.
 For owner-supplied stock keep

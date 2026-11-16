@@ -63,23 +63,6 @@ def test_edge_tape_uses_finished_panel_perimeter_and_keeps_tape_types_separate()
     assert {edge["tape_width_mm"] for edge in result["edge_runs"]} == {24}
 
 
-def test_melamine_edge_demand_keeps_declared_finishes_separate():
-    rows = [_part("carcass_side", material_note={
-        "basis": "ocr_material_note", "source_text": f"LDSP 17 mm; colour: {finish}", "refs": ["view-1:M01"],
-    }) for finish in ("red", "white", "red")]
-    facts = _build(rows, {"melamine_faced_particleboard", "edge_banding"})
-    assert {row["edge_finish_group"]: row["quantity"] for row in facts["materials"]
-            if row["family"] == "edge_banding"} == {"red": 11.04, "white": 5.52}
-
-
-def test_melamine_edge_demand_does_not_split_on_render_annotations():
-    visible = _part("carcass_side", finish_surfaces=[{"finish": "plain", "finish_group": "sage_green_plain"}])
-    facts = _build([visible, _part("carcass_side")], {"melamine_faced_particleboard", "edge_banding"})
-    tape, = [row for row in facts["materials"] if row["family"] == "edge_banding"]
-    assert "edge_finish_group" not in tape
-    assert tape["quantity"] == 11.04
-
-
 def test_lighting_accessories_size_one_supply_per_physical_object_across_temperatures():
     strips = [_part("led_strip_run", quantity=1, unit="run", colour_temperature_k=kelvin,
                     dimensions={"length": {"mm": length, "refs": [str(kelvin)]}})

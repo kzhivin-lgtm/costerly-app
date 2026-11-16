@@ -34,7 +34,6 @@ from use_cases.material_identity_status import (
     pricing_policy_by_family_code,
 )
 from use_cases.material_price_resolver import _canonical_unit, _effective
-from use_cases.estimation_edge_banding import EDGE_FAMILY, EDGE_TAPE_NAMES
 from use_cases.metal_mass_calculator import kilograms_per_metre, kilograms_per_sheet
 from use_cases.estimation_assumption_price_contract import (
     ASSUMPTION_PRICE_V1,
@@ -999,21 +998,6 @@ def _offer_kind(offer: Mapping[str, Any]) -> str:
     return "piece"
 
 
-def _edge_tape_kind(family: str, name: object) -> str | None:
-    if family == EDGE_FAMILY:
-        normalized = normalize_material_phrase(name)
-        return next((tape for tape, label in EDGE_TAPE_NAMES.items()
-                     if normalize_material_phrase(label) in normalized), None)
-    return None
-
-
-def _edge_ils_per_m(price: Decimal, unit: str, roll_length_mm: Decimal | None) -> Decimal | None:
-    if unit == "roll" and roll_length_mm:
-        return price * Decimal("1000") / roll_length_mm
-    factor = {"lm": 1, "mm": 1000, "cm": 100}.get(unit)
-    return price * factor if factor is not None else None
-
-
 def _purchase_price_and_quantity(
     offer: Mapping[str, Any],
     *,
@@ -1126,16 +1110,6 @@ def company_supply_candidates(
             if str(offer.get("price_scope") or "material_only") != price_scope:
                 continue
             kind = _offer_kind(offer)
-            tape = _edge_tape_kind(material_family, item.get("canonical_name") or item.get("normalized_name"))
-            if tape is not None:
-                length = _positive((offer.get("purchasable_dimensions") or {}).get("length_mm"))
-                unit = _canonical_unit(offer.get("normalized_unit"))
-                source_unit = _canonical_unit(offer.get("source_unit"))
-                if unit not in _LINEAR_UNITS and "roll" not in {unit, source_unit}:
-                    continue
-                if tape == "melamine" and length is None:
-                    continue
-                kind = "linear_stock" if tape == "melamine" else "linear_cut"
             if material_family in _AREA_PURCHASE_FAMILIES:
                 if (_canonical_unit(offer.get("source_unit")) != "sqm"
                         or _canonical_unit(offer.get("normalized_unit")) != "sqm"):
@@ -1150,23 +1124,13 @@ def company_supply_candidates(
                 item, pricing_policies=policies,
                 purchasable_dimensions=status_dimensions,
             )
-            package_is_complete = kind in {"piece", "area_direct", "linear_cut"} and status.missing == ("purchase format",)
+            package_is_complete = kind in {"piece", "area_direct"} and status.missing == ("purchase format",)
             if status.tone not in {"blue", "green"} and not package_is_complete:
                 continue
             offer_id = str(offer.get("offer_id") or "").strip()
             if not offer_id:
                 continue
-            if tape is not None:
-                unit_price = _positive(offer.get("normalized_price"))
-                if source_unit == "roll" and (pack_price := _positive(offer.get("source_price"))) and length:
-                    unit, unit_price = "roll", pack_price
-                metre_price = _edge_ils_per_m(unit_price, unit, length) if unit_price is not None else None
-                if metre_price is None:
-                    continue
-                price = metre_price * length / Decimal("1000") if kind == "linear_stock" else metre_price
-                price_and_quantity = _ex_vat(price, offer, vat), Decimal("1")
-            else:
-                price_and_quantity = _purchase_price_and_quantity(offer, kind=kind, vat_percent=vat)
+            price_and_quantity = _purchase_price_and_quantity(offer, kind=kind, vat_percent=vat)
             if price_and_quantity is None:
                 continue
             price, package_quantity = price_and_quantity
@@ -1315,18 +1279,14 @@ def israel_reference_supply_candidates(
                         display_name=str(position.get("canonical_name") or ""),
                         reference_price_id=price_id, label_specifications=label_specs,
                     ))
-            elif unit in _LINEAR_UNITS or (family_code == EDGE_FAMILY and unit == "roll"):
+            elif unit in _LINEAR_UNITS:
                 for supply_format in formats:
                     dimensions = dict(supply_format.get("purchasable_dimensions") or {})
                     length = _positive(dimensions.get("length_mm"))
                     format_id = str(supply_format.get("supply_format_id") or "").strip()
                     if not format_id or length is None:
                         continue
-                    tape = _edge_tape_kind(family_code, position.get("canonical_name"))
-                    is_edge_cut = family_code == EDGE_FAMILY and tape != "melamine"
-                    if tape == "melamine" and supply_format.get("purchase_unit") != "roll":
-                        continue
-                    linear_price = _edge_ils_per_m(typical, unit, length) if family_code == EDGE_FAMILY else typical
+                    is_edge_cut = family_code == "edge_banding"
                     for key in ("voltage_v", "rated_w_per_m"):
                         if value := _positive(metadata.get(key)):
                             dimensions[key] = value
@@ -1335,7 +1295,7 @@ def israel_reference_supply_candidates(
                         material_family=material_family,
                         selection_key=selection_key,
                         purchase_kind="linear_cut" if is_edge_cut else "linear_stock",
-                        price_per_purchase_unit=linear_price if is_edge_cut else linear_price * length / Decimal("1000"),
+                        price_per_purchase_unit=typical if is_edge_cut else typical * length / Decimal("1000"),
                         currency=normalized_currency,
                         purchasable_dimensions=dimensions,
                         authority="israel_reference",
@@ -1671,22 +1631,12 @@ def build_material_plan(
                 compatible = tuple(candidate for candidate in compatible
                                    if candidate.purchase_kind == "piece" and candidate.package_quantity == package_quantity)
             if purchase_variant := material.get("purchase_variant"):
-                if purchase_variant == "melamine" and material.get("family") == EDGE_FAMILY:
-                    compatible = tuple(candidate for candidate in compatible if candidate.purchase_kind == "linear_stock")
                 selection_key = f"{selection_key}|variant={purchase_variant}"
-                variant_id = str(purchase_variant)
-                label_variant = {}
-                finish_group = str(material.get("edge_finish_group") or "")
-                if finish_group and purchase_variant == "melamine" and material.get("family") == EDGE_FAMILY:
-                    selection_key += f"|edge_finish={finish_group}"
-                    variant_id += f":{finish_group}"
-                    label_variant["edge_finish"] = finish_group
                 compatible = tuple(
-                    replace(candidate, candidate_id=f"{candidate.candidate_id}:variant:{variant_id}",
+                    replace(candidate, candidate_id=f"{candidate.candidate_id}:variant:{purchase_variant}",
                             selection_key=selection_key, display_name=f"{candidate.display_name}, {purchase_variant}",
                             label_specifications={
                                 **dict(candidate.label_specifications or {}),
-                                **label_variant,
                                 **({"colour_temperature_k": int(purchase_variant.removesuffix("K"))}
                                    if re.fullmatch(r"\d{4}K", str(purchase_variant)) else {}),
                             })
