@@ -12,7 +12,7 @@ from use_cases.wood_cnc_calculation import (
 )
 
 
-LABOR_VERSION = "Labor V1.2.1"
+LABOR_VERSION = "Labor V1.2.2"
 LAYOUT_VERSION = "cnc_sheet_layout_v1"
 SHEET_FAMILIES = {
     "mdf_hdf", "faced_mdf", "fibreboard_hardboard", "particleboard",
@@ -294,19 +294,29 @@ def calculate_labor_v1(layout, plan, *, machine_rate=None, object_id=None):
         ]
     internal = in_house_cost(work, gross_rate_per_hour=OPERATOR_RATE, machine_rate_per_hour=machine_rate)
     machine = internal["machine_cost"]
-    operator = round(internal["labor_hours"] * OPERATOR_RATE * (1 + EMPLOYER_LOAD), 2)
+    operator_hours = ceil(round(internal["labor_hours"], 9))
+    operator_rate = OPERATOR_RATE * (1 + EMPLOYER_LOAD)
+    operator = round(operator_hours * operator_rate, 2)
     shop_rows = []
     for group in groups:
         saved_layout = group["layout"]
         line = priced_lines[group["selection_key"]]
         price = line["price_per_purchase_unit"] if line["currency"] == "ILS" else None
+        stock_is_assumed = (
+            line.get("authority") == "assumption"
+            or line["selection_key"].startswith("assumption:")
+        )
         detail = {"material": group["material"], "thickness_mm": group["thickness_mm"], "size_mm": group["size_mm"]}
         if saved_layout is not None:
             sheets = saved_layout["stock_count"]
             shop_rows.append({
                 **detail, "sheets": sheets, "blanks": saved_layout["blank_count"],
-                "stock_ex_vat": round(sheets * price, 2) if _positive(price) and sheets else None,
-                "stock_is_assumed": line["selection_key"].startswith("assumption:"),
+                "stock_ex_vat": (
+                    round(sheets * price, 2)
+                    if sheets and _positive(price) and not stock_is_assumed
+                    else None
+                ),
+                "stock_is_assumed": stock_is_assumed,
                 "cut_m": saved_layout["cut_m"], "path_m": saved_layout["path_m"],
             })
     supplier = {
@@ -319,7 +329,7 @@ def calculate_labor_v1(layout, plan, *, machine_rate=None, object_id=None):
         "version": LABOR_VERSION, "work": work, "issues": issues,
         "unplaced_blanks": sum(sum(group["layout"]["unplaced"].values()) for group in groups),
         "in_house": {
-            "operator_ex_vat": operator, "operator_rate": OPERATOR_RATE * (1 + EMPLOYER_LOAD),
+            "operator_ex_vat": operator, "operator_rate": operator_rate, "operator_hours": operator_hours,
             "machine_ex_vat": machine, "machine_rate": machine_rate, "materials": shop_rows,
         },
         "subcontractor": supplier,

@@ -99,7 +99,11 @@ def _show_comparison(result):
         _comparison_table(())
         st.info("No sheet goods for CNC on this object.")
         return
-    st.caption("Same CNC layout in both scenarios · Costs before VAT · Shared sheets allocated by area")
+    st.caption(
+        f"{_sheets(work['sheet_count'])} CNC sheets · {work['blank_count']} blanks · "
+        f"{work['drilled_part_count']} parts with estimated drilling · "
+        f"{work['cut_m']:.1f} m cut · {work['machine_minutes']:.1f} min CNC"
+    )
     if result["unplaced_blanks"]:
         st.warning(f'{result["unplaced_blanks"]} blanks did not fit. Both estimates are partial.')
     elif issues:
@@ -116,33 +120,33 @@ def _show_comparison(result):
     internal_complete = layout_complete and len(priced_stock) == len(rows) and machine is not None
     machine_label = "Machine" if machine is None else f"Machine · {_money(internal['machine_rate'])}/h"
 
-    def shared(label, value):
-        return (label, value), (label, value)
-
     _comparison_table([
-        shared("CNC sheets", _sheets(work["sheet_count"])),
-        shared("Blanks laid out", str(work["blank_count"])),
-        shared("Parts with drilling", str(work["drilled_part_count"])),
-        shared("Cut length", f"{work['cut_m']:.1f} m"),
-        shared("Estimated CNC time", f"{work['machine_minutes']:.1f} min"),
         (("Sheet stock", _money(sum(priced_stock) if priced_stock else None)),
          (f"Stock and cutting · ₪{external['sheet_rate']}/sheet", _money(supplier_stock))),
-        ((f"Operator · {_money(internal['operator_rate'])}/h", _money(operator) if has_work else "—"),
+        ((f"Operator · {internal['operator_hours']} h × {_money(internal['operator_rate'])}",
+          _money(operator) if has_work else "—"),
          (f"Drilling allowance · ₪{external['drilling_rate']}/part", _money(supplier_drilling))),
         ((machine_label, _money(machine) if machine is not None else "Rate needed"), None),
         (("Estimated cost", _estimate(internal_total, internal_complete)),
          ("Estimated cost", _estimate(supplier_total, layout_complete))),
     ])
-    st.caption("Subcontractor pricing is a budget allowance per sheet and per drilled part. Time is a CNC model estimate.")
+    st.caption("Costs before VAT. Subcontractor pricing is a budget allowance.")
+    missing_stock = sorted({
+        f"{row['material']} ({row['thickness_mm']:g} mm)"
+        for row in rows if row["sheets"] and row["stock_ex_vat"] is None
+    })
+    if missing_stock:
+        st.warning(f"In-house subtotal needs sheet prices for {', '.join(missing_stock)}.")
     with st.expander("CNC time breakdown"):
-        _comparison_table([
-            shared(label, f"{work[key]:.1f} min") for label, key in (
+        st.markdown(
+            "| Operation | Minutes |\n| :--- | ---: |\n"
+            + "\n".join(f"| {label} | {work[key]:.1f} |" for label, key in (
                 ("Setup", "setup_minutes"), ("Load sheets", "load_minutes"),
                 ("Unload parts and scrap", "unload_minutes"), ("Clean table", "cleanup_minutes"),
                 ("Cutting", "cut_minutes"), ("Moves", "move_minutes"), ("Drilling", "drilling_minutes"),
                 ("Tool changes", "tool_change_minutes"),
-            )
-        ])
+            ))
+        )
     if issues:
         with st.expander("Layout issues"):
             for row in issues:

@@ -71,7 +71,9 @@ class LaborV1Test(TestCase):
         self.assertEqual(result["in_house"]["materials"][0]["stock_ex_vat"], 180)
         self.assertEqual(result["subcontractor"]["bundle_ex_vat"], 245)
         self.assertEqual(result["subcontractor"]["machining_ex_vat"], 36)
-        self.assertGreater(result["in_house"]["operator_ex_vat"], 0)
+        self.assertEqual(result["in_house"]["operator_hours"], 1)
+        self.assertEqual(result["in_house"]["operator_ex_vat"], 68.75)
+        self.assertEqual(result["in_house"]["machine_ex_vat"], round(result["work"]["machine_minutes"], 2))
 
     def test_only_concealed_back_splits_and_unplaced_work_keeps_subtotal_partial(self):
         report = {"objects": {"object-001": {"parts": [_part("carcass_back"), _part("door_front")]}}}
@@ -111,3 +113,18 @@ class LaborV1Test(TestCase):
         plan["object_quantities"]["object-001"] = 2
         with self.assertRaisesRegex(ValueError, "different quantities"):
             calculate_labor_v1(layout, plan)
+
+    def test_unpriced_assumption_sheet_keeps_its_workload_and_needs_a_stock_price(self):
+        report = {"objects": {"object-001": {"parts": [_part("fixed_panel")]}}}
+        plan = _plan([_allocation("B01:fixed_panel:001")], family="mdf_hdf", thickness=17)
+        plan["lines"][0].update(
+            authority="assumption",
+            selection_key="mdf_hdf|assumption_sheet=shared",
+            label_specifications={"thickness_mm": 17},
+            price_per_purchase_unit=200,
+        )
+        result = calculate_labor_v1(build_sheet_layout(report, plan), plan, object_id="object-001")
+        self.assertIsNone(result["in_house"]["materials"][0]["stock_ex_vat"])
+        self.assertEqual(result["work"]["sheet_count"], 1)
+        self.assertEqual(result["work"]["blank_count"], 1)
+        self.assertEqual(result["subcontractor"]["bundle_ex_vat"], 245)

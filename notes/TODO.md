@@ -51,7 +51,20 @@ rate. Saved Lev2: 16 sheets, 104 placed blanks, 86 with drilling, 202.581 m,
 246.689 min. ILS 4,156.60 in-house before the machine charge and ILS 4,952
 subcontracted, ex VAT, for the placed scope. Two B05 blanks did not fit.
 167 focused tests passed and all four saved Lev1, Lev2 and Adda objects
-rendered locally. Authenticated production acceptance is pending.
+rendered locally. Commit a0d4a6d deployed via Railway
+16b2be5c-e310-4e6c-9e55-a18ee69f72a2; a new Cloudflare session served
+estimation-labor-v1.2.1-detection-v8.4.29. Authenticated production
+acceptance is pending.
+
+Labor V1.2.2, USER REQUEST. Show shared CNC quantities and machine time once.
+Round operator hours up to a whole hour per object at ILS 68.75/h, keep
+machine time in minutes, and flag stock prices that need a quote. The
+in-house CNC subtotal uses priced stock and leaves out blanket material
+allowances. On saved Lev2, 246.689 model minutes cost 5 operator hours
+(ILS 343.75). In-house priced stock is ILS 3,673.94. The known subtotal is
+ILS 4,017.69 before the missing sheet and machine rate. CNC scope and
+subcontractor budget are unchanged. 168 focused tests passed and all four
+saved Lev1, Lev2 and Adda objects rendered locally.
 
 ## Estimation Parts Check, 3.17.4.6
 
@@ -103,11 +116,21 @@ ownership for nine Blocks and Common parts. Older estimates and the
 flat fallback were verified in a local browser. See the
 [9.38 checkpoint](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#estimation-938-accepted-production-checkpoint).
 
-PENDING, P1, VERIFIED PRODUCTION FINDING. Review why Lev2 assigned
-veneered MDF 17 mm to four fixed panels (V03:C17, C01, C26 and C12)
-and why the resulting stock had no compatible catalog price. The
-fresh 9.37 plan included a ₪200 allowance. Preserve the proven
-worktop, carcass and cutout results while reviewing the finish evidence.
+ACTIVE, P1, USER REQUEST. Review woodworking sheet prices in Company
+Catalog and Israel Reference and replace generic ILS 200 allowances with
+supported prices for compatible stock. Audited the saved Lev1, Lev2 and
+Adda plans on 16 November: 15 CNC sheet purchase lines, five allowance
+lines. Lev1 has veneered MDF 37 mm (2 sheets), MDF 50 mm (1, finish
+unspecified) and LDSP 40 mm (2 lines, 1 sheet each). Review finished
+thickness versus purchased stock and the physical layup before pricing
+these. Lev2 has one assumed 2440 × 1220 × 17 mm veneered MDF sheet for
+four fixed panels, V03:C17, C01, C26 and C12, inferred from a rendering
+cue on a brown wood-grain corner. Confirm veneer versus wood-look
+melamine. Farjun lists the 17 mm veneered MDF format but has no usable
+public price. Bemida's listing is priced with cutting for a different
+thickness. Adda had no sheet-price allowance on this saved run. Supabase
+catalog replacement and full catalog coverage remain pending. Preserve
+the proven worktop, carcass and cutout results.
 
 PENDING, P2, DISCOVERED DURING VERIFICATION. Align the production
 dependency contract test with the pinned deployment dependencies.
@@ -5440,6 +5463,11 @@ drilling or internal machining is needed or assumed. Exclude cut-only parts
 and suppress the allowance if the selected quote already includes that work.
 Algolan publishes this supplement for specified extra internal features at
 any thickness. The use for assumed drilling is a Coasterly allowance.
+USER QUESTION, 16 November: review whether the allowance overstates standard
+drilling. Lev2 applies it to 86 parts from role and thickness templates.
+Algolan's terms cover specified internal work such as shelf holes, rebates
+and LED channels. Validate the billable subset and supplier inclusions
+before changing the rate or treating the ILS 1,032 as a job quote.
 The Lev2 check placed all 79 standard-format LDSP blanks on ten 2440×1220
 sheets capped at eight parts (nine sheets with eight, one with seven). Ten is
 the count lower bound. The 2400×1220 search found eleven with that cap. The
