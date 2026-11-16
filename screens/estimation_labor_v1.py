@@ -106,6 +106,33 @@ def _joined_parts_html(joins):
     return "<p><strong>Visible parts with a joint</strong></p><ul>" + "".join(entries) + "</ul>"
 
 
+def _supplier_stock_html(rows):
+    if not rows:
+        return ""
+    entries = []
+    for row in rows:
+        length, width = row["size_mm"]
+        stock = f"{row['material']} · {length:g} × {width:g} mm"
+        rate = row["rate_ex_vat"]
+        quantity = _sheets(row["sheets"])
+        detail = f"{quantity} sheets · Quote needed"
+        if rate is not None:
+            detail = f"{quantity} × {_money(rate)}"
+            if row["basis"] == "stock_plus_straight_cut":
+                detail += " · Estimate"
+        entries.append(
+            f"<tr><td>{escape(stock)}</td><td>{escape(detail)}</td>"
+            f"<td>{_money(row['bundle_ex_vat'])}</td></tr>"
+        )
+    return (
+        '<details class="object-detail-table object-detail-cnc-breakdown" data-section="cnc">'
+        '<summary>Subcontractor sheet rates</summary>'
+        '<table><thead><tr><th scope="col">Stock</th><th scope="col">Sheets and rate</th>'
+        '<th scope="col">Amount</th></tr></thead>'
+        f"<tbody>{''.join(entries)}</tbody></table></details>"
+    )
+
+
 def _comparison_html(result):
     work = result["work"]
     internal = result["in_house"]
@@ -128,11 +155,15 @@ def _comparison_html(result):
     supplier_includes_prep = preparation["supplier_includes_preparation"]
     # Sum the rounded lines so the displayed whole-shekel totals reconcile.
     internal_total = round(operator) + round(stock_cost or 0) + round(prep_cost) if has_work or prep_minutes else None
-    supplier_total = round(supplier_stock) + round(supplier_drilling) if has_work else None
+    supplier_total = round(supplier_stock or 0) + round(supplier_drilling or 0) if has_work else None
     if prep_minutes and not supplier_includes_prep:
         supplier_total = (supplier_total or 0) + round(prep_cost)
     layout_complete = not issues and not result["unplaced_blanks"]
     internal_complete = layout_complete and len(priced_stock) == len(rows)
+    unpriced_sheets = external["unpriced_sheets"]
+    supplier_stock_note = f"{sheets} sheets"
+    if unpriced_sheets:
+        supplier_stock_note += f" · {_sheets(unpriced_sheets)} need a quote"
     missing_stock = sorted({
         f"{row['material']} ({row['thickness_mm']:g} mm)"
         for row in rows if row["sheets"] and row["stock_ex_vat"] is None
@@ -143,7 +174,7 @@ def _comparison_html(result):
     comparison_rows = [
         ((f"Sheet stock · {parts}", _money(stock_cost), in_house_stock),
          (f"Stock and cutting · {parts}", _money(supplier_stock),
-          f"{sheets} sheets × {_money(external['sheet_rate'])}")),
+          supplier_stock_note)),
         (("Operator", _money(operator) if has_work else "—",
           f"{internal['operator_hours']} h"),
          ("Drilling allowance", _money(supplier_drilling), f"₪{external['drilling_rate']}/part")),
@@ -157,7 +188,7 @@ def _comparison_html(result):
         ))
     comparison_rows.append(
         (("Estimated cost", _estimate(internal_total, internal_complete), ""),
-         ("Estimated cost", _estimate(supplier_total, layout_complete), "")),
+         ("Estimated cost", _estimate(supplier_total, layout_complete and not unpriced_sheets), "")),
     )
     comparison = _comparison_table(comparison_rows)
     breakdown = (
@@ -181,7 +212,7 @@ def _comparison_html(result):
             length, width = row["size_mm"]
             estimated_stock += (
                 f"<p>{length:g} × {width:g} mm sheet stock: {_money(row['stock_ex_vat'])} "
-                "(reference estimate). Subcontractor pricing for this format needs a quote.</p>"
+                "(reference estimate).</p>"
             )
     details = (
         '<details class="object-detail-table object-detail-cnc-breakdown" data-section="cnc">'
@@ -190,7 +221,7 @@ def _comparison_html(result):
         f'<tbody>{minutes}</tbody><tfoot><tr><th scope="row">Total</th>'
         f'<td>{work["machine_minutes"]:.1f}</td></tr></tfoot></table>{estimated_stock}{joined}{excluded}</details>'
     )
-    return _cnc_section(comparison + details)
+    return _cnc_section(comparison + _supplier_stock_html(external["materials"]) + details)
 
 
 def _estimate(value, complete):

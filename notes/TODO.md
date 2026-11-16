@@ -172,6 +172,24 @@ machine cycle dropped from 248.92 to 200.92 minutes. Rounded operator
 hours fell from 5 to 4. Displayed CNC totals are ILS 4,604 in-house
 and ILS 5,045 subcontracted, a difference of ILS 441. Saved Lev1
 has an unresolved stock price and shows an in-house subtotal.
+Commit b7eea7b deployed via Railway 6acfb28c-69f3-472e-b7f1-de93aed423d5.
+Cloudflare served estimation-labor-v1.2.8-detection-v8.4.29.
+
+Labor V1.2.9, USER APPROVED. Use supplier sheet rates by material,
+thickness and format. The standard 17 mm melamine benchmark stays
+ILS 245, with separate white and 28 mm references and published
+plywood references where the stock matches. For a standard 6 mm raw
+HDF back use its catalog stock price plus ILS 25.42 ex VAT for straight
+cutting, derived from [Tsidky's published ILS 30 including VAT](https://etsel.tsidky.co.il/materials-and-prices/).
+For other raw plywood with a known stock price use the standard straight
+cut allowance of ILS 50.85 ex VAT, derived from ILS 60 including VAT.
+Label both combined prices as estimates. Mark out-of-scope formats and
+unsupported stock as requiring a quote and label the supplier total as
+a subtotal. The 20% scenario was not used as a blanket multiplier.
+Saved replays: Lev2 HDF ILS 130.33/sheet, supplier subtotal ILS 4,341
+plus one wide sheet awaiting a quote; Adda ILS 1,968 and ILS 5,382
+per card; Lev1 supplier subtotal ILS 1,110 with nine sheets requiring
+quotes. All 458 focused tests passed.
 
 PENDING, P1, USER REQUEST. Confirm default file preparation scope for
 subcontracted sheet CNC. [Algolan](https://algolan-express.co.il/)
@@ -5610,6 +5628,28 @@ drilling. Lev2 applies it to 86 parts from role and thickness templates.
 Algolan's terms cover specified internal work such as shelf holes, rebates
 and LED channels. Validate the billable subset and supplier inclusions
 before changing the rate or treating the ILS 1,032 as a job quote.
+Labor V1.2.8 saved Lev2: the generic supplier price values the 2800×2070
+sheet at ILS 245, while the in-house area reference is ILS 585.63 for that
+sheet alone. The other 15 sheets total ILS 3,673.94 in-house versus
+ILS 3,675 under the supplier allowance. Confirm the supplier's wide sheet
+price and billable drilling on the same quote before judging the price
+gap or drawing conclusions about supplier margin.
+Research follow-up, USER REQUEST, P1 pending. Use matched material,
+thickness, format and services for the make-versus-buy comparison;
+freight is outside this comparison. [Mazonit](https://www.mazonit.co.il/prdFiles/melamin16.pdf)
+lists 2800×2070 melamine at 17 mm but does not quote this job. Do not
+treat the wide-sheet in-house reference or a standard 2440×1220
+melamine service tariff as a wide-sheet supplier quote. The same
+flat rate makes a different error on Adda: 7 HDF 6 mm sheets are
+ILS 1,715 under the supplier allowance versus ILS 734.37 in-house
+stock; the 17 plywood sheets are ILS 4,165 bundled versus ILS 4,311.83
+in-house stock. The ILS 5,532 vs 7,141 result sums the two displayed
+cards, not a matched supplier quote. [WOODWEB](https://woodweb.com/knowledge_base/Cost_Per_Sheet_for_CNC_Part_Cutting.html)
+shows volume and scope affecting per-sheet rates; [C.R. Onsrud](https://cronsrud.com/when-does-a-cnc-machine-make-sense-for-cabinetmakers/)
+uses 20% as a scenario assumption for doors and fronts, not a market
+benchmark for CNC subcontracting. V1.2.9 now separates sheet rates by
+material, thickness and format. Pending supplier validation covers actual
+stock, cuts, drilling and supplied-file scope on Lev2 and Adda.
 The Lev2 check placed all 79 standard-format LDSP blanks on ten 2440×1220
 sheets capped at eight parts (nine sheets with eight, one with seven). Ten is
 the count lower bound. The 2400×1220 search found eleven with that cap. The

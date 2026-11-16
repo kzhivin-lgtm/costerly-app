@@ -6,13 +6,14 @@ from hashlib import sha256
 import json
 from math import ceil, isfinite
 
+from use_cases.estimation_cnc_supplier_rates import supplier_sheet_rate
 from use_cases.wood_cnc_calculation import (
     DEFAULT_CNC_PARAMETERS, Blank, Placement, StockBatch, cnc_workload_from_layout,
     in_house_cost, layout_joinable_sheet, shared_cut_credits,
 )
 
 
-LABOR_VERSION = "Labor V1.2.8"
+LABOR_VERSION = "Labor V1.2.9"
 LAYOUT_VERSION = "cnc_sheet_layout_v2"
 SHEET_FAMILIES = {
     "mdf_hdf", "faced_mdf", "fibreboard_hardboard", "particleboard",
@@ -22,7 +23,6 @@ PLINTH_ROLES = {"plinth_visible_run", "plinth_front", "plinth_return"}
 SPLIT_ROLES = PLINTH_ROLES | {"carcass_back", "frame_backing"}
 DRILL_EXCLUSIONS = SPLIT_ROLES | {"drawer_box_bottom"}
 PANEL_ROLES = {"carcass_sheet", "backing_sheet", "internal_sheet", "visible_sheet", "worktop_substrate"}
-SUPPLIER_SHEET_RATE = 245
 SUPPLIER_MACHINING_RATE = 12
 EMPLOYER_LOAD = 0.25
 OPERATOR_RATE = 55
@@ -315,6 +315,7 @@ def calculate_labor_v1(
     operator = round(operator_hours * operator_rate, 2)
     file_preparation = _file_preparation(groups, operator_rate, file_preparation_parameters)
     shop_rows = []
+    supplier_rows = []
     for group in groups:
         saved_layout = group["layout"]
         line = priced_lines[group["selection_key"]]
@@ -326,23 +327,35 @@ def calculate_labor_v1(
         detail = {"material": group["material"], "thickness_mm": group["thickness_mm"], "size_mm": group["size_mm"]}
         if saved_layout is not None:
             sheets = saved_layout["stock_count"]
+            usable_stock_rate = price if _positive(price) and not stock_is_assumed else None
+            specs = line.get("label_specifications") or {}
             shop_rows.append({
                 **detail, "sheets": sheets, "blanks": saved_layout["blank_count"],
-                "stock_ex_vat": (
-                    round(sheets * price, 2)
-                    if sheets and _positive(price) and not stock_is_assumed
-                    else None
-                ),
+                "stock_ex_vat": round(sheets * usable_stock_rate, 2) if sheets and usable_stock_rate else None,
                 "stock_is_assumed": stock_is_assumed,
                 "stock_price_is_estimated": (
                     (line.get("label_specifications") or {}).get("cnc_price_basis") == "reference_price_per_m2"
                 ),
                 "cut_m": saved_layout["cut_m"], "path_m": saved_layout["path_m"],
             })
+            if sheets:
+                if stock_is_assumed:
+                    rate, basis = None, "quote_required"
+                else:
+                    rate, basis = supplier_sheet_rate(
+                        _family(line), thickness_mm=group["thickness_mm"], size_mm=group["size_mm"],
+                        specs=specs, stock_rate=usable_stock_rate,
+                    )
+                supplier_rows.append({
+                    **detail, "sheets": sheets, "rate_ex_vat": rate, "basis": basis,
+                    "bundle_ex_vat": round(sheets * rate, 2) if rate is not None else None,
+                })
+    priced_bundles = [row["bundle_ex_vat"] for row in supplier_rows if row["bundle_ex_vat"] is not None]
     supplier = {
-        "sheet_rate": SUPPLIER_SHEET_RATE,
+        "materials": supplier_rows,
+        "unpriced_sheets": sum(row["sheets"] for row in supplier_rows if row["rate_ex_vat"] is None),
         "drilling_rate": SUPPLIER_MACHINING_RATE,
-        "bundle_ex_vat": round(work["sheet_count"] * SUPPLIER_SHEET_RATE, 2),
+        "bundle_ex_vat": round(sum(priced_bundles), 2) if priced_bundles else None,
         "machining_ex_vat": work["drilled_part_count"] * SUPPLIER_MACHINING_RATE,
     }
     return {

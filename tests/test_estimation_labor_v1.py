@@ -135,13 +135,40 @@ class LaborV1Test(TestCase):
         result = calculate_labor_v1(layout, plan)
         self.assertEqual(result["work"]["sheet_count"], 3)
         self.assertEqual(result["work"]["drilled_part_count"], 2)
-        self.assertEqual(result["subcontractor"]["bundle_ex_vat"], 735)
+        self.assertEqual(result["subcontractor"]["bundle_ex_vat"], 450.42)
+        self.assertEqual(result["subcontractor"]["unpriced_sheets"], 1)
         self.assertEqual(result["subcontractor"]["machining_ex_vat"], 24)
         self.assertIsNone(result["in_house"]["machine_rate"])
         self.assertIsNone(result["in_house"]["machine_ex_vat"])
         plan["object_quantities"]["object-001"] = 2
         with self.assertRaisesRegex(ValueError, "different quantities"):
             calculate_labor_v1(layout, plan)
+
+    def test_supplier_prices_thin_hdf_and_standard_melamine_but_requires_a_wide_sheet_quote(self):
+        report = {"objects": {"object-001": {"parts": [
+            _part("fixed_panel"), _part("fixed_panel"), _part("carcass_back"), _part("carcass_side"),
+        ]}}}
+        plan = _plan([_allocation("B01:fixed_panel:001")])
+        plan["lines"] += _plan([_allocation("B01:fixed_panel:002")], thickness=28)["lines"]
+        plan["lines"] += _plan([_allocation("B01:carcass_back:003")], family="mdf_hdf", thickness=6)["lines"]
+        plan["lines"][2].update(
+            label_specifications={"board_type": "hdf", "surface": "raw"},
+            price_per_purchase_unit=104.91,
+        )
+        wide = _plan([_allocation("B01:carcass_side:004", length=2535)], length=2800)["lines"][0]
+        wide["selection_key"] += "|cnc_stock=wide"
+        wide["purchasable_dimensions"]["width_mm"] = 2070
+        plan["lines"].append(wide)
+        result = calculate_labor_v1(build_sheet_layout(report, plan), plan, object_id="object-001")
+        supplier = result["subcontractor"]
+        self.assertEqual([row["rate_ex_vat"] for row in supplier["materials"]], [245, 340, 130.33, None])
+        self.assertEqual(supplier["bundle_ex_vat"], 715.33)
+        self.assertEqual(supplier["unpriced_sheets"], 1)
+        html = _comparison_html(result)
+        self.assertIn("1 need a quote", html)
+        self.assertIn("2800 × 2070 mm", html)
+        self.assertIn("₪130 · Estimate", html)
+        self.assertIn("(subtotal)", html)
 
     def test_unpriced_assumption_sheet_keeps_its_workload_and_needs_a_stock_price(self):
         report = {"objects": {"object-001": {"parts": [_part("fixed_panel")]}}}
@@ -156,4 +183,5 @@ class LaborV1Test(TestCase):
         self.assertIsNone(result["in_house"]["materials"][0]["stock_ex_vat"])
         self.assertEqual(result["work"]["sheet_count"], 1)
         self.assertEqual(result["work"]["blank_count"], 1)
-        self.assertEqual(result["subcontractor"]["bundle_ex_vat"], 245)
+        self.assertIsNone(result["subcontractor"]["bundle_ex_vat"])
+        self.assertEqual(result["subcontractor"]["unpriced_sheets"], 1)
