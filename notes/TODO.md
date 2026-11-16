@@ -268,6 +268,25 @@ Replay of saved Parts with live edge prices: Lev2 195.984 m of 24 mm
 melamine, four rolls, ILS 136. Lev1 veneer remained priced by the metre;
 Adda introduced no tape lines. CNC sheet counts stayed 17/12/24 and
 application minutes and contractor tariffs were unchanged.
+Labor V1.2.12, USER REQUEST. Object Detail CNC shows Estimated labor
+and Estimated cost (Materials + labor) in both routes. Own stock uses
+the same CNC sheet share and the existing Material Plan tape allocation.
+Subcontractor cutting and installed tape use the bundled rate once; no
+unsupported labor-only split. Unknown rates leave a known subtotal.
+Saved Lev2: ILS 445 in-house labor; ILS 5,174 in-house and ILS 6,482
+subcontracted including materials. Lev1, Lev2 and both Adda renders checked.
+
+Objects Estimation, USER REPORT at 22:39 Jerusalem time (2026-11-16).
+Browser telemetry confirms first paint 0.56 s after Continue but no
+completion receipt during its 15 s watchdog. The screenshot shows two
+pricing snapshots; the brief warning's text was not captured. Keep
+first paint, live refresh and terminal pricing at one native render
+position. Status messages have their own position. A temporary read
+failure retains the last good rows; a persistent failure shows a retry
+notice. Final data stays in the same fragment and ends database polling.
+Headless Chrome: first paint, short and sustained read failures, recovery
+and two full rerenders kept one visible pricing table. 311 tests passed.
+The original authenticated incident is not independently reproduced.
 Radius/bevel premium remains an estimate for a future explicit
 contour input; wood lipping, finishing and delivery are separate.
 For owner-supplied stock keep

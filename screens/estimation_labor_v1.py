@@ -154,12 +154,24 @@ def _comparison_html(result):
     prep_cost = preparation["operator_ex_vat"]
     supplier_includes_prep = preparation["supplier_includes_preparation"]
     # Sum the rounded lines so the displayed whole-shekel totals reconcile.
-    internal_total = (round(operator) + round(prep_cost) + round(edge["in_house_ex_vat"])
+    internal_labor = (round(operator) + round(prep_cost) + round(edge["in_house_ex_vat"])
                       if has_work or prep_minutes or edge["metres"] else None)
+    sheet_amounts = [row["stock_ex_vat"] for row in rows if row["sheets"]]
+    priced_sheet_amounts = [amount for amount in sheet_amounts if amount is not None]
+    sheet_stock = sum(priced_sheet_amounts) if priced_sheet_amounts else None
+    sheet_stock_complete = len(sheet_amounts) == len(priced_sheet_amounts)
+    tape_stock = edge["tape_stock_ex_vat"]
+    tape_stock_complete = edge["tape_stock_complete"]
+    internal_total = (
+        internal_labor + round(sheet_stock or 0) + round(tape_stock or 0)
+        if internal_labor is not None else None
+    )
     supplier_total = (round(supplier_stock or 0) + round(supplier_drilling or 0) + round(edge["supplier_ex_vat"])
                       if has_work or edge["metres"] else None)
     if prep_minutes and not supplier_includes_prep:
         supplier_total = (supplier_total or 0) + round(prep_cost)
+    if edge["metres"] and not edge["supplier_includes_tape"]:
+        supplier_total = (supplier_total or 0) + round(tape_stock or 0)
     layout_complete = not issues and not result["unplaced_blanks"]
     unpriced_sheets = external["unpriced_sheets"]
     supplier_stock_note = count_label
@@ -172,6 +184,8 @@ def _comparison_html(result):
         (("Operator", _money(operator) if has_work else "—",
           f"{internal['operator_hours']} h"),
          ("Drilling allowance", _money(supplier_drilling), f"₪{external['drilling_rate']}/part")),
+        (("Sheet stock", _estimate(sheet_stock, sheet_stock_complete),
+          "" if sheet_stock_complete else "Some stock needs a quote") if sheet_amounts else None, None),
     ]
     if prep_minutes:
         duration = f"{prep_minutes:.2f}".rstrip("0").rstrip(".")
@@ -192,12 +206,21 @@ def _comparison_html(result):
             ("Edge banding", _estimate(edge["supplier_ex_vat"], not edge["supplier_unpriced_metres"]),
              supplier_edge_note),
         ))
-    comparison_rows.append(
-        (("Estimated labor", _estimate(internal_total, layout_complete), ""),
+        tape_row = ("Edge tape", _estimate(tape_stock, tape_stock_complete),
+                    "" if tape_stock_complete else "Quote needed")
+        comparison_rows.append((tape_row, None if edge["supplier_includes_tape"] else tape_row))
+    comparison_rows += [
+        (("Estimated labor", _estimate(internal_labor, layout_complete), ""),
+         ("Estimated labor", "Included", "No separate labor rate") if supplier_total is not None
+         else ("Estimated labor", "—", "Quote needed")),
+        (("Estimated cost", _estimate(internal_total, layout_complete and sheet_stock_complete
+                                      and tape_stock_complete), "Materials + labor"),
          ("Estimated cost", _estimate(supplier_total, layout_complete and not unpriced_sheets
-                                       and not edge["supplier_unpriced_metres"]), "")),
-    )
-    comparison = _comparison_table(comparison_rows)
+                                      and not edge["supplier_unpriced_metres"]
+                                      and (edge["supplier_includes_tape"] or tape_stock_complete)),
+          "Materials + labor")),
+    ]
+    comparison = _comparison_table([row for row in comparison_rows if any(row)])
     breakdown = (
         ("Setup", "setup_minutes"), ("Load sheets", "load_minutes"),
         ("Unload parts and scrap", "unload_minutes"), ("Clean table", "cleanup_minutes"),
