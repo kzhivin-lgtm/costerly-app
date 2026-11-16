@@ -2,6 +2,12 @@
 const MAX_BODY_BYTES = 16 * 1024;
 const MAX_EVENTS = 50;
 const SAFE_NAME = /^[a-z0-9_.:-]{1,80}$/;
+const STATUSES = new Set(["ok", "error", "timeout", "dropped", "unknown"]);
+const FAILURE_KINDS = new Set(["wrapper_error", "wrapper_rejection", "app_error", "app_rejection",
+                               "server_exception_rendered", "error_alert_rendered"]);
+const ERROR_TYPES = new Set(["error", "typeerror", "rangeerror", "referenceerror", "syntaxerror",
+                             "networkerror", "securityerror", "notfounderror", "aborterror",
+                             "quotaexceedederror", "dom_remove_child"]);
 
 function response(status, body = "") {
   return new Response(body, {
@@ -47,20 +53,38 @@ function normalizeEvent(raw) {
   if (!raw || typeof raw !== "object" || !validUuid(raw.trace_id)) return null;
   const elapsed = Number(raw.elapsed_ms);
   const duration = Number(raw.duration_ms);
+  const timestamp = new Date(raw.occurred_at || Date.now());
+  if (!Number.isFinite(timestamp.getTime())) return null;
+  const status = safeName(raw.status, "ok");
+  const event = safeName(raw.event_name, "invalid_event");
+  const timing = (value, original) => original != null && Number.isFinite(value) && value >= 0 && value < 1e11
+    ? value : null;
+  let metadata = safeMetadata(raw.metadata);
+  if (event === "browser.runtime_failure") {
+    // Do not accept freeform client message, stack, URL, or DOM contents.
+    const kind = safeName(metadata.kind, "unknown");
+    const errorType = safeName(metadata.error_type, "unknown");
+    metadata = {
+      kind: FAILURE_KINDS.has(kind) ? kind : "unknown",
+      error_type: ERROR_TYPES.has(errorType) ? errorType : "unknown",
+      line: Number.isInteger(metadata.line) && metadata.line > 0 && metadata.line < 1000000
+        ? metadata.line : null,
+    };
+  }
   return {
-    occurred_at: new Date(raw.occurred_at || Date.now()).toISOString(),
+    occurred_at: timestamp.toISOString(),
     schema_version: "runtime_v1",
     build_version: String(raw.build_version || "3.1.10").slice(0, 40),
     source: "browser",
     trace_id: raw.trace_id,
     session_id: validUuid(raw.session_id) ? raw.session_id : null,
     run_id: validUuid(raw.run_id) ? raw.run_id : null,
-    event_name: safeName(raw.event_name, "invalid_event"),
+    event_name: event,
     screen: safeName(raw.screen, "unknown"),
-    status: safeName(raw.status, "ok"),
-    elapsed_ms: Number.isFinite(elapsed) ? Math.max(0, elapsed) : null,
-    duration_ms: Number.isFinite(duration) ? Math.max(0, duration) : null,
-    metadata: safeMetadata(raw.metadata),
+    status: STATUSES.has(status) ? status : "unknown",
+    elapsed_ms: timing(elapsed, raw.elapsed_ms),
+    duration_ms: timing(duration, raw.duration_ms),
+    metadata,
   };
 }
 
@@ -100,16 +124,25 @@ export async function onRequest(context) {
   const events = rawEvents.map(normalizeEvent).filter(Boolean);
   if (!events.length) return response(400, "invalid events");
 
-  const persist = fetch(`${env.SUPABASE_URL.replace(/\/$/, "")}/rest/v1/app_runtime_events`, {
-    method: "POST",
-    headers: {
-      apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-      authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-      "content-type": "application/json",
-      prefer: "return=minimal",
-    },
-    body: JSON.stringify(events),
-  });
-  context.waitUntil(persist);
+  try {
+    const stored = await fetch(`${env.SUPABASE_URL.replace(/\/$/, "")}/rest/v1/app_runtime_events`, {
+      method: "POST",
+      headers: {
+        apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+        authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+        "content-type": "application/json",
+        prefer: "return=minimal",
+      },
+      body: JSON.stringify(events),
+      signal: AbortSignal.timeout(3500),
+    });
+    if (!stored.ok) {
+      console.warn("runtime_events_upstream_rejected", stored.status, events.length);
+      return response(502, "telemetry storage failed");
+    }
+  } catch (_) {
+    console.warn("runtime_events_upstream_unavailable", events.length);
+    return response(502, "telemetry storage unavailable");
+  }
   return response(202);
 }

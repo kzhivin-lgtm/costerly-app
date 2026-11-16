@@ -188,7 +188,7 @@ def test_prepared_submit_defers_all_persistence_to_executor(monkeypatch):
     )
 
     assert result is future
-    assert submitted == [(
+    assert [(fn.__wrapped__, args) for fn, args in submitted] == [(
         runtime._persist_prepared_launch_and_run,
         {
             "estimate_id": "estimate-1",

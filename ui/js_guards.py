@@ -1278,7 +1278,57 @@ def signal_app_ready_to_embed(
                 } catch (error) {}
             }
 
+            function installRuntimeFailureObserver() {
+                if (!message.traceId) return;
+                const host = window.parent;
+                const key = "__costerlyRuntimeFailureObserverV1";
+                if (host[key]) {
+                    host[key].context = message;
+                    return;
+                }
+                const state = {context: message};
+                host[key] = state;
+                const root = host.document.querySelector('[data-testid="stAppViewContainer"]');
+                const selector = '[data-testid="stException"],[data-testid="stAlertContentError"]';
+                const seen = new WeakSet();
+                const emit = (kind, errorType, line) => {
+                    const context = state.context;
+                    const active = host.document.querySelector("[data-costerly-screen]:not([data-stale])");
+                    host.top.postMessage({
+                        type: "costerly:runtime-failure", kind, errorType, line,
+                        screen: active ? active.dataset.costerlyScreen : context.screen,
+                        traceId: context.traceId, runId: context.runId,
+                    }, "*");
+                };
+                const exceptionType = (error) => {
+                    if (error && error.name === "NotFoundError" && /removeChild/.test(error.message || "")) {
+                        return "dom_remove_child";
+                    }
+                    return error && error.name || "unknown";
+                };
+                host.addEventListener("error", (event) => emit("app_error", exceptionType(event.error), event.lineno));
+                host.addEventListener("unhandledrejection", (event) => emit("app_rejection", exceptionType(event.reason)));
+                if (!root) return;
+                const register = (element) => {
+                    if (seen.has(element) || element.closest('[data-stale="true"]')) return;
+                    seen.add(element);
+                    emit(element.dataset.testid === "stException" ? "server_exception_rendered" : "error_alert_rendered");
+                };
+                root.querySelectorAll(selector).forEach(register);
+                const observer = new MutationObserver((records) => {
+                    for (const record of records) {
+                        for (const node of record.addedNodes) {
+                            if (node.nodeType !== 1) continue;
+                            if (node.matches(selector)) register(node);
+                            else node.querySelectorAll(selector).forEach(register);
+                        }
+                    }
+                });
+                observer.observe(root, {subtree: true, childList: true});
+            }
+
             function postReady() {
+                try { installRuntimeFailureObserver(); } catch (_) {}
 
                 if (resetScrollOnReady) {
                     const parentWindow = window.parent;

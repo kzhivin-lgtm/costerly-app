@@ -30,7 +30,10 @@ user interface.
 - `session_id`: one Streamlit session, retained across sign-in and sign-out.
 - `run_id`: one Python rerun.
 - `schema_version`: event contract version, currently `runtime_v1`.
-- `build_version`: deployed accepted checkpoint, currently `3.4.2`.
+- `build_version`: version of the service that produced the event.
+- `metadata.rfq_run_id`, `metadata.estimate_id`, `metadata.object_id`: product
+  identifiers when known. The top-level `run_id` is the Python rerun UUID,
+  so querying it with an RFQ run ID will not locate the calculation.
 
 ## Data contract
 
@@ -41,19 +44,31 @@ and bounded technical metadata.
 
 Never record access or refresh tokens, passwords, secrets, email addresses,
 file names, RFQ content, OCR content, prompts, or uploaded bytes. Error events
-record the exception type, not the exception message.
+record the exception type, stage, app-relative call sites and an allowed
+provider error code or HTTP status where available. They do not store raw
+exception messages, tracebacks with values, log lines, or browser DOM text.
+
+To investigate an incident, find its `trace_id` or the RFQ/estimate ID in
+metadata, then order related events by `occurred_at`. Use `server.operation_failed`,
+`server.application_error`, `server.unhandled_error` and `browser.runtime_failure`
+to distinguish a failed calculation/read from a browser or render failure.
+Repeated polling errors are represented by a bounded sample; a browser event
+describes what it observed, even if the server failed before sending app-ready.
 
 ## Non-blocking behavior
 
-- Python emits structured JSON to Streamlit Cloud logs immediately and places
+- Python emits structured JSON to Railway logs immediately and places
   durable writes on a bounded daemon queue.
 - Supabase batches execute outside the render thread with a two-second network
   timeout.
 - A missing table, missing secret, full queue, or failed insert cannot fail the
   product path.
-- The Cloudflare wrapper uses `navigator.sendBeacon` or a keepalive fetch after
-  the app is revealed. It never waits for the telemetry response.
-- The Pages Function returns `202` and persists through `context.waitUntil`.
+- The wrapper uses a keepalive fetch with two retry attempts for delivery
+  failures. On exit it uses `navigator.sendBeacon` when available. Rendering
+  does not wait for delivery.
+- The Pages Function returns `202` after Supabase confirms the write and a
+  retryable error otherwise. The server sends identical keys across every
+  bulk insert, including a null duration for untimed events.
 - The Python background writer is best-effort because Streamlit can end a run
   before its daemon batch is persisted. Startup acceptance therefore uses the
   server summary relayed inside the reliable `browser.app_ready_received`

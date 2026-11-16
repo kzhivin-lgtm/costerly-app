@@ -10,6 +10,7 @@ from typing import Callable
 import streamlit as st
 
 from config import get_optional_secret
+from observability.runtime import current_runtime_trace, report_runtime_failure
 from styles.objects import apply_objects_css
 from ui.js_guards import (
     install_objects_price_input_guard,
@@ -34,6 +35,15 @@ from state.session import invalidate_object_detail_cache
 
 
 _LOG = logging.getLogger(__name__)
+
+
+def _report_objects_failure(stage: str, error: Exception | None = None, *, estimate_id: str | None = None) -> None:
+    report_runtime_failure(
+        stage, error, trace=current_runtime_trace(st.session_state),
+        rfq_run_id=st.session_state.get("current_run_id"),
+        estimate_id=estimate_id or st.session_state.get("current_estimate_id"),
+        repeat_window=10,
+    )
 
 
 @dataclass(frozen=True)
@@ -176,7 +186,7 @@ def _consume_estimation_future() -> None:
             st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
             invalidate_object_detail_cache(str(estimate_id))
     except Exception as exc:
-        _LOG.exception("Objects Estimation worker failed for %s", estimate_id)
+        _report_objects_failure("objects_worker_result", exc, estimate_id=estimate_id)
         st.session_state.last_estimation_error = str(exc)
         if cycle:
             cycle.worker_failed = True
@@ -204,6 +214,7 @@ def _start_prepared_estimation_launch() -> None:
     file_name = str(request.get("file_name") or "")
     file_bytes = request.get("file_bytes")
     if not estimate_id or not run_id or not company_id or not file_name or not isinstance(file_bytes, bytes):
+        _report_objects_failure("objects_launch_plan_incomplete", estimate_id=estimate_id)
         st.session_state.objects_estimation_launch_request = None
         st.session_state.prepared_estimate_access = None
         st.session_state.last_estimation_error = "The prepared Objects launch is incomplete. Please return to File Review."
@@ -229,6 +240,7 @@ def _start_prepared_estimation_launch() -> None:
             estimate_id, None,
         )
     except Exception as exc:
+        _report_objects_failure("objects_start_worker", exc, estimate_id=estimate_id)
         cycle.worker_failed = cycle.worker_finished = True
         st.session_state.last_estimation_error = str(exc)
         st.session_state.prepared_estimate_access = None
@@ -258,6 +270,7 @@ def _load_objects_screen_data(estimate_id: str) -> tuple[dict[str, object], str 
     try:
         data = load_objects_estimation_data(estimate_id)
     except Exception as exc:
+        _report_objects_failure("objects_fetch_rows", exc, estimate_id=estimate_id)
         cached = cache.get(estimate_id)
         if cached is not None:
             return (
@@ -491,7 +504,8 @@ def _render_pricing_table(
                 costs[key] = load_estimation_cycle_cost(
                     client=get_supabase_client(), company_id=company_id, run_id=run_id, estimate_id=estimate_id,
                 )
-            except Exception:
+            except Exception as exc:
+                _report_objects_failure("objects_cycle_cost", exc, estimate_id=estimate_id)
                 costs[key] = None
         cost_usd = costs[key]
     st.markdown(
@@ -656,7 +670,8 @@ def _prefetch_completed_object_details(
             try:
                 cache[cache_key] = prefetch.result()
                 dirty_estimates.discard(estimate_key)
-            except Exception:
+            except Exception as exc:
+                _report_objects_failure("objects_detail_prefetch", exc, estimate_id=estimate_key)
                 failed_prefetches.add(cache_key)
 
 
@@ -669,6 +684,7 @@ def _complete_final_approval(*, company_id: str, run_id: str, estimate_id: str) 
             estimate_id=estimate_id,
         )
     except Exception as exc:
+        _report_objects_failure("objects_final_approval", exc, estimate_id=estimate_id)
         st.session_state.final_approval_error = str(exc)
         return
     st.session_state.final_approval_error = None
@@ -690,7 +706,8 @@ def _load_existing_proposal_url(*, company_id: str, estimate_id: str | None) -> 
             company_id=company_id,
             estimate_id=estimate_key,
         )
-    except Exception:
+    except Exception as exc:
+        _report_objects_failure("objects_load_existing_proposal", exc, estimate_id=estimate_id)
         cache[estimate_key] = None
 
 
@@ -866,7 +883,8 @@ def _render_parts_check(*, estimate_id: str, run_id: str, company_id: str) -> No
                 report = json.loads(result["payload"])
                 result["worktop_areas"] = _worktop_area_rows(report)
                 result["sheet_groups"] = (report.get("sheet_layout") or {}).get("groups", [])
-        except Exception:
+        except Exception as exc:
+            _report_objects_failure("objects_read_parts_check", exc, estimate_id=estimate_id)
             result = {"status": "read_failed"}
         st.session_state.parts_check_result = (key, result)
     active_key, result = st.session_state.get("parts_check_result", (None, {}))

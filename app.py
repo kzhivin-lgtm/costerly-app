@@ -14,7 +14,9 @@ from config import get_optional_secret
 from observability.runtime import (
     configure_runtime_sink,
     emit_completed_action,
+    install_application_error_logging,
     new_runtime_trace,
+    runtime_trace_scope,
 )
 from state.session import init_state, get_company_id
 from ui.screen_transition import screen_transition_marker_html
@@ -373,10 +375,6 @@ def _render_screen(
 def main() -> None:
     run_started_epoch_ms = round(time.time() * 1000, 3)
     init_started_at = time.perf_counter()
-    init_state()
-    st.session_state._runtime_run_sequence = (
-        int(st.session_state.get("_runtime_run_sequence") or 0) + 1
-    )
     configure_runtime_sink(
         get_optional_secret("SUPABASE_URL"),
         get_optional_secret("SUPABASE_SERVICE_ROLE_KEY"),
@@ -386,8 +384,23 @@ def main() -> None:
         requested_trace_id=st.query_params.get("obs_trace"),
         screen=str(st.session_state.get("screen") or "upload"),
         started_at=_SCRIPT_STARTED_AT,
-        build_version="estimation-labor-v1.2.12-detection-v8.4.29",
+        build_version="estimation-labor-v1.2.13-detection-v8.4.29",
     )
+    install_application_error_logging(trace.build_version)
+    st.session_state._runtime_error_trace = trace
+    trace.set_workflow(st.session_state)
+    with runtime_trace_scope(trace):
+        try:
+            init_state()
+            st.session_state._runtime_run_sequence = int(st.session_state.get("_runtime_run_sequence") or 0) + 1
+            _run_app(trace, init_started_at=init_started_at, run_started_epoch_ms=run_started_epoch_ms)
+        except Exception as error:
+            trace.set_workflow(st.session_state)
+            trace.failure("server.unhandled_error", error, stage="app_rerun")
+            raise
+
+
+def _run_app(trace, *, init_started_at: float, run_started_epoch_ms: float) -> None:
     trace.annotate(
         run_sequence=st.session_state._runtime_run_sequence,
         server_run_started_epoch_ms=run_started_epoch_ms,
@@ -918,6 +931,7 @@ def main() -> None:
         st.session_state._last_screen_for_scroll = screen
 
     trace.set_screen(screen)
+    trace.set_workflow(st.session_state)
     with trace.span("server.screen_render", route=screen):
         _render_screen(
             screen,

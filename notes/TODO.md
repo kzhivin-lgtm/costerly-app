@@ -6496,6 +6496,15 @@ cause from the local screenshot alone.
   server timing boundaries without blocking render, changing UI geometry, or
   recording credentials, PII, file names, or RFQ content. Apply the Supabase
   migration and Cloudflare Function secrets before production verification.
+  Labor V1.2.13, user priority P0: request errors, caught Estimation/Parts
+  Check failures and browser exceptions now share the same diagnostic
+  stream. A live probe reproduced PostgREST PGRST102 on mixed event keys;
+  the patched queue stored all three sample events under trace
+  85bed0b4-5d92-498b-9b4e-259abbd3ab70 without raw error text. Cloudflare
+  acknowledges after the write and retries a temporary sink failure.
+  Verify both deployed services and use RFQ/estimate metadata to locate
+  future incidents. Browser shutdown or a prolonged sink outage can
+  still prevent individual best-effort deliveries.
 - Company Profile follow-up after the v3.0.59 Save Expenses checkpoint:
   diagnose the duplicate heading observed after Sign out, then verify Contacts
   and Company Details remain on their selected tab after Save. Recheck the full

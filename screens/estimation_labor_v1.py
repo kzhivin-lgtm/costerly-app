@@ -2,20 +2,17 @@
 
 from html import escape
 import json
-import logging
 
 import streamlit as st
 
 from db.repositories import fetch_rfq_estimate_material_plan
 from db.supabase_client import get_supabase_client
+from observability.runtime import current_runtime_trace, report_runtime_failure
 from use_cases.estimation_labor_v1 import (
     LAYOUT_VERSION, SPLIT_ROLES, build_sheet_layout, calculate_labor_v1, describe_layout_issues, sheet_layout_basis,
 )
 from use_cases.estimation_parts_check_runtime import load_parts_check
 from use_cases.machinery import load_cnc_operator_wage
-
-
-_LOG = logging.getLogger(__name__)
 
 
 def _calculate(client, *, identity):
@@ -261,8 +258,11 @@ def render_labor_v1(*, company_id, run_id, estimate_id, object_id):
         view.markdown(_cnc_section('<p class="object-detail-cnc-caption">Preparing CNC…</p>'), unsafe_allow_html=True)
         try:
             state = _calculate(get_supabase_client(), identity=identity) if run_id else {"status": "unavailable"}
-        except Exception:
-            _LOG.exception("Could not calculate Labor V1 for estimate %s", estimate_id)
+        except Exception as error:
+            report_runtime_failure(
+                "cnc_calculation", error, trace=current_runtime_trace(st.session_state),
+                rfq_run_id=run_id, estimate_id=estimate_id, object_id=object_id, repeat_window=10,
+            )
             state = {"status": "read_failed"}
         if state["status"] == "ready":
             cache[identity] = state["result"]
