@@ -6,14 +6,17 @@ from hashlib import sha256
 import json
 from math import ceil, isfinite
 
-from use_cases.estimation_cnc_supplier_rates import supplier_sheet_rate
+from use_cases.estimation_cnc_supplier_rates import (
+    SUPPLIER_EDGE_RATE_INCLUDES_TAPE, SUPPLIER_EDGE_RATE_PER_M, SUPPLIER_MACHINING_RATE,
+    SUPPLIER_PROFILE_VERSION, supplier_sheet_rate,
+)
 from use_cases.wood_cnc_calculation import (
     DEFAULT_CNC_PARAMETERS, Blank, Placement, StockBatch, cnc_workload_from_layout,
     in_house_cost, layout_joinable_sheet, shared_cut_credits,
 )
 
 
-LABOR_VERSION = "Labor V1.2.9"
+LABOR_VERSION = "Labor V1.2.10"
 LAYOUT_VERSION = "cnc_sheet_layout_v2"
 SHEET_FAMILIES = {
     "mdf_hdf", "faced_mdf", "fibreboard_hardboard", "particleboard",
@@ -23,7 +26,6 @@ PLINTH_ROLES = {"plinth_visible_run", "plinth_front", "plinth_return"}
 SPLIT_ROLES = PLINTH_ROLES | {"carcass_back", "frame_backing"}
 DRILL_EXCLUSIONS = SPLIT_ROLES | {"drawer_box_bottom"}
 PANEL_ROLES = {"carcass_sheet", "backing_sheet", "internal_sheet", "visible_sheet", "worktop_substrate"}
-SUPPLIER_MACHINING_RATE = 12
 EMPLOYER_LOAD = 0.25
 OPERATOR_RATE = 55
 
@@ -36,6 +38,17 @@ class CncFilePreparationParameters:
 
 
 DEFAULT_CNC_FILE_PREPARATION = CncFilePreparationParameters()
+
+
+@dataclass(frozen=True)
+class EdgeBandingParameters:
+    feed_metres_per_minute: float = 7
+    handling_seconds_per_side: float = 12
+    setup_minutes: float = 10
+    operator_gross_ils_per_hour: float = 50
+
+
+DEFAULT_EDGE_BANDING = EdgeBandingParameters()
 
 
 def _positive(value):
@@ -286,9 +299,42 @@ def _file_preparation(groups, operator_rate, parameters):
     }
 
 
+def _edge_banding(plan, object_id, parameters):
+    by_object = plan.get("edge_runs_by_object") or {}
+    runs = by_object.get(object_id, ()) if object_id is not None else (
+        run for rows in by_object.values() for run in rows
+    )
+    metres_by_tape = Counter()
+    side_count = 0
+    for row in runs:
+        metres_by_tape[row["tape_kind"], row["tape_width_mm"]] += row["metres"]
+        side_count += row["sides"]
+    metres = round(sum(metres_by_tape.values()), 6)
+    minutes = (
+        parameters.setup_minutes + metres / parameters.feed_metres_per_minute
+        + side_count * parameters.handling_seconds_per_side / 60
+    ) if metres else 0
+    supplier_rows = [
+        {"tape_kind": tape, "tape_width_mm": width, "metres": round(length, 6),
+         "rate_ex_vat": SUPPLIER_EDGE_RATE_PER_M.get((tape, width))}
+        for (tape, width), length in sorted(metres_by_tape.items())
+    ]
+    return {
+        "metres": metres, "sides": side_count, "minutes": round(minutes, 3),
+        "in_house_ex_vat": round(minutes * parameters.operator_gross_ils_per_hour * (1 + EMPLOYER_LOAD) / 60, 2),
+        "supplier_rates": supplier_rows,
+        "supplier_ex_vat": round(sum(row["metres"] * row["rate_ex_vat"]
+                                    for row in supplier_rows if row["rate_ex_vat"] is not None), 2),
+        "supplier_unpriced_metres": round(sum(row["metres"] for row in supplier_rows
+                                             if row["rate_ex_vat"] is None), 6),
+        "supplier_includes_tape": SUPPLIER_EDGE_RATE_INCLUDES_TAPE,
+    }
+
+
 def calculate_labor_v1(
     layout, plan, *, machine_rate=None, object_id=None, operator_gross_rate=None,
     file_preparation_parameters=DEFAULT_CNC_FILE_PREPARATION,
+    edge_parameters=DEFAULT_EDGE_BANDING,
 ):
     """Compare CNC work and purchasing for the same parts, without duplicate stock charges."""
     if layout.get("version") != LAYOUT_VERSION or layout["basis_sha256"] != sheet_layout_basis(plan):
@@ -344,7 +390,8 @@ def calculate_labor_v1(
                 else:
                     rate, basis = supplier_sheet_rate(
                         _family(line), thickness_mm=group["thickness_mm"], size_mm=group["size_mm"],
-                        specs=specs, stock_rate=usable_stock_rate,
+                        specs=specs, stock_rate=usable_stock_rate, stock_name=group["material"],
+                        variant=line["selection_key"].rpartition("|variant=")[2], stock_authority=line.get("authority"),
                     )
                 supplier_rows.append({
                     **detail, "sheets": sheets, "rate_ex_vat": rate, "basis": basis,
@@ -360,6 +407,8 @@ def calculate_labor_v1(
     }
     return {
         "version": LABOR_VERSION, "work": work, "issues": issues, "file_preparation": file_preparation,
+        "supplier_profile_version": SUPPLIER_PROFILE_VERSION,
+        "edge_banding": _edge_banding(plan, object_id, edge_parameters),
         "unplaced_blanks": sum(sum(group["layout"]["unplaced"].values()) for group in groups),
         "joined_parts": [row for group in groups for row in group["layout"].get("splits", ())],
         "in_house": {

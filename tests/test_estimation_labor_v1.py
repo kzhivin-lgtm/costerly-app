@@ -92,7 +92,8 @@ class LaborV1Test(TestCase):
         html = _comparison_html(configured)
         self.assertIn("1.41 min", html)
         self.assertIn("Our operator", html)
-        self.assertIn("₪282", html)
+        self.assertIn("₪102", html)
+        self.assertNotIn("₪282", html)
         self.assertIn("₪283", html)
         bundled = _comparison_html(calculate_labor_v1(
             layout, plan, file_preparation_parameters=CncFilePreparationParameters(supplier_includes_preparation=True),
@@ -144,7 +145,7 @@ class LaborV1Test(TestCase):
         with self.assertRaisesRegex(ValueError, "different quantities"):
             calculate_labor_v1(layout, plan)
 
-    def test_supplier_prices_thin_hdf_and_standard_melamine_but_requires_a_wide_sheet_quote(self):
+    def test_supplier_prices_thin_hdf_and_melamine_at_the_actual_sheet_format(self):
         report = {"objects": {"object-001": {"parts": [
             _part("fixed_panel"), _part("fixed_panel"), _part("carcass_back"), _part("carcass_side"),
         ]}}}
@@ -161,14 +162,46 @@ class LaborV1Test(TestCase):
         plan["lines"].append(wide)
         result = calculate_labor_v1(build_sheet_layout(report, plan), plan, object_id="object-001")
         supplier = result["subcontractor"]
-        self.assertEqual([row["rate_ex_vat"] for row in supplier["materials"]], [245, 340, 130.33, None])
-        self.assertEqual(supplier["bundle_ex_vat"], 715.33)
-        self.assertEqual(supplier["unpriced_sheets"], 1)
+        self.assertEqual([row["rate_ex_vat"] for row in supplier["materials"]], [245, 340, 130.33, 640])
+        self.assertEqual(supplier["bundle_ex_vat"], 1355.33)
+        self.assertEqual(supplier["unpriced_sheets"], 0)
         html = _comparison_html(result)
-        self.assertIn("1 need a quote", html)
         self.assertIn("2800 × 2070 mm", html)
         self.assertIn("₪130 · Estimate", html)
-        self.assertIn("(subtotal)", html)
+        self.assertIn("₪640 · Estimate", html)
+
+    def test_veneered_mdf_estimate_uses_resolved_thickness_without_pricing_an_unknown_sheet(self):
+        report = {"objects": {"object-001": {"parts": [_part("door_front"), _part("door_front")]}}}
+        plan = _plan([_allocation("B01:door_front:001")], family="mdf_hdf", thickness=28)
+        plan["lines"][0].update(label_specifications={"board_type": "mdf", "surface": "veneer_two_sided"})
+        unknown = _plan([_allocation("B01:door_front:002")], family="mdf_hdf", thickness=37)["lines"][0]
+        unknown.update(authority="assumption", label_specifications={"board_type": "mdf", "surface": "veneer_two_sided"})
+        plan["lines"].append(unknown)
+        result = calculate_labor_v1(build_sheet_layout(report, plan), plan, object_id="object-001")
+        rows = result["subcontractor"]["materials"]
+        self.assertEqual([(row["rate_ex_vat"], row["basis"]) for row in rows], [(447.03, "veneer_estimate"), (None, "quote_required")])
+
+    def test_recent_material_plan_drives_both_edge_routes_without_showing_owned_stock_in_labor(self):
+        report = {"objects": {"object-001": {"parts": [_part("fixed_panel")]}}}
+        plan = _plan([_allocation("B01:fixed_panel:001")])
+        plan["lines"][0]["price_per_purchase_unit"] = 9999
+        plan["edge_runs_by_object"] = {
+            "object-001": [
+                {"tape_kind": "melamine", "tape_width_mm": 24, "metres": 5, "sides": 4},
+                {"tape_kind": "veneer", "tape_width_mm": 24, "metres": 10, "sides": 6},
+            ],
+            "object-002": [{"tape_kind": "melamine", "tape_width_mm": 24, "metres": 30, "sides": 20}],
+        }
+        result = calculate_labor_v1(build_sheet_layout(report, plan), plan, object_id="object-001")
+        edge = result["edge_banding"]
+        self.assertEqual((edge["metres"], edge["minutes"], edge["in_house_ex_vat"]), (15, 14.143, 14.73))
+        self.assertEqual(edge["supplier_ex_vat"], 125)
+        self.assertTrue(edge["supplier_includes_tape"])
+        html = _comparison_html(result)
+        self.assertIn("Estimated labor", html)
+        self.assertIn("Tape included", html)
+        self.assertIn("₪125", html)
+        self.assertNotIn("₪9,999", html)
 
     def test_unpriced_assumption_sheet_keeps_its_workload_and_needs_a_stock_price(self):
         report = {"objects": {"object-001": {"parts": [_part("fixed_panel")]}}}
@@ -185,3 +218,17 @@ class LaborV1Test(TestCase):
         self.assertEqual(result["work"]["blank_count"], 1)
         self.assertIsNone(result["subcontractor"]["bundle_ex_vat"])
         self.assertEqual(result["subcontractor"]["unpriced_sheets"], 1)
+
+    def test_supplier_uses_the_finished_backing_bundle_once_with_separate_in_house_stock(self):
+        report = {"objects": {"object-001": {"parts": [_part("carcass_back")]}}}
+        plan = _plan([_allocation("B01:carcass_back:001")], family="plywood_special", thickness=5)
+        plan["lines"][0].update(
+            selection_key="plywood_special|thickness=5|variant=white",
+            display_name="Plywood, 5 mm, HPL-faced, white",
+            price_per_purchase_unit=150.62,
+        )
+        result = calculate_labor_v1(build_sheet_layout(report, plan), plan, object_id="object-001")
+        self.assertEqual(result["in_house"]["materials"][0]["stock_ex_vat"], 150.62)
+        self.assertEqual(result["subcontractor"]["bundle_ex_vat"], 130)
+        self.assertEqual(result["subcontractor"]["materials"][0]["basis"], "published_reference")
+        self.assertEqual(result["subcontractor"]["unpriced_sheets"], 0)

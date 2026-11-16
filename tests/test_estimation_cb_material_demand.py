@@ -28,6 +28,41 @@ def _build(rows, families, *, quantity=1, issues=(), name=None):
     )
 
 
+def test_cabinet_backs_and_drawer_bottoms_use_stock_coated_plywood_without_overriding_a_note():
+    back = _part("carcass_back")
+    bottom = _part("drawer_box_bottom")
+    specified = _part("carcass_back", material_note={
+        "basis": "ocr_material_note", "source_text": "ХДФ 6 мм", "refs": ["view-1:M01"],
+    })
+    for row in (back, bottom, specified):
+        row["dimensions"]["thickness"] = {"mm": 6, "basis": "construction_assumption", "refs": []}
+    result = _build([back, bottom, specified], {"plywood_special", "mdf_hdf"})
+    standard, hdf = result["materials"]
+    assert standard["family"] == "plywood_special"
+    assert standard["specification"]["thickness_mm"] == 5
+    assert standard["purchase_variant"] == "white"
+    assert {v["role"] for v in standard["part_sources"]} == {"carcass_back", "drawer_box_bottom"}
+    assert hdf["family"] == "mdf_hdf"
+    assert hdf["specification"] == {"board_type": "hdf", "thickness_mm": 6}
+    assert hdf["basis"] == "source_evidence"
+
+
+def test_edge_tape_uses_finished_panel_perimeter_and_keeps_tape_types_separate():
+    rows = [
+        _part("drawer_box_end"),
+        _part("drawer_front", visual_stock={"surface": "wood_grain", "refs": ["view-1"]}),
+        _part("drawer_box_bottom"),
+        _part("carcass_back"),
+    ]
+    for row in rows[2:]:
+        row["dimensions"]["thickness"] = {"mm": 5, "basis": "construction_assumption"}
+    result = _build(rows, {"melamine_faced_particleboard", "mdf_hdf", "edge_banding", "plywood_special"}, quantity=3)
+    tape = {m["purchase_variant"]: m["quantity"] for m in result["materials"] if m["family"] == "edge_banding"}
+    assert tape == {"melamine": 9.36, "veneer": 16.56}
+    assert [edge["sides"] for edge in result["edge_runs"]] == [12, 24]
+    assert {edge["tape_width_mm"] for edge in result["edge_runs"]} == {24}
+
+
 def test_lighting_accessories_size_one_supply_per_physical_object_across_temperatures():
     strips = [_part("led_strip_run", quantity=1, unit="run", colour_temperature_k=kelvin,
                     dimensions={"length": {"mm": length, "refs": [str(kelvin)]}})

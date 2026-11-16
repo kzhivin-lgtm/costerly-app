@@ -15,9 +15,11 @@ WOOD_SHEET_FAMILIES = {
     "melamine_faced_particleboard", "plywood", "plywood_special",
 }
 JOIN_FIRST = {"carcass_back", "frame_backing", "plinth_front", "plinth_return", "plinth_visible_run"}
-_WIDE_LDSP_FORMAT_SOURCE = "https://www.averbuch.co.il/images/ul240756/16df56d7e2629f1383324bc767e57ace.pdf"
 _WIDE_LDSP_KEY = "melamine_faced_particleboard|thickness=17"
-_WIDE_LDSP_LENGTH, _WIDE_LDSP_WIDTH = 2800, 2070
+_OVERSIZE_LDSP_FORMATS = (
+    (2750, 1220, "mazonit", "https://www.mazonit.co.il/prdFiles/melamin16.pdf"),
+    (2800, 2070, "averbuch", "https://www.averbuch.co.il/images/ul240756/16df56d7e2629f1383324bc767e57ace.pdf"),
+)
 
 
 def _sheet_size(candidate):
@@ -66,13 +68,8 @@ def _oversize_candidate(stock, demand, candidates, blank):
         return min(fitting, key=rank)
     if stock.selection_key != _WIDE_LDSP_KEY or stock.currency != "ILS":
         return None
-    # The supplier catalogue documents the format. Its estimate uses the
-    # existing material-only Israel Reference rate for the same stock.
-    if not sheet_fits_part(
-        blank.length_mm, blank.width_mm, _WIDE_LDSP_LENGTH, _WIDE_LDSP_WIDTH,
-        rotation_allowed=blank.rotation_allowed,
-    ):
-        return None
+    # Catalogues document compatible formats. Estimate the stock cost from the
+    # same material-only Israel Reference rate and keep the existing sheet-count priority.
     references = [
         candidates[key] for key in demand.compatible_candidate_ids
         if key in candidates and candidates[key].selection_key == stock.selection_key
@@ -85,18 +82,23 @@ def _oversize_candidate(stock, demand, candidates, blank):
         Decimal(row.label_specifications["reference_stock_ils_per_m2"]), row.candidate_id,
     ))
     per_m2 = Decimal(basis.label_specifications["reference_stock_ils_per_m2"])
-    area = Decimal(_WIDE_LDSP_LENGTH * _WIDE_LDSP_WIDTH) / 1_000_000
-    return replace(
-        basis,
-        candidate_id=f"{basis.reference_price_id}:averbuch-2800x2070",
-        display_name="LDSP, 17 mm, 2800 × 2070 mm (estimated price)",
-        purchasable_dimensions={"length_mm": _WIDE_LDSP_LENGTH, "width_mm": _WIDE_LDSP_WIDTH},
-        price_per_purchase_unit=(per_m2 * area).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
-        label_specifications={
-            **basis.label_specifications, "cnc_format_source": _WIDE_LDSP_FORMAT_SOURCE,
-            "cnc_price_basis": "reference_price_per_m2",
-        },
-    )
+    estimates = []
+    for length, width, vendor, source in _OVERSIZE_LDSP_FORMATS:
+        if not sheet_fits_part(blank.length_mm, blank.width_mm, length, width, rotation_allowed=blank.rotation_allowed):
+            continue
+        area = Decimal(length * width) / 1_000_000
+        estimates.append(replace(
+            basis,
+            candidate_id=f"{basis.reference_price_id}:{vendor}-{length}x{width}",
+            display_name=f"LDSP, 17 mm, {length} × {width} mm (estimated price)",
+            purchasable_dimensions={"length_mm": length, "width_mm": width},
+            price_per_purchase_unit=(per_m2 * area).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+            label_specifications={
+                **basis.label_specifications, "cnc_format_source": source,
+                "cnc_price_basis": "reference_price_per_m2",
+            },
+        ))
+    return min(estimates, key=rank, default=None)
 
 
 def _regular_stock(stock, line, by_id, parts, candidates):

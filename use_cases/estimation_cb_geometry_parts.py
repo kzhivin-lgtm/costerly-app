@@ -371,6 +371,9 @@ def derived(basis, inputs, formula, *, reason):
     return {**result, "reason": reason}
 
 
+STANDARD_BACKING_THICKNESS_MM = 5
+
+
 def stock(mm):
     return {**dimension(mm, "construction_assumption"), "reason": _PROVISIONAL_STOCK}
 
@@ -453,7 +456,7 @@ def equivalent_drawer_faces(view, printed, ids):
 
 
 def drawer_box_parts(box_width, face_height, slide_length, *, instance_ref):
-    drawer_t, bottom_t = stock(17), stock(6)
+    drawer_t, bottom_t = stock(17), stock(STANDARD_BACKING_THICKNESS_MM)
     box_height = derived("construction_assumption", [face_height], lambda h: h - 40,
                          reason="Allow 40 mm total clearance behind the visible drawer face.")
     end_width = derived("construction_assumption", [box_width, drawer_t], lambda w, t: w - 2 * t,
@@ -506,7 +509,7 @@ def drawer_frame_parts(block, measurements, views, printed, front, *, stock_note
     back = "backing sheet stock"
     stock_notes = stock_notes or {}
     carcass_t = stock_notes.get("carcass") or stock(_CARCASS_STOCK_MM)
-    backing_t = stock_notes.get("backing") or stock(6)
+    backing_t = stock_notes.get("backing") or stock(STANDARD_BACKING_THICKNESS_MM)
     face_t = stock_notes.get("facade") or stock(20)
     side_t = carcass_t
     if (reuse_face_stock and carcass_t["basis"] == face_t["basis"] == "construction_assumption"
@@ -704,7 +707,7 @@ def casework_parts(block, measurements, views, printed, front, *, stock_notes=No
 
     stock_notes = stock_notes or {}
     sheet = stock_notes.get("carcass") or stock(_CARCASS_STOCK_MM)
-    back_t = stock_notes.get("backing") or stock(6)
+    back_t = stock_notes.get("backing") or stock(STANDARD_BACKING_THICKNESS_MM)
     face_t = stock_notes.get("facade") or sheet
     inside_w = derived("construction_assumption", [width, sheet], lambda w, t: w - 2 * t,
                        reason="Horizontal panels and backing fit between the two sides.")

@@ -1792,7 +1792,7 @@ def build_material_plan(
     allowance_candidates = {}
     sheet_groups = defaultdict(list)
     for fallback in assumption_fallbacks:
-        if not allow_estimator_allowance:
+        if not allow_estimator_allowance or fallback["material_family"] == "edge_banding":
             continue
         parts = tuple(item for item in fallback["parts"] if isinstance(item, Mapping))
         owner = str(fallback["object_id"]), str(fallback["material_requirement_id"])
@@ -1823,7 +1823,7 @@ def build_material_plan(
         source_total_quantity = fallback.pop("source_total_quantity", None)
         fallback.pop("share_sheet_allowance")
         fallback.pop("finish_group")
-        if not allow_estimator_allowance:
+        if not allow_estimator_allowance or fallback["material_family"] == "edge_banding":
             fallback["resolution"] = "assumption_required"
             unresolved.append(f"{object_id}:{requirement_id}")
             continue

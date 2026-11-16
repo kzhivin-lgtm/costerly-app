@@ -5,7 +5,10 @@ from math import ceil, isfinite
 import re
 
 from use_cases.estimation_assembly_bom import ASSEMBLY_BOM_V1
-from use_cases.estimation_cb_geometry_parts import VENEERED_MDF, is_explicit_solid_wood_note, is_kitchen_name
+from use_cases.estimation_cb_geometry_parts import (
+    STANDARD_BACKING_THICKNESS_MM, VENEERED_MDF, is_explicit_solid_wood_note, is_kitchen_name,
+)
+from use_cases.estimation_edge_banding import EDGE_FAMILY, EDGE_TAPE_NAMES, EDGE_TAPE_THICKNESS_MM, sheet_edge_run
 from use_cases.estimation_structural_bom import _CONSTRUCTION_MATERIAL_NAMES, _FAMILY_PREFERENCE
 from use_cases.material_engine_adapter import build_material_plan, material_plan_input_fingerprint, material_plan_snapshot, material_review_purchases
 from use_cases.material_identity_resolution import normalize_material_phrase
@@ -28,6 +31,8 @@ _ROLES = {
 _COUNT_ROLES = {"leg", "drawer_slide", "pull_out_shelf_slide", "hinge", "gas_lift"}
 _LDSP_FAMILY = "melamine_faced_particleboard"
 _LDSP_DEFAULT_THICKNESS_MM = 17
+_BACKING_FAMILY = "plywood_special"
+_BACKING_CATALOG_NAME = "Plywood, 5 mm, HPL-faced"
 _STANDARD_LED_STRIP = "LED strip standard output"
 _LED_PROFILE_KIT = "LED aluminium U-profile with diffuser"
 _LED_DRIVER = "Constant-voltage LED driver"
@@ -331,7 +336,7 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
     scopes = _source_scopes(stage, source)
     if len(scopes) != len({key for key, _ in scopes}):
         raise ValueError("Block and shared part IDs must be unique within the object")
-    materials, parts, review_items, assumptions = {}, [], [], []
+    materials, parts, review_items, assumptions, edge_runs = {}, [], [], [], []
     inventory_issues = list(source.get("inventory_issues", source.get("inventory_review_items", ())))
     coverage = parts_report.get("source_coverage")
     if coverage and coverage != "reviewed":
@@ -388,6 +393,20 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
             if material_refs and row.get("material_note"):
                 material_refs = tuple(dict.fromkeys([*material_refs, *measurements.get("thickness", {}).get("refs", ())]))
             preferences = (source_family,) if source_family else _ROLE_FAMILY_PREFERENCE.get(role, ())
+            thickness = measurements.get("thickness", {})
+            default_backing = (
+                role == "backing_sheet" and not notes and not source_family
+                and _BACKING_FAMILY in allowed_material_families
+                and (not _positive(thickness.get("mm")) or thickness.get("mm") == STANDARD_BACKING_THICKNESS_MM
+                     or thickness.get("basis") == "construction_assumption")
+            )
+            if default_backing:
+                preferences = (_BACKING_FAMILY,)
+                if not _positive(thickness.get("mm")) or thickness.get("basis") == "construction_assumption":
+                    measurements["thickness"] = {
+                        "mm": STANDARD_BACKING_THICKNESS_MM, "basis": "construction_assumption",
+                        "reason": "Standard finished plywood for cabinet backs and drawer bottoms.",
+                    }
             visual_stock = row.get("visual_stock", {})
             kitchen_face = kitchen and role == "visible_sheet"
             visible_veneer = (not kitchen_face and not notes and not unit and visual_stock.get("surface") == "wood_grain"
@@ -449,6 +468,9 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
             if visible_veneer:
                 name = "Veneered MDF"
                 spec.update(board_type="mdf", surface="veneer_two_sided")
+            if default_backing:
+                name = "White single-sided HPL plywood backing"
+                identity_hint = _BACKING_CATALOG_NAME
             layup = row.get("sheet_layup") if visible_veneer and has_sheet_geometry else None
             cut_quantity = quantity
             if (layup and _positive(layup.get("layer_mm")) and type(layup.get("layer_count")) is int
@@ -469,6 +491,8 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                 if _positive(length.get("mm")):
                     spec["depth_mm"] = length["mm"]
             variant = row.get("colour_temperature_k") if unit == "m" else None
+            if default_backing:
+                variant = "white"
             finish_group = visual_stock.get("finish_group") if visible_veneer else None
             demand_role = "visible_sheet" if visible_veneer else role
             key = (demand_role, family, name, basis, unit, tuple(sorted(spec.items())), fallback_reason,
@@ -489,7 +513,7 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                 if identity_hint:
                     materials[key]["identity_hint"] = identity_hint
                 if variant:
-                    materials[key]["purchase_variant"] = f"{variant}K"
+                    materials[key]["purchase_variant"] = variant if default_backing else f"{variant}K"
                 if finish_group:
                     materials[key]["finish_group"] = finish_group
             material = materials[key]
@@ -518,6 +542,30 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                     "basis": "construction_assumption", "evidence_refs": refs,
                     "assumption_reason": "Cut geometry comes from the preliminary Parts estimate.",
                 })
+                if EDGE_FAMILY in allowed_material_families and not fallback_reason:
+                    edge = sheet_edge_run(
+                        role=row["role"], family=family, specifications=spec,
+                        length_mm=measurements["length"]["mm"], width_mm=measurements["width"]["mm"],
+                        thickness_mm=thickness_mm, quantity=quantity,
+                    )
+                    if edge:
+                        edge_runs.append({"part_id": part_id, **edge})
+    for tape, width in sorted({(run["tape_kind"], run["tape_width_mm"]) for run in edge_runs}):
+        # Consume by metre; the shared catalog already carries the roll format.
+        width_band = {24: "up to 24", 45: "25-45", 65: "46-65"}[width]
+        name = EDGE_TAPE_NAMES[tape]
+        materials[("edge_tape", tape, width)] = {
+            "requirement_id": f"cb-edge-tape-{tape}-{width}",
+            "source_name": f"{name}, {width:g} × {EDGE_TAPE_THICKNESS_MM:g} mm",
+            "identity_hint": f"{name}, {EDGE_TAPE_THICKNESS_MM:g} mm, {width_band} mm wide",
+            "family": EDGE_FAMILY, "material_role": EDGE_FAMILY,
+            "specification": {"width_mm": width, "thickness_mm": EDGE_TAPE_THICKNESS_MM},
+            "purchase_variant": tape,
+            "basis": "construction_assumption", "evidence_refs": [], "part_sources": [],
+            "quantity": round(sum(run["metres"] for run in edge_runs
+                                  if (run["tape_kind"], run["tape_width_mm"]) == (tape, width)), 6),
+            "unit": "m",
+        }
     if _LED_FAMILY in allowed_material_families:
         _lighting_accessories(materials, object_quantity, _LED_FAMILY, review_items)
     review_items.extend({"part_id": row["instance_ref"], "role": row["role"], "reason": "ownership_unresolved"}
@@ -533,6 +581,7 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
         "status": "review_required" if review_items else "ready", "materials": list(materials.values()),
         "source_part_count": source_part_count,
         "parts": parts, "review_items": review_items, "assumptions": list(dict.fromkeys(assumptions)),
+        **({"edge_runs": edge_runs} if edge_runs else {}),
         "primary_preview_ref": next((a["storage_ref"] for a in payload.get("evidence", {}).get("artifacts", [])
                                      if a.get("storage_ref")), ""),
     }
@@ -621,6 +670,10 @@ def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
                 original = source["dimensions"]
                 updated = {axis: value for axis, value in dimensions.items()
                            if _positive(value.get("mm")) and not _positive(original.get(axis, {}).get("mm"))}
+                if (material.get("identity_hint") == _BACKING_CATALOG_NAME
+                        and original.get("thickness", {}).get("basis") == "construction_assumption"
+                        and original["thickness"].get("mm") != dimensions["thickness"]["mm"]):
+                    updated["thickness"] = dimensions["thickness"]
                 thickness = stock_default.get("thickness_mm", stock_default.get("thickness"))
                 if _positive(thickness) and not _positive(original.get("thickness", {}).get("mm")):
                     updated["thickness"] = {"mm": thickness, "basis": "israel_reference_default",
@@ -645,6 +698,7 @@ def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
                          "parts": _checked_parts_for_estimate(checked_parts, estimates, estimated_counts),
                          "primary_preview_ref": item["primary_preview_ref"]}
     snapshot["parts_check"] = coverage
+    snapshot["edge_runs_by_object"] = {oid: item.get("edge_runs", []) for oid, item in facts.items()}
     snapshot["parts_check_source"] = {key: parts_report[key] for key in ("run_id", "estimate_id", "input_ids", "source_audit_sha256",
                                                                         "overlay_revision")
                                       if key in parts_report}

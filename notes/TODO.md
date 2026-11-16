@@ -190,6 +190,111 @@ Saved replays: Lev2 HDF ILS 130.33/sheet, supplier subtotal ILS 4,341
 plus one wide sheet awaiting a quote; Adda ILS 1,968 and ILS 5,382
 per card; Lev1 supplier subtotal ILS 1,110 with nine sheets requiring
 quotes. All 458 focused tests passed.
+Commit 5e7e58f deployed via Railway 13268c3e-99d8-49b6-83d8-f055ca3260c6.
+Cloudflare served estimation-labor-v1.2.9-detection-v8.4.29.
+
+ACTIVE, P1, USER REQUEST. Use one virtual CNC subcontractor for Israeli
+sheet work. Owner asked for the full price list and authorized choosing
+estimated veneer prices. The owner clarified that the CNC Price List
+is separate from the Israel Price List: share canonical material
+identity and compatible stock formats, not monetary prices. Parts Check
+and Material Plan own physical defaults, compatible stock and the
+saved layout; Calculation applies the CNC profile with an explicit
+billing unit and included services. Keep material-only pricing in the
+Company Catalog or Israel Reference. The subcontractor sheet bundle
+replaces material and cutting for the routed sheets in the future
+combined total. Pricing changes in either catalogue should not silently
+rewrite the other. Connect PVC rates to measured or explicitly assumed
+edge lengths and show one CNC comparison per object.
+The local Labor V1.2.10 reference profile is in
+`use_cases/estimation_cnc_supplier_rates.py`. Standard 2400/2440×1220
+rates cover stock and straight cuts before VAT. The generic 17 mm melamine
+benchmark remains ILS 245. Nonstandard 17 mm melamine estimates are
+white/other ILS 250/270 for 2750×1220 and ILS 600/640 for 2800×2070.
+The latter uses the saved Lev2 large-format stock reference ILS 585.63
+plus a cutting allowance, rounded, with the white discount scaled by area.
+For generic 17 mm long parts with no matching priced stock, prefer
+2750×1220 when it uses the same number of sheets as 2800×2070.
+Keep 2800×2070 for cases like the two 2535×620 B05 sides that need two
+2750×1220 sheets but fit together on one wide sheet. This preserves the
+accepted Lev2 purchase and keeps the sides whole. Saved Lev2 replay
+keeps one wide sheet; the same fixture with one side uses one narrow
+long sheet. Both placements are whole. 110 targeted tests passed for
+these format and catalogue changes.
+Other special formats and unmatched material identities stay quote-based.
+Supplier machining is ILS 12 per part requiring internal machining once.
+The same Parts edge runs supply Materials and CNC. Use melamine tape on
+LDSP and real wood veneer tape on veneered panels, by consumed metres
+and width band; PVC remains available for explicitly HPL-faced stock.
+Skip back panels and 5 mm drawer bottoms; omit panel ends fitted between
+adjacent panels. Price tape through Company Catalog / Israel Reference;
+an unpriced tape is a quote gap, not a generic ILS 200 allowance.
+Installed tape reference, before VAT: ILS 7/12 per m (24/45 mm roll)
+for melamine/PVC; real wood veneer ILS 9/14 per m as an estimate.
+The contractor price includes tape in the virtual profile. In-house
+application is labor only: 7 m/min, 12 s per side, 10 min setup at
+ILS 50/h gross +25%. The Materials block retains sheet and tape stock.
+Radius/bevel premium remains an estimate for a future explicit
+contour input; wood lipping, finishing and delivery are separate.
+For owner-supplied stock keep
+the hourly or linear-metre quote as an alternative billing model and
+never add it to the sheet bundle. Supplier file preparation remains separate.
+
+Validated backing SKU, USER APPROVED: white one-faced laminate on 5 mm
+plywood for unspecified cabinet backs and drawer bottoms; Algolan tariff
+ILS 130 white, ILS 140 decorative, per sheet with cutting, ex VAT.
+Egoz verifies the material and 2440×1220 format. Preserve any explicit
+thickness and material on the drawing. Draft Labor V1.2.10 replays this
+SKU on Lev2 (five sheets), Lev1 (one) and Adda (seven across both cards).
+Production activation is tracked in the deployment receipt below.
+Drawer box sides and internal front and rear walls use the ordinary
+17 mm melamine stock by default, shared with the cabinet carcass when
+finish is compatible. Algolan's 15.5 mm drawer melamine stays a market
+example, not a default or a separate price-list row for our profile.
+Drawer bottoms and cabinet backs use the 5 mm plywood row above, not
+4 mm HPL plywood. Other plywood, solid-wood and operation rates stay.
+
+MDF reference profile, MATERIAL PLUS STRAIGHT CUT EX VAT. Tsidky quotes
+ILS 210 for raw 17 mm and ILS 60 for basic cutting, both incl VAT. Studio
+Leetz publishes a raw 19 mm 2440×1220 source sheet at ILS 230 incl VAT,
+with cutting separately. Normalizing with the same straight-cut charge
+gives ILS 229 and ILS 246. For catalogued thicker sheets, candidate
+stock slope ILS 10 incl VAT/mm with cut held at ILS 60 gives rounded
+ILS 263/271/288/314/322/339/407 for 21/22/24/27/28/30/38 mm.
+Use only whole-millimetre rates in the raw and veneered MDF profile.
+Keep exact fractional thickness as drawn and allow an exact supplier or
+Company Catalog match; do not round physical dimensions.
+[Mazonit](https://www.mazonit.co.il/קטלוג-מוצרים/1082/MDF) lists 21/23.5/27/30/38 mm;
+its brown MDF sheet spec also lists 22/24; WoodCut lists 28 mm raw in its
+older CNC stock price table. Camisa offers 27 mm for ILS 319 + ILS 45
+for up to 12 cuts, without a clear VAT statement. Model identified raw
+20/25/40 mm stock at ILS 254/297/424; estimates do not create a stock SKU.
+For an explicitly specified 2×25 mm assembly, allow ILS 594 for 50 mm
+equivalent sheet pair plus glue/press labour; do not assume an exact
+50 mm solid sheet. Use the same approach only when Parts specifies a layup.
+For ready veneered MDF, Alfandari supplies bonded natural veneer and offers
+CNC. Bemida offers 16.5/28 mm for straight cut to size; do not substitute
+the observed ILS 575.30/m² retail for a sheet rate. The Company Catalog
+keeps its own stock price: Lev1 20 mm two-sided oak is ILS 318 in-house.
+For eligible standard unfinished oak default to the corresponding raw MDF bundle plus
+ILS 125 per sheet for two faces; e.g. 16/20/28/30 mm cost
+ILS 345/379/447/464. Do not price a 37 mm veneer SKU, a lacquered sheet
+or specialty veneer by default.
+Offline saved controls cover Lev2, Lev1 and both Adda cards. The draft
+sets a rate on all 17 Lev2 sheets and all 24 Adda sheets, and retains
+four Lev1 sheets as quote required because their stock is provisional.
+In the offline edge replay, Lev2 uses 195.984 m of melamine tape and
+Lev1 estimates 40.622 m of melamine plus 70.390 m of veneer tape.
+Adda does not infer tape on raw plywood, mirrors or glass. The existing
+final sale-price summary is unchanged; a future selected route must
+replace bundled sheet and tape allocations exactly once.
+181 targeted tests passed, including material and Object Detail.
+The four saved cards ran through the material rows and CNC renderer:
+Lev2 tape ILS 133.27, 96.798 application minutes in-house, ILS 1371.89
+installed at the supplier; Lev1 tape ILS 206.42, 53.859 minutes, ILS 1261.86.
+The object render matches the Material Plan metres in all four cases.
+Production predecessor / rollback: `5e7e58f` (Labor V1.2.9).
+Pending: exact release deployment witness and owner's live card review.
 
 PENDING, P1, USER REQUEST. Confirm default file preparation scope for
 subcontracted sheet CNC. [Algolan](https://algolan-express.co.il/)
@@ -5447,6 +5552,16 @@ machining-only tariff cannot price this scenario. Check how the new bundle
 classification affects the existing Materials percentage base before runtime
 integration.
 
+PENDING, P1, USER REQUEST after the Labor V1.2.10 checkpoint. Add an
+in-house format panel saw and hand edging route. Reuse the checked
+Parts, estimate straight-through saw cuts and routine manual drilling,
+and use the same edge metres for approved iron-on tape or veneer
+application with a separate operator norm. Keep the owned sheet and
+tape in Materials. Validate feasible guillotine cuts and grain; send
+shaped work or unsupported machining to the shop's available route.
+A fourth fully manual cutting route is DEFERRED; prefer existing
+subcontracting for shops without a suitable format saw or CNC.
+
 Proposed for Calculation after the 16 November routing discussion. Allow
 mixed routes within one estimate when the workshop lacks CNC. Compare a
 supplier stock-plus-CNC package for cabinet groups with in-house panel-saw
@@ -5688,9 +5803,9 @@ MDF at 16.5/28 mm under stock materials. Available quantity and CNC quote
 are still unknown. The same retail configurator publishes ILS 155.70/m²
 for standard raw brown MDF 17 mm with straight cut to size. Obtain separate
 prices for a full bare sheet and CNC. Confirm reverse-face specification,
-available quantity and VAT before setting a tariff. Keep ILS 575.30/m² as
-an observed retail price for a straight-cut part. A default price or budget
-allowance for veneered stock still needs approval. At the same
+available quantity and VAT before presenting this as an actual wholesale tariff.
+Keep ILS 575.30/m² as an observed retail price for a straight-cut part.
+The virtual profile uses the budget allowance listed above. At the same
 2420×1200 size with straight cutting and no edging, [Yam HaPirzul](https://www.yamhapirzul.co.il/product/סיבית-מלמין/)
 displayed ILS 406.56 (ILS 140/m²) for 16.5 mm graphite melamine chipboard.
 Bemida's oak MDF price is 4.11 times that retail chipboard price. Russian
