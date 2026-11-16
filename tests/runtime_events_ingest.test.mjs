@@ -27,12 +27,14 @@ test("acknowledges a stored browser error with correlation and only approved fie
   });
   const event = {
     trace_id: trace, run_id: run, event_name: "browser.runtime_failure", screen: "objects", status: "error",
+    build_version: "estimation-labor-v1.2.13-detection-v8.4.29",
     metadata: { kind: "app_error", error_type: "TypeError", line: 81, message: "private",
                 stack: "private", url: "private" },
   };
   assert.equal((await onRequest({ request: request(event), env })).status, 202);
   assert.equal(stored.run_id, run);
   assert.equal(stored.trace_id, trace);
+  assert.equal(stored.build_version, event.build_version);
   assert.equal(stored.status, "error");
   assert.deepEqual(stored.metadata, { kind: "app_error", error_type: "typeerror", line: 81 });
 });

@@ -74,7 +74,7 @@ function normalizeEvent(raw) {
   return {
     occurred_at: timestamp.toISOString(),
     schema_version: "runtime_v1",
-    build_version: String(raw.build_version || "3.1.10").slice(0, 40),
+    build_version: safeName(raw.build_version, "unknown"),
     source: "browser",
     trace_id: raw.trace_id,
     session_id: validUuid(raw.session_id) ? raw.session_id : null,
