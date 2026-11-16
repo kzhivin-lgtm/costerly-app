@@ -8,12 +8,12 @@ from math import ceil, isfinite
 
 from use_cases.wood_cnc_calculation import (
     DEFAULT_CNC_PARAMETERS, Blank, Placement, StockBatch, cnc_workload_from_layout,
-    in_house_cost, layout_cutting, shared_cut_credits,
+    in_house_cost, layout_joinable_sheet, shared_cut_credits,
 )
 
 
-LABOR_VERSION = "Labor V1.2.3"
-LAYOUT_VERSION = "cnc_sheet_layout_v1"
+LABOR_VERSION = "Labor V1.2.4"
+LAYOUT_VERSION = "cnc_sheet_layout_v2"
 SHEET_FAMILIES = {
     "mdf_hdf", "faced_mdf", "fibreboard_hardboard", "particleboard",
     "melamine_faced_particleboard", "plywood", "plywood_special",
@@ -86,44 +86,6 @@ def _grain_required(row, line, family):
             or any(surface.get("finish") == "wood_grain" for surface in row.get("finish_surfaces", ())))
 
 
-def _cut_stock(batch, split_allowed):
-    """Split only approved rear or plinth roles. Surface direction is preserved."""
-    margin = 2 * DEFAULT_CNC_PARAMETERS.trim_mm
-    usable = batch.length_mm - margin, batch.width_mm - margin
-    blanks = []
-    splits = []
-    for blank in batch.blanks:
-        dims = blank.length_mm, blank.width_mm
-        orientations = (dims, dims[::-1]) if blank.rotation_allowed else (dims,)
-        if blank.part_id not in split_allowed or any(a <= usable[0] and b <= usable[1] for a, b in orientations):
-            blanks.append(blank)
-            continue
-        # A single seam direction keeps the construction and edge treatment legible.
-        options = []
-        for l, w in orientations:
-            if w <= usable[1]:
-                options.append((ceil(l / usable[0]), l, w, "length"))
-            if l <= usable[0]:
-                options.append((ceil(w / usable[1]), l, w, "width"))
-        pieces, length, width, axis = min(options, default=(0, *dims, "length"))
-        if 2 <= pieces <= 16:
-            l, w = (length / pieces, width) if axis == "length" else (length, width / pieces)
-            blanks.append(replace(blank, length_mm=l, width_mm=w, quantity=blank.quantity * pieces))
-            splits.append({"part_id": blank.part_id, "pieces_per_part": pieces, "length_mm": l, "width_mm": w})
-        else:
-            blanks.append(blank)
-    return replace(batch, blanks=tuple(blanks)), splits
-
-
-def _placed(batch, split_allowed):
-    batch, splits = _cut_stock(batch, split_allowed)
-    layouts = [layout_cutting(batch)]
-    if any(blank.rotation_allowed for blank in batch.blanks):
-        layouts.append(layout_cutting(batch, rotate_first=True))
-    layout = min(layouts, key=lambda row: (sum(row["unplaced"].values()), row["stock_count"], row["path_m"]))
-    return {**layout, "placements": [asdict(placement) for placement in layout["placements"]], "splits": splits}
-
-
 def _line_groups(line, parts, object_quantities, scope_by_requirement, issues):
     quantities = Counter()
     sizes = {}
@@ -152,10 +114,8 @@ def _line_groups(line, parts, object_quantities, scope_by_requirement, issues):
     for (part_id, thickness), qty in quantities.items():
         row = parts[part_id]
         blank = Blank(part_id, *sizes[part_id, thickness], qty, rotation_allowed=not _grain_required(row, line, family))
-        group = by_thickness.setdefault(thickness, {"blanks": [], "drilling": [], "split_allowed": set()})
+        group = by_thickness.setdefault(thickness, {"blanks": [], "drilling": []})
         group["blanks"].append(blank)
-        if row["role"] in SPLIT_ROLES:
-            group["split_allowed"].add(part_id)
         if thickness >= DEFAULT_CNC_PARAMETERS.drilling_min_panel_mm and row["role"] not in DRILL_EXCLUSIONS:
             object_id = part_id.split(":", 1)[0]
             physical = row.get("quantity")
@@ -199,7 +159,8 @@ def build_sheet_layout(report, plan):
             stock_id = f"{line['candidate_id']}:{thickness:g}"
             batch = StockBatch(stock_id, "sheet", l, w, thickness, tuple(group["blanks"]),
                                common_cut=family == "melamine_faced_particleboard")
-            layout = _placed(batch, group["split_allowed"])
+            layout = layout_joinable_sheet(batch)
+            layout["placements"] = [asdict(placement) for placement in layout["placements"]]
             for part_id in layout["unplaced"]:
                 issues.append({"reference": part_id, "issue": "Does not fit the selected sheet"})
             groups.append({
@@ -341,6 +302,9 @@ def calculate_labor_v1(layout, plan, *, machine_rate=None, object_id=None):
                     else None
                 ),
                 "stock_is_assumed": stock_is_assumed,
+                "stock_price_is_estimated": (
+                    (line.get("label_specifications") or {}).get("cnc_price_basis") == "reference_price_per_m2"
+                ),
                 "cut_m": saved_layout["cut_m"], "path_m": saved_layout["path_m"],
             })
     supplier = {
@@ -352,6 +316,7 @@ def calculate_labor_v1(layout, plan, *, machine_rate=None, object_id=None):
     return {
         "version": LABOR_VERSION, "work": work, "issues": issues,
         "unplaced_blanks": sum(sum(group["layout"]["unplaced"].values()) for group in groups),
+        "joined_parts": [row for group in groups for row in group["layout"].get("splits", ())],
         "in_house": {
             "operator_ex_vat": operator, "operator_rate": operator_rate, "operator_hours": operator_hours,
             "machine_ex_vat": machine, "machine_rate": machine_rate, "materials": shop_rows,

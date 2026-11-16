@@ -19,6 +19,7 @@ from types import SimpleNamespace
 from typing import Any, Mapping, Sequence
 
 from use_cases.material_identity_resolution import _hard_compatibility, normalize_material_phrase
+from use_cases.material_cnc_stock import route_oversized_cnc_parts
 from use_cases.material_engine import (
     MaterialDemand,
     MaterialEngineError,
@@ -243,6 +244,7 @@ def material_review_purchases(snapshot, *, review_order=(), overrides=None, chan
             purchasable_dimensions=line.get("purchasable_dimensions"),
             package_quantity=line.get("package_quantity") or 1, kerf_mm=line.get("kerf_mm", 0),
             authority=line["authority"],
+            label_specifications=line.get("label_specifications"),
         )
         demands = _snapshot_material_demands(line, candidate, {}, {}, {}, ({}, {}))
         group = defaultdict(list)
@@ -437,6 +439,7 @@ def replan_material_norm_snapshot(
             package_quantity=line["package_quantity"] or 1,
             kerf_mm=line.get("kerf_mm", 0),
             authority=line["authority"], display_name=line["display_name"],
+            label_specifications=line.get("label_specifications"),
         )
         demands = _snapshot_material_demands(line, candidate, norms, object_quantities, quantity_ratios, quantity_sources)
         if not demands:
@@ -1244,7 +1247,13 @@ def israel_reference_supply_candidates(
                         purchasable_dimensions=dimensions,
                         authority="israel_reference",
                         display_name=str(position.get("canonical_name") or ""),
-                        reference_price_id=price_id, label_specifications=label_specs,
+                        reference_price_id=price_id,
+                        label_specifications={
+                            **label_specs,
+                            **({"reference_stock_ils_per_m2": str(typical)}
+                               if family_code == "melamine_faced_particleboard"
+                               and normalized_currency == "ILS" and price_scope == "material_only" else {}),
+                        },
                     ))
             elif unit == "sheet":
                 # A source price expressed per sheet is safe only when the
@@ -1403,6 +1412,7 @@ def build_material_plan(
     material_purchase_overrides: Mapping[str, Mapping[str, Any]] | None = None,
     vat_percent: Decimal | int | float | str = Decimal("18"),
     allow_estimator_allowance: bool = True,
+    resolve_oversized_cnc: bool = False,
 ) -> MaterialEngineResult:
     """Build one document-wide purchase plan from facts and approved norms.
 
@@ -1875,6 +1885,20 @@ def build_material_plan(
         ))
         reasons.add("assumption_fallback")
     plan = plan_material_purchases(demands=demands, candidates=tuple(candidates.values())) if demands else None
+    if plan and resolve_oversized_cnc:
+        parts = {}
+        for object_id, raw_facts in facts_by_object.items():
+            facts = raw_facts.get("facts_payload", raw_facts)
+            for part in facts.get("parts") or ():
+                if part.get("component_role") in {"shared_worktop", "tabletop"}:
+                    continue
+                reference = f"{object_id}:{part['part_id']}"
+                evidence = {
+                    "role": part["component_role"],
+                    "rotation_allowed": part.get("cnc_rotation_allowed", part.get("rotation_allowed", False)),
+                }
+                parts[reference] = parts[f"{reference}:assumption"] = evidence
+        plan = route_oversized_cnc_parts(plan, demands=demands, candidates=candidates, parts=parts)
     plan = _apply_purchase_quantity_overrides(plan, material_purchase_overrides or {})
     if plan and plan.status == "needs_review":
         unresolved.extend(plan.unresolved_demand_ids)

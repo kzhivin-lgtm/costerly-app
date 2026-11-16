@@ -1,8 +1,8 @@
 """Preliminary drawing-based routing and edging for sheet goods and solid wood."""
 
 from collections import Counter, defaultdict
-from dataclasses import dataclass
-from math import isfinite
+from dataclasses import dataclass, replace
+from math import ceil, isfinite
 
 
 def _positive(value, label):
@@ -231,6 +231,48 @@ def layout_cutting(batch, *, parameters=DEFAULT_CNC_PARAMETERS, rotate_first=Fal
         "perimeter_m": profile, "potential_common_m": shared, "common_m": credit,
         "cut_m": cut, "path_m": path, "passes": passes, "cutter_mm": cutter,
     }
+
+
+def sheet_fits_part(length, width, stock_length, stock_width, *, rotation_allowed):
+    trim = 2 * DEFAULT_CNC_PARAMETERS.trim_mm
+    usable_length, usable_width = stock_length - trim, stock_width - trim
+    return (length <= usable_length and width <= usable_width) or (
+        rotation_allowed and width <= usable_length and length <= usable_width
+    )
+
+
+def layout_joinable_sheet(batch):
+    """Lay out known geometry, splitting only parts too large for the supplied format."""
+    trim = 2 * DEFAULT_CNC_PARAMETERS.trim_mm
+    usable_length, usable_width = batch.length_mm - trim, batch.width_mm - trim
+    if usable_length <= 0 or usable_width <= 0:
+        raise ValueError("Stock has no usable area after trim")
+    blanks, splits = [], []
+    for blank in batch.blanks:
+        length, width = blank.length_mm, blank.width_mm
+        if sheet_fits_part(length, width, batch.length_mm, batch.width_mm,
+                           rotation_allowed=blank.rotation_allowed):
+            blanks.append(blank)
+            continue
+        orientations = [(usable_length, usable_width)]
+        if blank.rotation_allowed:
+            orientations.append((usable_width, usable_length))
+        pieces, along, across, pane_l, pane_w = min(
+            (nx * ny, nx, ny, length / nx, width / ny)
+            for a, b in orientations
+            for nx, ny in [(ceil(length / a), ceil(width / b))]
+        )
+        blanks.append(replace(blank, length_mm=pane_l, width_mm=pane_w, quantity=blank.quantity * pieces))
+        splits.append({
+            "part_id": blank.part_id, "pieces_per_part": pieces, "part_count": blank.quantity,
+            "length_mm": pane_l, "width_mm": pane_w, "length_sections": along, "width_sections": across,
+        })
+    batch = replace(batch, blanks=tuple(blanks))
+    layouts = [layout_cutting(batch)]
+    if any(blank.rotation_allowed for blank in batch.blanks):
+        layouts.append(layout_cutting(batch, rotate_first=True))
+    layout = min(layouts, key=lambda row: (sum(row["unplaced"].values()), row["stock_count"], row["path_m"]))
+    return {**layout, "splits": splits}
 
 
 def cutting_work(layout, *, parameters=DEFAULT_CNC_PARAMETERS):

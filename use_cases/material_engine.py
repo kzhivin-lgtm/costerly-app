@@ -221,6 +221,32 @@ def _validate_candidate(candidate: MaterialSupplyCandidate) -> None:
         _candidate_dimensions(candidate)
 
 
+def cnc_sized_sheet_quantity(candidate, demands, area_quantity):
+    sizing = (candidate.label_specifications or {}).get("cnc_sheet_sizing")
+    if not sizing:
+        return area_quantity
+    from use_cases.wood_cnc_calculation import Blank, StockBatch, layout_joinable_sheet
+
+    length, width = _candidate_dimensions(candidate)
+    locked = set(sizing["locked_part_ids"])
+    blanks = []
+    for demand in demands:
+        if demand.length_mm is None or demand.width_mm is None:
+            continue
+        pieces = _ceil(_demand_quantity(demand))
+        blanks.append(Blank(
+            demand.demand_id, float(demand.length_mm), float(demand.width_mm), int(pieces),
+            rotation_allowed=demand.demand_id not in locked,
+        ))
+    if not blanks:
+        return area_quantity
+    batch = StockBatch(
+        candidate.candidate_id, "sheet", float(length), float(width), sizing["thickness_mm"], tuple(blanks),
+        common_cut=candidate.material_family == "melamine_faced_particleboard",
+    )
+    return max(area_quantity, Decimal(layout_joinable_sheet(batch)["stock_count"]))
+
+
 def _place_sheet_parts(
     *, demands: Sequence[MaterialDemand], candidate: MaterialSupplyCandidate
 ) -> _CandidatePlan:
@@ -268,6 +294,7 @@ def _place_sheet_parts(
     quantity = direct_sheet_quantity + _ceil(
         total_area * _APPROXIMATE_SHEET_WASTE_FACTOR / (sheet_length * sheet_width)
     )
+    quantity = cnc_sized_sheet_quantity(candidate, demands, quantity)
     return _CandidatePlan(line=MaterialPurchaseLine(
         selection_key=candidate.selection_key,
         candidate_id=candidate.candidate_id,

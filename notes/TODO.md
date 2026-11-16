@@ -79,6 +79,23 @@ outdated layout recomputes it read-only. On saved Lev2 there are 15 CNC
 sheets and 104 placed blanks; two B05 sides at 2535 × 620 mm exceed the
 2400 × 1220 mm stock. 189 targeted tests passed. The local Object Detail
 component rendered automatically and reused its result on rerender.
+Commit 66dbf6d reached production as Labor V1.2.3.
+
+Labor V1.2.4, USER REQUEST. Plan complete visible parts on compatible
+stock before allowing a joint. Keep regular stock for regular cuts and
+reserve larger stock for the oversized requirements. Backs and plinths
+may still use a joint on standard stock. For generic LDSP 17 mm, the
+[Averbuch catalogue](https://www.averbuch.co.il/images/ul240756/16df56d7e2629f1383324bc767e57ace.pdf)
+supports 2800 × 2070 mm. Use the material-only Israel Reference area rate
+to estimate this format when the estimate has no compatible priced offer.
+On the saved Lev2 plan this is one sheet, ILS 585.63 ex VAT at 101.04/m²,
+for two whole B05 sides, 2535 × 620 mm each. The replay uses 16 sheets and
+106 blanks and has no excluded parts. With the large format unavailable,
+the replay uses 17 sheets, 108 blanks, and two sections per B05 side
+shown in CNC time breakdown. 205 targeted tests passed. Both saved Lev2
+paths also rendered in the local Object Detail component. Supplier quote,
+matching decor availability and authenticated production acceptance remain
+open.
 
 ## Estimation Parts Check, 3.17.4.6
 

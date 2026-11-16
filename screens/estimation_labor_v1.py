@@ -152,12 +152,32 @@ def _comparison_html(result):
         + "".join(f"<li>{escape(row['description'])}</li>" for row in issues)
         + "</ul>"
     ) if issues else ""
+    joins = result.get("joined_parts") or ()
+    joined = ""
+    if joins:
+        entries = []
+        for join in joins:
+            _, block, role, _ = join["part_id"].rsplit(":", 3)
+            part = f"{block} · {'cabinet side' if role == 'carcass_side' else role.replace('_', ' ')}"
+            entries.append(
+                f"<li>{escape(part)} · {join['part_count']} part(s), {join['pieces_per_part']} pieces per part "
+                f"({join['length_mm']:g} × {join['width_mm']:g} mm each)</li>"
+            )
+        joined = "<p><strong>Parts cut with a joint</strong></p><ul>" + "".join(entries) + "</ul>"
+    estimated_stock = ""
+    for row in rows:
+        if row["stock_price_is_estimated"] and row["sheets"]:
+            length, width = row["size_mm"]
+            estimated_stock += (
+                f"<p>{length:g} × {width:g} mm sheet stock: {_money(row['stock_ex_vat'])} "
+                "(reference estimate). Subcontractor pricing for this format needs a quote.</p>"
+            )
     details = (
         '<details class="object-detail-table object-detail-cnc-breakdown" data-section="cnc">'
         '<summary>CNC time breakdown</summary>'
         '<table><thead><tr><th scope="col">Operation</th><th scope="col">Minutes</th></tr></thead>'
         f'<tbody>{minutes}</tbody><tfoot><tr><th scope="row">Total</th>'
-        f'<td>{work["machine_minutes"]:.1f}</td></tr></tfoot></table>{excluded}</details>'
+        f'<td>{work["machine_minutes"]:.1f}</td></tr></tfoot></table>{estimated_stock}{joined}{excluded}</details>'
     )
     return _cnc_section(
         caption + comparison + '<p class="object-detail-cnc-caption">Costs before VAT.</p>' + details

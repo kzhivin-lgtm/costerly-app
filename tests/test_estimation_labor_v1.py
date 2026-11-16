@@ -37,7 +37,7 @@ class LaborV1Test(TestCase):
         }}
         plan = _plan([
             _allocation("B01:door_front:001"),
-            _allocation("B01:door_front:002", length=2600),
+            _allocation("B01:door_front:002", length=None),
             {**_allocation("B01:door_front:001"),
              "object_id": "object-002", "demand_id": "object-002:B01:door_front:001"},
         ])
@@ -75,7 +75,7 @@ class LaborV1Test(TestCase):
         self.assertEqual(result["in_house"]["operator_ex_vat"], 68.75)
         self.assertEqual(result["in_house"]["machine_ex_vat"], round(result["work"]["machine_minutes"], 2))
 
-    def test_only_concealed_back_splits_and_unplaced_work_keeps_subtotal_partial(self):
+    def test_oversize_back_and_visible_front_are_joined_if_only_standard_stock_is_selected(self):
         report = {"objects": {"object-001": {"parts": [_part("carcass_back"), _part("door_front")]}}}
         plan = _plan([
             _allocation("B01:carcass_back:001", length=2600),
@@ -84,12 +84,13 @@ class LaborV1Test(TestCase):
         layout = build_sheet_layout(report, plan)
         row = layout["groups"][0]["layout"]
         self.assertEqual(row["splits"][0]["pieces_per_part"], 2)
-        self.assertEqual(row["unplaced"], {"object-001:B01:door_front:002": 1})
+        self.assertEqual(row["splits"][1]["pieces_per_part"], 2)
+        self.assertEqual(row["unplaced"], {})
         result = calculate_labor_v1(layout, plan)
-        self.assertEqual(result["work"]["drilled_part_count"], 0)
-        self.assertEqual(result["subcontractor"]["bundle_ex_vat"], 245)
-        self.assertEqual(result["unplaced_blanks"], 1)
-        self.assertEqual(len(result["issues"]), 1)
+        self.assertEqual(result["work"]["drilled_part_count"], 1)
+        self.assertEqual(result["subcontractor"]["bundle_ex_vat"], 490)
+        self.assertEqual(result["unplaced_blanks"], 0)
+        self.assertEqual(len(result["joined_parts"]), 2)
 
     def test_supplier_allowance_covers_same_mixed_stock_without_inventing_machine_rate(self):
         report = {"objects": {"object-001": {"parts": [

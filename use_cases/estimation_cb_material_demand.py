@@ -509,6 +509,12 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                     "material_requirement_id": material["requirement_id"], "quantity": cut_quantity,
                     "length_mm": measurements["length"]["mm"], "width_mm": measurements["width"]["mm"],
                     "rotation_allowed": demand_role not in {"visible_sheet", "worktop_sheet"},
+                    "cnc_rotation_allowed": (
+                        family not in {"plywood", "plywood_special"}
+                        and "veneer" not in name.casefold()
+                        and visual_stock.get("surface") != "wood_grain"
+                        and all(cue.get("finish") != "wood_grain" for cue in row.get("finish_surfaces", ()))
+                    ),
                     "basis": "construction_assumption", "evidence_refs": refs,
                     "assumption_reason": "Cut geometry comes from the preliminary Parts estimate.",
                 })
@@ -589,7 +595,7 @@ def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
     )
     result = build_material_plan(
         facts_by_object=facts, catalogs=catalogs, material_norm_overrides=material_norm_overrides,
-        material_purchase_overrides=material_purchase_overrides,
+        material_purchase_overrides=material_purchase_overrides, resolve_oversized_cnc=True,
     )
     snapshot = material_review_purchases(
         material_plan_snapshot(result, input_fingerprint=fingerprint),

@@ -118,6 +118,31 @@ def _facts(object_id: str, part_id: str, *, length=1200, width=600):
     }
 
 
+@pytest.mark.parametrize("wide_price", ["180", "400"])
+def test_oversize_cnc_sides_use_one_larger_sheet_and_other_parts_keep_standard_stock(wide_price):
+    facts = _facts("cabinet-a", "B05:carcass_side:001", length=2535, width=620)
+    facts["composition_version"] = "cb_parts_material_demand_v1"
+    facts["parts"][0].update(component_role="carcass_side", quantity=2)
+    facts["parts"].append({
+        **facts["parts"][0], "part_id": "B05:shelf:002", "component_role": "fixed_open_shelf",
+        "length_mm": 700, "quantity": 1,
+    })
+    result = build_material_plan(
+        facts_by_object={"cabinet-a": facts}, resolve_oversized_cnc=True,
+        catalogs=_catalogs(_offer("regular"), _offer(
+            "oversize", price=wide_price, dimensions={"length_mm": 2800, "width_mm": 2070},
+        )),
+    )
+    lines = {line.candidate_id: line for line in result.plan.lines}
+    regular = next(line for key, line in lines.items() if "regular" in key)
+    large = next(line for key, line in lines.items() if "oversize" in key)
+    assert regular.purchase_quantity == large.purchase_quantity == 1
+    assert [allocation.demand_id for allocation in regular.allocations] == ["cabinet-a:B05:shelf:002"]
+    side, = large.allocations
+    assert (side.length_mm, side.width_mm, side.quantity) == (2535, 620, 2)
+    assert result.plan.status == "planned"
+
+
 def test_company_candidate_bridge_keeps_all_estimate_ready_supplier_formats():
     selection_key, candidates = company_supply_candidates(
         requirement_name="Plywood", material_family="plywood", specifications={"thickness_mm": 18},
