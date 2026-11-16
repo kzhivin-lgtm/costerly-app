@@ -1139,3 +1139,42 @@ def test_reference_mirror_consumption_is_direct_area_without_a_sheet_minimum():
     )
     assert key
     assert [(row.purchase_kind, row.price_per_purchase_unit) for row in candidates] == [("area_direct", 300)]
+
+
+def test_estimate_buys_melamine_rolls_and_prices_veneer_by_consumed_metres():
+    def requirement(tape, name, metres, finish=""):
+        return {"requirement_id": f"{tape}{finish}", "source_name": name,
+                "identity_hint": name, "family": "edge_banding",
+                "specification": {"thickness_mm": 0.8}, "unit": "m", "quantity": metres,
+                "purchase_variant": tape, "edge_finish_group": finish}
+
+    def facts(*materials):
+        return {"composition_version": "cb_parts_material_demand_v1", "materials": materials, "parts": []}
+
+    melamine, veneer = "Melamine edge band", "Real wood veneer edge band"
+    positions = [
+        {**_reference_position(name, specifications={"thickness_mm": 0.8},
+                               prices=[_reference_price(name, unit="m", typical=rate)],
+                               formats=[{**_reference_format(name, length=50000, width=24), "purchase_unit": "roll"}]),
+         "canonical_name": name, "family_code": "edge_banding"}
+        for name, rate in ((melamine, "0.68"), (veneer, "3.68"))
+    ]
+    result = build_material_plan(
+        facts_by_object={
+            "a": facts(requirement("melamine", melamine, 42), requirement("melamine", melamine, 4, "red"),
+                       requirement("melamine", melamine, 3, "white"), requirement("veneer", veneer, 2.5)),
+            "b": facts(requirement("melamine", melamine, 8)),
+            "c": facts(requirement("melamine", melamine, 0.01)),
+        },
+        catalogs={**_catalogs(reference_positions=positions), "items": [],
+                  "material_families": [{**_family(), "family_code": "edge_banding"}]},
+    )
+    assert result.unresolved_requirement_ids == ()
+    reviewed = material_review_purchases(material_plan_snapshot(result), review_order=("a", "b", "c"))
+    generic, = [line for line in reviewed["lines"] if line["selection_key"].endswith("|variant=melamine")]
+    assert (generic["purchase_quantity"], generic["price_per_purchase_unit"], generic["total_cost"]) == (2, 34, 68)
+    assert {key: row["quantity"] for key, row in generic["object_purchases"].items()} == {"a": 1, "b": 0, "c": 1}
+    coloured = [line for line in reviewed["lines"] if "|edge_finish=" in line["selection_key"]]
+    assert [line["total_cost"] for line in coloured] == [34, 34]
+    cut, = [line for line in reviewed["lines"] if line["selection_key"].endswith("|variant=veneer")]
+    assert (cut["purchase_kind"], cut["purchase_quantity"], cut["total_cost"]) == ("linear_cut", 2.5, 9.2)

@@ -1,5 +1,6 @@
 """Adapt preliminary CB Parts to the existing assembly BOM material contract."""
 
+from collections import defaultdict
 from decimal import Decimal, ROUND_CEILING
 from math import ceil, isfinite
 import re
@@ -114,6 +115,9 @@ def _source_material(measurements, family_alias_context, material_note=None):
     for note in notes:
         words = note.casefold().split(maxsplit=1)
         token = words[0].strip(".,:;()") if words else ""
+        if token in {"ldsp", "лдсп"}:
+            materials.add((_LDSP_FAMILY, None))
+            continue
         family = {"мдф": "mdf", "хдф": "hdf"}.get(token)
         explicit_solid = is_explicit_solid_wood_note(note)
         if explicit_solid:
@@ -138,6 +142,19 @@ def _source_material(measurements, family_alias_context, material_note=None):
         family, board_type = materials.pop()
         return family, {"board_type": board_type} if board_type else {}, notes, refs
     return None, {}, notes, ()
+
+
+def _declared_edge_finish(notes):
+    """Read a declared decor or RAL code, never a colour inferred from a render."""
+    labels = set()
+    for note in notes:
+        ral = re.search(r"\bral\s*(\d{4})\b", note, re.IGNORECASE)
+        if ral:
+            labels.add(f"RAL {ral[1]}")
+        elif decor := re.search(r"(?:\b(?:colou?r|decor|цвет|декор|גוון))\s*[:=]\s*([^,;/\n]+)", note, re.IGNORECASE):
+            labels.add(normalize_material_phrase(decor[1]))
+    labels.discard("")
+    return next(iter(labels)) if len(labels) == 1 else ""
 
 
 def _part_material_identity(hint, known_family, catalog_names):
@@ -549,21 +566,26 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                         thickness_mm=thickness_mm, quantity=quantity,
                     )
                     if edge:
+                        if edge["tape_kind"] == "melamine" and material_refs:
+                            edge["finish_group"] = _declared_edge_finish(notes)
                         edge_runs.append({"part_id": part_id, **edge})
-    for tape, width in sorted({(run["tape_kind"], run["tape_width_mm"]) for run in edge_runs}):
-        # Consume by metre; the shared catalog already carries the roll format.
+    edge_groups = defaultdict(list)
+    for run in edge_runs:
+        edge_groups[(run["tape_kind"], run["tape_width_mm"], run.get("finish_group", ""))].append(run["metres"])
+    for (tape, width, finish), lengths in sorted(edge_groups.items()):
+        # Quantities stay in consumed metres; the Resolver selects the purchase unit.
         width_band = {24: "up to 24", 45: "25-45", 65: "46-65"}[width]
         name = EDGE_TAPE_NAMES[tape]
-        materials[("edge_tape", tape, width)] = {
-            "requirement_id": f"cb-edge-tape-{tape}-{width}",
+        materials[("edge_tape", tape, width, finish)] = {
+            "requirement_id": f"cb-edge-tape-{tape}-{width}" + (f"-{finish.replace(' ', '-')}" if finish else ""),
             "source_name": f"{name}, {width:g} × {EDGE_TAPE_THICKNESS_MM:g} mm",
             "identity_hint": f"{name}, {EDGE_TAPE_THICKNESS_MM:g} mm, {width_band} mm wide",
             "family": EDGE_FAMILY, "material_role": EDGE_FAMILY,
             "specification": {"width_mm": width, "thickness_mm": EDGE_TAPE_THICKNESS_MM},
             "purchase_variant": tape,
+            **({"edge_finish_group": finish} if finish else {}),
             "basis": "construction_assumption", "evidence_refs": [], "part_sources": [],
-            "quantity": round(sum(run["metres"] for run in edge_runs
-                                  if (run["tape_kind"], run["tape_width_mm"]) == (tape, width)), 6),
+            "quantity": round(sum(lengths), 6),
             "unit": "m",
         }
     if _LED_FAMILY in allowed_material_families:

@@ -224,8 +224,8 @@ these format and catalogue changes.
 Other special formats and unmatched material identities stay quote-based.
 Supplier machining is ILS 12 per part requiring internal machining once.
 The same Parts edge runs supply Materials and CNC. Use melamine tape on
-LDSP and real wood veneer tape on veneered panels, by consumed metres
-and width band; PVC remains available for explicitly HPL-faced stock.
+LDSP and real wood veneer tape on veneered panels; PVC remains available
+for explicitly HPL-faced stock. Parts records consumed metres and width.
 Skip back panels and 5 mm drawer bottoms; omit panel ends fitted between
 adjacent panels. Price tape through Company Catalog / Israel Reference;
 an unpriced tape is a quote gap, not a generic ILS 200 allowance.
@@ -253,8 +253,21 @@ edging for natural oak and American walnut; price, glue and pack are
 unconfirmed. Source offer sizes and price status are recorded in the
 active catalog metadata by `tools/refresh_israel_reference_edge_banding.py`.
 This is a material catalog data update; CNC installed tariffs stay the same.
-Live read-back and Materials replay passed for all six positions: 17/40/55 mm
-panels used 24/45/65 mm tape and priced 2.5 m without a full roll minimum.
+Live read-back passed for the six catalog positions (17/40/55 mm panels
+select 24/45/65 mm tape).
+Labor V1.2.11, approved by owner: Methods differ in Materials. Veneer
+is priced by consumed metres. Melamine is bought in whole rolls using
+the offer's format and price; the provisional Israel Reference roll is
+50 m (ILS 34/42.50/56 in the 24/45/65 mm bands). Pool compatible lengths
+by width and declared decor across the estimate and keep approved
+stock sharing between objects. A visual colour cue or missing cue does
+not create a second decor. CNC application still uses consumed metres.
+Verified from source PDF: Lev2's wood-coloured area is on the worktop.
+The cabinets have one rendered finish, without a separate decor note.
+Replay of saved Parts with live edge prices: Lev2 195.984 m of 24 mm
+melamine, four rolls, ILS 136. Lev1 veneer remained priced by the metre;
+Adda introduced no tape lines. CNC sheet counts stayed 17/12/24 and
+application minutes and contractor tariffs were unchanged.
 Radius/bevel premium remains an estimate for a future explicit
 contour input; wood lipping, finishing and delivery are separate.
 For owner-supplied stock keep
