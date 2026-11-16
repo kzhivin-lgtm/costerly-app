@@ -30,6 +30,33 @@ def _plan(allocations, *, family="melamine_faced_particleboard", thickness=17, l
 
 
 class LaborV1Test(TestCase):
+    def test_item_totals_share_saved_stock_and_show_only_its_issues(self):
+        report = {"objects": {
+            "object-001": {"parts": [_part("door_front"), _part("door_front")]},
+            "object-002": {"parts": [_part("door_front")]},
+        }}
+        plan = _plan([
+            _allocation("B01:door_front:001"),
+            _allocation("B01:door_front:002", length=2600),
+            {**_allocation("B01:door_front:001"),
+             "object_id": "object-002", "demand_id": "object-002:B01:door_front:001"},
+        ])
+        plan["object_quantities"]["object-002"] = 1
+        layout = build_sheet_layout(report, plan)
+        estimate = calculate_labor_v1(layout, plan)
+        first = calculate_labor_v1(layout, plan, object_id="object-001")
+        second = calculate_labor_v1(layout, plan, object_id="object-002")
+        self.assertEqual(len(first["issues"]), 1)
+        self.assertEqual(second["issues"], [])
+        for result in (first, second):
+            self.assertEqual(result["work"]["sheet_count"], 0.5)
+            self.assertEqual(result["work"]["blank_count"], 1)
+            self.assertEqual(result["in_house"]["materials"][0]["stock_ex_vat"], 90)
+            self.assertEqual(result["subcontractor"][0]["bundle_ex_vat"], 122.5)
+            self.assertEqual(result["subcontractor"][0]["machining_ex_vat"], 12)
+        for key in ("cut_m", "machine_minutes", "setup_minutes"):
+            self.assertAlmostEqual(first["work"][key] + second["work"][key], estimate["work"][key])
+
     def test_both_routes_reuse_saved_coordinates_and_price_sheet_once(self):
         report = {"objects": {"object-001": {"parts": [
             _part("door_front", quantity=2), _part("fixed_panel", owner="common")

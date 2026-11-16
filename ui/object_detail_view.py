@@ -560,18 +560,23 @@ def hero_html(data: dict[str, object]) -> str:
     )
 
 
-def detail_html(
+def detail_sections_html(data: dict[str, object], *, object_id: object) -> str:
+    return (
+        "".join(_section_html(section) for section in data["sections"])
+        + _elements_html(data.get("elements"), revision=data.get("overlay_revision"), object_id=object_id)
+    )
+
+
+def detail_summary_html(
     data: dict[str, object],
     *,
     run_id: object,
     estimate_id: object,
     object_id: object,
 ) -> str:
-    """Render Object Detail sections, totals, and footer actions."""
+    """Render Object Detail totals and footer actions."""
     return (
-        "".join(_section_html(section) for section in data["sections"])
-        + _elements_html(data.get("elements"), revision=data.get("overlay_revision"), object_id=object_id)
-        + _final_html(data)
+        _final_html(data)
         + _footer_html(
             run_id=run_id,
             estimate_id=estimate_id,

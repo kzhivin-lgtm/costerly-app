@@ -5,14 +5,22 @@
 ACTIVE, P1, USER REQUEST. Release Labor V1 for sheet CNC in-house and
 subcontracting. Fresh Parts Check publishes an immutable layout after stock
 resolution. Older estimates can add the layout from their saved Parts and
-matching Material Plan without a second model run. Show the two routes under
-Calculation on Objects Estimation. Compare stock and CNC in that block;
+matching Material Plan without a second model run. Labor V1.1 moves
+the comparison to a CNC block on each Object Detail card. Read each object's
+parts from the saved layout. Divide shared sheets by occupied area and
+assign half of a shared cut to each part. Compare stock and CNC in that block;
 existing material approvals and the sale-price calculation keep their
 current inputs until the route is selected and monetary aggregation is
 defined. The ILS 245 standard sheet purchase and ILS 12 allowance are the
 default supplier scope. Other groups surface the need for a quote. Exclude
 edge banding, solid stock, panel-saw routing, assembly, and finishing from
-Labor V1. Pending owner trial after deployment.
+Labor V1. Deployed commit a342f030a66527f33180e6b6e3ee6f3c7bdb97c9
+on 2026-11-16. Railway deployment 565b48ec-e71c-4ad3-8b90-c804f08bdbe2
+succeeded. The live Cloudflare wrapper served
+estimation-labor-v1-detection-v8.4.29. All 97 focused tests passed and the
+saved Lev1, Lev2, and Adda controls ran locally. Labor V1.1 replaces the
+estimate-level preview with the object-level comparison. Owner trial and
+authenticated production CNC acceptance remain pending.
 
 ## Estimation Parts Check, 3.17.4.6
 

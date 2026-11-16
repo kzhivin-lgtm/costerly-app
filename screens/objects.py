@@ -9,7 +9,6 @@ import streamlit as st
 
 from config import get_optional_secret
 from styles.objects import apply_objects_css
-from screens.estimation_labor_v1 import render_labor_v1
 from ui.js_guards import (
     install_objects_price_input_guard,
     install_workflow_header_alignment_guard,
@@ -912,7 +911,6 @@ def render_objects_screen(
     action_data = _data_with_progress(screen_state.data, estimate_id)
     _render_object_detail_navigation_bridges(action_data)
     _render_parts_check(estimate_id=str(estimate_id or ""), run_id=str(run_id or ""), company_id=company_id)
-    render_labor_v1(estimate_id=str(estimate_id or ""), run_id=str(run_id or ""), company_id=company_id)
     _render_objects_actions(
         company_id=company_id,
         run_id=run_id,

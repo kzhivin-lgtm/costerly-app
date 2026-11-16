@@ -1,6 +1,6 @@
 """Saved panel layouts and the two CNC routes in Labor V1."""
 
-from collections import Counter
+from collections import Counter, defaultdict
 from dataclasses import asdict, replace
 from hashlib import sha256
 import json
@@ -8,11 +8,11 @@ from math import ceil, isfinite
 
 from use_cases.wood_cnc_calculation import (
     DEFAULT_CNC_PARAMETERS, Blank, Placement, StockBatch, cnc_workload_from_layout,
-    in_house_cost, layout_cutting,
+    in_house_cost, layout_cutting, shared_cut_credits,
 )
 
 
-LABOR_VERSION = "Labor V1"
+LABOR_VERSION = "Labor V1.1"
 LAYOUT_VERSION = "cnc_sheet_layout_v1"
 SHEET_FAMILIES = {
     "mdf_hdf", "faced_mdf", "fibreboard_hardboard", "particleboard",
@@ -186,14 +186,16 @@ def build_sheet_layout(report, plan):
     for line in _sheet_lines(plan):
         dimensions = line.get("purchasable_dimensions") or {}
         l, w = dimensions.get("length_mm"), dimensions.get("width_mm")
+        owners = sorted({row["object_id"] for row in line["allocations"]})
         if not all(_positive(d) and d > 2 * DEFAULT_CNC_PARAMETERS.trim_mm for d in (l, w)):
-            issues.append({"reference": line["display_name"], "issue": "No usable sheet format"})
+            issues.append({"reference": line["display_name"], "issue": "No usable sheet format", "object_ids": owners})
             continue
         family = _family(line)
         batch_groups = _line_groups(line, parts, object_quantities, scope_by_requirement, issues)
         for thickness, group in sorted(batch_groups.items()):
             if thickness > DEFAULT_CNC_PARAMETERS.automatic_profile_max_mm:
-                issues.append({"reference": line["display_name"], "issue": "Thickness outside the CNC estimate profile"})
+                issues.append({"reference": line["display_name"], "issue": "Thickness outside the CNC estimate profile",
+                               "object_ids": sorted({blank.part_id.partition(":")[0] for blank in group["blanks"]})})
                 continue
             stock_id = f"{line['candidate_id']}:{thickness:g}"
             batch = StockBatch(stock_id, "sheet", l, w, thickness, tuple(group["blanks"]),
@@ -215,7 +217,7 @@ def build_sheet_layout(report, plan):
     return {"version": LAYOUT_VERSION, "basis_sha256": sheet_layout_basis(plan), "groups": groups, "issues": issues}
 
 
-def _workload(groups, layout_key):
+def _workload(groups, layout_key, *, tool_changes=None):
     layouts = []
     drilling = []
     for group in groups:
@@ -224,46 +226,111 @@ def _workload(groups, layout_key):
             continue
         layouts.append({**layout, "placements": [Placement(**p) for p in layout["placements"]]})
         drilling.extend(Blank(**part) for part in group["drilling"])
-    work = cnc_workload_from_layout(layouts, drilling_parts=drilling)
+    work = cnc_workload_from_layout(layouts, drilling_parts=drilling, tool_changes=tool_changes)
     return {key: value for key, value in work.items() if key != "batches"}
 
 
-def calculate_labor_v1(layout, plan, *, machine_rate=None):
+def _belongs(part_id, object_id):
+    return part_id.partition(":")[0] == object_id
+
+
+def _object_layout(layout, object_id):
+    if layout is None:
+        return None
+    placed = [row for row in layout["placements"] if _belongs(row["part_id"], object_id)]
+    unplaced = {key: qty for key, qty in layout["unplaced"].items() if _belongs(key, object_id)}
+    if not placed and not unplaced:
+        return None
+    occupied = defaultdict(float)
+    for row in layout["placements"]:
+        occupied[row["sheet"]] += row["length"] * row["width"]
+    sheet_share = sum(row["length"] * row["width"] / occupied[row["sheet"]] for row in placed)
+    perimeter = sum(2 * (row["length"] + row["width"]) for row in placed) / 1000
+    common = 0
+    if layout["common_m"]:
+        credits = shared_cut_credits([Placement(**row) for row in layout["placements"]], layout["cutter_mm"])
+        common = sum(value for part, value in credits.items() if _belongs(part, object_id))
+    cut = perimeter - common
+    return {
+        **layout, "stock_count": sheet_share, "blank_count": len(placed),
+        "batch_share": sheet_share / layout["stock_count"] if layout["stock_count"] else 0,
+        "placements": placed, "unplaced": unplaced, "perimeter_m": perimeter, "common_m": common,
+        "cut_m": cut, "path_m": cut * layout["passes"],
+        "splits": [row for row in layout["splits"] if _belongs(row["part_id"], object_id)],
+    }
+
+
+def _object_work(groups, object_id):
+    projected = []
+    for group in groups:
+        layout = _object_layout(group["layout"], object_id)
+        supplier = _object_layout(group["supplier_layout"], object_id)
+        if layout is None and supplier is None:
+            continue
+        projected.append({
+            **group, "layout": layout, "supplier_layout": supplier,
+            "drilling": [row for row in group["drilling"] if _belongs(row["part_id"], object_id)],
+        })
+    work = _workload(projected, "layout", tool_changes=0)
+    active = [group["layout"] for group in groups if group["layout"]["stock_count"]]
+    stock_total = sum(row["stock_count"] for row in active)
+    if stock_total:
+        changes = max(0, len({row["cutter_mm"] for row in active}) - 1)
+        change_minutes = changes * DEFAULT_CNC_PARAMETERS.tool_change_min * work["sheet_count"] / stock_total
+        for key in ("tool_change_minutes", "manual_minutes", "machine_minutes"):
+            work[key] += change_minutes
+    return projected, work
+
+
+def calculate_labor_v1(layout, plan, *, machine_rate=None, object_id=None):
     """Compare CNC work and purchasing for the same parts, without duplicate stock charges."""
     if layout.get("version") != LAYOUT_VERSION or layout["basis_sha256"] != sheet_layout_basis(plan):
         raise ValueError("The saved CNC layout and current material plan have different quantities or stock")
     priced_lines = {line["selection_key"]: line for line in _sheet_lines(plan)}
-    work = _workload(layout["groups"], "layout")
+    groups = layout["groups"]
+    issues = layout["issues"]
+    if object_id is None:
+        work = _workload(groups, "layout")
+    else:
+        groups, work = _object_work(groups, object_id)
+        stock_names = {line["display_name"] for line in priced_lines.values()
+                       if any(row["object_id"] == object_id for row in line["allocations"])}
+        issues = [
+            row for row in issues
+            if (object_id in row["object_ids"] if "object_ids" in row
+                else _belongs(row["reference"], object_id) or row["reference"] in stock_names)
+        ]
     internal = in_house_cost(work, gross_rate_per_hour=OPERATOR_RATE, machine_rate_per_hour=machine_rate)
     machine = internal["machine_cost"]
     operator = round(internal["labor_hours"] * OPERATOR_RATE * (1 + EMPLOYER_LOAD), 2)
     shop_rows, supplier_rows = [], []
-    for group in layout["groups"]:
+    for group in groups:
         saved_layout = group["layout"]
-        sheets = saved_layout["stock_count"]
         line = priced_lines[group["selection_key"]]
         price = line["price_per_purchase_unit"] if line["currency"] == "ILS" else None
         detail = {"material": group["material"], "thickness_mm": group["thickness_mm"], "size_mm": group["size_mm"]}
-        shop_rows.append({
-            **detail, "sheets": sheets, "blanks": saved_layout["blank_count"],
-            "stock_ex_vat": round(sheets * price, 2) if _positive(price) and sheets else None,
-            "stock_is_assumed": line["selection_key"].startswith("assumption:"),
-            "cut_m": saved_layout["cut_m"], "path_m": saved_layout["path_m"],
-        })
+        if saved_layout is not None:
+            sheets = saved_layout["stock_count"]
+            shop_rows.append({
+                **detail, "sheets": sheets, "blanks": saved_layout["blank_count"],
+                "stock_ex_vat": round(sheets * price, 2) if _positive(price) and sheets else None,
+                "stock_is_assumed": line["selection_key"].startswith("assumption:"),
+                "cut_m": saved_layout["cut_m"], "path_m": saved_layout["path_m"],
+            })
         supplier = group["supplier_layout"]
         if not supplier or not supplier["stock_count"]:
             supplier_rows.append({**detail, "sheets": None, "bundle_ex_vat": None, "machining_ex_vat": None,
                                   "status": "Supplier quote required" if not supplier else "Supplier format does not fit"})
             continue
         drills = _workload([group], "supplier_layout")["drilled_part_count"]
-        sheet_charge = supplier["stock_count"] * SUPPLIER_SHEET_RATE
+        sheet_charge = round(supplier["stock_count"] * SUPPLIER_SHEET_RATE, 2)
         supplier_rows.append({
             **detail, "size_mm": list(SUPPLIER_SHEET), "sheets": supplier["stock_count"], "drilled_parts": drills,
             "bundle_ex_vat": sheet_charge, "machining_ex_vat": drills * SUPPLIER_MACHINING_RATE,
             "status": "Israel standard estimate · placed parts only" if supplier["unplaced"] else "Israel standard estimate",
         })
     return {
-        "version": LABOR_VERSION, "work": work, "issues": layout["issues"],
+        "version": LABOR_VERSION, "work": work, "issues": issues,
         "in_house": {"operator_ex_vat": operator, "machine_ex_vat": machine, "materials": shop_rows},
         "subcontractor": supplier_rows,
     }

@@ -10,6 +10,7 @@ import streamlit as st
 from config import get_optional_secret
 from db.repositories import delete_rfq_object_detail_draft, fetch_rfq_object_detail_draft
 from db.supabase_client import get_supabase_client
+from screens.estimation_labor_v1 import render_labor_v1
 from styles.object_detail import apply_object_detail_css
 from ui import object_detail_view
 from ui.layout import render_screen_header
@@ -62,7 +63,7 @@ def render_object_detail_screen(
     if data is None:
         return
 
-    _render_object_detail(data, context, render_header_controls=render_header_controls)
+    _render_object_detail(data, context, company_id=company_id, render_header_controls=render_header_controls)
     _install_object_detail_runtime(context)
     _material_editor(context)
     if revision := data.get("overlay_revision"):
@@ -154,6 +155,7 @@ def _render_object_detail(
     data: dict[str, object],
     context: ObjectDetailContext,
     *,
+    company_id: str,
     render_header_controls: Callable[[], None] | None = None,
 ) -> None:
     if render_header_controls is None:
@@ -174,7 +176,13 @@ def _render_object_detail(
             ),
         )
     st.markdown(
-        object_detail_view.detail_html(
+        object_detail_view.detail_sections_html(data, object_id=context.object_id),
+        unsafe_allow_html=True,
+    )
+    render_labor_v1(company_id=company_id, run_id=context.run_id, estimate_id=context.estimate_id,
+                    object_id=context.object_id)
+    st.markdown(
+        object_detail_view.detail_summary_html(
             data,
             run_id=context.run_id,
             estimate_id=context.estimate_id,

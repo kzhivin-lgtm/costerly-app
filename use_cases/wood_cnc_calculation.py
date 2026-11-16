@@ -164,29 +164,31 @@ def _layout(batch, gap, trim, *, rotate_first=False):
     return placements, dict(sorted(unplaced.items()))
 
 
-def _shared_length(placements, diameter):
-    """Overlap only opposing edges with the same offset tool centerline."""
+def shared_cut_credits(placements, diameter):
+    """Assign half of each shared cut to each of its two parts, in metres."""
     lines = defaultdict(lambda: ([], []))
     r = diameter / 2
     for p in placements:
-        lines[p.sheet, "x", round(p.x - r, 6)][0].append((p.y, p.y + p.width))
-        lines[p.sheet, "x", round(p.x + p.length + r, 6)][1].append((p.y, p.y + p.width))
-        lines[p.sheet, "y", round(p.y - r, 6)][0].append((p.x, p.x + p.length))
-        lines[p.sheet, "y", round(p.y + p.width + r, 6)][1].append((p.x, p.x + p.length))
-    total = 0.0
+        lines[p.sheet, "x", round(p.x - r, 6)][0].append((p.y, p.y + p.width, p.part_id))
+        lines[p.sheet, "x", round(p.x + p.length + r, 6)][1].append((p.y, p.y + p.width, p.part_id))
+        lines[p.sheet, "y", round(p.y - r, 6)][0].append((p.x, p.x + p.length, p.part_id))
+        lines[p.sheet, "y", round(p.y + p.width + r, 6)][1].append((p.x, p.x + p.length, p.part_id))
+    credits = defaultdict(float)
     for first, second in lines.values():
         first.sort()
         second.sort()
         i = j = 0
         while i < len(first) and j < len(second):
-            a, b = first[i]
-            c, d = second[j]
-            total += max(0, min(b, d) - max(a, c))
+            a, b, part_a = first[i]
+            c, d, part_b = second[j]
+            overlap = max(0, min(b, d) - max(a, c)) / 2000
+            credits[part_a] += overlap
+            credits[part_b] += overlap
             if b <= d:
                 i += 1
             else:
                 j += 1
-    return total
+    return credits
 
 
 def layout_cutting(batch, *, parameters=DEFAULT_CNC_PARAMETERS, rotate_first=False):
@@ -217,7 +219,7 @@ def layout_cutting(batch, *, parameters=DEFAULT_CNC_PARAMETERS, rotate_first=Fal
     _positive(cutter, "cutter_mm")
     trim_mm = parameters.trim_mm
     placed, unplaced = _layout(batch, cutter, trim_mm, rotate_first=rotate_first)
-    shared = _shared_length(placed, cutter) / 1000
+    shared = sum(shared_cut_credits(placed, cutter).values())
     credit = shared if batch.common_cut else 0.0
     profile = sum(2 * (p.length + p.width) for p in placed) / 1000
     cut = profile - credit
@@ -281,7 +283,7 @@ def cnc_workload_from_layout(layouts, *, drilling_parts=(), tool_changes=None, p
     drill = drilling_minutes(routed_drilling, parameters=parameters)
     cut = sum(r["cut_minutes"] for r in active)
     moves = sum(r["move_minutes"] for r in active)
-    setup = len(active) * parameters.batch_setup_min
+    setup = sum(r.get("batch_share", 1) for r in active) * parameters.batch_setup_min
     if tool_changes is None:
         tool_changes = max(0, len({r["cutter_mm"] for r in active}) - 1)
     changes = tool_changes * parameters.tool_change_min if active else 0
