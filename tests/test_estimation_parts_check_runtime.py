@@ -1,4 +1,5 @@
 import hashlib
+import json
 
 import pytest
 
@@ -160,7 +161,9 @@ def test_parts_check_status_survives_usage_write_failure(monkeypatch, pipeline_f
     runtime.run_parts_check_for_estimate(client=client, estimate_id="estimate", run_id="run", company_id="company", file_name="source.pdf",
                  file_bytes=b"pdf", inputs=[{"input_id": "input", "input_payload": {
                      "object": {"object_id": "object"},
-                 }}], ocr_package={})
+                 }}], ocr_package={}, prepare_sheet_layout=lambda report: {
+                     "version": "cnc_sheet_layout_v1", "estimate_id": report["estimate_id"],
+                 })
 
     assert write_attempts == ["status", "usage"]
     status, = statuses
@@ -175,3 +178,6 @@ def test_parts_check_status_survives_usage_write_failure(monkeypatch, pipeline_f
         upload, = uploads
         assert status["status"] == "succeeded"
         assert status["raw_usage"]["report_sha256"] == hashlib.sha256(upload["payload"]).hexdigest()
+        assert json.loads(upload["payload"])["sheet_layout"] == {
+            "version": "cnc_sheet_layout_v1", "estimate_id": "estimate",
+        }

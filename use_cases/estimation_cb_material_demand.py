@@ -627,7 +627,8 @@ def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
                          "has_estimated_costs": oid in fallback_objects or bool(estimates or estimated_counts),
                          "has_unresolved_demands": any(value.startswith(f"{oid}:") for value in unresolved),
                          "materials": [
-                             {**{key: material.get(key) for key in ("requirement_id", "source_name", "unit", "quantity")},
+                             {**{key: material.get(key) for key in ("requirement_id", "source_name", "unit", "quantity",
+                                                                  "material_role")},
                               **({key: material[key] for key in ("family", "specification")}
                                  if material.get("geometry_pending") else {})}
                              for material in item["materials"]

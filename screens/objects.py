@@ -9,6 +9,7 @@ import streamlit as st
 
 from config import get_optional_secret
 from styles.objects import apply_objects_css
+from screens.estimation_labor_v1 import render_labor_v1
 from ui.js_guards import (
     install_objects_price_input_guard,
     install_workflow_header_alignment_guard,
@@ -806,7 +807,9 @@ def _render_parts_check(*, estimate_id: str, run_id: str, company_id: str) -> No
             result = load_parts_check(client=get_supabase_client(), company_id=company_id,
                                       run_id=run_id, estimate_id=estimate_id)
             if result["status"] == "ready":
-                result["worktop_areas"] = _worktop_area_rows(json.loads(result["payload"]))
+                report = json.loads(result["payload"])
+                result["worktop_areas"] = _worktop_area_rows(report)
+                result["sheet_groups"] = (report.get("sheet_layout") or {}).get("groups", [])
         except Exception:
             result = {"status": "read_failed"}
         st.session_state.parts_check_result = (key, result)
@@ -818,6 +821,13 @@ def _render_parts_check(*, estimate_id: str, run_id: str, company_id: str) -> No
         if areas := result.get("worktop_areas"):
             st.caption("Worktop material area")
             st.table(areas)
+        if groups := result.get("sheet_groups"):
+            st.caption("CNC sheet layout")
+            st.table([{"Stock": group["material"],
+                       "Format (mm)": " × ".join(f"{d:g}" for d in group["size_mm"]),
+                       "Sheets": group["layout"]["stock_count"],
+                       "Placed blanks": group["layout"]["blank_count"],
+                       "Unplaced": sum(group["layout"]["unplaced"].values())} for group in groups])
         st.download_button(f"Download Parts Check ({result['part_rows']} rows)",
                            data=result["payload"], file_name="parts-check.json",
                            mime="application/json", on_click="ignore")
@@ -902,6 +912,7 @@ def render_objects_screen(
     action_data = _data_with_progress(screen_state.data, estimate_id)
     _render_object_detail_navigation_bridges(action_data)
     _render_parts_check(estimate_id=str(estimate_id or ""), run_id=str(run_id or ""), company_id=company_id)
+    render_labor_v1(estimate_id=str(estimate_id or ""), run_id=str(run_id or ""), company_id=company_id)
     _render_objects_actions(
         company_id=company_id,
         run_id=run_id,

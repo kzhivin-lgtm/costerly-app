@@ -121,15 +121,27 @@ def _write_source_pdf(path, file_name, file_bytes):
         raise ValueError("Unsupported Estimation document format")
 
 
-def run_parts_check_for_estimate(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inputs, ocr_package):
+def run_parts_check_for_estimate(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inputs, ocr_package,
+                                 prepare_sheet_layout=None):
     """Return the saved report to the same estimate worker that will price it."""
     key = (company_id, run_id, estimate_id)
     with _running_report(key):
         return _run(client=client, estimate_id=estimate_id, run_id=run_id, company_id=company_id,
-                    file_name=file_name, file_bytes=file_bytes, inputs=inputs, ocr_package=ocr_package)
+                    file_name=file_name, file_bytes=file_bytes, inputs=inputs, ocr_package=ocr_package,
+                    prepare_sheet_layout=prepare_sheet_layout)
 
 
-def _run(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inputs, ocr_package):
+def _store_report(client, *, report, company_id, run_id, estimate_id):
+    payload = (json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode()
+    digest = sha256(payload).hexdigest()
+    path = _artifact_prefix(company_id, run_id, estimate_id) + f"{digest}.json"
+    _upload_immutable_artifact(client=client, path=path, payload=payload, content_type="application/json",
+                               bucket=ORIGINALS_BUCKET)
+    return digest
+
+
+def _run(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inputs, ocr_package,
+         prepare_sheet_layout=None):
     usage_events = []
     status = "failed"
     started = datetime.now(UTC).isoformat()
@@ -168,12 +180,13 @@ def _run(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inpu
                       source_pdf_sha256=original_sha256, detection_event_id=detection["id"], input_ids=input_ids)
         if (folder / "output" / "result.json").exists():
             report["overlay_revision"] = uuid4().hex
-        payload = (json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode()
-        digest = sha256(payload).hexdigest()
+        if prepare_sheet_layout is not None:
+            try:
+                report["sheet_layout"] = prepare_sheet_layout(report)
+            except Exception:
+                _LOG.exception("Could not prepare the CNC layout for estimate %s", estimate_id)
         stage = "publish_parts_check"
-        path = _artifact_prefix(company_id, run_id, estimate_id) + f"{digest}.json"
-        _upload_immutable_artifact(client=client, path=path, payload=payload, content_type="application/json",
-                                   bucket=ORIGINALS_BUCKET)
+        digest = _store_report(client, report=report, company_id=company_id, run_id=run_id, estimate_id=estimate_id)
         details.update(report_sha256=digest, source_coverage=report["source_coverage"],
                        part_rows=sum(len(obj["parts"]) for obj in report["objects"].values()))
         status = "succeeded"
@@ -207,6 +220,34 @@ def _run(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inpu
     except Exception as exc:
         _LOG.warning("Parts Check usage persistence failed for run %s: %s", run_id, type(exc).__name__)
     return report if status == "succeeded" else None
+
+
+def save_parts_sheet_layout(*, client, company_id, run_id, estimate_id, report, layout):
+    """Publish an additive revision of the saved Parts report without new recognition."""
+    rows = _reports(client, company_id, run_id, estimate_id)
+    if not rows or rows[0]["status"] != "succeeded":
+        raise ValueError("Parts Check is not ready for a layout revision")
+    details = rows[0]["raw_usage"]
+    current = json.loads(_read_report_payload(
+        client, company_id=company_id, run_id=run_id, estimate_id=estimate_id,
+        digest=details["report_sha256"],
+    ))
+    if current.get("sheet_layout") == layout:
+        return
+    if {k: v for k, v in current.items() if k != "sheet_layout"} != {
+        k: v for k, v in report.items() if k != "sheet_layout"
+    }:
+        raise ValueError("Parts Check changed while preparing the layout")
+    digest = _store_report(client, report={**current, "sheet_layout": layout},
+                           company_id=company_id, run_id=run_id, estimate_id=estimate_id)
+    timestamp = datetime.now(UTC).isoformat()
+    insert_agent_usage_event(client, {
+        "company_id": company_id, "run_id": run_id, "file_name": "",
+        "agent_name": "estimation", "operation": OPERATION, "model": "deterministic",
+        "prompt_version": VERSION, "status": "succeeded", "input_tokens": 0, "output_tokens": 0,
+        "started_at": timestamp, "finished_at": timestamp,
+        "raw_usage": {**details, "report_sha256": digest},
+    })
 
 
 def load_parts_check(*, client, company_id, run_id, estimate_id):

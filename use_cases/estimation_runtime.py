@@ -35,6 +35,7 @@ from use_cases.estimation_handoff import persist_estimation_inputs
 from use_cases.estimation_originals import describe_estimation_original
 from use_cases.estimation_parts_check_runtime import VERSION, load_parts_check, run_parts_check_for_estimate
 from use_cases.estimation_cb_material_demand import build_cb_material_facts, calculate_cb_materials
+from use_cases.estimation_labor_v1 import build_sheet_layout
 from use_cases.material_engine_adapter import (
     material_review_purchases, object_purchase_key, replan_material_norm_snapshot, reprice_material_purchase_snapshot,
 )
@@ -104,9 +105,7 @@ def _publish_material_demand_lines(client, *, estimate_id, facts_by_object, repl
             upsert_rfq_estimate_lines(client, lines=lines)
 
 
-def _build_and_persist_material_plan(*, client, estimate_id, company_id, parts_report, input_rows,
-                                     rebuild=False, review_order=()):
-    """Price the checked document through the shared estimate-wide engine."""
+def _calculate_material_plan(*, client, estimate_id, company_id, parts_report, input_rows, review_order):
     catalog_context = build_estimation_material_context(client, company_id)
     norms = _material_norm_overrides_by_requirement(fetch_rfq_estimate_material_norm_overrides(client, estimate_id))
     purchases = _material_purchase_overrides_by_selection_key(fetch_rfq_estimate_material_purchase_overrides(client, estimate_id))
@@ -114,9 +113,22 @@ def _build_and_persist_material_plan(*, client, estimate_id, company_id, parts_r
         parts_report=parts_report, input_rows=input_rows, catalog_context=catalog_context,
         material_norm_overrides=norms, material_purchase_overrides=purchases, material_review_order=review_order,
     )
+    calculation["material_plan"]["object_quantities"] = {
+        oid: float(facts["quantity"]) for oid, facts in calculation["facts_by_object"].items()
+    }
+    return calculation
+
+
+def _build_and_persist_material_plan(*, client, estimate_id, company_id, parts_report, input_rows,
+                                     rebuild=False, review_order=(), calculation=None):
+    """Price the checked document through the shared estimate-wide engine."""
+    if calculation is None:
+        calculation = _calculate_material_plan(
+            client=client, estimate_id=estimate_id, company_id=company_id, parts_report=parts_report,
+            input_rows=input_rows, review_order=review_order,
+        )
     snapshot = calculation["material_plan"]
     facts_by_object = calculation["facts_by_object"]
-    snapshot["object_quantities"] = {oid: float(facts["quantity"]) for oid, facts in facts_by_object.items()}
     _publish_material_demand_lines(
         client, estimate_id=estimate_id, facts_by_object=facts_by_object, replace_object_lines=not rebuild,
     )
@@ -715,6 +727,16 @@ def _run_estimation_job(
 
     if created_inputs:
         object_ids = [row["input_payload"]["object"]["object_id"] for row in created_inputs]
+        prepared_calculation = None
+
+        def prepare_sheet_layout(parts):
+            nonlocal prepared_calculation
+            prepared_calculation = _calculate_material_plan(
+                client=client, estimate_id=estimate_id, company_id=company_id, parts_report=parts,
+                input_rows=created_inputs, review_order=(),
+            )
+            return build_sheet_layout(parts, prepared_calculation["material_plan"])
+
         stage = "parts_check"
         try:
             for object_id in object_ids:
@@ -723,6 +745,7 @@ def _run_estimation_job(
             report = run_parts_check_for_estimate(
                 client=client, estimate_id=estimate_id, run_id=run_id, company_id=company_id,
                 file_name=file_name, file_bytes=file_bytes, inputs=created_inputs, ocr_package=ocr["ocr_result"],
+                prepare_sheet_layout=prepare_sheet_layout,
             )
             if report is None:
                 raise RuntimeError("Parts Check did not produce a checked report")
@@ -732,7 +755,7 @@ def _run_estimation_job(
                                      percent=70, label="building_project_material_plan")
             snapshot = _build_and_persist_material_plan(
                 client=client, estimate_id=estimate_id, company_id=company_id,
-                parts_report=report, input_rows=created_inputs,
+                parts_report=report, input_rows=created_inputs, calculation=prepared_calculation,
             )
         except Exception:
             _LOG.exception("Estimation failed at %s for estimate %s", stage, estimate_id)

@@ -1,6 +1,26 @@
 # TODO
 
+## Estimation Labor V1
+
+ACTIVE, P1, USER REQUEST. Release Labor V1 for sheet CNC in-house and
+subcontracting. Fresh Parts Check publishes an immutable layout after stock
+resolution. Older estimates can add the layout from their saved Parts and
+matching Material Plan without a second model run. Show the two routes under
+Calculation on Objects Estimation. Compare stock and CNC in that block;
+existing material approvals and the sale-price calculation keep their
+current inputs until the route is selected and monetary aggregation is
+defined. The ILS 245 standard sheet purchase and ILS 12 allowance are the
+default supplier scope. Other groups surface the need for a quote. Exclude
+edge banding, solid stock, panel-saw routing, assembly, and finishing from
+Labor V1. Pending owner trial after deployment.
+
 ## Estimation Parts Check, 3.17.4.6
+
+DEFERRED, P1, USER REQUEST. The owner provisionally accepted material costing
+on Lev1, Lev2 and Adda on 2026-11-14 and moved the next workstream to shop
+labor. Return to Lev1 to review visible finishes, sheet stock families and
+thickness consolidation against saved Parts and the drawing. Preserve the
+protected 9.38 Parts and 9.39 UI behavior in Labor work.
 
 Estimation 9.21 is protected at `20e0288` by `estimation-v9.21-checkpoint`.
 DEPLOYED, P0. Restore available-price approval, draft Save and
@@ -5161,16 +5181,303 @@ Local implementation verification passes. Remaining acceptance: deploy, verify
 owner save and member read-only behavior, then repeat the protected production
 transition timings before restoring Machinery or File Review metadata.
 
-ACTIVE, 3.15.7 Labor reference-model foundation: checkpoint recorded in
-`notes/LABOR_FOUNDATION_3_15_7_CHECKPOINT_2026_09_30.md`. Time baselines,
-roles, drivers, source links, confidence markers, material-specific metal
-routes, formulas, construction templates, crew rules, golden scenarios, and
-the Labor Engine contract are prepared. Deterministic implementation is active:
-five templates are implemented and 40 targeted tests pass. Next: complete the
-remaining approved templates, batch aggregation and all ten golden scenarios.
-The Estimation Agent replacement remains a later task. Full continuation is in
-`notes/MATERIALS_LABOR_NEXT_CHAT_HANDOFF_2026_09_30.md`. This priority does not
-cancel 3.15.4 through 3.15.6; they remain pending at their recorded checkpoints.
+PENDING, P1, USER REQUEST. Design and agree Estimation Calculation from
+the same published Parts Check used for materials. Cover part fabrication,
+Block and Common assembly, finishing at the appropriate step, and readiness
+for dispatch. Resolve in-house and supplier scope against Company Machinery
+and purchasing evidence. Build a new calculation path. Compare the two Lev1
+CNC routes offline, then verify Lev2 B09 through physical drivers, routes,
+shared setup, machine time and role hours. Extend to full Lev2 and both Adda
+objects. Preserve the accepted
+Material Plan. Link the single priced Lev2 cutout to its physical ID
+`view-002:worktop-cutout-01`; Parts marks it `cooktop` as a hint and the
+handoff calls it a sink. Carry the Adda glass supply form, finish technology,
+and packaging labor policy as open decisions. Final monetary aggregation is
+the next Estimation stage. Implementation and new work numbering are pending
+design approval. Starting evidence:
+[November Labor handoff](ESTIMATION_LABOR_NEXT_CHAT_HANDOFF_2026_11_14.md).
+
+The initial Lev1 comparison used company-supplied stock in both scenarios.
+That subcontractor pricing scope is superseded. The offline replay links 29
+Parts rows from `run_8394e4fdaec540e2b5c26e3bae5f29fd` to the saved purchase
+plan. It finds 47 panel parts and 61 cutting blanks under the existing
+14 layup assumptions. One B02 backing panel (2180 × 1530 mm) does not fit
+the allocated 2440 × 1220 mm stock. Reconcile this with the deferred Lev1
+material review. Confirm CNC capability, machining features and time norms
+for the in-house case, and quote scope for the subcontractor case. B09 and
+the broader controls remain pending.
+
+The owner specified a two-piece B02 backing from pre-veneered stock with
+veneered edges, and agreed to assume drilling for the comparison. A trial
+layout with two 2180 × 765 mm pieces, 6 mm spacing and 5 mm perimeter trim
+uses six veneered MDF sheets at the saved price and 11.78 m of backing edge.
+Confirm the seam position, actual CNC spacing and final edge schedule before
+changing the published Material Plan. The price comparison is provisional
+until company time and rates, finisher scope, and contractor quote are confirmed.
+
+For the Lev1 subcontractor scenario the owner specified one bundled offer
+covering stock, CNC cutting and drilling. Suppress the company sheet demands
+covered by that offer and the corresponding internal machining costs. Keep
+unbundled hardware, edging and assembly. In-house CNC retains the sheet
+demands in Materials and charges machining and operator labor separately.
+Obtain a bundled quote and verify its scope before final pricing. A
+machining-only tariff cannot price this scenario. Check how the new bundle
+classification affects the existing Materials percentage base before runtime
+integration.
+
+Proposed for Calculation after the 16 November routing discussion. Allow
+mixed routes within one estimate when the workshop lacks CNC. Compare a
+supplier stock-plus-CNC package for cabinet groups with in-house panel-saw
+cutting for suitable rectangular groups, including veneered MDF fronts.
+Use the existing Company Machinery panel-saw capability. The saw route
+requires a feasible straight-cut sequence and any specified grain matching.
+Keep routine drilling in-house where supported. External machining after
+cutting requires a supplier who accepts customer blanks and prices the
+remaining operations. Compare complete costs for the same finished parts,
+including sheet yield, usable remnants, machine and operator time, and
+supplier minimums or delivery charges where applicable. Bill each operation
+and each sheet once. The existing resolver selects one route per homogeneous
+group and uses provisional volume limits for the manual fallback. Validate
+the mixed estimate and calibrate the panel-saw workload before integration.
+
+ACTIVE, P1, USER REQUEST. Estimate CNC workload from the same Parts Check:
+record blanks, one-pass geometric contour length and rough sheet count by
+material, thickness and stock format. Use a bounded rectangular layout with
+coordinates to derive eligible common lines by sheet, cutter and pass. Deduct
+each eligible shared interval once; keep the no-share reference and separate
+drilling, trim and repeat passes. Calibrate batch setup, sheet load, table
+unload/cleanup, operator off-table work and machine motion with shop/CAM evidence.
+On the revised
+Lev1 case, 62 blanks total 211.798 m of rectangular perimeters. Current
+area-based planning returned 11 sheets. The archived rectangular heuristic
+from `c6b5b47` returned 12 including six veneered MDF 20 mm sheets, with
+6 mm spacing, 5 mm trim and grain-constrained veneer. It measured 0.717 ms
+p50 and 0.745 ms p95 over 301 local repetitions on preloaded data. Validate
+across Lev2 and Adda and obtain measured time before adopting coefficients
+or touching the published Material Plan.
+
+CNC research: [Vortex](https://www.vortextool.com/mobile-app) gives tool-specific
+MDF/particleboard feed references (about 13.3 and 19.7 m/min for the two
+documented two-flute examples). These do not estimate the entire sheet cycle.
+A [manual melamine example](https://www.woodworkingcanada.com/r5/showkiosk.asp?listing_id=4129304&switch_issue_id=51090)
+uses 0.5 min loading/program selection, 4 min machining, 3 min unloading,
+and 0.5 min cleaning. [KOMO](https://komo.com/wp-content/uploads/2020/07/Material-Handling-Automatic-2.0-2019.pdf)
+reports about 50 seconds for its automatic exchange. [Router-CIM](https://cimtechsoftware.com/routercim_online_help_current/nesting_bridge_parameters.htm)
+assigns common lines by cutter diameter. The owner approved planning defaults
+of five minutes loading, three minutes removing parts and scrap, and two
+minutes cleaning per processed sheet, with manual sheet exchange. These
+are approved estimate inputs, pending shop measurement for calibration.
+
+The owner approved a drawing-only calculator with 10 minutes setup per
+compatible stock batch, an 8 mm standard cutter and 8 m/min planning feed.
+The offline pilot `use_cases/wood_cnc_calculation.py` estimates drilling at
+10/20/30 seconds per eligible finished part by area (0.15 and 0.50 m²
+boundaries). It uses 3 seconds per blank/pass as a transition proxy,
+with half a minute per tool change and zero changes for one cutter. The
+thick-stock scenarios (two passes over 22–40 mm, three over 40–50 mm and a
+long-reach alternative over 32 mm) are estimating assumptions. The [CMT 8 mm
+example](https://www.cmtorangetools.com/eu-en/router-cutters-chucks-for-cnc/solid-carbide-up-downcut-spiral-bits)
+has 32 mm of cutting length; [Leitz](https://www.leitz.org/fileadmin/Downloads/Lexicon/EN/Leitz_Lexicon_Edition_7_-_05_Routing.pdf)
+lists longer variants. Validate actual tooling, fit and passes in the shop.
+The separate solid wood scenario supports ready glued panels or individual
+planed blanks, preserves grain and uses a 6 m/min pilot feed with a two-pass
+allowance on typical stock. Keep raw lumber preparation and solid-edge
+profiling, sanding and finishing as separate operations. Validate species,
+thickness, usable blank dimensions, clamping, feed and passes on a real job.
+Lev2 has no solid stock assigned in its saved Part-to-Material Plan mapping.
+
+Edging is a distinct operation with sides, metres and machine time. The
+owner confirmed 7 m/min of feed, 10 minutes per tape batch and 12 seconds per
+side on 16 November. Use EVA hot melt as the standard dry-interior estimating
+profile. Solid wood lipping is a separate special order. Treat exposed and
+semi-exposed sides and floor/moisture-exposed edges as needing protection.
+Omit an edge only when its protected construction or material treatment is
+known; the drawing-only estimate carries a visible allowance and reviews
+unknown joints. The owner approved dry mating edges without tape when
+required for fit, and the standard grooved construction for 6 mm HDF backs
+and drawer bottoms. Budget no tape on those captured edges. Groove machining
+belongs to the mating panels and still needs a separate machining allowance.
+[AWI](https://awinet.org/standards/requirements-manufactured-wood-casework/aesthetic-4/)
+specifies edging for exposed and semi-exposed casework edges.
+[SCM](https://www.scmgroup.com/en_BE/scmwood/products/joinery-machines.c884/single-sided-automatic-edge-banders.885/me-35.791)
+supports the conveyor feed example, and [Algolan](https://algolan-express.co.il/)
+publishes reference tariffs of ILS 6/m for 17 mm and ILS 11/m for 28 mm, ex VAT.
+[Etzel Tsidky](https://etsel.tsidky.co.il/materials-and-prices/) lists regular
+and wide 1.3 mm edging at ILS 9.50/m and 14.50/m including VAT. Obtain tape
+type, material inclusion, minimums and actual edge bander limits. Budget
+nonstandard exposed curves and mitres through a capable supplier. Apply an
+explicit provisional 1.5 multiplier only to measured nonstandard metres that
+lack a direct quote. Etzel Tsidky's published edging service is straight only.
+Reject separate edging charges when the supplier bundle
+already includes them. Use the supplier's net bundle amount and add standard
+Israeli VAT once, with gross and tax visible separately.
+
+The offline calculator exposes `CncParameters` and `EdgingParameters` as
+named machine estimate settings and reports the effective settings in each
+replay. Feed, timing, thickness/pass tiers, cutter classes and drilling tiers
+are configurable. A persisted source and an editor for machine parameters can
+follow after approval of the calculation model.
+
+The offline replay `tools/replay_wood_cnc.py` passed seven targeted tests
+and ran on saved Lev1, Lev2 and Adda without changing their Material Plans.
+Lev1: 12 sheets, 62 blanks, 202.457 m after subtracting 9.341 m common
+LDSP cuts, 223.499 m counting depth passes and 223.904 pilot CNC minutes.
+The confirmed B02 veneer edging is 11.78 m. The detailed Lev2 replay on
+15 November found 16 sheets and 100 blanks in the partial layout. It used
+191.408 m of path, 245.426 CNC minutes including 26.500 drilling minutes,
+and 101.056 m over 155 edge passes in 65.437 minutes under the original role
+templates. The 16 November replay gives 152.716 m over 231 edges, taking
+88.017 minutes with the broader coverage. The new allowances include both
+long edges of the plinth and cabinet tops/bottoms, plus the full outline of
+case sides and open shelves while their interfaces are unconfirmed. CNC time
+reproduces unchanged, as does Lev1's approved 11.78 m of B02 veneer edging.
+Lev2's saved `cb_parts_material_demand_v1` purchase route calculates wood
+sheet counts from summed area × 1.10, divided by sheet area and rounded up.
+It bypasses the per-part fit filter. The saved quantities reproduce as 12
+LDSP, 4 HDF and 1 veneered MDF, including the oversized demand areas. The
+CNC layout used 11 LDSP, 4 HDF and 1 veneered MDF for the placeable subset.
+Reconcile stock formats before interpreting that difference as a purchase saving.
+Offline format check: splitting the 2886 mm plinth into two test pieces of
+1443 mm and filling one 2800×2070 sheet each of LDSP and HDF with compatible
+parts gave 16 sheets for 105 dimensioned blanks (10 standard LDSP, 3 standard
+HDF, 2 large sheets and 1 veneered MDF). A dedicated large sheet for each
+long-stock group gave 18. A whole plinth fit in a 17-sheet trial with a
+hypothetical 3000×1500 LDSP format. All trials passed stock boundaries and
+8 mm spacing. Confirm finish, stock, work envelope and plinth seam before
+adopting a format. The 0.192734 m² LDSP demand is the contrasting end of
+the kitchen worktop, not an unidentified cabinet part. Parts Check preserves
+its polygon. Material Demand passes the area only and assigns 17 mm LDSP as
+a construction assumption. A conservative 635×419 mm blank fit on standard
+LDSP sheet 10 of the 16-sheet split-plinth scenario, if the finish matches.
+Owner correction on 16 November: route the contrasting end with the
+worktop and exclude it from LDSP. Oversize concealed HDF backs use joined
+standard-format blanks. Do not procure oversize stock solely to keep a back
+in one piece. The offline trial split B05 into 556×1250 and 556×1251 mm.
+With the short-axis orientation tried first for ungrained HDF, all 15 HDF
+blanks fit on four 2400×1220 sheets. This gives 16 sheets for 106 blanks
+including the two-section plinth: 10 standard LDSP, one 2800×2070 LDSP,
+four standard HDF and one veneered MDF. The exact HDF seam was a test.
+Close the chosen seam locations and stocked format for the visible sides,
+four veneered corner panels, two plinth end joints, and the
+existing 17 vs 15 door count discrepancy. The 14 grooved HDF positions are
+now explicit edge-tape exclusions under the approved construction default.
+Adda has ten oversized wood rows.
+These unit-cost and time estimates are partial. No production hook.
+
+ACTIVE, P1, USER DIRECTION. Build the sheet layout in Parts within Analyze
+and publish it with the checked physical parts. Feed the deterministic
+layout with compatible stock formats, and preserve a link from each blank
+and placement to its original part. Concealed backs and plinths permit
+splits. Visible facade panels require one piece. Publish unresolved stock
+and geometry explicitly. Calculation reads the same saved layout for
+material purchasing and CNC workload. Final aggregation combines the
+calculated estimates. The product Calculation stage is distinct from the
+legacy vision call with that name. First replay Lev2, Lev1 and Adda from
+saved Parts before changing the published Material Plan path. The current
+runtime still publishes Parts Check, then builds the existing Material Plan.
+
+ACTIVE, P1, USER REQUEST. Wire the approved Israel default for subcontracted
+cabinet-sheet CNC into the offline replay, then verify it before integration.
+On 16 November 2026 the owner approved ILS 245 ex VAT per standard 2440×1220
+mm melamine-faced chipboard sheet at 17 mm, including stock and straight
+cutting for kitchen carcasses. Apply the same default to Lev2 fronts with
+unspecified material. The ILS 225 median for explicitly white stock remains
+a price reference. The 17 mm prices are median published material-plus-cut
+prices from Algolan, Alfandari and Egoz and match the reviewed
+`bundled_panel_service` benchmark in
+`db/sql/2026_09_28_manufacturing_cost_parameters_israel_benchmark_v1.sql`.
+Alfandari and Egoz specify 2440×1220 mm. Algolan does not publish a sheet size.
+Egoz limits ordinary cuts to eight rectangular parts per sheet. The open
+listings do not establish nationwide market shares or included standard
+drilling. The owner also approved ILS 12 ex VAT once per physical part where
+drilling or internal machining is needed or assumed. Exclude cut-only parts
+and suppress the allowance if the selected quote already includes that work.
+Algolan publishes this supplement for specified extra internal features at
+any thickness. The use for assumed drilling is a Coasterly allowance.
+The Lev2 check placed all 79 standard-format LDSP blanks on ten 2440×1220
+sheets capped at eight parts (nine sheets with eight, one with seven). Ten is
+the count lower bound. The 2400×1220 search found eleven with that cap. The
+cap belongs to the supplier's terms, not the general layout. The illustrative
+ten-sheet ILS 245 rate with ILS 12 allowed for all 79 parts gives ILS 3,398 ex
+VAT and ILS 4,009.64 payable, excluding the large sheet and other materials.
+For other stocks, match material, finish, thickness, sheet size and included
+operations. Record preliminary net material-plus-straight-cut reference
+rates for the first replay. Use ILS 225 for explicitly white 17 mm melamine,
+ILS 310/340 for white/coloured 28 mm melamine, ILS 210 for raw plywood 17 mm,
+and ILS 290 for white two-sided HPL plywood 17 mm (three-provider medians).
+Use ILS 230 for standard raw MDF 17 mm as a rounded single-provider reference.
+[Etzel Tsidky](https://etsel.tsidky.co.il/materials-and-prices/) lists ILS 210
+for the stock and ILS 60 for standard cutting, both including VAT. The public
+price does not give a cut limit or include confirmed drilling, contour routing
+or finishing. Coasterly finishes raw MDF in-house. Keep Algolan green MDF at
+ILS 210/230/310 for 17/19/22 mm and birch plywood at its listed thickness rates
+(e.g. 18 mm ILS 280, 30 mm ILS 450, format unlisted). For glued pine 2440×1220
+use rounded midpoints ILS 465/565 at 18/28 mm from Alfandari and Egoz. Egoz oak
+butcher block costs ILS 520/1,050 at 20/40 mm for 2500×1000. For straight PVC
+edging use provisional ILS 7/m at 17 mm and ILS 12/m at 28 mm, rounded from
+the Algolan and Alfandari rates (ILS 6/7.50 and ILS 11/12.50 respectively).
+
+Procure MDF with natural veneer already bonded on both faces and no lacquer
+when finishing in-house. Keep grain and specified veneer edging explicit.
+[Alfandari](https://alfandari.biz/פורניר/) offers pre-bonded MDF and
+[CNC machining](https://alfandari.biz/שירותים-לנגרים/), with no published
+veneer price or stock count by variant. [Makor HaFormica](https://makorhaformaika.co.il/catalogs/veneer/)
+supplies bonded veneer on 1220×2440 or 1220×3050 MDF. [Mazonit](https://www.mazonit.co.il/קטלוג-מוצרים/2395/שינוקי)
+offers factory-lacquered Shinnoki MDF at 2790×1240×19 mm as a separately
+specified finish. [Bemida](https://bemida.co.il/product/פורניר/) displayed
+ILS 575.30/m² and ILS 1,671 total on 16 November for 16.5 mm MDF with crown-cut
+oak veneer at 2420×1200 mm, with straight cut to size and no finish, edging or
+add-ons. Its [CNC request](https://bemida.co.il/cnc-dxf/) lists oak-veneered
+MDF at 16.5/28 mm under stock materials. Available quantity and CNC quote
+are still unknown. The same retail configurator publishes ILS 155.70/m²
+for standard raw brown MDF 17 mm with straight cut to size. Obtain separate
+prices for a full bare sheet and CNC. Confirm reverse-face specification,
+available quantity and VAT before setting a tariff. Keep ILS 575.30/m² as
+an observed retail price for a straight-cut part. A default price or budget
+allowance for veneered stock still needs approval. At the same
+2420×1200 size with straight cutting and no edging, [Yam HaPirzul](https://www.yamhapirzul.co.il/product/סיבית-מלמין/)
+displayed ILS 406.56 (ILS 140/m²) for 16.5 mm graphite melamine chipboard.
+Bemida's oak MDF price is 4.11 times that retail chipboard price. Russian
+board-only examples give 4.65–5.97 times for 16 mm two-sided oak MDF compared
+with 16 mm oak-look melamine chipboard. These ratios describe the selected
+quotes and still leave the local full-sheet veneer price open. No comparable
+package tariff was verified for the exact Lev2 raw 6 mm HDF; use a matching
+quote or separate stock and machining rates.
+Israeli straight-cut benchmarks include [Camisa](https://www.camisa.co.il/product/מדף-mdf-לוח-מתועש/)
+at ILS 45 for up to 12 cuts on one ordinary MDF sheet and Etzel Tsidky at
+ILS 60 including VAT for standard cutting. They do not itemize the cutting
+component of Bemida's veneered MDF price. Compare a matching whole-sheet
+price, a straight-cut quote and any drilling on the same specification.
+Thickness-based passes change estimated time and toolpath when billing is
+based on time or machine travel. Use the quoted price for a per-sheet bundle.
+Store hours and cut-metres as supplier overrides, with a billable-time or
+path definition and a supplier-specific rate. Woodi publishes ILS 600/hr
+including VAT (ILS 508.47 ex VAT) for custom CNC. No comparable public Israel
+wood-router per-cut-metre rate was verified. Whole-job quotes are outside the
+automatic calculation. Leave unmatched stock, custom decor, oversize and
+machining inclusions visible. Use the stored Parts layout to count sheets.
+Remove only material and work actually covered by the supplier quote. Keep
+the legacy per-job calculator out of the new path. Verify profile override,
+no duplicate stock or machining charges, and VAT on the offline Lev2 control.
+
+The owner approved ILS 55 gross/hour for CNC on 15 November, equivalent to
+ILS 68.75/hour with the 25% employer load. Retain ILS 50 gross/hour for
+ordinary workshop labor. Existing Estimation applies the employer load once
+to ordinary labor. Machine costs and supplier invoices use their own rates.
+Confirm the asset rate for each machine and a full supplier quote before
+comparing complete route costs. The previous market example was
+[Maof](https://www.maof-hr.co.il/job/232614/) at ILS 52/hour.
+
+DEFERRED, P1, USER DIRECTION. Retire the old Labor Engine after the new
+Calculation path is accepted and removal checks pass. The existing Python
+module currently has only a test caller. Preserve the separate Company
+Machinery and operation/service catalog readers.
+
+Historical reference, 3.15.7. The new Calculation direction supersedes the
+September plan to extend the v0 runtime. Keep the
+[Labor foundation checkpoint](LABOR_FOUNDATION_3_15_7_CHECKPOINT_2026_09_30.md)
+and [September plan](MATERIALS_LABOR_NEXT_CHAT_HANDOFF_2026_09_30.md) as
+reference evidence. Reuse only material verified for the new path.
 
 ACTIVE, pending Railway deploy, auth regression: pressing Enter while focused
 in the Sign in password field must submit Sign in, never trigger Forgot
