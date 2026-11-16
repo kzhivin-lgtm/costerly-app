@@ -1278,7 +1278,28 @@ def signal_app_ready_to_embed(
                 } catch (error) {}
             }
 
+            function installRuntimeFailureListeners() {
+                if (!message.traceId || window.parent === window.top) return;
+                const host = window.parent;
+                const key = "__costerlyRuntimeFailureContext";
+                const installed = Boolean(host[key]);
+                host[key] = message;
+                if (installed) return;
+                const report = (kind, error, line) => {
+                    const context = host[key];
+                    const errorType = error?.name === "NotFoundError" && /removeChild/.test(error.message || "")
+                        ? "dom_remove_child" : error?.name;
+                    host.top.postMessage({
+                        type: "costerly:runtime-failure", kind, errorType, line,
+                        screen: context.screen, traceId: context.traceId, runId: context.runId,
+                    }, "*");
+                };
+                host.addEventListener("error", (event) => report("app_error", event.error, event.lineno));
+                host.addEventListener("unhandledrejection", (event) => report("app_rejection", event.reason));
+            }
+
             function postReady() {
+                try { installRuntimeFailureListeners(); } catch (_) {}
 
                 if (resetScrollOnReady) {
                     const parentWindow = window.parent;

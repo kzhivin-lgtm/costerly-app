@@ -655,11 +655,14 @@ def _with_saved_led_catalog_specs(client: Any, plan: dict[str, Any]) -> dict[str
 def _plan_material_display_label(line: dict[str, Any], *, family: str, name: object) -> str:
     key_specs = dict(segment.split("=", 1) for segment in str(line.get("selection_key") or "").split("|")[1:]
                      if "=" in segment)
-    return material_catalog_display_label(
+    label_specs = line.get("label_specifications") or {}
+    label = material_catalog_display_label(
         name, family=family, purchase_kind=str(line.get("purchase_kind") or ""),
         specifications={**key_specs, **(line.get("purchasable_dimensions") or {}),
-                        **(line.get("label_specifications") or {})},
+                        **label_specs},
     )
+    finish = label_specs.get("edge_finish") if family == "edge_banding" else None
+    return f"{label} · {finish}" if finish else label
 
 
 def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -> list[dict[str, Any]]:
@@ -889,6 +892,13 @@ def _material_policy_lines(
 def _purchase_unit_display(line: dict[str, Any]) -> str:
     purchase_kind = str(line.get("purchase_kind") or "")
     dimensions = line.get("purchasable_dimensions") or {}
+    selection = str(line.get("selection_key") or "")
+    if selection.split("|", 1)[0] == "edge_banding":
+        if purchase_kind == "linear_cut":
+            return "m"
+        if purchase_kind == "linear_stock":
+            length = _number(dimensions.get("length_mm"), 0)
+            return f"roll {_format_number(length / 1_000)} m" if length > 0 else "roll"
     if purchase_kind == "sheet":
         length = _number(dimensions.get("length_mm"), 0) if isinstance(dimensions, dict) else 0
         width = _number(dimensions.get("width_mm"), 0) if isinstance(dimensions, dict) else 0
@@ -898,7 +908,6 @@ def _purchase_unit_display(line: dict[str, Any]) -> str:
     if purchase_kind == "linear_stock":
         length = _number(dimensions.get("length_mm"), 0) if isinstance(dimensions, dict) else 0
         name = str(line.get("display_name") or "").casefold()
-        selection = str(line.get("selection_key") or "")
         unit = "roll" if "led strip" in name else "bar" if (
             "led_profile_kit" in selection or ("led" in name and "profile" in name)
         ) else "stock"

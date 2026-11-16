@@ -16,13 +16,37 @@ def test_streamlit_and_cloudflare_build_versions_match():
     app_source = (ROOT / "app.py").read_text()
     wrapper = (ROOT / "cloudflare/index.html").read_text()
 
-    app_version = re.search(r'build_version="([^"]+)"', app_source)
     wrapper_version = re.search(r'const BUILD_VERSION = "([^"]+)"', wrapper)
 
-    assert app_version is not None
+    assert "build_version=LABOR_BUILD_VERSION" in app_source
     assert wrapper_version is not None
-    assert app_version.group(1) == wrapper_version.group(1)
+    assert runtime.LABOR_BUILD_VERSION == wrapper_version.group(1)
     assert "COSTERLY_BUILD_VERSION" not in app_source
+
+
+def test_mixed_timing_and_failure_events_use_one_postgrest_shape(monkeypatch):
+    events = []
+    monkeypatch.setattr(runtime, "_enqueue", events.append)
+    trace = runtime.RuntimeTrace(
+        trace_id="11111111-1111-4111-8111-111111111111", session_id=None,
+        run_id="33333333-3333-4333-8333-333333333333", screen="processing",
+        started_at=time.perf_counter(), build_version=runtime.LABOR_BUILD_VERSION,
+    )
+    with trace.span("server.test"):
+        pass
+    runtime.report_runtime_failure(
+        "parts_check.publish", ValueError("private shop data"), trace=trace,
+        rfq_run_id="run_test", estimate_id="estimate_test",
+    )
+    timing, failure = events
+    assert timing.keys() == failure.keys()
+    assert timing["duration_ms"] is not None and failure["duration_ms"] is None
+    assert failure["trace_id"] == trace.trace_id
+    assert failure["status"] == "error"
+    assert failure["metadata"] == {
+        "stage": "parts_check.publish", "error_type": "valueerror",
+        "rfq_run_id": "run_test", "estimate_id": "estimate_test",
+    }
 
 
 def test_wrapper_reports_a_dropped_header_target_without_replacing_the_iframe():

@@ -30,7 +30,9 @@ user interface.
 - `session_id`: one Streamlit session, retained across sign-in and sign-out.
 - `run_id`: one Python rerun.
 - `schema_version`: event contract version, currently `runtime_v1`.
-- `build_version`: deployed accepted checkpoint, currently `3.4.2`.
+- `build_version`: software build shared by the application and wrapper.
+- `metadata.rfq_run_id` and `metadata.estimate_id`: product workflow IDs for
+  handled calculation and worker failures, distinct from the Python rerun ID.
 
 ## Data contract
 
@@ -42,6 +44,13 @@ and bounded technical metadata.
 Never record access or refresh tokens, passwords, secrets, email addresses,
 file names, RFQ content, OCR content, prompts, or uploaded bytes. Error events
 record the exception type, not the exception message.
+
+Labor V1.2.14 stores handled errors from Detection, Estimation, Parts Check,
+and CNC. The browser records uncaught errors and rejections with safe type
+and location fields. All rows in a server batch include `duration_ms`; null
+means the event describes a point rather than a timed span. The browser
+endpoint acknowledges the batch only after Supabase accepts it. Temporary
+delivery failures are retried while the tab is open.
 
 ## Non-blocking behavior
 

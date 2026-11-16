@@ -13,6 +13,7 @@ from threading import RLock
 from uuid import uuid4
 
 from db.repositories import insert_agent_usage_event, insert_agent_usage_events
+from observability.runtime import report_runtime_failure
 from use_cases.estimation_artifacts import _upload_immutable_artifact, download_evidence_artifact
 from use_cases.estimation_detection_context_v7 import build_context
 from use_cases.estimation_originals import ORIGINALS_BUCKET
@@ -226,7 +227,8 @@ def _run(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inpu
         if prepare_sheet_layout is not None:
             try:
                 report["sheet_layout"] = prepare_sheet_layout(report)
-            except Exception:
+            except Exception as exc:
+                report_runtime_failure("parts_check.sheet_layout", exc, rfq_run_id=run_id, estimate_id=estimate_id)
                 _LOG.exception("Could not prepare the CNC layout for estimate %s", estimate_id)
         stage = "publish_parts_check"
         digest = _store_report(client, report=report, company_id=company_id, run_id=run_id, estimate_id=estimate_id)
@@ -243,6 +245,7 @@ def _run(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inpu
             except Exception:
                 _LOG.exception("Could not queue Estimation overlays for %s", estimate_id)
     except Exception as exc:
+        report_runtime_failure(f"parts_check.{stage}", exc, rfq_run_id=run_id, estimate_id=estimate_id)
         details.update(failure_stage=stage, error_type=type(exc).__name__)
         if isinstance(exc, PartsCheckRequestError):
             usage_unavailable = exc.usage_unavailable
@@ -266,6 +269,7 @@ def _run(*, client, estimate_id, run_id, company_id, file_name, file_bytes, inpu
     try:
         insert_agent_usage_events(client, usage_events)
     except Exception as exc:
+        report_runtime_failure("parts_check.usage_persistence", exc, rfq_run_id=run_id, estimate_id=estimate_id)
         _LOG.warning("Parts Check usage persistence failed for run %s: %s", run_id, type(exc).__name__)
     return report if status == "succeeded" else None
 

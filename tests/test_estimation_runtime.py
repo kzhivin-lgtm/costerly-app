@@ -165,7 +165,8 @@ def test_submit_creates_estimate_shell_before_background_job(monkeypatch):
 
 def test_prepared_submit_defers_all_persistence_to_executor(monkeypatch):
     submitted = []
-    future = object()
+    failures = []
+    future = Future()
 
     class Executor:
         def submit(self, fn, **kwargs):
@@ -173,6 +174,7 @@ def test_prepared_submit_defers_all_persistence_to_executor(monkeypatch):
             return future
 
     monkeypatch.setattr(runtime, "_ESTIMATION_EXECUTOR", Executor())
+    monkeypatch.setattr(runtime, "report_runtime_failure", lambda *args, **ids: failures.append((args, ids)))
 
     result = runtime.submit_prepared_estimation_job(
         estimate_id="estimate-1",
@@ -203,6 +205,10 @@ def test_prepared_submit_defers_all_persistence_to_executor(monkeypatch):
             "create_shell": True,
         },
     )]
+    assert not failures
+    error = ValueError("job failed")
+    future.set_exception(error)
+    assert failures == [(("estimation.worker", error), {"rfq_run_id": "run-1", "estimate_id": "estimate-1"})]
 
 
 def test_prepared_worker_persists_accepted_snapshot_before_estimation(monkeypatch):

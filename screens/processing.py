@@ -6,6 +6,7 @@ from threading import Lock
 
 import streamlit as st
 
+from observability.runtime import report_runtime_failure
 from ui.processing_forecast import (
     build_stage_progress_plan,
     estimate_file_review_seconds,
@@ -266,6 +267,7 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
             result = future.result()
     except Exception as exc:
         message = str(exc)
+        report_runtime_failure(f"rfq_processing.{phase_state['value']}", exc, trace=trace)
         # Mark the visible stage as terminal before the rerun. The browser
         # runtime stops its local timer from this explicit failure signal; the
         # File Review rerun then renders the same recoverable error.

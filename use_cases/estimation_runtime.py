@@ -31,6 +31,7 @@ from db.repositories import (
     upsert_rfq_estimate_material_purchase_overrides,
 )
 from db.supabase_client import get_supabase_client
+from observability.runtime import report_runtime_failure
 from use_cases.estimation_handoff import persist_estimation_inputs
 from use_cases.estimation_originals import describe_estimation_original
 from use_cases.estimation_parts_check_runtime import VERSION, load_parts_check, run_parts_check_for_estimate
@@ -422,10 +423,14 @@ def _submit_pending_material_plan_recalculation(estimate_id: str) -> Future | No
         with _MATERIAL_PLAN_LOCK:
             if _submit_pending_material_plan_recalculation(estimate_id) is None:
                 _MATERIAL_PLAN_FUTURES.pop(estimate_id, None)
+        cancelled = completed.cancelled()
+        error = completed.exception() if not cancelled else None
+        if isinstance(error, Exception):
+            report_runtime_failure("material_plan.recalculation", error, rfq_run_id=request.run_id, estimate_id=estimate_id)
         for receipt in request.receipts:
-            if completed.cancelled():
+            if cancelled:
                 receipt.cancel()
-            elif (error := completed.exception()) is not None:
+            elif error is not None:
                 receipt.set_exception(error)
             else:
                 receipt.set_result(completed.result())
@@ -617,7 +622,7 @@ def submit_prepared_estimation_job(
     same persistence and Estimation work still begins only after explicit user
     intent.
     """
-    return _ESTIMATION_EXECUTOR.submit(
+    future = _ESTIMATION_EXECUTOR.submit(
         _persist_prepared_launch_and_run,
         estimate_id=estimate_id,
         run_id=run_id,
@@ -633,6 +638,13 @@ def submit_prepared_estimation_job(
         ignored_object_ids=set(ignored_object_ids),
         create_shell=create_shell,
     )
+
+    def record_failure(completed: Future) -> None:
+        if not completed.cancelled() and isinstance(error := completed.exception(), Exception):
+            report_runtime_failure("estimation.worker", error, rfq_run_id=run_id, estimate_id=estimate_id)
+
+    future.add_done_callback(record_failure)
+    return future
 
 
 def _persist_prepared_launch_and_run(
@@ -717,6 +729,7 @@ def _run_estimation_job(
             )
             created_inputs = handoff["created_inputs"]
     except Exception as exc:
+        report_runtime_failure("estimation.handoff", exc, rfq_run_id=run_id, estimate_id=estimate_id)
         _mark_handoff_failure(
             client=client,
             estimate_id=estimate_id,
@@ -762,7 +775,8 @@ def _run_estimation_job(
                 client=client, estimate_id=estimate_id, company_id=company_id,
                 parts_report=report, input_rows=created_inputs, calculation=prepared_calculation,
             )
-        except Exception:
+        except Exception as exc:
+            report_runtime_failure(f"estimation.{stage}", exc, rfq_run_id=run_id, estimate_id=estimate_id)
             _LOG.exception("Estimation failed at %s for estimate %s", stage, estimate_id)
             _mark_material_plan_failed(client, estimate_id=estimate_id, company_id=company_id,
                                        reason=f"{stage}_technical_failure")

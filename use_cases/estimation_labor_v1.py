@@ -10,13 +10,14 @@ from use_cases.estimation_cnc_supplier_rates import (
     SUPPLIER_EDGE_RATE_INCLUDES_TAPE, SUPPLIER_EDGE_RATE_PER_M, SUPPLIER_MACHINING_RATE,
     SUPPLIER_PROFILE_VERSION, supplier_sheet_rate,
 )
+from use_cases.estimation_edge_banding import EDGE_FAMILY
 from use_cases.wood_cnc_calculation import (
     DEFAULT_CNC_PARAMETERS, Blank, Placement, StockBatch, cnc_workload_from_layout,
     in_house_cost, layout_joinable_sheet, shared_cut_credits,
 )
 
 
-LABOR_VERSION = "Labor V1.2.10"
+LABOR_VERSION = "Labor V1.2.14"
 LAYOUT_VERSION = "cnc_sheet_layout_v2"
 SHEET_FAMILIES = {
     "mdf_hdf", "faced_mdf", "fibreboard_hardboard", "particleboard",
@@ -331,6 +332,32 @@ def _edge_banding(plan, object_id, parameters):
     }
 
 
+def _edge_stock_cost(plan, object_id, metres):
+    """Use the existing tape purchase allocations, including shared rolls."""
+    if not metres:
+        return 0, True
+    expected = {
+        (oid, material["requirement_id"])
+        for oid, parts in (plan.get("parts_check") or {}).items()
+        if object_id is None or oid == object_id
+        for material in parts.get("materials", ())
+        if material.get("material_role") == EDGE_FAMILY
+    }
+    allocated = {
+        (row["object_id"], row["material_requirement_id"])
+        for line in plan.get("lines", ())
+        if _family(line) == EDGE_FAMILY and line.get("currency") == "ILS"
+        for row in line["allocations"]
+        if object_id is None or row["object_id"] == object_id
+    }
+    costs = {
+        (row["object_id"], row["material_requirement_id"]): row["cost_ex_vat"]
+        for row in plan.get("object_material_costs", ())
+        if (row["object_id"], row["material_requirement_id"]) in allocated
+    }
+    return (round(sum(costs.values()), 2) if costs else None, bool(expected) and expected <= costs.keys())
+
+
 def calculate_labor_v1(
     layout, plan, *, machine_rate=None, object_id=None, operator_gross_rate=None,
     file_preparation_parameters=DEFAULT_CNC_FILE_PREPARATION,
@@ -405,10 +432,12 @@ def calculate_labor_v1(
         "bundle_ex_vat": round(sum(priced_bundles), 2) if priced_bundles else None,
         "machining_ex_vat": work["drilled_part_count"] * SUPPLIER_MACHINING_RATE,
     }
+    edging = _edge_banding(plan, object_id, edge_parameters)
+    tape_cost, tape_cost_complete = _edge_stock_cost(plan, object_id, edging["metres"])
     return {
         "version": LABOR_VERSION, "work": work, "issues": issues, "file_preparation": file_preparation,
         "supplier_profile_version": SUPPLIER_PROFILE_VERSION,
-        "edge_banding": _edge_banding(plan, object_id, edge_parameters),
+        "edge_banding": {**edging, "tape_stock_ex_vat": tape_cost, "tape_stock_complete": tape_cost_complete},
         "unplaced_blanks": sum(sum(group["layout"]["unplaced"].values()) for group in groups),
         "joined_parts": [row for group in groups for row in group["layout"].get("splits", ())],
         "in_house": {

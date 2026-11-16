@@ -20,6 +20,7 @@ logger.setLevel(logging.INFO)
 
 OBSERVABILITY_SCHEMA_VERSION = "runtime_v1"
 DEFAULT_BUILD_VERSION = "3.2.3"
+LABOR_BUILD_VERSION = "estimation-labor-v1.2.14-detection-v8.4.29"
 _QUEUE: queue.Queue[dict[str, object]] = queue.Queue(maxsize=1000)
 _SINK_LOCK = threading.Lock()
 _SINK_URL: str | None = None
@@ -28,6 +29,7 @@ _WORKER_THREAD: threading.Thread | None = None
 _BLOCKED_KEY_WORDS = {"token", "password", "secret", "email", "file", "filename", "content"}
 _SAFE_TECHNICAL_KEYS = {"dom_content_loaded_ms"}
 _SAFE_NAME = re.compile(r"^[a-z0-9_.:-]{1,80}$")
+_WORKFLOW_ID = re.compile(r"^[A-Za-z0-9_-]{1,160}$")
 _PERSIST_ATTEMPTS = 3
 
 
@@ -84,7 +86,8 @@ def _start_worker_locked() -> None:
 
 
 def _enqueue(event: dict[str, object]) -> None:
-    logger.info("runtime_event %s", json.dumps(event, separators=(",", ":"), sort_keys=True))
+    level = logging.ERROR if event["status"] == "error" else logging.INFO
+    logger.log(level, "runtime_event %s", json.dumps(event, separators=(",", ":"), sort_keys=True))
     with _SINK_LOCK:
         sink_configured = bool(_SINK_URL and _SINK_KEY)
     if not sink_configured:
@@ -169,7 +172,7 @@ class RuntimeTrace:
         self,
         *,
         trace_id: str,
-        session_id: str,
+        session_id: str | None,
         run_id: str,
         screen: str,
         started_at: float,
@@ -218,6 +221,7 @@ class RuntimeTrace:
             "screen": self.screen,
             "status": _safe_name(status, "unknown"),
             "elapsed_ms": round((time.perf_counter() - self.started_at) * 1000, 3),
+            "duration_ms": None,
             "metadata": _safe_metadata(metadata),
         }
         if duration_ms is not None:
@@ -246,6 +250,24 @@ class RuntimeTrace:
                 duration_ms=(time.perf_counter() - started_at) * 1000,
                 metadata=metadata,
             )
+
+
+def report_runtime_failure(
+    stage: str, error: Exception, *, trace: RuntimeTrace | None = None,
+    rfq_run_id: str | None = None, estimate_id: str | None = None, object_id: str | None = None,
+) -> None:
+    """Persist an operational failure with correlation IDs and no exception text."""
+    if trace is None:
+        trace = RuntimeTrace(
+            trace_id=str(uuid4()), session_id=None, run_id=str(uuid4()), screen="background",
+            started_at=time.perf_counter(), build_version=LABOR_BUILD_VERSION,
+        )
+    workflow = {"rfq_run_id": rfq_run_id, "estimate_id": estimate_id, "object_id": object_id}
+    trace.event("server.operation_failed", status="error", metadata={
+        "stage": _safe_name(stage, "unknown"),
+        "error_type": _safe_name(type(error).__name__, "Exception"),
+        **{key: value for key, value in workflow.items() if isinstance(value, str) and _WORKFLOW_ID.fullmatch(value)},
+    })
 
 
 def new_runtime_trace(

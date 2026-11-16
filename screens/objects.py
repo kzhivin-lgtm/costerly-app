@@ -9,6 +9,7 @@ from typing import Callable
 import streamlit as st
 
 from config import get_optional_secret
+from observability.runtime import report_runtime_failure
 from styles.objects import apply_objects_css
 from ui.js_guards import (
     install_objects_price_input_guard,
@@ -401,6 +402,7 @@ def _current_objects_state(estimate_id: str | None) -> ObjectsScreenState:
         data, cache_warning = _load_objects_screen_data(estimate_id)
         return ObjectsScreenState(data=data, cache_warning=cache_warning)
     except Exception as exc:
+        report_runtime_failure("objects.load", exc, rfq_run_id=st.session_state.get("current_run_id"), estimate_id=estimate_id)
         return ObjectsScreenState(
             data=_empty_objects_data(),
             data_error=f"Could not load Objects Estimation: {exc}",
@@ -416,6 +418,7 @@ def _persisted_objects_state(estimate_id: str | None) -> ObjectsScreenState:
         data, cache_warning = _load_objects_screen_data(estimate_id)
         return ObjectsScreenState(data=data, cache_warning=cache_warning)
     except Exception as exc:
+        report_runtime_failure("objects.refresh", exc, rfq_run_id=st.session_state.get("current_run_id"), estimate_id=estimate_id)
         return ObjectsScreenState(
             data=_empty_objects_data(),
             data_error=f"Could not load Objects Estimation: {exc}",

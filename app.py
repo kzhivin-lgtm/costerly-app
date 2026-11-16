@@ -12,6 +12,7 @@ import streamlit as st
 
 from config import get_optional_secret
 from observability.runtime import (
+    LABOR_BUILD_VERSION,
     configure_runtime_sink,
     emit_completed_action,
     new_runtime_trace,
@@ -386,7 +387,7 @@ def main() -> None:
         requested_trace_id=st.query_params.get("obs_trace"),
         screen=str(st.session_state.get("screen") or "upload"),
         started_at=_SCRIPT_STARTED_AT,
-        build_version="estimation-labor-v1.2.10-detection-v8.4.29",
+        build_version=LABOR_BUILD_VERSION,
     )
     trace.annotate(
         run_sequence=st.session_state._runtime_run_sequence,
