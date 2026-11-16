@@ -93,7 +93,7 @@ class LaborV1Test(TestCase):
         self.assertIn("1.41 min", html)
         self.assertIn("Our operator", html)
         self.assertIn("₪102", html)
-        self.assertIn("₪282", html)
+        self.assertNotIn("₪282", html)
         self.assertIn("₪283", html)
         bundled = _comparison_html(calculate_labor_v1(
             layout, plan, file_preparation_parameters=CncFilePreparationParameters(supplier_includes_preparation=True),
@@ -181,9 +181,10 @@ class LaborV1Test(TestCase):
         rows = result["subcontractor"]["materials"]
         self.assertEqual([(row["rate_ex_vat"], row["basis"]) for row in rows], [(447.03, "veneer_estimate"), (None, "quote_required")])
 
-    def test_recent_material_plan_prices_tape_once_and_keeps_supplier_bundle_intact(self):
+    def test_recent_material_plan_drives_both_edge_routes_without_showing_owned_stock_in_labor(self):
         report = {"objects": {"object-001": {"parts": [_part("fixed_panel")]}}}
         plan = _plan([_allocation("B01:fixed_panel:001")])
+        plan["lines"][0]["price_per_purchase_unit"] = 9999
         plan["edge_runs_by_object"] = {
             "object-001": [
                 {"tape_kind": "melamine", "tape_width_mm": 24, "metres": 5, "sides": 4},
@@ -191,36 +192,16 @@ class LaborV1Test(TestCase):
             ],
             "object-002": [{"tape_kind": "melamine", "tape_width_mm": 24, "metres": 30, "sides": 20}],
         }
-        requirement_ids = ("cb-edge-tape-melamine-24", "cb-edge-tape-veneer-24")
-        plan["parts_check"] = {"object-001": {
-            "materials": [{"requirement_id": req, "material_role": "edge_banding"} for req in requirement_ids],
-        }}
-        for index, (tape, req, cost) in enumerate(zip(("melamine", "veneer"), requirement_ids, (34, 36.8))):
-            plan["lines"].append({
-                "selection_key": f"edge_banding|width_thickness=24|variant={tape}",
-                "purchase_kind": "linear_stock" if index == 0 else "linear_cut", "currency": "ILS",
-                "allocations": [{"object_id": "object-001", "material_requirement_id": req}],
-            })
-            plan.setdefault("object_material_costs", []).append({
-                "object_id": "object-001", "material_requirement_id": req, "cost_ex_vat": cost,
-            })
         result = calculate_labor_v1(build_sheet_layout(report, plan), plan, object_id="object-001")
         edge = result["edge_banding"]
         self.assertEqual((edge["metres"], edge["minutes"], edge["in_house_ex_vat"]), (15, 14.143, 14.73))
         self.assertEqual(edge["supplier_ex_vat"], 125)
         self.assertTrue(edge["supplier_includes_tape"])
-        self.assertEqual(edge["tape_stock_ex_vat"], 70.8)
-        self.assertTrue(edge["tape_stock_complete"])
         html = _comparison_html(result)
         self.assertIn("Estimated labor", html)
         self.assertIn("Tape included", html)
         self.assertIn("₪125", html)
-        self.assertIn("₪336", html)
-        self.assertIn("₪383", html)
-        plan["object_material_costs"].pop()
-        partial = calculate_labor_v1(build_sheet_layout(report, plan), plan, object_id="object-001")
-        self.assertFalse(partial["edge_banding"]["tape_stock_complete"])
-        self.assertIn("Quote needed", _comparison_html(partial))
+        self.assertNotIn("₪9,999", html)
 
     def test_unpriced_assumption_sheet_keeps_its_workload_and_needs_a_stock_price(self):
         report = {"objects": {"object-001": {"parts": [_part("fixed_panel")]}}}

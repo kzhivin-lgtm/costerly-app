@@ -31,7 +31,6 @@ from db.repositories import (
     upsert_rfq_estimate_material_purchase_overrides,
 )
 from db.supabase_client import get_supabase_client
-from observability.runtime import report_runtime_failure, submit_observed
 from use_cases.estimation_handoff import persist_estimation_inputs
 from use_cases.estimation_originals import describe_estimation_original
 from use_cases.estimation_parts_check_runtime import VERSION, load_parts_check, run_parts_check_for_estimate
@@ -404,8 +403,7 @@ def _submit_pending_material_plan_recalculation(estimate_id: str) -> Future | No
     request = _MATERIAL_PLAN_PENDING_REQUESTS.pop(estimate_id, None)
     if request is None:
         return None
-    future = submit_observed(
-        _MATERIAL_PLAN_EXECUTOR, "material_recalculation",
+    future = _MATERIAL_PLAN_EXECUTOR.submit(
         _recalculate_material_plan_job,
         estimate_id=estimate_id,
         run_id=request.run_id,
@@ -586,8 +584,7 @@ def submit_estimation_job(
             estimate_id=estimate_id,
         )
 
-    return submit_observed(
-        _ESTIMATION_EXECUTOR, "estimation_worker",
+    return _ESTIMATION_EXECUTOR.submit(
         _run_estimation_job,
         estimate_id=estimate_id,
         run_id=run_id,
@@ -620,8 +617,7 @@ def submit_prepared_estimation_job(
     same persistence and Estimation work still begins only after explicit user
     intent.
     """
-    return submit_observed(
-        _ESTIMATION_EXECUTOR, "estimation_prepared_launch",
+    return _ESTIMATION_EXECUTOR.submit(
         _persist_prepared_launch_and_run,
         estimate_id=estimate_id,
         run_id=run_id,
@@ -766,8 +762,8 @@ def _run_estimation_job(
                 client=client, estimate_id=estimate_id, company_id=company_id,
                 parts_report=report, input_rows=created_inputs, calculation=prepared_calculation,
             )
-        except Exception as error:
-            report_runtime_failure(stage, error, rfq_run_id=run_id, estimate_id=estimate_id)
+        except Exception:
+            _LOG.exception("Estimation failed at %s for estimate %s", stage, estimate_id)
             _mark_material_plan_failed(client, estimate_id=estimate_id, company_id=company_id,
                                        reason=f"{stage}_technical_failure")
             for object_id in object_ids:

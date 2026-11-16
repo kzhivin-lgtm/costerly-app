@@ -3,14 +3,12 @@ from __future__ import annotations
 from concurrent.futures import Future
 from dataclasses import dataclass
 import json
-import logging
 from time import perf_counter
 from typing import Callable
 
 import streamlit as st
 
 from config import get_optional_secret
-from observability.runtime import current_runtime_trace, report_runtime_failure
 from styles.objects import apply_objects_css
 from ui.js_guards import (
     install_objects_price_input_guard,
@@ -32,18 +30,6 @@ from db.supabase_client import get_supabase_client
 from db.workflow_routes import ensure_object_workflow_route_tokens, workflow_route_key
 from state.company_auth import company_auth_enabled
 from state.session import invalidate_object_detail_cache
-
-
-_LOG = logging.getLogger(__name__)
-
-
-def _report_objects_failure(stage: str, error: Exception | None = None, *, estimate_id: str | None = None) -> None:
-    report_runtime_failure(
-        stage, error, trace=current_runtime_trace(st.session_state),
-        rfq_run_id=st.session_state.get("current_run_id"),
-        estimate_id=estimate_id or st.session_state.get("current_estimate_id"),
-        repeat_window=10,
-    )
 
 
 @dataclass(frozen=True)
@@ -186,7 +172,6 @@ def _consume_estimation_future() -> None:
             st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
             invalidate_object_detail_cache(str(estimate_id))
     except Exception as exc:
-        _report_objects_failure("objects_worker_result", exc, estimate_id=estimate_id)
         st.session_state.last_estimation_error = str(exc)
         if cycle:
             cycle.worker_failed = True
@@ -214,7 +199,6 @@ def _start_prepared_estimation_launch() -> None:
     file_name = str(request.get("file_name") or "")
     file_bytes = request.get("file_bytes")
     if not estimate_id or not run_id or not company_id or not file_name or not isinstance(file_bytes, bytes):
-        _report_objects_failure("objects_launch_plan_incomplete", estimate_id=estimate_id)
         st.session_state.objects_estimation_launch_request = None
         st.session_state.prepared_estimate_access = None
         st.session_state.last_estimation_error = "The prepared Objects launch is incomplete. Please return to File Review."
@@ -240,7 +224,6 @@ def _start_prepared_estimation_launch() -> None:
             estimate_id, None,
         )
     except Exception as exc:
-        _report_objects_failure("objects_start_worker", exc, estimate_id=estimate_id)
         cycle.worker_failed = cycle.worker_finished = True
         st.session_state.last_estimation_error = str(exc)
         st.session_state.prepared_estimate_access = None
@@ -270,7 +253,6 @@ def _load_objects_screen_data(estimate_id: str) -> tuple[dict[str, object], str 
     try:
         data = load_objects_estimation_data(estimate_id)
     except Exception as exc:
-        _report_objects_failure("objects_fetch_rows", exc, estimate_id=estimate_id)
         cached = cache.get(estimate_id)
         if cached is not None:
             return (
@@ -504,8 +486,7 @@ def _render_pricing_table(
                 costs[key] = load_estimation_cycle_cost(
                     client=get_supabase_client(), company_id=company_id, run_id=run_id, estimate_id=estimate_id,
                 )
-            except Exception as exc:
-                _report_objects_failure("objects_cycle_cost", exc, estimate_id=estimate_id)
+            except Exception:
                 costs[key] = None
         cost_usd = costs[key]
     st.markdown(
@@ -670,8 +651,7 @@ def _prefetch_completed_object_details(
             try:
                 cache[cache_key] = prefetch.result()
                 dirty_estimates.discard(estimate_key)
-            except Exception as exc:
-                _report_objects_failure("objects_detail_prefetch", exc, estimate_id=estimate_key)
+            except Exception:
                 failed_prefetches.add(cache_key)
 
 
@@ -684,7 +664,6 @@ def _complete_final_approval(*, company_id: str, run_id: str, estimate_id: str) 
             estimate_id=estimate_id,
         )
     except Exception as exc:
-        _report_objects_failure("objects_final_approval", exc, estimate_id=estimate_id)
         st.session_state.final_approval_error = str(exc)
         return
     st.session_state.final_approval_error = None
@@ -706,8 +685,7 @@ def _load_existing_proposal_url(*, company_id: str, estimate_id: str | None) -> 
             company_id=company_id,
             estimate_id=estimate_key,
         )
-    except Exception as exc:
-        _report_objects_failure("objects_load_existing_proposal", exc, estimate_id=estimate_id)
+    except Exception:
         cache[estimate_key] = None
 
 
@@ -792,67 +770,67 @@ def _render_objects_table_content(
     company_id: str | None = None,
 ) -> None:
     """Render the messages and pricing table that may change during Estimation."""
-    # Keep the table at a fixed Streamlit element position even when a
-    # message appears or disappears during a fragment rerun.
-    with st.container():
-        _render_objects_messages(
-            estimate_id=estimate_id,
-            data_error=screen_state.data_error,
-            cache_warning=screen_state.cache_warning,
-        )
+    _render_objects_messages(
+        estimate_id=estimate_id,
+        data_error=screen_state.data_error,
+        cache_warning=screen_state.cache_warning,
+    )
     data = _data_with_progress(screen_state.data, estimate_id)
     _render_pricing_table(data, estimate_id=estimate_id, run_id=run_id, company_id=company_id)
 
 
+@st.fragment(run_every=1.5)
 def _render_live_objects_content(
-    *, estimate_id: str | None, run_id: str | None, company_id: str,
-    initial_state: ObjectsScreenState, live: bool,
+    *, estimate_id: str, run_id: str | None, company_id: str,
 ) -> None:
-    """Keep one Streamlit render path for seed, live, and completed rows."""
-    current, first, refresh, consecutive_failures = initial_state, True, live, 0
+    """Safely refresh persisted Estimation rows without mutating React-owned DOM."""
+    future_before = st.session_state.get("estimation_batch_future")
+    _consume_estimation_future()
+    if isinstance(future_before, Future) and not isinstance(
+        st.session_state.get("estimation_batch_future"), Future
+    ):
+        st.session_state.pop("objects_live_poll_estimate_id", None)
+        # Stay inside the Objects fragment when the worker becomes terminal.
+        # A full app rerun can replay a durable File Review route while the
+        # browser is still reconciling the Objects transition. This fragment
+        # can load and render the just-persisted terminal rows directly.
 
-    @st.fragment(run_every=1.5 if live else None)
-    def pricing() -> None:
-        nonlocal current, first, refresh, consecutive_failures
-        if not first and (
-            st.session_state.get("screen") != "objects"
-            or st.session_state.get("current_estimate_id") != estimate_id
-        ):
-            return
-        updated = first
-        if not first and refresh:
-            _consume_estimation_future()
-            latest = _persisted_objects_state(estimate_id)
-            if latest.data_error or latest.cache_warning:
-                consecutive_failures += 1
-                if consecutive_failures == 1:
-                    _LOG.warning("Objects pricing refresh failed temporarily for %s", estimate_id)
-            else:
-                consecutive_failures = 0
-                current = ObjectsScreenState(data=_data_with_object_routes(
-                    latest.data, company_id=company_id, run_id=run_id, estimate_id=estimate_id,
-                ))
-                updated = True
-                refresh = isinstance(st.session_state.get("estimation_batch_future"), Future)
-                if not refresh:
-                    _cache_routed_objects_data(estimate_id=estimate_id, data=current.data, data_error=None)
-
-        displayed = current if consecutive_failures < 3 else ObjectsScreenState(
-            current.data, current.data_error, "Could not refresh the estimate. Retrying.",
+    # The first fragment render stays on the already prepared seed rows so the
+    # Objects transition is not delayed by an extra Supabase read. Timed
+    # fragment reruns then replace the seed with persisted per-object results.
+    if st.session_state.get("objects_live_poll_estimate_id") != estimate_id:
+        st.session_state.objects_live_poll_estimate_id = estimate_id
+        screen_state = _current_objects_state(estimate_id)
+    else:
+        screen_state = _persisted_objects_state(estimate_id)
+    routed_data = _data_with_object_routes(
+        screen_state.data,
+        company_id=company_id,
+        run_id=run_id,
+        estimate_id=estimate_id,
+    )
+    if not isinstance(st.session_state.get("estimation_batch_future"), Future):
+        _cache_routed_objects_data(
+            estimate_id=estimate_id,
+            data=routed_data,
+            data_error=screen_state.data_error,
         )
-        with st.container(key="objects_live_pricing"):
-            _render_objects_table_content(
-                estimate_id=estimate_id, run_id=run_id, company_id=company_id, screen_state=displayed,
-            )
-        # Once the final snapshot is loaded, the fragment no longer reads it.
-        # A subsequent full render registers the same fragment without a timer.
-        if updated:
-            _prefetch_completed_object_details(
-                estimate_id=estimate_id, company_id=company_id, data=_data_with_progress(current.data, estimate_id),
-            )
-        first = False
-
-    pricing()
+    with st.container(key="objects_live_pricing"):
+        _render_objects_table_content(
+            estimate_id=estimate_id,
+            run_id=run_id,
+            company_id=company_id,
+            screen_state=ObjectsScreenState(
+                data=routed_data,
+                data_error=screen_state.data_error,
+                cache_warning=screen_state.cache_warning,
+            ),
+        )
+    _prefetch_completed_object_details(
+        estimate_id=estimate_id,
+        company_id=company_id,
+        data=_data_with_progress(routed_data, estimate_id),
+    )
 
 
 def _worktop_area_rows(report):
@@ -883,8 +861,7 @@ def _render_parts_check(*, estimate_id: str, run_id: str, company_id: str) -> No
                 report = json.loads(result["payload"])
                 result["worktop_areas"] = _worktop_area_rows(report)
                 result["sheet_groups"] = (report.get("sheet_layout") or {}).get("groups", [])
-        except Exception as exc:
-            _report_objects_failure("objects_read_parts_check", exc, estimate_id=estimate_id)
+        except Exception:
             result = {"status": "read_failed"}
         st.session_state.parts_check_result = (key, result)
     active_key, result = st.session_state.get("parts_check_result", (None, {}))
@@ -966,9 +943,20 @@ def render_objects_screen(
     if _final_approval_ready(screen_state.data):
         _load_existing_proposal_url(company_id=company_id, estimate_id=estimate_id)
     live = bool(estimate_id and isinstance(st.session_state.get("estimation_batch_future"), Future))
-    _render_live_objects_content(
-        estimate_id=estimate_id, run_id=run_id, company_id=company_id, initial_state=screen_state, live=live,
-    )
+    if live:
+        _render_live_objects_content(
+            estimate_id=str(estimate_id),
+            run_id=run_id,
+            company_id=company_id,
+        )
+    else:
+        st.session_state.pop("objects_live_poll_estimate_id", None)
+        _render_objects_table_content(
+            estimate_id=estimate_id,
+            run_id=run_id,
+            company_id=company_id,
+            screen_state=screen_state,
+        )
 
     # Actions and JavaScript runtimes remain outside the timed fragment. They
     # are installed once per full render and cannot flicker or be replaced by a
@@ -982,6 +970,8 @@ def render_objects_screen(
         estimate_id=estimate_id,
         data=action_data,
     )
+    if not live:
+        _prefetch_completed_object_details(estimate_id=estimate_id, company_id=company_id, data=action_data)
     if st.session_state.get("final_approval_error"):
         st.error(f"Final Approval failed: {st.session_state.final_approval_error}")
     install_workflow_header_alignment_guard(

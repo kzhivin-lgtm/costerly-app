@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import re
 import time
@@ -123,48 +122,8 @@ def test_runtime_span_records_error_type_without_error_message(monkeypatch):
             raise RuntimeError("private detail")
 
     assert captured[0]["status"] == "error"
-    assert captured[0]["metadata"]["error_type"] == "RuntimeError"
-    assert "tests/test_runtime_observability.py:" in captured[0]["metadata"]["error_at"]
+    assert captured[0]["metadata"] == {"error_type": "RuntimeError"}
     assert "private detail" not in str(captured[0])
-
-
-def test_queued_worker_error_retains_context_and_bulk_insert_shape(monkeypatch):
-    captured = []
-    monkeypatch.setattr(runtime, "_enqueue", captured.append)
-    trace = runtime.RuntimeTrace(
-        trace_id="11111111-1111-4111-8111-111111111111",
-        session_id="22222222-2222-4222-8222-222222222222",
-        run_id="33333333-3333-4333-8333-333333333333",
-        screen="objects",
-        started_at=time.perf_counter(),
-    )
-
-    def worker(*, run_id, estimate_id):
-        try:
-            error = ValueError("do not persist this customer detail")
-            error.code = "PGRST102"
-            raise error
-        except ValueError as error:
-            raise RuntimeError("private wrapper contents") from error
-
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        with runtime.runtime_trace_scope(trace):
-            trace.event("server.first_paint", duration_ms=14)
-            future = runtime.submit_observed(executor, "estimation_worker", worker, run_id="run_123", estimate_id="est_1")
-        with pytest.raises(RuntimeError):
-            future.result()
-
-    timing, failure = captured
-    assert timing.keys() == failure.keys()
-    assert failure["duration_ms"] is None
-    assert (failure["status"], failure["trace_id"], failure["screen"]) == ("error", trace.trace_id, "objects")
-    details = failure["metadata"]
-    assert {key: details[key] for key in ("stage", "rfq_run_id", "estimate_id", "error_type", "cause_type", "error_code")} == {
-        "stage": "estimation_worker", "rfq_run_id": "run_123", "estimate_id": "est_1",
-        "error_type": "RuntimeError", "cause_type": "ValueError", "error_code": "PGRST102",
-    }
-    assert "test_runtime_observability.py:" in details["error_at"]
-    assert "private wrapper contents" not in str(failure) and "customer detail" not in str(failure)
 
 
 def test_runtime_summary_relays_safe_phase_metrics(monkeypatch):

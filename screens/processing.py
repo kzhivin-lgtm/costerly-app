@@ -266,8 +266,6 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
             result = future.result()
     except Exception as exc:
         message = str(exc)
-        if trace is not None:
-            trace.failure("server.operation_failed", exc, stage="rfq_processing")
         # Mark the visible stage as terminal before the rerun. The browser
         # runtime stops its local timer from this explicit failure signal; the
         # File Review rerun then renders the same recoverable error.

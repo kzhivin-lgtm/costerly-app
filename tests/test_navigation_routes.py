@@ -755,11 +755,11 @@ def test_objects_screen_does_not_install_the_react_mutating_live_progress_runtim
 def test_objects_screen_refreshes_active_estimation_in_a_server_fragment():
     source = Path("screens/objects.py").read_text()
 
-    assert "@st.fragment(run_every=1.5 if live else None)" in source
+    assert "@st.fragment(run_every=1.5)" in source
     assert "def _render_live_objects_content" in source
     assert "_persisted_objects_state(estimate_id)" in source
     assert 'st.container(key="objects_live_pricing")' in source
-    assert "initial_state=screen_state, live=live" in source
+    assert 'st.session_state.pop("objects_live_poll_estimate_id", None)' in source
 
     fragment_source = source.split("def _render_live_objects_content", 1)[1].split(
         "def render_objects_screen", 1
