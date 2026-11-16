@@ -111,6 +111,7 @@ def _comparison_html(result):
     internal = result["in_house"]
     rows = internal["materials"]
     external = result["subcontractor"]
+    preparation = result["file_preparation"]
     issues = result["issues"]
     if not rows and not issues:
         return _cnc_section('<p class="object-detail-cnc-caption">No sheet goods for CNC on this object.</p>')
@@ -122,9 +123,14 @@ def _comparison_html(result):
     has_work = bool(work["blank_count"])
     supplier_stock = external["bundle_ex_vat"] if has_work else None
     supplier_drilling = external["machining_ex_vat"] if has_work else None
+    prep_minutes = preparation["minutes"]
+    prep_cost = preparation["operator_ex_vat"]
+    supplier_includes_prep = preparation["supplier_includes_preparation"]
     # Sum the rounded lines so the displayed whole-shekel totals reconcile.
-    internal_total = round(operator) + round(stock_cost or 0) if has_work else None
+    internal_total = round(operator) + round(stock_cost or 0) + round(prep_cost) if has_work or prep_minutes else None
     supplier_total = round(supplier_stock) + round(supplier_drilling) if has_work else None
+    if prep_minutes and not supplier_includes_prep:
+        supplier_total = (supplier_total or 0) + round(prep_cost)
     layout_complete = not issues and not result["unplaced_blanks"]
     internal_complete = layout_complete and len(priced_stock) == len(rows)
     missing_stock = sorted({
@@ -134,16 +140,26 @@ def _comparison_html(result):
     in_house_stock = f"{sheets} sheets"
     if missing_stock:
         in_house_stock += f" · Price needed for {', '.join(missing_stock)}"
-    comparison = _comparison_table([
+    comparison_rows = [
         ((f"Sheet stock · {parts}", _money(stock_cost), in_house_stock),
          (f"Stock and cutting · {parts}", _money(supplier_stock),
           f"{sheets} sheets × {_money(external['sheet_rate'])}")),
         (("Operator", _money(operator) if has_work else "—",
           f"{internal['operator_hours']} h"),
          ("Drilling allowance", _money(supplier_drilling), f"₪{external['drilling_rate']}/part")),
+    ]
+    if prep_minutes:
+        duration = f"{prep_minutes:.2f}".rstrip("0").rstrip(".")
+        comparison_rows.append((
+            ("File preparation", _money(prep_cost), f"{duration} min"),
+            ("File preparation", "Included", "") if supplier_includes_prep
+            else ("File preparation", _money(prep_cost), "Our operator"),
+        ))
+    comparison_rows.append(
         (("Estimated cost", _estimate(internal_total, internal_complete), ""),
          ("Estimated cost", _estimate(supplier_total, layout_complete), "")),
-    ])
+    )
+    comparison = _comparison_table(comparison_rows)
     breakdown = (
         ("Setup", "setup_minutes"), ("Load sheets", "load_minutes"),
         ("Unload parts and scrap", "unload_minutes"), ("Clean table", "cleanup_minutes"),

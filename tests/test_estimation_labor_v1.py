@@ -2,7 +2,8 @@ import json
 from unittest import TestCase
 from unittest.mock import patch
 
-from use_cases.estimation_labor_v1 import build_sheet_layout, calculate_labor_v1
+from screens.estimation_labor_v1 import _comparison_html
+from use_cases.estimation_labor_v1 import CncFilePreparationParameters, build_sheet_layout, calculate_labor_v1
 
 
 def _part(role, *, owner="B01", quantity=1):
@@ -54,6 +55,11 @@ class LaborV1Test(TestCase):
             self.assertEqual(result["in_house"]["materials"][0]["stock_ex_vat"], 90)
             self.assertEqual(result["subcontractor"]["bundle_ex_vat"], 122.5)
             self.assertEqual(result["subcontractor"]["machining_ex_vat"], 12)
+            self.assertEqual(result["file_preparation"]["position_count"], 1)
+        self.assertAlmostEqual(
+            first["file_preparation"]["minutes"] + second["file_preparation"]["minutes"],
+            estimate["file_preparation"]["minutes"],
+        )
         for key in ("cut_m", "machine_minutes", "setup_minutes"):
             self.assertAlmostEqual(first["work"][key] + second["work"][key], estimate["work"][key])
 
@@ -78,6 +84,22 @@ class LaborV1Test(TestCase):
         self.assertEqual(configured["in_house"]["operator_ex_vat"], 100)
         self.assertIsNone(configured["in_house"]["machine_ex_vat"])
         self.assertEqual(configured["subcontractor"], result["subcontractor"])
+        prep = result["file_preparation"]
+        self.assertEqual(prep["position_count"], 2)
+        self.assertAlmostEqual(prep["minutes"], 120 / 85)
+        self.assertEqual(prep["operator_ex_vat"], 1.62)
+        self.assertEqual(configured["file_preparation"]["operator_ex_vat"], 2.35)
+        html = _comparison_html(configured)
+        self.assertIn("1.41 min", html)
+        self.assertIn("Our operator", html)
+        self.assertIn("₪282", html)
+        self.assertIn("₪283", html)
+        bundled = _comparison_html(calculate_labor_v1(
+            layout, plan, file_preparation_parameters=CncFilePreparationParameters(supplier_includes_preparation=True),
+        ))
+        self.assertIn("Included", bundled)
+        self.assertIn("₪281", bundled)
+        self.assertNotIn("₪283", bundled)
 
     def test_oversize_back_and_visible_front_are_joined_if_only_standard_stock_is_selected(self):
         report = {"objects": {"object-001": {"parts": [_part("carcass_back"), _part("door_front")]}}}
@@ -95,6 +117,8 @@ class LaborV1Test(TestCase):
         self.assertEqual(result["subcontractor"]["bundle_ex_vat"], 490)
         self.assertEqual(result["unplaced_blanks"], 0)
         self.assertEqual(len(result["joined_parts"]), 2)
+        self.assertEqual(result["work"]["blank_count"], 4)
+        self.assertEqual(result["file_preparation"]["position_count"], 2)
 
     def test_supplier_allowance_covers_same_mixed_stock_without_inventing_machine_rate(self):
         report = {"objects": {"object-001": {"parts": [

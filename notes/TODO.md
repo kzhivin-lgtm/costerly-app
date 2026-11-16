@@ -122,13 +122,45 @@ shop drawings and the final cutting list are prepared after order approval.
 and 106 parts, with ILS 4,604 in-house and ILS 4,976 subcontracted.
 Changing the base wage to ILS 80 in the replay changes five rounded
 operator hours to ILS 500 and leaves the subcontractor estimate unchanged.
+Commit 8da8422 deployed via Railway 94d5eb25-85b0-405e-af9e-bb99be5aad1a.
+Cloudflare served estimation-labor-v1.2.6-detection-v8.4.29, and the
+production Machinery record read ILS 55/h. The CNC block was checked
+offline from saved inputs; authenticated production review is pending.
 
-PENDING, P1, USER REQUEST. Estimate CNC file preparation separately
-from setup and cutting. Measure operator time on a known job and
-compare it with a supplier quote before adding a default. Some shops
-request a ready vector file; [Bemida](https://bemida.co.il/cnc-dxf/)
-can quote drawing preparation. Count it once according to who prepares
-the file and whether the supplier includes the service.
+PENDING, P1, USER REQUEST. Estimate CNC file preparation per kitchen,
+separately from machine setup and cutting. Research supports two
+different scopes. [Crown Cabinets](https://hexagon.com/resources/resource-library/cabinet-vision-nesting-labelling-helps-double-crown-output-6-months)
+reported 15 minutes to optimize an 8–10 cabinet kitchen with Cabinet
+Vision. [Allwood](https://bynder.hexagon.com/m/46c05a50889a04e/original/Hexagon_MI_ALPHACAM_Allwood_Architectural_Joinery_Case_Study_en_A4_web_2020.pdf)
+reported 30–60 minutes from approved CAD to machine-ready files with
+automated nesting and drilling rules. No published Israeli time study
+was found. User benchmark: 60 minutes for the full CNC file preparation
+of Lev2, with approved production inputs and shop templates. Checked
+nesting is included. Exclude engineering and shop drawings.
+Labor V1.2.7, USER APPROVED. 60 minutes × number of distinct
+source Parts Check positions in the object's sheet CNC scope ÷ 85.
+Count a source position once even if it has repeated units or segments
+or uses a mix of sheet formats. Do not merge positions by dimensions
+alone. Saved controls give Lev2 85 positions (60 min), Lev1 27 (19 min),
+Adda straight 19 (13 min), and Adda corner 72 (51 min). These are
+predictions, not measured shop times. Lev1 is a provisional Materials
+control. On it, sheet counts alone would predict 45 min and physical
+blank counts 27 min. Keep the Lev2 denominator fixed to the saved
+reference and use the driver's count from the Parts/Layout handoff.
+Compute fractional minutes before costing and do not round to time
+blocks. Show File preparation separately in the object's CNC comparison
+and keep it out of machine time. The operator wage comes from Machinery
+with the employer load applied once. The subcontractor budget uses the
+same prep cost for our operator; the supplier-included configuration
+omits this extra charge.
+457 focused tests passed. Offline card replay: Lev1 19.06 min, Lev2
+60 min, Adda straight 13.41 min and corner 50.82 min. Adda's 91 source
+positions give 64.24 min before display rounding; the corner's 72
+source positions give 95 physical blanks.
+Measure active operator time on known jobs before treating this as a
+validated norm. [Bemida](https://bemida.co.il/cnc-dxf/) can quote drawing
+preparation. Count preparation once according to who does it and
+whether the supplier includes it.
 
 PENDING, P1, USER REPORT. Diagnose Lev2's observed Objects Estimation
 lap increase from 97.3 s to 144 s. The two production Parts Check

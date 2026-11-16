@@ -1,7 +1,7 @@
 """Saved panel layouts and the two CNC routes in Labor V1."""
 
 from collections import Counter, defaultdict
-from dataclasses import asdict, replace
+from dataclasses import asdict, dataclass, replace
 from hashlib import sha256
 import json
 from math import ceil, isfinite
@@ -12,7 +12,7 @@ from use_cases.wood_cnc_calculation import (
 )
 
 
-LABOR_VERSION = "Labor V1.2.6"
+LABOR_VERSION = "Labor V1.2.7"
 LAYOUT_VERSION = "cnc_sheet_layout_v2"
 SHEET_FAMILIES = {
     "mdf_hdf", "faced_mdf", "fibreboard_hardboard", "particleboard",
@@ -26,6 +26,16 @@ SUPPLIER_SHEET_RATE = 245
 SUPPLIER_MACHINING_RATE = 12
 EMPLOYER_LOAD = 0.25
 OPERATOR_RATE = 55
+
+
+@dataclass(frozen=True)
+class CncFilePreparationParameters:
+    reference_positions: int = 85
+    reference_minutes: float = 60
+    supplier_includes_preparation: bool = False
+
+
+DEFAULT_CNC_FILE_PREPARATION = CncFilePreparationParameters()
 
 
 def _positive(value):
@@ -259,7 +269,27 @@ def _object_work(groups, object_id):
     return projected, work
 
 
-def calculate_labor_v1(layout, plan, *, machine_rate=None, object_id=None, operator_gross_rate=None):
+def _file_preparation(groups, operator_rate, parameters):
+    # The saved layout retains Parts Check IDs on every copy and joined segment.
+    positions = set()
+    for group in groups:
+        saved_layout = group["layout"]
+        if saved_layout is not None:
+            positions.update(row["part_id"] for row in saved_layout["placements"])
+            positions.update(saved_layout["unplaced"])
+    minutes = parameters.reference_minutes * len(positions) / parameters.reference_positions
+    return {
+        "position_count": len(positions),
+        "minutes": minutes,
+        "operator_ex_vat": round(minutes / 60 * operator_rate, 2),
+        "supplier_includes_preparation": parameters.supplier_includes_preparation,
+    }
+
+
+def calculate_labor_v1(
+    layout, plan, *, machine_rate=None, object_id=None, operator_gross_rate=None,
+    file_preparation_parameters=DEFAULT_CNC_FILE_PREPARATION,
+):
     """Compare CNC work and purchasing for the same parts, without duplicate stock charges."""
     if layout.get("version") != LAYOUT_VERSION or layout["basis_sha256"] != sheet_layout_basis(plan):
         raise ValueError("The saved CNC layout and current material plan have different quantities or stock")
@@ -283,6 +313,7 @@ def calculate_labor_v1(layout, plan, *, machine_rate=None, object_id=None, opera
     operator_hours = ceil(round(internal["labor_hours"], 9))
     operator_rate = gross_rate * (1 + EMPLOYER_LOAD)
     operator = round(operator_hours * operator_rate, 2)
+    file_preparation = _file_preparation(groups, operator_rate, file_preparation_parameters)
     shop_rows = []
     for group in groups:
         saved_layout = group["layout"]
@@ -315,7 +346,7 @@ def calculate_labor_v1(layout, plan, *, machine_rate=None, object_id=None, opera
         "machining_ex_vat": work["drilled_part_count"] * SUPPLIER_MACHINING_RATE,
     }
     return {
-        "version": LABOR_VERSION, "work": work, "issues": issues,
+        "version": LABOR_VERSION, "work": work, "issues": issues, "file_preparation": file_preparation,
         "unplaced_blanks": sum(sum(group["layout"]["unplaced"].values()) for group in groups),
         "joined_parts": [row for group in groups for row in group["layout"].get("splits", ())],
         "in_house": {
