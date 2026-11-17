@@ -27,6 +27,7 @@ CNC_ESTIMATE_LEVELS = (1, 2, 3, 4, 5)
 CNC_ESTIMATE_LEVEL_DEFAULT = 3
 CNC_ESTIMATE_LEVEL_KEY = "estimate_level"
 CNC_OPERATOR_RATE_KIND = "operator_wage"
+SHEET_PROCESSING_MACHINE_CODES = ("wood_cnc_router", "wood_panel_saw", "wood_edge_bander")
 LOGGER = logging.getLogger(__name__)
 
 
@@ -347,9 +348,30 @@ def load_cnc_operator_wage(client, company_id: str) -> float | None:
         .limit(1)
         .execute()
     ).data or []
-    if not rows or rows[0].get("pricing_method") != "hourly":
+    return _cnc_operator_wage(rows[0]) if rows else None
+
+
+def load_sheet_processing_machinery(client, company_id: str) -> dict:
+    rows = (
+        client.table("company_machinery")
+        .select("machine_code,availability_status,pricing_method,pricing")
+        .eq("company_id", company_id)
+        .eq("active", True)
+        .in_("machine_code", SHEET_PROCESSING_MACHINE_CODES)
+        .execute()
+    ).data or []
+    machines = {row["machine_code"]: row for row in rows}
+    router = machines.get("wood_cnc_router", {})
+    return {
+        "availability": {code: row.get("availability_status") for code, row in machines.items()},
+        "cnc_operator_wage": _cnc_operator_wage(router) if router.get("availability_status") == "in_house" else None,
+    }
+
+
+def _cnc_operator_wage(row) -> float | None:
+    if row.get("pricing_method") != "hourly":
         return None
-    pricing = rows[0].get("pricing") or {}
+    pricing = row.get("pricing") or {}
     # Existing CNC profiles stored the same field under the old Machine rate label.
     if pricing.get("rate_kind") not in {None, "", "internal_cost", CNC_OPERATOR_RATE_KIND}:
         return None
