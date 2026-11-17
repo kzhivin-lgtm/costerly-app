@@ -162,6 +162,28 @@ def apply_base_css() -> None:
             --review-card-gap: 20px;
         }
 
+        .upload-screen__hero,
+        .costerly-workflow-status {
+            margin: 0;
+            color: var(--color-purple, var(--primitive-purple-900));
+            font-family: var(--font-hero);
+            font-size: 24px;
+            font-weight: 400;
+            font-synthesis: none;
+            letter-spacing: -0.045em;
+            line-height: 1.18;
+            text-align: center;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: geometricPrecision;
+        }
+
+        @media (max-width: 760px) {
+            .upload-screen__hero,
+            .costerly-workflow-status {
+                font-size: clamp(20px, 6vw, 24px);
+            }
+        }
+
         :root,
         [data-costerly-theme="light"] {
             --color-bg: var(--primitive-warm-bg);

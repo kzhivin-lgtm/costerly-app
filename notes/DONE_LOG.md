@@ -1,5 +1,13 @@
 # Done Log
 
+Labor V1.3.0.2 workflow checkpoint, 2026-11-17. Owner accepted
+V1.3.0.1 on fresh Lev1, including Review and saved-estimate returns.
+The protected V1.3.0.1 tag pins `edd3edc`. V1.3.0.2 aligns Opening
+typography with Upload, verified at three viewport widths. The full
+archive preserves source, the accepted production run, prior Lev1 and
+Adda controls, evidence and offline replay. 140 focused tests passed.
+See the [workflow checkpoint](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1302-workflow-checkpoint).
+
 Labor V1.2.24 production checkpoint, 2026-11-17. Owner verified Last
 Estimate on a fresh Lev1. Tag `estimation-labor-v1.2.24-2026-11-17`
 pins `2388a46`. Cloudflare and Railway matched. Lev1 kept the original

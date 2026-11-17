@@ -1,5 +1,34 @@
 # Estimation 9 Parts Check from Upload
 
+## Labor V1.3.0.2 workflow checkpoint
+
+On 17 November 2026 the owner accepted the live V1.3.0.1 workflow.
+Tag `estimation-labor-v1.3.0.1-2026-11-17` pins runtime `edd3edc`
+before the typography change. The accepted Lev1 run is
+`run_77752a3b9f7a4797a53d342745d01f1a`, estimate
+`run_77752a3b9f7a4797a53d342745d01f1a_estimate_20261117193718`.
+It retains one Parts Check with 29 rows and Booth Bench at ₪5,193.11
+before VAT. Trace `2fcd7751-7380-414e-a049-f98aadc53a85` records Review,
+approve, both return actions, Last Estimate and repeated Continue.
+
+V1.3.0.2 shares the Upload hero typography with the Opening status.
+Computed browser styles match at 1280, 390 and 320 px. The desktop
+size is 24 px in IBM Plex Mono. The mobile rule stays responsive.
+140 focused checks passed.
+
+The full private archive is
+`backups/estimation-labor-v1.3.0.2-checkpoint-2026-11-17/`.
+It preserves the source and Git bundle, accepted Lev1 original PDF,
+object inputs, Parts Check, material plan, evidence files and runtime
+trace, plus the previous Lev1 and Adda controls and an offline replay.
+The source tag is `estimation-labor-v1.3.0.2-2026-11-17`.
+Restore production with a forward commit from the tag, then verify both
+deployed build markers and Core health.
+
+V1.3.2 is the owner's next stage, covering Projects, Profile and Admin
+with the same transition mechanism. Fresh Upload/Processing coverage
+remains a separately deferred V1.3.1 stage.
+
 ## Labor V1.3.0.1 first Review and reload
 
 The fresh Lev1 run `run_23f53e8906a048d4b1a2e2f04b27f97a` saved one

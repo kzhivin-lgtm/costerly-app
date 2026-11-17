@@ -1,6 +1,19 @@
 # Coasterly AI · Estimation → Labor · передача в новый чат
 
-**Принятый чекпойнт, 17 ноября 2026.** Labor V1.2.24
+**Текущий чекпойнт, 17 ноября 2026.** Labor V1.3.0.2,
+тег `estimation-labor-v1.3.0.2-2026-11-17`. Владелец принял переходы
+V1.3.0.1 на свежем Lev1. Run `run_77752a3b9f7a4797a53d342745d01f1a`
+сохранил одну смету, один Parts Check из 29 строк и Booth Bench
+за ₪5 193,11 без НДС после Review, возвратов и повторного Continue.
+До смены типографики защищён тег `estimation-labor-v1.3.0.1-2026-11-17`
+на `edd3edc`. Opening и Upload используют одно правило шрифта,
+проверенное на 1280, 390 и 320 px. Приватный полный архив
+`backups/estimation-labor-v1.3.0.2-checkpoint-2026-11-17/`
+содержит исходники, bundle, PDF, данные расчёта, evidence и replay.
+Следующий согласованный этап V1.3.2, Projects, Profile и Admin.
+[Чекпойнт](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1302-workflow-checkpoint)
+
+**Предыдущий принятый чекпойнт, 17 ноября 2026.** Labor V1.2.24
 (`2388a46`, тег `estimation-labor-v1.2.24-2026-11-17`), проверен
 на Cloudflare Pages и Railway. Владелец проверил Last Estimate на свежем
 Lev1. После смены серверной сессии, File Review и Continue сохранились

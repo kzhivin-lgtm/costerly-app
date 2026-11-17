@@ -119,6 +119,7 @@ function workflowTransitionController(coreWindow, traceId) {
             + "display:flex;flex-direction:column;justify-content:center;align-items:center;"
             + "color:#392c47;font:500 1rem system-ui,sans-serif;";
         const status = doc.createElement("span");
+        status.className = "costerly-workflow-status";
         status.setAttribute("role", "status");
         status.textContent = "Opening " + names[target] + "…";
         cover.append(status);

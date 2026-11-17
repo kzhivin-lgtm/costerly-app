@@ -2,7 +2,7 @@
 
 ## Workflow transitions
 
-IMPLEMENTED IN V1.3.0.1, P0, 2026-11-17. Reveal a complete interactive destination when
+COMPLETED IN V1.3.0.1, P0, owner acceptance on Lev1, 2026-11-17. Reveal a complete interactive destination when
 switching screens. The 20:15:23 recording shows parts of the previous
 screen alongside Upload and Objects and File Review before Continue.
 In the recorded session Core V1.2.25 completed the callbacks and renders,
@@ -20,18 +20,33 @@ sampled 604 frames with no mixed screen visible on the matched pair. One
 estimate ID and zero Parts Check launches across the replay. Expired auth,
 timeout with explicit recovery and double click passed. The existing
 upload progress test passed. Mixed builds use the previous navigation
-until both peers advertise the new protocol. Await live owner acceptance
-before V1.3.1 (fresh Upload/Processing transitions) and V1.3.2 (Projects,
-Profile and Admin). [Release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v130-stable-workflow-transitions).
+until both peers advertise the new protocol.
+[Release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v130-stable-workflow-transitions).
 
 Owner acceptance of V1.3.0 exposed a fresh Lev1 regression. Review appeared
 with a saved price but had no native click handler until a full rerun.
 The reload URL held only the run ID and returned an empty Objects screen.
 V1.3.0.1 mounts the native controls before the live table and resolves the
 saved estimate for a run-only reload. Local acceptance covered immediate
-Review, reload and Continue with one estimate launch. Await a live owner
-check of the first Review and the same estimate after reload.
+Review, reload and Continue with one estimate launch. The owner then
+accepted the live workflow on run `run_77752a3b9f7a4797a53d342745d01f1a`.
+The correlated production trace records first Review, approve, back,
+Last Estimate and repeated Continue with one estimate and one Parts Check.
 [Incident and verification](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1301-first-review-and-reload).
+
+COMPLETED IN V1.3.0.2, P1, 2026-11-17. Opening uses the same responsive
+typography rule as Upload. Browser computed styles match at 1280, 390
+and 320 px. Preserve the accepted V1.3.0.1 runtime tag and the full
+V1.3.0.2 checkpoint before extending screen coverage.
+[Checkpoint](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1302-workflow-checkpoint).
+
+PENDING, P1, V1.3.2, owner-authorized next stage, 2026-11-17. Extend the
+same ready/render mechanism to Projects, Profile and Admin, including
+return navigation, role restrictions, expired auth and recovery. Verify
+desktop and mobile flows and preserve saved-estimate navigation.
+
+DEFERRED, P1, V1.3.1. Extend fresh Upload/Processing transitions after the
+accepted first stage. The owner selected V1.3.2 as the next stage.
 
 ## Estimate recovery
 
