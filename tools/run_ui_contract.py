@@ -35,7 +35,12 @@ def main() -> int:
     env = dict(os.environ, COSTERLY_UI_STATE_DIR=str(state), COSTERLY_UI_REPORT_DIR=str(output / "browser"))
     env.setdefault("PYTHONPATH", str(ROOT))
     started = time.perf_counter()
-    report = {"status": "running", "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(), "stages": []}
+    report = {
+        "status": "running",
+        "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+        "working_tree_dirty": bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT)),
+        "stages": [],
+    }
     server = None
     server_log = None
 

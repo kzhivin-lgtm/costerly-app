@@ -71,7 +71,8 @@ uv run --locked --group ui-test python tools/promote_ui_release.py COMMIT --publ
 
 The publisher requires both a trusted success for that SHA and the active
 remote ruleset before touching main. Core and the production wrapper then
-consume the same checked commit; no new UI run is triggered just by promotion.
+consume the same checked commit; no new UI run is triggered just by promotion
+to main or the protected canary.
 
 ## Prove failure blocks publication
 

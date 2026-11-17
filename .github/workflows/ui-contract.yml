@@ -2,7 +2,7 @@ name: UI contract
 
 on:
   push:
-    branches-ignore: [main]
+    branches-ignore: [main, codex/ui-release-gate-canary]
   pull_request:
     branches: [main]
   workflow_dispatch:
