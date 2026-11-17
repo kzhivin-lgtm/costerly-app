@@ -1,11 +1,5 @@
 # Done Log
 
-Labor V1.2.21 production checkpoint, 2026-11-17. Tag
-`estimation-labor-v1.2.21-2026-11-17` pins `c84ece4`. Production build
-markers match on Cloudflare Pages and Railway. Saved Adda replays three
-finished mirrors at ₪1,001.09 net, with other purchase allocations preserved.
-See the [checkpoint, benchmark and rollback](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1221-production-checkpoint).
-
 Labor V1.2.16 aligns File preparation and Edge banding across the CNC
 columns and pairs Operator with Stock and cutting and Materials with
 Drilling allowance. 89 focused tests passed, and the four saved cards
