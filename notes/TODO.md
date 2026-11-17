@@ -90,41 +90,34 @@ task. Acceptance does not assert a measured production speedup. Admin is
 the separate pending outcome below.
 [Implementation and verification](COMPANY_PROFILE_CHECKPOINT.md#v133-profile-preloading-and-tab-updates).
 
-ACTIVE, P1, approved implementation, 2026-11-17. Protect accepted
-navigation, rendering, persistence and cache behavior from later regressions,
-and make intentional behavioral changes an explicit owner decision. The owner subsequently approved moving checks into the repository, an
-obligatory publication barrier, measured full runs and a broken-transition
-negative control.
-Baseline gap: behavioral tests were tracked, but browser fixtures and
-reports were external and no Actions workflow was tracked. The permanent
-source is now on codex/ui-release-gate: 332 Python checks, 54 normal browser
-transitions, seven Save/reopen paths and the Profile/screen recovery suites.
-A full local run passed in 102.829 seconds with installed dependencies.
-The real Profile-ready-target negative control at 817bd8b6 failed in 27.225
-seconds on the first Profile transition. Current credentials cannot publish
-workflow files or manage rules; the owner is preparing a dedicated temporary
-token. Remote CI and mandatory enforcement remain unverified. Existing UI_GUIDELINES already require
-scenario-first acceptance; documentation alone has not enforced that process.
-Approved scope: preserve one behavior contract in the existing UI guidelines,
-track deterministic browser scenarios, and require their exact-commit CI
-result before runtime publication. AGENTS.md and the publisher now encode
-that path; the remote ruleset is still pending activation.
-Cover saved-estimate reuse, a single ready-correlated navigation, no mixed
-screens, old open wrapper compatibility, Profile fragment updates, Save/error
-retry, cache identity/invalidation and expired auth. Treat dependency and
-shared-CSS changes as possible impacts as well as direct callback changes.
-Routine feature edits may preserve the contract without a new owner decision.
-Changing a protected behavior requires a concrete impact report (before/after,
-reason, affected routes/cache keys, alternatives, tests and rollback) and
-owner approval before implementation. Tests and the approval requirement
-cannot be silently weakened in the same change. A required CI/deploy gate,
-branch rules and bypass policy are now approved. The accepted V1.3.3
-checkpoint remains the runtime baseline. Both available GitHub credentials
-return 403 for Administration; no ruleset is currently installed. Complete
-the portable suite and CI before requesting the one-time administrator
-activation. Do not report a local publisher as remote enforcement.
-Acceptance must include proving that
-an intentionally introduced navigation/cache regression blocks publication.
+IMPLEMENTED AND REMOTE VERIFIED, P1, owner-approved UI release gate,
+2026-11-18. Persistent checks are tracked under tests/ui and the GitHub
+workflow. GitHub ruleset 27499066 is active on main and the non-production
+canary, requiring UI release gate from GitHub Actions (15368), with no
+bypass actors and force-push/deletion protection. Publication verifies the
+exact SHA and the active remote rule. Normal Git credentials suffice for
+policy reads; the temporary admin token is only for initial installation.
+
+The first complete local run passed in 102.829 s. The first successful
+Linux CI job took 167 s including setup (128.341 s test execution), run
+44184256668 at 295d020d. It covered 332 Python checks before the final
+publisher/evidence checks were added, 54 normal browser transitions, seven
+Save paths and recovery cases. Final source includes 334 Python checks.
+A real one-line Profile-ready-target defect at 53aca9e3 failed CI in
+26.968 s (run 44183739240). GitHub rejected that fast-forward candidate
+on canary with GH013, specifically because UI release gate failed.
+The publisher also rejected it before push; main did not change. The
+successful checked commit was accepted by the same protected canary.
+
+The final gate retains reports/logs/state/screenshots on failure for 14 days;
+artifact upload includes the hidden output directory and fails if evidence
+is missing. All new changes, including this final candidate, require their
+own successful check before promotion to main. Ordinary docs can use the
+short path only when the cumulative diff from main contains no protected
+contract/runtime change. An intentional behavior or gate change needs the
+owner-approved impact report in UI_GUIDELINES; never silently weaken tests.
+Existing cold-start diagnostics and Admin performance stay separate.
+[Procedure and scope](../tests/ui/README.md).
 
 PENDING, P2, user request, 2026-11-17. Reduce Admin navigation latency after
 the Profile work. Live openings measured 8.345 s and 6.395 s. Read-only

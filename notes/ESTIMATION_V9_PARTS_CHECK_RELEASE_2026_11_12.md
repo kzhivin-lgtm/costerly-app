@@ -1,5 +1,61 @@
 # Estimation 9 Parts Check from Upload
 
+## UI release gate, 18 November 2026
+
+The owner approved persistent checks, an obligatory publication barrier,
+full-run timing and a broken-transition negative control. The accepted
+application baseline remains V1.3.3. Permanent fixtures are synthetic;
+no private source PDF, paid model request or production database write is
+part of the check. See [the runnable procedure](../tests/ui/README.md).
+
+GitHub ruleset 27499066 is active on main and codex/ui-release-gate-canary.
+It requires UI release gate from integration 15368, with no bypass actors,
+strict status checks, and force-push/deletion protection. A release must
+pass for its exact SHA before tools/promote_ui_release.py can update main.
+Authenticated metadata reads reuse ordinary Git credentials, so future
+publication does not require the temporary administrator credential.
+
+Measured first complete Linux job at `295d020d`:
+
+| Stage | Seconds |
+|---|---:|
+| Python checks | 17.703 |
+| 54 navigation transitions | 27.229 |
+| Profile Save/reopen | 15.193 |
+| Preload, cache, keyboard, expiry, write retry | 14.782 |
+| Screen read failures, access, timeout recovery | 47.367 |
+| Complete test process, including server lifecycle | 128.341 |
+| Whole CI job including setup and artifact/cache steps | 167 |
+
+The workflow took 169 s from creation including 2 s queue time. These are
+one-run observations, not p95 guarantees. The local installed-dependency
+run took 102.829 s. The first CI pass had 332 Python checks; the final
+publisher/evidence regressions bring that to 334. The final source has to
+pass its own exact-commit check before it is promoted.
+[Successful job](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44184256668).
+
+Negative control `53aca9e3` differs from the tested UI baseline only by
+sending Profile readiness to Objects. Its actual UI run failed in 26.968 s
+at the first Profile transition, while its Python checks passed.
+[Failed job](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44183739240).
+The candidate was a fast-forward from the canary checkpoint. GitHub rejected
+its push with GH013: Required status check "UI release gate" is failing.
+The canary stayed on `46aef079`; the publisher also rejected --publish for
+this SHA with main unchanged. The same remote rule then accepted successful
+`295d020d` on canary. Broken source was never sent to main.
+
+CI retains reports, logs, synthetic state and failure screenshots for 14 days.
+The hidden output directory is explicitly included; missing evidence makes
+artifact upload fail. The first bootstrap job exposed that hidden-folder
+omission, which is fixed and covered by a configuration regression check.
+Do not equate a green test process with evidence upload without checking it.
+
+Ruleset template: `.github/ui-release-ruleset.json`. Remote activation is
+verified independently of the template. The rollback baseline remains
+`estimation-labor-v1.3.3-2026-11-17` for application behavior; retain the
+new CI/ruleset when restoring application files. Do not remove the publication
+barrier merely to make an older tagged tree publishable.
+
 ## Labor V1.3.3 accepted production checkpoint
 
 The owner confirmed normal operation and requested the full checkpoint.
