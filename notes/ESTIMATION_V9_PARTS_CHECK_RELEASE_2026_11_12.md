@@ -1,5 +1,38 @@
 # Estimation 9 Parts Check from Upload
 
+## Labor V1.2.24 production checkpoint
+
+On 17 November 2026 the owner checked Last Estimate with a fresh Lev1
+production estimate. The protected tag `estimation-labor-v1.2.24-2026-11-17`
+pins runtime commit `2388a46069e51c8129a31c34f3a2398533c6de56`. Cloudflare
+Pages and Railway served
+`estimation-labor-v1.2.24-estimate-recovery-detection-v8.4.29` and Core
+health returned HTTP 200.
+
+Lev1 run `run_e24d2c62585843acbfd871554fa4b1b2` has one saved estimate,
+`run_e24d2c62585843acbfd871554fa4b1b2_estimate_20261117175354`, and one
+Parts Check with 29 rows. The Booth bench has a saved cost of ₪5,193.11
+before VAT. The original Continue was at 17:53:58 UTC. A second Streamlit
+session rendered New Estimate, File Review and Continue at 17:56:14 UTC,
+after the only Parts Check had finished. The action event records the
+transition. The production rows confirm one estimate and one Parts Check.
+This accepts recovery of the saved Lev1 result.
+
+The private workspace archive
+`backups/estimation-labor-v1.2.24-checkpoint-2026-11-17/` holds the tagged
+source, standalone Git bundle, original PDFs, detection and object input
+records, evidence files, estimates, actual Parts Check artifacts, saved
+material plans, traces, a replay script and a SHA-256 manifest. Offline
+replay from the restored bundle selected the saved Lev1 estimate and the
+original Adda estimate despite its partial duplicate. All 305 focused
+checks passed from the same restored source. The expired-session path
+was verified with controlled expiry in the local browser. Its
+authenticated production acceptance remains open.
+
+To return to this checkpoint, restore the tag's tree on a forward
+production commit and verify matching build markers and Core health.
+The runtime immediately before it was V1.2.23 at `582343a`.
+
 ## Labor V1.2.24 estimate recovery
 
 After a disconnected tab becomes visible and online, the wrapper restarts
@@ -25,8 +58,8 @@ shows Vanity ₪2,883.88 and Display Cabinet ₪9,101.88 net, with no
 estimation launch. The browser replay used a controlled expiry and
 rendered Login without an action after reconnect. The valid-session
 case reached File Review and opened the original estimate. 305 focused
-Python tests passed. Authenticated browser acceptance in production
-remains to be confirmed.
+Python tests passed. See the production checkpoint above for the Lev1
+acceptance and the scope of the expiry check.
 
 Runtime rollback reference is `582343a` (Labor V1.2.23).
 

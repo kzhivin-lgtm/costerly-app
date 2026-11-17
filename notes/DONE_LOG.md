@@ -1,5 +1,12 @@
 # Done Log
 
+Labor V1.2.24 production checkpoint, 2026-11-17. Owner verified Last
+Estimate on a fresh Lev1. Tag `estimation-labor-v1.2.24-2026-11-17`
+pins `2388a46`. Cloudflare and Railway matched. Lev1 kept the original
+estimate and one Parts Check across two sessions. The archived Lev1 and
+Adda controls replayed offline from the Git bundle.
+See the [production checkpoint](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1224-production-checkpoint).
+
 Labor V1.2.21 production checkpoint, 2026-11-17. Tag
 `estimation-labor-v1.2.21-2026-11-17` pins `c84ece4`. Production build
 markers match on Cloudflare Pages and Railway. Saved Adda replays three
