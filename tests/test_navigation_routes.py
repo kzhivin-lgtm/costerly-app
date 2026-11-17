@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import ast
 import inspect
+from contextlib import nullcontext
 from concurrent.futures import Future
 from pathlib import Path
 
+import pytest
 import streamlit as st
 
 import app
@@ -215,6 +217,38 @@ def test_prepared_objects_route_does_not_publish_an_unpersisted_estimate_id():
         "screen": "objects",
         "run_id": "run-123",
     }
+
+
+@pytest.mark.parametrize("saved_id", ["estimate-original", None])
+def test_objects_reload_recovers_run_only_route(monkeypatch, saved_id):
+    st.session_state.clear()
+    st.session_state.current_estimate_id = "estimate-unrelated"
+    st.session_state.current_estimate_run_id = "run-unrelated"
+    route = {"screen": "objects", "run_id": "run-123"}
+    lookups = []
+    rendered = []
+
+    def load_saved(_client, company_id, run_id):
+        lookups.append((company_id, run_id))
+        return {"estimate_id": saved_id} if saved_id else None
+
+    monkeypatch.setattr(st, "query_params", route)
+    monkeypatch.setattr(app, "configure_runtime_sink", lambda *_: None)
+    monkeypatch.setattr(app, "company_auth_enabled", lambda: False)
+    monkeypatch.setattr(app, "get_company_id", lambda: "company-1")
+    monkeypatch.setattr(app, "get_supabase_client", object)
+    monkeypatch.setattr(app, "load_latest_estimate_route_for_run", load_saved)
+    monkeypatch.setattr(app, "_render_screen", lambda screen, *_args, **_kwargs: rendered.append(screen))
+    monkeypatch.setattr(app, "_signal_ready", lambda *_args, **_kwargs: None)
+
+    app.main()
+
+    assert lookups == [("company-1", "run-123")]
+    assert rendered == ["objects" if saved_id else "file_review"]
+    assert st.session_state.current_run_id == "run-123"
+    assert st.session_state.current_estimate_id == saved_id
+    assert st.session_state.current_estimate_run_id == ("run-123" if saved_id else None)
+    assert st.session_state.get("objects_estimation_launch_request") is None
 
 
 def test_file_review_route_keeps_the_active_estimate_for_refresh_recovery():
@@ -1201,7 +1235,24 @@ def test_objects_initializes_action_state_before_live_fragment_branch():
     state_index = source.index("screen_state = _current_objects_state(estimate_id)")
     live_index = source.index("_render_live_objects_content(")
 
-    assert state_index < live_index
+    bridge_index = source.index("_render_object_detail_navigation_bridges(action_data)")
+    assert state_index < bridge_index < live_index
+
+
+def test_live_object_native_review_control_exists_before_its_price(monkeypatch):
+    controls = []
+    monkeypatch.setattr(st, "container", lambda **_: nullcontext())
+    monkeypatch.setattr(st, "button", lambda label, **kwargs: controls.append((label, kwargs)))
+
+    objects._render_object_detail_navigation_bridges({
+        "rows": [{"object_key": "object-1", "status": "running"}],
+    })
+
+    assert controls == [("Open Object Detail object-1", {
+        "key": objects.objects_pricing.object_detail_navigation_key("object-1"),
+        "on_click": objects._open_object_detail,
+        "args": ("object-1",),
+    })]
 
 
 def test_file_review_transitions_follow_the_current_editable_summary_marker():

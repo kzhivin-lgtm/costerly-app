@@ -2,7 +2,7 @@
 
 ## Workflow transitions
 
-IMPLEMENTED IN V1.3.0, P0, 2026-11-17. Reveal a complete interactive destination when
+IMPLEMENTED IN V1.3.0.1, P0, 2026-11-17. Reveal a complete interactive destination when
 switching screens. The 20:15:23 recording shows parts of the previous
 screen alongside Upload and Objects and File Review before Continue.
 In the recorded session Core V1.2.25 completed the callbacks and renders,
@@ -23,6 +23,15 @@ upload progress test passed. Mixed builds use the previous navigation
 until both peers advertise the new protocol. Await live owner acceptance
 before V1.3.1 (fresh Upload/Processing transitions) and V1.3.2 (Projects,
 Profile and Admin). [Release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v130-stable-workflow-transitions).
+
+Owner acceptance of V1.3.0 exposed a fresh Lev1 regression. Review appeared
+with a saved price but had no native click handler until a full rerun.
+The reload URL held only the run ID and returned an empty Objects screen.
+V1.3.0.1 mounts the native controls before the live table and resolves the
+saved estimate for a run-only reload. Local acceptance covered immediate
+Review, reload and Continue with one estimate launch. Await a live owner
+check of the first Review and the same estimate after reload.
+[Incident and verification](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1301-first-review-and-reload).
 
 ## Estimate recovery
 

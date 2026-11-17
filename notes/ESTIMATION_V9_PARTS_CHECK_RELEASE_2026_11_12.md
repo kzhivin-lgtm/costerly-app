@@ -1,5 +1,30 @@
 # Estimation 9 Parts Check from Upload
 
+## Labor V1.3.0.1 first Review and reload
+
+The fresh Lev1 run `run_23f53e8906a048d4b1a2e2f04b27f97a` saved one
+estimate, one Parts Check and the Booth Bench cost of ₪5,193.11 before VAT.
+At 19:21:15 UTC the wrapper reported `navigation_control_unavailable`
+on `objects_to_object_detail`, trace `2d390c4d-a0cd-4bd9-ade9-c9bcf6b8b776`.
+The live fragment had enabled Review after the price arrived. The
+native Streamlit button had been omitted when the same row was pending.
+Reload then opened the initial run-only address without resolving its
+already-saved estimate.
+
+Objects now mounts the native controls for the prepared rows before the
+live pricing fragment. Reload resolves a run-only address within its
+own company. If no estimate shell exists, it opens File Review. Explicit
+estimate routes keep their own published ID.
+
+The local Chromium test exercised the real Core and wrapper with a
+delayed worker publishing the saved Lev1 rows. It opened Review
+immediately, then restored the same estimate through a run-only reload
+and through File Review → Continue. Seven transitions sampled 126
+frames with no mixed destination and no second estimate launch.
+The saved-estimate route also passed at desktop and mobile widths.
+140 focused tests passed.
+The production rollback runtime is V1.2.25 at `61055fc`.
+
 ## Labor V1.3.0 stable workflow transitions
 
 Stage one covers New Estimate, Last Estimate, Continue, Review/Done, Back

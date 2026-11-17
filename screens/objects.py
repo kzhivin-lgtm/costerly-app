@@ -605,14 +605,11 @@ def _back_to_file_review_with_ready_cache(company_id: str) -> None:
 
 
 def _render_object_detail_navigation_bridges(data: dict[str, object]) -> None:
-    """Keep HTML table actions on the current Streamlit session."""
+    """Mount native navigation before the live table makes Review clickable."""
     with st.container(key="object_detail_navigation_bridges"):
         for row in data.get("rows") or []:
             object_id = str(row.get("object_key") or "")
-            if not object_id or str(row.get("status") or "") not in {
-                "completed",
-                "review_required",
-            }:
+            if not object_id:
                 continue
             st.button(
                 f"Open Object Detail {object_id}",
@@ -946,6 +943,10 @@ def render_objects_screen(
     if _final_approval_ready(screen_state.data):
         _load_existing_proposal_url(company_id=company_id, estimate_id=estimate_id)
     live = bool(estimate_id and isinstance(st.session_state.get("estimation_batch_future"), Future))
+    # The timed fragment can enable Review without a full app rerun. Its
+    # native buttons must already exist for all objects in the prepared batch.
+    action_data = _data_with_progress(screen_state.data, estimate_id)
+    _render_object_detail_navigation_bridges(action_data)
     if live:
         _render_live_objects_content(
             estimate_id=str(estimate_id),
@@ -964,8 +965,6 @@ def render_objects_screen(
     # Actions and JavaScript runtimes remain outside the timed fragment. They
     # are installed once per full render and cannot flicker or be replaced by a
     # progress-only refresh.
-    action_data = _data_with_progress(screen_state.data, estimate_id)
-    _render_object_detail_navigation_bridges(action_data)
     _render_parts_check(estimate_id=str(estimate_id or ""), run_id=str(run_id or ""), company_id=company_id)
     _render_objects_actions(
         company_id=company_id,

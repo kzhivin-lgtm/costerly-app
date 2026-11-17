@@ -16,6 +16,7 @@ from observability.runtime import (
     configure_runtime_sink,
     emit_completed_action,
     new_runtime_trace,
+    report_runtime_failure,
 )
 from state.session import init_state, get_company_id
 from ui.screen_transition import screen_transition_marker_html
@@ -51,7 +52,10 @@ from ui.js_guards import (
     signal_app_ready_to_embed,
 )
 from ui.app_header import render_app_header
-from use_cases.latest_estimate import load_latest_file_review_route
+from use_cases.latest_estimate import (
+    load_latest_estimate_route_for_run,
+    load_latest_file_review_route,
+)
 from use_cases.platform_admin import (
     load_platform_access,
     record_authenticated_session_in_background,
@@ -813,6 +817,33 @@ def main() -> None:
                         run_id=requested_run_id,
                         estimate_id=requested_estimate_id,
                     )
+        if requested_screen == "objects" and requested_run_id and not requested_estimate_id:
+            # Objects initially publishes only the run while the worker saves
+            # its estimate shell. Reload should recover that estimate by run.
+            try:
+                route = load_latest_estimate_route_for_run(
+                    client if auth_enabled else get_supabase_client(),
+                    company_id,
+                    requested_run_id,
+                )
+            except Exception as exc:
+                report_runtime_failure(
+                    "objects.restore_saved_estimate", exc, trace=trace, rfq_run_id=requested_run_id,
+                )
+                route = None
+            if route:
+                requested_estimate_id = route["estimate_id"]
+                _remember_validated_workflow_access(
+                    company_id=company_id,
+                    run_id=requested_run_id,
+                    estimate_id=requested_estimate_id,
+                )
+            else:
+                st.session_state.screen = "file_review"
+                st.session_state.current_estimate_id = None
+                st.session_state.current_estimate_run_id = None
+            st.session_state.current_object_id = None
+
         object_detail_edit_line = st.query_params.get("od_edit_line")
         object_detail_edit_field = st.query_params.get("od_edit_field")
         object_detail_edit_value = st.query_params.get("od_edit_value")

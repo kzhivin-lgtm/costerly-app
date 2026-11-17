@@ -382,7 +382,7 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "is-sign-in" not in wrapper
     assert 'metadata.completed_action === "auth_sign_in"' in wrapper
     assert 'metadata.completed_action_status === "error"' in wrapper
-    assert 'status: failedSignIn ? "error" : "ok"' in wrapper
+    assert 'status: failedSignIn || screen !== (pendingTransition.targetScreen || screen) ? "error" : "ok"' in wrapper
     assert 'event.data.type === "costerly:startup-phase"' in wrapper
     assert "startupPhases.has(event.data.phase)" in wrapper
     assert '"https://app.costerly.ai"' in function
@@ -431,7 +431,7 @@ def test_streamlit_ready_message_carries_server_build_version():
     app_source = (ROOT / "app.py").read_text()
 
     assert "trace.annotate(server_build_version=trace.build_version)" in app_source
-    assert "screen_transition_marker_html(screen, build_version=trace.build_version)" in app_source
+    assert "screen_transition_marker_html(screen, build_version=trace.build_version, render_id=trace.run_id)" in app_source
     assert "        build_version=trace.build_version,\n" not in app_source
     assert "build_version: str" not in source
 
@@ -524,7 +524,7 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     observer_source = ready_signal.split("function installTransitionObserver()", 1)[1].split(
         "function postReady()", 1
     )[0]
-    assert "if (bridgeButton) event.preventDefault();" in observer_source
+    assert "if (bridgeButton || (covered && bridgeKey)) event.preventDefault();" in observer_source
     assert "if (bridgeButton) bridgeButton.click();" in observer_source
     assert 'String(control.dataset.streamlitBridgeKey || "")' in observer_source
     assert 'transition === "object_detail_to_objects"' in observer_source
