@@ -346,6 +346,15 @@ def apply_object_detail_css() -> None:
             font-weight: 700;
         }
 
+        .object-detail-assembly-table {
+            --detail-grid: minmax(0, 1.3fr) repeat(3, minmax(0, 1fr));
+            font-variant-numeric: tabular-nums;
+        }
+
+        .object-detail-assembly-total {
+            font-weight: 700;
+        }
+
         .object-detail-table[data-section="material"].object-detail-table--cols-6 {
             --detail-grid: minmax(175px, 2.35fr) minmax(106px, 1fr) minmax(96px, 1.05fr)
                            minmax(70px, 0.75fr) minmax(92px, 0.95fr) minmax(70px, 0.75fr);

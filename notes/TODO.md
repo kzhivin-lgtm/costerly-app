@@ -18,14 +18,14 @@ net with one charge per piece. Cloudflare Pages and Railway verified on
 the tagged runtime. Fresh estimate acceptance is pending.
 See the [checkpoint and replay](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1221-production-checkpoint).
 
-PENDING, P1, USER REQUEST, after mirrors. Connect the accepted Block Assembly norms to
-Calculation. Read the same saved Parts Check as Sheet Processing and keep
-ownership per block. Include bench setup per block, cabinet and drawer
-assembly, hardware fitting and adjustment. Exclude on-site plinth installation
-and keep glass, mirror and lighting fitting outside this stage. Verify the
-active and planned minutes and base labor against the saved Lev2 and Adda
-replay in the workspace, `outputs/block_assembly_lev2_adda_2026_11_17.json`.
-The norms have owner acceptance; no released version calculates this block.
+IMPLEMENTED LOCALLY, P1, USER REQUEST. Block Assembly reads the saved Parts
+Check already loaded by Sheet Processing and preserves Block ownership.
+Object Detail shows active and planned minutes and the base wage per block,
+with the operations behind each count. The calculator reproduced every
+operation count in the accepted Lev2 and both Adda controls in the workspace
+`outputs/block_assembly_lev2_adda_2026_11_17.json`. The accepted rate is
+₪50/h before payroll costs. Production acceptance and final cost aggregation
+remain open. [Control totals and scope](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#block-assembly-local-control).
 
 PENDING, P1, FOLLOW-UP. Carry explicit mirror and glass thickness from
 the drawing into the correct Parts Check rows before pricing. Verify

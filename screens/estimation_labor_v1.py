@@ -9,6 +9,8 @@ import streamlit as st
 from db.repositories import fetch_rfq_estimate_material_plan
 from db.supabase_client import get_supabase_client
 from observability.runtime import report_runtime_failure
+from screens.block_assembly import block_assembly_html
+from use_cases.block_assembly import calculate_block_assembly
 from use_cases.estimation_labor_v1 import (
     LAYOUT_VERSION, SPLIT_ROLES, build_sheet_layout, describe_layout_issues, sheet_layout_basis,
 )
@@ -26,15 +28,31 @@ def _calculate(client, *, identity):
     parts = load_parts_check(**params)
     if parts["status"] != "ready":
         return {"status": parts["status"]}
+    report = json.loads(parts["payload"])
+    if object_id not in report["objects"]:
+        return {"status": "unavailable"}
+    assembly = None
+    try:
+        assembly = calculate_block_assembly(report, object_id=object_id)
+    except Exception as exc:
+        report_runtime_failure("assembly.calculate", exc, rfq_run_id=run_id, estimate_id=estimate_id, object_id=object_id)
+        _LOG.exception("Could not calculate Block Assembly for estimate %s", estimate_id)
+    try:
+        sheet = _calculate_sheet(client, report, company_id=company_id, estimate_id=estimate_id, object_id=object_id)
+    except Exception as exc:
+        report_runtime_failure("cnc.calculate", exc, rfq_run_id=run_id, estimate_id=estimate_id, object_id=object_id)
+        _LOG.exception("Could not calculate Sheet Processing for estimate %s", estimate_id)
+        sheet = {"status": "read_failed"}
+    return {**sheet, "assembly": assembly}
+
+
+def _calculate_sheet(client, report, *, company_id, estimate_id, object_id):
     rows = fetch_rfq_estimate_material_plan(client, estimate_id)
     if rows.empty:
         return {"status": "waiting_for_materials"}
     plan = rows.iloc[0].get("plan_payload") or {}
     if plan.get("status") not in {"planned", "needs_review"}:
         return {"status": "waiting_for_materials"}
-    report = json.loads(parts["payload"])
-    if object_id not in report["objects"]:
-        return {"status": "unavailable"}
     source = plan.get("parts_check_source") or {}
     if not source or any(source.get(k) != report.get(k) for k in (
         "run_id", "estimate_id", "input_ids", "source_audit_sha256", "overlay_revision"
@@ -313,8 +331,12 @@ def render_labor_v1(*, company_id, run_id, estimate_id, object_id):
     identity = company_id, run_id, estimate_id, object_id
     cache = st.session_state.setdefault("labor_v1_comparisons", {})
     view = st.empty()
-    if identity not in cache:
-        view.markdown(_sheet_section('<p class="object-detail-cnc-caption">Preparing Sheet Processing…</p>'), unsafe_allow_html=True)
+    state = cache.get(identity)
+    if not state or "assembly" not in state:
+        view.markdown(
+            _sheet_section('<p class="object-detail-cnc-caption">Preparing Sheet Processing…</p>')
+            + block_assembly_html(message="Preparing Block Assembly…"), unsafe_allow_html=True,
+        )
         try:
             state = _calculate(get_supabase_client(), identity=identity) if run_id else {"status": "unavailable"}
         except Exception as exc:
@@ -322,9 +344,9 @@ def render_labor_v1(*, company_id, run_id, estimate_id, object_id):
             _LOG.exception("Could not calculate Labor V1 for estimate %s", estimate_id)
             state = {"status": "read_failed"}
         if state["status"] == "ready":
-            cache[identity] = state["result"]
-    if identity in cache:
-        html = _comparison_html(cache[identity])
+            cache[identity] = state
+    if state["status"] == "ready":
+        html = _comparison_html(state["result"])
     else:
         messages = {
             "running": "Waiting for Parts Check.",
@@ -335,4 +357,9 @@ def render_labor_v1(*, company_id, run_id, estimate_id, object_id):
             "read_failed": "Sheet Processing could not be loaded.",
         }
         html = _sheet_section(f'<p class="object-detail-cnc-caption">{messages[state["status"]]}</p>')
+    assembly_message = {
+        "running": "Waiting for Parts Check.", "failed": "Parts Check failed.",
+        "unavailable": "Parts Check is unavailable for this object.",
+    }.get(state["status"], "Block Assembly could not be loaded.")
+    html += block_assembly_html(state.get("assembly"), message=assembly_message)
     view.markdown(html, unsafe_allow_html=True)

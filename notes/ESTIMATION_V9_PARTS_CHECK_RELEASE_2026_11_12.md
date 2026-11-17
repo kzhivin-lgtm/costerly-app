@@ -1,5 +1,31 @@
 # Estimation 9 Parts Check from Upload
 
+## Block Assembly local control
+
+Block Assembly reads the same immutable Parts Check as Sheet Processing.
+On each Object Detail card it shows one finished item's time and base
+wage by Block. The table is available while the Material Plan is pending.
+Totals use the approved `active minutes × 1.25 ÷ 0.80` and ₪50/hour
+before payroll costs. Bench setup is six active minutes per block with
+estimated work. A simple pull-out shelf uses six minutes for installing
+the shelf and slides and one minute to check travel. Drawer slide
+adjustment and drawer-front fitting have their own operations.
+
+| Saved item | Active min | Planned min | Base labor, ILS |
+| --- | ---: | ---: | ---: |
+| Lev2 Kitchen | 577 | 901.5625 | 751.30 |
+| Adda Vanity unit | 106 | 165.625 | 138.02 |
+| Adda Display cabinet | 472 | 737.5 | 614.58 |
+
+Every operation count and planned minute matches the 18 blocks in the
+workspace benchmark `outputs/block_assembly_lev2_adda_2026_11_17.json`.
+Adda's Vanity B02 and Display B05 are outside the cabinet assembly scope.
+Eight pull-out shelves in Display B03/B04 receive 28 active minutes per
+block. The 40 glass pieces remain a Materials purchase. Joining split
+stock, trial fitting across blocks, glass and mirror work, lighting and
+site work await separate norms. Final cost aggregation is unchanged.
+The local result follows the V1.2.21 checkpoint.
+
 ## Labor V1.2.21 production checkpoint
 
 The owner requested this checkpoint on 17 November 2026. The annotated tag
