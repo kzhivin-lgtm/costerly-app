@@ -124,6 +124,11 @@ logs and PNG in artifact 14375545186; the ZIP contents were independently
 verified. Its canary push was rejected again by the named failed check.
 Successful artifact 14373897775 was retained too. The normal application
 source and production dependency versions match the accepted V1.3.3 tree.
+Credential retention decision, 2026-11-18: the owner explicitly requested
+keeping the separate local GITHUB_UI_GATE_ADMIN_TOKEN for future GitHub
+work. It was restored and administrative access verified. Do not delete or
+revoke it automatically after this task. Never commit its value or transfer
+it to production; routine publication continues to use normal Git access.
 [Procedure and scope](../tests/ui/README.md).
 
 PENDING, P2, user request, 2026-11-17. Reduce Admin navigation latency after
