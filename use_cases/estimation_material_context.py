@@ -36,7 +36,9 @@ def _optional_rows(client: Any, table: str, *, filters: Mapping[str, Any]) -> li
         raise
 
 
-def build_estimation_material_context(client: Any, company_id: str) -> dict[str, Any]:
+def build_estimation_material_context(
+    client: Any, company_id: str, *, parts_report: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     """Load only catalog data needed for deterministic material purchasing."""
     families = fetch_estimation_resolver_material_families(client)
     family_rows = _rows(client, "reference_material_families", filters={"active": True})
@@ -45,6 +47,18 @@ def build_estimation_material_context(client: Any, company_id: str) -> dict[str,
         family_alias_rows=_rows(client, "reference_material_family_aliases", filters={"active": True}),
         pricing_key_alias_rows=(),
     )
+    mirror_offers = ()
+    if parts_report and any(
+        part.get("role") == "mirror_glass"
+        for item in parts_report["objects"].values()
+        for scope in (item, *item.get("blocks", ()), *item.get("shared_parts", ()))
+        for part in scope.get("parts", ())
+    ):
+        mirror_offers = _rows(client, "market_material_offers", filters={
+            "market_code": "IL", "price_scope": "fabricated_component",
+            "conversion_basis->>pricing_basis": "per_finished_piece_using_its_area",
+            "conversion_basis->>grade": "silver",
+        })
     return {
         "company_id": company_id,
         "families": families,
@@ -60,6 +74,7 @@ def build_estimation_material_context(client: Any, company_id: str) -> dict[str,
                 client, "market_operation_service_prices", filters={"market_code": "IL", "status": "active"},
             ),
             "reference_positions": load_active_israel_reference_positions(client),
+            "finished_mirror_offers": mirror_offers,
             "material_families": family_rows,
             "material_pricing_policies": _rows(client, "reference_material_family_pricing_policies", filters={"active": True}),
             "material_default_variants": _optional_rows(

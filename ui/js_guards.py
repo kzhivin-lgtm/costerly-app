@@ -2063,10 +2063,13 @@ def install_object_detail_input_guard(
                     const base = rowPreview(row);
                     if (base.unit_price_display === "Variable") {
                         const sets = quantityEdit ? Math.ceil(nextCount) : base.purchase_quantity_value;
-                        const setLabel = row.querySelector('[data-glass-quantity="sets"]');
-                        const pieceLabel = row.querySelector('[data-glass-quantity="pieces"]');
+                        const setLabel = row.querySelector('[data-finished-quantity="sets"]');
+                        const pieceLabel = row.querySelector('[data-finished-quantity="pieces"]');
                         if (setLabel) setLabel.textContent = String(sets);
-                        if (pieceLabel) pieceLabel.textContent = String(sets * base.glass_pieces_per_set);
+                        if (pieceLabel && base.pieces_per_set != null) {
+                            const pieces = sets * base.pieces_per_set;
+                            pieceLabel.textContent = `${pieces}\u00a0${pieces === 1 ? "piece" : "pieces"}`;
+                        }
                         return {row, base, cost: sets * (base.purchase_unit_cost ?? 0)};
                     }
                     const required = rowField(row, "required_material");

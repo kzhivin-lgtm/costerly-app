@@ -1,3 +1,6 @@
+from decimal import Decimal
+
+import pandas as pd
 import pytest
 
 from use_cases.estimation_cb_material_demand import build_cb_material_demand, calculate_cb_materials
@@ -29,8 +32,6 @@ def _build(rows, families, *, quantity=1, issues=(), name=None):
 
 
 def test_finished_glass_parts_price_one_set_and_keep_breakdown_for_quantity_edits():
-    from decimal import Decimal
-
     from use_cases.estimation import _element_groups, _material_rows_from_plan
     from use_cases.material_engine_adapter import replan_material_norm_snapshot
 
@@ -73,6 +74,60 @@ def test_unquotable_glass_set_does_not_fall_back_to_a_square_metre_price():
     assert plan["lines"] == []
     assert plan["parts_check"]["object-1"]["unpriced_requirements"] == ["cb-finished-glass-set"]
     assert "finished_glass_quote_required" in plan["reason_codes"]
+
+
+def test_finished_mirrors_price_each_piece_and_keep_special_shapes_for_quote():
+    from use_cases.estimation import _element_groups, _object_detail_material_rows
+    from use_cases.material_engine_adapter import replan_material_norm_snapshot
+
+    standard = _part("mirror_glass", quantity=1, block_id="B01", dimensions={
+        "length": {"mm": 860}, "width": {"mm": 450}, "thickness": {"mm": None},
+    })
+    special = {**standard, "shape": "oval", "block_id": "B02"}
+    missing_size = {**standard, "dimensions": {**standard["dimensions"], "width": {"mm": None}}}
+    result = calculate_cb_materials(
+        parts_report={"stage": "Parts Check", "run_id": "run-1",
+                      "objects": {"object-1": {"parts": [standard, special, missing_size]}}},
+        input_rows=[_input()], catalog_context={"company_id": "company-1", "families": ["mirror"], "catalogs": {}},
+    )
+    plan = result["material_plan"]
+    line, = plan["lines"]
+    assert line["total_cost"] == 125.78
+    priced, = plan["object_material_costs"]
+    assert priced["cost_ex_vat"] == 125.78
+    assert "finished_mirror_quote_required" in plan["reason_codes"]
+    groups = _element_groups(plan["parts_check"]["object-1"])
+    details, = [group for group in groups if group.get("priced")]
+    assert len(details["rows"]) == 3
+    assert [(r["unit_price"], r["thickness_estimated"]) for r in details["rows"]] == [
+        (None, True), (None, True), (125.78, True),
+    ]
+    repriced, _ = replan_material_norm_snapshot(
+        plan, {}, {"object-1": 2}, {}, changed_keys={line["selection_key"]}, quantity_ratios={"object-1": Decimal(2)},
+    )
+    repriced["object_quantities"] = {"object-1": 2}
+    priced, quote = _object_detail_material_rows(repriced, pd.DataFrame(), "object-1")
+    assert (priced["required_material_value"], priced["total"], priced["price_source"]) == (2, 251.56, "A")
+    assert (quote["required_material_value"], quote["total"]) == (4, None)
+
+
+def test_complete_matching_supplier_tariff_takes_priority_for_finished_mirror():
+    from use_cases.estimation_mirror_parts import finished_mirror_part
+
+    offer = {"status": "candidate", "source_currency": "ILS", "vat_mode": "included", "delivery_included": False,
+             "included_services": ["cut_to_size", "flat_edge_polishing"], "supplier_name": "Test glazier",
+             "conversion_basis": {"pricing_basis": "per_finished_piece_using_its_area", "thickness_mm": 4,
+                                  "shape": "rectangle", "grade": "silver", "installation_included": False,
+                                  "dimensions_mm": [[200, 2000], [100, 1100]], "base_gross_rate_ils_m2": 385,
+                                  "min_gross_ils_per_piece": 220, "vat_percent": 18}}
+    mirror = {"quantity": 2, "material_hint": "mirror glass"}
+    dims = {"length": {"mm": 450}, "width": {"mm": 860}, "thickness": {"mm": 4}}
+    part = finished_mirror_part(mirror, dims, multiplier=1, offers=[offer])
+    assert (part["supplier"], part["unit_price"], part["total"]) == ("Test glazier", 186.44, 372.88)
+    cut_only = {**offer, "included_services": ["cut_to_size"]}
+    part = finished_mirror_part(mirror, dims, multiplier=1, offers=[cut_only])
+    assert (part["authority"], part["unit_price"]) == ("assumption", 125.78)
+    assert finished_mirror_part(mirror, {**dims, "thickness": {"mm": 5}}, multiplier=1, offers=[offer])["unit_price"] is None
 
 
 def test_rebuilding_materials_retires_old_generated_lines_without_replacing_the_object(monkeypatch):
@@ -370,7 +425,9 @@ def test_unlisted_part_and_missing_dimensions_keep_a_priced_requirement():
     plan = result["material_plan"]
     assert plan["status"] == "needs_review"
     assert plan["parts_check"]["object-1"]["unpriced_requirements"] == []
-    assert {line["purchase_kind"] for line in plan["lines"]} == {"area_direct", "piece"}
+    assert {line["purchase_kind"] for line in plan["lines"]} == {"piece"}
+    mirror_line, = [line for line in plan["lines"] if line["selection_key"].startswith("mirror|")]
+    assert mirror_line["total_cost"] == 152.10
 
 
 def test_worktop_surface_areas_are_preserved_without_inventing_end_material():

@@ -112,7 +112,7 @@ def _publish_material_demand_lines(client, *, estimate_id, facts_by_object, repl
 
 
 def _calculate_material_plan(*, client, estimate_id, company_id, parts_report, input_rows, review_order):
-    catalog_context = build_estimation_material_context(client, company_id)
+    catalog_context = build_estimation_material_context(client, company_id, parts_report=parts_report)
     norms = _material_norm_overrides_by_requirement(fetch_rfq_estimate_material_norm_overrides(client, estimate_id))
     purchases = _material_purchase_overrides_by_selection_key(fetch_rfq_estimate_material_purchase_overrides(client, estimate_id))
     calculation = calculate_cb_materials(
@@ -249,7 +249,7 @@ def _recalculate_edited_material_lines(
         )
         quantity_facts = build_cb_material_facts(
             parts_report=report, input_rows=input_rows,
-            catalog_context=build_estimation_material_context(client, company_id),
+            catalog_context=build_estimation_material_context(client, company_id, parts_report=report),
             object_ids=fractional_changes.keys(),
         )
     changed_stock = set(norm_keys)

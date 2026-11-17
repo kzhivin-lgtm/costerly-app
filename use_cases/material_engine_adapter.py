@@ -1515,21 +1515,24 @@ def build_material_plan(
                 })
 
             parts = parts_by_requirement.get(requirement_id) or []
-            if glass_set := material.get("finished_glass_set"):
-                if not allow_estimator_allowance or glass_set["set_price"] is None:
+            if finished_set := material.get("finished_glass_set") or material.get("finished_mirror_set"):
+                family = material["family"]
+                authority = finished_set.get("authority", "assumption")
+                if finished_set["set_price"] is None or (not allow_estimator_allowance and authority == "assumption"):
                     unresolved.append(f"{object_id}:{requirement_id}")
-                    reasons.add("finished_glass_quote_required")
+                    reasons.add(f"finished_{family}_quote_required")
                     continue
-                selection_key = f"glass|finished_set={object_id}"
+                selection_key = f"{family}|finished_set={object_id}"
                 candidate = MaterialSupplyCandidate(
-                    candidate_id=f"finished-glass-set:{object_id}", material_family="glass", selection_key=selection_key,
-                    purchase_kind="piece", price_per_purchase_unit=glass_set["set_price"], authority="assumption",
-                    display_name=material["source_name"], label_specifications={"glass_pieces_per_set": glass_set["piece_count"]},
+                    candidate_id=f"finished-{family}-set:{object_id}", material_family=family, selection_key=selection_key,
+                    purchase_kind="piece", price_per_purchase_unit=finished_set["set_price"], authority=authority,
+                    display_name=material["source_name"],
+                    label_specifications={f"{family}_pieces_per_set": finished_set["piece_count"]},
                 )
                 candidates[candidate.candidate_id] = candidate
                 demands.append(MaterialDemand(
                     demand_id=f"{object_id}:{requirement_id}:net-demand", object_id=str(object_id),
-                    material_requirement_id=requirement_id, material_family="glass", selection_key=selection_key,
+                    material_requirement_id=requirement_id, material_family=family, selection_key=selection_key,
                     quantity=object_quantity, unit="set", compatible_candidate_ids=(candidate.candidate_id,),
                 ))
                 continue

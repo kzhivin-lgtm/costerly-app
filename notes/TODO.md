@@ -9,7 +9,15 @@ their previous totals on the four saved control cards. See the
 [checkpoint and replay](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1215-production-checkpoint) and the
 [1.2.16 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1216-cnc-comparison-order).
 
-PENDING, P1, USER REQUEST. Connect the accepted Block Assembly norms to
+IMPLEMENTED in V1.2.21, P1, USER REQUEST. Price made-to-size mirrors as
+finished pieces. A matching supplier price takes priority. The owner-approved
+allowance for ordinary 4 mm mirrors is ₪325/m² excluding VAT and includes
+straight cutting and flat perimeter polish. Keep nonstandard parts in a
+separate quote-required line. Saved Adda reproduces three pieces at ₪1,001.09
+net with each purchase funded once. Live acceptance of the estimate is pending.
+See the [glass and mirror costing record](GLASS_AND_MIRRORS_IL_SUPPLIER_COSTING_2026_11_17.md).
+
+PENDING, P1, USER REQUEST, after mirrors. Connect the accepted Block Assembly norms to
 Calculation. Read the same saved Parts Check as Sheet Processing and keep
 ownership per block. Include bench setup per block, cabinet and drawer
 assembly, hardware fitting and adjustment. Exclude on-site plinth installation
@@ -17,14 +25,6 @@ and keep glass, mirror and lighting fitting outside this stage. Verify the
 active and planned minutes and base labor against the saved Lev2 and Adda
 replay in the workspace, `outputs/block_assembly_lev2_adda_2026_11_17.json`.
 The norms have owner acceptance; no released version calculates this block.
-
-DEFERRED, P1, PROPOSAL. Price made-to-size mirrors as finished pieces. Preserve
-specified or assumed thickness and distinguish the operations covered by a
-supplier price from any additional work. Confirm a comparable 4 mm reference
-with cutting, plain perimeter polishing, VAT and minimums before replacing
-the current area rate. The 5 mm Agan Barzel reference remains a separate
-finished-product comparison. Resume after the Labor restore review. See the
-[glass and mirror costing record](GLASS_AND_MIRRORS_IL_SUPPLIER_COSTING_2026_11_17.md).
 
 ACTIVE, P1, USER REQUEST. Release Labor V1 for sheet CNC in-house and
 subcontracting. Fresh Parts Check publishes an immutable layout after stock

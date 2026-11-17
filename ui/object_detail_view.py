@@ -173,14 +173,15 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
         title = f' title="{_escape(reference_name)}"' if reference_name and reference_name != name else ""
         if row.get("unit_price_display") == "Variable":
             pieces = (
-                f'<span><span data-glass-quantity="pieces">{_escape(_quantity(required_value))}</span>&nbsp;pieces</span>'
+                f'<span data-finished-quantity="pieces">{_escape(_quantity(required_value))}'
+                f'&nbsp;{"piece" if required_value == 1 else "pieces"}</span>'
                 if required_value is not None else "—"
             )
             return [
                 _source_marker(row.get("price_source")) + f'<span class="object-detail-material-name">{_escape(name)}</span>',
                 pieces,
                 _escape(purchase_unit), '<span class="object-detail-unit-price">Variable</span>',
-                f'<span data-glass-quantity="sets">{_escape(_quantity(row.get("purchase_quantity_value")))}</span>',
+                f'<span data-finished-quantity="sets">{_escape(_quantity(row.get("purchase_quantity_value")))}</span>',
                 f'<span class="object-detail-row-cost">{_money(row.get("total"))}</span>',
             ]
         return [
@@ -278,7 +279,7 @@ def _material_preview(row: dict[str, object]) -> dict[str, object]:
         "purchase_quantity_value", "purchase_quantity_line_id", "purchase_kind",
         "purchase_is_manual", "prior_required", "prior_purchase_quantity", "purchase_unit_cost", "stock_coverage",
         "stock_cuts", "stock_kerf_mm",
-        "unit_price_display", "glass_pieces_per_set",
+        "unit_price_display", "pieces_per_set",
         "is_coating", "locked", "policy_percent", "policy_basis", "item",
     ) if key in row}
 

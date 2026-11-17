@@ -131,3 +131,21 @@ Rebuilding Materials also removes surplus generated Parts Check rows after writi
 ## Labor V1.2.20 display format
 
 Materials shows actual pane count and finished glass set thickness and tempering when supported by its saved pieces. In Elements, glass and mirror rows show dimensions, thickness and processing separately. Label an assumed mirror thickness and leave processing unspecified when the saved evidence does not establish it. The display reads the existing Material Plan and does not reprice it. The Adda replay from a V1.2.19 plan reproduced 40 panes and the ₪1,672.88 glass set; the three mirrors still total ₪924.08 at ₪300/m² with no confirmed processing scope.
+
+## Labor V1.2.21 finished mirrors
+
+The owner approved a ₪325/m² net estimating allowance for a 4 mm
+rectangular silver mirror with straight cutting and flat perimeter polish.
+Keep the thickness marked as assumed when absent in Parts Check. Apply a
+compatible Israel Reference supplier offer first, including its dimension
+limits, per-piece minimum and VAT basis. The 5 mm Agan Barzel price applies
+only to matching 5 mm work. Show unknown or special processing as requiring
+a quote. Keep the priced subtotal for the other mirrors.
+
+Each complete object carries a finished mirror purchase in Materials and
+the per-piece breakdown in Elements. On recomputation the new purchase
+replaces the previous area line. Existing snapshots retain their saved prices
+until recomputed from their Parts Check. The offline Adda replay priced the
+2000 × 700 mm, 860 × 450 mm and 1445 × 895 mm mirrors at ₪455.00, ₪125.78
+and ₪420.31 net. All other purchase allocations matched the previous plan,
+including the 40 glass panes at ₪1,672.88.

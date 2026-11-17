@@ -11,6 +11,9 @@ from use_cases.estimation_cb_geometry_parts import (
 )
 from use_cases.estimation_edge_banding import EDGE_FAMILY, EDGE_TAPE_NAMES, EDGE_TAPE_THICKNESS_MM, sheet_edge_run
 from use_cases.estimation_glass_parts import GLASS_SET_NAME, GLASS_SET_REQUIREMENT, finished_glass_part, finished_glass_set
+from use_cases.estimation_mirror_parts import (
+    MIRROR_QUOTE_REQUIREMENT, MIRROR_SET_NAME, MIRROR_SET_REQUIREMENT, finished_mirror_part, finished_mirror_set,
+)
 from use_cases.estimation_structural_bom import _CONSTRUCTION_MATERIAL_NAMES, _FAMILY_PREFERENCE
 from use_cases.material_engine_adapter import build_material_plan, material_plan_input_fingerprint, material_plan_snapshot, material_review_purchases
 from use_cases.material_identity_resolution import normalize_material_phrase
@@ -337,7 +340,7 @@ def _worktop_cutout_requirements(row, part_source, object_quantity, materials, s
 
 
 def build_cb_material_demand(*, parts_report, input_row, allowed_material_families, catalog_names=(),
-                             family_alias_context=None):
+                             family_alias_context=None, mirror_offers=()):
     """Emit a requirement for every identified part, retaining provisional evidence."""
     family_alias_context = family_alias_context or {}
     payload = input_row["input_payload"]
@@ -356,6 +359,7 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
         raise ValueError("Block and shared part IDs must be unique within the object")
     materials, parts, review_items, assumptions, edge_runs = {}, [], [], [], []
     glass_sources, glass_parts = [], []
+    mirror_groups = defaultdict(list)
     inventory_issues = list(source.get("inventory_issues", source.get("inventory_review_items", ())))
     coverage = parts_report.get("source_coverage")
     if coverage and coverage != "reviewed":
@@ -464,12 +468,13 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                 fallback_reason = "dimensions_unresolved"
             reason = fallback_reason or ("dimensions_unresolved" if missing else
                                          "quantity_unresolved" if count is None else None)
-            if reason:
+            if reason and role != "mirror":
                 review_items.append({"part_id": part_id, "role": row["role"], "missing_dimensions": missing,
                                      "reason": reason, "part_source": part_source})
             if count is None:
                 count = 1
-                assumptions.append(f"{part_id}: one unit estimated for the identified part.")
+                if role != "mirror":
+                    assumptions.append(f"{part_id}: one unit estimated for the identified part.")
                 if role in {"drawer_slide", "pull_out_shelf_slide"} and unit == "piece":
                     unit = "set"
             if not _positive(count) or int(count) != count:
@@ -520,6 +525,19 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
             demand_role = "visible_sheet" if visible_veneer else role
             key = (demand_role, family, name, basis, unit, tuple(sorted(spec.items())), fallback_reason,
                    variant, finish_group)
+            if role == "mirror":
+                # Keep the legacy grouping slot so later requirements keep their saved override IDs.
+                materials.setdefault(key, {})
+                mirror_dimensions = dict(row["dimensions"])
+                mirror = finished_mirror_part(row, mirror_dimensions, multiplier=multiplier, offers=mirror_offers)
+                if mirror["thickness_estimated"]:
+                    mirror_dimensions["thickness"] = {
+                        "mm": mirror["thickness_mm"], "basis": "construction_assumption",
+                        "reason": "Standard 4 mm mirror estimating allowance.",
+                    }
+                requirement = MIRROR_QUOTE_REQUIREMENT if mirror["total"] is None else MIRROR_SET_REQUIREMENT
+                mirror_groups[requirement].append((mirror, {**part_source, "measurements": mirror_dimensions}))
+                continue
             if key not in materials:
                 materials[key] = {
                     "requirement_id": f"cb-material-{len(materials) + 1:03d}",
@@ -607,6 +625,15 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
         }
     if _LED_FAMILY in allowed_material_families:
         _lighting_accessories(materials, object_quantity, _LED_FAMILY, review_items)
+    for requirement, group in sorted(mirror_groups.items()):
+        mirrors, sources = zip(*group, strict=True)
+        materials[(requirement,)] = {
+            "requirement_id": requirement, "source_name": MIRROR_SET_NAME, "family": "mirror",
+            "material_role": "finished_mirror", "specification": {}, "basis": "construction_assumption",
+            "evidence_refs": list(dict.fromkeys(ref for source in sources for ref in source["evidence_refs"])),
+            "quantity": object_quantity, "unit": "set", "part_sources": list(sources),
+            "finished_mirror_set": finished_mirror_set(list(mirrors)),
+        }
     review_items.extend({"part_id": row["instance_ref"], "role": row["role"], "reason": "ownership_unresolved"}
                         for row in source.get("unassigned_fronts", ()))
     for index, issue in enumerate(inventory_issues, 1):
@@ -617,7 +644,7 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
         "input_id": input_row["input_id"], "object_input_revision": input_row.get("object_input_revision", 1),
         "company_id": payload["company_id"], "run_id": payload["run_id"],
         "object_id": object_id, "object_name": obj.get("object_name") or object_id, "quantity": object_quantity,
-        "status": "review_required" if review_items else "ready", "materials": list(materials.values()),
+        "status": "review_required" if review_items else "ready", "materials": [row for row in materials.values() if row],
         "source_part_count": source_part_count,
         "parts": parts, "review_items": review_items, "assumptions": list(dict.fromkeys(assumptions)),
         **({"edge_runs": edge_runs} if edge_runs else {}),
@@ -637,7 +664,8 @@ def build_cb_material_facts(*, parts_report, input_rows, catalog_context, object
     for row in input_rows:
         item = build_cb_material_demand(parts_report=parts_report, input_row=row, allowed_material_families=allowed,
                                        catalog_names=catalog_names,
-                                       family_alias_context=catalog_context.get("family_alias_context"))
+                                       family_alias_context=catalog_context.get("family_alias_context"),
+                                       mirror_offers=catalog_context["catalogs"].get("finished_mirror_offers", ()))
         if item["company_id"] != catalog_context["company_id"] or item["object_id"] in facts:
             raise ValueError("Parts costing requires matching catalog tenant and unique object inputs")
         facts[item["object_id"]] = item
@@ -706,6 +734,8 @@ def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
         glass_material = next((m for m in item["materials"] if m["requirement_id"] == GLASS_SET_REQUIREMENT), {})
         glass_set = glass_material.get("finished_glass_set")
         glass_ids = {source["part_id"] for source in glass_material.get("part_sources", ())}
+        mirror_sets = {m["requirement_id"]: m["finished_mirror_set"] for m in item["materials"]
+                       if "finished_mirror_set" in m}
         for material in item["materials"]:
             stock_default = defaults.get((oid, material["requirement_id"]), {})
             for source in material["part_sources"]:
@@ -728,7 +758,10 @@ def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
         coverage[oid] = {"source_part_count": item["source_part_count"], "issues": issues,
                          "unpriced_requirements": missing,
                          "has_estimated_costs": oid in fallback_objects or bool(estimates or estimated_counts or
-                                                                               (glass_set and glass_set["set_price"])),
+                                                                               (glass_set and glass_set["set_price"])
+                                                                               or any(package["set_price"] is not None and
+                                                                                      package["authority"] == "assumption"
+                                                                                      for package in mirror_sets.values())),
                          "has_unresolved_demands": any(value.startswith(f"{oid}:") for value in unresolved),
                          "materials": [
                              {**{key: material.get(key) for key in ("requirement_id", "source_name", "unit", "quantity",
@@ -741,6 +774,7 @@ def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
                                     for block in parts_report["objects"][oid].get("blocks", ()) if "id" in block],
                          "parts": _checked_parts_for_estimate(checked_parts, estimates, estimated_counts, glass_ids),
                          **({"finished_glass_set": glass_set} if glass_set else {}),
+                         **({"finished_mirror_sets": mirror_sets} if mirror_sets else {}),
                          "primary_preview_ref": item["primary_preview_ref"]}
     snapshot["parts_check"] = coverage
     snapshot["edge_runs_by_object"] = {oid: item.get("edge_runs", []) for oid, item in facts.items()}

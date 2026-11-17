@@ -36,6 +36,7 @@ from state.company_auth import company_auth_enabled
 from state.session import get_company_id
 from models.estimation import ObjectEstimateSeed
 from use_cases.estimation_glass_parts import GLASS_SET_NAME, GLASS_SET_REQUIREMENT
+from use_cases.estimation_mirror_parts import MIRROR_SET_NAME, MIRROR_SET_REQUIREMENT
 from use_cases.material_normalization import canonical_material_display_name, material_catalog_display_label
 from use_cases.price_source_taxonomy import source_family_for_catalog_family
 from use_cases.retry import read_with_retry
@@ -575,12 +576,20 @@ def _object_detail_material_rows(plan: dict[str, Any], lines: Any, object_id: st
     if rows or checked:
         missing = set(checked.get("unpriced_requirements") or ())
         if GLASS_SET_REQUIREMENT in missing and (glass := checked.get("finished_glass_set")):
-            rows.append(_finished_glass_material_row(
-                glass=glass,
+            rows.append(_finished_part_purchase_row(
+                package=glass, family="glass",
                 pieces_per_set=glass["piece_count"], sets=ceil(_number((plan.get("object_quantities") or {}).get(object_id), 1)),
                 set_price=None, total=None,
             ))
             missing.remove(GLASS_SET_REQUIREMENT)
+        for requirement, package in (checked.get("finished_mirror_sets") or {}).items():
+            if requirement in missing:
+                rows.append(_finished_part_purchase_row(
+                    package=package, family="mirror", pieces_per_set=package["piece_count"],
+                    sets=ceil(_number((plan.get("object_quantities") or {}).get(object_id), 1)),
+                    set_price=None, total=None,
+                ))
+                missing.remove(requirement)
         rows.extend({
             "item": material_catalog_display_label(
                 material["source_name"], family=material.get("family") or "",
@@ -693,10 +702,14 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
         ]
         if not allocations:
             continue
-        if (pieces := (line.get("label_specifications") or {}).get("glass_pieces_per_set")) is not None:
+        specs = line.get("label_specifications") or {}
+        family = "mirror" if "mirror_pieces_per_set" in specs else "glass"
+        if (pieces := specs.get(f"{family}_pieces_per_set")) is not None:
             purchase = (line.get("object_purchases") or {}).get(object_id) or line
-            rows.append(_finished_glass_material_row(
-                glass=checked.get("finished_glass_set") or {},
+            package = ((checked.get("finished_mirror_sets") or {}).get(MIRROR_SET_REQUIREMENT)
+                       if family == "mirror" else checked.get("finished_glass_set"))
+            rows.append(_finished_part_purchase_row(
+                package=package or {}, family=family,
                 pieces_per_set=pieces, sets=purchase.get("quantity", line["purchase_quantity"]),
                 set_price=line["price_per_purchase_unit"], total=purchase.get("total", line["total_cost"]),
             ))
@@ -769,15 +782,20 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
     return rows
 
 
-def _finished_glass_material_row(*, glass, pieces_per_set, sets, set_price, total):
-    parts = glass.get("parts") or ()
-    name = "Tempered glass set" if parts and all(part.get("tempered") is True for part in parts) else GLASS_SET_NAME
+def _finished_part_purchase_row(*, package, family, pieces_per_set, sets, set_price, total):
+    parts = package.get("parts") or ()
+    name = MIRROR_SET_NAME if family == "mirror" else GLASS_SET_NAME
+    if family == "glass" and parts and all(part.get("tempered") is True for part in parts):
+        name = "Tempered glass set"
     thicknesses = [part.get("thickness_mm") for part in parts]
     if thicknesses and all(type(mm) in (int, float) and isfinite(mm) and mm > 0 for mm in thicknesses):
         name += " · " + " / ".join(_format_number(mm) for mm in sorted(set(thicknesses))) + " mm"
+    if family == "mirror" and total is None:
+        name += " · quote required"
     return {
-        "item": name, "material_family": "glass", "price_source": "A" if total is not None else None,
-        "glass_pieces_per_set": pieces_per_set,
+        "item": name, "material_family": family,
+        "price_source": ("I" if package.get("authority") == "israel_reference" else "A") if total is not None else None,
+        "pieces_per_set": pieces_per_set,
         "required_material_value": pieces_per_set * sets if pieces_per_set is not None else None,
         "required_material_unit": "piece", "purchase_unit": "set", "purchase_quantity_value": sets,
         "purchase_unit_cost": set_price, "unit_price_display": "Variable", "total": total,
@@ -923,7 +941,8 @@ def _material_policy_lines(
 
 def _purchase_unit_display(line: dict[str, Any]) -> str:
     purchase_kind = str(line.get("purchase_kind") or "")
-    if (line.get("label_specifications") or {}).get("glass_pieces_per_set") is not None:
+    specs = line.get("label_specifications") or {}
+    if any(key in specs for key in ("glass_pieces_per_set", "mirror_pieces_per_set")):
         return "set"
     dimensions = line.get("purchasable_dimensions") or {}
     selection = str(line.get("selection_key") or "")
@@ -998,15 +1017,24 @@ def _with_saved_element_ownership(client, checked, source, object_row, *, estima
                       for row, detail in zip(parts, original, strict=True)]}
 
 
+def _finished_part_elements(parts):
+    return [{**row, "size": " × ".join(_format_number(value) if value else "—" for value in (
+        row["length_mm"], row["width_mm"],
+    )) + " mm"} for row in parts]
+
+
 def _element_groups(facts_payload):
-    parts = [row for row in facts_payload.get("parts") or () if isinstance(row, dict) and not row.get("finished_glass")]
+    mirrors = facts_payload.get("finished_mirror_sets") or {}
+    parts = [row for row in facts_payload.get("parts") or () if isinstance(row, dict)
+             and not row.get("finished_glass") and not (mirrors and row.get("component_role") == "mirror_glass")]
     groups = []
     if glass := facts_payload.get("finished_glass_set"):
-        groups.append({"label": "Glass details per set", "priced": True, "rows": [
-            {**row, "size": " × ".join(_format_number(value) if value else "—" for value in (
-                row["length_mm"], row["width_mm"],
-            )) + " mm"} for row in glass["parts"]
-        ]})
+        groups.append({"label": "Glass details per set", "priced": True, "rows": _finished_part_elements(glass["parts"])})
+    if mirrors:
+        groups.append({"label": "Mirror details per item", "priced": True, "rows": _finished_part_elements([
+            {**part, "label": f"Mirror · {part['block_id']}" if part.get("block_id") else "Mirror"}
+            for package in mirrors.values() for part in package["parts"]
+        ])})
     if not all("block_id" in row for row in parts):
         rows = _element_rows_from_bom({"parts": parts})
         return [*groups, {"label": "", "rows": rows}] if rows else groups
