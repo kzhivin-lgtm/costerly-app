@@ -73,6 +73,21 @@ def test_unquotable_glass_set_does_not_fall_back_to_a_square_metre_price():
     assert "finished_glass_quote_required" in plan["reason_codes"]
 
 
+def test_rebuilding_materials_retires_old_generated_lines_without_replacing_the_object(monkeypatch):
+    from use_cases import estimation_runtime as runtime
+
+    actions = []
+    monkeypatch.setattr(runtime, "upsert_rfq_estimate_lines", lambda _, **data: actions.append(data))
+    monkeypatch.setattr(runtime, "delete_stale_parts_check_material_lines", lambda _, **data: actions.append(data))
+    facts = _build([_part("glass_box_lid", material_hint="tempered glass")], {"glass"})
+    runtime._publish_material_demand_lines(
+        object(), estimate_id="estimate-1", facts_by_object={"object-1": facts}, replace_object_lines=False,
+    )
+    line, = actions[0]["lines"]
+    assert (line["source"], line["unit"], line["sort_order"]) == ("parts_check", "set", 10)
+    assert actions[1] == {"estimate_id": "estimate-1", "object_id": "object-1", "last_sort_order": 10}
+
+
 def test_cabinet_backs_and_drawer_bottoms_use_stock_coated_plywood_without_overriding_a_note():
     back = _part("carcass_back")
     bottom = _part("drawer_box_bottom")

@@ -125,3 +125,5 @@ The Parts recipe now emits `glass_box_lid` for the horizontal glass pane. Front 
 ## Labor V1.2.18 finished glass sets
 
 Object Detail Materials shows the finished glass piece count, `set`, `Variable`, the number of sets and total cost. Elements shows the per-set pieces with dimension and thickness, processing, unit price and extended cost. The purchase set enters the existing Material Plan allocation once. Quantity edits multiply whole sets. Existing mirrors retain their own material path. The budget allowance applies to standard rectangular 4 mm tempered display panes. Dimensions or processing outside that allowance require a quote. The saved Adda replay reproduced one set of 40 pieces in five variants for ₪1,672.88 net, with one allocation and no area-priced glass row.
+
+Rebuilding Materials also removes surplus generated Parts Check rows after writing the new list. That keeps the old area-priced entries out of persisted totals when multiple requirements merge into one set.
