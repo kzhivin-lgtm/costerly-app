@@ -172,9 +172,13 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
         reference_name = row.get("material_reference_name")
         title = f' title="{_escape(reference_name)}"' if reference_name and reference_name != name else ""
         if row.get("unit_price_display") == "Variable":
+            pieces = (
+                f'<span><span data-glass-quantity="pieces">{_escape(_quantity(required_value))}</span>&nbsp;pieces</span>'
+                if required_value is not None else "—"
+            )
             return [
                 _source_marker(row.get("price_source")) + f'<span class="object-detail-material-name">{_escape(name)}</span>',
-                f'<span data-glass-quantity="pieces">{_escape(_quantity(required_value))}</span> pieces' if required_value is not None else "—",
+                pieces,
                 _escape(purchase_unit), '<span class="object-detail-unit-price">Variable</span>',
                 f'<span data-glass-quantity="sets">{_escape(_quantity(row.get("purchase_quantity_value")))}</span>',
                 f'<span class="object-detail-row-cost">{_money(row.get("total"))}</span>',
@@ -404,9 +408,17 @@ def _elements_table(rows, label, *, priced=False):
     body = []
     for row in rows:
         name = _escape(row.get("label"))
-        if priced:
-            name += f'<br><small>{_escape(row.get("processing"))}</small>'
-        cells = [name, _escape(row.get("size")), _escape(_quantity(row.get("quantity")))]
+        size = _escape(row.get("size"))
+        if "processing" in row:
+            name = (f'<span class="object-detail-element-spec"><span>{name}</span>'
+                    f'<small>{_escape(row.get("processing"))}</small></span>')
+            thickness = _number_text(row.get("thickness_mm"))
+            thickness_label = f"{thickness} mm" if thickness else "—"
+            if thickness and row.get("thickness_estimated"):
+                thickness_label += " (assumed)"
+            size = (f'<span class="object-detail-element-spec"><span>{size}</span>'
+                    f'<small>Thickness: {_escape(thickness_label)}</small></span>')
+        cells = [name, size, _escape(_quantity(row.get("quantity")))]
         if priced:
             cells.extend(_money(row.get(key), cents=True) for key in ("unit_price", "total"))
         body.append(

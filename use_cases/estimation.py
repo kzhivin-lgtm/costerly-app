@@ -576,6 +576,7 @@ def _object_detail_material_rows(plan: dict[str, Any], lines: Any, object_id: st
         missing = set(checked.get("unpriced_requirements") or ())
         if GLASS_SET_REQUIREMENT in missing and (glass := checked.get("finished_glass_set")):
             rows.append(_finished_glass_material_row(
+                glass=glass,
                 pieces_per_set=glass["piece_count"], sets=ceil(_number((plan.get("object_quantities") or {}).get(object_id), 1)),
                 set_price=None, total=None,
             ))
@@ -674,6 +675,7 @@ def _plan_material_display_label(line: dict[str, Any], *, family: str, name: obj
 
 def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -> list[dict[str, Any]]:
     """Project nesting is internal; render the selected material and physical demand."""
+    checked = (plan_snapshot.get("parts_check") or {}).get(object_id) or {}
     assumption_by_requirement = {
         str(row.get("material_requirement_id") or ""): row
         for row in plan_snapshot.get("assumption_fallbacks") or []
@@ -694,6 +696,7 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
         if (pieces := (line.get("label_specifications") or {}).get("glass_pieces_per_set")) is not None:
             purchase = (line.get("object_purchases") or {}).get(object_id) or line
             rows.append(_finished_glass_material_row(
+                glass=checked.get("finished_glass_set") or {},
                 pieces_per_set=pieces, sets=purchase.get("quantity", line["purchase_quantity"]),
                 set_price=line["price_per_purchase_unit"], total=purchase.get("total", line["total_cost"]),
             ))
@@ -766,9 +769,14 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
     return rows
 
 
-def _finished_glass_material_row(*, pieces_per_set, sets, set_price, total):
+def _finished_glass_material_row(*, glass, pieces_per_set, sets, set_price, total):
+    parts = glass.get("parts") or ()
+    name = "Tempered glass set" if parts and all(part.get("tempered") is True for part in parts) else GLASS_SET_NAME
+    thicknesses = [part.get("thickness_mm") for part in parts]
+    if thicknesses and all(type(mm) in (int, float) and isfinite(mm) and mm > 0 for mm in thicknesses):
+        name += " · " + " / ".join(_format_number(mm) for mm in sorted(set(thicknesses))) + " mm"
     return {
-        "item": GLASS_SET_NAME, "material_family": "glass", "price_source": "A" if total is not None else None,
+        "item": name, "material_family": "glass", "price_source": "A" if total is not None else None,
         "glass_pieces_per_set": pieces_per_set,
         "required_material_value": pieces_per_set * sets if pieces_per_set is not None else None,
         "required_material_unit": "piece", "purchase_unit": "set", "purchase_quantity_value": sets,
@@ -996,7 +1004,7 @@ def _element_groups(facts_payload):
     if glass := facts_payload.get("finished_glass_set"):
         groups.append({"label": "Glass details per set", "priced": True, "rows": [
             {**row, "size": " × ".join(_format_number(value) if value else "—" for value in (
-                row["length_mm"], row["width_mm"], row["thickness_mm"],
+                row["length_mm"], row["width_mm"],
             )) + " mm"} for row in glass["parts"]
         ]})
     if not all("block_id" in row for row in parts):
@@ -1041,7 +1049,7 @@ def _element_rows_from_bom(facts_payload: dict[str, Any]) -> list[dict[str, Any]
         "carcass_side": "Side panel", "carcass_top_bottom": "Top / bottom panel",
         "carcass_back": "Back panel", "facade": "Front panel", "drawer_front": "Drawer front",
         "drawer_bottom": "Drawer bottom", "drawer_side": "Drawer side", "drawer_back": "Drawer back",
-        "top": "Top panel", "leg": "Leg", "led_strip_run": "LED strip run",
+        "top": "Top panel", "leg": "Leg", "led_strip_run": "LED strip run", "mirror_glass": "Mirror",
     }
     axes = ("length", "width", "thickness")
     grouped: dict[tuple[object, ...], dict[str, Any]] = {}
@@ -1056,6 +1064,8 @@ def _element_rows_from_bom(facts_payload: dict[str, Any]) -> list[dict[str, Any]
         count = _number(part.get("quantity"), 0) * _number(part.get("scope_quantity"), 1)
         # A missing panel dimension is not evidence of an identical cut.
         length, width, thickness = dimensions
+        is_mirror = role == "mirror_glass"
+        estimates = part.get("estimated_dimensions") or {}
         incomplete = (
             length is None and (width is not None or thickness is not None)
             or width is None and thickness is not None
@@ -1063,12 +1073,19 @@ def _element_rows_from_bom(facts_payload: dict[str, Any]) -> list[dict[str, Any]
         )
         key = (role, *dimensions, part.get("colour_temperature_k"), index if incomplete or count <= 0 else None)
         if key not in grouped:
-            last = max((i for i, value in enumerate(dimensions) if value is not None), default=-1)
-            size = " × ".join(_format_number(value) if value is not None else "—" for value in dimensions[:last + 1])
+            size_dims = dimensions[:2] if is_mirror else dimensions
+            last = max((i for i, value in enumerate(size_dims) if value is not None), default=-1)
+            size = " × ".join(_format_number(value) if value is not None else "—" for value in size_dims[:last + 1])
             grouped[key] = {"label": label, "quantity": 0, "size": f"{size} mm" if size else "",
                             "estimated": False}
         row = grouped[key]
-        row["estimated"] |= bool(part.get("estimated_dimensions"))
+        if is_mirror:
+            row["thickness_mm"] = thickness
+            row["thickness_estimated"] = row.get("thickness_estimated", False) or "thickness" in estimates
+            row["processing"] = "Processing not specified"
+            row["estimated"] |= "length" in estimates or "width" in estimates
+        else:
+            row["estimated"] |= bool(estimates)
         row["quantity"] = row["quantity"] + count if count > 0 else None
     for row in grouped.values():
         if row.pop("estimated") and row["size"]:

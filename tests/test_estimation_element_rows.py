@@ -52,6 +52,22 @@ def test_elements_group_matching_drawer_parts_only_inside_their_block():
     assert [[row["quantity"] for row in group["rows"]] for group in groups] == [[3, 6], [2], [1]]
 
 
+def test_mirror_elements_show_assumed_thickness_without_claiming_processing():
+    from ui.object_detail_view import _elements_html
+
+    groups = _element_groups({"parts": [{
+        "component_role": "mirror_glass", "quantity": 1,
+        "length_mm": 860, "width_mm": 450, "thickness_mm": 4,
+        "estimated_dimensions": {"thickness": {"basis": "israel_reference_default"}},
+    }]})
+    html = _elements_html(groups)
+
+    assert "860 × 450 mm" in html
+    assert "Thickness: 4 mm (assumed)" in html
+    assert "Processing not specified" in html
+    assert "Unit price" not in html
+
+
 def test_legacy_element_ownership_uses_only_the_matching_immutable_report(monkeypatch):
     checked = {"parts": [{"component_role": "drawer_front", "length_mm": 500, "quantity": 1}]}
     source = {"run_id": "run", "estimate_id": "estimate", "source_audit_sha256": "digest"}

@@ -50,15 +50,17 @@ def test_finished_glass_parts_price_one_set_and_keep_breakdown_for_quantity_edit
     assert line["total_cost"] == 109.21
     assert plan["object_material_costs"][0]["cost_ex_vat"] == 109.21
     material, = _material_rows_from_plan(plan, object_id="object-1")
+    assert material["item"] == "Tempered glass set · 4 mm"
     assert (material["required_material_value"], material["purchase_unit"], material["unit_price_display"]) == (3, "set", "Variable")
     elements, = [entry for entry in _element_groups(plan["parts_check"]["object-1"]) if entry.get("priced")]
     assert [(row["label"], row["size"], row["total"]) for row in elements["rows"]] == [
-        ("Glass lid", "544 × 300 × 4 mm", 60.90), ("End glass wall", "292 × 111 × 4 mm", 48.31),
+        ("Glass lid", "544 × 300 mm", 60.90), ("End glass wall", "292 × 111 mm", 48.31),
     ]
     repriced, _ = replan_material_norm_snapshot(
         plan, {}, {"object-1": 2}, {}, changed_keys={line["selection_key"]}, quantity_ratios={"object-1": Decimal(2)},
     )
     material, = _material_rows_from_plan(repriced, object_id="object-1")
+    assert material["item"] == "Tempered glass set · 4 mm"
     assert (material["required_material_value"], material["purchase_quantity_value"], material["total"]) == (6, 2, 218.42)
 
 

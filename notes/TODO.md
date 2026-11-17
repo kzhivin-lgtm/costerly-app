@@ -9,6 +9,14 @@ their previous totals on the four saved control cards. See the
 [checkpoint and replay](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1215-production-checkpoint) and the
 [1.2.16 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1216-cnc-comparison-order).
 
+PENDING, P1, PROPOSAL. Price made-to-size mirrors as finished pieces. Preserve
+specified or assumed thickness and distinguish the operations covered by a
+supplier price from any additional work. Confirm a comparable 4 mm reference
+with cutting, plain perimeter polishing, VAT and minimums before replacing
+the current area rate. The 5 mm Agan Barzel reference remains a separate
+finished-product comparison. See the
+[glass and mirror costing record](GLASS_AND_MIRRORS_IL_SUPPLIER_COSTING_2026_11_17.md).
+
 ACTIVE, P1, USER REQUEST. Release Labor V1 for sheet CNC in-house and
 subcontracting. Fresh Parts Check publishes an immutable layout after stock
 resolution. Older estimates can add the layout from their saved Parts and

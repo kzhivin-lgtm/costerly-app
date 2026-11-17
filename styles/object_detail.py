@@ -443,6 +443,12 @@ def apply_object_detail_css() -> None:
             --detail-grid: minmax(0, 2fr) minmax(0, 1.6fr) minmax(0, .7fr) minmax(0, 1fr) minmax(0, 1fr);
         }
 
+        .object-detail-element-spec {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
         .object-detail-table-head-row,
         .object-detail-table-row {
             display: grid;
