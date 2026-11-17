@@ -262,10 +262,13 @@ def _overlay_links(context: ObjectDetailContext, company_id: str, revision: str)
 @st.fragment
 def _material_editor(context: ObjectDetailContext) -> None:
     """Handle explicit saves without replacing the Object Detail DOM."""
-    key = (context.estimate_id, context.object_id)
-    results = st.session_state.setdefault("object_detail_material_edit_results", {})
     if _current_object_detail_context() != context:
         return
+    key = (context.estimate_id, context.object_id)
+    results = st.session_state.get("object_detail_material_edit_results")
+    if results is None:
+        results = {}
+        st.session_state.object_detail_material_edit_results = results
     # The component returns the last submitted draft. Present the previous
     # receipt first, then acknowledge a new draft through a second render.
     request = material_edit_bridge(result=results.get(key), key="object_detail_material_edit", default=None)

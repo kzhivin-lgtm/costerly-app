@@ -2,6 +2,12 @@
 
 ## Estimate recovery
 
+IMPLEMENTED IN V1.2.25, P1. Restore the material editor on Object Detail
+after New Estimate and Last Estimate. The Lev1 browser replay covers
+reopening the saved estimate, accepting one local test edit and returning
+to Objects. Await owner verification on the live card.
+See the [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1225-material-editor-recovery).
+
 COMPLETED, P0, owner acceptance on Lev1, 2026-11-17. Last Estimate opens
 File Review and Continue restores the saved estimate. The fresh Lev1 run
 `run_e24d2c62585843acbfd871554fa4b1b2` kept one estimate and one Parts

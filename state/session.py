@@ -160,7 +160,6 @@ def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
         "object_detail_pending_edit",
         "object_detail_pending_snapshot",
         "object_detail_approve_after_edit",
-        "object_detail_material_edit_results",
     )
     # File Review is immutable enough for the lifetime of this browser session.
     # Keep only the review that the user has just left: `Last Estimate` then
@@ -197,6 +196,7 @@ def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
         "workflow_route_tokens",
         "validated_workflow_access",
         "proposal_pdf_urls_by_estimate",
+        "object_detail_material_edit_results",
     ):
         st.session_state.pop(key, None)
 

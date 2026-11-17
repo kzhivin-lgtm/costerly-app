@@ -1,5 +1,19 @@
 # Estimation 9 Parts Check from Upload
 
+## Labor V1.2.25 material editor recovery
+
+New Estimate now removes old Object Detail save receipts. The material
+editor can also reopen with the null session value left by earlier
+runtime versions and initializes its receipt map before serving an edit.
+
+The local browser replay used the saved Lev1 estimate
+`run_e24d2c62585843acbfd871554fa4b1b2_estimate_20261117175354`.
+After opening Booth Bench, it followed New Estimate → Last Estimate →
+File Review → Continue → Done. The card loaded ₪5,193.11 before VAT
+and acknowledged one simulated material save. Back to Objects worked
+and opening the saved estimate triggered zero Parts Check requests.
+325 focused tests passed. The V1.2.24 tag remains the rollback reference.
+
 ## Labor V1.2.24 production checkpoint
 
 On 17 November 2026 the owner checked Last Estimate with a fresh Lev1

@@ -1,5 +1,6 @@
 from concurrent.futures import Future
 
+import pytest
 import streamlit as st
 
 from screens import object_detail
@@ -90,6 +91,52 @@ def test_new_estimate_reset_drops_object_detail_snapshots_and_prefetches():
     assert st.session_state.object_detail_data_cache_dirty == set()
     assert st.session_state.object_detail_prefetch_futures == {}
     assert st.session_state.object_detail_prefetch_failed == set()
+
+
+@pytest.mark.parametrize("legacy_state", [False, True])
+def test_reopened_object_can_save_materials_after_new_estimate(monkeypatch, legacy_state):
+    st.session_state.clear()
+    context = object_detail.ObjectDetailContext("estimate-1", "object-1", "run-1")
+    key = (context.estimate_id, context.object_id)
+    scope = list(key)
+    st.session_state.object_detail_material_edit_results = {key: {"id": "old"}}
+    reset_new_estimate_session(clear_upload_widget=True)
+    assert "object_detail_material_edit_results" not in st.session_state
+    if legacy_state:
+        st.session_state.object_detail_material_edit_results = None
+
+    st.session_state.current_estimate_id = context.estimate_id
+    st.session_state.current_object_id = context.object_id
+    st.session_state.current_run_id = context.run_id
+    edits = [{"field": "required_material", "lineId": "sheet-1", "value": "2"}]
+    request = {"id": "new", "scope": scope, "edits": edits}
+    receipts = []
+    saved = []
+    future = Future()
+    future.set_result(None)
+
+    def bridge(*, result, **_):
+        receipts.append(result)
+        return request
+
+    def save(**kwargs):
+        saved.append(kwargs)
+        return future
+
+    monkeypatch.setattr(object_detail, "material_edit_bridge", bridge)
+    monkeypatch.setattr(object_detail, "save_object_detail_material_edits", save)
+    monkeypatch.setattr(object_detail, "load_object_detail_material_receipt", lambda **_: {
+        "sections": [], "self_cost": {"excl_vat": 200}, "quantity": 1,
+    })
+    monkeypatch.setattr(st, "rerun", lambda *, scope: None)
+
+    object_detail._material_editor.__wrapped__(context)
+    object_detail._material_editor.__wrapped__(context)
+
+    assert saved == [{"estimate_id": "estimate-1", "object_id": "object-1", "edits": edits}]
+    assert receipts[0] is None
+    assert receipts[1]["id"] == "new"
+    assert receipts[1]["self_cost"]["excl_vat"] == 200
 
 
 def test_prefetch_runtime_passes_explicit_company_scope(monkeypatch):
