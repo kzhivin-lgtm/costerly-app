@@ -95,14 +95,20 @@ navigation, rendering, persistence and cache behavior from later regressions,
 and make intentional behavioral changes an explicit owner decision. The owner subsequently approved moving checks into the repository, an
 obligatory publication barrier, measured full runs and a broken-transition
 negative control.
-Current gap: behavioral tests are tracked, but the latest browser fixtures
-and reports live in private temp/archive paths; no tracked GitHub Actions
-workflow or CODEOWNERS file exists in the runtime tree. GitHub-side rule
-enforcement has not been verified. Existing UI_GUIDELINES already require
+Baseline gap: behavioral tests were tracked, but browser fixtures and
+reports were external and no Actions workflow was tracked. The permanent
+source is now on codex/ui-release-gate: 332 Python checks, 54 normal browser
+transitions, seven Save/reopen paths and the Profile/screen recovery suites.
+A full local run passed in 102.829 seconds with installed dependencies.
+The real Profile-ready-target negative control at 817bd8b6 failed in 27.225
+seconds on the first Profile transition. Current credentials cannot publish
+workflow files or manage rules; the owner is preparing a dedicated temporary
+token. Remote CI and mandatory enforcement remain unverified. Existing UI_GUIDELINES already require
 scenario-first acceptance; documentation alone has not enforced that process.
-Proposed next scope: preserve one versioned behavior contract within the
-existing UI guidelines, move reusable deterministic browser scenarios into
-the repository, and require their CI result before runtime publication.
+Approved scope: preserve one behavior contract in the existing UI guidelines,
+track deterministic browser scenarios, and require their exact-commit CI
+result before runtime publication. AGENTS.md and the publisher now encode
+that path; the remote ruleset is still pending activation.
 Cover saved-estimate reuse, a single ready-correlated navigation, no mixed
 screens, old open wrapper compatibility, Profile fragment updates, Save/error
 retry, cache identity/invalidation and expired auth. Treat dependency and
