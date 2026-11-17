@@ -1,5 +1,29 @@
 # TODO
 
+## Workflow transitions
+
+IMPLEMENTED IN V1.3.0, P0, 2026-11-17. Reveal a complete interactive destination when
+switching screens. The 20:15:23 recording shows parts of the previous
+screen alongside Upload and Objects and File Review before Continue.
+In the recorded session Core V1.2.25 completed the callbacks and renders,
+while the open V1.2.23 wrapper classified completed transitions as timeouts
+under a different trace. A fresh matching V1.2.25 local session still
+painted File Review before Continue. An isolated 1.25-second delay in the
+saved Objects read stretched that gap to 1.24 seconds. The first recorded
+Continue spent 1.24 seconds on auth access, including token refresh and
+membership lookup. The first File Review render took 3.15 seconds.
+
+V1.3.0 covers New Estimate, Last Estimate, Continue, Review/Done and both
+return routes. Its controller waits for the matching Core render and the
+target browser elements before revealing the page. The local Lev1 replay
+sampled 604 frames with no mixed screen visible on the matched pair. One
+estimate ID and zero Parts Check launches across the replay. Expired auth,
+timeout with explicit recovery and double click passed. The existing
+upload progress test passed. Mixed builds use the previous navigation
+until both peers advertise the new protocol. Await live owner acceptance
+before V1.3.1 (fresh Upload/Processing transitions) and V1.3.2 (Projects,
+Profile and Admin). [Release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v130-stable-workflow-transitions).
+
 ## Estimate recovery
 
 IMPLEMENTED IN V1.2.25, P1. Restore the material editor on Object Detail

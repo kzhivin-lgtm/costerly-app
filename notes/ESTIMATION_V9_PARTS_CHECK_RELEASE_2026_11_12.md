@@ -1,5 +1,30 @@
 # Estimation 9 Parts Check from Upload
 
+## Labor V1.3.0 stable workflow transitions
+
+Stage one covers New Estimate, Last Estimate, Continue, Review/Done, Back
+to Objects and Back to File Review. Once Core and the wrapper agree on
+the protocol, one cover outside the Streamlit React tree is shown during
+the native callback rerun. Its controller lives in the Core document,
+where it survives replacement of the ready component. The matching
+render ID, cleanup of stale elements and target controls all precede
+reveal and scroll positioning. The wrapper closes the matching public
+transition ID. Timeout keeps the page covered and offers an explicit
+reload. Mixed versions continue through their existing navigation.
+
+A local Chromium replay ran the whole route with the persisted Lev1
+estimate `run_e24d2c62585843acbfd871554fa4b1b2_estimate_20261117175354`.
+At 1280 px and at 390 px with an added 1.25-second read, the frame sampler
+observed no mixed screens in 604 samples, one completion per click and
+the saved Booth Bench cost of ₪5,193.11 before VAT. No Parts Check was
+launched. Controlled expired auth reached Login. A double click with
+an 18-second read produced one transition and recovered by explicit
+reload. Upload, its progress shell and the expired-upload case passed
+using a deterministic Detection fixture. 320 focused tests passed.
+
+The rollback runtime is V1.2.25 at `61055fc`. Authenticated production
+video acceptance is tracked in TODO.
+
 ## Labor V1.2.25 material editor recovery
 
 New Estimate now removes old Object Detail save receipts. The material

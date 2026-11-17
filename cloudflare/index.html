@@ -92,7 +92,7 @@
     </div>
     <script>
       (() => {
-        const BUILD_VERSION = "estimation-labor-v1.2.25-material-editor-reopen-detection-v8.4.29";
+        const BUILD_VERSION = "estimation-labor-v1.3.0-stable-workflow-detection-v8.4.29";
         const startedAt = performance.now();
         const traceId = crypto.randomUUID();
         const timeline = [];
@@ -151,6 +151,7 @@
         let uploadSelectionPending = false;
         const readyRunIds = new Set();
         const pendingTransitions = [];
+        let coveredTransitionId = "";
         let lastReadyScreen = "";
         let lastReadyRunId = "";
         let sendingTimeline = false;
@@ -284,7 +285,7 @@
 
         function revalidateConnection() {
           if (!resumePending || !navigator.onLine || document.hidden ||
-              uploadSelectionPending || pendingTransitions.length ||
+              uploadSelectionPending || pendingTransitions.length || coveredTransitionId ||
               lastReadyScreen === "processing") return;
           resumePending = false;
           if (recoveryPath || confirmationPath || lastReadyScreen === "login") return;
@@ -470,6 +471,13 @@
             window.history.replaceState(window.history.state, "", "/");
             return;
           }
+          if (event.origin === appOrigin &&
+              event.data?.type === "costerly:workflow-navigation-reload" &&
+              event.data.traceId === traceId && coveredTransitionId &&
+              event.data.transitionId === coveredTransitionId) {
+            window.location.reload();
+            return;
+          }
           if (
             event.origin === appOrigin &&
             event.data &&
@@ -488,14 +496,15 @@
               timeoutId: null,
               styledReported: false,
               stageReported: false,
+              covered: event.data.workflowNavigation === true && event.data.traceId === traceId,
             };
             pendingTransitions.push(pendingTransition);
+            if (pendingTransition.covered) coveredTransitionId = pendingTransition.id;
             if (pendingTransition.name === "new_estimate") {
               resetOuterRouteForNewEstimate();
             }
-            // V5.7.0 has one navigation owner: the existing Streamlit
-            // session. The wrapper records the intent but never hides or
-            // replaces its iframe during an internal route change.
+            // The live iframe owns navigation and visual readiness. The
+            // wrapper records the intent and keeps the public URL in sync.
             mark("browser.transition_click", {
               metadata: {
                 transition: pendingTransition.name,
@@ -650,6 +659,14 @@
             event.data.type === "costerly:app-ready" &&
             event.data.traceId === traceId
           ) {
+            if (event.data.workflowNavigationProtocol === 1) {
+              frame.contentWindow.postMessage({
+                type: "costerly:workflow-navigation-enabled", protocol: 1, traceId,
+              }, appOrigin);
+            }
+            const completedTransitionId = String(event.data.transitionId || "");
+            if (coveredTransitionId && completedTransitionId !== coveredTransitionId) return;
+            if (coveredTransitionId) coveredTransitionId = "";
             const runId = String(event.data.runId || "");
             if (runId && readyRunIds.has(runId)) return;
             if (runId) readyRunIds.add(runId);
@@ -754,6 +771,7 @@
               metadata.completed_action === "auth_sign_in" &&
               metadata.completed_action_status === "error";
             const transitionIndex = pendingTransitions.findIndex((item) => {
+              if (item.covered || completedTransitionId) return item.id === completedTransitionId;
               if (failedSignIn) return item.name === "sign_in";
               if (item.targetScreen) return item.targetScreen === screen;
               return (expectedScreens[item.name] || []).includes(screen);
@@ -764,7 +782,7 @@
                 pendingTransition.readyReported = true;
                 mark("browser.transition_ready", {
                   screen,
-                  status: failedSignIn ? "error" : "ok",
+                  status: failedSignIn || screen !== (pendingTransition.targetScreen || screen) ? "error" : "ok",
                   duration_ms: performance.now() - pendingTransition.startedAt,
                   metadata: {
                     transition: pendingTransition.name,

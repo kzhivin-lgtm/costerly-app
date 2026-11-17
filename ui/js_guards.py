@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import streamlit as st
 import streamlit.components.v1 as components
+
+
+_WORKFLOW_TRANSITION_JS = Path(__file__).with_name("workflow_transition.js").read_text(encoding="utf-8")
 
 
 _MOVE_CARET_TO_END = """
@@ -746,6 +750,22 @@ def signal_app_ready_to_embed(
         """
         <script>
         (() => {
+            function installWorkflow(traceId) {
+                const coreWindow = window.parent;
+                if (!traceId || coreWindow === coreWindow.top) return null;
+                if (coreWindow.__costerlyWorkflowTransition?.traceId === traceId) {
+                    return coreWindow.__costerlyWorkflowTransition;
+                }
+                // Timers and DOM observers must survive replacement of this
+                // Streamlit component iframe during the next rerun.
+                const script = coreWindow.document.createElement("script");
+                script.textContent = __WORKFLOW_TRANSITION__
+                    + ";workflowTransitionController(window, " + JSON.stringify(traceId) + ");";
+                coreWindow.document.head.append(script);
+                script.remove();
+                return coreWindow.__costerlyWorkflowTransition;
+            }
+
             const transitionHandlerKey = "__costerlyRuntimeTransitionHandlerV1";
             const message = {
                 type: "costerly:app-ready",
@@ -754,8 +774,10 @@ def signal_app_ready_to_embed(
                 runId: __RUN_ID__,
                 metrics: __METRICS__,
                 route: __ROUTE__,
+                workflowNavigationProtocol: 1,
                 sentAt: Date.now()
             };
+            const workflow = installWorkflow(message.traceId);
             const resetScrollOnReady = __RESET_SCROLL__;
 
             function currentScreen() {
@@ -787,15 +809,9 @@ def signal_app_ready_to_embed(
                     if (currentScreen() === "projects") return "projects_to_upload";
                     return "new_estimate";
                 }
-                if (control.closest(".st-key-header_last_estimate")) {
-                    // Last Estimate is a cached Streamlit callback. The
-                    // generic outer transition shell can outlive a valid
-                    // click and has produced client-only timeouts with zero
-                    // Python runs. Let the callback render File Review
-                    // directly instead of covering it with that shell.
-                    return null;
+                if (hasControlKey("header_last_estimate")) {
+                    return workflow?.enabled() ? "last_estimate" : null;
                 }
-                if (hasControlKey("header_last_estimate")) return null;
                 if (control.closest(".st-key-open_company_account") || hasControlKey("open_company_account")) {
                     if (currentScreen() === "upload") return "upload_to_profile";
                     if (currentScreen() === "admin") return "admin_to_profile";
@@ -1186,7 +1202,8 @@ def signal_app_ready_to_embed(
                         const control = event.target && event.target.closest
                             ? event.target.closest("button, a")
                             : null;
-                        if (!control) return;
+                        if (!control || control.disabled || event.defaultPrevented ||
+                            event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
                         const transition = transitionName(control);
                         if (!transition) return;
                         const bridgeKey = String(control.dataset.streamlitBridgeKey || "");
@@ -1206,20 +1223,30 @@ def signal_app_ready_to_embed(
                             )).find((button) => String(button.textContent || "").trim()
                                 === "Back to Objects") || null;
                         }
-                        if (bridgeButton) event.preventDefault();
-                        parentWindow.scrollTo({ top: 0, left: 0, behavior: "auto" });
-                        parentDocument.documentElement.scrollTop = 0;
-                        parentDocument.body.scrollTop = 0;
+                        if (workflow?.busy()) {
+                            event.preventDefault();
+                            return;
+                        }
                         const transitionId = crypto.randomUUID();
+                        const covered = workflow?.begin(transition, transitionId);
+                        if (bridgeButton || (covered && bridgeKey)) event.preventDefault();
+                        if (!covered) {
+                            parentWindow.scrollTo({ top: 0, left: 0, behavior: "auto" });
+                            parentDocument.documentElement.scrollTop = 0;
+                            parentDocument.body.scrollTop = 0;
+                        }
                         window.top.postMessage({
                             type: "costerly:transition-click",
                             transition,
                             transitionId,
                             sourceScreen: currentScreen(),
                             targetScreen: targetScreenFor(transition),
+                            traceId: message.traceId,
+                            workflowNavigation: Boolean(covered),
                         }, "*");
-                        observeTargetScreen(transition, transitionId);
+                        if (!covered) observeTargetScreen(transition, transitionId);
                         if (bridgeButton) bridgeButton.click();
+                        else if (covered && bridgeKey) workflow.fail();
                     };
                     parentWindow[transitionHandlerKey] = handler;
                     parentDocument.addEventListener("click", handler, {
@@ -1300,6 +1327,7 @@ def signal_app_ready_to_embed(
 
             function postReady() {
                 try { installRuntimeFailureListeners(); } catch (_) {}
+                if (workflow?.ready(message)) return;
 
                 if (resetScrollOnReady) {
                     const parentWindow = window.parent;
@@ -1320,17 +1348,11 @@ def signal_app_ready_to_embed(
                     parentWindow.setTimeout(reset, 250);
                 }
 
-                try {
-                    window.parent.postMessage(message, "*");
-                } catch (error) {}
+                sendReady(message);
+            }
 
-                try {
-                    window.parent.parent.postMessage(message, "*");
-                } catch (error) {}
-
-                try {
-                    window.top.postMessage(message, "*");
-                } catch (error) {}
+            function sendReady(payload) {
+                window.top.postMessage(payload, "*");
             }
 
             function authStylesReady() {
@@ -1384,7 +1406,8 @@ def signal_app_ready_to_embed(
         .replace("__RUN_ID__", run_id_json)
         .replace("__METRICS__", metrics_json)
         .replace("__ROUTE__", route_json)
-        .replace("__RESET_SCROLL__", reset_scroll_json),
+        .replace("__RESET_SCROLL__", reset_scroll_json)
+        .replace("__WORKFLOW_TRANSITION__", json.dumps(_WORKFLOW_TRANSITION_JS)),
         height=0,
         width=0,
     )
@@ -1467,6 +1490,7 @@ def scroll_parent_to_top() -> None:
                 const parentWindow = window.parent;
                 const parentDoc = parentWindow.document;
 
+                if (parentWindow.__costerlyWorkflowTransition?.busy()) return;
                 function scrollTopNow() {
                     parentWindow.scrollTo({ top: 0, left: 0, behavior: "auto" });
                     parentDoc.documentElement.scrollTop = 0;
@@ -3775,7 +3799,9 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         return;
                     }
                     beginFileReviewTransition(activeProcessingStage());
-                    if (fileReviewIsActive()) {
+                    if (fileReviewIsActive() && (window[RFQ_UPLOAD_CYCLE_ID_KEY] ||
+                        window[PROCESSING_COMPLETE_TRANSITION_ID_KEY]) &&
+                        !window.__costerlyWorkflowTransition?.busy()) {
                         const transitionId = window[PROCESSING_COMPLETE_TRANSITION_ID_KEY]
                             || startTransition(
                                 'processing_to_file_review',

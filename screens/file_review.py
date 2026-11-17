@@ -1194,6 +1194,8 @@ def render_file_review_screen(
         readiness_error = st.session_state.get(
             f"objects_estimation_readiness_error.{run_id}"
         )
+        if readiness_error or source_error:
+            st.markdown('<span data-costerly-file-review-blocked hidden></span>', unsafe_allow_html=True)
         st.caption(
             str(readiness_error or source_error)
             if readiness_error or source_error
