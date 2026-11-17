@@ -1,4 +1,4 @@
-"""Record priced finished-glass evidence in Israel Reference; default is dry run."""
+"""Keep the mirror reference and retire rejected Agan glass offers; default is dry run."""
 
 import argparse
 from decimal import Decimal
@@ -101,13 +101,44 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
-    sources, specs = build_reference_rows(json.loads(EVIDENCE.read_text()))
+    evidence = json.loads(EVIDENCE.read_text())
+    sources, specs = build_reference_rows(evidence)
+    rejected = [row for _, row in specs if row["conversion_basis"]["heat_treatment"] == "tempered"]
+    keep = [(identity, row) for identity, row in specs if row["conversion_basis"]["grade"] == "silver"]
+    source_ids = {row["source_id"] for _, row in keep}
+    sources = [row for row in sources if row["source_id"] in source_ids]
     client = get_supabase_client()
-    ids = resolve_material_ids(client, {identity for identity, _ in specs})
-    offers = [dict(offer, material_id=ids[identity]) for identity, offer in specs]
-    print(f"{len(sources)} supplier sources; {len(offers)} fabricated-component candidates, no baseline changes.")
+    ids = resolve_material_ids(client, {identity for identity, _ in keep})
+    offers = [dict(offer, material_id=ids[identity]) for identity, offer in keep]
+    rejected_ids = [row["market_offer_id"] for row in rejected]
+    rejected_source_id, = {row["source_id"] for row in rejected}
+
+    def rejected_offers():
+        return client.table("market_material_offers").select(
+            "market_offer_id,status"
+        ).in_("market_offer_id", rejected_ids).eq("market_code", MARKET).eq(
+            "source_id", rejected_source_id
+        ).execute().data
+
+    existing = rejected_offers()
+    if any(row["status"] not in ("candidate", "archived") for row in existing):
+        raise ValueError("Unexpected non-candidate status on a rejected glass offer")
+    candidates = [row["market_offer_id"] for row in existing if row["status"] == "candidate"]
+    print(f"{len(candidates)} rejected glass offers to archive, {len(offers)} mirror offer to verify.")
     if not args.apply:
         return
+    if candidates:
+        client.table("market_material_offers").update({"status": "archived"}).in_(
+            "market_offer_id", candidates
+        ).eq("market_code", MARKET).eq("source_id", rejected_source_id).eq(
+            "status", "candidate"
+        ).execute()
+    retired = rejected_offers()
+    if {r["market_offer_id"] for r in existing} != {r["market_offer_id"] for r in retired} or any(
+        r["status"] != "archived" for r in retired
+    ):
+        raise ValueError("Rejected glass offer archive did not verify")
+    print(f"Readback verified {len(retired)} archived glass offers.")
     for table, rows, key in (
         ("reference_sources", sources, "source_id"),
         ("market_material_offers", offers, "market_offer_id"),
