@@ -1,5 +1,38 @@
 # Estimation 9 Parts Check from Upload
 
+## Labor V1.3.2.1 open session and Profile tabs
+
+The owner's recording `Запись экрана 2026-11-17 в 22.02.35.mov` shows
+the Projects title alongside the previous Upload hero at 3 seconds.
+At 18–37 seconds, switching Profile tabs repeatedly exposes an empty body.
+The correlated journal records wrapper V1.3.0.1 under trace
+`2fcd7751-7380-414e-a049-f98aadc53a85` and Core V1.3.2 under trace
+`6fcd2794` (prefix). The wrapper's trace filter rejects the new Core
+receipts, leaving workflow navigation disabled. The preceding test
+matrix used new browser documents with matching traces.
+
+The ready component now recovers the host's trace from the iframe's
+initial navigation timing entry, which survives cleared query parameters
+and a restarted Python session. It retains the server trace in metrics.
+The controller's source revision also participates in reuse. If an old
+controller is busy, one observer waits for its cover to close before
+upgrading, preserving the transition already in progress.
+
+The eight main Profile tabs now use the same controller. Streamlit selects
+these DIV tabs on pointerdown and stops the click event, so the handler
+listens to that event and keyboard selection within the exact main tab
+group. Clicking the selected tab starts no extra transition.
+
+The expanded local Chromium replay covers the current wrapper, an open
+V1.3.0.1 wrapper, and the old wrapper at mobile width with delayed reads.
+Each route clears the URL parameters, resets server state, upgrades a
+busy legacy controller, traverses all eight Profile tabs and reopens
+the saved Lev1 estimate. All 54 transitions (1,865 sampled frames) completed with no visible
+mixed screens or new Parts Check launch. ArrowRight, Home and End also
+passed. The fourteen error, expiry and reload scenarios passed again.
+139 focused checks passed. Production owner acceptance remains
+open. The protected rollback checkpoint is V1.3.0.2 at `e7ef309`.
+
 ## Labor V1.3.2 Projects, Profile and Admin transitions
 
 Projects, Profile and Admin now use the existing workflow transition

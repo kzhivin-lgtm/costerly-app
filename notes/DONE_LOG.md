@@ -1,5 +1,14 @@
 # Done Log
 
+Labor V1.3.2.1, 2026-11-17. The owner's recording exposed the still-open
+wrapper losing Core ready receipts after server trace reset, plus blank
+Profile tab bodies. Host trace recovery and controller revision upgrades
+now cover that lifecycle. Main Profile tabs share the Opening controller.
+The expanded local replay passed 54 transitions across current and old
+wrappers, including mobile, server reset, busy upgrade and saved Lev1
+recovery. Keyboard navigation and 139 focused checks passed.
+See the [video diagnosis and verification](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1321-open-session-and-profile-tabs).
+
 Labor V1.3.2, 2026-11-17. Projects, Profile and Admin use the common
 workflow transitions, including return routes and sign out. Fifty-two
 local browser transitions sampled 2,133 frames with zero mixed screens.

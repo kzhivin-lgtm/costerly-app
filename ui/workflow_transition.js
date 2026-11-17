@@ -1,11 +1,35 @@
 // Executed by the ready component. The controller and its cover live in
 // the Streamlit document, outside the React tree that reruns replace.
-function workflowTransitionController(coreWindow, traceId) {
+function workflowTransitionController(coreWindow, traceId, revision, receipt) {
     if (!traceId || coreWindow === coreWindow.top) return null;
     const doc = coreWindow.document;
     const key = "__costerlyWorkflowTransition";
     const existing = coreWindow[key];
-    if (existing?.traceId === traceId) return existing;
+    if (existing?.traceId === traceId && existing.revision === revision) return existing;
+    const upgradeKey = key + "Upgrade";
+    if (existing?.busy()) {
+        // Finish the visible transition before upgrading a controller that
+        // survived a deployment in this same browser document.
+        const waiting = coreWindow[upgradeKey];
+        if (waiting?.revision === revision) {
+            waiting.receipt = receipt;
+            return existing;
+        }
+        waiting?.observer.disconnect();
+        const upgrade = {revision, receipt};
+        upgrade.observer = new coreWindow.MutationObserver(() => {
+            if (existing.busy()) return;
+            upgrade.observer.disconnect();
+            delete coreWindow[upgradeKey];
+            const next = workflowTransitionController(coreWindow, traceId, revision, upgrade.receipt);
+            next?.ready(upgrade.receipt);
+        });
+        upgrade.observer.observe(doc.body, {childList: true});
+        coreWindow[upgradeKey] = upgrade;
+        return existing;
+    }
+    coreWindow[upgradeKey]?.observer.disconnect();
+    delete coreWindow[upgradeKey];
     existing?.dispose();
 
     let hostOrigin;
@@ -52,6 +76,7 @@ function workflowTransitionController(coreWindow, traceId) {
         profile_to_sign_out: "login",
         upload_to_sign_out: "login",
         projects_to_sign_out: "login",
+        profile_tab_change: "account",
     };
     const names = {
         upload: "New Estimate",
@@ -217,7 +242,7 @@ function workflowTransitionController(coreWindow, traceId) {
     }
 
     const controller = {
-        traceId, begin, ready,
+        traceId, revision, begin, ready,
         enabled: () => enabled,
         busy: () => Boolean(pending),
         fail: () => { if (pending) showFailure(pending, "navigation_control_unavailable"); },

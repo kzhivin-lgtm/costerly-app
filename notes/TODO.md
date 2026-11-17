@@ -40,7 +40,7 @@ and 320 px. Preserve the accepted V1.3.0.1 runtime tag and the full
 V1.3.0.2 checkpoint before extending screen coverage.
 [Checkpoint](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1302-workflow-checkpoint).
 
-IMPLEMENTED, P1, V1.3.2, 2026-11-17. Projects, Profile and Admin use the
+IMPLEMENTED, P1, V1.3.2, with V1.3.2.1 follow-up, 2026-11-17. Projects, Profile and Admin use the
 shared ready/render mechanism, including return navigation and sign out.
 The local desktop and delayed-mobile browser replay covered 52 transitions,
 2,133 sampled frames, zero visible mixed screens and zero Parts Check
@@ -49,6 +49,21 @@ member permissions, revoked Admin access, expired auth and explicit reload
 after timeout. Revoked or changed platform access now logs the failure and
 offers Back to Upload. Await authenticated production owner acceptance.
 [Release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v132-projects-profile-and-admin-transitions).
+
+The owner's 22:02:35 recording rejected full visual acceptance. At 3 seconds,
+Projects appeared with the old Upload hero. The still-open V1.3.0.1 wrapper
+kept trace `2fcd7751-7380-414e-a049-f98aadc53a85`, while the V1.3.2 Core
+used a new trace. Core ready signals could no longer enable the cover.
+Between 18 and 37 seconds, native Profile tab reruns also showed empty
+content under the title. The original test matrix omitted those two cases.
+
+V1.3.2.1 restores the host trace from the iframe's original navigation URL,
+upgrades the cached controller after an active cover finishes, and covers
+the eight main Profile tabs on their native pointerdown/keyboard events.
+The expanded replay covers an old open wrapper, lost server state, a
+controller upgrade during a transition, all tabs and saved Lev1 recovery.
+Await owner acceptance of the corresponding live flow.
+[Video follow-up](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1321-open-session-and-profile-tabs).
 
 DEFERRED, P1, V1.3.1. Extend fresh Upload/Processing transitions after the
 accepted first stage. The owner selected V1.3.2 as the next stage.

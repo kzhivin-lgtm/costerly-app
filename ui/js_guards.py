@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -8,6 +9,7 @@ import streamlit.components.v1 as components
 
 
 _WORKFLOW_TRANSITION_JS = Path(__file__).with_name("workflow_transition.js").read_text(encoding="utf-8")
+_WORKFLOW_TRANSITION_REVISION = hashlib.sha256(_WORKFLOW_TRANSITION_JS.encode()).hexdigest()[:16]
 
 
 _MOVE_CARET_TO_END = """
@@ -750,17 +752,20 @@ def signal_app_ready_to_embed(
         """
         <script>
         (() => {
-            function installWorkflow(traceId) {
+            function installWorkflow(message) {
                 const coreWindow = window.parent;
+                const traceId = message.traceId;
                 if (!traceId || coreWindow === coreWindow.top) return null;
-                if (coreWindow.__costerlyWorkflowTransition?.traceId === traceId) {
+                if (coreWindow.__costerlyWorkflowTransition?.traceId === traceId &&
+                    coreWindow.__costerlyWorkflowTransition.revision === __WORKFLOW_REVISION__) {
                     return coreWindow.__costerlyWorkflowTransition;
                 }
                 // Timers and DOM observers must survive replacement of this
                 // Streamlit component iframe during the next rerun.
                 const script = coreWindow.document.createElement("script");
                 script.textContent = __WORKFLOW_TRANSITION__
-                    + ";workflowTransitionController(window, " + JSON.stringify(traceId) + ");";
+                    + ";workflowTransitionController(window, " + JSON.stringify(traceId) + ", "
+                    + JSON.stringify(__WORKFLOW_REVISION__) + ", " + JSON.stringify(message) + ");";
                 coreWindow.document.head.append(script);
                 script.remove();
                 return coreWindow.__costerlyWorkflowTransition;
@@ -777,7 +782,19 @@ def signal_app_ready_to_embed(
                 workflowNavigationProtocol: 1,
                 sentAt: Date.now()
             };
-            const workflow = installWorkflow(message.traceId);
+            // Navigation timing retains the iframe's original URL after
+            // Streamlit clears query parameters and a server session restarts.
+            try {
+                const navigation = window.parent.performance.getEntriesByType("navigation")[0];
+                const hostTrace = new URL(navigation?.name || window.parent.location.href)
+                    .searchParams.get("obs_trace");
+                if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(hostTrace || "")) {
+                    message.metrics.server_trace_id = message.traceId;
+                    message.traceId = hostTrace;
+                }
+            } catch (_) {}
+            const workflow = installWorkflow(message);
+            const currentWorkflow = () => window.parent.__costerlyWorkflowTransition || workflow;
             const resetScrollOnReady = __RESET_SCROLL__;
 
             function currentScreen() {
@@ -786,6 +803,11 @@ def signal_app_ready_to_embed(
             }
 
             function transitionName(control) {
+                if (currentScreen() === "account" &&
+                    control.matches('[role="tab"][aria-selected="false"]') &&
+                    control.closest(".st-key-company_profile_tab")) {
+                    return "profile_tab_change";
+                }
                 const hasControlKey = (key) => Boolean(
                     control.closest(`.st-key-${key}`) ||
                     control.closest(`[class*="st-key-${key}_recovery"]`)
@@ -810,7 +832,7 @@ def signal_app_ready_to_embed(
                     return "new_estimate";
                 }
                 if (hasControlKey("header_last_estimate")) {
-                    return workflow?.enabled() ? "last_estimate" : null;
+                    return currentWorkflow()?.enabled() ? "last_estimate" : null;
                 }
                 if (control.closest(".st-key-open_company_account") || hasControlKey("open_company_account")) {
                     if (currentScreen() === "upload") return "upload_to_profile";
@@ -895,6 +917,7 @@ def signal_app_ready_to_embed(
                     object_detail_to_objects: "objects",
                     object_detail_approve_to_objects: "objects",
                     upload_to_profile: "account",
+                    profile_tab_change: "account",
                     profile_to_upload: "upload",
                     upload_to_admin: "admin",
                     profile_to_admin: "admin",
@@ -1198,10 +1221,12 @@ def signal_app_ready_to_embed(
                     const parentDocument = parentWindow.document;
                     const previous = parentWindow[transitionHandlerKey];
                     if (previous) parentDocument.removeEventListener("click", previous, false);
-                    const handler = (event) => {
-                        const control = event.target && event.target.closest
-                            ? event.target.closest("button, a")
-                            : null;
+                    const handler = (event, selectedControl = null) => {
+                        const control = selectedControl || (
+                            event.target && event.target.closest
+                                ? event.target.closest("button, a")
+                                : null
+                        );
                         if (!control || control.disabled || event.defaultPrevented ||
                             event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
                         const transition = transitionName(control);
@@ -1223,12 +1248,12 @@ def signal_app_ready_to_embed(
                             )).find((button) => String(button.textContent || "").trim()
                                 === "Back to Objects") || null;
                         }
-                        if (workflow?.busy()) {
+                        if (currentWorkflow()?.busy()) {
                             event.preventDefault();
                             return;
                         }
                         const transitionId = crypto.randomUUID();
-                        const covered = workflow?.begin(transition, transitionId);
+                        const covered = currentWorkflow()?.begin(transition, transitionId);
                         if (bridgeButton || (covered && bridgeKey)) event.preventDefault();
                         if (!covered) {
                             parentWindow.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -1246,13 +1271,48 @@ def signal_app_ready_to_embed(
                         }, "*");
                         if (!covered) observeTargetScreen(transition, transitionId);
                         if (bridgeButton) bridgeButton.click();
-                        else if (covered && bridgeKey) workflow.fail();
+                        else if (covered && bridgeKey) currentWorkflow()?.fail();
                     };
                     parentWindow[transitionHandlerKey] = handler;
                     parentDocument.addEventListener("click", handler, {
                         capture: false,
                         passive: false,
                     });
+                    // Streamlit tabs select on pointerdown and stop the click
+                    // event. Their configured on_change performs a full rerun.
+                    const tabHandlerKey = transitionHandlerKey + "ProfileTabs";
+                    const previousTabHandler = parentWindow[tabHandlerKey];
+                    if (previousTabHandler) {
+                        parentDocument.removeEventListener("pointerdown", previousTabHandler, true);
+                        parentDocument.removeEventListener("keydown", previousTabHandler, true);
+                    }
+                    const tabHandler = (event) => {
+                        const tab = event.target.closest?.('.st-key-company_profile_tab [role="tab"]');
+                        if (!tab || currentScreen() !== "account") return;
+                        let selected = tab;
+                        if (event.type === "keydown") {
+                            const group = tab.closest(".st-key-company_profile_tab");
+                            const tabs = Array.from(group.querySelectorAll('[role="tab"]'));
+                            const index = tabs.indexOf(tab);
+                            const offsets = {ArrowLeft: -1, ArrowRight: 1};
+                            if (event.key in offsets) {
+                                selected = tabs[(index + offsets[event.key] + tabs.length) % tabs.length];
+                            } else if (event.key === "Home") {
+                                selected = tabs[0];
+                            } else if (event.key === "End") {
+                                selected = tabs[tabs.length - 1];
+                            } else if (event.key !== "Enter" && event.key !== " ") {
+                                return;
+                            }
+                        }
+                        if (selected?.getAttribute("aria-selected") === "false" &&
+                            selected.getAttribute("aria-disabled") !== "true") {
+                            handler(event, selected);
+                        }
+                    };
+                    parentWindow[tabHandlerKey] = tabHandler;
+                    parentDocument.addEventListener("pointerdown", tabHandler, {capture: true, passive: false});
+                    parentDocument.addEventListener("keydown", tabHandler, {capture: true, passive: false});
                 } catch (_) {}
             }
 
@@ -1327,7 +1387,7 @@ def signal_app_ready_to_embed(
 
             function postReady() {
                 try { installRuntimeFailureListeners(); } catch (_) {}
-                if (workflow?.ready(message)) return;
+                if (currentWorkflow()?.ready(message)) return;
 
                 if (resetScrollOnReady) {
                     const parentWindow = window.parent;
@@ -1407,6 +1467,7 @@ def signal_app_ready_to_embed(
         .replace("__METRICS__", metrics_json)
         .replace("__ROUTE__", route_json)
         .replace("__RESET_SCROLL__", reset_scroll_json)
+        .replace("__WORKFLOW_REVISION__", json.dumps(_WORKFLOW_TRANSITION_REVISION))
         .replace("__WORKFLOW_TRANSITION__", json.dumps(_WORKFLOW_TRANSITION_JS)),
         height=0,
         width=0,
