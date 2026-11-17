@@ -149,3 +149,12 @@ until recomputed from their Parts Check. The offline Adda replay priced the
 2000 × 700 mm, 860 × 450 mm and 1445 × 895 mm mirrors at ₪455.00, ₪125.78
 and ₪420.31 net. All other purchase allocations matched the previous plan,
 including the 40 glass panes at ₪1,672.88.
+
+The price calculators take lengths and widths from each Parts Check row.
+A mirror with explicitly recorded thickness uses a matching supplier
+offer or requires a quote. A mirror without thickness uses the marked
+4 mm assumption. The drawing-to-Parts mirror path can still leave a printed
+thickness unresolved. The standard display-glass recipe uses 4 mm,
+and another glass thickness in Parts Check currently requires a quote.
+The [production checkpoint and replay](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1221-production-checkpoint)
+retain these boundaries.

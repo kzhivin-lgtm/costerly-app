@@ -1,5 +1,50 @@
 # Estimation 9 Parts Check from Upload
 
+## Labor V1.2.21 production checkpoint
+
+The owner requested this checkpoint on 17 November 2026. The annotated tag
+`estimation-labor-v1.2.21-2026-11-17` pins deployed commit
+`c84ece4c959c75be41271b2221807e3df6579297`. Railway deployment
+`b9b349da-e48e-4a61-b49e-7456ba658e0d` succeeded. Production Cloudflare
+Pages and Railway Core served
+`estimation-labor-v1.2.21-finished-mirrors-detection-v8.4.29`.
+Railway Core health returned 200.
+
+V1.2.21 includes the V1.2.20 glass and mirror labels and replaces the
+mirror area line on recomputation with finished-piece costs. It keeps
+the V1.2.19 restore of Sheet Processing and the glass purchase set.
+The pre-restore V1.2.18 lineage includes the four intermediate records
+`d9dd814`, `e71fab1`, `95832c9` and `fe788bd`. None required a separate
+Railway deployment. The rejected Agan glass minimum is excluded.
+
+| Saved Adda control | Mirror dimensions (mm) | Net ILS |
+| --- | --- | ---: |
+| Vanity unit, object-001 | 2000 × 700 | 455.00 |
+| Display cabinet, object-002 | 860 × 450 | 125.78 |
+| Display cabinet, object-002 | 1445 × 895 | 420.31 |
+| All three mirrors | 4 mm assumed | 1,001.09 |
+
+With two display cabinets the mirror subtotal is ₪1,092.18 for four pieces.
+Non-mirror purchases matched the V1.2.19 replay, including 40 glass panes
+at ₪1,672.88. The benchmark uses saved Adda run
+`run_e6977dff98d64744becf450ea35ed4d7`. The 4, 5 and 6 mm replay separates
+available prices from quote-required cases. See the
+[pricing and thickness scope](GLASS_AND_MIRRORS_IL_SUPPLIER_COSTING_2026_11_17.md#labor-v1221-finished-mirrors).
+
+231 focused Python checks and two ingest checks passed. Local browser
+checks passed at 390 and 1280 px. The exact dependency-list assertion
+still fails on the existing difference between its expected dependencies
+and the production pyproject, which are identical to V1.2.19. A fresh
+authenticated production estimate was not part of this checkpoint.
+
+The private workspace archive
+`backups/estimation-labor-v1.2.21-checkpoint-2026-11-17/` has the exact
+runtime source, saved inputs, reproducible replay, verification receipt,
+and SHA-256 manifest. For production rollback, restore the tagged tree in
+a forward commit, then verify the actual build markers and Core health.
+The next scoped calculation is Block Assembly using the accepted Lev2
+and Adda norms.
+
 ## Labor V1.2.19 restore from the V1.2.15 checkpoint
 
 The rollback at `355e2ac` has the same tree as the owner-accepted V1.2.15
