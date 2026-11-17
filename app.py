@@ -357,7 +357,7 @@ def _render_screen(
         if access is None or access.company_id != company_id:
             raise PermissionError("Company access changed. Please sign in again.")
         def profile_ready(profile_trace):
-            _signal_ready(profile_trace, "account", company_id=company_id)
+            _signal_ready(profile_trace, "objects", company_id=company_id)
             st.session_state.profile_ready_run_id = profile_trace.run_id
 
         render_company_account(
