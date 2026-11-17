@@ -146,6 +146,7 @@ def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
         "objects_estimation_launch_request",
         "objects_navigation_ready",
         "file_review_navigation_ready",
+        "file_review_empty_estimate",
         "prepared_estimate_access",
         "last_estimation_result",
         "last_estimation_error",

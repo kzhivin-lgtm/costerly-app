@@ -8,6 +8,7 @@ from typing import Callable
 
 import streamlit as st
 
+from observability.runtime import report_runtime_failure
 from state.session import set_screen
 from state.session import get_company_id
 from styles.file_review import apply_file_review_css
@@ -20,6 +21,7 @@ from ui.screen_transition import (
 )
 from use_cases.estimation import build_estimate_id
 from use_cases.estimation_progress import set_object_progress
+from use_cases.latest_estimate import load_latest_estimate_route_for_run
 from use_cases.rfq_processing import (
     FileReviewNameConflict,
     load_file_review_data,
@@ -1136,6 +1138,9 @@ def render_file_review_screen(
     if prepared_data is None:
         _sync_durable_naming_once(run_id)
     _sync_object_edit_state(run_id, data["objects"])
+    saved_estimate_checked = _restore_saved_objects_route(
+        company_id=company_id, run_id=str(run_id), objects=data["objects"],
+    )
     with st.container():
         st.markdown(
             '<span class="file-review-title-card-shell-marker" aria-hidden="true"></span>',
@@ -1162,7 +1167,7 @@ def render_file_review_screen(
         run_id=str(run_id),
         objects=data["objects"],
         source=data.get("source"),
-    )
+    ) if saved_estimate_checked else None
 
     col_back, col_next = st.columns(2, gap="small")
 
@@ -1234,6 +1239,42 @@ def _current_estimate_matches_run(run_id: str) -> bool:
         return True
 
     return False
+
+
+def _restore_saved_objects_route(
+    *, company_id: str, run_id: str, objects: list[dict[str, object]],
+) -> bool:
+    """Resolve the saved estimate before deciding whether Continue can launch."""
+    lookup_key = (company_id, run_id)
+    if (
+        _current_estimate_matches_run(run_id)
+        or st.session_state.get("file_review_empty_estimate") == lookup_key
+    ):
+        return True
+    try:
+        route = load_latest_estimate_route_for_run(get_supabase_client(), company_id, run_id)
+    except Exception as exc:
+        report_runtime_failure("file_review.restore_saved_estimate", exc, rfq_run_id=run_id)
+        st.session_state.objects_estimation_launch_plan = None
+        st.session_state[f"objects_estimation_readiness_error.{run_id}"] = (
+            "The saved estimate is temporarily unavailable. Reload this page to try again."
+        )
+        return False
+
+    if route is None:
+        st.session_state.file_review_empty_estimate = lookup_key
+        return True
+
+    st.session_state.current_estimate_id = route["estimate_id"]
+    st.session_state.current_estimate_run_id = run_id
+    saved_objects = set(route["object_ids"])
+    if saved_objects:
+        ignored = {_object_id(item) for item in objects} - saved_objects
+        st.session_state.file_review_saved_ignored_object_ids = ignored
+        for item in objects:
+            object_id = _object_id(item)
+            _ensure_object_edit(object_id, item)["ignored"] = object_id in ignored
+    return True
 
 
 def _current_estimate_is_reusable(run_id: str) -> bool:

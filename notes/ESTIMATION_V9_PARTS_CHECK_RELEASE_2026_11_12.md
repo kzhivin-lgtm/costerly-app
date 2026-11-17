@@ -1,5 +1,35 @@
 # Estimation 9 Parts Check from Upload
 
+## Labor V1.2.24 estimate recovery
+
+After a disconnected tab becomes visible and online, the wrapper restarts
+session validation at the current URL. A valid session uses the existing
+resume flow. An invalid session goes to Login without a click. An active
+upload or in-flight workflow transition stays with the existing Streamlit
+connection until it settles. There is no recurring check.
+
+Last Estimate still opens File Review for the newest completed Detection
+run. File Review reads the saved estimate for the authorized company and
+run before enabling Continue. The same estimate ID opens the saved object
+rows and Material Plan. A fresh run with no estimate starts its first
+calculation. If the saved result query fails, Continue stays disabled.
+The recovery treats a more recent estimate with missing prices as a
+partial duplicate when a published estimate with the same object IDs,
+names and quantities has all requirements priced.
+
+Read-only PostgREST evidence and a local Streamlit/Cloudflare browser
+replay used the two production snapshots for Adda
+`run_0208ed330898444e9c2d49ee92293447`. The restored estimate
+`run_0208ed330898444e9c2d49ee92293447_estimate_20261117150118`
+shows Vanity ₪2,883.88 and Display Cabinet ₪9,101.88 net, with no
+estimation launch. The browser replay used a controlled expiry and
+rendered Login without an action after reconnect. The valid-session
+case reached File Review and opened the original estimate. 305 focused
+Python tests passed. Authenticated browser acceptance in production
+remains to be confirmed.
+
+Runtime rollback reference is `582343a` (Labor V1.2.23).
+
 ## Labor V1.2.23 Block Assembly
 
 V1.2.22 (`06c2a47`) was rolled back after the owner reported a stuck

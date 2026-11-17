@@ -83,6 +83,7 @@ def test_latest_estimate_route_for_run_is_scoped_to_the_active_rfq():
     assert load_latest_estimate_route_for_run(client, "company-1", "run-2") == {
         "estimate_id": "estimate-2",
         "run_id": "run-2",
+        "object_ids": [],
     }
     assert ("eq", "company_id", "company-1") in client.query.calls
     assert ("eq", "run_id", "run-2") in client.query.calls
@@ -94,3 +95,26 @@ def test_latest_estimate_route_for_run_rejects_a_row_from_another_run():
         "company-1",
         "run-2",
     ) is None
+
+
+def test_restore_uses_the_published_result_when_a_duplicate_has_unpriced_parts():
+    cabinet = {
+        "object_id": "cabinet", "object_name": "Cabinet", "quantity": 1,
+        "status": "review_required", "self_cost_ex_vat": 100,
+    }
+    older = {
+        "estimate_id": "original", "run_id": "run",
+        "objects": [cabinet], "plan": {"plan_status": "needs_review", "unresolved": []},
+    }
+    partial = {
+        "estimate_id": "partial", "run_id": "run",
+        "objects": [cabinet], "plan": {"plan_status": "needs_review", "unresolved": ["glass"]},
+    }
+    assert load_latest_estimate_route_for_run(
+        _Client([partial, older]), "company", "run",
+    ) == {"estimate_id": "original", "run_id": "run", "object_ids": ["cabinet"]}
+
+    changed = {**partial, "objects": [{**cabinet, "quantity": 2}]}
+    assert load_latest_estimate_route_for_run(
+        _Client([changed, older]), "company", "run",
+    )["estimate_id"] == "partial"

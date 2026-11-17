@@ -92,7 +92,7 @@
     </div>
     <script>
       (() => {
-        const BUILD_VERSION = "estimation-labor-v1.2.23-block-assembly-detection-v8.4.29";
+        const BUILD_VERSION = "estimation-labor-v1.2.24-estimate-recovery-detection-v8.4.29";
         const startedAt = performance.now();
         const traceId = crypto.randomUUID();
         const timeline = [];
@@ -147,6 +147,8 @@
         let fallbackTimer = null;
         let iframeLoadAtMs = null;
         let ready = false;
+        let resumePending = !navigator.onLine;
+        let uploadSelectionPending = false;
         const readyRunIds = new Set();
         const pendingTransitions = [];
         let lastReadyScreen = "";
@@ -280,6 +282,30 @@
           });
         }
 
+        function revalidateConnection() {
+          if (!resumePending || !navigator.onLine || document.hidden ||
+              uploadSelectionPending || pendingTransitions.length ||
+              lastReadyScreen === "processing") return;
+          resumePending = false;
+          if (recoveryPath || confirmationPath || lastReadyScreen === "login") return;
+          // A disconnected Streamlit iframe can still show its old authorized
+          // page. Bootstrap against the server again at the current outer URL.
+          mark("browser.connection_resume", {screen: lastReadyScreen});
+          window.location.reload();
+        }
+
+        window.addEventListener("offline", () => { resumePending = true; });
+        window.addEventListener("online", () => {
+          resumePending = true;
+          revalidateConnection();
+        });
+        document.addEventListener("visibilitychange", revalidateConnection);
+        window.addEventListener("pageshow", (event) => {
+          if (!event.persisted) return;
+          resumePending = true;
+          revalidateConnection();
+        });
+
         window.addEventListener("popstate", () => {
           window.location.reload();
         });
@@ -389,6 +415,7 @@
             event.data &&
             event.data.type === "costerly:rfq-upload-selected"
           ) {
+            uploadSelectionPending = true;
             mark("browser.rfq_upload_selected", {
               metadata: {
                 source: safeRouteValue(event.data.source),
@@ -403,6 +430,7 @@
             event.data &&
             event.data.type === "costerly:upload-callback-timeout"
           ) {
+            uploadSelectionPending = false;
             mark("browser.upload_callback_timeout", {
               status: "timeout",
               metadata: {
@@ -411,6 +439,7 @@
               },
             });
             if (ready) persistTimeline();
+            revalidateConnection();
             return;
           }
           if (
@@ -493,6 +522,7 @@
                 },
               });
               if (ready) persistTimeline();
+              revalidateConnection();
             }, 15000);
             if (ready) persistTimeline();
             return;
@@ -626,6 +656,12 @@
             const screen = event.data.screen || "unknown";
             lastReadyScreen = screen;
             lastReadyRunId = runId;
+            if (screen !== "upload") {
+              uploadSelectionPending = false;
+            }
+            // The native connection already revalidated and painted a fresh
+            // screen while a transition was completing.
+            if (navigator.onLine) resumePending = false;
             const droppedHeaderTarget = pendingTransitions.find((item) => (
               screen === "upload" &&
               ["account", "admin", "projects"].includes(item.targetScreen)

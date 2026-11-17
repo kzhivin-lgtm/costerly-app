@@ -507,6 +507,44 @@ def test_reopen_completed_estimate_prepares_objects_without_source_bytes(monkeyp
     }]
 
 
+def test_last_estimate_restores_saved_objects_in_a_new_session(monkeypatch):
+    from state.company_auth import _open_last_estimate
+
+    st.session_state.clear()
+    reviews = [
+        {"object_id": "cabinet", "name": "Cabinet", "quantity": "1"},
+        {"object_id": "ignored", "name": "Other", "quantity": "1"},
+    ]
+    monkeypatch.setattr(file_review, "get_supabase_client", object)
+    monkeypatch.setattr(
+        file_review, "load_latest_estimate_route_for_run",
+        lambda client, company_id, run_id: {
+            "estimate_id": "saved-1", "run_id": run_id, "object_ids": ["cabinet"],
+        },
+    )
+    monkeypatch.setattr(
+        objects, "prepare_objects_navigation_state",
+        lambda **kwargs: {"data": {"rows": [{"object_key": "cabinet"}]}},
+    )
+
+    _open_last_estimate({"run_id": "run-1", "estimate_id": ""})
+    assert st.session_state.screen == "file_review"
+    assert file_review._restore_saved_objects_route(
+        company_id="company-1", run_id="run-1", objects=reviews,
+    )
+    plan = file_review._prepare_objects_launch_plan(
+        company_id="company-1", run_id="run-1", objects=reviews,
+    )
+    assert plan["ignored_object_ids"] == {"ignored"}
+    assert plan["file_bytes"] is None
+
+    file_review._continue_to_objects_estimation(company_id="company-1", run_id="run-1")
+
+    assert st.session_state.screen == "objects"
+    assert st.session_state.current_estimate_id == "saved-1"
+    assert st.session_state.objects_estimation_launch_request is None
+
+
 def test_reopen_active_estimate_resumes_its_worker_without_a_new_launch(monkeypatch):
     """Back/Continue must not turn one active estimate into a second job."""
     st.session_state.clear()

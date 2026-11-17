@@ -1731,6 +1731,7 @@ def _open_last_estimate(latest_route: dict[str, str] | None) -> None:
         st.session_state.header_last_estimate_error = "No previous estimate is available."
         return
     st.session_state.current_run_id = latest_route["run_id"]
+    st.session_state.pop("file_review_empty_estimate", None)
     estimate_id = str(latest_route.get("estimate_id") or "").strip()
     st.session_state.current_estimate_id = estimate_id or None
     st.session_state.current_estimate_run_id = latest_route["run_id"] if estimate_id else None

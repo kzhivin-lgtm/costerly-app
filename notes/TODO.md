@@ -1,5 +1,38 @@
 # TODO
 
+## Estimate recovery
+
+IMPLEMENTED IN V1.2.24, P0, USER REQUEST. Reopen the durable result on Last Estimate →
+File Review → Continue to Objects Estimation after the browser session is
+lost. Production evidence, Labor V1.2.23, 2026-11-17. Adda
+`run_0208ed330898444e9c2d49ee92293447` kept its 15:01 UTC estimate
+`run_0208ed330898444e9c2d49ee92293447_estimate_20261117150118`.
+The 17:16 UTC restore produced
+`run_0208ed330898444e9c2d49ee92293447_estimate_20261117171645`
+and a new Parts Check for the same PDF. The cabinet's saved self cost
+fell from ₪9,101.88 to a partial ₪1,543.36 with seven unpriced
+requirements. Both estimate shells say `pending` despite having saved
+object results and material plans. The retained Upload header route
+restores the run ID alone, while File Review reuse requires an estimate
+ID in Streamlit session state. Resolve the correct saved result for
+the authorized run during File Review readiness. Preserve the genuine
+first-run and edited-input paths. Acceptance requires identical
+estimate ID, object rows and costs after reconnect or browser restart,
+with no new Parts Check call. Cover a fresh run with File Review only
+and a run with multiple estimate attempts. The saved Adda browser replay
+passed. Authenticated production acceptance remains open. See the
+[release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1224-estimate-recovery).
+
+IMPLEMENTED IN V1.2.24, P1, USER REQUEST. Revalidate the session when a disconnected
+tab resumes and show Login when authentication cannot be restored.
+On the Adda browser restore, production recorded `AuthApiError` at
+17:16:28 UTC and then rendered Login. The journal does not establish
+what initiated the first rerun or what was visible before it. Verify
+with an authenticated browser offline/close/resume sequence that an
+invalid session reaches Login without a Last Estimate click and a valid
+session resumes. Both cases passed in the local browser with controlled
+auth outcomes. Authenticated production acceptance remains open.
+
 ## Estimation Labor V1
 
 COMPLETED, owner acceptance and protected checkpoint, 2026-11-17.
