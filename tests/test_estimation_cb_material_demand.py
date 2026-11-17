@@ -28,6 +28,51 @@ def _build(rows, families, *, quantity=1, issues=(), name=None):
     )
 
 
+def test_finished_glass_parts_price_one_set_and_keep_breakdown_for_quantity_edits():
+    from decimal import Decimal
+
+    from use_cases.estimation import _element_groups, _material_rows_from_plan
+    from use_cases.material_engine_adapter import replan_material_norm_snapshot
+
+    rows = [
+        _part("glass_box_bottom", quantity=1, block_id="B01", material_hint="tempered glass", dimensions={
+            "length": {"mm": 544}, "width": {"mm": 300}, "thickness": {"mm": 4},
+        }),
+        _part("glass_box_end_wall", quantity=2, block_id="B01", material_hint="tempered glass", dimensions={
+            "length": {"mm": 292}, "width": {"mm": 111}, "thickness": {"mm": 4},
+        }),
+    ]
+    plan = calculate_cb_materials(
+        parts_report={"stage": "Parts Check", "run_id": "run-1", "objects": {"object-1": {"parts": rows}}},
+        input_rows=[_input()], catalog_context={"company_id": "company-1", "families": ["glass"], "catalogs": {}},
+    )["material_plan"]
+    line, = plan["lines"]
+    assert line["total_cost"] == 109.21
+    assert plan["object_material_costs"][0]["cost_ex_vat"] == 109.21
+    material, = _material_rows_from_plan(plan, object_id="object-1")
+    assert (material["required_material_value"], material["purchase_unit"], material["unit_price_display"]) == (3, "set", "Variable")
+    elements, = [entry for entry in _element_groups(plan["parts_check"]["object-1"]) if entry.get("priced")]
+    assert [(row["label"], row["size"], row["total"]) for row in elements["rows"]] == [
+        ("Glass lid", "544 × 300 × 4 mm", 60.90), ("End glass wall", "292 × 111 × 4 mm", 48.31),
+    ]
+    repriced, _ = replan_material_norm_snapshot(
+        plan, {}, {"object-1": 2}, {}, changed_keys={line["selection_key"]}, quantity_ratios={"object-1": Decimal(2)},
+    )
+    material, = _material_rows_from_plan(repriced, object_id="object-1")
+    assert (material["required_material_value"], material["purchase_quantity_value"], material["total"]) == (6, 2, 218.42)
+
+
+def test_unquotable_glass_set_does_not_fall_back_to_a_square_metre_price():
+    row = _part("glass_box_end_wall", material_hint="tempered glass")
+    plan = calculate_cb_materials(
+        parts_report={"stage": "Parts Check", "run_id": "run-1", "objects": {"object-1": {"parts": [row]}}},
+        input_rows=[_input()], catalog_context={"company_id": "company-1", "families": ["glass"], "catalogs": {}},
+    )["material_plan"]
+    assert plan["lines"] == []
+    assert plan["parts_check"]["object-1"]["unpriced_requirements"] == ["cb-finished-glass-set"]
+    assert "finished_glass_quote_required" in plan["reason_codes"]
+
+
 def test_cabinet_backs_and_drawer_bottoms_use_stock_coated_plywood_without_overriding_a_note():
     back = _part("carcass_back")
     bottom = _part("drawer_box_bottom")

@@ -4,7 +4,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import UTC, datetime
 import json
 import logging
-from math import isfinite
+from math import ceil, isfinite
 import re
 from typing import Any
 
@@ -35,6 +35,7 @@ from db.company_access import assert_estimate_owned, assert_run_owned
 from state.company_auth import company_auth_enabled
 from state.session import get_company_id
 from models.estimation import ObjectEstimateSeed
+from use_cases.estimation_glass_parts import GLASS_SET_NAME, GLASS_SET_REQUIREMENT
 from use_cases.material_normalization import canonical_material_display_name, material_catalog_display_label
 from use_cases.price_source_taxonomy import source_family_for_catalog_family
 from use_cases.retry import read_with_retry
@@ -179,7 +180,7 @@ _FRONT_PART_ROLES = {"facade", "door_front", "drawer_front", "lift_up_front", "h
 _VISIBLE_PARTS = (
     ("LED", {"led_strip_run"}),
     ("Mirror", {"mirror", "mirror_glass"}),
-    ("Glass boxes", {"glass_box", "glass_box_bottom", "glass_box_long_wall", "glass_box_end_wall"}),
+    ("Glass boxes", {"glass_box", "glass_box_lid", "glass_box_bottom", "glass_box_long_wall", "glass_box_end_wall"}),
 )
 
 
@@ -573,6 +574,12 @@ def _object_detail_material_rows(plan: dict[str, Any], lines: Any, object_id: st
     checked = (plan.get("parts_check") or {}).get(object_id) or {}
     if rows or checked:
         missing = set(checked.get("unpriced_requirements") or ())
+        if GLASS_SET_REQUIREMENT in missing and (glass := checked.get("finished_glass_set")):
+            rows.append(_finished_glass_material_row(
+                pieces_per_set=glass["piece_count"], sets=ceil(_number((plan.get("object_quantities") or {}).get(object_id), 1)),
+                set_price=None, total=None,
+            ))
+            missing.remove(GLASS_SET_REQUIREMENT)
         rows.extend({
             "item": material_catalog_display_label(
                 material["source_name"], family=material.get("family") or "",
@@ -684,6 +691,13 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
         ]
         if not allocations:
             continue
+        if (pieces := (line.get("label_specifications") or {}).get("glass_pieces_per_set")) is not None:
+            purchase = (line.get("object_purchases") or {}).get(object_id) or line
+            rows.append(_finished_glass_material_row(
+                pieces_per_set=pieces, sets=purchase.get("quantity", line["purchase_quantity"]),
+                set_price=line["price_per_purchase_unit"], total=purchase.get("total", line["total_cost"]),
+            ))
+            continue
         purchase_kind = str(line.get("purchase_kind") or "")
         required_value, required_unit = _required_material_volume(allocations, purchase_kind=purchase_kind)
         if required_value <= 0:
@@ -750,6 +764,16 @@ def _material_rows_from_plan(plan_snapshot: dict[str, Any], *, object_id: str) -
                       if plan_snapshot.get("parts_check") else _number(line.get("total_cost"), 0)),
         })
     return rows
+
+
+def _finished_glass_material_row(*, pieces_per_set, sets, set_price, total):
+    return {
+        "item": GLASS_SET_NAME, "material_family": "glass", "price_source": "A" if total is not None else None,
+        "glass_pieces_per_set": pieces_per_set,
+        "required_material_value": pieces_per_set * sets if pieces_per_set is not None else None,
+        "required_material_unit": "piece", "purchase_unit": "set", "purchase_quantity_value": sets,
+        "purchase_unit_cost": set_price, "unit_price_display": "Variable", "total": total,
+    }
 
 
 def _material_display_order(row: dict[str, Any]) -> int:
@@ -891,6 +915,8 @@ def _material_policy_lines(
 
 def _purchase_unit_display(line: dict[str, Any]) -> str:
     purchase_kind = str(line.get("purchase_kind") or "")
+    if (line.get("label_specifications") or {}).get("glass_pieces_per_set") is not None:
+        return "set"
     dimensions = line.get("purchasable_dimensions") or {}
     selection = str(line.get("selection_key") or "")
     if selection.split("|", 1)[0] == "edge_banding":
@@ -965,10 +991,17 @@ def _with_saved_element_ownership(client, checked, source, object_row, *, estima
 
 
 def _element_groups(facts_payload):
-    parts = [row for row in facts_payload.get("parts") or () if isinstance(row, dict)]
+    parts = [row for row in facts_payload.get("parts") or () if isinstance(row, dict) and not row.get("finished_glass")]
+    groups = []
+    if glass := facts_payload.get("finished_glass_set"):
+        groups.append({"label": "Glass details per set", "priced": True, "rows": [
+            {**row, "size": " × ".join(_format_number(value) if value else "—" for value in (
+                row["length_mm"], row["width_mm"], row["thickness_mm"],
+            )) + " mm"} for row in glass["parts"]
+        ]})
     if not all("block_id" in row for row in parts):
         rows = _element_rows_from_bom({"parts": parts})
-        return [{"label": "", "rows": rows}] if rows else []
+        return [*groups, {"label": "", "rows": rows}] if rows else groups
 
     blocks = {block["id"]: block for block in facts_payload.get("blocks", ()) if block.get("id")}
     scoped = {block_id: [] for block_id in blocks}
@@ -978,7 +1011,6 @@ def _element_groups(facts_payload):
             scoped.setdefault(block_id, []).append(row)
         else:
             common.append(row)
-    groups = []
     for block_id, rows in scoped.items():
         block = blocks.get(block_id, {})
         name = block.get("name") or _element_block_name(block.get("basis"), rows)
