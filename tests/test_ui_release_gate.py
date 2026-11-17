@@ -46,7 +46,7 @@ def test_docs_skip_is_narrow_and_does_not_bypass_contract_or_runtime_changes(pat
 def test_remote_gate_cannot_be_disabled_or_bypassed_by_the_publisher():
     ruleset = json.loads(Path(".github/ui-release-ruleset.json").read_text())
     require_remote_ruleset(ruleset)
-    for field, value in [("enforcement", "disabled"), ("bypass_actors", [{"actor_type": "User", "actor_id": 1}]), ("rules", [])]:
+    for field, value in [("enforcement", "disabled"), ("target", "tag"), ("bypass_actors", [{"actor_type": "User", "actor_id": 1}]), ("rules", [])]:
         broken = copy.deepcopy(ruleset)
         broken[field] = value
         with pytest.raises(RuntimeError):

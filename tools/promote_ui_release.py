@@ -27,11 +27,14 @@ def github_json(path: str) -> dict | list:
 
 def require_remote_ruleset(ruleset: dict) -> None:
     checks = [rule for rule in ruleset.get("rules", []) if rule.get("type") == "required_status_checks"]
-    if not (ruleset.get("enforcement") == "active" and ruleset.get("bypass_actors") == []
+    types = {rule.get("type") for rule in ruleset.get("rules", [])}
+    if not (ruleset.get("target") == "branch" and ruleset.get("enforcement") == "active" and ruleset.get("bypass_actors") == []
+            and {"non_fast_forward", "deletion"}.issubset(types)
             and "refs/heads/main" in ruleset.get("conditions", {}).get("ref_name", {}).get("include", [])
             and not ruleset.get("conditions", {}).get("ref_name", {}).get("exclude")):
         raise RuntimeError("The remote main gate is absent, bypassable or inactive; publication blocked")
-    if not any(rule["parameters"].get("strict_required_status_checks_policy") is True and any(
+    if not any(rule["parameters"].get("strict_required_status_checks_policy") is True
+               and rule["parameters"].get("do_not_enforce_on_create") is False and any(
         check.get("context") == CHECK_NAME and check.get("integration_id") == GITHUB_ACTIONS_APP_ID
         for check in rule["parameters"].get("required_status_checks", [])
     ) for rule in checks):
@@ -59,6 +62,9 @@ def main() -> None:
     check = require_successful_gate(github_json(f"commits/{sha}/check-runs?per_page=100")["check_runs"], sha)
     print(f"Verified {CHECK_NAME}: {check['html_url']}")
     if args.publish:
+        remote = subprocess.check_output(["git", "remote", "get-url", "origin"], text=True).strip()
+        if remote not in {f"https://github.com/{REPOSITORY}.git", f"git@github.com:{REPOSITORY}.git"}:
+            raise RuntimeError("Origin is not the expected publication repository")
         rulesets = github_json("rulesets")
         candidates = [row for row in rulesets if row["name"] == CHECK_NAME]
         if len(candidates) != 1:
