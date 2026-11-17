@@ -21,6 +21,9 @@ dependencies = [
     "transformers==5.20.2",
 ]
 
+[dependency-groups]
+ui-test = ["pytest==9.2.0"]
+
 [tool.uv]
 package = false
 

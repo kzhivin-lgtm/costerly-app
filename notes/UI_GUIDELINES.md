@@ -12,9 +12,34 @@ Profile tab updates without a full-screen Opening. Save invalidation and
 company/user/role isolation are part of the tested baseline. See the
 [checkpoint and evidence](COMPANY_PROFILE_CHECKPOINT.md#v133-accepted-checkpoint-and-change-protection-proposal).
 The initial startup fallback remains an open diagnostic, not an accepted
-performance guarantee. The proposed CI/deployment enforcement and explicit
-behavior-change approval mechanism are pending in TODO; this reference does
-not claim that either mechanism has been enabled.
+performance guarantee. On 17 November 2026 the owner approved implementing
+persistent checks and an obligatory publication barrier. The implementation
+and remote enforcement state are tracked in TODO and `tests/ui/README.md`.
+
+## Protected workflow behavior and release checks
+
+- Saved File Review → Continue opens the original completed estimate and does
+  not launch a new Parts Check or paid model call.
+- Navigation is revealed only after its correlated ready result; departing
+  and destination screens never appear together. Return routes, old open
+  wrappers and cleared server session state remain covered.
+- Profile main tabs update their content region while retaining the header.
+  Prepared reads remain scoped to company/user/role; successful Save invalidates
+  the affected resource. Failed writes keep an actionable error and allow retry.
+- Expired sessions reach Login; changed access never exposes an owner-only
+  control or another company's cached data.
+- The permanent UI suite uses synthetic local data and production UI/handlers.
+  Its full run is required for runtime, dependency, workflow, test or contract
+  changes before publication. Local timings do not establish production speed.
+- An intentional change to these behaviors requires a concrete before/after
+  proposal, reason, affected routes/cache state, alternatives, verification and
+  rollback, approved by the owner before implementation. Preserve tests and
+  the remote gate when adding features; never silently weaken them to pass.
+
+Use the exact-commit `UI release gate` and the verified publisher described in
+[`tests/ui/README.md`](../tests/ui/README.md). The remote GitHub ruleset must
+be active to enforce this independently of the agent. Check its real status;
+do not infer activation from the presence of the workflow or ruleset template.
 
 ## Mandatory scenario-first workflow
 

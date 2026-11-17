@@ -1,0 +1,201 @@
+{
+  "routes": [
+    {
+      "estimate_id": "estimate-ui-saved",
+      "run_id": "run-ui-saved",
+      "objects": [
+        {
+          "object_id": "object-001",
+          "object_name": "Saved bench",
+          "quantity": 1,
+          "status": "completed",
+          "self_cost_ex_vat": 1000
+        }
+      ],
+      "plan": {
+        "plan_status": "planned",
+        "unresolved": []
+      }
+    }
+  ],
+  "objects": [
+    {
+      "estimate_id": "estimate-ui-saved",
+      "run_id": "run-ui-saved",
+      "company_id": "fixture-lev1-company",
+      "object_id": "object-001",
+      "object_name": "Saved bench",
+      "quantity": 1,
+      "status": "completed",
+      "self_cost_ex_vat": 1000,
+      "vat_amount": 180,
+      "self_cost_total": 1180,
+      "approved": false,
+      "progress_percent": 100,
+      "progress_label": "Ready",
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  ],
+  "review_objects": [
+    {
+      "id": "fixture-object",
+      "run_id": "run-ui-saved",
+      "company_id": "fixture-lev1-company",
+      "object_id": "object-001",
+      "object_name": "Saved bench",
+      "object_name_en": "Saved bench",
+      "quantity": 1,
+      "confidence": 100,
+      "evidence_pages": [
+        1
+      ],
+      "detected_materials": [
+        "LDSP"
+      ],
+      "dimensions_json": {
+        "width_mm": 600,
+        "height_mm": 700,
+        "depth_mm": 550
+      },
+      "approved": false,
+      "quantity_explicit": true,
+      "object_index": 1
+    }
+  ],
+  "plans": [
+    {
+      "estimate_id": "estimate-ui-saved",
+      "company_id": "fixture-lev1-company",
+      "plan_status": "planned",
+      "plan_payload": {
+        "status": "planned",
+        "unresolved_requirement_ids": [],
+        "parts_check": {
+          "object-001": {
+            "status": "ready",
+            "blocks": [
+              {
+                "id": "B01",
+                "basis": "synthetic",
+                "status": "ready",
+                "envelope": {
+                  "width_mm": 600,
+                  "height_mm": 700,
+                  "depth_mm": 550
+                }
+              }
+            ],
+            "components": [],
+            "parts": [
+              {
+                "role": "side_panel",
+                "quantity": 2,
+                "material_hint": "LDSP white 17 mm",
+                "dimensions": {
+                  "length_mm": 700,
+                  "width_mm": 550,
+                  "thickness_mm": 17
+                },
+                "block_id": "B01",
+                "owner_id": "B01",
+                "status": "ready",
+                "missing_dimensions": [],
+                "quantity_pending": false
+              }
+            ]
+          }
+        },
+        "object_quantities": {
+          "object-001": 1
+        },
+        "object_material_costs": [
+          {
+            "object_id": "object-001",
+            "material_requirement_id": "panel-stock",
+            "cost_ex_vat": 1000
+          }
+        ],
+        "lines": [
+          {
+            "currency": "ILS",
+            "authority": "israel_reference",
+            "display_name": "LDSP white 17 mm",
+            "purchase_kind": "sheet",
+            "selection_key": "ldsp|white|17",
+            "candidate_id": "fixture-stock",
+            "total_cost": 1000,
+            "purchase_quantity": 1,
+            "price_per_purchase_unit": 1000,
+            "purchasable_dimensions": {
+              "length_mm": 2440,
+              "width_mm": 1220,
+              "thickness_mm": 17
+            },
+            "allocations": [
+              {
+                "object_id": "object-001",
+                "material_requirement_id": "panel-stock",
+                "demand_id": "panel",
+                "quantity": 2,
+                "length_mm": 700,
+                "width_mm": 550,
+                "area_mm2": 770000,
+                "purchase_index": 0
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "lines": [],
+  "parts": {
+    "stage": "parts_check",
+    "scope": "object",
+    "source_inventory_verified": true,
+    "objects": {
+      "object-001": {
+        "status": "ready",
+        "blocks": [
+          {
+            "id": "B01",
+            "basis": "synthetic",
+            "status": "ready",
+            "envelope": {
+              "width_mm": 600,
+              "height_mm": 700,
+              "depth_mm": 550
+            }
+          }
+        ],
+        "components": [],
+        "parts": [
+          {
+            "role": "side_panel",
+            "quantity": 2,
+            "material_hint": "LDSP white 17 mm",
+            "dimensions": {
+              "length_mm": 700,
+              "width_mm": 550,
+              "thickness_mm": 17
+            },
+            "block_id": "B01",
+            "owner_id": "B01",
+            "status": "ready",
+            "missing_dimensions": [],
+            "quantity_pending": false
+          }
+        ]
+      }
+    },
+    "sheets": [],
+    "sheet_layout": {
+      "version": "sheet-layout-v1",
+      "groups": [],
+      "issues": []
+    },
+    "run_id": "run-ui-saved",
+    "estimate_id": "estimate-ui-saved"
+  }
+}

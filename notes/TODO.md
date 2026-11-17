@@ -90,10 +90,11 @@ task. Acceptance does not assert a measured production speedup. Admin is
 the separate pending outcome below.
 [Implementation and verification](COMPANY_PROFILE_CHECKPOINT.md#v133-profile-preloading-and-tab-updates).
 
-PENDING OWNER DECISION, P1, user request, 2026-11-17. Protect accepted
+ACTIVE, P1, approved implementation, 2026-11-17. Protect accepted
 navigation, rendering, persistence and cache behavior from later regressions,
-and make intentional behavioral changes an explicit owner decision. This is
-a feasibility/proposal request, not authorization to change deployment rules.
+and make intentional behavioral changes an explicit owner decision. The owner subsequently approved moving checks into the repository, an
+obligatory publication barrier, measured full runs and a broken-transition
+negative control.
 Current gap: behavioral tests are tracked, but the latest browser fixtures
 and reports live in private temp/archive paths; no tracked GitHub Actions
 workflow or CODEOWNERS file exists in the runtime tree. GitHub-side rule
@@ -111,8 +112,12 @@ Changing a protected behavior requires a concrete impact report (before/after,
 reason, affected routes/cache keys, alternatives, tests and rollback) and
 owner approval before implementation. Tests and the approval requirement
 cannot be silently weakened in the same change. A required CI/deploy gate,
-branch rules and bypass policy need a separate approved rollout; they are
-not enabled by the V1.3.3 checkpoint. Acceptance must include proving that
+branch rules and bypass policy are now approved. The accepted V1.3.3
+checkpoint remains the runtime baseline. Both available GitHub credentials
+return 403 for Administration; no ruleset is currently installed. Complete
+the portable suite and CI before requesting the one-time administrator
+activation. Do not report a local publisher as remote enforcement.
+Acceptance must include proving that
 an intentionally introduced navigation/cache regression blocks publication.
 
 PENDING, P2, user request, 2026-11-17. Reduce Admin navigation latency after
