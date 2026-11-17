@@ -1,5 +1,111 @@
 # Company Profile checkpoint
 
+## V1.3.2.1 Profile and Admin latency baseline
+
+17 November 2026. The owner accepted the absence of visible screen fragments
+and requested a protected checkpoint, prepared Profile tabs, and timings
+for administrative navigation.
+
+The production trace is 6a6ed888-e4f1-4749-94b7-473e5e4a13f4.
+This is one live session, with 20 completed transitions. The values below
+are observed samples. Profile names come from recorded server spans.
+Contacts and Bank Details share a span, so their individual labels cannot
+be recovered. Pricing Cost is inferred from the completed Profile path
+without another named body span. Users has no sample in this trace.
+
+### Current behavior
+
+[verified] The diff e7ef309b..d2942be7 for screens/company_profile.py is empty.
+The post-Overhead warm-up introduced by 7fe3dae4 remains present. It
+launches the four existing Price Lists projection futures. It does not
+preload Labor Costs, Machinery, Contacts, Bank Details or Users.
+
+[verified] Main tabs use on_change="rerun" and only the open tab renders.
+V1.3.2.1 adds the common cover to that interaction to preserve visual
+integrity. Cached data still takes a server round trip and full render.
+
+[verified] Metrics cache for 300 seconds, employees for 60 seconds.
+Machinery reuses a session snapshot after its first read. Contacts and
+Bank Details query the company row each time. Price Lists reuses its
+projection futures and snapshots. Mutation invalidation remains essential
+when extending these caches.
+
+### Live transition measurements
+
+| UTC | Transition | Profile body | Visible, s | Server render, s |
+|---|---|---|---:|---:|
+| 20:31:17 | upload_to_profile | Overhead Expenses | 4.150 | 2.555 |
+| 20:31:20 | profile_tab_change | Contacts / Bank Details | 0.915 | 0.245 |
+| 20:31:25 | profile_tab_change | Price Lists | 3.692 | 2.210 |
+| 20:31:28 | profile_tab_change | Machinery | 1.599 | 1.050 |
+| 20:31:30 | profile_tab_change | Contacts / Bank Details | 0.763 | 0.218 |
+| 20:31:33 | profile_to_upload |  | 0.543 | 0.002 |
+| 20:31:45 | upload_to_admin |  | 8.345 | 7.309 |
+| 20:31:51 | admin_to_projects |  | 1.048 | 0.319 |
+| 20:31:54 | projects_to_profile | Overhead Expenses | 0.630 | 0.036 |
+| 20:31:55 | profile_tab_change | Pricing Cost (inferred) | 0.552 | 0.023 |
+| 20:31:57 | profile_tab_change | Labor Costs | 0.795 | 0.226 |
+| 20:32:06 | profile_to_admin |  | 6.395 | 5.873 |
+| 20:32:23 | admin_to_profile | Overhead Expenses | 0.864 | 0.021 |
+| 20:32:25 | profile_tab_change | Labor Costs | 0.555 | 0.021 |
+| 20:32:27 | profile_tab_change | Pricing Cost (inferred) | 0.553 | 0.020 |
+| 20:32:28 | profile_tab_change | Machinery | 0.731 | 0.058 |
+| 20:32:31 | profile_tab_change | Price Lists | 1.430 | 0.265 |
+| 20:32:33 | profile_tab_change | Contacts / Bank Details | 1.161 | 0.310 |
+| 20:32:35 | profile_tab_change | Contacts / Bank Details | 0.868 | 0.239 |
+| 20:32:40 | profile_tab_change | Overhead Expenses | 0.547 | 0.025 |
+
+### Identified costs
+
+[verified] The first observed Profile opening took 4.150 s. Its render
+included 1.691 s of Profile import and 0.839 s of Overhead Expenses.
+Browser-session synchronization added another 0.713 s before rendering.
+Later Profile entries took 0.630 s and 0.864 s.
+
+[verified] Warm Overhead, Labor Costs and Pricing whole-screen renders
+take roughly 20–25 ms. Their visible transitions remain about 0.55 s.
+Machinery fell from 1.599 s visible / 1.050 s render on first open to
+0.731 s visible / 0.058 s render on repeat. Data preloading alone cannot
+remove the complete warm-tab delay.
+
+[verified] Price Lists took 3.692 s on first observed entry and 1.430 s
+on repeat. The render times were 2.210 s and 0.265 s.
+[unknown] Current spans do not separate projection waiting, catalog
+building, component setup and client reconciliation within this path.
+
+[verified] Admin took 8.345 s and 6.395 s visible, with 7.309 s and 5.873 s
+in server rendering. Two separate read-only calls to the production
+dashboard v3 RPC took 6.847 s and 5.174 s. Staff-access reads took 0.226 s
+and 0.309 s. These calls ran from the local host and corroborate the
+slow aggregation independently of the Streamlit UI.
+
+[verified] Admin performs an access read in the screen, another inside
+load_company_dashboard, and a further read plus audit write on the first
+dashboard view. The v3 RPC nests v2 and the base dashboard, then
+recalculates billing aggregates. [unknown] The SQL execution plan has
+not been measured.
+
+### Proposed next change
+
+User request, pending implementation, P1. Prepare the remaining Profile
+data after Overhead has painted, reusing the existing Price Lists read
+workflow and preserving owner/company scoping. Invalidate the relevant
+prepared data after Save and reject stale pre-save future results.
+Update the Profile tab region independently so a warmed tab can switch
+without a whole-page Opening Profile rerun. Preserve visual protection
+and all Price Lists upload, Review and Save behavior.
+
+User request, pending implementation, P2. Profile the Admin aggregation,
+then define the freshness/refresh contract for reusing a recent authorized
+dashboard snapshot. Check staff permissions before showing that snapshot.
+Validate a repeated Admin opening against the 6.395 s baseline.
+
+Before accepting either optimization, measure cold entry, first tab,
+warm repeated tabs, save/reopen, permissions and expired-session paths
+in the browser. A short server render does not establish instant visible
+completion.
+
+
 ## 3.18.4 Profile cold-reload speed checkpoint
 
 Status: owner accepted the measured speed on 2026-10-10. This is not a full

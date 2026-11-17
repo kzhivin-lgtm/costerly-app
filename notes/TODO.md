@@ -40,14 +40,15 @@ and 320 px. Preserve the accepted V1.3.0.1 runtime tag and the full
 V1.3.0.2 checkpoint before extending screen coverage.
 [Checkpoint](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1302-workflow-checkpoint).
 
-IMPLEMENTED, P1, V1.3.2, with V1.3.2.1 follow-up, 2026-11-17. Projects, Profile and Admin use the
+COMPLETED, P1, V1.3.2 with V1.3.2.1 follow-up, owner accepted visual transitions
+on 2026-11-17. Projects, Profile and Admin use the
 shared ready/render mechanism, including return navigation and sign out.
 The local desktop and delayed-mobile browser replay covered 52 transitions,
 2,133 sampled frames, zero visible mixed screens and zero Parts Check
 launches. Fourteen recovery scenarios covered read failure, empty Projects,
 member permissions, revoked Admin access, expired auth and explicit reload
 after timeout. Revoked or changed platform access now logs the failure and
-offers Back to Upload. Await authenticated production owner acceptance.
+offers Back to Upload. The owner confirmed that screen fragments no longer appear.
 [Release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v132-projects-profile-and-admin-transitions).
 
 The owner's 22:02:35 recording rejected full visual acceptance. At 3 seconds,
@@ -62,8 +63,31 @@ upgrades the cached controller after an active cover finishes, and covers
 the eight main Profile tabs on their native pointerdown/keyboard events.
 The expanded replay covers an old open wrapper, lost server state, a
 controller upgrade during a transition, all tabs and saved Lev1 recovery.
-Await owner acceptance of the corresponding live flow.
+The owner accepted the visual flow and requested a full checkpoint.
+Tag `estimation-labor-v1.3.2.1-2026-11-17` pins `d2942be7`.
+The full private archive preserves the source, controls, browser tests and the
+accepted live trace. Profile latency is a separate open outcome.
 [Video follow-up](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1321-open-session-and-profile-tabs).
+
+PENDING, P1, user request, 2026-11-17. Restore the expected prepared Profile
+tabs after the initial Overhead Expenses view and reduce visible tab delay.
+The Price Lists warm-up is still present and unchanged since October.
+Other tabs load lazily. A cached render still incurs a full app rerun and
+the Opening Profile cover. The accepted production trace has warm server
+renders of 20–58 ms and visible completion of roughly 0.55–0.73 s for
+pricing, labor, machinery and overhead tabs. Preserve the accepted visual
+integrity, company isolation and authoritative data after Save. Next
+implementation should preload the remaining tab data and update the
+Profile tab region independently, then compare cold and warm browser
+timings with this baseline.
+[Measured baseline and proposal](COMPANY_PROFILE_CHECKPOINT.md#v1321-profile-and-admin-latency-baseline).
+
+PENDING, P2, user request, 2026-11-17. Reduce Admin navigation latency after
+the Profile work. Live openings measured 8.345 s and 6.395 s. Read-only
+dashboard RPC probes reproduced 6.847 s and 5.174 s, while the staff
+access reads took 0.226 s and 0.309 s. Investigate dashboard aggregation
+and reuse a recent authorized result, with an explicit freshness and
+refresh contract before adding a cache. Preserve revoked-access handling.
 
 DEFERRED, P1, V1.3.1. Extend fresh Upload/Processing transitions after the
 accepted first stage. The owner selected V1.3.2 as the next stage.

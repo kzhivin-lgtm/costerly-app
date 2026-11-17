@@ -1,5 +1,14 @@
 # Done Log
 
+Labor V1.3.2.1 accepted workflow checkpoint, 2026-11-17. Owner confirmed
+that screen fragments no longer appear. Tag
+`estimation-labor-v1.3.2.1-2026-11-17` pins `d2942be7`. The full
+private archive preserves the accepted live trace, standalone source
+bundle, browser cases and inherited Lev1/Adda controls. Replay and 139
+focused checks passed from restored source. Profile/Admin latency is
+recorded as a separate pending outcome with production measurements.
+See the [checkpoint](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1321-accepted-checkpoint).
+
 Labor V1.3.2.1, 2026-11-17. The owner's recording exposed the still-open
 wrapper losing Core ready receipts after server trace reset, plus blank
 Profile tab bodies. Host trace recovery and controller revision upgrades

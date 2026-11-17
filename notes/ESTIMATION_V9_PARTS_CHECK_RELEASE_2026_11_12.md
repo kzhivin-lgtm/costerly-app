@@ -1,5 +1,26 @@
 # Estimation 9 Parts Check from Upload
 
+## Labor V1.3.2.1 accepted checkpoint
+
+The owner confirmed that transitions now work normally and screen
+fragments no longer appear, then requested a full checkpoint.
+Tag `estimation-labor-v1.3.2.1-2026-11-17` pins runtime
+`d2942be787c8314b71e85c1c283e6595d66e02f4`. The tag is verified in GitHub.
+The accepted live trace `6a6ed888-e4f1-4749-94b7-473e5e4a13f4`
+contains 20 completed transitions.
+
+The private archive
+`backups/estimation-labor-v1.3.2.1-checkpoint-2026-11-17/`
+preserves source, a standalone Git bundle, the live trace, browser replay
+evidence, historical Lev1 and Adda PDFs, inputs, evidence, Parts Check
+and saved material plans. The archived controls replay from a restored
+bundle, and 139 focused checks pass against that restored source.
+
+This checkpoint accepts visual integrity. The owner separately requested
+faster Profile tabs and administrative navigation. The production
+measurement and the implementation proposal are recorded in the
+[Profile checkpoint](COMPANY_PROFILE_CHECKPOINT.md#v1321-profile-and-admin-latency-baseline).
+
 ## Labor V1.3.2.1 open session and Profile tabs
 
 The owner's recording `Запись экрана 2026-11-17 в 22.02.35.mov` shows
