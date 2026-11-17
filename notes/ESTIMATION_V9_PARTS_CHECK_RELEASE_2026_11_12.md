@@ -1,5 +1,22 @@
 # Estimation 9 Parts Check from Upload
 
+## Labor V1.2.17 Sheet Processing
+
+Sheet Processing uses the existing two-column comparison on Object Detail.
+Machinery selects CNC or panel saw and manual drilling for in-house work.
+A recorded edge bander uses the machine norm at 85% working availability.
+The iron-on estimate uses the approved manual norms and identifies tape
+that requires confirmation. Both CNC and the panel saw use the saved Parts
+Check and the selected stock from the Material Plan. The panel saw measures
+its own straight cuts with a 3.2 mm kerf and a 10 mm trim allowance per axis.
+A known contour or cutout prevents the saw estimate from becoming the
+in-house route. The subcontractor comparison uses its existing rates.
+
+The four saved Lev1, Lev2 and Adda object cards reproduced the approved
+shop benchmark. A total of 352 targeted tests passed. Local headless
+Chrome verified all three routes at 390 and 1280 px. The pre-release
+runtime is Labor V1.2.16 at `2fc9f11`.
+
 ## Labor V1.2.16 CNC comparison order
 
 Work continues in Labor V1.2. Runtime commit `6930392` changes the Object

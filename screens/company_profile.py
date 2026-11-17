@@ -81,6 +81,7 @@ from use_cases.machinery import (
     INDUSTRY_LABELS,
     PROFILE_COSTING_MACHINE_CODES,
     PROFILE_MACHINE_SPECS,
+    SHEET_PROCESSING_MACHINE_CODES,
     SUBCONTRACTOR_MACHINE_CODES,
     MachineryError,
     create_or_get_supplier,
@@ -1053,7 +1054,7 @@ def _render_owner_machinery(
         use_container_width=True,
     ):
         return
-    cnc_changed = False
+    sheet_processing_changed = False
     try:
         for draft in drafts:
             machine_code = str(draft["machine_code"])
@@ -1062,7 +1063,7 @@ def _render_owner_machinery(
                 if not draft.get("saved_status"):
                     continue
                 deactivate_company_machinery(access, machine_code=machine_code)
-                cnc_changed |= machine_code == "wood_cnc_router"
+                sheet_processing_changed |= machine_code in SHEET_PROCESSING_MACHINE_CODES
                 deactivate_supplier_services(access, machine_code=machine_code)
                 continue
             status = "in_house" if availability == "Yes" else "not_in_house"
@@ -1103,7 +1104,7 @@ def _render_owner_machinery(
                 accepts_external_work=False,
                 estimate_level=draft.get("estimate_level"),
             )
-            cnc_changed |= machine_code == "wood_cnc_router"
+            sheet_processing_changed |= machine_code in SHEET_PROCESSING_MACHINE_CODES
             deactivate_supplier_services(access, machine_code=machine_code)
             if status == "not_in_house" and supplier_id:
                 save_supplier_service(
@@ -1124,7 +1125,7 @@ def _render_owner_machinery(
         logger.exception("Company machinery batch save failed")
         st.error("Machinery settings could not be saved. Check the values and try again")
     finally:
-        if cnc_changed:
+        if sheet_processing_changed:
             comparisons = st.session_state.get("labor_v1_comparisons", {})
             for identity in list(comparisons):
                 if identity[0] == access.company_id:
