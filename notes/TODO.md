@@ -9,22 +9,44 @@ their previous totals on the four saved control cards. See the
 [checkpoint and replay](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1215-production-checkpoint) and the
 [1.2.16 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1216-cnc-comparison-order).
 
-IMPLEMENTED in V1.2.21, P1, USER REQUEST. Price made-to-size mirrors as
+IMPLEMENTED and checkpointed in V1.2.21, P1, USER REQUEST. Price made-to-size mirrors as
 finished pieces. A matching supplier price takes priority. The owner-approved
 allowance for ordinary 4 mm mirrors is ₪325/m² excluding VAT and includes
 straight cutting and flat perimeter polish. Keep nonstandard parts in a
 separate quote-required line. Saved Adda reproduces three pieces at ₪1,001.09
-net with each purchase funded once. Live acceptance of the estimate is pending.
-See the [glass and mirror costing record](GLASS_AND_MIRRORS_IL_SUPPLIER_COSTING_2026_11_17.md).
+net with one charge per piece. Cloudflare Pages and Railway verified on
+the tagged runtime. Fresh estimate acceptance is pending.
+See the [checkpoint and replay](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1221-production-checkpoint).
 
-PENDING, P1, USER REQUEST, after mirrors. Connect the accepted Block Assembly norms to
-Calculation. Read the same saved Parts Check as Sheet Processing and keep
-ownership per block. Include bench setup per block, cabinet and drawer
-assembly, hardware fitting and adjustment. Exclude on-site plinth installation
-and keep glass, mirror and lighting fitting outside this stage. Verify the
-active and planned minutes and base labor against the saved Lev2 and Adda
-replay in the workspace, `outputs/block_assembly_lev2_adda_2026_11_17.json`.
-The norms have owner acceptance; no released version calculates this block.
+IMPLEMENTED IN V1.2.23, P1, USER REQUEST. Block Assembly reads the saved Parts
+Check already loaded by Sheet Processing and preserves Block ownership.
+Object Detail shows total planned hours and base labor cost. Elements shows
+the minutes and costs per block and the operations behind each count. The calculator reproduced every
+operation count in the accepted Lev2 and both Adda controls in the workspace
+`outputs/block_assembly_lev2_adda_2026_11_17.json`. The accepted rate is
+₪50/h before payroll costs. Production acceptance and final cost aggregation
+remain open. [Control totals and recovery record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1223-block-assembly).
+
+PENDING, P1, USER REQUEST. Make the Sheet Processing of mirror backing
+panels visible by block. The saved Adda replay already allocates the
+plywood and includes both panels on CNC and panel-saw routes. Display
+B05 fits as one 1480 × 950 mm piece in 16 mm stock. Vanity B02 is 2850 ×
+1000 mm in 18 mm stock and the current 2440 × 1220 mm sheet produces two
+1425 × 1000 mm blanks. A shared layout supplies the object cost once.
+Proposed rules: use confirmed holes for drilling instead of the generic
+thickness allowance on these panels; show split status for both routes;
+prefer a compatible full-length sheet and flag the seam for review if
+none is available. Joining and mounting need separate approved scope.
+
+PENDING, P1, FOLLOW-UP. Carry explicit mirror and glass thickness from
+the drawing into the correct Parts Check rows before pricing. Verify
+that a linked explicit thickness takes priority over the 4 mm default
+and that ambiguity remains visible. V1.2.21 already uses a supported
+mirror tariff for a valid thickness present in Parts Check.
+
+PENDING, P2, FOLLOW-UP. Add verified glass tariffs for thicknesses beyond
+the 4 mm tempered display-glass allowance. Apply only to matching
+processing and dimensions. Unsupported work continues to require a quote.
 
 ACTIVE, P1, USER REQUEST. Release Labor V1 for sheet CNC in-house and
 subcontracting. Fresh Parts Check publishes an immutable layout after stock

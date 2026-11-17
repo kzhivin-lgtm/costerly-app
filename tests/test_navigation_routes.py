@@ -13,6 +13,25 @@ from state import session
 from use_cases import rfq_processing
 
 
+def test_session_fallback_reveals_login_instead_of_leaving_upload_progress(monkeypatch):
+    st.session_state.clear()
+    st.session_state.screen = "upload"
+    calls = []
+    monkeypatch.setattr(app, "configure_runtime_sink", lambda *_: None)
+    monkeypatch.setattr(app, "company_auth_enabled", lambda: True)
+    monkeypatch.setattr(app, "sync_browser_auth_session", lambda **_: True)
+    monkeypatch.setattr(app, "current_company_access", lambda **_: None)
+    monkeypatch.setattr(app, "invitation_from_url", lambda: None)
+    monkeypatch.setattr(app, "render_app_header", lambda: None)
+    monkeypatch.setattr(app, "clear_upload_processing_shell", lambda: calls.append("clear progress"))
+    monkeypatch.setattr(app, "render_login_or_signup", lambda _: calls.append("login"))
+    monkeypatch.setattr(app, "_signal_ready", lambda _, screen: calls.append(screen + " ready"))
+
+    app.main()
+
+    assert calls == ["clear progress", "login", "login ready"]
+
+
 def test_profile_route_stays_at_profile_level():
     st.session_state.clear()
     st.session_state.company_profile_tab = "Contacts"

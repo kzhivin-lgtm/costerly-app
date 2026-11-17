@@ -530,6 +530,8 @@ def main() -> None:
             _signal_ready(trace, "password_recovery")
             return
         if access is None:
+            # A session can expire after the browser has painted upload progress.
+            clear_upload_processing_shell()
             with trace.span("server.app_header_render"):
                 render_app_header()
             trace.set_screen("login")

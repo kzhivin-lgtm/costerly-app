@@ -1436,12 +1436,16 @@ def clear_upload_processing_shell() -> None:
         """
         <script>
         (() => {
-            const parentDoc = window.parent.document;
+            const parentWindow = window.parent;
+            const parentDoc = parentWindow.document;
             const shell = parentDoc.getElementById('costerly-upload-processing-shell');
             if (shell) shell.remove();
 
             parentDoc.documentElement.classList.remove('costerly-upload-processing-shell-active');
             parentDoc.body.classList.remove('costerly-upload-processing-shell-active');
+            parentWindow.clearInterval(parentWindow.__costerlyProcessingElapsedTimerV5);
+            parentWindow.__costerlyProcessingElapsedTimerV5 = null;
+            parentWindow.__costerlyProcessingElapsedStartedAtV5 = null;
         })();
         </script>
         """,
