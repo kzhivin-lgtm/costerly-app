@@ -522,6 +522,10 @@ def _abandon_password_recovery() -> None:
 
 
 def clear_auth_session() -> None:
+    profile_reads = st.session_state.get("company_profile_preload")
+    if isinstance(profile_reads, dict):
+        for entry in profile_reads.get("entries", {}).values():
+            entry["future"].cancel()
     for key in list(st.session_state.keys()):
         if key not in {
             "_app_boot_id",
@@ -1781,10 +1785,13 @@ def render_company_account(
     platform_access=None,
     trace=None,
     render_header_controls=None,
+    render_ready=None,
 ) -> None:
     profile_kwargs = {"platform_access": platform_access}
     if render_header_controls is not None:
         profile_kwargs["render_header_controls"] = render_header_controls
+    if render_ready is not None:
+        profile_kwargs["render_ready"] = render_ready
 
     if trace is None:
         from screens.company_profile import render_company_profile

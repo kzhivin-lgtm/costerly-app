@@ -298,6 +298,8 @@ def _browser_route(screen: str, *, company_id: str | None = None) -> dict[str, s
 
 
 def _signal_ready(trace, screen: str, *, company_id: str | None = None) -> None:
+    if screen == "account" and st.session_state.get("profile_ready_run_id") == trace.run_id:
+        return
     trace.set_screen(screen)
     trace.annotate(server_build_version=trace.build_version)
     trace.event("server.app_ready_component_enqueued")
@@ -354,11 +356,16 @@ def _render_screen(
     elif screen == "account":
         if access is None or access.company_id != company_id:
             raise PermissionError("Company access changed. Please sign in again.")
+        def profile_ready(profile_trace):
+            _signal_ready(profile_trace, "account", company_id=company_id)
+            st.session_state.profile_ready_run_id = profile_trace.run_id
+
         render_company_account(
             access,
             platform_access=platform_access,
             trace=trace,
             render_header_controls=render_header_controls,
+            render_ready=profile_ready,
         )
     elif screen == "admin":
         if access is None or platform_access is None:

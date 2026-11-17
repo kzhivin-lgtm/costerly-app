@@ -133,6 +133,7 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
 
     function stopWatching(transition) {
         transition.observer?.disconnect();
+        transition.scopeObserver?.disconnect();
         coreWindow.cancelAnimationFrame(transition.frame);
         coreWindow.clearTimeout(transition.timeout);
     }
@@ -142,6 +143,9 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
         if (transition.app) transition.app.inert = transition.wasInert;
         transition.cover.remove();
         pending = null;
+        if (transition.local) {
+            find('.st-key-company_profile_tab [role="tab"][aria-selected="true"]')?.focus({preventScroll: true});
+        }
     }
 
     function showFailure(transition, reason = "destination_not_ready") {
@@ -171,23 +175,46 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
         cover.style.cssText = "position:fixed;inset:0;z-index:2147483000;background:#f1efef;"
             + "display:flex;flex-direction:column;justify-content:center;align-items:center;"
             + "color:#392c47;font:500 1rem system-ui,sans-serif;";
+        const tabs = find(".st-key-company_profile_tab");
+        const local = name === "profile_tab_change" && Boolean(find("[data-costerly-profile-fragment]"));
+        if (local && tabs) {
+            const bounds = tabs.getBoundingClientRect();
+            const tablist = tabs.querySelector('[role="tablist"]').getBoundingClientRect();
+            cover.style.top = Math.max(0, tablist.bottom) + "px";
+            cover.style.left = bounds.left + "px";
+            cover.style.right = "auto";
+            cover.style.width = bounds.width + "px";
+            cover.dataset.profileTab = "true";
+        }
         const status = doc.createElement("span");
         status.className = "costerly-workflow-status";
         status.setAttribute("role", "status");
-        status.textContent = "Opening " + names[target] + "…";
+        status.textContent = local ? "Loading…" : "Opening " + names[target] + "…";
         cover.append(status);
         doc.body.append(cover);
 
         const app = doc.querySelector(".stApp");
-        const transition = {id, name, target, cover, status, app,
+        const transition = {id, name, target, cover, status, app, local,
                             wasInert: Boolean(app?.inert), from: displayed};
         pending = transition;
+        if (local) {
+            const heading = find(".company-profile-heading");
+            transition.scopeObserver = new coreWindow.MutationObserver(() => {
+                if (heading?.isConnected && !heading.closest('[data-stale="true"]')) return;
+                transition.local = false;
+                cover.style.inset = "0";
+                cover.style.width = "auto";
+                transition.scopeObserver.disconnect();
+            });
+            transition.scopeObserver.observe(doc.body, {childList: true, subtree: true,
+                attributes: true, attributeFilter: ["data-stale"]});
+        }
         // Let this click reach Streamlit, then block any further activation
         // in the outgoing screen while its replacement is being rendered.
         coreWindow.queueMicrotask(() => {
             if (pending !== transition) return;
             if (app) app.inert = true;
-            cover.focus({preventScroll: true});
+            if (!local) cover.focus({preventScroll: true});
         });
         transition.timeout = coreWindow.setTimeout(() => showFailure(transition), 15000);
         return true;
@@ -223,10 +250,12 @@ function workflowTransitionController(coreWindow, traceId, revision, receipt) {
                 schedule();
                 return;
             }
-            coreWindow.scrollTo(0, 0);
-            doc.querySelectorAll(".stMain, [data-testid='stAppViewContainer']").forEach(node => {
-                node.scrollTop = 0;
-            });
+            if (!transition.local) {
+                coreWindow.scrollTo(0, 0);
+                doc.querySelectorAll(".stMain, [data-testid='stAppViewContainer']").forEach(node => {
+                    node.scrollTop = 0;
+                });
+            }
             displayed = {...message, settledRun: message.runId};
             post({...message, transitionId: transition.id});
             close(transition);
