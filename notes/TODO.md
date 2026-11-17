@@ -9,12 +9,21 @@ their previous totals on the four saved control cards. See the
 [checkpoint and replay](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1215-production-checkpoint) and the
 [1.2.16 release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1216-cnc-comparison-order).
 
-PENDING, P1, PROPOSAL. Price made-to-size mirrors as finished pieces. Preserve
+PENDING, P1, USER REQUEST. Connect the accepted Block Assembly norms to
+Calculation. Read the same saved Parts Check as Sheet Processing and keep
+ownership per block. Include bench setup per block, cabinet and drawer
+assembly, hardware fitting and adjustment. Exclude on-site plinth installation
+and keep glass, mirror and lighting fitting outside this stage. Verify the
+active and planned minutes and base labor against the saved Lev2 and Adda
+replay in the workspace, `outputs/block_assembly_lev2_adda_2026_11_17.json`.
+The norms have owner acceptance; no released version calculates this block.
+
+DEFERRED, P1, PROPOSAL. Price made-to-size mirrors as finished pieces. Preserve
 specified or assumed thickness and distinguish the operations covered by a
 supplier price from any additional work. Confirm a comparable 4 mm reference
 with cutting, plain perimeter polishing, VAT and minimums before replacing
 the current area rate. The 5 mm Agan Barzel reference remains a separate
-finished-product comparison. See the
+finished-product comparison. Resume after the Labor restore review. See the
 [glass and mirror costing record](GLASS_AND_MIRRORS_IL_SUPPLIER_COSTING_2026_11_17.md).
 
 ACTIVE, P1, USER REQUEST. Release Labor V1 for sheet CNC in-house and
@@ -5567,15 +5576,13 @@ machining-only tariff cannot price this scenario. Check how the new bundle
 classification affects the existing Materials percentage base before runtime
 integration.
 
-PENDING, P1, USER REQUEST after the Labor V1.2.10 checkpoint. Add an
-in-house format panel saw and hand edging route. Reuse the checked
-Parts, estimate straight-through saw cuts and routine manual drilling,
-and use the same edge metres for approved iron-on tape or veneer
-application with a separate operator norm. Keep the owned sheet and
-tape in Materials. Validate feasible guillotine cuts and grain; send
-shaped work or unsupported machining to the shop's available route.
-A fourth fully manual cutting route is DEFERRED; prefer existing
-subcontracting for shops without a suitable format saw or CNC.
+IMPLEMENTED and restored in Labor V1.2.19; live acceptance of all routes
+remains open. Sheet Processing compares CNC or a format panel saw with
+manual drilling, machine or iron-on edging, and the supplier option. The
+restored code reproduced the saved Lev1, Lev2 and both Adda controls.
+See the [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1219-restore-from-the-v1215-checkpoint).
+A fourth fully manual cutting route is DEFERRED; prefer subcontracting
+for shops without a suitable panel saw or CNC.
 
 Proposed for Calculation after the 16 November routing discussion. Allow
 mixed routes within one estimate when the workshop lacks CNC. Compare a

@@ -1,5 +1,22 @@
 # Estimation 9 Parts Check from Upload
 
+## Labor V1.2.19 restore from the V1.2.15 checkpoint
+
+The rollback at `355e2ac` has the same tree as the owner-accepted V1.2.15
+checkpoint. The restored V1.2.19 release (`c3cebc9`) has the same tree as
+the last V1.2.18 before rollback (`01aad95`), apart from the three build
+version markers. That restores the five CNC comparison rows, the Sheet
+Processing routes, the Israel Reference evidence, the finished-glass set
+and the cleanup of stale generated Materials rows. V1.2.14's error
+recording and edge material accounting are already in the V1.2.15 base.
+
+V1.2.20 is a separate display update. A local replay reproduced the Sheet
+Processing baseline on Lev1, Lev2 and both Adda cards; 103 Python checks
+and two browser-event ingest checks passed. This does not replace a live
+check of the routes. Block Assembly norms have an accepted local replay,
+but the calculator was never part of this release series and does not
+need to be restored.
+
 ## Labor V1.2.17 Sheet Processing
 
 Sheet Processing uses the existing two-column comparison on Object Detail.
