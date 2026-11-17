@@ -81,13 +81,12 @@ class TestDisplayParts(unittest.TestCase):
         self.assertNotIn("carcass", _stock_notes([row], sources)["o"])
         self.assertFalse(_stock_notes([row], {"o": {"input_id": "another"}}))
 
-    def test_glass_box_above_pull_out_shelf_has_lid_and_four_walls(self):
+    def test_glass_box_has_five_panes_with_four_mm_stock(self):
         width, depth, height, thickness = (
             dimension(value, "test") for value in (544, 300, 123, 4)
         )
         rows = glass_box_parts(width, depth, height, thickness, scope_id="box", ref="V1:C1")
-        self.assertEqual({row["role"]: row["quantity"] for row in rows},
-                         {"glass_box_lid": 1, "glass_box_long_wall": 2, "glass_box_end_wall": 2})
+        self.assertEqual(sum(row["quantity"] for row in rows), 5)
         self.assertEqual([[d["mm"] for d in row["dimensions"].values()] for row in rows],
                          [[544, 300, 4], [544, 119, 4], [292, 119, 4]])
         self.assertTrue(all(row["inventory_item_id"] == "box" for row in rows))
@@ -132,12 +131,10 @@ class TestDisplayParts(unittest.TestCase):
             "planner": {"blocks": [{"id": "B1", "members": ["C1"]}]},
         }}}
         add_source_display_glass_parts(parts, inventory, analyze)
-        shelf, lid, long_wall, end_wall = scope["parts"]
-        self.assertEqual((shelf["role"], lid["role"]), ("pull_out_shelf", "glass_box_lid"))
-        self.assertEqual(lid["instance_ref"], shelf["instance_ref"])
-        self.assertEqual([d["mm"] for d in lid["dimensions"].values()], [544, 300, 4])
-        self.assertEqual(lid["dimensions"]["length"]["basis"], "construction_assumption")
-        self.assertEqual(lid["dimensions"]["width"]["refs"], ["depth-note"])
+        _, base, long_wall, end_wall = scope["parts"]
+        self.assertEqual([d["mm"] for d in base["dimensions"].values()], [544, 300, 4])
+        self.assertEqual(base["dimensions"]["length"]["basis"], "construction_assumption")
+        self.assertEqual(base["dimensions"]["width"]["refs"], ["depth-note"])
         self.assertIsNone(long_wall["dimensions"]["width"]["mm"])
         self.assertIsNone(end_wall["dimensions"]["width"]["mm"])
 

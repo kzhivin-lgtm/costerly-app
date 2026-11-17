@@ -159,16 +159,16 @@ service do create separate cells because they can materially change cost.
 - [ ] F02 Extra-clear low-iron glass. Required: 4/6/8/10/12 mm.
 - [ ] F03 Tinted float glass. Required: grey/bronze tiers and common thicknesses.
 - [ ] F04 Acid-etched or frosted glass. Required: one/two-side, clear/tinted and thickness.
-- [ ] F05 Tempered clear glass. Required: 4/5/6/8/10/12/15/19 mm, rectangular cut and edge state. Agan Barzel offers are archived: per-piece floor rejected for routine custom estimates.
-- [ ] F06 Tempered extra-clear or tinted glass. Required: color and thickness tiers for made-to-size orders. The Agan extra-clear offers were also archived.
+- [ ] F05 Tempered clear glass. Required: 4/5/6/8/10/12/15/19 mm, rectangular cut and edge state.
+- [ ] F06 Tempered extra-clear or tinted glass. Required: color and thickness tiers.
 - [ ] F07 Laminated glass. Required: 3+3, 4+4, 5+5, 6+6; clear/frosted/interlayer type.
 - [ ] F08 Wired or fire-rated glass. Required: rating, thickness and size.
-- [~] F09 Standard silver mirror. Required: 3/4/5/6 mm, raw and cut-to-size. Observed: three exact safety-backed frameless retail mirror products with known package areas; also verified one 5 mm cut-to-size polished offer with per-piece minimum. Raw and other thickness scopes remain open.
+- [~] F09 Standard silver mirror. Required: 3/4/5/6 mm, raw and cut-to-size. Observed: three exact safety-backed frameless retail mirror products with known package areas; thickness and raw/cut scope remain missing.
 - [ ] F10 Extra-clear mirror. Required: thickness and cut scope.
 - [ ] F11 Grey/bronze/smoked mirror. Required: tint and thickness.
 - [ ] F12 Antique/decorative mirror. Required: standard and premium pattern tiers.
 - [ ] F13 Safety-backed mirror. Required: backing film and thickness.
-- [~] F14 Glass processing commercial scopes. Observed cutting, flat edge and tempering as a retail bundle; the source was rejected for estimating because of its per-piece floor; separate raw and operation tariffs remain open. Record scope and minimum charge to avoid duplication. [Supplier evidence](GLASS_AND_MIRRORS_IL_SUPPLIER_COSTING_2026_11_17.md#public-references).
+- [ ] F14 Glass processing commercial scopes. Required: straight cut, polished edge, bevel, holes, notches, tempering and minimum charge stored separately from raw material.
 
 ## G. Stone, porcelain and solid surfaces
 

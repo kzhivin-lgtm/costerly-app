@@ -77,13 +77,13 @@ def _box(width, height, depth, thickness, material, back_t, partitions):
 
 
 def glass_box_parts(width, depth, height, thickness, *, scope_id, ref):
-    """Build four walls and a glass lid above the pull-out shelf that serves as the base."""
+    """Five panes, with the base below the sides and ends between long walls."""
     inside = _subtract(depth, thickness, 2)
     wall = _subtract(height, thickness, 1)
     material = "tempered glass"
     refs = {"inventory_item_id": scope_id, "instance_ref": ref}
     return [
-        _sized("glass_box_lid", 1, material, width, depth, thickness, **refs),
+        _sized("glass_box_bottom", 1, material, width, depth, thickness, **refs),
         _sized("glass_box_long_wall", 2, material, width, wall, thickness, **refs),
         _sized("glass_box_end_wall", 2, material, inside, wall, thickness, **refs),
     ]
@@ -110,7 +110,7 @@ def _shelves_under_glass_tips(source, shelves):
 
 
 def add_source_display_glass_parts(parts, inventory, analyze):
-    """Build lids and walls when each display glass arrow matches a distinct pull-out shelf."""
+    """Apply the five-pane recipe when a display note binds one-to-one to shelves."""
     for oid, obj in inventory["objects"].items():
         blocks = {block["id"]: block for block in analyze["objects"][oid]["planner"]["blocks"]}
         scopes = {scope["block_id"]: scope for scope in parts["objects"][oid]["blocks"]}
@@ -150,7 +150,7 @@ def add_source_display_glass_parts(parts, inventory, analyze):
                 pending_size = dimension(None, "unresolved", [note_ref, ref])
                 shelf = shelves_by_ref.get(ref, {}).get("dimensions", {})
                 width, depth = (derived("construction_assumption", [shelf.get(axis, pending_size)],
-                                        lambda mm: mm, reason="Estimate the lid footprint from the matching pull-out shelf.")
+                                        lambda mm: mm, reason="Estimate the glass base on its supporting shelf.")
                                 for axis in ("length", "width"))
                 scope["parts"].extend(glass_box_parts(
                     width, depth, scope.get("glass_box_height", pending_size), thickness, scope_id=zone["id"], ref=ref))

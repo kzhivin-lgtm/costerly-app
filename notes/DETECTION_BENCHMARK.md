@@ -1,13 +1,5 @@
 # Detection Agent benchmark
 
-## Estimation Labor downstream checkpoint, 2026-11-17
-
-Labor V1.2.15 is owner-accepted at `estimation-labor-v1.2.15-2026-11-17`. The saved Parts handoffs
-for Lev1, Lev2 and the two Adda objects replay through the CNC comparison.
-The [downstream benchmark](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1215-production-checkpoint) records sheet shares, part
-counts and both cost totals. This evidence covers Calculation on saved
-Parts and makes no new Detection accuracy or timing claim.
-
 ## Lev1 handoff to Estimation 9.17, 2026-11-13
 
 The failed 9.16 production input preserved all six Island boxes but

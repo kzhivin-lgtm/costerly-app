@@ -439,10 +439,6 @@ def apply_object_detail_css() -> None:
             margin-top: 12px;
         }
 
-        .object-detail-elements-table--priced {
-            --detail-grid: minmax(0, 2fr) minmax(0, 1.6fr) minmax(0, .7fr) minmax(0, 1fr) minmax(0, 1fr);
-        }
-
         .object-detail-table-head-row,
         .object-detail-table-row {
             display: grid;

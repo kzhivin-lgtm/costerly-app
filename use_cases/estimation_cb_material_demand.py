@@ -10,7 +10,6 @@ from use_cases.estimation_cb_geometry_parts import (
     STANDARD_BACKING_THICKNESS_MM, VENEERED_MDF, is_explicit_solid_wood_note, is_kitchen_name,
 )
 from use_cases.estimation_edge_banding import EDGE_FAMILY, EDGE_TAPE_NAMES, EDGE_TAPE_THICKNESS_MM, sheet_edge_run
-from use_cases.estimation_glass_parts import GLASS_SET_NAME, GLASS_SET_REQUIREMENT, finished_glass_part, finished_glass_set
 from use_cases.estimation_structural_bom import _CONSTRUCTION_MATERIAL_NAMES, _FAMILY_PREFERENCE
 from use_cases.material_engine_adapter import build_material_plan, material_plan_input_fingerprint, material_plan_snapshot, material_review_purchases
 from use_cases.material_identity_resolution import normalize_material_phrase
@@ -355,7 +354,6 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
     if len(scopes) != len({key for key, _ in scopes}):
         raise ValueError("Block and shared part IDs must be unique within the object")
     materials, parts, review_items, assumptions, edge_runs = {}, [], [], [], []
-    glass_sources, glass_parts = [], []
     inventory_issues = list(source.get("inventory_issues", source.get("inventory_review_items", ())))
     coverage = parts_report.get("source_coverage")
     if coverage and coverage != "reviewed":
@@ -444,10 +442,6 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                     family = alias_family
                     if family == "gypsum_board":
                         identity_hint = None
-            if glass := finished_glass_part(row, measurements, family=family, multiplier=multiplier):
-                glass_sources.append({**part_source, "measurements": measurements})
-                glass_parts.append(glass)
-                continue
             thickness_mm = measurements.get("thickness", {}).get("mm")
             if role == "visible_sheet" and family == _LDSP_FAMILY and not notes and not _positive(thickness_mm):
                 thickness_mm = _LDSP_DEFAULT_THICKNESS_MM
@@ -575,17 +569,6 @@ def build_cb_material_demand(*, parts_report, input_row, allowed_material_famili
                         if edge["tape_kind"] == "melamine" and material_refs:
                             edge["finish_group"] = _declared_edge_finish(notes)
                         edge_runs.append({"part_id": part_id, **edge})
-    if glass_parts:
-        glass_set = finished_glass_set(glass_parts)
-        materials[("finished_glass_set",)] = {
-            "requirement_id": GLASS_SET_REQUIREMENT, "source_name": GLASS_SET_NAME,
-            "family": "glass", "material_role": "finished_glass_set", "specification": {},
-            "basis": "construction_assumption", "evidence_refs": list(dict.fromkeys(
-                ref for source in glass_sources for ref in source["evidence_refs"]
-            )),
-            "quantity": object_quantity, "unit": "set", "part_sources": glass_sources,
-            "finished_glass_set": glass_set,
-        }
     edge_groups = defaultdict(list)
     for run in edge_runs:
         edge_groups[(run["tape_kind"], run["tape_width_mm"], run.get("finish_group", ""))].append(run["metres"])
@@ -653,7 +636,7 @@ def build_cb_material_facts(*, parts_report, input_rows, catalog_context, object
     return facts
 
 
-def _checked_parts_for_estimate(rows, estimated, estimated_counts, glass_part_ids):
+def _checked_parts_for_estimate(rows, estimated, estimated_counts):
     owner_counts = {}
     parts = []
     for row in rows:
@@ -668,7 +651,6 @@ def _checked_parts_for_estimate(rows, estimated, estimated_counts, glass_part_id
                       **{f"{axis}_mm": dimensions.get(axis, {}).get("mm")
                          for axis in ("length", "width", "thickness")},
                       **({"quantity_basis": "construction_assumption"} if part_id in estimated_counts else {}),
-                      **({"finished_glass": True} if part_id in glass_part_ids else {}),
                       **({"estimated_dimensions": estimates} if estimates else {})})
     return parts
 
@@ -703,9 +685,6 @@ def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
         checked_parts = parts_report["objects"][oid].get("parts", ()) if parts_report["stage"] == "Parts Check" else ()
         estimates = {}
         estimated_counts = {}
-        glass_material = next((m for m in item["materials"] if m["requirement_id"] == GLASS_SET_REQUIREMENT), {})
-        glass_set = glass_material.get("finished_glass_set")
-        glass_ids = {source["part_id"] for source in glass_material.get("part_sources", ())}
         for material in item["materials"]:
             stock_default = defaults.get((oid, material["requirement_id"]), {})
             for source in material["part_sources"]:
@@ -727,8 +706,7 @@ def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
                     estimated_counts[source["part_id"]] = 1
         coverage[oid] = {"source_part_count": item["source_part_count"], "issues": issues,
                          "unpriced_requirements": missing,
-                         "has_estimated_costs": oid in fallback_objects or bool(estimates or estimated_counts or
-                                                                               (glass_set and glass_set["set_price"])),
+                         "has_estimated_costs": oid in fallback_objects or bool(estimates or estimated_counts),
                          "has_unresolved_demands": any(value.startswith(f"{oid}:") for value in unresolved),
                          "materials": [
                              {**{key: material.get(key) for key in ("requirement_id", "source_name", "unit", "quantity",
@@ -739,8 +717,7 @@ def calculate_cb_materials(*, parts_report, input_rows, catalog_context,
                          ],
                          "blocks": [{key: block[key] for key in ("id", "name", "basis") if key in block}
                                     for block in parts_report["objects"][oid].get("blocks", ()) if "id" in block],
-                         "parts": _checked_parts_for_estimate(checked_parts, estimates, estimated_counts, glass_ids),
-                         **({"finished_glass_set": glass_set} if glass_set else {}),
+                         "parts": _checked_parts_for_estimate(checked_parts, estimates, estimated_counts),
                          "primary_preview_ref": item["primary_preview_ref"]}
     snapshot["parts_check"] = coverage
     snapshot["edge_runs_by_object"] = {oid: item.get("edge_runs", []) for oid, item in facts.items()}

@@ -4,7 +4,6 @@ from unittest.mock import patch
 
 from screens.estimation_labor_v1 import _comparison_html
 from use_cases.estimation_labor_v1 import CncFilePreparationParameters, build_sheet_layout, calculate_labor_v1
-from use_cases.sheet_processing import calculate_sheet_processing
 
 
 def _part(role, *, owner="B01", quantity=1):
@@ -32,49 +31,6 @@ def _plan(allocations, *, family="melamine_faced_particleboard", thickness=17, l
 
 
 class LaborV1Test(TestCase):
-    def test_sheet_processing_routes_from_machinery_and_keeps_the_comparison_table(self):
-        oid = "object-001"
-        report = {"objects": {oid: {"parts": [_part("fixed_panel")]}}}
-        plan = _plan([_allocation("B01:fixed_panel:001")])
-        plan["edge_runs_by_object"] = {oid: [{"tape_kind": "melamine", "tape_width_mm": 24, "metres": 2, "sides": 3}]}
-        layout = build_sheet_layout(report, plan)
-        machinery = {"availability": {"wood_cnc_router": "not_in_house", "wood_panel_saw": "in_house",
-                                      "wood_edge_bander": "not_in_house"}}
-        manual = calculate_sheet_processing(report, layout, plan, object_id=oid, machinery=machinery)
-        self.assertEqual(manual["in_house_route"], "panel_saw")
-        self.assertEqual(manual["panel_saw"]["volume"]["cuts"], 4)
-        self.assertEqual(manual["panel_saw"]["edging"]["minutes"], 17.5)
-        self.assertEqual(sum(manual["panel_saw"]["drilling"].values()), 25)
-        html = _comparison_html(manual)
-        self.assertIn("Sheet Processing", html)
-        self.assertIn("Confirm iron-on tape", html)
-        self.assertIn("Panel saw and manual drilling", html)
-        self.assertEqual(html.count('class="object-detail-table-row"'), 5)
-
-        machinery["availability"].update(wood_cnc_router="in_house", wood_edge_bander="in_house")
-        cnc = calculate_sheet_processing(report, layout, plan, object_id=oid, machinery=machinery)
-        self.assertEqual(cnc["in_house_route"], "cnc")
-        self.assertAlmostEqual(cnc["cnc_edging"]["minutes"], 10.886 / .85)
-        self.assertEqual(cnc["subcontractor"], manual["subcontractor"])
-
-        machinery["availability"].update(wood_cnc_router="not_in_house", wood_panel_saw="not_in_house")
-        supplier = calculate_sheet_processing(report, layout, plan, object_id=oid, machinery=machinery)
-        self.assertIsNone(supplier["in_house_route"])
-        self.assertIsNone(supplier["panel_saw"])
-        self.assertIn("In-house route unavailable", _comparison_html(supplier))
-
-    def test_sheet_processing_flags_cutouts_and_keeps_zero_edge_time(self):
-        oid = "object-001"
-        report = {"objects": {oid: {"parts": [{**_part("fixed_panel"), "has_internal_cutouts": True}]}}}
-        plan = _plan([_allocation("B01:fixed_panel:001")])
-        layout = build_sheet_layout(report, plan)
-        machinery = {"availability": {"wood_cnc_router": "not_in_house", "wood_panel_saw": "in_house"}}
-        result = calculate_sheet_processing(report, layout, plan, object_id=oid, machinery=machinery)
-        self.assertIsNone(result["in_house_route"])
-        self.assertTrue(result["panel_saw"]["geometry_review"])
-        self.assertEqual(result["panel_saw"]["edging"]["minutes"], 0)
-        self.assertIn("Review contours and cutouts", _comparison_html(result))
-
     def test_item_totals_share_saved_stock_and_show_only_its_issues(self):
         report = {"objects": {
             "object-001": {"parts": [_part("door_front"), _part("door_front")]},

@@ -1,4 +1,4 @@
-"""Sheet Processing comparison for the open Object Detail card."""
+"""Labor V1 comparison for the open Object Detail card."""
 
 from html import escape
 import json
@@ -10,11 +10,10 @@ from db.repositories import fetch_rfq_estimate_material_plan
 from db.supabase_client import get_supabase_client
 from observability.runtime import report_runtime_failure
 from use_cases.estimation_labor_v1 import (
-    LAYOUT_VERSION, SPLIT_ROLES, build_sheet_layout, describe_layout_issues, sheet_layout_basis,
+    LAYOUT_VERSION, SPLIT_ROLES, build_sheet_layout, calculate_labor_v1, describe_layout_issues, sheet_layout_basis,
 )
 from use_cases.estimation_parts_check_runtime import load_parts_check
-from use_cases.machinery import load_sheet_processing_machinery
-from use_cases.sheet_processing import calculate_sheet_processing
+from use_cases.machinery import load_cnc_operator_wage
 
 
 _LOG = logging.getLogger(__name__)
@@ -43,8 +42,8 @@ def _calculate(client, *, identity):
     layout = report.get("sheet_layout") or {}
     if layout.get("version") != LAYOUT_VERSION or layout.get("basis_sha256") != sheet_layout_basis(plan):
         layout = build_sheet_layout(report, plan)
-    result = calculate_sheet_processing(
-        report, layout, plan, object_id=object_id, machinery=load_sheet_processing_machinery(client, company_id),
+    result = calculate_labor_v1(
+        layout, plan, object_id=object_id, operator_gross_rate=load_cnc_operator_wage(client, company_id),
     )
     result["issues"] = describe_layout_issues(result["issues"], layout, report)
     return {"status": "ready", "result": result}
@@ -84,11 +83,11 @@ def _comparison_table(rows):
     )
 
 
-def _sheet_section(body, *, count_label=""):
+def _cnc_section(body, *, count_label=""):
     counts = f'<span class="object-detail-cnc-count">{escape(count_label)}</span>' if count_label else ""
     return (
         '<details class="object-detail-elements object-detail-elements-section object-detail-cnc">'
-        f'<summary class="object-detail-section-title">Sheet Processing{counts}</summary>'
+        f'<summary class="object-detail-section-title">CNC{counts}</summary>'
         f'{body}</details>'
     )
 
@@ -136,39 +135,6 @@ def _supplier_stock_html(rows):
     )
 
 
-def _panel_saw_breakdown(panel_saw, *, tape_stock, tape_stock_complete, layout_complete):
-    if not panel_saw:
-        return ""
-    edge = panel_saw["edging"]
-    minutes = [("Layout preparation", panel_saw["preparation_minutes"]),
-               ("Panel saw", sum(panel_saw["saw"].values())),
-               ("Manual drilling", sum(panel_saw["drilling"].values())), (edge["method"], edge["minutes"])]
-    rows = "".join(f"<tr><td>{escape(label)}</td><td>{value:.1f}</td></tr>" for label, value in minutes)
-    notes = [edge["note"]] if edge["note"] else []
-    if panel_saw["unplaced"]:
-        notes.append(f"{panel_saw['unplaced']} blanks need a different sheet format")
-    if panel_saw["geometry_review"]:
-        notes.append("Review contours and cutouts before using the panel saw route")
-    note_html = "".join(f'<p class="object-detail-cnc-caption">{escape(note)}</p>' for note in notes)
-    stock = panel_saw["materials"]
-    shares = sum(row["sheets"] for row in stock)
-    labor = sum(round(cost) for cost in (panel_saw["preparation_cost"], panel_saw["operator_cost"], edge["cost"]))
-    stock_cost = sum(row["stock_ex_vat"] or 0 for row in stock)
-    total = labor + round(stock_cost) + round(tape_stock or 0)
-    complete = (layout_complete and tape_stock_complete and not panel_saw["geometry_review"]
-                and not panel_saw["unplaced"] and not edge.get("unestimated")
-                and all(row["stock_ex_vat"] is not None for row in stock))
-    return (
-        '<details class="object-detail-table object-detail-cnc-breakdown" data-section="cnc">'
-        '<summary>Panel saw and manual work</summary>'
-        f'<p class="object-detail-cnc-caption">{_sheets(shares)} sheets · Labor {_money(labor)}'
-        f' · Estimated cost {_estimate(total, complete)}</p>'
-        '<table><thead><tr><th scope="col">Operation</th><th scope="col">Minutes</th></tr></thead>'
-        f'<tbody>{rows}</tbody><tfoot><tr><th scope="row">Total</th>'
-        f'<td>{panel_saw["minutes"]:.1f}</td></tr></tfoot></table>{note_html}</details>'
-    )
-
-
 def _comparison_html(result):
     work = result["work"]
     internal = result["in_house"]
@@ -177,15 +143,10 @@ def _comparison_html(result):
     preparation = result["file_preparation"]
     edge = result["edge_banding"]
     issues = result["issues"]
-    route = result.get("in_house_route", "cnc")
-    panel_saw = result.get("panel_saw")
     if not rows and not issues:
-        return _sheet_section('<p class="object-detail-cnc-caption">No sheet processing for this object.</p>')
-    in_house_rows = panel_saw["materials"] if route == "panel_saw" else rows
-    sheet_count = sum(row["sheets"] for row in in_house_rows)
-    count_label = f"{_sheets(sheet_count)} {'sheet' if sheet_count == 1 else 'sheets'}"
-    if route == "panel_saw" and abs(sheet_count - work["sheet_count"]) > 0.005:
-        count_label = f"{_sheets(sheet_count)} in-house / {_sheets(work['sheet_count'])} subcontractor sheets"
+        return _cnc_section('<p class="object-detail-cnc-caption">No sheet goods for CNC on this object.</p>')
+    sheets = _sheets(work["sheet_count"])
+    count_label = f"{sheets} {'sheet' if work['sheet_count'] == 1 else 'sheets'}"
     count_label += f", {work['blank_count']} {'part' if work['blank_count'] == 1 else 'parts'}"
     operator = internal["operator_ex_vat"]
     has_work = bool(work["blank_count"])
@@ -194,21 +155,9 @@ def _comparison_html(result):
     prep_minutes = preparation["minutes"]
     prep_cost = preparation["operator_ex_vat"]
     supplier_includes_prep = preparation["supplier_includes_preparation"]
-    inside_prep_minutes, inside_prep_cost = prep_minutes, prep_cost
-    inside_edge = result.get("cnc_edging", {"method": "Edge bander", "minutes": edge["minutes"],
-                                            "cost": edge["in_house_ex_vat"]})
-    inside_operator_note = f"CNC · {internal['operator_hours']} h" if has_work else ""
-    inside_prep_label = "File preparation"
-    if route == "panel_saw":
-        inside_prep_minutes = panel_saw["preparation_minutes"]
-        inside_prep_cost = panel_saw["preparation_cost"]
-        inside_prep_label = "Layout preparation"
-        operator = panel_saw["operator_cost"]
-        inside_operator_note = "Panel saw and manual drilling"
-        inside_edge = panel_saw["edging"]
     # Sum the rounded lines so the displayed whole-shekel totals reconcile.
-    internal_labor = round(operator) + round(inside_prep_cost) + round(inside_edge["cost"])
-    sheet_amounts = [row["stock_ex_vat"] for row in in_house_rows if row["sheets"]]
+    internal_labor = round(operator) + round(prep_cost) + round(edge["in_house_ex_vat"])
+    sheet_amounts = [row["stock_ex_vat"] for row in rows if row["sheets"]]
     priced_sheet_amounts = [amount for amount in sheet_amounts if amount is not None]
     sheet_stock = sum(priced_sheet_amounts) if priced_sheet_amounts else None
     sheet_stock_complete = len(sheet_amounts) == len(priced_sheet_amounts)
@@ -248,31 +197,24 @@ def _comparison_html(result):
     layout_complete = not issues and not result["unplaced_blanks"]
     unpriced_sheets = external["unpriced_sheets"]
     supplier_stock_note = f"{_sheets(unpriced_sheets)} need a quote" if unpriced_sheets else ""
-    duration = f"{inside_prep_minutes:.2f}".rstrip("0").rstrip(".")
-    edging_note = (f"{metres} · {inside_edge['minutes']:.1f} min" if edge["metres"] else "")
-    if edging_note and inside_edge["method"] == "Iron-on":
-        edging_note = " · ".join(("Iron-on", edging_note, inside_edge["note"]))
-    inside_complete = layout_complete and materials_complete and not inside_edge.get("unestimated")
+    duration = f"{prep_minutes:.2f}".rstrip("0").rstrip(".")
     comparison_rows = [
-        ((inside_prep_label, _money(inside_prep_cost) if inside_prep_minutes else "—",
-          f"{duration} min" if inside_prep_minutes else ""),
+        (("File preparation", _money(prep_cost) if prep_minutes else "—", f"{duration} min" if prep_minutes else ""),
+         ("Stock and cutting", _estimate(supplier_stock, not unpriced_sheets), supplier_stock_note)),
+        (("Operator", _money(operator) if has_work else "—",
+          f"{internal['operator_hours']} h" if has_work else ""),
+         ("Drilling allowance", _money(supplier_drilling), f"₪{external['drilling_rate']}/part")),
+        (("Edge banding labor", _money(edge["in_house_ex_vat"]) if edge["metres"] else "—",
+          f"{metres} · {edge['minutes']:.1f} min" if edge["metres"] else ""),
          ("File preparation", "Included", "") if prep_minutes and supplier_includes_prep else
          ("File preparation", _money(prep_cost) if prep_minutes else "—", "Our operator" if prep_minutes else "")),
-        (("Operator", _money(operator) if has_work else "—", inside_operator_note),
-         ("Stock and cutting", _estimate(supplier_stock, not unpriced_sheets), supplier_stock_note)),
-        (("Edge banding labor", _estimate(inside_edge["cost"] if edge["metres"] else None,
-                                         not inside_edge.get("unestimated")), edging_note),
+        (("Materials", _estimate(material_amount, materials_complete), " · ".join(material_notes)),
          ("Edge banding", _estimate(supplier_edge if edge["metres"] else None, supplier_edge_complete),
           " · ".join(supplier_edge_notes))),
-        (("Materials", _estimate(material_amount, materials_complete), " · ".join(material_notes)),
-         ("Drilling allowance", _money(supplier_drilling), f"₪{external['drilling_rate']}/part")),
-        (("Estimated cost", _estimate(internal_total, inside_complete), "Materials + labor"),
+        (("Estimated cost", _estimate(internal_total, layout_complete and materials_complete), "Materials + labor"),
          ("Estimated cost", _estimate(supplier_total, layout_complete and not unpriced_sheets
                                       and supplier_edge_complete), "Materials + labor")),
     ]
-    if route is None:
-        comparison_rows = [(None, outside) for _, outside in comparison_rows]
-        comparison_rows[1] = (("In-house route unavailable", "—", "See Machinery settings"), comparison_rows[1][1])
     comparison = _comparison_table(comparison_rows)
     breakdown = (
         ("Setup", "setup_minutes"), ("Load sheets", "load_minutes"),
@@ -296,10 +238,7 @@ def _comparison_html(result):
         f'<tbody>{minutes}</tbody><tfoot><tr><th scope="row">Total</th>'
         f'<td>{work["machine_minutes"]:.1f}</td></tr></tfoot></table>{joined}{excluded}</details>'
     )
-    saw_details = _panel_saw_breakdown(panel_saw, tape_stock=tape_stock, tape_stock_complete=tape_stock_complete,
-                                      layout_complete=layout_complete)
-    return _sheet_section(comparison + _supplier_stock_html(external["materials"])
-                          + (details if route == "cnc" else "") + saw_details, count_label=count_label)
+    return _cnc_section(comparison + _supplier_stock_html(external["materials"]) + details, count_label=count_label)
 
 
 def _estimate(value, complete):
@@ -314,7 +253,7 @@ def render_labor_v1(*, company_id, run_id, estimate_id, object_id):
     cache = st.session_state.setdefault("labor_v1_comparisons", {})
     view = st.empty()
     if identity not in cache:
-        view.markdown(_sheet_section('<p class="object-detail-cnc-caption">Preparing Sheet Processing…</p>'), unsafe_allow_html=True)
+        view.markdown(_cnc_section('<p class="object-detail-cnc-caption">Preparing CNC…</p>'), unsafe_allow_html=True)
         try:
             state = _calculate(get_supabase_client(), identity=identity) if run_id else {"status": "unavailable"}
         except Exception as exc:
@@ -327,12 +266,12 @@ def render_labor_v1(*, company_id, run_id, estimate_id, object_id):
         html = _comparison_html(cache[identity])
     else:
         messages = {
-            "running": "Waiting for Parts Check.",
-            "waiting_for_materials": "Waiting for the Material Plan.",
-            "different_revision": "Waiting for matching Parts Check and Materials.",
-            "failed": "Parts Check failed.",
+            "running": "CNC is waiting for Parts Check.",
+            "waiting_for_materials": "CNC is waiting for the Material Plan.",
+            "different_revision": "CNC is waiting for matching Parts Check and Materials.",
+            "failed": "CNC is unavailable because Parts Check failed.",
             "unavailable": "Parts Check is unavailable for this object.",
-            "read_failed": "Sheet Processing could not be loaded.",
+            "read_failed": "CNC could not be loaded.",
         }
-        html = _sheet_section(f'<p class="object-detail-cnc-caption">{messages[state["status"]]}</p>')
+        html = _cnc_section(f'<p class="object-detail-cnc-caption">{messages[state["status"]]}</p>')
     view.markdown(html, unsafe_allow_html=True)

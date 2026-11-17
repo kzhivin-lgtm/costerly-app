@@ -997,16 +997,6 @@ def upsert_rfq_estimate_lines(client: Client, *, lines: list[dict]) -> None:
     ).execute()
 
 
-def delete_stale_parts_check_material_lines(
-    client: Client, *, estimate_id: str, object_id: str, last_sort_order: int,
-) -> None:
-    """Remove generated rows beyond the current material list after it shrinks."""
-    (client.table("rfq_estimate_lines").delete()
-     .eq("estimate_id", estimate_id).eq("object_id", object_id)
-     .eq("section", "material").eq("source", "parts_check")
-     .gt("sort_order", last_sort_order).execute())
-
-
 def replace_rfq_overhead_lines_for_object(
     client: Client,
     *,

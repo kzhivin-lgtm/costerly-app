@@ -1,14 +1,5 @@
 # Done Log
 
-Labor V1.2.16 aligns File preparation and Edge banding across the CNC
-columns and pairs Operator with Stock and cutting and Materials with
-Drilling allowance. 89 focused tests passed, and the four saved cards
-kept their totals. See the [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1216-cnc-comparison-order).
-
-Labor V1.2.15 owner-accepted checkpoint, 2026-11-17. The owner confirmed
-the card and Front before the row reorder. Remote tag `estimation-labor-v1.2.15-2026-11-17` pins
-`36b3aa7`. See the [checkpoint and saved-control benchmark](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1215-production-checkpoint).
-
 Estimation 9.39, work 3.17.4.6. Removed excess Object Detail footer
 space and kept the fixed Privacy Policy on every screen. Local browser
 measurements at 1280 and 390 px matched the existing 58 px gap.
