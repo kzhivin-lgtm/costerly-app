@@ -1,0 +1,32 @@
+{
+  "ruleset_id": 27499066,
+  "required_check": "UI release gate",
+  "expected_app_id": 15368,
+  "bypass_actors": [],
+  "baseline_tag": "estimation-labor-v1.3.3-2026-11-17",
+  "first_success_sha": "295d020dab53d9bcad1af85e4c8934d3645337dd",
+  "first_success_run": 44184256668,
+  "test_execution_seconds": 128.341,
+  "job_seconds": 167,
+  "local_test_seconds": 102.829,
+  "negative_sha": "53aca9e3b5d47df80ffd4318c2ff3123f1c98f6e",
+  "negative_run": 44183739240,
+  "negative_execution_seconds": 26.968,
+  "negative_mutation": "Profile ready target account -> objects",
+  "server_canary_rejection": {
+    "bad_sha": "53aca9e3b5d47df80ffd4318c2ff3123f1c98f6e",
+    "canary_before": "46aef079d954efa882237d80ad218342a4655789",
+    "canary_after": "46aef079d954efa882237d80ad218342a4655789",
+    "push_exit_code": 1,
+    "rejection": "remote: error: GH013: Repository rule violations found for refs/heads/codex/ui-release-gate-canary.        \nremote: Review all repository rules at https://github.com/kzhivin-lgtm/costerly-app/rules?ref=refs%2Fheads%2Fcodex%2Fui-release-gate-canary        \nremote: \nremote: - Required status check \"UI release gate\" is failing.        \nremote: \nTo https://github.com/kzhivin-lgtm/costerly-app.git\n ! [remote rejected]   53aca9e3b5d47df80ffd4318c2ff3123f1c98f6e -> codex/ui-release-gate-canary (push declined due to repository rule violations)\nerror: failed to push some refs to 'https://github.com/kzhivin-lgtm/costerly-app.git'\n",
+    "fast_forward_candidate": true
+  },
+  "publisher_rejection": {
+    "bad_sha": "53aca9e3b5d47df80ffd4318c2ff3123f1c98f6e",
+    "error": "UI release gate is completed/failure; publication blocked",
+    "main_before": "46aef079d954efa882237d80ad218342a4655789",
+    "main_after": "46aef079d954efa882237d80ad218342a4655789"
+  },
+  "positive_canary_sha": "295d020dab53d9bcad1af85e4c8934d3645337dd",
+  "temporary_admin_required_for_routine_publication": false
+}

@@ -154,6 +154,9 @@ try{
  await ctx.page.close();
 
 }catch(error){
+ for (const context of browser.contexts()) for (const page of context.pages()) {
+  await page.screenshot({path:reportPath('profile_save-failure.png')}).catch(()=>{});
+ }
  console.log('Passed before failure',JSON.stringify(results));
  for(const page of browser.contexts().flatMap(context=>context.pages())){
   console.log('messages',JSON.stringify(await page.evaluate(()=>navMessages.slice(-5)).catch(()=>[])));

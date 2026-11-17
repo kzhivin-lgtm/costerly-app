@@ -74,4 +74,6 @@ jobs:
         with:
           name: ui-contract-${{ github.sha }}
           path: .ui-artifacts/
+          include-hidden-files: true
+          if-no-files-found: error
           retention-days: 14

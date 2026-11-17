@@ -2,8 +2,9 @@ import pytest
 import copy
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
-from tools.promote_ui_release import require_successful_gate, require_remote_ruleset
+from tools.promote_ui_release import require_successful_gate, require_remote_ruleset, github_token
 from tools.ui_gate_plan import needs_full_gate
 
 
@@ -51,3 +52,28 @@ def test_remote_gate_cannot_be_disabled_or_bypassed_by_the_publisher():
         broken[field] = value
         with pytest.raises(RuntimeError):
             require_remote_ruleset(broken)
+    hidden = copy.deepcopy(ruleset)
+    del hidden["bypass_actors"]
+    with pytest.raises(RuntimeError, match="visibility"):
+        require_remote_ruleset(hidden)
+
+
+def test_normal_git_identity_can_verify_policy_without_an_admin_token(monkeypatch):
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setattr("tools.promote_ui_release.subprocess.run", lambda *args, **kwargs: SimpleNamespace(returncode=0, stdout="username=fixture\npassword=fixture-credential\n"))
+    github_token.cache_clear()
+    try:
+        assert github_token() == "fixture-credential"
+    finally:
+        github_token.cache_clear()
+
+
+def test_ui_logs_are_retained_even_when_the_suite_fails():
+    import yaml
+    workflow = yaml.load(Path(".github/workflows/ui-contract.yml").read_text(), Loader=yaml.BaseLoader)
+    steps = workflow["jobs"]["ui-release-gate"]["steps"]
+    upload = next(step for step in steps if step.get("uses", "").startswith("actions/upload-artifact@"))
+    assert upload["if"].startswith("always()")
+    assert upload["with"]["include-hidden-files"] == "true"
+    assert upload["with"]["if-no-files-found"] == "error"

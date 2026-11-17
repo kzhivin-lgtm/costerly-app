@@ -1,5 +1,14 @@
 # Done Log
 
+UI release gate, 2026-11-18. Permanent synthetic browser fixtures and checks
+are tracked in Git, with exact-commit GitHub Actions and active ruleset
+27499066 protecting main/canary without bypass actors. First full Linux job:
+167 s including setup, 128.341 s tests. The real broken Profile transition
+failed CI and GitHub rejected its canary push with GH013. The publisher
+rejected it too; the successful checked SHA was accepted by canary.
+Final source adds authenticated policy visibility and mandatory CI artifact
+upload. See the [release evidence](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#ui-release-gate-18-november-2026).
+
 Labor V1.3.3 full accepted checkpoint, 2026-11-17. Owner confirmed normal
 production operation. Tag `estimation-labor-v1.3.3-2026-11-17` protects
 `46aef079`. The private archive preserves source, bundle, browser verification,

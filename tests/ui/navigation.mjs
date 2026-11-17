@@ -146,6 +146,9 @@ try {
  writeFileSync(reportPath('navigation.json'),JSON.stringify(report,null,2));
  console.log('Same saved estimate and zero Parts Check launches in all three browser routes.');
 } catch(error) {
+ for (const context of browser.contexts()) for (const page of context.pages()) {
+  await page.screenshot({path:reportPath('navigation-failure.png')}).catch(()=>{});
+ }
  for(const context of browser.contexts()) for(const page of context.pages()){
   console.log('messages',JSON.stringify(await page.evaluate(()=>navMessages.slice(-9)).catch(()=>[])));
   for(const frame of page.frames()) if(frame.url().startsWith('http://127.0.0.1')) {

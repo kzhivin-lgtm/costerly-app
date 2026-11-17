@@ -115,6 +115,9 @@ try{
  writeFileSync(reportPath('screen-recovery.json'),JSON.stringify(results,null,2));
  console.log(JSON.stringify(results,null,2));
 }catch(error){
+ for (const context of browser.contexts()) for (const page of context.pages()) {
+  await page.screenshot({path:reportPath('screen_recovery-failure.png')}).catch(()=>{});
+ }
  console.log('Passed before failure',JSON.stringify(results));
  for(const page of browser.contexts().flatMap(context=>context.pages())){
   console.log('messages',JSON.stringify(await page.evaluate(()=>navMessages.slice(-5)).catch(()=>[])));
