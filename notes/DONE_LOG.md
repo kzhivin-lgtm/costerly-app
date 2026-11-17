@@ -6,8 +6,10 @@ are tracked in Git, with exact-commit GitHub Actions and active ruleset
 167 s including setup, 128.341 s tests. The real broken Profile transition
 failed CI and GitHub rejected its canary push with GH013. The publisher
 rejected it too; the successful checked SHA was accepted by canary.
-Final source adds authenticated policy visibility and mandatory CI artifact
-upload. See the [release evidence](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#ui-release-gate-18-november-2026).
+Final source `2f391d74` passed 334 Python checks and all browser suites,
+126.191 s tests / 166 s complete job, and was promoted by the checked
+publisher. Both success and failure artifacts exist; the failure ZIP includes
+its PNG, report and 334-passed unit log. See the [release evidence](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#ui-release-gate-18-november-2026).
 
 Labor V1.3.3 full accepted checkpoint, 2026-11-17. Owner confirmed normal
 production operation. Tag `estimation-labor-v1.3.3-2026-11-17` protects

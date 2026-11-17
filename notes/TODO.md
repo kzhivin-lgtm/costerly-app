@@ -90,7 +90,7 @@ task. Acceptance does not assert a measured production speedup. Admin is
 the separate pending outcome below.
 [Implementation and verification](COMPANY_PROFILE_CHECKPOINT.md#v133-profile-preloading-and-tab-updates).
 
-IMPLEMENTED AND REMOTE VERIFIED, P1, owner-approved UI release gate,
+COMPLETED, P1, owner-approved UI release gate,
 2026-11-18. Persistent checks are tracked under tests/ui and the GitHub
 workflow. GitHub ruleset 27499066 is active on main and the non-production
 canary, requiring UI release gate from GitHub Actions (15368), with no
@@ -117,6 +117,13 @@ short path only when the cumulative diff from main contains no protected
 contract/runtime change. An intentional behavior or gate change needs the
 owner-approved impact report in UI_GUIDELINES; never silently weaken tests.
 Existing cold-start diagnostics and Admin performance stay separate.
+Final source `2f391d74` passed run 44185915943: 334 Python checks and all
+browser suites, 126.191 s tests / 166 s whole job. It was promoted to main
+by the checked publisher. Final failed source `3b341fe4` has its report,
+logs and PNG in artifact 14375545186; the ZIP contents were independently
+verified. Its canary push was rejected again by the named failed check.
+Successful artifact 14373897775 was retained too. The normal application
+source and production dependency versions match the accepted V1.3.3 tree.
 [Procedure and scope](../tests/ui/README.md).
 
 PENDING, P2, user request, 2026-11-17. Reduce Admin navigation latency after

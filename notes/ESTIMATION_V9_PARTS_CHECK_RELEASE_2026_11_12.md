@@ -50,6 +50,18 @@ artifact upload fail. The first bootstrap job exposed that hidden-folder
 omission, which is fixed and covered by a configuration regression check.
 Do not equate a green test process with evidence upload without checking it.
 
+Final source `2f391d74` passed [run 44185915943](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44185915943):
+334 Python checks and the complete browser suite, 126.191 s test execution
+and 166 s job time. The checked publisher promoted that exact SHA to main.
+Final negative source `3b341fe4` failed [run 44185930522](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44185930522) in
+27.066 s and its canary update was rejected with the same GH013 failed-check
+reason. Its retained artifact 14375545186 was downloaded and inspected:
+seven files, failed gate report, 334-passed unit log, and a valid failure PNG.
+The successful artifact is 14373897775. Routine policy verification was
+also tested using the existing Git identity, without the admin credential.
+A source comparison with `46aef079` confirms no application-screen, state,
+UI, style, wrapper, domain-calculation or production dependency-version change.
+
 Ruleset template: `.github/ui-release-ruleset.json`. Remote activation is
 verified independently of the template. The rollback baseline remains
 `estimation-labor-v1.3.3-2026-11-17` for application behavior; retain the
