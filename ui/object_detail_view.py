@@ -19,7 +19,7 @@ def _escape(value: object) -> str:
     return html.escape(str(value))
 
 
-def _money(value: object) -> str:
+def _money(value: object, *, cents: bool = False) -> str:
     """Format monetary values for object detail tables."""
     if value is None or value == "":
         return "—"
@@ -29,6 +29,8 @@ def _money(value: object) -> str:
         amount = float(value)
         if not math.isfinite(amount):
             return "—"
+        if cents:
+            return f"₪{amount:,.2f}".replace(",", "\u202f")
         return f"₪{math.floor(amount + 0.5):,}".replace(",", "\u202f")
     except (TypeError, ValueError):
         return _escape(value)
@@ -169,6 +171,14 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
         name = row.get("item")
         reference_name = row.get("material_reference_name")
         title = f' title="{_escape(reference_name)}"' if reference_name and reference_name != name else ""
+        if row.get("unit_price_display") == "Variable":
+            return [
+                _source_marker(row.get("price_source")) + f'<span class="object-detail-material-name">{_escape(name)}</span>',
+                f'<span data-glass-quantity="pieces">{_escape(_quantity(required_value))}</span> pieces' if required_value is not None else "—",
+                _escape(purchase_unit), '<span class="object-detail-unit-price">Variable</span>',
+                f'<span data-glass-quantity="sets">{_escape(_quantity(row.get("purchase_quantity_value")))}</span>',
+                f'<span class="object-detail-row-cost">{_money(row.get("total"))}</span>',
+            ]
         return [
             _source_marker(row.get("price_source"))
             + f'<span class="object-detail-material-name"{title}>{_escape(name)}</span>',
@@ -264,6 +274,7 @@ def _material_preview(row: dict[str, object]) -> dict[str, object]:
         "purchase_quantity_value", "purchase_quantity_line_id", "purchase_kind",
         "purchase_is_manual", "prior_required", "prior_purchase_quantity", "purchase_unit_cost", "stock_coverage",
         "stock_cuts", "stock_kerf_mm",
+        "unit_price_display", "glass_pieces_per_set",
         "is_coating", "locked", "policy_percent", "policy_basis", "item",
     ) if key in row}
 
@@ -387,25 +398,28 @@ def _final_html(data: dict[str, object]) -> str:
     )
 
 
-def _elements_table(rows, label):
+def _elements_table(rows, label, *, priced=False):
     if not rows:
         return '<p class="object-detail-elements-empty">No parts listed.</p>'
     body = []
     for row in rows:
+        name = _escape(row.get("label"))
+        if priced:
+            name += f'<br><small>{_escape(row.get("processing"))}</small>'
+        cells = [name, _escape(row.get("size")), _escape(_quantity(row.get("quantity")))]
+        if priced:
+            cells.extend(_money(row.get(key), cents=True) for key in ("unit_price", "total"))
         body.append(
             '<div class="object-detail-table-row" data-section="elements" role="row">'
-            f'<div class="object-detail-table-cell" role="cell">{_escape(row.get("label"))}</div>'
-            f'<div class="object-detail-table-cell" role="cell">{_escape(row.get("size"))}</div>'
-            f'<div class="object-detail-table-cell" role="cell">{_escape(_quantity(row.get("quantity")))}</div>'
-            '</div>'
+            + "".join(f'<div class="object-detail-table-cell" role="cell">{cell}</div>' for cell in cells)
+            + '</div>'
         )
+    classes = "object-detail-table object-detail-elements-table" + (" object-detail-elements-table--priced" if priced else "")
+    columns = ["Element", "Dimensions", "Quantity"] + (["Unit price", "Total"] if priced else [])
+    headers = "".join(f'<div class="object-detail-table-head" role="columnheader">{column}</div>' for column in columns)
     return (
-        f'<div class="object-detail-table object-detail-elements-table" role="table" aria-label="{_escape(label)}">'
-        '<div class="object-detail-table-head-row" role="row">'
-        '<div class="object-detail-table-head" role="columnheader">Element</div>'
-        '<div class="object-detail-table-head" role="columnheader">Dimensions</div>'
-        '<div class="object-detail-table-head" role="columnheader">Quantity</div>'
-        '</div>'
+        f'<div class="{classes}" role="table" aria-label="{_escape(label)}">'
+        f'<div class="object-detail-table-head-row" role="row">{headers}</div>'
         f'{"".join(body)}</div>'
     )
 
@@ -419,7 +433,7 @@ def _elements_html(groups: object, *, revision: object = None, object_id: object
     sections = []
     for group in groups:
         label = group["label"]
-        table = _elements_table(group["rows"], label or "Elements")
+        table = _elements_table(group["rows"], label or "Elements", priced=group.get("priced", False))
         if label:
             sections.append(
                 '<details class="object-detail-element-group">'

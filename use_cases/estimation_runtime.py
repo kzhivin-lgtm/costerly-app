@@ -11,6 +11,7 @@ from use_cases.estimation import start_estimation_for_run
 from use_cases.rfq_processing import apply_file_review_edits, save_file_review_run_metadata
 from agents.anthropic_adapter import DETECTION_PROMPT_VERSION
 from db.repositories import (
+    delete_stale_parts_check_material_lines,
     delete_rfq_estimate_material_purchase_overrides,
     fetch_estimation_object_input,
     fetch_latest_ocr_result,
@@ -104,6 +105,10 @@ def _publish_material_demand_lines(client, *, estimate_id, facts_by_object, repl
             replace_rfq_estimate_lines_for_object(client, estimate_id=estimate_id, object_id=object_id, lines=lines)
         else:
             upsert_rfq_estimate_lines(client, lines=lines)
+            delete_stale_parts_check_material_lines(
+                client, estimate_id=estimate_id, object_id=object_id,
+                last_sort_order=lines[-1]["sort_order"] if lines else 0,
+            )
 
 
 def _calculate_material_plan(*, client, estimate_id, company_id, parts_report, input_rows, review_order):

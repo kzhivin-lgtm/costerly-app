@@ -2061,6 +2061,14 @@ def install_object_detail_input_guard(
                 const nextCount = quantityEdit ? Number(quantityEdit.value) : count;
                 const projected = materialRows().map(row => {
                     const base = rowPreview(row);
+                    if (base.unit_price_display === "Variable") {
+                        const sets = quantityEdit ? Math.ceil(nextCount) : base.purchase_quantity_value;
+                        const setLabel = row.querySelector('[data-glass-quantity="sets"]');
+                        const pieceLabel = row.querySelector('[data-glass-quantity="pieces"]');
+                        if (setLabel) setLabel.textContent = String(sets);
+                        if (pieceLabel) pieceLabel.textContent = String(sets * base.glass_pieces_per_set);
+                        return {row, base, cost: sets * (base.purchase_unit_cost ?? 0)};
+                    }
                     const required = rowField(row, "required_material");
                     const purchase = rowField(row, "purchase_quantity");
                     const req = required && draft.get(editKey(contextFor(required)));
@@ -2251,7 +2259,8 @@ def install_object_detail_input_guard(
                     if (!row) continue;
                     row.dataset.materialPreview = JSON.stringify(base);
                     const unitPrice = row.querySelector(".object-detail-unit-price");
-                    if (unitPrice) unitPrice.textContent = base.purchase_unit_cost == null ? "—" : formatMoney(base.purchase_unit_cost);
+                    if (unitPrice) unitPrice.textContent = base.unit_price_display ||
+                        (base.purchase_unit_cost == null ? "—" : formatMoney(base.purchase_unit_cost));
                     for (const field of ["required_material", "purchase_quantity"]) {
                         const input = rowField(row, field);
                         if (!input || base[field + "_value"] == null) continue;

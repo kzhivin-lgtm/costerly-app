@@ -1,0 +1,64 @@
+{
+  "market_code": "IL",
+  "observed_on": "2026-11-17",
+  "vat_percent": 18,
+  "sources": {
+    "tempered": {
+      "url": "https://aganbarzel.com/products/%D7%96%D7%9B%D7%95%D7%9B%D7%99%D7%AA-%D7%9E%D7%97%D7%95%D7%A1%D7%9E%D7%AA",
+      "source_sku": "Frameless_Tempered",
+      "dimensions_mm": [
+        [
+          300,
+          2000
+        ],
+        [
+          50,
+          1100
+        ]
+      ],
+      "supplier_formula": "a*b*0.0001*(c+d)",
+      "supplier_condition": "a*b*0.0001*(c+d) > (c+d)*0.65, a*b*0.0001*(c+d), (c+d)*0.65",
+      "supplier_extra_term": "a*b*0.0000001*c",
+      "coverage": [
+        "cut_to_size",
+        "flat_edge_polishing",
+        "tempering"
+      ],
+      "base_rate_by_thickness_mm": {
+        "4": 320,
+        "5": 320,
+        "6": 320,
+        "8": 440,
+        "10": 550
+      },
+      "extra_clear_surcharge_ils_m2": 140,
+      "min_billable_m2_per_piece": 0.65,
+      "area_surcharge_rate_fraction": 0.001
+    },
+    "mirror": {
+      "url": "https://aganbarzel.com/products/frameless",
+      "source_sku": "Frameless_Silver",
+      "dimensions_mm": [
+        [
+          200,
+          2000
+        ],
+        [
+          100,
+          1100
+        ]
+      ],
+      "supplier_formula": "a*b*0.0385",
+      "supplier_condition": "(a*b*0.0385) > 220, (a*b*0.0385) , 220",
+      "supplier_extra_term": "d + g + h",
+      "coverage": [
+        "cut_to_size",
+        "flat_edge_polishing"
+      ],
+      "thickness_mm": 5,
+      "gross_rate_ils_m2": 385,
+      "min_gross_ils_per_piece": 220,
+      "selected_mount_option_gross_ils": 0
+    }
+  }
+}
