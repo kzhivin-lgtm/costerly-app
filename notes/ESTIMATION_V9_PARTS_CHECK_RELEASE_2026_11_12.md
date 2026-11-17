@@ -1,5 +1,27 @@
 # Estimation 9 Parts Check from Upload
 
+## Labor V1.3.3 Profile preloading and tab updates
+
+Runtime `46aef079`, build
+`estimation-labor-v1.3.3-profile-preloading-detection-v8.4.29`.
+Profile prepares the remaining tab data after Overhead and changes tabs
+inside a fragment, preserving the title/navigation and showing local Loading
+while the requested body is pending. The existing ready protocol still controls
+screen navigation. Auth revalidation, identity-scoped prepared reads, expiry
+and successful-mutation invalidation protect saved data and access boundaries.
+Admin optimization remains deferred.
+
+316 checks pass. Local desktop/mobile and old-wrapper replay covers 54
+transitions and 826 frames, with no mixed screens, no full-screen tab cover,
+the same saved Lev1 price and no new Parts Check. Seven Save/reopen paths,
+write-failure retry, keyboard, auth expiry and member access passed with
+production UI/handlers and a simulated database. Controlled warm-tab results
+are 200–269 ms; production latency and authenticated owner acceptance remain
+open. Production Core/wrapper markers match the build above, Core health
+is HTTP 200, and anonymous Login negotiates the workflow protocol.
+The accepted rollback is `estimation-labor-v1.3.2.1-2026-11-17` (`d2942be7`).
+[Details and evidence](COMPANY_PROFILE_CHECKPOINT.md#v133-profile-preloading-and-tab-updates).
+
 ## Labor V1.3.2.1 accepted checkpoint
 
 The owner confirmed that transitions now work normally and screen

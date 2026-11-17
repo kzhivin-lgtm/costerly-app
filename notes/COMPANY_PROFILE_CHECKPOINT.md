@@ -1,5 +1,70 @@
 # Company Profile checkpoint
 
+## V1.3.3 Profile preloading and tab updates
+
+17 November 2026. Runtime commit `46aef079`. The owner authorized Profile
+first, preloading remaining tabs, removing full-screen Opening on tab changes,
+verifying Save and deploying the next version. Admin optimization is deferred.
+The accepted rollback remains `estimation-labor-v1.3.2.1-2026-11-17` at
+`d2942be7`; its complete private archive remains intact.
+
+[verified] After Overhead renders, a shared executor with at most three
+workers prepares the company row (Contacts and Bank Details), members,
+machinery/suppliers/services, and owner-only employees. Price Lists retains
+its existing projection futures. Pricing uses the already loaded metrics.
+The new prepared reads are keyed by company, user and role, expire after
+60 seconds, return copies, and never mutate Streamlit session state from a
+worker. No polling or timer was added to start these reads. A selected tab
+waits only for its own data. Identity changes and sign out discard queued
+reads. Successful saves invalidate their resource before the next read;
+an older running future cannot restore pre-save values.
+
+[verified] The main tab region is a Streamlit fragment. Native selection
+reruns that region, revalidates company access and emits a fresh ready signal
+through the existing transition protocol. The title and navigation remain
+mounted. A pending tab covers only its body with Loading; global navigation
+retains the accepted cover. If auth expiry requires a full rerun to Login,
+the local cover expands with the outgoing screen. Existing form validation,
+save handlers and Price Lists projection behavior remain in place.
+
+### Verification
+
+- 316 focused checks pass, including seven new preload/isolation/invalidation
+  cases. Python and generated JavaScript syntax checks pass.
+- Actual local Streamlit UI inside the Cloudflare wrapper: 54 transitions,
+  826 sampled frames, zero visible mixed screens, and zero full-screen tab
+  covers. Current wrapper, still-open old wrapper, desktop 1280 px and mobile
+  390 px are covered. The title DOM object survives each main tab change.
+- Save/reopen: Overhead, Pricing, Contacts, Bank Details (including leading
+  zeros), Machinery, employee addition and member removal persist on the
+  simulated database using production loaders, validation and write handlers.
+  Worker auto-calculation yields ILS 68.75/hour and ILS 12,787.50/month for
+  rate 55, factor 1.25 and 186 hours. Widget tests wait for each server update.
+- A refused Contacts write retains entered text, shows an error and no success,
+  then persists on retry. Expired auth during a tab change reaches Login.
+  Members see read-only Contacts and no employee mutation controls. Keyboard
+  ArrowRight, End and Home pass.
+- The six raw tab-data reads finish before those tabs are opened; the next
+  five tab switches perform no further raw tab-data reads. With 250 ms
+  injected read latency, a controlled local run measured initial Profile
+  971 ms, then Labor 269 ms, Machinery 250 ms, Contacts 234 ms, Bank Details
+  215 ms and Users 200 ms. These local results are not directly comparable
+  to the production baseline below.
+- Saved Lev1 still opens the same estimate
+  `run_e24d2c62585843acbfd871554fa4b1b2_estimate_20261117175354`, Booth Bench
+  ILS 5,193.11, with zero Parts Check launches across the three routes.
+
+Evidence: `/private/tmp/costerly-v133-browser.json`, `costerly-v133-save.json`,
+`costerly-v133-extra.json`, `costerly-v133-final-unit.txt` and their matching
+scripts under `/private/tmp/`. GitHub main points to runtime `46aef079`.
+The hosted Core and Cloudflare wrapper both serve
+`estimation-labor-v1.3.3-profile-preloading-detection-v8.4.29`.
+Core health returned HTTP 200, Login was visible, and the workflow protocol
+negotiated on the hosted pair. Evidence:
+`/private/tmp/costerly-v133-production.log` and matching `.mjs` probe.
+Fresh authenticated owner acceptance and production Profile latency remain
+open; neither the fixture nor the anonymous hosted probe establishes them.
+
 ## V1.3.2.1 Profile and Admin latency baseline
 
 17 November 2026. The owner accepted the absence of visible screen fragments

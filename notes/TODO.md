@@ -69,18 +69,21 @@ The full private archive preserves the source, controls, browser tests and the
 accepted live trace. Profile latency is a separate open outcome.
 [Video follow-up](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1321-open-session-and-profile-tabs).
 
-PENDING, P1, user request, 2026-11-17. Restore the expected prepared Profile
-tabs after the initial Overhead Expenses view and reduce visible tab delay.
-The Price Lists warm-up is still present and unchanged since October.
-Other tabs load lazily. A cached render still incurs a full app rerun and
-the Opening Profile cover. The accepted production trace has warm server
-renders of 20–58 ms and visible completion of roughly 0.55–0.73 s for
-pricing, labor, machinery and overhead tabs. Preserve the accepted visual
-integrity, company isolation and authoritative data after Save. Next
-implementation should preload the remaining tab data and update the
-Profile tab region independently, then compare cold and warm browser
-timings with this baseline.
-[Measured baseline and proposal](COMPANY_PROFILE_CHECKPOINT.md#v1321-profile-and-admin-latency-baseline).
+IMPLEMENTED IN V1.3.3, P1, user request, 2026-11-17. Prepare the remaining
+Profile data after Overhead Expenses and update the tab region without
+full-screen Opening. Company, members, machinery and owner-only employees
+preload through three bounded workers. Existing Price Lists projections and
+metrics caches remain in use. Successful mutations invalidate their prepared
+read; sign out, changed company or changed role discards queued data.
+Local Chromium checks passed 54 desktop, mobile and old-wrapper transitions,
+with zero mixed screens, zero full-screen tab covers and unchanged saved Lev1.
+Seven Save/reopen paths, failed Save/retry, keyboard, expiry and member access
+passed with the real UI and production handlers on a simulated database.
+316 focused checks passed. Controlled local warm tabs took 200–269 ms,
+without another tab-data read. This is not a production speedup measurement.
+Fresh authenticated production acceptance remains open. Admin is the
+separate pending outcome below.
+[Implementation and verification](COMPANY_PROFILE_CHECKPOINT.md#v133-profile-preloading-and-tab-updates).
 
 PENDING, P2, user request, 2026-11-17. Reduce Admin navigation latency after
 the Profile work. Live openings measured 8.345 s and 6.395 s. Read-only
