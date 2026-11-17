@@ -1,5 +1,40 @@
 # Company Profile checkpoint
 
+## V1.3.3 accepted checkpoint and change-protection proposal
+
+17 November 2026. The owner confirmed normal operation of the production
+release and requested a full checkpoint. Tag
+`estimation-labor-v1.3.3-2026-11-17` pins runtime
+`46aef079d954efa882237d80ad218342a4655789`.
+Private archive: `/Users/qb/Documents/ChatGPT/Costerly/backups/estimation-labor-v1.3.3-checkpoint-2026-11-17/`.
+It preserves source, a standalone Git bundle, original browser tests and
+reports, a prepared browser replay, the production live trace, records and
+inherited Lev1/Adda PDFs, evidence, Parts Check and saved plans. The bundle
+was independently restored; 316 focused checks and the offline controls pass.
+No paid model run was created for checkpoint verification.
+
+The accepted live trace `03488eac-540f-4531-9988-e56143bca865` has 12 completed
+transitions, including ten Profile tab changes. Their observed visible times
+are 0.538–2.669 s. Labels added by the new Profile tracing are redacted by
+the existing runtime metadata policy, so individual tab names cannot be
+reliably reconstructed. This sample does not establish a speedup over the
+previous session or a latency guarantee. At initial startup the same trace
+records the existing 8-second wrapper readiness fallback, before the completed
+transitions. The cause remains unknown and is retained in the existing
+cold-start task. The two build-mismatch events from anonymous deployment
+probes are separate traces and are not owner-tab failures.
+
+The owner also asked how to prevent future regression and require notice
+before intentionally changing navigation/cache behavior. Inspection confirms
+that repository unit/contract checks exist, but the latest browser suite is
+external to the repository, and the runtime tree has no tracked Actions
+workflow or CODEOWNERS file. GitHub-side enforcement is unknown. The current
+proposal is recorded once in TODO under Workflow transitions: a behavior
+contract in existing UI guidelines, durable browser fixtures, mandatory
+CI/deploy verification, and explicit approval for protected behavior changes.
+No new gate, branch rule, architecture boundary or approval mechanism was
+implemented. Do not mistake the recovery tag for regression prevention.
+
 ## V1.3.3 Profile preloading and tab updates
 
 17 November 2026. Runtime commit `46aef079`. The owner authorized Profile
@@ -62,8 +97,9 @@ The hosted Core and Cloudflare wrapper both serve
 Core health returned HTTP 200, Login was visible, and the workflow protocol
 negotiated on the hosted pair. Evidence:
 `/private/tmp/costerly-v133-production.log` and matching `.mjs` probe.
-Fresh authenticated owner acceptance and production Profile latency remain
-open; neither the fixture nor the anonymous hosted probe establishes them.
+The owner subsequently accepted normal production operation, as recorded
+above. Production latency remains observational; neither the fixture nor
+the anonymous hosted probe establishes a production speedup.
 
 ## V1.3.2.1 Profile and Admin latency baseline
 

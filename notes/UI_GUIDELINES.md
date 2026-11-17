@@ -3,6 +3,19 @@
 These rules apply to every Costerly AI screen and workflow. A missing interaction
 state is a product defect, not optional polish.
 
+## Accepted workflow reference
+
+The owner-accepted V1.3.3 baseline is pinned at
+`estimation-labor-v1.3.3-2026-11-17` (`46aef079`). It preserves saved-estimate
+reuse, ready-correlated screen navigation, old-wrapper compatibility and
+Profile tab updates without a full-screen Opening. Save invalidation and
+company/user/role isolation are part of the tested baseline. See the
+[checkpoint and evidence](COMPANY_PROFILE_CHECKPOINT.md#v133-accepted-checkpoint-and-change-protection-proposal).
+The initial startup fallback remains an open diagnostic, not an accepted
+performance guarantee. The proposed CI/deployment enforcement and explicit
+behavior-change approval mechanism are pending in TODO; this reference does
+not claim that either mechanism has been enabled.
+
 ## Mandatory scenario-first workflow
 
 Do not begin an interface layout or interaction revision from the happy path

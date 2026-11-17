@@ -1,5 +1,14 @@
 # Done Log
 
+Labor V1.3.3 full accepted checkpoint, 2026-11-17. Owner confirmed normal
+production operation. Tag `estimation-labor-v1.3.3-2026-11-17` protects
+`46aef079`. The private archive preserves source, bundle, browser verification,
+accepted live trace and historical Lev1/Adda controls. Independent restore
+passes 316 checks and reproduces the controls. The startup fallback caveat
+remains in the existing cold-start task. The owner's question about future
+UI/cache protection is recorded as a proposal awaiting approval; no runtime
+or GitHub enforcement setting changed. See the [checkpoint record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v133-accepted-production-checkpoint).
+
 Labor V1.3.3, 2026-11-17, runtime `46aef079`. Profile preloads remaining
 tab data after Overhead and updates only its tab region, keeping the header
 visible. Save invalidation, role/company isolation and sign-out cancellation
@@ -7,8 +16,8 @@ are covered. 316 checks, 54 browser transitions and seven Save/reopen paths
 pass locally; failure/retry, expiry, keyboard and member access also pass.
 The browser fixture uses production UI/handlers with simulated persistence.
 Core and Cloudflare serve the matching V1.3.3 build; health and anonymous
-Login/protocol checks pass. Fresh authenticated production acceptance remains
-open. Admin optimization is deferred. See the [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v133-profile-preloading-and-tab-updates).
+Login/protocol checks pass. The owner subsequently accepted the production
+release, recorded above. Admin optimization is deferred. See the [release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v133-profile-preloading-and-tab-updates).
 
 Labor V1.3.2.1 accepted workflow checkpoint, 2026-11-17. Owner confirmed
 that screen fragments no longer appear. Tag

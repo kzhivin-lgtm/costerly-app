@@ -1,5 +1,25 @@
 # Estimation 9 Parts Check from Upload
 
+## Labor V1.3.3 accepted production checkpoint
+
+The owner confirmed normal operation and requested the full checkpoint.
+Tag `estimation-labor-v1.3.3-2026-11-17` pins runtime
+`46aef079d954efa882237d80ad218342a4655789`. Core and wrapper serve
+`estimation-labor-v1.3.3-profile-preloading-detection-v8.4.29`.
+The complete private archive is
+`backups/estimation-labor-v1.3.3-checkpoint-2026-11-17/` in the handoff
+workspace. Source, bundle, browser evidence, a portable-path replay helper,
+accepted live trace and historical Lev1/Adda source/calculation controls
+are preserved. Independent bundle restore passes 316 checks and replays
+the saved controls. The prior accepted checkpoint remains V1.3.2.1.
+
+Acceptance covers Profile preloading, local tab updates and normal navigation,
+not a quantified production speedup. The live trace has 12 completed
+transitions and an earlier initial wrapper readiness fallback. That startup
+caveat stays in the existing TODO. Future behavioral-contract enforcement
+is a proposal awaiting approval, not part of this checkpoint.
+[Checkpoint details](COMPANY_PROFILE_CHECKPOINT.md#v133-accepted-checkpoint-and-change-protection-proposal).
+
 ## Labor V1.3.3 Profile preloading and tab updates
 
 Runtime `46aef079`, build
@@ -16,8 +36,8 @@ transitions and 826 frames, with no mixed screens, no full-screen tab cover,
 the same saved Lev1 price and no new Parts Check. Seven Save/reopen paths,
 write-failure retry, keyboard, auth expiry and member access passed with
 production UI/handlers and a simulated database. Controlled warm-tab results
-are 200–269 ms; production latency and authenticated owner acceptance remain
-open. Production Core/wrapper markers match the build above, Core health
+are 200–269 ms. Owner acceptance followed and is recorded above; those local
+timings are not a production speedup claim. Production Core/wrapper markers match the build above, Core health
 is HTTP 200, and anonymous Login negotiates the workflow protocol.
 The accepted rollback is `estimation-labor-v1.3.2.1-2026-11-17` (`d2942be7`).
 [Details and evidence](COMPANY_PROFILE_CHECKPOINT.md#v133-profile-preloading-and-tab-updates).

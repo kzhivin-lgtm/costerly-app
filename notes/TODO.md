@@ -69,7 +69,7 @@ The full private archive preserves the source, controls, browser tests and the
 accepted live trace. Profile latency is a separate open outcome.
 [Video follow-up](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1321-open-session-and-profile-tabs).
 
-IMPLEMENTED IN V1.3.3, P1, user request, 2026-11-17. Prepare the remaining
+COMPLETED, owner acceptance and protected V1.3.3 checkpoint, P1, 2026-11-17. Prepare the remaining
 Profile data after Overhead Expenses and update the tab region without
 full-screen Opening. Company, members, machinery and owner-only employees
 preload through three bounded workers. Existing Price Lists projections and
@@ -81,9 +81,39 @@ Seven Save/reopen paths, failed Save/retry, keyboard, expiry and member access
 passed with the real UI and production handlers on a simulated database.
 316 focused checks passed. Controlled local warm tabs took 200–269 ms,
 without another tab-data read. This is not a production speedup measurement.
-Fresh authenticated production acceptance remains open. Admin is the
-separate pending outcome below.
+The owner confirmed normal production operation and requested the full
+checkpoint. Tag `estimation-labor-v1.3.3-2026-11-17` pins `46aef079`.
+The independent bundle restore passes the same 316 checks and replays
+historical Lev1/Adda. The accepted live trace has 12 completed transitions;
+its initial 8-second startup fallback remains in the existing cold-start
+task. Acceptance does not assert a measured production speedup. Admin is
+the separate pending outcome below.
 [Implementation and verification](COMPANY_PROFILE_CHECKPOINT.md#v133-profile-preloading-and-tab-updates).
+
+PENDING OWNER DECISION, P1, user request, 2026-11-17. Protect accepted
+navigation, rendering, persistence and cache behavior from later regressions,
+and make intentional behavioral changes an explicit owner decision. This is
+a feasibility/proposal request, not authorization to change deployment rules.
+Current gap: behavioral tests are tracked, but the latest browser fixtures
+and reports live in private temp/archive paths; no tracked GitHub Actions
+workflow or CODEOWNERS file exists in the runtime tree. GitHub-side rule
+enforcement has not been verified. Existing UI_GUIDELINES already require
+scenario-first acceptance; documentation alone has not enforced that process.
+Proposed next scope: preserve one versioned behavior contract within the
+existing UI guidelines, move reusable deterministic browser scenarios into
+the repository, and require their CI result before runtime publication.
+Cover saved-estimate reuse, a single ready-correlated navigation, no mixed
+screens, old open wrapper compatibility, Profile fragment updates, Save/error
+retry, cache identity/invalidation and expired auth. Treat dependency and
+shared-CSS changes as possible impacts as well as direct callback changes.
+Routine feature edits may preserve the contract without a new owner decision.
+Changing a protected behavior requires a concrete impact report (before/after,
+reason, affected routes/cache keys, alternatives, tests and rollback) and
+owner approval before implementation. Tests and the approval requirement
+cannot be silently weakened in the same change. A required CI/deploy gate,
+branch rules and bypass policy need a separate approved rollout; they are
+not enabled by the V1.3.3 checkpoint. Acceptance must include proving that
+an intentionally introduced navigation/cache regression blocks publication.
 
 PENDING, P2, user request, 2026-11-17. Reduce Admin navigation latency after
 the Profile work. Live openings measured 8.345 s and 6.395 s. Read-only
@@ -1135,6 +1165,12 @@ PENDING, P1, isolate cold-start screen latency with a matched browser build.
 The incident used an older wrapper and showed fallback reveal before initial
 Core login readiness. Compare fresh traces with the verified release before
 changing cross-screen timing or recovery.
+Additional V1.3.3 witness, 2026-11-17: accepted Profile trace
+`03488eac-540f-4531-9988-e56143bca865` starts at 21:11:58 UTC. The wrapper
+records `browser.app_ready_timeout` and fallback `browser.app_reveal` at
+21:12:06.507 UTC, then completes 12 transitions with no transition failure.
+Preserve the initial fallback separately from the accepted Profile tab flow.
+Its cause remains unknown; no startup fix was attempted in the checkpoint.
 
 PENDING LIVE VERIFY, V6.57, P0, ordinary Discovery output envelope:
 
