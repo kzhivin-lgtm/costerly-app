@@ -1141,9 +1141,8 @@ def test_upload_dashboard_has_compact_centered_navigation_and_preserves_logo():
     assert "padding: 0 9px !important;" in css
     assert '[data-testid="stVerticalBlock"]:has(> [data-testid="stLayoutWrapper"] [class*="st-key-costerly_header_controls"])' in css
     assert "gap: 0 !important;" in css
-    assert "font-size: 24px;" in css
-
     base_css = (Path(__file__).parents[1] / "styles/base.py").read_text()
+    assert "font-size: 24px;" in base_css
     assert ".stApp [class*=\"st-key-costerly_header_controls\"] div[data-testid=\"stButton\"] button" in base_css
 
 

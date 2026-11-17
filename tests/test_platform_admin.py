@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+import streamlit as st
 
 from screens.platform_admin import (
     _dashboard_table,
@@ -27,6 +28,46 @@ from use_cases.platform_admin import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+@pytest.mark.parametrize("revoked", [True, False])
+def test_changed_platform_access_finishes_with_a_safe_return(monkeypatch, revoked):
+    from types import SimpleNamespace
+    from screens import platform_admin
+
+    st.session_state.clear()
+    access = PlatformAccess("user-1", "platform_admin")
+    errors = []
+    actions = []
+    reports = []
+    reads = []
+
+    def current_access(*_args):
+        if revoked:
+            raise PermissionError("Platform Admin access is required.")
+        return PlatformAccess("user-1", "platform_viewer")
+
+    monkeypatch.setattr(platform_admin, "apply_platform_admin_css", lambda: None)
+    monkeypatch.setattr(platform_admin, "get_supabase_client", object)
+    monkeypatch.setattr(platform_admin, "require_platform_access", current_access)
+    monkeypatch.setattr(platform_admin, "report_runtime_failure", lambda stage, exc: reports.append(stage))
+    monkeypatch.setattr(platform_admin, "load_company_dashboard", lambda *_args, **_kwargs: reads.append("dashboard"))
+    monkeypatch.setattr(st, "markdown", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(st, "error", errors.append)
+    monkeypatch.setattr(st, "button", lambda label, **kwargs: actions.append((label, kwargs)))
+
+    platform_admin.render_platform_admin_screen(SimpleNamespace(user_id="user-1"), access)
+
+    assert errors == [
+        "Platform Admin access is required." if revoked
+        else "Platform Admin access changed. Please refresh."
+    ]
+    assert reports == ["admin.access"]
+    assert reads == []
+    assert st.session_state._platform_access is None
+    assert actions == [("Back to Upload", {
+        "key": "admin_to_upload", "on_click": platform_admin._open_estimate,
+    })]
 
 
 class _Response:

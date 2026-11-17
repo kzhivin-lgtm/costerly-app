@@ -1,5 +1,13 @@
 # Done Log
 
+Labor V1.3.2, 2026-11-17. Projects, Profile and Admin use the common
+workflow transitions, including return routes and sign out. Fifty-two
+local browser transitions sampled 2,133 frames with zero mixed screens.
+Fourteen recovery cases passed. Changed Admin access now ends with a
+logged error and a safe return action. The V1.3.0.2 checkpoint remains
+the protected rollback reference. Await authenticated owner acceptance.
+See the [release and verification](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v132-projects-profile-and-admin-transitions).
+
 Labor V1.3.0.2 workflow checkpoint, 2026-11-17. Owner accepted
 V1.3.0.1 on fresh Lev1, including Review and saved-estimate returns.
 The protected V1.3.0.1 tag pins `edd3edc`. V1.3.0.2 aligns Opening

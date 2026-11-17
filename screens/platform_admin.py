@@ -11,6 +11,7 @@ import streamlit as st
 
 from config import get_optional_secret
 from db.supabase_client import get_supabase_client
+from observability.runtime import report_runtime_failure
 from state.session import set_screen
 from styles.platform_admin import apply_platform_admin_css
 from ui.layout import render_screen_header
@@ -444,9 +445,16 @@ def render_platform_admin_screen(
         unsafe_allow_html=True,
     )
     client = get_supabase_client()
-    fresh = require_platform_access(client, str(access.user_id))
-    if fresh != platform_access:
-        raise PermissionError("Platform Admin access changed. Please refresh.")
+    try:
+        fresh = require_platform_access(client, str(access.user_id))
+        if fresh != platform_access:
+            raise PermissionError("Platform Admin access changed. Please refresh.")
+    except PermissionError as exc:
+        st.session_state._platform_access = None
+        report_runtime_failure("admin.access", exc)
+        st.error(str(exc))
+        st.button("Back to Upload", key="admin_to_upload", on_click=_open_estimate)
+        return
 
     render_screen_header(
         lambda: st.markdown(

@@ -40,10 +40,15 @@ and 320 px. Preserve the accepted V1.3.0.1 runtime tag and the full
 V1.3.0.2 checkpoint before extending screen coverage.
 [Checkpoint](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1302-workflow-checkpoint).
 
-PENDING, P1, V1.3.2, owner-authorized next stage, 2026-11-17. Extend the
-same ready/render mechanism to Projects, Profile and Admin, including
-return navigation, role restrictions, expired auth and recovery. Verify
-desktop and mobile flows and preserve saved-estimate navigation.
+IMPLEMENTED, P1, V1.3.2, 2026-11-17. Projects, Profile and Admin use the
+shared ready/render mechanism, including return navigation and sign out.
+The local desktop and delayed-mobile browser replay covered 52 transitions,
+2,133 sampled frames, zero visible mixed screens and zero Parts Check
+launches. Fourteen recovery scenarios covered read failure, empty Projects,
+member permissions, revoked Admin access, expired auth and explicit reload
+after timeout. Revoked or changed platform access now logs the failure and
+offers Back to Upload. Await authenticated production owner acceptance.
+[Release record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v132-projects-profile-and-admin-transitions).
 
 DEFERRED, P1, V1.3.1. Extend fresh Upload/Processing transitions after the
 accepted first stage. The owner selected V1.3.2 as the next stage.

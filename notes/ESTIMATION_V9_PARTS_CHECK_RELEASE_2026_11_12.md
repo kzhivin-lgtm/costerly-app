@@ -1,5 +1,38 @@
 # Estimation 9 Parts Check from Upload
 
+## Labor V1.3.2 Projects, Profile and Admin transitions
+
+Projects, Profile and Admin now use the existing workflow transition
+controller for header actions and return routes. Each destination waits
+for its matching render marker, removal of stale elements and its content
+before the common Opening cover closes. The same rule covers sign out
+and return to the saved File Review. Profile tabs and the Admin CNC / Laser
+view retain their native Streamlit controls.
+
+The revoked-platform-access scenario exposed an uncaught PermissionError
+before the ready signal. The Admin screen now logs that failure, clears
+the stale permission receipt and offers Back to Upload without reading
+the dashboard.
+
+The local Chromium replay used the actual Core screens and wrapper with
+archived Lev1 data and controlled read providers. It checked 26 transitions
+at 1280 px and the same 26 at 390 px with 1.25-second delays on the three
+new destinations. There were no mixed screens in 2,133 sampled frames.
+The saved Lev1 estimate and its ₪5,193.11 cost stayed identical, with
+zero Parts Check launches. Fourteen recovery scenarios covered read
+failures, expired auth and sign out from each destination, empty Projects,
+member permissions, a denied direct Admin URL, revoked Admin access and
+an 18-second Projects delay with double-click suppression and explicit reload.
+Browser Back/Forward and the return after revoked Admin access also passed.
+The fresh-estimate regression opened first Review after a delayed worker
+published its price, then kept the same estimate across reload and Continue.
+The focused checks passed in two overlapping groups, 150 workflow checks
+and 248 access and Admin checks.
+
+The protected rollback checkpoint is V1.3.0.2 at `e7ef309`, tag
+`estimation-labor-v1.3.0.2-2026-11-17`. Authenticated owner acceptance
+on the deployed screens remains open.
+
 ## Labor V1.3.0.2 workflow checkpoint
 
 On 17 November 2026 the owner accepted the live V1.3.0.1 workflow.

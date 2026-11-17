@@ -20,6 +20,9 @@ function workflowTransitionController(coreWindow, traceId) {
         file_review: [".file-review-detected-title", ".file-review-summary-card-marker"],
         objects: [".objects-estimation-header", ".objects-pricing-table"],
         object_detail: [".object-detail-title", ".object-detail-final", ".object-detail-footer-actions"],
+        projects: [".projects-title", ".projects-table-card, .projects-empty"],
+        account: [".company-profile-heading", '[data-testid="stTabs"]'],
+        admin: [".platform-admin-heading", ".st-key-platform_admin_sections", ".platform-admin-table-card"],
     };
     const routes = {
         new_estimate: "upload",
@@ -28,12 +31,37 @@ function workflowTransitionController(coreWindow, traceId) {
         objects_to_object_detail: "object_detail",
         object_detail_to_objects: "objects",
         objects_to_file_review: "file_review",
+        object_detail_approve_to_objects: "objects",
+        back_to_upload: "upload",
+        open_profile: "account",
+        open_admin: "admin",
+        upload_to_profile: "account",
+        profile_to_upload: "upload",
+        upload_to_admin: "admin",
+        profile_to_admin: "admin",
+        admin_to_profile: "account",
+        admin_to_upload: "upload",
+        upload_to_projects: "projects",
+        profile_to_projects: "projects",
+        admin_to_projects: "projects",
+        projects_to_upload: "upload",
+        projects_to_profile: "account",
+        projects_to_admin: "admin",
+        objects_to_projects: "projects",
+        sign_out: "login",
+        profile_to_sign_out: "login",
+        upload_to_sign_out: "login",
+        projects_to_sign_out: "login",
     };
     const names = {
         upload: "New Estimate",
         file_review: "File Review",
         objects: "Objects Estimation",
         object_detail: "Object Detail",
+        projects: "Projects",
+        account: "Profile",
+        admin: "Admin",
+        login: "Login",
     };
     let enabled = false;
     let pending = null;
