@@ -1,10 +1,12 @@
 # Estimation 9 Parts Check from Upload
 
-## Block Assembly local control
+## Labor V1.2.22 Block Assembly
 
 Block Assembly reads the same immutable Parts Check as Sheet Processing.
-On each Object Detail card it shows one finished item's time and base
-wage by Block. The table is available while the Material Plan is pending.
+On each Object Detail card it shows one finished item's total planned
+hours and base labor cost. Elements contains the per-block minutes,
+costs and operation counts. Assembly is available while the Material
+Plan is pending.
 Totals use the approved `active minutes × 1.25 ÷ 0.80` and ₪50/hour
 before payroll costs. Bench setup is six active minutes per block with
 estimated work. A simple pull-out shelf uses six minutes for installing
@@ -24,7 +26,7 @@ Eight pull-out shelves in Display B03/B04 receive 28 active minutes per
 block. The 40 glass pieces remain a Materials purchase. Joining split
 stock, trial fitting across blocks, glass and mirror work, lighting and
 site work await separate norms. Final cost aggregation is unchanged.
-The local result follows the V1.2.21 checkpoint.
+The rollback reference is `estimation-labor-v1.2.21-2026-11-17`.
 
 ## Labor V1.2.21 production checkpoint
 

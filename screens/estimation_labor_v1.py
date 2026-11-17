@@ -9,7 +9,8 @@ import streamlit as st
 from db.repositories import fetch_rfq_estimate_material_plan
 from db.supabase_client import get_supabase_client
 from observability.runtime import report_runtime_failure
-from screens.block_assembly import block_assembly_html
+from screens.block_assembly import assembly_breakdown_html, block_assembly_html
+from ui.object_detail_view import detail_elements_html
 from use_cases.block_assembly import calculate_block_assembly
 from use_cases.estimation_labor_v1 import (
     LAYOUT_VERSION, SPLIT_ROLES, build_sheet_layout, describe_layout_issues, sheet_layout_basis,
@@ -327,12 +328,16 @@ def _estimate(value, complete):
 
 
 @st.fragment(parallel=True)
-def render_labor_v1(*, company_id, run_id, estimate_id, object_id):
+def render_labor_v1(*, company_id, run_id, estimate_id, object_id, elements=None, overlay_revision=None):
     identity = company_id, run_id, estimate_id, object_id
     cache = st.session_state.setdefault("labor_v1_comparisons", {})
+    elements_view = st.empty()
     view = st.empty()
     state = cache.get(identity)
     if not state or "assembly" not in state:
+        elements_html = detail_elements_html(elements, revision=overlay_revision, object_id=object_id)
+        if elements_html:
+            elements_view.markdown(elements_html, unsafe_allow_html=True)
         view.markdown(
             _sheet_section('<p class="object-detail-cnc-caption">Preparing Sheet Processing…</p>')
             + block_assembly_html(message="Preparing Block Assembly…"), unsafe_allow_html=True,
@@ -361,5 +366,10 @@ def render_labor_v1(*, company_id, run_id, estimate_id, object_id):
         "running": "Waiting for Parts Check.", "failed": "Parts Check failed.",
         "unavailable": "Parts Check is unavailable for this object.",
     }.get(state["status"], "Block Assembly could not be loaded.")
-    html += block_assembly_html(state.get("assembly"), message=assembly_message)
+    assembly = state.get("assembly")
+    details = assembly_breakdown_html(assembly)
+    elements_html = detail_elements_html(elements, revision=overlay_revision, object_id=object_id, assembly_details=details)
+    if elements_html:
+        elements_view.markdown(elements_html, unsafe_allow_html=True)
+    html += block_assembly_html(assembly, message=assembly_message)
     view.markdown(html, unsafe_allow_html=True)

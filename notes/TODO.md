@@ -18,14 +18,25 @@ net with one charge per piece. Cloudflare Pages and Railway verified on
 the tagged runtime. Fresh estimate acceptance is pending.
 See the [checkpoint and replay](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1221-production-checkpoint).
 
-IMPLEMENTED LOCALLY, P1, USER REQUEST. Block Assembly reads the saved Parts
+IMPLEMENTED IN V1.2.22, P1, USER REQUEST. Block Assembly reads the saved Parts
 Check already loaded by Sheet Processing and preserves Block ownership.
-Object Detail shows active and planned minutes and the base wage per block,
-with the operations behind each count. The calculator reproduced every
+Object Detail shows total planned hours and base labor cost. Elements shows
+the minutes and costs per block and the operations behind each count. The calculator reproduced every
 operation count in the accepted Lev2 and both Adda controls in the workspace
 `outputs/block_assembly_lev2_adda_2026_11_17.json`. The accepted rate is
 ₪50/h before payroll costs. Production acceptance and final cost aggregation
-remain open. [Control totals and scope](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#block-assembly-local-control).
+remain open. [Control totals and scope](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v1222-block-assembly).
+
+PENDING, P1, USER REQUEST. Make the Sheet Processing of mirror backing
+panels visible by block. The saved Adda replay already allocates the
+plywood and includes both panels on CNC and panel-saw routes. Display
+B05 fits as one 1480 × 950 mm piece in 16 mm stock. Vanity B02 is 2850 ×
+1000 mm in 18 mm stock and the current 2440 × 1220 mm sheet produces two
+1425 × 1000 mm blanks. A shared layout supplies the object cost once.
+Proposed rules: use confirmed holes for drilling instead of the generic
+thickness allowance on these panels; show split status for both routes;
+prefer a compatible full-length sheet and flag the seam for review if
+none is available. Joining and mounting need separate approved scope.
 
 PENDING, P1, FOLLOW-UP. Carry explicit mirror and glass thickness from
 the drawing into the correct Parts Check rows before pricing. Verify
