@@ -131,12 +131,13 @@ revoke it automatically after this task. Never commit its value or transfer
 it to production; routine publication continues to use normal Git access.
 [Procedure and scope](../tests/ui/README.md).
 
-PENDING, P2, user request, 2026-11-17. Reduce Admin navigation latency after
-the Profile work. Live openings measured 8.345 s and 6.395 s. Read-only
-dashboard RPC probes reproduced 6.847 s and 5.174 s, while the staff
-access reads took 0.226 s and 0.309 s. Investigate dashboard aggregation
-and reuse a recent authorized result, with an explicit freshness and
-refresh contract before adding a cache. Preserve revoked-access handling.
+DEFERRED, P3, explicit owner decision, 2026-11-18. Do not prioritize Admin
+navigation performance. Resume only on a new explicit owner request.
+Historical baseline from 2026-11-17: live openings measured 8.345 s and
+6.395 s; read-only dashboard RPC probes took 6.847 s and 5.174 s, while
+staff access reads took 0.226 s and 0.309 s. If resumed, investigate
+dashboard aggregation and agree a freshness/refresh contract before caching.
+Preserve revoked-access handling.
 
 DEFERRED, P1, V1.3.1. Extend fresh Upload/Processing transitions after the
 accepted first stage. The owner selected V1.3.2 as the next stage.
