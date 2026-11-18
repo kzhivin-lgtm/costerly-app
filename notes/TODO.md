@@ -1001,6 +1001,29 @@ bad results reject a hypothesis for `membership_hypothesis_pair_local_coverage_i
 five-View object plus View 003, or six singletons. This confirms the failure
 mechanism on V2.4; it does not establish the release-level initiating cause.
 No repair, additional paid trial, Naming/Calculation run or deployment performed.
+OWNER CONSTRAINT, 2026-11-18: freeze Membership changes. Investigate what could
+have exposed the old defect around Labor V2 before proposing a repair.
+Release-boundary diagnosis: 30 production Lev1 audits were read; the old 13 Nov
+outliers are followed by 16 consecutive one-object results before the 18 Nov
+six-object result. Six complete offline provider replays preserve the recorded
+partitions. Replacing only the V1.3.4 Detection preview entry with V1.3.3 changes
+neither any of the three provider request bodies nor any partition, ruling out
+that isolated preview-selection diff for these cases. Production declared
+runtime dependencies and Dockerfile are unchanged; app-ready events report the
+same Python 3.13.15, Streamlit 1.64.0 and Supabase 2.31.0 across the releases.
+Reconstructed full Discovery, Membership and Same-Sheet request bodies match
+for 17 Nov 21:37 Israel (one object), 18 Nov 13:27 (six), and 18 Nov 13:50 (one).
+These are validated reconstructions, not historical HTTP/header captures.
+Offline response swaps move the 2/6 failure with the Membership reply. Pair
+verdicts are not consumed by grouping: forcing all fifteen to different leaves
+the one-object result unchanged. A single added existing typed View002-View003
+fact resolves both bad compiler cases; coalescing overlaps before coverage alone
+resolves trial 4 but not trial 5. Diagnostic experiments only, not approved fixes.
+The immediate mechanisms are confirmed. A new release-level activating change
+is NOT established. Historical Railway variables and SDK transport/backend state
+remain outside the available audit. Evidence: `causal-diagnosis.json`,
+`offline-request-replay.json` and `release-boundary-request-replay.json` in the
+five-run artifact directory. No new paid calls, runtime patch or deployment.
 
 ## Ordinary Detection dimension membership, V8.4.13
 

@@ -1,5 +1,20 @@
 # Done Log
 
+V2.4 Lev1 cause analysis, 2026-11-18, diagnostics only. Owner explicitly froze
+Membership changes and requested the release-level trigger. Production history
+contains 16 consecutive one-object results after the old Nov 13 outliers and
+before today's six-object result. Three normalized provider request bodies
+reconstruct identically for the Nov 17 good run, Nov 18 V2.2.3 bad run and the
+later V2.4 good run. Six full provider-response replays and a V1.3.3/current entry
+comparison rule out the isolated V1.3.4 preview-selection diff for these inputs.
+Declared runtime dependencies/Dockerfile are unchanged; observed Python,
+Streamlit and Supabase versions match across the releases. Response swapping
+transfers the 2/6 failures, and an all-different Same-Sheet control still returns
+one object. The two immediate compiler failure mechanisms are established; the
+new release-level trigger is not. No Membership patch, new paid call or deploy.
+Detailed evidence and limits: `outputs/detection-v2.4-lev1-five-2026-11-18/causal-diagnosis.json`
+in the handoff workspace.
+
 V2.4 Lev1 five-run live benchmark, 2026-11-18. Owner-authorized five sequential
 fresh OCR + unmodified Detection calls on deployed-source runtime `4fa14047`.
 The exact original PDF, route and actual provider models match the failing
