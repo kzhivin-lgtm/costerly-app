@@ -24,6 +24,15 @@ are recorded in [Estimation 9 Parts Check from Upload](ESTIMATION_V9_PARTS_CHECK
 
 ## Application Layer
 
+The current Labor continuation point is documented in
+[`ESTIMATION_LABOR_NEXT_CHAT_HANDOFF_2026_11_14.md`](ESTIMATION_LABOR_NEXT_CHAT_HANDOFF_2026_11_14.md),
+updated through deployed V1.3.4 on 18 November 2026. Sheet Processing lives in
+`use_cases/sheet_processing.py` with the CNC and panel-saw calculators; Block
+Assembly lives in `use_cases/block_assembly.py`. Both consume the saved Parts
+Check used by Materials. The legacy `labor_engine.py` is not the new runtime
+entry point. Remaining extra assembly/finishing and final cost aggregation
+must not be mistaken for an instruction to rebuild these existing blocks.
+
 - `use_cases/` contains product flows such as processing an uploaded RFQ.
 - `use_cases/rfq_processing.py` runs detection, writes the result to Supabase, and loads File Review data.
 - `use_cases/estimation.py` starts object estimation by creating pending estimate records from detected objects.

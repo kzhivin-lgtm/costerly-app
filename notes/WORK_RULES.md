@@ -119,6 +119,16 @@ violations.
 
 Short version: one navigation click, one callback-safe screen change, one run.
 
+## Deployment Naming Rule
+
+Owner instruction, 18 November 2026: begin every new runtime deployment's
+human-readable title with the current version, then a colon and a concrete
+description of the change, for example `V1.3.4: share the object preview across
+Detection and Calculation`. Apply this to commit/release titles used by the
+deployment service. The technical build marker remains a separate identifier.
+Do not rewrite published history just to rename an older deployment. A
+documentation-only handoff does not allocate a new runtime version.
+
 ## Deployed Build Coherence Rule
 
 Cloudflare and Streamlit deploy independently, so equality in Git does not

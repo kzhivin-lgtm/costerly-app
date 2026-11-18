@@ -1,5 +1,14 @@
 # Done Log
 
+V1.3.4 continuation handoff, 2026-11-18, documentation only. Replaced stale
+start-from-scratch guidance with the actual deployed Labor architecture,
+decisions and incident history, protected checkpoint and release procedure,
+approved norm snapshot, saved controls, acceptance limits, remaining work and
+next-chat bootstrap. Reconciled the affected historical Labor backlog entries.
+Recorded the owner's version-first deployment title convention in WORK_RULES.
+No application code, prices, norms, protection setting or production deployment
+changed. See the [continuation document](ESTIMATION_LABOR_NEXT_CHAT_HANDOFF_2026_11_14.md).
+
 Labor V1.3.4 deployed, 2026-11-18. Detection UI selection prefers axonometry,
 then elevation; Calculation inherits the same saved crop. Naming crops match
 the protected source byte-for-byte on frozen Lev1/Lev2/Adda. Runtime `eb56dd4c`

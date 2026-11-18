@@ -217,6 +217,17 @@ auth outcomes. Authenticated production acceptance remains open.
 
 ## Estimation Labor V1
 
+COMPLETED, documentation handoff, 2026-11-18. The owner requested a detailed
+current-point continuation record for Labor, including how the architecture
+and protected UI were reached, solved incidents, actual integration boundaries,
+norms, source controls, remaining work and a reusable next-chat prompt.
+The authoritative [handoff](ESTIMATION_LABOR_NEXT_CHAT_HANDOFF_2026_11_14.md)
+was rewritten through V1.3.4; its workspace export is identical. It supersedes
+the old instruction to begin the already-built Labor blocks from scratch.
+No new Labor implementation, runtime deployment or paid recognition is part
+of this handoff. The next specific Labor objective still requires selection.
+New deployment titles use `V<version>: description`, recorded in WORK_RULES.
+
 COMPLETED, owner acceptance and protected checkpoint, 2026-11-17.
 Labor V1.2.15 (`36b3aa7`) is pinned by `estimation-labor-v1.2.15-2026-11-17`.
 Labor V1.2.16 (`6930392`) aligns the five CNC cost rows. Both routes keep
@@ -263,7 +274,8 @@ PENDING, P2, FOLLOW-UP. Add verified glass tariffs for thicknesses beyond
 the 4 mm tempered display-glass allowance. Apply only to matching
 processing and dimensions. Unsupported work continues to require a quote.
 
-ACTIVE, P1, USER REQUEST. Release Labor V1 for sheet CNC in-house and
+HISTORICAL INITIAL RELEASE, superseded by Sheet Processing and later Assembly.
+Original user request: release Labor V1 for sheet CNC in-house and
 subcontracting. Fresh Parts Check publishes an immutable layout after stock
 resolution. Older estimates can add the layout from their saved Parts and
 matching Material Plan without a second model run. Labor V1.1 moves
@@ -388,7 +400,7 @@ Cloudflare served estimation-labor-v1.2.6-detection-v8.4.29, and the
 production Machinery record read ILS 55/h. The CNC block was checked
 offline from saved inputs; authenticated production review is pending.
 
-PENDING, P1, USER REQUEST. Estimate CNC file preparation per kitchen,
+IMPLEMENTED IN V1.2.7, historical request/research retained. Estimate CNC file preparation per kitchen,
 separately from machine setup and cutting. Research supports two
 different scopes. [Crown Cabinets](https://hexagon.com/resources/resource-library/cabinet-vision-nesting-labelling-helps-double-crown-output-6-months)
 reported 15 minutes to optimize an 8–10 cabinet kitchen with Cabinet
@@ -454,7 +466,7 @@ quotes. All 458 focused tests passed.
 Commit 5e7e58f deployed via Railway 13268c3e-99d8-49b6-83d8-f055ca3260c6.
 Cloudflare served estimation-labor-v1.2.9-detection-v8.4.29.
 
-ACTIVE, P1, USER REQUEST. Use one virtual CNC subcontractor for Israeli
+IMPLEMENTED PROFILE, with scope/calibration gaps retained below. Use one virtual CNC subcontractor for Israeli
 sheet work. Owner asked for the full price list and authorized choosing
 estimated veneer prices. The owner clarified that the CNC Price List
 is separate from the Israel Price List: share canonical material
@@ -5775,7 +5787,11 @@ Local implementation verification passes. Remaining acceptance: deploy, verify
 owner save and member read-only behavior, then repeat the protected production
 transition timings before restoring Machinery or File Review metadata.
 
-PENDING, P1, USER REQUEST. Design and agree Estimation Calculation from
+PARTIALLY IMPLEMENTED, historical design entry, current scope in the Labor
+section and [current handoff](ESTIMATION_LABOR_NEXT_CHAT_HANDOFF_2026_11_14.md).
+Sheet Processing and Block Assembly are already implemented; extra assembly,
+finishing and final aggregation remain separate open work. Original request:
+design and agree Estimation Calculation from
 the same published Parts Check used for materials. Cover part fabrication,
 Block and Common assembly, finishing at the appropriate step, and readiness
 for dispatch. Resolve in-house and supplier scope against Company Machinery
@@ -5787,8 +5803,9 @@ Material Plan. Link the single priced Lev2 cutout to its physical ID
 `view-002:worktop-cutout-01`; Parts marks it `cooktop` as a hint and the
 handoff calls it a sink. Carry the Adda glass supply form, finish technology,
 and packaging labor policy as open decisions. Final monetary aggregation is
-the next Estimation stage. Implementation and new work numbering are pending
-design approval. Starting evidence:
+the next Estimation stage. Do not treat this historical entry as permission to
+restart the completed blocks. A new block's scope and numbering require the
+owner's decision. Starting evidence:
 [November Labor handoff](ESTIMATION_LABOR_NEXT_CHAT_HANDOFF_2026_11_14.md).
 
 The initial Lev1 comparison used company-supplied stock in both scenarios.
