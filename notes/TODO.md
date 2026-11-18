@@ -1052,7 +1052,9 @@ Railway settings were read only; no new paid calls or deployment. Evidence:
 `offline-request-replay.json` and `release-boundary-request-replay.json` in the
 five-run artifact directory. No new paid calls, runtime patch or deployment.
 
-ACTIVE, P0, USER AUTHORIZED, 2026-11-18, V2.4 timing audit: retain independent
+### Completed V2.4 timing audit
+
+COMPLETED, VERIFIED 2026-11-19, USER AUTHORIZED, V2.4: retain independent
 Membership and Same-Sheet request start/end, request ID and existing stream
 metrics, then run Lev1 in the Railway Streamlit process and compare watcher
 warning timestamps. Detection/Membership logic, requests and concurrency frozen.
@@ -1064,12 +1066,20 @@ checks/five browser suites, 124.831s). CI run 44354547621 timed out on unchanged
 Profile tab navigation. Same-code full retry passed on runtime `551577c3`
 (CI run 44355439566); published via the protected publisher. Railway deployment
 3d6a4751-5189-49ac-8f3f-ca0b82e73434 succeeded 17:16:39 UTC. New-container
-authenticated Upload/App Ready observed with the V2.4 marker. Live Lev1 trial
-is pending manual file selection: CUA sees the uploader but native, locator and
-keyboard activation cannot open its chooser. Owner signed in; visible Upload
-handed off with the exact prepared Lev_1.pdf. No fresh model call yet. Do not
-claim actual watcher/request overlap measured. Evidence:
-`outputs/provider-timings-v2.4/` including implementation/deployment receipts.
+authenticated Upload/App Ready observed with the V2.4 marker. Owner subsequently
+uploaded Lev1. Fresh production `run_a9fdd6eb70bc49e380a0192c2d6f984d` matches the
+protected PDF SHA and returns one object/six Views/fifteen pair decisions.
+19 Nov Israel: Membership 00:45:22.693-00:45:39.674 (16.980s), Same-Sheet
+00:45:22.688-00:45:46.588 (23.900s). Independent request IDs/timestamps are
+persisted. First retained watcher warning 00:45:51.890, 12.216s/5.302s after
+the respective replies. Expanded logs contain 55 warnings and no Load more;
+none falls in either request window. One server session, no wrapper reload in
+the inspected window. Later Railway dropped 3331 messages. This verifies
+request timing and retained-warning correlation, not the full watcher scan CPU
+interval or the release-level cause of the old split. That root-cause objective
+remains open and Membership frozen. No runtime/config/deploy change or extra
+model call during this inspection. Evidence:
+`outputs/provider-timings-v2.4/live-2026-11-19/REPORT.md` in the handoff workspace.
 
 ## Ordinary Detection dimension membership, V8.4.13
 

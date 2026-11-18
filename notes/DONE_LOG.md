@@ -1,6 +1,6 @@
 # Done Log
 
-V2.4 independent provider timing audit, 2026-11-18, published; live trial pending.
+V2.4 independent provider timing audit, verified in production 2026-11-19.
 Owner approved independent timestamps and a fresh
 Lev1 watcher comparison. Two additive runtime audit lines retain the original
 stream diagnostics in every Membership attempt and Same-Sheet audit. No model
@@ -18,12 +18,19 @@ returned 403, so this record triggers a fresh cumulative full gate through the
 normal branch push, with unchanged runtime/test code. Full retry 44355439566
 passed; protected publisher promoted `551577c3` to main. Railway deployment
 3d6a4751-5189-49ac-8f3f-ca0b82e73434 succeeded at 17:16:39 UTC. The authenticated
-new-container Upload reported V2.4 App Ready. No live model call yet: browser
-automation can inspect the uploader but cannot activate the file chooser through
-native/locator/keyboard paths. Owner signed in; manual selection of the prepared
-431026-byte Lev_1.pdf handed off. Fresh per-request/watcher overlap remains
-unmeasured. Source request/partition invariance and publication are verified;
-the fresh-trial objective is still open. Evidence: `outputs/provider-timings-v2.4/`.
+new-container Upload reported V2.4 App Ready. Browser upload activation failed,
+so the owner completed manual selection. Fresh production run
+`run_a9fdd6eb70bc49e380a0192c2d6f984d` matches the protected source SHA and returns
+one object/six Views/fifteen pairs. Membership 22:45:22.693-22:45:39.674 UTC,
+Same-Sheet 22:45:22.688-22:45:46.588 UTC on 18 Nov (00:45 on 19 Nov Israel).
+Both independent timing records and request IDs persist correctly. First
+retained watcher warning: 22:45:51.890 UTC, 12.216s/5.302s after the replies.
+None of 55 retained warnings falls inside the request windows. One server
+session and no wrapper reload observed. Railway later dropped 3331 messages;
+no full watcher scan duration/CPU trace exists. Timing instrumentation and
+logged-warning comparison are verified, while the old release-level split cause
+remains open. No runtime/Membership/config/deploy edit or extra paid run in this
+inspection. Evidence: `outputs/provider-timings-v2.4/live-2026-11-19/REPORT.md`.
 
 V2.4 watcher follow-up, 2026-11-18, diagnostics only. The same watcher import
 warning exists before Labor V2 (V1.3.4) and after successful V2.2.1/V2.2.2/V2.4
