@@ -1,5 +1,18 @@
 # Done Log
 
+V2.4 published, 2026-11-18, runtime `4fa140475f35c234d0181d6aa59ac4616e31f549`.
+The owner subsequently authorized deployment. The candidate preserves the exact
+verified source tree of local `07dbdacf`, joining its history with the prior
+production `420bdf19` without altering source or the user's dirty TODO section.
+Exact-SHA [UI gate](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44297146596)
+passed. The protected publisher verified the active required-check ruleset with
+no bypass actors and advanced main. Core and Pages were observed with matching
+`estimation-v2.4-editable-labor-hours-detection-v8.4.29` markers at Sign in.
+Runtime tag: `estimation-labor-v2.4-2026-11-18`. Previous production: V2.2.3
+`420bdf19`; rebuild/rollback baseline: V2.2.2 `4e69e5d7`.
+The Lev1 Detection regression remains open; no Detection repair or paid run was
+included. Authenticated Calculation acceptance is not claimed from the UI gate.
+
 V2.4 local rebuild, 2026-11-18. Started branch `codex/object-card-v2.4` at the
 V2.2.2 runtime `4e69e5d7`. Reapplied V2.2.3 in four groups: paid-hour persistence,
 Labor UI, Calculation refresh and regression coverage. Both build markers now

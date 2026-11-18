@@ -4,8 +4,9 @@
 
 Owner-approved scope: start from V2.2.2 runtime `4e69e5d7`, reapply the ready
 V2.2.3 changes in separate persistence, Labor UI, Calculation refresh and test
-groups. Retain the same scenarios below. Version is V2.4. Local work only:
-no push, deployment, model call, production data rewrite or Detection repair.
+groups. Retain the same scenarios below. Version is V2.4. The initial scope was
+local only; the owner subsequently authorized publication. No model call,
+production data rewrite or Detection repair is included.
 Detection, OCR, Naming, document identity and File Review must match V2.2.2.
 The six-object Lev1 incident remains unresolved, with its two persisted audits
 retained in `outputs/object-card-v2.2.3/lev1-detection-comparison.json` in the
@@ -17,6 +18,14 @@ rule out indirect effects of shared state, dependencies or execution order.
 Local verification passed: 368 Python checks and all five browser suites,
 147.462s. Isolation audit: 262 protected files match V2.2.2; nine reapplied runtime
 modules match V2.2.3. Evidence: `outputs/object-card-v2.4/` in the handoff workspace.
+Published runtime `4fa140475f35c234d0181d6aa59ac4616e31f549` preserves the exact
+source tree of local `07dbdacf`. The exact-SHA UI gate passed in
+[run 44297146596](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44297146596).
+The protected publisher verified an active required-check ruleset with no bypass
+actors and advanced main. Core and Pages were observed at
+`estimation-v2.4-editable-labor-hours-detection-v8.4.29` with Sign in visible.
+Runtime tag: `estimation-labor-v2.4-2026-11-18`. Authenticated acceptance and the
+Lev1 Detection regression remain open.
 
 ## V2.2.3 owner correction, 18 November 2026
 

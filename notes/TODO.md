@@ -217,10 +217,10 @@ auth outcomes. Authenticated production acceptance remains open.
 
 ## Estimation Labor V1
 
-LOCALLY VERIFIED, NOT PUBLISHED, P1, USER REQUEST, V2.4, 2026-11-18. Rebuild locally from V2.2.2 and reapply
+PUBLISHED, OWNER ACCEPTANCE PENDING, P1, USER REQUEST, V2.4, 2026-11-18. Rebuild locally from V2.2.2 and reapply
 V2.2.3 paid-hour editing/persistence, money formatting, column layout, warning
 removal and Calculation shell-read/refresh fixes in separate bounded groups.
-Do not deploy or push. Preserve Detection/OCR/Naming/Identity/File Review from
+The owner subsequently authorized deployment. Preserve Detection/OCR/Naming/Identity/File Review from
 V2.2.2, with an explicit tree comparison and the existing UI regression contract.
 The Lev1 six-object result is an unresolved incident, not an accepted outcome.
 Its old/new audit comparison records six discovered Views in both runs, fifteen
@@ -228,7 +228,10 @@ same-object pair decisions in both, but one versus six final Registry objects.
 No Detection fix is included or claimed in this UI rebuild.
 The full local gate passed: 368 Python checks and five browser suites, 147.462s.
 262 protected files match V2.2.2 byte-for-byte; the nine transferred runtime
-modules match V2.2.3. Branch `codex/object-card-v2.4`; no push or deployment.
+modules match V2.2.3. Branch `codex/object-card-v2.4`. Runtime `4fa14047`, exact
+source tree of local `07dbdacf`, passed GitHub UI gate and the protected publisher.
+Core and Pages match the V2.4 marker; runtime tag is present. Authenticated owner
+acceptance remains pending, and the Lev1 Detection incident is still open.
 
 IMPLEMENTED AND PUBLISHED, OWNER ACCEPTANCE PENDING, P1, USER REQUEST, V2.2.3, 2026-11-18. Round displayed Labor money to whole
 shekels with grouped thousands; editable one-decimal Hours with immediate preview,
@@ -978,8 +981,9 @@ same. The final partition differs. Source equality does not exclude indirect
 effects of release state, dependencies or execution order; do not dismiss the
 reported release regression on that basis. Raw comparison is preserved in the
 handoff workspace under `outputs/object-card-v2.2.3/lev1-detection-comparison.json`.
-Current V2.4 authorization is a local UI rebuild with Detection unchanged, not a
-Detection patch, paid rerun, automatic merge of saved objects or deployment.
+V2.4 deployment was subsequently authorized with Detection unchanged. This does
+not resolve the incident or authorize a Detection patch, paid rerun or automatic
+merge of saved objects as part of that UI publication.
 
 ## Ordinary Detection dimension membership, V8.4.13
 

@@ -8,12 +8,15 @@
 
 ## 1. Точка, с которой продолжать
 
-**[verified] Локально собрана V2.4, без публикации.** По указанию владельца взята
+**[verified] V2.4 опубликована после разрешения владельца.** По его указанию взята
 основа V2.2.2 `4e69e5d7`, готовые изменения V2.2.3 перенесены четырьмя группами:
 сохранение Hours, интерфейс Labor, обновление Calculation и проверки. Ветка
 `codex/object-card-v2.4`. 368 проверок кода и пять браузерных сценариев прошли
 за 147,462 секунды. 262 защищённых файла совпадают с V2.2.2 побайтово.
-Production остаётся на V2.2.3; push, деплой и платные вызовы не выполнялись.
+Runtime `4fa14047` сохраняет точное дерево локального `07dbdacf`, прошёл
+GitHub UI gate и опубликован защищённым publisher. Core и Pages проверены:
+обе сборки показывают `estimation-v2.4-editable-labor-hours-detection-v8.4.29`.
+Платные вызовы, изменение данных и исправление Detection в выпуск не входили.
 
 **[verified] Lev1 дал шесть объектов вместо одного после выпуска V2.2.3.** Оба
 сохранённых run нашли шесть видов и получили пятнадцать решений same для пар,
@@ -32,10 +35,11 @@ Production остаётся на V2.2.3; push, деплой и платные в
 | --- | --- |
 | Репозиторий | `https://github.com/kzhivin-lgtm/costerly-app` |
 | Рабочий checkout | `/private/tmp/costerly-v1217-reapply.1IHEmf` |
-| Ветка рабочего checkout | `codex/object-card-v2.4` (локально, не опубликована) |
-| Последний production runtime | `420bdf197d7333f010972966f073d563310b3184` |
-| Тег последнего runtime | `estimation-labor-v2.2.3-2026-11-18` → тот же `420bdf19` |
-| Машинный build marker Core и обёртки | `estimation-v2.2.3-editable-labor-hours-detection-v8.4.29` |
+| Ветка рабочего checkout | `codex/object-card-v2.4` |
+| Последний production runtime | `4fa140475f35c234d0181d6aa59ac4616e31f549` |
+| Тег последнего runtime | `estimation-labor-v2.4-2026-11-18` → тот же `4fa14047` |
+| Машинный build marker Core и обёртки | `estimation-v2.4-editable-labor-hours-detection-v8.4.29` |
+| Предыдущий production runtime | V2.2.3, `420bdf197d7333f010972966f073d563310b3184` |
 | Предыдущий runtime для отката | V2.2.2, `4e69e5d7d31af140f5ba9fa81668a4196d46c5ee` |
 | Контракт и проверки карточки | `notes/OBJECT_DETAIL_V2_2_1_UI_CONTRACT_2026_11_18.md` |
 | Точка отката перед превью, уже с GitHub-барьером | `estimation-labor-v1.3.3-protected-checkpoint-2026-11-18` → `0764ac20dfd8bc4c491b751a3f75ebd238397d1c` |
