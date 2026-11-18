@@ -1020,10 +1020,48 @@ the one-object result unchanged. A single added existing typed View002-View003
 fact resolves both bad compiler cases; coalescing overlaps before coverage alone
 resolves trial 4 but not trial 5. Diagnostic experiments only, not approved fixes.
 The immediate mechanisms are confirmed. A new release-level activating change
-is NOT established. Historical Railway variables and SDK transport/backend state
-remain outside the available audit. Evidence: `causal-diagnosis.json`,
+is NOT established. Authenticated Railway inspection subsequently compared the
+historical V1.3.3, V2.2.2, V2.2.3 and V2.4 deployment snapshots. Full saved config
+and all 13 user-variable values match, including the Anthropic credential.
+Same shell start command, SFO/one replica, builder V3/runtime V2; no configured
+Anthropic endpoint/header, proxy or SSL override. Transport code and ten locked
+transport/runtime versions match across five source releases. Bad Membership
+accepted JSON at 754/6144 output tokens, no truncation retry, 16.647s below the
+unchanged 90s guard. A scoped transport-error log query returned no matches,
+but dropped logs prevent treating this as proof of error absence. Follow-up
+watcher diagnosis corrected the narrow-window comparison: the same warning
+already exists in V1.3.4 before Labor V2 and after successful V2.2.1/V2.2.2/V2.4
+calls. Mechanism verified with pinned source: Streamlit probes alias __path__,
+Transformers forwards this to lazy image-processor imports needing absent
+torchvision; Streamlit catches/logs the exception. Warning alone does not rerun
+the app. In the bad run, a browser reload at 11:27:17.505 UTC created a second
+session, auth-wait st.stop at 11:27:18.751, warning at 11:27:19.306 while the
+original RFQ still ran. This strongly supports an additional-session scan as the
+early trigger; reload origin is unknown. Two successful controls had one session.
+An actual SDK/synthetic SSE replay returns identical bytes/JSON with and without
+the reproduced watcher warning, with sockets forbidden. No causal link from
+watcher to six objects established; CPU/event-loop effects remain unmeasured.
+Timing correction: combined request_finished_at is the later Same-Sheet finish,
+not an independent Membership timestamp. Do not claim watcher overlapped the
+Membership stream itself. A later 500 logs/s burst dropped 1577 messages.
+Watcher mitigation is a separate unapproved operational proposal; Membership
+remains frozen. Details: `watcher-diagnosis/REPORT.md` under the artifact folder.
+Historical wire headers, image digests and provider backend state remain unknown.
+Railway settings were read only; no new paid calls or deployment. Evidence:
+`railway-config-audit.json`, `causal-diagnosis.json`,
 `offline-request-replay.json` and `release-boundary-request-replay.json` in the
 five-run artifact directory. No new paid calls, runtime patch or deployment.
+
+ACTIVE, P0, USER AUTHORIZED, 2026-11-18, V2.4 timing audit: retain independent
+Membership and Same-Sheet request start/end, request ID and existing stream
+metrics, then run Lev1 in the Railway Streamlit process and compare watcher
+warning timestamps. Detection/Membership logic, requests and concurrency frozen.
+Implementation adds only `request_timing` to existing Membership attempt
+summaries and Same-Sheet audit. Six saved production replays retain identical
+request bodies and partitions. Regression verifies the earlier Membership end
+survives the later Same-Sheet aggregate finish. Publication gate and live
+authenticated trial pending; browser Sign in handed to owner. No fresh model
+call has been made in this iteration. Evidence: `outputs/provider-timings-v2.4/`.
 
 ## Ordinary Detection dimension membership, V8.4.13
 

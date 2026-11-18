@@ -2059,21 +2059,25 @@ def test_v848_ada_compares_every_same_sheet_pair_independently_of_grouping(missi
         content = kwargs["messages"][0]["content"][-1]["text"]
         if "candidate_region_decisions" in properties:
             payload = proposal
+            actor, start, finish = "discovery", "00", "01"
         else:
             concurrent_calls.wait()
             if "object_hypotheses" in properties:
                 calls["grouping"] = content
                 payload = review
+                actor, start, finish = "membership", "02", "04"
             else:
                 assert list(properties) == ["Q001", "Q002", "Q003"]
                 calls["pairs"] = content
                 payload = {key: {"decision": "same", "observation": "The cabinet plan and profiles align."}
                            for key in properties if not (missing_pair and key == "Q003")}
+                actor, start, finish = "same-sheet", "02", "07"
         response = _Response()
         response.payload = payload
         return response, {
-            "request_started_at": "2026-11-05T00:00:00+00:00",
-            "request_finished_at": "2026-11-05T00:00:01+00:00",
+            "request_id": f"req-{actor}",
+            "request_started_at": f"2026-11-05T00:00:{start}+00:00",
+            "request_finished_at": f"2026-11-05T00:00:{finish}+00:00",
         }
 
     def run():
@@ -2106,6 +2110,20 @@ def test_v848_ada_compares_every_same_sheet_pair_independently_of_grouping(missi
     assert "REQUIRED SAME-PAGE MEMBERSHIP QUEUE" not in calls["grouping"]
     assert usage["prompt_version"] == DETECTION_V848_PARALLEL_MEMBERSHIP_VERSION
     assert len(usage["raw_usage"]["v8_4_8_same_sheet_review"]["decisions"]) == 3
+    membership_timing = usage["raw_usage"]["v5_9_review"]["request_timing"]
+    pairs_timing = usage["raw_usage"]["v8_4_8_same_sheet_review"]["request_timing"]
+    assert membership_timing == {
+        "request_id": "req-membership",
+        "request_started_at": "2026-11-05T00:00:02+00:00",
+        "request_finished_at": "2026-11-05T00:00:04+00:00",
+    }
+    assert pairs_timing == {
+        "request_id": "req-same-sheet",
+        "request_started_at": "2026-11-05T00:00:02+00:00",
+        "request_finished_at": "2026-11-05T00:00:07+00:00",
+    }
+    assert usage["raw_usage"]["request_started_at"] == "2026-11-05T00:00:00+00:00"
+    assert usage["raw_usage"]["request_finished_at"] == pairs_timing["request_finished_at"]
     assert (usage["input_tokens"], usage["output_tokens"]) == (300, 60)
     assert [item["visual_group_ids"] for item in registry["objects"]] == [[
         "view-001", "view-002", "view-003",

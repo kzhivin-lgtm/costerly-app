@@ -1,5 +1,50 @@
 # Done Log
 
+V2.4 independent provider timing audit, 2026-11-18, implementation pending
+publication/live verification. Owner approved independent timestamps and a fresh
+Lev1 watcher comparison. Two additive runtime audit lines retain the original
+stream diagnostics in every Membership attempt and Same-Sheet audit. No model
+request or grouping logic changed. Six saved production replays preserve exact
+request-body hashes and partitions. The parallel-review regression passes with
+Membership ending before Same-Sheet and the aggregate retaining the later end.
+Full test_agent_timing run: 108 passed, one unrelated stale Last Estimate source
+assertion also fails on unchanged HEAD. Local UI gate initially lacked PyYAML;
+restored its locked wheel in temporary test deps, without dependency-file or
+shared-venv changes. Full local/remote gate and fresh authenticated trial pending.
+
+V2.4 watcher follow-up, 2026-11-18, diagnostics only. The same watcher import
+warning exists before Labor V2 (V1.3.4) and after successful V2.2.1/V2.2.2/V2.4
+calls. Earlier narrow Detection windows missed these later warnings. Pinned
+Transformers alias functions plus Streamlit get_module_paths reproduce a lazy
+import on __path__ access; missing torchvision is caught/logged. In the bad
+cycle, browser reload 11:27:17.505 UTC created a second session, auth wait/st.stop
+at 11:27:18.751, warning at 11:27:19.306. The original RFQ was still running;
+this strongly supports the early-scan trigger, but the reload's origin is unknown.
+Two successful controls have one session in their inspected windows. An actual
+Anthropic SDK replay with synthetic SSE returns identical fixed-message bytes
+and JSON with/without the warning; sockets blocked, zero paid calls. This does
+not measure historical resource contention. Combined request_finished_at was
+also corrected: it is the later Same-Sheet finish, not a separate Membership
+finish. Watcher-to-split causation remains unconfirmed. No runtime, Membership,
+Railway or deployment change. Evidence: `watcher-diagnosis/REPORT.md` and
+`report.json` under the existing five-run output folder.
+
+V2.4 Railway/startup/transport inspection, 2026-11-18, read only. Authenticated
+Deployment Details snapshots for V1.3.3, V2.2.2, V2.2.3 and V2.4 have identical
+saved configuration and all 13 variable values. Same Anthropic key, models,
+shell command, SFO/one replica, build V3/runtime V2; no endpoint/proxy/custom
+header override. Ten locked transport/runtime package versions and adapter,
+Dockerfile, railway.toml and config.py hashes match across five releases.
+Bad Membership: accepted JSON, 754/6144 output tokens, no truncation retry,
+16.647s versus 90s guard. Transport-error search returned no matches, but log
+drops prevent proving absence. New unconfirmed lead: Streamlit watcher errors
+overlap the bad response at 11:27:19 UTC; comparison queries for V1.3.3 and
+successful V2.2.2/V2.4 windows returned none. A later 500 logs/s burst dropped
+1577 messages. Cause of this difference and connection to object splitting
+remain unknown. No runtime/Membership/config change, paid call or deployment.
+Safe evidence: `outputs/detection-v2.4-lev1-five-2026-11-18/railway-config-audit.json`
+in the handoff workspace. Historical wire headers/image digests remain unknown.
+
 V2.4 Lev1 cause analysis, 2026-11-18, diagnostics only. Owner explicitly froze
 Membership changes and requested the release-level trigger. Production history
 contains 16 consecutive one-object results after the old Nov 13 outliers and
