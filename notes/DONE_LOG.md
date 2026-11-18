@@ -1,5 +1,17 @@
 # Done Log
 
+V2.2.2 candidate, 2026-11-18, owner-requested UI correction. Restored the
+original single header-color layer; compact Sheet Processing and Assembly
+rows replace the oversized nested grey cards. Hours, Labor pay and Total
+share Materials column coordinates; Taxes & social spans the remaining two
+middle columns. Removed the standalone rate/payroll sentence. Labor header
+uses Total; unresolved work remains explicit in its details/review message.
+44 focused checks, 365 full-contract Python checks and all browser suites
+passed; the complete local UI run took 114.764 seconds. Frozen
+Lev1 desktop/mobile measurements show 0px column-center differences and
+42px work rows, with unchanged Labor Total ILS485.60. Exact-SHA gate/publication
+and owner acceptance are tracked in the existing Object Detail UI contract.
+
 V2.2.1 published, 2026-11-18. Runtime `28c5588305b7f57c17ca6b3a92de58c1e0d43d53`
 passed [exact-SHA CI](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44283247089)
 and the protected publisher. Core and Pages serve matching V2.2.1 markers;

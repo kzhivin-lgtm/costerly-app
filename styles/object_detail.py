@@ -363,9 +363,12 @@ def apply_object_detail_css() -> None:
             font-variant-numeric: tabular-nums;
         }
 
+        .object-detail-section--cols-6, .object-detail-labor-band, .object-detail-table[data-section="material"] {
+            --object-detail-cost-grid: minmax(175px, 2.35fr) minmax(106px, 1fr) minmax(96px, 1.05fr)
+                                      minmax(70px, 0.75fr) minmax(92px, 0.95fr) minmax(70px, 0.75fr);
+        }
         .object-detail-table[data-section="material"].object-detail-table--cols-6 {
-            --detail-grid: minmax(175px, 2.35fr) minmax(106px, 1fr) minmax(96px, 1.05fr)
-                           minmax(70px, 0.75fr) minmax(92px, 0.95fr) minmax(70px, 0.75fr);
+            --detail-grid: var(--object-detail-cost-grid);
         }
 
         .object-detail-table--cols-6[data-section="material"] :is(.object-detail-table-head, .object-detail-table-cell) {
@@ -477,7 +480,8 @@ def apply_object_detail_css() -> None:
             outline: 2px solid var(--color-accent);
             outline-offset: -3px;
         }
-        .object-detail-cost-summary:active { background: rgba(128, 73, 198, 0.10); }
+        /* One original header layer, not rgba composited over the same rgba. */
+        .object-detail-cost-summary .object-detail-table-head { background: none; }
         .object-detail-cost-summary .object-detail-cost-title {
             gap: 10px;
             font: 700 18px/1.2 var(--font-mono);
@@ -500,25 +504,34 @@ def apply_object_detail_css() -> None:
             gap: 4px;
             font-variant-numeric: tabular-nums;
         }
-        .object-detail-cost-label { font: 500 11px/1.2 var(--font-mono); text-transform: uppercase; }
+        .object-detail-cost-label { font: inherit; text-transform: uppercase; }
         .object-detail-cost-value { font: 700 16px/1.2 var(--font-mono); }
         .object-detail-cost-band:not([open]) > .object-detail-cost-summary {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
             min-width: 0;
         }
-        .object-detail-cost-band:not([open]) > .object-detail-cost-summary > :not(:first-child):not(:last-child),
-        .object-detail-cost-band:not([open]) > .object-detail-cost-summary .object-detail-cost-label {
-            display: none;
+        .object-detail-cost-band:not([open]) > .object-detail-cost-summary > :not(:first-child):not(:last-child) {
+            visibility: hidden;
         }
+        .object-detail-cost-band:not([open]) > .object-detail-cost-summary .object-detail-cost-label { display: none; }
         .object-detail-cost-summary .object-detail-table-head { min-height: 64px; align-self: stretch; }
-        .object-detail-labor-band { margin-bottom: 24px; --detail-grid: minmax(220px, 2fr) repeat(4, minmax(90px, 1fr)); }
-        [data-cost-band="labor"] > .object-detail-work-body > .object-detail-cost-band + .object-detail-cost-band { margin-top: 12px; }
+        .object-detail-labor-band { margin-bottom: 24px; --detail-grid: var(--object-detail-cost-grid); }
+        .object-detail-labor-table [data-labor-column="taxes"] { grid-column: 4 / span 2; }
+        .object-detail-labor-table [data-labor-column="total"] { grid-column: 6; }
+        .object-detail-labor-table .object-detail-table-head,
+        .object-detail-work-row > summary .object-detail-table-cell { padding-inline: 7px; }
+        .object-detail-work-row > .object-detail-cost-summary { background: none; }
+        .object-detail-work-row > .object-detail-cost-summary .object-detail-cost-title {
+            font: 400 13px/1.24 var(--font-sans);
+            letter-spacing: normal;
+            text-transform: none;
+        }
+        .object-detail-work-row .object-detail-cost-title::before { width: 6px; height: 6px; border-width: 1px; }
+        .object-detail-work-row > summary .object-detail-cost-value { font: 400 13px/1.24 var(--font-sans); }
+        .object-detail-labor-review { padding: 8px 12px; margin: 0; }
         .object-detail-work-body { padding: 12px; }
         .object-detail-work-body > .object-detail-elements-section { margin-bottom: 12px; }
         .object-detail-work-body > .object-detail-element-group { border-top: 0; }
         .object-detail-work-body .object-detail-section-title { font-size: 18px; }
-        .object-detail-labor-band .object-detail-cost-title { font-size: 17px; }
         .object-detail-assembly-table { --detail-grid: minmax(90px, 1.5fr) repeat(5, minmax(70px, 1fr)); }
 
         .object-detail-table-head-row,
@@ -934,6 +947,13 @@ def apply_object_detail_css() -> None:
             .object-detail-table--cols-6[data-section="material"] :is(.object-detail-table-head-row, .object-detail-table-row) {
                 min-width: 609px;
             }
+            .object-detail-labor-table > summary, .object-detail-work-row > summary { min-width: 609px; }
+            .object-detail-cost-band:not([open]) > .object-detail-cost-summary {
+                grid-template-columns: minmax(0, 1fr) 70px;
+                min-width: 0;
+            }
+            .object-detail-cost-band:not([open]) > .object-detail-cost-summary > :not(:first-child):not(:last-child) { display: none; }
+            .object-detail-labor-table:not([open]) > summary [data-labor-column="total"] { grid-column: auto; }
 
             .object-detail-elements-table .object-detail-table-head-row,
             .object-detail-elements-table .object-detail-table-row {

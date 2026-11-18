@@ -80,7 +80,7 @@ def assembly_breakdown_html(result, *, quantity=1, payroll_share=None, inline=Fa
         return ""
     headers = "".join(
         f'<div class="object-detail-table-head" role="columnheader">{label}</div>'
-        for label in (("Block", "Active min", "Planned min", "Pay", "Taxes & social", "Total")
+        for label in (("Block", "Active min", "Planned min", "Labor pay", "Taxes & social", "Total")
                       if payroll_share is not None else ("Block", "Active min", "Planned min", "Base labor"))
     )
     rows = "".join(
@@ -92,7 +92,7 @@ def assembly_breakdown_html(result, *, quantity=1, payroll_share=None, inline=Fa
         f'<div class="object-detail-table-head-row" role="row">{headers}</div>{rows}'
         + _summary_row(result, "Subtotal" if _partial(result) else "Total", total=True, quantity=quantity, payroll_share=payroll_share) + '</div>'
     )
-    captions = _caption(f'{quantity:g} finished item(s) · ₪50/h · Taxes & social 25%') if payroll_share is not None else _caption(
+    captions = (_caption(f'For {quantity:g} finished items') if quantity != 1 else '') if payroll_share is not None else _caption(
         f'Per finished item · ₪{result["hourly_base_ils"]:g}/h base wage · payroll costs excluded')
     if result["common_roles_for_review"]:
         captions += _caption("Some assembly parts have no block assignment and need review.")

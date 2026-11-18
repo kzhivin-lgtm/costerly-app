@@ -217,6 +217,16 @@ auth outcomes. Authenticated production acceptance remains open.
 
 ## Estimation Labor V1
 
+ACTIVE, P1, USER CORRECTION, V2.2.2, 2026-11-18. Correct Object Detail's
+unaccepted V2.2.1 appearance. Preserve the original palette/header background;
+render Sheet Processing and Assembly as compact ordinary rows, not grey cards.
+Share Materials column geometry: Hours under Required material, Labor pay
+under Purchase unit, and identical Total alignment. Keep work detail nested
+and optional; remove the standalone rate/payroll sentence. Use Total as the
+Labor header label without losing unresolved-work disclosure. All existing
+amounts, rates, quantities, SC, persistence and navigation remain unchanged.
+See the amended [UI contract](OBJECT_DETAIL_V2_2_1_UI_CONTRACT_2026_11_18.md).
+
 IMPLEMENTED AND PUBLISHED, P1, USER REQUEST, V2.2.1, 2026-11-18. Restructure Object Detail visually
 around collapsible Materials and Labor sections. Materials belongs in the
 existing grey column-header band, with its subtotal visible when collapsed

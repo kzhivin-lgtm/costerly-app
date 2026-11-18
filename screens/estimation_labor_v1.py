@@ -144,26 +144,34 @@ def _sheet_pay_metrics(result):
 
 
 def _cost_band(title, body, metrics=None, *, key, open_by_default=False):
-    def metric(label, value, *, total=False):
+    is_row = key != 'labor'
+
+    def metric(label, value, column, *, total=False):
         value = '—' if value is None else value
         css = 'object-detail-cost-total' if total else 'object-detail-cost-metric'
-        return (f'<div class="object-detail-table-head {css}">'
-                f'<span class="object-detail-cost-label">{label}</span>'
-                f'<span class="object-detail-cost-value">{escape(str(value))}</span></div>')
+        cell = 'object-detail-table-cell' if is_row else 'object-detail-table-head'
+        content = (f'<span class="object-detail-cost-value">{escape(str(value))}</span>' if is_row else
+                   f'<span class="object-detail-cost-label">{label}</span>'
+                   + (f'<span class="object-detail-cost-value">{escape(str(value))}</span>' if total else ''))
+        return f'<div class="{cell} {css}" data-labor-column="{column}">{content}</div>'
 
     money = lambda value: f'₪{value:,.2f}' if value is not None else '—'
     value = metrics or {}
-    label = 'Subtotal' if value.get('partial') else 'Total'
-    fields = metric('Hours', f"{value['hours']:.2f}" if metrics else None)
-    fields += metric('Pay', money(value.get('pay')))
-    fields += metric('Taxes &amp; social · 25%', money(value.get('taxes')))
-    fields += metric(label, money(value.get('total')), total=True)
+    fields = metric('Hours', f"{value['hours']:.2f}" if metrics else None, 'hours')
+    fields += metric('Labor pay', money(value.get('pay')), 'pay')
+    fields += metric('Taxes &amp; social', money(value.get('taxes')), 'taxes')
+    fields += metric('Total', money(value.get('total')), 'total', total=True)
+    classes = 'object-detail-work-row' if is_row else 'object-detail-table object-detail-cost-band object-detail-labor-table'
+    cell = 'object-detail-table-cell' if is_row else 'object-detail-table-head'
+    row = 'object-detail-table-row' if is_row else 'object-detail-table-head-row'
+    body_class = 'object-detail-work-body' if is_row else 'object-detail-labor-body'
     return (
-        f'<details class="object-detail-table object-detail-cost-band" data-cost-band="{key}"'
+        f'<details class="{classes}" data-cost-band="{key}"'
+        f' data-cost-partial="{str(bool(value.get("partial"))).lower()}"'
         + (' open' if open_by_default else '') + '>'
-        '<summary class="object-detail-table-head-row object-detail-cost-summary">'
-        f'<div class="object-detail-table-head object-detail-cost-title">{escape(title)}</div>{fields}</summary>'
-        f'<div class="object-detail-work-body">{body}</div></details>'
+        f'<summary class="{row} object-detail-cost-summary">'
+        f'<div class="{cell} object-detail-cost-title">{escape(title)}</div>{fields}</summary>'
+        f'<div class="{body_class}">{body}</div></details>'
     )
 
 
@@ -416,8 +424,9 @@ def _labor_html(state, *, elements=None, overlay_revision=None, object_id=None, 
     if known:
         total = {key: sum(item[key] for item in known) for key in ('hours', 'pay', 'taxes', 'total')}
         total['partial'] = len(known) != 2 or any(item['partial'] for item in known)
-    caption = '<p class="object-detail-cnc-caption">₪50/h · Taxes &amp; social 25% · In-house labor</p>'
-    return '<div class="object-detail-labor-band">' + _cost_band('Labor', caption + body, total, key='labor', open_by_default=True) + '</div>'
+    if total and total['partial']:
+        body += '<p class="object-detail-cnc-caption object-detail-labor-review">Some work needs review. See the details.</p>'
+    return '<div class="object-detail-labor-band">' + _cost_band('Labor', body, total, key='labor', open_by_default=True) + '</div>'
 
 
 @st.fragment(parallel=True)

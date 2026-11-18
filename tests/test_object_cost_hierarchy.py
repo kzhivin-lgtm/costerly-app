@@ -61,8 +61,18 @@ def test_assembly_remains_available_when_materials_are_pending_and_quantity_is_a
     assert 'data-cost-band="sheet-processing"' in html
     assert 'data-cost-band="assembly"' in html
     assert '₪300.00' in html and '₪75.00' in html and '₪375.00' in html
-    assert '>Subtotal<' in html
+    assert '>Total<' in html
+    assert 'Some work needs review' in html
     assert 'Assembly breakdown' not in html
+
+
+def test_labor_is_a_single_header_and_two_compact_work_rows():
+    html = _labor_html({'status': 'waiting_for_materials'})
+    assert html.count('object-detail-work-row') == 2
+    assert html.count('object-detail-cost-band') == 1
+    assert '>Labor pay<' in html
+    assert '₪50/h' not in html and 'In-house labor</p>' not in html
+    assert '>Subtotal<' not in html
 
 
 def test_pending_labor_does_not_fabricate_zero_cost():

@@ -1,5 +1,25 @@
 # V2.2.1: Object Detail cost hierarchy
 
+## V2.2.2 owner correction, 18 November 2026
+
+The owner rejected V2.2.1's large nested cards and changed header appearance.
+The correction preserves all amounts and calculations. Existing colors are
+protected; no palette change is authorized by a layout revision.
+
+| Corrected scenario | Required result | Verification |
+| --- | --- | --- |
+| Both sections expanded | One grey header each, using the original single header background layer | Computed style + frozen-card screenshot |
+| Labor rows closed | Sheet Processing and Assembly are ordinary white item rows, like material rows, with hours/pay/taxes/total visible | Browser row height and DOM assertions |
+| Cross-section alignment | Hours under Required material; Labor pay under Purchase unit; Total in the same final column | Browser cell centers within 1px |
+| Different column counts | Taxes & social spans the two remaining middle material columns; no invented fifth metric | Shared CSS grid |
+| Work row opened | Only its detail expands inside the row; Elements remains under Sheet Processing | Keyboard + pointer browser checks |
+| Materials / Labor collapsed | Only name and Total; desktop Total retains its shared column; narrow Total stays visible | Browser |
+| Labels and redundant copy | Labor pay, Total; remove the standalone hourly-rate/payroll sentence | Text assertions |
+| Incomplete work | Total header stays stable; unresolved work is disclosed in the detail/review message | Unit + browser |
+
+All earlier input, persistence, navigation, auth and arithmetic scenarios remain
+required. V2.2.2 publication/owner acceptance is pending during implementation.
+
 Owner-approved scope, 18 November 2026: Materials and Labor are collapsible
 cost bands. Labor contains Sheet Processing (including Elements), then
 Assembly (including its block/operation breakdown). A collapsed band retains
