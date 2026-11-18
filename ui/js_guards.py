@@ -2222,6 +2222,17 @@ def install_object_detail_input_guard(
                     setRowCost(row, Number(base.total || 0) + delta);
                     formulaDelta += delta;
                 }
+                const materialHeader = parentDoc.querySelector("[data-material-section-total]");
+                if (materialHeader) {
+                    const known = projected.filter(({base}) => base.total != null);
+                    const sum = known.reduce((total, {base, cost}) => total + (base.locked
+                        ? Number(base.total) + (base.policy_basis === "coatings" ? coatingDelta : materialDelta)
+                            * Number(base.policy_percent || 0) / 100
+                        : cost), 0);
+                    materialHeader.textContent = known.length || !projected.length ? formatMoney(sum) : "—";
+                    const label = materialHeader.parentElement.querySelector(".object-detail-cost-label");
+                    if (label) label.textContent = known.length === projected.length ? "Total" : "Subtotal";
+                }
                 const final = parentDoc.querySelector(".object-detail-final");
                 if (!final || !Number.isFinite(Number(final.dataset.baseCost))) return;
                 const cost = (Number(final.dataset.baseCost) * count + materialDelta + formulaDelta) / nextCount;

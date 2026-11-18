@@ -18,6 +18,7 @@ UNIT_TESTS = [
     "tests/test_navigation_routes.py", "tests/test_workflow_header.py",
     "tests/test_runtime_observability.py", "tests/test_ui_release_gate.py",
     "tests/test_presentation_previews.py",
+    "tests/test_object_cost_hierarchy.py",
 ]
 BROWSER_SUITES = ["navigation.mjs", "profile_save.mjs", "profile_recovery.mjs", "screen_recovery.mjs"]
 

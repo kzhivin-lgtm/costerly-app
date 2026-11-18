@@ -138,6 +138,38 @@ try {
   assert.equal(await core.locator('.object-detail-preview-image').getAttribute('src'),savedCrop);
   assert.ok(await core.locator('.object-detail-preview-image').evaluate(img=>img.complete&&img.naturalWidth>0));
   assert.match(await core.locator('.object-detail-final').innerText(),/₪1[\s,]?000/);
+  const materials=core.locator('.object-detail-materials-band');
+  const labor=core.locator('[data-cost-band="labor"]');
+  const sheet=labor.locator('[data-cost-band="sheet-processing"]');
+  const assembly=labor.locator('[data-cost-band="assembly"]');
+  await labor.waitFor();
+  assert.equal(await core.locator('[data-cost-band="labor"]').count(),1);
+  assert.equal(await sheet.count(),1);
+  assert.equal(await assembly.count(),1);
+  assert.equal(await sheet.locator('.object-detail-elements').count(),1);
+  assert.equal(await assembly.locator('.object-detail-elements').count(),0);
+  const cardRender=await core.locator('[data-costerly-render-id]').last().getAttribute('data-costerly-render-id');
+  for(const band of [materials,labor,sheet,assembly]){
+   const summary=band.locator(':scope > summary');
+   await summary.focus();
+   const initial=await band.evaluate(node=>node.open);
+   await summary.press('Enter');
+   assert.equal(await band.evaluate(node=>node.open),!initial);
+   await summary.press('Space');
+   assert.equal(await band.evaluate(node=>node.open),initial);
+  }
+  await sheet.locator(':scope > summary').click();
+  await sheet.locator('.object-detail-elements > summary').click();
+  await assembly.locator(':scope > summary').click();
+  assert.match(await assembly.innerText(),/Taxes & social/);
+  await page.screenshot({path:reportPath('object-cost-hierarchy-'+cfg.name+'.png'),fullPage:true});
+  await materials.locator(':scope > summary').click();
+  await labor.locator(':scope > summary').click();
+  for(const band of [materials,labor]){
+   assert.equal(await band.evaluate(node=>node.open),false);
+   assert.equal(await band.locator(':scope > summary .object-detail-cost-value').last().isVisible(),true);
+  }
+  assert.equal(await core.locator('[data-costerly-render-id]').last().getAttribute('data-costerly-render-id'),cardRender);
   await move('Card to New Estimate',button('New Estimate'),'upload');
   assert.equal(await core.locator('[data-testid="stException"]').count(),0);
   assert.deepEqual(errors,[]);

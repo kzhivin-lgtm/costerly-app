@@ -217,6 +217,22 @@ auth outcomes. Authenticated production acceptance remains open.
 
 ## Estimation Labor V1
 
+ACTIVE, P1, USER REQUEST, V2.2.1, 2026-11-18. Restructure Object Detail visually
+around collapsible Materials and Labor sections. Materials belongs in the
+existing grey column-header band, with its subtotal visible when collapsed
+and no repeated title when expanded. The owner corrected the hierarchy:
+Labor contains Sheet Processing (including Elements), followed by Assembly
+(including its block/operation breakdown). Collapsed bands retain name and
+Total. Owner-approved test labor policy: paid hours at ILS 50/h, separate Pay,
+Taxes & social at 25%, and Total, with the load applied once. Materials and
+supplier bundles stay outside the Labor sum; current SC is unchanged. Coating and packing
+labor are future work, not newly calculated or zero-priced rows. Preserve
+physical calculation, persistence and navigation behavior. The owner approved
+implementation and publication as V2.2.1, superseding the initial V2 sketch
+number. Implementation is under verification; production acceptance remains
+pending. Existing module compatibility versions are independent. See the
+[scenario contract](OBJECT_DETAIL_V2_2_1_UI_CONTRACT_2026_11_18.md).
+
 COMPLETED, documentation handoff, 2026-11-18. The owner requested a detailed
 current-point continuation record for Labor, including how the architecture
 and protected UI were reached, solved incidents, actual integration boundaries,

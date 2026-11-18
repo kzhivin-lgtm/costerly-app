@@ -1,5 +1,16 @@
 # Done Log
 
+V2.2.1 candidate implemented, 2026-11-18. Object Detail now groups Materials
+and Labor in collapsible cost bands. Labor contains Sheet Processing > Elements
+and Assembly > block/operation breakdown. The owner-approved test labor display
+uses paid hours at ILS 50/h, separate Pay, Taxes & social (25%), and Total.
+Sheet stock and subcontractor bundles are not included in the Labor sum.
+Stored Parts, Machinery settings, Material Plan and the existing SC are retained.
+43 focused checks passed. The complete local UI contract passed 364 Python
+checks and all browser suites; new nesting/toggle checks cover desktop, mobile
+and an older wrapper. Exact-SHA CI, publication and production acceptance are
+tracked in the [scenario contract](OBJECT_DETAIL_V2_2_1_UI_CONTRACT_2026_11_18.md).
+
 V1.3.4 continuation handoff, 2026-11-18, documentation only. Replaced stale
 start-from-scratch guidance with the actual deployed Labor architecture,
 decisions and incident history, protected checkpoint and release procedure,

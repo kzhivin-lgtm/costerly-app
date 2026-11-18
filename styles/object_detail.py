@@ -466,6 +466,61 @@ def apply_object_detail_css() -> None:
             gap: 3px;
         }
 
+        .object-detail-cost-summary {
+            list-style: none;
+            cursor: pointer;
+            align-items: center;
+            background: rgba(42, 31, 44, 0.045);
+        }
+        .object-detail-cost-summary::-webkit-details-marker { display: none; }
+        .object-detail-cost-summary:focus-visible {
+            outline: 2px solid var(--color-accent);
+            outline-offset: -3px;
+        }
+        .object-detail-cost-summary:active { background: rgba(128, 73, 198, 0.10); }
+        .object-detail-cost-summary .object-detail-cost-title {
+            gap: 10px;
+            font: 700 18px/1.2 var(--font-mono);
+            text-transform: uppercase;
+        }
+        .object-detail-cost-title::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-right: 2px solid currentColor;
+            border-bottom: 2px solid currentColor;
+            transform: rotate(45deg);
+            flex: 0 0 auto;
+        }
+        details[open] > .object-detail-cost-summary .object-detail-cost-title::before {
+            transform: rotate(225deg);
+        }
+        .object-detail-cost-total, .object-detail-cost-metric {
+            flex-direction: column;
+            gap: 4px;
+            font-variant-numeric: tabular-nums;
+        }
+        .object-detail-cost-label { font: 500 11px/1.2 var(--font-mono); text-transform: uppercase; }
+        .object-detail-cost-value { font: 700 16px/1.2 var(--font-mono); }
+        .object-detail-cost-band:not([open]) > .object-detail-cost-summary {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            min-width: 0;
+        }
+        .object-detail-cost-band:not([open]) > .object-detail-cost-summary > :not(:first-child):not(:last-child),
+        .object-detail-cost-band:not([open]) > .object-detail-cost-summary .object-detail-cost-label {
+            display: none;
+        }
+        .object-detail-cost-summary .object-detail-table-head { min-height: 64px; align-self: stretch; }
+        .object-detail-labor-band { margin-bottom: 24px; --detail-grid: minmax(220px, 2fr) repeat(4, minmax(90px, 1fr)); }
+        [data-cost-band="labor"] > .object-detail-work-body > .object-detail-cost-band + .object-detail-cost-band { margin-top: 12px; }
+        .object-detail-work-body { padding: 12px; }
+        .object-detail-work-body > .object-detail-elements-section { margin-bottom: 12px; }
+        .object-detail-work-body > .object-detail-element-group { border-top: 0; }
+        .object-detail-work-body .object-detail-section-title { font-size: 18px; }
+        .object-detail-labor-band .object-detail-cost-title { font-size: 17px; }
+        .object-detail-assembly-table { --detail-grid: minmax(90px, 1.5fr) repeat(5, minmax(70px, 1fr)); }
+
         .object-detail-table-head-row,
         .object-detail-table-row {
             display: grid;
