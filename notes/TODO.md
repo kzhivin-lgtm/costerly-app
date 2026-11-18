@@ -1061,10 +1061,15 @@ summaries and Same-Sheet audit. Six saved production replays retain identical
 request bodies and partitions. Regression verifies the earlier Membership end
 survives the later Same-Sheet aggregate finish. Full local gate passed (368
 checks/five browser suites, 124.831s). CI run 44354547621 timed out on unchanged
-Profile tab navigation. Same-code verification retry through ordinary branch
-push pending. Publication and live authenticated trial pending; browser Sign in
-handed to owner. No fresh model
-call has been made in this iteration. Evidence: `outputs/provider-timings-v2.4/`.
+Profile tab navigation. Same-code full retry passed on runtime `551577c3`
+(CI run 44355439566); published via the protected publisher. Railway deployment
+3d6a4751-5189-49ac-8f3f-ca0b82e73434 succeeded 17:16:39 UTC. New-container
+authenticated Upload/App Ready observed with the V2.4 marker. Live Lev1 trial
+is pending manual file selection: CUA sees the uploader but native, locator and
+keyboard activation cannot open its chooser. Owner signed in; visible Upload
+handed off with the exact prepared Lev_1.pdf. No fresh model call yet. Do not
+claim actual watcher/request overlap measured. Evidence:
+`outputs/provider-timings-v2.4/` including implementation/deployment receipts.
 
 ## Ordinary Detection dimension membership, V8.4.13
 

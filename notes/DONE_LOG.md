@@ -1,7 +1,7 @@
 # Done Log
 
-V2.4 independent provider timing audit, 2026-11-18, implementation pending
-publication/live verification. Owner approved independent timestamps and a fresh
+V2.4 independent provider timing audit, 2026-11-18, published; live trial pending.
+Owner approved independent timestamps and a fresh
 Lev1 watcher comparison. Two additive runtime audit lines retain the original
 stream diagnostics in every Membership attempt and Same-Sheet audit. No model
 request or grouping logic changed. Six saved production replays preserve exact
@@ -15,8 +15,15 @@ browser suites, 124.831s. CI run 44354547621 passed unit/navigation/Calculation,
 then timed out in unchanged Profile Pricing Cost tab navigation. Failure log
 retained in `outputs/provider-timings-v2.4/ci-attempt-1.log`. Workflow dispatch
 returned 403, so this record triggers a fresh cumulative full gate through the
-normal branch push, with unchanged runtime/test code. Publication and fresh
-authenticated Lev1 trial pending.
+normal branch push, with unchanged runtime/test code. Full retry 44355439566
+passed; protected publisher promoted `551577c3` to main. Railway deployment
+3d6a4751-5189-49ac-8f3f-ca0b82e73434 succeeded at 17:16:39 UTC. The authenticated
+new-container Upload reported V2.4 App Ready. No live model call yet: browser
+automation can inspect the uploader but cannot activate the file chooser through
+native/locator/keyboard paths. Owner signed in; manual selection of the prepared
+431026-byte Lev_1.pdf handed off. Fresh per-request/watcher overlap remains
+unmeasured. Source request/partition invariance and publication are verified;
+the fresh-trial objective is still open. Evidence: `outputs/provider-timings-v2.4/`.
 
 V2.4 watcher follow-up, 2026-11-18, diagnostics only. The same watcher import
 warning exists before Labor V2 (V1.3.4) and after successful V2.2.1/V2.2.2/V2.4
