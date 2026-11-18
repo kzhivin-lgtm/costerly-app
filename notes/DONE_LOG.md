@@ -1,5 +1,19 @@
 # Done Log
 
+V2.4 Lev1 five-run live benchmark, 2026-11-18. Owner-authorized five sequential
+fresh OCR + unmodified Detection calls on deployed-source runtime `4fa14047`.
+The exact original PDF, route and actual provider models match the failing
+production reference. Results: **1, 1, 1, 2, 6 objects**, with six discovered
+Views and fifteen same-sheet same decisions in every trial. Three pass, two
+outliers; 192.131s pipeline time. Each trial has a distinct live provider request
+ID. Five offline compiler replays exactly reproduce the live partitions and
+audits. The V6.37 coverage compiler rejects incomplete typed pair coverage in
+the two bad hypotheses, despite the separate positive Same-Sheet review.
+The runtime failure mechanism is confirmed; the release-level initiating cause
+remains open. No Detection repair, app database writes, Naming/Calculation or
+deployment. Artifacts and runnable harness:
+`/Users/qb/Documents/ChatGPT/Costerly/outputs/detection-v2.4-lev1-five-2026-11-18/`.
+
 V2.4 published, 2026-11-18, runtime `4fa140475f35c234d0181d6aa59ac4616e31f549`.
 The owner subsequently authorized deployment. The candidate preserves the exact
 verified source tree of local `07dbdacf`, joining its history with the prior

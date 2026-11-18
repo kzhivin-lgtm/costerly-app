@@ -984,6 +984,23 @@ handoff workspace under `outputs/object-card-v2.2.3/lev1-detection-comparison.js
 V2.4 deployment was subsequently authorized with Detection unchanged. This does
 not resolve the incident or authorize a Detection patch, paid rerun or automatic
 merge of saved objects as part of that UI publication.
+The owner subsequently authorized five fresh internal Detection trials on V2.4
+with Lev1. COMPLETED LIVE BENCHMARK: sequential fresh OCR plus unmodified live Detection,
+same original SHA-256 `56bfa63e0236c85a161a2fa95a8996b03003df8f2f01d54ac4236acb5a7287b8`.
+Acceptance per trial: one quantity-one object containing all six Views. Preserve
+all outcomes and Registry audits; no repair or automatic saved-object merge.
+Artifacts: `outputs/detection-v2.4-lev1-five-2026-11-18/` in the handoff workspace.
+Results: **1, 1, 1, 2, 6 objects**, 192.131s total pipeline time. Only 3/5 met
+the one-object/six-View criterion. PDF SHA, route, actual Haiku 4.5 Discovery and
+Sonnet 4.6 Membership match the failing production reference. All five discovered
+six Views and returned fifteen Same-Sheet same decisions. Five distinct live
+provider request IDs are preserved. Offline replay of the unchanged V6.37
+coverage compiler exactly reproduces all five partitions and audits. The two
+bad results reject a hypothesis for `membership_hypothesis_pair_local_coverage_incomplete`
+(View 002 lacks a typed local proof pair inside that hypothesis), yielding a
+five-View object plus View 003, or six singletons. This confirms the failure
+mechanism on V2.4; it does not establish the release-level initiating cause.
+No repair, additional paid trial, Naming/Calculation run or deployment performed.
 
 ## Ordinary Detection dimension membership, V8.4.13
 
