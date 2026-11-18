@@ -18,7 +18,28 @@ protected; no palette change is authorized by a layout revision.
 | Incomplete work | Total header stays stable; unresolved work is disclosed in the detail/review message | Unit + browser |
 
 All earlier input, persistence, navigation, auth and arithmetic scenarios remain
-required. V2.2.2 publication/owner acceptance is pending during implementation.
+required. Runtime `4e69e5d7d31af140f5ba9fa81668a4196d46c5ee` is published;
+owner-authenticated visual acceptance remains pending.
+
+V2.2.2 evidence:
+
+- [Exact-SHA CI](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44287838603)
+  succeeded; whole Linux job 170 seconds. Promotion used the enforced publisher.
+- Local: 44 focused checks; 365 Python checks and all four browser suites,
+  114.764 seconds. Navigation covers desktop, mobile and an older wrapper.
+- Frozen Lev1: original header color matches in the same browser, Hours / Labor
+  pay / Total have 0px center difference from Materials, work rows are 42px;
+  sheet labor 335.86 + assembly 149.74 = 485.60 ILS, unchanged from V2.2.1.
+- Initial local assertions were corrected for browser alpha quantization and
+  CSS uppercase text. The standalone frozen renderer was given Streamlit's
+  border-box sizing. These were test/renderer issues, not palette changes.
+- Core and wrapper observed at
+  `estimation-v2.2.2-compact-cost-rows-detection-v8.4.29`. Initial Core lagged
+  Pages at V2.2.1; after deployment/reload the pair matched. Authenticated card
+  behavior is not claimed accepted from the unauthenticated build check.
+- Evidence: `/Users/qb/Documents/ChatGPT/Costerly/outputs/object-card-v2.2.2/`.
+- Release tag: `estimation-labor-v2.2.2-2026-11-18`; rollback runtime is V2.2.1,
+  `28c5588305b7f57c17ca6b3a92de58c1e0d43d53`. No new paid model call.
 
 Owner-approved scope, 18 November 2026: Materials and Labor are collapsible
 cost bands. Labor contains Sheet Processing (including Elements), then

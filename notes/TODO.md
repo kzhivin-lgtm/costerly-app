@@ -217,7 +217,7 @@ auth outcomes. Authenticated production acceptance remains open.
 
 ## Estimation Labor V1
 
-ACTIVE, P1, USER CORRECTION, V2.2.2, 2026-11-18. Correct Object Detail's
+IMPLEMENTED AND PUBLISHED, P1, USER CORRECTION, V2.2.2, 2026-11-18. Correct Object Detail's
 unaccepted V2.2.1 appearance. Preserve the original palette/header background;
 render Sheet Processing and Assembly as compact ordinary rows, not grey cards.
 Share Materials column geometry: Hours under Required material, Labor pay
@@ -225,7 +225,12 @@ under Purchase unit, and identical Total alignment. Keep work detail nested
 and optional; remove the standalone rate/payroll sentence. Use Total as the
 Labor header label without losing unresolved-work disclosure. All existing
 amounts, rates, quantities, SC, persistence and navigation remain unchanged.
-See the amended [UI contract](OBJECT_DETAIL_V2_2_1_UI_CONTRACT_2026_11_18.md).
+Runtime `4e69e5d7` passed exact-SHA CI and the protected publisher. Core and
+Pages serve matching V2.2.2 markers. Verification: 44 focused checks, 365
+full-contract Python checks and all browser suites; frozen Lev1 desktop/mobile
+has 0px alignment error, 42px work rows and unchanged Total ILS485.60.
+Owner-authenticated visual acceptance remains pending. See the amended
+[UI contract](OBJECT_DETAIL_V2_2_1_UI_CONTRACT_2026_11_18.md).
 
 IMPLEMENTED AND PUBLISHED, P1, USER REQUEST, V2.2.1, 2026-11-18. Restructure Object Detail visually
 around collapsible Materials and Labor sections. Materials belongs in the
@@ -242,7 +247,8 @@ implementation and publication as V2.2.1, superseding the initial V2 sketch
 number. Runtime `28c55883` passed exact-SHA CI and the protected publisher.
 Core and Pages serve matching V2.2.1 markers; Login was observed. Local checks:
 43 focused tests, 364 full-contract Python checks and all browser suites.
-Owner-authenticated card acceptance remains pending. Existing module
+The owner rejected V2.2.1's appearance; its layout is superseded by V2.2.2,
+with the verified calculations retained. Existing module
 compatibility versions are independent. See the
 [scenario contract](OBJECT_DETAIL_V2_2_1_UI_CONTRACT_2026_11_18.md).
 
