@@ -31,6 +31,7 @@ _MOVE_CARET_TO_END = """
 
 def install_workflow_header_alignment_guard(
     title_selector: str = "h1.workflow-title",
+    *, even_labor_columns: bool = False,
 ) -> None:
     """Align the fixed workflow actions to the rendered workflow-title center."""
     title_selector_json = json.dumps(title_selector)
@@ -42,6 +43,7 @@ def install_workflow_header_alignment_guard(
             const parentDoc = parentWindow.document;
             const CLEANUP_KEY = "__costerlyWorkflowHeaderAlignmentCleanup";
             const titleSelector = __TITLE_SELECTOR__;
+            const evenLaborColumns = __EVEN_LABOR_COLUMNS__;
 
             if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
 
@@ -76,6 +78,25 @@ def install_workflow_header_alignment_guard(
 
             function align() {
                 frameId = null;
+                if (evenLaborColumns) {
+                    // Reuse this guard's existing coalesced render/resize
+                    // callback. No additional observer, timer or app rerun.
+                    for (const row of parentDoc.querySelectorAll('.object-detail-labor-table .object-detail-cost-summary')) {
+                        const hours = row.querySelector('[data-labor-column="hours"]');
+                        const total = row.querySelector('[data-labor-column="total"]');
+                        if (!hours || !total || !row.getClientRects().length) continue;
+                        const center = node => { const r = node.getBoundingClientRect(); return r.x + r.width / 2; };
+                        const start = center(hours), step = (center(total) - start) / 3;
+                        for (const [index, column] of ['pay', 'taxes'].entries()) {
+                            const cell = row.querySelector(`[data-labor-column="${column}"]`);
+                            if (!cell) continue;
+                            const offset = `${(start + step * (index + 1) - center(cell)).toFixed(2)}px`;
+                            if (cell.style.getPropertyValue('--labor-column-offset') !== offset) {
+                                cell.style.setProperty('--labor-column-offset', offset);
+                            }
+                        }
+                    }
+                }
                 const { title, actions } = targets();
                 if (!title || !actions) return;
 
@@ -150,7 +171,8 @@ def install_workflow_header_alignment_guard(
             };
         })();
         </script>
-        """.replace("__TITLE_SELECTOR__", title_selector_json),
+        """.replace("__TITLE_SELECTOR__", title_selector_json)
+        .replace("__EVEN_LABOR_COLUMNS__", json.dumps(even_labor_columns)),
         height=0,
         width=0,
     )
@@ -2069,7 +2091,7 @@ def install_object_detail_input_guard(
             };
             const draft = new Map();
             let activeSave = null;
-            const materialField = field => field === "required_material" || field === "purchase_quantity";
+            const materialField = field => field === "required_material" || field === "purchase_quantity" || field === "labor_hours";
             const editKey = ctx => JSON.stringify([ctx.field, ctx.lineId]);
             const materialValue = input => String(editableValue(input) || "").trim().replace(",", ".");
             const validAmount = raw => /^(?:\\d+(?:\\.\\d{0,4})?|\\.\\d{1,4})$/.test(raw)
@@ -2083,7 +2105,8 @@ def install_object_detail_input_guard(
             const contextFor = input => ({input, field: input.dataset.field, lineId: input.dataset.lineId});
             const objectQuantityContext = input => ({input, field: "object_quantity", lineId: "__object__"});
             const invalidMaterial = () => objectQuantityInput()?.getAttribute("aria-invalid") === "true" ||
-                materialRows().some(row => row.querySelector('[aria-invalid="true"]'));
+                materialRows().some(row => row.querySelector('[aria-invalid="true"]')) ||
+                !!parentDoc.querySelector('[data-field="labor_hours"][aria-invalid="true"]');
             const updateSaveControls = message => {
                 const button = saveButton();
                 if (!button) return;
@@ -2266,12 +2289,15 @@ def install_object_detail_input_guard(
                 const row = input.closest("[data-material-preview]");
                 const purchase = ctx.field === "purchase_quantity";
                 const wholeStock = purchase && row && ["sheet", "linear_stock", "piece"].includes(rowPreview(row).purchase_kind);
-                const valid = validAmount(raw) && (!wholeStock || Number.isInteger(amount)) && (!objectQuantity ||
-                    (amount === Math.round(amount * 1000) / 1000 && amount <= 1_000_000));
+                const laborHours = ctx.field === "labor_hours";
+                const valid = laborHours
+                    ? /^(?:\\d+(?:\\.\\d?)?|\\.\\d)$/.test(raw) && amount >= 0 && amount <= 1_000_000
+                    : validAmount(raw) && (!wholeStock || Number.isInteger(amount)) && (!objectQuantity ||
+                        (amount === Math.round(amount * 1000) / 1000 && amount <= 1_000_000));
                 if (!valid) {
                     if (reportInvalid) {
                         input.setAttribute("aria-invalid", "true");
-                        updateSaveControls(objectQuantity
+                        updateSaveControls(laborHours ? "Enter hours from 0 to 1,000,000 with one decimal place." : objectQuantity
                             ? "Enter a positive object quantity with up to three decimal places."
                             : wholeStock ? "Enter a whole number of purchase units."
                             : "Enter a positive quantity with up to four decimal places.");
@@ -2294,7 +2320,34 @@ def install_object_detail_input_guard(
                 }
                 if (reportInvalid) setEditableValue(input, objectQuantity ? raw : quantityText(raw, input));
                 previewMaterials();
+                previewLabor();
                 updateSaveControls();
+            }
+
+            function previewLabor() {
+                if (!parentDoc.querySelector('[data-field="labor_hours"]')) return;
+                const quantity = objectQuantityInput();
+                const count = Number(quantity?.dataset.originalValue || 1);
+                const nextCount = Number(draft.get(editKey({field: "object_quantity", lineId: "__object__"}))?.value ?? count);
+                let total = 0;
+                for (const row of parentDoc.querySelectorAll('.object-detail-work-row')) {
+                    const input = row.querySelector('[data-field="labor_hours"]');
+                    if (!input) continue;
+                    const pending = draft.get(editKey(contextFor(input)));
+                    const hours = pending ? Number(pending.value) : Number(input.dataset.originalValue) * nextCount / count;
+                    if (input !== parentDoc.activeElement && input.getAttribute("aria-invalid") !== "true") {
+                        setEditableValue(input, hours.toFixed(1));
+                    }
+                    const pay = Math.round(hours * 50 * 100) / 100;
+                    const taxes = Math.round(pay * 0.25 * 100) / 100;
+                    for (const [column, value] of Object.entries({pay, taxes, total: pay + taxes})) {
+                        const cell = row.querySelector(`[data-labor-column="${column}"] .object-detail-cost-value`);
+                        if (cell) cell.textContent = formatMoney(value);
+                    }
+                    total += pay + taxes;
+                }
+                const cell = parentDoc.querySelector('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value');
+                if (cell) cell.textContent = formatMoney(total);
             }
 
             function submitDraft(approveAfterSave = false) {
@@ -2317,6 +2370,7 @@ def install_object_detail_input_guard(
             }
 
             function saveMaterialDraft(event) {
+                if (event.target?.closest?.('[data-field="labor_hours"]')) event.preventDefault();
                 if (event.target?.closest?.(".object-detail-material-save")) submitDraft();
             }
 
@@ -2343,6 +2397,13 @@ def install_object_detail_input_guard(
                 for (const edit of submitted) {
                     const key = editKey(edit);
                     if (Number(draft.get(key)?.value) === Number(edit.value)) draft.delete(key);
+                }
+                const previousQuantity = Number(objectQuantityInput()?.dataset.originalValue || 1);
+                for (const input of parentDoc.querySelectorAll('[data-field="labor_hours"]')) {
+                    const perItem = result.labor_hours_overrides?.[input.dataset.lineId];
+                    input.dataset.originalValue = String(perItem != null
+                        ? Number(perItem) * Number(result.quantity)
+                        : Number(input.dataset.originalValue) * Number(result.quantity) / previousQuantity);
                 }
                 const quantity = objectQuantityInput();
                 if (quantity && result.quantity != null) {
@@ -2387,6 +2448,7 @@ def install_object_detail_input_guard(
                 }
                 saveButton()?.setAttribute("data-saved", "");
                 previewMaterials();
+                previewLabor();
                 updateSaveControls();
                 const performance = parentWindow.performance;
                 performance.clearMeasures("object-detail-save");
@@ -2709,7 +2771,7 @@ def install_object_detail_input_guard(
                 }
                 const ctx = inputContext(event);
                 if (!ctx) return;
-                if (ctx.field === "required_material" || ctx.field === "purchase_quantity") {
+                if (materialField(ctx.field)) {
                     stageMaterialEdit(ctx, true);
                     return;
                 }
@@ -2740,7 +2802,7 @@ def install_object_detail_input_guard(
                         value: normalizeInputValue(input),
                         originalValue: input.dataset.originalValue ?? normalizeInputValue(input),
                     })).filter((edit) => edit.line_id && edit.field && edit.value !== edit.originalValue &&
-                        edit.field !== "required_material" && edit.field !== "purchase_quantity");
+                        !materialField(edit.field));
                 });
                 return edits;
             }
@@ -2871,6 +2933,7 @@ def install_object_detail_input_guard(
             parentDoc.addEventListener("click", confirmDiscard, true);
             parentWindow.__costerlyObjectDetailDraft = {
                 snapshotEdits,
+                pendingEdits: () => [...draft.values()],
                 context: {runId: RUN_ID, estimateId: ESTIMATE_ID, objectId: OBJECT_ID},
             };
 

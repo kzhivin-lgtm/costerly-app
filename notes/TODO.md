@@ -217,6 +217,19 @@ auth outcomes. Authenticated production acceptance remains open.
 
 ## Estimation Labor V1
 
+LOCALLY VERIFIED, PUBLICATION PENDING, P1, USER REQUEST, V2.2.3, 2026-11-18. Round displayed Labor money to whole
+shekels with grouped thousands; editable one-decimal Hours with immediate preview,
+explicit Save and persisted reopen. Keep Hours/Total anchored to Materials and
+space the intermediate columns evenly; wrap Labor pay and Taxes & social. Remove
+generic incomplete-work captions. Preserve colors, physical norms and SC scope.
+Also fix the new-Calculation shell-read race and verify a single pricing table
+through active/full reruns and completion. Production run `run_6a79a6dc2cac4a4a9b4383435272b65b`:
+ownership read at 10:51:15.854114 UTC preceded shell creation at 10:51:16.437917
+by 0.583803 seconds. New browser scenario passes with one table through active and
+terminal reruns; the original duplicate-screen cause remains likely, not replayed
+on the old runtime. 368 full-contract checks and five browser suites passed.
+See the existing Object Detail scenario contract for acceptance.
+
 IMPLEMENTED AND PUBLISHED, P1, USER CORRECTION, V2.2.2, 2026-11-18. Correct Object Detail's
 unaccepted V2.2.1 appearance. Preserve the original palette/header background;
 render Sheet Processing and Assembly as compact ordinary rows, not grey cards.

@@ -413,6 +413,14 @@ def _persisted_objects_state(estimate_id: str | None) -> ObjectsScreenState:
     """Load the latest persisted rows while the background worker is active."""
     if not estimate_id:
         return ObjectsScreenState(data=_empty_objects_data())
+    future = st.session_state.get("estimation_batch_future")
+    shell_ready = getattr(future, "estimate_shell_ready", None)
+    if isinstance(future, Future) and not future.done() and shell_ready is not None and not shell_ready.is_set():
+        # A new accepted launch paints seeds before its worker persists the
+        # shell. Ownership reads are valid only after that write is accepted.
+        return ObjectsScreenState(data=prepared_objects_data_from_seed_rows(
+            st.session_state.get("objects_estimation_seed_rows") or []
+        ))
     st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
     try:
         data, cache_warning = _load_objects_screen_data(estimate_id)
@@ -779,9 +787,9 @@ def _render_objects_table_content(
     _render_pricing_table(data, estimate_id=estimate_id, run_id=run_id, company_id=company_id)
 
 
-@st.fragment(run_every=1.5)
 def _render_live_objects_content(
-    *, estimate_id: str, run_id: str | None, company_id: str,
+    *, estimate_id: str | None, run_id: str | None, company_id: str,
+    initial_state: ObjectsScreenState, live: bool,
 ) -> None:
     """Safely refresh persisted Estimation rows without mutating React-owned DOM."""
     future_before = st.session_state.get("estimation_batch_future")
@@ -798,7 +806,10 @@ def _render_live_objects_content(
     # The first fragment render stays on the already prepared seed rows so the
     # Objects transition is not delayed by an extra Supabase read. Timed
     # fragment reruns then replace the seed with persisted per-object results.
-    if st.session_state.get("objects_live_poll_estimate_id") != estimate_id:
+    if not live:
+        st.session_state.pop("objects_live_poll_estimate_id", None)
+        screen_state = initial_state
+    elif st.session_state.get("objects_live_poll_estimate_id") != estimate_id:
         st.session_state.objects_live_poll_estimate_id = estimate_id
         screen_state = _current_objects_state(estimate_id)
     else:
@@ -947,20 +958,13 @@ def render_objects_screen(
     # native buttons must already exist for all objects in the prepared batch.
     action_data = _data_with_progress(screen_state.data, estimate_id)
     _render_object_detail_navigation_bridges(action_data)
-    if live:
-        _render_live_objects_content(
-            estimate_id=str(estimate_id),
-            run_id=run_id,
-            company_id=company_id,
-        )
-    else:
-        st.session_state.pop("objects_live_poll_estimate_id", None)
-        _render_objects_table_content(
-            estimate_id=estimate_id,
-            run_id=run_id,
-            company_id=company_id,
-            screen_state=screen_state,
-        )
+    # One fragment and delta path for both running and saved estimates. A
+    # full rerun must replace the same subtree, rather than moving a stale
+    # pricing table between a fragment and the app root.
+    st.fragment(_render_live_objects_content, run_every=1.5 if live else None)(
+        estimate_id=estimate_id, run_id=run_id, company_id=company_id,
+        initial_state=screen_state, live=live,
+    )
 
     # Actions and JavaScript runtimes remain outside the timed fragment. They
     # are installed once per full render and cannot flicker or be replaced by a

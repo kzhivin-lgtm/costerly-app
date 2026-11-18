@@ -1,5 +1,48 @@
 # V2.2.1: Object Detail cost hierarchy
 
+## V2.2.3 owner correction, 18 November 2026
+
+Approved scope: whole-shekel Labor pay, Taxes & social and Total with grouped
+thousands; one-decimal editable Hours for the two work rows. Hours stays under
+Required material, Total stays under Total. Split Labor pay and Taxes & social
+labels over two lines and distribute the middle columns evenly. Remove generic
+unfinished-work captions. Preserve the palette, physical norms, SC and ownership.
+
+| Scenario | Acceptance |
+| --- | --- |
+| New Calculation, delayed shell write | Seed rows remain visible, no estimate ownership read before shell readiness, real foreign estimates still rejected |
+| Active Calculation, timer and app reruns, completion | Exactly one pricing table, one launch, no mixed/stale second table |
+| Manual Sheet Processing / Assembly hours | Immediate local cost preview at 50/h and 25%; explicit Save persists the accepted override; reopening and quantity changes retain it |
+| Invalid or failed save | Zero valid; negative, nonfinite, over-limit and excess precision rejected; actionable draft retained |
+| Keyboard, collapse, mobile | Input does not toggle its row; details hierarchy remains; anchored columns, wrapped labels, no changed colors |
+| Existing estimate / auth / material edits | Existing full UI contract remains green; no paid run and no automatic inclusion of Labor in SC |
+
+Manual hours use metadata-only rows in the existing estimate-lines store, normalized
+per item. Their zero SC contribution preserves the approved separation of this UI
+iteration from the pending SC integration. No new schema or production norm changes.
+Hours reuses Materials' numeric editor and explicit-save bridge. A native input
+with a value in Streamlit Markdown was rejected because React restored its value
+on input; browser event/setter tracing confirmed that failure. Clicking Hours
+edits the field; the row title/arrow and keyboard summary activation expand details.
+Equal column spacing reuses the existing coalesced render/resize alignment guard,
+with no extra observer, polling or app rerun. Its existing cleanup also applies.
+
+V2.2.3 local evidence so far:
+- 57 focused calculation/cache/runtime tests passed. Full local gate passed:
+  368 Python checks and all five browser suites.
+- Calculation browser scenario passed at desktop and 390px: delayed durable shell,
+  one launch/table through active and terminal full reruns, two editable work rows,
+  immediate pay/tax/total preview, failed Save/retry, zero and persisted reopen.
+- Frozen Lev1: unchanged exact Labor ILS485.60, displayed ILS486. Original header
+  color unchanged, 42px work rows, Hours/Total anchor error 0px. Middle gaps differ
+  by less than 0.01px across 1280px/390px viewports.
+- The production error's cause is verified from its event/shell timestamps. The
+  original duplicate-screen symptom was not replayed on the old runtime. The new
+  browser scenario verifies a single stable pricing subtree; the original cause
+  remains likely rather than conclusively reproduced.
+- Evidence directory: `/Users/qb/Documents/ChatGPT/Costerly/outputs/object-card-v2.2.3/`.
+  Exact-SHA CI, publication, matched builds and authenticated acceptance pending.
+
 ## V2.2.2 owner correction, 18 November 2026
 
 The owner rejected V2.2.1's large nested cards and changed header appearance.

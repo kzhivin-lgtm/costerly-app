@@ -4,7 +4,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 import json
 from decimal import Decimal
 import logging
-from threading import RLock
+from threading import Event, RLock
 from typing import Mapping, NamedTuple
 
 from use_cases.estimation import start_estimation_for_run
@@ -627,6 +627,9 @@ def submit_prepared_estimation_job(
     same persistence and Estimation work still begins only after explicit user
     intent.
     """
+    shell_ready = Event()
+    if not create_shell:
+        shell_ready.set()
     future = _ESTIMATION_EXECUTOR.submit(
         _persist_prepared_launch_and_run,
         estimate_id=estimate_id,
@@ -642,7 +645,9 @@ def submit_prepared_estimation_job(
         edits_changed=edits_changed,
         ignored_object_ids=set(ignored_object_ids),
         create_shell=create_shell,
+        shell_ready=shell_ready,
     )
+    future.estimate_shell_ready = shell_ready
 
     def record_failure(completed: Future) -> None:
         if not completed.cancelled() and isinstance(error := completed.exception(), Exception):
@@ -664,6 +669,7 @@ def _persist_prepared_launch_and_run(
     edits_changed: bool,
     ignored_object_ids: set[str],
     create_shell: bool,
+    shell_ready: Event | None = None,
 ) -> dict[str, object]:
     """Persist an accepted launch snapshot, then run Estimation."""
     save_file_review_run_metadata(
@@ -686,6 +692,9 @@ def _persist_prepared_launch_and_run(
             ignored_object_ids=ignored_object_ids,
             estimate_id=estimate_id,
         )
+
+    if shell_ready is not None:
+        shell_ready.set()
 
     return _run_estimation_job(
         estimate_id=estimate_id,

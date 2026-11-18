@@ -65,6 +65,9 @@ class Client:
   record('lookup saved estimate')
   return SimpleNamespace(data=sample['routes'])
 def read_objects(_client, estimate_id):
+ if (STATE / 'fresh-active').exists() and not (STATE / 'fresh-done').exists():
+  return pd.DataFrame([{**row, 'status':'running', 'self_cost_ex_vat':None,
+   'progress_percent':35, 'progress_label':'Estimating'} for row in sample['objects']])
  if st.session_state.get('screen')=='file_review':
   lag_file=(STATE / 'slow-objects-read')
   if lag_file.exists():
@@ -72,7 +75,11 @@ def read_objects(_client, estimate_id):
  record('objects '+estimate_id)
  return pd.DataFrame([row for row in sample['objects'] if row['estimate_id']==estimate_id])
 def read_plans(_client, estimate_id):
- return pd.DataFrame([row for row in sample['plans'] if row['estimate_id']==estimate_id])
+ rows=[row for row in sample['plans'] if row['estimate_id']==estimate_id]
+ if scenario().get('labor_ready'):
+  source={key:sample['parts'].get(key) for key in ('run_id','estimate_id','input_ids','source_audit_sha256','overlay_revision')}
+  rows=[{**row,'plan_payload':{**row['plan_payload'],'parts_check_source':source}} for row in rows]
+ return pd.DataFrame(rows)
 def company_access(**kwargs):
  record('auth checked '+('expired' if status_path.exists() else 'valid'))
  return None if status_path.exists() else company_auth.CompanyAccess('fixture-user','fixture@example.invalid',company_id,'owner','fixture-token')
@@ -122,9 +129,20 @@ objects.load_parts_check = lambda **_: {'status':'ready'}
 objects.load_estimation_cycle_cost = lambda **_: None
 ocr_adapter.warm_mistral_http_client_async = lambda: None
 upload.warm_mistral_http_client_async = lambda: None
-estimation.fetch_rfq_estimate_lines_for_object = lambda _client, **kwargs: pd.DataFrame([
- row for row in lines if row['estimate_id']==kwargs['estimate_id'] and row['object_id']==kwargs['object_id']
-])
+hours_path=STATE / 'labor-hours.json'
+def read_lines(_client, **kwargs):
+ extra=json.loads(hours_path.read_text()) if hours_path.exists() else []
+ return pd.DataFrame([row for row in lines+extra
+  if row['estimate_id']==kwargs['estimate_id'] and row['object_id']==kwargs['object_id']])
+estimation.fetch_rfq_estimate_lines_for_object = read_lines
+def save_hours(_client, *, lines):
+ if not lines:return
+ assert all(row['source']=='labor_hours_override' and row['company_id']==company_id for row in lines)
+ if scenario().get('hours_write_failure'):raise RuntimeError('controlled hours write failure')
+ saved={row['line_id']:row for row in json.loads(hours_path.read_text())} if hours_path.exists() else {}
+ saved.update({row['line_id']:row for row in lines})
+ hours_path.write_text(json.dumps(list(saved.values())))
+estimation.upsert_rfq_estimate_lines=save_hours
 estimation.fetch_company_overhead_settings = lambda *args: pd.DataFrame([])
 estimation._with_saved_led_catalog_specs = lambda _client, plan: plan
 estimation._with_saved_element_ownership = lambda _client, checked, *a, **kw: checked
@@ -143,6 +161,8 @@ labor.load_sheet_processing_machinery = lambda *_: {}
 def save_materials(**kwargs):
  assert kwargs['estimate_id']==estimate_id and kwargs['object_id']=='object-001'
  assert len(kwargs['edits'])==1
+ if kwargs['edits'][0]['field']=='labor_hours':
+  return estimation.save_object_detail_material_edits(**kwargs)
  record('save material '+kwargs['estimate_id'])
  st.session_state.fixture_material_edit=kwargs['edits'][0]
  result=Future()
@@ -151,7 +171,8 @@ def save_materials(**kwargs):
 
 def saved_receipt(**kwargs):
  data=estimation.load_object_detail_data(**kwargs)
- edit=st.session_state.fixture_material_edit
+ edit=st.session_state.get('fixture_material_edit')
+ if not edit:return data
  for row in data['sections'][0]['rows']:
   if row.get(edit['field']+'_line_id')==edit['lineId']:
    row[edit['field']+'_value']=float(edit['value'])
@@ -310,5 +331,39 @@ restart=scenario()
 if restart.pop('restart_once',False):
  config_path.write_text(json.dumps(restart))
  st.session_state._app_boot_id='previous-worker'
+if scenario().get('fresh_calculation'):
+ from use_cases import estimation_runtime as runtime
+ from state.session import init_state
+ init_state()
+ if not st.session_state.get('fixture_fresh_started'):
+  st.session_state.fixture_fresh_started=True
+  st.session_state.screen='objects'
+  st.session_state.current_run_id=run_id
+  st.session_state.current_estimate_id=estimate_id
+  st.session_state.prepared_estimate_access={'company_id':company_id,'run_id':run_id,'estimate_id':estimate_id}
+  st.session_state.objects_estimation_seed_rows=[{'object_key':'object-001','name':'Saved bench',
+   'quantity':1,'status':'pending','self_cost_unit':None,'progress_percent':3}]
+  (STATE / 'fresh-active').touch()
+  def create_shell(**kwargs):
+   sleep(3.5)
+   (STATE / 'fresh-shell-ready').touch()
+   return {'estimate_id':estimate_id}
+  def calculate(**kwargs):
+   record('fresh worker started')
+   sleep(4)
+   (STATE / 'fresh-done').touch()
+   return {'estimate_id':estimate_id}
+  runtime.save_file_review_run_metadata=lambda **_:None
+  runtime.start_estimation_for_run=create_shell
+  runtime._run_estimation_job=calculate
+  st.session_state.estimation_batch_future=runtime.submit_prepared_estimation_job(
+   estimate_id=estimate_id,run_id=run_id,company_id=company_id,file_name='fixture.pdf',file_bytes=b'pdf',
+   object_edits={},metadata_values={},edits_changed=False,ignored_object_ids=set(),create_shell=True)
+ def assert_durable(*args, **kwargs):
+  if not (STATE / 'fresh-shell-ready').exists():
+   record('ERROR ownership read before shell')
+   raise PermissionError('Estimate is not available to this company.')
+ estimation._assert_screen_estimate_access=assert_durable
+ st.button('Fixture rerender',key='fixture_calculation_rerender')
 app.main()
 

@@ -20,7 +20,7 @@ UNIT_TESTS = [
     "tests/test_presentation_previews.py",
     "tests/test_object_cost_hierarchy.py",
 ]
-BROWSER_SUITES = ["navigation.mjs", "profile_save.mjs", "profile_recovery.mjs", "screen_recovery.mjs"]
+BROWSER_SUITES = ["navigation.mjs", "calculation.mjs", "profile_save.mjs", "profile_recovery.mjs", "screen_recovery.mjs"]
 
 
 def main() -> int:

@@ -1,5 +1,19 @@
 # Done Log
 
+V2.2.3 local candidate, 2026-11-18. Labor money uses whole shekels and grouped
+thousands; both work rows have editable one-decimal paid hours with immediate
+preview, explicit Save, retry and persisted reopen. Labels wrap over two lines,
+Hours/Total retain Materials anchors and the middle gaps are equal. Original
+colors and 42px rows are preserved. Removed the generic unfinished-work captions.
+New Calculation reads wait for durable shell readiness without relaxing company
+ownership. Running/static pricing share one fragment subtree. The new browser
+scenario retains one table through progress, full reruns and completion; the
+original duplicate symptom has not been reproduced on the old runtime.
+57 focused checks and the full local UI contract (368 Python checks, five browser
+suites) passed. Exact-SHA publication and owner-authenticated acceptance pending.
+Manual hours are metadata-only estimate lines; physical norms, Materials and SC
+integration scope remain unchanged. See the existing Object Detail UI contract.
+
 V2.2.2 published, 2026-11-18, runtime `4e69e5d7d31af140f5ba9fa81668a4196d46c5ee`.
 The exact-SHA UI gate passed and the protected publisher updated main.
 Core and Cloudflare Pages both serve the V2.2.2 marker. Restored the
