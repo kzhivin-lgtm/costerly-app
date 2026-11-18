@@ -142,6 +142,31 @@ Preserve revoked-access handling.
 DEFERRED, P1, V1.3.1. Extend fresh Upload/Processing transitions after the
 accepted first stage. The owner selected V1.3.2 as the next stage.
 
+## Object presentation previews
+
+PENDING, P2, user request, 2026-11-18. Use one isolated object-owned Island
+crop in both Detection/File Review and Calculation/Object Detail. Prefer an
+axonometric/isometric view, then a front elevation. Avoid top plans whenever
+a suitable representative view exists. Inspect and explain both current paths
+before implementing. Do not replace full calculation evidence with the UI crop.
+
+VERIFIED BY INSPECTION AND OFFLINE PROBES, 2026-11-18. Detection already
+persists an asynchronously generated bbox crop, but `_select_presentation_view`
+prefers front/elevation, then section, then detail; isometric and top-plan
+representations share the fallback priority. The same selector supplies Naming
+source crops, so changing its ordering globally would also change Naming input.
+Calculation/Object Detail instead signs `parts_check[object_id].primary_preview_ref`,
+which the active CB Material Demand builder takes from the first full-page
+evidence artifact. Eight existing focused tests passed. No fresh paid run or
+live visual acceptance was performed; the requested new ordering is not shipped.
+
+PROPOSED IMPLEMENTATION, awaiting the next owner instruction. Select the UI
+presentation crop once from the object's locked Views and reuse its saved
+reference in both screens, preserving Naming's accepted crop selection and the
+complete calculation evidence. Verify axonometric versus front versus plan,
+missing crop behavior, multi-object ownership, and saved-estimate reopening
+without a new calculation. Preserve the accepted navigation/cache contract.
+
 ## Estimate recovery
 
 IMPLEMENTED IN V1.2.25, P1. Restore the material editor on Object Detail
@@ -6767,7 +6792,9 @@ cause from the local screenshot alone.
 - Objects Estimation: Delivery and Installation should not show Self Cost pending state or Pending review buttons; keep review/status area empty for project-level rows.
 - Objects Estimation: keep Delivery and Installation as project-level percentage allocations and show their sale price inputs without fake object status.
 - Object Detail: show AI Confidence when available.
-- Object Detail: implement Object Preview image capture/display.
+- Object Detail preview source and selection: tracked under Object presentation
+  previews above, including the existing File Review crop and full-page
+  Calculation discrepancy.
 - Object Detail to Objects Estimation navigation: remove stale screen fragment flicker on return.
 - Estimation 9.10 Object Detail presentation. ACTIVE, P1, USER REQUEST.
   Align Required Material, show piece only under Purchase Unit, and put
