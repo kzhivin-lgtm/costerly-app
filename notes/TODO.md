@@ -217,7 +217,7 @@ auth outcomes. Authenticated production acceptance remains open.
 
 ## Estimation Labor V1
 
-LOCALLY VERIFIED, PUBLICATION PENDING, P1, USER REQUEST, V2.2.3, 2026-11-18. Round displayed Labor money to whole
+IMPLEMENTED AND PUBLISHED, OWNER ACCEPTANCE PENDING, P1, USER REQUEST, V2.2.3, 2026-11-18. Round displayed Labor money to whole
 shekels with grouped thousands; editable one-decimal Hours with immediate preview,
 explicit Save and persisted reopen. Keep Hours/Total anchored to Materials and
 space the intermediate columns evenly; wrap Labor pay and Taxes & social. Remove
@@ -228,6 +228,9 @@ ownership read at 10:51:15.854114 UTC preceded shell creation at 10:51:16.437917
 by 0.583803 seconds. New browser scenario passes with one table through active and
 terminal reruns; the original duplicate-screen cause remains likely, not replayed
 on the old runtime. 368 full-contract checks and five browser suites passed.
+Runtime `420bdf19` passed exact-SHA GitHub UI gate and the protected publisher.
+Core and Pages match the V2.2.3 marker; runtime tag is present.
+Authenticated fresh-cycle and manual-hour acceptance remains open.
 See the existing Object Detail scenario contract for acceptance.
 
 IMPLEMENTED AND PUBLISHED, P1, USER CORRECTION, V2.2.2, 2026-11-18. Correct Object Detail's

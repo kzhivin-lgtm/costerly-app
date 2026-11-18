@@ -1,6 +1,10 @@
 # Done Log
 
-V2.2.3 local candidate, 2026-11-18. Labor money uses whole shekels and grouped
+V2.2.3 published, 2026-11-18, runtime `420bdf197d7333f010972966f073d563310b3184`.
+The exact-SHA [UI gate](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44294112639)
+passed (165s job, 138s complete-contract step), and the verified publisher
+advanced main through the active required-check ruleset without bypass actors.
+Labor money uses whole shekels and grouped
 thousands; both work rows have editable one-decimal paid hours with immediate
 preview, explicit Save, retry and persisted reopen. Labels wrap over two lines,
 Hours/Total retain Materials anchors and the middle gaps are equal. Original
@@ -10,7 +14,10 @@ ownership. Running/static pricing share one fragment subtree. The new browser
 scenario retains one table through progress, full reruns and completion; the
 original duplicate symptom has not been reproduced on the old runtime.
 57 focused checks and the full local UI contract (368 Python checks, five browser
-suites) passed. Exact-SHA publication and owner-authenticated acceptance pending.
+suites) passed in 137.649s. Core and Pages were observed with matching
+`estimation-v2.2.3-editable-labor-hours-detection-v8.4.29` markers at Sign in.
+Owner-authenticated acceptance remains pending. Runtime tag:
+`estimation-labor-v2.2.3-2026-11-18`; rollback reference: V2.2.2 `4e69e5d7`.
 Manual hours are metadata-only estimate lines; physical norms, Materials and SC
 integration scope remain unchanged. See the existing Object Detail UI contract.
 

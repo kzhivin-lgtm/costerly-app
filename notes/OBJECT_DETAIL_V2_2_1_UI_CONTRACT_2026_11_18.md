@@ -41,7 +41,13 @@ V2.2.3 local evidence so far:
   browser scenario verifies a single stable pricing subtree; the original cause
   remains likely rather than conclusively reproduced.
 - Evidence directory: `/Users/qb/Documents/ChatGPT/Costerly/outputs/object-card-v2.2.3/`.
-  Exact-SHA CI, publication, matched builds and authenticated acceptance pending.
+  Exact-SHA CI passed: [run 44294112639](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44294112639),
+  165s job with a 138s complete-contract step. Protected publisher advanced main
+  to runtime `420bdf197d7333f010972966f073d563310b3184`; active required-check
+  ruleset with no bypass actors was verified. Core and Pages were observed at
+  `estimation-v2.2.3-editable-labor-hours-detection-v8.4.29` with Sign in visible.
+  Authenticated acceptance pending. Local complete run: 137.649s. Runtime tag:
+  `estimation-labor-v2.2.3-2026-11-18`; rollback reference: V2.2.2 `4e69e5d7`.
 
 ## V2.2.2 owner correction, 18 November 2026
 
