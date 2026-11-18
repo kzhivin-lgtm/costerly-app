@@ -10,7 +10,13 @@ Membership ending before Same-Sheet and the aggregate retaining the later end.
 Full test_agent_timing run: 108 passed, one unrelated stale Last Estimate source
 assertion also fails on unchanged HEAD. Local UI gate initially lacked PyYAML;
 restored its locked wheel in temporary test deps, without dependency-file or
-shared-venv changes. Full local/remote gate and fresh authenticated trial pending.
+shared-venv changes. Full local UI gate subsequently passed: 368 checks, five
+browser suites, 124.831s. CI run 44354547621 passed unit/navigation/Calculation,
+then timed out in unchanged Profile Pricing Cost tab navigation. Failure log
+retained in `outputs/provider-timings-v2.4/ci-attempt-1.log`. Workflow dispatch
+returned 403, so this record triggers a fresh cumulative full gate through the
+normal branch push, with unchanged runtime/test code. Publication and fresh
+authenticated Lev1 trial pending.
 
 V2.4 watcher follow-up, 2026-11-18, diagnostics only. The same watcher import
 warning exists before Labor V2 (V1.3.4) and after successful V2.2.1/V2.2.2/V2.4

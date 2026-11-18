@@ -1059,8 +1059,11 @@ warning timestamps. Detection/Membership logic, requests and concurrency frozen.
 Implementation adds only `request_timing` to existing Membership attempt
 summaries and Same-Sheet audit. Six saved production replays retain identical
 request bodies and partitions. Regression verifies the earlier Membership end
-survives the later Same-Sheet aggregate finish. Publication gate and live
-authenticated trial pending; browser Sign in handed to owner. No fresh model
+survives the later Same-Sheet aggregate finish. Full local gate passed (368
+checks/five browser suites, 124.831s). CI run 44354547621 timed out on unchanged
+Profile tab navigation. Same-code verification retry through ordinary branch
+push pending. Publication and live authenticated trial pending; browser Sign in
+handed to owner. No fresh model
 call has been made in this iteration. Evidence: `outputs/provider-timings-v2.4/`.
 
 ## Ordinary Detection dimension membership, V8.4.13
