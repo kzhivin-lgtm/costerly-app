@@ -42,7 +42,22 @@ deterministic replays with zero paid calls, not fresh model-recognition runs.
 The permanent UI suite now includes preview ownership/inheritance tests and
 checks the visible image source on File Review and the saved card. It passed
 358 Python checks and the full browser set, including 54 normal transitions,
-in 118.005 seconds locally. Exact-SHA CI and deployment follow this candidate.
+in 118.005 seconds locally.
+
+Published source `eb56dd4c493607fc43332c6fb4e05a11c0ab324b`, release tag
+`estimation-labor-v1.3.4-2026-11-18`. Its exact-SHA GitHub
+[UI release gate](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44271468633)
+passed 358 checks and all browser suites: 104.611 seconds test execution,
+138 seconds complete job. Artifact 14412342822 was downloaded and its ZIP,
+gate report, source SHA and unit count verified. The checked publisher promoted
+the same SHA to main, retaining active ruleset 27499066 without bypasses.
+
+Railway deployment `2c888b11-e2a3-493c-aa8d-a64a634f19c1` and Cloudflare Pages
+succeeded. A fresh hidden production browser confirmed HTTP 200, matching
+V1.3.4 Core/host markers, Login and workflow protocol 1. Separately, the actual
+detail loader read production data for all four saved objects with the same
+estimate IDs, costs and usage-event counts. This was read-only service testing,
+not a fresh model run or an authenticated browser journey through the cards.
 
 Visual limitation: Adda's existing rectangular Island boxes overlap. The selected
 3D crop can contain an edge fragment of its neighbouring drawing, even with zero
@@ -51,6 +66,10 @@ masks source pixels. Lev1 and Lev2 render isolated 3D views. Production owner
 acceptance remains open until the deployed flow is checked.
 
 Private evidence: `outputs/shared-preview-v1.3.4/` in the handoff workspace.
+The final receipt is `release-receipt.json`; `before/` and `after/` preserve
+the PDF/Registry replay, Naming hashes, crops and contact sheet. Production
+browser and saved-data checks are recorded separately. Documentation completion
+is a follow-up commit and does not require restarting the published runtime.
 Rollback: the protected checkpoint below, retaining all UI release protections.
 
 ## Protected V1.3.3 full checkpoint, 18 November 2026
@@ -59,7 +78,7 @@ The earlier accepted V1.3.3 archive predated the permanent UI release barrier.
 The owner explicitly requested preserving the current protected state before
 the preview change. Remote tag
 `estimation-labor-v1.3.3-protected-checkpoint-2026-11-18` pins `0764ac20`.
-Production main remains `2f391d74`, with the accepted V1.3.3 application behavior.
+At capture, production main was `2f391d74`, with the accepted V1.3.3 behavior.
 
 The complete private archive
 `backups/estimation-labor-v1.3.3-protected-checkpoint-2026-11-18/` contains the

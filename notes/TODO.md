@@ -144,13 +144,14 @@ accepted first stage. The owner selected V1.3.2 as the next stage.
 
 ## Object presentation previews
 
-IMPLEMENTED IN CANDIDATE V1.3.4, P2, user request, 2026-11-18. Use one isolated object-owned Island
+DEPLOYED IN V1.3.4, P2, user request, 2026-11-18. Owner visual acceptance
+pending. Use one isolated object-owned Island
 crop in both Detection/File Review and Calculation/Object Detail. Prefer an
 axonometric/isometric view, then a front elevation. Avoid top plans whenever
 a suitable representative view exists. Do not replace full calculation evidence
 with the UI crop. Owner approved implementation after a full protected checkpoint.
 
-VERIFIED BY INSPECTION AND OFFLINE PROBES, 2026-11-18. Detection already
+PRE-CHANGE AUDIT, verified by inspection and offline probes, 2026-11-18. Detection already
 persists an asynchronously generated bbox crop, but `_select_presentation_view`
 prefers front/elevation, then section, then detail; isometric and top-plan
 representations share the fallback priority. The same selector supplies Naming
@@ -158,7 +159,8 @@ source crops, so changing its ordering globally would also change Naming input.
 Calculation/Object Detail instead signs `parts_check[object_id].primary_preview_ref`,
 which the active CB Material Demand builder takes from the first full-page
 evidence artifact. Eight existing focused tests passed. No fresh paid run or
-live visual acceptance was performed; the requested new ordering is not shipped.
+live visual acceptance was performed at that audit stage. Superseded by the
+implementation and publication evidence below.
 
 LOCAL VERIFICATION, V1.3.4. UI selection has its own priority within the existing
 selector; Naming retains its exact previous default. Both screens resolve the
@@ -168,10 +170,18 @@ new polling/reruns/model calls. Read failure is logged and keeps the placeholder
 81 focused tests passed. Frozen Lev1, Lev2 and both Adda objects select 3D crops;
 Naming crop hashes, object counts and evidence-region counts match the protected
 source. The complete local UI gate passed 358 Python checks and all browser
-suites including 54 transitions in 118.005 seconds. Exact-SHA CI, deployment and
-authenticated owner acceptance remain pending at this record's creation.
+suites including 54 transitions in 118.005 seconds. Exact source `eb56dd4c`
+passed GitHub run 44271468633: 358 checks and full browser suite, 104.611 seconds
+tests / 138 seconds job. Artifact 14412342822 was downloaded and validated.
+The protected publisher promoted that SHA to main. Railway deployment
+2c888b11-e2a3-493c-aa8d-a64a634f19c1 and Cloudflare Pages succeeded. A production
+browser confirmed matching V1.3.4 markers, Login and protocol 1. Read-only
+production-data detail loading passed Lev1, Lev2 and both Adda objects with
+original estimate IDs, prices and unchanged usage-event counts. These checks
+do not claim a fresh recognition run or authenticated owner visual acceptance.
 
-PENDING, P2, source-geometry follow-up identified during visual review. Adda's
+PENDING, P2, source-geometry diagnostic follow-up identified during visual
+review; further implementation scope is not approved. Adda's
 saved rectangular Island boxes overlap, leaving fragments of the neighbouring
 view at crop edges even with zero padding. This release inherits those locked
 boxes; it does not segment silhouettes or change Detection ownership. Record

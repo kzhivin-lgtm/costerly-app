@@ -1,5 +1,16 @@
 # Done Log
 
+Labor V1.3.4 deployed, 2026-11-18. Detection UI selection prefers axonometry,
+then elevation; Calculation inherits the same saved crop. Naming crops match
+the protected source byte-for-byte on frozen Lev1/Lev2/Adda. Runtime `eb56dd4c`
+passed exact-SHA CI (358 checks, full browser suite) and was promoted by the
+checked publisher. Core and Cloudflare Pages serve matching V1.3.4 markers.
+Read-only loading of the four saved production cards preserved estimate IDs,
+prices and usage counts. Source crop overlap at Adda edges remains explicit;
+fresh recognition and authenticated owner visual acceptance are not claimed.
+The pre-change full checkpoint includes the GitHub release barrier. See the
+[release and limitations](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#labor-v134-shared-presentation-preview).
+
 Protected V1.3.3 full checkpoint, 2026-11-18. Remote tag
 `estimation-labor-v1.3.3-protected-checkpoint-2026-11-18` pins `0764ac20`,
 including the enforced GitHub UI publication barrier. The standalone private
