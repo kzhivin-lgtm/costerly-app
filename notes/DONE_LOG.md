@@ -1,5 +1,13 @@
 # Done Log
 
+Protected V1.3.3 full checkpoint, 2026-11-18. Remote tag
+`estimation-labor-v1.3.3-protected-checkpoint-2026-11-18` pins `0764ac20`,
+including the enforced GitHub UI publication barrier. The standalone private
+archive verifies 130 files and preserves source, controls, ruleset and successful
+and blocked publication evidence. Independent restoration passed 334 checks
+and all browser suites in 121.313 seconds, with saved calculations unchanged.
+See the [checkpoint record](ESTIMATION_V9_PARTS_CHECK_RELEASE_2026_11_12.md#protected-v133-full-checkpoint-18-november-2026).
+
 UI release gate, 2026-11-18. Permanent synthetic browser fixtures and checks
 are tracked in Git, with exact-commit GitHub Actions and active ruleset
 27499066 protecting main/canary without bypass actors. First full Linux job:

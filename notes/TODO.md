@@ -144,11 +144,11 @@ accepted first stage. The owner selected V1.3.2 as the next stage.
 
 ## Object presentation previews
 
-PENDING, P2, user request, 2026-11-18. Use one isolated object-owned Island
+IMPLEMENTED IN CANDIDATE V1.3.4, P2, user request, 2026-11-18. Use one isolated object-owned Island
 crop in both Detection/File Review and Calculation/Object Detail. Prefer an
 axonometric/isometric view, then a front elevation. Avoid top plans whenever
-a suitable representative view exists. Inspect and explain both current paths
-before implementing. Do not replace full calculation evidence with the UI crop.
+a suitable representative view exists. Do not replace full calculation evidence
+with the UI crop. Owner approved implementation after a full protected checkpoint.
 
 VERIFIED BY INSPECTION AND OFFLINE PROBES, 2026-11-18. Detection already
 persists an asynchronously generated bbox crop, but `_select_presentation_view`
@@ -160,12 +160,24 @@ which the active CB Material Demand builder takes from the first full-page
 evidence artifact. Eight existing focused tests passed. No fresh paid run or
 live visual acceptance was performed; the requested new ordering is not shipped.
 
-PROPOSED IMPLEMENTATION, awaiting the next owner instruction. Select the UI
-presentation crop once from the object's locked Views and reuse its saved
-reference in both screens, preserving Naming's accepted crop selection and the
-complete calculation evidence. Verify axonometric versus front versus plan,
-missing crop behavior, multi-object ownership, and saved-estimate reopening
-without a new calculation. Preserve the accepted navigation/cache contract.
+LOCAL VERIFICATION, V1.3.4. UI selection has its own priority within the existing
+selector; Naming retains its exact previous default. Both screens resolve the
+saved Detection crop. Object Detail performs one scoped presentation read
+alongside its existing settings read, on the existing cached load path, without
+new polling/reruns/model calls. Read failure is logged and keeps the placeholder.
+81 focused tests passed. Frozen Lev1, Lev2 and both Adda objects select 3D crops;
+Naming crop hashes, object counts and evidence-region counts match the protected
+source. The complete local UI gate passed 358 Python checks and all browser
+suites including 54 transitions in 118.005 seconds. Exact-SHA CI, deployment and
+authenticated owner acceptance remain pending at this record's creation.
+
+PENDING, P2, source-geometry follow-up identified during visual review. Adda's
+saved rectangular Island boxes overlap, leaving fragments of the neighbouring
+view at crop edges even with zero padding. This release inherits those locked
+boxes; it does not segment silhouettes or change Detection ownership. Record
+this limitation in acceptance, and investigate a separate UI-only isolation
+method before promising an exclusively single-object pixel crop. Do not alter
+Naming or calculation evidence to hide this source-layout limitation.
 
 ## Estimate recovery
 

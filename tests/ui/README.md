@@ -12,6 +12,9 @@ cover 54 normal transitions across desktop/mobile and an older open wrapper,
 Save/reopen in seven Profile paths, preload/read reuse, keyboard, actor access,
 expired auth, handled read/write failures, timeout/double click and recovery.
 Python checks cover the navigation/state/cache contracts and release verifier.
+They also cover UI view priority, unchanged Naming selection, crop persistence,
+tenant/run/object ownership and Calculation inheritance. Navigation asserts
+that File Review and the reopened saved card display the same synthetic crop.
 
 ## Run
 

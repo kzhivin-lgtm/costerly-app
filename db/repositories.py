@@ -395,6 +395,22 @@ def fetch_rfq_detected_object_names(client: Client, run_id: str) -> list[dict]:
     return list(response.data or [])
 
 
+def fetch_rfq_detected_object_presentation(
+    client: Client, *, company_id: str, run_id: str, object_id: str,
+) -> dict:
+    """Read one saved UI crop without loading other objects or source pages."""
+    response = (
+        client.table("rfq_detected_objects")
+        .select("evidence_page_refs")
+        .eq("company_id", company_id)
+        .eq("run_id", run_id)
+        .eq("object_id", object_id)
+        .limit(1)
+        .execute()
+    )
+    return next(iter(response.data or []), {})
+
+
 def update_rfq_run(
     client: Client,
     *,

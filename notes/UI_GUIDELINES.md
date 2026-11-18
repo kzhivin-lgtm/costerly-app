@@ -20,6 +20,12 @@ and remote enforcement state are tracked in TODO and `tests/ui/README.md`.
 
 - Saved File Review → Continue opens the original completed estimate and does
   not launch a new Parts Check or paid model call.
+- Object presentation uses Detection's saved crop for the same company, run
+  and object in both File Review and Object Detail. UI selection prefers an
+  axonometric/perspective view, then an elevation, with top plans last.
+  A missing crop keeps the existing placeholder; calculation pages are not a
+  presentation fallback. Preserve the independent Naming magnifier selection
+  and complete calculation evidence when changing preview behavior.
 - Navigation is revealed only after its correlated ready result; departing
   and destination screens never appear together. Return routes, old open
   wrappers and cleared server session state remain covered.

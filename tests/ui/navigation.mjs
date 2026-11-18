@@ -130,9 +130,13 @@ try {
   await move('Profile to Admin',button('Admin'),'admin');
   await move('Admin to Projects',button('Projects'),'projects');
   await move('Projects to Last Estimate',button('Last Estimate'),'file_review');
+  const savedCrop=await core.locator('.file-review-preview-box img').getAttribute('src');
+  assert.ok(savedCrop?.startsWith('data:image/svg+xml;base64,'));
   const cont=()=>core.getByRole('button',{name:/^continue to objects estimation$/i});
   await move('Continue saved estimate',cont(),'objects');
   await move('Review saved card',openObject(),'object_detail');
+  assert.equal(await core.locator('.object-detail-preview-image').getAttribute('src'),savedCrop);
+  assert.ok(await core.locator('.object-detail-preview-image').evaluate(img=>img.complete&&img.naturalWidth>0));
   assert.match(await core.locator('.object-detail-final').innerText(),/₪1[\s,]?000/);
   await move('Card to New Estimate',button('New Estimate'),'upload');
   assert.equal(await core.locator('[data-testid="stException"]').count(),0);

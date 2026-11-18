@@ -1,6 +1,7 @@
 """Run production UI/handlers against synthetic local data, never production services."""
 from pathlib import Path
 from types import SimpleNamespace
+from base64 import b64encode
 import json
 import pandas as pd
 import streamlit as st
@@ -36,6 +37,13 @@ parts = json.dumps(sample['parts'])
 lines = sample['lines']
 run_id = sample['run_id']
 company_id = 'fixture-lev1-company'
+preview_ref = f'storage://rfq-estimation-evidence/{company_id}/{run_id}/object-001/crop.webp'
+preview_url = 'data:image/svg+xml;base64,' + b64encode(
+ (Path(__file__).parent / 'fixtures/presentation_crop.svg').read_bytes()).decode()
+sample['review_objects'][0]['evidence_page_refs'] = [{
+ 'page_number': 1, 'preview_ref': preview_ref,
+ 'presentation_preview_bbox': {'top_left_x': 10, 'top_left_y': 10, 'bottom_right_x': 170, 'bottom_right_y': 110},
+}]
 status_path = (STATE / 'auth-expired')
 journal = (STATE / 'browser-journal')
 def record(payload):
@@ -91,6 +99,7 @@ app.resolve_workflow_route_token = lambda *a, **kw: {
 }
 file_review.get_supabase_client = Client
 file_review.get_company_id = lambda: company_id
+file_review.evidence_signed_url = lambda **kw: preview_url if kw['storage_ref'] == preview_ref else None
 file_review._record_first_file_review_render = lambda *_: None
 file_review._sync_durable_naming_once = lambda *_: None
 file_review._sync_durable_document_identity_once = lambda *_: None
@@ -119,7 +128,12 @@ estimation.fetch_rfq_estimate_lines_for_object = lambda _client, **kwargs: pd.Da
 estimation.fetch_company_overhead_settings = lambda *args: pd.DataFrame([])
 estimation._with_saved_led_catalog_specs = lambda _client, plan: plan
 estimation._with_saved_element_ownership = lambda _client, checked, *a, **kw: checked
-estimation._estimation_preview_url = lambda *a, **kw: None
+def read_presentation(_client, **scope):
+ assert scope == {'company_id': company_id, 'run_id': run_id, 'object_id': 'object-001'}
+ record('preview read object-001')
+ return sample['review_objects'][0]
+estimation.fetch_rfq_detected_object_presentation = read_presentation
+estimation._estimation_preview_url = lambda _client, ref, **kw: preview_url if ref == preview_ref else None
 object_detail._overlay_links = lambda *a, **kw: None
 labor.get_supabase_client = Client
 labor.load_parts_check = lambda **_: {'status':'ready', 'payload':parts}

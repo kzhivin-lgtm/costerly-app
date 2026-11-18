@@ -51,6 +51,23 @@ _PRESENTATION_REPRESENTATION_PRIORITY = {
     "detail": 2,
 }
 
+# UI presentation has a different purpose from the accepted Naming magnifier.
+# Keep the original Naming order above, including its handling of unknown kinds.
+_UI_PRESENTATION_REPRESENTATION_PRIORITY = {
+    **dict.fromkeys(("isometric", "isometric_technical", "technical_isometric",
+                    "axonometric", "axonometry", "technical_axonometric",
+                    "perspective", "technical_perspective", "perspective_view",
+                    "presentation_render", "3d", "3d_view"), 0),
+    **dict.fromkeys(("elevation", "front_elevation", "front", "elevation_view",
+                    "orthographic_elevation", "front_view"), 1),
+    "side_elevation": 2,
+    "section": 3,
+    "section_view": 3,
+    "detail": 4,
+    **dict.fromkeys(("plan", "top", "top_plan", "top_view", "plan_view",
+                    "floor_plan", "orthographic_plan"), 5),
+}
+
 
 def _ada_scope_scout_bypass_reason(route: dict) -> str | None:
     """Keep evidenced Ada boundary risks on Sonnet before scope reasoning.
@@ -464,13 +481,13 @@ def _select_presentation_view(
     *,
     visual_groups_by_id: dict[str, dict],
     evidence_pages: set[int],
+    ui_preview: bool = False,
 ) -> dict | None:
     """Choose one Registry View for UI presentation without changing evidence.
 
-    A front/elevation is the most useful isolated File Review preview.  The
-    same source View can be supplied as a bounded Naming magnifier, but the
-    UI-only ``presentation_preview_bbox`` itself is never passed as Naming
-    evidence.
+    UI prefers axonometry/perspective, then an elevation, with plans last.
+    The default preserves the accepted Naming source-crop selection exactly.
+    The UI-only bbox itself is never passed as Naming evidence.
     """
     candidates: list[tuple[tuple[float | int | str, ...], dict]] = []
     for raw_group_id in item.get("visual_group_ids") or []:
@@ -483,7 +500,11 @@ def _select_presentation_view(
         if bbox is None or page_number not in evidence_pages:
             continue
         representation = str(group.get("representation_kind") or "").casefold()
-        priority = _PRESENTATION_REPRESENTATION_PRIORITY.get(representation, 3)
+        if ui_preview:
+            representation = representation.strip().replace("-", "_").replace(" ", "_")
+            priority = _UI_PRESENTATION_REPRESENTATION_PRIORITY.get(representation, 4)
+        else:
+            priority = _PRESENTATION_REPRESENTATION_PRIORITY.get(representation, 3)
         area = (
             (bbox["bottom_right_x"] - bbox["top_left_x"])
             * (bbox["bottom_right_y"] - bbox["top_left_y"])
@@ -737,6 +758,7 @@ def _registry_to_detection_result(
             item,
             visual_groups_by_id=visual_groups_by_id,
             evidence_pages=set(evidence_pages),
+            ui_preview=True,
         )
         presentation_bbox = _registry_group_bbox(presentation_group)
         try:

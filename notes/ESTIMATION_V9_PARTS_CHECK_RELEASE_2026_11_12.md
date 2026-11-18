@@ -1,5 +1,78 @@
 # Estimation 9 Parts Check from Upload
 
+## Labor V1.3.4 shared presentation preview
+
+Owner approved one saved Detection crop inherited by Calculation, after a full
+checkpoint of the UI-protected state. Build:
+`estimation-labor-v1.3.4-shared-preview-detection-v8.4.29`.
+
+Before: Detection used a front/section/detail ordering with unrecognized
+projection labels tied by area. On the frozen Lev2 control this chose a plan.
+Object Detail independently displayed the first full-page calculation artifact.
+After: Detection's UI selection prefers an object-owned axonometric/perspective
+View, then an elevation, with plans last; existing labels such as
+isometric_technical, technical_perspective and orthographic_elevation are covered.
+Both File Review and Object Detail read the saved preview_ref. The old Naming
+ordering remains the selector's default, with byte-identical saved Naming crops.
+Calculation retains all original evidence and no preview field enters its model
+request. Existing saved runs inherit their already-saved crop; changing the
+projection preference does not rewrite or recalculate historical runs.
+
+The detail loader reads only evidence_page_refs for the current company, run and
+object and validates the stored path before signing it. This read and the
+existing settings read run concurrently only on the existing cached load path.
+No new timer, rerun, cache invalidation or model call is introduced. Missing or
+unreadable crops retain the existing placeholder, with read failures logged.
+
+Scenario contract approved through the owner's explicit instruction:
+
+| Source state | File Review and Object Detail | Protected behavior |
+|---|---|---|
+| Axonometric and front Views | Same saved axonometric crop | Naming unchanged |
+| Front View without axonometry | Same saved elevation crop | Ownership unchanged |
+| Only another valid View | One owned View, plan last | No full-page substitution |
+| Crop pending or unavailable | Existing pending/placeholder state | Page remains actionable |
+| Foreign or failed presentation read | No foreign image; error logged on read failure | Estimate remains intact |
+| Reopen saved estimate | Its same saved crop | Same estimate, no Parts Check launch |
+
+Local verification: 81 focused tests; frozen PDF/Registry replay of Lev1, Lev2
+and both Adda objects; equal Naming crop hashes before/after; equal object and
+evidence-region counts; identical saved ref in both UI consumers. These are
+deterministic replays with zero paid calls, not fresh model-recognition runs.
+The permanent UI suite now includes preview ownership/inheritance tests and
+checks the visible image source on File Review and the saved card. It passed
+358 Python checks and the full browser set, including 54 normal transitions,
+in 118.005 seconds locally. Exact-SHA CI and deployment follow this candidate.
+
+Visual limitation: Adda's existing rectangular Island boxes overlap. The selected
+3D crop can contain an edge fragment of its neighbouring drawing, even with zero
+padding. Keep this gap explicit; this change neither resegments Islands nor
+masks source pixels. Lev1 and Lev2 render isolated 3D views. Production owner
+acceptance remains open until the deployed flow is checked.
+
+Private evidence: `outputs/shared-preview-v1.3.4/` in the handoff workspace.
+Rollback: the protected checkpoint below, retaining all UI release protections.
+
+## Protected V1.3.3 full checkpoint, 18 November 2026
+
+The earlier accepted V1.3.3 archive predated the permanent UI release barrier.
+The owner explicitly requested preserving the current protected state before
+the preview change. Remote tag
+`estimation-labor-v1.3.3-protected-checkpoint-2026-11-18` pins `0764ac20`.
+Production main remains `2f391d74`, with the accepted V1.3.3 application behavior.
+
+The complete private archive
+`backups/estimation-labor-v1.3.3-protected-checkpoint-2026-11-18/` contains the
+standalone Git bundle, source tarball, authoritative records, historical
+Lev1/Lev2/Adda controls, positive and negative CI evidence, rejection receipt,
+failure screenshot, remote active ruleset 27499066 and a 130-file SHA-256 manifest.
+An independently restored tracked tree matches the tag and passes 334 checks
+plus all four browser suites, including 54 transitions, in 121.313 seconds.
+Saved Lev1 and Adda route/cost/Parts Check controls replay unchanged.
+The test report's dirty flag is an untracked local dependency symlink, not a
+source change. The initial missing locked PyYAML environment failure is retained.
+No credential values are archived. Restore instructions preserve the remote gate.
+
 ## UI release gate, 18 November 2026
 
 The owner approved persistent checks, an obligatory publication barrier,

@@ -16,6 +16,7 @@ from db.repositories import (
     fetch_rfq_estimate_material_plan,
     fetch_rfq_object_estimates,
     fetch_rfq_detected_objects,
+    fetch_rfq_detected_object_presentation,
     fetch_rfq_run,
     update_rfq_estimate_line,
     update_rfq_detected_object,
@@ -40,6 +41,7 @@ from use_cases.estimation_mirror_parts import MIRROR_SET_NAME, MIRROR_SET_REQUIR
 from use_cases.material_normalization import canonical_material_display_name, material_catalog_display_label
 from use_cases.price_source_taxonomy import source_family_for_catalog_family
 from use_cases.retry import read_with_retry
+from use_cases.detection_previews import saved_presentation_preview_ref
 
 
 _ASSUMPTION_MATERIAL_DISPLAY_NAMES = {
@@ -445,7 +447,19 @@ def load_object_detail_data(
     overlay_revision = (overlay_source.get("overlay_revision")
                         if overlay_source.get("estimate_id") == estimate_id
                         and overlay_source.get("run_id") == object_row.get("run_id") else None)
-    settings = _first_row(fetch_company_overhead_settings(client, str(object_row.get("company_id"))))
+    # Both reads happen only on the existing cached detail-load path. Resolve
+    # the saved crop alongside settings, with no new poll, rerun or model call.
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="object-detail-presentation") as executor:
+        settings_future = executor.submit(
+            fetch_company_overhead_settings, client, str(object_row.get("company_id")),
+        )
+        preview_future = executor.submit(
+            _load_object_presentation_preview, client,
+            company_id=str(object_row.get("company_id") or ""),
+            run_id=str(object_row.get("run_id") or ""), object_id=object_id,
+        )
+        settings = _first_row(settings_future.result())
+        preview_url = preview_future.result()
     vat_percent = _number(settings.get("vat_percent"), 18)
     employer_load_percent = _number(settings.get("employer_load_percent"), 25)
 
@@ -523,11 +537,7 @@ def load_object_detail_data(
         "material_plan_status": plan_status,
         "confidence": "—",
         "preview_label": "Object preview",
-        "preview_url": _estimation_preview_url(
-            client,
-            str(checked.get("primary_preview_ref") or ""),
-            company_id=str(object_row.get("company_id") or ""),
-        ),
+        "preview_url": preview_url,
         "elements": _element_groups(element_source),
         "overlay_revision": overlay_revision,
         "sections": [
@@ -1119,6 +1129,29 @@ def _element_rows_from_bom(facts_payload: dict[str, Any]) -> list[dict[str, Any]
         if row.pop("estimated") and row["size"]:
             row["size"] = f"≈ {row['size']}"
     return list(grouped.values())
+
+
+def _load_object_presentation_preview(
+    client: Any, *, company_id: str, run_id: str, object_id: str,
+) -> str | None:
+    """Inherit Detection's saved crop; calculation pages are never a fallback."""
+    if not all((company_id, run_id, object_id)):
+        return None
+    try:
+        item = fetch_rfq_detected_object_presentation(
+            client, company_id=company_id, run_id=run_id, object_id=object_id,
+        )
+        ref = saved_presentation_preview_ref(item)
+        prefix = f"storage://rfq-estimation-evidence/{company_id}/{run_id}/{object_id}/"
+        if not ref or not ref.startswith(prefix) or ".." in ref.removeprefix(prefix).split("/"):
+            return None
+        return _estimation_preview_url(client, ref, company_id=company_id)
+    except Exception:
+        logging.getLogger(__name__).warning(
+            "Could not load saved object presentation for %s/%s", run_id, object_id,
+            exc_info=True,
+        )
+        return None
 
 
 def _estimation_preview_url(
