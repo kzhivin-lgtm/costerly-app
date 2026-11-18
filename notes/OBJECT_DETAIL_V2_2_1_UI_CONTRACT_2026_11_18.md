@@ -30,3 +30,29 @@ Parts, Machinery settings, Material Plan, and the existing SC unchanged.
 
 Release is a candidate until the owner accepts the production card. Previous
 runtime/rollback: V1.3.4, eb56dd4c493607fc43332c6fb4e05a11c0ab324b.
+
+## Publication evidence
+
+- Runtime: `28c5588305b7f57c17ca6b3a92de58c1e0d43d53`.
+- Tag: `estimation-labor-v2.2.1-2026-11-18` (release, not owner acceptance).
+- Exact-SHA [UI gate](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44283247089)
+  succeeded. Whole Linux job: 169 seconds including setup and artifact work.
+- Local: 43 focused checks; 364 full-contract Python checks plus all four
+  browser suites in 120.402 seconds. Browser-only rerun after header alignment:
+  113.043 seconds. The initial missing-PyYAML environment failure was resolved
+  using the pinned 6.0.3 wheel, verified against its lockfile hash.
+- Frozen Lev1 and Adda saved revisions replayed without paid model calls.
+  Frozen Lev1: Sheet Processing Pay 268.69 + 67.17 = 335.86 ILS;
+  Assembly Pay 119.79 + 29.95 = 149.74; Labor Total 485.60. These are saved
+  controls, not fresh recognition or shop-time measurements.
+- Production wrapper and Core both observed at
+  `estimation-v2.2.1-object-card-labor-detection-v8.4.29`, with Sign in visible.
+  Cloudflare Pages and UI release gate succeeded. An unrelated legacy Workers
+  Builds check was still running; it is not the Pages/Core acceptance signal.
+- No authenticated owner session was available. Do not claim the saved
+  production card, all error states or the new layout accepted by the owner.
+- Validated source archive: 5,232,506 bytes. An earlier attempt exceeded the
+  helper's 5 MiB ceiling because generated UI evidence was included; the helper
+  rejected/removed that invalid archive. Evidence was preserved outside the
+  source tree and the unchanged helper then passed.
+- Durable local evidence: `/Users/qb/Documents/ChatGPT/Costerly/outputs/object-card-v2.2.1/`.
