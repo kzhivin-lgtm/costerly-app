@@ -203,6 +203,7 @@ def test_prepared_submit_defers_all_persistence_to_executor(monkeypatch):
             "edits_changed": True,
             "ignored_object_ids": {"object-2"},
             "create_shell": True,
+            "shell_ready": future.estimate_shell_ready,
         },
     )]
     assert not failures

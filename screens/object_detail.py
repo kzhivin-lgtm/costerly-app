@@ -68,7 +68,7 @@ def render_object_detail_screen(
     _material_editor(context)
     if revision := data.get("overlay_revision"):
         _overlay_links(context, company_id, str(revision))
-    install_workflow_header_alignment_guard("h1.object-detail-title")
+    install_workflow_header_alignment_guard("h1.object-detail-title", even_labor_columns=True)
 
 
 def _current_object_detail_context() -> ObjectDetailContext | None:
@@ -181,7 +181,7 @@ def _render_object_detail(
     )
     render_labor_v1(company_id=company_id, run_id=context.run_id, estimate_id=context.estimate_id,
                     object_id=context.object_id, elements=data.get("elements"), overlay_revision=data.get("overlay_revision"),
-                    quantity=data.get('quantity', 1))
+                    quantity=data.get('quantity', 1), overrides=data.get('labor_hours_overrides'))
     st.markdown(
         object_detail_view.detail_summary_html(
             data,
@@ -298,6 +298,7 @@ def _material_editor(context: ObjectDetailContext) -> None:
             rows=object_detail_view.material_preview_rows(data),
             self_cost=data["self_cost"],
             quantity=data["quantity"],
+            labor_hours_overrides=data.get("labor_hours_overrides", {}),
         )
         result["timing"] = {
             "validation": round((submitted - started) * 1000),
@@ -308,7 +309,7 @@ def _material_editor(context: ObjectDetailContext) -> None:
         result["error"] = str(exc)
     except Exception:
         _LOG.exception("Could not save material edits for estimate %s", context.estimate_id)
-        result["error"] = "Could not save material changes. Your edits are still here."
+        result["error"] = "Could not save changes. Your edits are still here."
     results[key] = result
     st.rerun(scope="fragment")
 

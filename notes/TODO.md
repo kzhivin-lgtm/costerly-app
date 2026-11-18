@@ -217,7 +217,36 @@ auth outcomes. Authenticated production acceptance remains open.
 
 ## Estimation Labor V1
 
-ACTIVE, P1, USER CORRECTION, V2.2.2, 2026-11-18. Correct Object Detail's
+LOCALLY VERIFIED, NOT PUBLISHED, P1, USER REQUEST, V2.4, 2026-11-18. Rebuild locally from V2.2.2 and reapply
+V2.2.3 paid-hour editing/persistence, money formatting, column layout, warning
+removal and Calculation shell-read/refresh fixes in separate bounded groups.
+Do not deploy or push. Preserve Detection/OCR/Naming/Identity/File Review from
+V2.2.2, with an explicit tree comparison and the existing UI regression contract.
+The Lev1 six-object result is an unresolved incident, not an accepted outcome.
+Its old/new audit comparison records six discovered Views in both runs, fifteen
+same-object pair decisions in both, but one versus six final Registry objects.
+No Detection fix is included or claimed in this UI rebuild.
+The full local gate passed: 368 Python checks and five browser suites, 147.462s.
+262 protected files match V2.2.2 byte-for-byte; the nine transferred runtime
+modules match V2.2.3. Branch `codex/object-card-v2.4`; no push or deployment.
+
+IMPLEMENTED AND PUBLISHED, OWNER ACCEPTANCE PENDING, P1, USER REQUEST, V2.2.3, 2026-11-18. Round displayed Labor money to whole
+shekels with grouped thousands; editable one-decimal Hours with immediate preview,
+explicit Save and persisted reopen. Keep Hours/Total anchored to Materials and
+space the intermediate columns evenly; wrap Labor pay and Taxes & social. Remove
+generic incomplete-work captions. Preserve colors, physical norms and SC scope.
+Also fix the new-Calculation shell-read race and verify a single pricing table
+through active/full reruns and completion. Production run `run_6a79a6dc2cac4a4a9b4383435272b65b`:
+ownership read at 10:51:15.854114 UTC preceded shell creation at 10:51:16.437917
+by 0.583803 seconds. New browser scenario passes with one table through active and
+terminal reruns; the original duplicate-screen cause remains likely, not replayed
+on the old runtime. 368 full-contract checks and five browser suites passed.
+Runtime `420bdf19` passed exact-SHA GitHub UI gate and the protected publisher.
+Core and Pages match the V2.2.3 marker; runtime tag is present.
+Authenticated fresh-cycle and manual-hour acceptance remains open.
+See the existing Object Detail scenario contract for acceptance.
+
+IMPLEMENTED AND PUBLISHED, P1, USER CORRECTION, V2.2.2, 2026-11-18. Correct Object Detail's
 unaccepted V2.2.1 appearance. Preserve the original palette/header background;
 render Sheet Processing and Assembly as compact ordinary rows, not grey cards.
 Share Materials column geometry: Hours under Required material, Labor pay
@@ -225,7 +254,12 @@ under Purchase unit, and identical Total alignment. Keep work detail nested
 and optional; remove the standalone rate/payroll sentence. Use Total as the
 Labor header label without losing unresolved-work disclosure. All existing
 amounts, rates, quantities, SC, persistence and navigation remain unchanged.
-See the amended [UI contract](OBJECT_DETAIL_V2_2_1_UI_CONTRACT_2026_11_18.md).
+Runtime `4e69e5d7` passed exact-SHA CI and the protected publisher. Core and
+Pages serve matching V2.2.2 markers. Verification: 44 focused checks, 365
+full-contract Python checks and all browser suites; frozen Lev1 desktop/mobile
+has 0px alignment error, 42px work rows and unchanged Total ILS485.60.
+Owner-authenticated visual acceptance remains pending. See the amended
+[UI contract](OBJECT_DETAIL_V2_2_1_UI_CONTRACT_2026_11_18.md).
 
 IMPLEMENTED AND PUBLISHED, P1, USER REQUEST, V2.2.1, 2026-11-18. Restructure Object Detail visually
 around collapsible Materials and Labor sections. Materials belongs in the
@@ -242,7 +276,8 @@ implementation and publication as V2.2.1, superseding the initial V2 sketch
 number. Runtime `28c55883` passed exact-SHA CI and the protected publisher.
 Core and Pages serve matching V2.2.1 markers; Login was observed. Local checks:
 43 focused tests, 364 full-contract Python checks and all browser suites.
-Owner-authenticated card acceptance remains pending. Existing module
+The owner rejected V2.2.1's appearance; its layout is superseded by V2.2.2,
+with the verified calculations retained. Existing module
 compatibility versions are independent. See the
 [scenario contract](OBJECT_DETAIL_V2_2_1_UI_CONTRACT_2026_11_18.md).
 
@@ -930,6 +965,21 @@ DEFERRED, P1, USER REQUEST. After the full cycle is verified, measure stage
 time and model calls. Remove repeated analysis, reuse verified outputs and
 parallelize independent work. Recheck the same fixtures for part coverage,
 dimensions, cost allocation and price sources after each optimization.
+
+## Lev1 Detection release regression
+
+ACTIVE DIAGNOSIS, P0, USER REPORT, 2026-11-18. Restore Lev1's one-object result
+with its six drawing Views after the owner reported a six-object outlier following
+V2.2.3. The owner reports dozens of stable one-object cycles beforehand.
+Persisted comparison: `run_6a79a6dc2cac4a4a9b4383435272b65b` at 10:49 UTC has
+one Registry object; `run_21b848b935834be5b6ede44048564719` at 11:27 UTC has six.
+Both discovered six Views and completed fifteen same-sheet pair decisions marked
+same. The final partition differs. Source equality does not exclude indirect
+effects of release state, dependencies or execution order; do not dismiss the
+reported release regression on that basis. Raw comparison is preserved in the
+handoff workspace under `outputs/object-card-v2.2.3/lev1-detection-comparison.json`.
+Current V2.4 authorization is a local UI rebuild with Detection unchanged, not a
+Detection patch, paid rerun, automatic merge of saved objects or deployment.
 
 ## Ordinary Detection dimension membership, V8.4.13
 

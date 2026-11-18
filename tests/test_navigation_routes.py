@@ -846,7 +846,7 @@ def test_objects_screen_does_not_install_the_react_mutating_live_progress_runtim
 def test_objects_screen_refreshes_active_estimation_in_a_server_fragment():
     source = Path("screens/objects.py").read_text()
 
-    assert "@st.fragment(run_every=1.5)" in source
+    assert "st.fragment(_render_live_objects_content, run_every=1.5 if live else None)" in source
     assert "def _render_live_objects_content" in source
     assert "_persisted_objects_state(estimate_id)" in source
     assert 'st.container(key="objects_live_pricing")' in source
@@ -1233,7 +1233,7 @@ def test_projects_is_one_page_with_native_partner_disclosure_rows():
 def test_objects_initializes_action_state_before_live_fragment_branch():
     source = inspect.getsource(objects.render_objects_screen)
     state_index = source.index("screen_state = _current_objects_state(estimate_id)")
-    live_index = source.index("_render_live_objects_content(")
+    live_index = source.index("st.fragment(_render_live_objects_content,")
 
     bridge_index = source.index("_render_object_detail_navigation_bridges(action_data)")
     assert state_index < bridge_index < live_index

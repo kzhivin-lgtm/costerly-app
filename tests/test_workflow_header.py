@@ -118,4 +118,4 @@ def test_each_post_detail_screen_aligns_to_its_own_title():
     detail_source = open("screens/object_detail.py").read()
 
     assert '".objects-estimation-header h1.workflow-title"' in objects_source
-    assert 'install_workflow_header_alignment_guard("h1.object-detail-title")' in detail_source
+    assert 'install_workflow_header_alignment_guard("h1.object-detail-title", even_labor_columns=True)' in detail_source

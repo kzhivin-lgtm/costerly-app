@@ -1,6 +1,42 @@
 # Done Log
 
-V2.2.2 candidate, 2026-11-18, owner-requested UI correction. Restored the
+V2.4 local rebuild, 2026-11-18. Started branch `codex/object-card-v2.4` at the
+V2.2.2 runtime `4e69e5d7`. Reapplied V2.2.3 in four groups: paid-hour persistence,
+Labor UI, Calculation refresh and regression coverage. Both build markers now
+name V2.4. Nine transferred runtime modules match the reviewed V2.2.3 source.
+262 protected files, including Detection/OCR/Naming, File Review, app, company
+state, schemas and database code, match V2.2.2 byte-for-byte. Full local UI gate:
+368 Python checks and all five browser suites passed in 147.462s.
+No push, deployment, production data write or model call. Production remains
+V2.2.3. The six-object Lev1 incident remains a release regression under diagnosis;
+unchanged Detection source does not rule out indirect release/runtime effects.
+This UI rebuild does not establish that recognition is fixed. Evidence:
+`/Users/qb/Documents/ChatGPT/Costerly/outputs/object-card-v2.4/`.
+
+V2.2.3 published, 2026-11-18, runtime `420bdf197d7333f010972966f073d563310b3184`.
+The exact-SHA [UI gate](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44294112639)
+passed (165s job, 138s complete-contract step), and the verified publisher
+advanced main through the active required-check ruleset without bypass actors.
+Labor money uses whole shekels and grouped
+thousands; both work rows have editable one-decimal paid hours with immediate
+preview, explicit Save, retry and persisted reopen. Labels wrap over two lines,
+Hours/Total retain Materials anchors and the middle gaps are equal. Original
+colors and 42px rows are preserved. Removed the generic unfinished-work captions.
+New Calculation reads wait for durable shell readiness without relaxing company
+ownership. Running/static pricing share one fragment subtree. The new browser
+scenario retains one table through progress, full reruns and completion; the
+original duplicate symptom has not been reproduced on the old runtime.
+57 focused checks and the full local UI contract (368 Python checks, five browser
+suites) passed in 137.649s. Core and Pages were observed with matching
+`estimation-v2.2.3-editable-labor-hours-detection-v8.4.29` markers at Sign in.
+Owner-authenticated acceptance remains pending. Runtime tag:
+`estimation-labor-v2.2.3-2026-11-18`; rollback reference: V2.2.2 `4e69e5d7`.
+Manual hours are metadata-only estimate lines; physical norms, Materials and SC
+integration scope remain unchanged. See the existing Object Detail UI contract.
+
+V2.2.2 published, 2026-11-18, runtime `4e69e5d7d31af140f5ba9fa81668a4196d46c5ee`.
+The exact-SHA UI gate passed and the protected publisher updated main.
+Core and Cloudflare Pages both serve the V2.2.2 marker. Restored the
 original single header-color layer; compact Sheet Processing and Assembly
 rows replace the oversized nested grey cards. Hours, Labor pay and Total
 share Materials column coordinates; Taxes & social spans the remaining two
@@ -9,8 +45,8 @@ uses Total; unresolved work remains explicit in its details/review message.
 44 focused checks, 365 full-contract Python checks and all browser suites
 passed; the complete local UI run took 114.764 seconds. Frozen
 Lev1 desktop/mobile measurements show 0px column-center differences and
-42px work rows, with unchanged Labor Total ILS485.60. Exact-SHA gate/publication
-and owner acceptance are tracked in the existing Object Detail UI contract.
+42px work rows, with unchanged Labor Total ILS485.60. Owner-authenticated
+card acceptance remains open in the existing Object Detail UI contract.
 
 V2.2.1 published, 2026-11-18. Runtime `28c5588305b7f57c17ca6b3a92de58c1e0d43d53`
 passed [exact-SHA CI](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44283247089)

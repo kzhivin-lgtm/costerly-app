@@ -1,5 +1,72 @@
 # V2.2.1: Object Detail cost hierarchy
 
+## V2.4 local rebuild, 18 November 2026
+
+Owner-approved scope: start from V2.2.2 runtime `4e69e5d7`, reapply the ready
+V2.2.3 changes in separate persistence, Labor UI, Calculation refresh and test
+groups. Retain the same scenarios below. Version is V2.4. Local work only:
+no push, deployment, model call, production data rewrite or Detection repair.
+Detection, OCR, Naming, document identity and File Review must match V2.2.2.
+The six-object Lev1 incident remains unresolved, with its two persisted audits
+retained in `outputs/object-card-v2.2.3/lev1-detection-comparison.json` in the
+handoff workspace. Detection code was already identical in V2.2.2/V2.2.3;
+reapplying UI alone cannot establish that this incident is fixed.
+The owner reports dozens of stable one-object cycles before this release. Treat
+the outlier as a release regression under diagnosis; source equality does not
+rule out indirect effects of shared state, dependencies or execution order.
+Local verification passed: 368 Python checks and all five browser suites,
+147.462s. Isolation audit: 262 protected files match V2.2.2; nine reapplied runtime
+modules match V2.2.3. Evidence: `outputs/object-card-v2.4/` in the handoff workspace.
+
+## V2.2.3 owner correction, 18 November 2026
+
+Approved scope: whole-shekel Labor pay, Taxes & social and Total with grouped
+thousands; one-decimal editable Hours for the two work rows. Hours stays under
+Required material, Total stays under Total. Split Labor pay and Taxes & social
+labels over two lines and distribute the middle columns evenly. Remove generic
+unfinished-work captions. Preserve the palette, physical norms, SC and ownership.
+
+| Scenario | Acceptance |
+| --- | --- |
+| New Calculation, delayed shell write | Seed rows remain visible, no estimate ownership read before shell readiness, real foreign estimates still rejected |
+| Active Calculation, timer and app reruns, completion | Exactly one pricing table, one launch, no mixed/stale second table |
+| Manual Sheet Processing / Assembly hours | Immediate local cost preview at 50/h and 25%; explicit Save persists the accepted override; reopening and quantity changes retain it |
+| Invalid or failed save | Zero valid; negative, nonfinite, over-limit and excess precision rejected; actionable draft retained |
+| Keyboard, collapse, mobile | Input does not toggle its row; details hierarchy remains; anchored columns, wrapped labels, no changed colors |
+| Existing estimate / auth / material edits | Existing full UI contract remains green; no paid run and no automatic inclusion of Labor in SC |
+
+Manual hours use metadata-only rows in the existing estimate-lines store, normalized
+per item. Their zero SC contribution preserves the approved separation of this UI
+iteration from the pending SC integration. No new schema or production norm changes.
+Hours reuses Materials' numeric editor and explicit-save bridge. A native input
+with a value in Streamlit Markdown was rejected because React restored its value
+on input; browser event/setter tracing confirmed that failure. Clicking Hours
+edits the field; the row title/arrow and keyboard summary activation expand details.
+Equal column spacing reuses the existing coalesced render/resize alignment guard,
+with no extra observer, polling or app rerun. Its existing cleanup also applies.
+
+V2.2.3 local evidence so far:
+- 57 focused calculation/cache/runtime tests passed. Full local gate passed:
+  368 Python checks and all five browser suites.
+- Calculation browser scenario passed at desktop and 390px: delayed durable shell,
+  one launch/table through active and terminal full reruns, two editable work rows,
+  immediate pay/tax/total preview, failed Save/retry, zero and persisted reopen.
+- Frozen Lev1: unchanged exact Labor ILS485.60, displayed ILS486. Original header
+  color unchanged, 42px work rows, Hours/Total anchor error 0px. Middle gaps differ
+  by less than 0.01px across 1280px/390px viewports.
+- The production error's cause is verified from its event/shell timestamps. The
+  original duplicate-screen symptom was not replayed on the old runtime. The new
+  browser scenario verifies a single stable pricing subtree; the original cause
+  remains likely rather than conclusively reproduced.
+- Evidence directory: `/Users/qb/Documents/ChatGPT/Costerly/outputs/object-card-v2.2.3/`.
+  Exact-SHA CI passed: [run 44294112639](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44294112639),
+  165s job with a 138s complete-contract step. Protected publisher advanced main
+  to runtime `420bdf197d7333f010972966f073d563310b3184`; active required-check
+  ruleset with no bypass actors was verified. Core and Pages were observed at
+  `estimation-v2.2.3-editable-labor-hours-detection-v8.4.29` with Sign in visible.
+  Authenticated acceptance pending. Local complete run: 137.649s. Runtime tag:
+  `estimation-labor-v2.2.3-2026-11-18`; rollback reference: V2.2.2 `4e69e5d7`.
+
 ## V2.2.2 owner correction, 18 November 2026
 
 The owner rejected V2.2.1's large nested cards and changed header appearance.
@@ -18,7 +85,28 @@ protected; no palette change is authorized by a layout revision.
 | Incomplete work | Total header stays stable; unresolved work is disclosed in the detail/review message | Unit + browser |
 
 All earlier input, persistence, navigation, auth and arithmetic scenarios remain
-required. V2.2.2 publication/owner acceptance is pending during implementation.
+required. Runtime `4e69e5d7d31af140f5ba9fa81668a4196d46c5ee` is published;
+owner-authenticated visual acceptance remains pending.
+
+V2.2.2 evidence:
+
+- [Exact-SHA CI](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44287838603)
+  succeeded; whole Linux job 170 seconds. Promotion used the enforced publisher.
+- Local: 44 focused checks; 365 Python checks and all four browser suites,
+  114.764 seconds. Navigation covers desktop, mobile and an older wrapper.
+- Frozen Lev1: original header color matches in the same browser, Hours / Labor
+  pay / Total have 0px center difference from Materials, work rows are 42px;
+  sheet labor 335.86 + assembly 149.74 = 485.60 ILS, unchanged from V2.2.1.
+- Initial local assertions were corrected for browser alpha quantization and
+  CSS uppercase text. The standalone frozen renderer was given Streamlit's
+  border-box sizing. These were test/renderer issues, not palette changes.
+- Core and wrapper observed at
+  `estimation-v2.2.2-compact-cost-rows-detection-v8.4.29`. Initial Core lagged
+  Pages at V2.2.1; after deployment/reload the pair matched. Authenticated card
+  behavior is not claimed accepted from the unauthenticated build check.
+- Evidence: `/Users/qb/Documents/ChatGPT/Costerly/outputs/object-card-v2.2.2/`.
+- Release tag: `estimation-labor-v2.2.2-2026-11-18`; rollback runtime is V2.2.1,
+  `28c5588305b7f57c17ca6b3a92de58c1e0d43d53`. No new paid model call.
 
 Owner-approved scope, 18 November 2026: Materials and Labor are collapsible
 cost bands. Labor contains Sheet Processing (including Elements), then

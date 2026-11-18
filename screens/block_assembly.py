@@ -1,6 +1,7 @@
 """Render the shop assembly total and its breakdown in Elements."""
 
 from html import escape
+from ui.object_detail_view import _money
 
 
 _OPERATIONS = {
@@ -25,10 +26,10 @@ def _summary_row(block, label, *, total=False, quantity=1, payroll_share=None):
     pay = ((Decimal(str(block['planned_minutes'])) * multiplier * 50 / 60)
            if payroll_share is not None else Decimal(str(block['base_labor_ils'])) * multiplier
            ).quantize(Decimal('.01'), rounding=ROUND_HALF_UP)
-    values = [label, f'{block["active_minutes"] * multiplier:g}', f'{block["planned_minutes"] * multiplier:.2f}', f'₪{pay:,.2f}']
+    values = [label, f'{block["active_minutes"] * multiplier:g}', f'{block["planned_minutes"] * multiplier:.2f}', _money(pay)]
     if payroll_share is not None:
         taxes = (pay * payroll_share).quantize(Decimal('.01'), rounding=ROUND_HALF_UP)
-        values += [f'₪{taxes:,.2f}', f'₪{pay + taxes:,.2f}']
+        values += [_money(taxes), _money(pay + taxes)]
     if not total and not block["operations"]:
         values = [label] + ['—'] * (len(values) - 1)
     css = " object-detail-assembly-total" if total else ""
@@ -94,9 +95,6 @@ def assembly_breakdown_html(result, *, quantity=1, payroll_share=None, inline=Fa
     )
     captions = (_caption(f'For {quantity:g} finished items') if quantity != 1 else '') if payroll_share is not None else _caption(
         f'Per finished item · ₪{result["hourly_base_ils"]:g}/h base wage · payroll costs excluded')
-    if result["common_roles_for_review"]:
-        captions += _caption("Some assembly parts have no block assignment and need review.")
-    captions += _caption("Glass, mirrors, lighting, split-panel joining and site work are outside this estimate.")
     details = "".join(_details(block, quantity=quantity) for block in result["blocks"])
     if inline:
         return captions + table + details
