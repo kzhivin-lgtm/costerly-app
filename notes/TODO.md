@@ -1052,6 +1052,26 @@ Railway settings were read only; no new paid calls or deployment. Evidence:
 `offline-request-replay.json` and `release-boundary-request-replay.json` in the
 five-run artifact directory. No new paid calls, runtime patch or deployment.
 
+### Labor V2 recurrence diagnosis, 2026-11-19
+
+ACTIVE, P0, same incident; Detection/Membership freeze retained. Owner asks why
+incomplete proof replies returned after Labor V2, without extra model passes.
+New read-only evidence verifies the original PDF SHA in all 30 historical runs,
+not just the six recent controls: all match the protected Lev1 source. Four saved
+Nov 13 OCR/reply replays reproduce 2,1,6,1 offline with sockets blocked. One full
+reconstructed Membership request body occurs on Nov 13/17/18 with outcomes
+2,1,1,6,1; another occurs before Labor V2 with 6,1,1. Thus the same old split is
+verified on the exact PDF and variable replies span the release boundary.
+Adapter, compiler, Membership prompt and config have no source diff from
+V8.4.29 (`420a7e4d`) to V2.2.3 (`420bdf19`); coverage rejection dates to Oct 27.
+Likely ordinary response-content variability exposing the old proof-handling
+defect, not a demonstrated new Labor activation. Specific release/backend
+trigger remains UNKNOWN; reconstructed bodies are not historical wire captures.
+The stable 16-run sequence is preserved as evidence, not dismissed or treated
+as a proven repair. No new paid calls, runtime/config changes or deployment.
+Details and exact run/hash groups: handoff workspace
+`outputs/detection-v2.4-lev1-five-2026-11-18/recurrence-cause-2026-11-19/REPORT.md`.
+
 ### Cancelled proposal: extra proof-verification stage
 
 CANCELLED BY OWNER, 2026-11-19. Extra verification stages/model passes were
