@@ -289,7 +289,7 @@ def material_preview_rows(data: dict[str, object]) -> list[dict[str, object]]:
             for row in section["rows"]]
 
 
-def _table_html(section: dict[str, object], *, collapse_title: str | None = None) -> str:
+def _table_html(section: dict[str, object]) -> str:
     """Render a grouped cost table from normalized estimate rows."""
     columns = section["columns"]
     rows = section["rows"]
@@ -298,23 +298,11 @@ def _table_html(section: dict[str, object], *, collapse_title: str | None = None
     table_class = f"object-detail-table object-detail-table--cols-{column_count}"
     material_table = tuple(columns) == MATERIAL_PURCHASE_COLUMNS
     header_cells = []
-    known_totals = [float(row['total']) for row in rows
-                    if isinstance(row.get('total'), (int, float)) and math.isfinite(row['total'])]
-    subtotal = sum(known_totals) if known_totals or not rows else None
-    partial = len(known_totals) != len(rows)
-    for index, column in enumerate(columns):
+    for column in columns:
         label = _escape(column)
-        extra_class = ''
-        if collapse_title and index == 0:
-            label = _escape(collapse_title)
-            extra_class = ' object-detail-cost-title'
-        elif collapse_title and index == len(columns) - 1:
-            label = (f'<span class="object-detail-cost-label">{"Subtotal" if partial else "Total"}</span>'
-                     f'<span class="object-detail-cost-value" data-material-section-total>{_money(subtotal)}</span>')
-            extra_class = ' object-detail-cost-total'
         if material_table and column in {"Purchase unit", "Unit price"}:
             label = f'<span>{label.replace(" ", "<br> ", 1)}</span>'
-        header_cells.append(f'<div class="object-detail-table-head{extra_class}">{label}</div>')
+        header_cells.append(f'<div class="object-detail-table-head">{label}</div>')
     header = "".join(header_cells)
 
     body_parts: list[str] = []
@@ -326,13 +314,6 @@ def _table_html(section: dict[str, object], *, collapse_title: str | None = None
                 f'<div class="object-detail-table-row" data-section="materials" data-material-preview="{_escape(json.dumps(preview))}">'
                 + "".join(f'<div class="object-detail-table-cell">{value}</div>' for value in values)
                 + "</div>"
-            )
-        if collapse_title:
-            return (
-                f'<details class="{table_class} object-detail-cost-band object-detail-materials-band" '
-                f'data-section="{_escape(section_key)}" open>'
-                f'<summary class="object-detail-table-head-row object-detail-cost-summary">{header}</summary>'
-                f'<div class="object-detail-cost-body">{"".join(body_parts)}</div></details>'
             )
         return (
             f'<div class="{table_class}" data-section="{_escape(section_key)}">'
@@ -381,11 +362,6 @@ def _table_html(section: dict[str, object], *, collapse_title: str | None = None
 
 def _section_html(section: dict[str, object]) -> str:
     """Render one cost section with metrics and a grouped table."""
-    if tuple(section['columns']) == MATERIAL_PURCHASE_COLUMNS:
-        return (
-            '<section class="object-detail-section object-detail-section--cols-6" data-section="material">'
-            + _table_html(section, collapse_title=str(section['title'])) + '</section>'
-        )
     metrics = "".join(_metric_html(label, value) for label, value in section["metrics"])
     column_count = len(section["columns"])
     metric_offset = ""

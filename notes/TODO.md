@@ -1072,6 +1072,17 @@ as a proven repair. No new paid calls, runtime/config changes or deployment.
 Details and exact run/hash groups: handoff workspace
 `outputs/detection-v2.4-lev1-five-2026-11-18/recurrence-cause-2026-11-19/REPORT.md`.
 
+### V1.3.4 rollback and six-run Lev1 comparison
+
+ACTIVE, P0, OWNER APPROVED, 2026-11-19. Owner asked to go back further:
+publish exact V1.3.4 runtime/tests (`eb56dd4c`) in a forward rollback commit,
+then run six fresh internal OCR + unchanged Detection trials of the protected
+Lev1 PDF. Compare with V2.2.2 outcomes 2,2,1,1,1,1. Keep all project history,
+unrelated dirty TODO text and the enforced publication gate. No separate
+Detection/Membership repair or automatic reapplication. Also show the preceding
+Labor release history, not only V2 labels. Artifacts in the handoff workspace:
+`outputs/rollback-v1.3.4-lev1-six-2026-11-19/`.
+
 ### V2.2.2 rollback and six-run Lev1 comparison
 
 COMPLETED EXPERIMENT, P0, 2026-11-19. Published rollback `1c38178f` has the

@@ -138,66 +138,6 @@ try {
   assert.equal(await core.locator('.object-detail-preview-image').getAttribute('src'),savedCrop);
   assert.ok(await core.locator('.object-detail-preview-image').evaluate(img=>img.complete&&img.naturalWidth>0));
   assert.match(await core.locator('.object-detail-final').innerText(),/₪1[\s,]?000/);
-  const materials=core.locator('.object-detail-materials-band');
-  const labor=core.locator('[data-cost-band="labor"]');
-  const sheet=labor.locator('[data-cost-band="sheet-processing"]');
-  const assembly=labor.locator('[data-cost-band="assembly"]');
-  await labor.waitFor();
-  assert.equal(await core.locator('[data-cost-band="labor"]').count(),1);
-  assert.equal(await sheet.count(),1);
-  assert.equal(await assembly.count(),1);
-  assert.equal(await sheet.locator('.object-detail-elements').count(),1);
-  assert.equal(await assembly.locator('.object-detail-elements').count(),0);
-  for(const row of [sheet,assembly]){
-   assert.equal(await row.evaluate(node=>node.classList.contains('object-detail-table')),false);
-   assert.ok((await row.locator(':scope > summary').evaluate(node=>node.getBoundingClientRect().height))<=48);
-   assert.equal(await row.locator(':scope > summary [data-labor-column="hours"]').isVisible(),true);
-  }
-  const alignment=await frame.evaluate(()=>{
-   const cells=document.querySelector('.object-detail-materials-band > summary').children;
-   const center=node=>{const r=node.getBoundingClientRect();return r.x+r.width/2;};
-   const head=document.querySelector('[data-cost-band="labor"] > summary');
-   const reference=document.createElement('span');
-   reference.style.backgroundColor='rgba(42, 31, 44, 0.045)';
-   head.appendChild(reference);
-   const originalColor=getComputedStyle(reference).backgroundColor;
-   reference.remove();
-   return {
-    hours:Math.abs(center(cells[1])-center(head.querySelector('[data-labor-column="hours"]'))),
-    pay:Math.abs(center(cells[2])-center(head.querySelector('[data-labor-column="pay"]'))),
-    total:Math.abs(center(cells[5])-center(head.querySelector('[data-labor-column="total"]'))),
-    header:getComputedStyle(head).backgroundColor,
-    originalColor,
-    cell:getComputedStyle(head.children[0]).backgroundColor,
-   };
-  });
-  assert.ok(alignment.hours<1 && alignment.pay<1 && alignment.total<1,JSON.stringify(alignment));
-  assert.equal(alignment.header,alignment.originalColor);
-  assert.equal(alignment.cell,'rgba(0, 0, 0, 0)');
-  assert.equal(await labor.locator(':scope > summary .object-detail-cost-label').last().innerText(),'TOTAL');
-  assert.equal(await labor.locator('.object-detail-labor-body > .object-detail-cnc-caption:not(.object-detail-labor-review)').count(),0);
-  const cardRender=await core.locator('[data-costerly-render-id]').last().getAttribute('data-costerly-render-id');
-  for(const band of [materials,labor,sheet,assembly]){
-   const summary=band.locator(':scope > summary');
-   await summary.focus();
-   const initial=await band.evaluate(node=>node.open);
-   await summary.press('Enter');
-   assert.equal(await band.evaluate(node=>node.open),!initial);
-   await summary.press('Space');
-   assert.equal(await band.evaluate(node=>node.open),initial);
-  }
-  await sheet.locator(':scope > summary').click();
-  await sheet.locator('.object-detail-elements > summary').click();
-  await assembly.locator(':scope > summary').click();
-  assert.match(await assembly.innerText(),/Taxes & social/i);
-  await page.screenshot({path:reportPath('object-cost-hierarchy-'+cfg.name+'.png'),fullPage:true});
-  await materials.locator(':scope > summary').click();
-  await labor.locator(':scope > summary').click();
-  for(const band of [materials,labor]){
-   assert.equal(await band.evaluate(node=>node.open),false);
-   assert.equal(await band.locator(':scope > summary .object-detail-cost-value').last().isVisible(),true);
-  }
-  assert.equal(await core.locator('[data-costerly-render-id]').last().getAttribute('data-costerly-render-id'),cardRender);
   await move('Card to New Estimate',button('New Estimate'),'upload');
   assert.equal(await core.locator('[data-testid="stException"]').count(),0);
   assert.deepEqual(errors,[]);
