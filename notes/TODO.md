@@ -49,7 +49,19 @@ checkpoint; actual outer-reload event and current auth rejection cause UNKNOWN.
 Known owner trace 702f5960 has only the older V2.7 rejection, not this attempt.
 General latest-telemetry query rejected by automatic approval review because
 it could include other users; owner asked to approve a narrow last-five-minute
-login-event query. No speculative auth patch or repeated deployment. Artifacts:
+login-event query. Owner supplied current trace 0a99f9e6-994e-4414-bfbc-9c689c8e0d42, enabling
+owner-only diagnostics without broad telemetry access. Exact evidence: V2.9
+fast_resume_restored, then refresh_token_already_used/HTTP400 and Login at
+14:03:12 UTC. Fresh sign-in/version-reload alone passed locally, so that common
+path was not the missing case. A stale used cookie overriding a newer valid
+per-tab session reproduced Login before the fix. Fix: one native bootstrap
+rerun/read after cookie rejection, preserve workflow, validate tab session by
+normal server auth; no polling, bypass or change to normal valid startup.
+Focused before failed; after passed, including revocation and fresh sign-in.
+This repairs a verified failure path; the origin of the stale production cookie
+and the actual contents of this owner's tab storage remain unknown. Full gates
+and new production acceptance pending. No Detection/calculation changes.
+Artifacts:
 outputs/auth-resume-v2.9/owner-control/ in handoff workspace.
 
 SUPERSEDED BY V2.9, PUBLISHED HISTORY, P0, V2.8, 2026-11-19. Owner replaces

@@ -213,6 +213,61 @@ def test_fast_resume_skips_browser_component(monkeypatch):
     assert st.session_state._fast_resume_outcome == "restored"
 
 
+def test_rejected_cookie_recovers_newer_tab_session_without_discarding_work(monkeypatch):
+    st = company_auth.st
+    st.session_state.clear()
+    st.session_state.update({
+        "auth_access_token": "stale-access", "auth_refresh_token": "used-refresh",
+        "auth_expires_at": 0, "_browser_auth_initialized": True,
+        "_browser_auth_sync_outcome": "fast_resume_restored",
+        "screen": "object_detail", "unsaved_draft": {"hours": 42},
+    })
+    attempts = []
+    def reject(token):
+        attempts.append(token)
+        raise company_auth.AuthApiError("synthetic used cookie", 400, "refresh_token_already_used")
+    monkeypatch.setattr(company_auth, "_auth_client", lambda: SimpleNamespace(auth=SimpleNamespace(refresh_session=reject)))
+    class RetryBootstrap(BaseException):
+        pass
+    monkeypatch.setattr(st, "rerun", lambda: (_ for _ in ()).throw(RetryBootstrap()))
+    with pytest.raises(RetryBootstrap):
+        company_auth.current_company_access()
+    assert st.session_state.screen == "object_detail"
+    assert st.session_state.unsaved_draft == {"hours": 42}
+    assert "_browser_auth_pending" not in st.session_state
+    monkeypatch.setattr(company_auth, "restore_resume_session", lambda _cookies: (_ for _ in ()).throw(AssertionError("Rejected cookie must not be retried")))
+    st.session_state._browser_auth_read_request = "tab-recovery"
+    monkeypatch.setattr(company_auth, "browser_session_exchange", lambda **_kwargs: {
+        "requestId": "tab-recovery", "session": {
+            "access_token": "new-access", "refresh_token": "new-refresh",
+            "expires_at": int(time.time()) + 3600,
+        },
+    })
+    monkeypatch.setattr(company_auth, "seal_resume_session", lambda **_kwargs: None)
+    assert company_auth.sync_browser_auth_session()
+    access = company_auth.CompanyAccess("user", "fixture@example.invalid", "company", "owner", "new-access")
+    monkeypatch.setattr(company_auth, "_company_access_via_rls", lambda token, **_kwargs: access if token == "new-access" else None)
+    assert company_auth.current_company_access() == access
+    assert attempts == ["used-refresh"]
+
+
+def test_rejected_browser_recovery_still_logs_out_without_retry_loop(monkeypatch):
+    st = company_auth.st
+    st.session_state.clear()
+    st.session_state.update({
+        "auth_access_token": "rejected-access", "auth_refresh_token": "rejected-refresh",
+        "auth_expires_at": 0, "_browser_auth_cookie_retry": True,
+        "_browser_auth_sync_outcome": "browser_session_restored",
+    })
+    def reject(_token):
+        raise company_auth.AuthApiError("synthetic revoked session", 400, "refresh_token_already_used")
+    monkeypatch.setattr(company_auth, "_auth_client", lambda: SimpleNamespace(auth=SimpleNamespace(refresh_session=reject)))
+    monkeypatch.setattr(st, "rerun", lambda: (_ for _ in ()).throw(AssertionError("No repeated recovery")))
+    assert company_auth.current_company_access() is None
+    assert st.session_state._browser_auth_pending["action"] == "clear"
+    assert "auth_access_token" not in st.session_state
+
+
 def test_browser_session_component_executes_inside_sidebar(monkeypatch):
     from ui import browser_session
 

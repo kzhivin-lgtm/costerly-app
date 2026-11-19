@@ -62,12 +62,15 @@ ready receipt. No new timer, HTTP version request, worker or auth poll.
 | Expired access token with valid refresh session | Rotate explicitly, synchronously persist newest session before reload, restore signed-in state in new server session |
 | Older queued browser write | Ignore it, keep the latest rotated session |
 | Browser cannot persist the session | Keep current page, postpone reload, offer client-side Retry; no extra Python rerun |
-| Provider genuinely revokes/rejects the session | Existing Login recovery, no access bypass |
+| Fast cookie rejected, this tab has a newer valid session | One browser bootstrap retry before Login; preserve workflow state and validate recovered tokens normally |
+| Provider rejects available cookie and tab sessions | Existing Login recovery, no access bypass or retry loop |
 
 The server SDK must not refresh tokens in its own background timer. Streamlit
 owns refresh and passes its latest session write to the same ready component
 which announces a deployment; browser writes complete before the announcement.
-One shared JS writer orders store/clear/cookie commands. Read replies remain
+A rejected cookie triggers at most one native rerun/browser read on bootstrap,
+without polling or clearing the tab session first. This does not add work to
+normal valid-cookie startup or user clicks. One shared JS writer orders store/clear/cookie commands. Read replies remain
 idempotent and write commands do not schedule a Python callback. Build IDs carry
 a UTC `-bYYYYMMDDhhmmss-` stamp so an older Core cannot reload a newer wrapper.
 

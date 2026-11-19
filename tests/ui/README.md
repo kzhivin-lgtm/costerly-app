@@ -26,7 +26,9 @@ browser persistence code with stateful single-use synthetic refresh tokens.
 It advances expiry twice, rotates each token, triggers automatic outer reload
 and verifies login in each new server session; genuine revocation still reaches
 Login. It rejects nonlocal socket IO. This is stronger than storing token bytes,
-but remains distinct from owner production acceptance.
+but remains distinct from owner production acceptance. It also covers the real
+sign_in callback followed by a version reload and a used stale cookie with a
+newer valid tab session; rejected tab sessions still reach Login.
 Navigation asserts
 that File Review and the reopened saved card display the same synthetic crop.
 

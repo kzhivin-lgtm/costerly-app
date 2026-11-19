@@ -23,6 +23,12 @@ auth.time=Clock()
 session_resume.get_optional_secret=lambda name,default=None:{'COSTERLY_FAST_RESUME_ENABLED':'true','COSTERLY_SESSION_SEAL_KEY':base64.urlsafe_b64encode(b'0'*32).decode()}.get(name,default)
 def mint(n):return SimpleNamespace(access_token=f'synthetic-access-{n}',refresh_token=f'synthetic-refresh-{n}',expires_at=int(now())+3600)
 class Provider:
+ def sign_in_with_password(self,credentials):
+  data=provider();data['generation']+=1;data['signins']=data.get('signins',0)+1;save(data)
+  config=settings()
+  if config.get('build_after_signin'):
+   config['build']=config['build_after_signin'];config_path.write_text(json.dumps(config))
+  return SimpleNamespace(session=mint(data['generation']))
  def refresh_session(self,token):
   data=provider()
   if settings().get('revoked') or token!=f"synthetic-refresh-{data['generation']}":
@@ -41,7 +47,7 @@ current=auth.current_company_access(trace=trace)
 if current is None:
  st.markdown('<div class="auth-brand">Sign in</div>',unsafe_allow_html=True)
  def signin():
-  data=provider();data['generation']+=1;save(data);auth._store_auth_session(mint(data['generation']))
+  auth.sign_in('fixture@example.invalid','synthetic-password')
  with st.form('signin'):
   st.form_submit_button('Fixture sign in',on_click=signin)
  _signal_ready(trace,'login')

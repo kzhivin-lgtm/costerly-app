@@ -284,6 +284,7 @@ def sync_browser_auth_session(
         not isinstance(pending, dict)
         and not st.session_state.get("_browser_auth_initialized")
         and not has_memory_session
+        and not st.session_state.get("_browser_auth_cookie_retry")
         and not recovery_requested
         and not confirmation_requested
     ):
@@ -1182,6 +1183,27 @@ def current_company_access(*, trace=None) -> CompanyAccess | None:
                 "auth_error_code": code if re.fullmatch(r"[a-z0-9_]{1,80}", code) else "unknown",
                 "http_status": getattr(exc, "status", None),
             })
+        if (
+            st.session_state.get("_browser_auth_sync_outcome") == "fast_resume_restored"
+            and not st.session_state.get("_browser_auth_cookie_retry")
+        ):
+            # A cookie is shared across tabs; this tab can hold a newer session.
+            # Retry the existing browser bootstrap once before clearing it.
+            # Keep workflow state and validate the recovered tokens normally.
+            for key in (
+                "auth_access_token", "auth_refresh_token", "auth_expires_at",
+                "_company_access_cache", "_browser_auth_initialized",
+                "_browser_auth_read_request", "_browser_auth_pending",
+                "_browser_auth_latest_write",
+            ):
+                st.session_state.pop(key, None)
+            st.session_state._browser_auth_cookie_retry = True
+            st.session_state._fast_resume_outcome = "rejected_cookie"
+            st.session_state._browser_auth_sync_outcome = "retrying_tab_session"
+            if trace is not None:
+                trace.event("server.auth.cookie_browser_retry", status="unknown")
+            st.rerun()
+            return None
         clear_auth_session()
         st.session_state._browser_auth_pending = {
             "action": "clear",
