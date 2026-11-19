@@ -1,5 +1,18 @@
 # V2.2.1: Object Detail cost hierarchy
 
+## V1.3.4 restored, 19 November 2026
+
+Owner-directed forward rollback `010e2658` restores exact runtime/tests from
+`eb56dd4c`. Local verification: 358 Python checks, four browser suites.
+Full CI 44492235057 passed; protected publisher advanced main. Railway
+6a457e6b-db3b-4772-9f98-6b7db77fda54 succeeded; actual Core and wrapper markers
+match `estimation-labor-v1.3.4-shared-preview-detection-v8.4.29`. Sign in observed,
+fresh authenticated card acceptance not claimed. Owner stopped the six-trial
+benchmark after five completed outcomes 6,1,1,1,1. Sixth interrupted, not counted.
+Stable Detection is not established. Current runtime remains V1.3.4; no new
+repair or reapplication performed. Source-history diagnosis is separate:
+`outputs/labor-v1.3-split-origin-2026-11-19/REPORT_RU.md` in the handoff workspace.
+
 ## V2.2.2 restored, 19 November 2026
 
 Owner explicitly requested rollback and six fresh Lev1 trials. Forward commit

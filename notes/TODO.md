@@ -1074,7 +1074,14 @@ Details and exact run/hash groups: handoff workspace
 
 ### V1.3.4 rollback and six-run Lev1 comparison
 
-ACTIVE, P0, OWNER APPROVED, 2026-11-19. Owner asked to go back further:
+ROLLBACK VERIFIED; BENCHMARK STOPPED BY OWNER, P0, 2026-11-19. Forward
+commit `010e2658` exactly restores V1.3.4 runtime/tests. Full CI 44492235057,
+358 local Python checks and four browser suites passed. Railway deployment
+6a457e6b-db3b-4772-9f98-6b7db77fda54 succeeded; actual Core/wrapper markers
+match V1.3.4. Owner stopped the benchmark after five completed results,
+6,1,1,1,1; sixth process interrupted, no result, partial provider cost unknown.
+No further paid trials authorized. Production now stays V1.3.4.
+Original approval: owner asked to go back further:
 publish exact V1.3.4 runtime/tests (`eb56dd4c`) in a forward rollback commit,
 then run six fresh internal OCR + unchanged Detection trials of the protected
 Lev1 PDF. Compare with V2.2.2 outcomes 2,2,1,1,1,1. Keep all project history,
@@ -1082,6 +1089,27 @@ unrelated dirty TODO text and the enforced publication gate. No separate
 Detection/Membership repair or automatic reapplication. Also show the preceding
 Labor release history, not only V2 labels. Artifacts in the handoff workspace:
 `outputs/rollback-v1.3.4-lev1-six-2026-11-19/`.
+
+### Labor V1.3 source/history audit and earliest split boundary
+
+COMPLETED BOUNDED AUDIT, P0, USER REQUEST, 2026-11-19. Owner stopped live
+experiments and asked where splitting started. All seven V1.3 releases plus
+the preceding snapshot share exact adapter/compiler/Membership prompts,
+classifier/OCR/config hashes with Detection V8.4.29. V1.3.0-.3 concern
+navigation, recovery and Profile; V1.3.4 preview selection is after Registry.
+Earliest retained exact-source Lev1 splits: Nov 13 21:52 Israel -> 2 objects,
+22:32 -> 6 objects, before Labor V1.3 started Nov 17. The meaningful source
+boundary before them is V8.4.28 -> V8.4.29 (`420a7e4d`): Haiku 5.5 -> 4.5,
+Sonnet-written descriptions -> Discovery descriptions, explicit pair endpoints
+-> source_fact_ids parsing, and no Ada shaded-render rule. Persisted outputs
+show Views1/3 changed from presentation_render (four technical Views plus two
+attachments) to isometric_technical (six Views requiring technical coverage).
+The first bad six-object reply omits proof for the reclassified View003.
+This is a supported candidate activation path, not proof that V8.4.29 caused
+every omission or the Nov18 recurrence. Its first bad reply has exactly two
+IDs per evidence row, so endpoint-field rollback alone is not a full cause.
+No new model calls or runtime repair for this audit. Details and causal limits:
+handoff `outputs/labor-v1.3-split-origin-2026-11-19/REPORT_RU.md`.
 
 ### V2.2.2 rollback and six-run Lev1 comparison
 
@@ -1108,7 +1136,8 @@ production replays. The current batch is the first recorded six-fresh-trial
 comparison on exact V2.2.2.
 Starting production is V2.4 `551577c3`. Acceptance: published Core/wrapper
 V2.2.2 pair, six retained fresh trials with exact one-object/six-View checks.
-Current production remains V2.2.2. Subsequent gradual reapplication is the
+Production at completion was V2.2.2; the later owner-directed rollback above
+now places production on V1.3.4. Subsequent gradual reapplication is the
 owner's intended direction; select
 the first isolated change after the benchmark, do not reapply everything now.
 

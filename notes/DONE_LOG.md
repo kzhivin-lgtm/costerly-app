@@ -1,5 +1,20 @@
 # Done Log
 
+V1.3.4 rollback, stopped benchmark and source-history audit, 2026-11-19.
+Forward restore `010e2658` exactly matches V1.3.4 `eb56dd4c` runtime/tests.
+358 local Python checks, four browser suites and full CI 44492235057 passed.
+Protected publisher advanced main. Railway 6a457e6b-db3b-4772-9f98-6b7db77fda54
+succeeded; actual Core/wrapper report V1.3.4, Sign in observed. Owner stopped
+fresh trials after 6,1,1,1,1; sixth interrupted, partial cost unknown. No more
+paid calls. Existing exact-source Lev1 history first splits on Nov13, before
+Labor V1.3 began Nov17. Eight V1.3/pre-V1.3 source snapshots preserve exact
+V8.4.29 Membership/OCR/model files. The Nov13 V8.4.28 -> V8.4.29 boundary also
+changes two isometrics from render attachments to technical hypothesis members,
+increasing the required technical coverage from four to six. This is a concrete
+candidate activation path; full generation/reappearance causality remains
+unconfirmed. No Detection repair. Evidence and limits:
+`outputs/labor-v1.3-split-origin-2026-11-19/REPORT_RU.md` in the handoff workspace.
+
 V2.2.2 rollback and six-run Lev1 comparison, 2026-11-19. Owner-approved forward
 restore `1c38178f` exactly matches runtime/tests of `4e69e5d7`, preserving records
 and the unrelated dirty TODO section. Local: 365 Python checks and four browser
