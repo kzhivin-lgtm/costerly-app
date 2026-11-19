@@ -1052,6 +1052,32 @@ Railway settings were read only; no new paid calls or deployment. Evidence:
 `offline-request-replay.json` and `release-boundary-request-replay.json` in the
 five-run artifact directory. No new paid calls, runtime patch or deployment.
 
+### Pending proposal: catch and repair incomplete membership proof
+
+PENDING OWNER DECISION, P0, AGENT PROPOSAL, 2026-11-19. Keep the owner's
+Membership freeze in force. Proposed internal consistency trigger: a hypothesis
+is rejected for incomplete pair-local coverage, its members are split by final
+fallback components, and independent Same-Sheet same decisions cross those
+components. Compare IDs through the existing normalization mapping. This is a
+diagnostic signal, not authority to merge. An offline proposal flags all three
+known failures among twelve source-SHA-verified Lev1 cases and none of the nine
+successful Lev1 cases. Specificity on genuine multi-object documents is UNKNOWN.
+Evidence: `outputs/provider-timings-v2.4/proposed-consistency-check.json` in the
+handoff workspace. Older same-name history is exploratory, not a verified oracle.
+
+Recommended local prototype, NOT APPROVED: preserve current grouping/proof rules
+and fixed View inventory; on this signal request one bounded image-based check
+of the missing pair evidence, then rerun existing validation/compilation with
+only accepted evidence. Normal complete responses incur no extra model call.
+Trade-off: one additional request/latency/cost on flagged responses. Existing
+offline controls show one valid added proof resolves both recent 2/6 fixtures;
+merging before coverage alone resolves only the 2-object case. Never infer a
+merge from positive Same-Sheet votes alone or hard-code a target object count.
+Acceptance must include both saved failures and genuine multi-object controls.
+Unresolved-after-recheck behavior requires an owner decision before production.
+No runtime/proof rule modification, model call or deployment performed for this
+proposal; current production remains the timing-only V2.4 release.
+
 ### Completed V2.4 timing audit
 
 COMPLETED, VERIFIED 2026-11-19, USER AUTHORIZED, V2.4: retain independent
