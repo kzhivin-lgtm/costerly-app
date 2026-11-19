@@ -114,3 +114,13 @@ def test_attachment_members_and_their_proof_cannot_bridge_technical_groups():
     assert projected[0]["evidence"] == [{"source_fact_ids": ["registry_view:front", "registry_view:side"]}]
     assert len(audit) == 2
     assert hypotheses == before
+
+
+def test_isometric_explicit_endpoint_cannot_bridge_technical_hypotheses():
+    projected, _ = project_attachment_only_hypotheses(
+        [{"group_ids": ["a", "b", "iso"], "evidence": [
+            {"group_id_a": "a", "group_id_b": "b"},
+            {"group_id_a": "a", "group_id_b": "iso"},
+        ]}], {"iso"})
+    assert projected[0]["group_ids"] == ["a", "b"]
+    assert projected[0]["evidence"] == [{"group_id_a": "a", "group_id_b": "b"}]

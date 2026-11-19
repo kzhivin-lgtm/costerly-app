@@ -993,15 +993,19 @@ handoff workspace `outputs/detection-v2.4-isometric-repeatability-2026-11-19/REP
 This completes the requested experiment/diagnosis, not a stable Detection
 checkpoint or global accuracy acceptance. Existing V2.4 task retained.
 
-PENDING OWNER DECISION, P0, AGENT PROPOSAL, 2026-11-19. Align the ordinary
-pair-evidence contract between compact Membership prompt, output schema and
-validator to prevent three-View rows that the next stage rejects as unparseable
-pairs. Source schema permits up to three IDs, runtime demands exactly two
-registry_view endpoints; generic prompt allows up to three sources alongside
-the specific pair rule. Keep structural_witness semantics separate. No blind
-triple-to-pairs conversion, no added model call, no new Same-Sheet authority.
-Trigger: owner approval after the nine-trial report. Implementation is not
-approved; current explicit code freeze remains. No new product work number.
+ACTIVE IMPLEMENTATION, P0, OWNER APPROVED, V2.4, 2026-11-19. Require
+separate model evidence rows for A-B and A-C, no pooled three-View pair. Restore
+only V8.4.28 explicit group_id_a/group_id_b fields from `114a7b80`, canonical
+endpoint citations and the separate structural_witness role. Do not restore
+old Discovery/models/view_descriptions or alter pair coverage, grouping,
+Same-Sheet, isometric attachment, Labor or UI. Base runtime `e0b20646`.
+History verification: V8.4.29 `420a7e4d` removed these explicit fields and reader
+on 13 Nov, before Labor V2; the eight-singleton citation failure had already
+been repaired by V8.4.28. Critical proof rules remain unchanged. No added model
+stage or automatic conversion of ambiguous old triples into invented pairs.
+Check schema/runtime 0/1/2/3/22 references, invalid endpoints, separate A-B/A-C,
+third witness, attachment non-bridging, controls and the full publication gate.
+Existing V2.4 task retained, no new product work number or block.
 
 PUBLISHED, BOUNDED POLICY VERIFIED, OWNER ACCEPTANCE PENDING, P0, OWNER APPROVED,
 V2.4, 2026-11-19. Restored latest Labor V2.4 (`551577c3`), candidate `e0b20646`.

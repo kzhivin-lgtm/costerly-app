@@ -2069,7 +2069,7 @@ def test_v848_ada_compares_every_same_sheet_pair_independently_of_grouping(missi
                 "evidence": [{
                     "evidence_type": "matching_topology", "strength": "standard",
                     "observation": "The distinctive corner cabinet run occurs in both Views.",
-                    "source_fact_ids": ["registry_view:view-001", "registry_view:view-002"],
+                    "group_id_a": "raw-plan", "group_id_b": "raw-left", "source_fact_ids": [],
                 }],
             },
             {
@@ -2078,7 +2078,7 @@ def test_v848_ada_compares_every_same_sheet_pair_independently_of_grouping(missi
                 "evidence": [{
                     "evidence_type": "unique_geometry", "strength": "standard",
                     "observation": "The distinctive tall end unit occurs in both Views.",
-                    "source_fact_ids": ["registry_view:view-001", "registry_view:view-003"],
+                    "group_id_a": "raw-plan", "group_id_b": "raw-right", "source_fact_ids": [],
                 }],
             },
         ],
@@ -2107,6 +2107,22 @@ def test_v848_ada_compares_every_same_sheet_pair_independently_of_grouping(missi
         else:
             concurrent_calls.wait()
             if "object_hypotheses" in properties:
+                from jsonschema import validate, ValidationError
+                pair_schema = properties["object_hypotheses"]["items"]["properties"]["evidence"]["items"]
+                assert {"group_id_a", "group_id_b"}.issubset(pair_schema["required"])
+                assert "source_fact_ids" not in pair_schema["required"]
+                validate(review["object_hypotheses"][0]["evidence"][0], pair_schema)
+                for invalid in (
+                    {"group_id_a": "raw-plan"},
+                    {"group_id_a": ["raw-plan", "raw-left", "raw-right"], "group_id_b": "raw-left"},
+                    {"group_id_a": "unknown-view", "group_id_b": "raw-left"},
+                    {"group_id_a": "raw-plan", "group_id_b": "raw-left", "group_id_c": "raw-right"},
+                ):
+                    row = {**review["object_hypotheses"][0]["evidence"][0], **invalid}
+                    if "group_id_b" not in invalid:
+                        row.pop("group_id_b")
+                    with pytest.raises(ValidationError):
+                        validate(row, pair_schema)
                 calls["grouping"] = content
                 payload = review
                 actor, start, finish = "membership", "02", "04"

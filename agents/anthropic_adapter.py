@@ -194,7 +194,20 @@ DETECTION_V847_STAR_HYPOTHESIS_COMPONENTS_VERSION = (
     # shared View as merge evidence by itself.
     "detection_v8_4_7_star_hypothesis_components"
 )
-DETECTION_V848_PARALLEL_MEMBERSHIP_VERSION = "detection_v8_4_8_parallel_membership_isometric_attachment_v1"
+DETECTION_V848_PARALLEL_MEMBERSHIP_VERSION = "detection_v8_4_8_parallel_membership_isometric_attachment_explicit_pairs_v1"
+DETECTION_MEMBERSHIP_PAIR_FIELDS = ("group_id_a", "group_id_b")
+DETECTION_EXPLICIT_PAIR_MEMBERSHIP_PROMPT = (
+    "\n\nEXPLICIT MEMBERSHIP PAIRS:\n"
+    "Each positive evidence row names exactly one pair in group_id_a and group_id_b. "
+    "Both fields contain one distinct listed View ID, and both Views belong to that hypothesis. "
+    "If View A matches B and C, write separate evidence rows for A-B and A-C, each with "
+    "its own concrete visual observation. Never put three Views into one pair or infer "
+    "every possible pair from a group. Cover every hypothesis member with a supported pair. "
+    "The runtime cites the two endpoints automatically. Optional source_fact_ids cite only "
+    "printed source facts, not registry_view IDs. Any third physical witness belongs in "
+    "structural_witness, not in the pair fields. These output-field instructions override "
+    "generic citation instructions."
+)
 DETECTION_V848_SAME_SHEET_REVIEW_PROMPT = (
     "Compare every listed pair. Use only the physical outline, major junctions, and connected "
     "module arrangement of the two named bodies. A colored overlay or neighboring strokes "
@@ -3966,6 +3979,37 @@ def restore_detection_membership_view_ids(payload: Any, aliases: dict[str, str])
         return value
 
     return restore(payload)
+
+
+def normalize_detection_membership_pair_evidence(
+    evidence: dict[str, Any], *, hypothesis_group_ids: set[str],
+) -> tuple[dict[str, Any] | None, list[str]]:
+    """Read the two explicit endpoints, never infer pairs from a citation list."""
+    evidence = copy.deepcopy(evidence)
+    endpoints = [evidence.pop(field, "") for field in DETECTION_MEMBERSHIP_PAIR_FIELDS]
+    if not all(isinstance(endpoint, str) for endpoint in endpoints):
+        return None, []
+    cited_view_ids = sorted(set(endpoints))
+    if (
+        len(cited_view_ids) != len(DETECTION_MEMBERSHIP_PAIR_FIELDS)
+        or not set(cited_view_ids).issubset(hypothesis_group_ids)
+    ):
+        return None, cited_view_ids
+    citations = [f"registry_view:{view_id}" for view_id in cited_view_ids]
+    citations.extend(
+        source_id for source_id in evidence.get("source_fact_ids") or []
+        if isinstance(source_id, str) and not source_id.startswith("registry_view:")
+    )
+    if (
+        evidence.get("evidence_type") == "direct_shared_structure"
+        and isinstance(witness := evidence.get("structural_witness"), dict)
+        and witness.get("witness_view_id") in hypothesis_group_ids
+    ):
+        citations.append(f"registry_view:{witness['witness_view_id']}")
+    evidence["source_fact_ids"] = list(dict.fromkeys(citations))
+    return {
+        "group_id_a": cited_view_ids[0], "group_id_b": cited_view_ids[1], **evidence,
+    }, cited_view_ids
 
 
 def normalize_detection_v711_presentation_render_decisions(
@@ -11707,6 +11751,8 @@ def run_anthropic_detection_visual_registry_agent(
         review_prompt_with_membership_contract = load_detection_v848_technical_membership_prompt()
     elif split_membership:
         review_prompt_with_membership_contract += DETECTION_V848_GLOBAL_PAIR_PROOF_PROMPT
+    if v637_ada_covered_pair_local_membership_active:
+        review_prompt_with_membership_contract += DETECTION_EXPLICIT_PAIR_MEMBERSHIP_PROMPT
     review_crops = [dict(row, group_id=review_aliases[row["group_id"]]) for row in membership_crops] if review_aliases else membership_crops
     review_content = build_detection_v5_membership_content_blocks(
         user_text=review_handoff, view_crops=review_crops,
@@ -11726,6 +11772,17 @@ def run_anthropic_detection_visual_registry_agent(
         membership_review_schema["properties"]["conflict_pair_decisions"] = (
             DETECTION_V714_CONFLICT_PAIR_DECISIONS_SCHEMA
         )
+    if v637_ada_covered_pair_local_membership_active:
+        evidence_schema = membership_review_schema["properties"]["object_hypotheses"]["items"]["properties"]["evidence"]["items"]
+        evidence_schema["required"].remove("source_fact_ids")
+        for endpoint in DETECTION_MEMBERSHIP_PAIR_FIELDS:
+            evidence_schema["required"].append(endpoint)
+            evidence_schema["properties"][endpoint] = {
+                "type": "string", "enum": sorted(
+                    row["group_id"] for row in review_groups
+                    if row.get("evidence_class") == "object_evidence"
+                ),
+            }
     v641_review_exact_input_tokens: int | None = None
     _notify_detection_stage(
         stage_callback,
@@ -12521,6 +12578,10 @@ def run_anthropic_detection_visual_registry_agent(
                             normalized_evidence.append(evidence)
                             continue
                         normalized_evidence_row = copy.deepcopy(evidence)
+                        if v637_ada_covered_pair_local_membership_active:
+                            for endpoint in DETECTION_MEMBERSHIP_PAIR_FIELDS:
+                                view_id = str(normalized_evidence_row.get(endpoint) or "")
+                                normalized_evidence_row[endpoint] = group_id_mapping.get(view_id, view_id)
                         if v635_ada_pair_local_membership_active:
                             normalized_evidence_row["source_fact_ids"] = (
                                 _normalize_source_degraded_registry_view_ids(
@@ -12561,25 +12622,19 @@ def run_anthropic_detection_visual_registry_agent(
                             # provider's colloquial "direct" wording before
                             # the established semantic validator evaluates it.
                             evidence["strength"] = "standard"
-                        cited_view_ids = sorted({
-                            source_id.removeprefix("registry_view:")
-                            for source_id in evidence.get("source_fact_ids") or []
-                            if isinstance(source_id, str)
-                            and source_id.startswith("registry_view:")
-                            and source_id.removeprefix("registry_view:") in hypothesis_group_ids
-                        })
-                        if len(cited_view_ids) != 2:
+                        pair_fact, cited_view_ids = normalize_detection_membership_pair_evidence(
+                            evidence, hypothesis_group_ids=hypothesis_group_ids,
+                        )
+                        if pair_fact is None:
                             semantic_facts_outside_dimension_queue.append({
-                                "reason": "v6_36_hypothesis_evidence_requires_exactly_two_local_views",
+                                "reason": "ada_hypothesis_pair_requires_two_distinct_members",
                                 "hypothesis_group_ids": sorted(hypothesis_group_ids),
                                 "evidence_index": evidence_index,
                                 "cited_view_ids": cited_view_ids,
                             })
                             continue
                         pair = tuple(cited_view_ids)
-                        semantic_facts.append({
-                            "group_id_a": pair[0], "group_id_b": pair[1], **evidence,
-                        })
+                        semantic_facts.append(pair_fact)
                         if pair not in candidate_q_final_pairs:
                             semantic_facts_outside_dimension_queue.append({
                                 "reason": "derived_semantic_fact_outside_dimension_queue_accepted",

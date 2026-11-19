@@ -92,8 +92,11 @@ def project_attachment_only_hypotheses(
         evidence = hypothesis.get("evidence")
         if isinstance(evidence, list):
             evidence = [row for row in evidence if not (
-                isinstance(row, dict) and isinstance(row.get("source_fact_ids"), list)
-                and any(source == f"registry_view:{g}" for source in row["source_fact_ids"] for g in removed)
+                isinstance(row, dict) and (
+                    row.get("group_id_a") in removed or row.get("group_id_b") in removed
+                    or (isinstance(row.get("source_fact_ids"), list)
+                        and any(source == f"registry_view:{g}" for source in row["source_fact_ids"] for g in removed))
+                )
             )]
         projected.append({**hypothesis, "group_ids": members, "evidence": evidence})
     return projected, audit
