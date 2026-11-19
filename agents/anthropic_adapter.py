@@ -3984,7 +3984,7 @@ def restore_detection_membership_view_ids(payload: Any, aliases: dict[str, str])
 def normalize_detection_membership_pair_evidence(
     evidence: dict[str, Any], *, hypothesis_group_ids: set[str],
 ) -> tuple[dict[str, Any] | None, list[str]]:
-    """Read the two explicit endpoints, never infer pairs from a citation list."""
+    """Normalize one identified pair; expand group relations before this step."""
     evidence = copy.deepcopy(evidence)
     endpoints = [evidence.pop(field, "") for field in DETECTION_MEMBERSHIP_PAIR_FIELDS]
     if not all(isinstance(endpoint, str) for endpoint in endpoints):
@@ -4003,13 +4003,95 @@ def normalize_detection_membership_pair_evidence(
     if (
         evidence.get("evidence_type") == "direct_shared_structure"
         and isinstance(witness := evidence.get("structural_witness"), dict)
-        and witness.get("witness_view_id") in hypothesis_group_ids
+        and isinstance(witness.get("witness_view_id"), str)
+        and witness["witness_view_id"]
     ):
         citations.append(f"registry_view:{witness['witness_view_id']}")
     evidence["source_fact_ids"] = list(dict.fromkeys(citations))
     return {
         "group_id_a": cited_view_ids[0], "group_id_b": cited_view_ids[1], **evidence,
     }, cited_view_ids
+
+
+def normalize_detection_membership_evidence(
+    evidence: object, *, hypothesis_group_ids: set[str],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Preserve a source assertion and represent its participants as a star.
+
+    Explicit endpoints identify one pair. Legacy registry-view citations can
+    identify a multi-View assertion; printed sources and a third-view witness
+    retain their evidence roles rather than becoming additional participants.
+    Nothing is inferred from prose or from the containing hypothesis alone.
+    """
+    audit: dict[str, Any] = {
+        "source_evidence": copy.deepcopy(evidence),
+        "source_evidence_id": "membership:" + _sha256_text(_canonical_json(evidence)),
+        "status": "unresolved", "participants": [], "derived_pairs": [],
+        "unresolved_view_references": [],
+    }
+    if not isinstance(evidence, dict):
+        audit["reason"] = "evidence_not_object"
+        return [], audit
+    if not all(isinstance(evidence.get(k), str) and evidence[k].strip()
+               for k in ("evidence_type", "strength", "observation")):
+        audit["reason"] = "evidence_fields_invalid"
+        return [], audit
+    endpoints = [evidence.get(field) for field in DETECTION_MEMBERSHIP_PAIR_FIELDS]
+    explicit = any(value is not None and value != "" for value in endpoints)
+    citations = evidence.get("source_fact_ids")
+    if citations is not None and (
+        not isinstance(citations, list) or not all(isinstance(s, str) for s in citations)
+    ):
+        audit["reason"] = "source_citations_invalid"
+        return [], audit
+    cited_views = list(dict.fromkeys(
+        s.removeprefix("registry_view:") for s in citations or []
+        if s.startswith("registry_view:")
+    ))
+    witness = evidence.get("structural_witness")
+    witness_id = witness.get("witness_view_id") if isinstance(witness, dict) else None
+    third_witness = (
+        witness_id if evidence.get("evidence_type") == "direct_shared_structure"
+        and isinstance(witness, dict) and witness.get("kind") == "third_view_shows_both"
+        else None
+    )
+    if explicit:
+        if not all(isinstance(v, str) and v for v in endpoints):
+            audit["reason"] = "explicit_endpoints_invalid"
+            return [], audit
+        participants = list(dict.fromkeys(endpoints))
+    else:
+        participants = [v for v in cited_views if v != third_witness]
+    audit["participants"] = participants
+    audit["unresolved_view_references"] = [
+        v for v in cited_views if v not in participants and v != third_witness
+    ]
+    if len(participants) < 2 or not set(participants).issubset(hypothesis_group_ids):
+        audit["reason"] = "participants_not_distinct_hypothesis_members"
+        return [], audit
+    # A complete-view witness is the anchor of its contains-partial relations.
+    if (
+        not explicit and isinstance(witness, dict)
+        and witness.get("kind") == "endpoint_complete_view_contains_partial"
+        and witness_id in participants
+    ):
+        participants = [witness_id, *(v for v in participants if v != witness_id)]
+        audit["participants"] = participants
+    root, *members = participants
+    facts = []
+    for member in members:
+        row = copy.deepcopy(evidence)
+        row["group_id_a"], row["group_id_b"] = root, member
+        fact, pair = normalize_detection_membership_pair_evidence(
+            row, hypothesis_group_ids=hypothesis_group_ids,
+        )
+        if fact is not None:
+            facts.append(fact)
+            audit["derived_pairs"].append(pair)
+    audit["status"] = "expanded" if len(facts) > 1 else "paired"
+    if audit["unresolved_view_references"]:
+        audit["status"] = "paired_with_unresolved_references"
+    return facts, audit
 
 
 def normalize_detection_v711_presentation_render_decisions(
@@ -12531,6 +12613,14 @@ def run_anthropic_detection_visual_registry_agent(
             view_evidence_packages
         )
         semantic_facts_outside_dimension_queue: list[dict[str, Any]] = []
+        membership_evidence_origins: dict[tuple[str, str, str, str], set[str]] = {}
+        membership_evidence_normalization_audit: dict[str, Any] = {
+            "version": "multiway_membership_pairs_v1",
+            "source_payload": json.loads(review_raw_text),
+            "source_hypotheses": copy.deepcopy(payload.get("object_hypotheses", [])),
+            "group_id_mapping": dict(group_id_mapping),
+            "entries": [],
+        } if v637_ada_covered_pair_local_membership_active else {}
         if v69_criteria_reconciliation_active:
             semantic_facts = normalize_detection_v69_semantic_fact_ids(
                 [*v69_criteria_facts, *v69_reconciliation_facts],
@@ -12599,6 +12689,35 @@ def run_anthropic_detection_visual_registry_agent(
                         normalized_evidence.append(normalized_evidence_row)
                     hypothesis["evidence"] = normalized_evidence
                 normalized_hypotheses.append(hypothesis)
+            if v637_ada_covered_pair_local_membership_active:
+                # Preserve every assertion before projection/validation, including
+                # relations that need attachment handling or missing proof.
+                source_relations = []
+                group_assertions = []
+                for hi, source_hypothesis in enumerate(normalized_hypotheses):
+                    if not isinstance(source_hypothesis, dict):
+                        continue
+                    raw_members = source_hypothesis.get("group_ids")
+                    members = list(dict.fromkeys(
+                        g for g in (raw_members if isinstance(raw_members, list) else [])
+                        if isinstance(g, str)
+                    ))
+                    group_assertions.append({
+                        "hypothesis_index": hi,
+                        "participants": members,
+                        "asserted_pairs": [[members[0], g] for g in members[1:]],
+                        "status": "assertion_requires_pair_evidence",
+                    })
+                    raw_evidence = source_hypothesis.get("evidence")
+                    for ei, source_evidence in enumerate(raw_evidence if isinstance(raw_evidence, list) else []):
+                        _, source_audit = normalize_detection_membership_evidence(
+                            source_evidence, hypothesis_group_ids=set(members),
+                        )
+                        source_audit.update(hypothesis_index=hi, evidence_index=ei)
+                        source_relations.append(source_audit)
+                membership_evidence_normalization_audit.update(
+                    source_relations=source_relations, group_assertions=group_assertions,
+                )
             normalized_hypotheses, attachment_projection_audit = project_attachment_only_hypotheses(
                 normalized_hypotheses, presentation_render_group_ids,
             )
@@ -12608,7 +12727,7 @@ def run_anthropic_detection_visual_registry_agent(
             )
             object_hypothesis_audit["attachment_only_projection"] = attachment_projection_audit
             semantic_facts = []
-            for hypothesis in accepted_hypotheses:
+            for hypothesis_index, hypothesis in enumerate(accepted_hypotheses):
                 if v637_ada_covered_pair_local_membership_active:
                     hypothesis_group_ids = set(hypothesis["group_ids"])
                     for evidence_index, evidence in enumerate(hypothesis["evidence"]):
@@ -12622,24 +12741,36 @@ def run_anthropic_detection_visual_registry_agent(
                             # provider's colloquial "direct" wording before
                             # the established semantic validator evaluates it.
                             evidence["strength"] = "standard"
-                        pair_fact, cited_view_ids = normalize_detection_membership_pair_evidence(
+                        pair_facts, evidence_audit = normalize_detection_membership_evidence(
                             evidence, hypothesis_group_ids=hypothesis_group_ids,
                         )
-                        if pair_fact is None:
+                        evidence_audit.update({
+                            "hypothesis_index": hypothesis_index,
+                            "evidence_index": evidence_index,
+                            "hypothesis_group_ids": sorted(hypothesis_group_ids),
+                            "normalized_facts": copy.deepcopy(pair_facts),
+                        })
+                        membership_evidence_normalization_audit["entries"].append(evidence_audit)
+                        if not pair_facts:
                             semantic_facts_outside_dimension_queue.append({
-                                "reason": "ada_hypothesis_pair_requires_two_distinct_members",
+                                "reason": "membership_evidence_retained_unresolved",
                                 "hypothesis_group_ids": sorted(hypothesis_group_ids),
                                 "evidence_index": evidence_index,
-                                "cited_view_ids": cited_view_ids,
+                                "source_evidence_id": evidence_audit["source_evidence_id"],
+                                "normalization_reason": evidence_audit.get("reason"),
                             })
-                            continue
-                        pair = tuple(cited_view_ids)
-                        semantic_facts.append(pair_fact)
-                        if pair not in candidate_q_final_pairs:
-                            semantic_facts_outside_dimension_queue.append({
-                                "reason": "derived_semantic_fact_outside_dimension_queue_accepted",
-                                "group_id_a": pair[0], "group_id_b": pair[1],
-                            })
+                        for pair_fact in pair_facts:
+                            pair = (pair_fact["group_id_a"], pair_fact["group_id_b"])
+                            key = (*pair, pair_fact["evidence_type"], pair_fact["observation"].strip())
+                            membership_evidence_origins.setdefault(key, set()).add(
+                                evidence_audit["source_evidence_id"]
+                            )
+                            semantic_facts.append(pair_fact)
+                            if pair not in candidate_q_final_pairs:
+                                semantic_facts_outside_dimension_queue.append({
+                                    "reason": "derived_semantic_fact_outside_dimension_queue_accepted",
+                                    "group_id_a": pair[0], "group_id_b": pair[1],
+                                })
                 else:
                     root, *members = hypothesis["group_ids"]
                     for member in members:
@@ -12736,6 +12867,24 @@ def run_anthropic_detection_visual_registry_agent(
             fact for fact in accepted_semantic_facts
             if fact not in generic_presentation_facts
         ]
+        if v637_ada_covered_pair_local_membership_active:
+            accepted_keys = {
+                (f["group_id_a"], f["group_id_b"], f["evidence_type"], f["observation"].strip())
+                for f in accepted_semantic_facts
+            }
+            for entry in membership_evidence_normalization_audit["entries"]:
+                entry["accepted_pairs"] = [
+                    [f["group_id_a"], f["group_id_b"]]
+                    for f in entry["normalized_facts"]
+                    if (f["group_id_a"], f["group_id_b"], f["evidence_type"], f["observation"].strip())
+                    in accepted_keys
+                ]
+            membership_evidence_normalization_audit["semantic_rejections"] = copy.deepcopy(
+                semantic_ledger_audit["rejected"]
+            )
+            semantic_ledger_audit["membership_evidence_normalization"] = (
+                membership_evidence_normalization_audit
+            )
         presentation_render_edges = build_detection_presentation_render_edges(
             presentation_render_facts, page_by_group_id,
         )
@@ -12788,7 +12937,11 @@ def run_anthropic_detection_visual_registry_agent(
                     allow_star_hypothesis_components=(
                         v847_star_hypothesis_components_active
                     ),
+                    evidence_origins=membership_evidence_origins,
                 )
+            )
+            membership_evidence_normalization_audit["coverage_rejections"] = copy.deepcopy(
+                membership_audit["rejected"]
             )
             positive_relation_edges = [
                 *supporting_relation_edges,

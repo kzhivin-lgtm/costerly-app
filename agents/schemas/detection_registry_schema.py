@@ -1945,6 +1945,7 @@ def compile_detection_v637_hypothesis_coverage_components(
     *,
     visual_groups: list[dict[str, Any]],
     allow_star_hypothesis_components: bool = False,
+    evidence_origins: dict[tuple[str, str, str, str], set[str]] | None = None,
 ) -> tuple[list[list[str]], dict[str, Any]]:
     """Accept a multi-view hypothesis only when local facts cover every View.
 
@@ -2001,6 +2002,26 @@ def compile_detection_v637_hypothesis_coverage_components(
                 "index": index,
                 "reason": "membership_hypothesis_requires_multiple_independent_local_pairs",
                 "group_ids": group_ids,
+                "local_fact_pairs": [list(pair) for pair in local_pairs],
+            })
+            continue
+        source_evidence_ids = {
+            origin
+            for pair in local_pairs
+            for fact in facts_by_pair[pair]
+            for origin in (
+                evidence_origins.get(
+                    (*pair, fact["evidence_type"], fact["observation"].strip()),
+                    {"external:" + repr((*pair, fact["evidence_type"], fact["observation"].strip()))},
+                ) if evidence_origins is not None else set()
+            )
+        }
+        if evidence_origins is not None and len(group_ids) > 2 and len(source_evidence_ids) < 2:
+            rejected.append({
+                "index": index,
+                "reason": "membership_hypothesis_requires_multiple_independent_source_facts",
+                "group_ids": group_ids,
+                "source_evidence_ids": sorted(source_evidence_ids),
                 "local_fact_pairs": [list(pair) for pair in local_pairs],
             })
             continue

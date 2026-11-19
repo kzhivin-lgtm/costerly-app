@@ -1398,6 +1398,22 @@ the first isolated change after the benchmark, do not reapply everything now.
 
 ### Fresh Lev2 and Ada stability benchmark
 
+DEPLOYMENT AUTHORIZED, OFFLINE VERIFIED, P0, V2.10, USER REQUEST, 2026-11-19.
+Shared Ada/LF1 membership normalization expands positive legacy group links to
+root-star pairs and preserves the original Membership JSON, all source rows,
+group assertions, derived-pair provenance and unresolved references. Explicit
+pair roles and witness/source roles remain intact; child edges retain one
+source identity and do not count as independent proofs. Prompts, request
+schemas, images and title-block context are unchanged. Saved replay: 40/40
+expected checks, 38 exact business partitions, two known semantic Ada failures
+unchanged. Historical Ada 5/8 become exact 2; all 16 production positives and
+six current LF1 controls retained. Five older LF1 packets hit the same prior
+render-contract incompatibility on published V2.9 and candidate. No paid calls.
+Candidate is based on published 88df83cd, excludes stopped auth HEAD 201cafeb.
+Owner authorized deployment to test production; fresh stability and production
+acceptance remain pending. Evidence: handoff workspace outputs/
+detection-multiway-normalization-20261119T184011Z/REPORT_RU.md and release-v2.10/.
+
 STOPPED BY OWNER, P0, 2026-11-19. Owner asked to close the experiment and
 identify the first six-object outlier in the Labor V2 series: V2.2.3,
 18 Nov 13:27 Israel, `run_21b848b935834be5b6ede44048564719`.

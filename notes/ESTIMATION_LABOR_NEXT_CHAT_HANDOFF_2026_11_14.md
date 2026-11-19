@@ -1,5 +1,7 @@
 # Labor Engine: передача текущей точки работы в новый чат
 
+**V2.10, deployment authorized, production acceptance pending:** Ada/LF1 multiway membership normalization only. Full original evidence retained. Published V2.9 base 88df83cd; stopped auth candidate 201cafeb excluded. Saved replay 40/40 expected checks, 38 correct partitions and two unchanged semantic failures. No fresh paid calls. Release evidence: `outputs/detection-multiway-normalization-20261119T184011Z/release-v2.10/`.
+
 Актуально на 19 ноября 2026. Имя этого файла сохранено ради существующих ссылок, дата 14 ноября в имени не означает старое состояние содержимого.
 
 Этот документ заменяет прежний вводный конспект, который предлагал начинать Labor с нуля. Сейчас листовая обработка, маршруты по оборудованию, покупные стекло/зеркала и сборка основных блоков уже реализованы. История нужна для объяснения решений, а не как очередь повторной реализации.
