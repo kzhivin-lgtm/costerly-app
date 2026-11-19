@@ -33,6 +33,12 @@ acceptance remains pending. The existing Core channel announces a new build
 when it connects to new Core, without a separate periodic version request.
 Evidence in handoff workspace
 outputs/auth-resume-v2.8/sdk-before.json and outputs/auth-resume-v2.9/.
+Owner now requests a live test on their existing signed-in production tab.
+Prepare a V2.9 control deployment with a new technical build stamp only, no
+behavior changes, model run or new work number. Publish after the owner confirms
+an idle signed-in Upload tab is ready. Pass: one automatic outer reload, no
+manual refresh or credentials, still signed in; correlate wrapper/server events.
+Do not count manual Cmd+R or an iframe-only navigation as this acceptance.
 
 SUPERSEDED BY V2.9, PUBLISHED HISTORY, P0, V2.8, 2026-11-19. Owner replaces
 auth-dependent refresh acceptance with simple forced page refresh after deploy,
