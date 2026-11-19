@@ -1,5 +1,25 @@
 # Done Log
 
+V2.7 published, production builds verified, owner acceptance pending, 2026-11-19.
+Source 1ca24099 adds safe build refresh through the existing workflow/ready
+handshake, retaining auth storage and deferring during active work. Both old
+wrapper/new Core and new wrapper/old Core deployment orders are covered.
+One automatic refresh, no loop, actionable retry and expired-auth recovery.
+Detection, calculation, persistence and provider credentials remain unchanged.
+396 local checks, six browser suites (156.650s); final upload-transfer guard
+additionally passed all 10 dedicated synthetic-browser cases. Exact-SHA CI
+44519837605 attempt 2 passed (164.129s tests), including the final source.
+Attempt 1 cancelled during failed Ubuntu mirror downloads; no tests had run.
+First local Profile Save timeout did not recur in isolated/full local and CI
+runs; Profile code unchanged, original timeout cause unknown. Publisher checked
+active remote enforcement before advancing main. Railway f27038ba-e893-4053-84bf-06ed816b2688
+ACTIVE/Deployment successful; public wrapper and Core both V2.7, Sign in observed.
+Authenticated production acceptance remains untested. Auth retention is proven
+with the real browser auth component and synthetic tokens, not an owner login.
+The earlier repeated Lev1 upload incident is not declared fixed by this release.
+The separate Workers Builds failure existed on V2.6 too; target Pages succeeds.
+Evidence: handoff workspace outputs/version-refresh-v2.7/release.json and CI logs.
+
 V2.6 repeated Lev1 UI incident, read-only diagnosis and manual recovery,
 2026-11-19. First RFQ run_b7385e64 succeeds. Second drop at 10:38:05.436 UTC
 gets File Review ready after 3.309s, no retained new server upload/worker or RFQ.

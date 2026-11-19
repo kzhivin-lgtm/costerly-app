@@ -17,7 +17,7 @@ patches or paid reruns. Additional deploy b61b8364 (owner-added future key)
 preceded first success. Evidence in handoff workspace
 `outputs/lev1-v2.6-freeze-2026-11-19/REPORT_RU.md`.
 
-IMPLEMENTED LOCALLY, CI/PUBLICATION PENDING, P0, OWNER APPROVED, V2.7, 2026-11-19. Ensure open
+PUBLISHED, BUILDS VERIFIED, OWNER ACCEPTANCE PENDING, P0, V2.7, 2026-11-19. Ensure open
 tabs update after deployment rather than starting new work with a different
 wrapper version. Owner explicitly authorized automatic refresh on version
 mismatch, retained login, no interruption of the current calculation, no
@@ -25,7 +25,7 @@ Detection changes, verification and publication in chat "Labor V2", turn
 01a1f37e-cdac-7be2-9081-e2d39ed3232b. The subsequent attempt produced incoherent
 chat output and was stopped by the owner before any runtime changes or
 publication. Context recovered in the current chat; owner explicitly repeated the
-implementation, verification and publication instruction. Implementation active. This supersedes the earlier pending-owner-decision status, not the
+implementation, verification and publication instruction. Published source 1ca24099. This supersedes the earlier pending-owner-decision status, not the
 requirement to verify protected behavior before publication.
 Extend the existing version/ready handshake (currently logs mismatch and
 defers to manual refresh), no polling/model stage. Intended behavior: one full
@@ -48,6 +48,20 @@ exact-SHA CI must cover the final complete source. No paid model runs or
 Detection/calculation/data changes. Authenticated production acceptance remains
 pending; automated fixture success is not owner acceptance. Evidence in handoff
 workspace outputs/version-refresh-v2.7/.
+Exact-source GitHub gate 44519837605 attempt 2 passed, 164.129s test execution;
+attempt 1 was cancelled during failed Ubuntu package downloads, before tests.
+Publisher verified the active mandatory remote ruleset and advanced main to
+1ca24099. Railway f27038ba-e893-4053-84bf-06ed816b2688 ACTIVE, Deployment
+successful, title V2.7: safely refresh mismatched app versions. Actual public
+wrapper and embedded Core both show estimation-v2.7-safe-version-refresh-detection-v8.4.29;
+Sign in observed. Authenticated production workflow remains untested.
+
+DEFERRED PROPOSAL, P2, AGENT SUGGESTION, 2026-11-19. Clarify and repair or
+retire the separate Workers Builds integration after owner scope approval.
+It fails on both V2.6 fce5ffae and V2.7 1ca24099 while Cloudflare Pages succeeds.
+Do not conflate it with the target Pages app or describe all external checks as
+passing. Its intended role remains unknown; no integration was removed or
+changed for V2.7. This follow-up does not authorize infrastructure changes.
 
 PENDING, P0, DIAGNOSTIC FOLLOW-UP, 2026-11-19. Bind upload completion to the
 current upload/server result rather than a leftover File Review. The isolated
