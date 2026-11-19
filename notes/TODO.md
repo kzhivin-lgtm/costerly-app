@@ -971,6 +971,38 @@ dimensions, cost allocation and price sources after each optimization.
 
 ## Lev1 Detection release regression
 
+COMPLETED BENCHMARK, REPEATABILITY PARTIAL, P1, OWNER CONFIRMED, V2.4,
+2026-11-19. Exactly three fresh OCR/Detection trials each on Lev1, Lev2 and Ada
+through normal Mistral/Anthropic, production runtime `e0b20646`. Lev1: 1,1,1
+objects, all six Views each. Lev2: 1,1,1, all four retained Views each. Ada:
+2,2,8; first two exact accepted 4+4 partition, third all eight singleton objects.
+All nine preserve reference drawing bboxes (minimum IoU 1.0), source hashes
+and quantity one. Lev2 trial 2's extra document_footer is correctly excluded.
+Ada 3 model proposes the correct two groups, but the third evidence row in
+each cites three registry_view IDs. Existing exact-two filter drops both rows;
+Views 2/1 become uncovered, both hypotheses are rejected, singleton fallback
+produces eight objects. Pure compiler replay of untouched saved responses
+reproduces success in Ada 1/2 and identical rejection reasons in Ada 3.
+No isometric_technical Views in Ada 3: technical_perspective/technical_elevation
+classes bypass the attachment policy. Critical filter/compiler/compact prompt
+are unchanged from V2.4 `551577c3`. Same-Sheet has four different pairs between
+the two objects, no cross-page repair authority. No runtime code change, paid
+calls beyond the nine trials, application writes or deployment. Runtime/main
+e0b20646 preserved. Detailed per-run results and source-response evidence in
+handoff workspace `outputs/detection-v2.4-isometric-repeatability-2026-11-19/REPORT_RU.md`.
+This completes the requested experiment/diagnosis, not a stable Detection
+checkpoint or global accuracy acceptance. Existing V2.4 task retained.
+
+PENDING OWNER DECISION, P0, AGENT PROPOSAL, 2026-11-19. Align the ordinary
+pair-evidence contract between compact Membership prompt, output schema and
+validator to prevent three-View rows that the next stage rejects as unparseable
+pairs. Source schema permits up to three IDs, runtime demands exactly two
+registry_view endpoints; generic prompt allows up to three sources alongside
+the specific pair rule. Keep structural_witness semantics separate. No blind
+triple-to-pairs conversion, no added model call, no new Same-Sheet authority.
+Trigger: owner approval after the nine-trial report. Implementation is not
+approved; current explicit code freeze remains. No new product work number.
+
 PUBLISHED, BOUNDED POLICY VERIFIED, OWNER ACCEPTANCE PENDING, P0, OWNER APPROVED,
 V2.4, 2026-11-19. Restored latest Labor V2.4 (`551577c3`), candidate `e0b20646`.
 Retain `isometric_technical` as the original View class, but share render

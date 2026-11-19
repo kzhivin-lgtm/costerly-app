@@ -1,5 +1,25 @@
 # Detection Agent benchmark
 
+## V2.4 repeated fresh controls, 2026-11-19: 8/9 correct
+
+Owner-authorized three trials per existing control, unchanged runtime `e0b20646`,
+no application writes or deployment. Lev1: 1,1,1 with all six Views. Lev2:
+1,1,1 with all four Views. Ada: 2,2,8. All reference drawing bboxes match
+exactly (IoU 1.0), same original PDF hashes. Ada 3 Membership proposes the
+correct two groups but cites three Views in the last proof row of each group.
+The existing exact-two filter drops both proofs; missing View 2/1 coverage
+rejects both entire groups, then singleton fallback emits eight objects.
+Offline pure compiler replay of original saved responses reproduces all three
+Ada outcomes and identical rejected-group reasons. The specific filter/compiler
+and compact prompt predate the latest attachment rule. That rule has no inputs
+in Ada 3 because no View has the exact isometric_technical class. Same-Sheet
+returns the same four different cross-object pairs as good cases; no cross-page
+coverage. Lev2 trial 2 correctly excludes one extra footer region.
+The requested experiment is complete, repeatability remains partial. Nine
+trials do not establish a stable failure rate. Repair is proposal-only, code
+remains frozen. Evidence: handoff workspace
+`outputs/detection-v2.4-isometric-repeatability-2026-11-19/REPORT_RU.md`.
+
 ## Labor V2.4, original isometric class with attachment-only ownership, 2026-11-19
 
 Candidate `e0b20646` restores latest Labor V2.4 `551577c3` and preserves the

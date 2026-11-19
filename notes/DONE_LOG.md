@@ -1,5 +1,24 @@
 # Done Log
 
+V2.4 nine fresh Detection controls, 2026-11-19, runtime unchanged `e0b20646`.
+Owner explicitly authorized three trials each of Lev1/Lev2/Ada and froze code.
+Results: Lev1 1,1,1 (six Views each), Lev2 1,1,1 (four retained Views each),
+Ada 2,2,8. All source hashes/reference bboxes match, minimum IoU 1.0. Ada 3
+model returns correct 4+4 hypotheses, but one evidence row in each cites three
+Views. Exact-two filter discards both rows, leaves Views 2/1 without accepted
+proof and coverage compiler rejects both groups. Existing singleton fallback
+then emits eight objects. Unchanged saved-response compiler replay confirms
+both good cases and exact bad-case rejections, with original classifications.
+Critical compact prompt/filter/compiler unchanged from prior V2.4 `551577c3`.
+Ada has no exact isometric_technical class; attachment policy is inert there.
+Same-Sheet: four different pairs within pages, not the needed cross-page links.
+One Membership attempt per trial, no provider recovery. Lev2 trial 2's extra
+footer is correctly excluded. 8/9 meets the object-partition benchmark; global
+repeatability is not met. No model calls beyond the nine, no application writes,
+runtime changes or deployment. Proposal to align the pair citation contract is
+pending owner approval. Full evidence in handoff workspace
+`outputs/detection-v2.4-isometric-repeatability-2026-11-19/REPORT_RU.md`.
+
 V2.4 restored with original isometric class and attachment-only ownership,
 published 2026-11-19. Runtime `e0b20646` restores latest V2.4 `551577c3` UI/hours
 and changes only the two Detection modules plus build markers. Owner approved
