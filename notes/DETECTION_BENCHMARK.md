@@ -1,5 +1,28 @@
 # Detection Agent benchmark
 
+## Labor V2.4, original isometric class with attachment-only ownership, 2026-11-19
+
+Candidate `e0b20646` restores latest Labor V2.4 `551577c3` and preserves the
+`isometric_technical` classification. Its Membership role follows existing
+render attachment: one proven ordinary technical anchor, no standalone object,
+no attachment-only bridge, no extra isometric model/recovery calls. Original
+Discovery, OCR and Same-Sheet authority remain unchanged.
+84 focused regressions and local full gate (380 Python checks, five browser
+suites) pass. One fresh Lev1 gives the exact one-object/six-View partition,
+including both original isometric_technical Views attached. One fresh Ada gives
+the accepted two objects with {1,4,6,8} and {2,3,5,7}. Fresh Lev2 external
+transfer was automatically rejected; its unchanged saved response passes offline.
+Three saved Lev1 replays use recorded valid technical/attachment witnesses with
+translated IDs, not fresh replies to the new prompt. The known five-object Ada
+failure is deliberately unchanged: its perspective class is different.
+This verifies the bounded policy and two fresh controls, not a stable failure
+rate or elimination of every Membership split. Exact-SHA full CI 44497759509
+passed; protected publisher published this same runtime. Railway deployment
+8e321629-e127-4d08-ac69-6408b8f5a5f1 succeeded, actual Core and wrapper match
+the isometric-attachment V2.4 marker. Production authenticated card not tested.
+Evidence: `outputs/object-card-v2.4-isometric-attachment-2026-11-19/REPORT.md`
+in the handoff workspace.
+
 ## Estimation Labor downstream checkpoint, 2026-11-17
 
 Labor V1.2.15 is owner-accepted at `estimation-labor-v1.2.15-2026-11-17`. The saved Parts handoffs

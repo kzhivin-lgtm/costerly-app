@@ -1,5 +1,27 @@
 # Done Log
 
+V2.4 restored with original isometric class and attachment-only ownership,
+published 2026-11-19. Runtime `e0b20646` restores latest V2.4 `551577c3` UI/hours
+and changes only the two Detection modules plus build markers. Owner approved
+retaining `isometric_technical`, requiring a proven ordinary technical anchor,
+and preventing standalone objects/attachment bridges. Primary Membership
+reply/schema reused; no extra isometric request or Same-Sheet authority rewrite.
+84 focused regressions passed. Local full gate: 380 checks, five browser suites,
+139.963s. Exact-SHA CI 44497759509 passed; protected publisher advanced main.
+Railway 8e321629-e127-4d08-ac69-6408b8f5a5f1 ACTIVE, Deployment successful.
+Actual Core/wrapper match `estimation-v2.4-isometric-attachment-detection-v8.4.29`,
+Sign in observed. Fresh internal Lev1: exact 1 object/6 Views, both original
+isometrics attached. Fresh Ada: exact 2 objects/4+4 Views. One Membership attempt
+each, no recovery. Fresh Lev2 transfer rejected by automatic approval review;
+saved Lev2 passes offline. Lev1 offline fixtures reuse recorded valid witnesses,
+not fresh model answers. Known Ada split still reproduces at 5 objects in its
+negative control and is outside this class policy. One fresh trial does not
+prove repeatability; authenticated production card acceptance remains pending.
+Workers Builds fails as on both preceding releases; Pages succeeded, no gate
+or remote rule weakened. Unrelated Business research TODO remains uncommitted.
+Evidence: `outputs/object-card-v2.4-isometric-attachment-2026-11-19/REPORT.md`
+in the handoff workspace. No new work number/block or accepted checkpoint tag.
+
 V1.3.4 rollback, stopped benchmark and source-history audit, 2026-11-19.
 Forward restore `010e2658` exactly matches V1.3.4 `eb56dd4c` runtime/tests.
 358 local Python checks, four browser suites and full CI 44492235057 passed.

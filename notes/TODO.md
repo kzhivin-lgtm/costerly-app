@@ -971,18 +971,30 @@ dimensions, cost allocation and price sources after each optimization.
 
 ## Lev1 Detection release regression
 
-ACTIVE IMPLEMENTATION, P0, OWNER APPROVED, 2026-11-19. Restore latest Labor
-V2.4 (`551577c3`) and retain `isometric_technical` as the original View class,
-but share render attachment rules: it cannot establish a commercial object
-without a proven non-attachment technical anchor. Use the existing Membership
-reply/attachment schema, no extra model stages or isometric recovery calls.
-Preserve Discovery, raw classes/IDs, OCR, Same-Sheet, Naming/Calculation evidence,
-and V2.4 hours editing/saving/rounding/warning removal/Calculation rendering.
+PUBLISHED, BOUNDED POLICY VERIFIED, OWNER ACCEPTANCE PENDING, P0, OWNER APPROVED,
+V2.4, 2026-11-19. Restored latest Labor V2.4 (`551577c3`), candidate `e0b20646`.
+Retain `isometric_technical` as the original View class, but share render
+attachment rules: it cannot establish a commercial object without a proven
+non-attachment technical anchor. Existing primary Membership reply/schema only,
+no extra model stages or isometric recovery calls. Discovery classes/IDs/OCR,
+Same-Sheet authority, Naming/Calculation evidence and V2.4 UI/hours behavior
+preserved. Attachment-only members/proofs cannot bridge technical hypotheses.
 Unmatched isometrics are excluded from standalone packages, with audit retained;
 an isometric-only document cannot establish an object under the approved rule.
-Check attach/unmatched/ambiguous/no-anchor/multiple-object cases and saved Lev
-and Ada controls. This replaces the earlier proposed Same-Sheet authority rewrite;
-no such rewrite is authorized. Existing task/version remains V2.4.
+84 focused checks pass. Local full gate: 380 checks, five browser suites.
+Exact-SHA full CI 44497759509 passed; protected publisher advanced main.
+Railway 8e321629-e127-4d08-ac69-6408b8f5a5f1 succeeded. Actual Core/wrapper
+match `estimation-v2.4-isometric-attachment-detection-v8.4.29`, Sign in observed.
+Fresh Lev1: one object/six Views/two original isometric classes attached.
+Fresh Ada: exact two-object 4+4 partition. Saved Lev2 passes offline; fresh
+external Lev2 transfer was rejected by automatic approval review, not executed.
+Six offline controls include translated recorded attachment fixtures for Lev1
+and an unchanged known Ada split (five objects), which remains outside this
+exact-class policy. Fresh controls do not establish repeatability or global
+split repair. Authenticated production card acceptance remains untested.
+This replaces the proposed Same-Sheet rewrite; no such rewrite authorized.
+No new product work number or block: existing V2.4. Evidence in the handoff
+workspace: `outputs/object-card-v2.4-isometric-attachment-2026-11-19/REPORT.md`.
 
 ACTIVE DIAGNOSIS, P0, USER REPORT, 2026-11-18. Restore Lev1's one-object result
 with its six drawing Views after the owner reported a six-object outlier following
