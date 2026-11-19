@@ -1,5 +1,24 @@
 # V2.2.1: Object Detail cost hierarchy
 
+## V2.2.2 restored, 19 November 2026
+
+Owner explicitly requested rollback and six fresh Lev1 trials. Forward commit
+`1c38178f5695520f61de7864c3cef3ac96329c63` restores the exact runtime/tests of
+V2.2.2 `4e69e5d7`, preserving current project records. Local verification:
+365 Python checks and four browser suites passed. Complete Linux CI
+[44490294480](https://github.com/kzhivin-lgtm/costerly-app/actions/runs/44490294480)
+passed; publication used the required exact-commit gate and protected publisher.
+Railway deployment `8a28ef95-d63d-4228-ae51-4bab6eb90bee` succeeded. Actual Core
+and wrapper DOM markers match `estimation-v2.2.2-compact-cost-rows-detection-v8.4.29`.
+Sign in observed; a new authenticated card walkthrough is not claimed.
+
+Six internal fresh OCR + Detection results: **2,2,1,1,1,1**. All six have the
+same source PDF, six reference-matched drawing bboxes and fifteen Same-Sheet
+`same` decisions. Two Membership replies exclude a View from their proposed
+group; no coverage rejection is involved in those two cases. Stable one-object
+Detection is not restored by this rollback. No subsequent change reapplied.
+Artifacts: `outputs/rollback-v2.2.2-lev1-six-2026-11-19/` in the handoff workspace.
+
 ## V2.4 local rebuild, 18 November 2026
 
 Owner-approved scope: start from V2.2.2 runtime `4e69e5d7`, reapply the ready

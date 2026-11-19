@@ -1074,7 +1074,18 @@ Details and exact run/hash groups: handoff workspace
 
 ### V2.2.2 rollback and six-run Lev1 comparison
 
-ACTIVE, P0, OWNER APPROVED, 2026-11-19. After checking prior experiments,
+COMPLETED EXPERIMENT, P0, 2026-11-19. Published rollback `1c38178f` has the
+exact V2.2.2 runtime/tests from `4e69e5d7`. Full CI 44490294480 passed;
+365 local Python checks and all four browser suites passed. Core/wrapper build
+pair confirmed; Railway deployment 8a28ef95-d63d-4228-ae51-4bab6eb90bee succeeded.
+Six fresh Lev1 results: **2,2,1,1,1,1**, 4/6 meet the one-object/six-View criterion.
+All six preserve the exact reference source bboxes and fifteen Same-Sheet same
+decisions. In the two bad runs Membership itself excludes View3 or View2;
+there is no incomplete-coverage rejection in those runs. A coverage-only
+fallback would not cover these failures. No six-object result in this batch.
+Detection stability remains unresolved. Detailed evidence in the handoff
+workspace: `outputs/rollback-v2.2.2-lev1-six-2026-11-19/REPORT.md`.
+Original approval: after checking prior experiments,
 owner explicitly resumed rollback to V2.2.2 (`4e69e5d7`) and six fresh Lev1
 trials. Restore the exact V2.2.2 runtime/tests in a forward commit, preserve
 current records and unrelated edits, pass the required publication gate, then
@@ -1082,10 +1093,12 @@ compare fresh OCR/Detection outcomes on the same source PDF. No separate
 Detection/Membership repair. Records distinguish the previous V2.4 rebuild
 from V2.2.2 plus reapplied
 V2.2.3 changes, five fresh Lev1 trials on V2.4 (1,1,1,2,6), and six offline saved
-production replays. No six-fresh-trial batch on exact V2.2.2 is recorded.
+production replays. The current batch is the first recorded six-fresh-trial
+comparison on exact V2.2.2.
 Starting production is V2.4 `551577c3`. Acceptance: published Core/wrapper
 V2.2.2 pair, six retained fresh trials with exact one-object/six-View checks.
-Subsequent gradual reapplication is the owner's intended direction; select
+Current production remains V2.2.2. Subsequent gradual reapplication is the
+owner's intended direction; select
 the first isolated change after the benchmark, do not reapply everything now.
 
 ### Fresh Lev2 and Ada stability benchmark

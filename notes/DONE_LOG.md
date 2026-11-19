@@ -1,5 +1,19 @@
 # Done Log
 
+V2.2.2 rollback and six-run Lev1 comparison, 2026-11-19. Owner-approved forward
+restore `1c38178f` exactly matches runtime/tests of `4e69e5d7`, preserving records
+and the unrelated dirty TODO section. Local: 365 Python checks and four browser
+suites passed; initial missing Node/browser environment failures retained.
+Exact-SHA full CI 44490294480 passed; protected publisher advanced main.
+Railway deployment 8a28ef95-d63d-4228-ae51-4bab6eb90bee succeeded; actual Core
+and wrapper report V2.2.2. Six fresh internal OCR/Detection results:
+**2,2,1,1,1,1**, with all reference drawing bboxes and fifteen same-sheet `same`
+decisions preserved each time. Two bad replies exclude a View in Membership
+itself, without a coverage rejection. Rollback is verified, Detection stability
+criterion is not met (4/6). Current runtime stays V2.2.2; no reapplication begun.
+Evidence: `outputs/rollback-v2.2.2-lev1-six-2026-11-19/REPORT.md` in the handoff
+workspace. Internal trials do not establish Railway watcher behavior.
+
 V2.4 independent provider timing audit, verified in production 2026-11-19.
 Owner approved independent timestamps and a fresh
 Lev1 watcher comparison. Two additive runtime audit lines retain the original
