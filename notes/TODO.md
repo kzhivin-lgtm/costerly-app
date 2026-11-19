@@ -1052,10 +1052,16 @@ Railway settings were read only; no new paid calls or deployment. Evidence:
 `offline-request-replay.json` and `release-boundary-request-replay.json` in the
 five-run artifact directory. No new paid calls, runtime patch or deployment.
 
-### Pending proposal: catch and repair incomplete membership proof
+### Cancelled proposal: extra proof-verification stage
 
-PENDING OWNER DECISION, P0, AGENT PROPOSAL, 2026-11-19. Keep the owner's
-Membership freeze in force. Proposed internal consistency trigger: a hypothesis
+CANCELLED BY OWNER, 2026-11-19. Extra verification stages/model passes were
+explicitly rejected because the cycle is already overloaded. Keep the current
+Detection/Membership freeze. Continue diagnosis using existing outputs and code;
+explain the established split mechanism separately from the unproven Labor V2
+recurrence trigger. The original agent proposal below is retained as history,
+not an active implementation plan.
+
+Original diagnostic trigger proposal: a hypothesis
 is rejected for incomplete pair-local coverage, its members are split by final
 fallback components, and independent Same-Sheet same decisions cross those
 components. Compare IDs through the existing normalization mapping. This is a
@@ -1065,7 +1071,7 @@ successful Lev1 cases. Specificity on genuine multi-object documents is UNKNOWN.
 Evidence: `outputs/provider-timings-v2.4/proposed-consistency-check.json` in the
 handoff workspace. Older same-name history is exploratory, not a verified oracle.
 
-Recommended local prototype, NOT APPROVED: preserve current grouping/proof rules
+Rejected local prototype (history): preserve current grouping/proof rules
 and fixed View inventory; on this signal request one bounded image-based check
 of the missing pair evidence, then rerun existing validation/compilation with
 only accepted evidence. Normal complete responses incur no extra model call.
