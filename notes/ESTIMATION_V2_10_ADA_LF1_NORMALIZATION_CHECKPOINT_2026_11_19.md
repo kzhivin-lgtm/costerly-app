@@ -39,3 +39,15 @@ Follow-up explicitly authorized: three fresh Adda.pdf OCR/Detection trials using
 Mistral and Anthropic on this exact runtime. No Naming/Calculation or application
 writes. Record every outcome and exact View correspondence; object count alone
 is insufficient. Status at checkpoint creation: pending, no new paid call yet.
+
+## Fresh controls completed after checkpoint restoration
+
+Exactly three fresh Adda OCR/Detection trials on runtime0df74a4f passed3/3.
+Counts2,2,2; exact groups02/03/05/07 and01/04/06/08 each time; all8 Views and
+all8 source evidence rows retained in every trial, minimum bbox IoU1.0.
+Times46.558s,56.645s,48.201s. Distinct fresh OCR starts, four pages each.
+No Naming/Calculation/application writes and no runtime change or deployment.
+All replies were already explicit pairs; saved controls exercise multiway
+expansion. General Detection stability and earlier auth gaps remain open.
+Evidence: `/Users/qb/Documents/ChatGPT/Costerly/outputs/detection-ada-three-v2.10-20261119T200020Z/REPORT_RU.md`, `verification.json`, all raw inputs/replies.
+A complete copy is appended to the private checkpoint as `fresh-ada-controls/`.

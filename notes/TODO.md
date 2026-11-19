@@ -1398,11 +1398,15 @@ the first isolated change after the benchmark, do not reapply everything now.
 
 ### Fresh Lev2 and Ada stability benchmark
 
-OWNER-ACCEPTED CHECKPOINT, FRESH CONTROLS PENDING, P0, V2.10, USER REQUEST,
+OWNER-ACCEPTED CHECKPOINT, FRESH ADA CONTROLS 3/3 PASS, P0, V2.10, USER REQUEST,
 2026-11-19. Owner reports several production trials look reasonably good and
 requests a full checkpoint, then three fresh Ada trials. Preserve this version;
 do not generalize acceptance to every input. Exact owner run IDs unknown.
 Checkpoint record: notes/ESTIMATION_V2_10_ADA_LF1_NORMALIZATION_CHECKPOINT_2026_11_19.md.
+Post-checkpoint: exactly three fresh Ada OCR/Detection trials passed3/3,
+counts2,2,2; exact 02/03/05/07 and01/04/06/08, all8 Views/source rows each,
+bbox IoU1.0. No runtime changes, new deploy, Naming/Calculation or app writes.
+Complete evidence: /Users/qb/Documents/ChatGPT/Costerly/outputs/detection-ada-three-v2.10-20261119T200020Z/REPORT_RU.md and checkpoint fresh-ada-controls/.
 Shared Ada/LF1 membership normalization expands legacy positive
 group links to root-star pairs. Preserve complete original Membership payload,
 all source rows, group assertions, derived-pair provenance and unresolved refs.
@@ -1423,7 +1427,8 @@ on published V2.9 and candidate; no missing evidence invented. Prior focused
 checks69 passed; existing broad UI callback static assertion fails on baseline
 too, unchanged. Release local gate:406 unit checks/seven browser suites passed,
 135.157s. Runtime normalizer hashes match the previously verified source.
-No paid calls. Fresh production Detection and owner acceptance remain pending.
+Owner accepted retaining this production version; exact owner run IDs unknown.
+The authorized post-checkpoint fresh Ada batch passed3/3, OCR/Detection only.
 Verified deployment does not establish general Detection stability or login
 retention. Evidence: handoff workspace outputs/
 detection-multiway-normalization-20261119T184011Z/release-v2.10/
