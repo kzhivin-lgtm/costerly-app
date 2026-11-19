@@ -24,7 +24,7 @@ async function boot(value={},width=1280){
  return {page,core,frame};
 }
 try{
- for(const name of ['fresh-active','fresh-done','fresh-shell-ready','labor-hours.json','auth-expired'])rmSync(statePath(name),{force:true});
+ for(const name of ['fresh-active','fresh-done','fresh-shell-ready','labor-hours.json','full-cost-totals.json','full-cost-lines.json','auth-expired'])rmSync(statePath(name),{force:true});
  const fresh=await boot({fresh_calculation:true});
  await fresh.core.locator('.objects-pricing-table').waitFor();
  await fresh.frame.evaluate(()=>{
@@ -48,7 +48,7 @@ try{
  await fresh.page.close();
  for(const width of [1280,390]){
   rmSync(statePath('labor-hours.json'),{force:true});
-  const {page,core,frame}=await boot({labor_ready:true},width);
+  const {page,core,frame}=await boot({labor_ready:true,overhead_delay:1.5},width);
   await core.getByRole('button',{name:'Last Estimate',exact:true}).click();
   await core.getByRole('button',{name:/^continue to objects estimation$/i}).click();
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
@@ -65,9 +65,13 @@ try{
   assert.equal(await hours.innerText(),'40.5');
   assert.equal((await frame.evaluate(()=>window.__costerlyObjectDetailDraft.pendingEdits()))[0].value,'40.5');
   await hours.press('Tab');
+  const overhead=core.locator('[data-overhead-summary][data-overhead-ready="true"]');
+  await overhead.waitFor();
+  assert.equal(await overhead.locator('[contenteditable="true"]').count(),0);
+  assert.equal(await hours.innerText(),'40.5');
   assert.equal(await assembly.evaluate(node=>node.open),inputOpen);
   assert.equal(await total.innerText(),'₪2\u202f531');
-  assert.equal(await core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),'₪1\u202f000');
+  assert.notEqual(await core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),'₪1\u202f000');
   if(width===1280){
    settings({labor_ready:true,hours_write_failure:true});
    await save.click();
@@ -80,6 +84,8 @@ try{
   await sheetHours.fill('100.0');await sheetHours.press('Enter');
   assert.equal(await core.locator('[data-cost-band="sheet-processing"] > summary [data-labor-column="total"]').innerText(),'₪6\u202f250');
   assert.equal(await core.locator('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value').innerText(),'₪8\u202f781');
+  assert.equal(await overhead.locator('[data-metric="cost"] .object-detail-section-value').innerText(),'₪1\u202f405',
+   JSON.stringify(await overhead.evaluate(node=>({host:{...node.dataset},rows:[...node.querySelectorAll('[data-line-id]')].map(row=>({...row.dataset})),context:window.__costerlyObjectDetailDraft?.context}))));
   await save.click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
   assert.equal(JSON.parse(readFileSync(statePath('labor-hours.json'),'utf8')).find(row=>row.raw_agent_json.block==='assembly').raw_agent_json.hours_per_item,'40.5');
   await hours.fill('1.25');await hours.press('Tab');
@@ -87,8 +93,11 @@ try{
   await hours.fill('0');await hours.press('Tab');
   assert.equal(await total.innerText(),'₪0');
   assert.equal(await core.locator('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value').innerText(),'₪6\u202f250');
+  assert.equal(await overhead.locator('[data-metric="cost"] .object-detail-section-value').innerText(),'₪1\u202f000');
+  assert.equal(await core.locator('.object-detail-final [data-final="excl_vat"]').innerText(),'₪8\u202f250');
   await save.click();await core.getByRole('button',{name:'Saved',exact:true}).waitFor();
   await core.getByRole('link',{name:'Back to Objects',exact:true}).click();
+  await core.getByText('₪8\u202f250',{exact:true}).first().waitFor();
   await core.getByRole('link',{name:/^(Done|Review)$/i}).click();
   await hours.waitFor();assert.equal(await hours.innerText(),'0.0');
   assert.equal(await sheetHours.innerText(),'100.0');

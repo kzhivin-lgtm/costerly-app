@@ -2285,6 +2285,7 @@ def install_object_detail_input_guard(
                             * Number(base.policy_percent || 0) / 100
                         : cost), 0);
                     materialHeader.textContent = known.length || !projected.length ? formatMoney(sum) : "—";
+                    materialHeader.dataset.overheadMaterialCost = String(sum);
                     const label = materialHeader.parentElement.querySelector(".object-detail-cost-label");
                     if (label) label.textContent = known.length === projected.length ? "Total" : "Subtotal";
                 }
@@ -2362,10 +2363,14 @@ def install_object_detail_input_guard(
                 const count = Number(quantity?.dataset.originalValue || 1);
                 const nextCount = Number(draft.get(editKey({field: "object_quantity", lineId: "__object__"}))?.value ?? count);
                 let total = 0;
+                let totalHours = 0;
+                let knownRows = 0;
                 for (const row of parentDoc.querySelectorAll('.object-detail-work-row')) {
                     const input = row.querySelector('[data-field="labor_hours"]');
                     if (!input) continue;
                     const pending = draft.get(editKey(contextFor(input)));
+                    if (row.dataset.costUnknown === "true" && !pending) continue;
+                    knownRows += 1;
                     const hours = pending ? Number(pending.value) : Number(input.dataset.originalValue) * nextCount / count;
                     if (input !== parentDoc.activeElement && input.getAttribute("aria-invalid") !== "true") {
                         setEditableValue(input, hours.toFixed(1));
@@ -2377,9 +2382,72 @@ def install_object_detail_input_guard(
                         if (cell) cell.textContent = formatMoney(value);
                     }
                     total += pay + taxes;
+                    totalHours += hours;
                 }
                 const cell = parentDoc.querySelector('[data-cost-band="labor"] > summary [data-labor-column="total"] .object-detail-cost-value');
+                if (!knownRows) return;
                 if (cell) cell.textContent = formatMoney(total);
+                previewOverhead(totalHours, total);
+            }
+
+            function overheadHost(ready = true) {
+                const host = parentDoc.querySelector('[data-overhead-summary]');
+                return host?.dataset.overheadObjectId === String(OBJECT_ID) &&
+                    host.dataset.overheadEstimateId === String(ESTIMATE_ID) &&
+                    host.dataset.overheadRunId === String(RUN_ID) &&
+                    (!ready || host.dataset.overheadReady === "true") ? host : null;
+            }
+
+            function previewOverhead(hours, laborCost) {
+                const host = overheadHost();
+                if (!host || !Number.isFinite(hours)) return;
+                const capacity = Number(host.dataset.overheadCapacity);
+                if (!(capacity > 0)) return;
+                const round = value => Math.round(value * 100) / 100;
+                const rows = [...host.querySelectorAll('.object-detail-table-row[data-line-id]')];
+                const setCost = (row, cost) => {
+                    row.dataset.overheadCost = String(cost);
+                    row.querySelector('.object-detail-row-cost').textContent = formatMoney(cost);
+                };
+                let monthly = 0;
+                for (const row of rows.filter(row => row.dataset.overheadMonthly !== "" && Number.isFinite(Number(row.dataset.overheadMonthly)))) {
+                    const amount = round(Number(row.dataset.overheadMonthly) * hours / capacity);
+                    setCost(row, amount);
+                    row.children[2].textContent = `${hours.toFixed(1).replace(/[.]0$/, "")}h / ${capacity}h`;
+                    monthly += amount;
+                }
+                const materials = parentDoc.querySelector('[data-material-section-total]');
+                const materialCost = Number(materials?.dataset.overheadMaterialCost ?? host.dataset.overheadMaterialCost);
+                const reserveBase = hours > 0 ? materialCost + laborCost + monthly : 0;
+                let cost = monthly;
+                for (const row of rows.filter(row => row.dataset.overheadPercent !== "" && Number.isFinite(Number(row.dataset.overheadPercent)))) {
+                    const amount = round(reserveBase * Number(row.dataset.overheadPercent) / 100);
+                    setCost(row, amount);
+                    cost += amount;
+                }
+                cost = round(cost);
+                const vat = round(cost * Number(host.dataset.overheadVat) / 100);
+                for (const [field, amount] of Object.entries({cost, subtotal: cost, vat, total: round(cost + vat)})) {
+                    const cell = host.querySelector(`[data-metric="${field}"] .object-detail-section-value`);
+                    if (cell) cell.textContent = formatMoney(amount);
+                }
+                const final = parentDoc.querySelector('.object-detail-final[data-full-cost="true"]');
+                if (final) {
+                    const quantity = objectQuantityInput();
+                    const edit = quantity && draft.get(editKey(objectQuantityContext(quantity)));
+                    const count = Number(edit?.value ?? quantity?.dataset.originalValue ?? 1);
+                    const net = round((materialCost + laborCost + cost) / count);
+                    const tax = round(net * Number(final.dataset.vatPercent || 0) / 100);
+                    setFinal("excl_vat", net);
+                    setFinal("vat", tax);
+                    setFinal("total", round(net + tax));
+                }
+                for (const group of host.querySelectorAll('.object-detail-group')) {
+                    const cell = group.querySelector('summary .object-detail-group-total:last-child');
+                    const sum = [...group.querySelectorAll('[data-overhead-cost]')]
+                        .reduce((sum, row) => sum + Number(row.dataset.overheadCost), 0);
+                    if (cell) cell.textContent = formatMoney(sum);
+                }
             }
 
             function submitDraft(approveAfterSave = false) {
@@ -2468,7 +2536,12 @@ def install_object_detail_input_guard(
                     }
                 }
                 const final = parentDoc.querySelector(".object-detail-final");
-                if (final) final.dataset.baseCost = result.self_cost.excl_vat ?? "";
+                if (final) {
+                    final.dataset.baseCost = result.self_cost.excl_vat ?? "";
+                    final.dataset.fullCost = String(result.cost_policy === "object_costs_v3_1");
+                    const subtotal = final.querySelector('[data-full-cost-subtotal]');
+                    if (subtotal) subtotal.hidden = !result.self_cost.partial;
+                }
                 for (const field of ["excl_vat", "vat", "total"]) {
                     const node = parentDoc.querySelector(`[data-final="${field}"]`);
                     if (node) node.textContent = result.self_cost[field] == null ? "—" : formatMoney(result.self_cost[field]);
@@ -2969,7 +3042,17 @@ def install_object_detail_input_guard(
                 context: {runId: RUN_ID, estimateId: ESTIMATE_ID, objectId: OBJECT_ID},
             };
 
+            // One bounded wait for this card's asynchronous Overhead block.
+            // Reconcile edits made while company inputs were loading, then stop.
+            const overheadReady = new parentWindow.MutationObserver(() => {
+                const host = overheadHost(false);
+                if (!host || host.dataset.overheadStatus === "loading") return;
+                overheadReady.disconnect();
+                if (overheadHost() && draft.size) { previewMaterials(); previewLabor(); }
+            });
+
             parentWindow[HANDLER_KEY] = () => {
+                overheadReady.disconnect();
                 parentDoc.removeEventListener("focusin", handleFocus, true);
                 parentDoc.removeEventListener("pointerdown", handleNumericPointerDown, true);
                 parentDoc.removeEventListener("keydown", handleKeydown, true);
@@ -2989,6 +3072,10 @@ def install_object_detail_input_guard(
             };
             seedInputBaselines();
             seedRowBaselines();
+            if (overheadHost() && draft.size) { previewMaterials(); previewLabor(); }
+            else if (!overheadHost(false) || overheadHost(false).dataset.overheadStatus === "loading") {
+                overheadReady.observe(parentDoc.body, {childList: true, subtree: true});
+            }
         })();
         </script>
         """

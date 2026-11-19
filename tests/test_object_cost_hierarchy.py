@@ -82,7 +82,7 @@ def test_pending_labor_does_not_fabricate_zero_cost():
     assert '₪0' not in html
 
 
-def test_hours_save_roundtrip_is_per_item_and_does_not_change_sc_or_norms(monkeypatch):
+def test_hours_save_roundtrip_is_per_item_and_recalculates_full_sc_without_changing_norms(monkeypatch):
     import pandas as pd
     from use_cases import estimation
     from use_cases.labor_hours import overrides_from_lines
@@ -93,11 +93,13 @@ def test_hours_save_roundtrip_is_per_item_and_does_not_change_sc_or_norms(monkey
         'company_id': 'company', 'run_id': 'run', 'quantity': 2})
     monkeypatch.setattr(estimation, 'fetch_rfq_estimate_material_plan', lambda *a: pd.DataFrame())
     monkeypatch.setattr(estimation, 'upsert_rfq_estimate_lines', lambda _, *, lines: writes.extend(lines))
-    monkeypatch.setattr(estimation, '_recalculate_object_estimate_totals', lambda *a, **k: (_ for _ in ()).throw(AssertionError('SC changed')))
+    recalculations = []
+    monkeypatch.setattr(estimation, '_recalculate_object_estimate_totals', lambda *a, **k: recalculations.append(k))
     estimation.save_object_detail_material_edits(estimate_id='estimate', object_id='object', edits=[
         {'field': 'labor_hours', 'lineId': 'assembly', 'value': '40.5'},
         {'field': 'labor_hours', 'lineId': 'sheet-processing', 'value': '0'},
     ]).result()
+    assert len(recalculations) == 1 and recalculations[0]['object_id'] == 'object'
     saved = overrides_from_lines(pd.DataFrame(writes))
     assert saved == {'assembly': '20.25', 'sheet-processing': '0'}
     assert all(row['cost'] == 0 and row['hours'] is None and row['rate'] is None for row in writes)

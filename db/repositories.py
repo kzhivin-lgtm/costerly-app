@@ -30,6 +30,10 @@ def fetch_company_overhead_settings(client: Client, company_id: str) -> pd.DataF
     return fetch_table(client, "overhead_settings", filters={"company_id": company_id})
 
 
+def fetch_company_overhead_monthly(client: Client, company_id: str) -> pd.DataFrame:
+    return fetch_table(client, "overhead_monthly", filters={"company_id": company_id})
+
+
 def fetch_estimate_driver_quantities(
     client: Client,
     company_id: str,

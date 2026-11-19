@@ -47,6 +47,28 @@ Use the exact-commit `UI release gate` and the verified publisher described in
 be active to enforce this independently of the agent. Check its real status;
 do not infer activation from the presence of the workflow or ruleset template.
 
+## V3.1 full object cost, approved 20 November 2026
+
+The owner explicitly approved Materials + current Labor + restored Overhead in
+both saved Self Cost and Objects. This supersedes the prior material-only SC
+behavior and the former rule that saving Labor hours could not change SC.
+Use the same accepted Labor hours/pay/one payroll load in UI and persistence.
+Material cost comes from the existing purchase table, including its allocations
+and policy rows. Overhead uses the preserved Profile monthly-hours allocation
+and reserve formula. Divide the combined batch cost by object quantity once;
+apply the configured VAT once to that per-item net amount. Delivery/Installation
+remain separate project rows and saved manual sale prices stay authoritative.
+
+Saved modern estimates refresh deterministically without AI. Store an idempotent
+basis and complete component audit with previous totals for rollback. Profile
+Overhead/Pricing saves invalidate only that company's visible cost caches. Saving
+Labor overrides updates the full persisted sum and Objects; unknown work remains
+an explicit subtotal. Preserve the existing failed-Save draft and retry behavior.
+The existing parallel Labor fragment owns both cost blocks, with independent
+placeholders so an overhead read never replaces Labor input nodes. One bounded
+DOM observer reconciles a delayed Overhead with current edits; it disconnects on
+resolution/error or editor teardown, without a timer or another Python rerun.
+
 ## V2.9 one deployment event and retained login, approved 19 November 2026
 
 Owner explicitly requires a page refresh with the user still signed in and

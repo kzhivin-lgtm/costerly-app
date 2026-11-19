@@ -73,7 +73,8 @@ def read_objects(_client, estimate_id):
   if lag_file.exists():
    sleep(float(lag_file.read_text().removesuffix('s')))
  record('objects '+estimate_id)
- return pd.DataFrame([row for row in sample['objects'] if row['estimate_id']==estimate_id])
+ totals=json.loads(totals_path.read_text()) if totals_path.exists() else {}
+ return pd.DataFrame([{**row,**totals.get(row['object_id'],{})} for row in sample['objects'] if row['estimate_id']==estimate_id])
 def read_plans(_client, estimate_id):
  rows=[row for row in sample['plans'] if row['estimate_id']==estimate_id]
  if scenario().get('labor_ready'):
@@ -130,19 +131,34 @@ objects.load_estimation_cycle_cost = lambda **_: None
 ocr_adapter.warm_mistral_http_client_async = lambda: None
 upload.warm_mistral_http_client_async = lambda: None
 hours_path=STATE / 'labor-hours.json'
+totals_path=STATE / 'full-cost-totals.json'
+derived_path=STATE / 'full-cost-lines.json'
 def read_lines(_client, **kwargs):
  extra=json.loads(hours_path.read_text()) if hours_path.exists() else []
+ extra+=(json.loads(derived_path.read_text()) if derived_path.exists() else [])
  return pd.DataFrame([row for row in lines+extra
   if row['estimate_id']==kwargs['estimate_id'] and row['object_id']==kwargs['object_id']])
 estimation.fetch_rfq_estimate_lines_for_object = read_lines
 def save_hours(_client, *, lines):
  if not lines:return
+ if all(row['source']=='object_costs_v3_1' for row in lines):
+  assert all(row['company_id']==company_id for row in lines)
+  saved={row['line_id']:row for row in json.loads(derived_path.read_text())} if derived_path.exists() else {}
+  saved.update({row['line_id']:row for row in lines});derived_path.write_text(json.dumps(list(saved.values())))
+  return
  assert all(row['source']=='labor_hours_override' and row['company_id']==company_id for row in lines)
  if scenario().get('hours_write_failure'):raise RuntimeError('controlled hours write failure')
  saved={row['line_id']:row for row in json.loads(hours_path.read_text())} if hours_path.exists() else {}
  saved.update({row['line_id']:row for row in lines})
  hours_path.write_text(json.dumps(list(saved.values())))
 estimation.upsert_rfq_estimate_lines=save_hours
+estimation.fetch_rfq_estimate_lines=lambda client,estimate:pd.concat([read_lines(client,estimate_id=estimate,object_id=row['object_id']) for row in sample['objects'] if row['estimate_id']==estimate],ignore_index=True)
+def save_totals(_client, *, estimate_id, object_id, **values):
+ assert estimate_id==sample['routes'][0]['estimate_id']
+ data=json.loads(totals_path.read_text()) if totals_path.exists() else {}
+ data[object_id]={**data.get(object_id,{}),**{k:v for k,v in values.items() if v is not None}}
+ totals_path.write_text(json.dumps(data))
+estimation.update_rfq_object_estimate_totals=save_totals
 estimation.fetch_company_overhead_settings = lambda *args: pd.DataFrame([])
 estimation._with_saved_led_catalog_specs = lambda _client, plan: plan
 estimation._with_saved_element_ownership = lambda _client, checked, *a, **kw: checked
@@ -157,6 +173,18 @@ labor.get_supabase_client = Client
 labor.load_parts_check = lambda **_: {'status':'ready', 'payload':parts}
 labor.fetch_rfq_estimate_material_plan = read_plans
 labor.load_sheet_processing_machinery = lambda *_: {}
+def read_overhead(_client, scoped_company, *, delay=True):
+ assert scoped_company == company_id
+ if delay:sleep(scenario().get('overhead_delay', 0))
+ if scenario().get('overhead_read_failure'):raise RuntimeError('controlled overhead read failure')
+ record('overhead read '+company_id)
+ return {'status':'ready','settings':{'production_workers':12,'workdays_per_month':21,
+  'hours_per_day':8,'vat_percent':18}, 'monthly':{'rent_facilities_cost':20160}}
+labor._load_overhead_context=read_overhead
+def full_cost_context(client,obj,plan,settings=None):
+ inputs=read_overhead(client,obj['company_id'],delay=False)
+ return {**inputs,'plan':plan,'parts':{'status':'ready','payload':parts},'machinery':{}}
+estimation._full_cost_context=full_cost_context
 
 def save_materials(**kwargs):
  assert kwargs['estimate_id']==estimate_id and kwargs['object_id']=='object-001'

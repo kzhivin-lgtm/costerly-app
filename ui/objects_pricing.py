@@ -311,6 +311,9 @@ def _smooth_progress_percent(row: dict[str, object]) -> int:
 
 
 def _self_cost_unit_html(row: dict[str, object]) -> str:
+    if row.get("cost_partial") and row.get("self_cost_unit") not in {None, "", "review_required"}:
+        return (f'<span title="Subtotal: some costs are still awaiting calculation">'
+                f'{_money(row.get("self_cost_unit"))}<small> Subtotal</small></span>')
     if _row_status(row) == "review_required":
         if row.get("self_cost_unit") in {None, "", "review_required"}:
             return "review"

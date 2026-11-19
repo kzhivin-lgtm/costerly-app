@@ -1437,6 +1437,7 @@ def save_company_metrics(
     if not monthly_rows:
         client.table("overhead_monthly").insert(monthly_payload).execute()
     _load_company_metrics_by_id.clear()
+    _invalidate_object_overhead_context(fresh.company_id)
 
 
 def save_company_pricing(access: CompanyAccess, values: dict[str, object]) -> None:
@@ -1463,6 +1464,23 @@ def save_company_pricing(access: CompanyAccess, values: dict[str, object]) -> No
             **payload,
         }).execute()
     _load_company_metrics_by_id.clear()
+    _invalidate_object_overhead_context(fresh.company_id)
+
+
+def _invalidate_object_overhead_context(company_id: str) -> None:
+    affected = set()
+    for identity, comparison in st.session_state.get("labor_v1_comparisons", {}).items():
+        if str(identity[0]) == str(company_id):
+            comparison.pop("overhead_context", None)
+            affected.add(identity[2])
+    for estimate_id, data in st.session_state.get("objects_estimation_data_cache", {}).items():
+        if str(data.get("company_id")) == str(company_id):
+            affected.add(estimate_id)
+    for (estimate_id, _), data in st.session_state.get("object_detail_data_cache", {}).items():
+        if str(data.get("company_id")) == str(company_id):
+            affected.add(estimate_id)
+    st.session_state.setdefault("objects_estimation_cache_dirty", set()).update(affected)
+    st.session_state.setdefault("object_detail_data_cache_dirty", set()).update(affected)
 
 
 def save_company_contacts(

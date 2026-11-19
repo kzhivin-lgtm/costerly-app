@@ -7468,7 +7468,31 @@ cause from the local screenshot alone.
   - Rendering pages while earlier pages entered OCR produced about 3.5 seconds of overlap on the 11-page file, but is superseded by Direct PDF because the main route no longer renders pages.
   - The 4-versus-6 page-worker experiment is retired. Future concurrency control applies across whole PDF requests from different users, not inside one document.
 - Objects Estimation: manual sale price override should stay authoritative after self-cost changes, with manual label and SC-changed notice.
-- Add overhead calculation layer after object material/labor pricing.
+- ACTIVE, P1, V3.1, USER REQUEST, 2026-11-20. Restore Overhead and include
+  Materials + current Labor + Overhead in the persisted Self Cost and Objects.
+  Owner explicitly approved the full aggregate after scope clarification, not
+  just the previously hidden section. Reuse overhead_engine and the accepted
+  Labor calculation, now shared by server pricing and Object Detail. Profile
+  Overhead Expenses/Pricing Cost remain authoritative; saved capacity610=2016h.
+  Protect Material Plan purchase/allocation totals, manual hours, per-item
+  quantity normalization, one payroll load and one final VAT; preserve manual
+  sale overrides and separate Delivery/Installation. Existing modern saved
+  estimates upgrade deterministically when loaded, without recognition or AI.
+  Store one diagnostic row (zero charge) with all component amounts, original
+  source references and pre-V3.1 totals. Unchanged basis skips writes. Profile
+  Save invalidates only the current company's Objects/Detail/overhead context.
+  New/edited Material Plan publication and saved Labor hours update full SC.
+  Pending/partial costs stay explicit subtotals, not a fabricated completed sum.
+  V2.10 checkpoint/runtime0df74a4f protected. Rollback must restore previous
+  totals from diagnostic rows as well as code; retain Anthropic Key2 config.
+  No Detection, provider, authentication, new AI call, polling or timer changes.
+  Existing parallel Labor fragment renders independent Labor/Overhead areas;
+  one-shot DOM observer reconciles edits during the company read and stops on
+  resolution/error or editor teardown. User approved the new V3 block/version.
+  Verification in progress: formula parity and focused server checks; desktop/
+  mobile Save/reopen/Objects aggregate passed the focused browser scenario.
+  Full UI release gate and matching deployed builds still required.
+  Evidence: handoff workspace outputs/overhead-v3.1-20261120/.
 - Add deterministic delivery and installation pricing from project subtotal / overhead settings.
 - Improve catalog matching: save matched material/labor rows and mark weak matches as `needs_review`.
 - Run estimation for all detected objects, not only the first object.

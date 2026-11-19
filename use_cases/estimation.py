@@ -3,6 +3,7 @@ from __future__ import annotations
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import UTC, datetime
 import json
+import hashlib
 import logging
 from math import ceil, isfinite
 import re
@@ -10,6 +11,7 @@ from typing import Any
 
 from db.repositories import (
     fetch_company_overhead_settings,
+    fetch_company_overhead_monthly,
     fetch_rfq_estimate_pricing_overrides,
     fetch_rfq_estimate_lines,
     fetch_rfq_estimate_lines_for_object,
@@ -43,6 +45,124 @@ from use_cases.price_source_taxonomy import source_family_for_catalog_family
 from use_cases.retry import read_with_retry
 from use_cases.detection_previews import saved_presentation_preview_ref
 from use_cases.labor_hours import overrides_from_lines, override_lines, validate_hours
+from use_cases.estimation_labor_v1 import load_object_labor, object_labor_metrics, sheet_layout_basis
+from use_cases.estimation_parts_check_runtime import load_parts_check
+from use_cases.machinery import load_sheet_processing_machinery
+from use_cases.overhead_engine import estimate_object_overhead
+from observability.runtime import LABOR_BUILD_VERSION
+
+
+_FULL_COST_SOURCE = "object_costs_v3_1"
+
+
+def _full_cost_context(client, obj, plan, settings=None):
+    company = str(obj["company_id"])
+    return {
+        "settings": settings if settings is not None else _first_row(fetch_company_overhead_settings(client, company)),
+        "monthly": _first_row(fetch_company_overhead_monthly(client, company)),
+        "machinery": load_sheet_processing_machinery(client, company), "plan": plan,
+        "parts": load_parts_check(client=client, company_id=company,
+                                  run_id=str(obj["run_id"]), estimate_id=str(obj["estimate_id"]), include_payload=False),
+    }
+
+
+def _full_cost_summary(client, *, estimate_id, obj, lines, material_batch, context):
+    """Use the same saved inputs and Labor math as Object Detail, once per basis."""
+    quantity = _number(obj.get("quantity"), 1) or 1
+    overrides = overrides_from_lines(lines)
+    plan = context["plan"]
+    # The purchase table is authoritative, including shared-stock allocation,
+    # glass/mirror packages and policy rows. Do not substitute legacy line costs.
+    projected = _object_detail_material_rows(plan, lines, str(obj["object_id"]))
+    planned = bool(_material_rows_from_plan(plan, object_id=str(obj["object_id"]))
+                   or (plan.get("parts_check") or {}).get(str(obj["object_id"])))
+    amounts = [row.get("total", row.get("cost")) for row in projected]
+    if planned:
+        material_batch = sum(_number(value, 0) for value in amounts)
+    material_partial = any(value is None or (isinstance(value, float) and not isfinite(value)) for value in amounts)
+    checked = (plan.get("parts_check") or {}).get(str(obj["object_id"])) or {}
+    material_partial |= bool(checked.get("unpriced_requirements") or checked.get("has_unresolved_demands"))
+    labor_basis = hashlib.sha256(json.dumps({
+        "version": _FULL_COST_SOURCE, "build": LABOR_BUILD_VERSION,
+        "object_id": obj["object_id"], "estimate_id": estimate_id, "company_id": obj["company_id"],
+        "quantity": quantity, "overrides": overrides, "machinery": context["machinery"],
+        "source": plan.get("parts_check_source"), "sheets": sheet_layout_basis(plan), "parts": context["parts"],
+    }, sort_keys=True, default=str).encode()).hexdigest()
+    basis = hashlib.sha256(json.dumps({"labor_basis": labor_basis, "materials": material_batch,
+        "materials_partial": material_partial, "settings": context["settings"], "monthly": context["monthly"]
+    }, sort_keys=True, default=str).encode()).hexdigest()
+    saved = next((row.get("raw_agent_json") for row in lines.to_dict("records")
+                  if row.get("source") == _FULL_COST_SOURCE), None)
+    if isinstance(saved, dict) and saved.get("basis_sha256") == basis:
+        return saved, False
+    if isinstance(saved, dict) and saved.get("labor_basis_sha256") == labor_basis:
+        labor = saved["labor"]
+        sheet_labor = saved["labor_blocks"]["sheet_processing"]
+        assembly_labor = saved["labor_blocks"]["assembly"]
+    else:
+        state = load_object_labor(
+            client, identity=(str(obj["company_id"]), str(obj["run_id"]), estimate_id, str(obj["object_id"])),
+            plan=plan, parts_result=context["parts"] if "payload" in context["parts"] else None,
+            machinery_loader=lambda *_: context["machinery"],
+        )
+        sheet_labor, assembly_labor, labor = object_labor_metrics(state, quantity=quantity, overrides=overrides)
+    overhead = estimate_object_overhead(
+        estimate_id=estimate_id, object_id=str(obj["object_id"]), company_id=str(obj["company_id"]),
+        settings=context["settings"], overhead_monthly=context["monthly"],
+        labor_hours=labor["hours"] if labor else None, labor_cost=labor["total"] if labor else None,
+        material_cost=material_batch, partial=material_partial or bool(labor and labor["partial"]),
+    )
+    labor_batch = float(labor["total"]) if labor else 0
+    overhead_batch = overhead["cost"] if overhead["cost"] is not None else 0
+    net = round((material_batch + labor_batch + overhead_batch) / quantity, 2)
+    vat = round(net * _number(context["settings"].get("vat_percent"), 18) / 100, 2)
+    partial = material_partial or not labor or labor["partial"] or overhead["status"] != "ready"
+    summary = {"version": _FULL_COST_SOURCE, "build": LABOR_BUILD_VERSION,
+               "basis_sha256": basis, "labor_basis_sha256": labor_basis, "quantity": quantity,
+               "materials_batch": material_batch, "labor": labor, "overhead": overhead,
+               "partial": bool(partial), "self_cost_ex_vat": net, "vat_amount": vat,
+               "self_cost_total": round(net + vat, 2),
+               "labor_blocks": {"sheet_processing": sheet_labor, "assembly": assembly_labor},
+               "parts_check_source": plan.get("parts_check_source"),
+               "previous_totals": saved.get("previous_totals") if isinstance(saved, dict) else {
+                   key: None if isinstance(obj.get(key), float) and not isfinite(obj[key]) else obj.get(key)
+                   for key in ("self_cost_ex_vat", "vat_amount", "self_cost_total", "approved")
+               }}
+    # Existing JSON diagnostics rows keep the full breakdown, not another charge.
+    summary = json.loads(json.dumps(summary, default=str))
+    upsert_rfq_estimate_lines(client, lines=[{
+        "estimate_id": estimate_id, "object_id": str(obj["object_id"]), "company_id": str(obj["company_id"]),
+        "line_id": f'{obj["object_id"]}__full_cost_v3_1', "section": "overhead", "source": _FULL_COST_SOURCE,
+        "group_name": "Cost calculation", "item_name": "Materials + Labor + Overhead",
+        "cost": 0, "sort_order": 99000, "needs_price": False,
+        "needs_review": summary["partial"], "raw_agent_json": summary,
+    }])
+    return summary, True
+
+
+def _ensure_full_object_costs(client, *, estimate_id, objects, plan, settings):
+    if objects.empty or not plan.get("parts_check_source"):
+        return
+    eligible = objects[objects["status"].isin(["completed", "review_required"])]
+    if eligible.empty:
+        return
+    obj = {**eligible.iloc[0].to_dict(), "estimate_id": estimate_id}
+    context = _full_cost_context(client, obj, plan, settings)
+    all_lines = fetch_rfq_estimate_lines(client, estimate_id)
+    for _, row in eligible.iterrows():
+        obj = {**row.to_dict(), "estimate_id": estimate_id}
+        lines = all_lines[all_lines["object_id"] == obj["object_id"]] if not all_lines.empty else all_lines
+        summary = _recalculate_object_estimate_totals(
+            client, estimate_id=estimate_id, object_id=str(obj["object_id"]), object_row=obj,
+            settings=settings, lines_df=lines.copy(), plan_snapshot=plan, cost_context=context,
+        )
+        if summary:
+            objects.loc[objects["object_id"] == obj["object_id"], "cost_partial"] = int(summary.get("partial", False))
+            for field in ("self_cost_ex_vat", "vat_amount", "self_cost_total", "approved"):
+                if field in summary:
+                    objects.loc[objects["object_id"] == obj["object_id"], field] = summary[field]
+            if summary.get("partial"):
+                objects.loc[objects["object_id"] == obj["object_id"], "status"] = "review_required"
 
 
 _ASSUMPTION_MATERIAL_DISPLAY_NAMES = {
@@ -250,6 +370,8 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
             settings = _first_row(fetch_company_overhead_settings(client, company_id))
     vat_percent = _number(settings.get("vat_percent"), 18)
     markup_percent = _number(settings.get("sale_price_markup_percent"), 30)
+    _ensure_full_object_costs(client, estimate_id=estimate_id, objects=objects_df,
+                             plan=material_plan, settings=settings)
     delivery_percent = _number(settings.get("delivery_percent"), 3)
     installation_percent = _number(settings.get("installation_percent"), 10)
     checked_objects = material_plan.get("parts_check") or {}
@@ -274,6 +396,7 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
                 "materials": visible_materials,
                 "quantity": quantity,
                 "self_cost_unit": self_cost if self_cost is not None else status,
+                "cost_partial": _number(row.get("cost_partial"), 0) > 0,
                 "status": status,
                 "progress_percent": row.get("progress_percent"),
                 "progress_label": row.get("progress_label"),
@@ -297,6 +420,7 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
     )
     return {
         "rows": rows,
+        "company_id": str(objects_df.iloc[0].get("company_id") or "") if not objects_df.empty else "",
         "project_costs": project_costs,
         "summary": summary,
         "material_plan": material_plan,
@@ -442,6 +566,7 @@ def load_object_detail_data(
         raise RuntimeError(f"Object estimate not found: {estimate_id}/{object_id}")
 
     object_row = matching.iloc[0].to_dict()
+    object_row["estimate_id"] = estimate_id
     canonical_quantity = _number(object_row.get("quantity"), 1)
     checked = (material_plan.get("parts_check") or {}).get(object_id) or {}
     overlay_source = material_plan.get("parts_check_source") or {}
@@ -463,6 +588,13 @@ def load_object_detail_data(
         preview_url = preview_future.result()
     vat_percent = _number(settings.get("vat_percent"), 18)
     employer_load_percent = _number(settings.get("employer_load_percent"), 25)
+    if material_plan.get("parts_check_source"):
+        updated = _recalculate_object_estimate_totals(
+            client, estimate_id=estimate_id, object_id=object_id, object_row=object_row,
+            settings=settings, lines_df=lines_df, plan_snapshot=material_plan,
+        )
+        if updated:
+            object_row.update(updated)
 
     labor_rows = []
     overhead_rows = []
@@ -529,6 +661,8 @@ def load_object_detail_data(
 
     return {
         "object_key": object_id,
+        "company_id": str(object_row.get("company_id") or ""),
+        "cost_policy": _FULL_COST_SOURCE if object_row.get("version") == _FULL_COST_SOURCE else None,
         "run_id": str(object_row.get("run_id") or ""),
         "estimate_id": estimate_id,
         "name": object_row.get("object_name"),
@@ -557,6 +691,7 @@ def load_object_detail_data(
             "excl_vat": object_row.get("self_cost_ex_vat"),
             "vat": object_row.get("vat_amount"),
             "total": object_row.get("self_cost_total"),
+            "partial": bool(object_row.get("partial")),
         },
     }
 
@@ -574,12 +709,16 @@ def load_object_detail_material_receipt(
         plan_future = executor.submit(fetch_rfq_estimate_material_plan, client, estimate_id)
         obj, lines = object_future.result(), lines_future.result()
         saved_plan = _with_saved_led_catalog_specs(client, _first_row(plan_future.result()).get("plan_payload") or {})
+    cost_snapshot = next((row.get("raw_agent_json") or {} for row in lines.to_dict("records")
+                          if row.get("source") == _FULL_COST_SOURCE), {})
     return {
         "sections": [{"key": "material", "rows": _object_detail_material_rows(saved_plan, lines, object_id)}],
         "quantity": _number(obj.get("quantity"), 1),
         "labor_hours_overrides": overrides_from_lines(lines),
+        "cost_policy": next((row.get("source") for row in lines.to_dict("records") if row.get("source") == _FULL_COST_SOURCE), None),
         "self_cost": {"excl_vat": obj.get("self_cost_ex_vat"), "vat": obj.get("vat_amount"),
-                      "total": obj.get("self_cost_total")},
+                      "total": obj.get("self_cost_total"),
+                      **({"partial": bool(cost_snapshot.get("partial"))} if cost_snapshot else {})},
     }
 
 
@@ -1436,6 +1575,9 @@ def save_object_detail_material_edits(
             labor_hours, estimate_id=estimate_id, object_id=object_id,
             company_id=company_id, quantity=current_quantity,
         ))
+        if labor_hours:
+            _recalculate_object_estimate_totals(client, estimate_id=estimate_id, object_id=object_id,
+                                                object_row=obj, plan_snapshot=plan)
         receipt = Future()
         receipt.set_result(plan)
         return receipt
@@ -1592,6 +1734,7 @@ def apply_material_plan_allocations(
     target_objects = affected_object_ids | (changed_quantity_objects or set())
     if changed_requirements is None:
         target_objects.update(checked_objects)
+    full_context = None
     for object_id in target_objects:
         checked = checked_objects.get(object_id) or {}
         review_required = bool(checked.get("issues") or checked.get("has_estimated_costs")
@@ -1639,10 +1782,15 @@ def apply_material_plan_allocations(
             ]
         if changed_policy_lines:
             upsert_rfq_estimate_lines(client, lines=changed_policy_lines)
-        _recalculate_object_estimate_totals(
+        if plan_snapshot.get("parts_check_source") and full_context is None:
+            full_context = _full_cost_context(
+                client, {**object_context, "estimate_id": estimate_id}, plan_snapshot, settings,
+            )
+        cost_summary = _recalculate_object_estimate_totals(
             client,
             estimate_id=estimate_id,
             object_id=object_id,
+            **({"plan_snapshot": plan_snapshot, "cost_context": full_context} if full_context is not None else {}),
             **({"object_row": object_context, "settings": settings, "lines_df": object_rows,
                 "published_policy_lines": policy_lines,
                 "approved": None if object_id in (protected_approval_objects or ()) else False}
@@ -1652,7 +1800,7 @@ def apply_material_plan_allocations(
             client,
             estimate_id=estimate_id,
             object_id=object_id,
-            status="review_required" if review_required else "completed",
+            status="review_required" if review_required or (cost_summary and cost_summary.get("partial")) else "completed",
             progress_percent=100,
             progress_label="material_plan_needs_review" if review_required else "materials_costed",
         )
@@ -2024,7 +2172,9 @@ def _recalculate_object_estimate_totals(
     settings: dict[str, Any] | None = None,
     lines_df: Any = None,
     published_policy_lines: list[dict[str, Any]] | None = None,
-) -> None:
+    plan_snapshot: dict[str, Any] | None = None,
+    cost_context: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
     if object_row is None:
         objects_df = fetch_rfq_object_estimates(client, estimate_id)
         matching = objects_df[objects_df["object_id"] == object_id]
@@ -2078,6 +2228,23 @@ def _recalculate_object_estimate_totals(
         elif section == "overhead":
             overhead_total += cost
 
+    if plan_snapshot is None and object_row.get("run_id"):
+        plan_snapshot = _first_row(fetch_rfq_estimate_material_plan(client, estimate_id)).get("plan_payload") or {}
+    if plan_snapshot and plan_snapshot.get("parts_check_source"):
+        obj = {**object_row, "object_id": object_id, "estimate_id": estimate_id}
+        context = cost_context or _full_cost_context(client, obj, plan_snapshot, settings)
+        summary, changed = _full_cost_summary(
+            client, estimate_id=estimate_id, obj=obj, lines=lines_df,
+            material_batch=material_total if checked_material_plan else material_total * (_number(obj.get("quantity"), 1) or 1),
+            context=context,
+        )
+        fields = {key: summary[key] for key in ("self_cost_ex_vat", "vat_amount", "self_cost_total")}
+        cost_changed = any(_number(object_row.get(key), -1) != value for key, value in fields.items())
+        effective_approval = approved if approved is not None else False if cost_changed else None
+        if changed or cost_changed or effective_approval is not None:
+            update_rfq_object_estimate_totals(client, estimate_id=estimate_id, object_id=object_id,
+                                               **fields, approved=effective_approval)
+        return {**summary, **({"approved": effective_approval} if effective_approval is not None else {})}
     if checked_material_plan:
         material_total /= _number(object_row.get("quantity"), 1) or 1
     employer_load = round(labor_base_total * employer_load_percent / 100, 2)
