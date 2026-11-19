@@ -2,6 +2,16 @@
 
 ## Workflow transitions
 
+ACTIVE IMPLEMENTATION, P0, OWNER APPROVED, V2.8, 2026-11-19. Owner replaces
+auth-dependent refresh acceptance with simple forced page refresh after deploy,
+without ending sessions or clearing browser auth, and explicitly assigns V2.8.
+Use one public static version check, no auth/Core/model request or upload gate.
+Preserve ongoing work, one reload per target build, old-tab migration including
+Login, retry/loop protection and unavailable-version-file recovery. Existing
+provider session-refresh AuthApiError remains a separate unconfirmed cause;
+this work does not authorize auth removal or new provider/credential changes.
+Contract: notes/UI_GUIDELINES.md V2.8; exact-SHA publication gate retained.
+
 ACTIVE DIAGNOSIS, P0, USER REPORT, V2.6, 2026-11-19. First Lev1 succeeds,
 second repeated upload appears stuck at 3s. Retained trace 2dae9bae shows
 New Estimate/Upload ready, second drop 10:38:05.436 UTC and File Review ready
@@ -17,7 +27,7 @@ patches or paid reruns. Additional deploy b61b8364 (owner-added future key)
 preceded first success. Evidence in handoff workspace
 `outputs/lev1-v2.6-freeze-2026-11-19/REPORT_RU.md`.
 
-PUBLISHED, BUILDS VERIFIED, OWNER ACCEPTANCE PENDING, P0, V2.7, 2026-11-19. Ensure open
+PUBLISHED, OWNER LIVE TEST FAILED, ACTIVE DIAGNOSIS, P0, V2.7, 2026-11-19. Ensure open
 tabs update after deployment rather than starting new work with a different
 wrapper version. Owner explicitly authorized automatic refresh on version
 mismatch, retained login, no interruption of the current calculation, no
@@ -54,7 +64,20 @@ Publisher verified the active mandatory remote ruleset and advanced main to
 1ca24099. Railway f27038ba-e893-4053-84bf-06ed816b2688 ACTIVE, Deployment
 successful, title V2.7: safely refresh mismatched app versions. Actual public
 wrapper and embedded Core both show estimation-v2.7-safe-version-refresh-detection-v8.4.29;
-Sign in observed. Authenticated production workflow remains untested.
+Sign in observed. Owner live test at 14:19:59-14:20:03 Israel failed to retain
+login and did not update the wrapper. Same trace 702f5960: V2.6 wrapper selected
+the file, new V2.7 Core read stored browser auth (storage_present=true,
+browser_session_restored), then server.auth.session_refresh failed with
+AuthApiError and Login rendered. No new wrapper_start/version_refresh transition
+or server upload accepted/worker start in the retained incident events. Therefore
+the client timer was not evidence of a started server calculation. Wrapper stayed
+V2.6, Core V2.7. Immediate cause of Login is the failed session refresh; provider
+rejection reason is UNKNOWN. Do not label it an automatic outer reload, a proven
+V2.7 auth regression, or successful production acceptance. Synthetic token storage
+retention did not cover this real session-refresh failure after server restart.
+Next: determine the refresh rejection reason before selecting a bounded repair.
+Incident evidence: outputs/version-refresh-v2.7/owner-live-test/after-upload-events.json
+in the handoff workspace. No runtime or auth settings changed by this diagnosis.
 
 DEFERRED PROPOSAL, P2, AGENT SUGGESTION, 2026-11-19. Clarify and repair or
 retire the separate Workers Builds integration after owner scope approval.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 import re
 import time
 
@@ -21,6 +22,7 @@ def test_streamlit_and_cloudflare_build_versions_match():
     assert "build_version=LABOR_BUILD_VERSION" in app_source
     assert wrapper_version is not None
     assert runtime.LABOR_BUILD_VERSION == wrapper_version.group(1)
+    assert json.loads(Path("cloudflare/version.json").read_text())["build"] == runtime.LABOR_BUILD_VERSION
     assert "COSTERLY_BUILD_VERSION" not in app_source
 
 
@@ -392,7 +394,7 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "event.data.buildVersion" in wrapper
     assert "event.data.metrics && event.data.metrics.server_build_version" in wrapper
     assert 'mark("browser.build_mismatch"' in wrapper
-    assert 'recovery: "safe_upload_boundary"' in wrapper
+    assert 'recovery: "published_build_refresh"' in wrapper
     assert "reloadGuardKey" not in wrapper
     assert "pythonRuns: 0" in wrapper
     assert "python_runs: pendingTransition.pythonRuns" in wrapper

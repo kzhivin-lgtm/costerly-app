@@ -47,6 +47,28 @@ Use the exact-commit `UI release gate` and the verified publisher described in
 be active to enforce this independently of the agent. Check its real status;
 do not infer activation from the presence of the workflow or ruleset template.
 
+## V2.8 forced deploy refresh, approved 19 November 2026
+
+Owner requested simple forced refresh after deployment and explicitly assigned
+V2.8. The refresh mechanism must not check auth, log out, clear tokens/cookies or
+end a session. Existing server auth remains separate. Retain the earlier
+requirement to avoid interrupting current calculations and unsaved edits.
+
+| State | Action / result |
+|---|---|
+| Current published build | Continue immediately, no upload/version/auth gate |
+| New public version, empty Upload or Login | One full outer reload, browser auth storage/cookies untouched |
+| File picker, transfer, Processing, Calculation or unsaved edits | Keep current work, reload at the next empty Upload boundary |
+| Already-open old wrapper, including Login | Existing correlated reload migrates it once |
+| Version file unavailable | Keep working, retry later without blocking controls |
+| Update still unavailable after reload or guard storage fails | One actionable Reload page state, no automatic loop |
+
+The wrapper reads static /version.json once on start, every 30 seconds while
+visible/online, and on visibility/online recovery. One request at a time;
+pagehide aborts it and cancels its timer. This performs no Core/auth/model call
+or Python rerun. Matching Core/wrapper builds are no longer an upload gate.
+The old provider AuthApiError from the V2.7 live test is not claimed fixed.
+
 ## V2.7 safe version refresh, approved 19 November 2026
 
 Owner approved automatic refresh on build mismatch, retaining login and the

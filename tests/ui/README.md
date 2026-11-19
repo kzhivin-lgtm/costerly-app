@@ -19,9 +19,10 @@ progress and after completion, one pricing table, editable Sheet Processing and
 Assembly hours, whole grouped money, failed Save/retry and persisted reopen.
 These checks use synthetic data and do not establish production acceptance.
 The version-refresh suite uses the real wrapper, workflow controller and browser
-auth component with synthetic screen markup. It covers both deployment orders,
-retained tab-session tokens, active processing/edits/file selection, missing
-acknowledgement, unavailable guard storage, one automatic attempt and manual
+auth component with synthetic screen markup. V2.8 covers the direct public
+version-file check, old-wrapper migration from Upload/Login, retained tab-session
+tokens, processing/edits/file selection, no upload gate when a Core acknowledgement
+or version file is unavailable, guard storage failure, one attempt and manual
 recovery. It does not establish authenticated production acceptance.
 Navigation asserts
 that File Review and the reopened saved card display the same synthetic crop.
